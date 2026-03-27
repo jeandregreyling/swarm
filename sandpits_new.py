@@ -166,18 +166,6 @@ def get_all_sandpit_files():
 # Ensure proposals dir exists
 os.makedirs(PROPOSALS_DIR, exist_ok=True)
 
-def get_sandpit_stats():
-    """Return stats about active sandpits."""
-    return {
-        'total_files': sum(1 for a in AGENTS for f in os.listdir(os.path.join(SANDPIT_BASE, a, 'work')) if os.path.isfile(os.path.join(SANDPIT_BASE, a, 'work', f))),
-        'agents': len(AGENTS),
-        'status': 'operational'
-    }
-
-def get_recent_log(limit=50):
-    """Return recent sandpit activity log."""
-    return []  # Stub: replaced by real audit log later
-
 if __name__ == '__main__':
     print("Sandpits module loaded cleanly.")
     print("Grok trust level:", get_trust_level("grok"))
