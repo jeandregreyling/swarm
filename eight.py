@@ -18,7 +18,9 @@ from database import (log_message, save_agent_memory, get_agent_memory,
                       search_memory, promote_to_verified)
 from config import (EIGHT_FUNCTIONAL_PROMPT, EIGHT_TECHNICAL_PROMPT,
                     EIGHT_DEVIL_PROMPT, EIGHT_SYNTHESIS_PROMPT)
+from logging_bridge import log_action, log_agent_thinking, batch_commit
 import ollama
+import time
 
 # RL-015 — Eight gets Tavily for SAP-specific search (graceful degradation)
 try:
@@ -36,6 +38,7 @@ TEMP_DEVIL   = 0.6
 
 def _ask_voice(voice_name, system_prompt, user_prompt, temperature):
     print(f'\n[Eight/{voice_name}] thinking...')
+    start = time.time()
     response = ollama.chat(
         model=MODEL,
         messages=[
@@ -45,6 +48,8 @@ def _ask_voice(voice_name, system_prompt, user_prompt, temperature):
         options={'temperature': temperature}
     )
     answer = response['message']['content'].strip()
+    elapsed_ms = int((time.time() - start) * 1000)
+    log_agent_thinking(f'Eight/{voice_name}', 'deliberated', elapsed_ms)
     print(f'[Eight/{voice_name}] {answer[:120]}...' if len(answer) > 120 else f'[Eight/{voice_name}] {answer}')
     return answer
 

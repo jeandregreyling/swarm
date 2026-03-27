@@ -14,6 +14,7 @@ Neither step is optional.
 import sys
 sys.path.insert(0, '/home/seven/swarm')
 from system_clock import get_timestamp
+from logging_bridge import log_action, log_ticket_lifecycle, batch_commit
 import logging
 
 logger = logging.getLogger('seven.ticket')
@@ -53,6 +54,8 @@ def create(ticket_number, sender_email, question, tags='', queue_id=None, email_
         conn.close()
 
     logger.info(f'[Ticket] Created {ticket_number} for {sender_email}')
+    log_action('ticket', f'created:{ticket_number}', f'Ticket created for {sender_email}', 'info')
+    log_ticket_lifecycle(ticket_number, 'created', 'Librarian', f'Queue ID: {queue_id}')
     return ticket_number
 
 
@@ -118,3 +121,6 @@ def librarian_close(ticket_number, question, final_answer, queue_id=None, sender
 
     logger.info(f'[Librarian] {ticket_number} closed.')
     print(f'[Librarian] Ticket {ticket_number} closed and queued.')
+    log_action('ticket', f'closed:{ticket_number}', f'Ticket closed by Librarian', 'info')
+    log_ticket_lifecycle(ticket_number, 'closed', 'Librarian', f'Final answer: {final_answer[:100]}')
+    batch_commit(f'Closed {ticket_number}')

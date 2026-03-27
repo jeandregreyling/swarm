@@ -34,8 +34,10 @@ from email_cleaner import filter_non_english
 from system_clock import get_system_clock
 from config import (GEMMA_SYSTEM_PROMPT, LLAMA_SYSTEM_PROMPT,
                      QWEN_SYSTEM_PROMPT, LIBRARIAN_SYSTEM_PROMPT)
+from logging_bridge import log_action, log_agent_thinking, batch_commit
 import ollama
 import logging
+import time
 
 logger = logging.getLogger('seven.orchestrator')
 
@@ -67,24 +69,26 @@ def ask_agent(agent_name, prompt, retries=2):
     temp = TEMPERATURES.get(agent_name, 0.5)
     
     print(f'\n[{get_system_clock().timestamp_compact()}] [{agent_name}] thinking...')
-    log_message_to_activity = f"{agent_name} loading..."
-    from database import log_activity as _la
-    _la('orchestrator', 'agent_load', agent_name)
+    log_action('orchestrator', f'agent_load:{agent_name}', f'Loading {agent_name}', 'info')
 
     messages = []
     if system:
         messages.append({'role': 'system', 'content': system})
     messages.append({'role': 'user', 'content': prompt})
 
+    start_time = time.time()
     for attempt in range(retries + 1):
         try:
             response = ollama.chat(model=model, messages=messages, options={'temperature': temp})
             answer = response['message']['content']
-            _la('orchestrator', 'agent_done', agent_name)
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            log_agent_thinking(agent_name, f'responded to prompt', elapsed_ms)
+            batch_commit(f'[{agent_name}] completed query')
             return answer
         except Exception as e:
             if attempt == retries:
-                _la('orchestrator', 'agent_error', f"{agent_name}: {str(e)}")
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                log_action('orchestrator', f'agent_error:{agent_name}', str(e), 'error')
                 raise e
             print(f"[{get_system_clock().timestamp_compact()}] [Orchestrator] {agent_name} failed (attempt {attempt+1}), retrying...")
             time.sleep(2)

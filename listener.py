@@ -35,6 +35,7 @@ from orchestrator import consult_stage1, consult_stage2
 from queue_manager import intake as queue_intake, get_queue_depth, estimate_wait_minutes, mark_processing
 from ticket import create as ticket_create, librarian_close, set_routing as ticket_set_routing
 from duck import on_queue_clear
+from logging_bridge import log_action, log_ticket_lifecycle
 import imaplib
 import time
 import random
