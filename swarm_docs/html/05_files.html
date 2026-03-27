@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 24.2.7.2 (Linux)"/>
+	<meta name="author" content="Un-named"/>
+	<meta name="created" content="2026-03-24T23:23:21.860000000"/>
+	<meta name="changedby" content="Un-named"/>
+	<meta name="changed" content="2026-03-24T23:23:21.860000000"/>
+	<style type="text/css">
+		@page { size: 21.59cm 27.94cm; margin: 2.54cm }
+		p { line-height: 115%; text-align: left; orphans: 2; widows: 2; margin-bottom: 0.25cm; direction: ltr; background: transparent }
+		h1 { color: #2e75b6; text-align: left; orphans: 2; widows: 2; margin-top: 0.64cm; margin-bottom: 0.32cm; direction: ltr; background: transparent; page-break-after: avoid }
+		h1.western { font-family: "Arial", sans-serif; font-size: 16pt; font-weight: bold }
+		h1.cjk { font-family: "Arial"; font-size: 16pt; font-weight: bold }
+		h1.ctl { font-family: "Arial"; font-size: 16pt; font-weight: bold }
+		a:link { color: #0563c1; text-decoration: underline }
+	</style>
+</head>
+<body lang="en-AU" link="#0563c1" vlink="#800000" dir="ltr"><p style="line-height: 100%; margin-bottom: 0cm">
+<br/>
+
+</p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.42cm"><font color="#2e75b6"><font face="Arial, serif"><font size="6" style="font-size: 24pt"><b>SEVEN'S
+SWARM</b></font></font></font></p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.21cm"><font color="#1f4e79"><font face="Arial, serif"><font size="5" style="font-size: 18pt">File
+Reference</font></font></font></p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.85cm"><font color="#666666"><font face="Arial, serif"><font size="3" style="font-size: 12pt"><i>Every
+file, its purpose, key functions</i></font></font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm; border-top: none; border-bottom: 1px solid #2e75b6; border-left: none; border-right: none; padding-top: 0cm; padding-bottom: 0.04cm; padding-left: 0cm; padding-right: 0cm">
+<br/>
+
+</p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Dell
+OptiPlex 7090 | Melbourne | Sessions 1-9 | March 2026</font></font></p>
+<p align="center" style="line-height: 100%; margin-bottom: 0cm"><font color="#666666"><font face="Arial, serif"><font size="2" style="font-size: 11pt"><i>&quot;You
+can only do what you can do when you can do it.&quot;</i></font></font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western" style="margin-top: 0cm; page-break-before: always">
+<font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Core
+Files — /home/seven/swarm/</b></font></font></h1>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="301"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>File</b></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Purpose</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">config.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">All
+			secrets, API keys, system prompts. NEVER SHARE. NEVER PRINT.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">database.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Complete
+			database layer. 22 tables. Run once to initialise: python3
+			database.py</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">listener.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Email
+			loop. IMAP poll every 60s. Entry point for email pipeline.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">orchestrator.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Agent
+			pipeline. Gemma routes. Agents run. Gemma synthesises. FL-001.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">eight.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Eight
+			SAP specialist. Three-voice pipeline. Tavily SAP search. Gemma
+			synthesis.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">claude_api.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Ghost
+			Circle advisor. Gemma calls Claude when stuck. Response cached.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">duck.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Sanity
+			checker. YES/NO after every ticket. Runs inside librarian_close.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">sniffer.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Memory
+			auditor. PASS/WARN/FLAG. Runs when queue quiet or Duck flagged.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">queue_manager.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Librarian
+			intake layer. Owns queue table. Tags, queues, manages position.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ticket.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Ticket
+			lifecycle. create → close. Librarian owns close. Duck runs
+			inside.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">terminal.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Swarm
+			terminal web UI. Flask. Port 5050. SSE streaming. Kill switches.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">simulate.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Dry-run
+			simulation. 3 fake tickets through full pipeline. No email sent.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">monitor.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">System
+			stats daemon. Daily report to Ghost. get_system_status() callable.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">internet.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">LLaMA
+			DuckDuckGo search. No API key needed.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">internet_serper.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Gemma
+			Google search via Serper.dev. SERPER_API_KEY in config.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">internet_tavily.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Qwen/Eight
+			Tavily AI search. TAVILY_API_KEY in config. search_sap() for
+			Eight.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">sandpits.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Sandpit
+			filesystem. Trust level enforcement. sandpit_log.
+			Sniffles-callable.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">eight_memory.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Eight
+			knowledge loader. seed/teach/correct/list modes.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">email_handler.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Gmail
+			IMAP/SMTP. Fetch unread, mark as read, send reply.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">email_cleaner.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Strip
+			signatures, reply chains, subject prefixes. Subject prepended to
+			question.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">debate.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Three-round
+			debate. Qwen challenges LLaMA R2. Gemma judges.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">housekeeping.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Daily
+			cleanup. Archive low-importance memories.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">contradiction_check.py</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Compare
+			new agent memories against verified Gemma facts.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">killswitch.sh</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Stop
+			all swarm services instantly.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">startswarm.sh</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Start
+			core swarm services.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">swarm_memory.db</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">SQLite
+			database. 22 tables. All memory lives here.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">VS_CODE_CONTEXT.md</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">VS
+			Code context brief — first file to show new Claude sessions.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">CLAUDE_CODE_HANDOVER.md</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Technical
+			handover brief for Claude Code sessions.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">PROJECT.md</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">The
+			coder's bible. When this diverges from code, the code is wrong.</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Fridays
+Files — /home/seven/swarm/fridays/</b></font></font></h1>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="197"/>
+	<col width="198"/>
+	<col width="197"/>
+	<tr valign="top">
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>File</b></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Status</b></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Purpose</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">sandpits/
+			(moved to root)</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000">✓ <font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Complete</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Sandpit
+			filesystem layer</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">file_agent.py</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Planned
+			RL-018</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">File
+			read/write with access level enforcement</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">browser_agent.py</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Planned
+			RL-018</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Playwright
+			headless browser</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">shell_agent.py</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Planned
+			RL-019</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Sandboxed
+			shell execution — whitelist only</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">scheduler.py</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Planned
+			RL-020</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Task
+			scheduling — proactive agent behaviour</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">skills/</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Planned
+			RL-021</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Extensible
+			skill modules — auto-loaded on startup</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">telegram_bot.py</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Planned
+			RL-022</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Telegram
+			front door — same trusted sender model</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">discord_bot.py</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Planned
+			RL-023</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Discord
+			front door</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">whatsapp_bot.py</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Planned
+			RL-024</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">WhatsApp
+			Business API</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Sandpit
+Directories — /home/seven/swarm/sandpits/</b></font></font></h1>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="301"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Directory</b></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Who
+			writes</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">shared/</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">All
+			agents — collaboration whiteboard</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">gemma/</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Gemma's
+			private workspace</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">llama/</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">LLaMA's
+			private workspace</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">qwen/</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Qwen's
+			private workspace</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">eight/</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Eight's
+			workspace — ABAP drafts, schema analyses, scenario notes</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">librarian/</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Librarian's
+			workspace</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">sniffles/</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Read-only
+			for Sniffles — audit output only</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Python
+Dependencies</b></font></font></h1>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="197"/>
+	<col width="198"/>
+	<col width="197"/>
+	<tr valign="top">
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Package</b></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Install
+			command</b></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Used
+			by</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">anthropic</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">pip3
+			install anthropic --break-system-packages</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">claude_api.py</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">psutil</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">pip3
+			install psutil --break-system-packages</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">monitor.py,
+			queue_manager.py</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">duckduckgo_search</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">pip3
+			install duckduckgo_search --break-system-packages</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">internet.py</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">flask</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">pip3
+			install flask --break-system-packages</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">terminal.py</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">tavily-python</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">pip3
+			install tavily-python --break-system-packages</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">internet_tavily.py</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ollama</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">pip3
+			install ollama --break-system-packages</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">all
+			agents</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Environment
+Variables</b></font></font></h1>
+<p style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Add
+to /etc/environment then reboot or source /etc/environment:</font></font></p>
+<p style="line-height: 100%; margin-top: 0.11cm; margin-bottom: 0.11cm; background: #f5f5f5">
+<font color="#333333"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">ANTHROPIC_API_KEY=sk-ant-...</font></font></font></p>
+<p style="line-height: 100%; margin-top: 0.11cm; margin-bottom: 0.11cm; background: #f5f5f5">
+<font color="#333333"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">TAVILY_API_KEY=tvly-...</font></font></font></p>
+<p style="line-height: 100%; margin-top: 0.11cm; margin-bottom: 0.11cm; background: #f5f5f5">
+<font color="#333333"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">SERPER_API_KEY=...</font></font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p style="line-height: 100%; margin-bottom: 0.14cm; background: #fff3cd">
+<font color="#856404">⚠ <font face="Arial, serif"><font size="2" style="font-size: 10pt">API
+keys must be in /etc/environment — never in config.py. config.py is
+NEVER shared or printed.</font></font></font></p>
+</body>
+</html>

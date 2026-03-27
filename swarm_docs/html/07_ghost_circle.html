@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 24.2.7.2 (Linux)"/>
+	<meta name="author" content="Un-named"/>
+	<meta name="created" content="2026-03-24T23:23:21.903000000"/>
+	<meta name="changedby" content="Un-named"/>
+	<meta name="changed" content="2026-03-24T23:23:21.903000000"/>
+	<style type="text/css">
+		@page { size: 21.59cm 27.94cm; margin: 2.54cm }
+		p { line-height: 115%; text-align: left; orphans: 2; widows: 2; margin-bottom: 0.25cm; direction: ltr; background: transparent }
+		h1 { color: #2e75b6; text-align: left; orphans: 2; widows: 2; margin-top: 0.64cm; margin-bottom: 0.32cm; direction: ltr; background: transparent; page-break-after: avoid }
+		h1.western { font-family: "Arial", sans-serif; font-size: 16pt; font-weight: bold }
+		h1.cjk { font-family: "Arial"; font-size: 16pt; font-weight: bold }
+		h1.ctl { font-family: "Arial"; font-size: 16pt; font-weight: bold }
+		h2 { color: #1f4e79; text-align: left; orphans: 2; widows: 2; margin-bottom: 0.21cm; direction: ltr; background: transparent; page-break-after: avoid }
+		h2.western { font-family: "Arial", sans-serif; font-size: 14pt; font-weight: bold }
+		h2.cjk { font-family: "Arial"; font-size: 14pt; font-weight: bold }
+		h2.ctl { font-family: "Arial"; font-size: 14pt; font-weight: bold }
+		a:link { color: #0563c1; text-decoration: underline }
+	</style>
+</head>
+<body lang="en-AU" link="#0563c1" vlink="#800000" dir="ltr"><p style="line-height: 100%; margin-bottom: 0cm">
+<br/>
+
+</p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.42cm"><font color="#2e75b6"><font face="Arial, serif"><font size="6" style="font-size: 24pt"><b>SEVEN'S
+SWARM</b></font></font></font></p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.21cm"><font color="#1f4e79"><font face="Arial, serif"><font size="5" style="font-size: 18pt">Ghost
+Circle</font></font></font></p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.85cm"><font color="#666666"><font face="Arial, serif"><font size="3" style="font-size: 12pt"><i>Claude
+API, advisory layer, ghost_circle table</i></font></font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm; border-top: none; border-bottom: 1px solid #2e75b6; border-left: none; border-right: none; padding-top: 0cm; padding-bottom: 0.04cm; padding-left: 0cm; padding-right: 0cm">
+<br/>
+
+</p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Dell
+OptiPlex 7090 | Melbourne | Sessions 1-9 | March 2026</font></font></p>
+<p align="center" style="line-height: 100%; margin-bottom: 0cm"><font color="#666666"><font face="Arial, serif"><font size="2" style="font-size: 11pt"><i>&quot;You
+can only do what you can do when you can do it.&quot;</i></font></font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western" style="margin-top: 0cm; page-break-before: always">
+<font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>What
+the Ghost Circle Is</b></font></font></h1>
+<p style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">The
+Ghost Circle is the private visibility layer. Only Jeandre and Claude
+see it. Agents do not.</font></font></p>
+<p style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">It
+aggregates: every Duck check, every Sniffles flag, every Claude
+advisory call, every Level 3+ system write, every Level 4+ shell
+execution.</font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>claude_api.py
+— The Advisory Layer</b></font></font></h1>
+<h2 class="western"><font face="Arial, serif"><font size="4" style="font-size: 14pt"><b>How
+Gemma calls Claude</b></font></font></h2>
+<ul>
+	<li value="1"><p style="line-height: 100%; margin-bottom: 0.14cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Step
+	1: Gemma calls check_if_already_solved(problem_type)</font></font></p></li>
+	<li><p style="line-height: 100%; margin-bottom: 0.14cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Step
+	2: If a cached answer exists — use it, no API call</font></font></p></li>
+	<li><p style="line-height: 100%; margin-bottom: 0.14cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Step
+	3: If not — call ask_claude(problem_type, question, ticket_number)</font></font></p></li>
+	<li><p style="line-height: 100%; margin-bottom: 0.14cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Step
+	4: Claude receives full Ghost Circle context</font></font></p></li>
+	<li><p style="line-height: 100%; margin-bottom: 0.14cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Step
+	5: Response stored to claude_log and memory_gemma</font></font></p></li>
+	<li><p style="line-height: 100%; margin-bottom: 0.14cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Step
+	6: Mirrored to ghost_circle table</font></font></p></li>
+</ul>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h2 class="western"><font face="Arial, serif"><font size="4" style="font-size: 14pt"><b>Problem
+Types</b></font></font></h2>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="301"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Problem
+			type</b></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>When
+			Gemma uses it</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">conflicting_agent_outputs</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">LLaMA
+			and Qwen disagree significantly</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">factual_uncertainty</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Neither
+			agent is confident</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">identity_question</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Question
+			about the swarm itself</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ethical_edge_case</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Question
+			Gemma isn't sure how to handle</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">routing_unclear</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">FL-001
+			cannot determine the right path</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">sap_escalation</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Eight's
+			three voices all disagree</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">connection_test</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Test
+			the Ghost Circle connection</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h2 class="western"><font face="Arial, serif"><font size="4" style="font-size: 14pt"><b>Ghost
+Circle Context</b></font></font></h2>
+<p style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">When
+Claude is called, it receives:</font></font></p>
+<ul>
+	<li><p style="line-height: 100%; margin-bottom: 0.14cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Recent
+	ghost_circle events with severity markers (info / warning /
+	critical)</font></font></p></li>
+	<li><p style="line-height: 100%; margin-bottom: 0.14cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Duck:
+	total checks, total flags, last 10 results with reasons</font></font></p></li>
+	<li><p style="line-height: 100%; margin-bottom: 0.14cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Sniffles
+	patterns: agent, pattern type, description, count, escalation level</font></font></p></li>
+	<li><p style="line-height: 100%; margin-bottom: 0.14cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Current
+	ticket: question, status, routing decision, all agent notes</font></font></p></li>
+</ul>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h2 class="western"><font face="Arial, serif"><font size="4" style="font-size: 14pt"><b>Setup</b></font></font></h2>
+<p style="line-height: 100%; margin-top: 0.11cm; margin-bottom: 0.11cm; background: #f5f5f5">
+<font color="#333333"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">export
+ANTHROPIC_API_KEY='sk-ant-...'</font></font></font></p>
+<p style="line-height: 100%; margin-top: 0.11cm; margin-bottom: 0.11cm; background: #f5f5f5">
+<font color="#333333"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">#
+Add to /etc/environment for persistence</font></font></font></p>
+<p style="line-height: 100%; margin-top: 0.11cm; margin-bottom: 0.11cm; background: #f5f5f5">
+<font color="#333333"><font face="Courier New, serif"><font size="2" style="font-size: 9pt">python3
+~/swarm/claude_api.py  # test connection</font></font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p style="line-height: 100%; margin-bottom: 0.14cm; background: #fff3cd">
+<font color="#856404">⚠ <font face="Arial, serif"><font size="2" style="font-size: 10pt">ANTHROPIC_API_KEY
+must be in /etc/environment. Never in config.py.</font></font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p style="line-height: 100%; margin-bottom: 0cm; border-top: none; border-bottom: 1px solid #2e75b6; border-left: none; border-right: none; padding-top: 0cm; padding-bottom: 0.04cm; padding-left: 0cm; padding-right: 0cm">
+<br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Ghost
+Circle Tables</b></font></font></h1>
+<h2 class="western"><font face="Arial, serif"><font size="4" style="font-size: 14pt"><b>ghost_circle</b></font></font></h2>
+<p style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Aggregated
+visibility table. Ghost and Claude read this. Agents do not.</font></font></p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="197"/>
+	<col width="198"/>
+	<col width="197"/>
+	<tr valign="top">
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Column</b></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Type</b></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Purpose</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">entry_type</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">claude_advisory,
+			duck_flag, sniffles_flag, system_write, shell_exec</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">source</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Which
+			component wrote this entry</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">content</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Summary
+			of the event</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ticket_ref</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Associated
+			ticket number if any</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">severity</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">info
+			/ warning / critical</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">created_at</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Timestamp</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h2 class="western"><font face="Arial, serif"><font size="4" style="font-size: 14pt"><b>claude_log</b></font></font></h2>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="197"/>
+	<col width="198"/>
+	<col width="197"/>
+	<tr valign="top">
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Column</b></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Type</b></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Purpose</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ticket_id</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">INTEGER</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Foreign
+			key to tickets table</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ticket_number</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Ticket
+			reference</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">problem_type</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Cache
+			key — never call twice for same type</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">query_sent</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">First
+			500 chars of what was sent</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">response</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Claude's
+			full recommendation</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">model_used</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">claude-sonnet-4-6</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">tokens_used</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">INTEGER</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Input
+			+ output tokens for cost tracking</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h2 class="western"><font face="Arial, serif"><font size="4" style="font-size: 14pt"><b>sniffer_memory
+— Pattern Detection</b></font></font></h2>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="197"/>
+	<col width="198"/>
+	<col width="197"/>
+	<tr valign="top">
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Column</b></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Type</b></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Purpose</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">agent_name</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Which
+			agent has this pattern</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">pattern_type</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">overconfident_statistics,
+			identity_drift, etc.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">description</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">What
+			the pattern looks like</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">occurrence_count</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">INTEGER</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">How
+			many times seen</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">escalation_level</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">info
+			→ warning → critical</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h2 class="western"><font face="Arial, serif"><font size="4" style="font-size: 14pt"><b>duck_log</b></font></font></h2>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="197"/>
+	<col width="198"/>
+	<col width="197"/>
+	<tr valign="top">
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Column</b></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Type</b></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Purpose</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ticket_number</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Which
+			ticket was checked</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">question</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">The
+			question that was asked</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">answer</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">The
+			answer Duck checked</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">result</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">YES
+			or NO</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">reason</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">One
+			sentence why</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">created_at</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">TEXT</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Timestamp</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+</body>
+</html>

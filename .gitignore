@@ -1,0 +1,44 @@
+# Credentials & Secrets (NEVER commit these)
+config.py
+.env
+.env.local
+*_credentials.json
+*_token.json
+*_password.txt
+
+# Runtime databases (regenerated)
+*.db
+*.db-shm
+*.db-wal
+swarm_memory.db
+swarm.db
+
+# Generated/compiled
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backups (already backed up separately)
+*.backup
+*.bak
+
+# Temp/Build
+/build/
+/dist/
+.claude/
+
+# Logs (ephemeral — regenerated each run)
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

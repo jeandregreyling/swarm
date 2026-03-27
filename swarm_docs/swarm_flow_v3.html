@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Seven's Swarm — Complete Flow v3</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0f0f0f; color: #e0e0e0; font-family: 'Courier New', monospace; padding: 20px; }
+h1 { text-align: center; font-size: 16px; color: #7eb8f7; margin-bottom: 3px; letter-spacing: 2px; }
+h2 { text-align: center; font-size: 9px; color: #444; margin-bottom: 16px; letter-spacing: 1px; }
+
+.page { max-width: 1100px; margin: 0 auto; }
+.section { margin-bottom: 12px; }
+.section-label { font-size: 8px; color: #333; text-align: center; letter-spacing: 3px; text-transform: uppercase; padding: 3px 0; }
+
+.row { display: flex; gap: 3px; align-items: stretch; }
+.node { border-radius: 6px; padding: 7px 10px; font-size: 9px; line-height: 1.5; flex: 1; }
+.node .t { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
+.node ul { padding-left: 10px; margin-top: 3px; }
+.node li { margin-bottom: 1px; }
+
+/* Agent colours */
+.gemma     { background: #0d1f0d; border: 1px solid #2d6b2d; } .gemma .t     { color: #66cc66; }
+.llama     { background: #1f0d0d; border: 1px solid #6b2d2d; } .llama .t     { color: #cc6666; }
+.qwen      { background: #1f1a0d; border: 1px solid #6b5a2d; } .qwen .t      { color: #ccaa66; }
+.librarian { background: #0d0d1f; border: 1px solid #2d2d6b; } .librarian .t { color: #6666cc; }
+.duck      { background: #1a1a0d; border: 1px solid #6b6b2d; } .duck .t      { color: #cccc44; }
+.sniffles  { background: #0d1a1f; border: 1px solid #2d5a6b; } .sniffles .t  { color: #44aacc; }
+.eight     { background: #1a0d1f; border: 1px solid #5a2d6b; } .eight .t     { color: #aa66cc; }
+.ghost     { background: #1a0d1a; border: 1px solid #6b2d6b; } .ghost .t     { color: #cc66cc; }
+.claude    { background: #0d1a1a; border: 1px solid #2d6b6b; } .claude .t    { color: #44cccc; }
+.system    { background: #111; border: 1px solid #333; }       .system .t    { color: #888; }
+.decision  { background: #141414; border: 1px solid #444; }    .decision .t  { color: #999; }
+.phase     { background: #0a0a0a; border: 1px dashed #333; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+.phase-title { font-size: 10px; color: #555; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; text-align: center; }
+
+.arrow { text-align: center; color: #333; font-size: 14px; padding: 2px 0; }
+.arrow-label { font-size: 8px; color: #444; text-align: center; margin-top: -2px; margin-bottom: 2px; }
+.divider { border: none; border-top: 1px dashed #1a1a1a; margin: 8px 0; }
+.split { display: flex; gap: 3px; flex: 1; }
+.connector { width: 16px; display: flex; align-items: center; justify-content: center; color: #333; font-size: 12px; }
+
+.badge { display: inline-block; border-radius: 3px; padding: 1px 5px; font-size: 8px; margin: 1px; }
+.bg { background: #0d2a0d; color: #66cc66; border: 1px solid #2d6b2d; }
+.br { background: #2a0d0d; color: #cc6666; border: 1px solid #6b2d2d; }
+.by { background: #2a2a0d; color: #cccc44; border: 1px solid #6b6b2d; }
+.bb { background: #0d1a2a; color: #44aacc; border: 1px solid #2d5a6b; }
+.bp { background: #1a0d2a; color: #aa66cc; border: 1px solid #5a2d6b; }
+.bc { background: #0d2a2a; color: #44cccc; border: 1px solid #2d6b6b; }
+
+.ghost-circle { background: #08080f; border: 1px dashed #2d2d6b; border-radius: 8px; padding: 10px; margin: 6px 0; }
+.gc-title { color: #6666cc; font-size: 10px; font-weight: bold; text-align: center; margin-bottom: 6px; letter-spacing: 2px; }
+
+.pipeline-flow { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 4px 0; }
+.pipe-step { background: #1a1a1a; border: 1px solid #333; border-radius: 4px; padding: 3px 8px; font-size: 9px; color: #888; }
+.pipe-arrow { color: #333; font-size: 10px; }
+
+.table-mini { width: 100%; border-collapse: collapse; font-size: 9px; margin-top: 4px; }
+.table-mini th { background: #1a1a2a; color: #6666cc; padding: 3px 6px; text-align: left; border-bottom: 1px solid #2d2d4b; }
+.table-mini td { padding: 2px 6px; border-bottom: 1px solid #1a1a1a; color: #aaa; }
+.table-mini tr:last-child td { border-bottom: none; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>⚡ SEVEN'S SWARM + EIGHT + FRIDAYS — COMPLETE FLOW v3</h1>
+<h2>Sessions 1-9 | March 2026 | Dell OptiPlex 7090 Melbourne | 160GB effective memory</h2>
+
+<!-- ═══════════════════════════════════════════════════════ VISION -->
+<div class="phase">
+<div class="phase-title">THE VISION — FRIDAYS</div>
+<div class="row">
+  <div class="node system" style="flex:1">
+    <div class="t">SEVEN — The Brain</div>
+    Gemma, LLaMA, Qwen, Librarian, Duck, Sniffles<br>
+    Memory pools, debate pipeline, FL-001 routing, Ghost Circle<br>
+    <span class="badge bg">Phase 1 ✓</span>
+  </div>
+  <div class="node eight" style="flex:1">
+    <div class="t">EIGHT — The Specialist</div>
+    SAP HCM/ABAP expert. Three-voice debate pipeline.<br>
+    Functional → Technical → Devil → Gemma synthesis<br>
+    <span class="badge bp">Phase 2 ✓</span>
+  </div>
+  <div class="node ghost" style="flex:1">
+    <div class="t">FRIDAYS — The Hands</div>
+    Sandpits, browser, file agent, shell, skills framework<br>
+    Trust ladder: Observer → Sandpit → System → Shell → Full<br>
+    <span class="badge by">Phase 3 started</span>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ HARDWARE -->
+<div class="section-label">── HARDWARE ──</div>
+<div class="row">
+  <div class="node system">
+    <div class="t" style="color:#7eb8f7;">Dell OptiPlex 7090 | i5-10500 | 32GB RAM | Linux Mint 22.3 | hostname: seven-potato</div>
+    <div class="split" style="margin-top:5px; gap:8px;">
+      <div style="flex:1; font-size:9px;">
+        <span style="color:#888;">nvme1n1p1 — 469GB (15.8 Gb/s)</span><br>
+        Linux root / | OS + swarm code + database
+      </div>
+      <div style="flex:1; font-size:9px;">
+        <span style="color:#7eb8f7;">nvme0n1p3 — 232GB (31.6 Gb/s) ← FAST DRIVE</span><br>
+        /mnt/swarm_drive/models/ — all 5 Ollama models<br>
+        /mnt/swarm_drive/swap/ — 128GB swapfile<br>
+        Effective memory: 32GB RAM + 128GB swap = 160GB
+      </div>
+      <div style="flex:1; font-size:9px;">
+        <span style="color:#cc4444;">nvme0n1p1 — EFI — DO NOT TOUCH</span><br>
+        Ubuntu shimx64.efi — system boots from here<br>
+        Never wipe. Never modify.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════ AGENTS -->
+<div class="section-label">── THE AGENTS ──</div>
+<div class="row">
+  <div class="node gemma">
+    <div class="t">💎 GEMMA — The Director</div>
+    temp: 0.3 | gemma3:latest<br>
+    Routes FIRST. Always.<br>
+    FL-001: NEEDS_WEB / AGENTS / MODE<br>
+    IS_IDENTITY / IS_SAP / IS_SYSTEM<br>
+    Synthesises final verdict.<br>
+    Calls Claude when stuck.
+  </div>
+  <div class="node llama">
+    <div class="t">📡 LLaMA — The Correspondent</div>
+    temp: 0.6 | llama3.2:latest<br>
+    Sole DuckDuckGo access.<br>
+    Fast first answer.<br>
+    Self-indexes after each response.<br>
+    Never makes up citations.
+  </div>
+  <div class="node qwen">
+    <div class="t">🧠 Qwen — The Analyst</div>
+    temp: 0.7 | qwen2.5:latest<br>
+    Tavily AI search (independent).<br>
+    Reads LLaMA before responding.<br>
+    Challenges when wrong.<br>
+    Debate fires on disagreement.
+  </div>
+  <div class="node librarian">
+    <div class="t">📚 Librarian — The Gatekeeper</div>
+    temp: 0.1 | qwen:latest<br>
+    Tags only. Never speaks.<br>
+    Owns the queue table.<br>
+    Opens AND closes tickets.<br>
+    Controls queue flow.
+  </div>
+</div>
+<div class="row" style="margin-top:3px;">
+  <div class="node duck">
+    <div class="t">🦆 Duck — Queue Guardian</div>
+    temp: 0.1 | qwen:latest<br>
+    YES/NO after every ticket.<br>
+    Flags suspicious to Sniffles.<br>
+    Cheers when queue clears.<br>
+    Writes to duck_log.
+  </div>
+  <div class="node sniffles">
+    <div class="t">🐕 Sniffles — The Inspector</div>
+    temp: 0.2 | deepseek-r1:7b<br>
+    Read-only. Always.<br>
+    1-in-5 random trigger.<br>
+    Runs when queue quiet 1hr+.<br>
+    PASS / WARN / FLAG.<br>
+    Audits memory + sandpits.
+  </div>
+  <div class="node eight">
+    <div class="t">⚙ Eight — SAP Specialist</div>
+    temp: 0.2/0.6 | qwen2.5:latest<br>
+    Functional / Technical / Devil<br>
+    → Gemma synthesis.<br>
+    Tavily SAP search.<br>
+    memory_eight pool.<br>
+    Jeandre teaches it.
+  </div>
+  <div class="node claude">
+    <div class="t">🤖 Claude — Ghost Advisor</div>
+    claude-sonnet-4-6 via API<br>
+    Called by Gemma only.<br>
+    Sees full Ghost Circle.<br>
+    Response cached — never<br>
+    called twice for same problem.<br>
+    Mentor not driver.
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════ EMAIL PIPELINE -->
+<div class="section-label">── EMAIL PIPELINE ──</div>
+
+<div class="row">
+  <div class="node ghost">
+    <div class="t">👻 Incoming email → sevenpotato9@gmail.com</div>
+    <div class="split" style="margin-top:4px; gap:6px;">
+      <div style="flex:1; background:#1f0d1f; border:1px solid #6b2d6b; border-radius:4px; padding:5px;">
+        <div style="color:#cc66cc; font-size:9px; margin-bottom:2px;">TRUSTED / MODERATOR</div>
+        → Full pipeline
+      </div>
+      <div style="flex:1; background:#1f1a0d; border:1px solid #6b5a2d; border-radius:4px; padding:5px;">
+        <div style="color:#ccaa66; font-size:9px; margin-bottom:2px;">UNKNOWN</div>
+        → pending_emails<br>→ Ask Ghost: Trust/Notify/Ignore<br>→ One-click link in email
+      </div>
+      <div style="flex:1; background:#111; border:1px solid #333; border-radius:4px; padding:5px;">
+        <div style="color:#888; font-size:9px; margin-bottom:2px;">NOTIFICATION</div>
+        → Gmail label<br>→ Mark read<br>→ No pipeline
+      </div>
+      <div style="flex:1; background:#1a0d0d; border:1px solid #6b1a1a; border-radius:4px; padding:5px;">
+        <div style="color:#cc4444; font-size:9px; margin-bottom:2px;">SELF</div>
+        → Skip entirely
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow">↓</div>
+
+<div class="row">
+  <div class="node librarian">
+    <div class="t">📚 Librarian Intake — queue_manager.intake()</div>
+    Tags question (3-5 tags) | Records system snapshot | Assigns queue position<br>
+    Creates queue entry: status=queued<br>
+    <span class="badge bb">Email 0 sent:</span> "You are #N in queue. Est. wait: ~Xmin"
+  </div>
+</div>
+
+<div class="arrow">↓</div>
+
+<div class="row">
+  <div class="node gemma">
+    <div class="t">💎 Gemma FL-001 Routing — consult_stage1()</div>
+    Reads question FIRST. Decides:<br>
+    NEEDS_WEB: yes/no | AGENTS: llama/qwen/both | MODE: consult/debate<br>
+    IS_IDENTITY: yes/no | IS_SAP: yes/no | IS_SYSTEM: yes/no<br>
+    <span class="badge bb">Email 1 fast:</span> Gemma's initial read + LLaMA's answer
+  </div>
+</div>
+
+<div class="arrow">↓</div>
+
+<div class="row">
+  <div class="node decision">
+    <div class="t">🔀 Routing branch</div>
+    <div class="split" style="margin-top:4px; gap:4px;">
+      <div style="flex:2; background:#0d1a0d; border:1px solid #2d5a2d; border-radius:4px; padding:5px;">
+        <div style="color:#66cc66; font-size:9px; margin-bottom:2px;">STANDARD → consult_stage2()</div>
+        Qwen reads LLaMA's answer<br>
+        Qwen searches Tavily independently<br>
+        Disagreement detected → debate.py fires<br>
+        Gemma reads all → synthesises verdict<br>
+        Gemma may call Claude if stuck<br>
+        Gemma searches Serper/Google if needed<br>
+        <span class="badge bb">Email 2:</span> Qwen + debate + Gemma verdict
+      </div>
+      <div style="flex:2; background:#100d1a; border:1px solid #3a2d5a; border-radius:4px; padding:5px;">
+        <div style="color:#aa66cc; font-size:9px; margin-bottom:2px;">SAP → consult_stage_eight()</div>
+        Eight/Functional — config logic<br>
+        Eight/Technical — ABAP / system<br>
+        Eight/Devil — edge cases / risks<br>
+        Gemma synthesises SAP verdict<br>
+        Verdict → memory_eight (importance 7-9)<br>
+        <span class="badge bp">Email 2:</span> Eight voices + Gemma SAP verdict
+      </div>
+      <div style="flex:1; background:#0d1a1a; border:1px solid #2d5a5a; border-radius:4px; padding:5px;">
+        <div style="color:#44cccc; font-size:9px; margin-bottom:2px;">SYSTEM → Librarian</div>
+        monitor.librarian_health_summary()<br>
+        Live: RAM/CPU/temp/disk<br>
+        Memory pool counts<br>
+        No web search
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow">↓</div>
+
+<div class="row">
+  <div class="node librarian">
+    <div class="t">📚 Librarian Close — ticket.librarian_close()</div>
+    <div class="split" style="margin-top:4px; gap:8px;">
+      <div style="flex:1;">
+        Indexes Gemma verdict → shared memory (importance 9)<br>
+        Sends final email to sender<br>
+        Marks ticket CLOSED
+      </div>
+      <div style="flex:1;">
+        Duck sanity check runs inside close:<br>
+        <span class="badge bg">YES</span> → logged to duck_log, done<br>
+        <span class="badge br">NO</span> → flag_for_sniffles(), still closes
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow">↓</div>
+
+<div class="row">
+  <div class="node sniffles">
+    <div class="t">🐕 Sniffles — random trigger (1-in-5) or Duck flagged + 1hr quiet</div>
+    Audits all memory pools + sandpit_log<br>
+    <span class="badge bg">PASS</span> logged | <span class="badge by">WARN</span> → Ghost + agents | <span class="badge br">FLAG</span> → Ghost email<br>
+    Pattern tracking in sniffer_memory — escalation levels
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════ TERMINAL PIPELINE -->
+<div class="section-label">── TERMINAL PIPELINE (port 5050, Tailscale only) ──</div>
+
+<div class="row">
+  <div class="node system">
+    <div class="t" style="color:#7eb8f7;">terminal.py — Flask | SSE streaming | Kill switches | Memory browser | Ticket log</div>
+    Ghost types question → queue_intake() → ticket_create() → spinner shown<br>
+    Same consult_stage1/stage2/stage_eight as email — Duck still runs — tickets still close<br>
+    Only difference: no email in/out. All output streams to three agent panels in browser.<br>
+    <div class="split" style="margin-top:5px; gap:4px;">
+      <div style="flex:1; background:#0d1f0d; border:1px solid #2d6b2d; border-radius:4px; padding:4px; font-size:9px;">
+        <span style="color:#66cc66;">/</span> — Chat terminal<br>
+        Three agent panels<br>
+        FL-001 routing badge<br>
+        Debate ⚔ transcript
+      </div>
+      <div style="flex:1; background:#0d0d1f; border:1px solid #2d2d6b; border-radius:4px; padding:4px; font-size:9px;">
+        <span style="color:#6666cc;">/agents</span> — Kill switches<br>
+        Per-agent temp control<br>
+        Enable/disable live<br>
+        Model roster
+      </div>
+      <div style="flex:1; background:#1a1a0d; border:1px solid #6b6b2d; border-radius:4px; padding:4px; font-size:9px;">
+        <span style="color:#cccc44;">/memory</span> — Memory browser<br>
+        Search all pools<br>
+        Filter by agent<br>
+        Importance threshold
+      </div>
+      <div style="flex:1; background:#0d1a1a; border:1px solid #2d6b5a; border-radius:4px; padding:4px; font-size:9px;">
+        <span style="color:#44ccaa;">/tickets</span> — Ticket log<br>
+        Duck verdicts<br>
+        Routing decisions<br>
+        Full audit trail
+      </div>
+      <div style="flex:1; background:#1a0d1a; border:1px solid #6b2d6b; border-radius:4px; padding:4px; font-size:9px;">
+        <span style="color:#cc66cc;">/system</span> — Live stats<br>
+        RAM/CPU gauges<br>
+        Disk usage<br>
+        Sandpit browser
+      </div>
+      <div style="flex:1; background:#111; border:1px solid #444; border-radius:4px; padding:4px; font-size:9px;">
+        <span style="color:#888;">/docs</span> — Doc repo<br>
+        Reads project_docs<br>
+        Renders each section<br>
+        <span style="color:#555;">planned</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════ EIGHT PIPELINE -->
+<div class="section-label">── EIGHT PIPELINE — SAP HCM/ABAP ──</div>
+
+<div class="row">
+  <div class="node eight">
+    <div class="t">⚙ Eight — consult_stage_eight() | IS_SAP=yes routes here</div>
+    <div class="split" style="margin-top:5px; gap:4px;">
+      <div style="flex:1; background:#1a0d1f; border:1px solid #5a2d6b; border-radius:4px; padding:5px;">
+        <div style="color:#aa66cc; font-size:9px; margin-bottom:2px;">Voice 1: Functional (temp 0.2)</div>
+        Config logic. Wage types, schemas, PCRs.<br>
+        Infotypes, processing classes, T512W.<br>
+        Standard SAP approach.
+      </div>
+      <div style="flex:1; background:#1a0d1f; border:1px solid #5a2d6b; border-radius:4px; padding:5px;">
+        <div style="color:#aa66cc; font-size:9px; margin-bottom:2px;">Voice 2: Technical (temp 0.2)</div>
+        Reads Functional first.<br>
+        ABAP FMs, BAPIs, TCs, tables.<br>
+        What the code actually does.
+      </div>
+      <div style="flex:1; background:#1a0d1f; border:1px solid #5a2d6b; border-radius:4px; padding:5px;">
+        <div style="color:#aa66cc; font-size:9px; margin-bottom:2px;">Voice 3: Devil (temp 0.6)</div>
+        Reads both voices.<br>
+        Edge cases, retro traps, ECP gaps.<br>
+        What was missed. What breaks.
+      </div>
+      <div style="flex:1; background:#0d1f0d; border:1px solid #2d6b2d; border-radius:4px; padding:5px;">
+        <div style="color:#66cc66; font-size:9px; margin-bottom:2px;">Gemma synthesis (temp 0.3)</div>
+        Weighs all three voices.<br>
+        Delivers final SAP verdict.<br>
+        → promote_to_verified()<br>
+        → memory_eight (importance 9)
+      </div>
+    </div>
+    <div style="margin-top:5px; font-size:9px; color:#666;">
+      Eight domains: wage types, schemas, PCRs, T510/T511/T512W, infotypes IT0008/IT0014/IT0015/IT0041,
+      EC/ECP architecture, ABAP patterns, retro accounting, time evaluation, Australian payroll
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════ SEARCH ENGINES -->
+<div class="section-label">── INDEPENDENT AGENT SEARCH (RL-015) ──</div>
+
+<div class="row">
+  <div class="node system">
+    <div class="t" style="color:#7eb8f7;">Three independent research paths — when sources diverge, debate fires</div>
+    <div class="split" style="margin-top:5px; gap:4px;">
+      <div class="node llama" style="flex:1;">
+        <div class="t">📡 LLaMA</div>
+        DuckDuckGo (ddgs)<br>
+        No API key needed<br>
+        Fast, broad, general web<br>
+        internet.py
+      </div>
+      <div class="node qwen" style="flex:1;">
+        <div class="t">🧠 Qwen</div>
+        Tavily AI<br>
+        TAVILY_API_KEY in config<br>
+        AI-extracted summaries<br>
+        internet_tavily.py
+      </div>
+      <div class="node gemma" style="flex:1;">
+        <div class="t">💎 Gemma</div>
+        Serper / Google<br>
+        SERPER_API_KEY in config<br>
+        Google results, no subscription<br>
+        internet_serper.py
+      </div>
+      <div class="node eight" style="flex:1;">
+        <div class="t">⚙ Eight</div>
+        Tavily SAP-specific<br>
+        Biased to SAP Help Portal<br>
+        SCN + community<br>
+        internet_tavily.search_sap()
+      </div>
+    </div>
+    <div style="margin-top:5px; font-size:9px; color:#555;">
+      Terminal routing badge shows: [DDG] [Google] [Tavily] per engine that fired.
+      When all three agree → high confidence. When sources diverge → debate.py fires.
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════ FRIDAYS / SANDPITS -->
+<div class="section-label">── FRIDAYS — SANDPITS & TRUST LADDER ──</div>
+
+<div class="row">
+  <div class="node system">
+    <div class="t" style="color:#7eb8f7;">Sandpit filesystem — /home/seven/swarm/sandpits/</div>
+    <div class="split" style="margin-top:5px; gap:4px;">
+      <div style="flex:2; background:#0d1a0d; border:1px solid #2d5a2d; border-radius:4px; padding:5px; font-size:9px;">
+        <div style="color:#66cc66; margin-bottom:3px;">shared/</div>
+        All agents read + write. Whiteboard.<br>
+        Gemma writes plan → LLaMA researches → Qwen analyses.<br>
+        Duck checks anything leaving shared for real system.
+      </div>
+      <div style="flex:1; background:#1a1a0d; border:1px solid #5a5a2d; border-radius:4px; padding:5px; font-size:9px;">
+        <div style="color:#cccc44; margin-bottom:3px;">per-agent/</div>
+        gemma/ llama/ qwen/<br>
+        eight/ librarian/<br>
+        Private desk. Own drafts.<br>
+        Sniffles audits all.
+      </div>
+      <div style="flex:2; background:#0d0d1a; border:1px solid #2d2d5a; border-radius:4px; padding:5px; font-size:9px;">
+        <div style="color:#6666cc; margin-bottom:3px;">Trust ladder</div>
+        0 Observer — read only<br>
+        1 Sandpit — own sandpit write<br>
+        2 Shared — shared sandpit write<br>
+        3 System — approved real paths (Gemma approves)<br>
+        4 Shell — whitelist commands (Ghost notified)<br>
+        5 Full — Ghost explicit sign-off<br>
+        All start Level 1. Earn upward.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════ GHOST CIRCLE -->
+<div class="section-label">── GHOST CIRCLE ──</div>
+
+<div class="ghost-circle">
+  <div class="gc-title">👻 GHOST CIRCLE — Full visibility layer (Ghost + Claude only)</div>
+  <div class="row">
+    <div class="node claude" style="flex:1;">
+      <div class="t">🤖 Claude — claude_api.py</div>
+      Gemma checks cache first (check_if_already_solved)<br>
+      If no cached answer → ask_claude(problem_type, question)<br>
+      Receives full Ghost Circle context: Duck stats, Sniffles patterns, ticket<br>
+      Response → claude_log + memory_gemma<br>
+      Problem types: conflicting_outputs, factual_uncertainty, identity_question,<br>
+      routing_unclear, sap_escalation, connection_test
+    </div>
+    <div class="node duck" style="flex:1;">
+      <div class="t">🦆 duck_log</div>
+      Every sanity check: ticket, question, answer, result, reason<br>
+      Duck reads own history — no repeated jokes<br>
+      Failure rate tracked — informs Sniffles patterns<br>
+      Weekly morale summary to Ghost
+    </div>
+    <div class="node sniffles" style="flex:1;">
+      <div class="t">🐕 sniffer_memory</div>
+      Pattern detection across all audits<br>
+      Tracks: agent, pattern_type, description, count, escalation_level<br>
+      Escalation: info → warning → critical<br>
+      Critical patterns → immediate Ghost email
+    </div>
+    <div class="node ghost" style="flex:1;">
+      <div class="t">👻 ghost_circle table</div>
+      Aggregates: duck_log + sniffer_memory + claude_log<br>
+      Every Level 3+ system write<br>
+      Every Level 4+ shell execution<br>
+      Ghost and Claude only. Agents do not see this.
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════ DATABASE -->
+<div class="section-label">── DATABASE — 22 TABLES IN swarm_memory.db ──</div>
+
+<div class="row">
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#7eb8f7;">Memory pools</div>
+    <table class="table-mini">
+      <tr><th>Table</th><th>Owner</th><th>Importance</th></tr>
+      <tr><td>memory</td><td>Shared/Gemma</td><td>9 — permanent</td></tr>
+      <tr><td>memory_llama</td><td>LLaMA</td><td>5 — archived 60d</td></tr>
+      <tr><td>memory_qwen</td><td>Qwen</td><td>5 — archived 60d</td></tr>
+      <tr><td>memory_gemma</td><td>Gemma</td><td>9 — permanent</td></tr>
+      <tr><td>memory_eight</td><td>Eight</td><td>7-9 — permanent</td></tr>
+    </table>
+  </div>
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#7eb8f7;">Pipeline</div>
+    <table class="table-mini">
+      <tr><th>Table</th><th>Purpose</th></tr>
+      <tr><td>queue</td><td>Waiting emails — Librarian owns</td></tr>
+      <tr><td>tickets</td><td>Full ticket lifecycle</td></tr>
+      <tr><td>ticket_notes</td><td>Agent contributions per ticket</td></tr>
+      <tr><td>conversations</td><td>Conversation registry</td></tr>
+      <tr><td>messages</td><td>All agent messages</td></tr>
+    </table>
+  </div>
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#7eb8f7;">Integrity + Ghost Circle</div>
+    <table class="table-mini">
+      <tr><th>Table</th><th>Purpose</th></tr>
+      <tr><td>duck_log</td><td>Every sanity check</td></tr>
+      <tr><td>sniffer_log</td><td>Every audit result + CoT</td></tr>
+      <tr><td>sniffer_memory</td><td>Pattern detection</td></tr>
+      <tr><td>ghost_circle</td><td>Ghost + Claude only</td></tr>
+      <tr><td>claude_log</td><td>Every advisory call</td></tr>
+      <tr><td>project_docs</td><td>Documentation store</td></tr>
+    </table>
+  </div>
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#7eb8f7;">Access + System + Fridays</div>
+    <table class="table-mini">
+      <tr><th>Table</th><th>Purpose</th></tr>
+      <tr><td>trusted_senders</td><td>Full pipeline access</td></tr>
+      <tr><td>moderators</td><td>Ghost level</td></tr>
+      <tr><td>notification_senders</td><td>Silent filing</td></tr>
+      <tr><td>pending_emails</td><td>Unknown sender queue</td></tr>
+      <tr><td>approval_tokens</td><td>One-click approval UUIDs</td></tr>
+      <tr><td>system_stats</td><td>RAM/CPU/temp snapshots</td></tr>
+      <tr><td>sandpit_log</td><td>All sandpit writes</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════ CONSTRAINTS -->
+<div class="section-label">── 27 CONSTRAINTS THAT MUST NEVER BE BROKEN ──</div>
+<div class="row">
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#cc4444;">Architecture</div>
+    <ul style="font-size:9px; color:#888;">
+      <li>Librarian only receives content to tag — never questions</li>
+      <li>Sniffles never interrupts active queue</li>
+      <li>Duck runs after every ticket close, no exceptions</li>
+      <li>Gemma routes FIRST — no web search before Gemma reads</li>
+      <li>IS_IDENTITY=yes only for swarm/agent/Ghost questions</li>
+      <li>Claude never speaks to email senders</li>
+      <li>Librarian never speaks</li>
+      <li>Claude API is last resort — local pipeline must be stable first</li>
+    </ul>
+  </div>
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#cc4444;">Hardware + Security</div>
+    <ul style="font-size:9px; color:#888;">
+      <li>nvme0n1p1 (EFI) is untouchable — ever</li>
+      <li>OLLAMA_HOST=0.0.0.0 always</li>
+      <li>config.py is never shared or printed</li>
+      <li>Ollama port 11434 — Tailscale only</li>
+      <li>Open WebUI port 3000 — Tailscale only</li>
+      <li>Terminal port 5050 — Tailscale only</li>
+      <li>ANTHROPIC_API_KEY in /etc/environment — never in config.py</li>
+      <li>Tailscale keys never in swarm repository</li>
+    </ul>
+  </div>
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#cc4444;">Eight + Fridays</div>
+    <ul style="font-size:9px; color:#888;">
+      <li>Eight is a thinking partner — never executes against SAP</li>
+      <li>Eight corrections replace memories, never delete history</li>
+      <li>All agents start Fridays Level 1 — earn higher access</li>
+      <li>Nothing leaves sandpit without Duck checking it</li>
+      <li>Level 3+ system writes logged to ghost_circle</li>
+      <li>Level 4+ shell executions logged to ghost_circle</li>
+      <li>Skills follow same trusted sender model as email</li>
+      <li>Specialist agents always use Seven's infrastructure</li>
+      <li>Memory limits by importance threshold — never by count</li>
+    </ul>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════ ROADMAP -->
+<div class="section-label">── ROADMAP ──</div>
+<div class="row">
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#66cc66;">Phase 1 — Foundation ✓</div>
+    <span class="badge bg">✓</span> Email pipeline, memory, Duck, Sniffles<br>
+    <span class="badge bg">✓</span> FL-001 routing, queue, tickets<br>
+    <span class="badge bg">✓</span> Simulate mode, one-click approval
+  </div>
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#66cc66;">Phase 2 — Interface ✓</div>
+    <span class="badge bg">✓</span> Terminal UI (RL-012)<br>
+    <span class="badge bg">✓</span> Eight SAP specialist (RL-013/014)<br>
+    <span class="badge bg">✓</span> Debate wired (RL-016)<br>
+    <span class="badge bg">✓</span> Independent search (RL-015)
+  </div>
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#cccc44;">Phase 3 — Fridays (started)</div>
+    <span class="badge bg">✓</span> Sandpits + trust ladder (RL-017)<br>
+    <span class="badge bg">✓</span> Librarian system responder (RL-017b)<br>
+    <span class="badge bg">✓</span> Swarm awareness (RL-017c)<br>
+    <span class="badge by">→</span> File + browser agent (RL-018)<br>
+    <span class="badge by">→</span> Shell agent (RL-019)<br>
+    <span class="badge by">→</span> Scheduler (RL-020)
+  </div>
+  <div class="node system" style="flex:1;">
+    <div class="t" style="color:#888;">Phase 4-5 — Platforms + Specialists</div>
+    <span class="badge bb">→</span> Telegram bot (RL-022)<br>
+    <span class="badge bb">→</span> Discord bot (RL-023)<br>
+    <span class="badge bb">→</span> Nine (code), Ten (scheduling), Eleven (data)<br>
+    <span class="badge bb">→</span> Gmail push notifications (RL-011)<br>
+    <span class="badge bb">→</span> Doc repo on dashboard (/docs route)
+  </div>
+</div>
+
+<div class="divider"></div>
+<div style="text-align:center; color:#222; font-size:9px; padding: 8px 0;">
+  Seven's Swarm | Dell OptiPlex 7090 | Melbourne | Sessions 1-9 | Arguments: 0 | 🦆🐕⚙
+</div>
+<div style="text-align:center; color:#2a2a2a; font-size:10px; font-style:italic; padding-bottom:16px;">
+  "You can only do what you can do when you can do it."
+</div>
+
+</div>
+</body>
+</html>

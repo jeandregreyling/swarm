@@ -1,0 +1,17 @@
+[Unit]
+Description=Seven's Swarm Terminal (port 5050)
+After=network.target ollama.service swarm-listener.service
+
+[Service]
+Type=simple
+User=seven
+WorkingDirectory=/home/seven/swarm
+ExecStart=/usr/bin/python3 /home/seven/swarm/terminal.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target

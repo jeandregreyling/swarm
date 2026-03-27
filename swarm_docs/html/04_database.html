@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 24.2.7.2 (Linux)"/>
+	<meta name="author" content="Un-named"/>
+	<meta name="created" content="2026-03-24T23:23:21.788000000"/>
+	<meta name="changedby" content="Un-named"/>
+	<meta name="changed" content="2026-03-24T23:23:21.788000000"/>
+	<style type="text/css">
+		@page { size: 21.59cm 27.94cm; margin: 2.54cm }
+		p { line-height: 115%; text-align: left; orphans: 2; widows: 2; margin-bottom: 0.25cm; direction: ltr; background: transparent }
+		h1 { color: #2e75b6; text-align: left; orphans: 2; widows: 2; margin-top: 0.64cm; margin-bottom: 0.32cm; direction: ltr; background: transparent; page-break-after: avoid }
+		h1.western { font-family: "Arial", sans-serif; font-size: 16pt; font-weight: bold }
+		h1.cjk { font-family: "Arial"; font-size: 16pt; font-weight: bold }
+		h1.ctl { font-family: "Arial"; font-size: 16pt; font-weight: bold }
+		h2 { color: #1f4e79; text-align: left; orphans: 2; widows: 2; margin-bottom: 0.21cm; direction: ltr; background: transparent; page-break-after: avoid }
+		h2.western { font-family: "Arial", sans-serif; font-size: 14pt; font-weight: bold }
+		h2.cjk { font-family: "Arial"; font-size: 14pt; font-weight: bold }
+		h2.ctl { font-family: "Arial"; font-size: 14pt; font-weight: bold }
+		a:link { color: #0563c1; text-decoration: underline }
+	</style>
+</head>
+<body lang="en-AU" link="#0563c1" vlink="#800000" dir="ltr"><p style="line-height: 100%; margin-bottom: 0cm">
+<br/>
+
+</p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.42cm"><font color="#2e75b6"><font face="Arial, serif"><font size="6" style="font-size: 24pt"><b>SEVEN'S
+SWARM</b></font></font></font></p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.21cm"><font color="#1f4e79"><font face="Arial, serif"><font size="5" style="font-size: 18pt">Database</font></font></font></p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.85cm"><font color="#666666"><font face="Arial, serif"><font size="3" style="font-size: 12pt"><i>22
+tables, schema, memory design principles</i></font></font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm; border-top: none; border-bottom: 1px solid #2e75b6; border-left: none; border-right: none; padding-top: 0cm; padding-bottom: 0.04cm; padding-left: 0cm; padding-right: 0cm">
+<br/>
+
+</p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<p align="center" style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Dell
+OptiPlex 7090 | Melbourne | Sessions 1-9 | March 2026</font></font></p>
+<p align="center" style="line-height: 100%; margin-bottom: 0cm"><font color="#666666"><font face="Arial, serif"><font size="2" style="font-size: 11pt"><i>&quot;You
+can only do what you can do when you can do it.&quot;</i></font></font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western" style="margin-top: 0cm; page-break-before: always">
+<font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Overview</b></font></font></h1>
+<p style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">All
+swarm memory lives in a single SQLite file:
+/home/seven/swarm/swarm_memory.db</font></font></p>
+<p style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">22
+tables. Initialise with: cd ~/swarm &amp;&amp; python3 database.py</font></font></p>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h2 class="western"><font face="Arial, serif"><font size="4" style="font-size: 14pt"><b>Memory
+Design Principle</b></font></font></h2>
+<p style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Importance
+is the filter. Relevance is the gate. Time is the sort. Nothing else
+limits what an agent can see.</font></font></p>
+<p style="line-height: 100%; margin-bottom: 0.21cm"><font face="Arial, serif"><font size="2" style="font-size: 11pt">Arbitrary
+count limits have been removed from all database query functions.
+Agents see everything relevant above their importance threshold.</font></font></p>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="301"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Importance</b></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Meaning</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">9</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Gemma
+			verified verdict. Permanent. Never archived. All agents read.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">7</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Librarian
+			indexed content. Significant but not Gemma-verified.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">5</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Agent
+			personal memory. Working notes. Archived after 60 days.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">3</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Minimum
+			threshold for agent memory queries.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">1-2</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Noise.
+			Excluded from all queries.</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Memory
+Pool Tables</b></font></font></h1>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="145"/>
+	<col width="146"/>
+	<col width="146"/>
+	<col width="145"/>
+	<tr valign="top">
+		<td width="145" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Table</b></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Owner</b></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Importance</b></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Archived?</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">memory</span></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Shared
+			— Gemma verdicts only</span></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">9</span></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Never</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">memory_llama</span></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">LLaMA
+			personal notebook</span></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">5</span></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Yes
+			— 60 days</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">memory_qwen</span></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Qwen
+			personal notebook</span></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">5</span></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Yes
+			— 60 days</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">memory_gemma</span></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Gemma
+			verdict history — Sniffles reads this</span></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">9</span></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Never</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">memory_eight</span></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Eight's
+			SAP knowledge — taught by Jeandre</span></font></font></font></p>
+		</td>
+		<td width="146" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">7-9</span></font></font></font></p>
+		</td>
+		<td width="145" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Never</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Pipeline
+Tables</b></font></font></h1>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="197"/>
+	<col width="198"/>
+	<col width="197"/>
+	<tr valign="top">
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Table</b></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Purpose</b></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Key
+			columns</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">queue</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Waiting
+			emails — Librarian owns</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">from_addr,
+			subject, question, tags, system_snapshot, status, queue_position</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">tickets</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Full
+			ticket lifecycle</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ticket_number,
+			status, duck_result, gemma_routing, question, sender_email,
+			final_answer, sniffles_result</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ticket_notes</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Agent
+			contributions per ticket</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ticket_id,
+			agent, note_type, content, web_results, confidence</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">conversations</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Conversation
+			registry</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">id,
+			title, source, sender, created_at</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">messages</span></font></font></font></p>
+		</td>
+		<td width="198" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">All
+			agent messages</span></font></font></font></p>
+		</td>
+		<td width="197" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">conversation_id,
+			from_agent, to_agent, content, message_type</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Integrity
++ Ghost Circle Tables</b></font></font></h1>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="301"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Table</b></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Purpose</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">duck_log</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Every
+			sanity check: ticket_number, question, answer, result, reason,
+			created_at</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">sniffer_log</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Every
+			audit result with full chain of thought. table_name, entry_id,
+			result, reasoning.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">sniffer_memory</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Pattern
+			detection: agent_name, pattern_type, description,
+			occurrence_count, escalation_level</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">ghost_circle</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Aggregated
+			visibility — Ghost and Claude only. entry_type, source, content,
+			ticket_ref, severity.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">claude_log</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Every
+			Claude advisory call. ticket_id, problem_type, query_sent,
+			response, tokens_used.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">project_docs</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Documentation
+			store. doc_name, content. Readable by terminal /docs route.</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Access
+Control Tables</b></font></font></h1>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="301"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Table</b></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Purpose</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">trusted_senders</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Full
+			pipeline access — Ghost approves</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">moderators</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Ghost
+			level — receives all reports</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">notification_senders</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Silent
+			filing — no response ever</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">pending_emails</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Unknown
+			senders awaiting Ghost approval</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">approval_tokens</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">One-click
+			UUID tokens — single use, stored here</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+<p style="line-height: 100%; margin-bottom: 0cm"><br/>
+
+</p>
+<h1 class="western"><font face="Arial, serif"><font size="4" style="font-size: 16pt"><b>Fridays
++ System Tables</b></font></font></h1>
+<table width="624" cellpadding="5" cellspacing="0">
+	<col width="301"/>
+	<col width="301"/>
+	<tr valign="top">
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Table</b></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#2e75b6" style="background: #2e75b6; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#ffffff"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><b>Purpose</b></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">system_stats</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">RAM,
+			CPU, swap, temp, active model — written by monitor.py</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">sandpit_log</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Every
+			sandpit write: agent, file, timestamp, content hash. Sniffles
+			audits this.</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">agent_access_levels</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Current
+			trust level per agent — starts at 1, Ghost grants higher</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">fridays_action_log</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Level
+			3+ real-system writes and Level 4+ shell executions</span></font></font></font></p>
+		</td>
+	</tr>
+	<tr valign="top">
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">scheduled_tasks</span></font></font></font></p>
+		</td>
+		<td width="301" bgcolor="#ffffff" style="background: #ffffff; border: 1px solid #cccccc; padding: 0.14cm 0.21cm"><p>
+			<font color="#000000"><font face="Arial, serif"><font size="2" style="font-size: 10pt"><span style="font-weight: normal">Scheduled
+			and recurring agent tasks (Phase 3)</span></font></font></font></p>
+		</td>
+	</tr>
+</table>
+</body>
+</html>
