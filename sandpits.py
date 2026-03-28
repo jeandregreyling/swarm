@@ -167,12 +167,27 @@ def get_all_sandpit_files():
 os.makedirs(PROPOSALS_DIR, exist_ok=True)
 
 def get_sandpit_stats():
-    """Return stats about active sandpits."""
-    return {
-        'total_files': sum(1 for a in AGENTS for f in os.listdir(os.path.join(SANDPIT_BASE, a, 'work')) if os.path.isfile(os.path.join(SANDPIT_BASE, a, 'work', f))),
-        'agents': len(AGENTS),
-        'status': 'operational'
-    }
+    """Return stats about active sandpits indexed by agent."""
+    stats = {}
+    for agent in AGENTS:
+        work_dir = os.path.join(SANDPIT_BASE, agent, 'work')
+        files = 0
+        total_bytes = 0
+        if os.path.isdir(work_dir):
+            try:
+                for f in os.listdir(work_dir):
+                    filepath = os.path.join(work_dir, f)
+                    if os.path.isfile(filepath):
+                        files += 1
+                        try:
+                            total_bytes += os.path.getsize(filepath)
+                        except (OSError, FileNotFoundError):
+                            pass
+            except (OSError, FileNotFoundError):
+                pass  # Skip if directory is inaccessible
+        stats[agent] = {'files': files, 'bytes': total_bytes}
+    stats['_total'] = {'files': sum(s['files'] for s in stats.values()), 'bytes': sum(s['bytes'] for s in stats.values())}
+    return stats
 
 def get_recent_log(limit=50):
     """Return recent sandpit activity log."""
