@@ -1,0 +1,43 @@
+{
+  "name": "Fridays",
+  "version": "1.0",
+  "colors": {
+    "--bg": "#0F0F0F",
+    "--card": "#1C1C1C",
+    "--card-hover": "#262626",
+    "--border": "#333333",
+    "--text": "#E8E8E8",
+    "--text-dim": "#808080",
+    "--accent": "#0071E3",
+    "--accent-hover": "#0077ED"
+  },
+  "time_of_day": {
+    "morning": {
+      "--bg": "#FFFAF0",
+      "--card": "#FFF5E6",
+      "--text": "#333333",
+      "--accent": "#FF6B35"
+    },
+    "afternoon": {
+      "--bg": "#F0F4F8",
+      "--card": "#E8F4FD",
+      "--text": "#333333",
+      "--accent": "#0071E3"
+    },
+    "evening": {
+      "--bg": "#1A0F1F",
+      "--card": "#2D1B3D",
+      "--text": "#FFE5EC",
+      "--accent": "#FF1493"
+    },
+    "night": {
+      "--bg": "#0F0F1E",
+      "--card": "#1A1A2E",
+      "--text": "#C0C0C0",
+      "--accent": "#00A0FF"
+    }
+  },
+  "custom_css": ":root { --glass-opacity: 0.85; --glass-blur: 20px; --radius: 8px; } .glass, .glass-card, .stat-card, .agent-card, .list-item, #chat-messages { background: rgba(28, 28, 36, 0.5); backdrop-filter: blur(10px); border-radius: var(--radius); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); transition: all 0.3s ease; } .glass:hover, .glass-card:hover, .stat-card:hover, .agent-card:hover, .list-item:hover { background: rgba(38, 38, 48, 0.6); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4); }",
+  "custom_js": ""
+}
+

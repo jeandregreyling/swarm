@@ -30,6 +30,7 @@ from database import (get_connection, new_conversation, log_message,
                        get_pending_emails, mark_pending_processed, log_activity)
 from ticket import create as ticket_create, librarian_close
 from queue_manager import intake as queue_intake, estimate_wait_minutes, mark_processing
+from logging_bridge import log_action
 import orchestrator
 from monitor import get_system_status
 from sandpits import get_sandpit_stats, get_recent_log as sandpit_log
@@ -199,14 +200,14 @@ def _duck_stats():
 
 @app.route('/')
 def index():
-    """Render themed terminal. Theme engine handles CSS injection."""
-    html = get_themed_html()
+    """Render themed terminal v2. Clean single-page UI."""
+    html = get_themed_html(template_name='terminal_ui_v2.html')
     return Response(html, mimetype='text/html')
 
 
 @app.route('/api/conversations')
 def api_conversations():
-    return jsonify({'recent': _recent_conversations()})
+    return jsonify(_recent_conversations())
 
 
 @app.route('/api/system/time')
@@ -252,7 +253,7 @@ def api_conversation_messages(conv_id):
 
 @app.route('/api/tickets')
 def api_tickets():
-    return jsonify({'tickets': _tickets()})
+    return jsonify(_tickets())
 
 
 @app.route('/api/tickets/<ticket_number>')
@@ -328,7 +329,7 @@ def api_memory():
     q     = request.args.get('q', '')
     mn    = int(request.args.get('min', 3))
     agent = request.args.get('agent', '')
-    return jsonify({'memories': _memory_search(q, mn, agent)})
+    return jsonify(_memory_search(q, mn, agent))
 
 
 @app.route('/api/studio')
@@ -399,7 +400,7 @@ def api_kb_list():
         'SELECT id, doc_name, tags, updated_at FROM project_docs ORDER BY updated_at DESC'
     ).fetchall()
     conn.close()
-    return jsonify({'kb': [dict(r) for r in rows]})
+    return jsonify([dict(r) for r in rows])
 
 
 @app.route('/api/kb/<int:doc_id>')
@@ -863,7 +864,7 @@ def remove_sender():
 def api_docs():
     html_dir = _os.path.join(_DOCS_DIR, 'html')
     if not _os.path.isdir(html_dir):
-        return jsonify({'docs': []})
+        return jsonify([])
     docs = []
     for f in sorted(_os.listdir(html_dir)):
         if f.endswith('.html') and f != 'swarm_flow_v3.html':
@@ -873,7 +874,7 @@ def api_docs():
                 'description': _DOC_DESCRIPTIONS.get(f, ''),
                 'size':        _os.path.getsize(path),
             })
-    return jsonify({'docs': docs})
+    return jsonify(docs)
 
 
 @app.route('/docs/html/<filename>')
@@ -1026,6 +1027,148 @@ def api_run_simulation():
         })
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HANDS — Command execution for Fridays (Agent Twelve's execution capability)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route('/api/hands/execute', methods=['POST'])
+def api_hands_execute():
+    """
+    Fridays execution endpoint — real-time command execution with streaming output.
+    
+    Request body:
+    {
+        "command": "ls -la",
+        "sudo": false,
+        "timeout": 30
+    }
+    
+    Returns SSE stream of execution events until done.
+    """
+    data = request.get_json() or {}
+    command = (data.get('command') or '').strip()
+    use_sudo = data.get('sudo', False)
+    timeout = int(data.get('timeout', 30))
+    
+    if not command:
+        return jsonify({'ok': False, 'error': 'command required'}), 400
+    
+    # Safety: SUDO only allowed for systemctl swarm-* or whitelisted commands
+    if use_sudo:
+        import re as _re
+        _SUDO_ALLOWED = _re.compile(
+            r'^(systemctl\s+(restart|start|stop|status)\s+swarm-\w+|apt-cache|df|du|journalctl).*'
+        )
+        if not _SUDO_ALLOWED.match(command):
+            return jsonify({'ok': False, 'error': 'sudo not allowed for this command'}), 403
+        command = f'sudo {command}'
+    
+    import subprocess
+    import threading
+    
+    def generate():
+        """Stream execution output in real-time."""
+        try:
+            yield f'data: {json.dumps({"type": "start", "command": command, "timestamp": datetime.utcnow().isoformat()})}\n\n'
+            
+            # Run command
+            process = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            
+            # Stream output line by line
+            for line in process.stdout:
+                line = line.rstrip('\n')
+                yield f'data: {json.dumps({"type": "output", "line": line})}\n\n'
+            
+            returncode = process.wait(timeout=timeout)
+            
+            yield f'data: {json.dumps({"type": "done", "returncode": returncode, "ok": returncode == 0, "timestamp": datetime.utcnow().isoformat()})}\n\n'
+            
+            log_activity('terminal', 'hands_execute', f'{command[:80]} | rc={returncode}')
+            
+        except subprocess.TimeoutExpired:
+            process.kill()
+            yield f'data: {json.dumps({"type": "error", "error": f"Command timed out after {timeout}s"})}\n\n'
+            log_activity('terminal', 'hands_execute_timeout', command[:80])
+        except Exception as e:
+            yield f'data: {json.dumps({"type": "error", "error": str(e)})}\n\n'
+            log_activity('terminal', 'hands_execute_error', f'{command[:80]} | {str(e)[:80]}')
+    
+    return Response(
+        generate(),
+        mimetype='text/event-stream',
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+    )
+
+
+@app.route('/api/hands/run', methods=['POST'])
+def api_hands_run():
+    """
+    Non-streaming version of hands execute for simpler use cases.
+    Returns full output at once.
+    """
+    data = request.get_json() or {}
+    command = (data.get('command') or '').strip()
+    use_sudo = data.get('sudo', False)
+    timeout = int(data.get('timeout', 30))
+    
+    if not command:
+        return jsonify({'ok': False, 'error': 'command required'}), 400
+    
+    # Safety check
+    if use_sudo:
+        import re as _re
+        _SUDO_ALLOWED = _re.compile(
+            r'^(systemctl\s+(restart|start|stop|status)\s+swarm-\w+|apt-cache|df|du|journalctl).*'
+        )
+        if not _SUDO_ALLOWED.match(command):
+            return jsonify({'ok': False, 'error': 'sudo not allowed for this command'}), 403
+        command = f'sudo {command}'
+    
+    import subprocess
+    try:
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        
+        log_activity('terminal', 'hands_run', f'{command[:80]} | rc={result.returncode}')
+        
+        return jsonify({
+            'ok': result.returncode == 0,
+            'command': command,
+            'returncode': result.returncode,
+            'stdout': result.stdout,
+            'stderr': result.stderr,
+            'output': result.stdout + (result.stderr if result.stderr else '')
+        })
+    
+    except subprocess.TimeoutExpired:
+        log_activity('terminal', 'hands_run_timeout', command[:80])
+        return jsonify({
+            'ok': False,
+            'command': command,
+            'error': f'Command timed out after {timeout}s'
+        }), 408
+    
+    except Exception as e:
+        log_activity('terminal', 'hands_run_error', f'{command[:80]} | {str(e)[:80]}')
+        return jsonify({
+            'ok': False,
+            'command': command,
+            'error': str(e)
+        }), 500
 
 
 @app.route('/api/shell/execute', methods=['POST'])
@@ -1188,7 +1331,7 @@ def api_sandpits():
 @app.route('/api/skills')
 def api_skills():
     from fridays.skills import list_skills
-    return jsonify({'skills': list_skills()})
+    return jsonify(list_skills())
 
 
 @app.route('/api/skills/run', methods=['POST'])
@@ -1252,6 +1395,40 @@ def api_chat():
         return jsonify({'ok': False, 'response': f'Error: {str(e)}'}), 500
 
 
+@app.route('/api/copilot', methods=['POST'])
+def api_copilot():
+    """Direct consultation with Nine (Copilot/Claude) — Ghost Layer architect."""
+    data = request.get_json() or {}
+    prompt = data.get('prompt', '').strip()
+    context = data.get('context', '').strip()
+    
+    if not prompt:
+        return jsonify({'ok': False, 'response': 'Empty prompt'}), 400
+    
+    try:
+        # Import copilot agent
+        sys.path.insert(0, '/home/seven/swarm/agents/specialists')
+        from copilot_agent import nine_consult
+        
+        # Consult Nine directly
+        response = nine_consult(prompt, context)
+        
+        # Create conversation for audit trail
+        conv_id = new_conversation('copilot-ui', prompt[:100])
+        log_message(conv_id, 'user', prompt)
+        log_message(conv_id, 'nine', response)
+        
+        return jsonify({
+            'ok': True,
+            'response': response,
+            'conversation_id': conv_id,
+            'agent': 'nine',
+        })
+    except Exception as e:
+        log_action('terminal', 'copilot_error', str(e), 'error')
+        return jsonify({'ok': False, 'response': f'Copilot Error: {str(e)}'}), 500
+
+
 @app.route('/api/activity')
 def api_activity():
     from database import get_activity_log
@@ -1269,6 +1446,71 @@ def api_activity():
         })
     
     return jsonify({'activities': activities})
+
+
+@app.route('/api/test', methods=['GET', 'POST'])
+def api_test():
+    """Diagnostic test endpoint - tests all swarm subsystems."""
+    test_results = {
+        'timestamp': get_timestamp_iso(),
+        'tests': {}
+    }
+    
+    # Test 1: Database
+    try:
+        conn = get_connection()
+        result = conn.execute('SELECT COUNT(*) as c FROM conversations').fetchone()
+        test_results['tests']['database'] = {'status': 'PASS', 'conversations': result['c']}
+        conn.close()
+    except Exception as e:
+        test_results['tests']['database'] = {'status': 'FAIL', 'error': str(e)[:100]}
+    
+    # Test 2: Config
+    try:
+        from config import GHOST_EMAIL, SWARM_NAME
+        test_results['tests']['config'] = {'status': 'PASS', 'swarm': SWARM_NAME}
+    except Exception as e:
+        test_results['tests']['config'] = {'status': 'FAIL', 'error': str(e)[:100]}
+    
+    # Test 3: Orchestrator
+    try:
+        test_results['tests']['orchestrator'] = {
+            'status': 'PASS',
+            'agents': list(orchestrator.AGENTS.keys())
+        }
+    except Exception as e:
+        test_results['tests']['orchestrator'] = {'status': 'FAIL', 'error': str(e)[:100]}
+    
+    # Test 4: Stage 1 (LLaMA)
+    try:
+        # Just check function exists, don't call it
+        func = getattr(orchestrator, 'consult_stage1', None)
+        if func:
+            test_results['tests']['stage1'] = {'status': 'PASS', 'function': 'consult_stage1 found'}
+        else:
+            test_results['tests']['stage1'] = {'status': 'FAIL', 'error': 'Function not found'}
+    except Exception as e:
+        test_results['tests']['stage1'] = {'status': 'FAIL', 'error': str(e)[:100]}
+    
+    # Test 5: Services
+    try:
+        import subprocess
+        services = {}
+        for svc in ['swarm-terminal', 'swarm-discord', 'swarm-telegram']:
+            result = subprocess.run(['systemctl', 'is-active', svc],
+                                  capture_output=True, timeout=2)
+            services[svc] = 'running' if result.returncode == 0 else 'stopped'
+        test_results['tests']['services'] = {'status': 'PASS', 'services': services}
+    except Exception as e:
+        test_results['tests']['services'] = {'status': 'WARN', 'error': str(e)[:100]}
+    
+    # Summary
+    passed = sum(1 for t in test_results['tests'].values() if t['status'] == 'PASS')
+    failed = sum(1 for t in test_results['tests'].values() if t['status'] == 'FAIL')
+    test_results['summary'] = {'passed': passed, 'failed': failed, 'total': len(test_results['tests'])}
+    
+    return jsonify(test_results)
+
 
 
 @app.route('/api/activity/stream')
@@ -1327,7 +1569,7 @@ def api_agents():
         entry['status']      = 'online'  # All roster agents are online
         entry['type']        = a.get('ghost_layer', False) and 'Ghost Layer' or 'Local'
         result.append(entry)
-    return jsonify({'agents': result})
+    return jsonify(result)
 
 
 @app.route('/api/agents/<name>/toggle', methods=['POST'])
