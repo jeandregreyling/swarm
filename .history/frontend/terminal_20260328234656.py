@@ -329,18 +329,7 @@ def api_memory():
     q     = request.args.get('q', '')
     mn    = int(request.args.get('min', 3))
     agent = request.args.get('agent', '')
-    
-    rows = _memory_search(q, mn, agent)
-    
-    # Group results by agent for frontend
-    grouped = {}
-    for row in rows:
-        agent_name = row.get('agent', 'unknown')
-        if agent_name not in grouped:
-            grouped[agent_name] = []
-        grouped[agent_name].append(row)
-    
-    return jsonify({'results': grouped})
+    return jsonify(_memory_search(q, mn, agent))
 
 
 @app.route('/api/agents')
