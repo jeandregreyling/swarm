@@ -4,7 +4,7 @@
 **Decision ID**: 002  
 **Proposed**: 2026-03-29T00:10:00Z  
 **Agent**: Twelve (Time Wizard)  
-**Git Commit Hash**: [PENDING - Will be populated on commit]  
+**Git Commit Hash**: 280db36  
 
 ## Issue
 DECISION-001 established Time Wizard infrastructure but many documentation files still reference it as "PENDING" or describe outdated workflows. Documentation is out of sync with actual implementation.
