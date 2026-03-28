@@ -343,6 +343,34 @@ def api_memory():
     return jsonify({'results': grouped})
 
 
+@app.route('/api/agents')
+def api_agents():
+    """List of available agents for the UI grid."""
+    from core.pipeline.orchestrator import AGENTS as ORCHESTRATOR_AGENTS
+    
+    agent_metadata = {
+        'gemma':     {'emoji': '💎', 'type': 'Local', 'model': 'gemma3'},
+        'llama':     {'emoji': '🦙', 'type': 'Local', 'model': 'llama3.2'},
+        'qwen':      {'emoji': '🧠', 'type': 'Local', 'model': 'qwen2.5'},
+        'librarian': {'emoji': '📚', 'type': 'Local', 'model': 'qwen'},
+        'copilot':   {'emoji': '⚡', 'type': 'Local', 'model': 'neural'},
+        'nine':      {'emoji': '9️⃣', 'type': 'Ghost', 'model': 'neural'},
+    }
+    
+    agents = []
+    for name, model in ORCHESTRATOR_AGENTS.items():
+        meta = agent_metadata.get(name, {})
+        agents.append({
+            'name': name.capitalize(),
+            'model': model,
+            'type': meta.get('type', 'Local'),
+            'emoji': meta.get('emoji', '🤖'),
+            'ghost_layer': meta.get('type') == 'Ghost'
+        })
+    
+    return jsonify(agents)
+
+
 @app.route('/api/studio')
 def api_studio():
     """Studio cockpit data — agents, queue, config status."""
