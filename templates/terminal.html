@@ -2496,7 +2496,7 @@ function showView(name) {
   if (name === 'docs')      { loadDocs(); loadKb(); }
   if (name === 'proposals') loadProposals();
   if (name === 'access')   loadAccess();
-  if (name === 'vs')       vsLoadHistory();
+  if (name === 'vs' || name === 'studio') vsLoadHistory();
 }
 
 // ── Chat ──────────────────────────────────────────────────
