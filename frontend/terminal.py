@@ -207,7 +207,7 @@ def index():
 
 @app.route('/api/conversations')
 def api_conversations():
-    return jsonify({'recent': _recent_conversations()})
+    return jsonify(_recent_conversations())
 
 
 @app.route('/api/system/time')
@@ -253,7 +253,7 @@ def api_conversation_messages(conv_id):
 
 @app.route('/api/tickets')
 def api_tickets():
-    return jsonify({'tickets': _tickets()})
+    return jsonify(_tickets())
 
 
 @app.route('/api/tickets/<ticket_number>')
@@ -329,7 +329,7 @@ def api_memory():
     q     = request.args.get('q', '')
     mn    = int(request.args.get('min', 3))
     agent = request.args.get('agent', '')
-    return jsonify({'memories': _memory_search(q, mn, agent)})
+    return jsonify(_memory_search(q, mn, agent))
 
 
 @app.route('/api/studio')
@@ -400,7 +400,7 @@ def api_kb_list():
         'SELECT id, doc_name, tags, updated_at FROM project_docs ORDER BY updated_at DESC'
     ).fetchall()
     conn.close()
-    return jsonify({'kb': [dict(r) for r in rows]})
+    return jsonify([dict(r) for r in rows])
 
 
 @app.route('/api/kb/<int:doc_id>')
@@ -864,7 +864,7 @@ def remove_sender():
 def api_docs():
     html_dir = _os.path.join(_DOCS_DIR, 'html')
     if not _os.path.isdir(html_dir):
-        return jsonify({'docs': []})
+        return jsonify([])
     docs = []
     for f in sorted(_os.listdir(html_dir)):
         if f.endswith('.html') and f != 'swarm_flow_v3.html':
@@ -874,7 +874,7 @@ def api_docs():
                 'description': _DOC_DESCRIPTIONS.get(f, ''),
                 'size':        _os.path.getsize(path),
             })
-    return jsonify({'docs': docs})
+    return jsonify(docs)
 
 
 @app.route('/docs/html/<filename>')
@@ -1189,7 +1189,7 @@ def api_sandpits():
 @app.route('/api/skills')
 def api_skills():
     from fridays.skills import list_skills
-    return jsonify({'skills': list_skills()})
+    return jsonify(list_skills())
 
 
 @app.route('/api/skills/run', methods=['POST'])
@@ -1328,7 +1328,7 @@ def api_agents():
         entry['status']      = 'online'  # All roster agents are online
         entry['type']        = a.get('ghost_layer', False) and 'Ghost Layer' or 'Local'
         result.append(entry)
-    return jsonify({'agents': result})
+    return jsonify(result)
 
 
 @app.route('/api/agents/<name>/toggle', methods=['POST'])
