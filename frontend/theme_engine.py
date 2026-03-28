@@ -126,8 +126,8 @@ class ThemeEngine:
         return theme.get('custom_js', '')
     
     def render_html(self, theme_name='fridays'):
-        """Load terminal_ui_v2.html with Time Wizard support, inject theme, return fully themed HTML."""
-        template_path = self.templates_dir / 'terminal_ui_v2.html'
+        """Load terminal_base.html, inject theme, return fully themed HTML."""
+        template_path = self.templates_dir / 'terminal_base.html'
         
         if not template_path.exists():
             raise FileNotFoundError(f"Base template not found: {template_path}")
