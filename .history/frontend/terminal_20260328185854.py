@@ -1314,8 +1314,6 @@ def api_agents():
         entry = dict(a)
         entry['enabled']     = a['name'] not in DISABLED_AGENTS
         entry['temperature'] = orchestrator.TEMPERATURES.get(a['name'], a['default_temp'])
-        entry['status']      = 'online'  # All roster agents are online
-        entry['type']        = a.get('ghost_layer', False) and 'Ghost Layer' or 'Local'
         result.append(entry)
     return jsonify(result)
 
@@ -2052,36 +2050,25 @@ def api_agent_memory(agent):
         conn.close()
         return jsonify({'error': f'No memory pool for agent: {agent}'}), 404
     
-    # Check what columns exist in this table
+    # Check if table exists
     try:
-        c = conn.cursor()
-        c.execute(f"PRAGMA table_info({table})")
-        columns = {col[1] for col in c.fetchall()}
-        
-        # Build query based on available columns
-        if 'subject' in columns:
-            # Schema: memory_gemma, memory_eight, memory_nine style
-            search_clause = "(subject LIKE ? OR content LIKE ?)" if query else "1=1"
-            search_params = (f'%{query}%', f'%{query}%') if query else ()
-            
+        if query:
             rows = conn.execute(f"""
                 SELECT id, subject, content, tags, importance, created_at 
                 FROM {table}
-                WHERE {search_clause}
+                WHERE (subject LIKE ? OR content LIKE ?) 
                 AND importance >= ? AND archived = 0
                 ORDER BY importance DESC, created_at DESC
                 LIMIT ?
-            """, search_params + (min_importance, limit)).fetchall()
+            """, (f'%{query}%', f'%{query}%', min_importance, limit)).fetchall()
         else:
-            # Schema: memory_twelve style (no subject)
             rows = conn.execute(f"""
-                SELECT id, content, tags, type, importance, created_at 
+                SELECT id, subject, content, tags, importance, created_at 
                 FROM {table}
-                WHERE content LIKE ?
-                AND importance >= ? AND archived = 0
-                ORDER BY importance DESC, created_at DESC
+                WHERE importance >= ? AND archived = 0
+                ORDER BY created_at DESC
                 LIMIT ?
-            """, (f'%{query}%', min_importance, limit)).fetchall()
+            """, (min_importance, limit)).fetchall()
         
         conn.close()
         return jsonify({
@@ -2098,16 +2085,15 @@ def api_agent_memory(agent):
 
 @app.route('/api/agents/<agent>/memory/write', methods=['POST'])
 def api_agent_memory_write(agent):
-    """Write to an agent's memory pool. Body: {content, tags?, importance?} for memory_twelve style"""
+    """Write to an agent's memory pool. Agent can only write to own memory unless authorized."""
     data = request.get_json() or {}
+    subject = (data.get('subject') or '').strip()
     content = (data.get('content') or '').strip()
     tags = (data.get('tags') or '').strip()
     importance = int(data.get('importance', 5))
-    memo_type = (data.get('type') or 'observation').strip()  # For memory_twelve
-    subject = (data.get('subject') or '').strip()  # For memory_gemma/eight/nine
     
-    if not content:
-        return jsonify({'error': 'content required'}), 400
+    if not subject or not content:
+        return jsonify({'error': 'subject and content required'}), 400
     
     if not 1 <= importance <= 10:
         return jsonify({'error': 'importance must be 1-10'}), 400
@@ -2130,28 +2116,22 @@ def api_agent_memory_write(agent):
     try:
         now = __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()
         
-        # Detect schema
-        c = conn.cursor()
-        c.execute(f"PRAGMA table_info({table})")
-        columns = {col[1] for col in c.fetchall()}
-        
-        if 'subject' in columns:
-            # memory_gemma/eight/nine style
+        # Handle tables with 'source' column (gemma, eight, nine)
+        if agent_key in ('gemma', 'eight', 'nine'):
             source = data.get('source', 'api')
             conn.execute(f"""
-                INSERT INTO {table} (agent, subject, content, tags, importance, source, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (agent_key, (subject or content[:100])[:200], content, tags, importance, source, now))
+                INSERT INTO {table} (agent, subject, content, tags, importance, source, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (agent_key, subject[:200], content, tags, importance, source, now, now))
         else:
-            # memory_twelve style  
             conn.execute(f"""
-                INSERT INTO {table} (agent, content, tags, importance, type, created_at, updated_at, archived)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-            """, (agent_key, content, tags, importance, memo_type, now, now))
+                INSERT INTO {table} (agent, subject, content, tags, importance, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (agent_key, subject[:200], content, tags, importance, now, now))
         
         conn.commit()
         
-        entry_id = conn.execute("SELECT last_insert_rowid() as id").fetchone()['id']
+        entry_id = conn.execute(f"SELECT last_insert_rowid() as id").fetchone()['id']
         conn.close()
         
         return jsonify({
@@ -2159,6 +2139,7 @@ def api_agent_memory_write(agent):
             'agent': agent,
             'table': table,
             'entry_id': entry_id,
+            'subject': subject,
             'importance': importance
         })
     except Exception as e:
@@ -2170,9 +2151,9 @@ def api_agent_memory_write(agent):
 def api_agents_memories_query():
     """Cross-agent memory search. Find what any agent knows about a topic."""
     q = request.args.get('q', '').strip()
-    agents_filter = [a.strip().lower() for a in request.args.get('agents', '').split(',') if a.strip()]  # Handle empty strings
+    agents_filter = request.args.get('agents', '').split(',')  # comma-separated agent names
     limit = int(request.args.get('limit', 5))
-    min_importance = int(request.args.get('min_importance', 1))  # Changed default to 1 for broader search
+    min_importance = int(request.args.get('min_importance', 5))
     
     if not q:
         return jsonify({'error': 'q (query) required'}), 400
@@ -2189,35 +2170,18 @@ def api_agents_memories_query():
     
     # If agents specified, search only those; otherwise search all
     tables_to_search = {k: v for k, v in memory_tables.items() 
-                       if not agents_filter or k in agents_filter}
+                       if not agents_filter or k in [a.lower() for a in agents_filter]}
     
     for agent_key, table in tables_to_search.items():
         try:
-            # Detect schema for this table
-            c = conn.cursor()
-            c.execute(f"PRAGMA table_info({table})")
-            columns = {col[1] for col in c.fetchall()}
-            
-            if 'subject' in columns:
-                # memory_gemma/eight/nine style
-                rows = conn.execute(f"""
-                    SELECT id, subject, content, tags, importance, created_at 
-                    FROM {table}
-                    WHERE (subject LIKE ? OR content LIKE ?) 
-                    AND importance >= ? AND archived = 0
-                    ORDER BY importance DESC, created_at DESC
-                    LIMIT ?
-                """, (f'%{q}%', f'%{q}%', min_importance, limit)).fetchall()
-            else:
-                # memory_twelve style
-                rows = conn.execute(f"""
-                    SELECT id, content, tags, type, importance, created_at 
-                    FROM {table}
-                    WHERE content LIKE ?
-                    AND importance >= ? AND archived = 0
-                    ORDER BY importance DESC, created_at DESC
-                    LIMIT ?
-                """, (f'%{q}%', min_importance, limit)).fetchall()
+            rows = conn.execute(f"""
+                SELECT id, subject, content, tags, importance, created_at 
+                FROM {table}
+                WHERE (subject LIKE ? OR content LIKE ?) 
+                AND importance >= ? AND archived = 0
+                ORDER BY importance DESC, created_at DESC
+                LIMIT ?
+            """, (f'%{q}%', f'%{q}%', min_importance, limit)).fetchall()
             
             if rows:
                 results[agent_key] = [dict(r) for r in rows]
@@ -2231,6 +2195,75 @@ def api_agents_memories_query():
         'agents': list(results.keys()),
         'results': results
     })
+
+
+@app.route('/api/sandpits')
+def api_sandpits():
+    """List all agent sandpits (workspaces) with recent activity."""
+    sandpits_dir = '/home/seven/swarm/sandpits'
+    import os
+    from pathlib import Path
+    
+    sandpits = {}
+    
+    if os.path.exists(sandpits_dir):
+        for agent_dir in os.listdir(sandpits_dir):
+            agent_path = os.path.join(sandpits_dir, agent_dir)
+            if os.path.isdir(agent_path):
+                files = []
+                try:
+                    for f in os.listdir(agent_path):
+                        fpath = os.path.join(agent_path, f)
+                        if os.path.isfile(fpath):
+                            stat = os.stat(fpath)
+                            files.append({
+                                'name': f,
+                                'size': stat.st_size,
+                                'modified': stat.st_mtime
+                            })
+                except:
+                    pass
+                
+                sandpits[agent_dir] = {
+                    'path': agent_path,
+                    'files': sorted(files, key=lambda x: x['modified'], reverse=True)[:10]
+                }
+    
+    return jsonify({
+        'sandpits': sandpits,
+        'count': len(sandpits)
+    })
+
+
+@app.route('/api/sandpits/<agent>/files')
+def api_sandpit_files(agent):
+    """List files in an agent's sandpit."""
+    sandpit_path = f'/home/seven/swarm/sandpits/{agent}'
+    import os
+    
+    if not os.path.exists(sandpit_path):
+        return jsonify({'error': f'Sandpit not found for {agent}'}), 404
+    
+    try:
+        files = []
+        for f in os.listdir(sandpit_path):
+            fpath = os.path.join(sandpit_path, f)
+            if os.path.isfile(fpath):
+                stat = os.stat(fpath)
+                files.append({
+                    'name': f,
+                    'size': stat.st_size,
+                    'modified': stat.st_mtime,
+                    'path': fpath
+                })
+        
+        return jsonify({
+            'agent': agent,
+            'path': sandpit_path,
+            'files': sorted(files, key=lambda x: x['modified'], reverse=True)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

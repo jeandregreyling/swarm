@@ -1314,8 +1314,6 @@ def api_agents():
         entry = dict(a)
         entry['enabled']     = a['name'] not in DISABLED_AGENTS
         entry['temperature'] = orchestrator.TEMPERATURES.get(a['name'], a['default_temp'])
-        entry['status']      = 'online'  # All roster agents are online
-        entry['type']        = a.get('ghost_layer', False) and 'Ghost Layer' or 'Local'
         result.append(entry)
     return jsonify(result)
 

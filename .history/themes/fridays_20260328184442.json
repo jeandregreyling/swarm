@@ -1,0 +1,57 @@
+{
+  "name": "Fridays",
+  "version": "1.0",
+  "time_periods": {
+    "morning": {
+      "primary": "#FFB347",
+      "secondary": "#FFF8DC",
+      "text": "#333333",
+      "accent": "#FF6B35"
+    },
+    "afternoon": {
+      "primary": "#4A90E2",
+      "secondary": "#E8F4FD",
+      "text": "#333333",
+      "accent": "#2E5C8A"
+    },
+    "evening": {
+      "primary": "#FF6B9D",
+      "secondary": "#FFE5EC",
+      "text": "#333333",
+      "accent": "#C44569"
+    },
+    "night": {
+      "primary": "#1a1a2e",
+      "secondary": "#16213e",
+      "text": "#e0e0e0",
+      "accent": "#0f3460"
+    }
+  },
+  "css": {
+    "body": {
+      "font-family": "'Inter', 'Segoe UI', sans-serif",
+      "line-height": "1.6",
+      "letter-spacing": "0.5px"
+    },
+    "card": {
+      "border-radius": "12px",
+      "box-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+      "padding": "16px"
+    },
+    "button": {
+      "border-radius": "6px",
+      "font-weight": "600",
+      "transition": "all 0.2s ease"
+    }
+  },
+  "animations": {
+    "fade_in": {
+      "duration": "300ms",
+      "easing": "ease-in-out"
+    },
+    "slide_up": {
+      "duration": "400ms",
+      "easing": "cubic-bezier(0.34, 1.56, 0.64, 1)"
+    }
+  }
+}

@@ -1314,8 +1314,6 @@ def api_agents():
         entry = dict(a)
         entry['enabled']     = a['name'] not in DISABLED_AGENTS
         entry['temperature'] = orchestrator.TEMPERATURES.get(a['name'], a['default_temp'])
-        entry['status']      = 'online'  # All roster agents are online
-        entry['type']        = a.get('ghost_layer', False) and 'Ghost Layer' or 'Local'
         result.append(entry)
     return jsonify(result)
 
@@ -2170,9 +2168,9 @@ def api_agent_memory_write(agent):
 def api_agents_memories_query():
     """Cross-agent memory search. Find what any agent knows about a topic."""
     q = request.args.get('q', '').strip()
-    agents_filter = [a.strip().lower() for a in request.args.get('agents', '').split(',') if a.strip()]  # Handle empty strings
+    agents_filter = request.args.get('agents', '').split(',')  # comma-separated agent names
     limit = int(request.args.get('limit', 5))
-    min_importance = int(request.args.get('min_importance', 1))  # Changed default to 1 for broader search
+    min_importance = int(request.args.get('min_importance', 5))
     
     if not q:
         return jsonify({'error': 'q (query) required'}), 400
@@ -2189,7 +2187,7 @@ def api_agents_memories_query():
     
     # If agents specified, search only those; otherwise search all
     tables_to_search = {k: v for k, v in memory_tables.items() 
-                       if not agents_filter or k in agents_filter}
+                       if not agents_filter or k in [a.lower() for a in agents_filter]}
     
     for agent_key, table in tables_to_search.items():
         try:
