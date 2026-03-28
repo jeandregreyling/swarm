@@ -138,42 +138,6 @@ CREATE TABLE IF NOT EXISTS memory_ten (
     archived INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 );
-CREATE TABLE IF NOT EXISTS memory_sonic (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    agent TEXT DEFAULT 'sonic',
-    subject TEXT DEFAULT '',
-    content TEXT NOT NULL,
-    tags TEXT DEFAULT '',
-    importance INTEGER DEFAULT 7,
-    source TEXT DEFAULT 'session',
-    ticket_ref TEXT DEFAULT '',
-    archived INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS memory_scholar (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    agent TEXT DEFAULT 'scholar',
-    subject TEXT DEFAULT '',
-    content TEXT NOT NULL,
-    tags TEXT DEFAULT '',
-    importance INTEGER DEFAULT 7,
-    source TEXT DEFAULT 'session',
-    ticket_ref TEXT DEFAULT '',
-    archived INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS memory_seeker (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    agent TEXT DEFAULT 'seeker',
-    subject TEXT DEFAULT '',
-    content TEXT NOT NULL,
-    tags TEXT DEFAULT '',
-    importance INTEGER DEFAULT 7,
-    source TEXT DEFAULT 'session',
-    ticket_ref TEXT DEFAULT '',
-    archived INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
-);
 CREATE TABLE IF NOT EXISTS queue (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     from_addr TEXT NOT NULL,

@@ -21,8 +21,6 @@ from flask import Flask, render_template, request, Response, jsonify
 import json
 import queue
 import threading
-import os
-from datetime import datetime
 
 from database import (get_connection, new_conversation, log_message,
                        use_approval_token, add_trusted_sender, remove_trusted_sender,
