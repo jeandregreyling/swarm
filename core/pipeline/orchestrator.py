@@ -48,24 +48,24 @@ import time
 logger = logging.getLogger('seven.orchestrator')
 
 AGENTS = {
-    'Gemma':     'gemma3:latest',
-    'LLaMA':     'llama3.2:latest',
-    'Qwen':      'qwen2.5:latest',
-    'Librarian': 'qwen:latest',
+    'gemma':     'gemma3:latest',
+    'llama':     'llama3.2:latest',
+    'qwen':      'qwen2.5:latest',
+    'librarian': 'qwen:latest',
 }
 
 TEMPERATURES = {
-    'Gemma':     0.3,
-    'LLaMA':     0.6,
-    'Qwen':      0.7,
-    'Librarian': 0.1,
+    'gemma':     0.3,
+    'llama':     0.6,
+    'qwen':      0.7,
+    'librarian': 0.1,
 }
 
 SYSTEM_PROMPTS = {
-    'Gemma':     GEMMA_SYSTEM_PROMPT,
-    'LLaMA':     LLAMA_SYSTEM_PROMPT,
-    'Qwen':      QWEN_SYSTEM_PROMPT,
-    'Librarian': LIBRARIAN_SYSTEM_PROMPT,
+    'gemma':     GEMMA_SYSTEM_PROMPT,
+    'llama':     LLAMA_SYSTEM_PROMPT,
+    'qwen':      QWEN_SYSTEM_PROMPT,
+    'librarian': LIBRARIAN_SYSTEM_PROMPT,
     'Ten':       'You are Ten, a Software Engineering Advisor. Your role is to provide code quality, clarity, and architectural insights. You are part of the Ghost Layer.',
 }
 
