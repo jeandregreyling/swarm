@@ -128,7 +128,7 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
         ).fetchall()
     elif agent_key:
         rows = conn.execute(
-            """SELECT id, 'memory' AS source_table, agent, subject AS title, content, tags, importance, created_at
+            """SELECT id, 'memory' AS source_table, agent, subject, content, tags, importance, created_at
                FROM memory
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
@@ -138,37 +138,37 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
         ).fetchall()
     else:
         rows = conn.execute(
-            """SELECT id, 'memory' AS source_table, agent, subject AS title, content, tags, importance, created_at
+            """SELECT id, 'memory' AS source_table, agent, subject, content, tags, importance, created_at
                FROM memory
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_llama' AS source_table, agent, subject AS title, content, tags, importance, created_at
+               SELECT id, 'memory_llama' AS source_table, agent, subject, content, tags, importance, created_at
                FROM memory_llama
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_qwen' AS source_table, agent, subject AS title, content, tags, importance, created_at
+               SELECT id, 'memory_qwen' AS source_table, agent, subject, content, tags, importance, created_at
                FROM memory_qwen
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_gemma' AS source_table, agent, subject AS title, content, tags, importance, created_at
+               SELECT id, 'memory_gemma' AS source_table, agent, subject, content, tags, importance, created_at
                FROM memory_gemma
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_eight' AS source_table, agent, subject AS title, content, tags, importance, created_at
+               SELECT id, 'memory_eight' AS source_table, agent, subject, content, tags, importance, created_at
                FROM memory_eight
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_nine' AS source_table, agent, subject AS title, content, tags, importance, created_at
+               SELECT id, 'memory_nine' AS source_table, agent, subject, content, tags, importance, created_at
                FROM memory_nine
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_ten' AS source_table, agent, subject AS title, content, tags, importance, created_at
+               SELECT id, 'memory_ten' AS source_table, agent, subject, content, tags, importance, created_at
                FROM memory_ten
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
