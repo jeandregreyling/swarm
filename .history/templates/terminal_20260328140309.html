@@ -258,91 +258,20 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
 }
 
 #home-title {
   font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.5px;
-  flex-shrink: 0;
 }
 
 #home-title span { color: var(--accent); }
-
-#time-display {
-  font-size: 14px;
-  color: var(--text-dim);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 0 12px;
-  border-right: 1px solid var(--border);
-  border-left: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-#time-display .actual-time {
-  font-weight: 600;
-  color: var(--text);
-  font-size: 16px;
-}
-
-#time-display .feels-like {
-  font-size: 11px;
-  color: var(--text-dim);
-}
-
-#world-clocks {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  flex: 1;
-  padding: 0 16px;
-}
-
-.world-clock-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  font-size: 10px;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 8px;
-  border-radius: 6px;
-  flex-shrink: 0;
-  min-width: 80px;
-  text-align: center;
-}
-
-.world-clock-item:hover {
-  background: rgba(255,255,255,0.08);
-  color: var(--text);
-  transform: translateY(-2px);
-}
-
-.zone {
-  font-weight: 600;
-  font-size: 11px;
-  color: var(--text);
-}
-
-.world-clock-item .zone {
-  font-size: 10px;
-  font-weight: 500;
-}
 
 #home-controls {
   display: flex;
   gap: 12px;
   align-items: center;
-  flex-shrink: 0;
 }
 
 .theme-btn {
@@ -536,7 +465,7 @@ body {
 
 .floating-window {
   position: fixed;
-  background: var(--bg);
+  background: rgba(19, 19, 26, var(--glass-opacity));
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -546,7 +475,6 @@ body {
   z-index: 100;
   min-width: 300px;
   min-height: 200px;
-  opacity: var(--glass-opacity);
   backdrop-filter: blur(var(--glass-blur));
   animation: window-slide-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -567,7 +495,6 @@ body {
   cursor: grab;
   user-select: none;
   flex-shrink: 0;
-  backdrop-filter: blur(var(--glass-blur));
 }
 
 .window-header:active { cursor: grabbing; }
@@ -998,80 +925,6 @@ body {
   padding: 24px;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   TIMEZONE PICKER MODAL
-   ───────────────────────────────────────────────────────────────────────── */
-
-#timezone-picker-modal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.8);
-  z-index: 4999;
-  align-items: center;
-  justify-content: center;
-}
-
-#timezone-picker-modal.open {
-  display: flex;
-  animation: fade-in 0.2s ease-out;
-}
-
-#timezone-picker-box {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  width: 90%;
-  max-width: 400px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-  padding: 16px;
-}
-
-#timezone-search {
-  width: 100%;
-  padding: 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 13px;
-  margin-bottom: 12px;
-}
-
-#timezone-list {
-  flex: 1;
-  overflow-y: auto;
-  display: grid;
-  gap: 4px;
-}
-
-.timezone-option {
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 12px;
-  border: 1px solid transparent;
-}
-
-.timezone-option:hover {
-  background: rgba(255,255,255,0.05);
-  border-color: var(--border);
-}
-
-.timezone-option.current {
-  border-color: var(--accent);
-  background: rgba(255,255,255,0.1);
-  color: var(--accent);
-  font-weight: 600;
-}
-
 #settings-box h2 {
   margin: 0 0 20px 0;
   color: var(--accent);
@@ -1321,10 +1174,26 @@ input[type="range"]::-moz-range-thumb:hover {
     <div class="settings-section">
       <div class="slider-group">
         <div class="slider-label">
+          <span>Glass Blur</span>
+          <span id="blur-value">10px</span>
+        </div>
+        <input type="range" id="blur-slider" min="0" max="20" value="10">
+      </div>
+      
+      <div class="slider-group">
+        <div class="slider-label">
           <span>Transparency</span>
           <span id="opacity-value">75%</span>
         </div>
         <input type="range" id="opacity-slider" min="0" max="100" value="75">
+      </div>
+      
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Font Size</span>
+          <span id="font-value">100%</span>
+        </div>
+        <input type="range" id="font-slider" min="80" max="120" value="100">
       </div>
     </div>
     
@@ -1355,18 +1224,6 @@ input[type="range"]::-moz-range-thumb:hover {
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════
-     TIMEZONE PICKER MODAL
-     ════════════════════════════════════════════════════════════════════════ -->
-
-<div id="timezone-picker-modal">
-  <div id="timezone-picker-box">
-    <h3 style="margin: 0 0 12px; font-size: 14px;">Select Timezone</h3>
-    <input type="text" id="timezone-search" placeholder="Search timezone...">
-    <div id="timezone-list"></div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════════════════════════════════════════
      TOAST NOTIFICATIONS
      ════════════════════════════════════════════════════════════════════════ -->
 
@@ -1378,12 +1235,10 @@ input[type="range"]::-moz-range-thumb:hover {
 
 <div id="home-page">
   <div id="home-header">
-    <div id="home-left">
+    <div>
       <div id="home-title">Fridays <span>⬡</span></div>
       <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Seven's Swarm</div>
     </div>
-    <div id="world-clocks"><span style="color: var(--accent);">🕐</span></div>
-    <div id="time-display"></div>
     <div id="home-controls">
       <button onclick="toggleSettings()" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings">⚙️</button>
     </div>
@@ -2032,7 +1887,9 @@ function applyTimeTheme(time) {
 function loadSettings() {
   const defaultSettings = {
     time: 'auto',
+    blur: 10,
     opacity: 75,
+    font: 100,
     accent: '#FF9E4D',
     setAsDefault: false
   };
@@ -2048,15 +1905,19 @@ function loadSettings() {
   // Apply time theme (this will set CSS variables for all colors)
   applyTimeTheme(settings.time);
   
-  // Apply transparency
+  // Apply sliders
+  document.documentElement.style.setProperty('--glass-blur', settings.blur + 'px');
   document.documentElement.style.setProperty('--glass-opacity', settings.opacity / 100);
+  document.documentElement.style.setProperty('--font-scale', settings.font / 100);
   
   // Apply accent color
   document.documentElement.style.setProperty('--accent', settings.accent);
   document.querySelector(`[data-color="${settings.accent}"]`)?.classList.add('active');
   
   // Update slider displays
+  document.getElementById('blur-value').textContent = settings.blur + 'px';
   document.getElementById('opacity-value').textContent = settings.opacity + '%';
+  document.getElementById('font-value').textContent = settings.font + '%';
   
   // Load set-as-default checkbox
   document.getElementById('set-default-time').checked = settings.setAsDefault || false;
@@ -2070,310 +1931,15 @@ function updateTimeDisplay() {
   document.getElementById('time-value').textContent = timeNames[parseInt(timeSlider.value)] || 'Auto';
 }
 
-function updateHomeTimeDisplay() {
-  try {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    
-    // Get current theme mood
-    const settings = JSON.parse(localStorage.getItem('fridays-settings') || '{"time":"auto"}');
-    const hour = now.getHours();
-    let currentTheme = settings.time;
-    
-    if (currentTheme === 'auto') {
-      if (hour >= 6 && hour < 12) currentTheme = 'morning';
-      else if (hour >= 12 && hour < 17) currentTheme = 'afternoon';
-      else if (hour >= 17 && hour < 21) currentTheme = 'evening';
-      else currentTheme = 'night';
-    }
-    
-    const moodLabels = {
-      'morning': '🌅 Morning Vibes',
-      'afternoon': '☀️ Afternoon Energy',
-      'evening': '🌆 Evening Mood',
-      'night': '🌙 Night Mode'
-    };
-    
-    const timeDisplay = document.getElementById('time-display');
-    if (timeDisplay) {
-      timeDisplay.innerHTML = `
-        <div class="actual-time">${timeStr}</div>
-        <div class="feels-like">${moodLabels[currentTheme] || 'Auto'}</div>
-      `;
-    }
-  } catch (error) {
-    console.error('Error in updateHomeTimeDisplay:', error);
-  }
-}
-
-// Get time for a specific timezone offset
-function getTimeForTimezone(offset) {
-  const now = new Date();
-  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-  const timeInZone = new Date(utcTime + (offset * 3600000));
-  
-  return {
-    hours: timeInZone.getHours(),
-    minutes: timeInZone.getMinutes(),
-    seconds: timeInZone.getSeconds()
-  };
-}
-
-// Create digital time display (HH:MM:SS)
-function createDigitalTime(time) {
-  const h = String(time.hours).padStart(2, '0');
-  const m = String(time.minutes).padStart(2, '0');
-  const s = String(time.seconds).padStart(2, '0');
-  return `${h}:${m}:${s}`;
-}
-
-// Create analogue clock with CSS transforms
-function createAnalogClockHTML(time) {
-  const hours = time.hours % 12;
-  const minutes = time.minutes;
-  const seconds = time.seconds;
-  
-  const secondAngle = (seconds * 6);
-  const minuteAngle = (minutes * 6) + (seconds * 0.1);
-  const hourAngle = (hours * 30) + (minutes * 0.5);
-  
-  return `
-    <div style="position: relative; width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center;">
-      <!-- Hour hand -->
-      <div style="position: absolute; width: 3px; height: 16px; background: var(--accent); border-radius: 2px; bottom: 50%; left: 50%; margin-left: -1.5px; transform-origin: bottom center; transform: translateX(-50%) rotate(${hourAngle}deg);"></div>
-      
-      <!-- Minute hand -->
-      <div style="position: absolute; width: 2px; height: 22px; background: var(--text); border-radius: 1px; bottom: 50%; left: 50%; margin-left: -1px; transform-origin: bottom center; transform: translateX(-50%) rotate(${minuteAngle}deg);"></div>
-      
-      <!-- Second hand -->
-      <div style="position: absolute; width: 1px; height: 26px; background: var(--accent); bottom: 50%; left: 50%; margin-left: -0.5px; transform-origin: bottom center; transform: translateX(-50%) rotate(${secondAngle}deg);"></div>
-      
-      <!-- Center dot -->
-      <div style="width: 6px; height: 6px; background: var(--accent); border-radius: 50%; z-index: 10;"></div>
-    </div>
-  `;
-}
-
-function getAllTimezones() {
-  return [
-    { name: 'UTC', offset: 0 },
-    { name: 'London', offset: 0 },
-    { name: 'Paris', offset: 1 },
-    { name: 'Dubai', offset: 4 },
-    { name: 'Delhi', offset: 5.5 },
-    { name: 'Bangkok', offset: 7 },
-    { name: 'Singapore', offset: 8 },
-    { name: 'Tokyo', offset: 9 },
-    { name: 'Sydney', offset: 11 },
-    { name: 'Melbourne', offset: 11 },
-    { name: 'Auckland', offset: 13 },
-    { name: 'Fiji', offset: 12 },
-    { name: 'Hawaii', offset: -10 },
-    { name: 'Los Angeles', offset: -8 },
-    { name: 'Denver', offset: -7 },
-    { name: 'Chicago', offset: -6 },
-    { name: 'New York', offset: -5 },
-    { name: 'São Paulo', offset: -3 },
-    { name: 'Buenos Aires', offset: -3 },
-    { name: 'Cape Town', offset: 2 },
-    { name: 'Istanbul', offset: 3 },
-    { name: 'Moscow', offset: 3 },
-    { name: 'Hong Kong', offset: 8 },
-    { name: 'Seoul', offset: 9 },
-    { name: 'Shanghai', offset: 8 },
-    { name: 'Mumbai', offset: 5.5 },
-    { name: 'Jakarta', offset: 7 },
-    { name: 'Manila', offset: 8 }
-  ];
-}
-
-function updateWorldClocks() {
-  const container = document.getElementById('world-clocks');
-  if (!container) {
-    console.log('ERROR: world-clocks container not found');
-    return;
-  }
-  
-  try {
-    const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || JSON.stringify([
-      { name: 'Melbourne', offset: 11 },
-      { name: 'Singapore', offset: 8 },
-      { name: 'Delhi', offset: 5.5 },
-      { name: 'Cape Town', offset: 2 },
-      { name: 'New York', offset: -5 }
-    ]));
-    
-    let html = '';
-    savedZones.forEach((zone, idx) => {
-      const time = getTimeForTimezone(zone.offset);
-      const digital = createDigitalTime(time);
-      const analog = createAnalogClockHTML(time);
-      const offsetStr = zone.offset >= 0 ? `+${zone.offset}` : `${zone.offset}`;
-      
-      html += `
-        <div class="world-clock-item" onclick="openTimezonePicker(${idx})" style="gap: 8px;">
-          ${analog}
-          <div style="font-family: 'Courier New', monospace; font-size: 11px; color: var(--accent); letter-spacing: 1px; text-align: center; line-height: 1.3;">${digital}</div>
-          <div class="zone" style="font-size: 11px;">${zone.name}</div>
-          <div style="font-size: 10px; color: var(--text-dim);">UTC ${offsetStr}</div>
-        </div>
-      `;
-    });
-    
-    container.innerHTML = html;
-    console.log('✅ Clocks updated:', savedZones.length, 'zones');
-  } catch(e) {
-    console.log('ERROR in clocks:', e.message, e.stack);
-  }
-}
-
-function openTimezonePicker(clockIndex) {
-  const modal = document.getElementById('timezone-picker-modal');
-  modal.classList.add('open');
-  modal.currentClockIndex = clockIndex;
-  
-  // Populate timezone list
-  const allZones = getAllTimezones();
-  const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || '[]');
-  const currentZone = savedZones[clockIndex];
-  
-  const list = document.getElementById('timezone-list');
-  list.innerHTML = allZones.map(zone => `
-    <div class="timezone-option ${zone.name === currentZone.name ? 'current' : ''}" 
-      onclick="selectTimezone(${zone.offset}, '${zone.name}')">
-      ${zone.name}
-    </div>
-  `).join('');
-  
-  // Search functionality
-  const search = document.getElementById('timezone-search');
-  search.oninput = (e) => {
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('.timezone-option').forEach(el => {
-      el.style.display = el.textContent.toLowerCase().includes(query) ? '' : 'none';
-    });
-  };
-}
-
-function selectTimezone(offset, name) {
-  const modal = document.getElementById('timezone-picker-modal');
-  const clockIndex = modal.currentClockIndex;
-  
-  // Load current zones
-  const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || JSON.stringify([
-    { name: 'Melbourne', offset: 11 },
-    { name: 'Singapore', offset: 8 },
-    { name: 'Delhi', offset: 5.5 },
-    { name: 'Cape Town', offset: 2 },
-    { name: 'New York', offset: -5 }
-  ]));
-  
-  // Update selected zone
-  savedZones[clockIndex] = { name, offset };
-  localStorage.setItem('world-clock-zones', JSON.stringify(savedZones));
-  
-  // Close modal and refresh clocks
-  modal.classList.remove('open');
-  updateWorldClocks();
-  document.getElementById('timezone-search').value = '';
-}
-
-function initClocks() {
-  console.log('🕐 Initializing world clocks...');
-  
-  // Render immediately
-  updateHomeTimeDisplay();
-  updateWorldClocks();
-  
-  // Update time display once per minute
-  setInterval(updateHomeTimeDisplay, 60000);
-  
-  // Update clocks every 5 seconds (reduced from 1 second for performance)
-  setInterval(updateWorldClocks, 5000);
-  
-  // Close timezone picker when clicking outside
-  const modal = document.getElementById('timezone-picker-modal');
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.classList.remove('open');
-      }
-    });
-  }
-  
-  console.log('✅ World clocks ready - updating every 5 seconds');
-}
-
-// Validation function for troubleshooting - call this in browser console
-window.validateClocks = function() {
-  console.log('═══════════════════════════════════════════════════════════════');
-  console.log('WORLD CLOCKS VALIDATION');
-  console.log('═══════════════════════════════════════════════════════════════');
-  
-  let issues = [];
-  
-  // Check DOM elements
-  const container = document.getElementById('world-clocks');
-  console.log('✓ Container found:', container ? 'YES' : 'NO');
-  if (!container) issues.push('world-clocks container not found');
-  
-  const modal = document.getElementById('timezone-picker-modal');
-  console.log('✓ Modal found:', modal ? 'YES' : 'NO');
-  if (!modal) issues.push('timezone-picker-modal not found');
-  
-  const timeDisplay = document.getElementById('time-display');
-  console.log('✓ Time display found:', timeDisplay ? 'YES' : 'NO');
-  if (!timeDisplay) issues.push('time-display not found');
-  
-  // Check functions
-  const functions = ['drawAnalogClock', 'getAllTimezones', 'updateWorldClocks', 'updateHomeTimeDisplay', 'initClocks', 'openTimezonePicker'];
-  console.log('\n--- Functions ---');
-  functions.forEach(fn => {
-    const exists = typeof window[fn] === 'function';
-    console.log(exists ? '✓' : '✗', fn, ':', exists ? 'DEFINED' : 'MISSING');
-    if (!exists) issues.push(`Function ${fn} not defined`);
-  });
-  
-  // Check localStorage
-  console.log('\n--- Storage ---');
-  const zones = JSON.parse(localStorage.getItem('world-clock-zones') || '[]');
-  console.log('✓ Saved zones:', zones.length, 'zones');
-  
-  // Try rendering a test clock
-  console.log('\n--- Test Rendering ---');
-  try {
-    const svg = window.drawAnalogClock(0);
-    const isValid = svg.includes('<svg') && svg.includes('rotate');
-    console.log(isValid ? '✓' : '✗', 'SVG generation:', isValid ? 'OK' : 'INVALID');
-    if (!isValid) issues.push('SVG generation produces invalid output');
-  } catch (e) {
-    console.error('✗ SVG generation failed:', e.message);
-    issues.push(`SVG generation error: ${e.message}`);
-  }
-  
-  // Summary
-  console.log('\n═══════════════════════════════════════════════════════════════');
-  if (issues.length === 0) {
-    console.log('✓ ALL CHECKS PASSED - Clocks should be working!');
-  } else {
-    console.log('✗', issues.length, 'ISSUE(S) FOUND:');
-    issues.forEach((issue, i) => console.log(`  ${i+1}. ${issue}`));
-  }
-  console.log('═══════════════════════════════════════════════════════════════');
-  
-  return issues.length === 0;
-};
-
-console.log('Note: Call window.validateClocks() in console to test clock setup');
-
-
 function saveSettings() {
   const timeMap = ['auto', 'morning', 'afternoon', 'evening', 'night'];
   const timeSlider = document.getElementById('time-slider');
   
   const settings = {
     time: timeMap[parseInt(timeSlider.value)] || 'auto',
-    opacity: 100 - parseInt(document.getElementById('opacity-slider').value),  // Store as actual opacity, reverse for display
+    blur: parseInt(document.getElementById('blur-slider').value),
+    opacity: parseInt(document.getElementById('opacity-slider').value),
+    font: parseInt(document.getElementById('font-slider').value),
     accent: Array.from(document.querySelectorAll('[data-color]')).find(b => b.classList.contains('active'))?.dataset.color || '#FF9E4D',
     setAsDefault: document.getElementById('set-default-time').checked,
   };
@@ -2390,7 +1956,9 @@ function saveSettings() {
   
   // Apply the theme immediately
   applyTimeTheme(settings.time);
-  document.documentElement.style.setProperty('--glass-opacity', (100 - settings.opacity) / 100);
+  document.documentElement.style.setProperty('--glass-blur', settings.blur + 'px');
+  document.documentElement.style.setProperty('--glass-opacity', settings.opacity / 100);
+  document.documentElement.style.setProperty('--font-scale', settings.font / 100);
   document.documentElement.style.setProperty('--accent', settings.accent);
   
   // Close settings modal
@@ -2787,7 +2355,6 @@ function sendMessage() {
 document.addEventListener('DOMContentLoaded', () => {
   // Load settings and apply time-of-day theme
   loadSettings();
-  initClocks();
   
   // Update time-of-day theme every minute
   setInterval(() => {
@@ -2816,19 +2383,22 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('[data-color]').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
-      // Apply accent color immediately
-      const color = e.target.dataset.color;
-      document.documentElement.style.setProperty('--accent', color);
     });
   });
   
+  document.getElementById('blur-slider').addEventListener('input', (e) => {
+    document.getElementById('blur-value').textContent = e.target.value + 'px';
+    document.documentElement.style.setProperty('--glass-blur', e.target.value + 'px');
+  });
+  
   document.getElementById('opacity-slider').addEventListener('input', (e) => {
-    // Slider reversed: right = more transparent (left = more opaque)
-    const sliderValue = parseInt(e.target.value);
-    const displayTransparency = 100 - sliderValue;
-    const actualOpacity = sliderValue / 100;
-    document.getElementById('opacity-value').textContent = displayTransparency + '%';
-    document.documentElement.style.setProperty('--glass-opacity', actualOpacity);
+    document.getElementById('opacity-value').textContent = e.target.value + '%';
+    document.documentElement.style.setProperty('--glass-opacity', e.target.value / 100);
+  });
+  
+  document.getElementById('font-slider').addEventListener('input', (e) => {
+    document.getElementById('font-value').textContent = e.target.value + '%';
+    document.documentElement.style.setProperty('--font-scale', e.target.value / 100);
   });
   
   // Time of day slider
@@ -3002,14 +2572,6 @@ function updateTicketQueue() {
     });
 }
 
-</script>
-
-<!-- Debug clocks -->
-<script>
-setTimeout(() => {
-  const container = document.getElementById('world-clocks');
-  console.log('🔍 world-clocks HTML length:', container?.innerHTML.length || 'NOT FOUND');
-}, 1500);
 </script>
 
 </body>

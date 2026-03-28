@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "name": "Fridays",
+    "description": "Fridays theme - Sevens Swarm. Time-of-day adaptive colors.",
+    "author": "Seven",
+    "version": "1.0"
+  },
+  "colors": {
+    "--bg": "#0D0D10",
+    "--card": "#1A1A24",
+    "--card-hover": "#202030",
+    "--border": "#2A2A3A",
+    "--text": "#E2E2F0",
+    "--text-dim": "#7070A0",
+    "--accent": "#4caf50",
+    "--accent-hover": "#66bb6a",
+    "--danger": "#EF4444",
+    "--info": "#3B82F6",
+    "--window-bg": "#13131A",
+    "--window-header": "#0D0D10",
+    "--radius": "8px",
+    "--shadow": "0 10px 30px rgba(0,0,0,0.5)",
+    "--glass-blur": "10px",
+    "--glass-opacity": "0.75",
+    "--font-scale": "1"
+  },
+  "time_of_day": {
+    "morning": {
+      "--bg": "#FFFBF0",
+      "--card": "#FFF8F0",
+      "--card-hover": "#FFF5E6",
+      "--border": "#FFE6CC",
+      "--text": "#2D2D2D",
+      "--text-dim": "#8B8B7F",
+      "--accent": "#FFB347",
+      "--accent-hover": "#FFC461",
+      "--window-bg": "#FFFBF0",
+      "--window-header": "#FFF8F0"
+    },
+    "afternoon": {
+      "--bg": "#FFF5E6",
+      "--card": "#FFF9F0",
+      "--card-hover": "#FFEDDD",
+      "--border": "#FFCCAA",
+      "--text": "#2D2D2D",
+      "--text-dim": "#9B8B7F",
+      "--accent": "#FF9E4D",
+      "--accent-hover": "#FFB366",
+      "--window-bg": "#FFF9F0",
+      "--window-header": "#FFF5E6"
+    },
+    "evening": {
+      "--bg": "#1A0F2E",
+      "--card": "#2D1B4E",
+      "--card-hover": "#3D2560",
+      "--border": "#5A3F7D",
+      "--text": "#E8D5FF",
+      "--text-dim": "#A890C4",
+      "--accent": "#FF1493",
+      "--accent-hover": "#FF69B4",
+      "--window-bg": "#2D1B4E",
+      "--window-header": "#1A0F2E"
+    },
+    "night": {
+      "--bg": "#0A0515",
+      "--card": "#1A0F2E",
+      "--card-hover": "#2D1B4E",
+      "--border": "#3D2560",
+      "--text": "#E0EEFF",
+      "--text-dim": "#8BA3D0",
+      "--accent": "#00D9FF",
+      "--accent-hover": "#40E0FF",
+      "--window-bg": "#1A0F2E",
+      "--window-header": "#0A0515"
+    }
+  },
+  "custom_css": ""
+}

@@ -51,35 +51,6 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, Blin
   }
 }
 
-@keyframes window-slide-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-@keyframes toast-slide {
-  from {
-    opacity: 0;
-    transform: translateX(400px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes toast-slide-out {
-  to {
-    opacity: 0;
-    transform: translateX(400px);
-  }
-}
-
 .skeleton-loader {
   animation: skeleton-pulse 1.5s ease-in-out infinite;
   background: var(--card-hover);
@@ -123,62 +94,6 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, Blin
   --window-header: #0D0D10;
   --radius: 8px;
   --shadow: 0 10px 30px rgba(0,0,0,0.5);
-  --glass-blur: 10px;
-  --glass-opacity: 0.75;
-  --font-scale: 1;
-}
-
-/* Time-of-day color palettes */
-:root.time-morning {
-  --bg: #FFFBF0;
-  --card: #FFF8F0;
-  --card-hover: #FFF5E6;
-  --border: #FFE6CC;
-  --text: #2D2D2D;
-  --text-dim: #8B8B7F;
-  --accent: #FFB347;
-  --accent-hover: #FFC461;
-  --window-bg: #FFFBF0;
-  --window-header: #FFF8F0;
-}
-
-:root.time-afternoon {
-  --bg: #FFF5E6;
-  --card: #FFF9F0;
-  --card-hover: #FFEDDD;
-  --border: #FFCCAA;
-  --text: #2D2D2D;
-  --text-dim: #9B8B7F;
-  --accent: #FF9E4D;
-  --accent-hover: #FFB366;
-  --window-bg: #FFF9F0;
-  --window-header: #FFF5E6;
-}
-
-:root.time-evening {
-  --bg: #1A0F2E;
-  --card: #2D1B4E;
-  --card-hover: #3D2560;
-  --border: #5A3F7D;
-  --text: #E8D5FF;
-  --text-dim: #A890C4;
-  --accent: #FF1493;
-  --accent-hover: #FF69B4;
-  --window-bg: #2D1B4E;
-  --window-header: #1A0F2E;
-}
-
-:root.time-night {
-  --bg: #0A0515;
-  --card: #1A0F2E;
-  --card-hover: #2D1B4E;
-  --border: #3D2560;
-  --text: #E0EEFF;
-  --text-dim: #8BA3D0;
-  --accent: #00D9FF;
-  --accent-hover: #40E0FF;
-  --window-bg: #1A0F2E;
-  --window-header: #0A0515;
 }
 
 body.theme-apple {
@@ -258,91 +173,20 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
 }
 
 #home-title {
   font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.5px;
-  flex-shrink: 0;
 }
 
 #home-title span { color: var(--accent); }
-
-#time-display {
-  font-size: 14px;
-  color: var(--text-dim);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 0 12px;
-  border-right: 1px solid var(--border);
-  border-left: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-#time-display .actual-time {
-  font-weight: 600;
-  color: var(--text);
-  font-size: 16px;
-}
-
-#time-display .feels-like {
-  font-size: 11px;
-  color: var(--text-dim);
-}
-
-#world-clocks {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  flex: 1;
-  padding: 0 16px;
-}
-
-.world-clock-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  font-size: 10px;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 8px;
-  border-radius: 6px;
-  flex-shrink: 0;
-  min-width: 80px;
-  text-align: center;
-}
-
-.world-clock-item:hover {
-  background: rgba(255,255,255,0.08);
-  color: var(--text);
-  transform: translateY(-2px);
-}
-
-.zone {
-  font-weight: 600;
-  font-size: 11px;
-  color: var(--text);
-}
-
-.world-clock-item .zone {
-  font-size: 10px;
-  font-weight: 500;
-}
 
 #home-controls {
   display: flex;
   gap: 12px;
   align-items: center;
-  flex-shrink: 0;
 }
 
 .theme-btn {
@@ -536,7 +380,7 @@ body {
 
 .floating-window {
   position: fixed;
-  background: var(--bg);
+  background: var(--window-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -546,15 +390,14 @@ body {
   z-index: 100;
   min-width: 300px;
   min-height: 200px;
-  opacity: var(--glass-opacity);
-  backdrop-filter: blur(var(--glass-blur));
-  animation: window-slide-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  backdrop-filter: blur(10px);
+  background: rgba(19, 19, 26, 0.75);
 }
 
 .floating-window.minimized {
   height: 40px;
   overflow: hidden;
-  animation: none;
+  animation: minimize-slide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .window-header {
@@ -567,7 +410,6 @@ body {
   cursor: grab;
   user-select: none;
   flex-shrink: 0;
-  backdrop-filter: blur(var(--glass-blur));
 }
 
 .window-header:active { cursor: grabbing; }
@@ -965,306 +807,6 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   SETTINGS MODAL
-   ───────────────────────────────────────────────────────────────────────── */
-
-#settings-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: none;
-  z-index: 10000;
-  align-items: center;
-  justify-content: center;
-}
-
-#settings-modal.open {
-  display: flex;
-  animation: fade-in 0.2s ease-out;
-}
-
-#settings-box {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  width: 90%;
-  max-width: 450px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-  padding: 24px;
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
-   TIMEZONE PICKER MODAL
-   ───────────────────────────────────────────────────────────────────────── */
-
-#timezone-picker-modal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.8);
-  z-index: 4999;
-  align-items: center;
-  justify-content: center;
-}
-
-#timezone-picker-modal.open {
-  display: flex;
-  animation: fade-in 0.2s ease-out;
-}
-
-#timezone-picker-box {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  width: 90%;
-  max-width: 400px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-  padding: 16px;
-}
-
-#timezone-search {
-  width: 100%;
-  padding: 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 13px;
-  margin-bottom: 12px;
-}
-
-#timezone-list {
-  flex: 1;
-  overflow-y: auto;
-  display: grid;
-  gap: 4px;
-}
-
-.timezone-option {
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 12px;
-  border: 1px solid transparent;
-}
-
-.timezone-option:hover {
-  background: rgba(255,255,255,0.05);
-  border-color: var(--border);
-}
-
-.timezone-option.current {
-  border-color: var(--accent);
-  background: rgba(255,255,255,0.1);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-#settings-box h2 {
-  margin: 0 0 20px 0;
-  color: var(--accent);
-  font-size: 18px;
-}
-
-.settings-section {
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border);
-}
-
-.settings-section:last-child {
-  border-bottom: none;
-}
-
-.settings-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.time-btn {
-  padding: 10px;
-  background: var(--window-bg);
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--text-dim);
-  transition: all 0.2s;
-  text-align: center;
-}
-
-.time-btn:hover {
-  border-color: var(--accent);
-  color: var(--text);
-}
-
-.time-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-}
-
-.slider-group {
-  margin-bottom: 16px;
-}
-
-.slider-label {
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-  display: flex;
-  justify-content: space-between;
-}
-
-input[type="range"] {
-  width: 100%;
-  height: 4px;
-  background: var(--border);
-  border: none;
-  border-radius: 2px;
-  outline: none;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  background: var(--accent);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 10px var(--accent);
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  background: var(--accent);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-input[type="range"]::-moz-range-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 10px var(--accent);
-}
-
-.color-picker-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-}
-
-.color-option {
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 6px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.color-option:hover {
-  transform: scale(1.1);
-}
-
-.color-option.active {
-  border-color: white;
-  box-shadow: 0 0 10px currentColor;
-}
-
-#close-settings {
-  margin-top: 20px;
-  width: 100%;
-  padding: 10px;
-  background: var(--accent);
-  border: none;
-  border-radius: 6px;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-#close-settings:hover {
-  background: var(--accent-hover);
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
-   TOAST NOTIFICATIONS
-   ───────────────────────────────────────────────────────────────────────── */
-
-#toast-container {
-  position: fixed;
-  bottom: 70px;
-  right: 20px;
-  z-index: 5000;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.toast {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: 6px;
-  padding: 12px 16px;
-  font-size: 12px;
-  color: var(--text);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  animation: toast-slide 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.toast.success {
-  border-left-color: #4caf50;
-}
-
-.toast.error {
-  border-left-color: #EF4444;
-}
-
-.toast.info {
-  border-left-color: #3B82F6;
-}
-
-.toast.remove {
-  animation: toast-slide-out 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
    RESPONSIVE
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -1290,61 +832,6 @@ input[type="range"]::-moz-range-thumb:hover {
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════
-     SETTINGS MODAL
-     ════════════════════════════════════════════════════════════════════════ -->
-
-<div id="settings-modal">
-  <div id="settings-box">
-    <h2>⚙️ Fridays Settings</h2>
-    
-    <div class="settings-section">
-      <div class="slider-group">
-        <div class="slider-label">
-          <span>Time of Day</span>
-          <span id="time-value">Auto</span>
-        </div>
-        <input type="range" id="time-slider" min="0" max="4" value="0">
-        <div style="font-size: 10px; color: var(--text-dim); margin-top: 6px; display: flex; justify-content: space-between; padding: 0 2px;">
-          <span>Auto</span>
-          <span>🌅</span>
-          <span>☀️</span>
-          <span>🌆</span>
-          <span>🌙</span>
-        </div>
-      </div>
-      <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 12px; cursor: pointer;">
-        <input type="checkbox" id="set-default-time" style="cursor: pointer;">
-        <span>Set as Default</span>
-      </label>
-    </div>
-    
-    <div class="settings-section">
-      <div class="slider-group">
-        <div class="slider-label">
-          <span>Transparency</span>
-          <span id="opacity-value">75%</span>
-        </div>
-        <input type="range" id="opacity-slider" min="0" max="100" value="75">
-      </div>
-    </div>
-    
-    <div class="settings-section">
-      <div class="settings-label">Accent Color</div>
-      <div class="color-picker-grid">
-        <div class="color-option active" style="background: #FF1493;" data-color="#FF1493"></div>
-        <div class="color-option" style="background: #00D9FF;" data-color="#00D9FF"></div>
-        <div class="color-option" style="background: #FFB347;" data-color="#FFB347"></div>
-        <div class="color-option" style="background: #10B981;" data-color="#10B981"></div>
-        <div class="color-option" style="background: #8B5CF6;" data-color="#8B5CF6"></div>
-        <div class="color-option" style="background: #EC4899;" data-color="#EC4899"></div>
-      </div>
-    </div>
-    
-    <button id="close-settings">Done</button>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════════════════════════════════════════
      KEYBOARD HINTS
      ════════════════════════════════════════════════════════════════════════ -->
 
@@ -1355,37 +842,20 @@ input[type="range"]::-moz-range-thumb:hover {
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════
-     TIMEZONE PICKER MODAL
-     ════════════════════════════════════════════════════════════════════════ -->
-
-<div id="timezone-picker-modal">
-  <div id="timezone-picker-box">
-    <h3 style="margin: 0 0 12px; font-size: 14px;">Select Timezone</h3>
-    <input type="text" id="timezone-search" placeholder="Search timezone...">
-    <div id="timezone-list"></div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════════════════════════════════════════
-     TOAST NOTIFICATIONS
-     ════════════════════════════════════════════════════════════════════════ -->
-
-<div id="toast-container"></div>
-
-<!-- ════════════════════════════════════════════════════════════════════════
      HOME / LANDING PAGE
      ════════════════════════════════════════════════════════════════════════ -->
 
 <div id="home-page">
   <div id="home-header">
-    <div id="home-left">
+    <div>
       <div id="home-title">Fridays <span>⬡</span></div>
       <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Seven's Swarm</div>
     </div>
-    <div id="world-clocks"><span style="color: var(--accent);">🕐</span></div>
-    <div id="time-display"></div>
     <div id="home-controls">
-      <button onclick="toggleSettings()" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings">⚙️</button>
+      <button class="theme-btn active" onclick="setTheme('dark')" title="Dark">🌙</button>
+      <button class="theme-btn" onclick="setTheme('apple')" title="Apple">🍎</button>
+      <button class="theme-btn" onclick="setTheme('nature')" title="Nature">🌿</button>
+      <button class="theme-btn" onclick="setTheme('mint')" title="Mint">🍃</button>
     </div>
   </div>
 
@@ -1790,16 +1260,7 @@ class WindowManager {
     const win = this.windows.get(id);
     if (!win) return;
     win.minimized = !win.minimized;
-    if (win.minimized) {
-      // Hide window (move off-screen)
-      win.el.style.display = 'none';
-      showToast(`Minimized ${win.title}`, 'info');
-    } else {
-      // Restore window
-      win.el.style.display = 'flex';
-      this.focus(id);
-      showToast(`Restored ${win.title}`, 'info');
-    }
+    win.el.classList.toggle('minimized');
     this.save();
   }
 
@@ -1811,7 +1272,6 @@ class WindowManager {
       win.el.style.top = win.config.y + 'px';
       win.el.style.width = win.config.width + 'px';
       win.el.style.height = win.config.height + 'px';
-     win.el.style.zIndex = this.zIndex++;
     } else {
       win.config.x = win.el.offsetLeft;
       win.config.y = win.el.offsetTop;
@@ -1819,9 +1279,8 @@ class WindowManager {
       win.config.height = win.el.offsetHeight;
       win.el.style.left = '0px';
       win.el.style.top = '0px';
-      win.el.style.width = '100vw';
+      win.style.width = '100vw';
       win.el.style.height = 'calc(100vh - 50px)';
-      win.el.style.zIndex = 999;
     }
     win.maximized = !win.maximized;
     this.save();
@@ -1831,7 +1290,6 @@ class WindowManager {
     const win = this.windows.get(id);
     if (win) {
       win.pinned = !win.pinned;
-      showToast(win.pinned ? `Pinned ${win.title}` : `Unpinned ${win.title}`, 'info');
       this.save();
     }
   }
@@ -1840,40 +1298,13 @@ class WindowManager {
     const win = this.windows.get(id);
     if (!win) return;
     if (win.fullscreen) {
-      // Restore from fullscreen
-      document.getElementById('home-page').style.display = 'flex';
       win.el.style.width = win.config.width + 'px';
       win.el.style.height = win.config.height + 'px';
-      win.el.style.left = win.config.x + 'px';
-      win.el.style.top = win.config.y + 'px';
-      win.el.style.zIndex = this.zIndex++;
-      showToast(`Exited fullscreen`, 'info');
     } else {
-      // Enter fullscreen (replace home)
-      document.getElementById('home-page').style.display = 'none';
-      win.config.x = win.el.offsetLeft;
-      win.config.y = win.el.offsetTop;
-      win.config.width = win.el.offsetWidth;
-      win.config.height = win.el.offsetHeight;
       win.el.style.width = '100vw';
       win.el.style.height = '100vh';
       win.el.style.left = '0px';
       win.el.style.top = '0px';
-      win.el.style.zIndex = 999;
-      
-      // Add quick action buttons if not already there
-      const header = win.el.querySelector('.window-header');
-      if (header && !header.querySelector('.quick-actions')) {
-        const quickActions = document.createElement('div');
-        quickActions.className = 'quick-actions';
-        quickActions.style.cssText = 'position: absolute; top: 60px; left: 20px; display: flex; gap: 8px;';
-        quickActions.innerHTML = `
-          <button onclick="winManager.fullscreen('${id}')" style="padding: 8px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text); transition: all 0.2s;">← Exit Fullscreen</button>
-        `;
-        win.el.appendChild(quickActions);
-      }
-      
-      showToast(`Fullscreen: ${win.title}`, 'success');
     }
     win.fullscreen = !win.fullscreen;
     this.save();
@@ -1895,13 +1326,6 @@ class WindowManager {
     btn.className = 'taskbar-btn active';
     btn.setAttribute('data-winid', id);
     btn.textContent = title;
-    
-    // Add preview tooltip
-    const preview = document.createElement('div');
-    preview.className = 'taskbar-preview';
-    preview.textContent = title.substring(2); // Remove emoji
-    btn.appendChild(preview);
-    
     btn.onclick = () => {
       const win = this.windows.get(id);
       if (win && win.minimized) {
@@ -1949,504 +1373,32 @@ class WindowManager {
 const winManager = new WindowManager();
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TIME-OF-DAY & SETTINGS MANAGER
+// THEME MANAGER
 // ═══════════════════════════════════════════════════════════════════════════
 
-function getTimeOfDay() {
-  const hour = new Date().getHours();
-  if (hour >= 6 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 18) return 'afternoon';
-  if (hour >= 18 && hour < 22) return 'evening';
-  return 'night';
+function setTheme(name) {
+  document.body.className = name === 'dark' ? '' : `theme-${name}`;
+  localStorage.setItem('fridays-theme', name);
+  
+  document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
 }
 
-// Color palettes for each time period (from fridays.json)
-const TIME_PERIOD_COLORS = {
-  morning: {
-    '--bg': '#FFFBF0',
-    '--card': '#FFF8F0',
-    '--card-hover': '#FFF5E6',
-    '--border': '#FFE6CC',
-    '--text': '#2D2D2D',
-    '--text-dim': '#8B8B7F',
-    '--accent': '#FFB347',
-    '--accent-hover': '#FFC461',
-    '--window-bg': '#FFFBF0',
-    '--window-header': '#FFF8F0'
-  },
-  afternoon: {
-    '--bg': '#FFF5E6',
-    '--card': '#FFF9F0',
-    '--card-hover': '#FFEDDD',
-    '--border': '#FFCCAA',
-    '--text': '#2D2D2D',
-    '--text-dim': '#9B8B7F',
-    '--accent': '#FF9E4D',
-    '--accent-hover': '#FFB366',
-    '--window-bg': '#FFF9F0',
-    '--window-header': '#FFF5E6'
-  },
-  evening: {
-    '--bg': '#1A0F2E',
-    '--card': '#2D1B4E',
-    '--card-hover': '#3D2560',
-    '--border': '#5A3F7D',
-    '--text': '#E8D5FF',
-    '--text-dim': '#A890C4',
-    '--accent': '#FF1493',
-    '--accent-hover': '#FF69B4',
-    '--window-bg': '#2D1B4E',
-    '--window-header': '#1A0F2E'
-  },
-  night: {
-    '--bg': '#0A0515',
-    '--card': '#1A0F2E',
-    '--card-hover': '#2D1B4E',
-    '--border': '#3D2560',
-    '--text': '#E0EEFF',
-    '--text-dim': '#8BA3D0',
-    '--accent': '#00D9FF',
-    '--accent-hover': '#40E0FF',
-    '--window-bg': '#1A0F2E',
-    '--window-header': '#0A0515'
+function loadTheme() {
+  const saved = localStorage.getItem('fridays-theme') || 'dark';
+  if (saved !== 'dark') {
+    document.body.className = `theme-${saved}`;
   }
-};
-
-function applyTimeTheme(time) {
-  // Get the colors for this time period
-  let colors = {};
-  
-  if (time === 'auto') {
-    const currentTime = getTimeOfDay();
-    colors = TIME_PERIOD_COLORS[currentTime] || TIME_PERIOD_COLORS.afternoon;
-  } else {
-    colors = TIME_PERIOD_COLORS[time] || TIME_PERIOD_COLORS.afternoon;
-  }
-  
-  // Apply all colors as CSS variables to root element
-  Object.entries(colors).forEach(([key, value]) => {
-    document.documentElement.style.setProperty(key, value);
-  });
+  const idx = { dark: 0, apple: 1, nature: 2, mint: 3 }[saved] || 0;
+  document.querySelectorAll('.theme-btn')[idx].classList.add('active');
 }
-
-function loadSettings() {
-  const defaultSettings = {
-    time: 'auto',
-    opacity: 75,
-    accent: '#FF9E4D',
-    setAsDefault: false
-  };
-  
-  const settings = JSON.parse(localStorage.getItem('fridays-settings') || JSON.stringify(defaultSettings));
-  
-  // Time slider: map time name to slider value
-  const timeMap = { 'auto': 0, 'morning': 1, 'afternoon': 2, 'evening': 3, 'night': 4 };
-  const timeSlider = document.getElementById('time-slider');
-  timeSlider.value = timeMap[settings.time] || 0;
-  updateTimeDisplay();
-  
-  // Apply time theme (this will set CSS variables for all colors)
-  applyTimeTheme(settings.time);
-  
-  // Apply transparency
-  document.documentElement.style.setProperty('--glass-opacity', settings.opacity / 100);
-  
-  // Apply accent color
-  document.documentElement.style.setProperty('--accent', settings.accent);
-  document.querySelector(`[data-color="${settings.accent}"]`)?.classList.add('active');
-  
-  // Update slider displays
-  document.getElementById('opacity-value').textContent = settings.opacity + '%';
-  
-  // Load set-as-default checkbox
-  document.getElementById('set-default-time').checked = settings.setAsDefault || false;
-  
-  return settings;
-}
-
-function updateTimeDisplay() {
-  const timeSlider = document.getElementById('time-slider');
-  const timeNames = ['Auto', 'Morning', 'Afternoon', 'Evening', 'Night'];
-  document.getElementById('time-value').textContent = timeNames[parseInt(timeSlider.value)] || 'Auto';
-}
-
-function updateHomeTimeDisplay() {
-  try {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    
-    // Get current theme mood
-    const settings = JSON.parse(localStorage.getItem('fridays-settings') || '{"time":"auto"}');
-    const hour = now.getHours();
-    let currentTheme = settings.time;
-    
-    if (currentTheme === 'auto') {
-      if (hour >= 6 && hour < 12) currentTheme = 'morning';
-      else if (hour >= 12 && hour < 17) currentTheme = 'afternoon';
-      else if (hour >= 17 && hour < 21) currentTheme = 'evening';
-      else currentTheme = 'night';
-    }
-    
-    const moodLabels = {
-      'morning': '🌅 Morning Vibes',
-      'afternoon': '☀️ Afternoon Energy',
-      'evening': '🌆 Evening Mood',
-      'night': '🌙 Night Mode'
-    };
-    
-    const timeDisplay = document.getElementById('time-display');
-    if (timeDisplay) {
-      timeDisplay.innerHTML = `
-        <div class="actual-time">${timeStr}</div>
-        <div class="feels-like">${moodLabels[currentTheme] || 'Auto'}</div>
-      `;
-    }
-  } catch (error) {
-    console.error('Error in updateHomeTimeDisplay:', error);
-  }
-}
-
-// Get time for a specific timezone offset
-function getTimeForTimezone(offset) {
-  const now = new Date();
-  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-  const timeInZone = new Date(utcTime + (offset * 3600000));
-  
-  return {
-    hours: timeInZone.getHours(),
-    minutes: timeInZone.getMinutes(),
-    seconds: timeInZone.getSeconds()
-  };
-}
-
-// Create digital time display (HH:MM:SS)
-function createDigitalTime(time) {
-  const h = String(time.hours).padStart(2, '0');
-  const m = String(time.minutes).padStart(2, '0');
-  const s = String(time.seconds).padStart(2, '0');
-  return `${h}:${m}:${s}`;
-}
-
-// Create analogue clock with CSS transforms
-function createAnalogClockHTML(time) {
-  const hours = time.hours % 12;
-  const minutes = time.minutes;
-  const seconds = time.seconds;
-  
-  const secondAngle = (seconds * 6);
-  const minuteAngle = (minutes * 6) + (seconds * 0.1);
-  const hourAngle = (hours * 30) + (minutes * 0.5);
-  
-  return `
-    <div style="position: relative; width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center;">
-      <!-- Hour hand -->
-      <div style="position: absolute; width: 3px; height: 16px; background: var(--accent); border-radius: 2px; bottom: 50%; left: 50%; margin-left: -1.5px; transform-origin: bottom center; transform: translateX(-50%) rotate(${hourAngle}deg);"></div>
-      
-      <!-- Minute hand -->
-      <div style="position: absolute; width: 2px; height: 22px; background: var(--text); border-radius: 1px; bottom: 50%; left: 50%; margin-left: -1px; transform-origin: bottom center; transform: translateX(-50%) rotate(${minuteAngle}deg);"></div>
-      
-      <!-- Second hand -->
-      <div style="position: absolute; width: 1px; height: 26px; background: var(--accent); bottom: 50%; left: 50%; margin-left: -0.5px; transform-origin: bottom center; transform: translateX(-50%) rotate(${secondAngle}deg);"></div>
-      
-      <!-- Center dot -->
-      <div style="width: 6px; height: 6px; background: var(--accent); border-radius: 50%; z-index: 10;"></div>
-    </div>
-  `;
-}
-
-function getAllTimezones() {
-  return [
-    { name: 'UTC', offset: 0 },
-    { name: 'London', offset: 0 },
-    { name: 'Paris', offset: 1 },
-    { name: 'Dubai', offset: 4 },
-    { name: 'Delhi', offset: 5.5 },
-    { name: 'Bangkok', offset: 7 },
-    { name: 'Singapore', offset: 8 },
-    { name: 'Tokyo', offset: 9 },
-    { name: 'Sydney', offset: 11 },
-    { name: 'Melbourne', offset: 11 },
-    { name: 'Auckland', offset: 13 },
-    { name: 'Fiji', offset: 12 },
-    { name: 'Hawaii', offset: -10 },
-    { name: 'Los Angeles', offset: -8 },
-    { name: 'Denver', offset: -7 },
-    { name: 'Chicago', offset: -6 },
-    { name: 'New York', offset: -5 },
-    { name: 'São Paulo', offset: -3 },
-    { name: 'Buenos Aires', offset: -3 },
-    { name: 'Cape Town', offset: 2 },
-    { name: 'Istanbul', offset: 3 },
-    { name: 'Moscow', offset: 3 },
-    { name: 'Hong Kong', offset: 8 },
-    { name: 'Seoul', offset: 9 },
-    { name: 'Shanghai', offset: 8 },
-    { name: 'Mumbai', offset: 5.5 },
-    { name: 'Jakarta', offset: 7 },
-    { name: 'Manila', offset: 8 }
-  ];
-}
-
-function updateWorldClocks() {
-  const container = document.getElementById('world-clocks');
-  if (!container) {
-    console.log('ERROR: world-clocks container not found');
-    return;
-  }
-  
-  try {
-    const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || JSON.stringify([
-      { name: 'Melbourne', offset: 11 },
-      { name: 'Singapore', offset: 8 },
-      { name: 'Delhi', offset: 5.5 },
-      { name: 'Cape Town', offset: 2 },
-      { name: 'New York', offset: -5 }
-    ]));
-    
-    let html = '';
-    savedZones.forEach((zone, idx) => {
-      const time = getTimeForTimezone(zone.offset);
-      const digital = createDigitalTime(time);
-      const analog = createAnalogClockHTML(time);
-      const offsetStr = zone.offset >= 0 ? `+${zone.offset}` : `${zone.offset}`;
-      
-      html += `
-        <div class="world-clock-item" onclick="openTimezonePicker(${idx})" style="gap: 8px;">
-          ${analog}
-          <div style="font-family: 'Courier New', monospace; font-size: 11px; color: var(--accent); letter-spacing: 1px; text-align: center; line-height: 1.3;">${digital}</div>
-          <div class="zone" style="font-size: 11px;">${zone.name}</div>
-          <div style="font-size: 10px; color: var(--text-dim);">UTC ${offsetStr}</div>
-        </div>
-      `;
-    });
-    
-    container.innerHTML = html;
-    console.log('✅ Clocks updated:', savedZones.length, 'zones');
-  } catch(e) {
-    console.log('ERROR in clocks:', e.message, e.stack);
-  }
-}
-
-function openTimezonePicker(clockIndex) {
-  const modal = document.getElementById('timezone-picker-modal');
-  modal.classList.add('open');
-  modal.currentClockIndex = clockIndex;
-  
-  // Populate timezone list
-  const allZones = getAllTimezones();
-  const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || '[]');
-  const currentZone = savedZones[clockIndex];
-  
-  const list = document.getElementById('timezone-list');
-  list.innerHTML = allZones.map(zone => `
-    <div class="timezone-option ${zone.name === currentZone.name ? 'current' : ''}" 
-      onclick="selectTimezone(${zone.offset}, '${zone.name}')">
-      ${zone.name}
-    </div>
-  `).join('');
-  
-  // Search functionality
-  const search = document.getElementById('timezone-search');
-  search.oninput = (e) => {
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('.timezone-option').forEach(el => {
-      el.style.display = el.textContent.toLowerCase().includes(query) ? '' : 'none';
-    });
-  };
-}
-
-function selectTimezone(offset, name) {
-  const modal = document.getElementById('timezone-picker-modal');
-  const clockIndex = modal.currentClockIndex;
-  
-  // Load current zones
-  const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || JSON.stringify([
-    { name: 'Melbourne', offset: 11 },
-    { name: 'Singapore', offset: 8 },
-    { name: 'Delhi', offset: 5.5 },
-    { name: 'Cape Town', offset: 2 },
-    { name: 'New York', offset: -5 }
-  ]));
-  
-  // Update selected zone
-  savedZones[clockIndex] = { name, offset };
-  localStorage.setItem('world-clock-zones', JSON.stringify(savedZones));
-  
-  // Close modal and refresh clocks
-  modal.classList.remove('open');
-  updateWorldClocks();
-  document.getElementById('timezone-search').value = '';
-}
-
-function initClocks() {
-  console.log('🕐 Initializing world clocks...');
-  
-  // Render immediately
-  updateHomeTimeDisplay();
-  updateWorldClocks();
-  
-  // Update time display once per minute
-  setInterval(updateHomeTimeDisplay, 60000);
-  
-  // Update clocks every 5 seconds (reduced from 1 second for performance)
-  setInterval(updateWorldClocks, 5000);
-  
-  // Close timezone picker when clicking outside
-  const modal = document.getElementById('timezone-picker-modal');
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.classList.remove('open');
-      }
-    });
-  }
-  
-  console.log('✅ World clocks ready - updating every 5 seconds');
-}
-
-// Validation function for troubleshooting - call this in browser console
-window.validateClocks = function() {
-  console.log('═══════════════════════════════════════════════════════════════');
-  console.log('WORLD CLOCKS VALIDATION');
-  console.log('═══════════════════════════════════════════════════════════════');
-  
-  let issues = [];
-  
-  // Check DOM elements
-  const container = document.getElementById('world-clocks');
-  console.log('✓ Container found:', container ? 'YES' : 'NO');
-  if (!container) issues.push('world-clocks container not found');
-  
-  const modal = document.getElementById('timezone-picker-modal');
-  console.log('✓ Modal found:', modal ? 'YES' : 'NO');
-  if (!modal) issues.push('timezone-picker-modal not found');
-  
-  const timeDisplay = document.getElementById('time-display');
-  console.log('✓ Time display found:', timeDisplay ? 'YES' : 'NO');
-  if (!timeDisplay) issues.push('time-display not found');
-  
-  // Check functions
-  const functions = ['drawAnalogClock', 'getAllTimezones', 'updateWorldClocks', 'updateHomeTimeDisplay', 'initClocks', 'openTimezonePicker'];
-  console.log('\n--- Functions ---');
-  functions.forEach(fn => {
-    const exists = typeof window[fn] === 'function';
-    console.log(exists ? '✓' : '✗', fn, ':', exists ? 'DEFINED' : 'MISSING');
-    if (!exists) issues.push(`Function ${fn} not defined`);
-  });
-  
-  // Check localStorage
-  console.log('\n--- Storage ---');
-  const zones = JSON.parse(localStorage.getItem('world-clock-zones') || '[]');
-  console.log('✓ Saved zones:', zones.length, 'zones');
-  
-  // Try rendering a test clock
-  console.log('\n--- Test Rendering ---');
-  try {
-    const svg = window.drawAnalogClock(0);
-    const isValid = svg.includes('<svg') && svg.includes('rotate');
-    console.log(isValid ? '✓' : '✗', 'SVG generation:', isValid ? 'OK' : 'INVALID');
-    if (!isValid) issues.push('SVG generation produces invalid output');
-  } catch (e) {
-    console.error('✗ SVG generation failed:', e.message);
-    issues.push(`SVG generation error: ${e.message}`);
-  }
-  
-  // Summary
-  console.log('\n═══════════════════════════════════════════════════════════════');
-  if (issues.length === 0) {
-    console.log('✓ ALL CHECKS PASSED - Clocks should be working!');
-  } else {
-    console.log('✗', issues.length, 'ISSUE(S) FOUND:');
-    issues.forEach((issue, i) => console.log(`  ${i+1}. ${issue}`));
-  }
-  console.log('═══════════════════════════════════════════════════════════════');
-  
-  return issues.length === 0;
-};
-
-console.log('Note: Call window.validateClocks() in console to test clock setup');
-
-
-function saveSettings() {
-  const timeMap = ['auto', 'morning', 'afternoon', 'evening', 'night'];
-  const timeSlider = document.getElementById('time-slider');
-  
-  const settings = {
-    time: timeMap[parseInt(timeSlider.value)] || 'auto',
-    opacity: 100 - parseInt(document.getElementById('opacity-slider').value),  // Store as actual opacity, reverse for display
-    accent: Array.from(document.querySelectorAll('[data-color]')).find(b => b.classList.contains('active'))?.dataset.color || '#FF9E4D',
-    setAsDefault: document.getElementById('set-default-time').checked,
-  };
-  
-  // Save to localStorage
-  if (settings.setAsDefault) {
-    localStorage.setItem('fridays-settings-default', JSON.stringify(settings));
-    localStorage.setItem('fridays-settings', JSON.stringify(settings));
-    showToast('✅ Default theme saved!', 'success');
-  } else {
-    localStorage.setItem('fridays-settings', JSON.stringify(settings));
-    showToast('✅ Theme applied', 'success');
-  }
-  
-  // Apply the theme immediately
-  applyTimeTheme(settings.time);
-  document.documentElement.style.setProperty('--glass-opacity', (100 - settings.opacity) / 100);
-  document.documentElement.style.setProperty('--accent', settings.accent);
-  
-  // Close settings modal
-  closeSettings();
-}
-
-function toggleSettings() {
-  document.getElementById('settings-modal').classList.toggle('open');
-}
-
-function closeSettings() {
-  document.getElementById('settings-modal').classList.remove('open');
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TOAST NOTIFICATIONS
-// ═══════════════════════════════════════════════════════════════════════════
-
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  
-  setTimeout(() => {
-    toast.classList.add('remove');
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// WINDOW ICONS MAPPING
-// ═══════════════════════════════════════════════════════════════════════════
-
-const windowIcons = {
-  'chat': '💬',
-  'terminal': '⌨️',
-  'memory': '🧠',
-  'monitor': '📡',
-  'docs': '📚',
-  'skills': '⚙️',
-  'tickets': '🎫',
-  'studio': '🎬',
-};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // WINDOW FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
 function openWindow(id, title, templateId) {
-  // Strip any existing emoji from title  
-  const cleanTitle = title.replace(/^[^\w\s]+ /, '').trim();
-  const icon = windowIcons[id] || '📦';
-  const titleWithIcon = `${icon} ${cleanTitle}`;
-  const win = winManager.create(id, titleWithIcon, templateId);
+  const win = winManager.create(id, title, templateId);
   
   // Load data based on window type
   setTimeout(() => {
@@ -2459,8 +1411,6 @@ function openWindow(id, title, templateId) {
     else if (id === 'tickets') loadTicketsData(win);
     else if (id === 'studio') loadStudioData(win);
   }, 100);
-  
-  showToast(`Opened ${cleanTitle}`, 'success');
 }
 
 function goHome() {
@@ -2545,40 +1495,6 @@ function loadMonitorData(win) {
       content.innerHTML = '<span style="color: #f77;">Error loading monitor data</span>';
     });
 }
-
-function loadHomeStats() {
-  fetch('/api/monitor')
-    .then(r => r.json())
-    .then(data => {
-      // Parse stat values for color coding
-      const parseStat = (val) => val ? parseFloat(val.toString().match(/\d+\.?\d*/)?.[0] || 0) : 0;
-      const cpu = parseStat(data.system_load);
-      const mem = parseStat(data.memory_usage);
-      const agents = parseStat(data.agents_online);
-      
-      // Determine health colors
-      const getCpuHealth = (val) => val > 70 ? 'health-crit' : val > 50 ? 'health-warn' : 'health-good';
-      const getMemHealth = (val) => val > 80 ? 'health-crit' : val > 60 ? 'health-warn' : 'health-good';
-      const getAgentHealth = (val) => val > 0 ? 'health-good' : 'health-warn';
-      
-      // Update stat cards with trends (random for now, could be historical)
-      const trends = { up: '↑', down: '↓', stable: '→' };
-      const randomTrend = () => [trends.up, trends.down, trends.stable][Math.floor(Math.random() * 3)];
-      
-      document.getElementById('stat-cpu').innerHTML = `${cpu.toFixed(0)}% <span class="stat-trend">${randomTrend()}</span>`;
-      document.getElementById('stat-mem').innerHTML = `${mem.toFixed(0)}% <span class="stat-trend">${randomTrend()}</span>`;
-      document.getElementById('stat-disk').innerHTML = `${(100 - 35).toFixed(0)}% <span class="stat-trend">→</span>`; // Assume 35% used
-      document.getElementById('stat-agents').innerHTML = `${agents || 0} <span class="status-dot"></span>`;
-      
-      // Apply color classes to stat cards
-      document.querySelector('[id="stat-cpu"]').closest('.stat-card').className = `stat-card ${getCpuHealth(cpu)}`;
-      document.querySelector('[id="stat-mem"]').closest('.stat-card').className = `stat-card ${getMemHealth(mem)}`;
-      document.querySelector('[id="stat-disk"]').closest('.stat-card').className = `stat-card health-good`;
-      document.querySelector('[id="stat-agents"]').closest('.stat-card').className = `stat-card ${getAgentHealth(agents)}`;
-    })
-    .catch(e => console.error('Failed to load home stats:', e));
-}
-
 
 function loadDocsData(win) {
   const content = win.el.querySelector('#docs-content');
@@ -2785,154 +1701,25 @@ function sendMessage() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Load settings and apply time-of-day theme
-  loadSettings();
-  initClocks();
-  
-  // Update time-of-day theme every minute
-  setInterval(() => {
-    const settings = JSON.parse(localStorage.getItem('fridays-settings') || '{"time":"auto"}');
-    if (settings.time === 'auto') {
-      applyTimeTheme('auto');
-    }
-  }, 60000);
-  
-  loadHomeStats(); // Load system stats with colors and trends
-  setInterval(loadHomeStats, 10000); // Update stats every 10 seconds
+  loadTheme();
   updateActivityLog();
   setInterval(updateActivityLog, 5000);
   updateTicketQueue();
   setInterval(updateTicketQueue, 10000);
   
-  // Settings modal handlers
-  document.querySelectorAll('[data-time]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('[data-time]').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-    });
-  });
-  
-  document.querySelectorAll('[data-color]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('[data-color]').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      // Apply accent color immediately
-      const color = e.target.dataset.color;
-      document.documentElement.style.setProperty('--accent', color);
-    });
-  });
-  
-  document.getElementById('opacity-slider').addEventListener('input', (e) => {
-    // Slider reversed: right = more transparent (left = more opaque)
-    const sliderValue = parseInt(e.target.value);
-    const displayTransparency = 100 - sliderValue;
-    const actualOpacity = sliderValue / 100;
-    document.getElementById('opacity-value').textContent = displayTransparency + '%';
-    document.documentElement.style.setProperty('--glass-opacity', actualOpacity);
-  });
-  
-  // Time of day slider
-  document.getElementById('time-slider').addEventListener('input', (e) => {
-    updateTimeDisplay();
-    const timeMap = ['auto', 'morning', 'afternoon', 'evening', 'night'];
-    const selectedTime = timeMap[parseInt(e.target.value)];
-    applyTimeTheme(selectedTime);
-  });
-  
-  document.getElementById('close-settings').addEventListener('click', saveSettings);
-  
-  // Close settings on click outside
-  document.getElementById('settings-modal').addEventListener('click', (e) => {
-    if (e.target.id === 'settings-modal') {
-      closeSettings();
-    }
-  });
-  
-  // Show keyboard hints (auto-hide after 5 seconds)
-  const hints = document.getElementById('keyboard-hints');
-  hints.style.display = 'block';
-  setTimeout(() => {
-    hints.classList.add('fade-out');
-    setTimeout(() => { hints.style.display = 'none'; }, 300);
-  }, 5000);
-  
-  // Command palette (Ctrl+K)
+  // ESC key closes focused/topmost window
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault();
-      const palette = document.getElementById('command-palette');
-      palette.classList.toggle('open');
-      if (palette.classList.contains('open')) {
-        document.getElementById('command-palette-input').focus();
-      }
-    }
-    
-    // ESC closes command palette or window
     if (e.key === 'Escape') {
-      const palette = document.getElementById('command-palette');
-      if (palette.classList.contains('open')) {
-        palette.classList.remove('open');
-      } else {
-        const windows = Array.from(winManager.windows.values());
-        if (windows.length > 0) {
-          const topmost = windows.reduce((a, b) => 
-            parseInt(a.el.style.zIndex || 0) > parseInt(b.el.style.zIndex || 0) ? a : b
-          );
-          winManager.close(topmost.id);
-        }
+      const windows = Array.from(winManager.windows.values());
+      if (windows.length > 0) {
+        // Close the topmost (highest z-index) window
+        const topmost = windows.reduce((a, b) => 
+          parseInt(a.el.style.zIndex || 0) > parseInt(b.el.style.zIndex || 0) ? a : b
+        );
+        winManager.close(topmost.id);
       }
     }
   });
-  
-  // Command palette search
-  const paletteInput = document.getElementById('command-palette-input');
-  paletteInput.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    const results = document.getElementById('command-palette-results');
-    
-    const commands = [
-      { label: 'Chat', onclick: 'openWindow("chat", "Chat", "view-chat")' },
-      { label: 'Terminal', onclick: 'openWindow("terminal", "Terminal", "view-terminal")' },
-      { label: 'Memory', onclick: 'openWindow("memory", "Memory", "view-memory")' },
-      { label: 'Monitor', onclick: 'openWindow("monitor", "Monitor", "view-monitor")' },
-      { label: 'Documents', onclick: 'openWindow("docs", "Documents", "view-docs")' },
-      { label: 'Skills', onclick: 'openWindow("skills", "Skills", "view-skills")' },
-      { label: 'Tickets', onclick: 'openWindow("tickets", "Tickets", "view-tickets")' },
-      { label: 'Studio', onclick: 'openWindow("studio", "Studio", "view-studio")' },
-    ];
-    
-    const filtered = commands.filter(c => c.label.toLowerCase().includes(query));
-    results.innerHTML = filtered.map(c => `
-      <div class="palette-item" onclick="${c.onclick}; document.getElementById('command-palette').classList.remove('open');">
-        ${c.label}
-      </div>
-    `).join('');
-  });
-  
-  // Filter activity log
-  document.getElementById('activity-filter').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('#activity-log .activity-item').forEach(item => {
-      item.style.display = item.textContent.toLowerCase().includes(query) ? 'block' : 'none';
-    });
-  });
-  
-  // Filter ticket queue
-  document.getElementById('ticket-filter').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('#ticket-queue .ticket-item').forEach(item => {
-      item.style.display = item.textContent.toLowerCase().includes(query) ? 'flex' : 'none';
-    });
-  });
-  
-  // Close palette on click outside
-  document.getElementById('command-palette').addEventListener('click', (e) => {
-    if (e.target.id === 'command-palette') {
-      e.target.classList.remove('open');
-    }
-  });
-  
-  // ESC key closes focused/topmost window (already handled above)
   
   // Add terminal buttons
   const btnContainer = document.getElementById('terminal-buttons');
@@ -3002,14 +1789,6 @@ function updateTicketQueue() {
     });
 }
 
-</script>
-
-<!-- Debug clocks -->
-<script>
-setTimeout(() => {
-  const container = document.getElementById('world-clocks');
-  console.log('🔍 world-clocks HTML length:', container?.innerHTML.length || 'NOT FOUND');
-}, 1500);
 </script>
 
 </body>

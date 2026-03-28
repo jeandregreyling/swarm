@@ -28,7 +28,6 @@ import orchestrator
 from monitor import get_system_status
 from sandpits import get_sandpit_stats, get_recent_log as sandpit_log
 from system_clock import get_timestamp, get_timestamp_iso, get_full_time_string
-from theme_engine import get_themed_html
 
 app = Flask(__name__)
 
@@ -188,9 +187,9 @@ def _duck_stats():
 
 @app.route('/')
 def index():
-    """Render themed terminal. Theme engine handles CSS injection."""
-    html = get_themed_html()
-    return Response(html, mimetype='text/html')
+    convs = _recent_conversations()
+    stats = _duck_stats()
+    return render_template('terminal.html', conversations=convs, duck_stats=stats)
 
 
 @app.route('/api/conversations')
@@ -318,23 +317,6 @@ def api_memory():
     mn    = int(request.args.get('min', 3))
     agent = request.args.get('agent', '')
     return jsonify(_memory_search(q, mn, agent))
-
-
-@app.route('/api/studio')
-def api_studio():
-    """Studio cockpit data — agents, queue, config status."""
-    status = get_system_status()
-    conn = get_connection()
-    
-    # Get queue length
-    queue_info = conn.execute('SELECT COUNT(*) as count FROM queue').fetchone()
-    
-    return jsonify({
-        'agents': status.get('agents', {}),
-        'queue_length': queue_info['count'] if queue_info else 0,
-        'system_load': status.get('load_average', '—'),
-        'memory_usage': status.get('memory_usage', '—'),
-    })
 
 
 @app.route('/api/memory/<int:row_id>', methods=['DELETE'])
@@ -1046,6 +1028,47 @@ def api_shell_execute():
 def api_terminal_run():
     """Alias for /api/shell/execute for backward compatibility."""
     return api_shell_execute()
+
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    """Send a chat message to the swarm."""
+    data = request.get_json() or {}
+    message = data.get('message', '').strip()
+    
+    if not message:
+        return jsonify({'ok': False, 'response': 'Empty message'}), 400
+    
+    try:
+        # Create new conversation or use existing
+        conv_id = new_conversation('terminal-ui', message[:100])
+        log_message(conv_id, 'user', message)
+        
+        # Route to appropriate agent (simplified)
+        response = orchestrator.ask_agent('gemma', message)
+        
+        log_message(conv_id, 'swarm', response)
+        
+        return jsonify({
+            'ok': True,
+            'response': response,
+            'conversation_id': conv_id,
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'response': f'Error: {str(e)}'}), 500
+
+
+@app.route('/api/monitor')
+def api_monitor():
+    """Monitor data for the home dashboard."""
+    status = get_system_status()
+    return jsonify({
+        'agents_online': status.get('agents', {}).get('online', 0),
+        'last_activity': status.get('last_activity', '—'),
+        'pending_tasks': status.get('pending_tasks', 0),
+        'system_load': status.get('load_average', '—'),
+        'memory_usage': status.get('memory_usage', '—'),
+    })
 
 
 @app.route('/api/monitor/stats')

@@ -188,9 +188,9 @@ def _duck_stats():
 
 @app.route('/')
 def index():
-    """Render themed terminal. Theme engine handles CSS injection."""
-    html = get_themed_html()
-    return Response(html, mimetype='text/html')
+    convs = _recent_conversations()
+    stats = _duck_stats()
+    return render_template('terminal.html', conversations=convs, duck_stats=stats)
 
 
 @app.route('/api/conversations')

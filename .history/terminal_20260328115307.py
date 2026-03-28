@@ -28,7 +28,6 @@ import orchestrator
 from monitor import get_system_status
 from sandpits import get_sandpit_stats, get_recent_log as sandpit_log
 from system_clock import get_timestamp, get_timestamp_iso, get_full_time_string
-from theme_engine import get_themed_html
 
 app = Flask(__name__)
 
@@ -188,9 +187,9 @@ def _duck_stats():
 
 @app.route('/')
 def index():
-    """Render themed terminal. Theme engine handles CSS injection."""
-    html = get_themed_html()
-    return Response(html, mimetype='text/html')
+    convs = _recent_conversations()
+    stats = _duck_stats()
+    return render_template('terminal.html', conversations=convs, duck_stats=stats)
 
 
 @app.route('/api/conversations')
@@ -207,12 +206,6 @@ def api_system_time():
         'full_string': get_full_time_string(),  # "Wed, March 26 • 2:45:33 PM UTC"
         'unix': int(__import__('time').time())  # Unix timestamp for JS
     })
-
-
-@app.route('/api/system')
-def api_system():
-    """Return full system status for System tab"""
-    return jsonify(get_system_status())
 
 
 @app.route('/api/conversations/<int:conv_id>/messages')
@@ -318,23 +311,6 @@ def api_memory():
     mn    = int(request.args.get('min', 3))
     agent = request.args.get('agent', '')
     return jsonify(_memory_search(q, mn, agent))
-
-
-@app.route('/api/studio')
-def api_studio():
-    """Studio cockpit data — agents, queue, config status."""
-    status = get_system_status()
-    conn = get_connection()
-    
-    # Get queue length
-    queue_info = conn.execute('SELECT COUNT(*) as count FROM queue').fetchone()
-    
-    return jsonify({
-        'agents': status.get('agents', {}),
-        'queue_length': queue_info['count'] if queue_info else 0,
-        'system_load': status.get('load_average', '—'),
-        'memory_usage': status.get('memory_usage', '—'),
-    })
 
 
 @app.route('/api/memory/<int:row_id>', methods=['DELETE'])
@@ -1199,65 +1175,12 @@ def api_ghost_circle():
     return jsonify(get_ghost_circle_entries(limit=limit))
 
 
-@app.route('/api/monitor')
-def api_monitor():
-    """Monitor data for the home dashboard."""
-    from monitor import get_system_status
-    status = get_system_status()
-    return jsonify({
-        'agents_online': status.get('agents', {}).get('online', 0),
-        'last_activity': status.get('last_activity', '—'),
-        'pending_tasks': status.get('pending_tasks', 0),
-        'system_load': status.get('load_average', '—'),
-        'memory_usage': status.get('memory_usage', '—'),
-    })
-
-
-@app.route('/api/chat', methods=['POST'])
-def api_chat():
-    """Send a chat message to the swarm."""
-    data = request.get_json() or {}
-    message = data.get('message', '').strip()
-    
-    if not message:
-        return jsonify({'ok': False, 'response': 'Empty message'}), 400
-    
-    try:
-        # Create new conversation or use existing
-        conv_id = new_conversation('terminal-ui', message[:100])
-        log_message(conv_id, 'user', message)
-        
-        # Route to appropriate agent (simplified)
-        response = orchestrator.ask_agent('gemma', message)
-        
-        log_message(conv_id, 'swarm', response)
-        
-        return jsonify({
-            'ok': True,
-            'response': response,
-            'conversation_id': conv_id,
-        })
-    except Exception as e:
-        return jsonify({'ok': False, 'response': f'Error: {str(e)}'}), 500
-
-
 @app.route('/api/activity')
 def api_activity():
     from database import get_activity_log
     since = int(request.args.get('since', 0))
     limit = int(request.args.get('limit', 100))
-    logs = get_activity_log(limit=limit, since_id=since)
-    
-    # Format for frontend
-    activities = []
-    for log in logs:
-        activities.append({
-            'timestamp': log.get('created_at', '—')[:16],
-            'message': f"{log.get('service', 'System')}: {log.get('event', '')} {log.get('detail', '')}".strip(),
-            'level': 'info',  # Could be enhanced based on event type
-        })
-    
-    return jsonify({'activities': activities})
+    return jsonify(get_activity_log(limit=limit, since_id=since))
 
 
 @app.route('/api/activity/stream')

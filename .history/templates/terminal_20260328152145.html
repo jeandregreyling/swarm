@@ -1382,7 +1382,7 @@ input[type="range"]::-moz-range-thumb:hover {
       <div id="home-title">Fridays <span>⬡</span></div>
       <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Seven's Swarm</div>
     </div>
-    <div id="world-clocks"><span style="color: var(--accent);">🕐</span></div>
+    <div id="world-clocks"></div>
     <div id="time-display"></div>
     <div id="home-controls">
       <button onclick="toggleSettings()" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings">⚙️</button>
@@ -2189,42 +2189,34 @@ function getAllTimezones() {
 
 function updateWorldClocks() {
   const container = document.getElementById('world-clocks');
-  if (!container) {
-    console.log('ERROR: world-clocks container not found');
-    return;
-  }
+  if (!container) return;
   
-  try {
-    const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || JSON.stringify([
-      { name: 'Melbourne', offset: 11 },
-      { name: 'Singapore', offset: 8 },
-      { name: 'Delhi', offset: 5.5 },
-      { name: 'Cape Town', offset: 2 },
-      { name: 'New York', offset: -5 }
-    ]));
+  const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || JSON.stringify([
+    { name: 'Melbourne', offset: 11 },
+    { name: 'Singapore', offset: 8 },
+    { name: 'Delhi', offset: 5.5 },
+    { name: 'Cape Town', offset: 2 },
+    { name: 'New York', offset: -5 }
+  ]));
+  
+  let html = '';
+  savedZones.forEach((zone, idx) => {
+    const time = getTimeForTimezone(zone.offset);
+    const digital = createDigitalTime(time);
+    const analog = createAnalogClockHTML(time);
+    const offsetStr = zone.offset >= 0 ? `+${zone.offset}` : `${zone.offset}`;
     
-    let html = '';
-    savedZones.forEach((zone, idx) => {
-      const time = getTimeForTimezone(zone.offset);
-      const digital = createDigitalTime(time);
-      const analog = createAnalogClockHTML(time);
-      const offsetStr = zone.offset >= 0 ? `+${zone.offset}` : `${zone.offset}`;
-      
-      html += `
-        <div class="world-clock-item" onclick="openTimezonePicker(${idx})" style="gap: 8px;">
-          ${analog}
-          <div style="font-family: 'Courier New', monospace; font-size: 11px; color: var(--accent); letter-spacing: 1px; text-align: center; line-height: 1.3;">${digital}</div>
-          <div class="zone" style="font-size: 11px;">${zone.name}</div>
-          <div style="font-size: 10px; color: var(--text-dim);">UTC ${offsetStr}</div>
-        </div>
-      `;
-    });
-    
-    container.innerHTML = html;
-    console.log('✅ Clocks updated:', savedZones.length, 'zones');
-  } catch(e) {
-    console.log('ERROR in clocks:', e.message, e.stack);
-  }
+    html += `
+      <div class="world-clock-item" onclick="openTimezonePicker(${idx})" style="gap: 8px;">
+        ${analog}
+        <div style="font-family: 'Courier New', monospace; font-size: 11px; color: var(--accent); letter-spacing: 1px; text-align: center; line-height: 1.3;">${digital}</div>
+        <div class="zone" style="font-size: 11px;">${zone.name}</div>
+        <div style="font-size: 10px; color: var(--text-dim);">UTC ${offsetStr}</div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
 }
 
 function openTimezonePicker(clockIndex) {
@@ -3002,14 +2994,6 @@ function updateTicketQueue() {
     });
 }
 
-</script>
-
-<!-- Debug clocks -->
-<script>
-setTimeout(() => {
-  const container = document.getElementById('world-clocks');
-  console.log('🔍 world-clocks HTML length:', container?.innerHTML.length || 'NOT FOUND');
-}, 1500);
 </script>
 
 </body>

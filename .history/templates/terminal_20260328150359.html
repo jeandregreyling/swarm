@@ -296,12 +296,15 @@ body {
 
 #world-clocks {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  flex: 1;
-  padding: 0 16px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 0 8px;
+  min-width: 0;
+  height: 60px;
+  align-content: center;
 }
 
 .world-clock-item {
@@ -309,28 +312,26 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 6px;
+  gap: 4px;
   font-size: 10px;
   color: var(--text-dim);
   cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 8px;
+  transition: all 0.2s;
+  padding: 4px;
   border-radius: 6px;
   flex-shrink: 0;
-  min-width: 80px;
-  text-align: center;
+  min-width: fit-content;
 }
 
 .world-clock-item:hover {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
   color: var(--text);
-  transform: translateY(-2px);
+  transform: scale(1.05);
 }
 
-.zone {
-  font-weight: 600;
-  font-size: 11px;
-  color: var(--text);
+.world-clock-item svg {
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 .world-clock-item .zone {
@@ -1382,7 +1383,7 @@ input[type="range"]::-moz-range-thumb:hover {
       <div id="home-title">Fridays <span>⬡</span></div>
       <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Seven's Swarm</div>
     </div>
-    <div id="world-clocks"><span style="color: var(--accent);">🕐</span></div>
+    <div id="world-clocks"></div>
     <div id="time-display"></div>
     <div id="home-controls">
       <button onclick="toggleSettings()" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings">⚙️</button>
@@ -2106,52 +2107,48 @@ function updateHomeTimeDisplay() {
   }
 }
 
-// Get time for a specific timezone offset
-function getTimeForTimezone(offset) {
-  const now = new Date();
-  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-  const timeInZone = new Date(utcTime + (offset * 3600000));
-  
-  return {
-    hours: timeInZone.getHours(),
-    minutes: timeInZone.getMinutes(),
-    seconds: timeInZone.getSeconds()
-  };
-}
-
-// Create digital time display (HH:MM:SS)
-function createDigitalTime(time) {
-  const h = String(time.hours).padStart(2, '0');
-  const m = String(time.minutes).padStart(2, '0');
-  const s = String(time.seconds).padStart(2, '0');
-  return `${h}:${m}:${s}`;
-}
-
-// Create analogue clock with CSS transforms
-function createAnalogClockHTML(time) {
-  const hours = time.hours % 12;
-  const minutes = time.minutes;
-  const seconds = time.seconds;
-  
-  const secondAngle = (seconds * 6);
-  const minuteAngle = (minutes * 6) + (seconds * 0.1);
-  const hourAngle = (hours * 30) + (minutes * 0.5);
-  
-  return `
-    <div style="position: relative; width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center;">
-      <!-- Hour hand -->
-      <div style="position: absolute; width: 3px; height: 16px; background: var(--accent); border-radius: 2px; bottom: 50%; left: 50%; margin-left: -1.5px; transform-origin: bottom center; transform: translateX(-50%) rotate(${hourAngle}deg);"></div>
-      
-      <!-- Minute hand -->
-      <div style="position: absolute; width: 2px; height: 22px; background: var(--text); border-radius: 1px; bottom: 50%; left: 50%; margin-left: -1px; transform-origin: bottom center; transform: translateX(-50%) rotate(${minuteAngle}deg);"></div>
-      
-      <!-- Second hand -->
-      <div style="position: absolute; width: 1px; height: 26px; background: var(--accent); bottom: 50%; left: 50%; margin-left: -0.5px; transform-origin: bottom center; transform: translateX(-50%) rotate(${secondAngle}deg);"></div>
-      
-      <!-- Center dot -->
-      <div style="width: 6px; height: 6px; background: var(--accent); border-radius: 50%; z-index: 10;"></div>
-    </div>
-  `;
+function drawAnalogClock(offset) {
+  try {
+    const utc = new Date().getTime() + new Date().getTimezoneOffset() * 60000;
+    const localTime = new Date(utc + (3600000 * offset));
+    
+    const hours = localTime.getHours() % 12;
+    const minutes = localTime.getMinutes();
+    const seconds = localTime.getSeconds();
+    
+    const hourAngle = (hours * 30) + (minutes * 0.5);  // 360 / 12 = 30 per hour
+    const minuteAngle = (minutes * 6) + (seconds * 0.1);  // 360 / 60 = 6 per minute
+    const secondAngle = seconds * 6;  // 360 / 60 = 6 per second
+    
+    return `
+      <svg width="48" height="48" viewBox="0 0 48 48" style="background: rgba(255,255,255,0.05); border-radius: 50%; border: 1px solid var(--border);">
+        <!-- Clock face -->
+        <circle cx="24" cy="24" r="22" fill="none" stroke="var(--border)" stroke-width="0.5"/>
+        
+        <!-- Hour markers -->
+        <circle cx="24" cy="4" r="1" fill="var(--text-dim)" opacity="0.3"/>
+        <circle cx="44" cy="24" r="1" fill="var(--text-dim)" opacity="0.3"/>
+        <circle cx="24" cy="44" r="1" fill="var(--text-dim)" opacity="0.3"/>
+        <circle cx="4" cy="24" r="1" fill="var(--text-dim)" opacity="0.3"/>
+        
+        <!-- Hour hand -->
+        <line x1="24" y1="24" x2="24" y2="12" 
+          stroke="var(--text)" stroke-width="2" stroke-linecap="round"
+          transform="rotate(${hourAngle} 24 24)"/>
+        
+        <!-- Minute hand -->
+        <line x1="24" y1="24" x2="24" y2="6" 
+          stroke="var(--text-dim)" stroke-width="1.5" stroke-linecap="round"
+          transform="rotate(${minuteAngle} 24 24)"/>
+        
+        <!-- Center dot -->
+        <circle cx="24" cy="24" r="1.5" fill="var(--accent)"/>
+      </svg>
+    `;
+  } catch (error) {
+    console.error('Error drawing analog clock for offset', offset, ':', error);
+    return '<svg width="48" height="48"></svg>';
+  }
 }
 
 function getAllTimezones() {
@@ -2188,42 +2185,32 @@ function getAllTimezones() {
 }
 
 function updateWorldClocks() {
+  // Load saved timezones or use defaults
+  const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || JSON.stringify([
+    { name: 'Melbourne', offset: 11 },
+    { name: 'Singapore', offset: 8 },
+    { name: 'Delhi', offset: 5.5 },
+    { name: 'Cape Town', offset: 2 },
+    { name: 'New York', offset: -5 }
+  ]));
+  
   const container = document.getElementById('world-clocks');
   if (!container) {
-    console.log('ERROR: world-clocks container not found');
+    console.error('world-clocks container not found');
     return;
   }
   
   try {
-    const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || JSON.stringify([
-      { name: 'Melbourne', offset: 11 },
-      { name: 'Singapore', offset: 8 },
-      { name: 'Delhi', offset: 5.5 },
-      { name: 'Cape Town', offset: 2 },
-      { name: 'New York', offset: -5 }
-    ]));
-    
-    let html = '';
-    savedZones.forEach((zone, idx) => {
-      const time = getTimeForTimezone(zone.offset);
-      const digital = createDigitalTime(time);
-      const analog = createAnalogClockHTML(time);
-      const offsetStr = zone.offset >= 0 ? `+${zone.offset}` : `${zone.offset}`;
-      
-      html += `
-        <div class="world-clock-item" onclick="openTimezonePicker(${idx})" style="gap: 8px;">
-          ${analog}
-          <div style="font-family: 'Courier New', monospace; font-size: 11px; color: var(--accent); letter-spacing: 1px; text-align: center; line-height: 1.3;">${digital}</div>
-          <div class="zone" style="font-size: 11px;">${zone.name}</div>
-          <div style="font-size: 10px; color: var(--text-dim);">UTC ${offsetStr}</div>
-        </div>
-      `;
-    });
-    
+    const html = savedZones.map((zone, idx) => `
+    <div class="world-clock-item" onclick="openTimezonePicker(${idx})">
+      ${drawAnalogClock(zone.offset)}
+      <div class="zone">${zone.name}</div>
+    </div>
+  `).join('');
     container.innerHTML = html;
-    console.log('✅ Clocks updated:', savedZones.length, 'zones');
-  } catch(e) {
-    console.log('ERROR in clocks:', e.message, e.stack);
+    console.log('World clocks updated with', savedZones.length, 'zones');
+  } catch (error) {
+    console.error('Error updating world clocks:', error);
   }
 }
 
@@ -2279,29 +2266,26 @@ function selectTimezone(offset, name) {
 }
 
 function initClocks() {
-  console.log('🕐 Initializing world clocks...');
-  
-  // Render immediately
-  updateHomeTimeDisplay();
-  updateWorldClocks();
-  
-  // Update time display once per minute
-  setInterval(updateHomeTimeDisplay, 60000);
-  
-  // Update clocks every 5 seconds (reduced from 1 second for performance)
-  setInterval(updateWorldClocks, 5000);
-  
-  // Close timezone picker when clicking outside
-  const modal = document.getElementById('timezone-picker-modal');
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.classList.remove('open');
-      }
-    });
+  try {
+    console.log('Initializing clocks...');
+    updateHomeTimeDisplay();
+    updateWorldClocks();
+    setInterval(updateHomeTimeDisplay, 60000);  // Update mood time every minute
+    setInterval(updateWorldClocks, 10000);  // Update analog clocks more frequently
+    
+    // Close timezone picker when clicking outside
+    const modal = document.getElementById('timezone-picker-modal');
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('open');
+        }
+      });
+    }
+    console.log('Clocks initialized successfully');
+  } catch (error) {
+    console.error('Error initializing clocks:', error);
   }
-  
-  console.log('✅ World clocks ready - updating every 5 seconds');
 }
 
 // Validation function for troubleshooting - call this in browser console
@@ -3002,14 +2986,6 @@ function updateTicketQueue() {
     });
 }
 
-</script>
-
-<!-- Debug clocks -->
-<script>
-setTimeout(() => {
-  const container = document.getElementById('world-clocks');
-  console.log('🔍 world-clocks HTML length:', container?.innerHTML.length || 'NOT FOUND');
-}, 1500);
 </script>
 
 </body>
