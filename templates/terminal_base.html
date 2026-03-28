@@ -901,6 +901,46 @@ input[type="range"]::-moz-range-thumb:hover {
 .toast.remove {
   animation: toast-slide-out 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   WORLD CLOCKS
+   ═════════════════════════════════════════════════════════════════════════ */
+#world-clocks {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 0 16px;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.world-clock-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.world-clock-item:hover {
+  background: rgba(255,255,255,0.08);
+  transform: translateY(-2px);
+}
+
+.world-clock-item .zone {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text);
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    RESPONSIVE
    ───────────────────────────────────────────────────────────────────────── */
@@ -1957,8 +1997,8 @@ function initClocks() {
   // Update time display once per minute
   setInterval(updateHomeTimeDisplay, 60000);
   
-  // Update clocks every 5 seconds (reduced from 1 second for performance)
-  setInterval(updateWorldClocks, 5000);
+  // Update clocks every 1 second for accuracy
+  setInterval(updateWorldClocks, 1000);
   
   // Close timezone picker when clicking outside
   const modal = document.getElementById('timezone-picker-modal');
@@ -1970,7 +2010,7 @@ function initClocks() {
     });
   }
   
-  console.log('✅ World clocks ready - updating every 5 seconds');
+  console.log('✅ World clocks ready - updating every 1 second');
 }
 
 function saveSettings() {
