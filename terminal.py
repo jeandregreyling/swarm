@@ -158,6 +158,7 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
                SELECT id, 'memory_ten' AS source_table, agent, subject, content, tags, importance, created_at
                FROM memory_ten
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
+                 AND importance >= ? AND archived = 0
                ORDER BY created_at DESC, importance DESC LIMIT ?""",
             (like, like, like, min_importance,
              like, like, like, min_importance,
