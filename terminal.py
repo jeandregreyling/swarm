@@ -208,6 +208,12 @@ def api_system_time():
     })
 
 
+@app.route('/api/system')
+def api_system():
+    """Return full system status for System tab"""
+    return jsonify(get_system_status())
+
+
 @app.route('/api/conversations/<int:conv_id>/messages')
 def api_conversation_messages(conv_id):
     conn = get_connection()
