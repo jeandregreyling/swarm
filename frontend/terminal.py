@@ -12,6 +12,10 @@ python3 terminal.py
 
 import sys
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/core/pipeline')
+sys.path.insert(0, '/home/seven/swarm/lib/system')
+sys.path.insert(0, '/home/seven/swarm/frontend')
 
 from flask import Flask, render_template, request, Response, jsonify
 import json

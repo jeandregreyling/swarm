@@ -1,5 +1,11 @@
 import sys
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/core/pipeline')
+sys.path.insert(0, '/home/seven/swarm/lib/search')
+sys.path.insert(0, '/home/seven/swarm/lib/system')
+sys.path.insert(0, '/home/seven/swarm/lib/email')
+
 from database import (new_conversation, log_message, save_memory,
                       search_memory, search_project_docs, get_ghost_history,
                       get_all_memories, save_agent_memory, get_agent_memory,

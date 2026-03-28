@@ -5,6 +5,9 @@ Clean version for the useful build phase.
 
 import sys
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/lib/system')
+sys.path.insert(0, '/home/seven/swarm/lib/email')
 from logging_bridge import log_action, log_ticket_lifecycle
 from database import get_connection, save_memory
 from config import GHOST_EMAIL

@@ -17,6 +17,11 @@ Flow for trusted senders:
 
 import sys
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/core/pipeline')
+sys.path.insert(0, '/home/seven/swarm/lib/email')
+sys.path.insert(0, '/home/seven/swarm/lib/system')
+sys.path.insert(0, '/home/seven/swarm/agents/ghost')
 
 from config import GMAIL_ADDRESS, SEVEN_EMAIL, GHOST_EMAIL, DB_PATH, GMAIL_PASSWORD
 from email_handler import fetch_unread, send_reply, mark_as_read

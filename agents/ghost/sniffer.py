@@ -7,6 +7,8 @@ import os
 import sys
 from datetime import datetime
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/lib/system')
 
 from database import get_connection, save_agent_memory
 from sandpits import get_all_sandpit_files

@@ -13,6 +13,8 @@ Neither step is optional.
 
 import sys
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/lib/system')
 from system_clock import get_timestamp
 from logging_bridge import log_action, log_ticket_lifecycle, batch_commit
 import logging

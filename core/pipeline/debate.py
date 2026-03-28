@@ -1,5 +1,7 @@
 import sys
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/lib/search')
 from database import (new_conversation, log_message, save_memory,
                       search_memory, get_ghost_history, get_all_memories)
 from internet import search_web

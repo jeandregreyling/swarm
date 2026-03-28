@@ -14,6 +14,7 @@ It stamps and files. That is all.
 
 import sys
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
 import logging
 
 logger = logging.getLogger('seven.queue_manager')
