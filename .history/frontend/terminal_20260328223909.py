@@ -1060,12 +1060,6 @@ def api_terminal_run():
     return api_shell_execute()
 
 
-@app.route('/api/hands/run', methods=['POST'])
-def api_hands_run():
-    """Alias for /api/shell/execute - named for Ghost/terminal metaphor."""
-    return api_shell_execute()
-
-
 @app.route('/api/monitor/stats')
 def api_monitor_stats():
     """System snapshot + API usage counts for Monitor tab."""

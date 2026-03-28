@@ -119,7 +119,7 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
         tbl = _AGENT_TABLES[agent_key]
         archived_clause = "AND archived = 0"
         rows = conn.execute(
-            f"""SELECT id, '{tbl}' AS source_table, agent, subject, content, tags, importance, created_at
+            f"""SELECT id, '{tbl}' AS source_table, agent, subject AS title, content, tags, importance, created_at
                FROM {tbl}
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? {archived_clause}
@@ -138,37 +138,37 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
         ).fetchall()
     else:
         rows = conn.execute(
-            """SELECT id, 'memory' AS source_table, agent, subject, content, tags, importance, created_at
+            """SELECT id, 'memory' AS source_table, agent, subject AS title, content, tags, importance, created_at
                FROM memory
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_llama' AS source_table, agent, subject, content, tags, importance, created_at
+               SELECT id, 'memory_llama' AS source_table, agent, subject AS title, content, tags, importance, created_at
                FROM memory_llama
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_qwen' AS source_table, agent, subject, content, tags, importance, created_at
+               SELECT id, 'memory_qwen' AS source_table, agent, subject AS title, content, tags, importance, created_at
                FROM memory_qwen
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_gemma' AS source_table, agent, subject, content, tags, importance, created_at
+               SELECT id, 'memory_gemma' AS source_table, agent, subject AS title, content, tags, importance, created_at
                FROM memory_gemma
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_eight' AS source_table, agent, subject, content, tags, importance, created_at
+               SELECT id, 'memory_eight' AS source_table, agent, subject AS title, content, tags, importance, created_at
                FROM memory_eight
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_nine' AS source_table, agent, subject, content, tags, importance, created_at
+               SELECT id, 'memory_nine' AS source_table, agent, subject AS title, content, tags, importance, created_at
                FROM memory_nine
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
-               SELECT id, 'memory_ten' AS source_table, agent, subject, content, tags, importance, created_at
+               SELECT id, 'memory_ten' AS source_table, agent, subject AS title, content, tags, importance, created_at
                FROM memory_ten
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
@@ -1057,12 +1057,6 @@ def api_shell_execute():
 @app.route('/api/terminal/run', methods=['POST'])
 def api_terminal_run():
     """Alias for /api/shell/execute for backward compatibility."""
-    return api_shell_execute()
-
-
-@app.route('/api/hands/run', methods=['POST'])
-def api_hands_run():
-    """Alias for /api/shell/execute - named for Ghost/terminal metaphor."""
     return api_shell_execute()
 
 
