@@ -710,7 +710,8 @@ body {
 /* ─────────────────────────────────────────────────────────────────────────
    SETTINGS MODAL
    ───────────────────────────────────────────────────────────────────────── */
-#settings-modal {
+#settings-modal,
+#ticket-detail-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -722,9 +723,17 @@ body {
   align-items: center;
   justify-content: center;
 }
-#settings-modal.open {
+#settings-modal.open,
+#ticket-detail-modal.open {
   display: flex;
   animation: fade-in 0.2s ease-out;
+}
+#ticket-detail-modal .modal-content {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
 }
 #settings-box {
   background: var(--card);
