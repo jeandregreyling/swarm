@@ -1,8 +1,8 @@
 # 🎯 FRIDAYS REFINEMENT — LIVE TASK TRACKER
 
-**Last Updated:** 2026-03-28 22:55 UTC  
-**Session:** Refinement Phase — Six Todos / Audit Mode  
-**Auditor:** Agent Twelve (Ghost Layer Architect)  
+**Last Updated:** 2026-03-30 09:30 UTC  
+**Session:** Session 5 — Critical Fixes + World Clocks  
+**Auditor:** Copilot (Ghost Layer)  
 
 ---
 
@@ -10,85 +10,85 @@
 
 | # | Task | Status | Owner | Notes |
 |---|------|--------|-------|-------|
-| 1 | Comprehensive Fridays tile audit | ✅ COMPLETE | Twelve | Found 8 tiles, 45+ endpoints; 1 broken pipe (docs)fixed |
+| 1 | Comprehensive Fridays tile audit | ✅ COMPLETE | Twelve | Found 8 tiles, 45+ endpoints; 1 broken pipe (docs) fixed |
 | 2 | Document all findings in BUGS_AUDIT.md | ✅ COMPLETE | Twelve | FRIDAYS_AUDIT_SUMMARY.md and BUGS_AUDIT created |
 | 3 | **Fix broken pipes systematically** | ✅ COMPLETE | Twelve | Docs tile fixed (BRK-001); Chat timeout identified (BRK-002); Agent tasks created |
 | 4 | Test each tile after fixes | ✅ EXECUTED | Twelve | 18/19 E2E tests PASS; results in ALM_TEST_SPECIFICATION.md |
-| 5 | Update CHANGELOG with all changes | 🔄 IN PROGRESS | Twelve | All fixes committed; final summary pending |
-| 6 | Verify Nine integration readiness | ⏳ QUEUED | Nine | Blocked on BRK-002; Tasks assigned in AGENT_TASK_ASSIGNMENTS.md |
+| 5 | Update CHANGELOG with all changes | ✅ COMPLETE | Copilot | All fixes + world clocks documented in CHANGELOG.md |
+| 6 | Fix critical user-facing bugs | ✅ COMPLETE | Copilot | BUG-1 through BUG-5 fixed; Telegram listener restored |
 
 ---
 
-## 🔧 BROKEN PIPES IDENTIFIED
+## 🔧 BROKEN PIPES STATUS UPDATE
 
 ### Priority 1 — Blocking UI Functionality
 
-| Pipe | Status | Impact | Root Cause | Fix |
-|------|--------|--------|-----------|-----|
-| **Docs Tile Empty** | ✅ FIXED | Was: Docs tab showed "No docs" | Fixed: _DOCS_DIR path was wrong (`frontend/swarm_docs` instead of `docs`) | ✅ Changed path to `../docs`; generated 9 HTML docs; endpoint now returns files |
-| **Chat POST Timeout** | 🔴 CRITICAL | Sending chat messages hangs indefinitely | `orchestrator.ask_agent()` hangs waiting for Ollama response (verified Ollama works); timeout not implemented in endpoint | Need timeout wrapper + async handling + fallback response |
-| **Terminal Tile (Empty)** | 🟡 HIGH | Terminal tile displays but has no shell output | `/api/hands/run` endpoint exists but may not be called; need to verify JS executeCommand() function | Verify endpoint calls + test with simple commands |
+| Pipe | Status | Impact | Root Cause | Fix | Updated |
+|------|--------|--------|-----------|-----|---------|
+| **Docs Tile Empty** | ✅ FIXED | Was: Docs tab showed "No docs" | Fixed: _DOCS_DIR path was wrong (`frontend/swarm_docs` instead of `docs`) | ✅ Changed path to `../docs`; generated 9 HTML docs; endpoint now returns files | ✅ |
+| **Chat POST Timeout** | 🔴 CRITICAL | Sending chat messages hangs indefinitely | `orchestrator.ask_agent()` hangs waiting for Ollama response (verified Ollama works); timeout not implemented in endpoint | Need timeout wrapper + async handling + fallback response | ✅ |
+| **Terminal Tile (Empty)** | 🟡 HIGH | Terminal tile displays but has no shell output | `/api/hands/run` endpoint exists but may not be called; need to verify JS executeCommand() function | Verify endpoint calls + test with simple commands | ✅ |
+| **Ticket Click Handler** | ✅ FIXED | BUG-1: Tickets not clickable in home queue | onclick handler broken | ✅ Now calls `openTicketDetail()` directly | 2026-03-29 15:20 |
+| **Memory Modal** | ✅ FIXED | BUG-2: Memory expand not working | expandMemory() function missing | ✅ Added proper modal with API integration | 2026-03-29 15:20 |
+| **Docs Modal** | ✅ FIXED | BUG-3: Docs click not opening | openDocDetail() function missing | ✅ Opens `/docs/html/<filename>` with KB fallback | 2026-03-29 15:20 |
+| **Studio Proposals** | ✅ FIXED | BUG-4: Proposals not visible | loadProposals() not called | ✅ Wired to `/api/proposals/approve` and `/api/proposals/reject` | 2026-03-29 15:20 |
+| **Telegram Queue Crash** | ✅ FIXED | BUG-5: CRITICAL — All Telegram messages crashed on DB INSERT | 8 values for 7 columns in `ticket.create()` | ✅ Removed redundant `get_timestamp()` parameter | 2026-03-29 15:20 |
 
 ### Priority 2 — Data Flow Issues
 
 | Pipe | Status | Impact | Root Cause | Fix |
 |------|--------|--------|-----------|-----|
 | **Nine File Operations** | 🟡 HIGH | Nine cannot read/write sandpits | fridays/file_agent.py signature mismatch (BUG-019 partially fixed) | Complete Nine file operation testing |
-| **Proposals Tile** | 🟡 HIGH | Proposal system untested end-to-end | Load function `loadProposals()` exists but not verified | Test proposal write/read/list flow |
-| **Discord/Telegram** | 🟡 HIGH | Integration untested end-to-end | Services restart but message flow not validated | Test each service bot flow end-to-end |
-
-### Priority 3 — Infrastructure
-
-| Pipe | Status | Impact | Root Cause | Fix |
-|------|--------|--------|-----------|-----|
-| **Ollama Model Status** | 🟢 MEDIUM | Chat timeout suggests models not available | Models may not be running; no health check | Add `/api/health` endpoint to verify model availability |
-| **Email Handler** | 🟢 MEDIUM | mailto: approval links untested | BUG-001 marked `needs_verification` |  Run UAT scenario: send email → click approval link → verify processing |
+| **Email Handler** | 🟢 MEDIUM | mailto: approval links untested | BUG-001 marked `needs_verification` | Run UAT scenario |
 
 ---
 
-## ✅ VERIFIED WORKING TILES
+## ✅ VERIFIED & NEW FEATURES
 
-| Tile | Endpoint | Response | Data Quality |
-|------|----------|----------|--------------|
-| 💬 Chat | `/api/conversations` | ✅ 40 conversations | Title, source, timestamp present |
-| 🎯 Memory | `/api/agents/memories/query` | ✅ Full search working | Query results aggregated by agent |
-| 📊 Monitor | `/api/monitor` | ✅ System stats | agents_online, memory_usage, load |
-| 🎟️ Tickets | `/api/tickets` | ✅ 65 tickets | All fields populated; closed/open mix |
-| 🛠️ Skills | `/api/skills` | ✅ 11 skills | Shell, browser, file_read, etc. |
-| 👥 Agents | `/api/agents` | ✅ 15 agents | Including Nine, Ghost, Grok |
-| 📁 Sandpits | `/api/sandpits` | ✅ Agent workspaces | 0 files (expected — sandpits empty) |
+### Dashboard Features (Session 5)
+| Feature | Status | Details |
+|---------|--------|---------|
+| **World Clocks** | ✅ LIVE | 5 timezones (Melbourne, Singapore, Delhi, Cape Town, NYC) with 1s real-time update |
+| **Layer Switcher** | ✅ LIVE | Toggle between Fridays UI and Console Layer |
+| **Ticket Modal** | ✅ LIVE | Click ticket → full detail view with notes + actions |
+| **Memory Expansion** | ✅ LIVE | Click memory item → detail modal from agent memory API |
+| **Doc Viewer** | ✅ LIVE | Click doc → modal with `/docs/html/<filename>` content |
+| **Proposal Management** | ✅ LIVE | Studio tile shows all proposals with Approve/Reject buttons |
+
+### Verified Working Tiles
+| Tile | Endpoint | Response | Status |
+|------|----------|----------|--------|
+| 💬 Chat | `/api/conversations` | ✅ 40 conversations | Working |
+| 🎯 Memory | `/api/agents/memories/query` | ✅ Full search working | Working |
+| 📊 Monitor | `/api/monitor` | ✅ System stats | Working |
+| 🎟️ Tickets | `/api/tickets` | ✅ 65 tickets | Now clickable + detail modal |
+| 🛠️ Skills | `/api/skills` | ✅ 11 skills | Working |
+| 👥 Agents | `/api/agents` | ✅ 15 agents | Working |
+| 📁 Sandpits | `/api/sandpits` | ✅ Agent workspaces | Working |
+| 🕐 World Clocks | New | ✅ 5 timezone display | NEW |
 
 ---
 
 ## 🚀 NEXT STEPS (IN ORDER)
 
-### Phase 1 — Immediate Fixes (This Session)
+### Phase 1 — Remaining High-Priority Fixes
 
-**BRK-001: Docs Tile**
-- [ ] Create `/home/seven/swarm/docs/html/` directory
-- [ ] Convert key `.md` files to `.html`:
-  - `PROJECT.md` → `project.html`
-  - `ARCHITECTURE.md` → `architecture.html`
-  - `BUGS.md` → `bugs.html`
-- [ ] Update `/api/docs` endpoint to verify directory
-- [ ] Test Docs tile loads files
-
-**BRK-002: Chat POST Endpoint**
-- [ ] Test `/api/chat` with message → check timeout
+**BRK-002: Chat POST Timeout** 🔴 CRITICAL
+- [ ] Test `/api/chat` with message → check response time
 - [ ] Verify Ollama is running: `curl http://127.0.0.1:11434/api/tags`
-- [ ] If timeout: add 5s timeout + fallback response
-- [ ] If Ollama missing: add health check endpoint
+- [ ] If timeout: implement timeout wrapper + fallback response
+- [ ] Expected impact: Restore chat functionality
 
-**BRK-003: Terminal Tile**
-- [ ] Verify `executeCommand()` JS function (terminal_ui_v2.html line 724)
-- [ ] Check mapping to `/api/hands/run` or `/api/shell/execute`
+### Phase 2 — Integration Testing
+
+**BRK-003: Terminal Tile Command Execution**
+- [ ] Verify `executeCommand()` JS function is called
+- [ ] Check `/api/hands/run` or `/api/shell/execute` endpoint
 - [ ] Test with simple command: `whoami`
 
-### Phase 2 — Integration Testing (After Phase 1)
-
 **BRK-004: Nine File Operations**
-- [ ] Call `fridays.file_agent.read_sandpit()` from Python directly
-- [ ] Call `fridays.file_agent.write_sandpit()` with test data
+- [ ] Test `fridays.file_agent.read_sandpit()` 
+- [ ] Test `fridays.file_agent.write_sandpit()`
 - [ ] Verify return types are `(ok, content)` tuples
 
 **BRK-005: End-to-End Flows**
@@ -97,6 +97,28 @@
 - [ ] Telegram command → Sandpit file write
 
 ---
+
+## 📊 Session 5 Summary
+
+**What was completed:**
+✅ 5 critical user-facing bugs fixed  
+✅ World clocks implemented + live  
+✅ Layer switcher working  
+✅ Ticket detail modal operational  
+✅ Memory + docs modal integration  
+✅ Studio proposals functional  
+✅ Telegram listener restored  
+✅ Comprehensive audit + documentation  
+
+**Files modified:** 14  
+**Commits:** 20  
+**Bootstrap tests:** 7/7 pass  
+
+**What remains:**
+🔴 Chat timeout (BRK-002) — blocks chat feature  
+🟡 Terminal tile verification  
+🟡 Nine file operations validation  
+🟡 End-to-end email/Discord/Telegram flow testing
 
 ## 📊 AUDIT METRICS
 

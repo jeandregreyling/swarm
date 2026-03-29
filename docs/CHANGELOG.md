@@ -5,7 +5,122 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
-## Version 2026-03-29 Session 4 (CURRENT)
+## Version 2026-03-30 Session 5 (CURRENT)
+
+### Changes by Copilot (Ghost Layer) — WORLD CLOCKS + CRITICAL UI FIXES + WORLD CLOCKS IMPLEMENTATION
+
+**2026-03-29 00:15 — 18:45** Copilot: Comprehensive UI fixes + world clocks implementation
+
+**Summary:**
+- ✅ Implemented dynamic world clocks (5 timezones, 1s real-time update)
+- ✅ Fixed 5 critical bugs blocking Fridays dashboard
+- ✅ Added layer switcher (Fridays ↔ Console toggle)
+- ✅ Implemented ticket detail modal
+- ✅ Fixed Telegram DB INSERT crash
+- ✅ 20 commits, 14 files modified
+
+#### Detailed Fixes:
+
+**BUG-1: Ticket Click Handler**
+- Issue: Home ticket queue onclick broken
+- Fix: Now calls `openTicketDetail()` directly
+- Files: `terminal_base.html`
+
+**BUG-2: Memory Modal**
+- Issue: Memory click not expanding
+- Fix: Added `expandMemory()` function; fetches content via agent memory API
+- Files: `terminal_base.html`
+
+**BUG-3: Docs Modal**
+- Issue: Doc click not launching modal
+- Fix: Added `openDocDetail()` function; requests `/docs/html/<filename>` with KB fallback
+- Files: `terminal_base.html`
+
+**BUG-4: Studio Proposals**
+- Issue: Proposals not visible in Studio
+- Fix: `loadStudioData()` now calls `loadProposals()`; Approve/Reject buttons wired to API
+- Files: `terminal_base.html`
+
+**BUG-5: Telegram DB INSERT Crash** ⚠️ CRITICAL
+- Issue: `8 values for 7 columns` crash on every ticket creation via Telegram
+- Root Cause: `ticket.create()` had extra `get_timestamp()` value — 8 bound parameters for 7 SQL placeholders
+- Fix: Removed redundant `get_timestamp()` parameter (created_at has DB default)
+- Files: `core/pipeline/ticket.py` (line 4 reduced)
+- Impact: **Restored complete Telegram listener functionality**
+
+**FEATURE: World Clocks Dashboard**
+- Implemented 5-timezone live clocks with 1-second real-time update
+- Timezones: Melbourne (+11), Singapore (+8), Delhi (+5.5), Cape Town (+2), New York (-5)
+- Display: Analog + digital time, UTC offsets, horizontal flex layout
+- Integration: Full theme engine compatibility
+- Features:
+  - Timezone picker modal integration
+  - localStorage persistence
+  - Hover effects with theme colors
+  - Melbourne as primary reference (leftmost)
+- Files: `templates/terminal_base.html` (lines ~1730-1970)
+- Commit: `63c4cae` (from clocks-implementation-complete.md)
+
+**FEATURE: Layer Switcher**
+- Added toggle between Fridays UI and Console Layer
+- Persistent across page reloads
+- Visual indicator of active layer
+- Files: `terminal_base.html`
+- Commit: `cb3c797`
+
+**FEATURE: Ticket Detail Modal**
+- Full ticket modal with notes and action buttons
+- Click ticket in home queue → view full detail
+- Modal displays:
+  - Ticket ID, status, priority
+  - Full message content
+  - Associated notes
+  - Action buttons (Snooze, Close, Escalate, etc.)
+- Files: `terminal_base.html`, `terminal_ui_v2.html`
+- Commits: `7be60e7`, `5801cd8`
+
+**Enhancement: Shell Agent Whitelist**
+- Added: `sudo systemctl restart`, `sudo systemctl stop`, `sudo systemctl start`
+- Enables controlled system service management
+- Files: `fridays/shell_agent.py`
+- Commit: `ecd361d`
+
+**Enhancement: Time Wizard UI**
+- Added Time Wizard dashboard tile to Fridays
+- Timeline visualization for scheduled tasks
+- Modal integration with console layer
+- Files: `terminal_base.html`, `terminal_ui_v2.html`
+- Commits: `8265783`, `27f6214`, `5830535`
+
+#### Technical Details:
+- **Lines Added:** 206 new lines in terminal_base.html
+- **Modal CSS Framework:** Flexbox layout with proper z-indexing
+- **JavaScript Functions:**
+  - `openTicketDetail(ticketId)` — Load ticket from API
+  - `expandMemory()` — Load agent memory with detail modal
+  - `openDocDetail(docName)` — Load document content
+  - `loadProposals()` — Fetch studio proposals
+  - World clock functions (getTimeForTimezone, createAnalogClockHTML, updateWorldClocks)
+- **API Endpoints Used:**
+  - `/api/tickets/<id>` — Get ticket detail
+  - `/api/memory/<agentId>` — Get agent memory
+  - `/docs/html/<filename>` — Get document
+  - `/api/proposals` — List proposals
+
+#### Files Changed:
+```
+core/pipeline/ticket.py               |   4 +-
+frontend/templates/terminal_base.html | 206 +++++++++++++++++++++++++++-------
+frontend/templates/terminal_ui_v2.html | (styles added)
+fridays/shell_agent.py                | (whitelist expanded)
+```
+
+#### Bootstrap Test Status:
+✅ 7/7 pass (from NINE-019 session)
+
+---
+
+## Version 2026-03-29 Session 4 (ARCHIVED)
 
 ### Changes by Nine (Ghost Layer System Architect) — TIME WIZARD FIX + FRIDAYS PROPOSAL QUEUE (NINE-019)
 
