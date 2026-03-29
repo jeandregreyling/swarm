@@ -636,29 +636,170 @@ body {
   }
 }
 
-/* Time Wizard */
-.tw-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
+/* ═══════════════════════════════════════════════════════════════════════════
+   TIME WIZARD — Dashboard Timeline
+   ═════════════════════════════════════════════════════════════════════════ */
+
+.time-wizard-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.time-wizard-card {
+  padding: 14px 16px;
+  background: rgba(28, 28, 36, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
-  padding: 12px 14px;
-  margin-bottom: 8px;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border-left: 3px solid var(--accent);
 }
-.tw-card:hover { border-color: var(--accent); }
-.tw-badge {
-  font-size: 10px;
+
+.time-wizard-card:hover {
+  background: rgba(38, 38, 48, 0.6);
+  border-color: var(--accent);
+  transform: translateX(4px);
+  box-shadow: 0 8px 24px rgba(0, 113, 227, 0.15);
+}
+
+.time-wizard-card.status-executed {
+  border-left-color: #4caf50;
+}
+
+.time-wizard-card.status-proposed {
+  border-left-color: #ff9800;
+}
+
+.time-wizard-card.status-testing {
+  border-left-color: #2196f3;
+}
+
+.time-wizard-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+
+.time-wizard-card-id {
   font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 10px;
-  text-transform: uppercase;
-  white-space: nowrap;
+  color: var(--accent);
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  flex-shrink: 0;
 }
-.tw-badge-executed   { background: rgba(0,255,128,0.15); color: #00ff80; }
-.tw-badge-proposed   { background: rgba(255,200,0,0.15);  color: #ffc800; }
-.tw-badge-testing    { background: rgba(0,160,255,0.15);  color: #00a0ff; }
-.tw-badge-unknown    { background: rgba(128,128,128,0.15); color: #888; }
+
+.time-wizard-card-title {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.time-wizard-card-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-dim);
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.time-wizard-card.status-executed .time-wizard-card-status {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+
+.time-wizard-card.status-proposed .time-wizard-card-status {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ff9800;
+}
+
+.time-wizard-card.status-testing .time-wizard-card-status {
+  background: rgba(33, 150, 243, 0.15);
+  color: #2196f3;
+}
+
+.time-wizard-card-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.time-wizard-card-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-wizard-detail-modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.time-wizard-detail-header {
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.time-wizard-detail-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.time-wizard-detail-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+
+.time-wizard-detail-content {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+  margin-top: 12px;
+}
+
+.time-wizard-detail-section {
+  margin-top: 12px;
+}
+
+.time-wizard-detail-section-title {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 12px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.time-wizard-detail-text {
+  font-size: 12px;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 </style>
 </head>
 <body>
@@ -672,6 +813,7 @@ body {
     </div>
     <div id="header-right">
       <button class="header-btn" id="refresh-btn" onclick="refreshCurrentView()" title="Refresh">🔄</button>
+      <button class="header-btn" id="restart-btn" onclick="restartFridays()" title="Restart Fridays Service">🔌</button>
       <button class="header-btn" id="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
     </div>
   </div>
@@ -745,13 +887,41 @@ body {
 
         <!-- TERMINAL VIEW -->
         <div id="view-terminal" class="view-section" style="display: none;">
-          <div class="view-section-title">⌨️ Terminal</div>
-          <div id="terminal-output">Ready for commands...</div>
-          <div id="terminal-input">
-            <input type="text" id="cmd-input" placeholder="Enter command...">
-            <button class="btn" onclick="executeCommand()">Execute</button>
-            <button class="btn btn-secondary" onclick="executeCommand('whoami')">whoami</button>
-            <button class="btn btn-secondary" onclick="executeCommand('pwd')">pwd</button>
+          <div class="view-section-title">⌨️ Terminal & System Control</div>
+          
+          <!-- Quick Command Buttons -->
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; margin-bottom: 8px;">🚀 Service Restart Commands</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-bottom: 12px;">
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('sudo systemctl restart swarm-terminal')">Restart Terminal</button>
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('sudo systemctl restart swarm-discord')">Restart Discord</button>
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('sudo systemctl restart swarm-telegram')">Restart Telegram</button>
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('sudo systemctl restart swarm-listener')">Restart Listener</button>
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('sudo systemctl restart swarm-terminal swarm-discord swarm-telegram swarm-listener')">Restart All</button>
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('systemctl status swarm-terminal swarm-discord swarm-telegram swarm-listener')">Status All</button>
+            </div>
+            
+            <div style="font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; margin-bottom: 8px;">📊 System Info Commands</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px;">
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('systemctl status swarm-terminal')">Terminal Status</button>
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('sudo journalctl -u swarm-terminal -n 20 --no-pager')">Terminal Logs</button>
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('ps aux | grep swarm')">Process List</button>
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('free -h')">Memory Usage</button>
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('df -h | head -10')">Disk Usage</button>
+              <button class="btn btn-secondary" style="padding: 8px; font-size: 11px;" onclick="executeCommand('uptime')">System Uptime</button>
+            </div>
+          </div>
+          
+          <!-- Terminal Output -->
+          <div id="terminal-output" style="margin-bottom: 12px;">Ready for commands...</div>
+          
+          <!-- Manual Command Input -->
+          <div style="margin-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; margin-bottom: 8px;">💻 Manual Command</div>
+            <div id="terminal-input">
+              <input type="text" id="cmd-input" placeholder="Enter command (use sudo for privileged operations)..." style="flex: 1;">
+              <button class="btn" onclick="executeCommand()">Execute</button>
+            </div>
           </div>
         </div>
 
@@ -843,6 +1013,8 @@ body {
         <!-- TIME WIZARD VIEW -->
         <div id="view-time-wizard" class="view-section" style="display: none;">
           <div class="view-section-title">⏳ Time Wizard — Decision Timeline</div>
+          
+          <!-- SEARCH & FILTER -->
           <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
             <input type="text" id="time-wizard-search" class="search-filter" placeholder="Search decisions..." style="flex: 1; min-width: 200px;">
             <select id="time-wizard-filter" class="search-filter" style="flex: 0 0 auto;">
@@ -852,8 +1024,12 @@ body {
               <option value="TESTING">Testing</option>
             </select>
           </div>
-          <div id="time-wizard-timeline">
-            <div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 40px 20px;">Loading decision timeline...</div>
+          
+          <!-- TIMELINE DISPLAY -->
+          <div id="time-wizard-timeline" class="time-wizard-timeline">
+            <div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 40px 20px;">
+              Loading decision timeline...
+            </div>
           </div>
         </div>
       </div>
@@ -883,6 +1059,20 @@ body {
       <button class="modal-close" onclick="closeModal('doc-viewer-modal')" style="margin: 0;">✕</button>
     </div>
     <div id="doc-viewer-content" style="flex: 1; overflow-y: auto; padding: 16px; background: var(--bg);"></div>
+  </div>
+</div>
+
+<!-- TICKET DETAIL MODAL -->
+<div id="ticket-detail-modal" class="modal" onclick="if(event.target===this) closeModal('ticket-detail-modal')" style="z-index: 1000;">
+  <div class="modal-content" style="width: 90%; max-width: 900px; max-height: 85vh; display: flex; flex-direction: column; padding: 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--border); background: var(--card-hover);">
+      <div>
+        <h2 id="ticket-detail-number" style="margin: 0; font-family: monospace;">TICKET-0</h2>
+        <div id="ticket-detail-meta" style="font-size: 11px; color: var(--text-dim); margin-top: 4px;"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('ticket-detail-modal')" style="margin: 0;">✕</button>
+    </div>
+    <div id="ticket-detail-content" style="flex: 1; overflow-y: auto; padding: 16px; background: var(--bg);"></div>
   </div>
 </div>
 
@@ -934,7 +1124,7 @@ function switchView(viewName, element) {
   else if (viewName === 'docs') loadDocs();
   else if (viewName === 'monitor') loadMonitorData();
   else if (viewName === 'time-wizard') loadTimeWizard();
-
+  
   console.log(`📍 Switched to ${viewName} view`);
 }
 
@@ -1112,17 +1302,22 @@ async function loadAgentRoster() {
       return;
     }
     
+    const agentEmojis = {'gemma': '💎', 'llama': '🦙', 'qwen': '🧠', 'librarian': '📚', 'copilot': '⚡', 'nine': '9️⃣'};
+    
     roster.innerHTML = agents.map(agent => {
       const isGhost = agent.ghost_layer;
-      const isTwelve = agent.name === 'Twelve';
+      const isTwelve = agent.name && agent.name.toLowerCase() === 'twelve';
       const classes = ['agent-item'];
       if (isGhost) classes.push('ghost-layer');
       if (isTwelve) classes.push('agent-twelve');
       
+      const agentKey = agent.name ? agent.name.toLowerCase() : '';
+      const emoji = agentEmojis[agentKey] || '🤖';
+      
       return `
         <div class="${classes.join(' ')}" onclick="viewAgentMemory('${agent.name}', '${agent.model}')">
           <div class="agent-status-dot"></div>
-          <span>${agent.name === 'Twelve' ? '⏰' : '•'}</span> ${agent.name}
+          <span>${isTwelve ? '⏰' : emoji}</span> ${agent.name}
         </div>
       `;
     }).join('');
@@ -1172,7 +1367,8 @@ async function loadMemorySearch() {
     }
     
     try {
-      const res = await fetch(`/api/agents/memories/query?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/memory?q=${encodeURIComponent(query)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       
       const results = document.getElementById('memory-results');
@@ -1193,9 +1389,10 @@ async function loadMemorySearch() {
           `).join('');
         }
       }
-      results.innerHTML = html;
+      results.innerHTML = html || '<div style="color: var(--text-dim); font-size: 12px;">No results found</div>';
     } catch (e) {
-      document.getElementById('memory-results').innerHTML = `<div style="color: #f44; font-size: 12px;">Error: ${e.message}</div>`;
+      console.error('Memory search error:', e);
+      document.getElementById('memory-results').innerHTML = `<div style="color: #f44; font-size: 12px;">⚠️ Error: ${e.message}</div>`;
     }
   };
 }
@@ -1240,31 +1437,34 @@ async function loadMonitorData() {
 async function loadStudioData() {
   try {
     const res = await fetch('/api/agents');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const agents = await res.json();
     
     const grid = document.getElementById('agent-studio-grid');
+    if (!grid) return;
+    
+    const agentEmojis = {'gemma': '💎', 'llama': '🦙', 'qwen': '🧠', 'librarian': '📚', 'copilot': '⚡', 'nine': '9️⃣', 'twelve': '⏰'};
+    
     grid.innerHTML = agents.map(agent => {
-      const agentEmoji = {
-        'Gemma': '💎', 'LLaMA': '🦙', 'Qwen': '🧠', 'Eight': '⚙️',
-        'Librarian': '📚', 'Duck': '🦆', 'Sniffles': '👃', 'Nine': '9️⃣',
-        'Ten': '🔟', 'Eleven': '1️⃣1️⃣', 'Twelve': '⏰', 'Ghost': '👻',
-        'Sonic': '⚡', 'Scholar': '🎓', 'Seeker': '🔍'
-      }[agent.name] || '🤖';
-      
       const classes = ['agent-card'];
       if (agent.ghost_layer) classes.push('ghost-layer');
       
+      const agentKey = agent.name ? agent.name.toLowerCase() : '';
+      const emoji = agentEmojis[agentKey] || '🤖';
+      const displayType = agent.role || agent.type || 'Agent';
+      
       return `
         <div class="${classes.join(' ')}" onclick="viewAgentMemory('${agent.name}', '${agent.model}')">
-          <div class="agent-card-icon">${agentEmoji}</div>
+          <div class="agent-card-icon">${emoji}</div>
           <div class="agent-card-name">${agent.name}</div>
-          <div class="agent-card-type">${agent.type || 'Local'}</div>
-          <div style="font-size: 10px; color: #4caf50; margin-top: 4px;">🟢 Online</div>
+          <div class="agent-card-type">${displayType}</div>
+          <div style="font-size: 10px; color: #4caf50; margin-top: 4px;">🟢 ${agent.status || 'Online'}</div>
         </div>
       `;
     }).join('');
   } catch (e) {
-    console.error('Failed to load studio:', e);
+    console.error('Failed to load studio agents:', e);
+    document.getElementById('agent-studio-grid').innerHTML = '<div style="padding: 16px; color: var(--text-dim);">⚠️ Failed to load agents</div>';
   }
 }
 
@@ -1355,12 +1555,11 @@ async function loadTickets() {
       return;
     }
     
-    window._tickets_cache = tickets;
-    listDiv.innerHTML = tickets.slice(0, 20).map((t, i) => `
-      <div class="list-item" onclick="showTicketDetail(${i})" style="cursor: pointer;">
-        <div class="list-item-title" style="color: var(--accent);">🎫 ${t.ticket_number}</div>
+    listDiv.innerHTML = tickets.slice(0, 20).map(t => `
+      <div class="list-item" onclick="viewTicketDetail('${t.ticket_number}')" style="cursor: pointer;">
+        <div class="list-item-title">🎫 ${t.ticket_number}</div>
         <div class="list-item-meta">${t.status} • ${t.sender_email}</div>
-        <div style="font-size: 11px; margin-top: 4px;">${(t.question || '').substring(0, 100)}</div>
+        <div style="font-size: 11px; margin-top: 4px;">${(t.question || '').substring(0, 100)}${(t.question || '').length > 100 ? '…' : ''}</div>
       </div>
     `).join('');
   } catch (e) {
@@ -1368,86 +1567,118 @@ async function loadTickets() {
   }
 }
 
-function showTicketDetail(idx) {
-  const tickets = window._tickets_cache || [];
-  const t = tickets[idx];
-  if (!t) return;
+async function viewTicketDetail(ticketNumber) {
+  const modal = document.getElementById('ticket-detail-modal');
+  const titleEl = document.getElementById('ticket-detail-number');
+  const metaEl = document.getElementById('ticket-detail-meta');
+  const contentEl = document.getElementById('ticket-detail-content');
   
-  let modal = document.getElementById('ticket-detail-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'ticket-detail-modal';
-    modal.className = 'modal';
-    modal.onclick = e => { if(e.target === modal) closeModal('ticket-detail-modal'); };
-    modal.innerHTML = `
-      <div class="modal-content" style="width: 90%; max-width: 900px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--border);">
-          <h2 id="tdet-title" style="margin: 0;"></h2>
-          <button class="modal-close" onclick="closeModal('ticket-detail-modal')">✕</button>
-        </div>
-        <div id="tdet-content" style="padding: 16px; max-height: 70vh; overflow-y: auto;"></div>
+  titleEl.textContent = ticketNumber;
+  metaEl.innerHTML = '<div>Loading ticket details...</div>';
+  contentEl.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 40px;">Loading...</div>';
+  modal.classList.add('open');
+  
+  try {
+    const res = await fetch(`/api/tickets/${encodeURIComponent(ticketNumber)}`);
+    const data = await res.json();
+    
+    if (data.error) {
+      contentEl.innerHTML = `<div style="color: #f44; padding: 20px;">Error: ${data.error}</div>`;
+      return;
+    }
+    
+    const ticket = data.ticket || {};
+    const messages = data.messages || [];
+    const notes = data.notes || [];
+    const duck = data.duck || {};
+    
+    // Build meta info
+    metaEl.innerHTML = `
+      <div style="display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap;">
+        <span><strong>Status:</strong> ${ticket.status || '—'}</span>
+        <span><strong>From:</strong> ${ticket.sender_email || '—'}</span>
+        <span><strong>Created:</strong> ${ticket.created_at ? new Date(ticket.created_at).toLocaleString() : '—'}</span>
+        ${ticket.closed_at ? `<span><strong>Closed:</strong> ${new Date(ticket.closed_at).toLocaleString()}</span>` : ''}
       </div>
     `;
-    document.body.appendChild(modal);
-  }
-  
-  document.getElementById('tdet-title').textContent = '🎫 ' + t.ticket_number;
-  const content = `
-    <div><b>From:</b> ${t.sender_email}</div>
-    <div><b>Status:</b> ${t.status}</div>
-    <div><b>Created:</b> ${new Date(t.created_at).toLocaleString()}</div>
-    <div style="margin-top: 12px; padding: 12px; background: var(--card); border-radius: 4px;">
-      <b>Question:</b>
-      <div style="margin-top: 8px; white-space: pre-wrap;">${(t.question || '').substring(0, 800)}</div>
-    </div>
-    ${t.duck_result ? `<div style="margin-top: 12px; padding: 12px; background: var(--card); border-radius: 4px;">
-      <b>Result:</b>
-      <div style="margin-top: 8px; white-space: pre-wrap;">${t.duck_result.substring(0, 500)}</div>
-    </div>` : ''}
-  `;
-  document.getElementById('tdet-content').innerHTML = content;
-  modal.classList.add('open');
-}
-
-function showTicketDetail(idx) {
-  const tickets = window._tickets_cache || [];
-  const t = tickets[idx];
-  if (!t) return;
-  
-  let modal = document.getElementById('ticket-detail-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'ticket-detail-modal';
-    modal.className = 'modal';
-    modal.onclick = e => { if(e.target === modal) closeModal('ticket-detail-modal'); };
-    modal.innerHTML = `
-      <div class="modal-content" style="width: 90%; max-width: 900px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--border);">
-          <h2 id="tdet-title" style="margin: 0;"></h2>
-          <button class="modal-close" onclick="closeModal('ticket-detail-modal')">✕</button>
-        </div>
-        <div id="tdet-content" style="padding: 16px; max-height: 70vh; overflow-y: auto;"></div>
+    
+    // Build content sections
+    let html = '';
+    
+    // Question
+    html += `<div style="margin-bottom: 20px;">
+      <h3 style="color: var(--accent); font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">📝 Question</h3>
+      <div style="background: rgba(255,255,255,0.02); border-left: 3px solid var(--accent); padding: 12px; border-radius: 4px;">
+        ${ticket.question || 'No question provided'}
       </div>
-    `;
-    document.body.appendChild(modal);
+    </div>`;
+    
+    // Processing History (Messages)
+    if (messages.length > 0) {
+      html += `<div style="margin-bottom: 20px;">
+        <h3 style="color: var(--accent); font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">🔄 Processing History</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px;">`;
+      
+      messages.forEach(msg => {
+        const time = msg.created_at ? new Date(msg.created_at).toLocaleString() : '—';
+        const sender = msg.sender || 'Unknown';
+        const type = msg.message_type ? ` [${msg.message_type}]` : '';
+        html += `<div style="background: rgba(255,255,255,0.02); border-left: 2px solid #666; padding: 8px 12px; border-radius: 4px;">
+          <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 3px;"><strong>${sender}</strong>${type} • ${time}</div>
+          <div style="font-size: 11px;">${msg.content ||'(no content)'}</div>
+        </div>`;
+      });
+      
+      html += `</div></div>`;
+    }
+    
+    // Duck Results
+    if (duck && Object.keys(duck).length > 0) {
+      html += `<div style="margin-bottom: 20px;">
+        <h3 style="color: var(--accent); font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">🦆 Duck Verdict</h3>
+        <div style="background: rgba(255,255,255,0.02); border-left: 3px solid #ff6b9d; padding: 12px; border-radius: 4px;">
+          <div><strong>Result:</strong> ${duck.duck_result || duck.result || '—'}</div>
+          ${duck.answer ? `<div style="margin-top: 8px;">${duck.answer}</div>` : ''}
+          ${duck.created_at ? `<div style="font-size: 11px; color: var(--text-dim); margin-top: 8px;">${new Date(duck.created_at).toLocaleString()}</div>` : ''}
+        </div>
+      </div>`;
+    }
+    
+    // Final Answer
+    if (ticket.final_answer) {
+      html += `<div style="margin-bottom: 20px;">
+        <h3 style="color: var(--accent); font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">✅ Final Answer</h3>
+        <div style="background: rgba(76,175,80,0.1); border-left: 3px solid #4caf50; padding: 12px; border-radius: 4px;">
+          ${ticket.final_answer}
+        </div>
+      </div>`;
+    }
+    
+    // Notes
+    if (notes.length > 0) {
+      html += `<div style="margin-bottom: 20px;">
+        <h3 style="color: var(--accent); font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">📌 Notes</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px;">`;
+      
+      notes.forEach(note => {
+        const time = note.created_at ? new Date(note.created_at).toLocaleString() : '—';
+        const agent = note.agent || 'Ghost';
+        const noteType = note.note_type ? ` (${note.note_type})` : '';
+        html += `<div style="background: rgba(255,255,255,0.02); border-left: 2px solid #ffb347; padding: 8px 12px; border-radius: 4px;">
+          <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 3px;"><strong>${agent}${noteType}</strong> • ${time}</div>
+          <div style="font-size: 11px;">${note.content || '(empty note)'}</div>
+        </div>`;
+      });
+      
+      html += `</div></div>`;
+    }
+    
+    contentEl.innerHTML = html || '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No details available</div>';
+    showToast(`Opened ${ticketNumber}`, 'success');
+  } catch (e) {
+    contentEl.innerHTML = `<div style="color: #f44; padding: 20px;">Error loading ticket: ${e.message}</div>`;
+    showToast('Failed to load ticket details: ' + e.message, 'error');
   }
-  
-  document.getElementById('tdet-title').textContent = '🎫 ' + t.ticket_number;
-  const content = `
-    <div><b>From:</b> ${t.sender_email}</div>
-    <div><b>Status:</b> ${t.status}</div>
-    <div><b>Created:</b> ${new Date(t.created_at).toLocaleString()}</div>
-    <div style="margin-top: 12px; padding: 12px; background: var(--card); border-radius: 4px;">
-      <b>Question:</b>
-      <div style="margin-top: 8px; white-space: pre-wrap;">${(t.question || '').substring(0, 800)}</div>
-    </div>
-    ${t.duck_result ? `<div style="margin-top: 12px; padding: 12px; background: var(--card); border-radius: 4px;">
-      <b>Result:</b>
-      <div style="margin-top: 8px; white-space: pre-wrap;">${t.duck_result.substring(0, 500)}</div>
-    </div>` : ''}
-  `;
-  document.getElementById('tdet-content').innerHTML = content;
-  modal.classList.add('open');
 }
 
 async function loadDocs() {
@@ -1519,6 +1750,18 @@ function openSettings() {
   showToast('Settings coming soon', 'info');
 }
 
+function restartFridays() {
+  if (confirm('Restart Fridays service? This will apply all changes.')) {
+    showToast('Restarting Fridays...', 'info');
+    
+    executeControlCommand('restart-terminal');
+    
+    setTimeout(() => {
+      location.reload();
+    }, 3000);
+  }
+}
+
 function closeModal(modalId) {
   document.getElementById(modalId).classList.remove('open');
 }
@@ -1537,114 +1780,166 @@ function showToast(message, type = 'info') {
   toast.className = `toast ${type}`;
   toast.textContent = message;
   container.appendChild(toast);
-
+  
   setTimeout(() => {
     toast.remove();
   }, 3000);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// TIME WIZARD
+// TIME WIZARD — Decision Timeline
 // ─────────────────────────────────────────────────────────────────────────
 
-let _twDecisions = [];
+let timeWizardData = null;
 
 async function loadTimeWizard() {
-  const container = document.getElementById('time-wizard-timeline');
   try {
-    const res = await fetch('/api/decisions');
+    const res = await fetch('/api/timeline');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    _twDecisions = Array.isArray(data) ? data : (data.decisions || []);
-    renderTimeWizardTimeline(_twDecisions);
+    timeWizardData = data;
+    
+    renderTimeWizardTimeline(data.timeline || []);
     attachTimeWizardFilters();
   } catch (e) {
-    container.innerHTML = `<div style="color: var(--error); padding: 20px; text-align: center;">Failed to load decisions: ${e.message}</div>`;
+    console.error('Failed to load Time Wizard:', e);
+    document.getElementById('time-wizard-timeline').innerHTML = 
+      `<div style="color: #f44; padding: 20px; text-align: center;">⚠️ Failed to load decisions: ${e.message}</div>`;
   }
 }
 
-function renderTimeWizardTimeline(decisions) {
-  const container = document.getElementById('time-wizard-timeline');
-  if (!decisions || decisions.length === 0) {
-    container.innerHTML = '<div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 40px 20px;">No decisions recorded yet.</div>';
+function renderTimeWizardTimeline(timeline) {
+  if (!timeline || timeline.length === 0) {
+    document.getElementById('time-wizard-timeline').innerHTML = 
+      '<div style="color: var(--text-dim); padding: 20px; text-align: center;">No decisions recorded yet.</div>';
     return;
   }
-  const html = decisions.map(d => {
-    const statusClass = `status-${(d.status || 'unknown').toLowerCase()}`;
-    const date = d.proposed ? new Date(d.proposed).toLocaleDateString() : (d.date || d.timestamp || '');
-    return `<div class="time-wizard-card ${statusClass}" onclick="expandTimeWizardDecision('${d.id || d.decision_id || ''}', this); return false;">
-      <div class="time-wizard-card-header">
-        <span class="time-wizard-card-id">${d.id || d.decision_id || '—'}</span>
-        <span class="time-wizard-card-title">${(d.title || d.summary || '(untitled)').substring(0, 80)}</span>
-        <span class="time-wizard-card-status">${d.status || '?'}</span>
+  
+  const html = timeline.map(decision => {
+    const statusClass = `status-${(decision.status || 'proposed').toLowerCase()}`;
+    const proposedDate = decision.proposed ? new Date(decision.proposed).toLocaleDateString() : 'Unknown';
+    const titleShort = (decision.title || 'Untitled').substring(0, 80);
+    
+    return `
+      <div class="time-wizard-card ${statusClass}" onclick="expandTimeWizardDecision('${decision.decision_id || '?'}', this)" style="cursor: pointer;">
+        <div class="time-wizard-card-header">
+          <div class="time-wizard-card-id">${decision.decision_id || '?'}</div>
+          <div class="time-wizard-card-title">${titleShort}</div>
+          <div class="time-wizard-card-status">${decision.status || 'Unknown'}</div>
+        </div>
+        <div class="time-wizard-card-meta">
+          <div class="time-wizard-card-meta-item">📅 ${proposedDate}</div>
+          <div class="time-wizard-card-meta-item">📁 ${decision.file || 'unknown.md'}</div>
+        </div>
       </div>
-      <div class="time-wizard-card-meta">
-        <div class="time-wizard-card-meta-item">📅 ${date}</div>
-        <div class="time-wizard-card-meta-item">📝 ${(d.summary || '').substring(0, 50)}...</div>
-      </div>
-    </div>`;
+    `;
   }).join('');
-  container.innerHTML = html;
-}
-
-async function expandTimeWizardDecision(id, cardElement) {
-  if (!id) return;
-  try {
-    const res = await fetch(`/api/decisions/${id}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const d = await res.json();
-    
-    // Build detail HTML
-    let html = `<div class="time-wizard-detail-modal">`;
-    html += `<div class="time-wizard-detail-header">`;
-    html += `<div class="time-wizard-detail-title">${d.title || 'Decision ' + id}</div>`;
-    html += `<div class="time-wizard-detail-meta">`;
-    html += `<span>🆔 ${id}</span>`;
-    html += `<span>📊 ${d.status || 'unknown'}</span>`;
-    if (d.proposed) html += `<span>📅 ${new Date(d.proposed).toLocaleString()}</span>`;
-    html += `</div></div>`;
-    
-    if (d.issue) html += `<div class="time-wizard-detail-section"><div class="time-wizard-detail-section-title">Issue</div><div class="time-wizard-detail-text">${d.issue}</div></div>`;
-    if (d.solution) html += `<div class="time-wizard-detail-section"><div class="time-wizard-detail-section-title">Solution</div><div class="time-wizard-detail-text">${d.solution}</div></div>`;
-    if (d.scope) html += `<div class="time-wizard-detail-section"><div class="time-wizard-detail-section-title">Scope</div><div class="time-wizard-detail-text">${d.scope}</div></div>`;
-    if (d.risks) html += `<div class="time-wizard-detail-section"><div class="time-wizard-detail-section-title">Risks</div><div class="time-wizard-detail-text">${d.risks}</div></div>`;
-    if (d.next_steps) html += `<div class="time-wizard-detail-section"><div class="time-wizard-detail-section-title">Next Steps</div><div class="time-wizard-detail-text">${d.next_steps}</div></div>`;
-    html += `</div>`;
-    
-    // Insert after card if possible
-    if (cardElement && cardElement.parentElement) {
-      const existing = cardElement.nextElementSibling;
-      if (existing && existing.classList.contains('time-wizard-detail-modal')) existing.remove();
-      
-      const wrapper = document.createElement('div');
-      wrapper.innerHTML = html;
-      cardElement.parentElement.insertBefore(wrapper.firstElementChild, cardElement.nextSibling);
-      showToast(`Expanded decision ${id}`, 'success');
-    }
-    
-    console.log(`[Time Wizard] Decision ${id}:`, d);
-  } catch (e) {
-    showToast(`Could not load decision ${id}: ${e.message}`, 'error');
-  }
+  
+  document.getElementById('time-wizard-timeline').innerHTML = html;
 }
 
 function attachTimeWizardFilters() {
-  const search = document.getElementById('time-wizard-search');
-  const filter = document.getElementById('time-wizard-filter');
-  if (!search || !filter) return;
-  function apply() {
-    const q = (search.value || '').toLowerCase();
-    const state = filter.value || 'all';
-    const allDecisions = timeWizardData && timeWizardData.timeline ? timeWizardData.timeline : [];
-    const filtered = allDecisions.filter(d => {
-      const matchQ = !q || (d.title || d.summary || d.id || '').toLowerCase().includes(q);
-      const matchS = state === 'all' || (d.status || '').toUpperCase() === state;
-      return matchQ && matchS;
+  const searchInput = document.getElementById('time-wizard-search');
+  const filterSelect = document.getElementById('time-wizard-filter');
+  
+  const applyFilters = () => {
+    const searchTerm = (searchInput.value.trim() || '').toLowerCase();
+    const statusFilter = filterSelect.value;
+    
+    const filtered = (timeWizardData.timeline || []).filter(d => {
+      const matchesSearch = !searchTerm || 
+        (d.decision_id || '').toLowerCase().includes(searchTerm) ||
+        (d.title || '').toLowerCase().includes(searchTerm) ||
+        (d.file || '').toLowerCase().includes(searchTerm);
+      
+      const matchesStatus = statusFilter === 'all' || (d.status || '').toUpperCase() === statusFilter;
+      
+      return matchesSearch && matchesStatus;
     });
+    
     renderTimeWizardTimeline(filtered);
+  };
+  
+  searchInput.oninput = applyFilters;
+  filterSelect.onchange = applyFilters;
+}
+
+async function expandTimeWizardDecision(decisionId, cardElement) {
+  try {
+    const res = await fetch(`/api/decisions/${decisionId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const decision = await res.json();
+    
+    // Form detail HTML
+    let detailHtml = '<div class="time-wizard-detail-modal">';
+    detailHtml += '<div class="time-wizard-detail-header">';
+    detailHtml += `<div class="time-wizard-detail-title">${escapeHtml(decision.title || 'Decision ' + decisionId)}</div>`;
+    detailHtml += '<div class="time-wizard-detail-meta">';
+    detailHtml += `<span>🆔 ${escapeHtml(decisionId)}</span>`;
+    detailHtml += `<span>📊 ${escapeHtml(decision.status || 'unknown')}</span>`;
+    if (decision.proposed) detailHtml += `<span>📅 ${new Date(decision.proposed).toLocaleString()}</span>`;
+    detailHtml += '</div>';
+    detailHtml += '</div>';
+    
+    // Sections
+    if (decision.issue) {
+      detailHtml += '<div class="time-wizard-detail-section">';
+      detailHtml += '<div class="time-wizard-detail-section-title">Issue</div>';
+      detailHtml += `<div class="time-wizard-detail-text">${escapeHtml(decision.issue)}</div>`;
+      detailHtml += '</div>';
+    }
+    
+    if (decision.solution) {
+      detailHtml += '<div class="time-wizard-detail-section">';
+      detailHtml += '<div class="time-wizard-detail-section-title">Solution</div>';
+      detailHtml += `<div class="time-wizard-detail-text">${escapeHtml(decision.solution)}</div>`;
+      detailHtml += '</div>';
+    }
+    
+    if (decision.scope) {
+      detailHtml += '<div class="time-wizard-detail-section">';
+      detailHtml += '<div class="time-wizard-detail-section-title">Scope</div>';
+      detailHtml += `<div class="time-wizard-detail-text">${escapeHtml(decision.scope)}</div>`;
+      detailHtml += '</div>';
+    }
+    
+    if (decision.risks) {
+      detailHtml += '<div class="time-wizard-detail-section">';
+      detailHtml += '<div class="time-wizard-detail-section-title">Risks</div>';
+      detailHtml += `<div class="time-wizard-detail-text">${escapeHtml(decision.risks)}</div>`;
+      detailHtml += '</div>';
+    }
+    
+    if (decision.next_steps) {
+      detailHtml += '<div class="time-wizard-detail-section">';
+      detailHtml += '<div class="time-wizard-detail-section-title">Next Steps</div>';
+      detailHtml += `<div class="time-wizard-detail-text">${escapeHtml(decision.next_steps)}</div>`;
+      detailHtml += '</div>';
+    }
+    
+    detailHtml += '</div>';
+    
+    // Toggle expanded state
+    const timeline = document.getElementById('time-wizard-timeline');
+    const existingDetail = timeline.querySelector('.time-wizard-detail-modal');
+    
+    if (existingDetail && existingDetail.parentElement === cardElement.parentElement) {
+      existingDetail.remove();
+    } else {
+      if (existingDetail) existingDetail.remove();
+      const detailDiv = document.createElement('div');
+      detailDiv.innerHTML = detailHtml;
+      cardElement.parentNode.insertBefore(detailDiv, cardElement.nextSibling);
+    }
+  } catch (e) {
+    showToast(`Failed to load decision details: ${e.message}`, 'error');
   }
-  search.addEventListener('input', apply);
-  filter.addEventListener('change', apply);
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 </script>
 
