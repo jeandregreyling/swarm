@@ -158,3 +158,64 @@ _Maintained by Nine (Ghost Layer). Last updated: 2026-03-29 18:17:27 (Session 3 
   - Removed invalid `reader_agent=agent` and `writer_agent=agent` kwargs from `fridays/skills.py` calls
   - Updated test function to unpack new tuple format
 - **Testing:** Syntax validation passed; ready for functional testing
+
+---
+
+## BUG-020: listener.py ticket_create() unexpected `created_at` kwarg
+
+- **Status:** fixed
+- **Found:** 2026-03-29 (NINE-018 triage audit)
+- **Fixed:** 2026-03-29 18:17:27
+- **Service:** core/pipeline/listener.py
+- **Error:** `TypeError: create() got an unexpected keyword argument 'created_at'`
+- **Cause:** `ticket_create()` call on line 1079 passed `created_at=get_timestamp()` but `ticket.create()` has no such parameter. Crashed every new email at ticket creation stage — no emails were being processed.
+- **Fix:** Removed `created_at=get_timestamp()` from the call. Ticket timestamps are handled by DB default.
+
+---
+
+## BUG-021: listener.py log_message() unexpected `created_at` kwarg
+
+- **Status:** fixed
+- **Found:** 2026-03-29 (NINE-018 triage audit)
+- **Fixed:** 2026-03-29 18:17:27
+- **Service:** core/pipeline/listener.py
+- **Error:** `TypeError: log_message() got an unexpected keyword argument 'created_at'`
+- **Cause:** Same pattern as BUG-020 — line 1080 passed `created_at=get_timestamp()` to `log_message()` which only accepts `(conv_id, from_agent, content, to_agent='', message_type='chat')`.
+- **Fix:** Removed `created_at=get_timestamp()` from the call.
+
+---
+
+## BUG-022: listener.py `datetime` not imported in `_parse_snooze_time()`
+
+- **Status:** fixed
+- **Found:** 2026-03-29 (NINE-018 triage audit)
+- **Fixed:** 2026-03-29 18:17:27
+- **Service:** core/pipeline/listener.py (also affects telegram_bot.py via import)
+- **Error:** `NameError: name 'datetime' is not defined`
+- **Cause:** `_parse_snooze_time()` used `datetime.strptime()` for absolute date formats (e.g. `2026-04-01`) but only imported `timedelta` — `from datetime import timedelta`. Telegram bot also imports this function.
+- **Fix:** Changed to `from datetime import timedelta, datetime`.
+
+---
+
+## BUG-023: listener.py wrong sniffer.py path in subprocess call
+
+- **Status:** fixed
+- **Found:** 2026-03-29 (NINE-018 triage audit)
+- **Fixed:** 2026-03-29 18:17:27
+- **Service:** core/pipeline/listener.py
+- **Error:** Sniffles audit (RL-008) silently never ran — no error raised but subprocess pointed to a non-existent file
+- **Cause:** `subprocess.Popen(['python3', '/home/seven/swarm/sniffer.py'])` — sniffer is at `agents/ghost/sniffer.py` not the swarm root
+- **Fix:** Corrected to `/home/seven/swarm/agents/ghost/sniffer.py`.
+
+---
+
+## BUG-024: duck.py wrong column names in duck_log INSERT
+
+- **Status:** fixed
+- **Found:** 2026-03-29 (NINE-018 triage audit — dry run caught this)
+- **Fixed:** 2026-03-29 18:17:27
+- **Service:** agents/ghost/duck.py
+- **Error:** `sqlite3.OperationalError: table duck_log has no column named verdict`
+- **Cause:** `_log_to_duck_log()` used column names `verdict` and `note` which don't exist. Actual schema has `answer` and `reason`. This crashed Duck on every ticket close, leaving tickets in `open` status and queue entries stuck in `processing` indefinitely.
+- **Fix:** Changed INSERT to use `answer` and `reason`.
+- **Testing:** Dry run confirmed — 24/24 checks pass (`tests/test_triage_queue_dryrun.py`).

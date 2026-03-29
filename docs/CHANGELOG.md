@@ -5,7 +5,28 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
-## Version 2026-03-28 (CURRENT)
+## Version 2026-03-29 (CURRENT)
+
+### Changes by Nine (Ghost Layer System Architect) — TRIAGE QUEUE FIX (NINE-018)
+
+**2026-03-29 18:17:27** Nine: Fixed 5 critical bugs in email + Telegram triage queue pipeline
+
+- **Type:** Bug Fix
+- **Priority:** CRITICAL
+- **Status:** ✅ COMPLETE — 24/24 dry run checks pass
+- **Files Changed:** `core/pipeline/listener.py`, `agents/ghost/duck.py`
+- **Tests:** `tests/test_triage_queue_dryrun.py` (new — 24 checks, SIMULATE=true)
+- **Proposal:** NINE-018 (sandpits/nine/proposals/NINE-018-fix-triage-queue-bugs.md)
+- **Impact:**
+  - ✅ BUG-020: `ticket_create()` `created_at` kwarg crash — every new email was failing at ticket creation
+  - ✅ BUG-021: `log_message()` `created_at` kwarg crash — same line, same failure path
+  - ✅ BUG-022: `datetime` not imported in `_parse_snooze_time()` — SNOOZE commands with absolute dates were broken for both email and Telegram
+  - ✅ BUG-023: Wrong sniffer.py path in RL-008 subprocess — Sniffles audits were silently never running
+  - ✅ BUG-024: `duck_log` INSERT used non-existent columns `verdict`/`note` — Duck crashed on every ticket close, leaving tickets open and queue entries stuck as `processing`
+
+---
+
+## Version 2026-03-28
 
 ### Changes by Agent Twelve (Ghost Layer Architect) — FRIDAYS SYSTEM AUDIT & RESTORATION
 
