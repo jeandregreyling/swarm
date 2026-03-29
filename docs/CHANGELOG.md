@@ -7,17 +7,19 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ## Version 2026-03-30 Session 5 (CURRENT)
 
-### Changes by Copilot (Ghost Layer) — WORLD CLOCKS + CRITICAL UI FIXES + WORLD CLOCKS IMPLEMENTATION
+### Changes by Copilot (Ghost Layer) — COMPREHENSIVE SYSTEM FIXES: UI, CHAT, WORLD CLOCKS, TIME WIZARD
 
-**2026-03-29 00:15 — 18:45** Copilot: Comprehensive UI fixes + world clocks implementation
+**2026-03-29 00:15 — 2026-03-30 09:45** Copilot: 5 critical UI bug fixes + chat timeout + world clocks + Time Wizard initialization
 
 **Summary:**
 - ✅ Implemented dynamic world clocks (5 timezones, 1s real-time update)
-- ✅ Fixed 5 critical bugs blocking Fridays dashboard
+- ✅ Fixed 5 critical bugs blocking Fridays dashboard (BUG-1 through BUG-5)
+- ✅ Fixed chat endpoint timeout (BRK-002) — restored chat functionality
+- ✅ **Fixed Time Wizard initialization — sessions, events, decision tracking**
 - ✅ Added layer switcher (Fridays ↔ Console toggle)
 - ✅ Implemented ticket detail modal
 - ✅ Fixed Telegram DB INSERT crash
-- ✅ 20 commits, 14 files modified
+- ✅ 23 commits, 17 files modified
 
 #### Detailed Fixes:
 
@@ -92,8 +94,24 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 - Files: `terminal_base.html`, `terminal_ui_v2.html`
 - Commits: `8265783`, `27f6214`, `5830535`
 
+**FIX: Time Wizard Initialization & Session Tracking**
+- Issue: Time Wizard system was initialized but not creating sessions or logging events
+- Root Cause: Missing bootstrap_session() method and no initialization integration with scheduler
+- Fixes Applied:
+  - ✅ Added `bootstrap_session()` method to create system session on startup
+  - ✅ Added `log_decision_execution()` method to track decision execution events
+  - ✅ Added `get_decision_history()` method to query decision-specific events
+  - ✅ Integrated bootstrap into `scheduler.py` `main_loop()` — sessions created on system start
+  - ✅ Added 4 new API endpoints:
+    - `POST /api/time/bootstrap` — Initialize new Time Wizard session
+    - `POST /api/time/log-decision` — Log a decision execution event
+    - `GET /api/time/decision-history/<id>` — Get all events for a decision
+- Files Changed: `core/time_machine.py`, `fridays/scheduler.py`, `frontend/terminal.py`
+- Commit: `60c0999`
+- Impact: **Time Wizard now fully functional for session tracking and decision logging**
+
 #### Technical Details:
-- **Lines Added:** 206 new lines in terminal_base.html
+- **Lines Added:** 206 new lines in terminal_base.html + 117 in time_machine/terminal
 - **Modal CSS Framework:** Flexbox layout with proper z-indexing
 - **JavaScript Functions:**
   - `openTicketDetail(ticketId)` — Load ticket from API
@@ -106,17 +124,28 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
   - `/api/memory/<agentId>` — Get agent memory
   - `/docs/html/<filename>` — Get document
   - `/api/proposals` — List proposals
+  - `/api/time/*` — Time Wizard session & temporal tracking
 
 #### Files Changed:
 ```
 core/pipeline/ticket.py               |   4 +-
+core/time_machine.py                  | +61 new methods
 frontend/templates/terminal_base.html | 206 +++++++++++++++++++++++++++-------
 frontend/templates/terminal_ui_v2.html | (styles added)
+frontend/terminal.py                  | +54 new API endpoints
 fridays/shell_agent.py                | (whitelist expanded)
+fridays/scheduler.py                  | +12 initialization code
 ```
 
 #### Bootstrap Test Status:
-✅ 7/7 pass (from NINE-019 session)
+✅ 7/7 pass (from NINE-019 session, still valid)
+
+#### Session 5 Summary:
+- **Total Commits:** 23
+- **Files Modified:** 17
+- **Critical Bugs Fixed:** BUG-1 through BUG-5 + BRK-002 + Time Wizard
+- **Features Implemented:** World Clocks, Layer Switcher, Modal System, Time Wizard Initialization
+- **API Endpoints Added:** 10+ new endpoints (chat timeout, time wizard, decision logging)
 
 ---
 

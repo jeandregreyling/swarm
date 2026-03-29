@@ -86,6 +86,15 @@
 - [ ] Check `/api/hands/run` or `/api/shell/execute` endpoint
 - [ ] Test with simple command: `whoami`
 
+**TIME WIZARD INITIALIZATION** ✅ FIXED
+- ✅ Added bootstrap_session() method for system startup
+- ✅ Integrated into scheduler.py main_loop()
+- ✅ Sessions now created automatically on system start
+- ✅ Decision execution events logged
+- ✅ Temporal statistics fully functional
+- ✅ API endpoints: /api/time/bootstrap, /api/time/log-decision, /api/time/decision-history
+- ✅ Commit: `60c0999`
+
 **BRK-004: Nine File Operations**
 - [ ] Test `fridays.file_agent.read_sandpit()` 
 - [ ] Test `fridays.file_agent.write_sandpit()`
@@ -98,7 +107,7 @@
 
 ---
 
-## 📊 Session 5 Summary (Updated)
+## 📊 Session 5 Summary (Final Update)
 
 **What was completed:**
 ✅ 5 critical user-facing bugs fixed  
@@ -109,10 +118,11 @@
 ✅ Studio proposals functional  
 ✅ Telegram listener restored  
 ✅ **Chat endpoint timeout FIXED (BRK-002)** 🔴→✅  
+✅ **Time Wizard initialization + session tracking FIXED** ⏳✅
 ✅ Comprehensive audit + documentation  
 
-**Files modified:** 14 (now 15 with terminal.py)  
-**Commits:** 20 (now 21 with BRK-002 fix)  
+**Files modified:** 17 (timeline.py, terminal.py, time_machine.py, scheduler.py, etc.)  
+**Commits:** 23 (includes BRK-002 + Time Wizard fixes)  
 **Bootstrap tests:** 7/7 pass  
 
 **What remains:**
