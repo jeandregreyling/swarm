@@ -172,6 +172,18 @@ def check_due():
 
 def main_loop():
     print("Scheduler started — checking every 60 seconds (press Ctrl+C to stop)")
+    
+    # Initialize Time Wizard session on startup
+    try:
+        import sys
+        sys.path.insert(0, '/home/seven/swarm/core')
+        from time_machine import time_wizard
+        session_id = time_wizard.bootstrap_session()
+        if session_id:
+            print(f"[TimeMachine] Session {session_id} started")
+    except Exception as e:
+        print(f"[TimeMachine] Initialization warning: {e}")
+    
     while True:
         try:
             check_due()

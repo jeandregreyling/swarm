@@ -305,6 +305,58 @@ class TimeMachine:
             'total_checkpoints': total_checkpoints,
             'latest_activity': latest_activity
         }
+    
+    def bootstrap_session(self) -> str:
+        """
+        Initialize a new system session.
+        Called on startup to create a tracking point for this session.
+        Returns: session_id
+        """
+        import uuid
+        session_id = f"session_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+        
+        try:
+            self.start_session(agent='twelve', session_id=session_id, phase='startup')
+            self.record_event(
+                agent='twelve',
+                action='bootstrap_session',
+                event_type='system',
+                target='scheduler',
+                details={'session_id': session_id, 'timestamp': datetime.utcnow().isoformat() + 'Z'}
+            )
+            return session_id
+        except Exception as e:
+            print(f"[TimeMachine] Bootstrap error: {e}")
+            return None
+    
+    def log_decision_execution(self, decision_id: str, agent: str, status: str = 'executed', 
+                               details: dict = None) -> int:
+        """
+        Log a decision execution event (Decision-001, Decision-002, etc.)
+        """
+        details = details or {}
+        return self.record_event(
+            agent=agent,
+            action=f'execute_decision_{decision_id}',
+            event_type='decision',
+            target=decision_id,
+            details={'status': status, **details}
+        )
+    
+    def get_decision_history(self, decision_id: str) -> list:
+        """Get all events related to a specific decision."""
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "SELECT * FROM time_events WHERE target = ? ORDER BY timestamp DESC",
+            (decision_id,)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(r) for r in rows]
 
 
 # Global instance
