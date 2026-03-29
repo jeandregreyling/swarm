@@ -228,6 +228,62 @@ def _duck_stats():
     return {'total': total, 'passed': passed, 'failed': failed}
 
 
+def _is_time_wizard_active():
+    """Time Wizard is considered active when at least one session exists."""
+    # ALM gate defaults to ON; set ALM_REQUIRE_APPROVALS=0 to disable explicitly.
+    if os.environ.get('ALM_REQUIRE_APPROVALS', '1') == '1':
+        return True
+    try:
+        sessions = time_wizard.get_sessions(limit=1)
+        return bool(sessions)
+    except Exception:
+        return False
+
+
+def _alm_gate_or_response(data, action_name):
+    """
+    Enforce proposal approval for mutating actions while Time Wizard is active.
+    Returns a Flask response tuple on failure, else None.
+    """
+    if not _is_time_wizard_active():
+        return None
+
+    proposal_id = (data.get('proposal_id') or '').strip()
+    if not proposal_id:
+        return jsonify({
+            'ok': False,
+            'error': 'proposal_id required while Time Wizard is active',
+            'action': action_name,
+            'required_status': ['approved', 'executed']
+        }), 428
+
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT proposal_id, status, agent, title FROM work_proposals WHERE proposal_id=?",
+        (proposal_id,)
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({
+            'ok': False,
+            'error': f'proposal not found: {proposal_id}',
+            'action': action_name
+        }), 404
+
+    if row['status'] not in ('approved', 'executed'):
+        return jsonify({
+            'ok': False,
+            'error': f'proposal status not permitted: {row["status"]}',
+            'action': action_name,
+            'proposal_id': proposal_id,
+            'required_status': ['approved', 'executed']
+        }), 403
+
+    log_activity('terminal', 'alm_gate_pass', f'{action_name}:{proposal_id}')
+    return None
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @app.route('/')
@@ -1267,6 +1323,10 @@ def api_shell_execute():
     from fridays.shell_agent import run as shell_run
     data = request.get_json() or {}
     command = data.get('command', '').strip()
+
+    gate = _alm_gate_or_response(data, 'shell_execute')
+    if gate:
+        return gate
     
     if not command:
         return jsonify({'ok': False, 'output': 'No command provided', 'message': 'Command is required'}), 400
@@ -1435,6 +1495,11 @@ def api_skills_run():
     data = request.get_json() or {}
     skill_name = (data.get('skill') or '').strip().lower()
     args       = (data.get('args')  or '').strip()
+
+    gate = _alm_gate_or_response(data, 'skills_run')
+    if gate:
+        return gate
+
     if not skill_name:
         return jsonify({'error': 'skill name required'}), 400
     from fridays.skills import call as skill_call
@@ -2148,6 +2213,11 @@ def api_exec():
     import subprocess as _sp
     data = request.get_json() or {}
     cmd  = (data.get('command') or '').strip()
+
+    gate = _alm_gate_or_response(data, 'exec')
+    if gate:
+        return gate
+
     if not cmd:
         return jsonify({'output': '', 'ok': True})
 
@@ -2185,6 +2255,10 @@ def api_exec_write():
     path    = (data.get('path') or '').strip()
     content = data.get('content', '')
     desc    = (data.get('description') or '').strip()
+
+    gate = _alm_gate_or_response(data, 'exec_write')
+    if gate:
+        return gate
 
     if not path or not path.startswith(_SWARM_ROOT):
         return jsonify({'error': 'Path must be within /home/seven/swarm'}), 400

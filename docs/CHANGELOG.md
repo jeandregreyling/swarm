@@ -7,6 +7,32 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ## Version 2026-03-30 Session 5 (CURRENT)
 
+### Changes by Copilot (Ghost Layer) - ALM POLICY ENFORCEMENT (DOCUMENTATION-DRIVEN)
+
+**2026-03-30 10:30 UTC** Copilot: Activated documentation-first ALM controls and proposal gate enforcement.
+
+- **Type:** Governance / Runtime Enforcement / Auditability
+- **Status:** ✅ COMPLETE
+- **Policy Outcome:** Mutating actions now blocked unless tied to approved proposal IDs while Time Wizard governance is active.
+- **Code Enforcement (frontend terminal API):**
+  - Added `_alm_gate_or_response()` and `_is_time_wizard_active()`
+  - Enforced gate on:
+    - `POST /api/shell/execute`
+    - `POST /api/skills/run`
+    - `POST /api/exec`
+    - `POST /api/exec/write`
+  - Missing `proposal_id` now returns HTTP 428
+  - Invalid proposal/status returns HTTP 404/403
+- **Docs Added:**
+  - `docs/ALM_DRIVER.md`
+  - `docs/ALM_COOKBOOK.md`
+- **Verification:**
+  - Gate blocks writes/execution without `proposal_id`
+  - Gate allows execution with executed proposal ID
+  - Sniffles confirmed enabled via `/api/agents`
+
+---
+
 ### Changes by Copilot (Ghost Layer) — SELF-AUDIT + CONNECTION FIXES + BACKLOG CLEARANCE
 
 **2026-03-30 10:18 UTC** Copilot: Completed self-audit run, restored missing queue/proposal APIs, and cleared proposal backlog.

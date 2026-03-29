@@ -1,6 +1,6 @@
 # 🎯 FRIDAYS REFINEMENT — LIVE TASK TRACKER
 
-**Last Updated:** 2026-03-30 10:18 UTC  
+**Last Updated:** 2026-03-30 10:30 UTC  
 **Session:** Session 5 — Critical Fixes + World Clocks  
 **Auditor:** Copilot (Ghost Layer)  
 
@@ -50,6 +50,15 @@
 | Chat smoke test | ✅ pass | `/api/chat` returned ok+response |
 | Proposal backlog | ✅ cleared | `work_proposals` now `executed=6`, `pending=0` |
 | Code diagnostics (frontend/core/fridays/utils/tests) | ✅ clean | `get_errors` returned no issues |
+
+### ALM Governance Delta (10:30 UTC)
+
+| Control | Status | Evidence |
+|--------|--------|----------|
+| Documentation-first ALM driver | ✅ active | `docs/ALM_DRIVER.md` |
+| Queue/approval cookbook | ✅ active | `docs/ALM_COOKBOOK.md` |
+| Proposal gate on mutating APIs | ✅ active | `frontend/terminal.py` (`/api/shell/execute`, `/api/skills/run`, `/api/exec`, `/api/exec/write`) |
+| Sniffles re-enabled verification | ✅ confirmed | `/api/agents` shows `sniffles.enabled = true` |
 
 ### Priority 1 — Blocking UI Functionality
 
