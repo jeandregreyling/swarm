@@ -7,6 +7,30 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ## Version 2026-03-30 Session 5 (CURRENT)
 
+### Changes by Copilot (Ghost Layer) — SELF-AUDIT + CONNECTION FIXES + BACKLOG CLEARANCE
+
+**2026-03-30 10:18 UTC** Copilot: Completed self-audit run, restored missing queue/proposal APIs, and cleared proposal backlog.
+
+- **Type:** Validation / Bug Fix / Operations
+- **Status:** ✅ COMPLETE
+- **Critical Fix:** Restored missing endpoints in `frontend/terminal.py`
+  - `GET/POST /api/queue`
+  - `GET/PATCH /api/queue/<int:queue_id>`
+  - `GET /api/work-proposals`
+  - `PATCH /api/work-proposals/<proposal_id>`
+- **Connection Health:**
+  - ✅ 11/11 API smoke checks pass
+  - ✅ `/api/chat` smoke test pass
+  - ✅ deterministic triage dry-run pass (24/24 checks)
+- **Backlog Clearance:**
+  - ✅ `INTERNAL-NINE-0091` moved from pending to executed
+  - ✅ `work_proposals` status now `executed=6`, `pending=0`
+- **Diagnostics:**
+  - ✅ Code diagnostics clean in `frontend`, `core`, `fridays`, `utils`, `tests`
+  - ⚠️ Remaining large diagnostics count is markdown-lint debt in docs (not runtime Python syntax failures)
+
+---
+
 ### Changes by Copilot (Ghost Layer) — PROACTIVE OPERATIONS SWEEP (DRY TEST + BACKLOG/BUGS + APPROVALS/PROPOSALS)
 
 **2026-03-30 10:05 UTC** Copilot: Executed proactive dry-test sweep and reconciled operational tracking docs.

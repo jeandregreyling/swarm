@@ -241,3 +241,22 @@ _Maintained by Nine (Ghost Layer). Last updated: 2026-03-30 10:05:00 (Session 5 
 - **Error:** `python3 -m pytest tests -q` fails with `No module named pytest`.
 - **Cause:** Test dependency not installed in current runtime image/environment.
 - **Fix:** Provide a pinned dev-test environment (requirements/dev requirements or venv bootstrap) and re-run full pytest suite.
+
+---
+
+## BUG-027: Queue/proposal API regression (`/api/queue`, `/api/work-proposals`) returned 404
+
+- **Status:** fixed
+- **Found:** 2026-03-30 (self-audit connection sweep)
+- **Service:** `frontend/terminal.py` Flask API layer
+- **Error:** Connection smoke test returned 404 for `/api/queue` and `/api/work-proposals` while proposals/approvals workflow expected these routes.
+- **Cause:** Route set drifted to legacy `/api/proposals*` endpoints; queue/work-proposal routes were absent in live terminal API.
+- **Fix:** Restored endpoints in `frontend/terminal.py`:
+  - `GET/POST /api/queue`
+  - `GET/PATCH /api/queue/<int:queue_id>`
+  - `GET /api/work-proposals`
+  - `PATCH /api/work-proposals/<proposal_id>`
+- **Verification:**
+  - 11/11 API smoke checks pass
+  - POST queue + PATCH proposal status flow validated end-to-end
+  - Proposal backlog updated to `executed=6`, `pending=0`

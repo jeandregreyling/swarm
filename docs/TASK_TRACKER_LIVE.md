@@ -1,6 +1,6 @@
 # 🎯 FRIDAYS REFINEMENT — LIVE TASK TRACKER
 
-**Last Updated:** 2026-03-30 10:05 UTC  
+**Last Updated:** 2026-03-30 10:18 UTC  
 **Session:** Session 5 — Critical Fixes + World Clocks  
 **Auditor:** Copilot (Ghost Layer)  
 
@@ -40,7 +40,16 @@
 |------------|----------|------|-------|--------|
 | OPS-DRY-001 | HIGH | Add pinned test environment with pytest installed for `python3 -m pytest tests -q` | Copilot | OPEN |
 | OPS-DRY-002 | HIGH | Add model-stub mode to `utils/simulate.py` so full dry simulation finishes without live model latency | Copilot | OPEN |
-| OPS-APR-001 | MEDIUM | Reconcile proposal file status vs DB status for `NINE-021` (file says executed, DB still pending) | Nine/Copilot | OPEN |
+| OPS-APR-001 | MEDIUM | Reconcile proposal file status vs DB status for `NINE-021` (file says executed, DB still pending) | Nine/Copilot | ✅ CLOSED |
+
+### Self-Audit Delta (10:18 UTC)
+
+| Check | Result | Notes |
+|------|--------|-------|
+| API connection sweep | ✅ 11/11 pass | Includes restored `/api/queue` + `/api/work-proposals` |
+| Chat smoke test | ✅ pass | `/api/chat` returned ok+response |
+| Proposal backlog | ✅ cleared | `work_proposals` now `executed=6`, `pending=0` |
+| Code diagnostics (frontend/core/fridays/utils/tests) | ✅ clean | `get_errors` returned no issues |
 
 ### Priority 1 — Blocking UI Functionality
 
