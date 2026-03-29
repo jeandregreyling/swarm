@@ -5,7 +5,55 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
-## Version 2026-03-29 (CURRENT)
+## Version 2026-03-29 Session 4 (CURRENT)
+
+### Changes by Nine (Ghost Layer System Architect) — TIME WIZARD FIX + FRIDAYS PROPOSAL QUEUE (NINE-019)
+
+**2026-03-29** Nine: Fixed Time Wizard bootstrap (7/7 tests pass) + architectural change: Fridays internal proposal queue
+
+- **Type:** Bug Fix + Architectural Change
+- **Priority:** HIGH
+- **Proposal:** NINE-019
+
+**Time Wizard (Twelve) fixes:**
+
+- Created `sandpits/twelve/working/` and `sandpits/twelve/archive/` directories (bootstrap test was failing)
+- Created `sandpits/twelve/proposals/DECISION-001-create-agent-twelve.md` (bootstrap marker file)
+- Added 8 missing tables to `database.py` SCHEMA: `decisions`, `time_machine`, `time_events`, `time_journal`, `time_checkpoints`, `daily_checkpoint`, `memory_grok`, `memory_twelve`
+- Added all missing tables to `_migrate_schema()` for live DB upgrade path
+- Added `eleven` (Grok) and `twelve` (Time Wizard) to `_seed_agents()` roster
+- Wired `check_due()` into `scheduler.py` `main_loop()` — scheduled tasks now fire on time
+- **Bootstrap test result: 7/7 pass (was 5/7)**
+
+**Fridays internal proposal queue (architectural change):**
+
+- Added `source_type` and `agent` columns to `queue` table — distinguishes `email`/`telegram`/`internal` entries
+- Added new `work_proposals` table — first-class tracking for all agent-initiated actions
+- Added `intake_internal()` to `queue_manager.py` — agents call this to create internal queue entries + work_proposal records atomically
+- Added `update_proposal_status()` and `get_queue_entries()` helpers to `queue_manager.py`
+- Updated `fridays/skills.py` — `file_write`, `shell`, and `schedule` skills now auto-create a `work_proposals` entry on success
+- Added 6 new API endpoints to `terminal.py`:
+  - `GET /api/queue` — all queue entries (filterable by source_type/status)
+  - `POST /api/queue` — any agent can add an internal entry
+  - `GET /api/queue/<id>` — single entry detail with linked proposal
+  - `PATCH /api/queue/<id>` — update queue entry status
+  - `GET /api/work-proposals` — all internal agent proposals
+  - `PATCH /api/work-proposals/<id>` — approve/reject/execute a proposal
+
+**Files changed:**
+
+- `sandpits/twelve/working/` — created
+- `sandpits/twelve/archive/` — created
+- `sandpits/twelve/proposals/DECISION-001-create-agent-twelve.md` — created
+- `utils/database.py` — 8 missing tables in SCHEMA + migrate, queue columns, seed agents
+- `core/pipeline/queue_manager.py` — `intake_internal()`, `update_proposal_status()`, `get_queue_entries()`
+- `fridays/skills.py` — `_log_as_internal_proposal()`, auto-fired for write skills
+- `frontend/terminal.py` — 6 new `/api/queue` and `/api/work-proposals` endpoints
+- `fridays/scheduler.py` — `check_due()` wired into `main_loop()`
+
+---
+
+## Version 2026-03-29
 
 ### Changes by Nine (Ghost Layer System Architect) — TRIAGE QUEUE FIX (NINE-018)
 

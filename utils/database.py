@@ -402,7 +402,10 @@ CREATE TABLE IF NOT EXISTS decisions (
     decision TEXT NOT NULL,
     reasoning TEXT DEFAULT '',
     test_status TEXT DEFAULT 'PENDING',
-    commit_hash TEXT DEFAULT ''
+    commit_hash TEXT DEFAULT '',
+    checkpoint_id INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    archived INTEGER DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS time_machine (
     checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -411,8 +414,14 @@ CREATE TABLE IF NOT EXISTS time_machine (
     file_path TEXT NOT NULL,
     before_code TEXT DEFAULT '',
     after_code TEXT NOT NULL,
+    before_hash TEXT DEFAULT '',
+    after_hash TEXT DEFAULT '',
+    test_results TEXT DEFAULT '',
     decision_id INTEGER DEFAULT 0,
-    commit_hash TEXT DEFAULT ''
+    commit_hash TEXT DEFAULT '',
+    outcome TEXT DEFAULT 'success',
+    is_rollback_point INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS time_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -631,13 +640,18 @@ def _migrate_schema(conn=None):
             timestamp TEXT DEFAULT (datetime('now')), agent TEXT NOT NULL,
             component TEXT DEFAULT '', proposal_file TEXT DEFAULT '',
             decision TEXT NOT NULL, reasoning TEXT DEFAULT '',
-            test_status TEXT DEFAULT 'PENDING', commit_hash TEXT DEFAULT '')"""),
+            test_status TEXT DEFAULT 'PENDING', commit_hash TEXT DEFAULT '',
+            checkpoint_id INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')), archived INTEGER DEFAULT 0)"""),
         ('time_machine', """CREATE TABLE IF NOT EXISTS time_machine (
             checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT DEFAULT (datetime('now')), agent TEXT NOT NULL,
             file_path TEXT NOT NULL, before_code TEXT DEFAULT '',
-            after_code TEXT NOT NULL, decision_id INTEGER DEFAULT 0,
-            commit_hash TEXT DEFAULT '')"""),
+            after_code TEXT NOT NULL, before_hash TEXT DEFAULT '',
+            after_hash TEXT DEFAULT '', test_results TEXT DEFAULT '',
+            decision_id INTEGER DEFAULT 0, commit_hash TEXT DEFAULT '',
+            outcome TEXT DEFAULT 'success', is_rollback_point INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')))"""),
         ('time_events', """CREATE TABLE IF NOT EXISTS time_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL,
             event_type TEXT NOT NULL, description TEXT DEFAULT '',

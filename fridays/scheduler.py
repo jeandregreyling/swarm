@@ -174,8 +174,9 @@ def main_loop():
     print("Scheduler started — checking every 60 seconds (press Ctrl+C to stop)")
     while True:
         try:
-            run_daily_digest()
+            check_due()
             check_snoozed()
+            run_daily_digest()
             time.sleep(60)
         except KeyboardInterrupt:
             print("\nScheduler stopped.")

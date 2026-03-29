@@ -1,7 +1,7 @@
 # Nine — Decision Index
 
 **Agent**: Nine (System Architect · Ghost Layer)
-**Last Updated**: 2026-03-29 18:17:27 (session 3 — triage queue fix)
+**Last Updated**: 2026-03-29 (session 4 — Time Wizard fix + Fridays proposal queue)
 **Numbering**: NINE-XXX (separate from Twelve's DECISION-XXX)
 
 ---
@@ -9,6 +9,13 @@
 ## Active Proposals
 
 None — all proposals executed.
+
+## Executed This Session (Session 4)
+
+| ID       | Title                                                      | Priority | Status   |
+| -------- | ---------------------------------------------------------- | -------- | -------- |
+| NINE-019 | Time Wizard fix + Fridays internal proposal queue          | HIGH     | EXECUTED |
+| NINE-020 | change_logger.py + git post-commit hook (Time Wizard live) | HIGH     | EXECUTED |
 
 ## Executed This Session (Session 3)
 
@@ -55,6 +62,7 @@ None — all proposals executed.
 | NINE-016 | NINE-001..006 proposals marked EXECUTED             | 2026-03-29 | session 2 |
 | NINE-017 | DECISION-003 marked EXECUTED, test log completed    | 2026-03-29 | session 2 |
 | NINE-018 | Fix triage queue — 5 bugs in listener/duck/ticket   | 2026-03-29 | session 3 |
+| NINE-019 | Time Wizard fix + Fridays internal proposal queue   | 2026-03-29 | session 4 |
 
 ---
 

@@ -391,6 +391,130 @@ def api_studio():
     })
 
 
+@app.route('/api/queue', methods=['GET'])
+def api_queue_list():
+    """
+    Return all queue entries. All agents can read the full queue.
+    Query params:
+      source_type — filter by 'email' | 'telegram' | 'internal' (optional)
+      status      — filter by 'queued' | 'processing' | 'completed' (optional)
+      limit       — max rows (default 100)
+    """
+    from queue_manager import get_queue_entries
+    source_type = request.args.get('source_type')
+    status = request.args.get('status')
+    limit = int(request.args.get('limit', 100))
+    entries = get_queue_entries(source_type=source_type, status=status, limit=limit)
+    return jsonify({'queue': entries, 'count': len(entries)})
+
+
+@app.route('/api/queue', methods=['POST'])
+def api_queue_create():
+    """
+    Add an internal queue entry. Any agent can propose work via this endpoint.
+    Body JSON: {agent, title, description, priority (optional)}
+    """
+    from queue_manager import intake_internal
+    data = request.get_json(silent=True) or {}
+    agent = data.get('agent', 'ghost')
+    title = (data.get('title') or '').strip()
+    description = (data.get('description') or '').strip()
+    priority = int(data.get('priority', 5))
+    if not title:
+        return jsonify({'error': 'title is required'}), 400
+    queue_id, proposal_id = intake_internal(agent, title, description, priority=priority)
+    return jsonify({'ok': True, 'queue_id': queue_id, 'proposal_id': proposal_id}), 201
+
+
+@app.route('/api/queue/<int:queue_id>', methods=['GET'])
+def api_queue_detail(queue_id):
+    """Return a single queue entry by id."""
+    conn = get_connection()
+    row = conn.execute('SELECT * FROM queue WHERE id=?', (queue_id,)).fetchone()
+    # Also fetch linked work_proposal if any
+    proposal = conn.execute(
+        'SELECT * FROM work_proposals WHERE queue_id=?', (queue_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({'error': 'not found'}), 404
+    result = dict(row)
+    result['proposal'] = dict(proposal) if proposal else None
+    return jsonify(result)
+
+
+@app.route('/api/queue/<int:queue_id>', methods=['PATCH'])
+def api_queue_update(queue_id):
+    """
+    Update a queue entry's status or notes. Any agent can update.
+    Body JSON: {status, note (optional)}
+    Valid status values: queued | processing | completed | cancelled
+    """
+    data = request.get_json(silent=True) or {}
+    new_status = data.get('status', '').strip()
+    valid = {'queued', 'processing', 'completed', 'cancelled'}
+    if new_status and new_status not in valid:
+        return jsonify({'error': f'invalid status: {new_status!r}'}), 400
+    conn = get_connection()
+    row = conn.execute('SELECT id FROM queue WHERE id=?', (queue_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'not found'}), 404
+    if new_status:
+        conn.execute('UPDATE queue SET status=? WHERE id=?', (new_status, queue_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/work-proposals', methods=['GET'])
+def api_work_proposals_list():
+    """
+    List all work_proposals (internal agent proposals/actions).
+    Query params: agent, status, limit (default 50)
+    """
+    conn = get_connection()
+    agent_filter = request.args.get('agent')
+    status_filter = request.args.get('status')
+    limit = int(request.args.get('limit', 50))
+    clauses, params = [], []
+    if agent_filter:
+        clauses.append('agent=?')
+        params.append(agent_filter)
+    if status_filter:
+        clauses.append('status=?')
+        params.append(status_filter)
+    where = ('WHERE ' + ' AND '.join(clauses)) if clauses else ''
+    rows = conn.execute(
+        f'SELECT * FROM work_proposals {where} ORDER BY created_at DESC LIMIT ?',
+        params + [limit]
+    ).fetchall()
+    conn.close()
+    return jsonify({'proposals': [dict(r) for r in rows], 'count': len(rows)})
+
+
+@app.route('/api/work-proposals/<int:proposal_id>', methods=['PATCH'])
+def api_work_proposal_update(proposal_id):
+    """Update a work_proposal status. Body JSON: {status}"""
+    data = request.get_json(silent=True) or {}
+    new_status = data.get('status', '').strip()
+    valid = {'pending', 'approved', 'rejected', 'executed'}
+    if not new_status or new_status not in valid:
+        return jsonify({'error': f'invalid status: {new_status!r}. Valid: {sorted(valid)}'}), 400
+    conn = get_connection()
+    row = conn.execute('SELECT id FROM work_proposals WHERE id=?', (proposal_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'not found'}), 404
+    conn.execute(
+        "UPDATE work_proposals SET status=?, updated_at=datetime('now') WHERE id=?",
+        (new_status, proposal_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/api/memory/<int:row_id>', methods=['DELETE'])
 def delete_memory(row_id):
     _ALLOWED_TABLES = {'memory', 'memory_llama', 'memory_qwen', 'memory_gemma', 'memory_eight',
