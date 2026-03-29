@@ -70,9 +70,15 @@ WHITELIST = [
     (r'^grep\s+(-[incl]\s+)*.+\s+/home/seven/swarm/\S+$', 0, 'grep swarm file'),
 
     # Service status — Level 2
-    (r'^systemctl\s+status\s+[\w\-\.]+$',               2, 'service status'),
-    (r'^systemctl\s+is-active\s+[\w\-\.]+$',            2, 'service active check'),
-    (r'^journalctl\s+-u\s+[\w\-\.]+\s+-n\s+\d+$',      2, 'service logs'),
+    (r'^systemctl\s+status\s+([\w\-\.]+\s+)*[\w\-\.]+$',  2, 'service status'),
+    (r'^systemctl\s+is-active\s+[\w\-\.]+$',              2, 'service active check'),
+    (r'^journalctl\s+-u\s+[\w\-\.]+\s+-n\s+\d+\s*$',      2, 'service logs'),
+    
+    # Service restart/stop/start — Level 4 (elevated, Ghost notified)
+    (r'^sudo\s+systemctl\s+restart\s+([\w\-\.]+\s+)*[\w\-\.]+$',  4, 'service restart'),
+    (r'^sudo\s+systemctl\s+stop\s+([\w\-\.]+\s+)*[\w\-\.]+$',     4, 'service stop'),
+    (r'^sudo\s+systemctl\s+start\s+([\w\-\.]+\s+)*[\w\-\.]+$',    4, 'service start'),
+    (r'^sudo\s+journalctl\s+-u\s+[\w\-\.]+\s+-n\s+\d+\s+(--no-pager)?$', 4, 'service logs (elevated)'),
 
     # Ollama — Level 2
     (r'^ollama\s+list$',                                 2, 'ollama model list'),
