@@ -165,7 +165,7 @@ def _parse_snooze_time(raw):
     Supports: 30m, 2h, 2026-04-01, 2026-04-01 09:00
     Returns ISO string or None if unparseable.
     """
-    from datetime import timedelta
+    from datetime import timedelta, datetime
     raw = raw.strip()
     now = get_system_clock().now()
     try:
@@ -1076,8 +1076,8 @@ def process_emails(emails=None):
         conv_id       = new_conversation(question, source='email', sender=clean_from)
         ticket_number = f'TICKET-{conv_id}'
         ticket_ref    = f'[Swarm #{conv_id}]'  # embedded in subjects for thread matching
-        ticket_create(ticket_number, clean_from, question, tags=tags, queue_id=queue_id, email_message_id=e.get('message_id', ''), created_at=get_timestamp())
-        log_message(conv_id, 'Ghost', question, to_agent='Gemma', message_type='chat', created_at=get_timestamp())
+        ticket_create(ticket_number, clean_from, question, tags=tags, queue_id=queue_id, email_message_id=e.get('message_id', ''))
+        log_message(conv_id, 'Ghost', question, to_agent='Gemma', message_type='chat')
         try:
             import discord_notify
             discord_notify.notify_ticket_opened(ticket_number, clean_from, question,
@@ -1248,7 +1248,7 @@ def process_emails(emails=None):
         if random.random() < 0.2:
             print('[Listener] RL-008: Random Sniffles audit triggered.')
             import subprocess
-            subprocess.Popen(['python3', '/home/seven/swarm/sniffer.py'])
+            subprocess.Popen(['python3', '/home/seven/swarm/agents/ghost/sniffer.py'])
 
         # ── Duck queue-clear notification ─────────────────────
         # If nothing left processing or queued, Duck sends Ghost the all-clear.
