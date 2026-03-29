@@ -36,8 +36,8 @@ def create(ticket_number, sender_email, question, tags='', queue_id=None, email_
         conn.execute(
             """INSERT OR IGNORE INTO tickets
                (ticket_number, queue_id, sender_email, question, tags, status, email_message_id)
-               VALUES (?, ?, ?, ?, ?, 'open', ?, ?)""",
-            (ticket_number, queue_id, sender_email, question[:500], tags, email_message_id or '', get_timestamp())
+               VALUES (?, ?, ?, ?, ?, 'open', ?)""",
+            (ticket_number, queue_id, sender_email, question[:500], tags, email_message_id or '')
         )
         conn.commit()
 
