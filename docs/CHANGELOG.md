@@ -26,6 +26,11 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 - **Docs Added:**
   - `docs/ALM_DRIVER.md`
   - `docs/ALM_COOKBOOK.md`
+- **Visibility Added (Fridays UI):**
+  - Added `GET /api/alm/status` in terminal API
+  - Home dashboard now shows ALM status card (`ON`/`WARN`)
+  - Studio header now shows governance line (ALM + Sniffles + pending count)
+  - Monitor panel now renders governance block with enforcement badge
 - **Verification:**
   - Gate blocks writes/execution without `proposal_id`
   - Gate allows execution with executed proposal ID

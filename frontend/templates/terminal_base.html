@@ -1196,6 +1196,10 @@ input[type="range"]::-moz-range-thumb:hover {
           <div class="stat-value" id="stat-agents">—</div>
           <div class="stat-label">Queue</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-alm">—</div>
+          <div class="stat-label">ALM</div>
+        </div>
       </div>
     </div>
 
@@ -1328,6 +1332,7 @@ input[type="range"]::-moz-range-thumb:hover {
       <div>
         <h3 style="margin-bottom: 4px;">🎨 Studio — Proposal Management</h3>
         <div style="font-size: 11px; color: var(--text-dim);">Review and approve agent proposals</div>
+        <div id="studio-governance" style="margin-top:6px;font-size:11px;color:var(--text-dim);">ALM status: loading...</div>
       </div>
       <button onclick="loadProposals(this.closest('.content-view').querySelector('#studio-content'))"
               style="background:var(--accent);border:none;border-radius:4px;padding:6px 14px;color:#000;font-size:11px;font-weight:600;cursor:pointer;">↻ Refresh</button>
@@ -2383,8 +2388,36 @@ function loadMonitorData(win) {
             <div>Active model: <strong>${data.active_model||'none'}</strong></div>
           </div>
           ${pools ? `<div style="margin-bottom:4px;"><div style="font-weight:600;margin-bottom:4px;">Memory Pools</div><div style="font-size:11px;color:var(--text-dim);">${pools}</div></div>` : ''}
+          <div id="monitor-alm-status" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
+            <div style="font-weight:600;margin-bottom:4px;">ALM Governance</div>
+            <div style="font-size:11px;color:var(--text-dim);">Loading governance status...</div>
+          </div>
           <div style="color:var(--text-dim);font-size:10px;margin-top:8px;">Updated ${data.last_activity||data.timestamp||'—'}</div>
         </div>`;
+
+      fetch('/api/alm/status')
+        .then(r => r.json())
+        .then(alm => {
+          const el = win.el.querySelector('#monitor-alm-status');
+          if (!el) return;
+          const badge = alm.status === 'enforced'
+            ? '<span style="padding:2px 8px;border-radius:10px;background:#4caf5020;color:#4caf50;border:1px solid #4caf5060;font-size:10px;font-weight:700;">ENFORCED</span>'
+            : '<span style="padding:2px 8px;border-radius:10px;background:#ffa50022;color:#ffa500;border:1px solid #ffa50055;font-size:10px;font-weight:700;">WARN</span>';
+          el.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <div style="font-weight:600;">ALM Governance</div>
+              ${badge}
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">
+              Time Wizard: <strong>${alm.time_wizard_active ? 'active' : 'inactive'}</strong> ·
+              Sniffles: <strong>${alm.sniffles_enabled ? 'enabled' : 'disabled'}</strong><br>
+              Queue: <strong>${alm.work_proposals?.pending || 0}</strong> pending / <strong>${alm.work_proposals?.executed || 0}</strong> executed
+            </div>`;
+        })
+        .catch(() => {
+          const el = win.el.querySelector('#monitor-alm-status');
+          if (el) el.innerHTML = '<div style="font-weight:600;">ALM Governance</div><div style="font-size:11px;color:#f77;">Failed to load status</div>';
+        });
     })
     .catch(e => {
       content.innerHTML = `<span style="color:#f77;">Error loading monitor: ${e.message}</span>`;
@@ -2415,12 +2448,36 @@ function loadHomeStats() {
       document.getElementById('stat-mem').innerHTML = `${mem.toFixed(0)}% <span class="stat-trend">${randomTrend()}</span>`;
       document.getElementById('stat-disk').innerHTML = diskPct != null ? `${diskPct}% <span class="stat-trend">→</span>` : '—';
       document.getElementById('stat-agents').innerHTML = `${data.queue_depth || 0} <span class="status-dot"></span>`;
+      const almNode = document.getElementById('stat-alm');
+      if (almNode) almNode.innerHTML = '...';
       
       // Apply color classes to stat cards
       document.querySelector('[id="stat-cpu"]').closest('.stat-card').className = `stat-card ${getCpuHealth(cpu)}`;
       document.querySelector('[id="stat-mem"]').closest('.stat-card').className = `stat-card ${getMemHealth(mem)}`;
       document.querySelector('[id="stat-disk"]').closest('.stat-card').className = `stat-card health-good`;
       document.querySelector('[id="stat-agents"]').closest('.stat-card').className = `stat-card ${getAgentHealth(agents)}`;
+
+      fetch('/api/alm/status')
+        .then(r => r.json())
+        .then(alm => {
+          const almNode = document.getElementById('stat-alm');
+          if (!almNode) return;
+          almNode.textContent = alm.status === 'enforced' ? 'ON' : 'WARN';
+          const cls = alm.status === 'enforced' ? 'health-good' : 'health-warn';
+          const card = almNode.closest('.stat-card');
+          if (card) card.className = `stat-card ${cls}`;
+
+          const studioGov = document.getElementById('studio-governance');
+          if (studioGov) {
+            studioGov.innerHTML = `ALM: <strong>${alm.status === 'enforced' ? 'enforced' : 'warn'}</strong> · ` +
+              `Sniffles: <strong>${alm.sniffles_enabled ? 'enabled' : 'disabled'}</strong> · ` +
+              `Pending: <strong>${alm.work_proposals?.pending || 0}</strong>`;
+          }
+        })
+        .catch(() => {
+          const almNode = document.getElementById('stat-alm');
+          if (almNode) almNode.textContent = 'ERR';
+        });
     })
     .catch(e => console.error('Failed to load home stats:', e));
 }
@@ -2527,7 +2584,19 @@ function loadTicketsData(win) {
 function loadStudioData(win) {
   // Load proposals into the studio content area
   const content = win.el.querySelector('#studio-content');
+  const gov = win.el.querySelector('#studio-governance');
   if (!content) return;
+  if (gov) {
+    gov.textContent = 'ALM status: loading...';
+    fetch('/api/alm/status')
+      .then(r => r.json())
+      .then(alm => {
+        gov.innerHTML = `ALM: <strong>${alm.status === 'enforced' ? 'enforced' : 'warn'}</strong> · ` +
+          `Sniffles: <strong>${alm.sniffles_enabled ? 'enabled' : 'disabled'}</strong> · ` +
+          `Pending: <strong>${alm.work_proposals?.pending || 0}</strong>`;
+      })
+      .catch(() => { gov.textContent = 'ALM status: unavailable'; });
+  }
   content.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center;font-size:12px;">Loading proposals…</div>';
   loadProposals(content);
 }

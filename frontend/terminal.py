@@ -1542,6 +1542,64 @@ def api_monitor():
     })
 
 
+@app.route('/api/alm/status')
+def api_alm_status():
+    """Return ALM governance status for UI visibility and audits."""
+    require_approvals = os.environ.get('ALM_REQUIRE_APPROVALS', '1') == '1'
+    time_wizard_active = _is_time_wizard_active()
+    sniffles_enabled = 'Sniffles' not in DISABLED_AGENTS
+
+    pending = 0
+    approved = 0
+    executed = 0
+    total = 0
+    legacy_pending_files = 0
+
+    conn = get_connection()
+    try:
+        table = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='work_proposals'"
+        ).fetchone()
+        if table:
+            rows = conn.execute(
+                "SELECT status, COUNT(*) as c FROM work_proposals GROUP BY status"
+            ).fetchall()
+            for r in rows:
+                st = (r['status'] or '').lower()
+                c = int(r['c'])
+                total += c
+                if st == 'pending':
+                    pending += c
+                elif st == 'approved':
+                    approved += c
+                elif st == 'executed':
+                    executed += c
+    finally:
+        conn.close()
+
+    try:
+        from sandpits import list_proposals
+        legacy_pending_files = len(list_proposals() or [])
+    except Exception:
+        legacy_pending_files = 0
+
+    status = 'enforced' if (require_approvals and time_wizard_active) else 'warn'
+    return jsonify({
+        'ok': True,
+        'status': status,
+        'time_wizard_active': time_wizard_active,
+        'alm_require_approvals': require_approvals,
+        'sniffles_enabled': sniffles_enabled,
+        'work_proposals': {
+            'total': total,
+            'pending': pending,
+            'approved': approved,
+            'executed': executed,
+        },
+        'legacy_pending_files': legacy_pending_files,
+    })
+
+
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     """Send a chat message to the swarm with 10-second timeout."""

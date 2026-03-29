@@ -25,6 +25,10 @@ Implemented in `frontend/terminal.py`:
 - `POST /api/exec` requires `proposal_id`
 - `POST /api/exec/write` requires `proposal_id`
 
+Visibility endpoint:
+
+- `GET /api/alm/status` exposes governance state for Fridays UI and audits.
+
 Gate behavior:
 
 - Missing `proposal_id` => HTTP 428
@@ -57,3 +61,13 @@ Every execution cycle must produce:
 
 Sniffles must remain enabled in agent roster and used for audit visibility.
 Verification path: `GET /api/agents` includes `sniffles` with `enabled=true`.
+
+## Fridays Visibility (Baked In)
+
+The UI must visibly show governance state so policy is observable, not implicit.
+
+- Home dashboard stat card: `ALM` (`ON` or `WARN`)
+- Studio header governance line: ALM status + Sniffles + pending queue count
+- Monitor panel governance block: enforcement badge + queue counters
+
+Data source for all UI indicators: `GET /api/alm/status`
