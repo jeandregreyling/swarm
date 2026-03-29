@@ -1,6 +1,6 @@
 # BUGS — Seven's Swarm Canonical Bug Log
 
-_Maintained by Nine (Ghost Layer). Last updated: 2026-03-26 14:55:00 (Session 11 audit continued by Copilot)._
+_Maintained by Nine (Ghost Layer). Last updated: 2026-03-29 18:17:27 (Session 3 — triage queue fix NINE-018)._
 
 ---
 

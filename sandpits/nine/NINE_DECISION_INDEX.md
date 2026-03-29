@@ -1,7 +1,7 @@
 # Nine — Decision Index
 
 **Agent**: Nine (System Architect · Ghost Layer)
-**Last Updated**: 2026-03-29 (session 2 — full audit)
+**Last Updated**: 2026-03-29 18:17:27 (session 3 — triage queue fix)
 **Numbering**: NINE-XXX (separate from Twelve's DECISION-XXX)
 
 ---
@@ -9,6 +9,12 @@
 ## Active Proposals
 
 None — all proposals executed.
+
+## Executed This Session (Session 3)
+
+| ID       | Title                                                   | Priority | Status   |
+| -------- | ------------------------------------------------------- | -------- | -------- |
+| NINE-018 | Fix triage queue bugs — 5 bugs, email + Telegram queues | CRITICAL | EXECUTED |
 
 ## Executed This Session (Session 2)
 
@@ -48,6 +54,7 @@ None — all proposals executed.
 | NINE-015 | FILE_STRUCTURE.md swarm.db ref removed              | 2026-03-29 | session 2 |
 | NINE-016 | NINE-001..006 proposals marked EXECUTED             | 2026-03-29 | session 2 |
 | NINE-017 | DECISION-003 marked EXECUTED, test log completed    | 2026-03-29 | session 2 |
+| NINE-018 | Fix triage queue — 5 bugs in listener/duck/ticket   | 2026-03-29 | session 3 |
 
 ---
 

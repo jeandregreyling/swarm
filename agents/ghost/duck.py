@@ -31,7 +31,7 @@ def _log_to_duck_log(ticket_number, question, result, verdict, cheer=''):
     conn = get_connection()
     try:
         conn.execute(
-            """INSERT INTO duck_log (ticket_number, question, result, verdict, note)
+            """INSERT INTO duck_log (ticket_number, question, result, answer, reason)
                VALUES (?, ?, ?, ?, ?)""",
             (ticket_number, question[:100], result, verdict, cheer)
         )
