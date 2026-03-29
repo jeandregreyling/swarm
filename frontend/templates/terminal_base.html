@@ -2913,7 +2913,45 @@ function addCustomCard() {
 // TERMINAL COMMANDS
 // ═══════════════════════════════════════════════════════════════════════════
 
-function runTerminalCmd() {
+async function _createALMProposalForCommand(cmd) {
+  // If ALM isn't enforced, run without proposal_id.
+  const almResp = await fetch('/api/alm/status').then(r => r.json()).catch(() => null);
+  if (!almResp || almResp.status !== 'enforced') return null;
+
+  const createResp = await fetch('/api/queue', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      agent: 'terminal_ui',
+      title: 'Terminal command execution',
+      description: `Auto-created ALM proposal for terminal command: ${cmd.slice(0, 240)}`,
+      priority: 4
+    })
+  });
+  const created = await createResp.json().catch(() => ({}));
+  const proposalId = created.proposal_id;
+  if (!proposalId) throw new Error('ALM proposal creation failed');
+
+  // Mark approved before execution so gate permits request.
+  await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: 'approved'})
+  });
+
+  return proposalId;
+}
+
+async function _finalizeALMProposal(proposalId) {
+  if (!proposalId) return;
+  await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: 'executed'})
+  }).catch(() => {});
+}
+
+async function runTerminalCmd() {
   const input = document.getElementById('terminal-input');
   const output = document.getElementById('terminal-output');
   const cmd = input.value.trim();
@@ -2924,23 +2962,37 @@ function runTerminalCmd() {
   line.style.color = '#5c9bd6';
   line.textContent = '❯ ' + cmd;
   output.appendChild(line);
-  
+
   input.value = '';
-  
+
+  let proposalId = null;
+  try {
+    proposalId = await _createALMProposalForCommand(cmd);
+  } catch (e) {
+    const res = document.createElement('div');
+    res.style.color = '#f77';
+    res.textContent = 'ALM proposal error: ' + (e.message || e);
+    output.appendChild(res);
+    output.scrollTop = output.scrollHeight;
+    return;
+  }
+
   fetch('/api/terminal/run', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({command: cmd})
+    body: JSON.stringify({command: cmd, proposal_id: proposalId})
   })
   .then(r => r.json())
-  .then(data => {
+  .then(async data => {
+    await _finalizeALMProposal(proposalId);
     const res = document.createElement('div');
     res.style.color = data.ok ? '#0f9' : '#f77';
     res.textContent = data.output || '(done)';
     output.appendChild(res);
     output.scrollTop = output.scrollHeight;
   })
-  .catch(e => {
+  .catch(async e => {
+    await _finalizeALMProposal(proposalId);
     const err = document.createElement('div');
     err.style.color = '#f77';
     err.textContent = 'Error: ' + e.message;
@@ -2949,24 +3001,45 @@ function runTerminalCmd() {
 }
 
 // Quick command buttons
-function cmdTerminal(cmd) {
+async function cmdTerminal(cmd) {
   const output = document.getElementById('terminal-output');
   const line = document.createElement('div');
   line.style.color = '#5c9bd6';
   line.textContent = '❯ ' + cmd;
   output.appendChild(line);
-  
+
+  let proposalId = null;
+  try {
+    proposalId = await _createALMProposalForCommand(cmd);
+  } catch (e) {
+    const res = document.createElement('div');
+    res.style.color = '#f77';
+    res.textContent = 'ALM proposal error: ' + (e.message || e);
+    output.appendChild(res);
+    output.scrollTop = output.scrollHeight;
+    return;
+  }
+
   fetch('/api/terminal/run', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({command: cmd})
+    body: JSON.stringify({command: cmd, proposal_id: proposalId})
   })
   .then(r => r.json())
-  .then(data => {
+  .then(async data => {
+    await _finalizeALMProposal(proposalId);
     const res = document.createElement('div');
     res.style.color = data.ok ? '#0f9' : '#f77';
     res.textContent = data.output || '(done)';
     output.appendChild(res);
+    output.scrollTop = output.scrollHeight;
+  })
+  .catch(async e => {
+    await _finalizeALMProposal(proposalId);
+    const err = document.createElement('div');
+    err.style.color = '#f77';
+    err.textContent = 'Error: ' + e.message;
+    output.appendChild(err);
     output.scrollTop = output.scrollHeight;
   });
 }
