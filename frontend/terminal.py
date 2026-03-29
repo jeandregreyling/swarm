@@ -228,6 +228,12 @@ def index():
     html = get_themed_html()
     return Response(html, mimetype='text/html')
 
+@app.route('/v2')
+def index_v2():
+    """Render raw console layer (terminal_ui_v2.html) with theme injection."""
+    html = get_themed_html(template='terminal_ui_v2.html')
+    return Response(html, mimetype='text/html')
+
 
 @app.route('/api/conversations')
 def api_conversations():

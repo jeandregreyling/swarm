@@ -125,9 +125,9 @@ class ThemeEngine:
         theme = self.load_theme(theme_name)
         return theme.get('custom_js', '')
     
-    def render_html(self, theme_name='fridays'):
-        """Load terminal_base.html, inject theme, return fully themed HTML."""
-        template_path = self.templates_dir / 'terminal_base.html'
+    def render_html(self, theme_name='fridays', template='terminal_base.html'):
+        """Load a template, inject theme, return fully themed HTML."""
+        template_path = self.templates_dir / template
         
         if not template_path.exists():
             raise FileNotFoundError(f"Base template not found: {template_path}")
@@ -156,10 +156,10 @@ def get_engine():
         _engine = ThemeEngine()
     return _engine
 
-def get_themed_html(theme_name='fridays'):
+def get_themed_html(theme_name='fridays', template='terminal_base.html'):
     """Convenience function. Returns fully themed & injected HTML."""
     engine = get_engine()
-    return engine.render_html(theme_name)
+    return engine.render_html(theme_name, template)
 
 def set_user_theme(theme_name):
     """Set user's theme for this session."""
