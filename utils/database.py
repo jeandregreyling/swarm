@@ -1000,12 +1000,13 @@ def get_ghost_circle_entries(limit=50, severity_filter=None):
     return rows
 
 
-def log_activity(service, event, detail=''):
+def log_activity(service, event, detail='', severity='info'):
     """
     Write a line to the activity_log. Called from listener, telegram, scheduler, skills.
     service: 'listener' | 'telegram' | 'scheduler' | 'terminal' | 'skills'
     event:   short label e.g. 'email_received', 'pipeline_start', 'stage1_done', etc.
     detail:  human-readable context string
+    severity: 'info' | 'warning' | 'error' | 'critical' (accepted but not stored — for compat)
     """
     try:
         conn = get_connection()

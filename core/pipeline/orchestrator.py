@@ -70,6 +70,7 @@ SYSTEM_PROMPTS = {
 }
 
 def ask_agent(agent_name, prompt, retries=2):
+    agent_name = agent_name.lower()  # normalize — AGENTS dict uses lowercase keys
     model = AGENTS[agent_name]
     system = SYSTEM_PROMPTS.get(agent_name, '')
     temp = TEMPERATURES.get(agent_name, 0.5)
