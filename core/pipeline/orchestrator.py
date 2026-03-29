@@ -323,7 +323,7 @@ def gemma_route(question, context):
     
     # Also auto-detect URL in question — Gemma may miss it
     if not needs_browser:
-        needs_browser = bool(_re.search(r'https?://', question))
+        needs_browser = bool(re.search(r'https?://', question))
 
     needs_shell = 'yes' in _get_val('needs_shell')
 

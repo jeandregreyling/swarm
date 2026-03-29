@@ -105,9 +105,6 @@ _AGENT_TABLES = {
     'eight':    'memory_eight',
     'nine':     'memory_nine',
     'ten':      'memory_ten',
-    'eleven':   'memory_grok',
-    'grok':     'memory_grok',
-    'twelve':   'memory_twelve',
     'librarian':'memory',
     'duck':     'memory',
     'sniffles': 'memory',
@@ -118,7 +115,7 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
     like = f'%{query}%'
 
     agent_key = agent.lower() if agent else ''
-    if agent_key in ('llama', 'qwen', 'gemma', 'eight', 'nine', 'ten', 'grok', 'eleven'):
+    if agent_key in ('llama', 'qwen', 'gemma', 'eight', 'nine'):
         tbl = _AGENT_TABLES[agent_key]
         archived_clause = "AND archived = 0"
         rows = conn.execute(
@@ -126,15 +123,6 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
                FROM {tbl}
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? {archived_clause}
-               ORDER BY created_at DESC, importance DESC LIMIT ?""",
-            (like, like, like, min_importance, limit)
-        ).fetchall()
-    elif agent_key == 'twelve':
-        rows = conn.execute(
-            """SELECT id, 'memory_twelve' AS source_table, agent, '' AS subject, content, tags, importance, created_at
-               FROM memory_twelve
-               WHERE (content LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
                ORDER BY created_at DESC, importance DESC LIMIT ?""",
             (like, like, like, min_importance, limit)
         ).fetchall()
@@ -184,20 +172,8 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
                FROM memory_ten
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_grok' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM memory_grok
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_twelve' AS source_table, agent, '' AS subject, content, tags, importance, created_at
-               FROM memory_twelve
-               WHERE (content LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
                ORDER BY created_at DESC, importance DESC LIMIT ?""",
             (like, like, like, min_importance,
-             like, like, like, min_importance,
-             like, like, like, min_importance,
              like, like, like, min_importance,
              like, like, like, min_importance,
              like, like, like, min_importance,
@@ -387,8 +363,7 @@ def api_studio():
 
 @app.route('/api/memory/<int:row_id>', methods=['DELETE'])
 def delete_memory(row_id):
-    _ALLOWED_TABLES = {'memory', 'memory_llama', 'memory_qwen', 'memory_gemma', 'memory_eight',
-                        'memory_nine', 'memory_ten', 'memory_grok', 'memory_twelve'}
+    _ALLOWED_TABLES = {'memory', 'memory_llama', 'memory_qwen', 'memory_gemma', 'memory_eight'}
     table = request.args.get('table', 'memory')
     if table not in _ALLOWED_TABLES:
         return jsonify({'error': 'invalid table'}), 400
@@ -704,7 +679,7 @@ def resend_ticket(ticket_number):
 @app.route('/api/tickets/<ticket_number>/assign', methods=['POST'])
 def assign_ticket(ticket_number):
     """Manually assign a ticket to a specific agent."""
-    _valid_agents = {'gemma', 'llama', 'qwen', 'eight', 'librarian'}
+    _valid_agents = {'Gemma', 'LLaMA', 'Qwen', 'Eight', 'Librarian'}
     data  = request.get_json() or {}
     agent = (data.get('agent') or '').strip()
     if agent not in _valid_agents:
@@ -970,7 +945,7 @@ def api_kb_seed_swarm_docs():
     Idempotent — updates existing docs, inserts new ones.
     """
     import re
-    path = '/home/seven/swarm/docs/PROJECT.md'
+    path = _os.path.join(_os.path.dirname(__file__), 'PROJECT.md')
     if not _os.path.isfile(path):
         return jsonify({'error': 'PROJECT.md not found'}), 404
 
@@ -1022,7 +997,7 @@ def api_kb_seed_swarm_docs():
 @app.route('/api/project-md/raw')
 def api_project_md_raw():
     from flask import send_file as _sf
-    path = '/home/seven/swarm/docs/PROJECT.md'
+    path = _os.path.join(_os.path.dirname(__file__), 'PROJECT.md')
     if not _os.path.isfile(path):
         return 'Not found', 404
     return _sf(path, as_attachment=True, download_name='PROJECT.md', mimetype='text/markdown')
@@ -1031,7 +1006,7 @@ def api_project_md_raw():
 @app.route('/api/testing-md')
 def api_testing_md():
     """Return the content of UAT_TEST_SCRIPTS.md for the dashboard."""
-    path = '/home/seven/swarm/docs/UAT_TEST_SCRIPTS.md'
+    path = _os.path.join(_os.path.dirname(__file__), 'UAT_TEST_SCRIPTS.md')
     if not _os.path.isfile(path):
         return jsonify({'error': 'not found'}), 404
     with open(path, encoding='utf-8') as fh:
@@ -1041,7 +1016,7 @@ def api_testing_md():
 @app.route('/api/bugs-md')
 def api_bugs_md():
     """Return the content of BUGS.md for the dashboard."""
-    path = '/home/seven/swarm/docs/BUGS.md'
+    path = _os.path.join(_os.path.dirname(__file__), 'BUGS.md')
     if not _os.path.isfile(path):
         return jsonify({'error': 'not found'}), 404
     with open(path, encoding='utf-8') as fh:
@@ -1054,7 +1029,7 @@ def api_run_simulation():
     import subprocess
     import os
     try:
-        script_path = '/home/seven/swarm/utils/simulate.py'
+        script_path = os.path.join(os.path.dirname(__file__), 'simulate.py')
         # Run via the current interpreter to ensure paths and env are correct
         result = subprocess.run([sys.executable, script_path], 
                                 capture_output=True, text=True, timeout=600)
@@ -1260,25 +1235,11 @@ def api_monitor():
     from monitor import get_system_status
     status = get_system_status()
     return jsonify({
-        'agents_online':  status.get('open_tickets', 0),   # repurposed for display
-        'last_activity':  status.get('timestamp', '—'),
-        'pending_tasks':  status.get('queue_depth', 0),
-        'system_load':    f"{status.get('cpu_percent', 0):.0f}%",
-        'memory_usage':   f"{status.get('ram_percent', 0):.0f}%",
-        # Rich fields for the Monitor window
-        'cpu_percent':    status.get('cpu_percent', 0),
-        'cpu_temp_c':     status.get('cpu_temp_c', 0),
-        'ram_percent':    status.get('ram_percent', 0),
-        'ram_used_gb':    status.get('ram_used_gb', 0),
-        'ram_total_gb':   status.get('ram_total_gb', 0),
-        'swap_percent':   status.get('swap_percent', 0),
-        'active_model':   status.get('active_model', 'none'),
-        'open_tickets':   status.get('open_tickets', 0),
-        'queue_depth':    status.get('queue_depth', 0),
-        'queue_processing': status.get('queue_processing', 0),
-        'consults_today': status.get('consults_today', 0),
-        'disks':          status.get('disks', []),
-        'memory_pools':   status.get('memory_pools', {}),
+        'agents_online': status.get('agents', {}).get('online', 0),
+        'last_activity': status.get('last_activity', '—'),
+        'pending_tasks': status.get('pending_tasks', 0),
+        'system_load': status.get('load_average', '—'),
+        'memory_usage': status.get('memory_usage', '—'),
     })
 
 
@@ -2465,50 +2426,6 @@ def api_killswitch_agent_reset(agent_name):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# GHOST BRIEF — Swarm Intelligence Feed
-# ══════════════════════════════════════════════════════════════════════════════
-
-@app.route('/api/brief')
-def api_brief_get():
-    """Return latest Ghost Brief. If stale (>6h), generate a new one."""
-    from brief_engine import get_latest_brief, generate_brief, is_brief_stale
-    try:
-        if is_brief_stale(max_age_hours=6):
-            brief = generate_brief(trigger='auto_refresh')
-        else:
-            brief = get_latest_brief()
-        if not brief:
-            return jsonify({'error': 'Brief generation failed — check Claude API key'}), 503
-        return jsonify(brief)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/brief/generate', methods=['POST'])
-def api_brief_generate():
-    """Force-generate a new Ghost Brief immediately."""
-    from brief_engine import generate_brief
-    try:
-        brief = generate_brief(trigger='manual')
-        if not brief:
-            return jsonify({'error': 'Brief generation failed — check Claude API key'}), 503
-        return jsonify(brief)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/brief/history')
-def api_brief_history():
-    """Return list of past Ghost Briefs."""
-    from brief_engine import get_brief_history
-    try:
-        limit = int(request.args.get('limit', 10))
-        return jsonify({'briefs': get_brief_history(limit=limit)})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-# ══════════════════════════════════════════════════════════════════════════════
 # TIME WIZARD — Decision Logging & Audit Trail API
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -2569,21 +2486,17 @@ def api_decision_detail(decision_id):
     
     proposal_dir = '/home/seven/swarm/sandpits/twelve/proposals'
     
-    # Find the proposal file — decision_id is already full e.g. "DECISION-001"
-    pattern = f'{proposal_dir}/{decision_id}-*.md'
+    # Find the proposal file
+    pattern = f'{proposal_dir}/DECISION-{decision_id}-*.md'
     matches = glob.glob(pattern)
-    # Fallback: bare numeric id e.g. "001"
-    if not matches:
-        pattern = f'{proposal_dir}/DECISION-{decision_id}-*.md'
-        matches = glob.glob(pattern)
-
+    
     if not matches:
         return jsonify({'error': f'Decision {decision_id} not found'}), 404
-
+    
     try:
         with open(matches[0], 'r') as f:
             content = f.read()
-
+        
         # Parse markdown decision
         lines = content.split('\n')
         decision_data = {
@@ -2592,32 +2505,17 @@ def api_decision_detail(decision_id):
             'content': content,
             'sections': {}
         }
-
-        # Extract flat fields from well-known header lines
-        for line in lines[:12]:
-            if line.startswith('# '):
-                decision_data['title'] = line.lstrip('# ').strip()
-            if line.startswith('**Status**:'):
-                decision_data['status'] = line.split(':', 1)[1].strip().strip('*')
-            if line.startswith('**Agent**:'):
-                decision_data['agent'] = line.split(':', 1)[1].strip().strip('*')
-
+        
         current_section = None
         for line in lines:
             if line.startswith('## '):
                 current_section = line.replace('## ', '').strip()
                 decision_data['sections'][current_section] = []
             elif current_section and line.strip():
+                if current_section not in decision_data['sections']:
+                    decision_data['sections'][current_section] = []
                 decision_data['sections'][current_section].append(line)
-
-        # Map sections to flat fields expected by the UI
-        sec = decision_data['sections']
-        decision_data['issue']      = '\n'.join(sec.get('Issue', sec.get('Problem', [])))
-        decision_data['solution']   = '\n'.join(sec.get('Proposed Solution', sec.get('Solution', [])))
-        decision_data['scope']      = '\n'.join(sec.get('Scope', sec.get('Impact', [])))
-        decision_data['risks']      = '\n'.join(sec.get('Risks', sec.get('Risk', [])))
-        decision_data['next_steps'] = '\n'.join(sec.get('Next Steps', sec.get('Actions', [])))
-
+        
         return jsonify(decision_data)
     
     except Exception as e:

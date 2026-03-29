@@ -1,9 +1,9 @@
 # Swarm File Structure (Post-Reorganization)
 
-**Date**: March 28, 2026  
-**Status**: ✅ Complete  
-**Root files**: Cleaned (shell scripts, databases, services only)  
-**Python files**: Organized into logical directories  
+**Date**: March 28, 2026 — Updated March 29, 2026 (Nine audit)
+**Status**: ✅ Complete
+**Root files**: Cleaned (shell scripts, databases, services only)
+**Python files**: Organized into logical directories
 
 ## Directory Map
 
@@ -12,9 +12,8 @@ Shell scripts for launching/stopping swarm:
 - `seven.sh` — Start swarm
 - `startswarm.sh` — Full initialization
 - `killswitch.sh` — Emergency stop
-- `swarm_memory.db` — Main SQLite database (1.7M)
-- `swarm.db` — Secondary database
-- Service files: `swarm-discord.service`, `swarm-telegram.service`, `swarm-terminal.service`
+- `swarm_memory.db` — Main SQLite database (canonical, 40+ tables)
+- Service files: `swarm-discord.service`, `swarm-telegram.service`, `swarm-terminal.service`, `swarm-listener.service`
 - `.instructions.md` — Agent customization (VS Code integration)
 
 ### `/core/pipeline/` — Core Swarm Logic

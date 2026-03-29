@@ -1,6 +1,6 @@
 # NINE-005: memory_sonic / memory_scholar / memory_seeker Tables Missing from DB
 
-**Status**: PROPOSED
+**Status**: EXECUTED
 **Proposal ID**: NINE-005
 **Proposed**: 2026-03-29
 **Agent**: Nine (System Architect · Ghost Layer)

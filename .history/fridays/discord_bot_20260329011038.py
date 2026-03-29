@@ -21,8 +21,6 @@ import logging
 
 sys.path.insert(0, '/home/seven/swarm')
 sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/core/pipeline')
-sys.path.insert(0, '/home/seven/swarm/agents/ghost')
 
 import discord
 from discord.ext import commands

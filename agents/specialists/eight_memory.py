@@ -16,6 +16,9 @@ Usage:
 
 import sys
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/core/pipeline')
+sys.path.insert(0, '/home/seven/swarm/lib/system')
 
 from database import get_connection, save_agent_memory, get_agent_memory
 from orchestrator import tag_content

@@ -1,6 +1,6 @@
 # NINE-001: Fix Broken File Path References in terminal.py
 
-**Status**: PROPOSED
+**Status**: EXECUTED
 **Proposal ID**: NINE-001
 **Proposed**: 2026-03-29
 **Agent**: Nine (System Architect · Ghost Layer)

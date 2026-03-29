@@ -1114,6 +1114,11 @@ input[type="range"]::-moz-range-thumb:hover {
           <div class="card-title">Time Wizard</div>
           <div class="card-desc">Decision timeline</div>
         </div>
+        <div class="home-card" onclick="openWindow('ghost-brief', '📋 Ghost Brief', 'view-ghost-brief')">
+          <div class="card-icon">📋</div>
+          <div class="card-title">Ghost Brief</div>
+          <div class="card-desc">Swarm intelligence feed</div>
+        </div>
         <div class="add-card-btn" onclick="addCustomCard()">
           <div style="font-size: 20px;">➕</div>
           <div style="font-size: 12px;">Add Custom</div>
@@ -1139,7 +1144,7 @@ input[type="range"]::-moz-range-thumb:hover {
         </div>
         <div class="stat-card">
           <div class="stat-value" id="stat-agents">—</div>
-          <div class="stat-label">Agents</div>
+          <div class="stat-label">Queue</div>
         </div>
       </div>
     </div>
@@ -1317,6 +1322,36 @@ input[type="range"]::-moz-range-thumb:hover {
     </div>
     <div id="tw-timeline" style="flex: 1; overflow-y: auto; padding: 16px;">
       <div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 40px 20px;">Loading decision timeline...</div>
+    </div>
+  </div>
+</template>
+
+<template id="view-ghost-brief">
+  <div class="content-view" style="display: flex; flex-direction: column; height: 100%;">
+    <div style="padding: 16px; border-bottom: 1px solid var(--border); background: var(--window-header); display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h3 style="margin-bottom: 4px;">📋 Ghost Brief — Swarm Intelligence Feed</h3>
+        <div style="font-size: 11px; color: var(--text-dim);" id="gb-meta">Loading...</div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="gb-history-btn" onclick="toggleBriefHistory()" style="background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 5px 12px; color: var(--text); font-size: 11px; cursor: pointer;">📚 History</button>
+        <button onclick="regenerateBrief()" style="background: var(--accent); border: none; border-radius: 4px; padding: 5px 12px; color: #000; font-size: 11px; font-weight: 600; cursor: pointer;" id="gb-regen-btn">↻ Generate</button>
+      </div>
+    </div>
+    <div style="display: flex; flex: 1; min-height: 0;">
+      <div id="gb-content" style="flex: 1; overflow-y: auto; padding: 20px; font-family: monospace; font-size: 12px; line-height: 1.7; white-space: pre-wrap; color: var(--text);">
+        <div style="color: var(--text-dim); text-align: center; padding: 60px 20px;">
+          <div style="font-size: 32px; margin-bottom: 12px;">📋</div>
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Ghost Brief</div>
+          <div style="font-size: 12px;">Nine will read the full swarm state and synthesise an intelligence report.</div>
+          <div style="font-size: 12px; margin-top: 4px; color: var(--text-dim);">First brief takes ~15 seconds.</div>
+          <button onclick="regenerateBrief()" style="margin-top: 20px; background: var(--accent); border: none; border-radius: 4px; padding: 8px 20px; color: #000; font-size: 12px; font-weight: 600; cursor: pointer;">Generate First Brief</button>
+        </div>
+      </div>
+      <div id="gb-history-panel" style="display: none; width: 220px; border-left: 1px solid var(--border); overflow-y: auto; padding: 12px;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px;">Brief History</div>
+        <div id="gb-history-list"></div>
+      </div>
     </div>
   </div>
 </template>
@@ -1733,7 +1768,7 @@ function applyTimeTheme(time) {
 function loadSettings() {
   const defaultSettings = {
     time: 'auto',
-    opacity: 75,
+    opacity: 25,  // 25% transparent = 75% opaque (slider default value=75 → 100-75=25)
     accent: '#FF9E4D',
     setAsDefault: false
   };
@@ -1749,8 +1784,8 @@ function loadSettings() {
   // Apply time theme (this will set CSS variables for all colors)
   applyTimeTheme(settings.time);
   
-  // Apply transparency
-  document.documentElement.style.setProperty('--glass-opacity', settings.opacity / 100);
+  // Apply transparency (settings.opacity stores transparency %, so invert to get opacity)
+  document.documentElement.style.setProperty('--glass-opacity', (100 - settings.opacity) / 100);
   
   // Apply accent color
   document.documentElement.style.setProperty('--accent', settings.accent);
@@ -2045,7 +2080,7 @@ function saveSettings() {
   
   const settings = {
     time: timeMap[parseInt(timeSlider.value)] || 'auto',
-    opacity: 100 - parseInt(document.getElementById('opacity-slider').value),  // Store as actual opacity, reverse for display
+    opacity: 100 - parseInt(document.getElementById('opacity-slider').value),  // Store as transparency % (100=fully transparent, 0=fully opaque)
     accent: Array.from(document.querySelectorAll('[data-color]')).find(b => b.classList.contains('active'))?.dataset.color || '#FF9E4D',
     setAsDefault: document.getElementById('set-default-time').checked,
   };
@@ -2131,6 +2166,7 @@ function openWindow(id, title, templateId) {
     else if (id === 'tickets') loadTicketsData(win);
     else if (id === 'studio') loadStudioData(win);
     else if (id === 'time-wizard') initTimeWizard();
+    else if (id === 'ghost-brief') initGhostBrief();
   }, 100);
   
   showToast(`Opened ${cleanTitle}`, 'success');
@@ -2150,9 +2186,10 @@ function loadChatData(win) {
   fetch('/api/conversations')
     .then(r => r.json())
     .then(data => {
-      if (data.recent && data.recent.length > 0) {
+      const convs = Array.isArray(data) ? data : (data.recent || data.conversations || []);
+      if (convs.length > 0) {
         messages.innerHTML = '';
-        data.recent.forEach(conv => {
+        convs.slice(0, 20).forEach(conv => {
           const item = document.createElement('div');
           item.style.padding = '8px';
           item.style.borderBottom = '1px solid var(--border)';
@@ -2160,12 +2197,16 @@ function loadChatData(win) {
           item.style.transition = 'background 0.2s';
           item.onmouseover = () => item.style.background = 'var(--card-hover)';
           item.onmouseout = () => item.style.background = 'transparent';
-          item.innerHTML = `<strong>${conv.title}</strong><br><span style="color: var(--text-dim); font-size: 11px;">${conv.timestamp}</span>`;
+          const ts = conv.timestamp || conv.created_at || '';
+          const src = conv.source ? ` · ${conv.source}` : '';
+          item.innerHTML = `<strong>${conv.title || '(untitled)'}</strong>${src}<br><span style="color: var(--text-dim); font-size: 11px;">${ts}</span>`;
           messages.appendChild(item);
         });
+      } else {
+        messages.innerHTML = '<div style="padding: 20px; color: var(--text-dim); font-size: 12px; text-align: center;">No conversations yet.</div>';
       }
     })
-    .catch(e => console.error('Failed to load conversations:', e));
+    .catch(e => { console.error('Failed to load conversations:', e); messages.innerHTML = '<div style="padding: 20px; color: #f77; font-size: 12px;">Failed to load conversations.</div>'; });
 }
 
 function loadTerminalData(win) {
@@ -2179,22 +2220,52 @@ function loadMemoryData(win) {
   const list = win.el.querySelector('#memory-list');
   if (!list) return;
   
-  fetch('/api/memory')
-    .then(r => r.json())
-    .then(data => {
-      if (data.memories && data.memories.length > 0) {
-        list.innerHTML = '';
-        data.memories.slice(0, 20).forEach(mem => {
-          const item = document.createElement('div');
-          item.style.padding = '10px';
-          item.style.borderBottom = '1px solid var(--border)';
-          item.style.fontSize = '12px';
-          item.innerHTML = `<strong>${mem.title}</strong><br><span style="color: var(--text-dim); font-size: 11px;">${mem.agent}</span>`;
-          list.appendChild(item);
-        });
-      }
-    })
-    .catch(e => console.error('Failed to load memory:', e));
+  const memSearch = win.el.querySelector('#memory-search');
+  const doMemSearch = (q) => {
+    const url = q ? `/api/memory?q=${encodeURIComponent(q)}&limit=40` : '/api/memory?limit=40';
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        // API returns {results: {agentName: [entries...]}} grouped by agent
+        let flat = [];
+        if (data.results && typeof data.results === 'object') {
+          Object.entries(data.results).forEach(([agent, entries]) => {
+            (entries || []).forEach(e => flat.push({ ...e, _agent: agent }));
+          });
+        } else if (Array.isArray(data)) {
+          flat = data;
+        }
+        flat.sort((a, b) => (b.importance || 0) - (a.importance || 0));
+        if (flat.length === 0) {
+          list.innerHTML = '<div style="padding: 20px; color: var(--text-dim); font-size: 12px; text-align: center;">No memories found.</div>';
+          return;
+        }
+        list.innerHTML = flat.slice(0, 30).map(m => {
+          const title = m.subject || m.content?.slice(0, 60) || '(no subject)';
+          const agent = m._agent || m.agent || m.source_table || '?';
+          const imp = m.importance ? ` · i${m.importance}` : '';
+          const tags = m.tags ? `<span style="color:var(--accent);font-size:10px;"> ${m.tags.slice(0,40)}</span>` : '';
+          return `<div style="padding:9px 10px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;" onclick="expandMemory(this, ${m.id || 0}, '${(m.source_table || 'memory').replace(/'/g, '')}')">
+            <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${title}</div>
+            <div style="color:var(--text-dim);font-size:10px;margin-top:2px;">${agent}${imp} · ${(m.created_at||'').slice(0,10)}${tags}</div>
+          </div>`;
+        }).join('');
+      })
+      .catch(e => { list.innerHTML = `<div style="padding:20px;color:#f77;font-size:12px;">Failed: ${e.message}</div>`; });
+  };
+  if (memSearch) {
+    let t; memSearch.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => doMemSearch(memSearch.value), 300); });
+  }
+  doMemSearch('');
+}
+
+function expandMemory(el, id, table) {
+  const existing = el.querySelector('.mem-expand');
+  if (existing) { existing.remove(); return; }
+  const flat = el.closest('#memory-list')?.querySelectorAll('[data-mem-full]');
+  // just show full content from the row
+  el.setAttribute('data-mem-full', '1');
+  // noop — entries already show subject. Could fetch full content if needed.
 }
 
 function loadMonitorData(win) {
@@ -2204,18 +2275,44 @@ function loadMonitorData(win) {
   fetch('/api/monitor')
     .then(r => r.json())
     .then(data => {
+      const cpuColor  = data.cpu_percent > 70 ? '#f44' : data.cpu_percent > 50 ? '#ffa500' : '#4caf50';
+      const ramColor  = data.ram_percent > 80 ? '#f44' : data.ram_percent > 60 ? '#ffa500' : '#4caf50';
+      const tempColor = data.cpu_temp_c  > 75 ? '#f44' : data.cpu_temp_c > 60 ? '#ffa500' : '#4caf50';
+      const bar = (pct, color) => `<div style="background:var(--border);border-radius:3px;height:6px;margin-top:3px;"><div style="background:${color};height:6px;border-radius:3px;width:${Math.min(pct,100)}%;transition:width 0.4s;"></div></div>`;
+      const disks = (data.disks || []).map(d =>
+        `<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;"><span>${d.label || d.mountpoint}</span><span style="color:var(--text-dim);">${d.used_gb}GB / ${d.total_gb}GB (${d.percent}%)</span></div>${bar(d.percent, d.percent>85?'#f44':d.percent>70?'#ffa500':'#4caf50')}</div>`
+      ).join('');
+      const pools = Object.entries(data.memory_pools || {}).map(([k,v]) =>
+        `<span style="margin-right:10px;">${k.replace('memory_','')}: <strong>${v}</strong></span>`
+      ).join('');
       content.innerHTML = `
-        <div style="font-size: 12px; line-height: 1.8;">
-          <div><strong>Agents:</strong> ${data.agents_online || '—'} online</div>
-          <div><strong>Last Activity:</strong> ${data.last_activity || '—'}</div>
-          <div><strong>Pending Tasks:</strong> ${data.pending_tasks || 0}</div>
-          <div><strong>System Load:</strong> ${data.system_load || '—'}</div>
-          <div><strong>Memory Usage:</strong> ${data.memory_usage || '—'}</div>
-        </div>
-      `;
+        <div style="font-size:12px;line-height:1.6;padding:4px 0;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
+              <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">CPU</div>
+              <div style="font-size:18px;font-weight:700;color:${cpuColor};">${(data.cpu_percent||0).toFixed(0)}%</div>
+              ${bar(data.cpu_percent||0, cpuColor)}
+              <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">Temp: <span style="color:${tempColor};">${data.cpu_temp_c||0}°C</span></div>
+            </div>
+            <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
+              <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">RAM</div>
+              <div style="font-size:18px;font-weight:700;color:${ramColor};">${(data.ram_percent||0).toFixed(0)}%</div>
+              ${bar(data.ram_percent||0, ramColor)}
+              <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">${data.ram_used_gb||0}GB / ${data.ram_total_gb||0}GB</div>
+            </div>
+          </div>
+          <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Disks</div>${disks || '<span style="color:var(--text-dim);">No disk data</span>'}</div>
+          <div style="margin-bottom:10px;"><div style="font-weight:600;margin-bottom:4px;">Pipeline</div>
+            <div>Queue: <strong>${data.queue_depth||0}</strong> pending · <strong>${data.queue_processing||0}</strong> processing</div>
+            <div>Open tickets: <strong>${data.open_tickets||0}</strong> · Consults today: <strong>${data.consults_today||0}</strong></div>
+            <div>Active model: <strong>${data.active_model||'none'}</strong></div>
+          </div>
+          ${pools ? `<div style="margin-bottom:4px;"><div style="font-weight:600;margin-bottom:4px;">Memory Pools</div><div style="font-size:11px;color:var(--text-dim);">${pools}</div></div>` : ''}
+          <div style="color:var(--text-dim);font-size:10px;margin-top:8px;">Updated ${data.last_activity||data.timestamp||'—'}</div>
+        </div>`;
     })
     .catch(e => {
-      content.innerHTML = '<span style="color: #f77;">Error loading monitor data</span>';
+      content.innerHTML = `<span style="color:#f77;">Error loading monitor: ${e.message}</span>`;
     });
 }
 
@@ -2225,9 +2322,9 @@ function loadHomeStats() {
     .then(data => {
       // Parse stat values for color coding
       const parseStat = (val) => val ? parseFloat(val.toString().match(/\d+\.?\d*/)?.[0] || 0) : 0;
-      const cpu = parseStat(data.system_load);
-      const mem = parseStat(data.memory_usage);
-      const agents = parseStat(data.agents_online);
+      const cpu = data.cpu_percent != null ? data.cpu_percent : parseStat(data.system_load);
+      const mem = data.ram_percent  != null ? data.ram_percent  : parseStat(data.memory_usage);
+      const agents = parseStat(data.open_tickets || data.agents_online);
       
       // Determine health colors
       const getCpuHealth = (val) => val > 70 ? 'health-crit' : val > 50 ? 'health-warn' : 'health-good';
@@ -2238,10 +2335,11 @@ function loadHomeStats() {
       const trends = { up: '↑', down: '↓', stable: '→' };
       const randomTrend = () => [trends.up, trends.down, trends.stable][Math.floor(Math.random() * 3)];
       
+      const diskPct = data.disks && data.disks.length ? data.disks[0].percent : null;
       document.getElementById('stat-cpu').innerHTML = `${cpu.toFixed(0)}% <span class="stat-trend">${randomTrend()}</span>`;
       document.getElementById('stat-mem').innerHTML = `${mem.toFixed(0)}% <span class="stat-trend">${randomTrend()}</span>`;
-      document.getElementById('stat-disk').innerHTML = `${(100 - 35).toFixed(0)}% <span class="stat-trend">→</span>`; // Assume 35% used
-      document.getElementById('stat-agents').innerHTML = `${agents || 0} <span class="status-dot"></span>`;
+      document.getElementById('stat-disk').innerHTML = diskPct != null ? `${diskPct}% <span class="stat-trend">→</span>` : '—';
+      document.getElementById('stat-agents').innerHTML = `${data.queue_depth || 0} <span class="status-dot"></span>`;
       
       // Apply color classes to stat cards
       document.querySelector('[id="stat-cpu"]').closest('.stat-card').className = `stat-card ${getCpuHealth(cpu)}`;
@@ -2260,13 +2358,22 @@ function loadDocsData(win) {
   fetch('/api/docs')
     .then(r => r.json())
     .then(data => {
-      if (data.docs && data.docs.length > 0) {
-        content.innerHTML = data.docs.map(d => `<div style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);"><strong>${d.title}</strong><br><span style="color: var(--text-dim); font-size: 11px;">${d.excerpt}</span></div>`).join('');
+      const docs = Array.isArray(data) ? data : (data.docs || []);
+      if (docs.length > 0) {
+        content.innerHTML = docs.map(d => {
+          const title = d.title || d.filename || '(unknown)';
+          const excerpt = d.excerpt || d.description || '';
+          const size = d.size ? ` <span style="color:var(--text-dim);font-size:10px;">${Math.round(d.size/1024)}KB</span>` : '';
+          return `<div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+            <strong>${title}</strong>${size}<br>
+            <span style="color:var(--text-dim);font-size:11px;">${excerpt}</span>
+          </div>`;
+        }).join('');
       } else {
         content.innerHTML = '<span style="color: var(--text-dim);">No docs available</span>';
       }
     })
-    .catch(e => console.error('Failed to load docs:', e));
+    .catch(e => { content.innerHTML = `<span style="color:#f77;">Failed to load docs: ${e.message}</span>`; });
 }
 
 function loadSkillsData(win) {
@@ -2276,13 +2383,24 @@ function loadSkillsData(win) {
   fetch('/api/skills')
     .then(r => r.json())
     .then(data => {
-      if (data.skills && data.skills.length > 0) {
-        content.innerHTML = data.skills.map(s => `<div style="margin-bottom: 12px; padding: 10px; background: var(--card); border-radius: 4px;"><strong>${s.name}</strong><br><span style="color: var(--text-dim); font-size: 11px;">${s.description}</span></div>`).join('');
+      const skills = Array.isArray(data) ? data : (data.skills || []);
+      if (skills.length > 0) {
+        content.innerHTML = skills.map(s => {
+          const name = s.name || '?';
+          const desc = s.description || '';
+          const usage = s.usage ? `<div style="font-family:monospace;font-size:10px;color:var(--accent);margin-top:4px;">${s.usage}</div>` : '';
+          const example = s.example ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">e.g. ${s.example}</div>` : '';
+          return `<div style="margin-bottom:10px;padding:10px;background:var(--card);border-radius:4px;border:1px solid var(--border);">
+            <strong>${name}</strong><br>
+            <span style="color:var(--text-dim);font-size:11px;">${desc}</span>
+            ${usage}${example}
+          </div>`;
+        }).join('');
       } else {
         content.innerHTML = '<span style="color: var(--text-dim);">No skills available</span>';
       }
     })
-    .catch(e => console.error('Failed to load skills:', e));
+    .catch(e => { content.innerHTML = `<span style="color:#f77;">Failed to load skills: ${e.message}</span>`; });
 }
 
 function loadTicketsData(win) {
@@ -2292,24 +2410,40 @@ function loadTicketsData(win) {
   fetch('/api/tickets')
     .then(r => r.json())
     .then(data => {
-      if (data.tickets && data.tickets.length > 0) {
-        content.innerHTML = data.tickets.map(t => `
-          <div style="background: var(--card); padding: 12px; border-radius: 4px; margin-bottom: 10px; border-left: 3px solid var(--accent); cursor: pointer;" onclick="openTicketDetail('${t.number}')">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <strong>#${t.number}</strong>
-              <span style="font-size: 10px; padding: 2px 6px; border-radius: 3px; background: ${t.status === 'open' ? 'rgba(76, 175, 80, 0.2); color: #4caf50;' : 'rgba(119, 119, 119, 0.2); color: #777;'}">${t.status}</span>
+      const tickets = Array.isArray(data) ? data : (data.tickets || []);
+      if (tickets.length > 0) {
+        content.innerHTML = tickets.slice(0, 30).map(t => {
+          const num   = t.number || t.ticket_number || '?';
+          const title = (t.title || t.question || 'Untitled').slice(0, 100);
+          const ts    = t.timestamp || t.created_at || '';
+          const st    = t.status || 'unknown';
+          const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : '#888';
+          const stBg    = st === 'open' ? 'rgba(76,175,80,0.15)' : st === 'in_progress' ? 'rgba(255,165,0,0.15)' : 'rgba(136,136,136,0.15)';
+          return `<div style="background:var(--card);padding:12px;border-radius:4px;margin-bottom:8px;border-left:3px solid ${stColor};cursor:pointer;" onclick="openTicketDetail('${num}')">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <strong style="font-size:12px;font-family:monospace;">${num}</strong>
+              <span style="font-size:10px;padding:2px 7px;border-radius:3px;background:${stBg};color:${stColor};font-weight:600;">${st}</span>
             </div>
-            <div style="margin-top: 6px; font-size: 12px;">${t.title || 'Untitled'}</div>
-            <div style="margin-top: 4px; font-size: 11px; color: var(--text-dim);">${t.timestamp || '—'}</div>
-          </div>
-        `).join('');
+            <div style="margin-top:5px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${title}</div>
+            <div style="margin-top:3px;font-size:10px;color:var(--text-dim);">${ts.slice(0,16)}</div>
+          </div>`;
+        }).join('');
       } else {
-        content.innerHTML = '<span style="color: var(--text-dim);">No tickets</span>';
+        content.innerHTML = '<div style="padding:20px;color:var(--text-dim);text-align:center;font-size:12px;">No tickets found.</div>';
+      }
+
+      // Wire search input after content is rendered
+      const searchInput = win.el.querySelector('#ticket-search');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const q = e.target.value.toLowerCase();
+          content.querySelectorAll('[onclick^="openTicketDetail"]').forEach(el => {
+            el.style.display = el.textContent.toLowerCase().includes(q) ? 'block' : 'none';
+          });
+        });
       }
     })
-    .catch(e => {
-      content.innerHTML = '<span style="color: #f77;">Error loading tickets</span>';
-    });
+    .catch(e => { content.innerHTML = `<div style="padding:20px;color:#f77;font-size:12px;">Error loading tickets: ${e.message}</div>`; });
 }
 
 function loadStudioData(win) {
@@ -2338,7 +2472,7 @@ function openStudioSection(section) {
     fetch('/api/agents')
       .then(r => r.json())
       .then(data => {
-        const agents = data.agents || [];
+        const agents = Array.isArray(data) ? data : (data.agents || []);
         
         if (agents.length === 0) {
           studioContent.innerHTML = '<div style="padding: 16px; color: var(--text-dim);">No agents online</div>';
@@ -2650,6 +2784,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: 'Tickets', onclick: 'openWindow("tickets", "Tickets", "view-tickets")' },
       { label: 'Studio', onclick: 'openWindow("studio", "Studio", "view-studio")' },
       { label: 'Time Wizard', onclick: 'openWindow("time-wizard", "⏳ Time Wizard", "view-time-wizard")' },
+      { label: 'Ghost Brief', onclick: 'openWindow("ghost-brief", "📋 Ghost Brief", "view-ghost-brief")' },
     ];
     
     const filtered = commands.filter(c => c.label.toLowerCase().includes(query));
@@ -2735,13 +2870,17 @@ function updateTicketQueue() {
   fetch('/api/tickets')
     .then(r => r.json())
     .then(data => {
-      if (data.tickets && data.tickets.length > 0) {
-        queue.innerHTML = data.tickets.slice(0, 8).map(t => {
-          const statusColor = t.status === 'open' ? '#4caf50' : t.status === 'in_progress' ? '#ffa500' : '#888';
-          const statusBg = t.status === 'open' ? 'rgba(76, 175, 80, 0.2)' : t.status === 'in_progress' ? 'rgba(255, 165, 0, 0.2)' : 'rgba(136, 136, 136, 0.2)';
-          return `<div class="ticket-item" style="display: flex; justify-content: space-between; align-items: center;" onclick="winManager.open('ticket-${t.id}', 'Ticket #${t.number}', 'view-tickets', { ticketId: ${t.id} })">
-            <span style="flex: 1; font-weight: 500;">#${t.number} - ${t.title || 'Untitled'}</span>
-            <span style="font-size: 9px; padding: 3px 8px; border-radius: 3px; background: ${statusBg}; color: ${statusColor}; white-space: nowrap; margin-left: 8px; font-weight: 600;">${t.status}</span>
+      const tickets = Array.isArray(data) ? data : (data.tickets || []);
+      if (tickets.length > 0) {
+        queue.innerHTML = tickets.slice(0, 8).map(t => {
+          const num   = t.number || t.ticket_number || '?';
+          const title = (t.title || t.question || 'Untitled').slice(0, 60);
+          const st    = t.status || 'unknown';
+          const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : '#888';
+          const stBg    = st === 'open' ? 'rgba(76,175,80,0.15)' : st === 'in_progress' ? 'rgba(255,165,0,0.15)' : 'rgba(136,136,136,0.15)';
+          return `<div class="ticket-item" style="display:flex;justify-content:space-between;align-items:center;" onclick="openWindow('tickets','🎫 Tickets','view-tickets')">
+            <span style="flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">#${num} — ${title}</span>
+            <span style="font-size:9px;padding:3px 8px;border-radius:3px;background:${stBg};color:${stColor};white-space:nowrap;margin-left:8px;font-weight:600;">${st}</span>
           </div>`;
         }).join('');
       } else {
@@ -2820,9 +2959,187 @@ async function expandTwDecision(id) {
   try {
     const res = await fetch(`/api/decisions/${id}`);
     const d = await res.json();
-    showToast(`Decision ${id}: ${d.title || d.status || '?'}`, 'info');
+    
+    // Build detail panel HTML
+    const detailHtml = `
+      <div style="background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 16px; margin-top: 12px;">
+        <div style="font-size: 14px; font-weight: 700; margin-bottom: 12px;">📋 Decision Details</div>
+        <div style="font-size: 12px; line-height: 1.6;">
+          <div style="margin-bottom: 12px;">
+            <div style="font-weight: 600; color: var(--accent); font-size: 11px; text-transform: uppercase;">ID</div>
+            <div style="color: var(--text); font-family: monospace;">${d.id || d.decision_id || id}</div>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <div style="font-weight: 600; color: var(--accent); font-size: 11px; text-transform: uppercase;">Status</div>
+            <div style="color: var(--text);">${d.status || 'UNKNOWN'}</div>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <div style="font-weight: 600; color: var(--accent); font-size: 11px; text-transform: uppercase;">Title</div>
+            <div style="color: var(--text);">${d.title || d.summary || '(no title)'}</div>
+          </div>
+          ${d.issue ? `<div style="margin-bottom: 12px;">
+            <div style="font-weight: 600; color: var(--accent); font-size: 11px; text-transform: uppercase;">Issue</div>
+            <div style="color: var(--text); white-space: pre-wrap;">${d.issue}</div>
+          </div>` : ''}
+          ${d.solution ? `<div style="margin-bottom: 12px;">
+            <div style="font-weight: 600; color: var(--accent); font-size: 11px; text-transform: uppercase;">Solution</div>
+            <div style="color: var(--text); white-space: pre-wrap;">${d.solution}</div>
+          </div>` : ''}
+          ${d.scope ? `<div style="margin-bottom: 12px;">
+            <div style="font-weight: 600; color: var(--accent); font-size: 11px; text-transform: uppercase;">Scope</div>
+            <div style="color: var(--text); white-space: pre-wrap;">${d.scope}</div>
+          </div>` : ''}
+          ${d.risks ? `<div style="margin-bottom: 12px;">
+            <div style="font-weight: 600; color: var(--accent); font-size: 11px; text-transform: uppercase;">Risks</div>
+            <div style="color: var(--text); white-space: pre-wrap;">${d.risks}</div>
+          </div>` : ''}
+          ${d.next_steps ? `<div>
+            <div style="font-weight: 600; color: var(--accent); font-size: 11px; text-transform: uppercase;">Next Steps</div>
+            <div style="color: var(--text); white-space: pre-wrap;">${d.next_steps}</div>
+          </div>` : ''}
+        </div>
+      </div>
+    `;
+    
+    // Remove existing detail if present
+    const existing = document.getElementById(`tw-detail-${id}`);
+    if (existing) existing.remove();
+    
+    // Insert detail panel after timeline
+    const timeline = document.getElementById('tw-timeline');
+    if (timeline) {
+      const wrapper = document.createElement('div');
+      wrapper.id = `tw-detail-${id}`;
+      wrapper.innerHTML = detailHtml;
+      timeline.parentNode.insertBefore(wrapper, timeline.nextSibling);
+    }
+    
+    showToast(`Loaded: ${d.title || d.status}`, 'success');
   } catch (e) {
     showToast(`Could not load decision ${id}`, 'error');
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GHOST BRIEF
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _gbHistoryVisible = false;
+let _gbBriefs = [];
+
+function initGhostBrief() {
+  loadGhostBrief();
+}
+
+async function loadGhostBrief(forceGenerate = false) {
+  const content = document.getElementById('gb-content');
+  const meta    = document.getElementById('gb-meta');
+  const btn     = document.getElementById('gb-regen-btn');
+  if (!content) return;
+
+  content.innerHTML = `<div style="color:var(--text-dim);text-align:center;padding:60px 20px;font-family:inherit;">
+    <div style="font-size:24px;margin-bottom:12px;animation:pulse-dot 1.5s ease-in-out infinite">📋</div>
+    <div>${forceGenerate ? 'Nine is reading the swarm state and synthesising...' : 'Loading latest brief...'}</div>
+    <div style="font-size:11px;margin-top:6px;color:var(--text-dim);">${forceGenerate ? 'This takes ~15 seconds.' : ''}</div>
+  </div>`;
+  if (btn) { btn.disabled = true; btn.textContent = forceGenerate ? '⏳ Thinking...' : '⏳ Loading...'; }
+
+  try {
+    const url = forceGenerate ? '/api/brief/generate' : '/api/brief';
+    const method = forceGenerate ? 'POST' : 'GET';
+    const res = await fetch(url, { method });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const brief = await res.json();
+    renderGhostBrief(brief);
+  } catch (e) {
+    content.innerHTML = `<div style="color:#f44;padding:20px;font-family:inherit;font-size:12px;">
+      <strong>Failed to load brief:</strong> ${e.message}<br>
+      <span style="color:var(--text-dim);font-size:11px;">Check that ANTHROPIC_API_KEY is set and Claude API is reachable.</span>
+    </div>`;
+    showToast('Brief failed: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Generate'; }
+  }
+}
+
+function renderGhostBrief(brief) {
+  const content = document.getElementById('gb-content');
+  const meta    = document.getElementById('gb-meta');
+  if (!content) return;
+
+  // Section-colour the output
+  const text = (brief.content || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const coloured = text
+    .replace(/(═+)/g, '<span style="color:var(--accent);opacity:0.6">$1</span>')
+    .replace(/(GHOST BRIEF[^\n]*)/g, '<span style="color:var(--accent);font-weight:700;font-size:13px;">$1</span>')
+    .replace(/^(SITUATION|TICKET PATTERNS|MEMORY HIGHLIGHTS|OPEN ITEMS|SYSTEM HEALTH|NINE'S TAKE|NEXT 24H)$/gm,
+             '<span style="color:var(--accent);font-weight:700;letter-spacing:0.05em;">$1</span>')
+    .replace(/(⚠️[^\n]*)/g, '<span style="color:#ffc800;">$1</span>')
+    .replace(/(✅[^\n]*)/g, '<span style="color:#00ff80;">$1</span>');
+
+  content.innerHTML = `<div style="font-family:monospace;font-size:12px;line-height:1.75;white-space:pre-wrap;">${coloured}</div>`;
+
+  if (meta) {
+    const genAt = brief.generated_at || '';
+    const tokens = brief.tokens_used || 0;
+    const trigger = brief.triggered_by || 'unknown';
+    meta.textContent = `Generated ${genAt} · ${tokens} tokens · trigger: ${trigger}`;
+  }
+}
+
+async function regenerateBrief() {
+  await loadGhostBrief(true);
+  if (_gbHistoryVisible) loadBriefHistory();
+}
+
+function toggleBriefHistory() {
+  const panel = document.getElementById('gb-history-panel');
+  if (!panel) return;
+  _gbHistoryVisible = !_gbHistoryVisible;
+  panel.style.display = _gbHistoryVisible ? 'block' : 'none';
+  if (_gbHistoryVisible) loadBriefHistory();
+}
+
+async function loadBriefHistory() {
+  const list = document.getElementById('gb-history-list');
+  if (!list) return;
+  try {
+    const res = await fetch('/api/brief/history?limit=20');
+    const data = await res.json();
+    _gbBriefs = data.briefs || [];
+    list.innerHTML = _gbBriefs.map(b => `
+      <div onclick="loadBriefById(${b.id})"
+           style="padding:8px;border-radius:4px;border:1px solid var(--border);margin-bottom:6px;cursor:pointer;font-size:11px;background:var(--card);">
+        <div style="color:var(--accent);font-weight:600;">#${b.id} · ${b.brief_type}</div>
+        <div style="color:var(--text-dim);margin-top:2px;">${(b.generated_at||'').slice(0,16)}</div>
+        <div style="color:var(--text-dim);font-size:10px;">${b.tokens_used || 0} tokens</div>
+      </div>`).join('') || '<div style="color:var(--text-dim);font-size:11px;">No briefs yet.</div>';
+  } catch (e) {
+    list.innerHTML = `<div style="color:#f44;font-size:11px;">Failed: ${e.message}</div>`;
+  }
+}
+
+async function loadBriefById(id) {
+  const content = document.getElementById('gb-content');
+  const meta    = document.getElementById('gb-meta');
+  if (!content) return;
+  try {
+    // History entries include the brief text in preview — we need the full entry
+    // Quick solution: use /api/brief/history and find it, or hit a future /api/brief/<id>
+    // For now, re-use the history data already loaded
+    const brief = _gbBriefs.find(b => b.id === id);
+    if (!brief) { showToast('Brief not found in cache', 'error'); return; }
+    // Preview only — let user know
+    content.innerHTML = `<div style="font-family:monospace;font-size:12px;line-height:1.75;white-space:pre-wrap;">${
+      (brief.preview || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    }\n\n<span style="color:var(--text-dim);">[Brief #${id} preview — Generate a new brief for full text]</span></div>`;
+    if (meta) meta.textContent = `Brief #${id} · ${(brief.generated_at||'').slice(0,16)} · ${brief.tokens_used||0} tokens`;
+  } catch (e) {
+    showToast('Could not load brief #' + id, 'error');
   }
 }
 

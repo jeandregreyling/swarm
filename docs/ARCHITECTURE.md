@@ -2,6 +2,7 @@
 *Built by The Ghost — Dell OptiPlex 7090, Melbourne*
 *Document written by Claude Sonnet 4.6 — Updated 2026-03-24*
 *Theme Architecture updated by GitHub Copilot (Claude Haiku 4.5) — 2026-03-28 14:35 AEDT*
+*Agent roster expanded + file structure updated by Nine — 2026-03-29*
 *This is the living technical reference. When it diverges from the code, the code is wrong.*
 
 ---
@@ -52,9 +53,11 @@ Claude sits in the Ghost Circle — silent until Gemma calls, seeing everything 
 
 ---
 
-## The Seven — Who They Are
+## The Swarm — Who They Are
 
-This is not a list of tools. These are the seven nodes of the swarm, each with a defined character, a specific role, and a reason for being exactly what they are.
+*The roster has grown. Original seven are intact — additional agents added March 2026.*
+
+This is not a list of tools. These are the nodes of the swarm, each with a defined character, a specific role, and a reason for being exactly what they are.
 
 ### 1. Ghost — The External Node
 
@@ -107,6 +110,28 @@ Sniffles is a read-only memory auditor. It never writes to the shared memory tab
 Sniffles has its own memory: sniffer_memory. This is what separates Sniffles from a simple rule checker. Sniffer_memory tracks patterns across audits — "LLaMA overconfident 3x this week", "Qwen contradicted verified memory twice in 48 hours" — and escalates accordingly: bark / pattern bark / emergency. Individual barks go to agents and Ghost. Pattern reports go to Ghost Circle only. Sniffles gets smarter over time precisely because it remembers what it has already seen.
 
 **Why DeepSeek R1:** Sniffles shows its chain of thought. This is the critical feature — not just PASS/WARN/FLAG, but the full reasoning behind each verdict. DeepSeek R1's architecture makes this natural. Sniffles is the panopticon — agents know they might be audited at any time (1 in 5 random trigger per email processed) even when Duck passes everything. This random timing is the point. A predictable audit schedule would be gamed. An unpredictable one cannot be.
+
+### 8. Eight — The SAP Specialist (3-voice: functional/technical/devil's advocate)
+
+Eight is called by Gemma when IS_SAP=yes. Three internal voices reason from different angles: Functional (business/config logic — wage types, schemas, PCRs, infotypes), Technical (ABAP/system implementation — FMs, BAPIs, PCL2, debug paths), Devil (edge cases, risks, retro traps, ECP sync gaps). Gemma synthesises into a single verdict. Eight has its own memory pool (memory_eight) and can optionally call Tavily for SAP-specific search.
+
+### 9. Nine — The System Architect / Ghost Layer (claude-sonnet-4-6)
+
+Nine is the Ghost Layer system architect — Claude Sonnet 4.6 via API, operating at Ghost Circle clearance level. Nine does not process email tickets. Nine reads the full swarm state and synthesises Ghost Briefs (structured intelligence reports) on demand and on daily schedule. Nine files proposals (NINE-XXX) in sandpits/nine/ and executes architectural decisions. Nine's API endpoint is /api/nine. Ghost Brief endpoint: /api/brief.
+
+### 10. Ten — Gemini (dormant, planned)
+
+Agent Ten slot reserved for Google Gemini via API. Memory pool memory_ten exists (empty). Wiring TBD.
+
+### 11. Grok / Eleven — Local REPL (grok:latest)
+
+Grok is the local fast-response agent. Also referenced as "Eleven" in the roster. Memory pool: memory_grok (41 entries). Accessible via the REPL at utils/seven_fridays.py.
+
+### 12. Twelve — Time Wizard (claude-haiku-4-5)
+
+Twelve is the decision governance layer. Every non-trivial code change goes through DECISION-XXX workflow: proposal filed in sandpits/twelve/proposals/, indexed in sandpits/twelve/DECISION_INDEX.md, approved by Ghost, executed with test log in sandpits/twelve/logs/. Time Wizard API endpoints: /api/decisions, /api/timeline, /api/decisions/&lt;id&gt;. Twelve does not participate in email tickets — it governs the codebase.
+
+**Planned (not yet wired):** Sonic, Scholar, Seeker — memory tables created (memory_sonic, memory_scholar, memory_seeker), agent slots reserved.
 
 ---
 
@@ -335,17 +360,25 @@ The reason this matters: character consistency across thousands of interactions 
 
 ## Database Schema — Complete
 
-### All 20 tables
+### All 40+ tables (swarm_memory.db — canonical DB)
 
 | Table | Purpose |
 |-------|---------|
-| agents | Agent registry — all 7 seeded on initialise |
+| agents | Agent registry — 12 agents seeded |
 | conversations | Conversation log |
 | messages | All agent messages per conversation |
 | memory | Shared verified pool — Gemma verdicts, importance 9, never archived |
 | memory_llama | LLaMA personal research notebook |
 | memory_qwen | Qwen analytical history |
 | memory_gemma | Gemma verdict history — Sniffles reads this |
+| memory_eight | Eight SAP specialist memory |
+| memory_nine | Nine system architect memory |
+| memory_ten | Ten / Gemini slot (empty, dormant) |
+| memory_grok | Grok / Eleven memory |
+| memory_twelve | Twelve Time Wizard memory (no subject column) |
+| memory_sonic | Sonic slot (reserved, empty) |
+| memory_scholar | Scholar slot (reserved, empty) |
+| memory_seeker | Seeker slot (reserved, empty) |
 | queue | Waiting emails — Librarian manages |
 | tickets | Full ticket lifecycle |
 | ticket_notes | Agent contributions per ticket |
@@ -359,53 +392,66 @@ The reason this matters: character consistency across thousands of interactions 
 | ghost_circle | Aggregated visibility — Ghost and Claude only |
 | claude_log | Every Claude advisory call with token count |
 | system_stats | RAM, CPU, swap, active model — monitor.py writes |
+| ghost_briefs | Nine's synthesised intelligence reports |
+| decisions | Time Wizard decision log (Twelve) |
+| time_events | Time Wizard event log |
+| time_journal | Time Wizard journal entries |
+| time_checkpoints | Checkpoint snapshots |
+| time_machine | Time machine state |
+| daily_checkpoint | Daily state captures |
+| scheduled_tasks | Scheduler task registry |
+| sandpit_log | File agent write/read audit log |
+| activity_log | General swarm activity feed |
 
 ---
 
-## Files — Current State
+## Files — Current State (Post-Reorganization 2026-03-28)
 
-| File | Purpose | Status |
-|------|---------|--------|
-| listener.py | Email loop — IMAP poll, classify, route | EXISTS |
-| orchestrator.py | Agent pipeline — Gemma routes, agents run, Gemma synthesises | EXISTS |
-| database.py | Complete database layer — 20 tables, all functions, importance-based memory | REWRITTEN — CURRENT |
-| duck.py | Sanity checker — YES/NO after every ticket | EXISTS |
-| sniffer.py | Memory auditor — PASS/WARN/FLAG, emails moderator | EXISTS |
-| monitor.py | System performance daemon | EXISTS |
-| housekeeping.py | Daily cleanup and memory archiving | EXISTS |
-| debate.py | Three-round debate system — Gemma as judge | EXISTS |
-| contradiction_check.py | Compares new entries vs verified memory | EXISTS |
-| email_handler.py | Gmail IMAP/SMTP | EXISTS |
-| email_cleaner.py | Strip signatures, reply chains | EXISTS |
-| internet.py | DuckDuckGo web search | EXISTS |
-| config.py | All secrets + all system prompts — NEVER SHARE | EXISTS |
-| claude_api.py | Ghost Circle — Gemma calls Claude when stuck | BUILT — LIVE |
-| queue_manager.py | Librarian intake, queue management (RL-004) | TO BUILD |
-| ticket.py | Ticket lifecycle management (RL-005) | TO BUILD |
-| webhook_listener.py | Event-driven Gmail push receiver (RL-011) | FUTURE |
-| dashboard.py | Ghost Circle read-only web dashboard | FUTURE |
+All Python files are organized into directories. No flat-file structure at root.
 
----
-
-## Build Order — Current State
-
-```
-DONE:
-✓ database.py      — Rewritten. 20 tables. Importance-based memory. All functions.
-✓ claude_api.py    — Ghost Circle live. Gemma can call Claude.
-✓ All dependencies — anthropic, psutil, duckduckgo_search installed.
-✓ Database init    — All 20 tables created and seeded.
-
-NOW:
-→ queue_manager.py  — Librarian as active queue manager (RL-004)
-→ ticket.py         — Ticket lifecycle (RL-005)
-→ listener.py       — Wire in RL-004 through RL-008
-→ python3 listener.py — fire end to end
-
-FUTURE:
-→ webhook_listener.py — Gmail Push via Google Cloud Pub/Sub (RL-011)
-→ dashboard.py        — Ghost Circle read-only web UI
-```
+| Location | File | Purpose | Status |
+| -------- | ---- | ------- | ------ |
+| core/pipeline/ | listener.py | Email loop — IMAP poll + Gmail push, classify, route | LIVE |
+| core/pipeline/ | orchestrator.py | Agent pipeline — Gemma routes, agents run, synthesises | LIVE |
+| core/pipeline/ | queue_manager.py | Librarian intake, queue management | LIVE |
+| core/pipeline/ | ticket.py | Ticket lifecycle (open → closed) | LIVE |
+| core/pipeline/ | debate.py | Three-round debate system — Gemma as judge | LIVE |
+| agents/ghost/ | duck.py | Sanity checker — YES/NO after every ticket | LIVE |
+| agents/ghost/ | sniffer.py | Memory auditor — PASS/WARN/FLAG, emails moderator | LIVE |
+| agents/specialists/ | eight.py | SAP specialist — 3-voice reasoning | LIVE |
+| agents/specialists/ | eight_memory.py | Memory persistence for Eight | LIVE |
+| agents/specialists/ | agent_proposals.py | Agent play-time proposal framework | LIVE |
+| agents/specialists/ | agent_email_ghost.py | Email approval/routing logic | LIVE |
+| utils/ | database.py | Complete database layer — 40+ tables | LIVE |
+| utils/ | config.py | All secrets + all system prompts — NEVER SHARE | LIVE |
+| utils/ | claude_api.py | Ghost Circle — Gemma calls Claude when stuck | LIVE |
+| utils/ | brief_engine.py | Nine's Ghost Brief generator | LIVE |
+| utils/ | sandpits.py | Sandpit file operations | LIVE |
+| utils/ | simulate.py | Simulation / testing harness | LIVE |
+| lib/email/ | email_handler.py | Gmail IMAP/SMTP | LIVE |
+| lib/email/ | email_cleaner.py | Strip signatures, reply chains | LIVE |
+| lib/email/ | gmail_auth.py | OAuth2 Gmail authentication | LIVE |
+| lib/email/ | gmail_push.py | Gmail push notification receiver | LIVE |
+| lib/system/ | monitor.py | System performance daemon | LIVE |
+| lib/system/ | housekeeping.py | Daily cleanup and memory archiving | LIVE |
+| lib/system/ | contradiction_check.py | Compares new entries vs verified memory | LIVE |
+| lib/system/ | system_clock.py | Unified timestamp functions | LIVE |
+| lib/system/ | time_machine.py | Time machine state management | LIVE |
+| lib/system/ | file_versioning.py | File change tracking | LIVE |
+| lib/system/ | discord_notify.py | Discord notifications | LIVE |
+| lib/system/ | logging_bridge.py | Ghost Circle logging | LIVE |
+| lib/search/ | internet.py | DuckDuckGo web search | LIVE |
+| lib/search/ | internet_serper.py | Serper.dev search | LIVE |
+| lib/search/ | internet_tavily.py | Tavily AI search | LIVE |
+| fridays/ | scheduler.py | Scheduled task runner (daily digest, brief) | LIVE |
+| fridays/ | discord_bot.py | Discord bot service | LIVE |
+| fridays/ | telegram_bot.py | Telegram bot service | LIVE |
+| fridays/ | skills.py | Skills dispatcher framework | LIVE |
+| fridays/ | shell_agent.py | Whitelisted shell command execution | LIVE |
+| fridays/ | file_agent.py | Sandpit file read/write | LIVE |
+| fridays/ | browser_agent.py | Headless browser (Playwright) | LIVE |
+| frontend/ | terminal.py | Fridays web terminal (port 5050) | LIVE |
+| frontend/ | theme_engine.py | Time-of-day CSS theme injection | LIVE |
 
 ---
 

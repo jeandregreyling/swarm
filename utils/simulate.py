@@ -13,6 +13,11 @@ Usage:
 
 import sys
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/core/pipeline')
+sys.path.insert(0, '/home/seven/swarm/agents/ghost')
+sys.path.insert(0, '/home/seven/swarm/lib/system')
+sys.path.insert(0, '/home/seven/swarm/lib/email')
 
 # ── Patch send_reply before any import touches it ─────────────────────────
 import email_handler as _eh

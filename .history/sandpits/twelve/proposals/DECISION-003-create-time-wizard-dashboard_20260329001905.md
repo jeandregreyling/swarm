@@ -1,11 +1,10 @@
 # Decision 003: Create Time Wizard Fridays Dashboard Tile
 
-**Status**: EXECUTED
-**Decision ID**: 003
-**Proposed**: 2026-03-29T00:25:00Z
-**Executed**: 2026-03-29 (Nine audit session)
-**Agent**: Twelve (Time Wizard) / Nine (executor)
-**Git Commit Hash**: [pending commit]
+**Status**: PROPOSED  
+**Decision ID**: 003  
+**Proposed**: 2026-03-29T00:25:00Z  
+**Agent**: Twelve (Time Wizard)  
+**Git Commit Hash**: [PENDING]  
 
 ## Issue
 Time Wizard infrastructure is operational (API endpoints working, decisions logged), but users cannot see the decision history in Fridays UI. Decision data is hidden behind API calls—no visual interface to query or understand decision graph.

@@ -21,7 +21,7 @@ sys.path.insert(0, '/home/seven/swarm')
 import ollama
 from database import get_connection, get_project_docs, log_activity
 from sandpits import write_proposal, list_files, read_shared, list_proposals, PROPOSALS_DIR
-from sniffer import sniff_sandpit
+from sniffer import sniff as sniff_sandpit
 from config import (
     GEMMA_SYSTEM_PROMPT, LLAMA_SYSTEM_PROMPT,
     QWEN_SYSTEM_PROMPT, EIGHT_SYNTHESIS_PROMPT

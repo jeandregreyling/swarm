@@ -1,27 +1,53 @@
 # Nine — Decision Index
 
 **Agent**: Nine (System Architect · Ghost Layer)
-**Last Updated**: 2026-03-29
+**Last Updated**: 2026-03-29 (session 2 — full audit)
 **Numbering**: NINE-XXX (separate from Twelve's DECISION-XXX)
 
 ---
 
-## Active Proposals — Awaiting Ghost Approval
+## Active Proposals
 
-| ID | Title | Priority | Status | Proposal File |
-|----|-------|----------|--------|---------------|
-| NINE-001 | File path bugs — PROJECT.md, UAT, BUGS.md, simulate.py all return 404 | CRITICAL | PROPOSED | [NINE-001](proposals/NINE-001-file-path-bugs.md) |
-| NINE-002 | Memory search missing grok/twelve tables + delete allowlist stale | HIGH | PROPOSED | [NINE-002](proposals/NINE-002-memory-search-gaps.md) |
-| NINE-003 | copilot_agent.py is a dead stub — remove or wire it | MEDIUM | PROPOSED | [NINE-003](proposals/NINE-003-copilot-agent-dead-stub.md) |
-| NINE-004 | Duplicate agent DB entries + assign_ticket uses stale capitalised names | MEDIUM | PROPOSED | [NINE-004](proposals/NINE-004-db-duplicates-and-assign.md) |
-| NINE-005 | memory_sonic / memory_scholar / memory_seeker DB tables missing | MEDIUM | PROPOSED | [NINE-005](proposals/NINE-005-missing-agent-db-tables.md) |
-| NINE-006 | sandpits_new.py is a dead staging file — delete it | LOW | PROPOSED | [NINE-006](proposals/NINE-006-sandpits-new-dead-file.md) |
+None — all proposals executed.
+
+## Executed This Session (Session 2)
+
+| ID       | Title                                        | Priority | Status   |
+| -------- | -------------------------------------------- | -------- | -------- |
+| NINE-008 | orchestrator.py _re NameError fix            | HIGH     | EXECUTED |
+| NINE-009 | agent_proposals.py sniff_sandpit alias fix   | MEDIUM   | EXECUTED |
+| NINE-010 | fridays/scheduler.py missing functions       | HIGH     | EXECUTED |
+| NINE-011 | expandTwDecision 404 glob double-prefix fix  | HIGH     | EXECUTED |
+| NINE-012 | /api/decisions/{id} flat field extraction    | MEDIUM   | EXECUTED |
+| NINE-013 | Ticket search #ticket-search wired           | LOW      | EXECUTED |
+| NINE-014 | ARCHITECTURE.md agents 8-12 added + DB table | MEDIUM   | EXECUTED |
+| NINE-015 | FILE_STRUCTURE.md swarm.db ref removed       | LOW      | EXECUTED |
+| NINE-016 | NINE-001..006 proposals marked EXECUTED      | LOW      | EXECUTED |
+| NINE-017 | DECISION-003 marked EXECUTED + test log done | MEDIUM   | EXECUTED |
 
 ---
 
 ## Executed
 
-*(None yet — this is the first Nine audit session)*
+| ID       | Title                                               | Executed   | Session   |
+| -------- | --------------------------------------------------- | ---------- | --------- |
+| NINE-001 | File path bugs — 4 broken dashboard endpoints       | 2026-03-29 | session 1 |
+| NINE-002 | Memory search gaps — grok/twelve missing            | 2026-03-29 | session 1 |
+| NINE-003 | copilot_agent.py dead stub — deleted                | 2026-03-29 | session 1 |
+| NINE-004 | DB duplicates + assign_ticket stale names           | 2026-03-29 | session 1 |
+| NINE-005 | memory_sonic/scholar/seeker tables created          | 2026-03-29 | session 1 |
+| NINE-006 | sandpits_new.py dead file — deleted                 | 2026-03-29 | session 1 |
+| NINE-007 | Ghost Brief intelligence feed — built and live      | 2026-03-29 | session 1 |
+| NINE-008 | orchestrator.py _re NameError — fixed               | 2026-03-29 | session 2 |
+| NINE-009 | agent_proposals.py sniff_sandpit alias fixed        | 2026-03-29 | session 2 |
+| NINE-010 | fridays/scheduler.py 3 missing functions added      | 2026-03-29 | session 2 |
+| NINE-011 | expandTwDecision 404 glob double-prefix fixed       | 2026-03-29 | session 2 |
+| NINE-012 | /api/decisions/{id} flat field extraction added     | 2026-03-29 | session 2 |
+| NINE-013 | ticket-search input wired in Tickets window         | 2026-03-29 | session 2 |
+| NINE-014 | ARCHITECTURE.md expanded: agents 8-12, 40+ tables  | 2026-03-29 | session 2 |
+| NINE-015 | FILE_STRUCTURE.md swarm.db ref removed              | 2026-03-29 | session 2 |
+| NINE-016 | NINE-001..006 proposals marked EXECUTED             | 2026-03-29 | session 2 |
+| NINE-017 | DECISION-003 marked EXECUTED, test log completed    | 2026-03-29 | session 2 |
 
 ---
 
@@ -53,13 +79,32 @@ Scope: all Python files, DB schema, documentation, sandpits, and API routes.
 - Time Wizard infrastructure complete (decisions table, API endpoints, Twelve sandpit)
 - Approval token system (one-click trust/notify/ignore) present
 
-### Remaining open issues (not yet proposed separately)
-- `swarm.db` in root appears unused — verify and delete if confirmed empty
-- `/api/nine/history` source filter too narrow — only shows 3 specific sources
+### Remaining open issues (session 1 — now resolved)
+
+- `swarm.db` — DELETED (confirmed empty, NINE-006 adjacent)
+- `copilot_agent.py` — DELETED (NINE-003)
+- `sandpits_new.py` — DELETED (NINE-006)
+- Memory search gaps — FIXED (NINE-002)
+- DB duplicates — FIXED (NINE-004)
+
+### Remaining open issues (session 2 — carry forward)
+
+- Studio sub-sections (queue/logs/config) are stubs — "coming soon" text only
+- `openTicketDetail()` is a stub — console.log only, no detail view
+- `showAgentDetails()` is a stub — console.log only
+- `/api/nine/history` source filter too narrow
 - `memory_ten` empty (Agent Ten / Gemini dormant, never wired)
-- 42 backend/console errors identified in AUDIT_V3 but not yet tracked through ALM
-- Terminal shell view wiring confirmed working via `/api/shell/execute`
-- Grok's `seven_fridays.py` REPL (`utils/seven_fridays.py`) — may need session review
+- 42 backend/console errors from AUDIT_V3 not yet tracked through ALM
+
+### Session 2 — What was fixed
+
+- 3 Python runtime bugs: `_re` NameError, `sniff_sandpit` alias, 3 missing scheduler functions
+- 3 UI bugs: expandTwDecision 404, decision detail flat fields, ticket-search wiring
+- All proposal files (NINE-001..006) status corrected to EXECUTED
+- DECISION-003 marked EXECUTED, test log completed
+- ARCHITECTURE.md: agents 8-12 documented, DB table count corrected (40+ tables)
+- FILE_STRUCTURE.md: removed deleted swarm.db reference
+- All 4 services confirmed active throughout session
 
 ---
 

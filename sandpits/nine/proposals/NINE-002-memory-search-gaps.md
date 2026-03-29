@@ -1,6 +1,6 @@
 # NINE-002: Memory Search Missing New Agent Tables + Delete Allowlist Incomplete
 
-**Status**: PROPOSED
+**Status**: EXECUTED
 **Proposal ID**: NINE-002
 **Proposed**: 2026-03-29
 **Agent**: Nine (System Architect · Ghost Layer)

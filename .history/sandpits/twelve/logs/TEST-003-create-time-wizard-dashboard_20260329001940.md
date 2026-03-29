@@ -440,30 +440,27 @@ Code review check:
 
 | Test | Status | Notes | Pass/Fail |
 |------|--------|-------|-----------|
-| PC1: API Endpoints | ✅ | /api/decisions, /api/timeline, /api/decisions/&lt;id&gt; all return 200 | PASS |
-| PC2: Service Running | ✅ | swarm-terminal active, port 5050 | PASS |
-| PC3: File Accessible | ✅ | terminal_base.html confirmed (terminal_ui_v2.html renamed) | PASS |
-| PC4: No Current Errors | ✅ | Services all active | PASS |
-| T1: Tile Rendering | ✅ | `home-card` at line 1112, `view-time-wizard` template confirmed | PASS |
-| T2: API Integration | ✅ | `initTimeWizard()` → `/api/decisions`, array handling confirmed | PASS |
-| T3: Timeline Display | ✅ | `renderTwTimeline()` with status color badges confirmed | PASS |
-| T4: Detail Expansion | ✅ | `expandTwDecision(id)` → `/api/decisions/<id>`, bug fixed (double-prefix glob) | PASS |
-| T5: Filter/Search | ✅ | `applyTwFilters()` with status + search, real-time wired | PASS |
-| T6: Error Handling | ✅ | try/catch + toast on error, empty-state message confirmed | PASS |
-| T7: Responsive Design | ✅ | Uses theme CSS vars, no fixed widths | PASS |
-| T8: Integration | ✅ | Uses `openWindow()` system, scoped state, no conflicts | PASS |
-| T9: Data Accuracy | ✅ | Reads directly from API, field mapping handles both id formats | PASS |
-| T10: Edge Cases | ✅ | Empty array handled, missing fields have fallbacks, early return on empty id | PASS |
+| PC1: API Endpoints | ⏳ | | |
+| PC2: Service Running | ⏳ | | |
+| PC3: File Accessible | ⏳ | | |
+| PC4: No Current Errors | ⏳ | | |
+| T1: Tile Rendering | ⏳ | | |
+| T2: API Integration | ⏳ | | |
+| T3: Timeline Display | ⏳ | | |
+| T4: Detail Expansion | ⏳ | | |
+| T5: Filter/Search | ⏳ | | |
+| T6: Error Handling | ⏳ | | |
+| T7: Responsive Design | ⏳ | | |
+| T8: Integration | ⏳ | | |
+| T9: Data Accuracy | ⏳ | | |
+| T10: Edge Cases | ⏳ | | |
 
-**Overall Result**: ✅ PASS — All 14 checks passed
+**Overall Result**: ⏳ TO BE EXECUTED
 
 ---
 
 ## Sign-Off
 
-**Test Plan Created**: 2026-03-29T00:25:00Z
-**Executed**: 2026-03-29 (Nine audit session)
-**Executed By**: Nine (Ghost Layer System Architect)
-**Status**: ✅ COMPLETE — DECISION-003 EXECUTED
-
-**Bug Fixed**: `expandTwDecision` 404 — glob pattern double-prefixed ID. Fixed in `terminal.py:api_decision_detail()`. Detail endpoint now also returns flat fields (title, status, issue, solution, scope, risks, next_steps).
+**Test Plan Created**: 2026-03-29T00:25:00Z  
+**Status**: Ready for execution  
+**Next Step**: Execute preconditions, then begin implementation

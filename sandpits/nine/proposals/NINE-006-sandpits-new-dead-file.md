@@ -1,6 +1,6 @@
 # NINE-006: Delete sandpits_new.py — Dead Staging File
 
-**Status**: PROPOSED
+**Status**: EXECUTED
 **Proposal ID**: NINE-006
 **Proposed**: 2026-03-29
 **Agent**: Nine (System Architect · Ghost Layer)

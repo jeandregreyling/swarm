@@ -1569,28 +1569,59 @@ function renderTimeWizardTimeline(decisions) {
     container.innerHTML = '<div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 40px 20px;">No decisions recorded yet.</div>';
     return;
   }
-  container.innerHTML = decisions.map(d => `
-    <div class="tw-card" onclick="expandTimeWizardDecision('${d.id || d.decision_id || ''}')">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-        <div>
-          <span style="font-size: 11px; color: var(--text-dim); font-family: monospace;">${d.id || d.decision_id || '—'}</span>
-          <div style="font-size: 13px; font-weight: 600; margin-top: 2px;">${d.title || d.summary || '(untitled)'}</div>
-          <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">${d.date || d.timestamp || ''}</div>
-        </div>
-        <span class="tw-badge tw-badge-${(d.status || 'unknown').toLowerCase()}">${d.status || '?'}</span>
+  const html = decisions.map(d => {
+    const statusClass = `status-${(d.status || 'unknown').toLowerCase()}`;
+    const date = d.proposed ? new Date(d.proposed).toLocaleDateString() : (d.date || d.timestamp || '');
+    return `<div class="time-wizard-card ${statusClass}" onclick="expandTimeWizardDecision('${d.id || d.decision_id || ''}', this); return false;">
+      <div class="time-wizard-card-header">
+        <span class="time-wizard-card-id">${d.id || d.decision_id || '—'}</span>
+        <span class="time-wizard-card-title">${(d.title || d.summary || '(untitled)').substring(0, 80)}</span>
+        <span class="time-wizard-card-status">${d.status || '?'}</span>
       </div>
-    </div>
-  `).join('');
+      <div class="time-wizard-card-meta">
+        <div class="time-wizard-card-meta-item">📅 ${date}</div>
+        <div class="time-wizard-card-meta-item">📝 ${(d.summary || '').substring(0, 50)}...</div>
+      </div>
+    </div>`;
+  }).join('');
+  container.innerHTML = html;
 }
 
-async function expandTimeWizardDecision(id) {
+async function expandTimeWizardDecision(id, cardElement) {
   if (!id) return;
   try {
     const res = await fetch(`/api/decisions/${id}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
-    const content = d.content || d.summary || JSON.stringify(d, null, 2);
-    showToast(`Decision ${id} — see console for detail`, 'info');
+    
+    // Build detail HTML
+    let html = `<div class="time-wizard-detail-modal">`;
+    html += `<div class="time-wizard-detail-header">`;
+    html += `<div class="time-wizard-detail-title">${d.title || 'Decision ' + id}</div>`;
+    html += `<div class="time-wizard-detail-meta">`;
+    html += `<span>🆔 ${id}</span>`;
+    html += `<span>📊 ${d.status || 'unknown'}</span>`;
+    if (d.proposed) html += `<span>📅 ${new Date(d.proposed).toLocaleString()}</span>`;
+    html += `</div></div>`;
+    
+    if (d.issue) html += `<div class="time-wizard-detail-section"><div class="time-wizard-detail-section-title">Issue</div><div class="time-wizard-detail-text">${d.issue}</div></div>`;
+    if (d.solution) html += `<div class="time-wizard-detail-section"><div class="time-wizard-detail-section-title">Solution</div><div class="time-wizard-detail-text">${d.solution}</div></div>`;
+    if (d.scope) html += `<div class="time-wizard-detail-section"><div class="time-wizard-detail-section-title">Scope</div><div class="time-wizard-detail-text">${d.scope}</div></div>`;
+    if (d.risks) html += `<div class="time-wizard-detail-section"><div class="time-wizard-detail-section-title">Risks</div><div class="time-wizard-detail-text">${d.risks}</div></div>`;
+    if (d.next_steps) html += `<div class="time-wizard-detail-section"><div class="time-wizard-detail-section-title">Next Steps</div><div class="time-wizard-detail-text">${d.next_steps}</div></div>`;
+    html += `</div>`;
+    
+    // Insert after card if possible
+    if (cardElement && cardElement.parentElement) {
+      const existing = cardElement.nextElementSibling;
+      if (existing && existing.classList.contains('time-wizard-detail-modal')) existing.remove();
+      
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = html;
+      cardElement.parentElement.insertBefore(wrapper.firstElementChild, cardElement.nextSibling);
+      showToast(`Expanded decision ${id}`, 'success');
+    }
+    
     console.log(`[Time Wizard] Decision ${id}:`, d);
   } catch (e) {
     showToast(`Could not load decision ${id}: ${e.message}`, 'error');
@@ -1600,11 +1631,13 @@ async function expandTimeWizardDecision(id) {
 function attachTimeWizardFilters() {
   const search = document.getElementById('time-wizard-search');
   const filter = document.getElementById('time-wizard-filter');
+  if (!search || !filter) return;
   function apply() {
     const q = (search.value || '').toLowerCase();
-    const state = filter.value;
-    const filtered = _twDecisions.filter(d => {
-      const matchQ = !q || (d.title || d.summary || '').toLowerCase().includes(q) || (d.id || '').toLowerCase().includes(q);
+    const state = filter.value || 'all';
+    const allDecisions = timeWizardData && timeWizardData.timeline ? timeWizardData.timeline : [];
+    const filtered = allDecisions.filter(d => {
+      const matchQ = !q || (d.title || d.summary || d.id || '').toLowerCase().includes(q);
       const matchS = state === 'all' || (d.status || '').toUpperCase() === state;
       return matchQ && matchS;
     });
