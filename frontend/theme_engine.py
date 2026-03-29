@@ -132,13 +132,20 @@ class ThemeEngine:
         try:
             sys.path.insert(0, '/home/seven/swarm/core')
             from time_machine import time_wizard
-            
-            sessions = time_wizard.get_sessions(limit=5)
-            events = time_wizard.get_timeline(limit=10)
+
+            # Backward-compatible calls for deployments where method signatures differ.
+            try:
+                sessions = time_wizard.get_sessions(limit=5)
+            except TypeError:
+                sessions = time_wizard.get_sessions()
+            try:
+                events = time_wizard.get_timeline(limit=10)
+            except TypeError:
+                events = time_wizard.get_timeline()
             checkpoints = time_wizard.list_checkpoints()
             stats = {
-                'total_sessions': len(time_wizard.get_sessions()),
-                'total_events': len(time_wizard.get_timeline()),
+                'total_sessions': len(sessions),
+                'total_events': len(events),
                 'total_checkpoints': len(checkpoints),
                 'agents': ['twelve', 'ghost', 'nine']
             }
@@ -198,7 +205,10 @@ if (document.readyState === 'loading') {{
         try:
             sys.path.insert(0, '/home/seven/swarm/core')
             from time_machine import time_wizard
-            time_wizard_active = bool(time_wizard.get_sessions(limit=1))
+            try:
+                time_wizard_active = bool(time_wizard.get_sessions(limit=1))
+            except TypeError:
+                time_wizard_active = bool(time_wizard.get_sessions())
         except Exception:
             time_wizard_active = False
 
