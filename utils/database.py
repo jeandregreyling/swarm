@@ -182,6 +182,8 @@ CREATE TABLE IF NOT EXISTS queue (
     tags TEXT DEFAULT '',
     priority INTEGER DEFAULT 5,
     status TEXT DEFAULT 'queued',
+    source_type TEXT DEFAULT 'email',
+    agent TEXT DEFAULT '',
     system_snapshot TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     processed_at TEXT,
@@ -367,10 +369,103 @@ CREATE TABLE IF NOT EXISTS activity_log (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS memory_grok (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'grok',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'session',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_twelve (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'twelve',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'session',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS decisions (
+    decision_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT (datetime('now')),
+    agent TEXT NOT NULL,
+    component TEXT DEFAULT '',
+    proposal_file TEXT DEFAULT '',
+    decision TEXT NOT NULL,
+    reasoning TEXT DEFAULT '',
+    test_status TEXT DEFAULT 'PENDING',
+    commit_hash TEXT DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS time_machine (
+    checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT (datetime('now')),
+    agent TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    before_code TEXT DEFAULT '',
+    after_code TEXT NOT NULL,
+    decision_id INTEGER DEFAULT 0,
+    commit_hash TEXT DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS time_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    metadata TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS time_journal (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL,
+    entry TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS time_checkpoints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    agent TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    state_snapshot TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS daily_checkpoint (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    checkpoint_date TEXT UNIQUE NOT NULL,
+    agent TEXT DEFAULT 'twelve',
+    summary TEXT DEFAULT '',
+    ticket_count INTEGER DEFAULT 0,
+    memory_count INTEGER DEFAULT 0,
+    decisions_count INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS work_proposals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    proposal_id TEXT UNIQUE NOT NULL,
+    agent TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    status TEXT DEFAULT 'pending',
+    proposal_file TEXT DEFAULT '',
+    ticket_number TEXT DEFAULT '',
+    queue_id INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
 -- Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
 CREATE INDEX IF NOT EXISTS idx_memory_importance ON memory(importance);
+CREATE INDEX IF NOT EXISTS idx_work_proposals_agent ON work_proposals(agent);
+CREATE INDEX IF NOT EXISTS idx_work_proposals_status ON work_proposals(status);
 """
 
 
@@ -509,6 +604,71 @@ def _migrate_schema(conn=None):
             created_at TEXT DEFAULT (datetime('now'))
         )""")
         conn.commit()
+    # Queue: add source_type and agent columns for internal entries
+    queue_cols = {row[1] for row in conn.execute("PRAGMA table_info(queue)").fetchall()}
+    if 'source_type' not in queue_cols:
+        conn.execute("ALTER TABLE queue ADD COLUMN source_type TEXT DEFAULT 'email'")
+        conn.commit()
+    if 'agent' not in queue_cols:
+        conn.execute("ALTER TABLE queue ADD COLUMN agent TEXT DEFAULT ''")
+        conn.commit()
+    # Time Wizard tables (exist in live DB, now added to schema; migrate for safety)
+    for tbl, ddl in [
+        ('memory_grok', """CREATE TABLE IF NOT EXISTS memory_grok (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'grok',
+            subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '',
+            importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session',
+            ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')))"""),
+        ('memory_twelve', """CREATE TABLE IF NOT EXISTS memory_twelve (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'twelve',
+            subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '',
+            importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session',
+            ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')))"""),
+        ('decisions', """CREATE TABLE IF NOT EXISTS decisions (
+            decision_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT DEFAULT (datetime('now')), agent TEXT NOT NULL,
+            component TEXT DEFAULT '', proposal_file TEXT DEFAULT '',
+            decision TEXT NOT NULL, reasoning TEXT DEFAULT '',
+            test_status TEXT DEFAULT 'PENDING', commit_hash TEXT DEFAULT '')"""),
+        ('time_machine', """CREATE TABLE IF NOT EXISTS time_machine (
+            checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT DEFAULT (datetime('now')), agent TEXT NOT NULL,
+            file_path TEXT NOT NULL, before_code TEXT DEFAULT '',
+            after_code TEXT NOT NULL, decision_id INTEGER DEFAULT 0,
+            commit_hash TEXT DEFAULT '')"""),
+        ('time_events', """CREATE TABLE IF NOT EXISTS time_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL,
+            event_type TEXT NOT NULL, description TEXT DEFAULT '',
+            metadata TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')))"""),
+        ('time_journal', """CREATE TABLE IF NOT EXISTS time_journal (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL,
+            entry TEXT NOT NULL, tags TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now')))"""),
+        ('time_checkpoints', """CREATE TABLE IF NOT EXISTS time_checkpoints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL,
+            agent TEXT NOT NULL, description TEXT DEFAULT '',
+            state_snapshot TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now')))"""),
+        ('daily_checkpoint', """CREATE TABLE IF NOT EXISTS daily_checkpoint (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            checkpoint_date TEXT UNIQUE NOT NULL, agent TEXT DEFAULT 'twelve',
+            summary TEXT DEFAULT '', ticket_count INTEGER DEFAULT 0,
+            memory_count INTEGER DEFAULT 0, decisions_count INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')))"""),
+        ('work_proposals', """CREATE TABLE IF NOT EXISTS work_proposals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            proposal_id TEXT UNIQUE NOT NULL, agent TEXT NOT NULL,
+            title TEXT NOT NULL, description TEXT DEFAULT '',
+            status TEXT DEFAULT 'pending', proposal_file TEXT DEFAULT '',
+            ticket_number TEXT DEFAULT '', queue_id INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')))"""),
+    ]:
+        if tbl not in tables:
+            conn.execute(ddl)
+            conn.commit()
     if _close:
         conn.close()
 
@@ -536,6 +696,8 @@ def _seed_agents():
         ('ghost',     'external',        0.0, 'Human operator. Ghost Layer. Builds, approves, decides. Full access.'),
         ('nine',      'claude-sonnet-4-6', 0.3, 'System architect — builds the swarm. Ghost Layer. Session memory in memory_nine.'),
         ('ten',       'gemini-1.5-pro',  0.4, 'Software Engineering Advisor — provides code quality and clarity insights. Ghost Layer.'),
+        ('eleven',    'grok-beta',        0.5, 'Grok — lateral thinking, creative synthesis. Ghost Layer.'),
+        ('twelve',    'claude-haiku',     0.3, 'Time Wizard — temporal awareness, decision tracking, time machine.'),
     ]
     conn = get_connection()
     for name, model, temp, role in roster:

@@ -109,6 +109,10 @@ REGISTRY = {
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
+# Skills that should create a work_proposal entry when they succeed
+_PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule'}
+
+
 def _log(skill_name, agent, args_preview, result_preview, success):
     try:
         from database import get_connection
@@ -125,6 +129,22 @@ def _log(skill_name, agent, args_preview, result_preview, success):
         conn.close()
     except Exception as e:
         logger.warning(f'[Skills] ghost_circle log failed: {e}')
+
+
+def _log_as_internal_proposal(skill_name, agent, args_preview, result_preview):
+    """
+    Log a successful write-type skill call as an internal work_proposal and queue entry.
+    Called automatically after file_write, shell, and schedule succeed.
+    This ensures every Fridays-executed change is a first-class citizen in the queue
+    and visible to all agents.
+    """
+    try:
+        from queue_manager import intake_internal
+        title = f'[{skill_name}] {args_preview[:80]}'
+        description = f'Agent {agent} executed skill `{skill_name}`.\nArgs: {args_preview[:300]}\nResult: {result_preview[:300]}'
+        intake_internal(agent, title, description, priority=5)
+    except Exception as e:
+        logger.warning(f'[Skills] work_proposal log failed: {e}')
 
 
 # ── Skill handlers ────────────────────────────────────────────────────────────
@@ -299,6 +319,8 @@ def call(skill_name, args='', agent='ghost'):
         logger.error(f'[Skills] {skill_name} error: {e}')
 
     _log(skill_name, agent, args, output, success)
+    if success and skill_name in _PROPOSAL_SKILLS:
+        _log_as_internal_proposal(skill_name, agent, args, output)
     print(f'[Skills] {"✓" if success else "✗"} {agent} → {skill_name} | {output[:60]}')
     return success, output
 

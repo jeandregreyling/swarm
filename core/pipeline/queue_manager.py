@@ -134,6 +134,79 @@ def estimate_wait_minutes(position):
     return position * 3
 
 
+def intake_internal(agent, title, description, priority=5):
+    """
+    Create an internal queue entry for an agent-initiated action or proposal.
+
+    Unlike intake(), this does not tag via Ollama and skips the email path entirely.
+    Also creates a work_proposals record so the action is visible to all agents.
+
+    Returns (queue_id, proposal_id).
+    proposal_id format: INTERNAL-{agent.upper()}-{queue_id:04d}
+    """
+    from database import get_connection
+    import re
+
+    snapshot = _system_snapshot()
+    position = 1 if priority == 1 else _get_queue_position() + 1
+
+    conn = get_connection()
+    try:
+        cursor = conn.execute(
+            """INSERT INTO queue (from_addr, subject, question, tags, system_snapshot, status, priority, source_type, agent)
+               VALUES (?, ?, ?, ?, ?, 'queued', ?, 'internal', ?)""",
+            (f'agent:{agent}', title, description[:500], agent, snapshot, priority, agent)
+        )
+        queue_id = cursor.lastrowid
+        conn.commit()
+
+        proposal_id = f'INTERNAL-{agent.upper()}-{queue_id:04d}'
+        conn.execute(
+            """INSERT OR IGNORE INTO work_proposals (proposal_id, agent, title, description, status, queue_id)
+               VALUES (?, ?, ?, ?, 'pending', ?)""",
+            (proposal_id, agent, title[:200], description[:500], queue_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    logger.info(f'[Queue/Internal] #{queue_id} from {agent} — position {position} | {proposal_id}')
+    return queue_id, proposal_id
+
+
+def update_proposal_status(proposal_id, status, ticket_number=''):
+    """Update a work_proposal status (pending/approved/rejected/executed)."""
+    from database import get_connection
+    conn = get_connection()
+    conn.execute(
+        """UPDATE work_proposals SET status=?, ticket_number=?, updated_at=datetime('now')
+           WHERE proposal_id=?""",
+        (status, ticket_number, proposal_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_queue_entries(source_type=None, status=None, limit=50):
+    """Return queue entries, optionally filtered by source_type and/or status."""
+    from database import get_connection
+    conn = get_connection()
+    clauses, params = [], []
+    if source_type:
+        clauses.append('source_type=?')
+        params.append(source_type)
+    if status:
+        clauses.append('status=?')
+        params.append(status)
+    where = ('WHERE ' + ' AND '.join(clauses)) if clauses else ''
+    rows = conn.execute(
+        f'SELECT * FROM queue {where} ORDER BY created_at DESC LIMIT ?',
+        params + [limit]
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def is_queue_quiet():
     """
     True if no email has completed in the last hour.
