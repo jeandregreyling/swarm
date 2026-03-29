@@ -60,6 +60,8 @@
 | Proposal gate on mutating APIs | ✅ active | `frontend/terminal.py` (`/api/shell/execute`, `/api/skills/run`, `/api/exec`, `/api/exec/write`) |
 | Sniffles re-enabled verification | ✅ confirmed | `/api/agents` shows `sniffles.enabled = true` |
 | Fridays ALM visibility | ✅ active | Home ALM stat + Studio governance line + Monitor governance block via `/api/alm/status` |
+| Theme-layer ALM bake-in | ✅ active | `theme_engine` now injects `window._almData` + `initALMData()` into all themed renders |
+| ALM lifecycle logging for this change | ✅ complete | `INTERNAL-COPILOT-0102` created → approved → executed |
 
 ### Priority 1 — Blocking UI Functionality
 

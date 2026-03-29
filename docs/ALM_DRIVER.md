@@ -71,3 +71,12 @@ The UI must visibly show governance state so policy is observable, not implicit.
 - Monitor panel governance block: enforcement badge + queue counters
 
 Data source for all UI indicators: `GET /api/alm/status`
+
+## Theme Sync Rule (Mandatory)
+
+Every governance/UI/API visibility change must be applied in both layers:
+
+1. Console/API layer (`frontend/terminal.py`)
+2. Theme/render layer (`frontend/theme_engine.py` and relevant templates)
+
+A terminal startup reminder is now present in `frontend/terminal.py` to enforce this behavior during implementation.

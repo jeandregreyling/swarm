@@ -17,6 +17,7 @@ Usage:
 
 import json
 import os
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 import sys
@@ -188,6 +189,111 @@ if (document.readyState === 'loading') {{
 }}
 """
         return js_code
+
+    def get_alm_data(self):
+        """Fetch ALM governance state for theme-layer baked injection."""
+        require_approvals = os.environ.get('ALM_REQUIRE_APPROVALS', '1') == '1'
+
+        time_wizard_active = False
+        try:
+            sys.path.insert(0, '/home/seven/swarm/core')
+            from time_machine import time_wizard
+            time_wizard_active = bool(time_wizard.get_sessions(limit=1))
+        except Exception:
+            time_wizard_active = False
+
+        counts = {'total': 0, 'pending': 0, 'approved': 0, 'executed': 0}
+        try:
+            conn = sqlite3.connect('/home/seven/swarm/swarm_memory.db')
+            conn.row_factory = sqlite3.Row
+            table = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='work_proposals'"
+            ).fetchone()
+            if table:
+                rows = conn.execute(
+                    "SELECT status, COUNT(*) AS c FROM work_proposals GROUP BY status"
+                ).fetchall()
+                for r in rows:
+                    status = (r['status'] or '').lower()
+                    c = int(r['c'])
+                    counts['total'] += c
+                    if status in counts:
+                        counts[status] += c
+            conn.close()
+        except Exception:
+            pass
+
+        return {
+            'ok': True,
+            'status': 'enforced' if (require_approvals and time_wizard_active) else 'warn',
+            'alm_require_approvals': require_approvals,
+            'time_wizard_active': time_wizard_active,
+            # Theme layer cannot authoritatively read runtime disable list; UI can refine via /api/alm/status.
+            'sniffles_enabled': None,
+            'work_proposals': counts,
+        }
+
+    def get_alm_js(self):
+        """Generate JavaScript with ALM governance data baked in for all themed renders."""
+        alm_data = self.get_alm_data()
+        js_code = f"""
+// ALM GOVERNANCE DATA (baked into template by theme_engine)
+window._almData = {json.dumps(alm_data)};
+
+function _applyALMVisibility(data) {{
+    const stat = document.getElementById('stat-alm');
+    if (stat) {{
+        stat.textContent = data.status === 'enforced' ? 'ON' : 'WARN';
+        const card = stat.closest('.stat-card');
+        if (card) card.className = 'stat-card ' + (data.status === 'enforced' ? 'health-good' : 'health-warn');
+    }}
+
+    const gov = document.getElementById('studio-governance');
+    if (gov) {{
+        const sn = data.sniffles_enabled === null ? 'checking...' : (data.sniffles_enabled ? 'enabled' : 'disabled');
+        gov.innerHTML = 'ALM: <strong>' + (data.status === 'enforced' ? 'enforced' : 'warn') + '</strong> · ' +
+                        'Sniffles: <strong>' + sn + '</strong> · ' +
+                        'Pending: <strong>' + ((data.work_proposals && data.work_proposals.pending) || 0) + '</strong>';
+    }}
+
+    const monitor = document.getElementById('monitor-alm-status');
+    if (monitor) {{
+        const badge = data.status === 'enforced'
+          ? '<span style="padding:2px 8px;border-radius:10px;background:#4caf5020;color:#4caf50;border:1px solid #4caf5060;font-size:10px;font-weight:700;">ENFORCED</span>'
+          : '<span style="padding:2px 8px;border-radius:10px;background:#ffa50022;color:#ffa500;border:1px solid #ffa50055;font-size:10px;font-weight:700;">WARN</span>';
+        monitor.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+                            '<div style="font-weight:600;">ALM Governance</div>' + badge + '</div>' +
+                            '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">' +
+                            'Time Wizard: <strong>' + (data.time_wizard_active ? 'active' : 'inactive') + '</strong> · ' +
+                            'Queue: <strong>' + ((data.work_proposals && data.work_proposals.pending) || 0) + '</strong> pending / ' +
+                            '<strong>' + ((data.work_proposals && data.work_proposals.executed) || 0) + '</strong> executed' +
+                            '</div>';
+    }}
+}}
+
+function initALMData() {{
+    if (window._almData) _applyALMVisibility(window._almData);
+
+    // Refine baked data from authoritative runtime endpoint when available.
+    if (typeof fetch === 'function') {{
+        fetch('/api/alm/status')
+          .then(r => r.json())
+          .then(d => {{ if (d && d.ok) {{ window._almData = d; _applyALMVisibility(d); }} }})
+          .catch(() => {{}});
+    }}
+}}
+
+if (document.readyState === 'loading') {{
+    document.addEventListener('DOMContentLoaded', initALMData);
+}} else {{
+    initALMData();
+}}
+
+// Keep ALM UI synced when views are opened dynamically.
+const _almObs = new MutationObserver(() => initALMData());
+_almObs.observe(document.documentElement || document.body, {{ childList: true, subtree: true }});
+"""
+        return js_code
     
     def render_html(self, theme_name='fridays', template='terminal_base.html'):
         """Load a template, inject theme + Time Wizard data, return fully themed HTML.
@@ -208,14 +314,16 @@ if (document.readyState === 'loading') {{
         theme_css = self.get_theme_css(theme_name)
         theme_js = self.get_theme_js(theme_name)
         time_wizard_js = self.get_time_wizard_js()
+        alm_js = self.get_alm_js()
         
         # Inject into placeholders
         html = html.replace('{{ theme_css }}', theme_css)
         html = html.replace('{{ theme_js }}', theme_js)
         
-        # Inject Time Wizard data into a script tag before </body>
+        # Inject governance + time data into script tags before </body>
         time_wizard_script = f'<script>{time_wizard_js}</script>'
-        html = html.replace('</body>', f'{time_wizard_script}\n</body>')
+        alm_script = f'<script>{alm_js}</script>'
+        html = html.replace('</body>', f'{time_wizard_script}\n{alm_script}\n</body>')
         
         return html
 

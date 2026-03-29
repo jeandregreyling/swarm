@@ -44,6 +44,9 @@ from sandpits import get_sandpit_stats, get_recent_log as sandpit_log
 from system_clock import get_timestamp, get_timestamp_iso, get_full_time_string
 from theme_engine import get_themed_html
 
+# ALM reminder: UI/API changes that affect visibility must be mirrored in theme_engine + templates.
+THEME_SYNC_REMINDER = 'ALM REMINDER: Mirror UI/API visibility changes in theme layer (theme_engine + templates).'
+
 # Time Machine & Kill Switches  
 sys.path.insert(0, '/home/seven/swarm/core')
 from time_machine import time_wizard
@@ -3079,6 +3082,7 @@ if __name__ == '__main__':
     print("╚═══════════════════════════════╝")
     print("  http://localhost:5050")
     print("  Tailscale only in production.\n")
+    print(f"  {THEME_SYNC_REMINDER}")
     
     # Initialize Time Wizard on startup (both layers)
     try:

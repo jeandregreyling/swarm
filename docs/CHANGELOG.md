@@ -31,6 +31,13 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
   - Home dashboard now shows ALM status card (`ON`/`WARN`)
   - Studio header now shows governance line (ALM + Sniffles + pending count)
   - Monitor panel now renders governance block with enforcement badge
+- **Theme-Layer Bake-In Added:**
+  - `frontend/theme_engine.py` now injects ALM governance script into all themed HTML renders
+  - Baked globals include `window._almData` and `initALMData()`
+  - ALM UI sync now works even when views are opened dynamically after initial load
+  - Added terminal startup reminder to mirror visibility changes in theme layer
+- **ALM Proposal Log For This Change:**
+  - `INTERNAL-COPILOT-0102` (created -> approved -> executed)
 - **Verification:**
   - Gate blocks writes/execution without `proposal_id`
   - Gate allows execution with executed proposal ID
