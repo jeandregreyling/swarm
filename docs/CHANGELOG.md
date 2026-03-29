@@ -7,6 +7,28 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ## Version 2026-03-30 Session 5 (CURRENT)
 
+### Changes by Copilot (Ghost Layer) — PROACTIVE OPERATIONS SWEEP (DRY TEST + BACKLOG/BUGS + APPROVALS/PROPOSALS)
+
+**2026-03-30 10:05 UTC** Copilot: Executed proactive dry-test sweep and reconciled operational tracking docs.
+
+- **Type:** Validation / Documentation / Backlog hygiene
+- **Status:** ✅ COMPLETE (with explicit blockers logged)
+- **Scope:** `docs/TASK_TRACKER_LIVE.md`, `docs/BUGS.md`, `docs/FEATURES_TODO.md`, `docs/APPROVALS_PROPOSALS_STATUS_2026-03-30.md`
+- **Validation Results:**
+  - ✅ `SIMULATE=true python3 tests/test_triage_queue_dryrun.py` → 24/24 checks pass
+  - ⚠️ `python3 -m pytest ...` blocked (`No module named pytest`)
+  - ⚠️ `SIMULATE=true python3 utils/simulate.py` entered long-running live model path (Gemma stage latency observed)
+- **Approvals/Proposals Audit:**
+  - ✅ `work_proposals`: 5 total (4 executed, 1 pending)
+  - ✅ `decisions`: 18 total
+  - ✅ Proposals inventory captured for `sandpits/nine/proposals` and `sandpits/twelve/proposals`
+- **Backlog Added:**
+  - `OPS-DRY-001`: standardize pytest-ready test env
+  - `OPS-DRY-002`: deterministic stub mode for `utils/simulate.py`
+  - `OPS-APR-001`: reconcile proposal markdown status vs DB status
+
+---
+
 ### Changes by Copilot (Ghost Layer) — COMPREHENSIVE SYSTEM FIXES: UI, CHAT, WORLD CLOCKS, TIME WIZARD
 
 **2026-03-29 00:15 — 2026-03-30 09:45** Copilot: 5 critical UI bug fixes + chat timeout + world clocks + Time Wizard initialization

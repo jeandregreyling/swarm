@@ -1,6 +1,6 @@
 # BUGS — Seven's Swarm Canonical Bug Log
 
-_Maintained by Nine (Ghost Layer). Last updated: 2026-03-29 18:17:27 (Session 3 — triage queue fix NINE-018)._
+_Maintained by Nine (Ghost Layer). Last updated: 2026-03-30 10:05:00 (Session 5 proactive dry-run + approvals audit)._
 
 ---
 
@@ -219,3 +219,25 @@ _Maintained by Nine (Ghost Layer). Last updated: 2026-03-29 18:17:27 (Session 3 
 - **Cause:** `_log_to_duck_log()` used column names `verdict` and `note` which don't exist. Actual schema has `answer` and `reason`. This crashed Duck on every ticket close, leaving tickets in `open` status and queue entries stuck in `processing` indefinitely.
 - **Fix:** Changed INSERT to use `answer` and `reason`.
 - **Testing:** Dry run confirmed — 24/24 checks pass (`tests/test_triage_queue_dryrun.py`).
+
+---
+
+## BUG-025: `utils/simulate.py` is not deterministic for dry validation
+
+- **Status:** open
+- **Found:** 2026-03-30 (proactive dry-test sweep)
+- **Service:** `utils/simulate.py` / orchestrator live model path
+- **Error:** Simulation enters real-model route and can run for several minutes per stage (example: Gemma routing response at ~174s), preventing reliable "full dry" execution windows.
+- **Cause:** Script advertises dry-run behavior but still executes non-stubbed live model calls in `consult_stage1/2/eight` paths.
+- **Fix:** Add explicit deterministic stub mode for model calls (similar to `tests/test_triage_queue_dryrun.py`) and a hard timeout guard per stage.
+
+---
+
+## BUG-026: `pytest` missing from runtime test environment
+
+- **Status:** needs_verification
+- **Found:** 2026-03-30 (proactive dry-test sweep)
+- **Service:** Local test execution environment
+- **Error:** `python3 -m pytest tests -q` fails with `No module named pytest`.
+- **Cause:** Test dependency not installed in current runtime image/environment.
+- **Fix:** Provide a pinned dev-test environment (requirements/dev requirements or venv bootstrap) and re-run full pytest suite.

@@ -1,13 +1,13 @@
 # FEATURES_TODO.md — Planned Features & Implementation Queue
 
 _Comprehensive list of all planned features, organized by phase and priority._
-_Last updated: 2026-03-26 15:00:00 by Copilot_
+_Last updated: 2026-03-30 10:05:00 by Copilot_
 
 ---
 
 ## Executive Summary
 
-**18 tasks** across 6 phases. Estimated timeline: **4-6 weeks** to full implementation.
+**20 tasks** across 6 phases. Estimated timeline: **4-6 weeks** to full implementation.
 
 | Phase | Name | Priority | Est. Size | Status |
 |-------|------|----------|-----------|--------|
@@ -387,6 +387,55 @@ CREATE TABLE file_versions (
 - [ ] Can receive messages in DMs
 - [ ] Can send responses
 - [ ] Commands work (URGENT, NOTE, etc.)
+
+---
+
+### F-2: Standardize Full Dry-Test Runner (HIGH PRIORITY)
+
+**Description:** One command that always runs full dry validation deterministically.
+
+**Why:** Current state is split between script-style tests and unavailable pytest environment; proactive regression sweeps need repeatable output.
+
+**Implementation:**
+- [ ] Add a bootstrap script to prepare/verify Python test dependencies
+- [ ] Add `make dry-test` or equivalent shell runner
+- [ ] Include `SIMULATE=true python3 tests/test_triage_queue_dryrun.py`
+- [ ] Include optional pytest run when available
+- [ ] Emit summary report to docs/testing
+
+**Files to Update:**
+- `docs/testing/` (runner instructions + output format)
+- `tests/` (optional wrapper script)
+- `requirements*.txt` or env bootstrap doc
+
+**Acceptance Criteria:**
+- [ ] Full dry test can run in under 5 minutes without manual setup
+- [ ] Missing dependencies are surfaced with actionable message
+- [ ] Results are logged in one canonical report
+
+---
+
+### F-3: Proposal/Approval State Reconciliation (MEDIUM PRIORITY)
+
+**Description:** Keep proposal markdown status and `work_proposals` DB status in sync.
+
+**Why:** Audit found mismatch risk (example: `NINE-021` appears executed in file history context while DB status remains pending).
+
+**Implementation:**
+- [ ] Define canonical source of truth (`work_proposals` table)
+- [ ] Add reconciliation script to compare markdown + DB states
+- [ ] Add docs entry for mismatch handling workflow
+- [ ] Surface pending approvals in Fridays dashboard
+
+**Files to Update:**
+- `core/pipeline/queue_manager.py`
+- `frontend/terminal.py` (status endpoint/reporting)
+- `docs/` (workflow and SOP)
+
+**Acceptance Criteria:**
+- [ ] No stale `pending` proposals after execution
+- [ ] Reconciliation report generated automatically
+- [ ] Dashboard and docs show identical proposal statuses
 
 ---
 

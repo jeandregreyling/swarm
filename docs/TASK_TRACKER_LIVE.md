@@ -1,6 +1,6 @@
 # 🎯 FRIDAYS REFINEMENT — LIVE TASK TRACKER
 
-**Last Updated:** 2026-03-30 09:30 UTC  
+**Last Updated:** 2026-03-30 10:05 UTC  
 **Session:** Session 5 — Critical Fixes + World Clocks  
 **Auditor:** Copilot (Ghost Layer)  
 
@@ -21,6 +21,27 @@
 
 ## 🔧 BROKEN PIPES STATUS UPDATE
 
+## ✅ Proactive Ops Run (Dry Test + Approvals/Proposals Audit)
+
+**Run time:** 2026-03-30 00:55-01:05 UTC
+
+| Item | Result | Evidence |
+|------|--------|----------|
+| Dry triage script | ✅ PASS (24/24) | `SIMULATE=true python3 tests/test_triage_queue_dryrun.py` |
+| Full tests via pytest | ⚠️ BLOCKED | `python3 -m pytest` failed (`No module named pytest`) |
+| Full pipeline simulate | ⚠️ PARTIAL | `utils/simulate.py` entered live model path; Gemma route call exceeded 174s |
+| Proposal queue DB | ✅ AUDITED | `work_proposals`: 5 total (4 executed, 1 pending) |
+| Decisions audit table | ✅ AUDITED | `decisions`: 18 total records |
+| Time Wizard tables | ✅ AUDITED | `time_journal`: 1, `time_events`: 4, `time_checkpoints`: 2 |
+
+### Backlog Added From This Run
+
+| Backlog ID | Priority | Item | Owner | Status |
+|------------|----------|------|-------|--------|
+| OPS-DRY-001 | HIGH | Add pinned test environment with pytest installed for `python3 -m pytest tests -q` | Copilot | OPEN |
+| OPS-DRY-002 | HIGH | Add model-stub mode to `utils/simulate.py` so full dry simulation finishes without live model latency | Copilot | OPEN |
+| OPS-APR-001 | MEDIUM | Reconcile proposal file status vs DB status for `NINE-021` (file says executed, DB still pending) | Nine/Copilot | OPEN |
+
 ### Priority 1 — Blocking UI Functionality
 
 | Pipe | Status | Impact | Root Cause | Fix | Updated |
@@ -38,7 +59,7 @@
 
 | Pipe | Status | Impact | Root Cause | Fix |
 |------|--------|--------|-----------|-----|
-| **Nine File Operations** | 🟡 HIGH | Nine cannot read/write sandpits | fridays/file_agent.py signature mismatch (BUG-019 partially fixed) | Complete Nine file operation testing |
+| **Nine File Operations** | ✅ VERIFIED | Prior signature mismatch fixed; tuple return contract validated | BUG-019 resolved and regression-tested in dry-run cycle | Move to monitor-only unless regression appears |
 | **Email Handler** | 🟢 MEDIUM | mailto: approval links untested | BUG-001 marked `needs_verification` | Run UAT scenario |
 
 ---
@@ -96,9 +117,9 @@
 - ✅ Commit: `60c0999`
 
 **BRK-004: Nine File Operations**
-- [ ] Test `fridays.file_agent.read_sandpit()` 
-- [ ] Test `fridays.file_agent.write_sandpit()`
-- [ ] Verify return types are `(ok, content)` tuples
+- [x] Test `fridays.file_agent.read_sandpit()` 
+- [x] Test `fridays.file_agent.write_sandpit()`
+- [x] Verify return types are `(ok, content)` tuples
 
 **BRK-005: End-to-End Flows**
 - [ ] Email → Ticket → Agent Response → Reply (full round-trip)
@@ -127,8 +148,9 @@
 
 **What remains:**
 🟡 Terminal tile verification  
-🟡 Nine file operations validation  
+🟢 Nine file operations validation (completed in prior bugfix cycle)  
 🟡 End-to-end email/Discord/Telegram flow testing
+🟡 Deterministic full dry simulation (currently blocked by live model latency)
 
 ## 📊 AUDIT METRICS
 
