@@ -613,6 +613,18 @@ def _migrate_schema(conn=None):
             created_at TEXT DEFAULT (datetime('now'))
         )""")
         conn.commit()
+    # memory_twelve: bootstrap test created it with a different schema; add missing columns
+    if 'memory_twelve' in tables:
+        mt_cols = {row[1] for row in conn.execute('PRAGMA table_info(memory_twelve)').fetchall()}
+        if 'subject' not in mt_cols:
+            conn.execute("ALTER TABLE memory_twelve ADD COLUMN subject TEXT DEFAULT ''")
+            conn.commit()
+        if 'source' not in mt_cols:
+            conn.execute("ALTER TABLE memory_twelve ADD COLUMN source TEXT DEFAULT 'session'")
+            conn.commit()
+        if 'ticket_ref' not in mt_cols:
+            conn.execute("ALTER TABLE memory_twelve ADD COLUMN ticket_ref TEXT DEFAULT ''")
+            conn.commit()
     # Queue: add source_type and agent columns for internal entries
     queue_cols = {row[1] for row in conn.execute("PRAGMA table_info(queue)").fetchall()}
     if 'source_type' not in queue_cols:

@@ -1339,14 +1339,13 @@ def api_chat():
         log_message(conv_id, 'user', message)
         
         # Route to appropriate agent with 10-second timeout
-        response = None
         try:
             executor = ThreadPoolExecutor(max_workers=1)
             future = executor.submit(orchestrator.ask_agent, 'gemma', message)
             response = future.result(timeout=10)
             executor.shutdown(wait=False)
         except FuturesTimeoutError:
-            # Timeout occurred - return fallback response
+            # Timeout occurred - log and return fallback response
             response = (
                 "I'm taking longer than expected to respond. This might be because:\n"
                 "1. The AI model is processing a complex request\n"
@@ -1354,6 +1353,7 @@ def api_chat():
                 "3. The Ollama backend may need a restart\n\n"
                 "Please try again in a moment, or check the system monitor."
             )
+            log_message(conv_id, 'swarm', f"[TIMEOUT] {response}")
             executor.shutdown(wait=False)
         
         log_message(conv_id, 'swarm', response)
@@ -2432,59 +2432,6 @@ def api_time_stats(agent):
     return jsonify(stats)
 
 
-@app.route('/api/time/bootstrap', methods=['POST'])
-def api_time_bootstrap():
-    """Initialize a new Time Wizard session."""
-    try:
-        session_id = time_wizard.bootstrap_session()
-        if session_id:
-            return jsonify({'ok': True, 'session_id': session_id}), 201
-        else:
-            return jsonify({'ok': False, 'error': 'Bootstrap failed'}), 500
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-@app.route('/api/time/log-decision', methods=['POST'])
-def api_time_log_decision():
-    """Log a decision execution event."""
-    data = request.get_json() or {}
-    decision_id = data.get('decision_id')
-    agent = data.get('agent', 'twelve')
-    status = data.get('status', 'executed')
-    details = data.get('details', {})
-    
-    if not decision_id:
-        return jsonify({'ok': False, 'error': 'decision_id required'}), 400
-    
-    try:
-        event_id = time_wizard.log_decision_execution(
-            decision_id, agent, status, details
-        )
-        return jsonify({
-            'ok': True,
-            'event_id': event_id,
-            'decision_id': decision_id
-        }), 201
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-@app.route('/api/time/decision-history/<decision_id>', methods=['GET'])
-def api_time_decision_history(decision_id):
-    """Get execution history for a decision."""
-    try:
-        history = time_wizard.get_decision_history(decision_id)
-        return jsonify({
-            'ok': True,
-            'decision_id': decision_id,
-            'events': history,
-            'total': len(history)
-        })
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # KILL SWITCHES — Emergency control endpoints
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2794,12 +2741,4 @@ if __name__ == '__main__':
     print("╚═══════════════════════════════╝")
     print("  http://localhost:5050")
     print("  Tailscale only in production.\n")
-    
-    # Initialize Time Wizard on startup (both layers)
-    try:
-        session_id = time_wizard.bootstrap_session()
-        print(f"  Time Wizard initialized: {session_id}\n")
-    except Exception as e:
-        print(f"  Time Wizard init warning: {e}\n")
-    
     app.run(host='0.0.0.0', port=5050, debug=False, threaded=True)

@@ -126,71 +126,8 @@ class ThemeEngine:
         theme = self.load_theme(theme_name)
         return theme.get('custom_js', '')
     
-    def get_time_wizard_data(self):
-        """Fetch Time Wizard sessions, events, and statistics."""
-        try:
-            sys.path.insert(0, '/home/seven/swarm/core')
-            from time_machine import time_wizard
-            
-            sessions = time_wizard.get_sessions(limit=5)
-            events = time_wizard.get_timeline(limit=10)
-            checkpoints = time_wizard.list_checkpoints()
-            stats = {
-                'total_sessions': len(time_wizard.get_sessions()),
-                'total_events': len(time_wizard.get_timeline()),
-                'total_checkpoints': len(checkpoints),
-                'agents': ['twelve', 'ghost', 'nine']
-            }
-            
-            return {
-                'sessions': sessions,
-                'events': events,
-                'checkpoints': checkpoints,
-                'stats': stats,
-                'ok': True
-            }
-        except Exception as e:
-            return {
-                'sessions': [],
-                'events': [],
-                'checkpoints': [],
-                'stats': {'total_sessions': 0, 'total_events': 0, 'total_checkpoints': 0},
-                'ok': False,
-                'error': str(e)
-            }
-    
-    def get_time_wizard_js(self):
-        """Generate JavaScript with Time Wizard data baked in."""
-        tw_data = self.get_time_wizard_data()
-        
-        # Create global window variable with Time Wizard data
-        js_code = f"""
-// TIME WIZARD DATA (baked into template)
-window._timeWizardData = {json.dumps(tw_data)};
-
-// Load Time Wizard data on page init
-function initTimeWizardData() {{
-    if (window._timeWizardData && window._timeWizardData.ok) {{
-        console.log('[TimeWizard] Data loaded:', window._timeWizardData);
-        // Load into time-wizard UI components
-        if (typeof renderTwTimeline === 'function') {{
-            const decisions = window._timeWizardData.stats || [];
-            renderTwTimeline(decisions);
-        }}
-    }}
-}}
-
-// Auto-init on DOMContentLoaded
-if (document.readyState === 'loading') {{
-    document.addEventListener('DOMContentLoaded', initTimeWizardData);
-}} else {{
-    initTimeWizardData();
-}}
-"""
-        return js_code
-    
     def render_html(self, theme_name='fridays', template='terminal_base.html'):
-        """Load a template, inject theme + Time Wizard data, return fully themed HTML.
+        """Load a template, inject theme, return fully themed HTML.
         Theme cache is flushed on each render so time-of-day shifts apply live
         without a service restart.
         """
@@ -207,15 +144,10 @@ if (document.readyState === 'loading') {{
         # Get theme CSS & JS
         theme_css = self.get_theme_css(theme_name)
         theme_js = self.get_theme_js(theme_name)
-        time_wizard_js = self.get_time_wizard_js()
         
         # Inject into placeholders
         html = html.replace('{{ theme_css }}', theme_css)
         html = html.replace('{{ theme_js }}', theme_js)
-        
-        # Inject Time Wizard data into a script tag before </body>
-        time_wizard_script = f'<script>{time_wizard_js}</script>'
-        html = html.replace('</body>', f'{time_wizard_script}\n</body>')
         
         return html
 

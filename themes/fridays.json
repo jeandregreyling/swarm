@@ -1,41 +1,79 @@
 {
   "name": "Fridays",
-  "version": "1.0",
+  "version": "2.0",
+  "description": "Seven's Swarm — dark-first, time-of-day accent shifts",
   "colors": {
-    "--color-primary": "#4A90E2",
-    "--color-secondary": "#E8F4FD",
-    "--color-text": "#333333",
-    "--color-accent": "#2E5C8A",
-    "--color-bg": "#ffffff",
-    "--color-border": "#e0e0e0"
+    "--bg":            "#0F0F0F",
+    "--card":          "#1C1C1C",
+    "--card-hover":    "#262626",
+    "--hover":         "#262626",
+    "--bg-input":      "#1a1a1a",
+    "--border":        "#333333",
+    "--text":          "#E8E8E8",
+    "--text-dim":      "#808080",
+    "--accent":        "#0071E3",
+    "--accent-hover":  "#0077ED",
+    "--window-bg":     "#1C1C1C",
+    "--window-header": "#121212"
   },
   "time_of_day": {
     "morning": {
-      "--color-primary": "#FFB347",
-      "--color-secondary": "#FFF8DC",
-      "--color-text": "#333333",
-      "--color-accent": "#FF6B35"
+      "--bg":            "#0F0F0F",
+      "--card":          "#1d1a14",
+      "--card-hover":    "#27231a",
+      "--hover":         "#27231a",
+      "--bg-input":      "#1a1710",
+      "--border":        "#3a3228",
+      "--text":          "#F0EAD6",
+      "--text-dim":      "#8a7d65",
+      "--accent":        "#E8935A",
+      "--accent-hover":  "#F0A070",
+      "--window-bg":     "#1d1a14",
+      "--window-header": "#141109"
     },
     "afternoon": {
-      "--color-primary": "#4A90E2",
-      "--color-secondary": "#E8F4FD",
-      "--color-text": "#333333",
-      "--color-accent": "#2E5C8A"
+      "--bg":            "#0F0F0F",
+      "--card":          "#1C1C1C",
+      "--card-hover":    "#262626",
+      "--hover":         "#262626",
+      "--bg-input":      "#1a1a1a",
+      "--border":        "#333333",
+      "--text":          "#E8E8E8",
+      "--text-dim":      "#808080",
+      "--accent":        "#0071E3",
+      "--accent-hover":  "#0077ED",
+      "--window-bg":     "#1C1C1C",
+      "--window-header": "#121212"
     },
     "evening": {
-      "--color-primary": "#FF6B9D",
-      "--color-secondary": "#FFE5EC",
-      "--color-text": "#333333",
-      "--color-accent": "#C44569"
+      "--bg":            "#0D0D12",
+      "--card":          "#19161F",
+      "--card-hover":    "#24202E",
+      "--hover":         "#24202E",
+      "--bg-input":      "#17141D",
+      "--border":        "#32293F",
+      "--text":          "#EAE0F8",
+      "--text-dim":      "#7a6e8a",
+      "--accent":        "#9B7FE8",
+      "--accent-hover":  "#B09AF0",
+      "--window-bg":     "#19161F",
+      "--window-header": "#100E16"
     },
     "night": {
-      "--color-primary": "#1a1a2e",
-      "--color-secondary": "#16213e",
-      "--color-text": "#e0e0e0",
-      "--color-accent": "#0f3460"
+      "--bg":            "#080810",
+      "--card":          "#10101A",
+      "--card-hover":    "#1A1A28",
+      "--hover":         "#1A1A28",
+      "--bg-input":      "#0e0e18",
+      "--border":        "#252535",
+      "--text":          "#C8C8E0",
+      "--text-dim":      "#606080",
+      "--accent":        "#4F8EF7",
+      "--accent-hover":  "#6BA0FF",
+      "--window-bg":     "#10101A",
+      "--window-header": "#08080F"
     }
   },
-  "custom_css": "body { font-family: 'Inter', 'Segoe UI', sans-serif; line-height: 1.6; letter-spacing: 0.5px; } .card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 16px; } button { border-radius: 6px; font-weight: 600; transition: all 0.2s ease; }",
+  "custom_css": "",
   "custom_js": ""
 }
-

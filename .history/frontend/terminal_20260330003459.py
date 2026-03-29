@@ -2794,12 +2794,4 @@ if __name__ == '__main__':
     print("╚═══════════════════════════════╝")
     print("  http://localhost:5050")
     print("  Tailscale only in production.\n")
-    
-    # Initialize Time Wizard on startup (both layers)
-    try:
-        session_id = time_wizard.bootstrap_session()
-        print(f"  Time Wizard initialized: {session_id}\n")
-    except Exception as e:
-        print(f"  Time Wizard init warning: {e}\n")
-    
     app.run(host='0.0.0.0', port=5050, debug=False, threaded=True)
