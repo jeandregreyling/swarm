@@ -1023,13 +1023,6 @@ def api_work_proposals_patch(proposal_id):
         'rejected': {'rejected'},
     }
     if status not in allowed_transitions.get(current_status, {current_status}):
-        _safe_time_event(
-            agent=row['agent'] or 'terminal_ui',
-            action='proposal_transition_blocked',
-            event_type='proposal_guard',
-            target=proposal_id,
-            details={'from_status': current_status, 'to_status': status}
-        )
         return jsonify({
             'ok': False,
             'error': f'invalid transition: {current_status} -> {status}',
@@ -1048,13 +1041,6 @@ def api_work_proposals_patch(proposal_id):
         )
         if duck_review['result'] != 'YES':
             log_activity('terminal', 'proposal_duck_review_blocked', f'{proposal_id} -> {duck_review["reason"]}')
-            _safe_time_event(
-                agent=row['agent'] or 'terminal_ui',
-                action='proposal_duck_review_blocked',
-                event_type='proposal_review',
-                target=proposal_id,
-                details=duck_review
-            )
             return jsonify({
                 'ok': False,
                 'error': 'duck review blocked approval',
@@ -1076,19 +1062,6 @@ def api_work_proposals_patch(proposal_id):
         return jsonify({'ok': False, 'error': 'proposal not found'}), 404
 
     log_activity('terminal', 'proposal_status_updated', f'{proposal_id} -> {status}')
-    _safe_time_event(
-        agent=row['agent'] or 'terminal_ui',
-        action='proposal_status_updated',
-        event_type='proposal',
-        target=proposal_id,
-        details={'from_status': current_status, 'to_status': status, 'queue_id': row['queue_id'], 'duck_review': duck_review}
-    )
-    if status in ('approved', 'executed', 'rejected'):
-        _safe_workflow_checkpoint(
-            label=f'{proposal_id}-{status}',
-            agent=row['agent'] or 'terminal_ui',
-            description=f'Automatic Vortex checkpoint after {proposal_id} moved to {status}'
-        )
     payload = {'ok': True, 'proposal': dict(row)}
     if duck_review:
         payload['duck_review'] = duck_review

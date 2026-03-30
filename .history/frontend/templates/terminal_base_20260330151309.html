@@ -4393,22 +4393,12 @@ async function applyTwRestore() {
     showToast('No checkpoint selected', 'error');
     return;
   }
-  await applyTwRestoreForCheckpoint(checkpoint, `Apply step-back to ${checkpoint.checkpoint_name || checkpoint.name}? A safety checkpoint will be created first.`);
-}
-
-async function applyTwRestoreForCheckpoint(checkpoint, confirmText) {
-  const checkpointName = checkpoint.checkpoint_name || checkpoint.name;
-  if (!checkpointName) {
-    showToast('Checkpoint name unavailable', 'error');
-    return;
-  }
-  if (!confirm(confirmText || `Apply step-back to ${checkpointName}? A safety checkpoint will be created first.`)) return;
-
+  if (!confirm(`Apply step-back to ${checkpoint.checkpoint_name || checkpoint.name}? A safety checkpoint will be created first.`)) return;
   try {
     const res = await fetch('/api/time/restore', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ checkpoint_name: checkpointName, actor: 'terminal_ui', dry_run: false })
+      body: JSON.stringify({ checkpoint_name: checkpoint.checkpoint_name || checkpoint.name, actor: 'terminal_ui', dry_run: false })
     });
     const data = await res.json();
     if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
@@ -4417,27 +4407,6 @@ async function applyTwRestoreForCheckpoint(checkpoint, confirmText) {
   } catch (e) {
     showToast(`Restore failed: ${e.message}`, 'error');
   }
-}
-
-async function twRollbackToHistory(kind, id) {
-  const items = getTwHistoryItems();
-  const selected = items.find(x => x.kind === kind && String(x.id) === String(id));
-  if (!selected) {
-    showToast('History item not found', 'error');
-    return;
-  }
-
-  if (kind === 'checkpoint') {
-    await applyTwRestoreForCheckpoint(selected.raw, `Rollback to snapshot ${selected.checkpoint_name || selected.title}? A safety checkpoint will be created first.`);
-    return;
-  }
-
-  const cp = findTwCheckpointForEventTimestamp(selected.ts);
-  if (!cp) {
-    showToast('No snapshot found before this event', 'error');
-    return;
-  }
-  await applyTwRestoreForCheckpoint(cp, `Rollback to nearest snapshot before this event (${cp.checkpoint_name || cp.name})? A safety checkpoint will be created first.`);
 }
 
 function renderTwTimeline(decisions) {

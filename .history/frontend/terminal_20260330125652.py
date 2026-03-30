@@ -65,14 +65,6 @@ def intake_internal(agent, title, description, priority=5):
     finally:
         conn.close()
 
-    _safe_time_event(
-        agent=agent,
-        action='proposal_created',
-        event_type='proposal',
-        target=proposal_id,
-        details={'queue_id': queue_id, 'title': title[:200], 'priority': priority}
-    )
-
     return queue_id, proposal_id
 
 
@@ -338,28 +330,6 @@ def _run_proposal_duck_review(row):
         return {'result': 'NO', 'reason': '.history references must stay explicitly ghost-layer scoped'}
 
     return {'result': 'YES', 'reason': 'proposal passed Duck first-pass review'}
-
-
-def _safe_time_event(agent, action, event_type='workflow', target='', details=None):
-    try:
-        return time_wizard.record_event(
-            agent=agent,
-            action=action,
-            event_type=event_type,
-            target=target,
-            details=details or {}
-        )
-    except Exception as exc:
-        log_activity('terminal', 'vortex_log_warning', f'{action}: {exc}')
-        return None
-
-
-def _safe_workflow_checkpoint(label, agent='terminal_ui', description=''):
-    try:
-        return time_wizard.create_workflow_checkpoint(label=label, agent=agent, description=description)
-    except Exception as exc:
-        log_activity('terminal', 'vortex_checkpoint_warning', f'{label}: {exc}')
-        return None
 
 
 def _is_time_wizard_active():
@@ -1023,13 +993,6 @@ def api_work_proposals_patch(proposal_id):
         'rejected': {'rejected'},
     }
     if status not in allowed_transitions.get(current_status, {current_status}):
-        _safe_time_event(
-            agent=row['agent'] or 'terminal_ui',
-            action='proposal_transition_blocked',
-            event_type='proposal_guard',
-            target=proposal_id,
-            details={'from_status': current_status, 'to_status': status}
-        )
         return jsonify({
             'ok': False,
             'error': f'invalid transition: {current_status} -> {status}',
@@ -1048,13 +1011,6 @@ def api_work_proposals_patch(proposal_id):
         )
         if duck_review['result'] != 'YES':
             log_activity('terminal', 'proposal_duck_review_blocked', f'{proposal_id} -> {duck_review["reason"]}')
-            _safe_time_event(
-                agent=row['agent'] or 'terminal_ui',
-                action='proposal_duck_review_blocked',
-                event_type='proposal_review',
-                target=proposal_id,
-                details=duck_review
-            )
             return jsonify({
                 'ok': False,
                 'error': 'duck review blocked approval',
@@ -1076,19 +1032,6 @@ def api_work_proposals_patch(proposal_id):
         return jsonify({'ok': False, 'error': 'proposal not found'}), 404
 
     log_activity('terminal', 'proposal_status_updated', f'{proposal_id} -> {status}')
-    _safe_time_event(
-        agent=row['agent'] or 'terminal_ui',
-        action='proposal_status_updated',
-        event_type='proposal',
-        target=proposal_id,
-        details={'from_status': current_status, 'to_status': status, 'queue_id': row['queue_id'], 'duck_review': duck_review}
-    )
-    if status in ('approved', 'executed', 'rejected'):
-        _safe_workflow_checkpoint(
-            label=f'{proposal_id}-{status}',
-            agent=row['agent'] or 'terminal_ui',
-            description=f'Automatic Vortex checkpoint after {proposal_id} moved to {status}'
-        )
     payload = {'ok': True, 'proposal': dict(row)}
     if duck_review:
         payload['duck_review'] = duck_review
@@ -3021,49 +2964,13 @@ def api_time_checkpoints():
     """List all checkpoints."""
     before = request.args.get('before', None)
     after = request.args.get('after', None)
-    limit = int(request.args.get('limit', 100))
     
-    checkpoints = time_wizard.list_checkpoints(before_time=before, after_time=after, limit=limit)
+    checkpoints = time_wizard.list_checkpoints(before_time=before, after_time=after)
     
     return jsonify({
         'count': len(checkpoints),
         'checkpoints': checkpoints
     })
-
-
-@app.route('/api/time/checkpoints', methods=['POST'])
-def api_time_create_checkpoint():
-    """Capture a Swarm-facing Vortex checkpoint from current workflow state."""
-    data = request.get_json() or {}
-    label = (data.get('label') or 'manual-checkpoint').strip()
-    description = (data.get('description') or '').strip()
-    agent = (data.get('agent') or 'terminal_ui').strip()
-
-    try:
-        checkpoint = time_wizard.create_workflow_checkpoint(label=label, agent=agent, description=description)
-        return jsonify({'ok': True, 'checkpoint': checkpoint}), 201
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-@app.route('/api/time/restore', methods=['POST'])
-def api_time_restore():
-    """Preview or apply a workflow state step-back to a named Vortex checkpoint."""
-    data = request.get_json() or {}
-    checkpoint_name = (data.get('checkpoint_name') or '').strip()
-    actor = (data.get('actor') or 'terminal_ui').strip()
-    dry_run = bool(data.get('dry_run', True))
-
-    if not checkpoint_name:
-        return jsonify({'ok': False, 'error': 'checkpoint_name required'}), 400
-
-    try:
-        result = time_wizard.restore_workflow_state(checkpoint_name=checkpoint_name, actor=actor, dry_run=dry_run)
-        return jsonify(result)
-    except ValueError as e:
-        return jsonify({'ok': False, 'error': str(e)}), 404
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @app.route('/api/time/stats/<agent>', methods=['GET'])

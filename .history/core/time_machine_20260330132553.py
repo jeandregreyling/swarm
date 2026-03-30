@@ -456,16 +456,6 @@ class TimeMachine:
                     'checkpoint_ticket': saved.get('ticket_number'),
                     'current_ticket': current.get('ticket_number'),
                 })
-        for proposal_id, current in current_proposals.items():
-            if proposal_id not in saved_proposals:
-                proposal_changes.append({
-                    'proposal_id': proposal_id,
-                    'change': 'added_since_checkpoint',
-                    'checkpoint_status': None,
-                    'current_status': current.get('status'),
-                    'checkpoint_ticket': None,
-                    'current_ticket': current.get('ticket_number'),
-                })
 
         current_decisions = {str(row['decision_id']): row for row in current_state.get('decisions', []) if row.get('decision_id') is not None}
         saved_decisions = {str(row['decision_id']): row for row in checkpoint_state.get('decisions', []) if row.get('decision_id') is not None}
@@ -483,51 +473,18 @@ class TimeMachine:
                     'checkpoint_commit': saved.get('commit_hash'),
                     'current_commit': current.get('commit_hash'),
                 })
-        for decision_id, current in current_decisions.items():
-            if decision_id not in saved_decisions:
-                decision_changes.append({
-                    'decision_id': decision_id,
-                    'change': 'added_since_checkpoint',
-                    'checkpoint_status': None,
-                    'current_status': current.get('test_status'),
-                    'checkpoint_commit': None,
-                    'current_commit': current.get('commit_hash'),
-                })
 
         current_queue = {str(row['id']): row for row in current_state.get('queue', []) if row.get('id') is not None}
         saved_queue = {str(row['id']): row for row in checkpoint_state.get('queue', []) if row.get('id') is not None}
         queue_changes = []
         for queue_id, saved in saved_queue.items():
             current = current_queue.get(queue_id)
-            if not current:
-                queue_changes.append({
-                    'queue_id': queue_id,
-                    'change': 'missing_now',
-                    'checkpoint_status': saved.get('status'),
-                    'current_status': None,
-                })
-            elif current.get('status') != saved.get('status') or current.get('priority') != saved.get('priority') or current.get('agent') != saved.get('agent'):
+            if current and current.get('status') != saved.get('status'):
                 queue_changes.append({
                     'queue_id': queue_id,
                     'change': 'queue_drift',
                     'checkpoint_status': saved.get('status'),
                     'current_status': current.get('status'),
-                    'checkpoint_priority': saved.get('priority'),
-                    'current_priority': current.get('priority'),
-                    'checkpoint_agent': saved.get('agent'),
-                    'current_agent': current.get('agent'),
-                })
-        for queue_id, current in current_queue.items():
-            if queue_id not in saved_queue:
-                queue_changes.append({
-                    'queue_id': queue_id,
-                    'change': 'added_since_checkpoint',
-                    'checkpoint_status': None,
-                    'current_status': current.get('status'),
-                    'checkpoint_priority': None,
-                    'current_priority': current.get('priority'),
-                    'checkpoint_agent': None,
-                    'current_agent': current.get('agent'),
                 })
 
         return {
@@ -568,42 +525,8 @@ class TimeMachine:
         saved_state = checkpoint.get('full_state') or {}
 
         conn = sqlite3.connect(DB_PATH)
-        restored = {'work_proposals': 0, 'decisions': 0, 'queue': 0, 'deleted_work_proposals': 0, 'deleted_decisions': 0, 'deleted_queue': 0}
+        restored = {'work_proposals': 0, 'decisions': 0, 'queue': 0}
         try:
-            saved_proposal_ids = {row.get('proposal_id') for row in saved_state.get('work_proposals', []) if row.get('proposal_id')}
-            saved_decision_ids = {row.get('decision_id') for row in saved_state.get('decisions', []) if row.get('decision_id') is not None}
-            saved_queue_ids = {row.get('id') for row in saved_state.get('queue', []) if row.get('id') is not None}
-
-            if saved_proposal_ids:
-                placeholders = ','.join('?' for _ in saved_proposal_ids)
-                cursor = conn.execute(
-                    f"DELETE FROM work_proposals WHERE proposal_id NOT IN ({placeholders})",
-                    tuple(saved_proposal_ids)
-                )
-            else:
-                cursor = conn.execute("DELETE FROM work_proposals")
-            restored['deleted_work_proposals'] = cursor.rowcount
-
-            if saved_decision_ids:
-                placeholders = ','.join('?' for _ in saved_decision_ids)
-                cursor = conn.execute(
-                    f"DELETE FROM decisions WHERE decision_id NOT IN ({placeholders})",
-                    tuple(saved_decision_ids)
-                )
-            else:
-                cursor = conn.execute("DELETE FROM decisions")
-            restored['deleted_decisions'] = cursor.rowcount
-
-            if saved_queue_ids:
-                placeholders = ','.join('?' for _ in saved_queue_ids)
-                cursor = conn.execute(
-                    f"DELETE FROM queue WHERE id NOT IN ({placeholders})",
-                    tuple(saved_queue_ids)
-                )
-            else:
-                cursor = conn.execute("DELETE FROM queue")
-            restored['deleted_queue'] = cursor.rowcount
-
             for row in saved_state.get('work_proposals', []):
                 cursor = conn.execute(
                     "UPDATE work_proposals SET status=?, ticket_number=?, updated_at=datetime('now') WHERE proposal_id=?",

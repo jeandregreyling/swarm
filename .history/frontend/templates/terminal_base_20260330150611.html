@@ -1534,37 +1534,17 @@ input[type="range"]::-moz-range-thumb:hover {
       </div>
       <div id="tw-restore-preview" style="background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 11px; color: var(--text-dim); min-height: 72px;">Drag the slider to inspect a checkpoint. Dry run preview will appear here.</div>
     </div>
-    <div style="display:flex;flex:1;min-height:0;">
-      <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
-        <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; gap: 8px;">
-          <input type="text" id="tw-search" placeholder="Search decisions..." style="flex: 1; background: var(--input-bg, var(--card)); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); font-size: 12px; font-family: inherit;">
-          <select id="tw-filter" style="background: var(--input-bg, var(--card)); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; color: var(--text); font-size: 12px; font-family: inherit;">
-            <option value="all">All States</option>
-            <option value="EXECUTED">Executed</option>
-            <option value="PROPOSED">Proposed</option>
-            <option value="TESTING">Testing</option>
-          </select>
-        </div>
-        <div id="tw-timeline" style="flex: 1; overflow-y: auto; padding: 16px;">
-          <div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 40px 20px;">Loading decision timeline...</div>
-        </div>
-      </div>
-      <aside id="tw-history-panel" style="width: 320px; max-width: 46%; border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; background: rgba(255,255,255,0.01);">
-        <div style="padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Vortex History</div>
-            <button onclick="loadTimeWizardData()" style="padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 10px; cursor: pointer;">↻</button>
-          </div>
-          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);cursor:pointer;">
-            <input type="checkbox" id="tw-auto-refresh" onchange="setTwAutoRefresh(this.checked)">
-            Auto refresh (15s)
-          </label>
-          <div style="font-size:10px;color:var(--text-dim);">Select a checkpoint or log event, then roll back directly from this rail.</div>
-        </div>
-        <div id="tw-history-list" style="flex:1;overflow-y:auto;padding:10px;">
-          <div style="color: var(--text-dim); font-size: 11px; text-align: center; padding: 20px;">Loading history...</div>
-        </div>
-      </aside>
+    <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; gap: 8px;">
+      <input type="text" id="tw-search" placeholder="Search decisions..." style="flex: 1; background: var(--input-bg, var(--card)); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); font-size: 12px; font-family: inherit;">
+      <select id="tw-filter" style="background: var(--input-bg, var(--card)); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; color: var(--text); font-size: 12px; font-family: inherit;">
+        <option value="all">All States</option>
+        <option value="EXECUTED">Executed</option>
+        <option value="PROPOSED">Proposed</option>
+        <option value="TESTING">Testing</option>
+      </select>
+    </div>
+    <div id="tw-timeline" style="flex: 1; overflow-y: auto; padding: 16px;">
+      <div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 40px 20px;">Loading decision timeline...</div>
     </div>
   </div>
 </template>
@@ -4198,32 +4178,11 @@ let _twCheckpoints = [];
 let _twEvents = [];
 let _twSessions = [];
 let _twPreview = null;
-let _twAutoRefreshTimer = null;
-let _twAutoRefreshEnabled = true;
-let _twSelected = null;
-
-const TW_AUTO_REFRESH_KEY = 'vortex_auto_refresh';
-const TW_SELECTED_KEY = 'vortex_selected_item';
 
 function initTimeWizard() {
   const search = document.getElementById('tw-search');
   const filter = document.getElementById('tw-filter');
   const slider = document.getElementById('tw-slider');
-  const auto = document.getElementById('tw-auto-refresh');
-
-  const savedAuto = localStorage.getItem(TW_AUTO_REFRESH_KEY);
-  _twAutoRefreshEnabled = savedAuto == null ? true : savedAuto === '1';
-  if (auto) auto.checked = _twAutoRefreshEnabled;
-
-  const savedSelected = localStorage.getItem(TW_SELECTED_KEY);
-  if (savedSelected) {
-    try {
-      _twSelected = JSON.parse(savedSelected);
-    } catch (_) {
-      _twSelected = null;
-    }
-  }
-
   if (search) search.oninput = applyTwFilters;
   if (filter) filter.onchange = applyTwFilters;
   if (slider) {
@@ -4232,8 +4191,6 @@ function initTimeWizard() {
       previewTwCheckpoint(false);
     };
   }
-
-  setTwAutoRefresh(_twAutoRefreshEnabled);
   loadTimeWizardData();
 }
 
@@ -4265,8 +4222,6 @@ async function loadTimeWizardData() {
     renderTwSummary();
     renderTwSliderLabel();
     renderTwTimeline(_twDecisions);
-    renderTwHistoryPanel();
-    restoreTwSelection();
     if (_twCheckpoints.length) {
       await previewTwCheckpoint(false);
     } else {
@@ -4393,22 +4348,12 @@ async function applyTwRestore() {
     showToast('No checkpoint selected', 'error');
     return;
   }
-  await applyTwRestoreForCheckpoint(checkpoint, `Apply step-back to ${checkpoint.checkpoint_name || checkpoint.name}? A safety checkpoint will be created first.`);
-}
-
-async function applyTwRestoreForCheckpoint(checkpoint, confirmText) {
-  const checkpointName = checkpoint.checkpoint_name || checkpoint.name;
-  if (!checkpointName) {
-    showToast('Checkpoint name unavailable', 'error');
-    return;
-  }
-  if (!confirm(confirmText || `Apply step-back to ${checkpointName}? A safety checkpoint will be created first.`)) return;
-
+  if (!confirm(`Apply step-back to ${checkpoint.checkpoint_name || checkpoint.name}? A safety checkpoint will be created first.`)) return;
   try {
     const res = await fetch('/api/time/restore', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ checkpoint_name: checkpointName, actor: 'terminal_ui', dry_run: false })
+      body: JSON.stringify({ checkpoint_name: checkpoint.checkpoint_name || checkpoint.name, actor: 'terminal_ui', dry_run: false })
     });
     const data = await res.json();
     if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
@@ -4417,27 +4362,6 @@ async function applyTwRestoreForCheckpoint(checkpoint, confirmText) {
   } catch (e) {
     showToast(`Restore failed: ${e.message}`, 'error');
   }
-}
-
-async function twRollbackToHistory(kind, id) {
-  const items = getTwHistoryItems();
-  const selected = items.find(x => x.kind === kind && String(x.id) === String(id));
-  if (!selected) {
-    showToast('History item not found', 'error');
-    return;
-  }
-
-  if (kind === 'checkpoint') {
-    await applyTwRestoreForCheckpoint(selected.raw, `Rollback to snapshot ${selected.checkpoint_name || selected.title}? A safety checkpoint will be created first.`);
-    return;
-  }
-
-  const cp = findTwCheckpointForEventTimestamp(selected.ts);
-  if (!cp) {
-    showToast('No snapshot found before this event', 'error');
-    return;
-  }
-  await applyTwRestoreForCheckpoint(cp, `Rollback to nearest snapshot before this event (${cp.checkpoint_name || cp.name})? A safety checkpoint will be created first.`);
 }
 
 function renderTwTimeline(decisions) {
@@ -4461,159 +4385,6 @@ function renderTwTimeline(decisions) {
         <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">${d.date || d.proposed || d.timestamp || ''}</div>
       </div>`;
   }).join('');
-}
-
-function twEventDisplayTitle(event) {
-  const base = event.event_type || event.type || event.action || 'event';
-  const desc = event.description || event.summary || event.message || '';
-  return desc ? `${base}: ${desc}` : base;
-}
-
-function getTwHistoryItems() {
-  const checkpointItems = (_twCheckpoints || []).map(cp => ({
-    kind: 'checkpoint',
-    id: cp.checkpoint_name || cp.name || cp.id || cp.timestamp || '',
-    checkpoint_name: cp.checkpoint_name || cp.name || '',
-    ts: cp.timestamp || cp.created_at || '',
-    title: cp.description || cp.label || cp.checkpoint_name || cp.name || 'checkpoint',
-    raw: cp,
-  }));
-
-  const eventItems = (_twEvents || []).map((ev, idx) => ({
-    kind: 'event',
-    id: ev.event_id || ev.id || `${ev.timestamp || 'event'}-${idx}`,
-    ts: ev.timestamp || ev.created_at || ev.time || '',
-    title: twEventDisplayTitle(ev),
-    raw: ev,
-  }));
-
-  return [...checkpointItems, ...eventItems]
-    .sort((a, b) => String(b.ts || '').localeCompare(String(a.ts || '')))
-    .slice(0, 180);
-}
-
-function renderTwHistoryPanel() {
-  const list = document.getElementById('tw-history-list');
-  if (!list) return;
-  const items = getTwHistoryItems();
-  if (!items.length) {
-    list.innerHTML = '<div style="color:var(--text-dim);font-size:11px;text-align:center;padding:20px;">No checkpoints or events recorded yet.</div>';
-    return;
-  }
-
-  list.innerHTML = items.map(item => {
-    const isCheckpoint = item.kind === 'checkpoint';
-    const color = isCheckpoint ? '#00d084' : '#6cb6ff';
-    const isActive = _twSelected && _twSelected.kind === item.kind && _twSelected.id === item.id;
-    const kindLabel = isCheckpoint ? 'SNAPSHOT' : 'LOG';
-    const rollbackLabel = isCheckpoint ? 'Rollback' : 'Rollback to point';
-    return `<div style="margin-bottom:8px;padding:10px;border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};border-radius:6px;background:var(--card);">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer;" onclick="selectTwHistoryItem('${item.kind}','${String(item.id).replace(/'/g, '')}')">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:10px;color:${color};font-weight:700;letter-spacing:0.4px;">${kindLabel}</div>
-          <div style="font-size:11px;color:var(--text);font-weight:600;line-height:1.35;margin-top:2px;word-break:break-word;">${_escHtml(item.title || '(untitled)')}</div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;word-break:break-all;">${_escHtml(item.ts || 'unknown time')}</div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-        <button onclick="twRollbackToHistory('${item.kind}','${String(item.id).replace(/'/g, '')}')" style="padding:4px 8px;background:${isCheckpoint ? '#f59e0b22' : 'var(--bg)'};border:1px solid ${isCheckpoint ? '#f59e0b55' : 'var(--border)'};border-radius:4px;color:${isCheckpoint ? '#f59e0b' : 'var(--text)'};font-size:10px;cursor:pointer;">${rollbackLabel}</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function saveTwSelection() {
-  if (!_twSelected) return;
-  localStorage.setItem(TW_SELECTED_KEY, JSON.stringify(_twSelected));
-}
-
-function restoreTwSelection() {
-  if (!_twSelected || !_twSelected.id || !_twSelected.kind) return;
-  const exists = getTwHistoryItems().find(x => x.kind === _twSelected.kind && String(x.id) === String(_twSelected.id));
-  if (!exists) {
-    _twSelected = null;
-    localStorage.removeItem(TW_SELECTED_KEY);
-    return;
-  }
-  selectTwHistoryItem(_twSelected.kind, _twSelected.id, true);
-}
-
-function selectTwHistoryItem(kind, id, silent = false) {
-  const items = getTwHistoryItems();
-  const selected = items.find(x => x.kind === kind && String(x.id) === String(id));
-  if (!selected) {
-    if (!silent) showToast('History item not found', 'error');
-    return;
-  }
-
-  _twSelected = { kind, id: String(id) };
-  saveTwSelection();
-
-  if (kind === 'checkpoint') {
-    const idx = _twCheckpoints.findIndex(cp => String(cp.checkpoint_name || cp.name || cp.id || cp.timestamp || '') === String(id));
-    const slider = document.getElementById('tw-slider');
-    if (slider && idx >= 0) {
-      slider.value = String(idx);
-      renderTwSliderLabel();
-      previewTwCheckpoint(false);
-    }
-    if (!silent) showToast(`Selected snapshot: ${selected.checkpoint_name || selected.title}`, 'success');
-  } else {
-    const cp = findTwCheckpointForEventTimestamp(selected.ts);
-    if (cp) {
-      const idx = _twCheckpoints.findIndex(x => (x.checkpoint_name || x.name) === (cp.checkpoint_name || cp.name));
-      if (idx >= 0) {
-        const slider = document.getElementById('tw-slider');
-        if (slider) slider.value = String(idx);
-        renderTwSliderLabel();
-      }
-      renderTwPreview({
-        checkpoint_name: cp.checkpoint_name || cp.name,
-        checkpoint_timestamp: cp.timestamp || cp.created_at,
-        summary: { restorable: true },
-        changes: { work_proposals: [], decisions: [], queue: [] },
-      });
-      if (!silent) showToast(`Event mapped to nearest snapshot: ${cp.checkpoint_name || cp.name}`, 'info');
-    } else if (!silent) {
-      showToast('No snapshot available before this event', 'error');
-    }
-  }
-
-  renderTwHistoryPanel();
-}
-
-function findTwCheckpointForEventTimestamp(ts) {
-  if (!_twCheckpoints.length) return null;
-  const eventMs = Date.parse(ts || '');
-  if (!Number.isFinite(eventMs)) return _twCheckpoints[0];
-
-  let best = null;
-  for (const cp of _twCheckpoints) {
-    const cpMs = Date.parse(cp.timestamp || cp.created_at || '');
-    if (!Number.isFinite(cpMs)) continue;
-    if (cpMs <= eventMs) {
-      best = cp;
-      break;
-    }
-  }
-  return best || null;
-}
-
-function setTwAutoRefresh(enabled) {
-  _twAutoRefreshEnabled = Boolean(enabled);
-  localStorage.setItem(TW_AUTO_REFRESH_KEY, _twAutoRefreshEnabled ? '1' : '0');
-
-  if (_twAutoRefreshTimer) {
-    clearInterval(_twAutoRefreshTimer);
-    _twAutoRefreshTimer = null;
-  }
-
-  if (_twAutoRefreshEnabled) {
-    _twAutoRefreshTimer = setInterval(() => {
-      if (!document.getElementById('tw-timeline')) return;
-      loadTimeWizardData();
-    }, 15000);
-  }
 }
 
 function applyTwFilters() {
