@@ -225,11 +225,3 @@ Each bug when fixed should have:
    - Dry-run and restore preview now produce deterministic, persisted audit trail suitable for ALM review.
    - Vortex can now step through legacy and current checkpoints without schema crash.
 
-### BUG-VTX-THEME-SHADOW-IMPORT: Theme layer not pinned to core TimeMachine
-- **Status:** ✅ FIXED
-- **Date:** 2026-03-30
-- **File:** `frontend/theme_engine.py`
-- **Issue:** Theme-engine data baking (`get_time_wizard_data`, `get_alm_data`) imported `time_machine` via mutable path insertion, which could resolve to legacy module in mixed-runtime states.
-- **Fix:** Added `_get_core_time_wizard()` with explicit importlib load from `core/time_machine.py` and applied it to both theme-layer data paths.
-- **Validation:** Runtime check shows `tw_ok=True`, `alm_ok=True`, `status=enforced`, `time_wizard_active=True` after frontend restart.
-

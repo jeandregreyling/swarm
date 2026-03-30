@@ -401,9 +401,6 @@ class TimeMachine:
                 item['checkpoint_name'] = item['name']
             if not item.get('timestamp') and item.get('created_at'):
                 item['timestamp'] = item['created_at']
-            # Keep list payloads lightweight; detailed state is available via get_checkpoint().
-            item.pop('full_state', None)
-            item.pop('state_snapshot', None)
             normalized.append(item)
         return normalized
 
