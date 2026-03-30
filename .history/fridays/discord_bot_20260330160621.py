@@ -376,220 +376,6 @@ async def _handle_schedule_command(message: discord.Message, text: str):
         )
 
 
-# ── Queue / ticket / Vortex management handlers ──────────────────────────────
-
-async def _handle_queue_command(message: discord.Message, _text: str):
-    """QUEUE / QUEUE STATUS / QUEUE LIST — current queue depth and active items."""
-    from database import get_connection
-    depth = get_queue_depth()
-    conn = get_connection()
-    rows = conn.execute(
-        """SELECT id, from_addr, subject, status, priority, created_at
-           FROM queue
-           WHERE status IN ('queued', 'processing')
-           ORDER BY priority ASC, created_at ASC
-           LIMIT 20"""
-    ).fetchall()
-    conn.close()
-
-    if not rows:
-        await message.reply(f'Queue is empty. Total depth: **{depth}**')
-        return
-
-    lines = [f'**Queue — {depth} active item(s):**\n']
-    for r in rows:
-        ago = r['created_at'][:16] if r['created_at'] else '?'
-        prio = '⚡' if r['priority'] == 1 else '·'
-        lines.append(f'{prio} `#{r["id"]}` [{r["status"]}] {r["subject"][:40]} — {r["from_addr"][:30]} @ {ago}')
-    await message.reply('\n'.join(lines)[:1900])
-
-
-async def _handle_tickets_command(message: discord.Message, mode: str):
-    """TICKETS / TICKETS OPEN / TICKETS ALL — list tickets."""
-    from database import get_connection
-    conn = get_connection()
-    if mode == 'open':
-        rows = conn.execute(
-            """SELECT ticket_number, sender_email, status, created_at, question
-               FROM tickets WHERE status = 'open'
-               ORDER BY created_at DESC LIMIT 25"""
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            """SELECT ticket_number, sender_email, status, created_at, question
-               FROM tickets
-               ORDER BY created_at DESC LIMIT 25"""
-        ).fetchall()
-    conn.close()
-
-    if not rows:
-        await message.reply('No tickets found.')
-        return
-
-    lines = [f'**Tickets ({mode}) — {len(rows)} shown:**\n']
-    status_icon = {'open': '🟡', 'closed': '✅', 'failed': '🔴'}
-    for r in rows:
-        icon = status_icon.get(r['status'], '·')
-        q = (r['question'] or '')[:40]
-        when = (r['created_at'] or '')[:16]
-        lines.append(f'{icon} `{r["ticket_number"]}` [{r["status"]}] {q} — {r["sender_email"][:25]} @ {when}')
-    await message.reply('\n'.join(lines)[:1900])
-
-
-async def _handle_ticket_detail_command(message: discord.Message, ticket_ref: str):
-    """TICKET <number> — show full ticket details."""
-    from database import get_connection
-    conn = get_connection()
-    ticket = conn.execute(
-        """SELECT t.*, q.status AS queue_status, q.priority
-           FROM tickets t
-           LEFT JOIN queue q ON q.id = t.queue_id
-           WHERE t.ticket_number = ?""",
-        (ticket_ref,)
-    ).fetchone()
-    notes = []
-    if ticket:
-        notes = conn.execute(
-            "SELECT agent, note_type, content, created_at FROM ticket_notes WHERE ticket_id=? ORDER BY created_at ASC",
-            (ticket['id'],)
-        ).fetchall()
-    conn.close()
-
-    if not ticket:
-        await message.reply(f'Ticket `{ticket_ref}` not found.')
-        return
-
-    lines = [
-        f'**Ticket `{ticket["ticket_number"]}`**',
-        f'Status:  {ticket["status"]}',
-        f'From:    {ticket["sender_email"]}',
-        f'Opened:  {(ticket["created_at"] or "")[:16]}',
-        f'Tags:    {ticket["tags"] or "(none)"}',
-        f'Question: {(ticket["question"] or "")[:200]}',
-    ]
-    if ticket['final_answer']:
-        lines.append(f'Answer:  {ticket["final_answer"][:300]}')
-    if ticket['duck_result']:
-        lines.append(f'Duck:    {ticket["duck_result"]}')
-    if notes:
-        lines.append(f'\n**Notes ({len(notes)}):**')
-        for n in notes[-5:]:
-            lines.append(f'  [{n["agent"]}·{n["note_type"]}] {(n["content"] or "")[:120]}')
-    await message.reply('\n'.join(lines)[:1900])
-
-
-async def _handle_close_command(message: discord.Message, ticket_ref: str, sender: str):
-    """CLOSE <ticket> — force-close a ticket via Librarian."""
-    from database import get_connection
-    conn = get_connection()
-    ticket = conn.execute(
-        'SELECT question, sender_email, status, queue_id FROM tickets WHERE ticket_number=?',
-        (ticket_ref,)
-    ).fetchone()
-    conn.close()
-
-    if not ticket:
-        await message.reply(f'Ticket `{ticket_ref}` not found.')
-        return
-    if ticket['status'] == 'closed':
-        await message.reply(f'`{ticket_ref}` is already closed.')
-        return
-
-    from ticket import librarian_close
-    librarian_close(ticket_ref, ticket['question'],
-                    f'[Force closed by {sender} via Discord CLOSE command]',
-                    queue_id=ticket['queue_id'],
-                    sender_email=ticket['sender_email'])
-    log_activity('discord', 'ticket_force_closed', f'{ticket_ref} by {sender}')
-    _vortex_event('discord', f'ticket_force_closed:{ticket_ref}', target=ticket_ref,
-                  details={'actor': sender, 'method': 'CLOSE command'})
-    _vortex_checkpoint(
-        label=f'discord-close-{ticket_ref}',
-        agent='discord',
-        description=f'{ticket_ref} force-closed by {sender} via Discord command'
-    )
-    await message.reply(f'✓ `{ticket_ref}` closed.')
-
-
-async def _handle_vortex_status(message: discord.Message):
-    """VORTEX / VORTEX STATUS — recent checkpoints and event count."""
-    if not _tw:
-        await message.reply('Vortex is not active.')
-        return
-
-    try:
-        checkpoints = _tw.list_checkpoints(limit=5)
-        events_raw  = _tw.get_timeline(limit=10) if hasattr(_tw, 'get_timeline') else []
-    except Exception as e:
-        await message.reply(f'Vortex error: {e}')
-        return
-
-    lines = ['**Vortex status**\n']
-    if checkpoints:
-        lines.append(f'**Recent checkpoints ({len(checkpoints)} shown):**')
-        for cp in checkpoints:
-            ts = (cp.get('timestamp') or cp.get('created_at') or '')[:16]
-            lines.append(f'  · `{cp.get("checkpoint_name", "?")}` — {cp.get("description", "")}  @ {ts}')
-    else:
-        lines.append('No checkpoints yet.')
-
-    if events_raw:
-        lines.append(f'\n**Recent events ({len(events_raw)} shown):**')
-        for ev in events_raw[:5]:
-            ts = (ev.get('timestamp') or ev.get('created_at') or '')[:16]
-            lines.append(f'  · [{ev.get("agent","?")}] {ev.get("action","")} @ {ts}')
-
-    await message.reply('\n'.join(lines)[:1900])
-
-
-async def _handle_vortex_history(message: discord.Message):
-    """VORTEX HISTORY — last 20 Vortex events."""
-    if not _tw:
-        await message.reply('Vortex is not active.')
-        return
-    try:
-        if hasattr(_tw, 'get_timeline'):
-            events = _tw.get_timeline(limit=20)
-        else:
-            from time_machine import DB_PATH
-            import sqlite3, json
-            conn = sqlite3.connect(DB_PATH)
-            conn.row_factory = sqlite3.Row
-            events = [dict(r) for r in conn.execute(
-                "SELECT * FROM time_events ORDER BY timestamp DESC LIMIT 20"
-            ).fetchall()]
-            conn.close()
-    except Exception as e:
-        await message.reply(f'Vortex history error: {e}')
-        return
-
-    if not events:
-        await message.reply('No Vortex events yet.')
-        return
-
-    lines = [f'**Vortex history — {len(events)} events:**\n']
-    for ev in events:
-        ts = (ev.get('timestamp') or ev.get('created_at') or '')[:16]
-        lines.append(f'`{ts}` [{ev.get("agent","?")}] {ev.get("action","")[:60]}')
-    await message.reply('\n'.join(lines)[:1900])
-
-
-async def _handle_vortex_checkpoint(message: discord.Message, label: str):
-    """VORTEX CHECKPOINT <label> — create a manual Vortex checkpoint."""
-    sender = f'discord:{message.author.id}'
-    cp = _vortex_checkpoint(
-        label=label,
-        agent='discord',
-        description=f'Manual checkpoint by @{message.author.name} via Discord'
-    )
-    log_activity('discord', 'vortex_checkpoint', label)
-    if cp:
-        name = cp.get('checkpoint_name') if isinstance(cp, dict) else str(cp)
-        await message.reply(f'✓ Vortex checkpoint created: `{name}`')
-    else:
-        await message.reply('Vortex checkpoint could not be created (Vortex not active).')
-
-
 # ── Bot setup ─────────────────────────────────────────────────────────────────
 
 intents = discord.Intents.default()
@@ -627,8 +413,6 @@ async def on_interaction(interaction: discord.Interaction):
             from database import add_trusted_sender, log_activity
             add_trusted_sender(data, added_by='ghost-discord', note='Discord button')
             log_activity('discord', 'sender_trusted', data)
-            _vortex_event('discord', f'sender_trusted:{data}', target=data,
-                          details={'action': 'button_trust', 'actor': 'ghost'})
             await interaction.response.edit_message(
                 content=f'✓ **{data}** added to trusted senders.', embed=None, view=None
             )
@@ -637,8 +421,6 @@ async def on_interaction(interaction: discord.Interaction):
             from database import add_notification_sender, log_activity
             add_notification_sender(data, added_by='ghost-discord', note='Discord button')
             log_activity('discord', 'sender_notify', data)
-            _vortex_event('discord', f'sender_notify:{data}', target=data,
-                          details={'action': 'button_notify', 'actor': 'ghost'})
             await interaction.response.edit_message(
                 content=f'🔔 **{data}** added to notification senders.', embed=None, view=None
             )
@@ -646,8 +428,6 @@ async def on_interaction(interaction: discord.Interaction):
         elif action == 'ignore':
             from database import log_activity
             log_activity('discord', 'sender_ignored', data)
-            _vortex_event('discord', f'sender_ignored:{data}', target=data,
-                          details={'action': 'button_ignore', 'actor': 'ghost'})
             await interaction.response.edit_message(
                 content=f'🚫 **{data}** marked as ignored.', embed=None, view=None
             )
@@ -667,14 +447,6 @@ async def on_interaction(interaction: discord.Interaction):
                                 '[Force closed by Ghost via Discord]',
                                 sender_email=ticket['sender_email'])
             log_activity('discord', 'ticket_force_closed', ticket_number)
-            _vortex_event('discord', f'ticket_force_closed:{ticket_number}',
-                          target=ticket_number,
-                          details={'action': 'button_close', 'actor': 'ghost'})
-            _vortex_checkpoint(
-                label=f'discord-force-close-{ticket_number}',
-                agent='discord',
-                description=f'Ghost force-closed {ticket_number} via Discord button'
-            )
             await interaction.response.edit_message(
                 content=f'⊠ **{ticket_number}** force closed.', embed=None, view=None
             )
@@ -696,9 +468,6 @@ async def on_interaction(interaction: discord.Interaction):
                     body=ticket['final_answer']
                 )
                 log_activity('discord', 'ticket_resent', ticket_number)
-                _vortex_event('discord', f'ticket_resent:{ticket_number}',
-                              target=ticket_number,
-                              details={'action': 'button_resend', 'actor': 'ghost'})
                 await interaction.response.edit_message(
                     content=f'↩ **{ticket_number}** response resent.', embed=None, view=None
                 )
@@ -748,43 +517,6 @@ async def on_message(message: discord.Message):
         # ── Scheduler commands ────────────────────────────────
         if upper.startswith('SCHEDULE ') or upper in ('SCHEDULE LIST', 'LIST TASKS', 'TASKS'):
             await _handle_schedule_command(message, text)
-            return
-
-        # ── Queue management commands ─────────────────────────
-        if upper in ('QUEUE', 'QUEUE STATUS', 'QUEUE LIST', 'Q'):
-            await _handle_queue_command(message, text)
-            return
-
-        if upper in ('TICKETS', 'TICKETS OPEN', 'OPEN TICKETS'):
-            await _handle_tickets_command(message, 'open')
-            return
-
-        if upper == 'TICKETS ALL':
-            await _handle_tickets_command(message, 'all')
-            return
-
-        if upper.startswith('TICKET '):
-            ticket_ref = text.split(None, 1)[1].strip().upper()
-            await _handle_ticket_detail_command(message, ticket_ref)
-            return
-
-        if upper.startswith('CLOSE '):
-            ticket_ref = text.split(None, 1)[1].strip().upper()
-            await _handle_close_command(message, ticket_ref, sender=_discord_key(user_id))
-            return
-
-        # ── Vortex commands ───────────────────────────────────
-        if upper in ('VORTEX', 'VORTEX STATUS'):
-            await _handle_vortex_status(message)
-            return
-
-        if upper == 'VORTEX HISTORY':
-            await _handle_vortex_history(message)
-            return
-
-        if upper.startswith('VORTEX CHECKPOINT'):
-            label = text[len('VORTEX CHECKPOINT'):].strip() or 'discord-manual'
-            await _handle_vortex_checkpoint(message, label)
             return
 
         # ── URGENT flag ───────────────────────────────────────
