@@ -253,10 +253,6 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
     sender   = _telegram_key(chat_id)
     priority = 1 if is_urgent else 5
 
-    # Build augmented question: inject prior Q&A for this sender so agents have memory.
-    # Raw question is preserved for all storage (queue, ticket, logs).
-    augmented_question = _build_sender_context(sender, question)
-
     # Queue intake
     queue_id, position, tags = queue_intake(sender, f'Telegram: {username}', question,
                                              priority=priority)
@@ -278,9 +274,9 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
     mark_processing(queue_id)
 
     try:
-        # Stage 1 — augmented question for context-aware routing + agent prompts
+        # Stage 1
         log_activity('telegram', 'pipeline_start', f'{ticket_number} | @{username}')
-        web_results, llama_answer, shared_context, routing = consult_stage1(augmented_question)
+        web_results, llama_answer, shared_context, routing = consult_stage1(question)
         ticket_set_routing(ticket_number, routing)
         log_activity('telegram', 'stage1_done', f'{ticket_number} | routing: {routing.get("agents","?")} sap={routing.get("is_sap",False)}')
 
@@ -293,9 +289,9 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
             await update.message.reply_text(f'[LLaMA]\n{llama_answer[:4000]}')
             await update.effective_chat.send_action(ChatAction.TYPING)
 
-        # Stage 2 — augmented question keeps context alive through full pipeline
+        # Stage 2
         qwen_answer, gemma_answer, debate = consult_stage2(
-            augmented_question, web_results, llama_answer, shared_context, conv_id, routing
+            question, web_results, llama_answer, shared_context, conv_id, routing
         )
 
         # Build full response

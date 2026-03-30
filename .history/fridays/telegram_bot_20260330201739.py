@@ -139,42 +139,6 @@ def _classify(chat_id):
     return 'unknown'
 
 
-def _build_sender_context(sender: str, question: str, limit: int = 3) -> str:
-    """
-    Inject recent Q&A pairs for this sender so agents have conversation memory.
-    Returns the question prefixed with up to `limit` prior closed exchanges.
-    Only applies if closed tickets with final answers exist for this sender.
-    """
-    try:
-        conn = get_connection()
-        rows = conn.execute(
-            """SELECT question, final_answer, closed_at
-               FROM tickets
-               WHERE sender_email=? AND status='closed'
-                     AND final_answer IS NOT NULL AND final_answer != ''
-               ORDER BY id DESC LIMIT ?""",
-            (sender, limit)
-        ).fetchall()
-        conn.close()
-    except Exception as e:
-        logger.warning(f'[Telegram] Could not load sender history for {sender}: {e}')
-        return question
-
-    if not rows:
-        return question
-
-    history = list(reversed(rows))
-    lines = ['=== Recent conversation context (for agent awareness only) ===']
-    for r in history:
-        lines.append(f'[{r["closed_at"]}]')
-        lines.append(f'User asked: {r["question"][:300]}')
-        lines.append(f'Swarm answered: {r["final_answer"][:400]}')
-        lines.append('')
-    lines.append('=== Current question ===')
-    lines.append(question)
-    return '\n'.join(lines)
-
-
 def _get_moderators():
     conn = get_connection()
     rows = conn.execute('SELECT email FROM moderators').fetchall()
@@ -253,10 +217,6 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
     sender   = _telegram_key(chat_id)
     priority = 1 if is_urgent else 5
 
-    # Build augmented question: inject prior Q&A for this sender so agents have memory.
-    # Raw question is preserved for all storage (queue, ticket, logs).
-    augmented_question = _build_sender_context(sender, question)
-
     # Queue intake
     queue_id, position, tags = queue_intake(sender, f'Telegram: {username}', question,
                                              priority=priority)
@@ -278,9 +238,9 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
     mark_processing(queue_id)
 
     try:
-        # Stage 1 — augmented question for context-aware routing + agent prompts
+        # Stage 1
         log_activity('telegram', 'pipeline_start', f'{ticket_number} | @{username}')
-        web_results, llama_answer, shared_context, routing = consult_stage1(augmented_question)
+        web_results, llama_answer, shared_context, routing = consult_stage1(question)
         ticket_set_routing(ticket_number, routing)
         log_activity('telegram', 'stage1_done', f'{ticket_number} | routing: {routing.get("agents","?")} sap={routing.get("is_sap",False)}')
 
@@ -293,9 +253,9 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
             await update.message.reply_text(f'[LLaMA]\n{llama_answer[:4000]}')
             await update.effective_chat.send_action(ChatAction.TYPING)
 
-        # Stage 2 — augmented question keeps context alive through full pipeline
+        # Stage 2
         qwen_answer, gemma_answer, debate = consult_stage2(
-            augmented_question, web_results, llama_answer, shared_context, conv_id, routing
+            question, web_results, llama_answer, shared_context, conv_id, routing
         )
 
         # Build full response

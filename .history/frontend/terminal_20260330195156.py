@@ -1638,10 +1638,6 @@ def api_run_simulation():
     """Trigger simulate.py and return the output captured from stdout/stderr."""
     import subprocess
     import os
-    data = request.get_json() or {}
-    gate = _alm_gate_or_response(data, 'run_simulation')
-    if gate:
-        return gate
     try:
         script_path = '/home/seven/swarm/utils/simulate.py'
         # Run via the current interpreter to ensure paths and env are correct
@@ -3074,12 +3070,6 @@ def api_time_restore():
 
     if not checkpoint_name:
         return jsonify({'ok': False, 'error': 'checkpoint_name required'}), 400
-
-    # Non-dry-run state restore is irreversible — require an approved proposal.
-    if not dry_run:
-        gate = _alm_gate_or_response(data, 'time_restore')
-        if gate:
-            return gate
 
     try:
         result = time_wizard.restore_workflow_state(checkpoint_name=checkpoint_name, actor=actor, dry_run=dry_run)

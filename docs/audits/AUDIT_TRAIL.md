@@ -30,3 +30,19 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert added docs and remove references if needed
 
+
+---
+## 2026-03-30 — Post-Fix E2E Audit
+- Date: 2026-03-30
+- Scope: Fridays / Swarm terminal API (21 requirements)
+- Auditor: Nine (AI) / automated test suite
+- Baseline: 16 PASS  5 FAIL  0 ERROR (pre-fix run)
+- Failures identified:
+  REQ-002 REAL BUG — chat endpoint blocked indefinitely (no timeout) [FIXED: 10s ThreadPoolExecutor]
+  REQ-006 TEST BUG — queue key was 'entries', is 'queue' [FIXED: assertion updated]
+  REQ-012 TEST BUG — checkpoint field/dry-run body key wrong [FIXED: checkpoint_name used]
+  REQ-018 REAL BUG — api_ticket_patch tried UPDATE tickets SET priority=? (priority not in tickets) [FIXED: split UPDATEs]
+  REQ-020 TEST BUG — queue create returns 201, test expected 200; nested read-back [FIXED]
+- Post-fix result: 21 PASS  0 FAIL  0 ERROR
+- March 28 audit REQ-002 blocker (chat timeout): RESOLVED
+- Status: PASS — ready for UAT

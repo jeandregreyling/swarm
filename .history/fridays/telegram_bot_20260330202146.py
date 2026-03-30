@@ -293,9 +293,9 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
             await update.message.reply_text(f'[LLaMA]\n{llama_answer[:4000]}')
             await update.effective_chat.send_action(ChatAction.TYPING)
 
-        # Stage 2 — augmented question keeps context alive through full pipeline
+        # Stage 2
         qwen_answer, gemma_answer, debate = consult_stage2(
-            augmented_question, web_results, llama_answer, shared_context, conv_id, routing
+            question, web_results, llama_answer, shared_context, conv_id, routing
         )
 
         # Build full response
