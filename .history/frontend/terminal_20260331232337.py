@@ -29,7 +29,6 @@ import threading
 import os
 import time
 import uuid
-import re
 import socket
 from socketserver import ThreadingMixIn
 from datetime import datetime, timezone
