@@ -425,25 +425,32 @@ CREATE TABLE IF NOT EXISTS time_machine (
 );
 CREATE TABLE IF NOT EXISTS time_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    agent TEXT NOT NULL,
+    timestamp TEXT DEFAULT '',
     event_type TEXT NOT NULL,
-    description TEXT DEFAULT '',
-    metadata TEXT DEFAULT '',
+    agent TEXT NOT NULL,
+    action TEXT DEFAULT '',
+    target TEXT DEFAULT '',
+    state_hash TEXT DEFAULT '',
+    details TEXT DEFAULT '{}',
     created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS time_journal (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     agent TEXT NOT NULL,
-    entry TEXT NOT NULL,
-    tags TEXT DEFAULT '',
+    timestamp TEXT DEFAULT '',
+    session_id TEXT DEFAULT '',
+    phase TEXT DEFAULT '',
+    status TEXT DEFAULT 'active',
+    notes TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS time_checkpoints (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL,
-    agent TEXT NOT NULL,
+    checkpoint_name TEXT UNIQUE NOT NULL,
+    timestamp TEXT DEFAULT '',
     description TEXT DEFAULT '',
-    state_snapshot TEXT DEFAULT '',
+    agent TEXT NOT NULL,
+    full_state TEXT DEFAULT '{}',
     created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS daily_checkpoint (
@@ -621,9 +628,11 @@ def _migrate_schema(conn=None):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             token TEXT UNIQUE NOT NULL,
             action TEXT NOT NULL,
-            pending_email_id INTEGER,
-            used INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now'))
+            target_email TEXT NOT NULL DEFAULT '',
+            created_by TEXT DEFAULT 'system',
+            created_at TEXT DEFAULT (datetime('now')),
+            used_at TEXT,
+            status TEXT DEFAULT 'pending'
         )""")
         conn.commit()
     if 'debates' not in tables:
@@ -736,17 +745,20 @@ def _migrate_schema(conn=None):
             outcome TEXT DEFAULT 'success', is_rollback_point INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now')))"""),
         ('time_events', """CREATE TABLE IF NOT EXISTS time_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL,
-            event_type TEXT NOT NULL, description TEXT DEFAULT '',
-            metadata TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')))"""),
+            id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT '',
+            event_type TEXT NOT NULL, agent TEXT NOT NULL,
+            action TEXT DEFAULT '', target TEXT DEFAULT '',
+            state_hash TEXT DEFAULT '', details TEXT DEFAULT '{}',
+            created_at TEXT DEFAULT (datetime('now')))"""),
         ('time_journal', """CREATE TABLE IF NOT EXISTS time_journal (
             id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL,
-            entry TEXT NOT NULL, tags TEXT DEFAULT '',
-            created_at TEXT DEFAULT (datetime('now')))"""),
+            timestamp TEXT DEFAULT '', session_id TEXT DEFAULT '',
+            phase TEXT DEFAULT '', status TEXT DEFAULT 'active',
+            notes TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')))"""),
         ('time_checkpoints', """CREATE TABLE IF NOT EXISTS time_checkpoints (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL,
-            agent TEXT NOT NULL, description TEXT DEFAULT '',
-            state_snapshot TEXT DEFAULT '',
+            id INTEGER PRIMARY KEY AUTOINCREMENT, checkpoint_name TEXT UNIQUE NOT NULL,
+            timestamp TEXT DEFAULT '', description TEXT DEFAULT '',
+            agent TEXT NOT NULL, full_state TEXT DEFAULT '{}',
             created_at TEXT DEFAULT (datetime('now')))"""),
         ('daily_checkpoint', """CREATE TABLE IF NOT EXISTS daily_checkpoint (
             checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,

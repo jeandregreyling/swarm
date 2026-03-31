@@ -599,6 +599,12 @@ def _resolve_identity_or_response(data):
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
+@app.route('/api/health')
+def api_health():
+    """Lightweight health check endpoint. Returns 200 if server is up."""
+    return jsonify({'ok': True, 'status': 'up', 'service': 'swarm-terminal'})
+
+
 @app.route('/')
 def index():
     """Render themed terminal. Theme engine handles CSS injection."""
