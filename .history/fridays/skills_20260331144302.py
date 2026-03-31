@@ -284,27 +284,27 @@ def _skill_memory_search(args, agent, **_):
         return False, f'Memory search error: {e}'
 
 
-def _skill_ticket_create(args, agent, **_):
-    payload = (args or '').strip()
-    if not payload:
-        return False, 'Usage: SKILL ticket_create <title> || <description>'
+    def _skill_ticket_create(args, agent, **_):
+        payload = (args or '').strip()
+        if not payload:
+            return False, 'Usage: SKILL ticket_create <title> || <description>'
 
-    if '||' in payload:
-        title, description = [x.strip() for x in payload.split('||', 1)]
-    else:
-        # Fallback: first sentence as title, full payload as description
-        title = payload.split('.', 1)[0].strip()[:120] or 'Internal ticket from skill'
-        description = payload
+        if '||' in payload:
+            title, description = [x.strip() for x in payload.split('||', 1)]
+        else:
+            # Fallback: first sentence as title, full payload as description
+            title = payload.split('.', 1)[0].strip()[:120] or 'Internal ticket from skill'
+            description = payload
 
-    if not title:
-        return False, 'ticket_create requires a non-empty title.'
+        if not title:
+            return False, 'ticket_create requires a non-empty title.'
 
-    try:
-        from queue_manager import intake_internal
-        queue_id, proposal_id = intake_internal(agent, title, description, priority=5)
-        return True, f'Internal ticket created: queue_id={queue_id}, proposal_id={proposal_id}'
-    except Exception as e:
-        return False, f'ticket_create failed: {e}'
+        try:
+            from queue_manager import intake_internal
+            queue_id, proposal_id = intake_internal(agent, title, description, priority=5)
+            return True, f'Internal ticket created: queue_id={queue_id}, proposal_id={proposal_id}'
+        except Exception as e:
+            return False, f'ticket_create failed: {e}'
 
 
 _HANDLERS = {
@@ -319,7 +319,7 @@ _HANDLERS = {
     'housekeeping':   _skill_housekeeping,
     'proposals':      _skill_proposals,
     'memory_search':  _skill_memory_search,
-    'ticket_create':  _skill_ticket_create,
+        'ticket_create':  _skill_ticket_create,
 }
 
 
