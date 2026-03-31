@@ -2040,169 +2040,41 @@ def api_alm_status():
 
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
-    """Send a chat message to a selected agent while keeping one shared conversation thread."""
+    """Send a chat message to the swarm with 10-second timeout."""
     data = request.get_json() or {}
-    message = (data.get('message') or '').strip()
-    agent = (data.get('agent') or 'gemma').strip().lower()
-    requested_conv_id = data.get('conversation_id')
-
+    message = data.get('message', '').strip()
+    
     if not message:
         return jsonify({'ok': False, 'response': 'Empty message'}), 400
-
-    allowed_agents = {
-        'gemma', 'llama', 'qwen', 'librarian',
-        'nine', 'ten', 'eleven', 'twelve'
-    }
-    if agent not in allowed_agents:
-        return jsonify({'ok': False, 'response': f'Unsupported agent: {agent}'}), 400
-
-    def _conversation_history_for_api(conv_id, limit=20):
-        conn = get_connection()
-        try:
-            rows = conn.execute(
-                """SELECT from_agent, content
-                   FROM messages
-                   WHERE conversation_id=?
-                   ORDER BY id DESC
-                   LIMIT ?""",
-                (conv_id, limit)
-            ).fetchall()
-        finally:
-            conn.close()
-        rows = list(reversed(rows))
-        history = []
-        for r in rows:
-            sender = (r['from_agent'] or '').lower()
-            role = 'user' if sender == 'user' else 'assistant'
-            history.append({'role': role, 'content': r['content']})
-        return history
-
-    def _thread_transcript(conv_id, limit=12):
-        conn = get_connection()
-        try:
-            rows = conn.execute(
-                """SELECT from_agent, content
-                   FROM messages
-                   WHERE conversation_id=?
-                   ORDER BY id DESC
-                   LIMIT ?""",
-                (conv_id, limit)
-            ).fetchall()
-        finally:
-            conn.close()
-        if not rows:
-            return ''
-        lines = []
-        for r in reversed(rows):
-            who = (r['from_agent'] or 'agent').upper()
-            text = str(r['content'] or '').strip()
-            lines.append(f"{who}: {text[:500]}")
-        return "\n".join(lines)
-
-    def _run_ghost_layer_chat(selected_agent, prompt, history):
-        from database import save_agent_memory, log_activity
-        from claude_api import _load_api_key, CLAUDE_MODEL
-        import anthropic
-        from config import NINE_SYSTEM_PROMPT, TEN_SYSTEM_PROMPT
-
-        api_key = _load_api_key()
-        if not api_key:
-            return None, 0, 'ANTHROPIC_API_KEY not configured'
-
-        system_prompt = NINE_SYSTEM_PROMPT if selected_agent == 'nine' else TEN_SYSTEM_PROMPT
-        client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model=CLAUDE_MODEL,
-            max_tokens=4096,
-            system=system_prompt,
-            messages=(history[-10:] if history else []) + [{'role': 'user', 'content': prompt}],
-        )
-        answer = response.content[0].text
-        tokens = response.usage.input_tokens + response.usage.output_tokens
-        save_agent_memory(
-            agent_name=selected_agent,
-            subject=message[:100],
-            content=answer,
-            tags='chat,shared-thread',
-            importance=7,
-            source='terminal_chat'
-        )
-        log_activity('terminal', f'{selected_agent}_chat', f'tokens={tokens} | {message[:80]}')
-        return answer, tokens, None
-
+    
     try:
-        conv_id = None
-        if requested_conv_id is not None:
-            try:
-                parsed = int(requested_conv_id)
-                conn = get_connection()
-                try:
-                    exists = conn.execute("SELECT 1 FROM conversations WHERE id=?", (parsed,)).fetchone()
-                finally:
-                    conn.close()
-                if exists:
-                    conv_id = parsed
-            except Exception:
-                conv_id = None
-
-        if conv_id is None:
-            conv_id = new_conversation('terminal-ui', f'{agent}: {message[:90]}')
-
-        log_message(conv_id, 'user', message, to_agent=agent, message_type='chat')
-
-        history = _conversation_history_for_api(conv_id)
-        transcript = _thread_transcript(conv_id)
-        threaded_prompt = (
-            "=== Shared conversation thread (latest) ===\n"
-            f"{transcript or 'No previous messages.'}\n\n"
-            "=== New user message ===\n"
-            f"{message}"
-        )
-
-        response_text = None
-        tokens_used = 0
-
+        # Create new conversation or use existing
+        conv_id = new_conversation('terminal-ui', message[:100])
+        log_message(conv_id, 'user', message)
+        
+        # Route to appropriate agent with 10-second timeout
+        response = None
         try:
             executor = ThreadPoolExecutor(max_workers=1)
-
-            if agent in {'gemma', 'llama', 'qwen', 'librarian'}:
-                future = executor.submit(orchestrator.ask_agent, agent, threaded_prompt)
-                response_text = future.result(timeout=12)
-            elif agent in {'nine', 'ten'}:
-                future = executor.submit(_run_ghost_layer_chat, agent, message, history)
-                answer, tokens, err = future.result(timeout=20)
-                if err:
-                    raise RuntimeError(err)
-                response_text = answer
-                tokens_used = tokens
-            elif agent == 'eleven':
-                from agents.eleven import grok_agent
-                future = executor.submit(grok_agent.chat, message, history)
-                answer, tokens = future.result(timeout=20)
-                response_text = answer or '[eleven unavailable]'
-                tokens_used = tokens or 0
-            elif agent == 'twelve':
-                from agents.twelve import twelve_agent
-                future = executor.submit(twelve_agent.chat, message, history)
-                answer, tokens = future.result(timeout=20)
-                response_text = answer or '[twelve unavailable]'
-                tokens_used = tokens or 0
-
+            future = executor.submit(orchestrator.ask_agent, 'gemma', message)
+            response = future.result(timeout=10)
             executor.shutdown(wait=False)
         except FuturesTimeoutError:
-            response_text = (
-                f"[{agent}] is taking longer than expected. "
-                "Try again in a moment or switch to another agent."
+            # Timeout occurred - return fallback response
+            response = (
+                "I'm taking longer than expected to respond. This might be because:\n"
+                "1. The AI model is processing a complex request\n"
+                "2. The system is under heavy load\n"
+                "3. The Ollama backend may need a restart\n\n"
+                "Please try again in a moment, or check the system monitor."
             )
             executor.shutdown(wait=False)
-
-        log_message(conv_id, agent, response_text, to_agent='user', message_type='response')
-
+        
+        log_message(conv_id, 'swarm', response)
+        
         return jsonify({
             'ok': True,
-            'agent': agent,
-            'response': response_text,
-            'tokens': tokens_used,
+            'response': response,
             'conversation_id': conv_id,
         })
     except Exception as e:
