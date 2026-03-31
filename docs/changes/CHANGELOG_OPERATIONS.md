@@ -79,3 +79,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Updated chat UI with thread picker/new thread and checkbox toggles; /api/chat now supports agents[] fanout on a shared conversation and returns per-agent responses.
 - Rollback: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
 
+- Time (UTC): 2026-03-31T02:03:11Z
+- Actor: copilot
+- Scope: orchestrator/local-model-residency-policy
+- Change: Tune local model residency and RAM-aware routing
+- Validation: Added Ollama keep_alive policy (Gemma/LLaMA warm, Qwen short-lived) and RAM-aware routing fallback from both->llama when free memory is low (non-debate).
+- Rollback: Revert core/pipeline/orchestrator.py.
+
