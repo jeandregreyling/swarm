@@ -447,14 +447,34 @@ CREATE TABLE IF NOT EXISTS time_checkpoints (
     created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS daily_checkpoint (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    checkpoint_date TEXT UNIQUE NOT NULL,
-    agent TEXT DEFAULT 'twelve',
-    summary TEXT DEFAULT '',
-    ticket_count INTEGER DEFAULT 0,
-    memory_count INTEGER DEFAULT 0,
+    checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    codebase_hash TEXT,
+    memory_state TEXT,
     decisions_count INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
+    description TEXT,
+    is_stable INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS ghost_briefs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    generated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    brief_type TEXT DEFAULT 'on_demand',
+    content TEXT NOT NULL,
+    raw_data_snapshot TEXT,
+    tokens_used INTEGER DEFAULT 0,
+    triggered_by TEXT DEFAULT 'system'
+);
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    schedule TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    action_data TEXT NOT NULL,
+    last_run TEXT,
+    next_run TEXT,
+    enabled INTEGER DEFAULT 1,
+    created_by TEXT DEFAULT 'ghost',
+    created_at TEXT
 );
 CREATE TABLE IF NOT EXISTS work_proposals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -729,11 +749,24 @@ def _migrate_schema(conn=None):
             state_snapshot TEXT DEFAULT '',
             created_at TEXT DEFAULT (datetime('now')))"""),
         ('daily_checkpoint', """CREATE TABLE IF NOT EXISTS daily_checkpoint (
+            checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            codebase_hash TEXT, memory_state TEXT,
+            decisions_count INTEGER DEFAULT 0,
+            description TEXT, is_stable INTEGER DEFAULT 0)"""),
+        ('ghost_briefs', """CREATE TABLE IF NOT EXISTS ghost_briefs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            checkpoint_date TEXT UNIQUE NOT NULL, agent TEXT DEFAULT 'twelve',
-            summary TEXT DEFAULT '', ticket_count INTEGER DEFAULT 0,
-            memory_count INTEGER DEFAULT 0, decisions_count INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now')))"""),
+            generated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            brief_type TEXT DEFAULT 'on_demand',
+            content TEXT NOT NULL, raw_data_snapshot TEXT,
+            tokens_used INTEGER DEFAULT 0,
+            triggered_by TEXT DEFAULT 'system')"""),
+        ('scheduled_tasks', """CREATE TABLE IF NOT EXISTS scheduled_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL, schedule TEXT NOT NULL,
+            action_type TEXT NOT NULL, action_data TEXT NOT NULL,
+            last_run TEXT, next_run TEXT, enabled INTEGER DEFAULT 1,
+            created_by TEXT DEFAULT 'ghost', created_at TEXT)"""),
         ('work_proposals', """CREATE TABLE IF NOT EXISTS work_proposals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             proposal_id TEXT UNIQUE NOT NULL, agent TEXT NOT NULL,
