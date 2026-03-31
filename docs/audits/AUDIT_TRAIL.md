@@ -173,3 +173,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert utils/config.py and restart swarm-terminal.
 
+- Audit ID: AUDIT-20260331-035939
+- Time (UTC): 2026-03-31T03:59:39Z
+- Actor: copilot
+- Objective: Execute agent-emitted SKILL lines for Ten/Nine and return outputs in same chat context
+- Evidence: Updated /api/chat ghost-layer run path to parse SKILL lines from model responses, execute allowed skills server-side, re-prompt with concrete results, and append an Executed skill output section to the same conversation response. Verified with live /api/chat smoke plus chat-quality and e2e suites.
+- Result: PASS
+- Follow-up: Revert frontend/terminal.py utils/config.py docs/testing/ALM_TEST_SPECIFICATION.md and restart swarm-terminal.
+
