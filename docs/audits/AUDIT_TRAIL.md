@@ -85,3 +85,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
 
+- Audit ID: AUDIT-20260331-020311
+- Time (UTC): 2026-03-31T02:03:11Z
+- Actor: copilot
+- Objective: Tune local model residency and RAM-aware routing
+- Evidence: Added Ollama keep_alive policy (Gemma/LLaMA warm, Qwen short-lived) and RAM-aware routing fallback from both->llama when free memory is low (non-debate).
+- Result: PASS
+- Follow-up: Revert core/pipeline/orchestrator.py.
+
