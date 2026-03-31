@@ -128,3 +128,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Implemented DB-backed user_profiles + user_skill_permissions, auth/profile/permissions APIs, identity-aware chat skill execution, and Skills-window permission management with top-right identity indicator and proxy switching.
 - Rollback: Revert frontend/terminal.py utils/database.py frontend/templates/terminal_base.html.
 
+- Time (UTC): 2026-03-31T03:21:04Z
+- Actor: copilot
+- Scope: fridays/chat-quality-hardening
+- Change: Fix skill context bleed, add markdown rendering, tune Ten prompt, and wire ghost-layer memory context
+- Validation: Patched /api/chat history+transcript filters to exclude fridays skill rows from LLM context, added markdown rendering/CSS for chat bubbles and conversation viewer, injected recent memory rows into Nine/Ten system context, and added tests/test_chat_quality.py with 8 passing checks.
+- Rollback: Revert frontend/terminal.py frontend/templates/terminal_base.html utils/config.py tests/test_chat_quality.py docs/testing/ALM_TEST_SPECIFICATION.md docs/testing/E2E_TEST_SUITE.md and restart swarm-terminal.
+
