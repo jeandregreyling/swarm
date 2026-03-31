@@ -69,3 +69,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/terminal.py and docs/AGENT_TWELVE_STATUS.md if rollback required.
 
+- Audit ID: AUDIT-20260331-013849
+- Time (UTC): 2026-03-31T01:38:49Z
+- Actor: copilot
+- Objective: Add selectable agent chat in shared thread
+- Evidence: Updated /api/chat to route by selected agent with shared conversation_id and prior-thread context; added chat agent selector in terminal templates.
+- Result: PASS
+- Follow-up: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
+

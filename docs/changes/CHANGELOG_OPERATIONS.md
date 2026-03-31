@@ -65,3 +65,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Updated Ten role label in frontend roster API and refreshed active AGENT_TWELVE_STATUS architecture block to show Copilot mapping + ten sandpit.
 - Rollback: Revert frontend/terminal.py and docs/AGENT_TWELVE_STATUS.md if rollback required.
 
+- Time (UTC): 2026-03-31T01:38:49Z
+- Actor: copilot
+- Scope: fridays/chat-agent-routing
+- Change: Add selectable agent chat in shared thread
+- Validation: Updated /api/chat to route by selected agent with shared conversation_id and prior-thread context; added chat agent selector in terminal templates.
+- Rollback: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
+
