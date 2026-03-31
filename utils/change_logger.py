@@ -125,12 +125,14 @@ def mark_executed(decision_id, commit_hash='', test_status='PASS'):
             "UPDATE decisions SET test_status=?, commit_hash=? WHERE decision_id=?",
             (test_status, commit_hash, decision_id)
         )
-        # Mark any work_proposals that reference this decision's files
+        # Mark the work_proposal linked via proposal_file matching the decision's proposal_file
+        # (The broken original query used a subquery that matched ALL pending proposals)
         conn.execute(
             """UPDATE work_proposals SET status='executed', updated_at=datetime('now')
-               WHERE status='pending' AND queue_id IN (
-                   SELECT queue_id FROM work_proposals WHERE queue_id > 0
-               )"""
+               WHERE status='pending' AND proposal_file = (
+                   SELECT proposal_file FROM decisions WHERE decision_id=?
+               ) AND proposal_file != ''""",
+            (decision_id,)
         )
         conn.commit()
     finally:

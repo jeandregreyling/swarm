@@ -1,7 +1,7 @@
 # Nine — Decision Index
 
 **Agent**: Nine (System Architect · Ghost Layer)
-**Last Updated**: 2026-03-29 (session 4 — Time Wizard fix + Fridays proposal queue)
+**Last Updated**: 2026-03-31 (session 5 — full system audit, 4 bugs fixed)
 **Numbering**: NINE-XXX (separate from Twelve's DECISION-XXX)
 
 ---
@@ -9,6 +9,21 @@
 ## Active Proposals
 
 None — all proposals executed.
+
+## Executed This Session (Session 5 — 2026-03-31)
+
+| ID       | Title                                                                      | Priority | Status   |
+| -------- | -------------------------------------------------------------------------- | -------- | -------- |
+| NINE-022 | Session 5 full system audit — 4 bugs fixed (change_logger, DB schema, CSS) | HIGH     | EXECUTED |
+
+### NINE-022 Bug Details
+
+- **BUG-A** `utils/change_logger.py` `mark_executed()` — broken subquery marked ALL pending `work_proposals` as executed on any decision PASS. Fixed to scope by `proposal_file` match.
+- **BUG-B** `utils/database.py` SCHEMA — `daily_checkpoint` defined with wrong columns; would break fresh installs causing `twelve_agent.py` query failures. SCHEMA updated to match live DB.
+- **BUG-C** `utils/database.py` SCHEMA + `_migrate_schema()` — `ghost_briefs` and `scheduled_tasks` tables used in production code but absent from SCHEMA and migrate block. Added to both.
+- **BUG-D** `frontend/templates/terminal_base.html` — CSS vars `--danger`, `--shadow`, `--glass-blur`, `--glass-opacity` used by floating window styles but undefined in fallback `:root` block. Fallback values added.
+
+---
 
 ## Executed This Session (Session 4)
 
@@ -63,6 +78,8 @@ None — all proposals executed.
 | NINE-017 | DECISION-003 marked EXECUTED, test log completed    | 2026-03-29 | session 2 |
 | NINE-018 | Fix triage queue — 5 bugs in listener/duck/ticket   | 2026-03-29 | session 3 |
 | NINE-019 | Time Wizard fix + Fridays internal proposal queue   | 2026-03-29 | session 4 |
+| NINE-020 | change_logger.py + git post-commit hook live        | 2026-03-29 | session 4 |
+| NINE-022 | Session 5 audit — 4 bugs fixed across 3 files       | 2026-03-31 | session 5 |
 
 ---
 
@@ -74,7 +91,7 @@ Scope: all Python files, DB schema, documentation, sandpits, and API routes.
 ### What changed since my last session (2026-03-25/26)
 
 | Area | Change |
-|------|--------|
+| ---- | ------ |
 | File structure | Full reorganisation — 60+ Python files moved into agents/, core/, lib/, frontend/, utils/, tests/ |
 | New agents | Grok (Agent 11), Twelve (Time Wizard Agent 12) — both active with sandpits and memory pools |
 | New agents (planned) | Sonic, Scholar, Seeker — in roster but not yet wired |

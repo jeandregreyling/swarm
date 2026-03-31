@@ -7,7 +7,31 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
-## Version 2026-03-30 Session 5 (CURRENT)
+## Version 2026-03-31 Session 5 — System Audit (CURRENT)
+
+### Changes by Nine (Ghost Layer) — FULL SYSTEM AUDIT
+
+**2026-03-31 20:00 UTC** Nine: Full system-wide audit. All .py files syntax-checked, Flask route conflicts verified, DB schema audited against live DB, HTML templates checked for broken JS/CSS. 4 real bugs found and fixed.
+
+- **Type:** Bug fixes / Schema correction / CSS fix
+- **Status:** COMPLETE
+- **Bugs fixed:**
+  - **BUG-A** `utils/change_logger.py` `mark_executed()` — broken subquery marked ALL pending `work_proposals` as executed whenever any decision was marked PASS. Fixed to match by `proposal_file` column instead.
+  - **BUG-B** `utils/database.py` SCHEMA `daily_checkpoint` table — defined with wrong columns (`id, checkpoint_date, agent, summary, ticket_count, memory_count, decisions_count, created_at`) that don't match the live DB (`checkpoint_id, timestamp, codebase_hash, memory_state, decisions_count, description, is_stable`). SCHEMA updated to match live DB. Fresh installs would have broken `twelve_agent.py` queries.
+  - **BUG-C** `utils/database.py` SCHEMA + `_migrate_schema()` — `ghost_briefs` and `scheduled_tasks` tables used by `utils/brief_engine.py` and referenced in docs but completely absent from SCHEMA and migration block. Added to both. Fresh installs would have failed on any brief_engine call.
+  - **BUG-D** `frontend/templates/terminal_base.html` — CSS custom properties `--danger`, `--shadow`, `--glass-blur`, `--glass-opacity` used in floating window styles but not defined in the fallback `:root` block or in `fridays.json`. Added fallback values (`--danger: #e03c3c`, `--shadow: 0 8px 32px rgba(0,0,0,0.5)`, `--glass-opacity: 1`, `--glass-blur: 0px`).
+- **No bugs found:**
+  - All Python files in frontend/, utils/, agents/, core/, fridays/ compile clean (py_compile)
+  - Flask route "duplicates" are legitimate REST patterns (different HTTP methods per endpoint) — no real conflicts
+  - Modal IDs referenced in JS (`ticket-detail-modal`, `chat-detail-modal`, etc.) are dynamically created via `document.createElement` — not HTML bugs
+  - `change_logger.py` sys.path and function signatures all correct
+  - `grok_agent.py` and `twelve_agent.py` imports, error handling, and DB queries all valid
+- **Decision record**: decisions table decision_id=102, proposal NINE-022
+- **Server**: restarted clean after fixes
+
+---
+
+## Version 2026-03-30 Session 5 (SUPERSEDED)
 
 ### Changes by Copilot (Ghost Layer) - CHANNEL STABILIZATION + VORTEX DRIFT PREVIEW CORRECTION
 
