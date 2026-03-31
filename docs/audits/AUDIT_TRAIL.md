@@ -77,3 +77,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
 
+- Audit ID: AUDIT-20260331-014500
+- Time (UTC): 2026-03-31T01:45:00Z
+- Actor: copilot
+- Objective: Add thread selector and multi-agent on/off chat toggles
+- Evidence: Updated chat UI with thread picker/new thread and checkbox toggles; /api/chat now supports agents[] fanout on a shared conversation and returns per-agent responses.
+- Result: PASS
+- Follow-up: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
+

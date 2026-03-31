@@ -72,3 +72,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Updated /api/chat to route by selected agent with shared conversation_id and prior-thread context; added chat agent selector in terminal templates.
 - Rollback: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
 
+- Time (UTC): 2026-03-31T01:45:00Z
+- Actor: copilot
+- Scope: fridays/chat-threads-agent-toggles
+- Change: Add thread selector and multi-agent on/off chat toggles
+- Validation: Updated chat UI with thread picker/new thread and checkbox toggles; /api/chat now supports agents[] fanout on a shared conversation and returns per-agent responses.
+- Rollback: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
+
