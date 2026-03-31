@@ -186,19 +186,6 @@ _CHAT_AGENT_ETA_SECONDS = {
     'twelve': 10,
 }
 
-_CHAT_AGENT_RUNTIME_CLASS = {
-    'gemma': 'local',
-    'llama': 'local',
-    'qwen': 'local',
-    'librarian': 'local',
-    'duck': 'local',
-    'sniffles': 'local',
-    'nine': 'ghost',
-    'ten': 'ghost',
-    'eleven': 'ghost',
-    'twelve': 'ghost',
-}
-
 
 def _chat_now_iso():
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -206,10 +193,6 @@ def _chat_now_iso():
 
 def _chat_eta_seconds(agent):
     return int(_CHAT_AGENT_ETA_SECONDS.get((agent or '').lower(), 60))
-
-
-def _chat_runtime_class(agent):
-    return _CHAT_AGENT_RUNTIME_CLASS.get((agent or '').lower(), 'unknown')
 
 
 def _chat_stage_for(agent, elapsed_ms):
@@ -275,7 +258,6 @@ def _chat_job_public(job):
         'conversation_id': job.get('conversation_id'),
         'agent': job.get('agent'),
         'status': job.get('status', 'running'),
-        'runtime_class': job.get('runtime_class') or _chat_runtime_class(job.get('agent')),
         'stage': job.get('stage') or _chat_stage_for(job.get('agent'), elapsed_ms),
         'eta_seconds': eta_seconds,
         'eta_remaining_seconds': eta_remaining_seconds,
@@ -2789,7 +2771,7 @@ def api_chat():
         log_activity('terminal', f'{selected_agent}_chat', f'tokens={tokens} | {message[:80]}')
         return answer, tokens, None
 
-    def _run_single_agent(selected_agent, prompt, history, transcript, persistent_mode=False, stage_cb=None):
+    def _run_single_agent(selected_agent, prompt, history, transcript, persistent_mode=False):
         def _duck_fast_check(text):
             t = (text or '').strip()
             if not t:
@@ -2805,19 +2787,10 @@ def api_chat():
                 cues.append('no obvious red flags; still verify with one independent source')
             return 'Duck quick sanity: ' + '; '.join(cues) + '.'
 
-        def _stage(text, eta_seconds=None):
-            if callable(stage_cb):
-                try:
-                    stage_cb(text, eta_seconds)
-                except Exception:
-                    pass
-
         response_text = None
         tokens_used = 0
         started_at = time.time()
         executor = ThreadPoolExecutor(max_workers=1)
-        est_eta = _chat_eta_seconds(selected_agent)
-        _stage('queued', est_eta)
         local_timeout = 12
         if selected_agent == 'sniffles':
             local_timeout = 35
@@ -2828,20 +2801,16 @@ def api_chat():
             local_timeout = 240
         try:
             if selected_agent in {'gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles'}:
-                _stage('loading local model context', est_eta)
                 local_prompt = prompt
                 if selected_agent in {'duck', 'sniffles'}:
-                    _stage('auditing request', est_eta)
                     local_prompt = (
                         'Audit target message:\n'
                         f'{message}\n\n'
                         'Return concise findings only.'
                     )
                 future = executor.submit(orchestrator.ask_agent, selected_agent, local_prompt)
-                _stage('running local inference', est_eta)
                 response_text = future.result(timeout=local_timeout)
             elif selected_agent in {'nine', 'ten'}:
-                _stage('dispatching to ghost datacenter', est_eta)
                 future = executor.submit(_run_ghost_layer_chat, selected_agent, message, history)
                 answer, tokens, err = future.result(timeout=240 if persistent_mode else 20)
                 if err:
@@ -2849,22 +2818,18 @@ def api_chat():
                 response_text = answer
                 tokens_used = tokens
             elif selected_agent == 'eleven':
-                _stage('dispatching to ghost datacenter', est_eta)
                 from agents.eleven import grok_agent
                 future = executor.submit(grok_agent.chat, message, history)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[eleven unavailable]'
                 tokens_used = tokens or 0
             elif selected_agent == 'twelve':
-                _stage('dispatching to ghost datacenter', est_eta)
                 from agents.twelve import twelve_agent
                 future = executor.submit(twelve_agent.chat, message, history)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[twelve unavailable]'
                 tokens_used = tokens or 0
-            _stage('finalizing answer', 0)
         except FuturesTimeoutError:
-            _stage('timed out waiting for completion', 0)
             if persistent_mode:
                 # In persistent mode, a local timeout means the background run exceeded
                 # the maximum execution budget. Surface this as a failure so the UI can
@@ -2986,11 +2951,10 @@ def api_chat():
             runnable_agents = [a for a in runnable_agents if a != 'sniffles']
             deferred_agents.add('sniffles')
 
-        def _register_persistent_job(selected_agent, future, job_ref=None):
+        def _register_persistent_job(selected_agent, future):
             job_id = f"chatjob-{uuid.uuid4().hex[:12]}"
             started_ts = time.time()
             now_iso = _chat_now_iso()
-            eta_seconds = _chat_eta_seconds(selected_agent)
             with _CHAT_JOB_LOCK:
                 _cleanup_chat_jobs_locked()
                 _CHAT_JOBS[job_id] = {
@@ -2998,16 +2962,12 @@ def api_chat():
                     'conversation_id': conv_id,
                     'agent': selected_agent,
                     'status': 'running',
-                    'runtime_class': _chat_runtime_class(selected_agent),
                     'stage': _chat_stage_for(selected_agent, 0),
-                    'eta_seconds': eta_seconds,
                     'started_ts': started_ts,
                     'updated_ts': started_ts,
                     'started_at': now_iso,
                     'updated_at': now_iso,
                 }
-            if isinstance(job_ref, dict):
-                job_ref['job_id'] = job_id
 
             def _finish_job(done_future):
                 updated_ts = time.time()
@@ -3021,7 +2981,6 @@ def api_chat():
                             job.update({
                                 'status': 'completed',
                                 'stage': 'completed',
-                                'eta_seconds': 0,
                                 'updated_ts': updated_ts,
                                 'updated_at': updated_iso,
                                 'elapsed_ms': int(elapsed_ms or 0),
@@ -3040,7 +2999,6 @@ def api_chat():
                             job.update({
                                 'status': 'failed',
                                 'stage': 'failed',
-                                'eta_seconds': 0,
                                 'error': err_text,
                                 'updated_ts': updated_ts,
                                 'updated_at': updated_iso,
@@ -3051,29 +3009,19 @@ def api_chat():
 
         fanout_executor = ThreadPoolExecutor(max_workers=max(1, len(runnable_agents)))
         try:
-            future_map = {}
-            for selected_agent in runnable_agents:
-                job_ref = {'job_id': None}
-
-                def _stage_cb(stage_text, eta_seconds=None, _agent=selected_agent, _job_ref=job_ref):
-                    job_id = _job_ref.get('job_id')
-                    if not job_id:
-                        return
-                    _chat_update_job(job_id, stage=stage_text, eta_seconds=eta_seconds)
-
-                future = fanout_executor.submit(
+            future_map = {
+                selected_agent: fanout_executor.submit(
                     _run_single_agent,
                     selected_agent,
                     threaded_prompt,
                     history,
                     transcript,
                     True,
-                    _stage_cb,
                 )
-                future_map[selected_agent] = (future, job_ref)
+                for selected_agent in runnable_agents
+            }
 
-            for selected_agent, bundle in future_map.items():
-                future, job_ref = bundle
+            for selected_agent, future in future_map.items():
                 try:
                     wait_timeout = 40 if selected_agent == 'sniffles' else 26
                     response_text, tokens_used, elapsed_ms = future.result(timeout=wait_timeout)
@@ -3081,12 +3029,11 @@ def api_chat():
                     pending_job_id = None
                 except FuturesTimeoutError:
                     # Keep the same task alive in background and expose progress/status via polling.
-                    pending_job_id = _register_persistent_job(selected_agent, future, job_ref)
+                    pending_job_id = _register_persistent_job(selected_agent, future)
                     pending_jobs.append(pending_job_id)
                     pending = True
-                    eta_seconds = _chat_eta_seconds(selected_agent)
                     response_text, tokens_used = (
-                        f"[{selected_agent}] acknowledged. Running now. ETA ~{eta_seconds}s; monitor shows live stage.",
+                        f"[{selected_agent}] still working. Tracking progress until completion.",
                         0,
                     )
                     elapsed_ms = int(wait_timeout * 1000)
@@ -3100,8 +3047,6 @@ def api_chat():
                     'response': response_text,
                     'tokens': tokens_used,
                     'elapsed_ms': elapsed_ms,
-                    'runtime_class': _chat_runtime_class(selected_agent),
-                    'eta_seconds': _chat_eta_seconds(selected_agent) if pending else 0,
                     'pending': pending,
                     'job_id': pending_job_id,
                 }
@@ -3117,8 +3062,6 @@ def api_chat():
                 ),
                 'tokens': 0,
                 'elapsed_ms': 0,
-                'runtime_class': _chat_runtime_class(agent_name),
-                'eta_seconds': 0,
                 'pending': False,
                 'job_id': None,
             }
