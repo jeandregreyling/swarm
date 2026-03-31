@@ -844,7 +844,7 @@ def attach_memory(row_id):
     attachment = f"[attachment:{label}] {value}"
     conn = get_connection()
     try:
-        row = conn.execute(f"SELECT id, content FROM {table} WHERE id=?", (row_id,)).fetchone()
+        row = conn.execute(f"SELECT id, content, updated_at FROM {table} WHERE id=?", (row_id,)).fetchone()
         if not row:
             return jsonify({'error': 'memory row not found'}), 404
         merged = (str(row['content'] or '') + ('\n\n' if row['content'] else '') + attachment)
@@ -2970,7 +2970,6 @@ def api_chat():
                     threaded_prompt,
                     history,
                     transcript,
-                    True,
                 )
                 for selected_agent in runnable_agents
             }

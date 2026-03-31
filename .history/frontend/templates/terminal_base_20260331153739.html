@@ -3077,26 +3077,10 @@ function toggleTerminalShortcuts() {
 function loadMemoryData(win) {
   const list = win.el.querySelector('#memory-list');
   if (!list) return;
-  window.__memoryCache = [];
-
-  const tableToAgent = (table) => {
-    const map = {
-      memory: 'librarian',
-      memory_llama: 'llama',
-      memory_qwen: 'qwen',
-      memory_gemma: 'gemma',
-      memory_eight: 'eight',
-      memory_nine: 'nine',
-      memory_ten: 'ten',
-      memory_grok: 'grok',
-      memory_twelve: 'twelve',
-    };
-    return map[table] || 'librarian';
-  };
   
   const memSearch = win.el.querySelector('#memory-search');
   const doMemSearch = (q) => {
-    const url = q ? `/api/memory?q=${encodeURIComponent(q)}&min=1&limit=200` : '/api/memory?min=1&limit=200';
+    const url = q ? `/api/memory?q=${encodeURIComponent(q)}&limit=40` : '/api/memory?limit=40';
     fetch(url)
       .then(r => r.json())
       .then(data => {
@@ -3109,22 +3093,19 @@ function loadMemoryData(win) {
         } else if (Array.isArray(data)) {
           flat = data;
         }
-        window.__memoryCache = flat;
         flat.sort((a, b) => (b.importance || 0) - (a.importance || 0));
         if (flat.length === 0) {
           list.innerHTML = '<div style="padding: 20px; color: var(--text-dim); font-size: 12px; text-align: center;">No memories found.</div>';
           return;
         }
-        list.innerHTML = flat.slice(0, 120).map(m => {
-          const title = m.subject || m.content?.slice(0, 120) || '(no subject)';
+        list.innerHTML = flat.slice(0, 30).map(m => {
+          const title = m.subject || m.content?.slice(0, 60) || '(no subject)';
           const agent = m._agent || m.agent || m.source_table || '?';
           const imp = m.importance ? ` · i${m.importance}` : '';
-          const tags = m.tags ? `<span style="color:var(--accent);font-size:10px;"> ${String(m.tags).slice(0,100)}</span>` : '';
-          const safeTable = String(m.source_table || 'memory').replace(/'/g, '');
+          const tags = m.tags ? `<span style="color:var(--accent);font-size:10px;"> ${m.tags.slice(0,40)}</span>` : '';
           return `<div style="padding:9px 10px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;" onclick="expandMemory(this, ${m.id || 0}, '${(m.source_table || 'memory').replace(/'/g, '')}')">
             <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${title}</div>
             <div style="color:var(--text-dim);font-size:10px;margin-top:2px;">${agent}${imp} · ${(m.created_at||'').slice(0,10)}${tags}</div>
-            <div style="display:none" data-memory-id="${m.id || 0}" data-memory-table="${safeTable}" data-memory-agent="${tableToAgent(safeTable)}"></div>
           </div>`;
         }).join('');
       })
@@ -3137,39 +3118,6 @@ function loadMemoryData(win) {
 }
 
 function expandMemory(el, id, table) {
-  const tableToAgent = (tbl) => {
-    const map = {
-      memory: 'librarian', memory_llama: 'llama', memory_qwen: 'qwen', memory_gemma: 'gemma',
-      memory_eight: 'eight', memory_nine: 'nine', memory_ten: 'ten', memory_grok: 'grok', memory_twelve: 'twelve'
-    };
-    return map[tbl] || 'librarian';
-  };
-
-  const renderMemoryBody = (m, titleFallback) => {
-    const body = document.getElementById('mem-det-body');
-    if (!body) return;
-    const mid = m && m.id ? m.id : id;
-    const mt = m && m.source_table ? m.source_table : table;
-    const agent = tableToAgent(mt);
-    body.innerHTML = `
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
-        ${m.agent ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--accent);font-size:10px;border:1px solid var(--border);">${m.agent}</span>` : ''}
-        ${m.importance ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">importance: ${m.importance}</span>` : ''}
-        ${m.tags ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">${m.tags}</span>` : ''}
-        ${m.created_at ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">${String(m.created_at).slice(0,16)}</span>` : ''}
-      </div>
-      ${m.subject ? `<div style="font-weight:600;margin-bottom:8px;">${m.subject}</div>` : ''}
-      <div style="background:var(--card);padding:12px;border-radius:4px;white-space:pre-wrap;line-height:1.6;max-height:42vh;overflow:auto;">${m.content || titleFallback || ''}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
-        <button class="chat-action-btn" onclick="memoryEdit(${mid}, '${mt}')">✏️ Edit</button>
-        <button class="chat-action-btn" onclick="memoryAppend(${mid}, '${mt}')">➕ Append</button>
-        <button class="chat-action-btn" onclick="memoryAttach(${mid}, '${mt}')">📎 Attach</button>
-        <button class="chat-action-btn" onclick="memoryAssign(${mid}, '${mt}', '${agent}')">🔁 Share</button>
-        <button class="chat-action-btn" onclick="memoryDelete(${mid}, '${mt}')" style="border-color:#f44336;color:#f44336;">🗑 Delete</button>
-      </div>
-    `;
-  };
-
   // Build detail modal
   let modal = document.getElementById('memory-detail-modal');
   if (!modal) {
@@ -3196,121 +3144,28 @@ function expandMemory(el, id, table) {
   modal.classList.add('open');
 
   // Fetch from API using id + table
-  const url = table ? `/api/agents/${encodeURIComponent(tableToAgent(table))}/memory?limit=400&min_importance=1` : '/api/memory?limit=400&min=1';
+  const url = table ? `/api/agents/${encodeURIComponent(table.replace('memory_','').replace('memory','librarian'))}/memory?limit=200` : '/api/memory?limit=200';
   fetch(url)
     .then(r => r.json())
     .then(data => {
       let entries = [];
       if (data.results && typeof data.results === 'object') {
         Object.values(data.results).forEach(arr => entries.push(...arr));
-      } else if (Array.isArray(data)) {
-        entries = data;
-      } else if (Array.isArray(data.entries)) {
-        entries = data.entries;
-      }
-      const m = entries.find(e => String(e.id) === String(id)) || { id, source_table: table, content: title };
-      renderMemoryBody(m, title);
+      } else if (Array.isArray(data)) entries = data;
+      const m = entries.find(e => e.id == id) || {};
+      document.getElementById('mem-det-body').innerHTML = `
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+          ${m.agent ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--accent);font-size:10px;border:1px solid var(--border);">${m.agent}</span>` : ''}
+          ${m.importance ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">importance: ${m.importance}</span>` : ''}
+          ${m.tags ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">${m.tags}</span>` : ''}
+          ${m.created_at ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">${m.created_at.slice(0,16)}</span>` : ''}
+        </div>
+        ${m.subject ? `<div style="font-weight:600;margin-bottom:8px;">${m.subject}</div>` : ''}
+        <div style="background:var(--card);padding:12px;border-radius:4px;white-space:pre-wrap;line-height:1.6;">${m.content || title}</div>`;
     })
     .catch(() => {
-      renderMemoryBody({ id, source_table: table, content: meta || title }, title);
+      document.getElementById('mem-det-body').innerHTML = `<div style="white-space:pre-wrap;line-height:1.6;">${meta}</div>`;
     });
-}
-
-function memoryEdit(id, table) {
-  const subject = prompt('Subject (optional):', '') ?? '';
-  const content = prompt('Replace content with:', '');
-  if (content === null) return;
-  fetch(`/api/memory/${id}`, {
-    method: 'PATCH',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ table, subject, content, ..._authPayload() })
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.ok) throw new Error(data.error || 'edit failed');
-      showToast('Memory updated', 'success');
-      const memoryWin = winManager.windows.get('memory');
-      if (memoryWin) loadMemoryData(memoryWin);
-      document.getElementById('memory-detail-modal')?.classList.remove('open');
-    })
-    .catch(e => showToast('Edit failed: ' + e.message, 'error'));
-}
-
-function memoryAppend(id, table) {
-  const append = prompt('Append text to memory:', '');
-  if (!append) return;
-  fetch(`/api/memory/${id}`, {
-    method: 'PATCH',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ table, append, ..._authPayload() })
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.ok) throw new Error(data.error || 'append failed');
-      showToast('Memory appended', 'success');
-      const memoryWin = winManager.windows.get('memory');
-      if (memoryWin) loadMemoryData(memoryWin);
-      document.getElementById('memory-detail-modal')?.classList.remove('open');
-    })
-    .catch(e => showToast('Append failed: ' + e.message, 'error'));
-}
-
-function memoryAttach(id, table) {
-  const label = prompt('Attachment label (e.g. ticket/ref/file):', 'ref');
-  if (!label) return;
-  const value = prompt('Attachment value (URL/path/id):', '');
-  if (!value) return;
-  fetch(`/api/memory/${id}/attach`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ table, label, value, ..._authPayload() })
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.ok) throw new Error(data.error || 'attach failed');
-      showToast('Attachment added', 'success');
-      const memoryWin = winManager.windows.get('memory');
-      if (memoryWin) loadMemoryData(memoryWin);
-      document.getElementById('memory-detail-modal')?.classList.remove('open');
-    })
-    .catch(e => showToast('Attach failed: ' + e.message, 'error'));
-}
-
-function memoryAssign(id, table, defaultAgent) {
-  const targetsRaw = prompt('Share with agents (comma-separated):', defaultAgent || 'gemma,nine,ten');
-  if (!targetsRaw) return;
-  const note = prompt('Optional share note:', '') || '';
-  fetch(`/api/memory/${id}/assign`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ table, targets: targetsRaw, note, ..._authPayload() })
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.ok) throw new Error(data.error || 'assign failed');
-      showToast('Memory shared: ' + (data.assigned || []).map(x => x.agent).join(', '), 'success');
-      const memoryWin = winManager.windows.get('memory');
-      if (memoryWin) loadMemoryData(memoryWin);
-      document.getElementById('memory-detail-modal')?.classList.remove('open');
-    })
-    .catch(e => showToast('Share failed: ' + e.message, 'error'));
-}
-
-function memoryDelete(id, table) {
-  if (!confirm('Delete this memory entry?')) return;
-  fetch(`/api/memory/${id}?table=${encodeURIComponent(table)}`, {
-    method: 'DELETE',
-    headers: {'Content-Type': 'application/json'}
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.deleted) throw new Error(data.error || 'delete failed');
-      showToast('Memory deleted', 'success');
-      const memoryWin = winManager.windows.get('memory');
-      if (memoryWin) loadMemoryData(memoryWin);
-      document.getElementById('memory-detail-modal')?.classList.remove('open');
-    })
-    .catch(e => showToast('Delete failed: ' + e.message, 'error'));
 }
 
 function loadMonitorData(win) {
@@ -3332,10 +3187,6 @@ function loadMonitorData(win) {
       ).join('');
       content.innerHTML = `
         <div style="font-size:12px;line-height:1.6;padding:4px 0;">
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-            <a href="/v2" style="text-decoration:none;" class="chat-action-btn">⚙ Switch to Console Layer</a>
-            <a href="/" style="text-decoration:none;" class="chat-action-btn">🎨 Fridays Layer</a>
-          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
             <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
               <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">CPU</div>

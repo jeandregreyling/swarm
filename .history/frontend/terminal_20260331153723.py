@@ -831,35 +831,16 @@ def attach_memory(row_id):
     data = request.get_json() or {}
     label = (data.get('label') or '').strip()
     value = (data.get('value') or '').strip()
-    table = (data.get('table') or request.args.get('table') or 'memory').strip()
-    allowed = {
-        'memory', 'memory_llama', 'memory_qwen', 'memory_gemma', 'memory_eight',
-        'memory_nine', 'memory_ten', 'memory_grok', 'memory_twelve'
-    }
-    if table not in allowed:
-        return jsonify({'error': 'invalid table'}), 400
     if not label or not value:
         return jsonify({'error': 'label and value required'}), 400
 
     attachment = f"[attachment:{label}] {value}"
-    conn = get_connection()
-    try:
-        row = conn.execute(f"SELECT id, content FROM {table} WHERE id=?", (row_id,)).fetchone()
-        if not row:
-            return jsonify({'error': 'memory row not found'}), 404
-        merged = (str(row['content'] or '') + ('\n\n' if row['content'] else '') + attachment)
-        cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
-        if 'updated_at' in cols:
-            conn.execute(
-                f"UPDATE {table} SET content=?, updated_at=? WHERE id=?",
-                (merged, datetime.utcnow().isoformat(), row_id),
-            )
-        else:
-            conn.execute(f"UPDATE {table} SET content=? WHERE id=?", (merged, row_id))
-        conn.commit()
-    finally:
-        conn.close()
-    return jsonify({'ok': True, 'table': table, 'id': row_id})
+    data_patch = {
+        'table': data.get('table') or request.args.get('table') or 'memory',
+        'append': attachment,
+    }
+    with app.test_request_context(json=data_patch):
+        return update_memory(row_id)
 
 
 @app.route('/api/memory/<int:row_id>/assign', methods=['POST'])
@@ -2970,7 +2951,6 @@ def api_chat():
                     threaded_prompt,
                     history,
                     transcript,
-                    True,
                 )
                 for selected_agent in runnable_agents
             }
