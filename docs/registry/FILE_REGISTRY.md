@@ -9,7 +9,7 @@
 ## Status Codes
 
 | Code | Meaning |
-|------|---------|
+| ------ | --------- |
 | ACTIVE | In use, maintained, authoritative |
 | LEGACY | Still runs but should be migrated away from |
 | SUPERSEDED | Replaced by a newer file — do not edit, read only |
@@ -33,7 +33,7 @@ Before creating ANY new file:
 ## Entry Points (root)
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `startswarm.sh` | ACTIVE | Starts all swarm services (terminal, discord, telegram) |
 | `killswitch.sh` | ACTIVE | Emergency stop — kills all swarm processes |
 | `seven.sh` | ACTIVE | Developer shortcut launcher |
@@ -50,7 +50,7 @@ Before creating ANY new file:
 ## Core: Business Logic (`core/`)
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `core/time_machine.py` | ACTIVE | **Vortex engine** — checkpoints, dry-run restores, ALM audit logging. CANONICAL import target. Uses `time_wizard` singleton. |
 | `core/kill_switch.py` | ACTIVE | Kill-switch logic, called by `killswitch.sh` and the frontend |
 | `core/pipeline/orchestrator.py` | ACTIVE | Main swarm orchestrator — routes tasks between agents |
@@ -64,7 +64,7 @@ Before creating ANY new file:
 ## Frontend: Web Server (`frontend/`)
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `frontend/terminal.py` | ACTIVE | Flask web server, port 5050. Hosts Vortex API (`/api/time/*`), ALM endpoints, agent console. Imports `core/time_machine.py` via explicit importlib path (shadow-proof). |
 | `frontend/theme_engine.py` | ACTIVE | Theme injection layer — bakes Vortex timeline and ALM data into page context. Both call sites use explicit importlib import (shadow-proof). |
 | `frontend/templates/terminal.html` | ACTIVE | Main UI template |
@@ -79,7 +79,7 @@ Before creating ANY new file:
 ## Agents (`agents/`)
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `agents/twelve/twelve_agent.py` | ACTIVE | **Agent Twelve** — orchestrator/reviewer agent, reads proposals, raises decisions |
 | `agents/eleven/grok_agent.py` | ACTIVE | **Agent Eleven** — Grok AI integration |
 | `agents/ghost/duck.py` | ACTIVE | **Duck agent** — rubber-duck reasoner, validates logic before execution |
@@ -94,7 +94,7 @@ Before creating ANY new file:
 ## Fridays: Background Agents (`fridays/`)
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `fridays/scheduler.py` | ACTIVE | Cron-style task scheduler for Friday agents |
 | `fridays/discord_bot.py` | ACTIVE | Discord bot — receives commands, posts outputs |
 | `fridays/telegram_bot.py` | ACTIVE | Telegram bot — mobile command interface |
@@ -109,7 +109,7 @@ Before creating ANY new file:
 ## Lib: Shared Libraries (`lib/`)
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `lib/email/email_cleaner.py` | ACTIVE | Strips HTML, normalises email body text |
 | `lib/email/email_handler.py` | ACTIVE | High-level email send/receive wrapper |
 | `lib/email/gmail_auth.py` | ACTIVE | Gmail OAuth2 authentication flow |
@@ -134,7 +134,7 @@ Before creating ANY new file:
 ## Utils: Utilities (`utils/`)
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `utils/config.py` | ACTIVE | Central config loader (env vars, paths, API keys) |
 | `utils/config.py.backup` | ARCHIVE | Pre-refactor backup — do not import |
 | `utils/database.py` | ACTIVE | SQLite ORM/query layer over `swarm_memory.db` |
@@ -160,7 +160,7 @@ Before creating ANY new file:
 ## Ops: Scripts (`ops/`)
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `ops/scripts/log_change.sh` | ACTIVE | Appends an entry to both `docs/changes/CHANGELOG_OPERATIONS.md` and `docs/audits/AUDIT_TRAIL.md` in one command. Usage: `./log_change.sh <author> <area> <summary> <detail> <rollback>` |
 
 ---
@@ -170,7 +170,7 @@ Before creating ANY new file:
 > These files are **never** rewritten — only appended to. Use `ops/scripts/log_change.sh`.
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `docs/changes/CHANGELOG_OPERATIONS.md` | ACTIVE | **Canonical change ledger** — every code/config change goes here |
 | `docs/audits/AUDIT_TRAIL.md` | ACTIVE | **Canonical audit ledger** — every verification/test result goes here |
 
@@ -179,7 +179,7 @@ Before creating ANY new file:
 ## Docs: Active Reference
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `docs/registry/FILE_REGISTRY.md` | ACTIVE | **THIS FILE** — master index of all files |
 | `docs/registry/FILING_SYSTEM.md` | ACTIVE | Filing rules and naming conventions |
 | `docs/runbooks/CHANGE_AND_AUDIT_WORKFLOW.md` | ACTIVE | Mandatory 5-step change workflow |
@@ -197,7 +197,7 @@ Before creating ANY new file:
 ## Docs: Agent-Specific
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `docs/AGENT_TWELVE_MANUAL.md` | ACTIVE | Agent Twelve operating manual |
 | `docs/AGENT_TWELVE_STATUS.md` | ACTIVE | Agent Twelve current status |
 | `docs/AGENT_TASK_ASSIGNMENTS.md` | ACTIVE | Which agent owns which tasks |
@@ -209,7 +209,7 @@ Before creating ANY new file:
 ## Docs: Testing
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `docs/testing/ALM_TEST_SPECIFICATION.md` | ACTIVE | ALM system test spec |
 | `docs/testing/E2E_TEST_SUITE.md` | ACTIVE | End-to-end test suite definition |
 | `docs/testing/TIME_WIZARD_TESTS.md` | ACTIVE | Time Wizard / Vortex test cases |
@@ -223,7 +223,7 @@ Before creating ANY new file:
 > Future session summaries go into `docs/audits/AUDIT_TRAIL.md`.
 
 | File | Status | Notes |
-|------|--------|-------|
+| ------ | -------- | ------- |
 | `docs/STATE_SNAPSHOT_2026-03-29.md` | ARCHIVE | Session 1 state snapshot |
 | `docs/STATE_SNAPSHOT_2026-03-29_SESSION2.md` | ARCHIVE | Session 2 state snapshot |
 | `docs/STATE_SNAPSHOT_2026-03-30_SIGNOFF.md` | ARCHIVE | Session 3 sign-off snapshot |
@@ -251,7 +251,7 @@ Before creating ANY new file:
 ## Tests (`tests/`)
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `tests/test_triage_queue_dryrun.py` | ACTIVE | Dry-run tests for the triage queue |
 | `tests/test_e2e_fridays.py` | ACTIVE | End-to-end API test suite for Fridays / Swarm terminal requirements |
 
@@ -261,7 +261,7 @@ Before creating ANY new file:
 > Sandpits are isolated working directories for individual agents. Treat as agent-owned scratch space.
 
 | Path | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `sandpits/twelve/` | ACTIVE | Agent Twelve working directory |
 | `sandpits/twelve/DECISION_INDEX.md` | ACTIVE | Agent Twelve decision index |
 | `sandpits/twelve/DECISION_TEMPLATE.md` | ACTIVE | Template for new decisions |
@@ -280,7 +280,7 @@ Before creating ANY new file:
 ## Config & Data (root-level)
 
 | File | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `.gitignore` | CONFIG | Git ignore rules |
 | `themes/fridays.json` | CONFIG | Root-level theme override (see also `frontend/themes/fridays.json`) |
 | `.claude/settings.json` | CONFIG | Claude agent settings |
@@ -292,7 +292,7 @@ Before creating ANY new file:
 > Auto-generated exports of the docs/ folder. Do not hand-edit. Regenerate with `utils/convert_docs.py`.
 
 | Path | Status | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `swarm_docs/html/` | DATA | HTML exports of docs |
 | `swarm_docs/xml/` | DATA | XML exports of docs |
 | `swarm_docs/*.docx` | DATA | Word doc exports |
