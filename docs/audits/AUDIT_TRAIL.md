@@ -189,3 +189,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert fridays/skills.py fridays/shell_agent.py frontend/templates/terminal_base.html utils/config.py tests/test_chat_quality.py docs/testing/ALM_TEST_SPECIFICATION.md and restart swarm-terminal.
 
+- Audit ID: AUDIT-20260331-042006
+- Time (UTC): 2026-03-31T04:20:06Z
+- Actor: copilot
+- Objective: Keep Gemma alive in pending mode, route Ten file discovery to fs_readonly, and add one-click approval request button
+- Evidence: Updated chat runtime so gemma/llama/qwen/librarian timeout path bubbles to pending job tracking instead of immediate timeout text, added shell->fs_readonly compatibility routing for read/list operations in Nine/Ten tool loop, expanded shell whitelist for relative file/list commands, added failed-job completion messages into conversation, and added a ✓ Request approval button on failed skill event cards that opens an internal queue/proposal request.
+- Result: PASS
+- Follow-up: Revert frontend/terminal.py fridays/shell_agent.py frontend/templates/terminal_base.html utils/config.py tests/test_chat_quality.py and restart swarm-terminal.
+
