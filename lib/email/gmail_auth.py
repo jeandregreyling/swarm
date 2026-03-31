@@ -17,8 +17,8 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 import json
 
-CREDENTIALS_FILE = '/home/seven/swarm/gmail_credentials.json'
-TOKEN_FILE       = '/home/seven/swarm/gmail_token.json'
+CREDENTIALS_FILE = '/home/seven/swarm/lib/email/gmail_credentials.json'
+TOKEN_FILE       = '/home/seven/swarm/lib/email/gmail_token.json'
 PROJECT_ID       = 'gen-lang-client-0087469950'
 TOPIC_NAME       = f'projects/{PROJECT_ID}/topics/gmail-push'
 
