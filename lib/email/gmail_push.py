@@ -36,8 +36,8 @@ from google.cloud import pubsub_v1
 
 logger = logging.getLogger('seven.gmail_push')
 
-TOKEN_FILE       = '/home/seven/swarm/gmail_token.json'
-WATCH_STATE_FILE = '/home/seven/swarm/gmail_watch_state.json'
+TOKEN_FILE       = '/home/seven/swarm/lib/email/gmail_token.json'
+WATCH_STATE_FILE = '/home/seven/swarm/lib/email/gmail_watch_state.json'
 PROJECT_ID       = 'gen-lang-client-0087469950'
 TOPIC_NAME       = f'projects/{PROJECT_ID}/topics/gmail-push'
 SUBSCRIPTION     = f'projects/{PROJECT_ID}/subscriptions/gmail-push-sub'

@@ -1,7 +1,7 @@
 # Nine — Decision Index
 
 **Agent**: Nine (System Architect · Ghost Layer)
-**Last Updated**: 2026-03-31 (session 5 — full system audit, 4 bugs fixed)
+**Last Updated**: 2026-03-31 (session 5 stress test — CRITICAL email pipeline fix, 10 bugs fixed total)
 **Numbering**: NINE-XXX (separate from Twelve's DECISION-XXX)
 
 ---
@@ -10,13 +10,42 @@
 
 None — all proposals executed.
 
-## Executed This Session (Session 5 — 2026-03-31)
+## Executed This Session (Session 5 Stress Test — 2026-03-31)
+
+| ID       | Title                                                                          | Priority | Status   |
+| -------- | ------------------------------------------------------------------------------ | -------- | -------- |
+| NINE-023 | Session 5 stress test — CRITICAL email pipeline fix + gmail_push path fix      | CRITICAL | EXECUTED |
+
+### NINE-023 Bug Details
+
+- **NINE-023-A (CRITICAL)** `core/pipeline/listener.py` — `get_timestamp` never imported. All trusted email pipeline runs crashed at read receipt. ZERO emails sent since this was introduced. Fixed: added `get_timestamp` to `from system_clock import ...`.
+- **NINE-023-B** `lib/email/gmail_push.py` — `TOKEN_FILE` and `WATCH_STATE_FILE` pointed to swarm root but actual files in `lib/email/`. `listener.py` `push_token` check also wrong path. Listener always ran in IMAP poll mode (60s delay). Fixed both. Listener now runs Gmail Push (instant).
+- **NINE-023-C** `swarm-monitor.service` — ExecStart points to `/home/seven/swarm/monitor.py` (missing). File at `lib/system/monitor.py`. REQUIRES GHOST SUDO to fix service unit.
+- **NINE-023-D** `swarm-terminal` service inactive/dead — orphan process from browser session holds port 5050. Informational — not code fix. REQUIRES GHOST to kill orphan and restart service.
+- **NINE-023-E** Queue entries 220/221 stuck `queued` — abandoned (pipeline crashed before completion, no replay possible without re-receiving email).
+
+---
+
+## Executed This Session (Session 5 Pass 2 — 2026-03-31)
+
+| ID         | Title                                                                              | Priority | Status   |
+| ---------- | ---------------------------------------------------------------------------------- | -------- | -------- |
+| NINE-022p2 | Session 5 Pass 2 audit - 4 more bugs fixed (DB schema drift, /api/health, ddgs)    | HIGH     | EXECUTED |
+
+### NINE-022 Pass 2 Bug Details
+
+- **BUG-E** `utils/database.py` SCHEMA — `time_events`, `time_journal`, `time_checkpoints` had OLD column definitions (description/metadata/entry/name/state_snapshot) that don't match live DB columns (action/target/state_hash/details/session_id/phase/status/notes/checkpoint_name/full_state). Fixed in SCHEMA and `_migrate_schema` fallback loop.
+- **BUG-F** `utils/database.py` `_migrate_schema()` — `approval_tokens` fallback DDL had stale schema `(pending_email_id, used)` instead of production schema `(target_email, created_by, used_at, status)`. `use_approval_token()` queries `status` column — fallback path would fail. Fixed to match SCHEMA and live DB.
+- **BUG-G** `frontend/terminal.py` — `/api/health` route missing. Health checks returned 404. Added `GET /api/health` endpoint.
+- **BUG-H** `lib/search/internet.py` — Hard `from ddgs import DDGS` with no import guard. Crashes in environments without `ddgs` in PYTHONPATH. Added try/except with `duckduckgo_search` fallback and graceful degradation.
+
+## Executed This Session (Session 5 Pass 1 — 2026-03-31)
 
 | ID       | Title                                                                      | Priority | Status   |
 | -------- | -------------------------------------------------------------------------- | -------- | -------- |
 | NINE-022 | Session 5 full system audit — 4 bugs fixed (change_logger, DB schema, CSS) | HIGH     | EXECUTED |
 
-### NINE-022 Bug Details
+### NINE-022 Pass 1 Bug Details
 
 - **BUG-A** `utils/change_logger.py` `mark_executed()` — broken subquery marked ALL pending `work_proposals` as executed on any decision PASS. Fixed to scope by `proposal_file` match.
 - **BUG-B** `utils/database.py` SCHEMA — `daily_checkpoint` defined with wrong columns; would break fresh installs causing `twelve_agent.py` query failures. SCHEMA updated to match live DB.
