@@ -109,3 +109,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert core/pipeline/orchestrator.py, frontend/terminal.py.
 
+- Audit ID: AUDIT-20260331-022336
+- Time (UTC): 2026-03-31T02:23:36Z
+- Actor: copilot
+- Objective: Add chat loading bars with learned ETA
+- Evidence: Added per-agent elapsed_ms telemetry and chat loading bars with ETA estimates based on moving-average latency per agent (saved in localStorage).
+- Result: PASS
+- Follow-up: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
+
