@@ -4704,7 +4704,7 @@ function _renderSkillEvents(events, sender) {
     const out = _escapeHtml(String(ev.output || '').slice(0, 2600));
     const actionHtml = ev.ok ? '' : `
       <div class="skill-event-actions">
-        <button class="skill-event-btn" onclick="requestSkillApproval('${_escapeHtml(String(sender || 'agent').toLowerCase())}','${_escapeHtml(ev.name)}','')">✓ Request approval</button>
+        <button class="skill-event-btn" onclick="requestSkillApproval('${_escapeHtml(String(sender || 'agent').toLowerCase())}','${_escapeHtml(ev.name)}','${_escapeHtml(String(ev.output || '').slice(0, 220)).replace(/'/g, '&#39;')}')">✓ Request approval</button>
       </div>
     `;
     return `

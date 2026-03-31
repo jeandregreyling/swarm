@@ -4698,13 +4698,13 @@ async function requestSkillApproval(agent, skillName, outputText) {
 
 function _renderSkillEvents(events, sender) {
   if (!Array.isArray(events) || !events.length) return '';
-  const cards = events.map((ev) => {
+  const cards = events.map((ev, idx) => {
     const status = ev.ok ? 'OK' : 'FAILED';
     const cls = ev.ok ? 'ok' : 'failed';
     const out = _escapeHtml(String(ev.output || '').slice(0, 2600));
     const actionHtml = ev.ok ? '' : `
       <div class="skill-event-actions">
-        <button class="skill-event-btn" onclick="requestSkillApproval('${_escapeHtml(String(sender || 'agent').toLowerCase())}','${_escapeHtml(ev.name)}','')">✓ Request approval</button>
+        <button class="skill-event-btn" onclick="requestSkillApproval('${_escapeHtml(String(sender || 'agent').toLowerCase())}','${_escapeHtml(ev.name)}',${JSON.stringify(String(ev.output || '').slice(0, 900))})">✓ Request approval</button>
       </div>
     `;
     return `

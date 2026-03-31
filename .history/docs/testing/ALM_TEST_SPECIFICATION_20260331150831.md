@@ -12,7 +12,8 @@
 Scope added for Fridays chat quality and identity-aware skill behavior:
 
 | REQ ID | Requirement | Test Case | Status | Owner |
-| -------- | ------------- | ----------- | -------- | ------- || REQ-CHAT-001 | Skill output does not bleed into next chat context | CQ-1 | ✅ PASS | Nine/Copilot |
+|--------|-------------|-----------|--------|-------|
+| REQ-CHAT-001 | Skill output does not bleed into next chat context | CQ-1 | ✅ PASS | Nine/Copilot |
 | REQ-CHAT-002 | SKILL command response shape is stable | CQ-2 | ✅ PASS | Nine/Copilot |
 | REQ-CHAT-003 | SKILL response returns identity context | CQ-3 | ✅ PASS | Nine/Copilot |
 | REQ-CHAT-004 | Denied user/skill pair is blocked with 403 | CQ-4 | ✅ PASS | Nine/Copilot |
@@ -36,7 +37,8 @@ Execution evidence:
 ## REQUIREMENTS TRACEABILITY MATRIX
 
 | REQ ID | Requirement | Test Case | Status | Owner |
-| -------- | ------------- | ----------- | -------- | ------- || REQ-001 | Chat history accessible | A-1-001 | ✅ PASS | Twelve |
+|--------|-------------|-----------|--------|-------|
+| REQ-001 | Chat history accessible | A-1-001 | ✅ PASS | Twelve |
 | REQ-002 | Agent message processing | A-2-001 | 🔴 BLOCKED | Orchestrator |
 | REQ-003 | Memory search functional | A-3-001 | ✅ PASS | Twelve |
 | REQ-004 | System monitoring available | A-4-001 | ✅ PASS | Monitor |
@@ -71,7 +73,7 @@ Execution evidence:
 - Timestamps in ISO format
 
 **Actual Result (Execution):**
-```text
+```
 ✅ PASS
 Response: Array of 40 conversation objects
 Fields: id, created_at, timestamp (aliased), title (aliased), source
@@ -107,7 +109,7 @@ Sample: {
 - Message logged to conversations table
 
 **Actual Result (Execution):**
-```text
+```
 ⏱️  TIMEOUT (>10s)
 Root Cause: orchestrator.ask_agent('gemma') blocks indefinitely
 Pipeline: POST → new_conversation() ✅ → log_message() ✅ → ask_agent() ⏰
@@ -143,7 +145,7 @@ Status: BLOCKING FULL E2E FLOW
 - Cross-agent memory search working
 
 **Actual Result (Execution):**
-```text
+```
 ✅ PASS
 Response structure:
 {
@@ -177,7 +179,7 @@ Response structure:
 - Sample mix: 20 open, 45 closed (approximately)
 
 **Actual Result (Execution):**
-```text
+```
 ✅ PASS
 Tickets returned: 65
 Status distribution:
@@ -214,7 +216,7 @@ Sample:
 - Command executes without error
 
 **Actual Result (Execution):**
-```text
+```
 ✅ PASS
 Response:
 {
@@ -229,7 +231,7 @@ Response:
 ## DATABASE INTEGRITY AUDIT RESULTS
 
 | Table | Status | Row Count | Issues |
-| ----- | ------ | --------- | ------ |
+|-------|--------|-----------|--------|
 | memory | ✅ OK | 67 | Columns: id, agent, memory, importance, source, archived, timestamp, created_at, updated_at, verified, cached |
 | memory_gemma | ✅ OK | 42 | All columns present |
 | memory_llama | ✅ OK | 42 | All columns present |
@@ -245,7 +247,7 @@ Response:
 
 ## SANDPIT STRUCTURE AUDIT
 
-```text
+```
 /home/seven/swarm/sandpits/
 ├── gemma/          — 2 files
 ├── llama/          — 2 files
@@ -272,7 +274,7 @@ Response:
 - Root Cause: orchestrator.ask_agent() has no timeout wrapper
 
 ### Call Trace
-```text
+```
 POST /api/chat
   ├─ new_conversation('terminal-ui', message) ✅ (instant)
   ├─ log_message(conv_id, 'user', message) ✅ (instant)
@@ -282,7 +284,7 @@ POST /api/chat
 
 ### Immediate Solutions (Priority Order)
 
-#### Solution 1: Add Timeout Wrapper (5 min)
+**Solution 1: Add Timeout Wrapper (5 min)**
 ```python
 from signal import alarm, signal, SIGALRM
 
@@ -300,13 +302,13 @@ def ask_agent_with_timeout(agent_name, message, timeout_sec=5):
         signal.alarm(0)
 ```
 
-#### Solution 2: Async Wrapper with Queue (15 min)
+**Solution 2: Async Wrapper with Queue (15 min)**
 - Execute ask_agent() in background thread
 - Return immediate response: "Processing..."
 - Store result in conversation when ready
 - Frontend polls for updated response
 
-#### Solution 3: Mock Agent for Testing (10 min)
+**Solution 3: Mock Agent for Testing (10 min)**
 - Return deterministic response for testing
 - Real orchestrator still runs; test mode available
 
@@ -320,7 +322,7 @@ def ask_agent_with_timeout(agent_name, message, timeout_sec=5):
 ## TEST COVERAGE SUMMARY
 
 | Category | Total | Pass | Fail | Blocked | Coverage |
-| -------- | ----- | ---- | ---- | ------- | -------- |
+|----------|-------|------|------|---------|----------|
 | API Endpoints | 9 | 8 | 0 | 1 | 88% |
 | Terminal Ops | 2 | 2 | 0 | 0 | 100% |
 | Infrastructure | 3 | 3 | 0 | 0 | 100% |

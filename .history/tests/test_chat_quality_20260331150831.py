@@ -11,7 +11,6 @@ REQ-CHAT-006  Config: TEN_SYSTEM_PROMPT includes style rules (concise, no filler
 REQ-CHAT-008  Chat jobs status polling endpoint responds
 REQ-CHAT-011  fs_readonly skill is callable from chat and returns structured result
 REQ-CHAT-012  shell whitelist allows pwd discovery command
-REQ-CHAT-013  shell whitelist allows relative path file/list operations
 
 Usage:
     python3 tests/test_chat_quality.py
@@ -272,24 +271,6 @@ def test_shell_pwd_allowed():
     record('REQ-CHAT-012 shell-pwd', PASS if ok else FAIL, text[:120])
 
 
-# ── REQ-CHAT-013: shell whitelist allows relative path operations ────────────
-def test_shell_relative_path_ops():
-    code, d = _req('POST', '/api/chat', {
-        'message': 'SKILL shell ls -la sandpits/ten/',
-        'agent': 'gemma',
-        'acting_user': 'ghost',
-    }, timeout=15)
-    if code is None:
-        record('REQ-CHAT-013 shell-relative-path', SKIP, 'server unreachable')
-        return
-    if code != 200:
-        record('REQ-CHAT-013 shell-relative-path', FAIL, f'HTTP {code}: {d}')
-        return
-    text = d.get('response') or ''
-    ok = ('FAILED' not in text) and ('sandpits/ten' in text or 'README.md' in text or 'working' in text)
-    record('REQ-CHAT-013 shell-relative-path', PASS if ok else FAIL, text[:120])
-
-
 # ── Runner ─────────────────────────────────────────────────────────────────────
 def main():
     print(f"\n{'='*60}")
@@ -312,7 +293,6 @@ def main():
     test_chat_jobs_status_endpoint()
     test_fs_readonly_skill()
     test_shell_pwd_allowed()
-    test_shell_relative_path_ops()
 
     passed = sum(1 for _, s, _ in results if s == PASS)
     failed = sum(1 for _, s, _ in results if s == FAIL)

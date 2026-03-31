@@ -10,8 +10,7 @@
 ## TEST ENVIRONMENT
 
 | Component | Status | Version |
-|-----------|--------|---------|
-| Fridays Service | ✅ Running | port 5050 |
+| ----------- | -------- | --------- || Fridays Service | ✅ Running | port 5050 |
 | Ollama | ✅ Running | gemma3, llama3.2, qwen2.5, deepseek-r1 |
 | Database | ✅ Ready | swarm_memory.db (91 conversations, 65 tickets) |
 | Agents | ⚠️ Disconnected | Orchestrator responds; full swarm chat offline |
@@ -342,8 +341,7 @@ EOFPYTHON
 ## SUMMARY OF RESULTS
 
 | Suite | Tests | Pass | Fail | Timeout | Status |
-|-------|-------|------|------|---------|--------|
-| A: API Endpoints | 9 | 8 | 0 | 1 | 🟡 BLOCKED |
+| ------- | ------- | ------ | ------ | --------- | -------- || A: API Endpoints | 9 | 8 | 0 | 1 | 🟡 BLOCKED |
 | B: Terminal | 2 | 2 | 0 | 0 | ✅ OK |
 | C: Services | 3 | 1 | 0 | 2 | ⚠️ OFFLINE |
 | D: Data Flow | 2 | 1 | 0 | 1 | 🟡 PARTIAL |

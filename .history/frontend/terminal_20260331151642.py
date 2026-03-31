@@ -2455,6 +2455,9 @@ def api_chat():
                     return None
 
                 # Prefer fs_readonly for safe repository exploration from chat.
+                if cmd == 'pwd':
+                    return 'read .instructions.md 200'
+
                 m = re.match(r'^ls(?:\s+-[a-zA-Z]+)?\s+(.+)$', cmd)
                 if m:
                     return f'ls {m.group(1).strip()}'
