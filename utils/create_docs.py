@@ -222,10 +222,10 @@ doc('02_pipeline.docx', 'Pipeline Flows', [
 # ── 03_database.docx ─────────────────────────────────────────────────────────
 doc('03_database.docx', 'Database — All 22 Tables', [
     ('Overview', [
-        'Single SQLite database at /home/seven/swarm/swarm.db.',
+        'Single SQLite database at /home/seven/swarm/swarm_memory.db.',
         'All access through database.py helper functions.',
         'Row factory: sqlite3.Row — all rows accessible as dicts.',
-        '22 tables across 5 functional areas.',
+        '49 tables across 5 functional areas.',
     ]),
     ('Conversation & Message Tables', [
         '• conversations — one row per question session. Fields: id, title, source (email/terminal/telegram), sender, created_at.',
@@ -308,7 +308,7 @@ doc('04_files.docx', 'File Reference', [
         '• swarm-terminal.service — runs terminal.py (Flask). Port 5050.',
     ]),
     ('Data (/home/seven/swarm/)', [
-        '• swarm.db — the SQLite database. 22 tables.',
+        '• swarm_memory.db — the SQLite database. 49 tables.',
         '• swarm_docs/ — this document repository. 12 .docx reference files.',
         '• sandpits/ — agent workspace directories (L0-L4 trust levels).',
         '• credentials/ — Gmail OAuth2 credentials (never commit).',
@@ -582,7 +582,7 @@ doc('00_index.docx', 'Master Index', [
     ('Quick Reference', [
         'Dashboard: http://seven-potato:5050 (Tailscale)',
         'Telegram bot: @Seven_FridaysBot',
-        'DB location: /home/seven/swarm/swarm.db',
+        'DB location: /home/seven/swarm/swarm_memory.db',
         'Services: swarm-listener | swarm-telegram | swarm-terminal',
         'Ollama models: gemma3:latest | llama3.2:latest | qwen2.5:latest | qwen:latest | deepseek-r1:7b',
         'Docs: /home/seven/swarm/swarm_docs/',
