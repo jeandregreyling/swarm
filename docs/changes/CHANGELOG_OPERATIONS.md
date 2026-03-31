@@ -135,3 +135,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Patched /api/chat history+transcript filters to exclude fridays skill rows from LLM context, added markdown rendering/CSS for chat bubbles and conversation viewer, injected recent memory rows into Nine/Ten system context, and added tests/test_chat_quality.py with 8 passing checks.
 - Rollback: Revert frontend/terminal.py frontend/templates/terminal_base.html utils/config.py tests/test_chat_quality.py docs/testing/ALM_TEST_SPECIFICATION.md docs/testing/E2E_TEST_SUITE.md and restart swarm-terminal.
 
+- Time (UTC): 2026-03-31T03:34:01Z
+- Actor: copilot
+- Scope: fridays/persistent-chat-progress
+- Change: Make long-running Gemma chats persistent with live status polling instead of timeout dead-ends
+- Validation: Added backend persistent chat job registry and /api/chat/jobs/status polling endpoint, changed /api/chat timeout handling to keep futures alive and complete in background, and updated frontend loading panel to display per-agent running stages until completion with automatic thread refresh. Added REQ-CHAT-008 coverage in tests/test_chat_quality.py and verified 9/9 chat tests + 21/21 e2e tests pass.
+- Rollback: Revert frontend/terminal.py frontend/templates/terminal_base.html tests/test_chat_quality.py docs/testing/ALM_TEST_SPECIFICATION.md docs/testing/E2E_TEST_SUITE.md and restart swarm-terminal.
+
