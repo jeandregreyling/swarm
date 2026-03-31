@@ -4548,7 +4548,6 @@ function createNewThread() {
 function initializeChatPanel() {
   renderChatAgentToggles();
   renderReplyBanner();
-  renderChatThreadRail();
   if (!window.__fridaysChatConversationId) {
     _renderWelcome();
   }
@@ -4591,7 +4590,7 @@ function sendMessage() {
   .then(data => {
     loadingCtl.stop(data.responses || []);
     if (data && data.conversation_id) {
-      _setActiveThreadId(data.conversation_id);
+      window.__fridaysChatConversationId = data.conversation_id;
       refreshChatThreadList(data.conversation_id);
     }
 
