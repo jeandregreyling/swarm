@@ -5143,9 +5143,8 @@ function _startLoadingTicker(panel, agents, estimateMs) {
           if (etaSeconds > 0) perAgentTargetMs[j.agent] = etaSeconds * 1000;
           const state = panel.querySelector('[data-state="' + j.agent + '"]');
           if (state) {
-            const runtimeClass = j.runtime_class ? ('[' + j.runtime_class + '] ') : '';
             const etaSuffix = etaSeconds > 0 ? (' · ETA ~' + etaSeconds + 's') : '';
-            state.textContent = 'alive · ' + runtimeClass + (j.stage || 'running') + etaSuffix;
+            state.textContent = 'alive · ' + (j.stage || 'running') + etaSuffix;
           }
           const fill = panel.querySelector('[data-fill="' + j.agent + '"]');
           if (fill) fill.style.width = '96%';
@@ -5162,12 +5161,11 @@ function _startLoadingTicker(panel, agents, estimateMs) {
         if (etaSeconds > 0) perAgentTargetMs[j.agent] = etaSeconds * 1000;
         const state = panel.querySelector('[data-state="' + j.agent + '"]');
         if (state) {
-          const runtimeClass = j.runtime_class ? ('[' + j.runtime_class + '] ') : '';
           if (j.status === 'completed') state.textContent = 'alive · completed';
           else if (j.status === 'failed') state.textContent = 'alive · failed';
           else {
             const etaSuffix = etaRemaining > 0 ? (' · ~' + etaRemaining + 's left') : '';
-            state.textContent = 'alive · ' + runtimeClass + (j.stage || j.status || 'running') + etaSuffix;
+            state.textContent = 'alive · ' + (j.stage || j.status || 'running') + etaSuffix;
           }
         }
         const fill = panel.querySelector('[data-fill="' + j.agent + '"]');

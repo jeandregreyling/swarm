@@ -186,19 +186,6 @@ _CHAT_AGENT_ETA_SECONDS = {
     'twelve': 10,
 }
 
-_CHAT_AGENT_RUNTIME_CLASS = {
-    'gemma': 'local',
-    'llama': 'local',
-    'qwen': 'local',
-    'librarian': 'local',
-    'duck': 'local',
-    'sniffles': 'local',
-    'nine': 'ghost',
-    'ten': 'ghost',
-    'eleven': 'ghost',
-    'twelve': 'ghost',
-}
-
 
 def _chat_now_iso():
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -206,10 +193,6 @@ def _chat_now_iso():
 
 def _chat_eta_seconds(agent):
     return int(_CHAT_AGENT_ETA_SECONDS.get((agent or '').lower(), 60))
-
-
-def _chat_runtime_class(agent):
-    return _CHAT_AGENT_RUNTIME_CLASS.get((agent or '').lower(), 'unknown')
 
 
 def _chat_stage_for(agent, elapsed_ms):
@@ -275,7 +258,6 @@ def _chat_job_public(job):
         'conversation_id': job.get('conversation_id'),
         'agent': job.get('agent'),
         'status': job.get('status', 'running'),
-        'runtime_class': job.get('runtime_class') or _chat_runtime_class(job.get('agent')),
         'stage': job.get('stage') or _chat_stage_for(job.get('agent'), elapsed_ms),
         'eta_seconds': eta_seconds,
         'eta_remaining_seconds': eta_remaining_seconds,
@@ -2998,7 +2980,6 @@ def api_chat():
                     'conversation_id': conv_id,
                     'agent': selected_agent,
                     'status': 'running',
-                    'runtime_class': _chat_runtime_class(selected_agent),
                     'stage': _chat_stage_for(selected_agent, 0),
                     'eta_seconds': eta_seconds,
                     'started_ts': started_ts,
@@ -3100,7 +3081,6 @@ def api_chat():
                     'response': response_text,
                     'tokens': tokens_used,
                     'elapsed_ms': elapsed_ms,
-                    'runtime_class': _chat_runtime_class(selected_agent),
                     'eta_seconds': _chat_eta_seconds(selected_agent) if pending else 0,
                     'pending': pending,
                     'job_id': pending_job_id,
@@ -3117,8 +3097,6 @@ def api_chat():
                 ),
                 'tokens': 0,
                 'elapsed_ms': 0,
-                'runtime_class': _chat_runtime_class(agent_name),
-                'eta_seconds': 0,
                 'pending': False,
                 'job_id': None,
             }
