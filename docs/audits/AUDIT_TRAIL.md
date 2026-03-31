@@ -197,3 +197,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/terminal.py fridays/shell_agent.py frontend/templates/terminal_base.html utils/config.py tests/test_chat_quality.py and restart swarm-terminal.
 
+- Audit ID: AUDIT-20260331-044200
+- Time (UTC): 2026-03-31T04:42:00Z
+- Actor: copilot
+- Objective: Move layer switch to Monitor and add memory edit/append/attach/share/delete workflows
+- Evidence: Removed floating Console/Fridays layer pills, added layer navigation controls inside Monitor window, expanded /api/memory to honor limit and min filtering, added memory PATCH/attach/assign endpoints, and upgraded Memory modal actions for edit/append/attach/share/delete. Also set chat fanout persistent mode to prevent fast timeout failures and validated pending completion behavior for Gemma.
+- Result: PASS
+- Follow-up: Revert frontend/templates/terminal_base.html frontend/templates/terminal_ui_v2.html frontend/terminal.py and restart swarm-terminal.
+

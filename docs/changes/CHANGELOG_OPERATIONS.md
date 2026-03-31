@@ -177,3 +177,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Updated chat runtime so gemma/llama/qwen/librarian timeout path bubbles to pending job tracking instead of immediate timeout text, added shell->fs_readonly compatibility routing for read/list operations in Nine/Ten tool loop, expanded shell whitelist for relative file/list commands, added failed-job completion messages into conversation, and added a ✓ Request approval button on failed skill event cards that opens an internal queue/proposal request.
 - Rollback: Revert frontend/terminal.py fridays/shell_agent.py frontend/templates/terminal_base.html utils/config.py tests/test_chat_quality.py and restart swarm-terminal.
 
+- Time (UTC): 2026-03-31T04:42:00Z
+- Actor: copilot
+- Scope: monitor-layer-controls-memory-crud
+- Change: Move layer switch to Monitor and add memory edit/append/attach/share/delete workflows
+- Validation: Removed floating Console/Fridays layer pills, added layer navigation controls inside Monitor window, expanded /api/memory to honor limit and min filtering, added memory PATCH/attach/assign endpoints, and upgraded Memory modal actions for edit/append/attach/share/delete. Also set chat fanout persistent mode to prevent fast timeout failures and validated pending completion behavior for Gemma.
+- Rollback: Revert frontend/templates/terminal_base.html frontend/templates/terminal_ui_v2.html frontend/terminal.py and restart swarm-terminal.
+
