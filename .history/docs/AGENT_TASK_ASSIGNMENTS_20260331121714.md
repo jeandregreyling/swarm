@@ -200,8 +200,6 @@ systemctl is-active swarm-discord
 **Dependency:** Tickets system working  
 **Estimated Time:** 1.5 hours
 
-#### Task 5 Subtasks
-
 ##### 5.1 Send test email to system
 - Email address configured in trusted_senders
 - Subject: "Test E2E Email"
@@ -235,8 +233,6 @@ systemctl is-active swarm-discord
 **Owner:** Sniffles (Proposal Auditor) or Gemma  
 **Dependency:** None (independent)  
 **Estimated Time:** 1 hour
-
-#### Task 6 Subtasks
 
 ##### 6.1 Review existing proposals
 - List: `GET /api/proposals`
