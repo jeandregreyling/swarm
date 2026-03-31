@@ -1818,16 +1818,9 @@ class WindowManager {
       </div>
     `;
 
-    // Resize handles (edges + corners)
-    const handles = [
-      'n', 's', 'e', 'w',
-      'ne', 'nw', 'se', 'sw',
-    ].map(dir => {
-      const el = document.createElement('div');
-      el.className = `resize-handle resize-${dir}`;
-      el.dataset.dir = dir;
-      return el;
-    });
+    // Resize handle
+    const resize = document.createElement('div');
+    resize.className = 'window-resize-handle';
 
     // Content area
     const contentDiv = document.createElement('div');
@@ -1836,13 +1829,11 @@ class WindowManager {
 
     win.appendChild(header);
     win.appendChild(contentDiv);
-    handles.forEach(h => win.appendChild(h));
+    win.appendChild(resize);
 
     // Events
     header.addEventListener('mousedown', (e) => this.startDrag(e, id));
-    handles.forEach(handle => {
-      handle.addEventListener('mousedown', (e) => this.startResize(e, id, handle.dataset.dir));
-    });
+    resize.addEventListener('mousedown', (e) => this.startResize(e, id));
 
     document.getElementById('window-container').appendChild(win);
 
@@ -1851,14 +1842,11 @@ class WindowManager {
       id,
       title,
       config,
-      docked: !!config.docked,
       minimized: false,
       maximized: false,
       fullscreen: false,
       pinned: false,
     });
-
-    this.setDocked(id, !!config.docked);
 
     this.addTaskbarBtn(id, title);
     this.save();
@@ -1879,8 +1867,6 @@ class WindowManager {
 
   startDrag(e, id) {
     if (e.target.closest('.window-btn')) return;
-    const winState = this.windows.get(id);
-    if (!winState || winState.docked) return;
     this.dragging = {
       id,
       startX: e.clientX,
@@ -1909,19 +1895,13 @@ class WindowManager {
     }
   }
 
-  startResize(e, id, direction = 'se') {
-    const winState = this.windows.get(id);
-    if (!winState) return;
-    if (winState.docked && direction !== 'w') return;
+  startResize(e, id) {
     this.resizing = {
       id,
-      direction,
       startX: e.clientX,
       startY: e.clientY,
-      startWidth: winState.el.offsetWidth,
-      startHeight: winState.el.offsetHeight,
-      startLeft: winState.el.offsetLeft,
-      startTop: winState.el.offsetTop,
+      startWidth: this.windows.get(id).el.offsetWidth,
+      startHeight: this.windows.get(id).el.offsetHeight,
     };
     document.addEventListener('mousemove', (evt) => this.resize(evt));
     document.addEventListener('mouseup', () => this.stopResize());
@@ -1929,38 +1909,11 @@ class WindowManager {
 
   resize(e) {
     if (!this.resizing) return;
-    const state = this.windows.get(this.resizing.id);
-    const win = state.el;
+    const win = this.windows.get(this.resizing.id).el;
     const dw = e.clientX - this.resizing.startX;
     const dh = e.clientY - this.resizing.startY;
-    const dir = this.resizing.direction || 'se';
-    const minW = 320;
-    const minH = 220;
-
-    if (state.docked) {
-      const nextW = Math.max(minW, this.resizing.startWidth - dw);
-      win.style.width = nextW + 'px';
-      return;
-    }
-
-    if (dir.includes('e')) {
-      win.style.width = Math.max(minW, this.resizing.startWidth + dw) + 'px';
-    }
-    if (dir.includes('s')) {
-      win.style.height = Math.max(minH, this.resizing.startHeight + dh) + 'px';
-    }
-    if (dir.includes('w')) {
-      const width = Math.max(minW, this.resizing.startWidth - dw);
-      const left = this.resizing.startLeft + (this.resizing.startWidth - width);
-      win.style.width = width + 'px';
-      win.style.left = left + 'px';
-    }
-    if (dir.includes('n')) {
-      const height = Math.max(minH, this.resizing.startHeight - dh);
-      const top = this.resizing.startTop + (this.resizing.startHeight - height);
-      win.style.height = height + 'px';
-      win.style.top = top + 'px';
-    }
+    win.style.width = Math.max(300, this.resizing.startWidth + dw) + 'px';
+    win.style.height = Math.max(200, this.resizing.startHeight + dh) + 'px';
   }
 
   stopResize() {
@@ -1968,37 +1921,6 @@ class WindowManager {
       this.resizing = null;
       this.save();
     }
-  }
-
-  setDocked(id, docked) {
-    const win = this.windows.get(id);
-    if (!win) return;
-    win.docked = !!docked;
-    if (win.docked) {
-      win.el.classList.add('docked-right');
-      win.el.style.width = (win.config.width || Math.max(520, Math.min(860, Math.round(window.innerWidth * 0.42)))) + 'px';
-      win.el.style.height = 'calc(100vh - 50px)';
-      win.el.style.top = '0px';
-      win.el.style.left = 'auto';
-      win.el.style.right = '0px';
-      win.el.style.zIndex = this.zIndex++;
-    } else {
-      win.el.classList.remove('docked-right');
-      win.el.style.right = '';
-      win.el.style.left = (win.config.x || 80) + 'px';
-      win.el.style.top = (win.config.y || 60) + 'px';
-      win.el.style.width = (win.config.width || 640) + 'px';
-      win.el.style.height = (win.config.height || 600) + 'px';
-      win.el.style.zIndex = this.zIndex++;
-    }
-    this.save();
-  }
-
-  toggleDock(id) {
-    const win = this.windows.get(id);
-    if (!win) return;
-    this.setDocked(id, !win.docked);
-    showToast(win.docked ? `Docked ${win.title}` : `Popped out ${win.title}`, 'info');
   }
 
   minimize(id) {
@@ -2142,7 +2064,6 @@ class WindowManager {
         maximized: win.maximized,
         fullscreen: win.fullscreen,
         pinned: win.pinned,
-        docked: win.docked,
       };
     });
     localStorage.setItem('fridays-windows', JSON.stringify(state));
@@ -2675,16 +2596,9 @@ function loadChatData(win) {
   if (!messages) return;
 
   initializeChatPanel();
-  const savedThread = localStorage.getItem('fridays-chat-active-thread');
-  const preferred = window.__fridaysChatConversationId || (savedThread ? Number(savedThread) : null);
-  refreshChatThreadList(preferred).then(() => {
+  refreshChatThreadList(window.__fridaysChatConversationId || null).then(() => {
     if (window.__fridaysChatConversationId) {
       loadConversationMessages(window.__fridaysChatConversationId);
-      return;
-    }
-    const first = (window._chatConversations || [])[0];
-    if (first && first.id) {
-      switchChatThread(String(first.id));
     }
   });
 }
@@ -4186,15 +4100,6 @@ window.__fridaysChatConversationId = window.__fridaysChatConversationId || null;
 window.__fridaysChatEnabledAgents = window.__fridaysChatEnabledAgents || { gemma: true };
 window.__fridaysReplyTarget = window.__fridaysReplyTarget || null;
 
-function _setActiveThreadId(convId) {
-  window.__fridaysChatConversationId = convId;
-  if (convId) {
-    localStorage.setItem('fridays-chat-active-thread', String(convId));
-  } else {
-    localStorage.removeItem('fridays-chat-active-thread');
-  }
-}
-
 function _chatMessagesEl() {
   return document.getElementById('chat-messages');
 }
@@ -4438,28 +4343,6 @@ function _renderWelcome() {
   `;
 }
 
-function renderChatThreadRail() {
-  const rail = document.getElementById('chat-thread-list');
-  if (!rail) return;
-  const convs = window._chatConversations || [];
-  if (!convs.length) {
-    rail.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:11px;">No saved threads yet.</div>';
-    return;
-  }
-
-  rail.innerHTML = convs.slice(0, 80).map(conv => {
-    const active = Number(window.__fridaysChatConversationId) === Number(conv.id) ? ' active' : '';
-    const ts = (conv.timestamp || conv.created_at || '').slice(0, 16);
-    const title = _escapeHtml(conv.title || '(untitled)');
-    return `
-      <div class="thread-item${active}" onclick="switchChatThread('${conv.id}')">
-        <div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.3;">${title}</div>
-        <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">#${conv.id}${ts ? ' · ' + ts : ''}</div>
-      </div>
-    `;
-  }).join('');
-}
-
 function renderChatMessages(rows) {
   const messages = _chatMessagesEl();
   if (!messages) return;
@@ -4515,12 +4398,9 @@ function refreshChatThreadList(preferredId = null) {
       const targetId = preferredId || window.__fridaysChatConversationId;
       if (targetId) {
         threadSelect.value = String(targetId);
-        _setActiveThreadId(Number(targetId));
       } else {
         threadSelect.value = '';
-        _setActiveThreadId(null);
       }
-      renderChatThreadRail();
     })
     .catch(e => {
       console.error('Failed to load conversation list:', e);
@@ -4529,18 +4409,14 @@ function refreshChatThreadList(preferredId = null) {
 
 function switchChatThread(convIdValue) {
   const convId = convIdValue ? Number(convIdValue) : null;
-  _setActiveThreadId(Number.isFinite(convId) ? convId : null);
-  const threadSelect = document.getElementById('chat-thread-select');
-  if (threadSelect) threadSelect.value = convId ? String(convId) : '';
-  renderChatThreadRail();
+  window.__fridaysChatConversationId = Number.isFinite(convId) ? convId : null;
   loadConversationMessages(window.__fridaysChatConversationId);
 }
 
 function createNewThread() {
-  _setActiveThreadId(null);
+  window.__fridaysChatConversationId = null;
   const threadSelect = document.getElementById('chat-thread-select');
   if (threadSelect) threadSelect.value = '';
-  renderChatThreadRail();
   _renderWelcome();
   showToast('Started a new thread', 'success');
 }
@@ -4548,7 +4424,6 @@ function createNewThread() {
 function initializeChatPanel() {
   renderChatAgentToggles();
   renderReplyBanner();
-  renderChatThreadRail();
   if (!window.__fridaysChatConversationId) {
     _renderWelcome();
   }
@@ -4591,7 +4466,7 @@ function sendMessage() {
   .then(data => {
     loadingCtl.stop(data.responses || []);
     if (data && data.conversation_id) {
-      _setActiveThreadId(data.conversation_id);
+      window.__fridaysChatConversationId = data.conversation_id;
       refreshChatThreadList(data.conversation_id);
     }
 
