@@ -1376,7 +1376,13 @@ def run_forever(interval=60):
                 except KeyboardInterrupt:
                     raise
                 except Exception as e:
+                    err_str = str(e)
                     print(f'[Listener] Push error: {e}')
+                    if 'invalid_grant' in err_str or 'Token has been expired' in err_str:
+                        print('[Listener] OAuth token expired — falling back to IMAP poll.')
+                        log_activity('listener', 'push_fallback', 'invalid_grant: switched to IMAP poll')
+                        use_push = False
+                        break
                     time.sleep(5)
         except ImportError as e:
             print(f'[Listener] Gmail Push unavailable ({e}), falling back to IMAP poll.')
