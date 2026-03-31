@@ -5088,7 +5088,7 @@ function _createLoadingPanel(agents) {
         <div data-agent="${a}">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--text-dim);margin-bottom:3px;">
             <span>${a}</span>
-            <span data-state="${a}" style="color:var(--text-dim);">alive · queued</span>
+            <span data-state="${a}" style="color:var(--text-dim);">queued</span>
           </div>
           <div style="height:7px;background:var(--window-header);border:1px solid var(--border);border-radius:999px;overflow:hidden;">
             <div data-fill="${a}" style="height:100%;width:4%;background:var(--accent);transition:width 0.2s linear;"></div>
@@ -5133,7 +5133,7 @@ function _startLoadingTicker(panel, agents, estimateMs) {
         jobs.forEach(j => {
           if (!j || !j.agent) return;
           const state = panel.querySelector('[data-state="' + j.agent + '"]');
-          if (state) state.textContent = 'alive · ' + (j.stage || 'running');
+          if (state) state.textContent = j.stage || 'running';
           const fill = panel.querySelector('[data-fill="' + j.agent + '"]');
           if (fill) fill.style.width = '96%';
         });
@@ -5145,11 +5145,7 @@ function _startLoadingTicker(panel, agents, estimateMs) {
       jobs.forEach(j => {
         if (!j || !j.agent) return;
         const state = panel.querySelector('[data-state="' + j.agent + '"]');
-        if (state) {
-          if (j.status === 'completed') state.textContent = 'alive · completed';
-          else if (j.status === 'failed') state.textContent = 'alive · failed';
-          else state.textContent = 'alive · ' + (j.stage || j.status || 'running');
-        }
+        if (state) state.textContent = j.stage || j.status || 'running';
         const fill = panel.querySelector('[data-fill="' + j.agent + '"]');
         if (!fill) return;
         if (j.status === 'completed') {
