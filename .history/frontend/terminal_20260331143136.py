@@ -2753,39 +2753,6 @@ def api_chat():
         return jsonify({'ok': False, 'response': f'Error: {str(e)}'}), 500
 
 
-@app.route('/api/chat/jobs/status')
-def api_chat_jobs_status():
-    """Poll status for long-running chat jobs.
-
-    Query params:
-    - conversation_id (optional)
-    - job_ids (optional comma-separated list)
-    """
-    conv_id = request.args.get('conversation_id')
-    raw_job_ids = (request.args.get('job_ids') or '').strip()
-    want_ids = {x.strip() for x in raw_job_ids.split(',') if x.strip()} if raw_job_ids else set()
-
-    conv_id_int = None
-    if conv_id:
-        try:
-            conv_id_int = int(conv_id)
-        except Exception:
-            conv_id_int = None
-
-    with _CHAT_JOB_LOCK:
-        _cleanup_chat_jobs_locked()
-        jobs = []
-        for job in _CHAT_JOBS.values():
-            if conv_id_int is not None and int(job.get('conversation_id') or -1) != conv_id_int:
-                continue
-            if want_ids and job.get('job_id') not in want_ids:
-                continue
-            jobs.append(_chat_job_public(job))
-
-    jobs.sort(key=lambda j: (j.get('status') != 'running', j.get('agent') or ''))
-    return jsonify({'ok': True, 'jobs': jobs})
-
-
 @app.route('/api/activity')
 def api_activity():
     from database import get_activity_log

@@ -2615,63 +2615,11 @@ def api_chat():
         )
 
         responses_map = {}
-        pending_jobs = []
         deferred_agents = set()
         runnable_agents = list(normalized_agents)
         if 'sniffles' in runnable_agents and len(runnable_agents) > 1:
             runnable_agents = [a for a in runnable_agents if a != 'sniffles']
             deferred_agents.add('sniffles')
-
-        def _register_persistent_job(selected_agent, future):
-            job_id = f"chatjob-{uuid.uuid4().hex[:12]}"
-            started_ts = time.time()
-            now_iso = _chat_now_iso()
-            with _CHAT_JOB_LOCK:
-                _cleanup_chat_jobs_locked()
-                _CHAT_JOBS[job_id] = {
-                    'job_id': job_id,
-                    'conversation_id': conv_id,
-                    'agent': selected_agent,
-                    'status': 'running',
-                    'stage': _chat_stage_for(selected_agent, 0),
-                    'started_ts': started_ts,
-                    'updated_ts': started_ts,
-                    'started_at': now_iso,
-                    'updated_at': now_iso,
-                }
-
-            def _finish_job(done_future):
-                updated_ts = time.time()
-                updated_iso = _chat_now_iso()
-                try:
-                    response_text, tokens_used, elapsed_ms = done_future.result()
-                    log_message(conv_id, selected_agent, response_text, to_agent='user', message_type='response')
-                    with _CHAT_JOB_LOCK:
-                        job = _CHAT_JOBS.get(job_id)
-                        if job:
-                            job.update({
-                                'status': 'completed',
-                                'stage': 'completed',
-                                'updated_ts': updated_ts,
-                                'updated_at': updated_iso,
-                                'elapsed_ms': int(elapsed_ms or 0),
-                                'tokens': int(tokens_used or 0),
-                            })
-                except Exception as exc:
-                    with _CHAT_JOB_LOCK:
-                        job = _CHAT_JOBS.get(job_id)
-                        if job:
-                            job.update({
-                                'status': 'failed',
-                                'stage': 'failed',
-                                'error': str(exc),
-                                'updated_ts': updated_ts,
-                                'updated_at': updated_iso,
-                            })
-
-            future.add_done_callback(_finish_job)
-            return job_id
-
         fanout_executor = ThreadPoolExecutor(max_workers=max(1, len(runnable_agents)))
         try:
             future_map = {
@@ -2689,33 +2637,25 @@ def api_chat():
                 try:
                     wait_timeout = 40 if selected_agent == 'sniffles' else 26
                     response_text, tokens_used, elapsed_ms = future.result(timeout=wait_timeout)
-                    pending = False
-                    pending_job_id = None
                 except FuturesTimeoutError:
-                    # Keep the same task alive in background and expose progress/status via polling.
-                    pending_job_id = _register_persistent_job(selected_agent, future)
-                    pending_jobs.append(pending_job_id)
-                    pending = True
                     response_text, tokens_used = (
-                        f"[{selected_agent}] still working. Tracking progress until completion.",
+                        f"[{selected_agent}] is taking longer than expected. "
+                        "Try again in a moment or switch to another agent.",
                         0,
                     )
                     elapsed_ms = int(wait_timeout * 1000)
+                    future.cancel()
                 except Exception as err:
                     response_text, tokens_used = (f'[{selected_agent}] error: {str(err)}', 0)
                     elapsed_ms = 0
-                    pending = False
-                    pending_job_id = None
                 responses_map[selected_agent] = {
                     'agent': selected_agent,
                     'response': response_text,
                     'tokens': tokens_used,
                     'elapsed_ms': elapsed_ms,
-                    'pending': pending,
-                    'job_id': pending_job_id,
                 }
         finally:
-            fanout_executor.shutdown(wait=False, cancel_futures=False)
+            fanout_executor.shutdown(wait=False, cancel_futures=True)
 
         for agent_name in deferred_agents:
             responses_map[agent_name] = {
@@ -2726,15 +2666,11 @@ def api_chat():
                 ),
                 'tokens': 0,
                 'elapsed_ms': 0,
-                'pending': False,
-                'job_id': None,
             }
 
         responses = [responses_map[a] for a in normalized_agents if a in responses_map]
         total_tokens = sum(int(r.get('tokens') or 0) for r in responses)
         for entry in responses:
-            if entry.get('pending'):
-                continue
             log_message(conv_id, entry['agent'], entry['response'], to_agent='user', message_type='response')
 
         primary = responses[0] if responses else {'agent': normalized_agents[0], 'response': '', 'tokens': 0}
@@ -2745,45 +2681,11 @@ def api_chat():
             'response': primary['response'],
             'tokens': total_tokens,
             'responses': responses,
-            'pending_jobs': pending_jobs,
             'agents': normalized_agents,
             'conversation_id': conv_id,
         })
     except Exception as e:
         return jsonify({'ok': False, 'response': f'Error: {str(e)}'}), 500
-
-
-@app.route('/api/chat/jobs/status')
-def api_chat_jobs_status():
-    """Poll status for long-running chat jobs.
-
-    Query params:
-    - conversation_id (optional)
-    - job_ids (optional comma-separated list)
-    """
-    conv_id = request.args.get('conversation_id')
-    raw_job_ids = (request.args.get('job_ids') or '').strip()
-    want_ids = {x.strip() for x in raw_job_ids.split(',') if x.strip()} if raw_job_ids else set()
-
-    conv_id_int = None
-    if conv_id:
-        try:
-            conv_id_int = int(conv_id)
-        except Exception:
-            conv_id_int = None
-
-    with _CHAT_JOB_LOCK:
-        _cleanup_chat_jobs_locked()
-        jobs = []
-        for job in _CHAT_JOBS.values():
-            if conv_id_int is not None and int(job.get('conversation_id') or -1) != conv_id_int:
-                continue
-            if want_ids and job.get('job_id') not in want_ids:
-                continue
-            jobs.append(_chat_job_public(job))
-
-    jobs.sort(key=lambda j: (j.get('status') != 'running', j.get('agent') or ''))
-    return jsonify({'ok': True, 'jobs': jobs})
 
 
 @app.route('/api/activity')

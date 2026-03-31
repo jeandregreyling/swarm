@@ -5027,8 +5027,8 @@ function sendMessage() {
   })
   .then(r => r.json())
   .then(data => {
+    loadingCtl.stop(data.responses || []);
     if (!data || data.ok === false) {
-      loadingCtl.stop([]);
       const err = (data && (data.error || data.response)) || 'Request failed.';
       _appendChatBubble('system', err);
       messages.scrollTop = messages.scrollHeight;
@@ -5039,23 +5039,12 @@ function sendMessage() {
       refreshChatThreadList(data.conversation_id);
     }
 
-    const allResponses = Array.isArray(data.responses) ? data.responses : [];
-    const immediateResponses = allResponses.filter(entry => !entry.pending);
-    const pendingJobs = Array.isArray(data.pending_jobs) ? data.pending_jobs : [];
-
-    if (immediateResponses.length) {
-      immediateResponses.forEach(entry => {
+    if (Array.isArray(data.responses) && data.responses.length) {
+      data.responses.forEach(entry => {
         _appendChatBubble(entry.agent || 'agent', entry.response || '...');
       });
-    } else if (!pendingJobs.length) {
-      _appendChatBubble(data.agent || selectedAgents[0], data.response || '...');
-    }
-
-    if (pendingJobs.length) {
-      loadingCtl.setPending(allResponses.filter(r => r.pending));
-      _pollPendingChatJobs(data.conversation_id, pendingJobs, loadingCtl);
     } else {
-      loadingCtl.stop(allResponses);
+      _appendChatBubble(data.agent || selectedAgents[0], data.response || '...');
     }
 
     messages.scrollTop = messages.scrollHeight;
