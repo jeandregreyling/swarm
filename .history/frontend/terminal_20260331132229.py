@@ -27,7 +27,6 @@ import json
 import queue
 import threading
 import os
-import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
