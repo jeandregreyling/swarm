@@ -93,3 +93,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert core/pipeline/orchestrator.py.
 
+- Audit ID: AUDIT-20260331-021518
+- Time (UTC): 2026-03-31T02:15:18Z
+- Actor: copilot
+- Objective: Add organic chat UX + Duck/Sniffles controls
+- Evidence: Added Duck/Sniffles chat toggles, Sniffles non-persistent behavior, conversational bubble UI with reactions/reply/ask-another actions, and audit-agent routing safeguards for responsiveness.
+- Result: PASS
+- Follow-up: Revert frontend/terminal.py, core/pipeline/orchestrator.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
+
