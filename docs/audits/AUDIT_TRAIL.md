@@ -205,3 +205,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/templates/terminal_base.html frontend/templates/terminal_ui_v2.html frontend/terminal.py and restart swarm-terminal.
 
+- Audit ID: AUDIT-20260331-045624
+- Time (UTC): 2026-03-31T04:56:24Z
+- Actor: copilot
+- Objective: Replace prompt-based memory actions with inline modal forms and show explicit alive labels
+- Evidence: Upgraded memory modal actions to inline form-based edit/append/attach/share flows (no JS prompt popups), kept delete in-modal, and preserved cache refresh behavior. Enhanced pending loading panel state labels to display explicit 'alive' status per agent stage. Regression suites remain green.
+- Result: PASS
+- Follow-up: Revert frontend/templates/terminal_base.html and restart swarm-terminal.
+
