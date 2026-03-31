@@ -51,17 +51,3 @@ This is the canonical append-only change ledger for operational and code changes
   6. FIXED test REQ-020 — queue create returns 201 (not 200); read-back now checks nested queue.id
 - Validation: python3 tests/test_e2e_fridays.py → 21 PASS  0 FAIL  0 ERROR
 - Rollback: Revert api_ticket_patch() to single UPDATE; restore test assertions
-- Time (UTC): 2026-03-31T01:27:17Z
-- Actor: copilot
-- Scope: ghost-layer/ten
-- Change: Remap Ten from Gemini to Copilot
-- Validation: Updated terminal roster + DB agents model to gpt-5.3-codex; created sandpits/ten workspace and registered it in FILE_REGISTRY.
-- Rollback: Revert frontend/terminal.py, utils/config.py, docs/registry/FILE_REGISTRY.md; set agents.ten model back to gemini-1.5-pro if needed.
-
-- Time (UTC): 2026-03-31T01:29:32Z
-- Actor: copilot
-- Scope: fridays/agent-roster-doc-sync
-- Change: Sync Ten Copilot labels in Fridays UI/docs
-- Validation: Updated Ten role label in frontend roster API and refreshed active AGENT_TWELVE_STATUS architecture block to show Copilot mapping + ten sandpit.
-- Rollback: Revert frontend/terminal.py and docs/AGENT_TWELVE_STATUS.md if rollback required.
-
