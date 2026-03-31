@@ -121,3 +121,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Added SKILL and /skill command parsing in /api/chat, routed to fridays.skills with trust-level ALM gating for mutating skills, and improved chat UI error handling for non-OK API responses.
 - Rollback: Revert frontend/terminal.py and frontend/templates/terminal_base.html.
 
+- Time (UTC): 2026-03-31T02:58:50Z
+- Actor: copilot
+- Scope: identity/profiles-and-skill-permissions
+- Change: Added user profiles, proxy identity, and per-skill authorization controls
+- Validation: Implemented DB-backed user_profiles + user_skill_permissions, auth/profile/permissions APIs, identity-aware chat skill execution, and Skills-window permission management with top-right identity indicator and proxy switching.
+- Rollback: Revert frontend/terminal.py utils/database.py frontend/templates/terminal_base.html.
+
