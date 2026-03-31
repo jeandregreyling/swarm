@@ -101,3 +101,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/terminal.py, core/pipeline/orchestrator.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
 
+- Audit ID: AUDIT-20260331-021925
+- Time (UTC): 2026-03-31T02:19:25Z
+- Actor: copilot
+- Objective: Enable persistent Sniffles residency trial
+- Evidence: Set Sniffles keep_alive default to 30m and adjusted chat timeout windows for Sniffles-only calls; verified model remains resident in ollama ps under memory pressure.
+- Result: PASS
+- Follow-up: Revert core/pipeline/orchestrator.py, frontend/terminal.py.
+

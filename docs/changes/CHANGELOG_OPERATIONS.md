@@ -93,3 +93,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Added Duck/Sniffles chat toggles, Sniffles non-persistent behavior, conversational bubble UI with reactions/reply/ask-another actions, and audit-agent routing safeguards for responsiveness.
 - Rollback: Revert frontend/terminal.py, core/pipeline/orchestrator.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
 
+- Time (UTC): 2026-03-31T02:19:25Z
+- Actor: copilot
+- Scope: chat/sniffles-persistent-trial
+- Change: Enable persistent Sniffles residency trial
+- Validation: Set Sniffles keep_alive default to 30m and adjusted chat timeout windows for Sniffles-only calls; verified model remains resident in ollama ps under memory pressure.
+- Rollback: Revert core/pipeline/orchestrator.py, frontend/terminal.py.
+
