@@ -3392,13 +3392,10 @@ function memoryDelete(id, table) {
 function loadMonitorData(win) {
   const content = win.el.querySelector('#monitor-content');
   if (!content) return;
-
-  if (win._monitorRefreshTimer) {
-    clearInterval(win._monitorRefreshTimer);
-    win._monitorRefreshTimer = null;
-  }
-
-  const renderMonitor = (data) => {
+  
+  fetch('/api/monitor')
+    .then(r => r.json())
+    .then(data => {
       const cpuColor  = data.cpu_percent > 70 ? '#f44' : data.cpu_percent > 50 ? '#ffa500' : '#4caf50';
       const ramColor  = data.ram_percent > 80 ? '#f44' : data.ram_percent > 60 ? '#ffa500' : '#4caf50';
       const tempColor = data.cpu_temp_c  > 75 ? '#f44' : data.cpu_temp_c > 60 ? '#ffa500' : '#4caf50';
@@ -3409,28 +3406,6 @@ function loadMonitorData(win) {
       const pools = Object.entries(data.memory_pools || {}).map(([k,v]) =>
         `<span style="margin-right:10px;">${k.replace('memory_','')}: <strong>${v}</strong></span>`
       ).join('');
-      const activeModels = (data.active_models || []).map(m => {
-        const sizeGb = (Number(m.size || 0) / (1024 * 1024 * 1024)).toFixed(2);
-        const vramGb = (Number(m.size_vram || 0) / (1024 * 1024 * 1024)).toFixed(2);
-        return `<div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);margin-bottom:6px;">
-          <div style="font-size:11px;font-weight:600;">${m.name || 'unknown model'}</div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Resident: ${sizeGb} GB · VRAM: ${vramGb} GB</div>
-          <div style="font-size:10px;color:var(--text-dim);">Expires: ${m.expires_at || 'n/a'}</div>
-        </div>`;
-      }).join('');
-      const runtimeJobs = (data.runtime_jobs || []).map(j => {
-        const elapsed = (Number(j.elapsed_ms || 0) / 1000).toFixed(1);
-        const eta = Number(j.eta_remaining_seconds || 0);
-        const runtimeCls = j.runtime_class ? `[${j.runtime_class}] ` : '';
-        return `<div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);margin-bottom:6px;">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-            <div style="font-size:11px;font-weight:600;">${j.agent || 'agent'}</div>
-            <div style="font-size:10px;color:var(--text-dim);">${elapsed}s elapsed</div>
-          </div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">${runtimeCls}${j.stage || j.status || 'running'}</div>
-          <div style="font-size:10px;color:var(--text-dim);">ETA remaining: ${eta}s</div>
-        </div>`;
-      }).join('');
       content.innerHTML = `
         <div style="font-size:12px;line-height:1.6;padding:4px 0;">
           <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
@@ -3457,8 +3432,6 @@ function loadMonitorData(win) {
             <div>Open tickets: <strong>${data.open_tickets||0}</strong> · Consults today: <strong>${data.consults_today||0}</strong></div>
             <div>Active model: <strong>${data.active_model||'none'}</strong></div>
           </div>
-          <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Agent Runtime (Live)</div>${runtimeJobs || '<span style="color:var(--text-dim);font-size:11px;">No active agent jobs.</span>'}</div>
-          <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Model Residency (${data.active_models_count || 0})</div>${activeModels || '<span style="color:var(--text-dim);font-size:11px;">No resident models reported.</span>'}</div>
           ${pools ? `<div style="margin-bottom:4px;"><div style="font-weight:600;margin-bottom:4px;">Memory Pools</div><div style="font-size:11px;color:var(--text-dim);">${pools}</div></div>` : ''}
           <div id="monitor-alm-status" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
             <div style="font-weight:600;margin-bottom:4px;">ALM Governance</div>
@@ -3490,26 +3463,10 @@ function loadMonitorData(win) {
           const el = win.el.querySelector('#monitor-alm-status');
           if (el) el.innerHTML = '<div style="font-weight:600;">ALM Governance</div><div style="font-size:11px;color:#f77;">Failed to load status</div>';
         });
-  };
-
-  const refreshMonitor = () => {
-    fetch('/api/monitor')
-      .then(r => r.json())
-      .then(renderMonitor)
-      .catch(e => {
-        content.innerHTML = `<span style="color:#f77;">Error loading monitor: ${e.message}</span>`;
-      });
-  };
-
-  refreshMonitor();
-  win._monitorRefreshTimer = setInterval(() => {
-    if (!winManager.windows.has('monitor')) {
-      clearInterval(win._monitorRefreshTimer);
-      win._monitorRefreshTimer = null;
-      return;
-    }
-    refreshMonitor();
-  }, 2500);
+    })
+    .catch(e => {
+      content.innerHTML = `<span style="color:#f77;">Error loading monitor: ${e.message}</span>`;
+    });
 }
 
 function loadHomeStats() {
