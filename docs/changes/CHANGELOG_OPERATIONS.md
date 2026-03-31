@@ -100,3 +100,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Set Sniffles keep_alive default to 30m and adjusted chat timeout windows for Sniffles-only calls; verified model remains resident in ollama ps under memory pressure.
 - Rollback: Revert core/pipeline/orchestrator.py, frontend/terminal.py.
 
+- Time (UTC): 2026-03-31T02:23:36Z
+- Actor: copilot
+- Scope: chat/eta-loading-bars
+- Change: Add chat loading bars with learned ETA
+- Validation: Added per-agent elapsed_ms telemetry and chat loading bars with ETA estimates based on moving-average latency per agent (saved in localStorage).
+- Rollback: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
+
