@@ -2300,7 +2300,6 @@ def api_chat():
                 """SELECT from_agent, content
                    FROM messages
                    WHERE conversation_id=?
-                     AND LOWER(from_agent) != 'fridays'
                    ORDER BY id DESC
                    LIMIT ?""",
                 (conv_id, limit)
@@ -2322,7 +2321,6 @@ def api_chat():
                 """SELECT from_agent, content
                    FROM messages
                    WHERE conversation_id=?
-                     AND LOWER(from_agent) != 'fridays'
                    ORDER BY id DESC
                    LIMIT ?""",
                 (conv_id, limit)
@@ -2339,7 +2337,7 @@ def api_chat():
         return "\n".join(lines)
 
     def _run_ghost_layer_chat(selected_agent, prompt, history):
-        from database import save_agent_memory, log_activity, get_agent_memory
+        from database import save_agent_memory, log_activity
         from claude_api import _load_api_key, CLAUDE_MODEL
         import anthropic
         from config import NINE_SYSTEM_PROMPT, TEN_SYSTEM_PROMPT
@@ -2348,29 +2346,7 @@ def api_chat():
         if not api_key:
             return None, 0, 'ANTHROPIC_API_KEY not configured'
 
-        base_system = NINE_SYSTEM_PROMPT if selected_agent == 'nine' else TEN_SYSTEM_PROMPT
-
-        # Inject recent memory rows as context at the bottom of the system prompt
-        try:
-            recent_memories = get_agent_memory(selected_agent, query='', limit=6)
-            if recent_memories:
-                mem_lines = []
-                for row in recent_memories:
-                    subj = str(row['subject'] or '').strip()[:120]
-                    body = str(row['content'] or '').strip()[:400]
-                    mem_lines.append(f"- [{subj}] {body}")
-                memory_block = (
-                    "\n\n=== Your recent memory (most important first) ===\n"
-                    + "\n".join(mem_lines)
-                    + "\n=== End memory ===\n"
-                    "Use this for continuity but do not narrate or repeat it verbatim."
-                )
-                system_prompt = base_system.rstrip() + memory_block
-            else:
-                system_prompt = base_system
-        except Exception:
-            system_prompt = base_system
-
+        system_prompt = NINE_SYSTEM_PROMPT if selected_agent == 'nine' else TEN_SYSTEM_PROMPT
         client = anthropic.Anthropic(api_key=api_key)
         response = client.messages.create(
             model=CLAUDE_MODEL,

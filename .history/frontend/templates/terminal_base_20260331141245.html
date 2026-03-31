@@ -2848,18 +2848,13 @@ function openConversationDetail(convId) {
         const to = _escHtml(m.to_agent || '—');
         const ts = _escHtml((m.created_at || '').slice(0,16));
         const type = _escHtml(m.message_type || 'text');
-        const isFridays = (m.sender || '').toLowerCase() === 'fridays';
-        const isUser = (m.sender || '').toLowerCase() === 'user';
-        // skill/system output: pre-wrap; user: pre-wrap; agents: markdown
-        const contentHtml = (isFridays || isUser)
-          ? `<div style="white-space:pre-wrap;line-height:1.55;">${_escHtml(m.content || '')}</div>`
-          : `<div class="chat-text" style="line-height:1.55;">${(typeof marked !== 'undefined' ? marked.parse(String(m.content || ''), {gfm:true,breaks:false}) : _escHtml(m.content || ''))}</div>`;
+        const content = _escHtml(m.content || '');
         return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
             <div style="font-size:11px;"><strong>${sender}</strong> → <span style="color:var(--text-dim);">${to}</span></div>
             <div style="font-size:10px;color:var(--text-dim);">${type} · ${ts}</div>
           </div>
-          ${contentHtml}
+          <div style="white-space:pre-wrap;line-height:1.55;">${content}</div>
         </div>`;
       }).join('');
     })
@@ -4548,15 +4543,6 @@ function _escapeHtml(v) {
     .replace(/'/g, '&#39;');
 }
 
-function _renderMarkdown(text) {
-  if (typeof marked === 'undefined') return _escapeHtml(text);
-  try {
-    return marked.parse(String(text || ''), { gfm: true, breaks: false });
-  } catch (_) {
-    return _escapeHtml(text);
-  }
-}
-
 function _appendChatBubble(sender, text, opts = {}) {
   const messages = _chatMessagesEl();
   if (!messages) return;
@@ -4564,10 +4550,9 @@ function _appendChatBubble(sender, text, opts = {}) {
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble' + (isUser ? ' user' : '');
   const safeSender = _escapeHtml(sender);
+  const safeText = _escapeHtml(text);
   const msgId = opts.msgId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
   const quoted = opts.quoted ? `<div class="chat-meta">↳ replying to ${_escapeHtml(opts.quoted.sender)}: ${_escapeHtml(opts.quoted.preview)}</div>` : '';
-  // User messages: plain escaped text. Agent messages: rendered markdown.
-  const bodyHtml = isUser ? `<span style="white-space:pre-wrap;">${_escapeHtml(text)}</span>` : _renderMarkdown(text);
   const actionRow = isUser ? '' : `
     <div class="chat-actions">
       <button class="chat-action-btn" onclick="reactToMessage('${msgId}','👍')">👍</button>
@@ -4579,7 +4564,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   bubble.innerHTML = `
     <div class="chat-meta">${isUser ? 'you' : safeSender}</div>
     ${quoted}
-    <div class="chat-text">${bodyHtml}</div>
+    <div class="chat-text">${safeText}</div>
     ${actionRow}
   `;
 

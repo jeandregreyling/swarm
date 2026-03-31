@@ -2848,18 +2848,13 @@ function openConversationDetail(convId) {
         const to = _escHtml(m.to_agent || '—');
         const ts = _escHtml((m.created_at || '').slice(0,16));
         const type = _escHtml(m.message_type || 'text');
-        const isFridays = (m.sender || '').toLowerCase() === 'fridays';
-        const isUser = (m.sender || '').toLowerCase() === 'user';
-        // skill/system output: pre-wrap; user: pre-wrap; agents: markdown
-        const contentHtml = (isFridays || isUser)
-          ? `<div style="white-space:pre-wrap;line-height:1.55;">${_escHtml(m.content || '')}</div>`
-          : `<div class="chat-text" style="line-height:1.55;">${(typeof marked !== 'undefined' ? marked.parse(String(m.content || ''), {gfm:true,breaks:false}) : _escHtml(m.content || ''))}</div>`;
+        const content = _escHtml(m.content || '');
         return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
             <div style="font-size:11px;"><strong>${sender}</strong> → <span style="color:var(--text-dim);">${to}</span></div>
             <div style="font-size:10px;color:var(--text-dim);">${type} · ${ts}</div>
           </div>
-          ${contentHtml}
+          <div style="white-space:pre-wrap;line-height:1.55;">${content}</div>
         </div>`;
       }).join('');
     })

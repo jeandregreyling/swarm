@@ -133,3 +133,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/terminal.py and frontend/templates/terminal_base.html.
 
+- Audit ID: AUDIT-20260331-025850
+- Time (UTC): 2026-03-31T02:58:50Z
+- Actor: copilot
+- Objective: Added user profiles, proxy identity, and per-skill authorization controls
+- Evidence: Implemented DB-backed user_profiles + user_skill_permissions, auth/profile/permissions APIs, identity-aware chat skill execution, and Skills-window permission management with top-right identity indicator and proxy switching.
+- Result: PASS
+- Follow-up: Revert frontend/terminal.py utils/database.py frontend/templates/terminal_base.html.
+
