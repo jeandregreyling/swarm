@@ -142,3 +142,17 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Added backend persistent chat job registry and /api/chat/jobs/status polling endpoint, changed /api/chat timeout handling to keep futures alive and complete in background, and updated frontend loading panel to display per-agent running stages until completion with automatic thread refresh. Added REQ-CHAT-008 coverage in tests/test_chat_quality.py and verified 9/9 chat tests + 21/21 e2e tests pass.
 - Rollback: Revert frontend/terminal.py frontend/templates/terminal_base.html tests/test_chat_quality.py docs/testing/ALM_TEST_SPECIFICATION.md docs/testing/E2E_TEST_SUITE.md and restart swarm-terminal.
 
+- Time (UTC): 2026-03-31T03:44:31Z
+- Actor: copilot
+- Scope: fridays/direct-agent-routing-and-self-tickets
+- Change: Enable direct agent conversations on Telegram/Discord, add LLaMA action trace, and add agent ticket_create skill
+- Validation: Added AGENT/@name direct command parsing in Telegram and Discord trusted-user flows with direct pipeline execution and preserved queue/ticket traceability; enhanced LLaMA outputs with explicit action trace metadata in both standard and direct paths; added new SKILL ticket_create for agent-originated internal proposal/ticket creation; added tests/test_direct_agent_commands.py and validated with telegram trust + e2e regression suites.
+- Rollback: Revert fridays/telegram_bot.py fridays/discord_bot.py fridays/skills.py tests/test_direct_agent_commands.py and restart bot services.
+
+- Time (UTC): 2026-03-31T03:45:24Z
+- Actor: copilot
+- Scope: ghost-layer/ten-fridays-execution-behavior
+- Change: Prevent Ten from asking Ghost to run basic discovery commands in Fridays
+- Validation: Updated TEN_SYSTEM_PROMPT style rules so Ten uses available SKILL actions directly in Fridays chat when permitted, then reports outcomes instead of emitting raw command checklists for Ghost to execute manually.
+- Rollback: Revert utils/config.py and restart swarm-terminal.
+
