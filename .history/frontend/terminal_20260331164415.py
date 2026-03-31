@@ -882,7 +882,7 @@ def update_memory(row_id):
 
         if 'updated_at' in cols:
             updates.append('updated_at=?')
-            params.append(datetime.now(timezone.utc).isoformat())
+            params.append(datetime.utcnow().isoformat())
 
         params.append(row_id)
         conn.execute(f"UPDATE {table} SET {', '.join(updates)} WHERE id=?", tuple(params))
@@ -920,7 +920,7 @@ def attach_memory(row_id):
         if 'updated_at' in cols:
             conn.execute(
                 f"UPDATE {table} SET content=?, updated_at=? WHERE id=?",
-                (merged, datetime.now(timezone.utc).isoformat(), row_id),
+                (merged, datetime.utcnow().isoformat(), row_id),
             )
         else:
             conn.execute(f"UPDATE {table} SET content=? WHERE id=?", (merged, row_id))
@@ -963,7 +963,7 @@ def assign_memory(row_id):
                 continue
 
             cols = {r[1] for r in conn.execute(f"PRAGMA table_info({tgt_table})").fetchall()}
-            now_iso = datetime.now(timezone.utc).isoformat()
+            now_iso = datetime.utcnow().isoformat()
             field_values = {}
 
             if 'agent' in cols:
@@ -4405,7 +4405,7 @@ def api_killswitch_emergency():
     return jsonify({
         'action': 'emergency_shutdown',
         'success': success,
-        'timestamp': datetime.now(timezone.utc).isoformat() + 'Z'
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
     })
 
 
@@ -4420,7 +4420,7 @@ def api_killswitch_pause():
     return jsonify({
         'action': 'pause_all',
         'success': success,
-        'timestamp': datetime.now(timezone.utc).isoformat() + 'Z'
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
     })
 
 
@@ -4433,7 +4433,7 @@ def api_killswitch_resume():
     return jsonify({
         'action': 'resume_all',
         'success': success,
-        'timestamp': datetime.now(timezone.utc).isoformat() + 'Z'
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
     })
 
 
@@ -4454,7 +4454,7 @@ def api_killswitch_restart():
     return jsonify({
         'action': 'restart',
         'success': True,
-        'timestamp': datetime.now(timezone.utc).isoformat() + 'Z',
+        'timestamp': datetime.utcnow().isoformat() + 'Z',
         'note': 'Server restarting in 1 second...'
     })
 
@@ -4469,7 +4469,7 @@ def api_killswitch_agent_reset(agent_name):
         'action': 'agent_reset',
         'agent': agent_name,
         'success': success,
-        'timestamp': datetime.now(timezone.utc).isoformat() + 'Z'
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
     })
 
 
@@ -4560,7 +4560,7 @@ def api_decisions():
         return jsonify({
             'decisions': decisions,
             'total': len(decisions),
-            'last_updated': datetime.now(timezone.utc).isoformat() + 'Z'
+            'last_updated': datetime.utcnow().isoformat() + 'Z'
         })
     
     except Exception as e:
@@ -4683,7 +4683,7 @@ def api_decision_timeline():
     return jsonify({
         'timeline': timeline,
         'total': len(timeline),
-        'last_update': datetime.now(timezone.utc).isoformat() + 'Z'
+        'last_update': datetime.utcnow().isoformat() + 'Z'
     })
 
 
