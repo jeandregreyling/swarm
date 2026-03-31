@@ -163,3 +163,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Updated /api/chat ghost-layer run path to parse SKILL lines from model responses, execute allowed skills server-side, re-prompt with concrete results, and append an Executed skill output section to the same conversation response. Verified with live /api/chat smoke plus chat-quality and e2e suites.
 - Rollback: Revert frontend/terminal.py utils/config.py docs/testing/ALM_TEST_SPECIFICATION.md and restart swarm-terminal.
 
+- Time (UTC): 2026-03-31T04:08:30Z
+- Actor: copilot
+- Scope: chat-fs-readonly-whitelist-ui-cards
+- Change: Add safe fs discovery skill, whitelist pwd/find, and render executed-skill event cards in chat
+- Validation: Implemented new SKILL fs_readonly (ls/find/read/head/tail) with strict workspace path bounds, expanded shell whitelist for pwd and bounded find, and added frontend executed-skill event cards that parse and display tool outputs from chat responses. Updated Ten prompt guidance and extended chat quality tests (REQ-CHAT-011/012). Validated with chat quality, telegram trust, and full e2e suites after service restart.
+- Rollback: Revert fridays/skills.py fridays/shell_agent.py frontend/templates/terminal_base.html utils/config.py tests/test_chat_quality.py docs/testing/ALM_TEST_SPECIFICATION.md and restart swarm-terminal.
+

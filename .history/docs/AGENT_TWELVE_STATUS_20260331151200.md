@@ -159,7 +159,8 @@ TOTAL: 7 passed, 0 failed ✓
 ## Pending Integrations
 
 | Component | Status | Impact | Timeline |
-| ----------- | -------- | -------- | ---------- || **Sniffer git hook** | ⏳ PENDING | Auto-log commits to time_machine | Next session |
+|-----------|--------|--------|----------|
+| **Sniffer git hook** | ⏳ PENDING | Auto-log commits to time_machine | Next session |
 | **Time Wizard API** | ⏳ PENDING | Query decision graph from Fridays | Next session |
 | **Fridays Time Wizard view** | ⏳ PENDING | Dashboard to visualize decisions | This weekend |
 | **Chat view wiring** | ⏳ PENDING | Users can send messages | DECISION-002 |

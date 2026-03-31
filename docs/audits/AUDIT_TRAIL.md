@@ -181,3 +181,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/terminal.py utils/config.py docs/testing/ALM_TEST_SPECIFICATION.md and restart swarm-terminal.
 
+- Audit ID: AUDIT-20260331-040830
+- Time (UTC): 2026-03-31T04:08:30Z
+- Actor: copilot
+- Objective: Add safe fs discovery skill, whitelist pwd/find, and render executed-skill event cards in chat
+- Evidence: Implemented new SKILL fs_readonly (ls/find/read/head/tail) with strict workspace path bounds, expanded shell whitelist for pwd and bounded find, and added frontend executed-skill event cards that parse and display tool outputs from chat responses. Updated Ten prompt guidance and extended chat quality tests (REQ-CHAT-011/012). Validated with chat quality, telegram trust, and full e2e suites after service restart.
+- Result: PASS
+- Follow-up: Revert fridays/skills.py fridays/shell_agent.py frontend/templates/terminal_base.html utils/config.py tests/test_chat_quality.py docs/testing/ALM_TEST_SPECIFICATION.md and restart swarm-terminal.
+
