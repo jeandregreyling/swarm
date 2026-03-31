@@ -170,3 +170,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Implemented new SKILL fs_readonly (ls/find/read/head/tail) with strict workspace path bounds, expanded shell whitelist for pwd and bounded find, and added frontend executed-skill event cards that parse and display tool outputs from chat responses. Updated Ten prompt guidance and extended chat quality tests (REQ-CHAT-011/012). Validated with chat quality, telegram trust, and full e2e suites after service restart.
 - Rollback: Revert fridays/skills.py fridays/shell_agent.py frontend/templates/terminal_base.html utils/config.py tests/test_chat_quality.py docs/testing/ALM_TEST_SPECIFICATION.md and restart swarm-terminal.
 
+- Time (UTC): 2026-03-31T04:20:06Z
+- Actor: copilot
+- Scope: chat-alive-permission-flow-hardening
+- Change: Keep Gemma alive in pending mode, route Ten file discovery to fs_readonly, and add one-click approval request button
+- Validation: Updated chat runtime so gemma/llama/qwen/librarian timeout path bubbles to pending job tracking instead of immediate timeout text, added shell->fs_readonly compatibility routing for read/list operations in Nine/Ten tool loop, expanded shell whitelist for relative file/list commands, added failed-job completion messages into conversation, and added a ✓ Request approval button on failed skill event cards that opens an internal queue/proposal request.
+- Rollback: Revert frontend/terminal.py fridays/shell_agent.py frontend/templates/terminal_base.html utils/config.py tests/test_chat_quality.py and restart swarm-terminal.
+
