@@ -1,0 +1,22 @@
+Flask
+requests
+python-telegram-bot
+discord.py
+ollama
+psutil
+
+# Optional integrations referenced by the codebase. Install as needed when
+# validating those paths or enabling those features in a clean environment.
+# anthropic
+# duckduckgo-search
+# tavily-python
+# google-api-python-client
+# google-auth-oauthlib
+# openai
+# pdfplumber
+# python-docx
+# beautifulsoup4
+# lxml
+# pytz
+# playwright
+# pywebview
