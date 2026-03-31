@@ -2970,7 +2970,6 @@ def api_chat():
                     threaded_prompt,
                     history,
                     transcript,
-                    True,
                 )
                 for selected_agent in runnable_agents
             }
