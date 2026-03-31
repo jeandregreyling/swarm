@@ -183,18 +183,8 @@ def run_play_time():
         print(f'[Tasks] Play time skipped — queue depth {depth}.')
         return
     results = run_all_idle_agents()
-    if isinstance(results, tuple) and len(results) == 2:
-        agent, msg = results
-        if agent:
-            print(f'[Tasks] Play time {agent}: OK — {msg}')
-        else:
-            print(f'[Tasks] Play time skip — {msg}')
-    else:
-        for row in results or []:
-            if not isinstance(row, (list, tuple)) or len(row) < 3:
-                continue
-            agent, ok, msg = row[0], bool(row[1]), row[2]
-            print(f'[Tasks] Play time {agent}: {"OK" if ok else "skip"} — {msg}')
+    for agent, ok, msg in results:
+        print(f'[Tasks] Play time {agent}: {"OK" if ok else "skip"} — {msg}')
     check_proposals()
 
 

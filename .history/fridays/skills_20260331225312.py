@@ -291,13 +291,7 @@ def _skill_memory_search(args, agent, **_):
         results = search_memory(query=query, min_importance=3)
         if not results:
             return True, 'No matching memories found.'
-        lines = []
-        for row in results[:8]:
-            r = dict(row)
-            lines.append(
-                f'[{r.get("agent", "?")} imp:{r.get("importance", "?")}] '
-                f'{r.get("subject", "")}: {str(r.get("content", ""))[:120]}'
-            )
+        lines = [f'[{r.get("agent","?")} imp:{r.get("importance","?")}] {r.get("subject","")}: {str(r.get("content",""))[:120]}' for r in results[:8]]
         return True, '\n'.join(lines)
     except Exception as e:
         return False, f'Memory search error: {e}'
