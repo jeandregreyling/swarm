@@ -4848,12 +4848,7 @@ function sendMessage() {
   fetch('/api/chat', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      message: wireMsg,
-      agents: selectedAgents,
-      conversation_id: convId,
-      ..._authPayload(),
-    })
+    body: JSON.stringify({message: wireMsg, agents: selectedAgents, conversation_id: convId})
   })
   .then(r => r.json())
   .then(data => {
@@ -4908,8 +4903,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(updateActivityLog, 5000);
   updateTicketQueue();
   setInterval(updateTicketQueue, 10000);
-  loadAuthProfiles();
-  _renderIdentityPill();
   
   // Settings modal handlers
   document.querySelectorAll('[data-time]').forEach(btn => {

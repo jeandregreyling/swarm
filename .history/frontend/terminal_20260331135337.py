@@ -37,7 +37,7 @@ from database import (get_connection, new_conversation, log_message,
                        get_pending_emails, mark_pending_processed, log_activity,
                        list_user_profiles, get_user_profile, upsert_user_profile,
                        list_user_skill_permissions, set_user_skill_permission,
-                       can_user_invoke_skill, initialise_database)
+                       can_user_invoke_skill)
 from ticket import create as ticket_create, librarian_close
 import queue_manager as _queue_manager
 
@@ -142,12 +142,6 @@ time_wizard = _tm_mod.time_wizard
 from kill_switch import kill_switch
 
 app = Flask(__name__)
-
-# Ensure schema/migrations are present before serving APIs.
-try:
-    initialise_database()
-except Exception as exc:
-    print(f'[Terminal] database bootstrap warning: {exc}')
 
 # ── Kill switches ──────────────────────────────────────────────────────────────
 # Any agent name in this set is skipped by the pipeline.
@@ -446,19 +440,19 @@ def _resolve_identity_or_response(data):
 
     actor_profile = get_user_profile(acting)
     if not actor_profile:
-        return None, (jsonify({'ok': False, 'error': f'unknown acting_user: {acting}'}), 404)
+        return None, jsonify({'ok': False, 'error': f'unknown acting_user: {acting}'}), 404
     if not bool(actor_profile.get('is_active')):
-        return None, (jsonify({'ok': False, 'error': f'user is inactive: {acting}'}), 403)
+        return None, jsonify({'ok': False, 'error': f'user is inactive: {acting}'}), 403
 
     effective_profile = actor_profile
     if proxy_as and proxy_as != acting:
         if not bool(actor_profile.get('can_proxy')):
-            return None, (jsonify({'ok': False, 'error': f'user cannot proxy: {acting}'}), 403)
+            return None, jsonify({'ok': False, 'error': f'user cannot proxy: {acting}'}), 403
         target_profile = get_user_profile(proxy_as)
         if not target_profile:
-            return None, (jsonify({'ok': False, 'error': f'unknown proxy target: {proxy_as}'}), 404)
+            return None, jsonify({'ok': False, 'error': f'unknown proxy target: {proxy_as}'}), 404
         if not bool(target_profile.get('is_active')):
-            return None, (jsonify({'ok': False, 'error': f'proxy target is inactive: {proxy_as}'}), 403)
+            return None, jsonify({'ok': False, 'error': f'proxy target is inactive: {proxy_as}'}), 403
         effective_profile = target_profile
 
     identity = {
@@ -2262,10 +2256,6 @@ def api_chat():
     if bad_agents:
         return jsonify({'ok': False, 'response': f"Unsupported agent(s): {', '.join(bad_agents)}"}), 400
 
-    identity, err = _resolve_identity_or_response(data)
-    if err:
-        return err
-
     def _parse_chat_skill_command(text):
         raw = (text or '').strip()
         upper = raw.upper()
@@ -2473,18 +2463,12 @@ def api_chat():
                 skill_ok = False
                 skill_output = f"Unknown skill: {skill_name!r}. Known skills: {known}"
             else:
-                effective_user = identity['effective_user']
-                if not can_user_invoke_skill(effective_user, skill_name, default_allow=True):
-                    return jsonify({
-                        'ok': False,
-                        'error': f'user {effective_user} is not authorized for skill {skill_name}'
-                    }), 403
                 trust_level = int(meta.get('trust_level', 0) or 0)
                 if trust_level >= 1:
                     gate = _alm_gate_or_response(data, f'chat_skill_{skill_name}')
                     if gate:
                         return gate
-                caller_agent = effective_user
+                caller_agent = normalized_agents[0] if normalized_agents else 'terminal'
                 skill_ok, skill_output = skill_call(skill_name, args=skill_args, agent=caller_agent)
 
             skill_response = (
@@ -2500,11 +2484,6 @@ def api_chat():
                     'name': skill_name,
                     'args': skill_args,
                     'ok': skill_ok,
-                },
-                'identity': {
-                    'acting_user': identity['acting_user'],
-                    'proxy_as': identity['proxy_as'],
-                    'effective_user': identity['effective_user'],
                 },
                 'agent': 'fridays',
                 'response': skill_response,

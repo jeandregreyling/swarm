@@ -37,7 +37,7 @@ from database import (get_connection, new_conversation, log_message,
                        get_pending_emails, mark_pending_processed, log_activity,
                        list_user_profiles, get_user_profile, upsert_user_profile,
                        list_user_skill_permissions, set_user_skill_permission,
-                       can_user_invoke_skill, initialise_database)
+                       can_user_invoke_skill)
 from ticket import create as ticket_create, librarian_close
 import queue_manager as _queue_manager
 
@@ -142,12 +142,6 @@ time_wizard = _tm_mod.time_wizard
 from kill_switch import kill_switch
 
 app = Flask(__name__)
-
-# Ensure schema/migrations are present before serving APIs.
-try:
-    initialise_database()
-except Exception as exc:
-    print(f'[Terminal] database bootstrap warning: {exc}')
 
 # ── Kill switches ──────────────────────────────────────────────────────────────
 # Any agent name in this set is skipped by the pipeline.

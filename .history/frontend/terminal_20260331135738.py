@@ -143,12 +143,6 @@ from kill_switch import kill_switch
 
 app = Flask(__name__)
 
-# Ensure schema/migrations are present before serving APIs.
-try:
-    initialise_database()
-except Exception as exc:
-    print(f'[Terminal] database bootstrap warning: {exc}')
-
 # ── Kill switches ──────────────────────────────────────────────────────────────
 # Any agent name in this set is skipped by the pipeline.
 DISABLED_AGENTS = set()

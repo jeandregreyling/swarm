@@ -125,3 +125,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/templates/terminal_base.html.
 
+- Audit ID: AUDIT-20260331-024538
+- Time (UTC): 2026-03-31T02:45:38Z
+- Actor: copilot
+- Objective: Enabled safe SKILL command execution in Fridays chat
+- Evidence: Added SKILL and /skill command parsing in /api/chat, routed to fridays.skills with trust-level ALM gating for mutating skills, and improved chat UI error handling for non-OK API responses.
+- Result: PASS
+- Follow-up: Revert frontend/terminal.py and frontend/templates/terminal_base.html.
+

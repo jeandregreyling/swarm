@@ -3372,30 +3372,8 @@ function loadDocsALMHistory(content) {
 
 function loadSkillsData(win) {
   const content = win.el.querySelector('#skills-content');
-  const summary = win.el.querySelector('#skills-identity-summary');
-  const userSelect = win.el.querySelector('#skills-user-select');
-  const permContent = win.el.querySelector('#skills-permissions-content');
   if (!content) return;
-
-  const auth = _getAuthState();
-  if (summary) {
-    const eff = auth.proxy_as || auth.acting_user;
-    summary.textContent = `Acting as ${auth.acting_user}${auth.proxy_as ? ' • Proxying ' + auth.proxy_as : ''} • Effective ${eff}`;
-  }
-
-  if (userSelect) {
-    const profiles = Array.isArray(window.__fridaysProfiles) ? window.__fridaysProfiles : [];
-    userSelect.innerHTML = profiles.map(p => {
-      const u = p.username || '';
-      const active = Number(p.is_active || 0) ? '' : ' (inactive)';
-      return `<option value="${u}">${u}${active}</option>`;
-    }).join('');
-    const current = auth.proxy_as || auth.acting_user;
-    if (current && profiles.some(p => p.username === current)) {
-      userSelect.value = current;
-    }
-  }
-
+  
   fetch('/api/skills')
     .then(r => r.json())
     .then(data => {
@@ -3415,224 +3393,8 @@ function loadSkillsData(win) {
       } else {
         content.innerHTML = '<span style="color: var(--text-dim);">No skills available</span>';
       }
-
-      if (permContent) {
-        loadSkillPermissionEditor();
-      }
     })
     .catch(e => { content.innerHTML = `<span style="color:#f77;">Failed to load skills: ${e.message}</span>`; });
-}
-
-function _getAuthState() {
-  const raw = localStorage.getItem('fridays-auth-state');
-  try {
-    const parsed = raw ? JSON.parse(raw) : {};
-    return {
-      acting_user: (parsed.acting_user || 'ghost').toLowerCase(),
-      proxy_as: (parsed.proxy_as || '').toLowerCase(),
-    };
-  } catch {
-    return { acting_user: 'ghost', proxy_as: '' };
-  }
-}
-
-function _saveAuthState(state) {
-  const normalized = {
-    acting_user: (state.acting_user || 'ghost').toLowerCase(),
-    proxy_as: (state.proxy_as || '').toLowerCase(),
-  };
-  localStorage.setItem('fridays-auth-state', JSON.stringify(normalized));
-  return normalized;
-}
-
-function _authPayload() {
-  const s = _getAuthState();
-  return {
-    acting_user: s.acting_user,
-    proxy_as: s.proxy_as,
-  };
-}
-
-function _renderIdentityPill() {
-  const label = document.getElementById('auth-user-pill-label');
-  if (!label) return;
-  const s = _getAuthState();
-  label.textContent = s.proxy_as ? `${s.acting_user} ▶ ${s.proxy_as}` : s.acting_user;
-}
-
-function _syncAuthStateWithProfiles() {
-  const profiles = Array.isArray(window.__fridaysProfiles) ? window.__fridaysProfiles : [];
-  if (!profiles.length) return;
-  const names = new Set(profiles.map(p => (p.username || '').toLowerCase()));
-  const state = _getAuthState();
-  if (!names.has(state.acting_user)) {
-    state.acting_user = names.has('ghost') ? 'ghost' : (profiles[0].username || 'ghost');
-  }
-  if (state.proxy_as && !names.has(state.proxy_as)) {
-    state.proxy_as = '';
-  }
-  _saveAuthState(state);
-}
-
-function loadAuthProfiles(refreshSkills = false) {
-  fetch('/api/auth/profiles?include_inactive=1')
-    .then(r => r.json())
-    .then(data => {
-      window.__fridaysProfiles = Array.isArray(data.profiles) ? data.profiles : [];
-      _syncAuthStateWithProfiles();
-      _renderIdentityPill();
-      if (refreshSkills && window.windows && window.windows.skills) {
-        loadSkillsData(window.windows.skills);
-      }
-    })
-    .catch(e => {
-      console.error('Failed to load profiles:', e);
-      _renderIdentityPill();
-    });
-}
-
-function openIdentityManager() {
-  const profiles = Array.isArray(window.__fridaysProfiles) ? window.__fridaysProfiles : [];
-  if (!profiles.length) {
-    showToast('No user profiles loaded yet', 'error');
-    return;
-  }
-  const state = _getAuthState();
-  const names = profiles.map(p => p.username).join(', ');
-  const acting = prompt(`Acting user (${names})`, state.acting_user || 'ghost');
-  if (acting === null) return;
-  const actingNorm = acting.trim().toLowerCase();
-  if (!actingNorm) return;
-  if (!profiles.some(p => p.username === actingNorm)) {
-    showToast(`Unknown user: ${actingNorm}`, 'error');
-    return;
-  }
-
-  const proxy = prompt('Proxy as (blank for none)', state.proxy_as || '');
-  if (proxy === null) return;
-  const proxyNorm = proxy.trim().toLowerCase();
-  if (proxyNorm && !profiles.some(p => p.username === proxyNorm)) {
-    showToast(`Unknown proxy user: ${proxyNorm}`, 'error');
-    return;
-  }
-
-  _saveAuthState({ acting_user: actingNorm, proxy_as: proxyNorm });
-  _renderIdentityPill();
-  if (window.windows && window.windows.skills) {
-    loadSkillsData(window.windows.skills);
-  }
-  showToast(`Identity set: ${actingNorm}${proxyNorm ? ' ▶ ' + proxyNorm : ''}`, 'success');
-}
-
-function createUserProfileFromSkills() {
-  const usernameEl = document.getElementById('skills-new-user');
-  const displayEl = document.getElementById('skills-new-display');
-  const typeEl = document.getElementById('skills-new-type');
-  if (!usernameEl || !typeEl) return;
-
-  const username = (usernameEl.value || '').trim().toLowerCase();
-  const displayName = (displayEl && displayEl.value) ? displayEl.value.trim() : username;
-  const userType = (typeEl.value || 'human').trim().toLowerCase();
-  if (!username) {
-    showToast('Username required', 'error');
-    return;
-  }
-
-  fetch('/api/auth/profiles', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ..._authPayload(),
-      username,
-      display_name: displayName,
-      user_type: userType,
-      linked_agent: userType === 'agent' ? username : '',
-      is_active: true,
-      can_proxy: false,
-    })
-  })
-    .then(r => r.json().then(data => ({ status: r.status, data })))
-    .then(({ status, data }) => {
-      if (status >= 400 || data.ok === false) {
-        throw new Error(data.error || `HTTP ${status}`);
-      }
-      usernameEl.value = '';
-      if (displayEl) displayEl.value = '';
-      showToast(`User created: ${username}`, 'success');
-      loadAuthProfiles(true);
-    })
-    .catch(e => showToast(`Create user failed: ${e.message}`, 'error'));
-}
-
-function loadSkillPermissionEditor() {
-  const host = document.getElementById('skills-permissions-content');
-  const selector = document.getElementById('skills-user-select');
-  const skillsContainer = document.getElementById('skills-content');
-  if (!host || !selector || !skillsContainer) return;
-
-  const username = (selector.value || '').trim().toLowerCase();
-  if (!username) {
-    host.innerHTML = '<p style="color:var(--text-dim);font-size:12px;">Select a user to manage permissions.</p>';
-    return;
-  }
-
-  const skillNames = Array.from(skillsContainer.querySelectorAll('strong'))
-    .map(el => (el.textContent || '').trim().toLowerCase())
-    .filter(Boolean);
-
-  fetch('/api/skills/permissions?username=' + encodeURIComponent(username))
-    .then(r => r.json().then(data => ({ status: r.status, data })))
-    .then(({ status, data }) => {
-      if (status >= 400 || data.ok === false) {
-        throw new Error(data.error || `HTTP ${status}`);
-      }
-      const perms = Array.isArray(data.permissions) ? data.permissions : [];
-      const map = {};
-      perms.forEach(p => { map[(p.skill_name || '').toLowerCase()] = !!p.allowed; });
-      const auth = _getAuthState();
-      const readonly = auth.acting_user !== 'ghost';
-
-      host.innerHTML = skillNames.map(skill => {
-        const explicit = Object.prototype.hasOwnProperty.call(map, skill);
-        const allowed = explicit ? !!map[skill] : true;
-        const hint = explicit ? 'explicit' : 'default allow';
-        return `<label style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);margin-bottom:8px;">
-          <div>
-            <div style="font-size:12px;font-weight:600;">${skill}</div>
-            <div style="font-size:10px;color:var(--text-dim);">${hint}</div>
-          </div>
-          <input type="checkbox" ${allowed ? 'checked' : ''} ${readonly ? 'disabled' : ''} onchange="setSkillPermissionToggle('${username}','${skill}',this.checked)">
-        </label>`;
-      }).join('') + (readonly ? '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">Only ghost can update permissions.</div>' : '');
-    })
-    .catch(e => {
-      host.innerHTML = `<div style="color:#f77;font-size:12px;">Failed to load permissions: ${e.message}</div>`;
-    });
-}
-
-function setSkillPermissionToggle(username, skillName, allowed) {
-  fetch('/api/skills/permissions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ..._authPayload(),
-      username,
-      skill_name: skillName,
-      allowed: !!allowed,
-    })
-  })
-    .then(r => r.json().then(data => ({ status: r.status, data })))
-    .then(({ status, data }) => {
-      if (status >= 400 || data.ok === false) {
-        throw new Error(data.error || `HTTP ${status}`);
-      }
-      showToast(`Permission updated: ${username}/${skillName}=${allowed ? 'allow' : 'deny'}`, 'success');
-      loadSkillPermissionEditor();
-    })
-    .catch(e => {
-      showToast(`Permission update failed: ${e.message}`, 'error');
-      loadSkillPermissionEditor();
-    });
 }
 
 function loadTicketsData(win) {
@@ -4848,12 +4610,7 @@ function sendMessage() {
   fetch('/api/chat', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      message: wireMsg,
-      agents: selectedAgents,
-      conversation_id: convId,
-      ..._authPayload(),
-    })
+    body: JSON.stringify({message: wireMsg, agents: selectedAgents, conversation_id: convId})
   })
   .then(r => r.json())
   .then(data => {
@@ -4908,8 +4665,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(updateActivityLog, 5000);
   updateTicketQueue();
   setInterval(updateTicketQueue, 10000);
-  loadAuthProfiles();
-  _renderIdentityPill();
   
   // Settings modal handlers
   document.querySelectorAll('[data-time]').forEach(btn => {

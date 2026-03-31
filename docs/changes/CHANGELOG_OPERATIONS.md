@@ -114,3 +114,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Implemented right-side docked tile behavior with pop-out control, edge/corner resize handles, persistent active chat thread restore, and visible thread rail in chat pane.
 - Rollback: Revert frontend/templates/terminal_base.html.
 
+- Time (UTC): 2026-03-31T02:45:38Z
+- Actor: copilot
+- Scope: chat/skill-bridge
+- Change: Enabled safe SKILL command execution in Fridays chat
+- Validation: Added SKILL and /skill command parsing in /api/chat, routed to fridays.skills with trust-level ALM gating for mutating skills, and improved chat UI error handling for non-OK API responses.
+- Rollback: Revert frontend/terminal.py and frontend/templates/terminal_base.html.
+
