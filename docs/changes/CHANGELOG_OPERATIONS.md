@@ -156,3 +156,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Updated TEN_SYSTEM_PROMPT style rules so Ten uses available SKILL actions directly in Fridays chat when permitted, then reports outcomes instead of emitting raw command checklists for Ghost to execute manually.
 - Rollback: Revert utils/config.py and restart swarm-terminal.
 
+- Time (UTC): 2026-03-31T03:59:39Z
+- Actor: copilot
+- Scope: ghost-layer/chat-skill-loop-execution
+- Change: Execute agent-emitted SKILL lines for Ten/Nine and return outputs in same chat context
+- Validation: Updated /api/chat ghost-layer run path to parse SKILL lines from model responses, execute allowed skills server-side, re-prompt with concrete results, and append an Executed skill output section to the same conversation response. Verified with live /api/chat smoke plus chat-quality and e2e suites.
+- Rollback: Revert frontend/terminal.py utils/config.py docs/testing/ALM_TEST_SPECIFICATION.md and restart swarm-terminal.
+
