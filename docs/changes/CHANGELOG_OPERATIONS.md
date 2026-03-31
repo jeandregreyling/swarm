@@ -184,3 +184,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Removed floating Console/Fridays layer pills, added layer navigation controls inside Monitor window, expanded /api/memory to honor limit and min filtering, added memory PATCH/attach/assign endpoints, and upgraded Memory modal actions for edit/append/attach/share/delete. Also set chat fanout persistent mode to prevent fast timeout failures and validated pending completion behavior for Gemma.
 - Rollback: Revert frontend/templates/terminal_base.html frontend/templates/terminal_ui_v2.html frontend/terminal.py and restart swarm-terminal.
 
+- Time (UTC): 2026-03-31T04:56:24Z
+- Actor: copilot
+- Scope: inline-memory-forms-alive-label
+- Change: Replace prompt-based memory actions with inline modal forms and show explicit alive labels
+- Validation: Upgraded memory modal actions to inline form-based edit/append/attach/share flows (no JS prompt popups), kept delete in-modal, and preserved cache refresh behavior. Enhanced pending loading panel state labels to display explicit 'alive' status per agent stage. Regression suites remain green.
+- Rollback: Revert frontend/templates/terminal_base.html and restart swarm-terminal.
+
