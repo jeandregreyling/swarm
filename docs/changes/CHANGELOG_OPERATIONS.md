@@ -107,3 +107,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Added per-agent elapsed_ms telemetry and chat loading bars with ETA estimates based on moving-average latency per agent (saved in localStorage).
 - Rollback: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
 
+- Time (UTC): 2026-03-31T02:36:10Z
+- Actor: copilot
+- Scope: ui/docked-tiles-thread-persistence
+- Change: Docked right-side tiles, full-edge resize, persistent chat threads
+- Validation: Implemented right-side docked tile behavior with pop-out control, edge/corner resize handles, persistent active chat thread restore, and visible thread rail in chat pane.
+- Rollback: Revert frontend/templates/terminal_base.html.
+
