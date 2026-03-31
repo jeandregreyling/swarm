@@ -35,7 +35,7 @@ from database import (get_all_email_lists, add_trusted_sender,
                       get_trusted_domains, add_trusted_domain,
                       update_ticket_tags, add_ticket_note_by_number,
                       snooze_ticket)
-from system_clock import get_system_clock
+from system_clock import get_system_clock, get_timestamp
 from orchestrator import consult_stage1, consult_stage2
 from queue_manager import intake as queue_intake, get_queue_depth, estimate_wait_minutes, mark_processing
 from ticket import create as ticket_create, librarian_close, set_routing as ticket_set_routing
@@ -1332,7 +1332,7 @@ def run_forever(interval=60):
     _startup_queue_cleanup()
 
     # Use Gmail Push if token exists, otherwise fall back to IMAP poll
-    push_token = '/home/seven/swarm/gmail_token.json'
+    push_token = '/home/seven/swarm/lib/email/gmail_token.json'
     use_push = os.path.exists(push_token)
 
     if use_push:

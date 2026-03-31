@@ -7,7 +7,55 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
-## Version 2026-03-31 Session 5 — System Audit (CURRENT)
+## Version 2026-03-31 Session 5 — Stress Test + Email Pipeline Fix (CURRENT)
+
+### Changes by Nine (Ghost Layer) — FULL STRESS TEST + EMAIL PIPELINE FIX
+
+**2026-03-31 21:20 UTC** Nine: Full stress test of entire system. Root cause of email pipeline failure found and fixed. Gmail Push mode now active.
+
+- **Type:** Critical bug fix / Email pipeline / Path correction
+- **Status:** COMPLETE
+- **Bugs fixed:**
+  - **NINE-023-A (CRITICAL)** `core/pipeline/listener.py` line 38 — `get_timestamp` was NEVER imported. Only `get_system_clock` was imported from `system_clock`. Every email pipeline run crashed with `NameError: name 'get_timestamp' is not defined` immediately at Email 0 (read receipt). Ghost has received ZERO email responses because of this. Fixed: added `get_timestamp` to the import.
+  - **NINE-023-B** `lib/email/gmail_push.py` lines 39-40 — `TOKEN_FILE` and `WATCH_STATE_FILE` pointed to `/home/seven/swarm/gmail_token.json` and `/home/seven/swarm/gmail_watch_state.json` (root) but actual files are in `/home/seven/swarm/lib/email/`. The `push_token` check in `listener.py` also pointed to the wrong path. Listener always fell back to 60s IMAP poll. Fixed both paths. After restart, listener now runs in Gmail Push mode (instant delivery).
+  - **NINE-023-E** Queue entries 220 (telegram) and 221 (outlook email TICKET-355) stuck as `queued` since pipeline crash. Abandoned both. TICKET-355 is open with no response — Ghost should be aware.
+- **Requires Ghost action (cannot fix without sudo):**
+  - **NINE-023-C** `swarm-monitor.service` ExecStart points to `/home/seven/swarm/monitor.py` (does not exist). Actual file at `/home/seven/swarm/lib/system/monitor.py`. Fix: `sudo sed -i 's|monitor.py|lib/system/monitor.py|' /etc/systemd/system/swarm-monitor.service && sudo systemctl daemon-reload && sudo systemctl restart swarm-monitor`
+  - **NINE-023-D** `swarm-terminal` service is inactive/dead. Current terminal (pid=41328) is an orphan started from browser session. Fix: kill the orphan and `sudo systemctl start swarm-terminal`.
+- **Smoke test results:** Queue, Nine chat, work proposals, tickets, memory, history, health, decisions — all PASS. Discord RUNNING. Telegram RUNNING. Listener ACTIVE (Gmail Push).
+- **Decision record**: proposal NINE-023, decisions table updated (id=105)
+- **Listener restarted**: Gmail Push mode confirmed active after fix.
+
+---
+
+## Version 2026-03-31 Session 5 — System Audit Pass 2
+
+### Changes by Nine (Ghost Layer) — FULL SYSTEM AUDIT PASS 2
+
+**2026-03-31 20:45 UTC** Nine: Second full system-wide audit pass. All .py files in frontend/, utils/, agents/, core/, fridays/ re-compiled. Flask routes re-verified with method-aware analysis. DB schema audited against live DB for all 49 tables. HTML templates re-checked. 4 new bugs found and fixed.
+
+- **Type:** Bug fixes / Schema correction / Missing endpoint / Import hardening
+- **Status:** COMPLETE
+- **Bugs fixed:**
+  - **BUG-E** `utils/database.py` SCHEMA — `time_events`, `time_journal`, `time_checkpoints` defined with OLD column schemas that don't match the live DB (created by `core/time_machine.py`). `time_events` had `(description, metadata)` instead of `(timestamp, action, target, state_hash, details)`; `time_journal` had `(entry, tags)` instead of `(timestamp, session_id, phase, status, notes)`; `time_checkpoints` had `(name, state_snapshot)` instead of `(checkpoint_name, timestamp, full_state)`. Fixed in both SCHEMA and the `_migrate_schema` fallback loop.
+  - **BUG-F** `utils/database.py` `_migrate_schema()` — `approval_tokens` fallback DDL used OLD schema `(pending_email_id, used)` instead of the production schema `(target_email, created_by, used_at, status)` that `use_approval_token()` queries. Fresh installs hitting the fallback path would create a broken table causing `use_approval_token()` to fail with `no such column: status`. Fixed fallback DDL to match SCHEMA and live DB.
+  - **BUG-G** `frontend/terminal.py` — No `/api/health` route defined. Health checks (logged in `/tmp/swarm_terminal.log` at startup) return 404. Added lightweight `GET /api/health` endpoint returning `{"ok": true, "status": "up", "service": "swarm-terminal"}`.
+  - **BUG-H** `lib/search/internet.py` — Hard `from ddgs import DDGS` at module level with no fallback. Fails with `ModuleNotFoundError` in environments without `ddgs` in PYTHONPATH. Added try/except with fallback to `duckduckgo_search` package, and graceful degradation if neither is available.
+- **No bugs found (this pass):**
+  - All Python files in frontend/, utils/, agents/, core/, fridays/ compile clean (py_compile)
+  - Flask route method analysis: 118 unique route+method combos, zero true duplicates
+  - Modal IDs (`chat-detail-modal`, `ticket-detail-modal`, `window-help-modal`) dynamically created on demand — not missing
+  - `studio-btn-` pattern is correct dynamic ID construction (`'studio-btn-' + agent`)
+  - `change_logger.py` sys.path and all function signatures valid
+  - `grok_agent.py` and `twelve_agent.py` imports and error handling correct
+  - `fridays.json` keys (`colors`, `time_of_day`, `custom_css`, `custom_js`) match all template usages
+  - `queue_manager.py` `intake_internal()` logic and `work_proposals` schema aligned
+- **Decision record**: proposal NINE-022 (pass 2), decisions table updated
+- **Server**: restarted after fixes
+
+---
+
+## Version 2026-03-31 Session 5 — System Audit Pass 1
 
 ### Changes by Nine (Ghost Layer) — FULL SYSTEM AUDIT
 
