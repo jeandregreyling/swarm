@@ -86,3 +86,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Added Ollama keep_alive policy (Gemma/LLaMA warm, Qwen short-lived) and RAM-aware routing fallback from both->llama when free memory is low (non-debate).
 - Rollback: Revert core/pipeline/orchestrator.py.
 
+- Time (UTC): 2026-03-31T02:15:18Z
+- Actor: copilot
+- Scope: chat/organic-bubbles-duck-sniffles
+- Change: Add organic chat UX + Duck/Sniffles controls
+- Validation: Added Duck/Sniffles chat toggles, Sniffles non-persistent behavior, conversational bubble UI with reactions/reply/ask-another actions, and audit-agent routing safeguards for responsiveness.
+- Rollback: Revert frontend/terminal.py, core/pipeline/orchestrator.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
+

@@ -2266,8 +2266,7 @@ def api_chat():
 
             for selected_agent, future in future_map.items():
                 try:
-                    wait_timeout = 40 if selected_agent == 'sniffles' else 26
-                    response_text, tokens_used = future.result(timeout=wait_timeout)
+                    response_text, tokens_used = future.result(timeout=26)
                 except FuturesTimeoutError:
                     response_text, tokens_used = (
                         f"[{selected_agent}] is taking longer than expected. "
