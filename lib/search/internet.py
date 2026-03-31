@@ -1,10 +1,22 @@
 import sys
 sys.path.insert(0, '/home/seven/swarm')
-from ddgs import DDGS
+
+try:
+    from ddgs import DDGS as _DDGS
+    _DDGS_OK = True
+except ImportError:
+    try:
+        from duckduckgo_search import DDGS as _DDGS
+        _DDGS_OK = True
+    except ImportError:
+        _DDGS_OK = False
+        _DDGS = None
 
 def search_web(query, max_results=3):
+    if not _DDGS_OK:
+        return "[Search unavailable: ddgs/duckduckgo_search not installed]"
     try:
-        with DDGS() as ddgs:
+        with _DDGS() as ddgs:
             results = list(ddgs.text(query, max_results=max_results))
         if not results:
             return "No results found."
