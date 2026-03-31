@@ -117,3 +117,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/terminal.py, frontend/templates/terminal_base.html, frontend/templates/terminal.html.
 
+- Audit ID: AUDIT-20260331-023610
+- Time (UTC): 2026-03-31T02:36:10Z
+- Actor: copilot
+- Objective: Docked right-side tiles, full-edge resize, persistent chat threads
+- Evidence: Implemented right-side docked tile behavior with pop-out control, edge/corner resize handles, persistent active chat thread restore, and visible thread rail in chat pane.
+- Result: PASS
+- Follow-up: Revert frontend/templates/terminal_base.html.
+
