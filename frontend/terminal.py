@@ -1691,6 +1691,32 @@ def api_work_proposals_patch(proposal_id):
             agent=row['agent'] or 'terminal_ui',
             description=f'Automatic Vortex checkpoint after {proposal_id} moved to {status}'
         )
+
+    # Notify the originating agent via memory so it can act on the outcome
+    agent_name = (row['agent'] or '').lower().strip()
+    _NOTIFIABLE_AGENTS = {'nine', 'gemma', 'grok', 'llama', 'eight', 'twelve'}
+    if agent_name in _NOTIFIABLE_AGENTS and status in ('approved', 'rejected', 'in_progress', 'done', 'executed'):
+        try:
+            from database import save_agent_memory
+            status_labels = {
+                'approved':   'Your proposal has been approved by Ghost. Begin planning implementation.',
+                'rejected':   'Your proposal was rejected by Ghost. Review and consider revising.',
+                'in_progress':'Your proposal is now in progress. Proceed with implementation.',
+                'done':       'Your proposal is marked done. Awaiting final execution sign-off.',
+                'executed':   'Your proposal has been executed and closed.',
+            }
+            note = status_labels.get(status, f'Proposal status changed to {status}.')
+            save_agent_memory(
+                agent_name=agent_name,
+                subject=f'Proposal {proposal_id} → {status}',
+                content=f'{note} Proposal: "{row["title"]}". Ticket ref: {row["ticket_number"] or "none"}.',
+                tags='proposal,alm,status_change',
+                importance=8,
+                source='alm_pipeline'
+            )
+        except Exception:
+            pass
+
     payload = {'ok': True, 'proposal': dict(row)}
     if duck_review:
         payload['duck_review'] = duck_review
