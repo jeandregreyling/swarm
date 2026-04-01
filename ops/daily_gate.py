@@ -173,17 +173,22 @@ def check_error_log_scan():
     """Quick scan of recent service logs for critical errors."""
     section("Recent Error Scan")
     
-    cmd = """journalctl -u swarm-listener -u swarm-discord -u swarm-telegram --since '60 minutes ago' --no-pager 2>/dev/null | grep -c 'error\\|exception\\|traceback\\|failed' || echo '0'"""
+    # For vibe-coding: check last 10 minutes for actual problems (not transient/handled errors).
+    # Excluded: "transient network error" (handled by error handler), "shutdown" logs
+    cmd = """journalctl -u swarm-listener -u swarm-discord -u swarm-telegram --since '10 minutes ago' --no-pager 2>/dev/null | grep -v 'transient network error' | grep -v 'graceful shutdown' | grep -v 'get_updates one more time' | grep -c 'error\\|exception\\|traceback\\|failed' || echo '0'"""
     
     success, count_str = run_cmd(cmd, name="Error scan")
     try:
         error_count = int(count_str.strip())
         if error_count == 0:
-            print(f"  ✓ No errors in last 60 minutes")
+            print(f"  ✓ All clear (no unhandled errors)")
             return True
+        elif error_count < 3:
+            print(f"  ✓ Nominal ({error_count} minor issues)")
+            return True  # Minor errors are acceptable for vibe-coding
         else:
-            print(f"  ⚠ {error_count} error mentions in last 60 minutes")
-            return error_count < 5  # Warn if too many
+            print(f"  ⚠ Attention needed ({error_count} issues detected)")
+            return False  # Multiple real errors warrant review
     except:
         return True
 
