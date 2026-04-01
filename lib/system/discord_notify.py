@@ -267,6 +267,36 @@ def notify_ghost_circle(problem_type: str, ticket_number: str, tokens: int):
     _send(embed)
 
 
+def notify_brief_ready(brief_summary: str, trigger: str = 'scheduled', tokens: int = 0,
+                       open_proposals: int = 0, duck_flags: int = 0, open_tickets: int = 0):
+    """Ping Ghost when a new Ghost Brief has been generated."""
+    if not _is_configured():
+        return
+    import discord
+
+    lines = []
+    if open_tickets:
+        lines.append(f'📬 **{open_tickets}** open ticket{"s" if open_tickets != 1 else ""}')
+    if open_proposals:
+        lines.append(f'🗂 **{open_proposals}** active proposal{"s" if open_proposals != 1 else ""}')
+    if duck_flags:
+        lines.append(f'⚠️ **{duck_flags}** Duck flag{"s" if duck_flags != 1 else ""}')
+    if tokens:
+        lines.append(f'🪙 {tokens:,} tokens')
+
+    desc = '\n'.join(lines) if lines else 'Brief generated.'
+    if brief_summary:
+        desc += f'\n\n_{brief_summary[:300]}_'
+
+    embed = discord.Embed(
+        title='📋 Ghost Brief Ready',
+        description=desc,
+        colour=COLOUR_GHOST,
+    )
+    embed.set_footer(text=f"Seven's Swarm · trigger: {trigger}")
+    _send(embed)
+
+
 def post_raw(title: str, body: str, colour: int = COLOUR_INFO):
     """Generic one-off message — for manual pings or future use."""
     if not _is_configured():

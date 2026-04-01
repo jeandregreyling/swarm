@@ -2322,6 +2322,33 @@ input[type="range"]::-moz-range-thumb:hover {
       </div>
     </div>
 
+    <!-- Needs Attention -->
+    <div class="home-section">
+      <div class="home-section-title"><span>👁</span> Needs Attention</div>
+      <div id="attention-panel" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">
+        <div class="stat-card" style="cursor:pointer;" onclick="openWindow('tickets','🎫 Tickets','view-tickets')" title="Open Tickets">
+          <div class="stat-value" id="attn-open-tickets">—</div>
+          <div class="stat-label">Open Tickets</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="openWindow('studio','🎨 Studio','view-studio')" title="Proposals awaiting action">
+          <div class="stat-value" id="attn-proposals">—</div>
+          <div class="stat-label">Active Proposals</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="openWindow('docs','📚 Docs','view-docs')" title="Pinned items">
+          <div class="stat-value" id="attn-pinned">—</div>
+          <div class="stat-label">Pinned Items</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="openWindow('docs','📚 Docs','view-docs')" title="Ghost Brief freshness">
+          <div class="stat-value" id="attn-brief">—</div>
+          <div class="stat-label">Last Brief</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" title="Duck flags (last 24h)">
+          <div class="stat-value" id="attn-duck">—</div>
+          <div class="stat-label">Duck Flags</div>
+        </div>
+      </div>
+    </div>
+
     <!-- System Status -->
     <div class="home-section">
       <div class="home-section-title"><span>🖥️</span> System Status</div>
@@ -4721,6 +4748,60 @@ function loadHomeStats() {
         });
     })
     .catch(e => console.error('Failed to load home stats:', e));
+}
+
+
+function loadAttentionPanel() {
+  const setVal = (id, text, cls) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    const card = el.closest('.stat-card');
+    if (card && cls) card.className = 'stat-card ' + cls;
+  };
+
+  // /api/monitor has open tickets + duck flags already
+  fetch('/api/monitor')
+    .then(r => r.json())
+    .then(d => {
+      const openT = d.tickets?.open ?? 0;
+      const duckNo = d.duck?.no ?? 0;
+      setVal('attn-open-tickets', openT, openT > 5 ? 'health-crit' : openT > 0 ? 'health-warn' : 'health-good');
+      setVal('attn-duck', duckNo, duckNo > 0 ? 'health-crit' : 'health-good');
+    }).catch(() => { setVal('attn-open-tickets','?',''); setVal('attn-duck','?',''); });
+
+  // Active proposals
+  fetch('/api/work-proposals')
+    .then(r => r.json())
+    .then(d => {
+      const active = (d.proposals || []).filter(p => !['executed','rejected'].includes(p.status));
+      const pending = active.filter(p => p.status === 'pending').length;
+      const n = active.length;
+      setVal('attn-proposals', n, pending > 0 ? 'health-warn' : n > 0 ? 'health-good' : '');
+    }).catch(() => setVal('attn-proposals', '?', ''));
+
+  // Pinned unresolved items
+  fetch('/api/deferred')
+    .then(r => r.json())
+    .then(d => {
+      const n = (d.items || []).length;
+      setVal('attn-pinned', n, n > 0 ? 'health-warn' : 'health-good');
+    }).catch(() => setVal('attn-pinned', '?', ''));
+
+  // Ghost Brief freshness
+  fetch('/api/brief')
+    .then(r => r.json())
+    .then(d => {
+      if (!d.brief) { setVal('attn-brief', 'None', 'health-crit'); return; }
+      const gen = new Date(d.brief.generated_at);
+      const ageH = (Date.now() - gen.getTime()) / 3600000;
+      let label, cls;
+      if      (ageH < 1)  { label = '<1h ago';               cls = 'health-good'; }
+      else if (ageH < 6)  { label = `${Math.floor(ageH)}h ago`; cls = 'health-good'; }
+      else if (ageH < 24) { label = `${Math.floor(ageH)}h ago`; cls = 'health-warn'; }
+      else                { label = `${Math.floor(ageH/24)}d ago`; cls = 'health-crit'; }
+      setVal('attn-brief', label, cls);
+    }).catch(() => setVal('attn-brief', '?', ''));
 }
 
 
@@ -8296,6 +8377,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   loadHomeStats(); // Load system stats with colors and trends
   setInterval(loadHomeStats, 10000); // Update stats every 10 seconds
+  loadAttentionPanel(); // Needs-attention summary
+  setInterval(loadAttentionPanel, 30000); // Refresh every 30 seconds
   updateActivityLog();
   setInterval(updateActivityLog, 5000);
   updateTicketQueue();

@@ -14,6 +14,7 @@ REQ-CHAT-012  shell whitelist allows pwd discovery command
 REQ-CHAT-013  shell whitelist allows relative path file/list operations
 REQ-CHAT-014  long-running fanout never returns legacy extended-runtime placeholder
 REQ-CHAT-015  monitor API exposes runtime jobs and model residency telemetry
+REQ-CHAT-017  local agent chat responses persist into agent memory tables
 
 Usage:
     python3 tests/test_chat_quality.py
@@ -123,6 +124,13 @@ def _write_ping_log(payload):
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(payload, f, indent=2)
     return out_path
+
+
+def _load_agent_memories(agent_name, query='', limit=8):
+    """Read agent memories directly from the local DB helper."""
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'utils'))
+    from database import get_agent_memory
+    return get_agent_memory(agent_name, query=query, limit=limit)
 
 
 def _req(method, path, payload=None, timeout=10):
@@ -553,6 +561,64 @@ def test_chat_ping_each_agent_with_stage_log():
     record('REQ-CHAT-016 agent-ping-stage-log', PASS if ok else FAIL, detail)
 
 
+# ── REQ-CHAT-017: local agent replies are persisted to agent memory ─────────
+def test_local_agent_chat_persists_memory():
+    agent = (os.environ.get('CHAT_MEMORY_AGENT') or 'duck').strip().lower()
+    if agent not in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
+        record('REQ-CHAT-017 local-memory-persist', SKIP, f'unsupported local agent: {agent}')
+        return
+
+    marker = f'MEM_PERSIST_MARKER_{int(time.time())}'
+    prompt = (
+        f'{marker}: Reply in one line with your agent name and one short continuity note.'
+    )
+
+    code, data = _req('POST', '/api/chat', {
+        'message': prompt,
+        'agent': agent,
+        'acting_user': 'ghost',
+        'new_thread': True,
+    }, timeout=90)
+
+    if code is None:
+        record('REQ-CHAT-017 local-memory-persist', SKIP, 'server unreachable')
+        return
+    if code != 200:
+        record('REQ-CHAT-017 local-memory-persist', FAIL, f'HTTP {code}: {data}')
+        return
+
+    conv_id = data.get('conversation_id')
+    pending = [str(x) for x in (data.get('pending_jobs') or []) if str(x).strip()]
+    if pending and conv_id:
+        _wait_for_jobs(conv_id, pending, timeout_seconds=120, poll_interval=2.0)
+
+    found = False
+    rows_count = 0
+    deadline = time.time() + 20
+    while time.time() < deadline:
+        try:
+            rows = _load_agent_memories(agent, query=marker, limit=8) or []
+        except Exception as e:
+            record('REQ-CHAT-017 local-memory-persist', FAIL, f'db read error: {e}')
+            return
+
+        rows_count = len(rows)
+        for row in rows:
+            content = str(row['content'] or '')
+            subject = str(row['subject'] or '')
+            if marker in content or marker in subject:
+                found = True
+                break
+        if found:
+            break
+        time.sleep(1.0)
+
+    if found:
+        record('REQ-CHAT-017 local-memory-persist', PASS, f'agent={agent}, rows={rows_count}')
+    else:
+        record('REQ-CHAT-017 local-memory-persist', FAIL, f'agent={agent}, marker not found in memory rows={rows_count}')
+
+
 # ── Runner ─────────────────────────────────────────────────────────────────────
 def main():
     print(f"\n{'='*60}")
@@ -579,6 +645,7 @@ def main():
     test_no_legacy_extended_runtime_placeholder()
     test_monitor_runtime_telemetry_shape()
     test_chat_ping_each_agent_with_stage_log()
+    test_local_agent_chat_persists_memory()
 
     passed = sum(1 for _, s, _ in results if s == PASS)
     failed = sum(1 for _, s, _ in results if s == FAIL)
