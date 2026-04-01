@@ -198,3 +198,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Validated markdown files with zero diagnostics and verified registry links
 - Rollback: Revert touched docs files and remove registry entries for new docs
 
+- Time (UTC): 2026-04-01T01:51:29Z
+- Actor: copilot
+- Scope: frontend/templates/terminal_base.html
+- Change: Unify chat agent identity display to icon+name across bubbles and bottom controls
+- Validation: Validated template diagnostics (no errors) and reviewed diff for scoped UI changes
+- Rollback: Revert frontend/templates/terminal_base.html
+
