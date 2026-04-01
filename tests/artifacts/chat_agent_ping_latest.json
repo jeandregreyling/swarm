@@ -1,162 +1,90 @@
 {
-  "generated_at": "2026-04-01T04:09:40Z",
+  "generated_at": "2026-04-01T05:43:13Z",
   "base_url": "http://127.0.0.1:5050",
   "agents": [
     "duck"
   ],
   "summary": {
     "total_agents": 1,
-    "completed_agents": 0,
-    "non_completed_agents": 1
+    "completed_agents": 1,
+    "non_completed_agents": 0
   },
   "results": [
     {
       "agent": "duck",
       "http_code": 200,
-      "conversation_id": 363,
+      "conversation_id": 365,
       "pending_jobs": [
-        "chatjob-2f07f79a000d"
+        "chatjob-8d1b3b83d150"
       ],
       "immediate_response_len": 69,
-      "final_status": "incomplete",
+      "final_status": "completed",
       "stage_timeline": [
         {
-          "ts": "2026-04-01T04:09:10Z",
-          "job_id": "chatjob-2f07f79a000d",
+          "ts": "2026-04-01T05:43:01Z",
+          "job_id": "chatjob-8d1b3b83d150",
           "agent": "duck",
           "status": "running",
           "stage": "loading context",
-          "elapsed_ms": 3,
+          "elapsed_ms": 2,
           "eta_remaining_seconds": 35
         },
         {
-          "ts": "2026-04-01T04:09:12Z",
-          "job_id": "chatjob-2f07f79a000d",
+          "ts": "2026-04-01T05:43:03Z",
+          "job_id": "chatjob-8d1b3b83d150",
           "agent": "duck",
           "status": "running",
           "stage": "loading context",
-          "elapsed_ms": 2009,
+          "elapsed_ms": 2003,
           "eta_remaining_seconds": 33
         },
         {
-          "ts": "2026-04-01T04:09:14Z",
-          "job_id": "chatjob-2f07f79a000d",
+          "ts": "2026-04-01T05:43:05Z",
+          "job_id": "chatjob-8d1b3b83d150",
           "agent": "duck",
           "status": "running",
           "stage": "loading context",
-          "elapsed_ms": 4014,
+          "elapsed_ms": 4005,
           "eta_remaining_seconds": 31
         },
         {
-          "ts": "2026-04-01T04:09:16Z",
-          "job_id": "chatjob-2f07f79a000d",
+          "ts": "2026-04-01T05:43:07Z",
+          "job_id": "chatjob-8d1b3b83d150",
           "agent": "duck",
           "status": "running",
           "stage": "loading context",
-          "elapsed_ms": 6017,
+          "elapsed_ms": 6006,
           "eta_remaining_seconds": 29
         },
         {
-          "ts": "2026-04-01T04:09:18Z",
-          "job_id": "chatjob-2f07f79a000d",
+          "ts": "2026-04-01T05:43:09Z",
+          "job_id": "chatjob-8d1b3b83d150",
           "agent": "duck",
           "status": "running",
           "stage": "loading context",
-          "elapsed_ms": 8024,
+          "elapsed_ms": 8008,
           "eta_remaining_seconds": 27
         },
         {
-          "ts": "2026-04-01T04:09:20Z",
-          "job_id": "chatjob-2f07f79a000d",
+          "ts": "2026-04-01T05:43:11Z",
+          "job_id": "chatjob-8d1b3b83d150",
           "agent": "duck",
           "status": "running",
           "stage": "loading context",
-          "elapsed_ms": 10028,
+          "elapsed_ms": 10010,
           "eta_remaining_seconds": 25
         },
         {
-          "ts": "2026-04-01T04:09:22Z",
-          "job_id": "chatjob-2f07f79a000d",
+          "ts": "2026-04-01T05:43:13Z",
+          "job_id": "chatjob-8d1b3b83d150",
           "agent": "duck",
-          "status": "running",
-          "stage": "loading context",
-          "elapsed_ms": 12030,
-          "eta_remaining_seconds": 23
-        },
-        {
-          "ts": "2026-04-01T04:09:24Z",
-          "job_id": "chatjob-2f07f79a000d",
-          "agent": "duck",
-          "status": "running",
-          "stage": "loading context",
-          "elapsed_ms": 14041,
-          "eta_remaining_seconds": 21
-        },
-        {
-          "ts": "2026-04-01T04:09:26Z",
-          "job_id": "chatjob-2f07f79a000d",
-          "agent": "duck",
-          "status": "running",
-          "stage": "loading context",
-          "elapsed_ms": 16044,
-          "eta_remaining_seconds": 19
-        },
-        {
-          "ts": "2026-04-01T04:09:28Z",
-          "job_id": "chatjob-2f07f79a000d",
-          "agent": "duck",
-          "status": "running",
-          "stage": "loading context",
-          "elapsed_ms": 18066,
-          "eta_remaining_seconds": 17
-        },
-        {
-          "ts": "2026-04-01T04:09:30Z",
-          "job_id": "chatjob-2f07f79a000d",
-          "agent": "duck",
-          "status": "running",
-          "stage": "loading context",
-          "elapsed_ms": 20070,
-          "eta_remaining_seconds": 15
-        },
-        {
-          "ts": "2026-04-01T04:09:32Z",
-          "job_id": "chatjob-2f07f79a000d",
-          "agent": "duck",
-          "status": "running",
-          "stage": "loading context",
-          "elapsed_ms": 22074,
-          "eta_remaining_seconds": 13
-        },
-        {
-          "ts": "2026-04-01T04:09:34Z",
-          "job_id": "chatjob-2f07f79a000d",
-          "agent": "duck",
-          "status": "running",
-          "stage": "loading context",
-          "elapsed_ms": 24080,
-          "eta_remaining_seconds": 11
-        },
-        {
-          "ts": "2026-04-01T04:09:36Z",
-          "job_id": "chatjob-2f07f79a000d",
-          "agent": "duck",
-          "status": "running",
-          "stage": "loading context",
-          "elapsed_ms": 26086,
-          "eta_remaining_seconds": 9
-        },
-        {
-          "ts": "2026-04-01T04:09:38Z",
-          "job_id": "chatjob-2f07f79a000d",
-          "agent": "duck",
-          "status": "running",
-          "stage": "loading context",
-          "elapsed_ms": 28091,
-          "eta_remaining_seconds": 7
+          "status": "completed",
+          "stage": "completed",
+          "elapsed_ms": 12013,
+          "eta_remaining_seconds": 0
         }
       ],
-      "response_excerpt": "[duck] acknowledged. Running now. ETA ~35s; monitor shows live stage.",
+      "response_excerpt": "**Audit Findings**\n\n* Response content: \"pong duck\"\n* Response format: Expected (single-line response)\n* Processing focus: Sanity checking swarm protocol",
       "error": ""
     }
   ]
