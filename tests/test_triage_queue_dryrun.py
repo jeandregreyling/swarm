@@ -30,7 +30,7 @@ import types
 
 _fake_ollama = types.ModuleType('ollama')
 
-def _stub_chat(model, messages, options=None):
+def _stub_chat(model, messages, options=None, **kwargs):
     prompt = messages[-1]['content'][:60].lower()
     # Routing stub
     if 'needs_web' in prompt or 'decide how to handle' in prompt or 'route this' in prompt.lower():

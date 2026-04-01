@@ -247,3 +247,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Executed full E2E/UAT/chat/channel validation; fixed notification paths to log send_reply=False as notify_failed in listener/telegram/discord; added comprehensive test plan doc and tracker delta.
 - Rollback: Rollback by reverting listener.py, telegram_bot.py, discord_bot.py and docs updates in this session.
 
+- Time (UTC): 2026-04-01T07:58:14Z
+- Actor: Copilot
+- Scope: qa-harness
+- Change: Fix dry-run ollama stub signature for keep_alive compatibility
+- Validation: Updated tests/test_triage_queue_dryrun.py stub_chat to accept **kwargs; removed repeated warning during queue dry-run and revalidated 24/24 checks pass.
+- Rollback: Revert tests/test_triage_queue_dryrun.py signature change if needed.
+
