@@ -1,0 +1,33 @@
+# Stale Proposals
+
+- [20:55] INTERNAL-QWEN-0333 (qwen): Qwen Task
+- [20:55] INTERNAL-QWEN-0332 (qwen): Qwen Coordination Task
+- [20:55] INTERNAL-GHOST-0323 (ghost): qa-probe
+- [09:08] INTERNAL-QWEN-0345 (qwen): Analyse routing drift
+- [09:08] INTERNAL-GEMMA-0336 (gemma): Gemma routing review
+- [09:08] INTERNAL-GEMMA-0335 (gemma): Gemma routing review
+- [09:08] INTERNAL-QWEN-0334 (qwen): Qwen Coordination Task
+- [09:08] INTERNAL-QWEN-0333 (qwen): Qwen Task
+- [09:08] INTERNAL-QWEN-0332 (qwen): Qwen Coordination Task
+- [09:08] INTERNAL-GHOST-0323 (ghost): qa-probe
+- [09:13] INTERNAL-QWEN-0345 (qwen): Analyse routing drift
+- [09:13] INTERNAL-GEMMA-0336 (gemma): Gemma routing review
+- [09:13] INTERNAL-GEMMA-0335 (gemma): Gemma routing review
+- [09:13] INTERNAL-QWEN-0334 (qwen): Qwen Coordination Task
+- [09:13] INTERNAL-QWEN-0333 (qwen): Qwen Task
+- [09:13] INTERNAL-QWEN-0332 (qwen): Qwen Coordination Task
+- [09:13] INTERNAL-GHOST-0323 (ghost): qa-probe
+- [09:18] INTERNAL-QWEN-0345 (qwen): Analyse routing drift
+- [09:18] INTERNAL-GEMMA-0336 (gemma): Gemma routing review
+- [09:18] INTERNAL-GEMMA-0335 (gemma): Gemma routing review
+- [09:18] INTERNAL-QWEN-0334 (qwen): Qwen Coordination Task
+- [09:18] INTERNAL-QWEN-0333 (qwen): Qwen Task
+- [09:18] INTERNAL-QWEN-0332 (qwen): Qwen Coordination Task
+- [09:18] INTERNAL-GHOST-0323 (ghost): qa-probe
+- [09:33] INTERNAL-QWEN-0345 (qwen): Analyse routing drift
+- [09:33] INTERNAL-GEMMA-0336 (gemma): Gemma routing review
+- [09:33] INTERNAL-GEMMA-0335 (gemma): Gemma routing review
+- [09:33] INTERNAL-QWEN-0334 (qwen): Qwen Coordination Task
+- [09:33] INTERNAL-QWEN-0333 (qwen): Qwen Task
+- [09:33] INTERNAL-QWEN-0332 (qwen): Qwen Coordination Task
+- [09:33] INTERNAL-GHOST-0323 (ghost): qa-probe

@@ -695,8 +695,7 @@ def api_agent_create_ticket():
     log_activity(
         'terminal',
         'agent_ticket_created',
-        f'agent={agent_id} proposal_id={proposal_id}',
-        tags=agent_id
+        f'agent={agent_id} proposal_id={proposal_id}'
     )
     
     return jsonify({
@@ -801,6 +800,119 @@ def api_agent_list_proposals():
         return jsonify({'ok': True, 'proposals': proposals})
     finally:
         conn.close()
+
+
+@app.route('/api/agent/capabilities', methods=['GET'])
+def api_agent_capabilities():
+    """
+    Tell an agent what capabilities it has been granted.
+    
+    Requires: X-Agent-Key, X-Agent-Id headers
+    Returns: {ok, agent_id, capabilities: [{capability, desc, granted}]}
+    """
+    agent_id, error_response = _validate_agent_request()
+    if error_response:
+        return error_response
+    
+    try:
+        from database import get_agent_capabilities, AGENT_CAPABILITY_REGISTRY
+        caps = get_agent_capabilities(agent_id)
+        
+        # Enrich with descriptions
+        enriched = []
+        for cap in caps:
+            meta = AGENT_CAPABILITY_REGISTRY.get(cap['capability'], {})
+            enriched.append({
+                'capability': cap['capability'],
+                'description': meta.get('desc', ''),
+                'trust_level': cap['trust_level'],
+                'granted': bool(cap['granted']),
+                'granted_by': cap['granted_by'],
+                'granted_at': cap['granted_at'],
+            })
+        
+        return jsonify({'ok': True, 'agent_id': agent_id, 'capabilities': enriched})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/agent/think', methods=['POST'])
+def api_agent_push_think():
+    """
+    Agent pushes a self-proposed work item via API (alternative to THINK.md file).
+    Fridays orchestrator processes these on the next heartbeat.
+    
+    Requires: X-Agent-Key, X-Agent-Id headers
+    JSON: {title, description, priority}
+    Returns: {ok, proposal_id, queue_id}
+    """
+    agent_id, error_response = _validate_agent_request()
+    if error_response:
+        return error_response
+    
+    # Check agent has propose_work capability
+    try:
+        from database import agent_has_capability
+        if not agent_has_capability(agent_id, 'propose_work'):
+            return jsonify({'ok': False, 'error': f'agent {agent_id} does not have propose_work capability'}), 403
+    except Exception:
+        pass  # If DB check fails, still allow (graceful degradation)
+    
+    data = request.get_json() or {}
+    title = (data.get('title') or '').strip()
+    description = (data.get('description') or '').strip()
+    priority = int(data.get('priority', 5) or 5)
+    
+    if not title:
+        return jsonify({'ok': False, 'error': 'title required'}), 400
+    
+    queue_id, proposal_id = intake_internal(agent_id, title, description, priority=priority)
+    log_activity('terminal', 'agent_self_proposed', f'agent={agent_id} proposal_id={proposal_id}')
+    
+    return jsonify({
+        'ok': True,
+        'proposal_id': proposal_id,
+        'queue_id': queue_id,
+        'via': 'think_api'
+    }), 201
+
+
+@app.route('/api/agent/identity', methods=['GET'])
+def api_agent_identity():
+    """
+    Return an agent's identity card from its sandpit WHO_AM_I.md.
+    Agents call this on startup to remember who they are.
+    
+    Requires: X-Agent-Key, X-Agent-Id headers
+    Returns: {ok, agent_id, identity_md, capabilities_count, sandpit_path}
+    """
+    agent_id, error_response = _validate_agent_request()
+    if error_response:
+        return error_response
+    
+    sandpit = Path('/home/seven/swarm/sandpits') / agent_id
+    identity_file = sandpit / 'WHO_AM_I.md'
+    
+    identity_md = identity_file.read_text() if identity_file.exists() else None
+    
+    try:
+        from database import get_agent_capabilities
+        caps = [c for c in get_agent_capabilities(agent_id) if c.get('granted')]
+        caps_count = len(caps)
+        cap_names = [c['capability'] for c in caps]
+    except Exception:
+        caps_count = 0
+        cap_names = []
+    
+    return jsonify({
+        'ok': True,
+        'agent_id': agent_id,
+        'identity_md': identity_md,
+        'capabilities_count': caps_count,
+        'capabilities': cap_names,
+        'sandpit_path': str(sandpit),
+        'shared_path': '/home/seven/swarm/sandpits/shared',
+    })
 
 
 @app.route('/')

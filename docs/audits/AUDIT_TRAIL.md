@@ -316,3 +316,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Rollback by reverting tests/test_notification_reliability.py and BUGS.md updates if needed.
 
+- Audit ID: AUDIT-20260401-095737
+- Time (UTC): 2026-04-01T09:57:37Z
+- Actor: copilot
+- Objective: Added agent capability APIs (/api/agent/capabilities, /api/agent/think, /api/agent/identity), capability registry/grants, and Fridays heartbeat orchestration.
+- Evidence: Validated via py_compile + live endpoint tests + one heartbeat run
+- Result: PASS
+- Follow-up: Disable swarm-fridays service and revert frontend/terminal.py endpoint additions
+
