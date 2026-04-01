@@ -42,8 +42,7 @@ from database import (get_connection, new_conversation, log_message,
                        get_pending_emails, mark_pending_processed, log_activity,
                        list_user_profiles, get_user_profile, upsert_user_profile,
                        list_user_skill_permissions, set_user_skill_permission,
-                       can_user_invoke_skill, initialise_database,
-                       get_agent_memory, save_agent_memory)
+                       can_user_invoke_skill, initialise_database)
 from ticket import create as ticket_create, librarian_close
 import queue_manager as _queue_manager
 
@@ -195,14 +194,13 @@ _CHAT_AGENT_RUNTIME_CLASS = {
     'gemma': 'local',
     'llama': 'local',
     'qwen': 'local',
-    'eight': 'local',
     'librarian': 'local',
     'duck': 'local',
     'sniffles': 'local',
-    'nine': 'paid',
-    'ten': 'paid',
-    'eleven': 'paid',
-    'twelve': 'paid',
+    'nine': 'ghost',
+    'ten': 'ghost',
+    'eleven': 'ghost',
+    'twelve': 'ghost',
 }
 
 
@@ -228,18 +226,6 @@ def _chat_stage_for(agent, elapsed_ms):
         if elapsed < 45000:
             return 'synthesizing response'
         return 'finalizing answer'
-    if agent in {'duck', 'sniffles'}:
-        if elapsed < 4000:
-            return 'assembling audit context'
-        if elapsed < 16000:
-            return 'reviewing evidence'
-        return 'writing findings'
-    if agent in {'llama', 'qwen', 'eight', 'librarian'}:
-        if elapsed < 4000:
-            return 'loading local memory'
-        if elapsed < 16000:
-            return 'processing thread hand-off'
-        return 'drafting response'
     if elapsed < 6000:
         return 'loading context'
     if elapsed < 18000:
@@ -1704,32 +1690,6 @@ def api_work_proposals_patch(proposal_id):
             agent=row['agent'] or 'terminal_ui',
             description=f'Automatic Vortex checkpoint after {proposal_id} moved to {status}'
         )
-
-    # Notify the originating agent via memory so it can act on the outcome
-    agent_name = (row['agent'] or '').lower().strip()
-    _NOTIFIABLE_AGENTS = {'nine', 'gemma', 'grok', 'llama', 'eight', 'twelve'}
-    if agent_name in _NOTIFIABLE_AGENTS and status in ('approved', 'rejected', 'in_progress', 'done', 'executed'):
-        try:
-            from database import save_agent_memory
-            status_labels = {
-                'approved':   'Your proposal has been approved by Ghost. Begin planning implementation.',
-                'rejected':   'Your proposal was rejected by Ghost. Review and consider revising.',
-                'in_progress':'Your proposal is now in progress. Proceed with implementation.',
-                'done':       'Your proposal is marked done. Awaiting final execution sign-off.',
-                'executed':   'Your proposal has been executed and closed.',
-            }
-            note = status_labels.get(status, f'Proposal status changed to {status}.')
-            save_agent_memory(
-                agent_name=agent_name,
-                subject=f'Proposal {proposal_id} → {status}',
-                content=f'{note} Proposal: "{row["title"]}". Ticket ref: {row["ticket_number"] or "none"}.',
-                tags='proposal,alm,status_change',
-                importance=8,
-                source='alm_pipeline'
-            )
-        except Exception:
-            pass
-
     payload = {'ok': True, 'proposal': dict(row)}
     if duck_review:
         payload['duck_review'] = duck_review
@@ -3056,86 +3016,8 @@ def api_chat():
             lines.append(f"{who}: {text[:500]}")
         return "\n".join(lines)
 
-    def _load_local_agent_memories(selected_agent, latest_message, topic_limit=4, recent_limit=2):
-        query = str(latest_message or '').strip()[:160]
-        collected = []
-        seen_ids = set()
-
-        for search_query, limit in ((query, topic_limit), ('', recent_limit)):
-            try:
-                rows = get_agent_memory(selected_agent, query=search_query, limit=limit) or []
-            except Exception:
-                rows = []
-            for row in rows:
-                row_id = row['id'] if 'id' in row.keys() else id(row)
-                if row_id in seen_ids:
-                    continue
-                seen_ids.add(row_id)
-                collected.append(row)
-        return collected
-
-    def _build_local_memory_block(selected_agent, latest_message):
-        memories = _load_local_agent_memories(selected_agent, latest_message)
-        if not memories:
-            return ''
-
-        lines = []
-        for row in memories:
-            tags = str(row['tags'] or '').strip()
-            subject = str(row['subject'] or '').strip()[:120]
-            content = str(row['content'] or '').strip().replace('\n', ' ')[:420]
-            prefix = f"[{tags}] " if tags else ''
-            lines.append(f"- {prefix}{subject}: {content}")
-
-        return (
-            "\n\n=== Your recent memory ===\n"
-            + "\n".join(lines)
-            + "\n=== End memory ===\n"
-            + "Use this for continuity and hand-off. Do not quote it verbatim unless asked."
-        )
-
-    def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message):
-        memory_block = _build_local_memory_block(selected_agent, latest_message)
-        base_prompt = threaded_prompt + memory_block
-        if selected_agent in {'duck', 'sniffles'}:
-            return (
-                "=== Audit mode ===\n"
-                "Review the thread and latest user message. Focus on factual consistency, risk,"
-                " contradictions, and missing assumptions. Return concise findings only.\n\n"
-                + base_prompt
-            )
-        return base_prompt
-
-    def _persist_local_agent_memory(selected_agent, latest_message, response_text):
-        answer = str(response_text or '').strip()
-        if not answer:
-            return
-
-        lowered = answer.lower()
-        if lowered.startswith(f'[{selected_agent}] acknowledged.'):
-            return
-        if 'taking longer than expected' in lowered:
-            return
-        if lowered.endswith('no response'):
-            return
-
-        content = (
-            f"User asked: {str(latest_message or '').strip()[:400]}\n"
-            f"You answered: {answer[:1600]}"
-        )
-        try:
-            save_agent_memory(
-                agent_name=selected_agent,
-                subject=str(latest_message or '').strip()[:100] or f'{selected_agent} terminal chat',
-                content=content,
-                tags='chat,terminal-ui,shared-thread',
-                importance=7,
-                source='terminal_chat',
-            )
-        except Exception as exc:
-            log_activity('terminal', 'chat_memory_persist_warning', f'{selected_agent}: {exc}')
-
     def _run_ghost_layer_chat(selected_agent, prompt, history):
+        from database import save_agent_memory, log_activity, get_agent_memory
         from claude_api import _load_api_key, CLAUDE_MODEL
         import anthropic
         from config import NINE_SYSTEM_PROMPT, TEN_SYSTEM_PROMPT
@@ -3325,18 +3207,19 @@ def api_chat():
             else:
                 local_timeout = 240
         try:
-            if selected_agent in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
-                _stage('loading local memory', est_eta)
-                local_prompt = _build_local_agent_prompt(selected_agent, prompt, message)
+            if selected_agent in {'gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles'}:
+                _stage('loading local model context', est_eta)
+                local_prompt = prompt
                 if selected_agent in {'duck', 'sniffles'}:
-                    _stage('assembling audit context', est_eta)
-                else:
-                    _stage('processing thread hand-off', est_eta)
+                    _stage('auditing request', est_eta)
+                    local_prompt = (
+                        'Audit target message:\n'
+                        f'{message}\n\n'
+                        'Return concise findings only.'
+                    )
                 future = executor.submit(orchestrator.ask_agent, selected_agent, local_prompt)
                 _stage('running local inference', est_eta)
                 response_text = future.result(timeout=local_timeout)
-                _stage('storing agent memory', 0)
-                _persist_local_agent_memory(selected_agent, message, response_text)
             elif selected_agent in {'nine', 'ten'}:
                 _stage('dispatching to ghost datacenter', est_eta)
                 future = executor.submit(_run_ghost_layer_chat, selected_agent, message, history)
@@ -3575,32 +3458,14 @@ def api_chat():
 
         debate_turn = []
 
-        def _agent_label(agent_key):
-            key = str(agent_key or '').strip().lower()
-            labels = {
-                'gemma': 'Gemma',
-                'llama': 'LLaMA',
-                'qwen': 'Qwen',
-                'eight': 'Eight',
-                'librarian': 'Librarian',
-                'duck': 'Duck',
-                'sniffles': 'Sniffles',
-                'nine': 'Nine',
-                'ten': 'Ten',
-                'eleven': 'Eleven',
-                'twelve': 'Twelve',
-            }
-            return labels.get(key, key or 'Agent')
-
         def _build_debate_prompt(selected_agent):
             if len(runnable_agents) <= 1:
                 return threaded_prompt
 
-            active_labels = [_agent_label(a) for a in runnable_agents]
-            peer_list = ', '.join(_agent_label(a) for a in runnable_agents if a != selected_agent)
+            peer_list = ', '.join(_chat_agent_label(a) for a in runnable_agents if a != selected_agent)
             if debate_turn:
                 turn_lines = '\n'.join(
-                    f"{_agent_label(item['agent'])}: {str(item['response'])[:800]}"
+                    f"{_chat_agent_label(item['agent'])}: {str(item['response'])[:800]}"
                     for item in debate_turn
                 )
             else:
@@ -3609,15 +3474,10 @@ def api_chat():
             return (
                 threaded_prompt
                 + "\n\n=== Multi-Agent Debate Mode (Current Turn) ===\n"
-                + f"You are {_agent_label(selected_agent)}.\n"
-                + f"ACTIVE AGENTS IN THIS CHAT: {', '.join(active_labels)}.\n"
-                + "RULES: Only address agents from the list above. Do NOT mention, ask, or direct questions to "
-                + "any agent, person, or entity not in ACTIVE AGENTS. Do NOT ask Ghost to respond — "
-                + "Ghost has already sent their message above.\n"
-                + "Read the peer responses below and reply to them where useful. "
-                + "When another active agent already covered a point, extend or challenge it instead of restating it. "
-                + "If you agree or disagree, name the agent and explain in 1-2 lines. "
-                + "Then give your own answer.\n\n"
+                + f"You are {_chat_agent_label(selected_agent)}. Other participating agents: {peer_list or 'none'}.\n"
+                + "Read the peer responses below and respond to them directly where useful.\n"
+                + "If you agree/disagree with another agent, name them and explain why in 1-2 lines.\n"
+                + "Then provide your recommendation.\n\n"
                 + "Peer responses so far this turn:\n"
                 + turn_lines
             )

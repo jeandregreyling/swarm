@@ -226,3 +226,17 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Template diagnostics clean; swarm-terminal restarted and healthy on port 5050
 - Rollback: Revert frontend/templates/terminal_base.html and restart swarm-terminal
 
+- Time (UTC): 2026-04-01T02:20:56Z
+- Actor: copilot
+- Scope: frontend/templates/terminal_base.html
+- Change: Fix side thread delete click handling with explicit event stop + optimistic UI removal; expand dictionary with export/import/reset controls
+- Validation: Template diagnostics clean and swarm-terminal restarted healthy
+- Rollback: Revert frontend/templates/terminal_base.html and restart swarm-terminal
+
+- Time (UTC): 2026-04-01T02:25:04Z
+- Actor: copilot
+- Scope: frontend/templates/terminal_base.html
+- Change: Enhance chat window UX with premium header, thread search/filter, quick prompt chips, composer telemetry, and dictionary status pills
+- Validation: Template diagnostics clean and swarm-terminal restarted successfully
+- Rollback: Revert frontend/templates/terminal_base.html and restart swarm-terminal
+

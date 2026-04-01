@@ -260,3 +260,19 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/templates/terminal_base.html and restart swarm-terminal
 
+- Audit ID: AUDIT-20260401-022056
+- Time (UTC): 2026-04-01T02:20:56Z
+- Actor: copilot
+- Objective: Fix side thread delete click handling with explicit event stop + optimistic UI removal; expand dictionary with export/import/reset controls
+- Evidence: Template diagnostics clean and swarm-terminal restarted healthy
+- Result: PASS
+- Follow-up: Revert frontend/templates/terminal_base.html and restart swarm-terminal
+
+- Audit ID: AUDIT-20260401-022504
+- Time (UTC): 2026-04-01T02:25:04Z
+- Actor: copilot
+- Objective: Enhance chat window UX with premium header, thread search/filter, quick prompt chips, composer telemetry, and dictionary status pills
+- Evidence: Template diagnostics clean and swarm-terminal restarted successfully
+- Result: PASS
+- Follow-up: Revert frontend/templates/terminal_base.html and restart swarm-terminal
+
