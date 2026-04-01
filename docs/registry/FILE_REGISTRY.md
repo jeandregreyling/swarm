@@ -1,6 +1,6 @@
 # FILE REGISTRY — Master Index
 
-> Last updated: 2026-03-30
+> Last updated: 2026-04-01
 > **Any AI or human starting work on this project MUST read this file first.**
 > This is the single source of truth for what exists, what it does, and whether it is live.
 
@@ -215,6 +215,7 @@ Before creating ANY new file:
 | `docs/testing/ALM_TEST_SPECIFICATION.md` | ACTIVE | ALM system test spec |
 | `docs/testing/E2E_TEST_SUITE.md` | ACTIVE | End-to-end test suite definition |
 | `docs/testing/TIME_WIZARD_TESTS.md` | ACTIVE | Time Wizard / Vortex test cases |
+| `docs/testing/COMPREHENSIVE_TEST_PLAN_2026-04-01.md` | ACTIVE | Comprehensive test plan + execution evidence for Session 11 |
 | `docs/UAT_TEST_SCRIPTS.md` | ACTIVE | User acceptance test scripts |
 
 ---

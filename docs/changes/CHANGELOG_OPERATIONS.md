@@ -240,3 +240,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Template diagnostics clean and swarm-terminal restarted successfully
 - Rollback: Revert frontend/templates/terminal_base.html and restart swarm-terminal
 
+- Time (UTC): 2026-04-01T07:48:09Z
+- Actor: Copilot
+- Scope: validation+notifications
+- Change: Session 11 comprehensive validation and notification reliability hardening
+- Validation: Executed full E2E/UAT/chat/channel validation; fixed notification paths to log send_reply=False as notify_failed in listener/telegram/discord; added comprehensive test plan doc and tracker delta.
+- Rollback: Rollback by reverting listener.py, telegram_bot.py, discord_bot.py and docs updates in this session.
+

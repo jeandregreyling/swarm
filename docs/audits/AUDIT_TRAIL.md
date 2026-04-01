@@ -276,3 +276,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/templates/terminal_base.html and restart swarm-terminal
 
+- Audit ID: AUDIT-20260401-074809
+- Time (UTC): 2026-04-01T07:48:09Z
+- Actor: Copilot
+- Objective: Session 11 comprehensive validation and notification reliability hardening
+- Evidence: Executed full E2E/UAT/chat/channel validation; fixed notification paths to log send_reply=False as notify_failed in listener/telegram/discord; added comprehensive test plan doc and tracker delta.
+- Result: PASS
+- Follow-up: Rollback by reverting listener.py, telegram_bot.py, discord_bot.py and docs updates in this session.
+
