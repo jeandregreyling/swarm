@@ -2790,20 +2790,6 @@ class WindowManager {
     header.innerHTML = `
       <div class="window-title-wrap">
         <div class="window-title">${title}</div>
-        <div class="window-theme-quick" data-winid="${id}">
-          <button class="window-theme-chip" data-theme="auto" onclick="setWindowQuickTheme('${id}','auto')" title="Auto (time of day)">A</button>
-          <button class="window-theme-chip" data-theme="morning" onclick="setWindowQuickTheme('${id}','morning')" title="Morning">🌅</button>
-          <button class="window-theme-chip" data-theme="afternoon" onclick="setWindowQuickTheme('${id}','afternoon')" title="Afternoon">☀️</button>
-          <button class="window-theme-chip" data-theme="evening" onclick="setWindowQuickTheme('${id}','evening')" title="Evening">🌆</button>
-          <button class="window-theme-chip" data-theme="night" onclick="setWindowQuickTheme('${id}','night')" title="Night">🌙</button>
-          <span style="color:var(--border);font-size:10px;padding:0 2px;">|</span>
-          <button class="window-theme-chip" data-theme="obsidian" onclick="setWindowQuickTheme('${id}','obsidian')" title="Obsidian (Linear)" style="background:#111113;border-color:#6366F1;color:#6366F1;">⬡</button>
-          <button class="window-theme-chip" data-theme="void" onclick="setWindowQuickTheme('${id}','void')" title="Void (Vercel)" style="background:#111;border-color:#444;color:#888;">◼</button>
-          <button class="window-theme-chip" data-theme="aurora" onclick="setWindowQuickTheme('${id}','aurora')" title="Aurora (Arc)" style="background:#13141F;border-color:#8B5CF6;color:#8B5CF6;">◈</button>
-          <button class="window-theme-chip" data-theme="ember" onclick="setWindowQuickTheme('${id}','ember')" title="Ember (Raycast)" style="background:#141210;border-color:#FF6B35;color:#FF6B35;">◉</button>
-          <button class="window-theme-chip" data-theme="graphite" onclick="setWindowQuickTheme('${id}','graphite')" title="Graphite (Stripe)" style="background:#1A1D27;border-color:#635BFF;color:#635BFF;">◆</button>
-          <button class="window-theme-chip" data-theme="rose" onclick="setWindowQuickTheme('${id}','rose')" title="Rose" style="background:#160E10;border-color:#FB7185;color:#FB7185;">◇</button>
-        </div>
       </div>
       <div class="window-controls">
         <button class="window-btn" onclick="openWindowHelp('${id}')" title="Help">?</button>
@@ -4841,12 +4827,13 @@ let _pinShowResolved = false;
 function _pinLoad() {
   const list = document.getElementById('pin-list');
   if (!list) return;
+  // ?resolved=1 returns all items; default returns only unresolved
   const url = `/api/deferred${_pinShowResolved ? '?resolved=1' : ''}`;
   fetch(url).then(r => r.json()).then(data => {
     const items = data.items || [];
     if (!items.length) {
       list.innerHTML = `<div style="color:var(--text-dim);font-size:12px;text-align:center;padding:30px;">
-        ${_pinShowResolved ? 'No items yet.' : 'Nothing pinned. Add something above or use the &#128204; Pin button on tickets and proposals.'}
+        ${_pinShowResolved ? 'No items here at all yet.' : 'Nothing pinned. Add something above or use the &#128204; Pin button on tickets and proposals.'}
       </div>`;
       return;
     }

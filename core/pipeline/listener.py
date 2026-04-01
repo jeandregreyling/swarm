@@ -541,23 +541,27 @@ def handle_moderator_command(body, from_addr, subject=''):
 # Unknown sender — notify moderator
 # ─────────────────────────────────────────────────────────────
 
+TERMINAL_URL = 'http://localhost:5050'
+
+
 def ask_moderator_about(from_addr, subject, body_preview):
     trusted, mods, notifications = get_all_email_lists()
     if not mods:
         return
 
-    from urllib.parse import quote
-    _subj_enc   = quote(f'[Swarm] Unknown sender: {from_addr}', safe='')
-    trust_link  = f'mailto:{GMAIL_ADDRESS}?subject={_subj_enc}&body=TRUST'
-    notify_link = f'mailto:{GMAIL_ADDRESS}?subject={_subj_enc}&body=NOTIFY'
-    ignore_link = f'mailto:{GMAIL_ADDRESS}?subject={_subj_enc}&body=IGNORE'
+    trust_tok  = create_approval_token('trust',  from_addr, 'moderator_email')
+    notify_tok = create_approval_token('notify', from_addr, 'moderator_email')
+    ignore_tok = create_approval_token('ignore', from_addr, 'moderator_email')
+    trust_link  = f'{TERMINAL_URL}/approve/trust/{trust_tok}'
+    notify_link = f'{TERMINAL_URL}/approve/notify/{notify_tok}'
+    ignore_link = f'{TERMINAL_URL}/approve/ignore/{ignore_tok}'
 
     plain = (
         f'Seven received an email from an unknown sender.\n\n'
         f'From:    {from_addr}\n'
         f'Subject: {subject or "(no subject)"}\n'
         f'Preview: {body_preview[:200]}\n\n'
-        f'Action links (copy into browser if links are broken):\n\n'
+        f'One-click action links (open in browser):\n\n'
         f'TRUST   {trust_link}\n\n'
         f'NOTIFY  {notify_link}\n\n'
         f'IGNORE  {ignore_link}\n'
@@ -570,7 +574,7 @@ def ask_moderator_about(from_addr, subject, body_preview):
   <tr><td style="color:#555;padding:3px 12px 3px 0">Subject</td><td style="color:#e0e0e0">{subject or '(no subject)'}</td></tr>
   <tr><td style="color:#555;padding:3px 12px 3px 0;vertical-align:top">Preview</td><td style="color:#aaa">{body_preview[:200]}</td></tr>
 </table>
-<p style="color:#555;font-size:11px;margin-bottom:12px">Click an action — opens a pre-filled reply in Thunderbird. Just hit Send.</p>
+<p style="color:#555;font-size:11px;margin-bottom:12px">Click an action — one click, no reply needed.</p>
 <table style="border-collapse:collapse">
   <tr>
     <td style="padding:4px 8px 4px 0"><a href="{trust_link}"  style="background:#1a3a1a;color:#66cc66;border:1px solid #2d6b2d;border-radius:4px;padding:8px 18px;text-decoration:none;font-size:13px;font-family:monospace">TRUST</a></td>
@@ -606,11 +610,12 @@ def _notify_ignored(from_addr, subject, body_preview, reason):
     if not mods:
         return
 
-    from urllib.parse import quote
-    _subj_enc   = quote(f'[Swarm] Unknown sender: {from_addr}', safe='')
-    trust_link  = f'mailto:{GMAIL_ADDRESS}?subject={_subj_enc}&body=TRUST'
-    notify_link = f'mailto:{GMAIL_ADDRESS}?subject={_subj_enc}&body=NOTIFY'
-    ignore_link = f'mailto:{GMAIL_ADDRESS}?subject={_subj_enc}&body=IGNORE'
+    trust_tok  = create_approval_token('trust',  from_addr, 'moderator_email')
+    notify_tok = create_approval_token('notify', from_addr, 'moderator_email')
+    ignore_tok = create_approval_token('ignore', from_addr, 'moderator_email')
+    trust_link  = f'{TERMINAL_URL}/approve/trust/{trust_tok}'
+    notify_link = f'{TERMINAL_URL}/approve/notify/{notify_tok}'
+    ignore_link = f'{TERMINAL_URL}/approve/ignore/{ignore_tok}'
 
     plain = (
         f'Librarian automatically ignored an email from an unknown sender.\n\n'
@@ -620,10 +625,10 @@ def _notify_ignored(from_addr, subject, body_preview, reason):
         f'Preview: {body_preview[:200]}\n\n'
         f'The email has been moved to your Notifications folder (unread).\n'
         f'Future emails from this sender will be moved silently — no more notifications.\n\n'
-        f'If this was a mistake, reply with one of:\n'
-        f'  TRUST {from_addr}\n'
-        f'  NOTIFY {from_addr}\n'
-        f'  IGNORE {from_addr}\n'
+        f'If this was a mistake, click one of these one-click links:\n\n'
+        f'TRUST   {trust_link}\n\n'
+        f'NOTIFY  {notify_link}\n\n'
+        f'IGNORE  {ignore_link}\n'
     )
     html = f"""<!DOCTYPE html>
 <html><body style="background:#0f0f0f;color:#e0e0e0;font-family:monospace;padding:20px;max-width:600px">
@@ -635,7 +640,7 @@ def _notify_ignored(from_addr, subject, body_preview, reason):
   <tr><td style="color:#555;padding:3px 12px 3px 0;vertical-align:top">Preview</td><td style="color:#aaa">{body_preview[:200]}</td></tr>
 </table>
 <p style="color:#555;font-size:11px;margin-bottom:4px">Email moved to <strong style="color:#6699cc">Notifications</strong> folder (unread). Future emails from this sender will be moved silently.</p>
-<p style="color:#555;font-size:11px;margin-bottom:12px">Click an action if this was a mistake — opens a pre-filled reply. Just hit Send.</p>
+<p style="color:#555;font-size:11px;margin-bottom:12px">Click an action if this was a mistake — one click, no reply needed.</p>
 <table style="border-collapse:collapse">
   <tr>
     <td style="padding:4px 8px 4px 0"><a href="{trust_link}"  style="background:#1a3a1a;color:#66cc66;border:1px solid #2d6b2d;border-radius:4px;padding:8px 18px;text-decoration:none;font-size:13px;font-family:monospace">TRUST</a></td>

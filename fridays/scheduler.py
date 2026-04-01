@@ -156,10 +156,10 @@ def check_due():
     for row in rows:
         task_id, name, action_type, action_data = row[0], row[1], row[2], row[3]
         try:
-            if action_type == 'SHELL':
+            if action_type.upper() == 'SHELL':
                 subprocess.Popen(action_data, shell=True)
                 print(f'[Scheduler] Fired SHELL task #{task_id}: {action_data[:60]}')
-            elif action_type in ('QUESTION', 'BRIEF'):
+            elif action_type.upper() in ('QUESTION', 'BRIEF'):
                 # Delegate to brief engine for brief tasks; ignore questions (handled by listener)
                 if 'brief_engine' in (action_data or ''):
                     subprocess.Popen(action_data, shell=True)
