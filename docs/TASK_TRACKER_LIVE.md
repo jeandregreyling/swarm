@@ -25,6 +25,9 @@ Canonical ledgers for this tracker:
 | Terminal execution under ALM | ✅ DONE | `/api/hands/run` validated with executed proposal id + whitelisted command (`whoami`) |
 | Notification SMTP delivery (both moderator addresses) | ✅ DONE | Diagnostic `send_reply()` to `jeandre.greyling@gmail.com` and `jeandre.greyling@outlook.com` both returned `True` |
 | Notification reliability fix (code) | ✅ DONE | `core/pipeline/listener.py`, `fridays/telegram_bot.py`, `fridays/discord_bot.py` now treat `send_reply=False` as `notify_failed` and log explicitly |
+| Self-healing Gmail Push recovery | ✅ DONE | `core/pipeline/listener.py` now retries push activation during IMAP fallback and switches back without restart when token/watch recover |
+| Proposal notification heartbeat | ✅ DONE | `core/pipeline/listener.py` periodic task loop now includes `check_proposals()` in both push and IMAP modes |
+| Terminal force-close recovery | ✅ DONE | `core/pipeline/ticket.py` now resolves Duck hook via package or legacy path; `/api/tickets/<id>/close` revalidated with synthetic ticket |
 | Consolidated gate check | ✅ DONE | `python3 ops/daily_gate.py --quick` => FULLY OPERATIONAL |
 
 ### Session 11 Findings
@@ -34,6 +37,8 @@ Canonical ledgers for this tracker:
 | OPS-NOTIFY-031 | HIGH | Unknown-sender notification paths could log success even when `send_reply` returned `False` (silent delivery miss) | ✅ FIXED |
 | OPS-EMAIL-032 | MEDIUM | Gmail Push token had historical `invalid_grant` revocation events; listener falls back to IMAP polling | 🟡 PARTIAL (service works; push re-auth still required for instant push) |
 | OPS-ALM-033 | LOW | `/api/hands/run` enforces ALM + whitelist (works as designed; non-whitelisted command rejected) | ✅ VERIFIED |
+| OPS-TERM-034 | HIGH | Terminal dashboard force-close could fail with `No module named 'duck'` in some runtimes | ✅ FIXED |
+| OPS-PROPOSAL-035 | MEDIUM | Proposal notifications were not part of the listener's regular periodic task sweep | ✅ FIXED |
 
 ### Operator Action Required (for instant push notifications)
 
