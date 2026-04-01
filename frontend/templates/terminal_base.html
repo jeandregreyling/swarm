@@ -4760,12 +4760,12 @@ function loadAttentionPanel() {
     if (card && cls) card.className = 'stat-card ' + cls;
   };
 
-  // /api/monitor has open tickets + duck flags already
+  // /api/monitor has open tickets + duck flags
   fetch('/api/monitor')
     .then(r => r.json())
     .then(d => {
-      const openT = d.tickets?.open ?? 0;
-      const duckNo = d.duck?.no ?? 0;
+      const openT  = d.open_tickets ?? 0;
+      const duckNo = d.duck_flags_today ?? 0;
       setVal('attn-open-tickets', openT, openT > 5 ? 'health-crit' : openT > 0 ? 'health-warn' : 'health-good');
       setVal('attn-duck', duckNo, duckNo > 0 ? 'health-crit' : 'health-good');
     }).catch(() => { setVal('attn-open-tickets','?',''); setVal('attn-duck','?',''); });
