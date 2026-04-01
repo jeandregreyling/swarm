@@ -28,6 +28,7 @@ sys.path.insert(0, '/home/seven/swarm/agents/ghost')
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from telegram.constants import ChatAction
+from telegram.error import NetworkError, TimedOut
 
 from config import TELEGRAM_TOKEN, TELEGRAM_BOT_NAME, GHOST_EMAIL
 from database import log_activity
@@ -650,12 +651,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+async def _handle_polling_error(update: object, context: ContextTypes.DEFAULT_TYPE):
+    """Global Telegram error hook to absorb transient transport failures."""
+    err = context.error
+    if isinstance(err, (NetworkError, TimedOut)):
+        logger.warning(f'[Telegram] transient network error: {err}')
+        return
+    logger.exception(f'[Telegram] unhandled error: {err}')
+
 def run():
     print(f'\n=== {TELEGRAM_BOT_NAME} Telegram Bot ===')
     print(f'Bot: @Seven_FridaysBot')
     print('Polling for messages...\n')
 
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    app.add_error_handler(_handle_polling_error)
     app.add_handler(
         MessageHandler(
             (filters.TEXT | filters.PHOTO | filters.Document.ALL) & ~filters.COMMAND,
