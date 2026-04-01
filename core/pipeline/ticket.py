@@ -22,6 +22,16 @@ import logging
 logger = logging.getLogger('seven.ticket')
 
 
+def _get_duck_on_ticket_closed():
+    """Resolve Duck's close-hook from either package or legacy import path."""
+    try:
+        from agents.ghost.duck import on_ticket_closed as hook
+        return hook
+    except Exception:
+        from duck import on_ticket_closed as hook
+        return hook
+
+
 def create(ticket_number, sender_email, question, tags='', queue_id=None, email_message_id=''):
     """
     Create a ticket and log its queue linkage.
@@ -104,8 +114,9 @@ def librarian_close(ticket_number, question, final_answer, queue_id=None, sender
     This function owns the close. Nothing else calls close_ticket directly.
     """
     from database import close_ticket
-    from duck import on_ticket_closed
     from queue_manager import mark_completed
+
+    on_ticket_closed = _get_duck_on_ticket_closed()
 
     # Step 1: Duck checks the answer
     if sender_email:

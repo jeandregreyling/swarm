@@ -49,6 +49,19 @@ import logging
 
 logger = logging.getLogger('seven.listener')
 
+
+PUSH_RECOVERY_INTERVAL_SECONDS = 900
+
+
+def _try_enable_gmail_push():
+    """Best-effort Gmail Push activation without requiring a process restart."""
+    try:
+        from gmail_push import renew_watch_if_needed
+        renew_watch_if_needed()
+        return True, ''
+    except Exception as exc:
+        return False, str(exc)
+
 # RL-010 — Simulation mode: SIMULATE=true intercepts all sends, no real emails
 _SIMULATE = os.environ.get('SIMULATE', '').lower() in ('1', 'true', 'yes')
 if _SIMULATE:
@@ -1381,9 +1394,10 @@ def run_forever(interval=60):
                     # Swarm tasks: snooze + SLA (every 5 min)
                     if time.time() - _last_imap_sweep > 300:
                         try:
-                            from swarm_tasks import check_snoozed, check_sla
+                            from swarm_tasks import check_snoozed, check_sla, check_proposals
                             check_snoozed()
                             check_sla(hours=4)
+                            check_proposals()
                         except Exception as _te:
                             print(f'[Tasks] Error: {_te}')
                 except KeyboardInterrupt:
@@ -1407,6 +1421,7 @@ def run_forever(interval=60):
         print(f'Checking every {interval} seconds.')
         print('Tip: run python3 gmail_auth.py to enable instant Gmail Push.\n')
         _last_task_check = 0.0
+        _last_push_recovery_attempt = 0.0
         while True:
             try:
                 process_emails()
@@ -1415,12 +1430,24 @@ def run_forever(interval=60):
             # Swarm tasks every 5 min
             if time.time() - _last_task_check > 300:
                 try:
-                    from swarm_tasks import check_snoozed, check_sla
+                    from swarm_tasks import check_snoozed, check_sla, check_proposals
                     check_snoozed()
                     check_sla(hours=4)
+                    check_proposals()
                     _last_task_check = time.time()
                 except Exception as _te:
                     print(f'[Tasks] Error: {_te}')
+
+            # Self-healing: periodically retry Gmail Push activation.
+            if os.path.exists(push_token) and time.time() - _last_push_recovery_attempt > PUSH_RECOVERY_INTERVAL_SECONDS:
+                _last_push_recovery_attempt = time.time()
+                ok, err = _try_enable_gmail_push()
+                if ok:
+                    print('[Listener] Gmail Push recovered — switching back to instant delivery.')
+                    log_activity('listener', 'push_recovered', 'push watch renewed during IMAP fallback')
+                    return run_forever(interval=interval)
+                if err:
+                    log_activity('listener', 'push_retry_failed', err[:300])
             time.sleep(interval)
 
 
