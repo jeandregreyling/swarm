@@ -121,97 +121,102 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, Blin
    Inspired by: Linear, Vercel, Raycast, Arc, Apple dark, Stripe, Obsidian
    ───────────────────────────────────────────────────────────────────────── */
 
-/* ── OBSIDIAN  — ultra-dark, near-black, Linear-inspired ── */
+/* ── OBSIDIAN  — Linear.app — near-black, surgical precision, indigo accent ── */
 body.theme-obsidian {
-  --bg:           #080808;
-  --card:         #111111;
-  --card-hover:   #161616;
-  --hover:        #161616;
-  --bg-input:     #0e0e0e;
-  --border:       #222222;
-  --text:         #EDEDED;
-  --text-dim:     #666666;
-  --accent:       #5B5BD6;   /* Linear's signature indigo-violet */
-  --accent-hover: #7878e0;
-  --window-bg:    #111111;
-  --window-header:#0a0a0a;
-  --shadow:       0 20px 60px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.5);
-  --radius:       10px;
-}
-
-/* ── VOID  — deep space, Vercel-inspired, pure monochrome + electric accent ── */
-body.theme-void {
-  --bg:           #000000;
-  --card:         #0a0a0a;
-  --card-hover:   #111111;
-  --hover:        #111111;
-  --bg-input:     #080808;
-  --border:       #1a1a1a;
-  --text:         #F2F2F2;
-  --text-dim:     #555555;
-  --accent:       #FFFFFF;
-  --accent-hover: #eeeeee;
-  --window-bg:    #0a0a0a;
-  --window-header:#050505;
-  --shadow:       0 24px 80px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.6);
+  --bg:           #0A0A0B;
+  --card:         #111113;
+  --card-hover:   #18181B;
+  --hover:        #18181B;
+  --bg-input:     #0e0e10;
+  --border:       #27272A;
+  --text:         #FAFAFA;
+  --text-dim:     #71717A;
+  --text-faint:   #3F3F46;
+  --accent:       #6366F1;
+  --accent-hover: #818CF8;
+  --window-bg:    #111113;
+  --window-header:#0A0A0B;
+  --shadow:       0 0 0 1px rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.85);
   --radius:       8px;
 }
 
-/* ── AURORA  — dark with living purple-green gradient bg, premium dark app feel ── */
+/* ── VOID  — Vercel — pure black, white primary, electric blue accent ── */
+body.theme-void {
+  --bg:           #09090B;
+  --card:         #111111;
+  --card-hover:   #1A1A1A;
+  --hover:        #1A1A1A;
+  --bg-input:     #0C0C0C;
+  --border:       #333333;
+  --text:         #EDEDED;
+  --text-dim:     #888888;
+  --text-faint:   #555555;
+  --accent:       #0070F3;
+  --accent-hover: #338EF7;
+  --window-bg:    #111111;
+  --window-header:#060606;
+  --shadow:       0 0 0 1px rgba(255,255,255,0.06), 0 24px 80px rgba(0,0,0,0.9);
+  --radius:       8px;
+}
+
+/* ── AURORA  — Arc Browser — deep navy, violet + cyan iridescent ── */
 body.theme-aurora {
-  --bg:           #0C0C14;
-  --card:         #13131F;
-  --card-hover:   #1A1A2A;
-  --hover:        #1A1A2A;
-  --bg-input:     #10101C;
-  --border:       #252535;
-  --text:         #E8E6F0;
-  --text-dim:     #6B6880;
-  --accent:       #A78BFA;   /* violet-400, Raycast-inspired */
-  --accent-hover: #C4B5FD;
-  --window-bg:    #13131F;
-  --window-header:#0C0C14;
-  --shadow:       0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(167,139,250,0.06);
+  --bg:           #0D0E17;
+  --card:         #13141F;
+  --card-hover:   #1A1C2E;
+  --hover:        #1A1C2E;
+  --bg-input:     #10111B;
+  --border:       #1E2035;
+  --text:         #F1F0FF;
+  --text-dim:     #6B7280;
+  --text-faint:   #374151;
+  --accent:       #8B5CF6;
+  --accent-hover: #A78BFA;
+  --window-bg:    #13141F;
+  --window-header:#0D0E17;
+  --shadow:       0 0 0 1px rgba(139,92,246,0.12), 0 20px 60px rgba(0,0,0,0.8), 0 0 60px rgba(139,92,246,0.06);
   --radius:       12px;
 }
 
-/* ── EMBER  — dark charcoal, warm amber-gold accent, luxurious editorial feel ── */
+/* ── EMBER  — Raycast — warm charcoal, orange glow, tactile warmth ── */
 body.theme-ember {
-  --bg:           #0D0B09;
-  --card:         #161310;
-  --card-hover:   #1E1A15;
-  --hover:        #1E1A15;
-  --bg-input:     #120F0C;
-  --border:       #2A231A;
-  --text:         #F0EBE0;
-  --text-dim:     #7A6B58;
-  --accent:       #F59E0B;   /* warm amber */
-  --accent-hover: #FBBF24;
-  --window-bg:    #161310;
-  --window-header:#0D0B09;
-  --shadow:       0 20px 56px rgba(0,0,0,0.75), 0 0 30px rgba(245,158,11,0.05);
+  --bg:           #0C0B0A;
+  --card:         #141210;
+  --card-hover:   #1E1C19;
+  --hover:        #1E1C19;
+  --bg-input:     #110F0D;
+  --border:       #2A2520;
+  --text:         #F5F0EB;
+  --text-dim:     #8A7F75;
+  --text-faint:   #4A4540;
+  --accent:       #FF6B35;
+  --accent-hover: #FF8C5A;
+  --window-bg:    #141210;
+  --window-header:#0C0B0A;
+  --shadow:       0 0 0 1px rgba(255,107,53,0.08), 0 20px 56px rgba(0,0,0,0.85), 0 0 40px rgba(255,107,53,0.04);
   --radius:       10px;
 }
 
-/* ── GLACIER  — arctic blue-black, Stripe dashboard-inspired, ice-cold precision ── */
-body.theme-glacier {
-  --bg:           #070B12;
-  --card:         #0E1420;
-  --card-hover:   #141C2E;
-  --hover:        #141C2E;
-  --bg-input:     #0B101A;
-  --border:       #1E2D45;
-  --text:         #E2EEFF;
-  --text-dim:     #5A7599;
-  --accent:       #3B82F6;   /* blue-500, Stripe-like */
-  --accent-hover: #60A5FA;
-  --window-bg:    #0E1420;
-  --window-header:#070B12;
-  --shadow:       0 20px 60px rgba(0,0,0,0.75), 0 0 40px rgba(59,130,246,0.07);
-  --radius:       10px;
+/* ── GRAPHITE  — Stripe Dashboard — blue-grey dark, Stripe blurple ── */
+body.theme-graphite {
+  --bg:           #0F1117;
+  --card:         #1A1D27;
+  --card-hover:   #212433;
+  --hover:        #212433;
+  --bg-input:     #141720;
+  --border:       #2A2F3E;
+  --text:         #FFFFFF;
+  --text-dim:     #A3ACB9;
+  --text-faint:   #545D6E;
+  --accent:       #635BFF;
+  --accent-hover: #7A73FF;
+  --window-bg:    #1A1D27;
+  --window-header:#0F1117;
+  --shadow:       0 0 0 1px rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.75);
+  --radius:       8px;
 }
 
-/* ── ROSE  — dark with rose-pink, editorial luxury feel ── */
+/* ── ROSE  — editorial dark, rose-pink luxury ── */
 body.theme-rose {
   --bg:           #0D0809;
   --card:         #160E10;
@@ -221,11 +226,12 @@ body.theme-rose {
   --border:       #2A181C;
   --text:         #F5E8EA;
   --text-dim:     #7A555A;
-  --accent:       #FB7185;   /* rose-400 */
+  --text-faint:   #4A2E32;
+  --accent:       #FB7185;
   --accent-hover: #FDA4AF;
   --window-bg:    #160E10;
   --window-header:#0D0809;
-  --shadow:       0 20px 56px rgba(0,0,0,0.8), 0 0 30px rgba(251,113,133,0.06);
+  --shadow:       0 0 0 1px rgba(251,113,133,0.08), 0 20px 56px rgba(0,0,0,0.85);
   --radius:       12px;
 }
 
@@ -291,6 +297,32 @@ body.mode-dark {
   background: radial-gradient(1200px 700px at 10% -20%, #19283f 0%, transparent 60%),
               radial-gradient(900px 500px at 100% 0%, #101a2f 0%, transparent 52%),
               var(--bg);
+}
+/* Premium dark theme backgrounds */
+body.theme-obsidian,
+body.theme-void {
+  background: var(--bg);
+}
+body.theme-aurora {
+  background:
+    radial-gradient(ellipse 800px 500px at 20% 0%, rgba(139,92,246,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 400px at 80% 100%, rgba(6,182,212,0.06) 0%, transparent 60%),
+    var(--bg);
+}
+body.theme-ember {
+  background:
+    radial-gradient(ellipse 700px 400px at 0% 0%, rgba(255,107,53,0.06) 0%, transparent 60%),
+    var(--bg);
+}
+body.theme-graphite {
+  background:
+    radial-gradient(ellipse 900px 500px at 50% -10%, rgba(99,91,255,0.07) 0%, transparent 65%),
+    var(--bg);
+}
+body.theme-rose {
+  background:
+    radial-gradient(ellipse 700px 400px at 100% 0%, rgba(251,113,133,0.07) 0%, transparent 60%),
+    var(--bg);
 }
 #home-page {
   position: absolute;
@@ -489,18 +521,29 @@ body.mode-dark {
   border-radius: var(--radius);
   padding: 20px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
   position: relative;
+  overflow: hidden;
+}
+.home-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.18s;
+  pointer-events: none;
 }
 .home-card:hover {
   background: var(--card-hover);
-  border-color: var(--accent);
+  border-color: rgba(var(--accent-rgb, 99,91,255), 0.4);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.1);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.04);
 }
-.card-icon { font-size: 28px; margin-bottom: 8px; }
-.card-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-.card-desc { font-size: 11px; color: var(--text-dim); }
+.home-card:hover::after { opacity: 1; }
+.card-icon { font-size: 26px; margin-bottom: 10px; line-height: 1; }
+.card-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; letter-spacing: -0.01em; }
+.card-desc { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
 .add-card-btn {
   background: var(--card);
   border: 2px dashed var(--border);
@@ -532,33 +575,41 @@ body.mode-dark {
   border-radius: var(--radius);
   padding: 20px 16px;
   text-align: center;
-  transition: all 0.3s cubic-bezier(0.35, 0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: background 0.18s, border-color 0.18s, transform 0.18s, box-shadow 0.18s;
   position: relative;
   overflow: hidden;
 }
 .stat-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
+  top: 0; left: 0; right: 0;
+  height: 1px;
   background: linear-gradient(90deg, transparent, var(--accent), transparent);
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.2s;
 }
 .stat-card:hover {
   background: var(--card-hover);
-  border-color: var(--accent);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(76, 175, 80, 0.15);
+  border-color: var(--border);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
 }
-.stat-card:hover::before {
-  opacity: 1;
+.stat-card:hover::before { opacity: 0.7; }
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
-.stat-value { font-size: 24px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
-.stat-label { font-size: 10px; color: var(--text-dim); margin-top: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.stat-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
 .stat-card.health-good {
   background: linear-gradient(135deg, var(--card) 0%, rgba(76, 175, 80, 0.08) 100%);
   border-color: rgba(76, 175, 80, 0.3);
@@ -586,22 +637,22 @@ body.mode-dark {
 #window-container > * { pointer-events: auto; }
 .floating-window {
   position: fixed;
-  background: color-mix(in srgb, var(--window-bg) 90%, #ffffff 10%);
+  background: var(--window-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow, 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 100;
   min-width: 300px;
   min-height: 200px;
-  opacity: var(--glass-opacity);
-  backdrop-filter: blur(var(--glass-blur));
-  animation: window-slide-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: var(--glass-opacity, 1);
+  backdrop-filter: blur(var(--glass-blur, 0px));
+  animation: window-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .floating-window.window-dark {
-  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.42);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
 }
 .floating-window.minimized {
   height: 40px;
@@ -609,7 +660,7 @@ body.mode-dark {
   animation: none;
 }
 .window-header {
-  background: color-mix(in srgb, var(--window-header) 92%, #ffffff 8%);
+  background: var(--window-header);
   border-bottom: 1px solid var(--border);
   padding: 10px 14px;
   display: flex;
@@ -621,8 +672,10 @@ body.mode-dark {
 }
 .window-header:active { cursor: grabbing; }
 .window-title {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 .window-title-wrap {
   display: flex;
@@ -711,41 +764,43 @@ body.mode-dark {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 50px;
+  height: 48px;
   background: var(--window-header);
   border-top: 1px solid var(--border);
   z-index: 50;
   display: flex;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 6px 14px;
   align-items: center;
   overflow-x: auto;
 }
 .taskbar-btn {
-  padding: 6px 12px;
-  background: var(--card);
+  padding: 5px 11px;
+  background: transparent;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 500;
   white-space: nowrap;
-  transition: all 0.2s;
-  color: var(--text);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  color: var(--text-dim);
 }
-.taskbar-btn:hover { background: var(--card-hover); border-color: var(--accent); }
-.taskbar-btn.active { border-color: var(--accent); background: rgba(76, 175, 80, 0.1); }
+.taskbar-btn:hover { background: var(--card-hover); border-color: rgba(255,255,255,0.12); color: var(--text); }
+.taskbar-btn.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 #home-btn {
-  padding: 6px 12px;
+  padding: 5px 12px;
   background: var(--accent);
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   color: white;
   font-weight: 600;
-  transition: all 0.2s;
+  transition: background 0.15s, opacity 0.15s;
+  letter-spacing: -0.01em;
 }
-#home-btn:hover { background: var(--accent-hover); }
+#home-btn:hover { opacity: 0.85; }
 #spacer { flex: 1; }
 /* ─────────────────────────────────────────────────────────────────────────
    CONTENT STYLES
@@ -760,6 +815,58 @@ body.mode-dark {
   display: flex;
   flex-direction: column;
 }
+#chat-main {
+  position: relative;
+  background:
+    radial-gradient(1100px 340px at 10% -30%, rgba(255,255,255,0.07), transparent 60%),
+    radial-gradient(900px 320px at 100% -40%, rgba(99, 170, 255, 0.12), transparent 58%);
+}
+#chat-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--window-header) 86%, transparent);
+  backdrop-filter: blur(6px);
+}
+.chat-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.chat-subtitle {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.chat-pill {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-dim);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.chat-pill.on {
+  color: var(--text);
+  border-color: color-mix(in oklab, var(--accent) 60%, var(--border));
+  background: color-mix(in oklab, var(--accent) 20%, var(--card));
+}
+#chat-thread-search {
+  margin: 8px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 11px;
+  outline: none;
+}
+#chat-thread-search:focus {
+  border-color: var(--accent);
+}
 #chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -769,38 +876,146 @@ body.mode-dark {
   gap: 12px;
 }
 #input-area {
-  padding: 12px;
+  padding: 14px 16px 16px;
   border-top: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.08));
   flex-shrink: 0;
 }
 #input-wrapper {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--card) 92%, #0b1116);
+  padding: 12px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+}
+#input-wrapper:focus-within {
+  border-color: color-mix(in oklab, var(--accent) 60%, var(--border));
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 12px 28px rgba(0,0,0,0.22);
+}
+#chat-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.chat-agent-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.025);
+}
+.chat-agent-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.chat-agent-row-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.chat-agent-legend {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.chat-agent-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chat-compose-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+.chat-compose-main {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
-#question-input {
-  flex: 1;
-  background: var(--card);
+.chat-compose-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.chat-compose-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.chat-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 8px 12px;
+  background: var(--window-header);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.chat-attach-btn:hover {
+  border-color: var(--accent);
+  background: var(--card-hover);
+}
+.chat-attach-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+#question-input {
+  width: 100%;
+  min-height: 92px;
+  background: var(--bg-input, var(--card));
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 10px);
+  padding: 12px 14px;
   color: var(--text);
   font-family: inherit;
+  font-size: 13px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   resize: none;
+  line-height: 1.5;
 }
-#question-input:focus { border-color: var(--accent); }
+#question-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
 #send-btn {
-  padding: 8px 16px;
+  min-width: 120px;
+  min-height: 92px;
+  padding: 14px 18px;
   background: var(--accent);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius, 10px);
   color: white;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.2s;
+  font-size: 13px;
+  transition: opacity 0.15s;
+  align-self: stretch;
+  letter-spacing: -0.01em;
 }
-#send-btn:hover { background: var(--accent-hover); }
+#send-btn:hover { opacity: 0.82; }
 #terminal-output {
   font-family: 'SF Mono', 'Fira Code', monospace;
   font-size: 12px;
@@ -944,6 +1159,11 @@ body.mode-dark {
   padding: 10px 12px;
   background: var(--card);
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  animation: chat-bubble-in 0.25s cubic-bezier(.22,.9,.34,1);
+}
+@keyframes chat-bubble-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .chat-bubble.user {
   margin-left: auto;
@@ -1135,15 +1355,16 @@ body.mode-dark {
   color: var(--text);
 }
 .reply-banner {
-  margin-bottom: 8px;
+  margin-bottom: 2px;
   border: 1px dashed var(--border);
-  border-radius: 8px;
-  padding: 6px 8px;
+  border-radius: 10px;
+  padding: 8px 10px;
   font-size: 11px;
   color: var(--text-dim);
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  background: rgba(255,255,255,0.02);
 }
 .reply-clear-btn {
   border: 1px solid var(--border);
@@ -1155,6 +1376,251 @@ body.mode-dark {
   padding: 1px 8px;
 }
 .reply-clear-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.chat-quick-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.chat-quick-chip {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-dim);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.chat-quick-chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--card-hover);
+}
+#chat-composer-meta {
+  margin-top: 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  font-size: 10px;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#chat-attachment-input {
+  display: none;
+}
+#chat-attachments {
+  margin-top: 0;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+#input-wrapper.attachment-drag-over {
+  outline: 2px dashed color-mix(in oklab, var(--accent) 70%, #fff);
+  outline-offset: 6px;
+  border-radius: 10px;
+}
+.chat-status-card {
+  max-width: 92%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.14));
+  box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+}
+.chat-status-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.chat-status-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+.chat-status-subtitle {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.chat-thread-runtime {
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--window-header) 88%, var(--accent) 12%);
+  padding: 8px 12px;
+  display: none;
+}
+
+.chat-thread-runtime.open {
+  display: block;
+}
+
+.chat-thread-runtime-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.chat-thread-runtime-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.2px;
+}
+
+.chat-thread-runtime-meta {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.chat-thread-runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px;
+}
+
+.chat-thread-runtime-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: color-mix(in oklab, var(--card) 90%, var(--window-header) 10%);
+}
+
+.chat-thread-runtime-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.chat-thread-runtime-stage {
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-pill.on {
+  border-color: color-mix(in oklab, var(--accent) 65%, var(--border) 35%);
+  color: var(--text);
+}
+.chat-progress-grid {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+.chat-progress-row {
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+}
+.chat-progress-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.chat-progress-track {
+  height: 8px;
+  background: var(--window-header);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.chat-progress-fill {
+  height: 100%;
+  width: 4%;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 70%, #fff), var(--accent));
+  transition: width 0.2s linear;
+}
+.chat-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-dim);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  max-width: 100%;
+}
+.chat-attachment-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+  background: rgba(255,255,255,0.04);
+}
+.chat-attachment-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+.agent-tier-local  { color: #5dde8a; }
+.agent-tier-paid   { color: #f5a623; }
+.agent-tier-dot    { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:2px; vertical-align:middle; box-shadow: 0 0 0 2px rgba(255,255,255,0.05); }
+.agent-tier-local-dot  { background:#5dde8a; }
+.agent-tier-paid-dot   { background:#f5a623; }
+.agent-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 2px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.03);
+}
+.agent-tier-badge.local {
+  color: #5dde8a;
+}
+.agent-tier-badge.paid {
+  color: #f5a623;
+}
+@media (max-width: 860px) {
+  .chat-compose-shell {
+    grid-template-columns: 1fr;
+  }
+  #send-btn {
+    min-height: 48px;
+    width: 100%;
+  }
+  #chat-controls {
+    align-items: stretch;
+  }
+}
+}
+.chat-attachment-remove {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 1px 6px;
+}
+.chat-attachment-remove:hover {
   color: var(--text);
   border-color: var(--accent);
 }
@@ -1665,53 +2131,81 @@ input[type="range"]::-moz-range-thumb:hover {
      ════════════════════════════════════════════════════════════════════════ -->
 
 <div id="settings-modal">
-  <div id="settings-box" style="position:relative;">
-    <button onclick="closeSettings()" style="position:absolute;right:14px;top:12px;background:transparent;border:none;color:var(--text);font-size:18px;cursor:pointer;line-height:1;">✕</button>
-    <h2>⚙️ Fridays Settings</h2>
-    
+  <div id="settings-box" style="position:relative;max-width:520px;">
+    <button onclick="closeSettings()" style="position:absolute;right:14px;top:12px;background:transparent;border:none;color:var(--text);font-size:18px;cursor:pointer;line-height:1;">&#x2715;</button>
+    <h2 style="margin:0 0 20px;font-size:15px;font-weight:700;letter-spacing:-0.02em;">&#x2699;&#xFE0F; Fridays Settings</h2>
+
+    <!-- PREMIUM THEMES -->
     <div class="settings-section">
-      <div class="slider-group">
-        <div class="slider-label">
-          <span>Time of Day</span>
-          <span id="time-value">Auto</span>
-        </div>
-        <input type="range" id="time-slider" min="0" max="4" value="0">
-        <div style="font-size: 10px; color: var(--text-dim); margin-top: 6px; display: flex; justify-content: space-between; padding: 0 2px;">
-          <span>Auto</span>
-          <span>🌅</span>
-          <span>☀️</span>
-          <span>🌆</span>
-          <span>🌙</span>
-        </div>
+      <div class="settings-label" style="margin-bottom:10px;">Theme</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+        <button onclick="applyTimeTheme('obsidian');_markThemeActive(this)" data-theme="obsidian"
+          style="padding:10px 8px;border-radius:8px;border:2px solid #6366F1;background:#111113;color:#FAFAFA;cursor:pointer;text-align:left;transition:all 0.15s;">
+          <div style="font-size:10px;font-weight:700;color:#6366F1;letter-spacing:0.05em;margin-bottom:2px;">OBSIDIAN</div>
+          <div style="font-size:10px;color:#71717A;">Linear · Indigo</div>
+        </button>
+        <button onclick="applyTimeTheme('void');_markThemeActive(this)" data-theme="void"
+          style="padding:10px 8px;border-radius:8px;border:2px solid #333;background:#111;color:#EDEDED;cursor:pointer;text-align:left;transition:all 0.15s;">
+          <div style="font-size:10px;font-weight:700;color:#888;letter-spacing:0.05em;margin-bottom:2px;">VOID</div>
+          <div style="font-size:10px;color:#555;">Vercel · Electric</div>
+        </button>
+        <button onclick="applyTimeTheme('aurora');_markThemeActive(this)" data-theme="aurora"
+          style="padding:10px 8px;border-radius:8px;border:2px solid #8B5CF6;background:#13141F;color:#F1F0FF;cursor:pointer;text-align:left;transition:all 0.15s;">
+          <div style="font-size:10px;font-weight:700;color:#8B5CF6;letter-spacing:0.05em;margin-bottom:2px;">AURORA</div>
+          <div style="font-size:10px;color:#6B7280;">Arc · Violet</div>
+        </button>
+        <button onclick="applyTimeTheme('ember');_markThemeActive(this)" data-theme="ember"
+          style="padding:10px 8px;border-radius:8px;border:2px solid #FF6B35;background:#141210;color:#F5F0EB;cursor:pointer;text-align:left;transition:all 0.15s;">
+          <div style="font-size:10px;font-weight:700;color:#FF6B35;letter-spacing:0.05em;margin-bottom:2px;">EMBER</div>
+          <div style="font-size:10px;color:#8A7F75;">Raycast · Warm</div>
+        </button>
+        <button onclick="applyTimeTheme('graphite');_markThemeActive(this)" data-theme="graphite"
+          style="padding:10px 8px;border-radius:8px;border:2px solid #635BFF;background:#1A1D27;color:#FFFFFF;cursor:pointer;text-align:left;transition:all 0.15s;">
+          <div style="font-size:10px;font-weight:700;color:#635BFF;letter-spacing:0.05em;margin-bottom:2px;">GRAPHITE</div>
+          <div style="font-size:10px;color:#A3ACB9;">Stripe · Blurple</div>
+        </button>
+        <button onclick="applyTimeTheme('rose');_markThemeActive(this)" data-theme="rose"
+          style="padding:10px 8px;border-radius:8px;border:2px solid #FB7185;background:#160E10;color:#F5E8EA;cursor:pointer;text-align:left;transition:all 0.15s;">
+          <div style="font-size:10px;font-weight:700;color:#FB7185;letter-spacing:0.05em;margin-bottom:2px;">ROSE</div>
+          <div style="font-size:10px;color:#7A555A;">Editorial · Pink</div>
+        </button>
       </div>
-      <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 12px; cursor: pointer;">
-        <input type="checkbox" id="set-default-time" style="cursor: pointer;">
-        <span>Set as Default</span>
-      </label>
+      <div style="font-size:10px;color:var(--text-dim);margin-bottom:10px;">Time-of-day themes</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="applyTimeTheme('auto');_markThemeActive(this)" data-theme="auto"
+          style="flex:1;padding:7px 6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">Auto</button>
+        <button onclick="applyTimeTheme('morning');_markThemeActive(this)" data-theme="morning"
+          style="flex:1;padding:7px 6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">&#127749; Morning</button>
+        <button onclick="applyTimeTheme('afternoon');_markThemeActive(this)" data-theme="afternoon"
+          style="flex:1;padding:7px 6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">&#9728;&#65039; Afternoon</button>
+        <button onclick="applyTimeTheme('evening');_markThemeActive(this)" data-theme="evening"
+          style="flex:1;padding:7px 6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">&#127750; Evening</button>
+        <button onclick="applyTimeTheme('night');_markThemeActive(this)" data-theme="night"
+          style="flex:1;padding:7px 6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">&#127769; Night</button>
+      </div>
     </div>
-    
+
     <div class="settings-section">
       <div class="slider-group">
-        <div class="slider-label">
-          <span>Transparency</span>
-          <span id="opacity-value">5%</span>
-        </div>
+        <div class="slider-label"><span>Transparency</span><span id="opacity-value">0%</span></div>
         <input type="range" id="opacity-slider" min="0" max="100" value="95">
       </div>
     </div>
-    
+
     <div class="settings-section">
-      <div class="settings-label">Accent Color</div>
+      <div class="settings-label">Accent Override</div>
       <div class="color-picker-grid">
-        <div class="color-option active" style="background: #FF1493;" data-color="#FF1493"></div>
-        <div class="color-option" style="background: #00D9FF;" data-color="#00D9FF"></div>
-        <div class="color-option" style="background: #FFB347;" data-color="#FFB347"></div>
-        <div class="color-option" style="background: #10B981;" data-color="#10B981"></div>
-        <div class="color-option" style="background: #8B5CF6;" data-color="#8B5CF6"></div>
-        <div class="color-option" style="background: #EC4899;" data-color="#EC4899"></div>
+        <div class="color-option" style="background:#6366F1;" data-color="#6366F1" title="Obsidian"></div>
+        <div class="color-option" style="background:#0070F3;" data-color="#0070F3" title="Void"></div>
+        <div class="color-option" style="background:#8B5CF6;" data-color="#8B5CF6" title="Aurora"></div>
+        <div class="color-option" style="background:#FF6B35;" data-color="#FF6B35" title="Ember"></div>
+        <div class="color-option" style="background:#635BFF;" data-color="#635BFF" title="Graphite"></div>
+        <div class="color-option" style="background:#FB7185;" data-color="#FB7185" title="Rose"></div>
+        <div class="color-option" style="background:#10B981;" data-color="#10B981" title="Green"></div>
+        <div class="color-option" style="background:#06B6D4;" data-color="#06B6D4" title="Cyan"></div>
       </div>
     </div>
-    
+
     <button id="close-settings">Done</button>
   </div>
 </div>
@@ -1912,9 +2406,23 @@ input[type="range"]::-moz-range-thumb:hover {
     <div id="chat-layout" style="display:flex;flex:1;min-height:0;">
       <aside id="chat-thread-rail" style="width:260px;max-width:36%;border-right:1px solid var(--border);background:var(--window-header);display:flex;flex-direction:column;min-height:0;">
         <div style="padding:10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Threads</div>
+        <input id="chat-thread-search" type="text" placeholder="Search threads..." />
         <div id="chat-thread-list" style="overflow-y:auto;flex:1;"></div>
       </aside>
       <div id="chat-main" style="display:flex;flex-direction:column;flex:1;min-width:0;">
+        <div id="chat-topbar">
+          <div>
+            <div class="chat-title">Fridays Chat Console</div>
+            <div class="chat-subtitle">Multi-agent conversation with live orchestration</div>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <span class="chat-pill" id="chat-thread-pill">Thread: New</span>
+            <span class="chat-pill" id="chat-runtime-pill">Runtime: Idle</span>
+            <span class="chat-pill" id="chat-dictionary-pill">Dictionary: 0</span>
+            <span class="chat-pill" id="chat-notify-pill">Notifications: Off</span>
+          </div>
+        </div>
+        <div id="chat-thread-runtime" class="chat-thread-runtime"></div>
         <div id="chat-messages" style="flex:1; overflow-y: auto;">
           <div class="welcome">
             <h3>Good to see you, Ghost.</h3>
@@ -1925,7 +2433,8 @@ input[type="range"]::-moz-range-thumb:hover {
     </div>
     <div id="input-area">
       <div id="input-wrapper">
-        <div id="chat-controls" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
+        <div class="chat-quick-row" id="chat-quick-row"></div>
+        <div id="chat-controls">
           <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px; min-width: 220px; max-width: 280px;">
             <option value="">New Thread</option>
           </select>
@@ -1934,11 +2443,37 @@ input[type="range"]::-moz-range-thumb:hover {
           <button onclick="deleteCurrentThread()" style="background: var(--card); color: #ff8a8a; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Delete</button>
           <button onclick="clearAllChatHistory()" style="background: var(--card); color: #ffb36b; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Clear History</button>
           <button onclick="openChatDictionaryManager()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Dictionary</button>
+          <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Notifications Off</button>
+          <button onclick="exportChatDictionary()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Export Dict</button>
+          <button onclick="importChatDictionary()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Import Dict</button>
+          <button onclick="clearChatDictionary()" style="background: var(--card); color: #ffb36b; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Reset Dict</button>
+        </div>
+        <div class="chat-agent-row">
+          <div class="chat-agent-row-head">
+            <div class="chat-agent-row-title">Agents In This Thread</div>
+            <div class="chat-agent-legend">
+              <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-local-dot"></span><span>Local</span></span>
+              <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-paid-dot"></span><span>Paid API</span></span>
+            </div>
+          </div>
           <div id="chat-agent-toggles" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
         </div>
-        <textarea id="question-input" placeholder="Ask the swarm..." rows="2" spellcheck="true" autocapitalize="sentences" autocorrect="on" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
-        <div id="chat-spell-helper" style="display:none; margin-top:6px; font-size:11px; color: var(--text-dim);"></div>
-        <button id="send-btn" onclick="sendMessage()">▶</button>
+        <input id="chat-attachment-input" type="file" multiple onchange="handleChatAttachmentInput(event)">
+        <div class="chat-compose-shell">
+          <div class="chat-compose-main">
+            <div class="chat-compose-toolbar">
+              <div class="chat-compose-actions">
+                <button class="chat-attach-btn" onclick="pickChatAttachments()">📎 Attach files</button>
+                <span class="chat-attach-hint">Drop documents or images here, or use the attach button.</span>
+              </div>
+            </div>
+            <textarea id="question-input" placeholder="Ask the swarm..." rows="4" spellcheck="true" autocapitalize="sentences" autocorrect="on" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
+            <div id="chat-attachments"></div>
+            <div id="chat-spell-helper" style="display:none; margin-top:0; font-size:11px; color: var(--text-dim);"></div>
+            <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span></div>
+          </div>
+          <button id="send-btn" onclick="sendMessage()">Send<br><span style="font-size:11px;font-weight:500;opacity:0.82;">Enter</span></button>
+        </div>
       </div>
     </div>
   </div>
@@ -2256,11 +2791,18 @@ class WindowManager {
       <div class="window-title-wrap">
         <div class="window-title">${title}</div>
         <div class="window-theme-quick" data-winid="${id}">
-          <button class="window-theme-chip" data-theme="auto" onclick="setWindowQuickTheme('${id}','auto')" title="Auto">A</button>
+          <button class="window-theme-chip" data-theme="auto" onclick="setWindowQuickTheme('${id}','auto')" title="Auto (time of day)">A</button>
           <button class="window-theme-chip" data-theme="morning" onclick="setWindowQuickTheme('${id}','morning')" title="Morning">🌅</button>
           <button class="window-theme-chip" data-theme="afternoon" onclick="setWindowQuickTheme('${id}','afternoon')" title="Afternoon">☀️</button>
           <button class="window-theme-chip" data-theme="evening" onclick="setWindowQuickTheme('${id}','evening')" title="Evening">🌆</button>
           <button class="window-theme-chip" data-theme="night" onclick="setWindowQuickTheme('${id}','night')" title="Night">🌙</button>
+          <span style="color:var(--border);font-size:10px;padding:0 2px;">|</span>
+          <button class="window-theme-chip" data-theme="obsidian" onclick="setWindowQuickTheme('${id}','obsidian')" title="Obsidian (Linear)" style="background:#111113;border-color:#6366F1;color:#6366F1;">⬡</button>
+          <button class="window-theme-chip" data-theme="void" onclick="setWindowQuickTheme('${id}','void')" title="Void (Vercel)" style="background:#111;border-color:#444;color:#888;">◼</button>
+          <button class="window-theme-chip" data-theme="aurora" onclick="setWindowQuickTheme('${id}','aurora')" title="Aurora (Arc)" style="background:#13141F;border-color:#8B5CF6;color:#8B5CF6;">◈</button>
+          <button class="window-theme-chip" data-theme="ember" onclick="setWindowQuickTheme('${id}','ember')" title="Ember (Raycast)" style="background:#141210;border-color:#FF6B35;color:#FF6B35;">◉</button>
+          <button class="window-theme-chip" data-theme="graphite" onclick="setWindowQuickTheme('${id}','graphite')" title="Graphite (Stripe)" style="background:#1A1D27;border-color:#635BFF;color:#635BFF;">◆</button>
+          <button class="window-theme-chip" data-theme="rose" onclick="setWindowQuickTheme('${id}','rose')" title="Rose" style="background:#160E10;border-color:#FB7185;color:#FB7185;">◇</button>
         </div>
       </div>
       <div class="window-controls">
@@ -2639,7 +3181,7 @@ function getTimeOfDay() {
   return 'night';
 }
 
-// Color palettes for each time period (from fridays.json)
+// Color palettes — time-of-day + named premium themes
 const TIME_PERIOD_COLORS = {
   morning: {
     '--bg': '#fff8ef',
@@ -2651,7 +3193,9 @@ const TIME_PERIOD_COLORS = {
     '--accent': '#e89242',
     '--accent-hover': '#f0a562',
     '--window-bg': '#fffdf9',
-    '--window-header': '#fff2df'
+    '--window-header': '#fff2df',
+    '--radius': '8px',
+    '--shadow': '0 8px 32px rgba(80,40,0,0.10)',
   },
   afternoon: {
     '--bg': '#edf3ff',
@@ -2663,7 +3207,9 @@ const TIME_PERIOD_COLORS = {
     '--accent': '#2f6bff',
     '--accent-hover': '#5486ff',
     '--window-bg': '#ffffff',
-    '--window-header': '#f1f6ff'
+    '--window-header': '#f1f6ff',
+    '--radius': '8px',
+    '--shadow': '0 8px 32px rgba(20,50,100,0.10)',
   },
   evening: {
     '--bg': '#161229',
@@ -2675,7 +3221,9 @@ const TIME_PERIOD_COLORS = {
     '--accent': '#c286ff',
     '--accent-hover': '#d19bff',
     '--window-bg': '#1f1737',
-    '--window-header': '#151028'
+    '--window-header': '#151028',
+    '--radius': '10px',
+    '--shadow': '0 20px 60px rgba(0,0,0,0.6)',
   },
   night: {
     '--bg': '#0e1523',
@@ -2687,32 +3235,116 @@ const TIME_PERIOD_COLORS = {
     '--accent': '#6aa4ff',
     '--accent-hover': '#88b8ff',
     '--window-bg': '#121d30',
-    '--window-header': '#0c1526'
-  }
+    '--window-header': '#0c1526',
+    '--radius': '10px',
+    '--shadow': '0 20px 60px rgba(0,0,0,0.65)',
+  },
+  // ── Premium named themes ──────────────────────────────────────────────────
+  obsidian: {
+    '--bg': '#0A0A0B', '--card': '#111113', '--card-hover': '#18181B',
+    '--bg-input': '#0e0e10', '--border': '#27272A',
+    '--text': '#FAFAFA', '--text-dim': '#71717A',
+    '--accent': '#6366F1', '--accent-hover': '#818CF8',
+    '--window-bg': '#111113', '--window-header': '#0A0A0B',
+    '--shadow': '0 0 0 1px rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.85)',
+    '--radius': '8px',
+  },
+  void: {
+    '--bg': '#09090B', '--card': '#111111', '--card-hover': '#1A1A1A',
+    '--bg-input': '#0C0C0C', '--border': '#333333',
+    '--text': '#EDEDED', '--text-dim': '#888888',
+    '--accent': '#0070F3', '--accent-hover': '#338EF7',
+    '--window-bg': '#111111', '--window-header': '#060606',
+    '--shadow': '0 0 0 1px rgba(255,255,255,0.06), 0 24px 80px rgba(0,0,0,0.9)',
+    '--radius': '8px',
+  },
+  aurora: {
+    '--bg': '#0D0E17', '--card': '#13141F', '--card-hover': '#1A1C2E',
+    '--bg-input': '#10111B', '--border': '#1E2035',
+    '--text': '#F1F0FF', '--text-dim': '#6B7280',
+    '--accent': '#8B5CF6', '--accent-hover': '#A78BFA',
+    '--window-bg': '#13141F', '--window-header': '#0D0E17',
+    '--shadow': '0 0 0 1px rgba(139,92,246,0.12), 0 20px 60px rgba(0,0,0,0.8)',
+    '--radius': '12px',
+  },
+  ember: {
+    '--bg': '#0C0B0A', '--card': '#141210', '--card-hover': '#1E1C19',
+    '--bg-input': '#110F0D', '--border': '#2A2520',
+    '--text': '#F5F0EB', '--text-dim': '#8A7F75',
+    '--accent': '#FF6B35', '--accent-hover': '#FF8C5A',
+    '--window-bg': '#141210', '--window-header': '#0C0B0A',
+    '--shadow': '0 0 0 1px rgba(255,107,53,0.08), 0 20px 56px rgba(0,0,0,0.85)',
+    '--radius': '10px',
+  },
+  graphite: {
+    '--bg': '#0F1117', '--card': '#1A1D27', '--card-hover': '#212433',
+    '--bg-input': '#141720', '--border': '#2A2F3E',
+    '--text': '#FFFFFF', '--text-dim': '#A3ACB9',
+    '--accent': '#635BFF', '--accent-hover': '#7A73FF',
+    '--window-bg': '#1A1D27', '--window-header': '#0F1117',
+    '--shadow': '0 0 0 1px rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.75)',
+    '--radius': '8px',
+  },
+  rose: {
+    '--bg': '#0D0809', '--card': '#160E10', '--card-hover': '#1E1316',
+    '--bg-input': '#120A0C', '--border': '#2A181C',
+    '--text': '#F5E8EA', '--text-dim': '#7A555A',
+    '--accent': '#FB7185', '--accent-hover': '#FDA4AF',
+    '--window-bg': '#160E10', '--window-header': '#0D0809',
+    '--shadow': '0 0 0 1px rgba(251,113,133,0.08), 0 20px 56px rgba(0,0,0,0.85)',
+    '--radius': '12px',
+  },
 };
+
+const _DARK_THEMES = new Set(['evening','night','obsidian','void','aurora','ember','graphite','rose','apple','nature','mint']);
+const _NAMED_THEMES = new Set(['obsidian','void','aurora','ember','graphite','rose','apple','nature','mint']);
 
 function resolveThemeMode(mode) {
   const resolved = mode === 'auto' ? getTimeOfDay() : mode;
-  const isDark = resolved === 'evening' || resolved === 'night';
+  const isDark = _DARK_THEMES.has(resolved);
   return { resolved, isDark };
 }
 
 function applyTimeTheme(time) {
-  // Get the colors for this time period
-  let colors = {};
   const mode = resolveThemeMode(time || 'auto');
-  colors = TIME_PERIOD_COLORS[mode.resolved] || TIME_PERIOD_COLORS.afternoon;
-  
-  // Apply all colors as CSS variables to root element
+  const colors = TIME_PERIOD_COLORS[mode.resolved] || TIME_PERIOD_COLORS.afternoon;
+
+  // Remove all named theme classes
+  _NAMED_THEMES.forEach(t => document.body.classList.remove('theme-' + t));
+
+  // Apply CSS vars
   Object.entries(colors).forEach(([key, value]) => {
     document.documentElement.style.setProperty(key, value);
   });
 
+  // For named themes also apply the body class (for gradient bg etc.)
+  if (_NAMED_THEMES.has(mode.resolved)) {
+    document.body.classList.add('theme-' + mode.resolved);
+  }
+
   document.body.classList.toggle('mode-dark', mode.isDark);
   document.body.classList.toggle('mode-light', !mode.isDark);
 
-  // Keep auto-themed windows aligned with current period.
+  // Persist
+  window._currentTheme = mode.resolved;
+  try { localStorage.setItem('fridays_theme', mode.resolved); } catch(e) {}
+
   refreshAutoWindowThemes();
+
+  // Sync settings modal highlight
+  _markThemeActive(document.querySelector(`[data-theme="${mode.resolved}"]`));
+}
+
+function _markThemeActive(btn) {
+  // Clear active ring from all theme buttons in the settings modal
+  document.querySelectorAll('#settings-box [data-theme]').forEach(b => {
+    b.style.outline = '';
+    b.style.boxShadow = b.style.boxShadow?.replace(/,?\s*0 0 0 3px[^,)]*/g, '') || '';
+  });
+  if (!btn) return;
+  // Highlight the selected button with an inset ring
+  btn.style.outline = '2px solid var(--accent)';
+  btn.style.outlineOffset = '2px';
 }
 
 function applyWindowThemeToWindow(win, mode) {
@@ -2761,7 +3393,7 @@ function loadSettings() {
     accent: '#FF9E4D',
     setAsDefault: false
   };
-  
+
   const settings = JSON.parse(localStorage.getItem('fridays-settings') || JSON.stringify(defaultSettings));
 
   // settings.opacity stores transparency %. Guard against invisible-window settings.
@@ -2770,40 +3402,34 @@ function loadSettings() {
     settings.opacity = transparency;
     localStorage.setItem('fridays-settings', JSON.stringify(settings));
   }
-  
-  // Time slider: map time name to slider value
-  const timeMap = { 'auto': 0, 'morning': 1, 'afternoon': 2, 'evening': 3, 'night': 4 };
-  const timeSlider = document.getElementById('time-slider');
-  timeSlider.value = timeMap[settings.time] || 0;
-  updateTimeDisplay();
-  
-  // Apply time theme (this will set CSS variables for all colors)
-  applyTimeTheme(settings.time);
-  
+
+  // Restore saved named theme (e.g. obsidian/void) or fall back to settings.time
+  const savedTheme = localStorage.getItem('fridays_theme') || settings.time || 'auto';
+  applyTimeTheme(savedTheme);
+
+  // Mark the active theme button in the settings modal
+  _markThemeActive(document.querySelector(`[data-theme="${savedTheme}"]`));
+
   // Apply transparency (settings.opacity stores transparency %, so invert to get opacity)
   document.documentElement.style.setProperty('--glass-opacity', (100 - transparency) / 100);
 
-  // Sync slider with stored value. Slider is opacity %, opposite of transparency %.
+  // Sync opacity slider
   const opacitySlider = document.getElementById('opacity-slider');
   if (opacitySlider) opacitySlider.value = 100 - transparency;
-  
+
   // Apply accent color
   document.documentElement.style.setProperty('--accent', settings.accent);
   document.querySelector(`[data-color="${settings.accent}"]`)?.classList.add('active');
-  
-  // Update slider displays
-  document.getElementById('opacity-value').textContent = transparency + '%';
-  
-  // Load set-as-default checkbox
-  document.getElementById('set-default-time').checked = settings.setAsDefault || false;
-  
+
+  // Update opacity display
+  const opacityValue = document.getElementById('opacity-value');
+  if (opacityValue) opacityValue.textContent = transparency + '%';
+
   return settings;
 }
 
 function updateTimeDisplay() {
-  const timeSlider = document.getElementById('time-slider');
-  const timeNames = ['Auto', 'Morning', 'Afternoon', 'Evening', 'Night'];
-  document.getElementById('time-value').textContent = timeNames[parseInt(timeSlider.value)] || 'Auto';
+  // Legacy stub — time slider removed. No-op.
 }
 
 function updateHomeTimeDisplay() {
@@ -3191,32 +3817,22 @@ function initClocks() {
 }
 
 function saveSettings() {
-  const timeMap = ['auto', 'morning', 'afternoon', 'evening', 'night'];
-  const timeSlider = document.getElementById('time-slider');
-  
+  // Current theme set by applyTimeTheme()
+  const currentTheme = window._currentTheme || localStorage.getItem('fridays_theme') || 'auto';
+
   const settings = {
-    time: timeMap[parseInt(timeSlider.value)] || 'auto',
-    opacity: 100 - parseInt(document.getElementById('opacity-slider').value),  // Store as transparency % (100=fully transparent, 0=fully opaque)
+    time: currentTheme,
+    opacity: 100 - parseInt(document.getElementById('opacity-slider').value || '95'),
     accent: Array.from(document.querySelectorAll('[data-color]')).find(b => b.classList.contains('active'))?.dataset.color || '#FF9E4D',
-    setAsDefault: document.getElementById('set-default-time').checked,
+    setAsDefault: false,
   };
-  
-  // Save to localStorage
-  if (settings.setAsDefault) {
-    localStorage.setItem('fridays-settings-default', JSON.stringify(settings));
-    localStorage.setItem('fridays-settings', JSON.stringify(settings));
-    showToast('✅ Default theme saved!', 'success');
-  } else {
-    localStorage.setItem('fridays-settings', JSON.stringify(settings));
-    showToast('✅ Theme applied', 'success');
-  }
-  
-  // Apply the theme immediately
-  applyTimeTheme(settings.time);
+
+  localStorage.setItem('fridays-settings', JSON.stringify(settings));
+  showToast('Theme saved', 'success');
+
   document.documentElement.style.setProperty('--glass-opacity', (100 - settings.opacity) / 100);
   document.documentElement.style.setProperty('--accent', settings.accent);
-  
-  // Close settings modal
+
   closeSettings();
 }
 
@@ -5787,18 +6403,24 @@ async function cmdTerminal(cmd) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CHAT_AGENT_OPTIONS = [
-  { value: 'gemma', label: 'Gemma' },
-  { value: 'llama', label: 'LLaMA' },
-  { value: 'qwen', label: 'Qwen' },
-  { value: 'duck', label: 'Duck' },
-  { value: 'sniffles', label: 'Sniffles' },
-  { value: 'nine', label: 'Nine' },
-  { value: 'ten', label: 'Ten' },
-  { value: 'eleven', label: 'Eleven' },
-  { value: 'twelve', label: 'Twelve' }
+  { value: 'gemma',    label: 'Gemma',    tier: 'local' },
+  { value: 'llama',    label: 'LLaMA',    tier: 'local' },
+  { value: 'qwen',     label: 'Qwen',     tier: 'local' },
+  { value: 'eight',    label: 'Eight',    tier: 'local' },
+  { value: 'duck',     label: 'Duck',     tier: 'local' },
+  { value: 'sniffles', label: 'Sniffles', tier: 'local' },
+  { value: 'nine',     label: 'Nine',     tier: 'paid' },
+  { value: 'ten',      label: 'Ten',      tier: 'paid' },
+  { value: 'eleven',   label: 'Eleven',   tier: 'paid' },
+  { value: 'twelve',   label: 'Twelve',   tier: 'paid' }
 ];
 
 const CHAT_CUSTOM_DICTIONARY_KEY = 'fridays-chat-custom-dictionary-v1';
+const CHAT_DESKTOP_NOTIFY_KEY = 'fridays-chat-desktop-notify-v1';
+const CHAT_THREAD_AGENT_KEY = 'fridays-chat-thread-agents-v1';
+const CHAT_ATTACH_MAX_FILES = 6;
+const CHAT_ATTACH_MAX_TEXT_CHARS_PER_FILE = 8000;
+const CHAT_ATTACH_MAX_TOTAL_INLINE_CHARS = 24000;
 const CHAT_TYPO_SUGGESTIONS = {
   teh: 'the',
   recieve: 'receive',
@@ -5827,6 +6449,63 @@ window.__fridaysChatPendingJobIds = window.__fridaysChatPendingJobIds || [];
 window.__fridaysChatPendingConversationId = window.__fridaysChatPendingConversationId || null;
 window.__fridaysChatPendingPollTimer = window.__fridaysChatPendingPollTimer || null;
 window.__fridaysChatCustomDictionary = window.__fridaysChatCustomDictionary || new Set();
+window.__fridaysChatAttachments = window.__fridaysChatAttachments || [];
+window.__fridaysDesktopNotificationsEnabled = window.__fridaysDesktopNotificationsEnabled ?? (localStorage.getItem(CHAT_DESKTOP_NOTIFY_KEY) === '1');
+window.__fridaysThreadAgentSelections = window.__fridaysThreadAgentSelections || _loadThreadAgentSelections();
+window.__fridaysThreadRuntimePollTimer = window.__fridaysThreadRuntimePollTimer || null;
+window.__fridaysThreadRuntimeSnapshot = window.__fridaysThreadRuntimeSnapshot || { jobs: [], updatedAt: null };
+
+function _threadSelectionKey(convId) {
+  return convId ? String(convId) : 'new';
+}
+
+function _loadThreadAgentSelections() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHAT_THREAD_AGENT_KEY) || '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function _saveThreadAgentSelections() {
+  localStorage.setItem(CHAT_THREAD_AGENT_KEY, JSON.stringify(window.__fridaysThreadAgentSelections || {}));
+}
+
+function persistThreadAgentSelection(convId = window.__fridaysChatConversationId) {
+  const key = _threadSelectionKey(convId);
+  const selected = {};
+  CHAT_AGENT_OPTIONS.forEach(agent => {
+    if (window.__fridaysChatEnabledAgents[agent.value]) selected[agent.value] = true;
+  });
+  window.__fridaysThreadAgentSelections[key] = selected;
+  _saveThreadAgentSelections();
+}
+
+function applyThreadAgentSelection(convId = window.__fridaysChatConversationId) {
+  const key = _threadSelectionKey(convId);
+  const saved = (window.__fridaysThreadAgentSelections || {})[key];
+  if (!saved || typeof saved !== 'object' || !Object.keys(saved).length) return;
+  const next = {};
+  CHAT_AGENT_OPTIONS.forEach(agent => {
+    next[agent.value] = !!saved[agent.value];
+  });
+  if (!Object.values(next).some(Boolean)) next.gemma = true;
+  window.__fridaysChatEnabledAgents = next;
+}
+
+function onChatAgentToggleChange(input) {
+  if (!input) return;
+  window.__fridaysChatEnabledAgents[input.value] = !!input.checked;
+  const enabled = Object.values(window.__fridaysChatEnabledAgents).filter(Boolean).length;
+  if (!enabled) {
+    window.__fridaysChatEnabledAgents.gemma = true;
+    const g = document.querySelector('.chat-agent-toggle[value="gemma"]');
+    if (g) g.checked = true;
+  }
+  persistThreadAgentSelection();
+  updateComposerMeta();
+}
 
 function _setActiveThreadId(convId) {
   window.__fridaysChatConversationId = convId;
@@ -5835,6 +6514,414 @@ function _setActiveThreadId(convId) {
     localStorage.setItem('fridays-chat-active-thread', String(convId));
   } else {
     localStorage.removeItem('fridays-chat-active-thread');
+  }
+  updateChatStatusPills();
+}
+
+function updateChatStatusPills() {
+  const threadPill = document.getElementById('chat-thread-pill');
+  const runtimePill = document.getElementById('chat-runtime-pill');
+  const dictPill = document.getElementById('chat-dictionary-pill');
+  const notifyPill = document.getElementById('chat-notify-pill');
+  if (threadPill) {
+    const activeId = window.__fridaysChatConversationId;
+    const row = (window._chatConversations || []).find(c => Number(c.id) === Number(activeId));
+    const title = row ? (row.title || ('#' + row.id)) : 'New';
+    threadPill.textContent = 'Thread: ' + String(title).slice(0, 28);
+  }
+  if (runtimePill) {
+    const jobs = (window.__fridaysThreadRuntimeSnapshot && window.__fridaysThreadRuntimeSnapshot.jobs) || [];
+    const running = jobs.filter(j => String(j.status || 'running') === 'running').length;
+    const failed = jobs.filter(j => String(j.status || '') === 'failed').length;
+    if (!window.__fridaysChatConversationId) {
+      runtimePill.textContent = 'Runtime: No Thread';
+      runtimePill.classList.remove('on');
+    } else if (running > 0) {
+      runtimePill.textContent = 'Runtime: ' + running + ' Active';
+      runtimePill.classList.add('on');
+    } else if (failed > 0) {
+      runtimePill.textContent = 'Runtime: Issues';
+      runtimePill.classList.add('on');
+    } else {
+      runtimePill.textContent = jobs.length ? 'Runtime: Settled' : 'Runtime: Idle';
+      runtimePill.classList.toggle('on', jobs.length > 0);
+    }
+  }
+  if (dictPill) {
+    const size = Array.from(window.__fridaysChatCustomDictionary || []).length;
+    dictPill.textContent = 'Dictionary: ' + size;
+  }
+  if (notifyPill) {
+    const on = !!window.__fridaysDesktopNotificationsEnabled;
+    const available = typeof Notification !== 'undefined';
+    let label = on ? 'Notifications: On' : 'Notifications: Off';
+    if (available && Notification.permission === 'denied') label = 'Notifications: Blocked';
+    notifyPill.textContent = label;
+    notifyPill.classList.toggle('on', on && (!available || Notification.permission === 'granted'));
+  }
+}
+
+function _chatRuntimeStateLabel(job) {
+  const status = String((job && job.status) || 'running');
+  const stage = String((job && job.stage) || '').trim();
+  if (status === 'running') return stage || 'running';
+  if (status === 'failed') return 'failed';
+  if (status === 'cancelled') return 'cancelled';
+  return 'completed';
+}
+
+function _chatRuntimeSortWeight(status) {
+  const s = String(status || 'running');
+  if (s === 'running') return 0;
+  if (s === 'failed') return 1;
+  if (s === 'cancelled') return 2;
+  return 3;
+}
+
+function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
+  const host = document.getElementById('chat-thread-runtime');
+  if (!host) return;
+
+  const convId = window.__fridaysChatConversationId;
+  if (!convId) {
+    host.classList.remove('open');
+    host.innerHTML = '';
+    window.__fridaysThreadRuntimeSnapshot = { jobs: [], updatedAt: new Date().toISOString() };
+    updateChatStatusPills();
+    return;
+  }
+
+  const list = Array.isArray(jobs) ? jobs.slice() : [];
+  list.sort((a, b) => {
+    const d = _chatRuntimeSortWeight(a.status) - _chatRuntimeSortWeight(b.status);
+    if (d !== 0) return d;
+    return String(a.agent || '').localeCompare(String(b.agent || ''));
+  });
+
+  const running = list.filter(j => String(j.status || 'running') === 'running');
+  const failed = list.filter(j => String(j.status || '') === 'failed');
+  const headline = running.length
+    ? ('Live jobs: ' + running.length + ' running')
+    : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread'));
+
+  host.classList.toggle('open', list.length > 0 || running.length > 0);
+  host.innerHTML = `
+    <div class="chat-thread-runtime-head">
+      <div class="chat-thread-runtime-title">Thread Runtime · #${Number(convId)}</div>
+      <div class="chat-thread-runtime-meta">${_escapeHtml(sourceLabel)} · ${_escapeHtml(headline)}</div>
+    </div>
+    ${list.length ? `
+      <div class="chat-thread-runtime-grid">
+        ${list.map(job => {
+          const agent = String(job.agent || 'agent');
+          const state = _chatRuntimeStateLabel(job);
+          const eta = Number(job.eta_remaining_seconds || 0);
+          const elapsedMs = Number(job.elapsed_ms || 0);
+          const elapsedS = Number.isFinite(elapsedMs) ? Math.max(0, Math.round(elapsedMs / 1000)) : 0;
+          return `
+            <div class="chat-thread-runtime-row">
+              <div class="chat-thread-runtime-row-head">
+                <span style="display:inline-flex;align-items:center;gap:6px;">${_chatAgentIdentityHtml(agent, false)}</span>
+                <span style="font-size:10px;color:var(--text-dim);">${eta > 0 ? ('~' + eta + 's') : ('+' + elapsedS + 's')}</span>
+              </div>
+              <div class="chat-thread-runtime-stage">${_escapeHtml(state)}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : ''}
+  `;
+
+  window.__fridaysThreadRuntimeSnapshot = { jobs: list, updatedAt: new Date().toISOString() };
+  updateChatStatusPills();
+}
+
+function pollActiveThreadRuntime(force = false) {
+  const convId = window.__fridaysChatConversationId;
+  if (!convId) {
+    _renderThreadRuntimePanel([], 'idle');
+    return Promise.resolve();
+  }
+  return fetch('/api/chat/jobs/status?conversation_id=' + encodeURIComponent(convId))
+    .then(r => r.json())
+    .then(data => {
+      const jobs = (data && Array.isArray(data.jobs)) ? data.jobs : [];
+      _renderThreadRuntimePanel(jobs, force ? 'sync' : 'poll');
+    })
+    .catch(() => {
+      // Keep existing panel state on transient polling errors.
+    });
+}
+
+function startThreadRuntimePolling() {
+  if (window.__fridaysThreadRuntimePollTimer) {
+    clearInterval(window.__fridaysThreadRuntimePollTimer);
+    window.__fridaysThreadRuntimePollTimer = null;
+  }
+  pollActiveThreadRuntime(true);
+  window.__fridaysThreadRuntimePollTimer = setInterval(() => {
+    pollActiveThreadRuntime(false);
+  }, 2000);
+}
+
+function _humanBytes(bytes) {
+  const n = Number(bytes || 0);
+  if (!Number.isFinite(n) || n <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let idx = 0;
+  let val = n;
+  while (val >= 1024 && idx < units.length - 1) {
+    val /= 1024;
+    idx += 1;
+  }
+  return `${val >= 10 ? val.toFixed(0) : val.toFixed(1)} ${units[idx]}`;
+}
+
+function _isTextLikeAttachment(file) {
+  if (!file) return false;
+  const type = String(file.type || '').toLowerCase();
+  if (type.startsWith('text/')) return true;
+  const name = String(file.name || '').toLowerCase();
+  return /\.(txt|md|markdown|json|csv|log|xml|html|css|js|ts|tsx|jsx|py|sh|yml|yaml|ini|toml|conf|cfg|sql)$/i.test(name);
+}
+
+async function _readAttachmentText(file) {
+  try {
+    const raw = await file.text();
+    const trimmed = String(raw || '');
+    if (trimmed.length <= CHAT_ATTACH_MAX_TEXT_CHARS_PER_FILE) {
+      return { text: trimmed, truncated: false };
+    }
+    return { text: trimmed.slice(0, CHAT_ATTACH_MAX_TEXT_CHARS_PER_FILE), truncated: true };
+  } catch (_) {
+    return { text: '', truncated: false };
+  }
+}
+
+function pickChatAttachments() {
+  const input = document.getElementById('chat-attachment-input');
+  if (!input) return;
+  input.click();
+}
+
+async function handleChatAttachmentInput(event) {
+  const input = event?.target || document.getElementById('chat-attachment-input');
+  if (!input || !input.files || !input.files.length) return;
+  await ingestChatAttachments(input.files);
+  input.value = '';
+}
+
+function _revokeAttachmentPreview(att) {
+  if (!att) return;
+  if (att.previewUrl && att.previewUrl.startsWith('blob:')) {
+    try { URL.revokeObjectURL(att.previewUrl); } catch (_) {}
+  }
+}
+
+async function ingestChatAttachments(fileList) {
+  if (!fileList || !fileList.length) return;
+  const current = Array.isArray(window.__fridaysChatAttachments) ? window.__fridaysChatAttachments : [];
+  const incoming = Array.from(fileList);
+  const availableSlots = Math.max(0, CHAT_ATTACH_MAX_FILES - current.length);
+  const picked = incoming.slice(0, availableSlots);
+  if (incoming.length > picked.length) {
+    showToast(`Attachment limit is ${CHAT_ATTACH_MAX_FILES} files`, 'info');
+  }
+
+  for (const file of picked) {
+    const duplicate = current.find(a => a.name === file.name && Number(a.size || 0) === Number(file.size || 0));
+    if (duplicate) continue;
+    const isText = _isTextLikeAttachment(file);
+    const isImage = String(file.type || '').toLowerCase().startsWith('image/');
+    const parsed = isText ? await _readAttachmentText(file) : { text: '', truncated: false };
+    current.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      name: String(file.name || 'attachment'),
+      type: String(file.type || 'application/octet-stream'),
+      size: Number(file.size || 0),
+      isText,
+      isImage,
+      inlineText: parsed.text,
+      truncated: !!parsed.truncated,
+      previewUrl: isImage ? URL.createObjectURL(file) : '',
+    });
+  }
+
+  window.__fridaysChatAttachments = current.slice(0, CHAT_ATTACH_MAX_FILES);
+  renderChatAttachments();
+  updateComposerMeta();
+}
+
+function removeChatAttachment(attachmentId) {
+  const before = Array.isArray(window.__fridaysChatAttachments) ? window.__fridaysChatAttachments : [];
+  const removed = before.find(a => a.id === attachmentId);
+  const after = before.filter(a => a.id !== attachmentId);
+  if (after.length === before.length) return;
+  _revokeAttachmentPreview(removed);
+  window.__fridaysChatAttachments = after;
+  renderChatAttachments();
+  updateComposerMeta();
+}
+
+function clearChatAttachments() {
+  (window.__fridaysChatAttachments || []).forEach(_revokeAttachmentPreview);
+  window.__fridaysChatAttachments = [];
+  renderChatAttachments();
+  updateComposerMeta();
+}
+
+function renderChatAttachments() {
+  const host = document.getElementById('chat-attachments');
+  if (!host) return;
+  const attachments = Array.isArray(window.__fridaysChatAttachments) ? window.__fridaysChatAttachments : [];
+  if (!attachments.length) {
+    host.innerHTML = '';
+    host.style.display = 'none';
+    return;
+  }
+  host.style.display = 'flex';
+  host.innerHTML = attachments.map(att => {
+    const icon = att.isText ? '📄' : '📦';
+    const label = `${icon} ${att.name} (${_humanBytes(att.size)})${att.truncated ? ' • clipped' : ''}`;
+    const thumb = att.isImage && att.previewUrl
+      ? `<img class="chat-attachment-thumb" src="${_escapeHtml(att.previewUrl)}" alt="${_escapeHtml(att.name)}">`
+      : '';
+    return `<span class="chat-attachment-chip">${thumb}<span class="chat-attachment-label" title="${_escapeHtml(label)}">${_escapeHtml(label)}</span><button class="chat-attachment-remove" onclick="removeChatAttachment('${_escapeHtml(att.id)}')">✕</button></span>`;
+  }).join('');
+}
+
+function initChatAttachmentDnD() {
+  const wrapper = document.getElementById('input-wrapper');
+  if (!wrapper || wrapper.dataset.attachDndBound === '1') return;
+  wrapper.dataset.attachDndBound = '1';
+
+  const onDragOver = (event) => {
+    event.preventDefault();
+    wrapper.classList.add('attachment-drag-over');
+  };
+  const onDragLeave = (event) => {
+    if (!event.relatedTarget || !wrapper.contains(event.relatedTarget)) {
+      wrapper.classList.remove('attachment-drag-over');
+    }
+  };
+  const onDrop = async (event) => {
+    event.preventDefault();
+    wrapper.classList.remove('attachment-drag-over');
+    const files = event.dataTransfer && event.dataTransfer.files ? event.dataTransfer.files : null;
+    if (!files || !files.length) return;
+    await ingestChatAttachments(files);
+    showToast('Attachment added from drag and drop', 'success');
+  };
+
+  wrapper.addEventListener('dragenter', onDragOver);
+  wrapper.addEventListener('dragover', onDragOver);
+  wrapper.addEventListener('dragleave', onDragLeave);
+  wrapper.addEventListener('drop', onDrop);
+}
+
+function _buildAttachmentPayload() {
+  const attachments = Array.isArray(window.__fridaysChatAttachments) ? window.__fridaysChatAttachments : [];
+  if (!attachments.length) return { wireBlock: '', bubbleSummary: '' };
+
+  let remaining = CHAT_ATTACH_MAX_TOTAL_INLINE_CHARS;
+  const wireLines = ['[Attachments]'];
+  const bubbleLines = [];
+
+  attachments.forEach(att => {
+    const info = `${att.name} (${att.type || 'unknown'}, ${_humanBytes(att.size)})`;
+    bubbleLines.push(`- ${info}${att.truncated ? ' [clipped]' : ''}${att.isText ? '' : ' [binary metadata only]'}`);
+
+    if (att.isText && att.inlineText && remaining > 0) {
+      const nextText = String(att.inlineText || '');
+      const clipped = nextText.length > remaining;
+      const slice = clipped ? nextText.slice(0, remaining) : nextText;
+      remaining -= slice.length;
+      wireLines.push(`--- FILE: ${att.name} ---`);
+      wireLines.push(slice);
+      wireLines.push(`--- END FILE: ${att.name}${att.truncated || clipped ? ' (clipped)' : ''} ---`);
+    } else {
+      wireLines.push(`- ${info} [content not inlined]`);
+    }
+  });
+
+  return {
+    wireBlock: '\n\n' + wireLines.join('\n'),
+    bubbleSummary: '\n\nAttached files:\n' + bubbleLines.join('\n')
+  };
+}
+
+function _saveDesktopNotificationPreference(enabled) {
+  localStorage.setItem(CHAT_DESKTOP_NOTIFY_KEY, enabled ? '1' : '0');
+}
+
+function updateNotificationControls() {
+  const btn = document.getElementById('chat-notify-toggle-btn');
+  const available = typeof Notification !== 'undefined';
+  const enabled = !!window.__fridaysDesktopNotificationsEnabled;
+  if (btn) {
+    let text = enabled ? 'Notifications On' : 'Notifications Off';
+    if (available && Notification.permission === 'denied') text = 'Notifications Blocked';
+    btn.textContent = text;
+  }
+  updateChatStatusPills();
+}
+
+async function toggleDesktopNotifications() {
+  const available = typeof Notification !== 'undefined';
+  if (!available) {
+    showToast('Desktop notifications are not supported in this browser', 'error');
+    return;
+  }
+
+  const currentlyEnabled = !!window.__fridaysDesktopNotificationsEnabled;
+  if (currentlyEnabled) {
+    window.__fridaysDesktopNotificationsEnabled = false;
+    _saveDesktopNotificationPreference(false);
+    updateNotificationControls();
+    showToast('Desktop notifications turned off', 'info');
+    return;
+  }
+
+  if (Notification.permission === 'denied') {
+    showToast('Notifications are blocked in browser settings', 'error');
+    updateNotificationControls();
+    return;
+  }
+
+  if (Notification.permission !== 'granted') {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      showToast('Notification permission not granted', 'info');
+      updateNotificationControls();
+      return;
+    }
+  }
+
+  window.__fridaysDesktopNotificationsEnabled = true;
+  _saveDesktopNotificationPreference(true);
+  updateNotificationControls();
+  showToast('Desktop notifications enabled', 'success');
+}
+
+function notifyDesktop(title, body, opts = {}) {
+  if (!window.__fridaysDesktopNotificationsEnabled) return;
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission !== 'granted') return;
+  const shouldNotify = opts.force || document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
+  if (!shouldNotify) return;
+  try {
+    const n = new Notification(String(title || 'Fridays Chat'), {
+      body: String(body || '').slice(0, 200),
+      tag: opts.tag || 'fridays-chat',
+      renotify: false,
+      silent: false,
+    });
+    n.onclick = () => {
+      try { window.focus(); } catch (_) {}
+      n.close();
+    };
+  } catch (_) {
+    // Ignore browser notification failures.
   }
 }
 
@@ -5858,6 +6945,7 @@ function _loadChatCustomDictionary() {
 function _saveChatCustomDictionary() {
   const sorted = Array.from(window.__fridaysChatCustomDictionary || []).filter(Boolean).sort();
   localStorage.setItem(CHAT_CUSTOM_DICTIONARY_KEY, JSON.stringify(sorted));
+  updateChatStatusPills();
 }
 
 function addWordToCustomDictionary(word) {
@@ -5967,6 +7055,97 @@ function openChatDictionaryManager() {
   });
   updateChatSpellHelper();
   showToast(`Dictionary updated: +${added} / -${removed}`, 'success');
+}
+
+async function exportChatDictionary() {
+  const words = Array.from(window.__fridaysChatCustomDictionary || []).sort();
+  const payload = JSON.stringify(words);
+  try {
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(payload);
+      showToast(`Dictionary copied (${words.length} word${words.length === 1 ? '' : 's'})`, 'success');
+      return;
+    }
+  } catch (_) {
+    // Fallback to prompt below.
+  }
+  prompt('Copy your dictionary JSON:', payload);
+}
+
+function importChatDictionary() {
+  const raw = prompt('Paste dictionary JSON array or comma-separated words:');
+  if (raw === null) return;
+  let words = [];
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      words = parsed.map(v => String(v || '').trim());
+    }
+  } catch (_) {
+    words = trimmed.split(',').map(v => v.trim());
+  }
+
+  let added = 0;
+  words.forEach(w => {
+    if (addWordToCustomDictionary(w)) added += 1;
+  });
+  updateChatSpellHelper();
+  showToast(`Imported ${added} word${added === 1 ? '' : 's'}`, 'success');
+}
+
+function clearChatDictionary() {
+  const current = Array.from(window.__fridaysChatCustomDictionary || []);
+  if (!current.length) {
+    showToast('Dictionary already empty', 'info');
+    return;
+  }
+  if (!confirm(`Clear custom dictionary (${current.length} words)?`)) return;
+  window.__fridaysChatCustomDictionary = new Set();
+  _saveChatCustomDictionary();
+  updateChatSpellHelper();
+  showToast('Dictionary reset', 'success');
+}
+
+function renderChatQuickChips() {
+  const host = document.getElementById('chat-quick-row');
+  if (!host) return;
+  const chips = [
+    { label: 'Summarize Last Thread', text: 'Summarize the key decisions and next actions from this thread.' },
+    { label: 'Create Action Plan', text: 'Create a practical step-by-step action plan for this.' },
+    { label: 'Find Risks', text: 'List the top risks and concrete mitigations.' },
+    { label: 'Draft Message', text: 'Draft a clear, concise message I can send to my team.' },
+    { label: 'Check Spelling', text: 'Please correct spelling and grammar in my draft.' },
+  ];
+  host.innerHTML = chips.map(chip =>
+    `<button class="chat-quick-chip" onclick="applyQuickChip('${_escapeHtml(chip.text)}')">${_escapeHtml(chip.label)}</button>`
+  ).join('');
+}
+
+function applyQuickChip(text) {
+  const input = document.getElementById('question-input');
+  if (!input) return;
+  input.value = String(text || '');
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  updateComposerMeta();
+  updateChatSpellHelper();
+}
+
+function updateComposerMeta() {
+  const input = document.getElementById('question-input');
+  const left = document.getElementById('chat-composer-left');
+  const right = document.getElementById('chat-composer-right');
+  if (!left || !right || !input) return;
+  const txt = String(input.value || '');
+  const chars = txt.length;
+  const words = (txt.trim().match(/\S+/g) || []).length;
+  const enabled = getEnabledChatAgents().length;
+  const attached = (window.__fridaysChatAttachments || []).length;
+  left.textContent = `${chars} chars · ${words} words`;
+  right.textContent = `${enabled} agent${enabled === 1 ? '' : 's'} on · ${attached} file${attached === 1 ? '' : 's'}`;
 }
 
 function _chatMessagesEl() {
@@ -6095,17 +7274,18 @@ function _renderSkillEvents(events, sender) {
 }
 
 const _CHAT_AGENT_META = {
-  gemma: { icon: '🧭', purpose: 'Orchestrator. Routes requests and synthesizes swarm output.', runtime: 'local' },
-  llama: { icon: '🦙', purpose: 'Fast researcher with web access.', runtime: 'local' },
-  qwen: { icon: '🧠', purpose: 'Deep reasoning and analytical pass.', runtime: 'local' },
-  librarian: { icon: '📚', purpose: 'Silent memory indexing and retrieval.', runtime: 'local' },
-  duck: { icon: '🦆', purpose: 'Audit pass and contradiction detection.', runtime: 'local' },
-  sniffles: { icon: '🧪', purpose: 'Forensic memory integrity checks.', runtime: 'local' },
-  nine: { icon: '👻', purpose: 'Ghost layer architect for system planning.', runtime: 'ghost' },
-  ten: { icon: '🛠️', purpose: 'Engineering advisor for implementation quality.', runtime: 'ghost' },
-  eleven: { icon: '⚡', purpose: 'Lateral ideation and alternative strategies.', runtime: 'ghost' },
-  twelve: { icon: '🌀', purpose: 'Temporal/planning continuity and sequencing.', runtime: 'ghost' },
-  you: { icon: '👤', purpose: 'Human operator input.', runtime: 'human' },
+  gemma:     { icon: '🧭', purpose: 'Orchestrator. Routes requests and synthesises swarm output.',        runtime: 'local', tier: 'local' },
+  llama:     { icon: '🦙', purpose: 'Fast researcher with web access.',                                   runtime: 'local', tier: 'local' },
+  qwen:      { icon: '🧠', purpose: 'Deep reasoning and analytical pass.',                                runtime: 'local', tier: 'local' },
+  eight:     { icon: '8️⃣', purpose: 'SAP specialist — Functional/Technical/Devil three-voice debate.',   runtime: 'local', tier: 'local' },
+  librarian: { icon: '📚', purpose: 'Silent memory indexing and retrieval.',                              runtime: 'local', tier: 'local' },
+  duck:      { icon: '🦆', purpose: 'Audit pass and contradiction detection.',                            runtime: 'local', tier: 'local' },
+  sniffles:  { icon: '🧪', purpose: 'Forensic memory integrity checks.',                                  runtime: 'local', tier: 'local' },
+  nine:      { icon: '👻', purpose: 'Ghost layer architect for system planning.',                         runtime: 'paid',  tier: 'paid' },
+  ten:       { icon: '🛠️', purpose: 'Engineering advisor for implementation quality.',                   runtime: 'paid',  tier: 'paid' },
+  eleven:    { icon: '⚡', purpose: 'Lateral ideation and alternative strategies.',                       runtime: 'paid',  tier: 'paid' },
+  twelve:    { icon: '🌀', purpose: 'Temporal/planning continuity and sequencing (Claude Haiku).',        runtime: 'paid',  tier: 'paid' },
+  you:       { icon: '👤', purpose: 'Human operator input.',                                              runtime: 'human', tier: 'human' },
 };
 
 function _chatAgentLabel(sender) {
@@ -6179,7 +7359,7 @@ function _appendChatBubble(sender, text, opts = {}) {
     <div class="chat-actions">
       <button class="chat-action-btn" onclick="reactToMessage('${msgId}','👍')">👍</button>
       <button class="chat-action-btn" onclick="reactToMessage('${msgId}','🤔')">🤔</button>
-      <button class="chat-action-btn" onclick="setReplyTarget('${safeSender}','${_escapeHtml(text).slice(0, 120)}')">Reply</button>
+      <button class="chat-action-btn" data-reply-sender="${safeSender}" data-reply-preview="${_escapeHtml(text).slice(0, 120)}" onclick="setReplyTarget(this.dataset.replySender, this.dataset.replyPreview)">Reply</button>
       <button class="chat-action-btn" onclick="suggestAnotherAgent('${safeSender}','${_escapeHtml(text).slice(0, 160)}')">Ask another</button>
     </div>`;
 
@@ -6263,11 +7443,30 @@ function reactToMessage(msgId, emoji) {
 }
 
 function setReplyTarget(sender, preview) {
+  const normalizedSender = (sender || 'agent').toLowerCase();
+  const trimmedPreview = String(preview || '').replace(/\s+/g, ' ').trim().slice(0, 180);
   window.__fridaysReplyTarget = {
-    sender: (sender || 'agent').toLowerCase(),
-    preview: String(preview || '').slice(0, 120)
+    sender: normalizedSender,
+    preview: trimmedPreview,
   };
+
+  if (window.__fridaysChatEnabledAgents[normalizedSender] !== undefined) {
+    window.__fridaysChatEnabledAgents[normalizedSender] = true;
+    persistThreadAgentSelection();
+    renderChatAgentToggles();
+    updateComposerMeta();
+  }
+
+  const input = document.getElementById('question-input');
+  if (input && !String(input.value || '').trim()) {
+    const targetLabel = _chatAgentLabel(normalizedSender);
+    input.value = `@${targetLabel}\n> ${trimmedPreview}\n\n`;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+
   renderReplyBanner();
+  updateChatSpellHelper();
 }
 
 function clearReplyTarget() {
@@ -6301,6 +7500,7 @@ function suggestAnotherAgent(sender, preview) {
     gemma: 'qwen',
     llama: 'qwen',
     qwen: 'llama',
+    eight: 'gemma',
     duck: 'sniffles',
     sniffles: 'duck',
     nine: 'ten',
@@ -6315,6 +7515,7 @@ function suggestAnotherAgent(sender, preview) {
   if (checkbox) {
     checkbox.checked = true;
     window.__fridaysChatEnabledAgents[suggested] = true;
+    persistThreadAgentSelection();
   }
   const input = document.getElementById('question-input');
   if (input && !input.value.trim()) {
@@ -6359,28 +7560,30 @@ function _createLoadingPanel(agents) {
   const messages = _chatMessagesEl();
   if (!messages) return null;
   const panel = document.createElement('div');
-  panel.className = 'chat-bubble';
-  panel.style.maxWidth = '92%';
+  panel.className = 'chat-status-card';
   panel.innerHTML = `
-    <div class="chat-meta" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <span>system · live runtime telemetry</span>
+    <div class="chat-status-head">
+      <div>
+        <div class="chat-status-title">Swarm Runtime</div>
+        <div class="chat-status-subtitle">Live progress for the agents working on this turn</div>
+      </div>
       <button class="chat-action-btn" onclick="stopPendingAgents()">Stop</button>
     </div>
     <div class="chat-text" id="chat-progress-head">Awaiting ${agents.length} agent ack(s)...</div>
-    <div id="chat-progress-bars" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">
+    <div id="chat-progress-bars" class="chat-progress-grid">
       ${agents.map(a => `
-        <div data-agent="${a}">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--text-dim);margin-bottom:3px;">
+        <div class="chat-progress-row" data-agent="${a}">
+          <div class="chat-progress-row-head">
             <span style="display:inline-flex;align-items:center;gap:6px;">${_chatAgentIdentityHtml(a, false)}</span>
             <span data-state="${a}" style="color:var(--text-dim);">alive · queued</span>
           </div>
-          <div style="height:7px;background:var(--window-header);border:1px solid var(--border);border-radius:999px;overflow:hidden;">
-            <div data-fill="${a}" style="height:100%;width:4%;background:var(--accent);transition:width 0.2s linear;"></div>
+          <div class="chat-progress-track">
+            <div class="chat-progress-fill" data-fill="${a}"></div>
           </div>
         </div>
       `).join('')}
     </div>
-    <div id="chat-progress-eta" class="chat-meta" style="margin-top:8px;">Collecting per-agent ETA...</div>
+    <div id="chat-progress-eta" class="chat-meta" style="margin-top:10px;">Collecting per-agent ETA...</div>
   `;
   messages.appendChild(panel);
   messages.scrollTop = messages.scrollHeight;
@@ -6523,6 +7726,7 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
       .then(data => {
         const jobs = (data && Array.isArray(data.jobs)) ? data.jobs : [];
         loadingCtl.updateJobs(jobs);
+        _renderThreadRuntimePanel(jobs, 'live');
         const done = jobs.every(j => j.status === 'completed' || j.status === 'failed' || j.status === 'cancelled');
         if (done || ticks >= maxTicks) {
           clearInterval(timer);
@@ -6534,9 +7738,22 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
           loadingCtl.stop([]);
           loadConversationMessages(conversationId);
           refreshChatThreadList(conversationId);
+          pollActiveThreadRuntime(true);
           const failed = jobs.filter(j => j.status === 'failed');
+          const cancelled = jobs.filter(j => j.status === 'cancelled');
           if (failed.length) {
             _appendChatBubble('system', 'One or more long-running responses failed. See thread for details.');
+            notifyDesktop('Fridays Chat', `${failed.length} long-running response(s) failed.`, {
+              tag: 'fridays-chat-status-' + String(conversationId || 'none')
+            });
+          } else if (cancelled.length) {
+            notifyDesktop('Fridays Chat', `${cancelled.length} run(s) were cancelled.`, {
+              tag: 'fridays-chat-status-' + String(conversationId || 'none')
+            });
+          } else {
+            notifyDesktop('Fridays Chat', 'Background agent response completed.', {
+              tag: 'fridays-chat-status-' + String(conversationId || 'none')
+            });
           }
         }
       })
@@ -6550,6 +7767,9 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
           }
           loadingCtl.stop([]);
           _appendChatBubble('system', 'Stopped waiting for background response status (timeout).');
+          notifyDesktop('Fridays Chat', 'Background run timed out while polling status.', {
+            tag: 'fridays-chat-timeout-' + String(conversationId || 'none')
+          });
         }
       });
   }, 2000);
@@ -6584,6 +7804,7 @@ async function stopPendingAgents() {
     if (convId) {
       loadConversationMessages(convId);
       refreshChatThreadList(convId);
+      pollActiveThreadRuntime(true);
     }
   } catch (e) {
     showToast('Failed to stop agents: ' + (e.message || e), 'error');
@@ -6604,9 +7825,13 @@ function renderChatAgentToggles() {
   if (!host) return;
   host.innerHTML = CHAT_AGENT_OPTIONS.map(agent => {
     const checked = window.__fridaysChatEnabledAgents[agent.value] ? 'checked' : '';
-    return `<label style="display:flex;align-items:center;gap:4px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;cursor:pointer;">
-      <input class="chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked} onchange="window.__fridaysChatEnabledAgents[this.value]=this.checked">
+    const tierDotClass = agent.tier === 'paid' ? 'agent-tier-paid-dot' : 'agent-tier-local-dot';
+    const tierLabel = agent.tier === 'paid' ? 'Paid' : 'Local';
+    return `<label style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:999px;background:var(--card);font-size:11px;cursor:pointer;" title="${agent.tier === 'paid' ? 'Paid API agent' : 'Local Ollama agent'}">
+      <input class="chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked} onchange="onChatAgentToggleChange(this)">
+      <span class="agent-tier-dot ${tierDotClass}"></span>
       <span style="display:inline-flex;align-items:center;gap:6px;">${_chatAgentIdentityHtml(agent.value, false)}</span>
+      <span class="agent-tier-badge ${agent.tier}">${tierLabel}</span>
     </label>`;
   }).join('');
 }
@@ -6626,9 +7851,16 @@ function _renderWelcome() {
 function renderChatThreadRail() {
   const rail = document.getElementById('chat-thread-list');
   if (!rail) return;
-  const convs = window._chatConversations || [];
+  const search = (document.getElementById('chat-thread-search')?.value || '').trim().toLowerCase();
+  const convs = (window._chatConversations || []).filter(conv => {
+    if (!search) return true;
+    const title = String(conv.title || '').toLowerCase();
+    const id = String(conv.id || '').toLowerCase();
+    return title.includes(search) || id.includes(search);
+  });
   if (!convs.length) {
-    rail.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:11px;">No saved threads yet.</div>';
+    rail.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:11px;">No matching threads.</div>';
+    updateChatStatusPills();
     return;
   }
 
@@ -6643,12 +7875,29 @@ function renderChatThreadRail() {
           <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">#${conv.id}${ts ? ' · ' + ts : ''}</div>
         </div>
         <div style="display:flex;gap:4px;">
-          <button class="chat-action-btn" onclick="renameThread(${Number(conv.id)}); return false;" title="Rename thread">✏️</button>
-          <button class="chat-action-btn" onclick="deleteThread(${Number(conv.id)}); return false;" title="Delete thread">🗑️</button>
+          <button class="chat-action-btn" onclick="threadActionRename(event, ${Number(conv.id)});" title="Rename thread">✏️</button>
+          <button class="chat-action-btn" onclick="threadActionDelete(event, ${Number(conv.id)});" title="Delete thread">🗑️</button>
         </div>
       </div>
     `;
   }).join('');
+  updateChatStatusPills();
+}
+
+function threadActionRename(event, convId) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  renameThread(convId);
+}
+
+function threadActionDelete(event, convId) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  deleteThread(convId);
 }
 
 function renderChatMessages(rows) {
@@ -6720,6 +7969,9 @@ function refreshChatThreadList(preferredId = null) {
         threadSelect.value = '';
         _setActiveThreadId(null);
       }
+      applyThreadAgentSelection(window.__fridaysChatConversationId);
+      renderChatAgentToggles();
+      updateComposerMeta();
       renderChatThreadRail();
     })
     .catch(e => {
@@ -6730,10 +7982,14 @@ function refreshChatThreadList(preferredId = null) {
 function switchChatThread(convIdValue) {
   const convId = convIdValue ? Number(convIdValue) : null;
   _setActiveThreadId(Number.isFinite(convId) ? convId : null);
+  applyThreadAgentSelection(window.__fridaysChatConversationId);
+  renderChatAgentToggles();
+  updateComposerMeta();
   const threadSelect = document.getElementById('chat-thread-select');
   if (threadSelect) threadSelect.value = convId ? String(convId) : '';
   renderChatThreadRail();
   loadConversationMessages(window.__fridaysChatConversationId);
+  pollActiveThreadRuntime(true);
 }
 
 async function renameThread(convId) {
@@ -6772,9 +8028,19 @@ async function deleteThread(convId) {
     if (!resp.ok || !data.ok) {
       throw new Error((data && data.error) || `HTTP ${resp.status}`);
     }
+    window._chatConversations = (window._chatConversations || []).filter(c => Number(c.id) !== Number(convId));
+    const threadSelect = document.getElementById('chat-thread-select');
+    if (threadSelect) {
+      const dead = Array.from(threadSelect.options).find(o => Number(o.value) === Number(convId));
+      if (dead) dead.remove();
+    }
+
     if (Number(window.__fridaysChatConversationId) === Number(convId)) {
       createNewThread();
+    } else {
+      renderChatThreadRail();
     }
+
     showToast('Thread deleted', 'success');
     refreshChatThreadList(window.__fridaysChatConversationId || null);
   } catch (e) {
@@ -6825,18 +8091,30 @@ async function clearAllChatHistory() {
 function createNewThread() {
   window.__fridaysChatForceNewThread = true;
   _setActiveThreadId(null);
+  applyThreadAgentSelection(null);
+  renderChatAgentToggles();
+  updateComposerMeta();
   const threadSelect = document.getElementById('chat-thread-select');
   if (threadSelect) threadSelect.value = '';
   renderChatThreadRail();
   _renderWelcome();
+  pollActiveThreadRuntime(true);
   showToast('Started a new thread', 'success');
 }
 
 function initializeChatPanel() {
+  applyThreadAgentSelection(window.__fridaysChatConversationId);
   renderChatAgentToggles();
   renderReplyBanner();
+  renderChatQuickChips();
+  renderChatAttachments();
+  initChatAttachmentDnD();
   renderChatThreadRail();
   initChatSpellHelper();
+  updateComposerMeta();
+  updateNotificationControls();
+  updateChatStatusPills();
+  startThreadRuntimePolling();
   if (!window.__fridaysChatConversationId) {
     _renderWelcome();
   }
@@ -6845,15 +8123,27 @@ function initializeChatPanel() {
 function initChatSpellHelper() {
   window.__fridaysChatCustomDictionary = _loadChatCustomDictionary();
   const input = document.getElementById('question-input');
+  const search = document.getElementById('chat-thread-search');
   if (!input || input.dataset.spellBound === '1') {
     updateChatSpellHelper();
+    updateComposerMeta();
+    updateChatStatusPills();
     return;
   }
   input.dataset.spellBound = '1';
   input.addEventListener('input', updateChatSpellHelper);
+  input.addEventListener('input', updateComposerMeta);
   input.addEventListener('keyup', updateChatSpellHelper);
+  input.addEventListener('keyup', updateComposerMeta);
   input.addEventListener('click', updateChatSpellHelper);
+  input.addEventListener('click', updateComposerMeta);
+  if (search && search.dataset.bound !== '1') {
+    search.dataset.bound = '1';
+    search.addEventListener('input', renderChatThreadRail);
+  }
   updateChatSpellHelper();
+  updateComposerMeta();
+  updateChatStatusPills();
 }
 
 function sendMessage() {
@@ -6877,26 +8167,38 @@ function sendMessage() {
   }
 
   const wireMsg = window.__fridaysReplyTarget
-    ? `[Reply to ${window.__fridaysReplyTarget.sender}] ${msg}`
+    ? `[Reply to ${window.__fridaysReplyTarget.sender}]\nQuoted: "${window.__fridaysReplyTarget.preview}"\n\n${msg}`
     : msg;
+  const attachmentPayload = _buildAttachmentPayload();
+  const wireMsgWithAttachments = wireMsg + (attachmentPayload.wireBlock || '');
   
   _appendChatBubble('you', '[' + _chatAgentListText(selectedAgents) + '] ' + msg, {
     quoted: window.__fridaysReplyTarget || null
     , localPromptText: msg
   });
+  if (attachmentPayload.bubbleSummary) {
+    _appendChatBubble('you', attachmentPayload.bubbleSummary, {
+      localPromptText: attachmentPayload.bubbleSummary,
+    });
+  }
 
   const estMs = _estimateBatchMs(selectedAgents);
   const loadingPanel = _createLoadingPanel(selectedAgents);
   const loadingCtl = _startLoadingTicker(loadingPanel, selectedAgents, estMs);
+
+  persistThreadAgentSelection(convId);
   
   input.value = '';
   clearReplyTarget();
+  clearChatAttachments();
+  updateComposerMeta();
+  updateChatSpellHelper();
   
   fetch('/api/chat', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
-      message: wireMsg,
+      message: wireMsgWithAttachments,
       agents: selectedAgents,
       conversation_id: convId,
       new_thread: !!window.__fridaysChatForceNewThread,
@@ -6917,7 +8219,12 @@ function sendMessage() {
     if (data && data.conversation_id) {
       _setActiveThreadId(data.conversation_id);
       window.__fridaysChatForceNewThread = false;
+      persistThreadAgentSelection(data.conversation_id);
+      applyThreadAgentSelection(data.conversation_id);
+      renderChatAgentToggles();
+      updateComposerMeta();
       refreshChatThreadList(data.conversation_id);
+      pollActiveThreadRuntime(true);
     }
 
     const allResponses = Array.isArray(data.responses) ? data.responses : [];
@@ -6929,8 +8236,19 @@ function sendMessage() {
       immediateResponses.forEach(entry => {
         _appendChatBubble(entry.agent || 'agent', entry.response || '...');
       });
+      const first = immediateResponses[0];
+      notifyDesktop(
+        'Fridays · ' + _chatAgentLabel(first.agent || 'agent'),
+        String(first.response || '').replace(/\s+/g, ' ').slice(0, 180),
+        { tag: 'fridays-chat-reply-' + String(data.conversation_id || convId || 'none') }
+      );
     } else if (!pendingJobs.length) {
       _appendChatBubble(data.agent || selectedAgents[0], data.response || '...');
+      notifyDesktop(
+        'Fridays · ' + _chatAgentLabel(data.agent || selectedAgents[0]),
+        String(data.response || '').replace(/\s+/g, ' ').slice(0, 180),
+        { tag: 'fridays-chat-reply-' + String(data.conversation_id || convId || 'none') }
+      );
     }
 
     if (pendingResponses.length) {
@@ -6946,6 +8264,7 @@ function sendMessage() {
     if (pendingJobs.length) {
       loadingCtl.setPending(allResponses.filter(r => r.pending));
       _pollPendingChatJobs(data.conversation_id, pendingJobs, loadingCtl);
+      pollActiveThreadRuntime(true);
     } else {
       loadingCtl.stop(allResponses);
       window.__fridaysChatPendingJobIds = [];
@@ -6954,6 +8273,7 @@ function sendMessage() {
         clearInterval(window.__fridaysChatPendingPollTimer);
         window.__fridaysChatPendingPollTimer = null;
       }
+      pollActiveThreadRuntime(true);
     }
 
     messages.scrollTop = messages.scrollHeight;
@@ -7024,14 +8344,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.style.setProperty('--glass-opacity', actualOpacity);
   });
   
-  // Time of day slider
-  document.getElementById('time-slider').addEventListener('input', (e) => {
-    updateTimeDisplay();
-    const timeMap = ['auto', 'morning', 'afternoon', 'evening', 'night'];
-    const selectedTime = timeMap[parseInt(e.target.value)];
-    applyTimeTheme(selectedTime);
-  });
-  
+  // (time-slider removed — themes are now applied directly from buttons)
+
+
   document.getElementById('close-settings').addEventListener('click', saveSettings);
   
   // Close settings on click outside

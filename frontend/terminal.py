@@ -194,13 +194,14 @@ _CHAT_AGENT_RUNTIME_CLASS = {
     'gemma': 'local',
     'llama': 'local',
     'qwen': 'local',
+    'eight': 'local',
     'librarian': 'local',
     'duck': 'local',
     'sniffles': 'local',
-    'nine': 'ghost',
-    'ten': 'ghost',
-    'eleven': 'ghost',
-    'twelve': 'ghost',
+    'nine': 'paid',
+    'ten': 'paid',
+    'eleven': 'paid',
+    'twelve': 'paid',
 }
 
 
@@ -2921,7 +2922,7 @@ def api_chat():
         return jsonify({'ok': False, 'response': 'Empty message'}), 400
 
     allowed_agents = {
-        'gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles',
+        'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles',
         'nine', 'ten', 'eleven', 'twelve'
     }
 
@@ -3207,7 +3208,7 @@ def api_chat():
             else:
                 local_timeout = 240
         try:
-            if selected_agent in {'gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles'}:
+            if selected_agent in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
                 _stage('loading local model context', est_eta)
                 local_prompt = prompt
                 if selected_agent in {'duck', 'sniffles'}:
@@ -3456,40 +3457,81 @@ def api_chat():
             future.add_done_callback(_finish_job)
             return job_id
 
-        fanout_executor = ThreadPoolExecutor(max_workers=max(1, len(runnable_agents)))
-        try:
-            future_map = {}
-            for selected_agent in runnable_agents:
-                job_ref = {'job_id': None}
+        debate_turn = []
 
-                def _stage_cb(stage_text, eta_seconds=None, _agent=selected_agent, _job_ref=job_ref):
-                    job_id = _job_ref.get('job_id')
-                    if not job_id:
-                        return
-                    _chat_update_job(job_id, stage=stage_text, eta_seconds=eta_seconds)
+        def _agent_label(agent_key):
+            key = str(agent_key or '').strip().lower()
+            labels = {
+                'gemma': 'Gemma',
+                'llama': 'LLaMA',
+                'qwen': 'Qwen',
+                'eight': 'Eight',
+                'librarian': 'Librarian',
+                'duck': 'Duck',
+                'sniffles': 'Sniffles',
+                'nine': 'Nine',
+                'ten': 'Ten',
+                'eleven': 'Eleven',
+                'twelve': 'Twelve',
+            }
+            return labels.get(key, key or 'Agent')
 
-                future = fanout_executor.submit(
+        def _build_debate_prompt(selected_agent):
+            if len(runnable_agents) <= 1:
+                return threaded_prompt
+
+            active_labels = [_agent_label(a) for a in runnable_agents]
+            peer_list = ', '.join(_agent_label(a) for a in runnable_agents if a != selected_agent)
+            if debate_turn:
+                turn_lines = '\n'.join(
+                    f"{_agent_label(item['agent'])}: {str(item['response'])[:800]}"
+                    for item in debate_turn
+                )
+            else:
+                turn_lines = 'No peer responses yet in this turn.'
+
+            return (
+                threaded_prompt
+                + "\n\n=== Multi-Agent Debate Mode (Current Turn) ===\n"
+                + f"You are {_agent_label(selected_agent)}.\n"
+                + f"ACTIVE AGENTS IN THIS CHAT: {', '.join(active_labels)}.\n"
+                + "RULES: Only address agents from the list above. Do NOT mention, ask, or direct questions to "
+                + "any agent, person, or entity not in ACTIVE AGENTS. Do NOT ask Ghost to respond — "
+                + "Ghost has already sent their message above.\n"
+                + "Read the peer responses below and reply to them where useful. "
+                + "If you agree or disagree, name the agent and explain in 1-2 lines. "
+                + "Then give your own answer.\n\n"
+                + "Peer responses so far this turn:\n"
+                + turn_lines
+            )
+
+        for selected_agent in runnable_agents:
+            job_ref = {'job_id': None}
+
+            def _stage_cb(stage_text, eta_seconds=None, _job_ref=job_ref):
+                job_id = _job_ref.get('job_id')
+                if not job_id:
+                    return
+                _chat_update_job(job_id, stage=stage_text, eta_seconds=eta_seconds)
+
+            agent_prompt = _build_debate_prompt(selected_agent)
+            single_executor = ThreadPoolExecutor(max_workers=1)
+            try:
+                future = single_executor.submit(
                     _run_single_agent,
                     selected_agent,
-                    threaded_prompt,
+                    agent_prompt,
                     history,
                     transcript,
                     True,
                     _stage_cb,
                 )
-                future_map[selected_agent] = (future, job_ref)
-
-            for selected_agent, bundle in future_map.items():
-                future, job_ref = bundle
                 try:
-                    # Keep the HTTP response inside the documented chat timeout budget.
-                    # Longer local runs continue via the background job poller.
                     wait_timeout = 20 if selected_agent == 'sniffles' else 10
                     response_text, tokens_used, elapsed_ms = future.result(timeout=wait_timeout)
                     pending = False
                     pending_job_id = None
                 except FuturesTimeoutError:
-                    # Keep the same task alive in background and expose progress/status via polling.
                     pending_job_id = _register_persistent_job(selected_agent, future, job_ref)
                     pending_jobs.append(pending_job_id)
                     pending = True
@@ -3504,18 +3546,24 @@ def api_chat():
                     elapsed_ms = 0
                     pending = False
                     pending_job_id = None
-                responses_map[selected_agent] = {
-                    'agent': selected_agent,
-                    'response': response_text,
-                    'tokens': tokens_used,
-                    'elapsed_ms': elapsed_ms,
-                    'runtime_class': _chat_runtime_class(selected_agent),
-                    'eta_seconds': _chat_eta_seconds(selected_agent) if pending else 0,
-                    'pending': pending,
-                    'job_id': pending_job_id,
-                }
-        finally:
-            fanout_executor.shutdown(wait=False, cancel_futures=False)
+            finally:
+                single_executor.shutdown(wait=False, cancel_futures=False)
+
+            responses_map[selected_agent] = {
+                'agent': selected_agent,
+                'response': response_text,
+                'tokens': tokens_used,
+                'elapsed_ms': elapsed_ms,
+                'runtime_class': _chat_runtime_class(selected_agent),
+                'eta_seconds': _chat_eta_seconds(selected_agent) if pending else 0,
+                'pending': pending,
+                'job_id': pending_job_id,
+            }
+
+            debate_turn.append({
+                'agent': selected_agent,
+                'response': response_text,
+            })
 
         for agent_name in deferred_agents:
             responses_map[agent_name] = {
