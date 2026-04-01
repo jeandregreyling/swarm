@@ -42,6 +42,34 @@ DEFAULT_PING_AGENTS = [
     'nine', 'ten', 'eleven', 'twelve'
 ]
 
+# Per-agent timeout defaults (seconds). Used if CHAT_PING_AGENT_TIMEOUTS not set.
+# Override with env: CHAT_PING_AGENT_TIMEOUTS='{"gemma":200,"sniffles":200,"duck":50,...}'
+DEFAULT_AGENT_TIMEOUTS = {
+    'gemma': 180,         # heavy (assembles shared context)
+    'sniffles': 180,      # heavy (deep reasoning, chain-of-thought)
+    'llama': 80,          # moderate (web search)
+    'qwen': 80,           # moderate (analysis)
+    'eight': 70,          # moderate (SAP specialist)
+    'librarian': 50,      # fast (tiny model)
+    'duck': 50,           # fast (tiny model, sanity check)
+    'nine': 60,           # moderate (API call, but cached)
+    'ten': 60,            # moderate (API call)
+    'eleven': 60,         # moderate (API call)
+    'twelve': 60,         # moderate (API call)
+}
+
+
+def _get_agent_timeout(agent):
+    """Get timeout for a specific agent, allowing env override."""
+    try:
+        overrides_json = os.environ.get('CHAT_PING_AGENT_TIMEOUTS', '')
+        if overrides_json.strip():
+            overrides = json.loads(overrides_json)
+            return overrides.get(agent, DEFAULT_AGENT_TIMEOUTS.get(agent, 90))
+    except Exception:
+        pass
+    return DEFAULT_AGENT_TIMEOUTS.get(agent, 90)
+
 
 def _ping_agents_from_env():
     """Resolve target agent list for REQ-CHAT-016 from env or defaults."""
@@ -464,10 +492,10 @@ def test_chat_ping_each_agent_with_stage_log():
         return
 
     agents = _ping_agents_from_env()
-    max_seconds = int(os.environ.get('CHAT_PING_MAX_SECONDS_PER_AGENT', '180'))
     per_agent = []
 
     for agent in agents:
+        agent_timeout = _get_agent_timeout(agent)
         prompt = (
             f'PING_OBS {int(time.time())}: '
             f'Reply exactly with "pong {agent}" on the first line, '
@@ -500,7 +528,7 @@ def test_chat_ping_each_agent_with_stage_log():
 
         conv_id = entry['conversation_id']
         pending = [str(x) for x in (entry['pending_jobs'] or []) if str(x).strip()]
-        jobs_latest, timeline = _wait_for_jobs(conv_id, pending, timeout_seconds=max_seconds)
+        jobs_latest, timeline = _wait_for_jobs(conv_id, pending, timeout_seconds=agent_timeout)
         entry['stage_timeline'] = timeline
 
         response_text = ''
