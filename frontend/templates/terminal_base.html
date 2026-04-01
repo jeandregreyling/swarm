@@ -1209,6 +1209,76 @@ body {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   padding: 24px;
 }
+/* ─────────────────────────────────────────────────────────────────────────
+   TIMEZONE PICKER MODAL
+   ───────────────────────────────────────────────────────────────────────── */
+#timezone-picker-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10001;
+  align-items: center;
+  justify-content: center;
+}
+
+#timezone-picker-modal.open {
+  display: flex;
+  animation: fade-in 0.2s ease-out;
+}
+
+#timezone-picker-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  padding: 16px;
+}
+
+#timezone-search {
+  width: 100%;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+#timezone-list {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  gap: 4px;
+}
+
+.timezone-option {
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 12px;
+  border: 1px solid transparent;
+}
+
+.timezone-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border);
+}
+
+.timezone-option.current {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 #settings-box h2 {
   margin: 0 0 20px 0;
   color: var(--accent);
@@ -1597,6 +1667,11 @@ input[type="range"]::-moz-range-thumb:hover {
           <div class="card-title">Ghost Brief</div>
           <div class="card-desc">Swarm intelligence feed</div>
         </div>
+        <div class="home-card" onclick="openWindow('access', '🔑 Access', 'view-access')">
+          <div class="card-icon">🔑</div>
+          <div class="card-title">Access</div>
+          <div class="card-desc">Senders &amp; permissions</div>
+        </div>
         <div class="add-card-btn" onclick="addCustomCard()">
           <div style="font-size: 20px;">➕</div>
           <div style="font-size: 12px;">Add Custom</div>
@@ -1721,6 +1796,7 @@ input[type="range"]::-moz-range-thumb:hover {
       <div id="terminal-main" style="flex:1;display:flex;flex-direction:column;min-width:0;">
         <div id="terminal-output" style="flex:1; overflow-y:auto; font-family: 'SF Mono', monospace; font-size: 12px; color: #0f9; white-space: pre-wrap; padding: 12px;">Welcome to Fridays Terminal</div>
         <div style="padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
+          <button id="terminal-shortcuts-main-toggle" onclick="toggleTerminalShortcuts()" title="Hide shortcuts" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;">⚡ Shortcuts</button>
           <span style="color: #0f9; font-weight: bold;">$</span>
           <input id="terminal-input" type="text" placeholder="Enter command..." style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); outline: none;" onkeydown="if(event.key==='Enter') runTerminalCmd()">
         </div>
@@ -1922,6 +1998,72 @@ input[type="range"]::-moz-range-thumb:hover {
         <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px;">Brief History</div>
         <div id="gb-history-list"></div>
       </div>
+    </div>
+  </div>
+</template>
+
+<template id="view-access">
+  <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
+    <div style="padding:16px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+      <div>
+        <h3 style="margin-bottom:4px;">🔑 Access Control</h3>
+        <div style="font-size:11px;color:var(--text-dim);">Trusted senders, ignored addresses, skill permissions</div>
+      </div>
+      <button onclick="loadAccessData(window._accessWin)" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">↻ Refresh</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;">
+
+      <!-- ADD SENDER FORM -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:20px;padding:12px;background:var(--card);border-radius:6px;border:1px solid var(--border);">
+        <input type="text" id="access-new-address" placeholder="email / telegram:id / discord:id / domain.com"
+               style="flex:1;min-width:200px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+        <select id="access-new-list"
+                style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+          <option value="trusted">✅ Trusted</option>
+          <option value="notification">🔔 Notification</option>
+          <option value="domain">🌐 Domain</option>
+        </select>
+        <input type="text" id="access-new-note" placeholder="Note (optional)"
+               style="width:160px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+        <button onclick="accessAdd()"
+                style="padding:7px 14px;background:var(--accent);color:#000;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Add</button>
+      </div>
+
+      <!-- THREE LISTS -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">✅ Trusted — full pipeline</div>
+          <div id="access-trusted-list" style="font-size:12px;"></div>
+        </div>
+
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#fa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">🔔 Notification / Ignored</div>
+          <div id="access-notification-list" style="font-size:12px;"></div>
+        </div>
+
+        <div style="grid-column:1/-1;">
+          <div style="font-size:11px;font-weight:700;color:#8af;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">🌐 Trusted Domains</div>
+          <div id="access-domain-list" style="font-size:12px;"></div>
+        </div>
+      </div>
+
+      <!-- DIVIDER -->
+      <div style="border-top:1px solid var(--border);margin-bottom:20px;"></div>
+
+      <!-- SKILL PERMISSIONS -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#c8f;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">🎛 Skill Permissions</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
+          <select id="skill-perm-user" onchange="loadSkillPerms()"
+                  style="flex:1;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+            <option value="">— select a user / agent —</option>
+          </select>
+          <span id="skill-perm-status" style="font-size:11px;color:var(--text-dim);white-space:nowrap;"></span>
+        </div>
+        <div id="skill-perm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:8px;"></div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -2541,15 +2683,159 @@ function drawAnalogClock(offset) {
   `;
 }
 
-function getTimeForTimezone(offset) {
+const WORLD_CLOCKS_STORAGE_KEY = 'fridays-world-clock-zones-v2';
+const WORLD_CLOCK_DEFAULTS = [
+  { city: 'Melbourne', timeZone: 'Australia/Melbourne' },
+  { city: 'Singapore', timeZone: 'Asia/Singapore' },
+  { city: 'Delhi', timeZone: 'Asia/Kolkata' },
+  { city: 'Cape Town', timeZone: 'Africa/Johannesburg' },
+  { city: 'New York', timeZone: 'America/New_York' }
+];
+
+function getAllTimezones() {
+  return [
+    { city: 'UTC', timeZone: 'UTC' },
+    { city: 'Melbourne', timeZone: 'Australia/Melbourne' },
+    { city: 'Sydney', timeZone: 'Australia/Sydney' },
+    { city: 'Auckland', timeZone: 'Pacific/Auckland' },
+    { city: 'Singapore', timeZone: 'Asia/Singapore' },
+    { city: 'Delhi', timeZone: 'Asia/Kolkata' },
+    { city: 'Mumbai', timeZone: 'Asia/Kolkata' },
+    { city: 'Dubai', timeZone: 'Asia/Dubai' },
+    { city: 'Bangkok', timeZone: 'Asia/Bangkok' },
+    { city: 'Jakarta', timeZone: 'Asia/Jakarta' },
+    { city: 'Manila', timeZone: 'Asia/Manila' },
+    { city: 'Hong Kong', timeZone: 'Asia/Hong_Kong' },
+    { city: 'Shanghai', timeZone: 'Asia/Shanghai' },
+    { city: 'Seoul', timeZone: 'Asia/Seoul' },
+    { city: 'Tokyo', timeZone: 'Asia/Tokyo' },
+    { city: 'London', timeZone: 'Europe/London' },
+    { city: 'Paris', timeZone: 'Europe/Paris' },
+    { city: 'Istanbul', timeZone: 'Europe/Istanbul' },
+    { city: 'Moscow', timeZone: 'Europe/Moscow' },
+    { city: 'Cape Town', timeZone: 'Africa/Johannesburg' },
+    { city: 'New York', timeZone: 'America/New_York' },
+    { city: 'Chicago', timeZone: 'America/Chicago' },
+    { city: 'Denver', timeZone: 'America/Denver' },
+    { city: 'Los Angeles', timeZone: 'America/Los_Angeles' },
+    { city: 'Hawaii', timeZone: 'Pacific/Honolulu' },
+    { city: 'São Paulo', timeZone: 'America/Sao_Paulo' },
+    { city: 'Buenos Aires', timeZone: 'America/Argentina/Buenos_Aires' },
+    { city: 'Fiji', timeZone: 'Pacific/Fiji' }
+  ];
+}
+
+function findTimezoneByLegacyName(name) {
+  const lookup = {
+    'UTC': 'UTC',
+    'London': 'Europe/London',
+    'Paris': 'Europe/Paris',
+    'Dubai': 'Asia/Dubai',
+    'Delhi': 'Asia/Kolkata',
+    'Bangkok': 'Asia/Bangkok',
+    'Singapore': 'Asia/Singapore',
+    'Tokyo': 'Asia/Tokyo',
+    'Sydney': 'Australia/Sydney',
+    'Melbourne': 'Australia/Melbourne',
+    'Auckland': 'Pacific/Auckland',
+    'Fiji': 'Pacific/Fiji',
+    'Hawaii': 'Pacific/Honolulu',
+    'Los Angeles': 'America/Los_Angeles',
+    'Denver': 'America/Denver',
+    'Chicago': 'America/Chicago',
+    'New York': 'America/New_York',
+    'São Paulo': 'America/Sao_Paulo',
+    'Buenos Aires': 'America/Argentina/Buenos_Aires',
+    'Cape Town': 'Africa/Johannesburg',
+    'Istanbul': 'Europe/Istanbul',
+    'Moscow': 'Europe/Moscow',
+    'Hong Kong': 'Asia/Hong_Kong',
+    'Seoul': 'Asia/Seoul',
+    'Shanghai': 'Asia/Shanghai',
+    'Mumbai': 'Asia/Kolkata',
+    'Jakarta': 'Asia/Jakarta',
+    'Manila': 'Asia/Manila'
+  };
+  return lookup[name] || null;
+}
+
+function normalizeWorldClockZone(entry) {
+  if (!entry || typeof entry !== 'object') return null;
+  const allZones = getAllTimezones();
+  const byTimeZone = entry.timeZone
+    ? allZones.find(zone => zone.timeZone === entry.timeZone)
+    : null;
+  if (byTimeZone) return byTimeZone;
+
+  const legacyTimeZone = entry.name ? findTimezoneByLegacyName(entry.name) : null;
+  if (legacyTimeZone) {
+    return allZones.find(zone => zone.timeZone === legacyTimeZone) || null;
+  }
+
+  if (entry.city) {
+    return allZones.find(zone => zone.city === entry.city) || null;
+  }
+
+  return null;
+}
+
+function loadWorldClockZones() {
+  let parsed = [];
+  try {
+    parsed = JSON.parse(localStorage.getItem(WORLD_CLOCKS_STORAGE_KEY) || '[]');
+  } catch (e) {
+    parsed = [];
+  }
+
+  if (!Array.isArray(parsed) || !parsed.length) {
+    try {
+      parsed = JSON.parse(localStorage.getItem('world-clock-zones') || '[]');
+    } catch (e) {
+      parsed = [];
+    }
+  }
+
+  const normalized = parsed
+    .map(normalizeWorldClockZone)
+    .filter(Boolean)
+    .slice(0, WORLD_CLOCK_DEFAULTS.length);
+
+  const finalZones = normalized.length === WORLD_CLOCK_DEFAULTS.length
+    ? normalized
+    : WORLD_CLOCK_DEFAULTS.map((zone, idx) => normalized[idx] || zone);
+
+  localStorage.setItem(WORLD_CLOCKS_STORAGE_KEY, JSON.stringify(finalZones));
+  return finalZones;
+}
+
+function saveWorldClockZones(zones) {
+  localStorage.setItem(WORLD_CLOCKS_STORAGE_KEY, JSON.stringify(zones));
+  localStorage.setItem('world-clock-zones', JSON.stringify(
+    zones.map(zone => ({ name: zone.city, timeZone: zone.timeZone }))
+  ));
+}
+
+function getTimeForTimezone(timeZone) {
   const now = new Date();
-  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-  const timeInZone = new Date(utcTime + (offset * 3600000));
-  
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).formatToParts(now);
+
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  const offsetLabel = new Intl.DateTimeFormat('en', {
+    timeZone,
+    timeZoneName: 'shortOffset'
+  }).formatToParts(now).find(part => part.type === 'timeZoneName')?.value || 'UTC';
+
   return {
-    hours: timeInZone.getHours(),
-    minutes: timeInZone.getMinutes(),
-    seconds: timeInZone.getSeconds()
+    hours: Number(values.hour || 0),
+    minutes: Number(values.minute || 0),
+    seconds: Number(values.second || 0),
+    offsetLabel: offsetLabel.replace('GMT', 'UTC')
   };
 }
 
@@ -2588,39 +2874,6 @@ function createAnalogClockHTML(time) {
   `;
 }
 
-function getAllTimezones() {
-  return [
-    { name: 'UTC', offset: 0 },
-    { name: 'London', offset: 0 },
-    { name: 'Paris', offset: 1 },
-    { name: 'Dubai', offset: 4 },
-    { name: 'Delhi', offset: 5.5 },
-    { name: 'Bangkok', offset: 7 },
-    { name: 'Singapore', offset: 8 },
-    { name: 'Tokyo', offset: 9 },
-    { name: 'Sydney', offset: 11 },
-    { name: 'Melbourne', offset: 11 },
-    { name: 'Auckland', offset: 13 },
-    { name: 'Fiji', offset: 12 },
-    { name: 'Hawaii', offset: -10 },
-    { name: 'Los Angeles', offset: -8 },
-    { name: 'Denver', offset: -7 },
-    { name: 'Chicago', offset: -6 },
-    { name: 'New York', offset: -5 },
-    { name: 'São Paulo', offset: -3 },
-    { name: 'Buenos Aires', offset: -3 },
-    { name: 'Cape Town', offset: 2 },
-    { name: 'Istanbul', offset: 3 },
-    { name: 'Moscow', offset: 3 },
-    { name: 'Hong Kong', offset: 8 },
-    { name: 'Seoul', offset: 9 },
-    { name: 'Shanghai', offset: 8 },
-    { name: 'Mumbai', offset: 5.5 },
-    { name: 'Jakarta', offset: 7 },
-    { name: 'Manila', offset: 8 }
-  ];
-}
-
 function updateWorldClocks() {
   const container = document.getElementById('world-clocks');
   if (!container) {
@@ -2629,103 +2882,110 @@ function updateWorldClocks() {
   }
   
   try {
-    const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || JSON.stringify([
-      { name: 'Melbourne', offset: 11 },
-      { name: 'Singapore', offset: 8 },
-      { name: 'Delhi', offset: 5.5 },
-      { name: 'Cape Town', offset: 2 },
-      { name: 'New York', offset: -5 }
-    ]));
+    const savedZones = loadWorldClockZones();
     
     let html = '';
     savedZones.forEach((zone, idx) => {
-      const time = getTimeForTimezone(zone.offset);
+      const time = getTimeForTimezone(zone.timeZone);
       const digital = createDigitalTime(time);
       const analog = createAnalogClockHTML(time);
-      const offsetStr = zone.offset >= 0 ? `+${zone.offset}` : `${zone.offset}`;
       
       html += `
         <div class="world-clock-item" onclick="openTimezonePicker(${idx})" style="gap: 8px;">
           ${analog}
           <div style="font-family: 'Courier New', monospace; font-size: 11px; color: var(--accent); letter-spacing: 1px; text-align: center; line-height: 1.3;">${digital}</div>
-          <div class="zone" style="font-size: 11px;">${zone.name}</div>
-          <div style="font-size: 10px; color: var(--text-dim);">UTC ${offsetStr}</div>
+          <div class="zone" style="font-size: 11px;">${zone.city}</div>
+          <div style="font-size: 10px; color: var(--text-dim);">${time.offsetLabel}</div>
         </div>
       `;
     });
     
     container.innerHTML = html;
-    console.log('✅ Clocks updated:', savedZones.length, 'zones');
   } catch(e) {
     console.log('ERROR in clocks:', e.message, e.stack);
   }
 }
 
-function openTimezonePicker(clockIndex) {
+function renderTimezoneOptions(queryText) {
   const modal = document.getElementById('timezone-picker-modal');
-  modal.classList.add('open');
-  modal.currentClockIndex = clockIndex;
-  
-  // Populate timezone list
-  const allZones = getAllTimezones();
-  const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || '[]');
-  const currentZone = savedZones[clockIndex];
-  
   const list = document.getElementById('timezone-list');
-  list.innerHTML = allZones.map(zone => `
-    <div class="timezone-option ${zone.name === currentZone.name ? 'current' : ''}" 
-      onclick="selectTimezone(${zone.offset}, '${zone.name}')">
-      ${zone.name}
-    </div>
-  `).join('');
-  
-  // Search functionality
-  const search = document.getElementById('timezone-search');
-  search.oninput = (e) => {
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('.timezone-option').forEach(el => {
-      el.style.display = el.textContent.toLowerCase().includes(query) ? '' : 'none';
-    });
-  };
+  if (!modal || !list) return;
+
+  const currentZones = loadWorldClockZones();
+  const currentZone = currentZones[modal.currentClockIndex];
+  const query = (queryText || '').trim().toLowerCase();
+  const filtered = getAllTimezones().filter(zone => {
+    if (!query) return true;
+    return zone.city.toLowerCase().includes(query) || zone.timeZone.toLowerCase().includes(query);
+  });
+
+  list.innerHTML = filtered.map((zone, idx) => {
+    const isCurrent = currentZone && currentZone.timeZone === zone.timeZone;
+    return `
+      <div class="timezone-option ${isCurrent ? 'current' : ''}" onclick="selectTimezoneOption(${idx})">
+        <div>${zone.city}</div>
+        <div style="font-size: 10px; color: var(--text-dim); margin-top: 2px;">${zone.timeZone}</div>
+      </div>
+    `;
+  }).join('');
+
+  modal.filteredTimezones = filtered;
 }
 
-function selectTimezone(offset, name) {
+function openTimezonePicker(clockIndex) {
   const modal = document.getElementById('timezone-picker-modal');
+  const search = document.getElementById('timezone-search');
+  if (!modal || !search) return;
+
+  modal.classList.add('open');
+  modal.currentClockIndex = clockIndex;
+  search.value = '';
+  renderTimezoneOptions('');
+  search.oninput = (e) => {
+    renderTimezoneOptions(e.target.value || '');
+  };
+  search.focus();
+}
+
+function selectTimezoneOption(optionIndex) {
+  const modal = document.getElementById('timezone-picker-modal');
+  if (!modal) return;
+
+  const selected = (modal.filteredTimezones || [])[optionIndex];
+  if (!selected) return;
+
+  selectTimezone(selected.timeZone, selected.city);
+}
+
+function selectTimezone(timeZone, city) {
+  const modal = document.getElementById('timezone-picker-modal');
+  if (!modal) return;
   const clockIndex = modal.currentClockIndex;
   
-  // Load current zones
-  const savedZones = JSON.parse(localStorage.getItem('world-clock-zones') || JSON.stringify([
-    { name: 'Melbourne', offset: 11 },
-    { name: 'Singapore', offset: 8 },
-    { name: 'Delhi', offset: 5.5 },
-    { name: 'Cape Town', offset: 2 },
-    { name: 'New York', offset: -5 }
-  ]));
+  const savedZones = loadWorldClockZones();
   
-  // Update selected zone
-  savedZones[clockIndex] = { name, offset };
-  localStorage.setItem('world-clock-zones', JSON.stringify(savedZones));
+  savedZones[clockIndex] = { city, timeZone };
+  saveWorldClockZones(savedZones);
   
-  // Close modal and refresh clocks
   modal.classList.remove('open');
   updateWorldClocks();
   document.getElementById('timezone-search').value = '';
 }
 
 function initClocks() {
-  console.log('🕐 Initializing world clocks...');
+  if (window.__fridaysClocksInitialized) {
+    updateHomeTimeDisplay();
+    updateWorldClocks();
+    return;
+  }
+  window.__fridaysClocksInitialized = true;
   
-  // Render immediately
   updateHomeTimeDisplay();
   updateWorldClocks();
   
-  // Update time display once per minute
   setInterval(updateHomeTimeDisplay, 60000);
-  
-  // Update clocks every 1 second for accuracy
   setInterval(updateWorldClocks, 1000);
   
-  // Close timezone picker when clicking outside
   const modal = document.getElementById('timezone-picker-modal');
   if (modal) {
     modal.addEventListener('click', (e) => {
@@ -2734,8 +2994,6 @@ function initClocks() {
       }
     });
   }
-  
-  console.log('✅ World clocks ready - updating every 1 second');
 }
 
 function saveSettings() {
@@ -2806,6 +3064,7 @@ const windowIcons = {
   'skills': '⚙️',
   'tickets': '🎫',
   'studio': '🎬',
+  'access': '🔑',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2831,6 +3090,7 @@ function openWindow(id, title, templateId) {
     else if (id === 'studio') loadStudioData(win);
     else if (id === 'time-wizard') initTimeWizard();
     else if (id === 'ghost-brief') initGhostBrief();
+    else if (id === 'access') loadAccessData(win);
   }, 100);
   
   showToast(`Opened ${cleanTitle}`, 'success');
@@ -2987,20 +3247,36 @@ function loadTerminalData(win) {
   const output = win.el.querySelector('#terminal-output');
   const btnContainer = win.el.querySelector('#terminal-buttons');
   const panel = win.el.querySelector('#terminal-shortcuts-panel');
-  const toggle = win.el.querySelector('#terminal-shortcuts-toggle');
   if (output) {
     output.textContent = 'Terminal ready. Type commands or use quick buttons above.';
   }
   if (btnContainer) {
     renderTerminalQuickButtons(btnContainer, win);
   }
-  if (panel && toggle) {
+  if (panel) {
     const collapsed = localStorage.getItem('fridays-terminal-shortcuts-collapsed') === '1';
-    panel.style.width = collapsed ? '42px' : '230px';
-    panel.style.maxWidth = collapsed ? '42px' : '38%';
-    btnContainer.style.display = collapsed ? 'none' : 'flex';
-    toggle.textContent = collapsed ? '⟨' : '⟩';
+    applyTerminalShortcutsState(win, collapsed);
   }
+}
+
+function applyTerminalShortcutsState(win, collapsed) {
+  if (!win) return;
+  const panel = win.el.querySelector('#terminal-shortcuts-panel');
+  const btns = win.el.querySelector('#terminal-buttons');
+  const headerToggle = win.el.querySelector('#terminal-shortcuts-toggle');
+  const mainToggle = win.el.querySelector('#terminal-shortcuts-main-toggle');
+  if (!panel || !btns || !headerToggle || !mainToggle) return;
+
+  panel.style.width = collapsed ? '42px' : '230px';
+  panel.style.maxWidth = collapsed ? '42px' : '38%';
+  panel.style.minWidth = collapsed ? '42px' : '180px';
+  btns.style.display = collapsed ? 'none' : 'block';
+
+  headerToggle.textContent = collapsed ? '⟨' : '⟩';
+  headerToggle.title = collapsed ? 'Expand' : 'Collapse';
+
+  mainToggle.textContent = collapsed ? '⚡ Show Shortcuts' : '⚡ Hide Shortcuts';
+  mainToggle.title = collapsed ? 'Show shortcuts' : 'Hide shortcuts';
 }
 
 const DEFAULT_TERMINAL_SHORTCUTS = [
@@ -3087,15 +3363,11 @@ function toggleTerminalShortcuts() {
   const termWin = winManager.windows.get('terminal');
   if (!termWin) return;
   const panel = termWin.el.querySelector('#terminal-shortcuts-panel');
-  const btns = termWin.el.querySelector('#terminal-buttons');
-  const toggle = termWin.el.querySelector('#terminal-shortcuts-toggle');
-  if (!panel || !btns || !toggle) return;
+  if (!panel) return;
   const collapsed = panel.style.width === '42px';
-  panel.style.width = collapsed ? '230px' : '42px';
-  panel.style.maxWidth = collapsed ? '38%' : '42px';
-  btns.style.display = collapsed ? 'flex' : 'none';
-  toggle.textContent = collapsed ? '⟩' : '⟨';
-  localStorage.setItem('fridays-terminal-shortcuts-collapsed', collapsed ? '0' : '1');
+  const nextCollapsed = !collapsed;
+  applyTerminalShortcutsState(termWin, nextCollapsed);
+  localStorage.setItem('fridays-terminal-shortcuts-collapsed', nextCollapsed ? '1' : '0');
 }
 
 function loadMemoryData(win) {
@@ -6490,6 +6762,198 @@ async function loadBriefById(id) {
   } catch (e) {
     showToast('Could not load brief #' + id, 'error');
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACCESS CONTROL
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _accessWinRef = null;
+let _skillListCache = null;
+
+async function loadAccessData(win) {
+  _accessWinRef = win;
+  window._accessWin = win;
+  try {
+    const [sRes, pRes] = await Promise.all([
+      fetch('/api/senders'),
+      fetch('/api/auth/profiles')
+    ]);
+    const senders  = await sRes.json();
+    const profiles = await pRes.json();
+
+    _renderSenderList(win, 'access-trusted-list',      senders.trusted      || [], 'trusted');
+    _renderSenderList(win, 'access-notification-list', senders.notification || [], 'notification');
+    _renderDomainList(win, 'access-domain-list',       senders.domains      || []);
+
+    const sel = win.el.querySelector('#skill-perm-user');
+    if (sel) {
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">— select a user / agent —</option>';
+      (profiles.profiles || []).forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.username;
+        o.textContent = `${p.display_name} (${p.user_type})`;
+        sel.appendChild(o);
+      });
+      if (prev) { sel.value = prev; loadSkillPerms(); }
+    }
+  } catch (e) {
+    console.error('loadAccessData error:', e);
+  }
+}
+
+function _renderSenderList(win, id, items, listType) {
+  const el = win.el.querySelector('#' + id);
+  if (!el) return;
+  if (!items.length) {
+    el.innerHTML = '<div style="color:var(--text-dim);padding:4px 0;">— none —</div>';
+    return;
+  }
+  el.innerHTML = items.map(item => `
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;margin-bottom:3px;
+                background:var(--card);border-radius:4px;border:1px solid var(--border);">
+      <span style="flex:1;font-family:monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+            title="${_esc(item.email)}">${_esc(item.email)}</span>
+      <span style="color:var(--text-dim);font-size:10px;flex-shrink:0;">${(item.added_at||'').slice(0,10)}</span>
+      <button onclick="accessRemove('${_esc(item.email)}','${listType}')"
+              style="flex-shrink:0;padding:1px 6px;background:transparent;border:1px solid var(--border);
+                     border-radius:3px;color:var(--text-dim);font-size:10px;cursor:pointer;"
+              title="Remove">✕</button>
+    </div>`).join('');
+}
+
+function _renderDomainList(win, id, items) {
+  const el = win.el.querySelector('#' + id);
+  if (!el) return;
+  if (!items.length) {
+    el.innerHTML = '<div style="color:var(--text-dim);padding:4px 0;">— none —</div>';
+    return;
+  }
+  el.innerHTML = items.map(item => `
+    <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;margin:3px 3px 0 0;
+                background:var(--card);border-radius:4px;border:1px solid var(--border);font-size:11px;">
+      <span style="font-family:monospace;">@${_esc(item.domain)}</span>
+      <span style="color:var(--text-dim);font-size:10px;">${_esc(item.channel||'email')}</span>
+      <button onclick="accessRemove('${_esc(item.domain)}','domain')"
+              style="padding:0 4px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:10px;">✕</button>
+    </div>`).join('');
+}
+
+async function accessAdd() {
+  const win = _accessWinRef;
+  if (!win) return;
+  const address  = (win.el.querySelector('#access-new-address')?.value || '').trim();
+  const listType = win.el.querySelector('#access-new-list')?.value || 'trusted';
+  const note     = (win.el.querySelector('#access-new-note')?.value || '').trim();
+  if (!address) return;
+  try {
+    const res  = await fetch('/api/senders', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({list: listType, address, note, proposal_id: 'DASHBOARD-ACCESS'})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      win.el.querySelector('#access-new-address').value = '';
+      win.el.querySelector('#access-new-note').value    = '';
+      showToast(`Added ${address} to ${listType}`, 'success');
+      loadAccessData(win);
+    } else {
+      showToast(data.error || 'Failed to add', 'error');
+    }
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function accessRemove(address, listType) {
+  if (!confirm(`Remove ${address} from ${listType}?`)) return;
+  try {
+    const res  = await fetch('/api/senders', {
+      method: 'DELETE', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({list: listType, address, proposal_id: 'DASHBOARD-ACCESS'})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`Removed ${address}`, 'success');
+      loadAccessData(_accessWinRef);
+    } else {
+      showToast(data.error || 'Failed', 'error');
+    }
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function loadSkillPerms() {
+  const win = _accessWinRef;
+  if (!win) return;
+  const sel      = win.el.querySelector('#skill-perm-user');
+  const grid     = win.el.querySelector('#skill-perm-grid');
+  const status   = win.el.querySelector('#skill-perm-status');
+  const username = (sel?.value || '').trim();
+  if (!grid) return;
+  if (!username) {
+    grid.innerHTML = '<div style="color:var(--text-dim);font-size:12px;grid-column:1/-1;">Select a user above to manage their skill permissions.</div>';
+    return;
+  }
+  grid.innerHTML = '<div style="color:var(--text-dim);font-size:12px;grid-column:1/-1;">Loading…</div>';
+
+  try {
+    if (!_skillListCache) {
+      const r = await fetch('/api/skills');
+      const d = await r.json();
+      _skillListCache = (d.skills || d || []).map(s => ({
+        name: (s.name || s).toLowerCase(), description: s.description || ''
+      }));
+    }
+    const permRes  = await fetch(`/api/skills/permissions?username=${encodeURIComponent(username)}`);
+    const permData = await permRes.json();
+    const perms    = Array.isArray(permData.permissions) ? permData.permissions : [];
+    const map      = {};
+    perms.forEach(p => { map[p.skill_name.toLowerCase()] = !!p.allowed; });
+
+    if (status) status.textContent = `${Object.keys(map).length} explicit rule(s)`;
+
+    grid.innerHTML = _skillListCache.map(skill => {
+      const explicit = Object.prototype.hasOwnProperty.call(map, skill.name);
+      const allowed  = explicit ? map[skill.name] : true;
+      const badge    = explicit ? (allowed ? 'explicit allow' : 'explicit deny') : 'default allow';
+      const badgeCol = explicit ? (allowed ? 'var(--accent)' : '#f77') : 'var(--text-dim)';
+      return `
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;
+                       padding:9px 12px;border:1px solid var(--border);border-radius:6px;
+                       background:var(--card);cursor:pointer;"
+               onmouseover="this.style.borderColor='var(--accent)'"
+               onmouseout="this.style.borderColor='var(--border)'">
+          <div style="min-width:0;">
+            <div style="font-size:12px;font-weight:600;text-transform:capitalize;">${_esc(skill.name)}</div>
+            <div style="font-size:10px;color:${badgeCol};margin-top:1px;">${badge}</div>
+          </div>
+          <input type="checkbox" ${allowed ? 'checked' : ''}
+                 onchange="setSkillPerm('${_esc(username)}','${_esc(skill.name)}',this.checked)"
+                 style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);flex-shrink:0;">
+        </label>`;
+    }).join('');
+  } catch (e) {
+    grid.innerHTML = `<div style="color:#f77;font-size:12px;grid-column:1/-1;">Failed: ${_esc(e.message)}</div>`;
+  }
+}
+
+async function setSkillPerm(username, skillName, allowed) {
+  try {
+    const res  = await fetch('/api/skills/permissions', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username, skill_name: skillName, allowed})
+    });
+    const data = await res.json();
+    if (data.ok === false) throw new Error(data.error || 'update failed');
+    showToast(`${username} / ${skillName} → ${allowed ? 'allowed' : 'denied'}`, 'success');
+    loadSkillPerms();
+  } catch (e) {
+    showToast(`Failed: ${e.message}`, 'error');
+    loadSkillPerms();
+  }
+}
+
+function _esc(text) {
+  return String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 </script>
