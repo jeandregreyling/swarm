@@ -24,7 +24,7 @@ import os
 import sys
 import json
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 import urllib.request
 import urllib.error
 
@@ -79,7 +79,7 @@ def _wait_for_jobs(conversation_id, job_ids, timeout_seconds=180, poll_interval=
             jid = str(job.get('job_id') or '')
             stage = str(job.get('stage') or '')
             status = str(job.get('status') or '')
-            stamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            stamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
             timelines.append({
                 'ts': stamp,
                 'job_id': jid,
@@ -450,11 +450,6 @@ def test_monitor_runtime_telemetry_shape():
 
 # ── REQ-CHAT-016: per-agent chat ping with job-stage timeline logging ───────
 def test_chat_ping_each_agent_with_stage_log():
-    enabled = (os.environ.get('CHAT_PING_ENABLE') or '').strip().lower() in {'1', 'true', 'yes'}
-    if not enabled:
-        record('REQ-CHAT-016 agent-ping-stage-log', SKIP, 'set CHAT_PING_ENABLE=1 to run')
-        return
-
     agents = _ping_agents_from_env()
     max_seconds = int(os.environ.get('CHAT_PING_MAX_SECONDS_PER_AGENT', '180'))
     per_agent = []
@@ -526,7 +521,7 @@ def test_chat_ping_each_agent_with_stage_log():
     failed_agents = [x for x in per_agent if x.get('final_status') not in {'completed'}]
 
     payload = {
-        'generated_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'generated_at': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
         'base_url': BASE_URL,
         'agents': agents,
         'summary': {
@@ -538,18 +533,11 @@ def test_chat_ping_each_agent_with_stage_log():
     }
     out_path = _write_ping_log(payload)
 
-    # Pass criteria for observability test:
-    # all calls returned HTTP 200 and each agent produced a logged terminal status.
-    http_errors = [x.get('agent') for x in per_agent if x.get('http_code') != 200]
-    status_counts = {}
-    for row in per_agent:
-        key = row.get('final_status') or 'unknown'
-        status_counts[key] = status_counts.get(key, 0) + 1
-
-    ok = (not http_errors) and all(x.get('final_status') for x in per_agent)
-    detail = f"statuses={status_counts}, log={out_path}"
-    if http_errors:
-        detail += f", http_errors={http_errors}"
+    # Pass criteria: at least one agent completed, and every attempted agent produced a logged status.
+    ok = bool(ok_agents) and all(x.get('final_status') for x in per_agent)
+    detail = f"completed={len(ok_agents)}/{total}, log={out_path}"
+    if failed_agents:
+        detail += f", non_completed={[x.get('agent') for x in failed_agents]}"
     record('REQ-CHAT-016 agent-ping-stage-log', PASS if ok else FAIL, detail)
 
 
