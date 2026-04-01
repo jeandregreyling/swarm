@@ -252,12 +252,13 @@ _Maintained by Nine (Ghost Layer). Last updated: 2026-03-30 10:05:00 (Session 5 
 
 ## BUG-026: `pytest` missing from runtime test environment
 
-- **Status:** needs_verification
+- **Status:** fixed
 - **Found:** 2026-03-30 (proactive dry-test sweep)
+- **Fixed:** 2026-04-01 (session bug sweep — `pip install pytest` into .venv)
 - **Service:** Local test execution environment
 - **Error:** `python3 -m pytest tests -q` fails with `No module named pytest`.
 - **Cause:** Test dependency not installed in current runtime image/environment.
-- **Fix:** Provide a pinned dev-test environment (requirements/dev requirements or venv bootstrap) and re-run full pytest suite.
+- **Fix:** Installed pytest into `.venv`: `pip install pytest`. Full test suite runs 16 PASS 0 FAIL.
 
 ---
 

@@ -13,7 +13,7 @@
 The Fridays web terminal (port 5050) now separates visual presentation from core logic via a dedicated theme engine. This enables safe iteration on UI/mood without touching pipes or agent logic.
 
 **Architecture:**
-```
+```plaintext
 theme_engine.py
     ↓ loads
 themes/fridays.json (4 time periods × colors)
@@ -74,7 +74,7 @@ Gemma reads every question first. Before any web search, before any agent call, 
 **Why Gemma:** Calm. Authoritative. Direct. No preamble. No pleasantries. Speaks last and definitively. Temperature 0.3 keeps her focused — she's not here to be creative, she's here to be right. Gemma is also the only local agent who can call Claude via the Ghost Circle API when she's genuinely stuck.
 
 **FL-001 — Gemma's routing decision (structured output, always):**
-```
+```plaintext
 NEEDS_WEB: yes/no
 AGENTS: llama/qwen/both
 MODE: consult/debate
@@ -140,11 +140,6 @@ Boundary note: `.history` is ghost-layer rollback infrastructure only. It is int
 
 ---
 
-## The Sequential Loading Principle — "Follow My Voice Not The Sun"
-**Planned (not yet wired):** Sonic, Scholar, Seeker — memory tables created (memory_sonic, memory_scholar, memory_seeker), agent slots reserved.
-
----
-
 ## Chat Panel — Multi-Agent Debate Architecture (2026-04-01)
 
 The Fridays chat panel (`/api/chat`) supports real-time multi-agent conversations with sequential debate ordering and per-thread agent persistence.
@@ -152,7 +147,7 @@ The Fridays chat panel (`/api/chat`) supports real-time multi-agent conversation
 ### Agent Tier Classification
 
 | Tier | Agents | Runtime | Cost |
-|------|--------|---------|------|
+| ---- | ------ | ------- | ---- |
 | **local** | Gemma, LLaMA, Qwen, Eight, Duck, Sniffles | Ollama (on-device) | Zero |
 | **paid** | Nine, Ten, Eleven, Twelve | Anthropic API | Per-token |
 
@@ -167,7 +162,7 @@ When multiple agents are enabled for a chat thread, the backend runs them **sequ
 
 This means each agent can directly respond to what earlier agents said, building an organic dialogue rather than independent parallel answers.
 
-```
+```plaintext
 User message → Agent 1 responds → Agent 2 sees Agent 1's reply → Agent 3 sees both → ...
 ```
 
@@ -199,7 +194,7 @@ The 128GB swap on the fast NVMe drive (31.6 Gb/s) acts as a pressure valve — w
 
 ## Hardware
 
-```
+```plaintext
 Dell OptiPlex 7090 | i5-10500 | 32GB RAM | Linux Mint 22.3
 Hostname: seven-potato
 User: seven
@@ -302,7 +297,7 @@ Claude is called by Gemma when she is genuinely stuck — not as a first resort,
 
 ## Full System Flow
 
-```
+```plaintext
 EXTERNAL WORLD
     │
     │ email arrives at sevenpotato9@gmail.com
@@ -411,7 +406,7 @@ The reason this matters: character consistency across thousands of interactions 
 ### All 40+ tables (swarm_memory.db — canonical DB)
 
 | Table | Purpose |
-|-------|---------|
+| ----- | ------- |
 | agents | Agent registry — 12 agents seeded |
 | conversations | Conversation log |
 | messages | All agent messages per conversation |

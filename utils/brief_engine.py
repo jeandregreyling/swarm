@@ -22,6 +22,8 @@ sys.path.insert(0, '/home/seven/swarm/lib/system')
 
 logger = logging.getLogger('seven.brief_engine')
 
+_ANTHROPIC_WARNED = False  # log the 'not installed' message only once per process
+
 
 def gather_swarm_state():
     """Read full swarm state and return a structured context dict."""
@@ -320,7 +322,10 @@ def generate_brief(trigger='on_demand'):
         try:
             import anthropic
         except ImportError:
-            logger.error("[Brief] anthropic not installed")
+            global _ANTHROPIC_WARNED
+            if not _ANTHROPIC_WARNED:
+                logger.warning("[Brief] anthropic not installed — Ghost Brief unavailable (pip install anthropic)")
+                _ANTHROPIC_WARNED = True
             return None
 
         api_key = os.environ.get('ANTHROPIC_API_KEY', '')

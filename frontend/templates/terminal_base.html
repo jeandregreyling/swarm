@@ -8537,13 +8537,15 @@ function updateActivityLog() {
 function updateTicketQueue() {
   const queue = document.getElementById('ticket-queue');
   if (!queue) return;
-  
-  fetch('/api/tickets')
+
+  fetch('/api/tickets?status=open')
     .then(r => r.json())
     .then(data => {
-      const tickets = Array.isArray(data) ? data : (data.tickets || []);
-      if (tickets.length > 0) {
-        queue.innerHTML = tickets.slice(0, 8).map(t => {
+      const all = Array.isArray(data) ? data : (data.tickets || []);
+      // Belt-and-braces: filter client-side in case API doesn't support ?status
+      const open = all.filter(t => t.status !== 'closed').slice(0, 8);
+      if (open.length > 0) {
+        queue.innerHTML = open.map(t => {
           const num   = t.number || t.ticket_number || '?';
           const title = (t.title || t.question || 'Untitled').slice(0, 60);
           const st    = t.status || 'unknown';
@@ -8555,10 +8557,10 @@ function updateTicketQueue() {
           </div>`;
         }).join('');
       } else {
-        queue.innerHTML = '<div style="padding: 12px; color: var(--text-dim);">No open tickets</div>';
+        queue.innerHTML = '<div style="padding: 12px; color: var(--text-dim);">✓ No open tickets</div>';
       }
     })
-    .catch(e => {
+    .catch(() => {
       queue.innerHTML = '<div style="padding: 12px; color: var(--text-dim);">Ticket queue unavailable</div>';
     });
 }

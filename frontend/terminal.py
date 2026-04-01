@@ -324,10 +324,16 @@ def _recent_conversations(limit=40):
     return [dict(r, timestamp=r['created_at']) for r in rows]
 
 
-def _tickets(limit=100):
+def _tickets(limit=100, status=None):
     conn = get_connection()
+    if status in ('open', 'closed'):
+        where = "WHERE t.status = ?"
+        params = (status, limit)
+    else:
+        where = ""
+        params = (limit,)
     rows = conn.execute(
-        """SELECT t.ticket_number, t.status, t.duck_result, t.gemma_routing,
+        f"""SELECT t.ticket_number, t.status, t.duck_result, t.gemma_routing,
                   t.created_at, t.closed_at, t.sender_email, t.question,
                   COALESCE(q.priority, 5) AS priority,
                   COUNT(DISTINCT tn.id) AS note_count,
@@ -336,9 +342,10 @@ def _tickets(limit=100):
            LEFT JOIN queue q ON q.id = t.queue_id
            LEFT JOIN ticket_notes tn ON tn.ticket_id = t.id
            LEFT JOIN snoozed_tickets s ON s.ticket_number = t.ticket_number
+           {where}
            GROUP BY t.id
            ORDER BY t.id DESC LIMIT ?""",
-        (limit,)
+        params
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -780,7 +787,8 @@ def api_conversation_delete(conv_id):
 
 @app.route('/api/tickets')
 def api_tickets():
-    return jsonify(_tickets())
+    status = request.args.get('status')
+    return jsonify(_tickets(status=status))
 
 
 @app.route('/api/tickets/<ticket_number>')
