@@ -619,12 +619,188 @@ def _resolve_identity_or_response(data):
     return identity, None
 
 
+def _validate_agent_request():
+    """
+    Validate that request is from a local agent with valid AGENT_API_KEY.
+    Returns (agent_id, error_response) tuple.
+    - On success: (agent_id_string, None)
+    - On failure: (None, Flask error response tuple)
+    """
+    agent_key = request.headers.get('X-Agent-Key', '').strip()
+    agent_id = request.headers.get('X-Agent-Id', '').strip()
+    
+    if not agent_key or not agent_id:
+        return None, (jsonify({'ok': False, 'error': 'X-Agent-Key and X-Agent-Id headers required'}), 401)
+    
+    expected_key = os.environ.get('AGENT_API_KEY', '').strip()
+    if not expected_key:
+        return None, (jsonify({'ok': False, 'error': 'agent API not enabled (AGENT_API_KEY not set)'}), 503)
+    
+    if agent_key != expected_key:
+        log_activity('terminal', 'agent_auth_failed', f'invalid key attempt from agent {agent_id}')
+        return None, (jsonify({'ok': False, 'error': 'invalid agent API key'}), 403)
+    
+    # Valid agent_id should match known local agents
+    valid_agents = ('gemma', 'qwen', 'llama', 'sniffles', 'duck', 'librarian', 'nine', 'ten', 'eleven', 'twelve')
+    if agent_id.lower() not in valid_agents:
+        log_activity('terminal', 'agent_auth_unknown', f'unknown agent_id: {agent_id}')
+        # Still allow it; agents can register themselves
+    
+    return agent_id, None
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @app.route('/api/health')
 def api_health():
     """Lightweight health check endpoint. Returns 200 if server is up."""
     return jsonify({'ok': True, 'status': 'up', 'service': 'swarm-terminal'})
+
+
+# ── Agent Self-Service APIs (Local Agents Create & Query Tickets) ──────────────
+
+@app.route('/api/agent/tickets', methods=['POST'])
+def api_agent_create_ticket():
+    """
+    Allow a local agent to create a ticket/proposal directly via API.
+    
+    Requires headers:
+    - X-Agent-Key: AGENT_API_KEY environment variable
+    - X-Agent-Id: agent name (gemma, qwen, llama, etc.)
+    
+    JSON payload:
+    - title: proposal title (required)
+    - description: proposal description (proposed work)
+    - priority: 1-10 (default 5, lower = more urgent)
+    - tags: comma-separated tags (optional)
+    
+    Returns: {ok, queue_id, proposal_id, created_at}
+    """
+    agent_id, error_response = _validate_agent_request()
+    if error_response:
+        return error_response
+    
+    data = request.get_json() or {}
+    title = (data.get('title') or '').strip()
+    description = (data.get('description') or '').strip()
+    priority = int(data.get('priority', 5) or 5)
+    
+    if not title:
+        return jsonify({'ok': False, 'error': 'title required'}), 400
+    
+    # Use intake_internal which already handles queue + proposal creation
+    queue_id, proposal_id = intake_internal(agent_id, title, description, priority=priority)
+    
+    created_at = datetime.now(timezone.utc).isoformat()
+    log_activity(
+        'terminal',
+        'agent_ticket_created',
+        f'agent={agent_id} proposal_id={proposal_id}',
+        tags=agent_id
+    )
+    
+    return jsonify({
+        'ok': True,
+        'queue_id': queue_id,
+        'proposal_id': proposal_id,
+        'created_at': created_at
+    }), 201
+
+
+@app.route('/api/agent/tickets', methods=['GET'])
+def api_agent_list_tickets():
+    """
+    Agent queries: what tickets have I created?
+    
+    Requires: X-Agent-Key, X-Agent-Id headers
+    
+    Query params:
+    - status: filter by status (queued, processing, completed, failed)
+    - limit: max results (default 50)
+    
+    Returns: {ok, tickets: [{queue_id, proposal_id, title, status, created_at, ...}]}
+    """
+    agent_id, error_response = _validate_agent_request()
+    if error_response:
+        return error_response
+    
+    status = request.args.get('status', '').strip()
+    limit = int(request.args.get('limit', 50) or 50)
+    
+    conn = get_connection()
+    try:
+        query = "SELECT * FROM queue WHERE agent=?"
+        params = [agent_id]
+        
+        if status:
+            query += " AND status=?"
+            params.append(status)
+        
+        query += f" ORDER BY created_at DESC LIMIT {limit}"
+        rows = conn.execute(query, params).fetchall()
+        
+        # Also fetch linked proposals
+        tickets = []
+        for row in rows:
+            ticket_dict = dict(row)
+            proposal = conn.execute(
+                "SELECT proposal_id, status AS proposal_status FROM work_proposals WHERE queue_id=? LIMIT 1",
+                (ticket_dict['id'],)
+            ).fetchone()
+            if proposal:
+                ticket_dict['proposal_id'] = proposal['proposal_id']
+                ticket_dict['proposal_status'] = proposal['proposal_status']
+            tickets.append(ticket_dict)
+        
+        return jsonify({'ok': True, 'agent_id': agent_id, 'tickets': tickets})
+    finally:
+        conn.close()
+
+
+@app.route('/api/agent/proposals', methods=['GET'])
+def api_agent_list_proposals():
+    """
+    List pending proposals (for agent coordination).
+    Used by Fridays orchestrator to see what work needs doing.
+    
+    Requires: X-Agent-Key, X-Agent-Id headers
+    
+    Query params:
+    - status: filter (pending, approved, rejected, executed)
+    - agent: filter by target agent (optional)
+    - limit: max results (default 50)
+    
+    Returns: {ok, proposals: [{proposal_id, agent, title, status, ticket_link, ...}]}
+    """
+    agent_id, error_response = _validate_agent_request()
+    if error_response:
+        return error_response
+    
+    status = request.args.get('status', 'pending').strip()  # Default to pending
+    filter_agent = request.args.get('agent', '').strip()
+    limit = int(request.args.get('limit', 50) or 50)
+    
+    conn = get_connection()
+    try:
+        query = "SELECT proposal_id, agent, title, description, status, queue_id, created_at, updated_at FROM work_proposals WHERE 1=1"
+        params = []
+        
+        if status:
+            query += " AND status=?"
+            params.append(status)
+        
+        if filter_agent:
+            query += " AND agent=?"
+            params.append(filter_agent)
+        
+        query += f" ORDER BY created_at DESC LIMIT {limit}"
+        rows = conn.execute(query, params).fetchall()
+        
+        proposals = [dict(row) for row in rows]
+        
+        return jsonify({'ok': True, 'proposals': proposals})
+    finally:
+        conn.close()
 
 
 @app.route('/')
