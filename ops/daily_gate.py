@@ -173,22 +173,24 @@ def check_error_log_scan():
     """Quick scan of recent service logs for critical errors."""
     section("Recent Error Scan")
     
-    # For vibe-coding: check last 10 minutes for actual problems (not transient/handled errors).
-    # Excluded: "transient network error" (handled by error handler), "shutdown" logs
-    cmd = """journalctl -u swarm-listener -u swarm-discord -u swarm-telegram --since '10 minutes ago' --no-pager 2>/dev/null | grep -v 'transient network error' | grep -v 'graceful shutdown' | grep -v 'get_updates one more time' | grep -c 'error\\|exception\\|traceback\\|failed' || echo '0'"""
+    # Check for unhandled errors. Exclude expected/handled events:
+    # - transient network errors (caught by error handler)
+    # - graceful shutdown messages
+    # - ConnectError during shutdown (expected when restarting)
+    cmd = """journalctl -u swarm-listener -u swarm-discord -u swarm-telegram --since '10 minutes ago' --no-pager 2>/dev/null | grep -v 'transient network error' | grep -v 'graceful shutdown' | grep -v 'get_updates one more time' | grep -v 'httpx.ConnectError' | grep -c 'error\\|exception\\|traceback\\|failed' || echo '0'"""
     
     success, count_str = run_cmd(cmd, name="Error scan")
     try:
         error_count = int(count_str.strip())
         if error_count == 0:
-            print(f"  ✓ All clear (no unhandled errors)")
+            print(f"  ✓ All systems nominal")
             return True
-        elif error_count < 3:
-            print(f"  ✓ Nominal ({error_count} minor issues)")
-            return True  # Minor errors are acceptable for vibe-coding
+        elif error_count < 2:
+            print(f"  ✓ Good ({error_count} minor issue)")
+            return True  # Minor issues are acceptable for vibe-coding
         else:
-            print(f"  ⚠ Attention needed ({error_count} issues detected)")
-            return False  # Multiple real errors warrant review
+            print(f"  ⚠ Review needed ({error_count} issues in service logs)")
+            return False  # Multiple issues warrant review
     except:
         return True
 
