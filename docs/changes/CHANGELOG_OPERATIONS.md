@@ -191,3 +191,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Upgraded memory modal actions to inline form-based edit/append/attach/share flows (no JS prompt popups), kept delete in-modal, and preserved cache refresh behavior. Enhanced pending loading panel state labels to display explicit 'alive' status per agent stage. Regression suites remain green.
 - Rollback: Revert frontend/templates/terminal_base.html and restart swarm-terminal.
 
+- Time (UTC): 2026-04-01T01:42:58Z
+- Actor: copilot
+- Scope: docs/README.md, docs/runbooks/DOCUMENTATION_LIFECYCLE_WORKFLOW.md, docs/registry/FILE_REGISTRY.md, docs/DEVELOPER_WORKFLOW.md
+- Change: Create docs hub and lifecycle workflow; register canonical navigation and maintenance rules
+- Validation: Validated markdown files with zero diagnostics and verified registry links
+- Rollback: Revert touched docs files and remove registry entries for new docs
+

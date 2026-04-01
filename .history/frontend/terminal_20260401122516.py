@@ -1515,7 +1515,7 @@ def api_work_proposals_list():
     where = ('WHERE ' + ' AND '.join(clauses)) if clauses else ''
     conn = get_connection()
     rows = conn.execute(
-        f"SELECT id, proposal_id, agent, title, description, status, proposal_file, ticket_number, queue_id, ticket_id, created_at, updated_at "
+        f"SELECT id, proposal_id, agent, title, description, status, proposal_file, ticket_number, queue_id, created_at, updated_at "
         f"FROM work_proposals {where} ORDER BY created_at DESC LIMIT ?",
         tuple(params + [max(1, min(limit, 500))])
     ).fetchall()
@@ -1531,15 +1531,14 @@ def api_work_proposals_patch(proposal_id):
     data = request.get_json() or {}
     status = (data.get('status') or '').strip().lower()
     ticket_number = (data.get('ticket_number') or '').strip()
-    ticket_id     = data.get('ticket_id')
-    valid = {'pending', 'approved', 'rejected', 'in_progress', 'done', 'executed'}
+    valid = {'pending', 'approved', 'rejected', 'executed'}
 
     if status not in valid:
         return jsonify({'ok': False, 'error': f'invalid status: {status}'}), 400
 
     conn = get_connection()
     row = conn.execute(
-        'SELECT id, proposal_id, agent, title, description, status, proposal_file, ticket_number, queue_id, ticket_id, created_at, updated_at '
+        'SELECT id, proposal_id, agent, title, description, status, proposal_file, ticket_number, queue_id, created_at, updated_at '
         'FROM work_proposals WHERE proposal_id=?',
         (proposal_id,)
     ).fetchone()
@@ -1550,12 +1549,10 @@ def api_work_proposals_patch(proposal_id):
 
     current_status = (row['status'] or '').lower()
     allowed_transitions = {
-        'pending':     {'pending', 'approved', 'rejected'},
-        'approved':    {'approved', 'in_progress', 'executed', 'rejected'},
-        'in_progress': {'in_progress', 'done', 'rejected'},
-        'done':        {'done', 'executed', 'in_progress'},
-        'executed':    {'executed'},
-        'rejected':    {'rejected'},
+        'pending': {'pending', 'approved', 'rejected'},
+        'approved': {'approved', 'executed', 'rejected'},
+        'executed': {'executed'},
+        'rejected': {'rejected'},
     }
     if status not in allowed_transitions.get(current_status, {current_status}):
         _safe_time_event(
@@ -1598,16 +1595,10 @@ def api_work_proposals_patch(proposal_id):
             }), 403
 
     update_proposal_status(proposal_id, status, ticket_number=ticket_number)
-    if ticket_id is not None:
-        conn = get_connection()
-        conn.execute('UPDATE work_proposals SET ticket_id=?, updated_at=datetime("now") WHERE proposal_id=?',
-                     (ticket_id, proposal_id))
-        conn.commit()
-        conn.close()
 
     conn = get_connection()
     row = conn.execute(
-        'SELECT id, proposal_id, agent, title, description, status, proposal_file, ticket_number, queue_id, ticket_id, created_at, updated_at '
+        'SELECT id, proposal_id, agent, title, description, status, proposal_file, ticket_number, queue_id, created_at, updated_at '
         'FROM work_proposals WHERE proposal_id=?',
         (proposal_id,)
     ).fetchone()
@@ -1634,74 +1625,6 @@ def api_work_proposals_patch(proposal_id):
     if duck_review:
         payload['duck_review'] = duck_review
     return jsonify(payload)
-
-
-@app.route('/api/deferred', methods=['GET'])
-def api_deferred_list():
-    """List unresolved deferred / pinned items."""
-    include_resolved = request.args.get('resolved', '0') == '1'
-    conn = get_connection()
-    where = '' if include_resolved else 'WHERE resolved=0'
-    rows = conn.execute(
-        f'SELECT id, content, source, source_id, pinned_by, resolved, created_at, resolved_at '
-        f'FROM deferred_items {where} ORDER BY created_at DESC LIMIT 200'
-    ).fetchall()
-    conn.close()
-    return jsonify({'ok': True, 'items': [dict(r) for r in rows]})
-
-
-@app.route('/api/deferred', methods=['POST'])
-def api_deferred_create():
-    """Pin a new deferred item."""
-    data = request.get_json() or {}
-    content = (data.get('content') or '').strip()
-    if not content:
-        return jsonify({'ok': False, 'error': 'content required'}), 400
-    source    = (data.get('source') or 'manual').strip()
-    source_id = (data.get('source_id') or '').strip()
-    pinned_by = (data.get('pinned_by') or 'ghost').strip()
-    conn = get_connection()
-    cur = conn.execute(
-        'INSERT INTO deferred_items (content, source, source_id, pinned_by) VALUES (?,?,?,?)',
-        (content, source, source_id, pinned_by)
-    )
-    item_id = cur.lastrowid
-    conn.commit()
-    conn.close()
-    log_activity('terminal', 'deferred_pinned', content[:80])
-    return jsonify({'ok': True, 'id': item_id})
-
-
-@app.route('/api/deferred/<int:item_id>', methods=['PATCH'])
-def api_deferred_patch(item_id):
-    """Resolve or edit a deferred item."""
-    data = request.get_json() or {}
-    conn = get_connection()
-    row = conn.execute('SELECT id FROM deferred_items WHERE id=?', (item_id,)).fetchone()
-    if not row:
-        conn.close()
-        return jsonify({'ok': False, 'error': 'not found'}), 404
-    if 'resolved' in data:
-        resolved = 1 if data['resolved'] else 0
-        resolved_at = 'datetime("now")' if resolved else 'NULL'
-        conn.execute(f'UPDATE deferred_items SET resolved=?, resolved_at={resolved_at} WHERE id=?',
-                     (resolved, item_id))
-    if 'content' in data:
-        conn.execute('UPDATE deferred_items SET content=? WHERE id=?',
-                     (data['content'].strip(), item_id))
-    conn.commit()
-    conn.close()
-    return jsonify({'ok': True})
-
-
-@app.route('/api/deferred/<int:item_id>', methods=['DELETE'])
-def api_deferred_delete(item_id):
-    """Hard-delete a deferred item."""
-    conn = get_connection()
-    conn.execute('DELETE FROM deferred_items WHERE id=?', (item_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({'ok': True})
 
 
 @app.route('/api/tickets/<ticket_number>/snooze', methods=['POST'])
