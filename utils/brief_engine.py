@@ -379,6 +379,36 @@ def generate_brief(trigger='on_demand'):
 
     logger.info(f"[Brief] Brief #{brief_id} generated — {tokens} tokens")
 
+    # Discord ping — pull headline numbers from state so Ghost knows at a glance
+    try:
+        import sys as _sys
+        _sys.path.insert(0, '/home/seven/swarm/lib/system')
+        import discord_notify
+        t = state.get('tickets', {})
+        duck = state.get('duck_log', {})
+        proposals = state.get('proposals', {})
+        active_props = sum(
+            v for k, v in proposals.get('counts', {}).items()
+            if k not in ('executed', 'rejected')
+        )
+        # Pull first SITUATION paragraph as a preview
+        situation_line = ''
+        for line in content.split('\n'):
+            line = line.strip()
+            if line and not line.startswith('SITUATION') and len(line) > 30:
+                situation_line = line
+                break
+        discord_notify.notify_brief_ready(
+            brief_summary=situation_line,
+            trigger=trigger,
+            tokens=tokens,
+            open_proposals=active_props,
+            duck_flags=duck.get('flagged', 0),
+            open_tickets=t.get('open', 0),
+        )
+    except Exception as e:
+        logger.warning(f"[Brief] Discord ping failed: {e}")
+
     return {
         'id': brief_id,
         'content': full_brief,

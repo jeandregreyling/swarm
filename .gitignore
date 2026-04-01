@@ -26,6 +26,13 @@ __pycache__/
 *.swp
 *.swo
 *~
+.history/
+
+# Test artifacts
+tests/artifacts/
+
+# Archive dumps (large, tracked separately)
+archive/
 
 # Backups (already backed up separately)
 *.backup
