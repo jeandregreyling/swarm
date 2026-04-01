@@ -11,6 +11,36 @@ Canonical ledgers for this tracker:
 - Changes: `docs/changes/CHANGELOG_OPERATIONS.md`
 - Audit evidence: `docs/audits/AUDIT_TRAIL.md`
 
+## Session 11 Delta - Comprehensive System Validation + Notification Reliability
+
+**Update Time:** 2026-04-01 07:46 UTC
+
+| Item | Result | Evidence |
+|------|--------|----------|
+| Baseline health (services + API + syntax) | ✅ DONE | `systemctl is-active` (4/4 active), `GET /` => 200, `python3 -m compileall -q frontend core lib fridays utils tests agents` |
+| Core API + ALM suite | ✅ DONE | `python3 tests/test_e2e_fridays.py` => `21 PASS / 0 FAIL / 0 ERROR / 0 SKIP` |
+| UAT gate (critical bundle) | ✅ DONE | `python3 tests/run_uat_gate.py` => PASS (compile + e2e + telegram_trust + manager_onboarding + alm_gate_endpoints) |
+| Live chat/agent fanout | ✅ DONE | `python3 tests/test_chat_quality.py` => `16 PASS / 0 FAIL / 0 SKIP` (agent ping stage logs captured) |
+| Channel command and trust smoke | ✅ DONE | `python3 tests/test_channel_smoke.py` => `7 PASS`; `python3 tests/test_direct_agent_commands.py` => `6 PASS`; `python3 tests/test_telegram_trust.py` => `18 PASS` |
+| Terminal execution under ALM | ✅ DONE | `/api/hands/run` validated with executed proposal id + whitelisted command (`whoami`) |
+| Notification SMTP delivery (both moderator addresses) | ✅ DONE | Diagnostic `send_reply()` to `jeandre.greyling@gmail.com` and `jeandre.greyling@outlook.com` both returned `True` |
+| Notification reliability fix (code) | ✅ DONE | `core/pipeline/listener.py`, `fridays/telegram_bot.py`, `fridays/discord_bot.py` now treat `send_reply=False` as `notify_failed` and log explicitly |
+| Consolidated gate check | ✅ DONE | `python3 ops/daily_gate.py --quick` => FULLY OPERATIONAL |
+
+### Session 11 Findings
+
+| Finding ID | Severity | Finding | Status |
+|------------|----------|---------|--------|
+| OPS-NOTIFY-031 | HIGH | Unknown-sender notification paths could log success even when `send_reply` returned `False` (silent delivery miss) | ✅ FIXED |
+| OPS-EMAIL-032 | MEDIUM | Gmail Push token had historical `invalid_grant` revocation events; listener falls back to IMAP polling | 🟡 PARTIAL (service works; push re-auth still required for instant push) |
+| OPS-ALM-033 | LOW | `/api/hands/run` enforces ALM + whitelist (works as designed; non-whitelisted command rejected) | ✅ VERIFIED |
+
+### Operator Action Required (for instant push notifications)
+
+1. Re-authorize Gmail push token to clear `invalid_grant` history and restore immediate push behavior.
+2. Command path available in repo: `python3 lib/email/gmail_auth.py` (interactive OAuth flow).
+3. After re-auth: restart listener (`sudo systemctl restart swarm-listener`) and confirm no new push errors in journal.
+
 ## Session 6 Delta - Channel Stabilization + Vortex Evidence
 
 **Update Time:** 2026-03-30 13:30 UTC
