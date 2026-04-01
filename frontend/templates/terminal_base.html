@@ -1872,10 +1872,11 @@ input[type="range"]::-moz-range-thumb:hover {
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         <button id="docs-tab-kb" onclick="docsSetTab('kb')" style="padding:5px 12px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#000;font-size:11px;font-weight:600;cursor:pointer;">Docs</button>
-        <button id="docs-tab-workspace" onclick="docsSetTab('workspace')" style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Workspace Docs</button>
+        <button id="docs-tab-workspace" onclick="docsSetTab('workspace')" style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Workspace</button>
         <button id="docs-tab-brief" onclick="docsSetTab('brief')" style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Ghost Brief</button>
+        <button id="docs-tab-pinboard" onclick="docsSetTab('pinboard')" style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">&#128204; Pinboard</button>
         <button id="docs-tab-history" onclick="docsSetTab('history')" style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">ALM History</button>
-        <button onclick="docsSetTab(window._docsTab || 'kb')" style="margin-left:4px;background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">↻</button>
+        <button onclick="docsSetTab(window._docsTab || 'kb')" style="margin-left:4px;background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">&#8635;</button>
       </div>
     </div>
     <div id="docs-content" style="flex:1;overflow-y:auto;padding:16px;">
@@ -4022,15 +4023,16 @@ function docsSetTab(tab, contentEl) {
   window._docsTab = tab;
   const active   = 'background:var(--accent);color:#000;border-color:var(--accent);font-weight:600;';
   const inactive = 'background:transparent;color:var(--text-dim);border-color:var(--border);font-weight:600;';
-  ['kb','workspace','brief','history'].forEach(t => {
+  ['kb','workspace','brief','pinboard','history'].forEach(t => {
     const btn = document.getElementById('docs-tab-' + t);
     if (btn) btn.style.cssText = btn.style.cssText.replace(/background[^;]+;|color[^;]+;|border-color[^;]+;/g,'') + (tab===t ? active : inactive);
   });
   const content = contentEl || document.getElementById('docs-content');
   if (!content) return;
-  if (tab === 'history') return loadDocsALMHistory(content);
-  if (tab === 'brief')   return loadDocsGhostBrief(content);
+  if (tab === 'history')  return loadDocsALMHistory(content);
+  if (tab === 'brief')    return loadDocsGhostBrief(content);
   if (tab === 'workspace') return loadDocsWorkspace(content);
+  if (tab === 'pinboard') return loadDocsPinboard(content);
   return loadDocsLibrary(content);
 }
 
@@ -4065,6 +4067,116 @@ function loadDocsWorkspace(content) {
 
   document.getElementById('kb-search')?.addEventListener('input', () => renderKbDocList(window._kbDocs || []));
   reloadKbDocs();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PINBOARD  (deferred items / Ghost's personal backlog)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function loadDocsPinboard(contentEl) {
+  contentEl.innerHTML = `
+    <div style="max-width:680px;margin:0 auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:13px;font-weight:700;">&#128204; Pinboard</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Things to remember — fed into Ghost Brief's NEXT 24H section</div>
+        </div>
+        <button id="pin-show-resolved" onclick="_pinToggleResolved()" style="padding:5px 10px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text-dim);font-size:11px;cursor:pointer;">Show Resolved</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <input id="pin-new-input" type="text" placeholder="Add a pinned item…"
+          style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);outline:none;font-size:12px;font-family:inherit;"
+          onkeydown="if(event.key==='Enter') _pinAdd()">
+        <button onclick="_pinAdd()" style="padding:8px 16px;background:var(--accent);border:none;border-radius:6px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">+ Pin</button>
+      </div>
+      <div id="pin-list" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="color:var(--text-dim);font-size:12px;text-align:center;padding:20px;">Loading…</div>
+      </div>
+    </div>`;
+  _pinLoad();
+}
+
+let _pinShowResolved = false;
+
+function _pinLoad() {
+  const list = document.getElementById('pin-list');
+  if (!list) return;
+  const url = `/api/deferred${_pinShowResolved ? '?resolved=1' : ''}`;
+  fetch(url).then(r => r.json()).then(data => {
+    const items = data.items || [];
+    if (!items.length) {
+      list.innerHTML = `<div style="color:var(--text-dim);font-size:12px;text-align:center;padding:30px;">
+        ${_pinShowResolved ? 'No items yet.' : 'Nothing pinned. Add something above or use the &#128204; Pin button on tickets and proposals.'}
+      </div>`;
+      return;
+    }
+    list.innerHTML = items.map(item => {
+      const src = item.source ? `<span style="font-size:10px;color:var(--text-dim);padding:1px 6px;border:1px solid var(--border);border-radius:8px;">${item.source}</span>` : '';
+      const age = item.created_at ? item.created_at.slice(0, 16) : '';
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;${item.resolved?'opacity:0.5;':''}">
+        <input type="checkbox" ${item.resolved?'checked':''} onchange="_pinResolve(${item.id}, this.checked)"
+          style="margin-top:2px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;line-height:1.5;${item.resolved?'text-decoration:line-through;color:var(--text-dim);':''}">${_escHtml(item.content)}</div>
+          <div style="display:flex;gap:6px;margin-top:4px;align-items:center;">${src}<span style="font-size:10px;color:var(--text-dim);">${age}</span></div>
+        </div>
+        <button onclick="_pinDelete(${item.id})"
+          style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;flex-shrink:0;opacity:0.6;padding:0 4px;" title="Remove">&#x2715;</button>
+      </div>`;
+    }).join('');
+  }).catch(e => {
+    const list = document.getElementById('pin-list');
+    if (list) list.innerHTML = `<div style="color:#f77;font-size:12px;">Failed: ${e.message}</div>`;
+  });
+}
+
+function _pinAdd() {
+  const input = document.getElementById('pin-new-input');
+  const content = (input?.value || '').trim();
+  if (!content) return;
+  fetch('/api/deferred', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, source: 'manual', pinned_by: 'ghost' })
+  }).then(r => r.json()).then(data => {
+    if (!data.ok) { showToast(data.error || 'failed', 'error'); return; }
+    input.value = '';
+    showToast('Pinned', 'success');
+    _pinLoad();
+  }).catch(e => showToast('Error: ' + e.message, 'error'));
+}
+
+function _pinResolve(id, resolved) {
+  fetch(`/api/deferred/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resolved: resolved ? 1 : 0 })
+  }).then(() => _pinLoad()).catch(() => {});
+}
+
+function _pinDelete(id) {
+  fetch(`/api/deferred/${id}`, { method: 'DELETE' })
+    .then(() => { showToast('Removed', 'info'); _pinLoad(); })
+    .catch(() => {});
+}
+
+function _pinToggleResolved() {
+  _pinShowResolved = !_pinShowResolved;
+  const btn = document.getElementById('pin-show-resolved');
+  if (btn) btn.textContent = _pinShowResolved ? 'Hide Resolved' : 'Show Resolved';
+  _pinLoad();
+}
+
+// Global helper — called from proposal detail, ticket detail, and chat
+function pinItemToDeferred(sourceId, content, source) {
+  fetch('/api/deferred', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: content || sourceId, source: source || 'manual', source_id: String(sourceId), pinned_by: 'ghost' })
+  }).then(r => r.json()).then(data => {
+    if (!data.ok) { showToast(data.error || 'failed', 'error'); return; }
+    showToast('Pinned to Brief', 'success');
+  }).catch(e => showToast('Pin failed: ' + e.message, 'error'));
 }
 
 function reloadKbDocs() {
