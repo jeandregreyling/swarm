@@ -220,3 +220,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert frontend/templates/terminal_base.html and restart swarm-terminal.
 
+- Audit ID: AUDIT-20260401-014258
+- Time (UTC): 2026-04-01T01:42:58Z
+- Actor: copilot
+- Objective: Create docs hub and lifecycle workflow; register canonical navigation and maintenance rules
+- Evidence: Validated markdown files with zero diagnostics and verified registry links
+- Result: PASS
+- Follow-up: Revert touched docs files and remove registry entries for new docs
+

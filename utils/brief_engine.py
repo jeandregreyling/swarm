@@ -153,6 +153,35 @@ def gather_swarm_state():
         except Exception:
             state['sniffer_patterns'] = []
 
+        # ── Work proposals (pipeline state) ──────────────────────────────────
+        try:
+            proposal_rows = conn.execute(
+                """SELECT proposal_id, agent, title, status, created_at, updated_at
+                   FROM work_proposals
+                   WHERE status NOT IN ('executed', 'rejected')
+                   ORDER BY created_at DESC LIMIT 20"""
+            ).fetchall()
+            counts = conn.execute(
+                """SELECT status, COUNT(*) AS n FROM work_proposals GROUP BY status"""
+            ).fetchall()
+            state['proposals'] = {
+                'counts': {r['status']: r['n'] for r in counts},
+                'active': [dict(r) for r in proposal_rows],
+            }
+        except Exception:
+            state['proposals'] = {'counts': {}, 'active': []}
+
+        # ── Deferred / pinned items ───────────────────────────────────────────
+        try:
+            deferred_rows = conn.execute(
+                """SELECT id, content, source, created_at
+                   FROM deferred_items WHERE resolved=0
+                   ORDER BY created_at ASC LIMIT 20"""
+            ).fetchall()
+            state['deferred'] = [dict(r) for r in deferred_rows]
+        except Exception:
+            state['deferred'] = []
+
     finally:
         conn.close()
 
@@ -230,6 +259,24 @@ def _build_prompt(state):
             lines.append(f"  [{p['escalation_level']}] {p['agent_name']}: {p['pattern_type']} — {p['description'][:80]}")
         lines.append("")
 
+    # Work proposals pipeline
+    props = state.get('proposals', {})
+    counts = props.get('counts', {})
+    if counts:
+        summary = " | ".join(f"{s}:{n}" for s,n in counts.items())
+        lines.append(f"WORK PROPOSALS: {summary}")
+        for p in props.get('active', [])[:8]:
+            lines.append(f"  [{p['status'].upper()}] {p['proposal_id']} — {p['title'][:80]} (by {p['agent']})")
+        lines.append("")
+
+    # Deferred / pinned items
+    deferred = state.get('deferred', [])
+    if deferred:
+        lines.append(f"PINNED / DEFERRED ITEMS ({len(deferred)} unresolved):")
+        for d in deferred:
+            lines.append(f"  [{d['source']}] {d['content'][:120]}")
+        lines.append("")
+
     lines.append("═══ END STATE DATA ═══")
     lines.append("")
     lines.append("Now generate the Ghost Brief. Use exactly this structure:")
@@ -244,16 +291,16 @@ def _build_prompt(state):
     lines.append("[Curate — don't dump. What's high value that Ghost should see. Max 5 items, each 1-2 lines.]")
     lines.append("")
     lines.append("OPEN ITEMS")
-    lines.append("[Unresolved tickets, pending decisions, Duck flags. If nothing — say so.]")
+    lines.append("[Unresolved tickets, pending decisions, Duck flags, active proposals. If nothing — say so.]")
     lines.append("")
     lines.append("SYSTEM HEALTH")
-    lines.append("[Services status, any warnings, memory pool growth trends.]")
+    lines.append("[Services status, any warnings, memory pool growth trends, proposal pipeline state.]")
     lines.append("")
     lines.append("NINE'S TAKE")
     lines.append("[One honest paragraph. What's working well. What needs attention. Architectural perspective. No flattery.]")
     lines.append("")
     lines.append("NEXT 24H")
-    lines.append("[Based on patterns, what Nine expects to need attention. Specific, not generic.]")
+    lines.append("[Pull from the PINNED/DEFERRED items above — these are explicit things Ghost has flagged. Add any Nine expects from patterns. Specific, not generic. If there are pinned items, list them first.]")
 
     return "\n".join(lines)
 
