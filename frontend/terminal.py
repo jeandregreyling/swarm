@@ -2886,7 +2886,21 @@ def api_monitor():
         'disks':          status.get('disks', []),
         'memory_pools':   status.get('memory_pools', {}),
         'runtime_jobs':   running_jobs,
+        'duck_flags_today': _get_duck_flags_today(),
     })
+
+
+def _get_duck_flags_today():
+    """Return count of Duck NO results today (used by attention panel)."""
+    try:
+        conn = get_connection()
+        n = conn.execute(
+            "SELECT COUNT(*) FROM duck_log WHERE result='NO' AND DATE(created_at)=DATE('now')"
+        ).fetchone()[0]
+        conn.close()
+        return n
+    except Exception:
+        return 0
 
 
 @app.route('/api/alm/status')
