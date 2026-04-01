@@ -205,3 +205,24 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Validated template diagnostics (no errors) and reviewed diff for scoped UI changes
 - Rollback: Revert frontend/templates/terminal_base.html
 
+- Time (UTC): 2026-04-01T02:03:46Z
+- Actor: copilot
+- Scope: frontend/terminal.py, frontend/templates/terminal_base.html
+- Change: Add chat history management, user-prompt edit/delete, and stop long-running agent controls
+- Validation: Validated template/python diagnostics with no errors; verified new APIs and UI wiring in diffs
+- Rollback: Revert frontend/terminal.py and frontend/templates/terminal_base.html
+
+- Time (UTC): 2026-04-01T02:11:02Z
+- Actor: copilot
+- Scope: frontend/templates/terminal_base.html, ops(runtime) swarm-terminal process ownership
+- Change: Fix chat thread action reliability, always-available Change control for user prompts, enable textarea spellcheck/autocorrect, and restore correct terminal service by removing stale port-5050 process
+- Validation: Service health verified active on 5050; API payload now includes message id field for prompt edit controls
+- Rollback: Revert frontend/templates/terminal_base.html; restart swarm-terminal after restoring prior process state
+
+- Time (UTC): 2026-04-01T02:15:18Z
+- Actor: copilot
+- Scope: frontend/templates/terminal_base.html
+- Change: Add persistent chat spell helper with keep/add-word dictionary and dictionary manager; keep browser spellcheck/autocorrect enabled
+- Validation: Template diagnostics clean; swarm-terminal restarted and healthy on port 5050
+- Rollback: Revert frontend/templates/terminal_base.html and restart swarm-terminal
+
