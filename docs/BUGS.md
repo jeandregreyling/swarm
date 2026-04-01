@@ -2,7 +2,7 @@
 
 <!-- markdownlint-disable -->
 
-_Maintained by Nine (Ghost Layer). Last updated: 2026-03-30 10:05:00 (Session 5 proactive dry-run + approvals audit)._
+_Maintained by Nine (Ghost Layer). Last updated: 2026-04-01 08:10:00 (Session 11 self-healing QA hardening)._
 
 ---
 
@@ -258,7 +258,60 @@ _Maintained by Nine (Ghost Layer). Last updated: 2026-03-30 10:05:00 (Session 5 
 - **Service:** Local test execution environment
 - **Error:** `python3 -m pytest tests -q` fails with `No module named pytest`.
 - **Cause:** Test dependency not installed in current runtime image/environment.
-- **Fix:** Installed pytest into `.venv`: `pip install pytest`. Full test suite runs 16 PASS 0 FAIL.
+- **Fix:** Installed pytest into `.venv`: `pip install pytest`.
+- **Testing:** `python3 -m pytest tests -q` now runs in the project environment.
+
+---
+
+## BUG-031: terminal dashboard force-close failed with `No module named 'duck'`
+
+- **Status:** fixed
+- **Found:** 2026-04-01 (Session 11 QA telemetry review)
+- **Fixed:** 2026-04-01 08:06:00
+- **Service:** `frontend/terminal.py` / `core/pipeline/ticket.py`
+- **Error:** Manual ticket closure from the dashboard could fail in background thread with `ticket_force_close_error` and `No module named 'duck'`.
+- **Cause:** `ticket.librarian_close()` used a fragile legacy `from duck import on_ticket_closed` import path that was not guaranteed in every runtime/import context.
+- **Fix:** Added a robust resolver in `core/pipeline/ticket.py` that imports `agents.ghost.duck` first and falls back to legacy `duck` path only if needed.
+- **Testing:** Live API validation passed with synthetic ticket `QA-FORCECLOSE-001` via `POST /api/tickets/<ticket>/close`; ticket closed and activity log recorded `ticket_force_closed`.
+
+---
+
+## BUG-032: listener periodic loop did not run proposal notifications
+
+- **Status:** fixed
+- **Found:** 2026-04-01 (Session 11 workflow audit)
+- **Fixed:** 2026-04-01 08:06:00
+- **Service:** `core/pipeline/listener.py` / `utils/swarm_tasks.py`
+- **Error:** Proposal discovery/notification was available but not part of the listener's normal periodic maintenance loop, so local-online agent proposal visibility could lag unless separately invoked.
+- **Cause:** Listener periodic tasks ran snooze/SLA checks but omitted `check_proposals()`.
+- **Fix:** Added `check_proposals()` to both Gmail Push mode and IMAP fallback periodic task cycles.
+- **Testing:** Listener restarted cleanly and full E2E/UAT/daily gate remained green after change.
+
+---
+
+## BUG-033: Gmail Push fallback was one-way until restart
+
+- **Status:** fixed
+- **Found:** 2026-04-01 (Session 11 self-healing review)
+- **Fixed:** 2026-04-01 08:06:00
+- **Service:** `core/pipeline/listener.py`
+- **Error:** After `invalid_grant` or similar push failures, listener fell back to IMAP polling and stayed there until a manual restart.
+- **Cause:** Fallback logic preserved service continuity but did not periodically retry Gmail Push activation.
+- **Fix:** Added self-healing retry loop in IMAP fallback mode. Listener now periodically attempts Gmail Push reactivation and switches back to instant delivery when watch/token recovery succeeds.
+- **Testing:** Syntax compile passed, listener restarted cleanly, daily gate remained fully green.
+
+---
+
+## BUG-034: orchestrator SAP specialist import was brittle
+
+- **Status:** fixed
+- **Found:** 2026-04-01 (Session 11 telemetry follow-up)
+- **Fixed:** 2026-04-01 08:10:00
+- **Service:** `core/pipeline/orchestrator.py`
+- **Error:** Historical listener telemetry included `eight_error` with `No module named 'eight'` during SAP/eight routing.
+- **Cause:** `consult_stage_eight()` used a bare `import eight`, which depends on path state and is less reliable across runtime contexts.
+- **Fix:** Added `_get_eight_module()` resolver that imports `agents.specialists.eight` first and falls back to legacy `eight` only if needed.
+- **Testing:** Post-fix compile and regression suites remained green.
 
 ---
 
@@ -301,9 +354,11 @@ _Maintained by Nine (Ghost Layer). Last updated: 2026-03-30 10:05:00 (Session 5 
 
 ## BUG-029: Email/Discord/Telegram end-to-end reliability is still not practically verified in one governed pass
 
-- **Status:** open
+- **Status:** fixed
 - **Found:** 2026-03-30 (operator report)
+- **Fixed:** 2026-04-01 08:20:00
 - **Service:** cross-channel intake -> queue -> ticket -> response pipeline
 - **Error:** Operator reports inconsistent behavior: Telegram strange responses, tickets opening without full processing, email requests receiving no response, Discord behavior inconsistent.
 - **Cause:** Mixed runtime paths are individually implemented, but no single governed UAT cycle has validated all channels against the same ALM/Vortex evidence criteria.
-- **Fix:** Execute the expanded channel reliability UAT suite and log pass/fail evidence with proposal lifecycle + Vortex timeline checkpoints.
+- **Fix:** Added `tests/test_notification_reliability.py` to validate unknown-sender notification semantics across email, Telegram, and Discord, including send failure logging behavior. Combined with existing `test_channel_smoke.py`, `test_telegram_trust.py`, `test_direct_agent_commands.py`, live SMTP sends, and UAT/E2E runs, this creates a governed cross-channel validation pass.
+- **Testing:** `python3 tests/test_notification_reliability.py` => 3 PASS; `python3 tests/test_channel_smoke.py` => 8 PASS; daily gate remained fully green.

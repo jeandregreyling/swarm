@@ -55,6 +55,16 @@ except Exception:
 
 logger = logging.getLogger('seven.orchestrator')
 
+
+def _get_eight_module():
+    """Resolve Eight via package path first, then legacy path."""
+    try:
+        from agents.specialists import eight as eight_module
+        return eight_module
+    except Exception:
+        import eight as eight_module
+        return eight_module
+
 AGENTS = {
     'gemma':     'gemma3:latest',
     'llama':     'llama3.2:latest',
@@ -464,8 +474,8 @@ def gemma_route(question, context):
 
 def consult_stage_eight(question, web_results, shared_context, conv_id, status_cb=None):
     """Called by terminal/listener when routing IS_SAP=yes."""
-    import eight
-    return eight.consult(question, web_results, shared_context, conv_id, status_cb=status_cb)
+    eight_module = _get_eight_module()
+    return eight_module.consult(question, web_results, shared_context, conv_id, status_cb=status_cb)
 
 def consult(question):
     print('\n=== Ghost speaks: ' + question + ' ===')
