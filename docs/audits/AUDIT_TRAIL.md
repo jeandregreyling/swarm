@@ -228,3 +228,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert touched docs files and remove registry entries for new docs
 
+- Audit ID: AUDIT-20260401-015129
+- Time (UTC): 2026-04-01T01:51:29Z
+- Actor: copilot
+- Objective: Unify chat agent identity display to icon+name across bubbles and bottom controls
+- Evidence: Validated template diagnostics (no errors) and reviewed diff for scoped UI changes
+- Result: PASS
+- Follow-up: Revert frontend/templates/terminal_base.html
+
