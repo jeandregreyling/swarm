@@ -878,7 +878,7 @@ body.theme-rose {
 #input-area {
   padding: 10px 12px 12px;
   border-top: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.08));
+  background: var(--bg);
   flex-shrink: 0;
 }
 #input-wrapper {
@@ -887,13 +887,13 @@ body.theme-rose {
   gap: 8px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: color-mix(in oklab, var(--card) 92%, #0b1116);
+  background: var(--card);
   padding: 10px;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+  box-shadow: var(--shadow, 0 4px 16px rgba(0,0,0,0.12));
 }
 #input-wrapper:focus-within {
   border-color: color-mix(in oklab, var(--accent) 60%, var(--border));
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 12px 28px rgba(0,0,0,0.22);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 20%, transparent);
 }
 #chat-controls {
   display: flex;
@@ -909,38 +909,38 @@ body.theme-rose {
 .chat-agent-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px 10px;
+  gap: 4px;
+  padding: 5px 8px;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(255,255,255,0.025);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
 }
 .chat-agent-row-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .chat-agent-row-title {
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .chat-agent-legend {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-dim);
 }
 .chat-agent-legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 .chat-compose-shell {
   display: grid;
@@ -988,44 +988,45 @@ body.theme-rose {
 }
 #question-input {
   width: 100%;
-  min-height: 58px;
-  max-height: 160px;
-  background: var(--bg-input, var(--card, #1b2430)) !important;
-  border: 1px solid var(--border);
-  border-radius: var(--radius, 10px);
-  padding: 10px 12px;
-  color: var(--text, #e8eef8) !important;
-  -webkit-text-fill-color: var(--text, #e8eef8) !important;
-  caret-color: var(--accent, #4d8dff);
+  min-height: 36px;
+  max-height: 180px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 2px 4px;
+  color: var(--text);
+  caret-color: var(--accent);
   font-family: inherit;
   font-size: 13px;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: none;
   resize: none;
   line-height: 1.5;
+  overflow-y: auto;
 }
 #question-input::placeholder {
-  color: var(--text-dim, #8fa0b6);
-  opacity: 0.9;
+  color: var(--text-dim);
+  opacity: 0.7;
 }
 #question-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 #send-btn {
-  min-width: 120px;
-  min-height: 58px;
-  padding: 14px 18px;
+  min-width: 72px;
+  min-height: 36px;
+  padding: 8px 16px;
   background: var(--accent);
   border: none;
   border-radius: var(--radius, 10px);
   color: white;
   cursor: pointer;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   transition: opacity 0.15s;
-  align-self: stretch;
+  align-self: flex-end;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 #send-btn:hover { opacity: 0.82; }
 #terminal-output {
@@ -2474,18 +2475,25 @@ input[type="range"]::-moz-range-thumb:hover {
       <div id="input-wrapper">
         <div class="chat-quick-row" id="chat-quick-row"></div>
         <div id="chat-controls">
-          <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px; min-width: 220px; max-width: 280px;">
+          <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 160px; max-width: 240px; font-size:12px;">
             <option value="">New Thread</option>
           </select>
-          <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">+ New Thread</button>
-          <button onclick="renameCurrentThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Rename</button>
-          <button onclick="deleteCurrentThread()" style="background: var(--card); color: #ff8a8a; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Delete</button>
-          <button onclick="clearAllChatHistory()" style="background: var(--card); color: #ffb36b; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Clear History</button>
-          <button onclick="openChatDictionaryManager()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Dictionary</button>
-          <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Notifications Off</button>
-          <button onclick="exportChatDictionary()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Export Dict</button>
-          <button onclick="importChatDictionary()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Import Dict</button>
-          <button onclick="clearChatDictionary()" style="background: var(--card); color: #ffb36b; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer;">Reset Dict</button>
+          <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
+          <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
+          <!-- Overflow menu for less-common actions -->
+          <div style="position:relative;margin-left:auto;">
+            <button id="chat-more-btn" onclick="_chatMoreMenu()" style="background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;" title="More options">⋯</button>
+            <div id="chat-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,0.3));min-width:160px;z-index:999;padding:4px 0;">
+              <button onclick="renameCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Rename thread</button>
+              <button onclick="deleteCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ff8a8a;padding:8px 14px;cursor:pointer;font-size:12px;">Delete thread</button>
+              <button onclick="clearAllChatHistory();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Clear history</button>
+              <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+              <button onclick="openChatDictionaryManager();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Dictionary</button>
+              <button onclick="exportChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Export dictionary</button>
+              <button onclick="importChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Import dictionary</button>
+              <button onclick="clearChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Reset dictionary</button>
+            </div>
+          </div>
         </div>
         <div class="chat-agent-row">
           <div class="chat-agent-row-head">
@@ -2506,7 +2514,9 @@ input[type="range"]::-moz-range-thumb:hover {
                 <span class="chat-attach-hint">Drop documents or images here, or use the attach button.</span>
               </div>
             </div>
-            <textarea id="question-input" placeholder="Ask the swarm..." rows="4" spellcheck="true" autocapitalize="sentences" autocorrect="on" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
+            <textarea id="question-input" placeholder="Ask the swarm..." rows="2" spellcheck="true" autocapitalize="sentences" autocorrect="on"
+              onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"
+              oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,180)+'px'"></textarea>
             <div id="chat-attachments"></div>
             <div id="chat-spell-helper" style="display:none; margin-top:0; font-size:11px; color: var(--text-dim);"></div>
             <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span></div>
@@ -7443,8 +7453,16 @@ function _appendChatBubble(sender, text, opts = {}) {
       <button class="chat-action-btn" onclick="suggestAnotherAgent('${safeSender}','${_escapeHtml(text).slice(0, 160)}')">Ask another</button>
     </div>`;
 
+  const _now = new Date();
+  const _tsTime = _now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const _tsDate = _now.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  const _tsToday = new Date().toDateString() === _now.toDateString();
+  const _tsLabel = _tsTime + (_tsToday ? '' : ' · ' + _tsDate);
   bubble.innerHTML = `
-    <div class="chat-meta ${isUser ? '' : 'icon-meta'}">${senderMetaHtml}</div>
+    <div class="chat-meta ${isUser ? '' : 'icon-meta'}" style="display:flex;align-items:center;gap:8px;">
+      <span>${senderMetaHtml}</span>
+      <span style="font-size:9px;color:var(--text-dim);opacity:0.7;margin-left:auto;white-space:nowrap;">${_tsLabel}</span>
+    </div>
     ${quoted}
     <div class="chat-text">${bodyHtml}</div>
     ${eventsHtml}
@@ -7907,11 +7925,10 @@ function renderChatAgentToggles() {
     const checked = window.__fridaysChatEnabledAgents[agent.value] ? 'checked' : '';
     const tierDotClass = agent.tier === 'paid' ? 'agent-tier-paid-dot' : 'agent-tier-local-dot';
     const tierLabel = agent.tier === 'paid' ? 'Paid' : 'Local';
-    return `<label style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:999px;background:var(--card);font-size:11px;cursor:pointer;" title="${agent.tier === 'paid' ? 'Paid API agent' : 'Local Ollama agent'}">
-      <input class="chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked} onchange="onChatAgentToggleChange(this)">
-      <span class="agent-tier-dot ${tierDotClass}"></span>
-      <span style="display:inline-flex;align-items:center;gap:6px;">${_chatAgentIdentityHtml(agent.value, false)}</span>
-      <span class="agent-tier-badge ${agent.tier}">${tierLabel}</span>
+    return `<label style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border);border-radius:999px;background:var(--card);font-size:10px;cursor:pointer;line-height:1;" title="${agent.label} · ${tierLabel}">
+      <input class="chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked} onchange="onChatAgentToggleChange(this)" style="width:10px;height:10px;margin:0;accent-color:var(--accent);">
+      <span class="agent-tier-dot ${tierDotClass}" style="width:5px;height:5px;"></span>
+      <span style="font-weight:500;">${agent.label}</span>
     </label>`;
   }).join('');
 }
@@ -8166,6 +8183,21 @@ async function clearAllChatHistory() {
   createNewThread();
   refreshChatThreadList(null);
   showToast(`Deleted ${deleted} thread(s)`, 'success');
+}
+
+function _chatMoreMenu() {
+  const menu = document.getElementById('chat-more-menu');
+  if (!menu) return;
+  const open = menu.style.display !== 'none';
+  menu.style.display = open ? 'none' : 'block';
+  if (!open) {
+    // Close on next outside click
+    setTimeout(() => document.addEventListener('click', _chatMoreClose, { once: true }), 0);
+  }
+}
+function _chatMoreClose() {
+  const menu = document.getElementById('chat-more-menu');
+  if (menu) menu.style.display = 'none';
 }
 
 function createNewThread() {
