@@ -275,12 +275,18 @@ async def _notify_ghost(app, chat_id, username, preview):
         return
     for mod in mods:
         try:
-            send_reply(to_address=mod,
-                       subject=f'[Swarm] Unknown sender: {key}',
-                       body=plain,
-                       html_body=html)
-            logger.info(f'[Telegram] Notified {mod} about unknown user {chat_id}')
-            log_activity('telegram', 'notify_sent', f'chat_id={chat_id} → {mod}')
+            ok = send_reply(
+                to_address=mod,
+                subject=f'[Swarm] Unknown sender: {key}',
+                body=plain,
+                html_body=html,
+            )
+            if ok:
+                logger.info(f'[Telegram] Notified {mod} about unknown user {chat_id}')
+                log_activity('telegram', 'notify_sent', f'chat_id={chat_id} → {mod}')
+            else:
+                logger.error(f'[Telegram] Notification send returned False for {mod} (chat_id={chat_id})')
+                log_activity('telegram', 'notify_failed', f'chat_id={chat_id} → {mod} | send_reply=False')
         except Exception as e:
             logger.error(f'[Telegram] Failed to notify {mod} about {chat_id}: {e}')
             log_activity('telegram', 'notify_failed', f'chat_id={chat_id} → {mod} | {e}')

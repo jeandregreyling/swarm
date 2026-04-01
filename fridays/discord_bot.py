@@ -197,14 +197,21 @@ async def _notify_ghost(user_id, username, preview):
         return
     for mod in mods:
         try:
-            send_reply(to_address=mod,
-                       subject=f'[Swarm] Unknown sender: {key}',
-                       body=plain,
-                       html_body=html)
-            logger.info(f'[Discord] Notified {mod} about unknown user {user_id}')
-            log_activity('discord', 'notify_sent', f'user_id={user_id} → {mod}')
+            ok = send_reply(
+                to_address=mod,
+                subject=f'[Swarm] Unknown sender: {key}',
+                body=plain,
+                html_body=html,
+            )
+            if ok:
+                logger.info(f'[Discord] Notified {mod} about unknown user {user_id}')
+                log_activity('discord', 'notify_sent', f'user_id={user_id} → {mod}')
+            else:
+                logger.error(f'[Discord] Notification send returned False for {mod} (user_id={user_id})')
+                log_activity('discord', 'notify_failed', f'user_id={user_id} → {mod} | send_reply=False')
         except Exception as e:
             logger.error(f'[Discord] Failed to notify {mod}: {e}')
+            log_activity('discord', 'notify_failed', f'user_id={user_id} → {mod} | {e}')
 
 
 # ── Moderator commands ────────────────────────────────────────────────────────
