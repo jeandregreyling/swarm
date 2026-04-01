@@ -5395,16 +5395,11 @@ def api_killswitch_agent_reset(agent_name):
 
 @app.route('/api/brief')
 def api_brief_get():
-    """Return latest Ghost Brief. If stale (>6h), generate a new one."""
-    from brief_engine import get_latest_brief, generate_brief, is_brief_stale
+    """Return the latest cached Ghost Brief from DB (read-only, no generation)."""
+    from brief_engine import get_latest_brief
     try:
-        if is_brief_stale(max_age_hours=6):
-            brief = generate_brief(trigger='auto_refresh')
-        else:
-            brief = get_latest_brief()
-        if not brief:
-            return jsonify({'error': 'Brief generation failed — check Claude API key'}), 503
-        return jsonify(brief)
+        brief = get_latest_brief()
+        return jsonify({'brief': brief})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
