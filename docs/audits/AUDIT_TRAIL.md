@@ -284,3 +284,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Rollback by reverting listener.py, telegram_bot.py, discord_bot.py and docs updates in this session.
 
+- Audit ID: AUDIT-20260401-075814
+- Time (UTC): 2026-04-01T07:58:14Z
+- Actor: Copilot
+- Objective: Fix dry-run ollama stub signature for keep_alive compatibility
+- Evidence: Updated tests/test_triage_queue_dryrun.py stub_chat to accept **kwargs; removed repeated warning during queue dry-run and revalidated 24/24 checks pass.
+- Result: PASS
+- Follow-up: Revert tests/test_triage_queue_dryrun.py signature change if needed.
+
