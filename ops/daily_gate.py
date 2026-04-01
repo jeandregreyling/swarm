@@ -90,6 +90,10 @@ def check_uat_gate():
 
 def check_chat_pings():
     """Run agent ping tests with adjusted timeouts."""
+    if "--quick" in sys.argv:
+        print("  [SKIPPED] Use --detailed for full pings")
+        return True
+    
     section("Live Agent Pings")
     # Fast agents: 90s, heavy agents: 180s
     env = {
