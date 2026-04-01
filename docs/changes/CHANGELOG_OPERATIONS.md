@@ -275,3 +275,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Added tests/test_notification_reliability.py to validate email/telegram/discord unknown-sender notification behavior, re-ran smoke suites, and closed BUG-029 in docs/BUGS.md based on passing evidence.
 - Rollback: Rollback by reverting tests/test_notification_reliability.py and BUGS.md updates if needed.
 
+- Time (UTC): 2026-04-01T09:57:37Z
+- Actor: copilot
+- Scope: agent-autonomy-bootstrap
+- Change: Added agent capability APIs (/api/agent/capabilities, /api/agent/think, /api/agent/identity), capability registry/grants, and Fridays heartbeat orchestration.
+- Validation: Validated via py_compile + live endpoint tests + one heartbeat run
+- Rollback: Disable swarm-fridays service and revert frontend/terminal.py endpoint additions
+

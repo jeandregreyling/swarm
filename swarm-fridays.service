@@ -1,14 +1,14 @@
 [Unit]
-Description=Seven's Swarm Terminal (port 5050)
-After=network.target ollama.service swarm-listener.service
+Description=Seven's Swarm Fridays Orchestrator
+After=network.target swarm-terminal.service
 
 [Service]
 Type=simple
 User=seven
 WorkingDirectory=/home/seven/swarm
-ExecStart=/usr/bin/python3 /home/seven/swarm/frontend/terminal.py
+ExecStart=/usr/bin/python3 /home/seven/swarm/fridays/orchestrator.py
 Restart=on-failure
-RestartSec=10
+RestartSec=30
 StandardOutput=journal
 StandardError=journal
 Environment="PYTHONUNBUFFERED=1"
