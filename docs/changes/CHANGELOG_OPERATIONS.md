@@ -261,3 +261,17 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Listener now retries Gmail Push activation during IMAP fallback and resumes push without restart when possible; periodic task loops now include proposal notifications; ticket close path now resolves Duck hook robustly and terminal force-close was revalidated end-to-end.
 - Rollback: Rollback by reverting core/pipeline/listener.py, core/pipeline/ticket.py, and docs updates from this session.
 
+- Time (UTC): 2026-04-01T08:15:33Z
+- Actor: Copilot
+- Scope: bug-hunt
+- Change: Log and fix Session 11 bugs 027-030
+- Validation: Logged and fixed terminal force-close duck import fragility, listener proposal heartbeat omission, one-way Gmail push fallback, and brittle Eight specialist import. Added smoke regression for Eight resolver and revalidated core suites.
+- Rollback: Rollback by reverting core/pipeline/ticket.py, core/pipeline/listener.py, core/pipeline/orchestrator.py, tests/test_channel_smoke.py, and docs/BUGS.md.
+
+- Time (UTC): 2026-04-01T08:20:25Z
+- Actor: Copilot
+- Scope: cross-channel-qa
+- Change: Close BUG-029 with governed notification reliability suite
+- Validation: Added tests/test_notification_reliability.py to validate email/telegram/discord unknown-sender notification behavior, re-ran smoke suites, and closed BUG-029 in docs/BUGS.md based on passing evidence.
+- Rollback: Rollback by reverting tests/test_notification_reliability.py and BUGS.md updates if needed.
+

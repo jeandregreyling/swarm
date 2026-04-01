@@ -107,6 +107,15 @@ class TestChannelCommandParsing(unittest.TestCase):
         except Exception as e:
             self.fail(f"Listener classification coverage failed: {e}")
 
+    def test_orchestrator_eight_import_resolver(self):
+        """Orchestrator resolves the Eight specialist module robustly."""
+        try:
+            from core.pipeline import orchestrator
+            eight_module = orchestrator._get_eight_module()
+            self.assertTrue(hasattr(eight_module, 'consult'))
+        except Exception as e:
+            self.fail(f"Orchestrator Eight resolver failed: {e}")
+
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromModule(sys.modules[__name__])
