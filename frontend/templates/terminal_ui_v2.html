@@ -1115,6 +1115,10 @@ body {
           <span class="sidebar-item-icon">🌀</span>
           <span>Vortex</span>
         </div>
+        <div class="sidebar-item" data-view="access" onclick="switchView('access', this)">
+          <span class="sidebar-item-icon">🔑</span>
+          <span>Access</span>
+        </div>
       </div>
 
       <!-- AGENT ROSTER -->
@@ -1363,6 +1367,48 @@ body {
             </div>
           </div>
         </div>
+
+        <!-- ACCESS PANEL -->
+        <div id="view-access" class="view-section" style="display: none;">
+          <div class="view-section-title">🔑 Access Control</div>
+
+          <!-- ADD FORM -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; align-items:center;">
+            <input type="text" id="access-new-address" class="search-filter" placeholder="email / telegram:id / discord:id / domain.com" style="flex:1; min-width:200px;">
+            <select id="access-new-list" class="search-filter" style="flex:0 0 auto;">
+              <option value="trusted">Trusted</option>
+              <option value="notification">Notification</option>
+              <option value="domain">Domain</option>
+            </select>
+            <input type="text" id="access-new-note" class="search-filter" placeholder="Note (optional)" style="flex:0 0 180px;">
+            <button class="action-btn" onclick="accessAdd()">Add</button>
+          </div>
+
+          <!-- TRUSTED SENDERS -->
+          <div style="margin-bottom:20px;">
+            <div style="font-size:12px; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">
+              ✅ Trusted Senders — full pipeline
+            </div>
+            <div id="access-trusted-list"></div>
+          </div>
+
+          <!-- NOTIFICATION SENDERS -->
+          <div style="margin-bottom:20px;">
+            <div style="font-size:12px; font-weight:600; color:#fa0; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">
+              🔔 Notification / Ignored — filed silently
+            </div>
+            <div id="access-notification-list"></div>
+          </div>
+
+          <!-- TRUSTED DOMAINS -->
+          <div>
+            <div style="font-size:12px; font-weight:600; color:#8af; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">
+              🌐 Trusted Domains — all @domain senders trusted
+            </div>
+            <div id="access-domain-list"></div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1459,6 +1505,7 @@ function switchView(viewName, element) {
   else if (viewName === 'docs') loadDocs();
   else if (viewName === 'monitor') loadMonitorData();
   else if (viewName === 'time-wizard') loadTimeWizard();
+  else if (viewName === 'access') loadAccess();
 
   console.log(`📍 Switched to ${viewName} view`);
 }
@@ -1473,6 +1520,7 @@ function refreshCurrentView() {
     else if (viewName === 'studio') loadStudioData();
     else if (viewName === 'proposals') loadProposals();
     else if (viewName === 'tickets') loadTickets();
+    else if (viewName === 'access') loadAccess();
     showToast(`Refreshed ${viewName}`, 'info');
   }
 }
@@ -2461,6 +2509,100 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ACCESS CONTROL
+// ─────────────────────────────────────────────────────────────────────────
+
+async function loadAccess() {
+  try {
+    const res  = await fetch('/api/senders');
+    const data = await res.json();
+    renderAccessList('access-trusted-list',      data.trusted      || [], 'trusted');
+    renderAccessList('access-notification-list', data.notification || [], 'notification');
+    renderDomainList('access-domain-list',       data.domains      || []);
+  } catch (e) {
+    console.error('Failed to load access lists:', e);
+  }
+}
+
+function renderAccessList(containerId, items, listType) {
+  const el = document.getElementById(containerId);
+  if (!items.length) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:6px 0;">— none —</div>';
+    return;
+  }
+  el.innerHTML = items.map(item => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:4px;background:var(--surface);border-radius:4px;font-size:12px;">
+      <span style="flex:1;font-family:monospace;">${escapeHtml(item.email)}</span>
+      <span style="color:var(--text-dim);font-size:11px;flex:0 0 auto;">${escapeHtml(item.added_by || '')}</span>
+      <span style="color:var(--text-dim);font-size:11px;flex:0 0 auto;">${(item.added_at||'').slice(0,10)}</span>
+      ${item.notes ? `<span style="color:var(--text-dim);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(item.notes)}">${escapeHtml(item.notes)}</span>` : ''}
+      <button class="action-btn" style="padding:2px 8px;font-size:11px;background:var(--surface-hover);" onclick="accessRemove('${escapeHtml(item.email)}','${listType}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function renderDomainList(containerId, items) {
+  const el = document.getElementById(containerId);
+  if (!items.length) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:6px 0;">— none —</div>';
+    return;
+  }
+  el.innerHTML = items.map(item => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:4px;background:var(--surface);border-radius:4px;font-size:12px;">
+      <span style="flex:1;font-family:monospace;">@${escapeHtml(item.domain)}</span>
+      <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(item.channel||'email')}</span>
+      <span style="color:var(--text-dim);font-size:11px;">${(item.added_at||'').slice(0,10)}</span>
+      <button class="action-btn" style="padding:2px 8px;font-size:11px;background:var(--surface-hover);" onclick="accessRemove('${escapeHtml(item.domain)}','domain')">✕</button>
+    </div>
+  `).join('');
+}
+
+async function accessAdd() {
+  const address  = document.getElementById('access-new-address').value.trim();
+  const listType = document.getElementById('access-new-list').value;
+  const note     = document.getElementById('access-new-note').value.trim();
+  if (!address) return;
+  try {
+    const res = await fetch('/api/senders', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({list: listType, address, note, proposal_id: 'DASHBOARD-ACCESS'})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('access-new-address').value = '';
+      document.getElementById('access-new-note').value = '';
+      showToast(`Added ${address} to ${listType}`, 'success');
+      loadAccess();
+    } else {
+      showToast(data.error || 'Failed to add', 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+async function accessRemove(address, listType) {
+  if (!confirm(`Remove ${address} from ${listType}?`)) return;
+  try {
+    const res = await fetch('/api/senders', {
+      method: 'DELETE',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({list: listType, address, proposal_id: 'DASHBOARD-ACCESS'})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`Removed ${address}`, 'success');
+      loadAccess();
+    } else {
+      showToast(data.error || 'Failed to remove', 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
 }
 </script>
 

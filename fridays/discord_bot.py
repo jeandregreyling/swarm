@@ -739,7 +739,8 @@ async def on_interaction(interaction: discord.Interaction):
             )
 
         elif action == 'ignore':
-            from database import log_activity
+            from database import add_notification_sender, log_activity
+            add_notification_sender(data, added_by='ghost-discord', note='Discord button — ignored')
             log_activity('discord', 'sender_ignored', data)
             _vortex_event('discord', f'sender_ignored:{data}', target=data,
                           details={'action': 'button_ignore', 'actor': 'ghost'})
