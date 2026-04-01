@@ -6836,24 +6836,9 @@ function initializeChatPanel() {
   renderChatAgentToggles();
   renderReplyBanner();
   renderChatThreadRail();
-  initChatSpellHelper();
   if (!window.__fridaysChatConversationId) {
     _renderWelcome();
   }
-}
-
-function initChatSpellHelper() {
-  window.__fridaysChatCustomDictionary = _loadChatCustomDictionary();
-  const input = document.getElementById('question-input');
-  if (!input || input.dataset.spellBound === '1') {
-    updateChatSpellHelper();
-    return;
-  }
-  input.dataset.spellBound = '1';
-  input.addEventListener('input', updateChatSpellHelper);
-  input.addEventListener('keyup', updateChatSpellHelper);
-  input.addEventListener('click', updateChatSpellHelper);
-  updateChatSpellHelper();
 }
 
 function sendMessage() {
@@ -6995,7 +6980,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(updateTicketQueue, 10000);
   loadAuthProfiles();
   _renderIdentityPill();
-  initChatSpellHelper();
   
   // Settings modal handlers
   document.querySelectorAll('[data-time]').forEach(btn => {
