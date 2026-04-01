@@ -254,3 +254,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Updated tests/test_triage_queue_dryrun.py stub_chat to accept **kwargs; removed repeated warning during queue dry-run and revalidated 24/24 checks pass.
 - Rollback: Revert tests/test_triage_queue_dryrun.py signature change if needed.
 
+- Time (UTC): 2026-04-01T08:06:59Z
+- Actor: Copilot
+- Scope: self-healing
+- Change: Add automatic Gmail push recovery, proposal heartbeat, and robust terminal force-close
+- Validation: Listener now retries Gmail Push activation during IMAP fallback and resumes push without restart when possible; periodic task loops now include proposal notifications; ticket close path now resolves Duck hook robustly and terminal force-close was revalidated end-to-end.
+- Rollback: Rollback by reverting core/pipeline/listener.py, core/pipeline/ticket.py, and docs updates from this session.
+

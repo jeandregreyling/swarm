@@ -292,3 +292,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Revert tests/test_triage_queue_dryrun.py signature change if needed.
 
+- Audit ID: AUDIT-20260401-080659
+- Time (UTC): 2026-04-01T08:06:59Z
+- Actor: Copilot
+- Objective: Add automatic Gmail push recovery, proposal heartbeat, and robust terminal force-close
+- Evidence: Listener now retries Gmail Push activation during IMAP fallback and resumes push without restart when possible; periodic task loops now include proposal notifications; ticket close path now resolves Duck hook robustly and terminal force-close was revalidated end-to-end.
+- Result: PASS
+- Follow-up: Rollback by reverting core/pipeline/listener.py, core/pipeline/ticket.py, and docs updates from this session.
+
