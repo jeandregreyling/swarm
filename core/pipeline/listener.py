@@ -586,12 +586,16 @@ def ask_moderator_about(from_addr, subject, body_preview):
 </body></html>"""
 
     for mod in mods:
-        send_reply(
+        ok = _send_reply_checked(
             to_address=mod,
             subject=f'[Swarm] Unknown sender: {from_addr}',
             body=plain + f'\r\n\r\n(Timestamp: {get_timestamp()})',
             html_body=html
         )
+        if ok:
+            log_activity('listener', 'notify_sent', f'{from_addr} -> {mod}')
+        else:
+            log_activity('listener', 'notify_failed', f'{from_addr} -> {mod}')
     try:
         import discord_notify
         discord_notify.notify_unknown_sender(from_addr, subject, body_preview, source='email')
@@ -652,12 +656,16 @@ def _notify_ignored(from_addr, subject, body_preview, reason):
 </body></html>"""
 
     for mod in mods:
-        send_reply(
+        ok = _send_reply_checked(
             to_address=mod,
             subject=f'[Swarm] Auto-ignored: {from_addr}',
             body=plain + f'\r\n\r\n(Timestamp: {get_timestamp()})',
             html_body=html
         )
+        if ok:
+            log_activity('listener', 'notify_sent', f'auto-ignored {from_addr} -> {mod}')
+        else:
+            log_activity('listener', 'notify_failed', f'auto-ignored {from_addr} -> {mod}')
     try:
         import discord_notify
         discord_notify.notify_unknown_sender(from_addr, subject, body_preview[:200], source='email (auto-ignored)')
