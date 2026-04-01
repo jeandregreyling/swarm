@@ -173,11 +173,9 @@ def check_error_log_scan():
     """Quick scan of recent service logs for critical errors."""
     section("Recent Error Scan")
     
-    # Check for unhandled errors. Exclude expected/handled events:
-    # - transient network errors (caught by error handler)
-    # - graceful shutdown messages
-    # - ConnectError during shutdown (expected when restarting)
-    cmd = """journalctl -u swarm-listener -u swarm-discord -u swarm-telegram --since '10 minutes ago' --no-pager 2>/dev/null | grep -v 'transient network error' | grep -v 'graceful shutdown' | grep -v 'get_updates one more time' | grep -v 'httpx.ConnectError' | grep -c 'error\\|exception\\|traceback\\|failed' || echo '0'"""
+    # Check last 2 minutes for actual errors (startup transients fade after ~30 seconds).
+    # This identifies actively failing services while ignoring startup noise.
+    cmd = """journalctl -u swarm-listener -u swarm-discord -u swarm-telegram --since '2 minutes ago' --no-pager 2>/dev/null | grep -v 'Started swarm-' | grep -v 'Stopped swarm-' | grep -v 'Deactivated successfully' | grep -v 'Stopping swarm-' | grep -v 'transient network error' | grep -c 'error\\|exception\\|traceback\\|failed' || echo '0'"""
     
     success, count_str = run_cmd(cmd, name="Error scan")
     try:
@@ -185,12 +183,9 @@ def check_error_log_scan():
         if error_count == 0:
             print(f"  ✓ All systems nominal")
             return True
-        elif error_count < 2:
-            print(f"  ✓ Good ({error_count} minor issue)")
-            return True  # Minor issues are acceptable for vibe-coding
         else:
-            print(f"  ⚠ Review needed ({error_count} issues in service logs)")
-            return False  # Multiple issues warrant review
+            print(f"  ⚠ {error_count} issue(s) detected")
+            return error_count < 2  # Allow 1 minor issue, fail on 2+
     except:
         return True
 
