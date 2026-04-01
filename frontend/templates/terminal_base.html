@@ -845,6 +845,7 @@ body.mode-dark {
 .chat-meta.icon-meta {
   display: flex;
   align-items: center;
+  gap: 6px;
 }
 .agent-icon-chip {
   display: inline-flex;
@@ -857,6 +858,11 @@ body.mode-dark {
   background: var(--window-header);
   font-size: 12px;
   cursor: help;
+}
+.agent-name-chip {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
 }
 .chat-text {
   white-space: pre-wrap;
@@ -5828,6 +5834,43 @@ const _CHAT_AGENT_META = {
   you: { icon: '👤', purpose: 'Human operator input.', runtime: 'human' },
 };
 
+function _chatAgentLabel(sender) {
+  const normalized = String(sender || '').trim().toLowerCase().replace(/\[.*?\]/g, '').trim();
+  if (!normalized) return 'Agent';
+  if (normalized === 'you' || normalized === 'user') return 'You';
+  const option = CHAT_AGENT_OPTIONS.find(a => a.value === normalized);
+  if (option && option.label) return option.label;
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function _chatAgentIdentity(sender) {
+  const normalized = String(sender || '').trim().toLowerCase().replace(/\[.*?\]/g, '').trim();
+  const meta = _chatAgentMeta(normalized);
+  return {
+    key: normalized,
+    label: _chatAgentLabel(normalized),
+    icon: meta.icon || '🤖',
+    meta,
+  };
+}
+
+function _chatAgentIdentityHtml(sender, includeTitle = true) {
+  const identity = _chatAgentIdentity(sender);
+  const titleText = includeTitle
+    ? `${identity.label} · ${identity.meta.runtime} · ${identity.meta.purpose}`
+    : `${identity.label}`;
+  return `<span class="agent-icon-chip" title="${_escapeHtml(titleText)}">${identity.icon}</span><span class="agent-name-chip">${_escapeHtml(identity.label)}</span>`;
+}
+
+function _chatAgentListText(agentKeys) {
+  return (agentKeys || [])
+    .map(key => {
+      const identity = _chatAgentIdentity(key);
+      return `${identity.icon} ${identity.label}`;
+    })
+    .join(', ');
+}
+
 function _chatAgentMeta(sender) {
   const raw = String(sender || '').trim().toLowerCase();
   const normalized = raw.replace(/\[.*?\]/g, '').trim();
@@ -5841,11 +5884,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble' + (isUser ? ' user' : '');
   const safeSender = _escapeHtml(sender);
-  const meta = _chatAgentMeta(sender);
-  const senderTitle = `${sender || 'agent'} · ${meta.runtime} · ${meta.purpose}`;
-  const senderMetaHtml = isUser
-    ? 'you'
-    : `<span class="agent-icon-chip" title="${_escapeHtml(senderTitle)}">${meta.icon}</span>`;
+  const senderMetaHtml = isUser ? 'you' : _chatAgentIdentityHtml(sender, true);
   const msgId = opts.msgId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
   const quoted = opts.quoted ? `<div class="chat-meta">↳ replying to ${_escapeHtml(opts.quoted.sender)}: ${_escapeHtml(opts.quoted.preview)}</div>` : '';
   const parsedSkill = isUser ? { text: text, events: [] } : _parseSkillEvents(text);
@@ -5930,8 +5969,9 @@ function suggestAnotherAgent(sender, preview) {
     eleven: 'twelve',
     twelve: 'eleven'
   };
-  const normalized = (sender || '').toLowerCase();
+  const normalized = String(sender || '').toLowerCase();
   const suggested = map[normalized] || 'qwen';
+  const suggestedLabel = _chatAgentLabel(suggested);
   const checkbox = document.querySelector('.chat-agent-toggle[value="' + suggested + '"]');
   if (checkbox) {
     checkbox.checked = true;
@@ -5939,9 +5979,9 @@ function suggestAnotherAgent(sender, preview) {
   }
   const input = document.getElementById('question-input');
   if (input && !input.value.trim()) {
-    input.value = `[Thought from ${normalized}] ${String(preview || '').slice(0, 130)}\n\n${suggested}, what is your take?`;
+    input.value = `[Thought from ${_chatAgentLabel(normalized)}] ${String(preview || '').slice(0, 130)}\n\n${suggestedLabel}, what is your take?`;
   }
-  showToast('Suggested ' + suggested + ' for a second opinion', 'info');
+  showToast('Suggested ' + suggestedLabel + ' for a second opinion', 'info');
 }
 
 function _getLatencyProfile() {
@@ -5989,7 +6029,7 @@ function _createLoadingPanel(agents) {
       ${agents.map(a => `
         <div data-agent="${a}">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--text-dim);margin-bottom:3px;">
-            <span>${a}</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;">${_chatAgentIdentityHtml(a, false)}</span>
             <span data-state="${a}" style="color:var(--text-dim);">alive · queued</span>
           </div>
           <div style="height:7px;background:var(--window-header);border:1px solid var(--border);border-radius:999px;overflow:hidden;">
@@ -6173,7 +6213,7 @@ function renderChatAgentToggles() {
     const checked = window.__fridaysChatEnabledAgents[agent.value] ? 'checked' : '';
     return `<label style="display:flex;align-items:center;gap:4px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;cursor:pointer;">
       <input class="chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked} onchange="window.__fridaysChatEnabledAgents[this.value]=this.checked">
-      <span>${agent.label}</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;">${_chatAgentIdentityHtml(agent.value, false)}</span>
     </label>`;
   }).join('');
 }
@@ -6334,7 +6374,7 @@ function sendMessage() {
     ? `[Reply to ${window.__fridaysReplyTarget.sender}] ${msg}`
     : msg;
   
-  _appendChatBubble('you', '[' + selectedAgents.join(', ') + '] ' + msg, {
+  _appendChatBubble('you', '[' + _chatAgentListText(selectedAgents) + '] ' + msg, {
     quoted: window.__fridaysReplyTarget || null
   });
 
