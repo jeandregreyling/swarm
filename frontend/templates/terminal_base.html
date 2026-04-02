@@ -2746,7 +2746,11 @@ input[type="range"]::-moz-range-thumb:hover {
       <div id="git-proposals-section" style="border-top:1px solid var(--border);padding:12px;background:rgba(255,255,255,0.01);max-height:240px;overflow-y:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
           <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Git ALM Proposals</div>
-          <button onclick="gitLoadProposals()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">↻</button>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <button onclick="gitCreateVortexCheckpoint('git-panel-manual')" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">🌀 Snapshot</button>
+            <button onclick="gitOpenVortex()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">Vortex</button>
+            <button onclick="gitLoadProposals()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">↻</button>
+          </div>
         </div>
         <div id="git-proposals-list" style="font-size:11px;color:var(--text-dim);">
           <div style="padding:8px;text-align:center;">No proposals</div>
@@ -2768,6 +2772,7 @@ input[type="range"]::-moz-range-thumb:hover {
       <div id="memory-agent-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
         <button class="mem-tab active" data-agent="" onclick="_memTab(this,'')">All</button>
         <button class="mem-tab" data-agent="nine"    onclick="_memTab(this,'nine')">Nine</button>
+        <button class="mem-tab" data-agent="ten"     onclick="_memTab(this,'ten')">GitHub (Ten)</button>
         <button class="mem-tab" data-agent="gemma"   onclick="_memTab(this,'gemma')">Gemma</button>
         <button class="mem-tab" data-agent="llama"   onclick="_memTab(this,'llama')">LLaMA</button>
         <button class="mem-tab" data-agent="eight"   onclick="_memTab(this,'eight')">Eight</button>
@@ -2775,6 +2780,11 @@ input[type="range"]::-moz-range-thumb:hover {
         <button class="mem-tab" data-agent="grok"    onclick="_memTab(this,'grok')">Grok</button>
         <button class="mem-tab" data-agent="twelve"  onclick="_memTab(this,'twelve')">Twelve</button>
         <button class="mem-tab" data-agent="librarian" onclick="_memTab(this,'librarian')">Librarian</button>
+      </div>
+      <div id="memory-source-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
+        <button class="mem-tab active" data-source="all" onclick="_memSourceTab(this,'all')">All Sources</button>
+        <button class="mem-tab" data-source="db" onclick="_memSourceTab(this,'db')">DB Only</button>
+        <button class="mem-tab" data-source="local" onclick="_memSourceTab(this,'local')">Local Files</button>
       </div>
     </div>
     <!-- Memory list -->
@@ -2847,6 +2857,10 @@ input[type="range"]::-moz-range-thumb:hover {
     <h3 style="margin: 14px 0 10px;">🔐 Skill Permissions</h3>
     <div id="skills-permissions-content">
       <p style="color: var(--text-dim); font-size: 12px;">Loading permissions…</p>
+    </div>
+    <h3 style="margin: 14px 0 10px;">🧭 Agent Capability Matrix</h3>
+    <div id="skills-capability-matrix">
+      <p style="color: var(--text-dim); font-size: 12px;">Loading capability matrix…</p>
     </div>
   </div>
 </template>
@@ -6180,6 +6194,7 @@ function loadMemoryData(win) {
   window.__memoryWin = win;
   window.__memoryCache = [];
   window.__memoryAgent = window.__memoryAgent || '';
+  window.__memorySource = window.__memorySource || 'all';
 
   const _tableToAgent = (table) => {
     const map = { memory:'librarian', memory_llama:'llama', memory_qwen:'qwen', memory_gemma:'gemma',
@@ -6188,7 +6203,13 @@ function loadMemoryData(win) {
   };
 
   const _renderList = (flat, agentFilter) => {
-    const shown = agentFilter ? flat.filter(m => (m._agent||m.agent||'') === agentFilter) : flat;
+    const sourceMode = window.__memorySource || 'all';
+    let shown = agentFilter ? flat.filter(m => (m._agent||m.agent||'') === agentFilter) : flat;
+    if (sourceMode === 'db') {
+      shown = shown.filter(m => String(m.source_table || '') !== 'local_file');
+    } else if (sourceMode === 'local') {
+      shown = shown.filter(m => String(m.source_table || '') === 'local_file');
+    }
     const countEl = win.el.querySelector('#memory-count');
     if (countEl) countEl.textContent = `${shown.length} of ${flat.length} entries`;
     if (!shown.length) {
@@ -6215,8 +6236,10 @@ function loadMemoryData(win) {
 
   const doMemSearch = (q) => {
     const agentFilter = window.__memoryAgent || '';
+    const sourceMode = window.__memorySource || 'all';
+    const includeLocal = sourceMode === 'db' ? '0' : '1';
     const agentParam  = agentFilter ? `&agent=${encodeURIComponent(agentFilter)}` : '';
-    const url = `/api/memory?min=1&limit=400${agentParam}${q ? '&q=' + encodeURIComponent(q) : ''}`;
+    const url = `/api/memory?min=1&limit=400&include_local=${includeLocal}${agentParam}${q ? '&q=' + encodeURIComponent(q) : ''}`;
     list.innerHTML = '<div style="padding:20px;color:var(--text-dim);font-size:12px;text-align:center;">Loading...</div>';
     fetch(url)
       .then(r => r.json())
@@ -6244,9 +6267,19 @@ function loadMemoryData(win) {
 }
 
 function _memTab(btn, agent) {
-  document.querySelectorAll('.mem-tab').forEach(b => b.classList.remove('active'));
+  // Activate only within agent tab row
+  const parent = btn.closest('#memory-agent-tabs');
+  if (parent) parent.querySelectorAll('.mem-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   window.__memoryAgent = agent;
+  if (window.__memoryWin) loadMemoryData(window.__memoryWin);
+}
+
+function _memSourceTab(btn, source) {
+  const parent = btn.closest('#memory-source-tabs');
+  if (parent) parent.querySelectorAll('.mem-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  window.__memorySource = source || 'all';
   if (window.__memoryWin) loadMemoryData(window.__memoryWin);
 }
 
@@ -6259,20 +6292,26 @@ function _memExpand(id, table) {
   const m = (window.__memoryCache||[]).find(x => String(x.id)===String(id) && String(x.source_table||'memory')===String(table));
   if (!m) return;
   const agent = m._agent || m.agent || table;
+  const isLocalFile = String(table) === 'local_file';
+  const sourcePath = _escHtml(String(m.source || ''));
   body.innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
       <span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--accent);font-size:10px;border:1px solid var(--border);">${agent}</span>
       ${m.importance ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">importance ${m.importance}</span>` : ''}
       ${m.tags ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">${_escHtml(String(m.tags).slice(0,80))}</span>` : ''}
+      ${isLocalFile ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">local file</span>` : ''}
     </div>
     ${m.subject ? `<div style="font-size:12px;font-weight:600;margin-bottom:8px;">${_escHtml(m.subject)}</div>` : ''}
     <div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap;margin-bottom:10px;">${_escHtml(m.content||'')}</div>
-    <div style="font-size:10px;color:var(--text-dim);">${(m.created_at||'').slice(0,16)} · source: ${m.source||''}</div>
-    <div style="display:flex;gap:6px;margin-top:10px;">
-      <button class="chat-action-btn" onclick="memoryEdit(${id},'${table}')">Edit</button>
-      <button class="chat-action-btn" onclick="memoryAppend(${id},'${table}')">Append</button>
-      <button class="chat-action-btn" style="color:#f77;" onclick="if(confirm('Delete this memory?')){fetch('/api/memory/${id}?table=${table}',{method:'DELETE'}).then(()=>{document.getElementById('mem-detail').style.display='none';loadMemoryData(window.__memoryWin);});}">Delete</button>
-    </div>
+    <div style="font-size:10px;color:var(--text-dim);">${(m.created_at||'').slice(0,16)} · source: ${sourcePath}</div>
+    ${isLocalFile ?
+      `<div style="margin-top:10px;font-size:11px;color:var(--text-dim);">This entry is read-only and sourced from a local sandpit file.</div>` :
+      `<div style="display:flex;gap:6px;margin-top:10px;">
+        <button class="chat-action-btn" onclick="memoryEdit(${id},'${table}')">Edit</button>
+        <button class="chat-action-btn" onclick="memoryAppend(${id},'${table}')">Append</button>
+        <button class="chat-action-btn" style="color:#f77;" onclick="if(confirm('Delete this memory?')){fetch('/api/memory/${id}?table=${table}',{method:'DELETE'}).then(()=>{document.getElementById('mem-detail').style.display='none';loadMemoryData(window.__memoryWin);});}">Delete</button>
+      </div>`
+    }
   `;
   detail.style.display = 'block';
 }
@@ -7320,6 +7359,7 @@ function loadSkillsData(win) {
   const summary = win.el.querySelector('#skills-identity-summary');
   const userSelect = win.el.querySelector('#skills-user-select');
   const permContent = win.el.querySelector('#skills-permissions-content');
+  const matrixContent = win.el.querySelector('#skills-capability-matrix');
   if (!content) return;
 
   const auth = _getAuthState();
@@ -7364,8 +7404,122 @@ function loadSkillsData(win) {
       if (permContent) {
         loadSkillPermissionEditor();
       }
+      if (matrixContent) {
+        loadCapabilityMatrix(matrixContent);
+      }
     })
     .catch(e => { content.innerHTML = `<span style="color:#f77;">Failed to load skills: ${e.message}</span>`; });
+}
+
+function loadCapabilityMatrix(host) {
+  if (!host) return;
+  host.innerHTML = '<p style="color: var(--text-dim); font-size: 12px;">Loading capability matrix…</p>';
+
+  fetch('/api/agents/capability-matrix')
+    .then(r => r.json().then(data => ({ status: r.status, data })))
+    .then(({ status, data }) => {
+      if (status >= 400 || data.ok === false) {
+        throw new Error(data.error || `HTTP ${status}`);
+      }
+      const agents = Array.isArray(data.agents) ? data.agents : [];
+      if (!agents.length) {
+        host.innerHTML = '<p style="color: var(--text-dim); font-size: 12px;">No capability data found.</p>';
+        return;
+      }
+
+      window.__capabilityMatrixData = agents;
+      host.innerHTML = `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);">
+          <label style="font-size:11px;color:var(--text-dim);">Has capability:</label>
+          <input id="capability-filter-text" type="text" placeholder="e.g. git_execute" style="min-width:160px;padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
+          <label style="font-size:11px;color:var(--text-dim);">Min trust:</label>
+          <select id="capability-filter-trust" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
+            <option value="0">0+</option>
+            <option value="1">1+</option>
+            <option value="2">2+</option>
+          </select>
+          <button id="capability-filter-reset" style="padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:11px;cursor:pointer;">Reset</button>
+          <span id="capability-filter-count" style="font-size:10px;color:var(--text-dim);margin-left:auto;"></span>
+        </div>
+        <div id="capability-matrix-list"></div>
+      `;
+
+      const filterText = host.querySelector('#capability-filter-text');
+      const filterTrust = host.querySelector('#capability-filter-trust');
+      const filterReset = host.querySelector('#capability-filter-reset');
+
+      const rerender = () => renderCapabilityMatrixList(host);
+      if (filterText && !filterText.dataset.bound) {
+        filterText.dataset.bound = '1';
+        filterText.addEventListener('input', rerender);
+      }
+      if (filterTrust && !filterTrust.dataset.bound) {
+        filterTrust.dataset.bound = '1';
+        filterTrust.addEventListener('change', rerender);
+      }
+      if (filterReset && !filterReset.dataset.bound) {
+        filterReset.dataset.bound = '1';
+        filterReset.addEventListener('click', () => {
+          if (filterText) filterText.value = '';
+          if (filterTrust) filterTrust.value = '0';
+          rerender();
+        });
+      }
+
+      renderCapabilityMatrixList(host);
+    })
+    .catch(e => {
+      host.innerHTML = `<p style="color:#f77;font-size:12px;">Failed to load capability matrix: ${_escHtml(e.message || String(e))}</p>`;
+    });
+}
+
+function renderCapabilityMatrixList(host) {
+  if (!host) return;
+  const listEl = host.querySelector('#capability-matrix-list');
+  const countEl = host.querySelector('#capability-filter-count');
+  if (!listEl) return;
+
+  const allAgents = Array.isArray(window.__capabilityMatrixData) ? window.__capabilityMatrixData : [];
+  const needCap = String(host.querySelector('#capability-filter-text')?.value || '').trim().toLowerCase();
+  const minTrust = Number(host.querySelector('#capability-filter-trust')?.value || 0);
+
+  const filtered = allAgents.map(item => {
+    const caps = Array.isArray(item.capabilities) ? item.capabilities : [];
+    const capsByTrust = caps.filter(cap => Number(cap.trust_level || 0) >= minTrust);
+    const match = !needCap || capsByTrust.some(cap => String(cap.capability || '').toLowerCase().includes(needCap));
+    return {
+      ...item,
+      _caps: capsByTrust,
+      _match: match,
+    };
+  }).filter(item => item._match);
+
+  if (countEl) countEl.textContent = `${filtered.length} of ${allAgents.length} agents`;
+
+  if (!filtered.length) {
+    listEl.innerHTML = '<p style="color: var(--text-dim); font-size: 12px;">No agents match current filters.</p>';
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(item => {
+    const name = _escHtml(String(item.agent || '?'));
+    const caps = item._caps || [];
+    const chips = caps.length
+      ? caps.map(cap => {
+          const cname = _escHtml(String(cap.capability || '?'));
+          const trust = Number(cap.trust_level || 0);
+          return `<span title="trust ${trust}" style="padding:2px 7px;border-radius:999px;background:var(--card);border:1px solid var(--border);font-size:10px;color:var(--text-dim);">${cname} · t${trust}</span>`;
+        }).join(' ')
+      : '<span style="font-size:11px;color:var(--text-dim);">no capabilities at current trust filter</span>';
+
+    return `<div style="margin-bottom:10px;padding:10px;background:var(--card);border-radius:6px;border:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+        <strong>${name}</strong>
+        <span style="font-size:10px;color:var(--text-dim);">${Number(item.granted_count || 0)} granted</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${chips}</div>
+    </div>`;
+  }).join('');
 }
 
 function _getAuthState() {
