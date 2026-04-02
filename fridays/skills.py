@@ -130,13 +130,25 @@ REGISTRY = {
         'usage': 'SKILL fs_readonly <ls|find|read|head|tail|lines> <path> [args]',
         'example': 'SKILL fs_readonly lines frontend/terminal.py 5310 5360',
     },
+    'fs_write': {
+        'description': 'Write (overwrite) any file within the swarm repo. Creates parent dirs as needed.',
+        'trust_level': 2,
+        'usage': 'SKILL fs_write <path> <content>',
+        'example': 'SKILL fs_write sandpits/ten/draft.py print("hello")',
+    },
+    'fs_patch': {
+        'description': 'Replace an exact string in a file (first occurrence). Safe targeted edit without full rewrite.',
+        'trust_level': 2,
+        'usage': 'SKILL fs_patch <path> <<<OLD>>>exact old text<<<NEW>>>replacement text',
+        'example': 'SKILL fs_patch utils/config.py <<<OLD>>>TEN_MODEL = \'gpt-4.1\'<<<NEW>>>TEN_MODEL = \'gpt-4.1-mini\'',
+    },
 }
 
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
 # Skills that should create a work_proposal entry when they succeed
-_PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule'}
+_PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule', 'fs_write', 'fs_patch'}
 
 
 def _log(skill_name, agent, args_preview, result_preview, success):
@@ -481,6 +493,52 @@ def _skill_alm_create_proposal(args, agent, **_):
         return False, f'alm_create_proposal failed: {e}'
 
 
+def _skill_fs_write(args, agent, **_):
+    """Write (overwrite) any file within the swarm repo."""
+    raw = (args or '').strip()
+    if not raw:
+        return False, 'Usage: SKILL fs_write <path> <content>'
+    parts = raw.split(None, 1)
+    if len(parts) < 2:
+        return False, 'Usage: SKILL fs_write <path> <content>'
+    rel, content = parts[0], parts[1]
+    target = _fs_safe_path(rel)
+    if not target:
+        return False, f'Path outside swarm root or invalid: {rel}'
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding='utf-8')
+        return True, f'Written {len(content)} chars to {rel}'
+    except Exception as e:
+        return False, f'fs_write failed: {e}'
+
+
+def _skill_fs_patch(args, agent, **_):
+    """Replace first occurrence of an exact string in a file."""
+    raw = (args or '').strip()
+    if '<<<OLD>>>' not in raw or '<<<NEW>>>' not in raw:
+        return False, 'Usage: SKILL fs_patch <path> <<<OLD>>>old text<<<NEW>>>new text'
+    path_and_rest, new_text = raw.split('<<<NEW>>>', 1)
+    if '<<<OLD>>>' not in path_and_rest:
+        return False, 'Missing <<<OLD>>> marker'
+    path_part, old_text = path_and_rest.split('<<<OLD>>>', 1)
+    rel = path_part.strip()
+    target = _fs_safe_path(rel)
+    if not target:
+        return False, f'Path outside swarm root or invalid: {rel}'
+    if not target.exists() or not target.is_file():
+        return False, f'File not found: {rel}'
+    try:
+        original = target.read_text(encoding='utf-8', errors='replace')
+        if old_text not in original:
+            return False, f'Old text not found in {rel}. No changes made.'
+        patched = original.replace(old_text, new_text, 1)
+        target.write_text(patched, encoding='utf-8')
+        return True, f'Patched {rel}: replaced {len(old_text)} chars with {len(new_text)} chars'
+    except Exception as e:
+        return False, f'fs_patch failed: {e}'
+
+
 _HANDLERS = {
     'shell':          _skill_shell,
     'browse':         _skill_browse,
@@ -496,6 +554,8 @@ _HANDLERS = {
     'ticket_create':  _skill_ticket_create,
     'alm_create_proposal': _skill_alm_create_proposal,
     'fs_readonly':    _skill_fs_readonly,
+    'fs_write':       _skill_fs_write,
+    'fs_patch':       _skill_fs_patch,
 }
 
 
