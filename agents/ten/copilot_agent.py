@@ -159,7 +159,7 @@ def chat(message, conversation_history=None, stage_cb=None):
                 pass
 
             ok, out = skill_call(effective_name, args=effective_args, agent='ten')
-            preview = str(out or '')[:3000]
+            preview = str(out or '')[:8000]
             lines.append(f"[skill:{effective_name}] {'OK' if ok else 'FAILED'}\n{preview}")
 
         return '\n\n'.join(lines)

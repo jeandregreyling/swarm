@@ -125,10 +125,10 @@ REGISTRY = {
         'example': 'SKILL alm_create_proposal "Per-window theme propagation" "Ensure windows inherit app theme at creation and support local overrides."',
     },
     'fs_readonly': {
-        'description': 'Read-only filesystem helper for workspace discovery (ls/find/read/head/tail).',
+        'description': 'Read-only filesystem helper for workspace discovery (ls/find/read/head/tail/lines).',
         'trust_level': 0,
-        'usage': 'SKILL fs_readonly <ls|find|read|head|tail> <path> [args]',
-        'example': 'SKILL fs_readonly find sandpits *.md 30',
+        'usage': 'SKILL fs_readonly <ls|find|read|head|tail|lines> <path> [args]',
+        'example': 'SKILL fs_readonly lines frontend/terminal.py 5310 5360',
     },
 }
 
@@ -373,7 +373,7 @@ def _skill_fs_readonly(args, agent, **_):
             matches.append(rel_path + ('/' if p.is_dir() else ''))
         return True, '\n'.join(matches) if matches else '(no matches)'
 
-    if action in {'read', 'head', 'tail'}:
+    if action in {'read', 'head', 'tail', 'lines'}:
         if len(parts) < 2:
             return False, f'Usage: SKILL fs_readonly {action} <path> [n]'
         rel = parts[1]
@@ -386,27 +386,45 @@ def _skill_fs_readonly(args, agent, **_):
             return False, f'File read failed: {e}'
 
         if action == 'read':
-            max_chars = 5000
+            max_chars = 8000
             if len(parts) > 2:
                 try:
-                    max_chars = max(200, min(int(parts[2]), 12000))
+                    max_chars = max(200, min(int(parts[2]), 40000))
                 except Exception:
-                    max_chars = 5000
+                    max_chars = 8000
             if len(text) > max_chars:
                 text = text[:max_chars] + '\n\n[... truncated ...]'
             return True, text
 
-        lines = text.splitlines()
+        if action == 'lines':
+            # SKILL fs_readonly lines <path> <start> [end]
+            # Returns lines start..end (1-indexed, inclusive). Default window: 80 lines.
+            file_lines = text.splitlines()
+            total = len(file_lines)
+            try:
+                start = max(1, int(parts[2]) if len(parts) > 2 else 1)
+            except Exception:
+                start = 1
+            try:
+                end = min(total, int(parts[3]) if len(parts) > 3 else start + 79)
+            except Exception:
+                end = min(total, start + 79)
+            end = min(end, start + 299)  # hard cap: max 300 lines per call
+            picked = file_lines[start - 1:end]
+            header = f'[{rel} lines {start}–{end} of {total}]\n'
+            return True, header + '\n'.join(f'{start + i:5d}  {l}' for i, l in enumerate(picked))
+
+        file_lines = text.splitlines()
         n = 40
         if len(parts) > 2:
             try:
                 n = max(1, min(int(parts[2]), 300))
             except Exception:
                 n = 40
-        picked = lines[:n] if action == 'head' else lines[-n:]
+        picked = file_lines[:n] if action == 'head' else file_lines[-n:]
         return True, '\n'.join(picked)
 
-    return False, 'Unknown fs_readonly action. Use: ls, find, read, head, tail'
+    return False, 'Unknown fs_readonly action. Use: ls, find, read, head, tail, lines'
 
 
 def _skill_ticket_create(args, agent, **_):
