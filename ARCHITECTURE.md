@@ -2,7 +2,7 @@
 
 *Built by The Ghost — Dell OptiPlex 7090, Melbourne*
 *Document written by Claude Sonnet 4.6 — Updated 2026-03-24*
-*Theme Architecture updated by GitHub Copilot (Claude Haiku 4.5) — 2026-03-28 14:35 AEDT*
+*Theme Architecture updated by Ten (GPT) — 2026-03-28 14:35 AEDT*
 *This is the living technical reference. When it diverges from the code, the code is wrong.*
 
 ---

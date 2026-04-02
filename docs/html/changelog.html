@@ -48,7 +48,7 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
   - Field name aliases confirmed working
   - Performance metrics collected (sub-200ms response times)
 - **Documentation:** Created FRIDAYS_AUDIT_SUMMARY.md and BUGS_AUDIT_28_March_2026.md with complete audit trail, root cause analysis, and fix verification
-- **Next Phase:** Ready for Nine (Copilot) integration; all foundational systems verified stable
+- **Next Phase:** Ready for Ten (GPT) integration; all foundational systems verified stable
 
 ---
 
@@ -100,7 +100,7 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 - **Files Changed:** sandpits.py (minor), test commands
 - **Impact:** Proposal write/read/list now reliable for Phase 6 agency.
 
-### Changes by Agent Ten (Gemini Code Assist)
+### Changes by Agent Ten (GPT)
 
 **2026-03-26 17:15:00** Agent Ten: Finalized Phase D UI/UX Overhaul
 - **Type:** Feature
@@ -114,11 +114,11 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 - **Files Changed:** `templates/terminal.html`, `CHANGELOG.md`, `PROJECT.md`, `SYSTEM_CLOCK.md`, `FEATURES_TODO.md`
 - **Impact:** Fridays dashboard now displays a live, centralized system clock, enhancing time consistency verification.
 
-**2026-03-26 16:30:00** Agent Ten: Integrated Agent Ten (Gemini Code Assist)
+**2026-03-26 16:30:00** Agent Ten: Integrated Agent Ten (GPT)
 - **Type:** Feature
 - **Priority:** High
 - **Files Changed:** `database.py`, `terminal.py`, `orchestrator.py`, `PROJECT.md`, `CHANGELOG.md`, `templates/terminal.html`
-- **Impact:** Agent Ten (Gemini Code Assist) added as "Software Engineering Advisor" with dedicated memory and dashboard visibility.
+- **Impact:** Agent Ten (GPT) added as "Software Engineering Advisor" with dedicated memory and dashboard visibility.
 
 **2026-03-26 16:00:00** Agent Ten: Restored Project Explorer and Changes Tab
 - **Type:** Bug Fix
@@ -144,14 +144,14 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 - **Files Changed:** `database.py`, `orchestrator.py`, `vs_tools.py`, `templates/terminal.html`
 - **Impact:** Nine now has full read/list/write access to `/home/seven/swarm` (via Ghost consent); her memory recall and persistence are significantly improved.
 
-### Changes by Copilot (Claude Haiku 4.5)
+### Changes by Ten (GPT)
 
-**2026-03-26 15:45:00** Copilot: Standardized Agent Documentation & Versioning constraints
+**2026-03-26 15:45:00** Ten (GPT): Standardized Agent Documentation & Versioning constraints
 - **Type:** Refactor
 - **Files Changed:** `PROJECT.md`, `orchestrator.py`, `CHANGELOG.md`
 - **Impact:** Mandatory precise timestamping and VCS usage for all agent-led changes.
 
-**2026-03-26 16:30:00** Copilot: Integrated Agent Ten (Gemini Code Assist)
+**2026-03-26 16:30:00** Ten (GPT): Integrated Agent Ten (GPT)
 - **Type:** Feature
 - **Files Changed:** `database.py`, `terminal.py`, `orchestrator.py`, `PROJECT.md`, `CHANGELOG.md`, `templates/terminal.html`
 - **Type:** Refactor
@@ -163,16 +163,16 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 - **Files Changed:** `templates/terminal.html`, `CHANGELOG.md`, `FEATURES_TODO.md`
 - **Impact:** Studio layout gap resolved; New standalone Terminal tab implemented for direct shell access.
 
-**2026-03-26 16:50:00** Copilot: Implemented Phase B-1: Visible System Clock in Fridays UI
+**2026-03-26 16:50:00** Ten (GPT): Implemented Phase B-1: Visible System Clock in Fridays UI
 - **Type:** Feature
 - **Priority:** High
 - **Files Changed:** `templates/terminal.html`, `CHANGELOG.md`, `PROJECT.md`, `SYSTEM_CLOCK.md`, `FEATURES_TODO.md`
 - **Impact:** Fridays dashboard now displays a live, centralized system clock, enhancing time consistency verification.
 - **Impact:** Mandatory precise timestamping and VCS usage for all agent-led changes.
 
-### Changes by Copilot (Claude Haiku 4.5)
+### Changes by Ten (GPT)
 
-**2026-03-26 14:45:33** Copilot: Fixed Nine's file operations in Fridays
+**2026-03-26 14:45:33** Ten (GPT): Fixed Nine's file operations in Fridays
 - **Type:** Bug Fix
 - **Files Changed:**
   - `fridays/file_agent.py` (read_sandpit signature, return types)
@@ -181,7 +181,7 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 - **Impact:** File read/write operations now work without TypeError
 - **Details:** Standardized all file functions to return (ok, content) tuples consistently
 
-**2026-03-26 14:50:00** Copilot: Reviewed comprehensive project architecture
+**2026-03-26 14:50:00** Ten (GPT): Reviewed comprehensive project architecture
 - **Type:** Code Review
 - **Finding:** Core system is Alpha/Early Beta, well-designed with exceptional documentation
 - **Output:** ARCHITECTURE_REVIEW.md (in progress)
@@ -211,25 +211,25 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ### Phase A: File Versioning & Change Tracking
 
-**[QUEUE]** Copilot: Add sudo permission toggle flag
+**[QUEUE]** Ten (GPT): Add sudo permission toggle flag
 - **Type:** Feature
 - **Priority:** High
 - **Description:** Granular on/off switch for sudo elevation per command
 - **Scope:** fridays/shell_agent.py, terminal.py
 
-**[QUEUE]** Copilot: Expand Nine write access to full /swarm
+**[QUEUE]** Ten (GPT): Expand Nine write access to full /swarm
 - **Type:** Feature
 - **Priority:** High
 - **Description:** Nine can modify any file in /swarm with full logging
 - **Scope:** vs_tools.py, config.py (permissions)
 
-**[QUEUE]** Copilot: Build file change detection & versioning
+**[QUEUE]** Ten (GPT): Build file change detection & versioning
 - **Type:** Feature
 - **Priority:** High
 - **Description:** Track before/after for all file writes, store in database
 - **Scope:** New module: file_versioning.py, database schema update
 
-**[QUEUE]** Copilot: Integrate versioning into documents section
+**[QUEUE]** Ten (GPT): Integrate versioning into documents section
 - **Type:** Feature
 - **Priority:** High
 - **Description:** UI for browsing file history, comparing versions
@@ -237,13 +237,13 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ### Phase B: System Clock & Consistency
 
-**[QUEUE]** Copilot: Add visible system clock to Fridays UI
+**[QUEUE]** Ten (GPT): Add visible system clock to Fridays UI
 - **Type:** Feature
 - **Priority:** High
 - **Description:** Display current system time (HH:MM:SS) in banner, use as source of truth
 - **Scope:** templates/terminal.html, JavaScript clock component
 
-**[QUEUE]** Copilot: Migrate all agents to use system clock
+**[QUEUE]** Ten (GPT): Migrate all agents to use system clock
 - **Type:** Refactor
 - **Priority:** High
 - **Description:** Replace `datetime.now()` with centralized clock service
@@ -251,13 +251,13 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ### Phase C: Time Machine Backup System
 
-**[QUEUE]** Copilot: Design & implement time machine versioning
+**[QUEUE]** Ten (GPT): Design & implement time machine versioning
 - **Type:** Infrastructure
 - **Priority:** High
 - **Description:** Git-like version control with daily snapshots, point-in-time restore
 - **Scope:** New module: time_machine.py, backup architecture
 
-**[QUEUE]** Copilot: Implement daily checkpoint tagging
+**[QUEUE]** Ten (GPT): Implement daily checkpoint tagging
 - **Type:** Feature
 - **Priority:** Medium
 - **Description:** Daily automatic tags (YYYY-MM-DD-HH:MM:SS), separate bin for rollback
@@ -265,17 +265,17 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ### Phase D: UI/UX Improvements
 
-**[QUEUE]** Copilot: Rename VS → Studio throughout interface
+**[QUEUE]** Ten (GPT): Rename VS → Studio throughout interface
 - **Type:** UI/UX
 - **Priority:** Medium
 - **Files:** templates/terminal.html, terminal.py, all references
 
-**[QUEUE]** Copilot: Fix CSS layout (black gap between banner and content)
+**[QUEUE]** Ten (GPT): Fix CSS layout (black gap between banner and content)
 - **Type:** UI/UX
 - **Priority:** Medium
 - **Files:** templates/terminal.html, CSS section
 
-**[QUEUE]** Copilot: Build Terminal window in Studio
+**[QUEUE]** Ten (GPT): Build Terminal window in Studio
 - **Type:** Feature
 - **Priority:** High
 - **Description:** New tab for bidirectional command execution with Nine visibility
@@ -283,13 +283,13 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ### Phase E: Access Control & Sandpit Enforcement
 
-**[QUEUE]** Copilot: Enforce sandpit read-only access across agents
+**[QUEUE]** Ten (GPT): Enforce sandpit read-only access across agents
 - **Type:** Feature
 - **Priority:** Medium
 - **Description:** Agents can read other agents' sandpits but cannot write (enforce)
 - **Scope:** fridays/file_agent.py, sandpits.py
 
-**[QUEUE]** Copilot: Expand all agents' read access to /swarm
+**[QUEUE]** Ten (GPT): Expand all agents' read access to /swarm
 - **Type:** Feature
 - **Priority:** Medium
 - **Description:** All agents can read project root files (with restrictions)
@@ -297,7 +297,7 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ### Phase F: Verification & Bug Resolution
 
-**[QUEUE]** Copilot: Verify Discord bot token validity
+**[QUEUE]** Ten (GPT): Verify Discord bot token validity
 - **Type:** Verification
 - **Priority:** Low
 - **Status:** Investigation shows code is correct; likely token issue

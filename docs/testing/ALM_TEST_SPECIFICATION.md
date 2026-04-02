@@ -12,18 +12,18 @@
 Scope added for Fridays chat quality and identity-aware skill behavior:
 
 | REQ ID | Requirement | Test Case | Status | Owner |
-| -------- | ------------- | ----------- | -------- | ------- || REQ-CHAT-001 | Skill output does not bleed into next chat context | CQ-1 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-002 | SKILL command response shape is stable | CQ-2 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-003 | SKILL response returns identity context | CQ-3 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-004 | Denied user/skill pair is blocked with 403 | CQ-4 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-005 | Ghost-layer memory API available for Nine/Ten | CQ-5 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-006 | Ten prompt style guardrails loaded | CQ-6 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-007 | terminal.py compiles after chat hardening | CQ-7 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-008 | Pending chat jobs status endpoint available | CQ-8 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-009 | Long-running chat requests persist until completion | CQ-9 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-010 | Agent-emitted SKILL commands execute and return output in same chat context | CQ-10 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-011 | `fs_readonly` skill supports safe repository discovery in chat | CQ-11 | ✅ PASS | Nine/Copilot |
-| REQ-CHAT-012 | Shell whitelist allows `pwd` for safe path context checks | CQ-12 | ✅ PASS | Nine/Copilot |
+| -------- | ------------- | ----------- | -------- | ------- || REQ-CHAT-001 | Skill output does not bleed into next chat context | CQ-1 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-002 | SKILL command response shape is stable | CQ-2 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-003 | SKILL response returns identity context | CQ-3 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-004 | Denied user/skill pair is blocked with 403 | CQ-4 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-005 | Ghost-layer memory API available for Nine/Ten | CQ-5 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-006 | Ten prompt style guardrails loaded | CQ-6 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-007 | terminal.py compiles after chat hardening | CQ-7 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-008 | Pending chat jobs status endpoint available | CQ-8 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-009 | Long-running chat requests persist until completion | CQ-9 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-010 | Agent-emitted SKILL commands execute and return output in same chat context | CQ-10 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-011 | `fs_readonly` skill supports safe repository discovery in chat | CQ-11 | ✅ PASS | Nine/Ten (GPT) |
+| REQ-CHAT-012 | Shell whitelist allows `pwd` for safe path context checks | CQ-12 | ✅ PASS | Nine/Ten (GPT) |
 
 Execution evidence:
 - `python3 tests/test_chat_quality.py` -> 11 PASS, 0 FAIL, 0 SKIP

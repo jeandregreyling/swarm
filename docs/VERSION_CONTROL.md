@@ -1,7 +1,7 @@
 # VERSION_CONTROL.md — Time Machine & File Versioning Strategy
 
 _Seven's Swarm comprehensive version control and backup system._
-_Last updated: 2026-03-26 by Copilot_
+_Last updated: 2026-03-26 by Ten (GPT)_
 
 ---
 
@@ -26,7 +26,7 @@ Every file write and database update is logged:
 FILE CHANGES:
   swarm_memory.db → file_versions table
   ├── file_path (e.g., "/home/seven/swarm/config.py")
-  ├── agent (e.g., "Nine", "Copilot", "Sniffles")
+  ├── agent (e.g., "Nine", "Ten (GPT)", "Sniffles")
   ├── timestamp (e.g., "2026-03-26 14:45:33")
   ├── action (e.g., "write", "delete", "rename")
   ├── content_before (full previous content)
@@ -88,7 +88,7 @@ System Action:
 CREATE TABLE file_versions (
     id INTEGER PRIMARY KEY,
     file_path TEXT NOT NULL,           -- Full path to file
-    agent TEXT NOT NULL,               -- Who changed it (Nine, Copilot, etc.)
+    agent TEXT NOT NULL,               -- Who changed it (Nine, Ten (GPT), etc.)
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,  -- When changed (with seconds)
     action TEXT,                       -- write, delete, rename
     content_before TEXT,               -- Previous full content

@@ -12,7 +12,7 @@
 | Property | Value |
 |----------|-------|
 | **Agent Name** | twelve |
-| **Model** | claude-haiku (Anthropic API) |
+| **Model** | claude-haiku-4-5-20251001 (Anthropic API) |
 | **Role** | Time Wizard + Ghost Layer Member |
 | **Trust Level** | Ghost Layer (equivalent to Duck, Nine, Ten, Sniffles) |
 | **Access** | All sandpits (read), own sandpit (read/write), all memory pools (read), Ghost layer logs (read) |

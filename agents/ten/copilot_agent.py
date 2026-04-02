@@ -1,6 +1,6 @@
 """
-agents/ten/copilot_agent.py — Ten (GitHub Copilot)
-Ghost Layer software engineering advisor. Powered by GitHub Models API (OpenAI-compatible).
+agents/ten/copilot_agent.py — Ten (GPT)
+Ghost Layer software engineering advisor. Powered by GPT via GitHub Models API.
 Uses a GitHub PAT with models:read scope via https://models.inference.ai.azure.com
 """
 
@@ -50,7 +50,7 @@ def _build_context(message):
 
 def chat(message, conversation_history=None):
     """
-    Send a message to Ten (GitHub Copilot via GitHub Models API).
+    Send a message to Ten (GPT via GitHub Models API).
     Returns (answer, tokens_used).
     conversation_history: list of {role, content} dicts.
     """
