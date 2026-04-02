@@ -3647,7 +3647,7 @@ def api_chat():
                 response_text = future.result(timeout=local_timeout)
                 _stage('storing agent memory', 0)
                 _persist_local_agent_memory(selected_agent, message, response_text)
-            elif selected_agent in {'nine', 'ten'}:
+            elif selected_agent == 'nine':
                 _stage('dispatching to ghost datacenter', est_eta)
                 future = executor.submit(_run_ghost_layer_chat, selected_agent, message, history)
                 answer, tokens, err = future.result(timeout=240 if persistent_mode else 20)
@@ -3655,6 +3655,13 @@ def api_chat():
                     raise RuntimeError(err)
                 response_text = answer
                 tokens_used = tokens
+            elif selected_agent == 'ten':
+                _stage('dispatching to ghost datacenter', est_eta)
+                from agents.ten import copilot_agent
+                future = executor.submit(copilot_agent.chat, message, history)
+                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                response_text = answer or '[ten unavailable — check GITHUB_TOKEN in /etc/environment]'
+                tokens_used = tokens or 0
             elif selected_agent == 'eleven':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.eleven import grok_agent
