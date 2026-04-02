@@ -2404,6 +2404,11 @@ input[type="range"]::-moz-range-thumb:hover {
           <div class="card-title">Access</div>
           <div class="card-desc">Senders &amp; permissions</div>
         </div>
+        <div class="home-card" onclick="openWindow('git', '🌿 Git', 'view-git')">
+          <div class="card-icon">🌿</div>
+          <div class="card-title">Git</div>
+          <div class="card-desc">Changes, diffs, commit</div>
+        </div>
         <div class="add-card-btn" onclick="addCustomCard()">
           <div style="font-size: 20px;">➕</div>
           <div style="font-size: 12px;">Add Custom</div>
@@ -2609,10 +2614,16 @@ input[type="range"]::-moz-range-thumb:hover {
     <div id="terminal-layout" style="display:flex;flex:1;min-height:0;">
       <div id="terminal-main" style="flex:1;display:flex;flex-direction:column;min-width:0;">
         <div id="terminal-output" style="flex:1; overflow-y:auto; font-family: 'SF Mono', monospace; font-size: 12px; color: #0f9; white-space: pre-wrap; padding: 12px;">Welcome to Fridays Terminal</div>
+        <div id="terminal-history-panel" style="display:none;border-top:1px solid var(--border);background:var(--window-header);padding:8px 12px;max-height:180px;overflow:auto;"></div>
         <div style="padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
           <button id="terminal-shortcuts-main-toggle" onclick="toggleTerminalShortcuts()" title="Hide shortcuts" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;">⚡ Shortcuts</button>
+          <button id="terminal-history-btn" onclick="terminalToggleHistory()" title="Show recent terminal commands" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;">History</button>
+          <button onclick="terminalClearOutput()" title="Clear terminal output" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;">Clear</button>
           <span style="color: #0f9; font-weight: bold;">$</span>
-          <input id="terminal-input" type="text" placeholder="Enter command..." style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); outline: none;" onkeydown="if(event.key==='Enter') runTerminalCmd()">
+          <input id="terminal-input" type="text" placeholder="Enter command..." style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); outline: none;" onkeydown="terminalHandleInputKeydown(event)">
+          <input id="terminal-filter-input" type="text" placeholder="Filter output" style="width: 150px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); outline: none;" oninput="terminalFilterOutput(this.value)">
+          <button id="terminal-autoscroll-toggle" onclick="terminalToggleAutoScroll()" title="Toggle auto-scroll" style="background:var(--card);border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:6px 8px;cursor:pointer;font-size:11px;white-space:nowrap;">Auto-scroll: On</button>
+          <button id="terminal-stop-btn" onclick="terminalStopActive()" title="Stop running command" disabled style="background:transparent;border:1px solid #f4433688;color:#f44336;border-radius:4px;padding:6px 10px;cursor:not-allowed;font-size:11px;white-space:nowrap;opacity:0.55;">Stop</button>
         </div>
       </div>
       <aside id="terminal-shortcuts-panel" style="width:230px;max-width:38%;border-left:1px solid var(--border);background:var(--window-header);display:flex;flex-direction:column;position:relative;">
@@ -2635,10 +2646,16 @@ input[type="range"]::-moz-range-thumb:hover {
     <div id="terminal-layout" style="display:flex;flex:1;min-height:0;">
       <div id="terminal-main" style="flex:1;display:flex;flex-direction:column;min-width:0;">
         <div id="terminal-output" style="flex:1; overflow-y:auto; font-family: 'SF Mono', monospace; font-size: 12px; color: #0f9; white-space: pre-wrap; padding: 12px;">Welcome to Fridays Terminal</div>
+        <div id="terminal-history-panel" style="display:none;border-top:1px solid var(--border);background:var(--window-header);padding:8px 12px;max-height:180px;overflow:auto;"></div>
         <div style="padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
           <button id="terminal-shortcuts-main-toggle" onclick="toggleTerminalShortcuts()" title="Hide shortcuts" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;">⚡ Shortcuts</button>
+          <button id="terminal-history-btn" onclick="terminalToggleHistory()" title="Show recent terminal commands" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;">History</button>
+          <button onclick="terminalClearOutput()" title="Clear terminal output" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;">Clear</button>
           <span style="color: #0f9; font-weight: bold;">$</span>
-          <input id="terminal-input" type="text" placeholder="Enter command..." style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); outline: none;" onkeydown="if(event.key==='Enter') runTerminalCmd()">
+          <input id="terminal-input" type="text" placeholder="Enter command..." style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); outline: none;" onkeydown="terminalHandleInputKeydown(event)">
+          <input id="terminal-filter-input" type="text" placeholder="Filter output" style="width: 150px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); outline: none;" oninput="terminalFilterOutput(this.value)">
+          <button id="terminal-autoscroll-toggle" onclick="terminalToggleAutoScroll()" title="Toggle auto-scroll" style="background:var(--card);border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:6px 8px;cursor:pointer;font-size:11px;white-space:nowrap;">Auto-scroll: On</button>
+          <button id="terminal-stop-btn" onclick="terminalStopActive()" title="Stop running command" disabled style="background:transparent;border:1px solid #f4433688;color:#f44336;border-radius:4px;padding:6px 10px;cursor:not-allowed;font-size:11px;white-space:nowrap;opacity:0.55;">Stop</button>
         </div>
       </div>
       <aside id="terminal-shortcuts-panel" style="width:230px;max-width:38%;border-left:1px solid var(--border);background:var(--window-header);display:flex;flex-direction:column;position:relative;">
@@ -2664,16 +2681,76 @@ input[type="range"]::-moz-range-thumb:hover {
         <input id="files-path-input" type="text" placeholder="Enter path or search..." style="flex:1;padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
         <button onclick="filesNavigateHome()" title="Go to workspace root" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">🏠</button>
       </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+        <input id="files-find-input" type="text" placeholder="Find text" style="flex:1;min-width:130px;padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+        <input id="files-replace-input" type="text" placeholder="Replace with" style="flex:1;min-width:130px;padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+        <input id="files-replace-pattern" type="text" placeholder="*.py" value="*.py" style="width:90px;padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+        <button onclick="filesReplacePreview()" title="Preview replacements" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;">Preview</button>
+        <button onclick="filesReplaceApply()" title="Apply replacements" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;font-weight:700;">Apply</button>
+      </div>
       <div id="files-breadcrumb" style="font-size:10px;color:var(--text-dim);font-family:monospace;overflow-x:auto;white-space:nowrap;padding:4px 0;"></div>
     </div>
     <div style="flex:1;display:flex;min-height:0;gap:1px;">
       <div id="files-list" style="flex:1;overflow-y:auto;border-right:1px solid var(--border);min-width:0;"></div>
+      <div id="files-preview-splitter" title="Drag to resize preview • Double-click to reset" style="width:8px;cursor:col-resize;background:linear-gradient(to right, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);display:none;flex-shrink:0;"></div>
       <div id="files-preview" style="flex:0 0 280px;background:var(--window-header);border-left:1px solid var(--border);overflow-y:auto;display:none;flex-direction:column;">
         <div style="padding:10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;">
           <span>Preview</span>
-          <button onclick="document.getElementById('files-preview').style.display='none'" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;">✕</button>
+          <button onclick="filesHidePreview()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;">✕</button>
         </div>
         <div id="files-preview-body" style="padding:10px;overflow-y:auto;font-size:11px;font-family:monospace;color:var(--text-dim);white-space:pre-wrap;word-break:break-word;"></div>
+        <div id="files-code-ops" style="flex-shrink:0;padding:10px;border-top:1px solid var(--border);display:none;">
+          <div style="font-size:9px;font-weight:700;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Code Operations</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;">
+            <button id="files-btn-test" onclick="codeOpRunTests()" title="Run pytest on current file" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;">▶ Test</button>
+            <button id="files-btn-lint" onclick="codeOpLintFile()" title="Run pylint on current file" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;">🔍 Lint</button>
+            <button id="files-btn-format" onclick="codeOpFormatFile()" title="Format code with black" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;">✏️ Format</button>
+            <button id="files-btn-commit" onclick="codeOpCommit()" title="Commit changes to git" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;">💾 Commit</button>
+          </div>
+          <div id="files-op-status" style="font-size:9px;color:var(--text-dim);display:none;border:1px solid var(--border);border-radius:4px;padding:6px;background:rgba(0,0,0,0.15);max-height:100px;overflow-y:auto;"><span id="files-op-status-text">Ready</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="view-git">
+  <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:13px;font-weight:700;">🌿 Git Changes</div>
+          <div id="git-summary" style="font-size:11px;color:var(--text-dim);">Loading repository status...</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input id="git-filter-input" type="text" placeholder="Filter files" style="width:180px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+          <button onclick="gitRefreshStatus()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Refresh</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input id="git-commit-message" type="text" placeholder="Commit message for staged changes" style="flex:1;min-width:220px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+        <button onclick="gitCommitChanges()" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:11px;font-weight:700;">Propose Commit</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
+      <div style="flex:1;display:flex;min-height:0;">
+        <div id="git-files-list" style="flex:0 0 340px;overflow-y:auto;border-right:1px solid var(--border);min-width:260px;"></div>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+          <div id="git-diff-toolbar" style="padding:10px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div id="git-diff-title" style="font-size:11px;font-weight:700;color:var(--text-dim);">Select a changed file</div>
+            <div id="git-diff-actions" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;"></div>
+          </div>
+          <div id="git-diff-body" style="flex:1;overflow:auto;padding:12px;font-size:11px;font-family:monospace;color:var(--text-dim);white-space:pre-wrap;word-break:break-word;">Choose a file to inspect its diff.</div>
+        </div>
+      </div>
+      <div id="git-proposals-section" style="border-top:1px solid var(--border);padding:12px;background:rgba(255,255,255,0.01);max-height:240px;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Git ALM Proposals</div>
+          <button onclick="gitLoadProposals()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">↻</button>
+        </div>
+        <div id="git-proposals-list" style="font-size:11px;color:var(--text-dim);">
+          <div style="padding:8px;text-align:center;">No proposals</div>
+        </div>
       </div>
     </div>
   </div>
@@ -4055,6 +4132,7 @@ const windowIcons = {
   'chat': '💬',
   'terminal': '⌨️',
     'files': '📁',
+  'git': '🌿',
   'memory': '🧠',
   'monitor': '📡',
   'docs': '📚',
@@ -4080,6 +4158,7 @@ function openWindow(id, title, templateId) {
     if (id === 'chat') loadChatData(win);
     else if (id === 'terminal') loadTerminalData(win);
     else if (id === 'files') loadFilesData(win);
+    else if (id === 'git') loadGitData(win);
     else if (id === 'memory') loadMemoryData(win);
     else if (id === 'monitor') loadMonitorData(win);
     else if (id === 'docs') loadDocsData(win);
@@ -4246,7 +4325,7 @@ function loadTerminalData(win) {
   const btnContainer = win.el.querySelector('#terminal-buttons');
   const panel = win.el.querySelector('#terminal-shortcuts-panel');
   if (output) {
-    output.textContent = 'Terminal ready. Type commands or use quick buttons above.';
+    _terminalResetOutput(output);
   }
   if (btnContainer) {
     renderTerminalQuickButtons(btnContainer, win);
@@ -4254,6 +4333,412 @@ function loadTerminalData(win) {
   if (panel) {
     const collapsed = sessionStorage.getItem('fridays-terminal-shortcuts-collapsed') === '1';
     applyTerminalShortcutsState(win, collapsed);
+  }
+  _terminalSyncControls();
+  _terminalSyncHistoryUi();
+}
+
+function _terminalStreamState() {
+  if (!window.__terminalStreamState) {
+    let history = [];
+    try {
+      const raw = JSON.parse(localStorage.getItem('fridays-terminal-history') || '[]');
+      history = Array.isArray(raw) ? raw.filter(item => typeof item === 'string') : [];
+    } catch {
+      history = [];
+    }
+    window.__terminalStreamState = {
+      running: false,
+      controller: null,
+      commandId: null,
+      proposalId: null,
+      autoScroll: true,
+      history: history.slice(-80),
+      historyIndex: -1,
+      draft: '',
+      copyStore: {},
+      actionStore: {},
+      historyOpen: false,
+    };
+  }
+  return window.__terminalStreamState;
+}
+
+function _terminalStoreActionValue(value, prefix) {
+  const state = _terminalStreamState();
+  const store = state.actionStore || {};
+  const actionId = `${prefix || 'term-action'}-${Math.random().toString(36).slice(2, 10)}`;
+  store[actionId] = String(value || '');
+  state.actionStore = store;
+  const keys = Object.keys(store);
+  if (keys.length > 240) {
+    delete store[keys[0]];
+  }
+  return actionId;
+}
+
+function _terminalReadActionValue(actionId) {
+  const state = _terminalStreamState();
+  return String(((state.actionStore || {})[actionId]) || '');
+}
+
+function _terminalHistoryPanel() {
+  return document.getElementById('terminal-history-panel');
+}
+
+function _terminalSyncHistoryUi() {
+  const state = _terminalStreamState();
+  const panel = _terminalHistoryPanel();
+  const btn = document.getElementById('terminal-history-btn');
+  if (btn) {
+    const count = Array.isArray(state.history) ? state.history.length : 0;
+    btn.textContent = count ? `History (${count})` : 'History';
+    btn.style.color = state.historyOpen ? 'var(--accent)' : 'var(--text)';
+    btn.style.borderColor = state.historyOpen ? 'var(--accent)' : 'var(--border)';
+  }
+  if (panel) {
+    panel.style.display = state.historyOpen ? 'block' : 'none';
+  }
+}
+
+function _terminalRenderHistoryPanel() {
+  const panel = _terminalHistoryPanel();
+  if (!panel) return;
+  const state = _terminalStreamState();
+  const history = Array.isArray(state.history) ? state.history.slice().reverse() : [];
+  panel.innerHTML = '';
+
+  if (!history.length) {
+    panel.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:4px 0;">No recent commands yet.</div>';
+    return;
+  }
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;';
+  header.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;">Recent Commands</div>';
+  const clearBtn = document.createElement('button');
+  clearBtn.textContent = 'Forget';
+  clearBtn.style.cssText = 'background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px;';
+  clearBtn.onclick = () => terminalClearHistory();
+  header.appendChild(clearBtn);
+  panel.appendChild(header);
+
+  history.forEach((cmd) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,0.04);';
+
+    const code = document.createElement('code');
+    code.textContent = cmd;
+    code.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--text);';
+    row.appendChild(code);
+
+    const fillBtn = document.createElement('button');
+    fillBtn.textContent = 'Fill';
+    fillBtn.style.cssText = 'background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px;';
+    fillBtn.onclick = () => terminalFillFromHistory(cmd);
+    row.appendChild(fillBtn);
+
+    const runBtn = document.createElement('button');
+    runBtn.textContent = 'Run';
+    runBtn.style.cssText = 'background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px;';
+    runBtn.onclick = () => terminalRunFromHistory(cmd);
+    row.appendChild(runBtn);
+
+    panel.appendChild(row);
+  });
+}
+
+function _terminalResetOutput(outputEl) {
+  if (!outputEl) return;
+  outputEl.innerHTML = '<div class="terminal-system-line" style="color:var(--text-dim);margin-bottom:6px;">Terminal ready. Type commands or use quick buttons above. Use Up/Down for history.</div>';
+}
+
+function _terminalAllocEntryId() {
+  const state = _terminalStreamState();
+  state.nextEntryId = Number(state.nextEntryId || 0) + 1;
+  return 'term-entry-' + state.nextEntryId;
+}
+
+function _terminalCurrentFilter() {
+  const filterInput = document.getElementById('terminal-filter-input');
+  return String(filterInput ? filterInput.value : '').trim().toLowerCase();
+}
+
+function terminalFilterOutput(value) {
+  const output = document.getElementById('terminal-output');
+  if (!output) return;
+  const needle = String(value || '').trim().toLowerCase();
+  const cards = Array.from(output.querySelectorAll('.terminal-result-card'));
+  const prompts = Array.from(output.querySelectorAll('.terminal-prompt-line'));
+  const visibleEntryIds = new Set();
+
+  cards.forEach((card) => {
+    const haystack = `${card.dataset.terminalCommand || ''}\n${card.dataset.terminalOutput || ''}`.toLowerCase();
+    const visible = !needle || haystack.includes(needle);
+    const container = card.parentElement && card.parentElement !== output ? card.parentElement : card;
+    container.style.display = visible ? '' : 'none';
+    if (visible && card.dataset.terminalEntryId) {
+      visibleEntryIds.add(card.dataset.terminalEntryId);
+    }
+  });
+
+  prompts.forEach((prompt) => {
+    const entryId = prompt.dataset.terminalEntryId || '';
+    const text = (prompt.textContent || '').toLowerCase();
+    const visible = !needle || visibleEntryIds.has(entryId) || text.includes(needle);
+    prompt.style.display = visible ? '' : 'none';
+  });
+
+  output.querySelectorAll('.terminal-system-line').forEach((line) => {
+    line.style.display = needle ? 'none' : '';
+  });
+}
+
+function _terminalAppendPromptLine(output, cmd, entryId) {
+  const line = document.createElement('div');
+  line.className = 'terminal-prompt-line';
+  line.dataset.terminalEntryId = entryId;
+  line.style.color = '#5c9bd6';
+  line.textContent = '❯ ' + cmd;
+  output.appendChild(line);
+  return line;
+}
+
+function _persistTerminalHistory() {
+  const state = _terminalStreamState();
+  try {
+    localStorage.setItem('fridays-terminal-history', JSON.stringify((state.history || []).slice(-80)));
+  } catch {}
+  if (state.historyOpen) {
+    _terminalRenderHistoryPanel();
+  }
+  _terminalSyncHistoryUi();
+}
+
+function _terminalPushHistory(cmd) {
+  const clean = String(cmd || '').trim();
+  if (!clean) return;
+  const state = _terminalStreamState();
+  const history = Array.isArray(state.history) ? state.history : [];
+  if (history[history.length - 1] !== clean) {
+    history.push(clean);
+    state.history = history.slice(-80);
+    _persistTerminalHistory();
+  }
+  state.historyIndex = -1;
+  state.draft = '';
+}
+
+function _terminalStepHistory(direction, inputEl) {
+  const state = _terminalStreamState();
+  const history = Array.isArray(state.history) ? state.history : [];
+  if (!inputEl || !history.length) return;
+
+  if (direction < 0) {
+    if (state.historyIndex === -1) {
+      state.draft = inputEl.value || '';
+      state.historyIndex = history.length - 1;
+    } else if (state.historyIndex > 0) {
+      state.historyIndex -= 1;
+    }
+    inputEl.value = history[state.historyIndex] || '';
+  } else {
+    if (state.historyIndex === -1) return;
+    if (state.historyIndex < history.length - 1) {
+      state.historyIndex += 1;
+      inputEl.value = history[state.historyIndex] || '';
+    } else {
+      state.historyIndex = -1;
+      inputEl.value = state.draft || '';
+    }
+  }
+
+  const len = inputEl.value.length;
+  inputEl.setSelectionRange(len, len);
+}
+
+function terminalHandleInputKeydown(event) {
+  if (!event) return;
+  if (event.key === 'Escape') {
+    const state = _terminalStreamState();
+    if (state.historyOpen) {
+      event.preventDefault();
+      terminalToggleHistory(false);
+    }
+    return;
+  }
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    runTerminalCmd();
+    return;
+  }
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    _terminalStepHistory(-1, event.target);
+    return;
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    _terminalStepHistory(1, event.target);
+  }
+}
+
+function terminalToggleHistory(force) {
+  const state = _terminalStreamState();
+  state.historyOpen = typeof force === 'boolean' ? force : !state.historyOpen;
+  if (state.historyOpen) {
+    _terminalRenderHistoryPanel();
+  }
+  _terminalSyncHistoryUi();
+}
+
+function terminalFillFromHistory(cmd) {
+  const input = document.getElementById('terminal-input');
+  if (!input) return;
+  input.value = String(cmd || '');
+  const len = input.value.length;
+  input.focus();
+  input.setSelectionRange(len, len);
+  terminalToggleHistory(false);
+}
+
+function terminalRunFromHistory(cmd) {
+  if (_terminalStreamState().running) {
+    showToast('Wait for the active command to finish first', 'error');
+    return;
+  }
+  terminalFillFromHistory(cmd);
+  runTerminalCmd();
+}
+
+function terminalClearHistory() {
+  const state = _terminalStreamState();
+  state.history = [];
+  state.historyIndex = -1;
+  state.draft = '';
+  _persistTerminalHistory();
+  _terminalRenderHistoryPanel();
+  showToast('Terminal history cleared', 'success');
+}
+
+function terminalClearOutput() {
+  const state = _terminalStreamState();
+  if (state.running) {
+    showToast('Stop the active command before clearing output', 'error');
+    return;
+  }
+  const output = document.getElementById('terminal-output');
+  _terminalResetOutput(output);
+}
+
+async function terminalCopyResult(copyId) {
+  const state = _terminalStreamState();
+  const text = String((state.copyStore || {})[copyId] || '');
+  if (!text) {
+    showToast('Nothing to copy for this command', 'error');
+    return;
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const temp = document.createElement('textarea');
+      temp.value = text;
+      temp.setAttribute('readonly', 'readonly');
+      temp.style.position = 'fixed';
+      temp.style.opacity = '0';
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand('copy');
+      document.body.removeChild(temp);
+    }
+    showToast('Command output copied', 'success');
+  } catch (e) {
+    showToast('Copy failed: ' + (e.message || e), 'error');
+  }
+}
+
+function terminalRerunCommand(actionId) {
+  const cmd = _terminalReadActionValue(actionId);
+  if (!cmd) {
+    showToast('Command is no longer available to rerun', 'error');
+    return;
+  }
+  if (_terminalStreamState().running) {
+    showToast('Wait for the active command to finish first', 'error');
+    return;
+  }
+  cmdTerminal(cmd);
+}
+
+function terminalPinCommand(actionId) {
+  const cmd = _terminalReadActionValue(actionId);
+  if (!cmd) {
+    showToast('Command is no longer available to pin', 'error');
+    return;
+  }
+
+  const custom = getCustomTerminalShortcuts();
+  if (custom.some(item => String(item.cmd || '').trim() === cmd.trim())) {
+    showToast('Command is already pinned in shortcuts', 'info');
+    return;
+  }
+
+  const suggested = cmd.length > 28 ? cmd.slice(0, 28) + '…' : cmd;
+  const label = prompt('Shortcut label for this command:', suggested);
+  if (label == null) return;
+  const cleanLabel = String(label || '').trim() || suggested;
+  custom.push({ icon: '📌', label: cleanLabel, cmd });
+  saveCustomTerminalShortcuts(custom);
+
+  const terminalWin = winManager.windows.get('terminal');
+  if (terminalWin) {
+    const btnContainer = terminalWin.el.querySelector('#terminal-buttons');
+    if (btnContainer) {
+      renderTerminalQuickButtons(btnContainer, terminalWin);
+    }
+  }
+
+  showToast('Pinned to terminal shortcuts', 'success');
+}
+
+function _terminalSyncControls() {
+  const state = _terminalStreamState();
+  const stopBtn = document.getElementById('terminal-stop-btn');
+  const autoBtn = document.getElementById('terminal-autoscroll-toggle');
+  if (stopBtn) {
+    stopBtn.disabled = !state.running;
+    stopBtn.style.cursor = state.running ? 'pointer' : 'not-allowed';
+    stopBtn.style.opacity = state.running ? '1' : '0.55';
+  }
+  if (autoBtn) {
+    autoBtn.textContent = `Auto-scroll: ${state.autoScroll ? 'On' : 'Off'}`;
+    autoBtn.style.color = state.autoScroll ? 'var(--text)' : 'var(--text-dim)';
+  }
+}
+
+function terminalToggleAutoScroll() {
+  const state = _terminalStreamState();
+  state.autoScroll = !state.autoScroll;
+  _terminalSyncControls();
+}
+
+async function terminalStopActive() {
+  const state = _terminalStreamState();
+  if (!state.running) return;
+  try {
+    if (state.commandId) {
+      await fetch('/api/terminal/stream/stop', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ command_id: state.commandId, proposal_id: state.proposalId || null })
+      }).catch(() => {});
+    }
+    if (state.controller) {
+      state.controller.abort();
+    }
+  } finally {
+    showToast('Stopping command...', 'info');
   }
 }
 
@@ -4375,6 +4860,10 @@ function toggleTerminalShortcuts() {
 function loadFilesData(win) {
   const listEl = win.el.querySelector('#files-list');
   const pathInput = win.el.querySelector('#files-path-input');
+  const findInput = win.el.querySelector('#files-find-input');
+  const replaceInput = win.el.querySelector('#files-replace-input');
+  const splitter = win.el.querySelector('#files-preview-splitter');
+  const previewEl = win.el.querySelector('#files-preview');
   const breadcrumbEl = win.el.querySelector('#files-breadcrumb');
   if (!listEl || !pathInput) return;
   
@@ -4382,6 +4871,41 @@ function loadFilesData(win) {
   window.__filesCurrentPath = '';
   window.__filesCurrentEntries = [];
   window.__filesPreviewState = null;
+  window.__filesReplacePlan = null;
+
+  const filesPreviewDefaultWidth = 320;
+  const savedWidth = parseInt(localStorage.getItem('fridays-files-preview-width') || '', 10);
+  if (previewEl && Number.isFinite(savedWidth) && savedWidth >= 240 && savedWidth <= 760) {
+    previewEl.style.flex = `0 0 ${savedWidth}px`;
+  }
+
+  if (splitter && previewEl) {
+    splitter.onmousedown = (e) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startWidth = previewEl.getBoundingClientRect().width;
+      const onMove = (ev) => {
+        const delta = startX - ev.clientX;
+        const nextWidth = Math.max(240, Math.min(760, startWidth + delta));
+        previewEl.style.flex = `0 0 ${Math.round(nextWidth)}px`;
+      };
+      const onUp = () => {
+        const finalWidth = Math.round(previewEl.getBoundingClientRect().width);
+        if (finalWidth >= 240 && finalWidth <= 760) {
+          localStorage.setItem('fridays-files-preview-width', String(finalWidth));
+        }
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+
+    splitter.ondblclick = () => {
+      previewEl.style.flex = `0 0 ${filesPreviewDefaultWidth}px`;
+      localStorage.setItem('fridays-files-preview-width', String(filesPreviewDefaultWidth));
+    };
+  }
   
   pathInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -4392,6 +4916,13 @@ function loadFilesData(win) {
         filesNavigateTo(path || '');
       }
     }
+  });
+
+  [findInput, replaceInput].forEach((el) => {
+    if (!el) return;
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') filesReplacePreview();
+    });
   });
   
   // Load default path
@@ -4554,13 +5085,160 @@ function filesSearchByPattern(pattern) {
     });
 }
 
+async function filesReplacePreview() {
+  const listEl = window.__filesWin?.el?.querySelector('#files-list');
+  const breadcrumbEl = window.__filesWin?.el?.querySelector('#files-breadcrumb');
+  const findInput = window.__filesWin?.el?.querySelector('#files-find-input');
+  const replaceInput = window.__filesWin?.el?.querySelector('#files-replace-input');
+  const patternInput = window.__filesWin?.el?.querySelector('#files-replace-pattern');
+  if (!listEl || !findInput || !replaceInput || !patternInput) return;
+
+  const findText = findInput.value || '';
+  const replaceText = replaceInput.value || '';
+  const pattern = (patternInput.value || '*.py').trim() || '*.py';
+  const scopePath = window.__filesCurrentPath || '';
+
+  if (!findText.trim()) {
+    showToast('Find text is required', 'error');
+    return;
+  }
+
+  listEl.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:11px;">Preparing replacement preview...</div>';
+  if (breadcrumbEl) breadcrumbEl.textContent = `Replace preview: "${findText}" -> "${replaceText}"`;
+
+  try {
+    const resp = await fetch('/api/workspace/replace/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        find_text: findText,
+        replace_text: replaceText,
+        pattern,
+        scope_path: scopePath,
+      })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || 'preview failed');
+
+    window.__filesReplacePlan = {
+      findText,
+      replaceText,
+      pattern,
+      scopePath,
+      preview: data,
+    };
+
+    const matches = data.matches || [];
+    if (!matches.length) {
+      listEl.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:11px;">No matches found in this scope</div>';
+      showToast('No matches found', 'info');
+      return;
+    }
+
+    listEl.innerHTML = '';
+    matches.forEach((entry) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:10px 12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:4px;font-size:11px;';
+      const sample = (entry.lines || []).map(n => `L${n}`).join(', ');
+      row.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(entry.path)}</span>
+          <span style="color:var(--accent);font-size:10px;white-space:nowrap;">${entry.occurrences} hit${entry.occurrences === 1 ? '' : 's'}</span>
+        </div>
+        <div style="color:var(--text-dim);font-size:10px;">${sample ? `lines ${_escHtml(sample)}` : 'line numbers unavailable'}</div>
+      `;
+      row.onclick = () => filesPreviewFileByPath(entry.path);
+      listEl.appendChild(row);
+    });
+
+    showToast(`Preview ready: ${data.total_replacements} replacement${data.total_replacements === 1 ? '' : 's'} in ${data.matched_files} file${data.matched_files === 1 ? '' : 's'}`, 'success');
+  } catch (e) {
+    listEl.innerHTML = `<div style="padding:12px;color:var(--error);font-size:11px;">Error: ${_escHtml(e.message || e)}</div>`;
+    showToast(`Replace preview failed: ${e.message || e}`, 'error');
+  }
+}
+
+async function filesReplaceApply() {
+  const plan = window.__filesReplacePlan;
+  if (!plan) {
+    showToast('Run Preview first', 'error');
+    return;
+  }
+
+  if (!confirm(`Apply ${plan.preview?.total_replacements || 0} replacements across ${plan.preview?.matched_files || 0} files?`)) {
+    return;
+  }
+
+  let proposalId = null;
+  try {
+    const alm = await fetch('/api/alm/status').then(r => r.json()).catch(() => null);
+    if (alm && alm.status === 'enforced') {
+      const createResp = await fetch('/api/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agent: 'terminal_ui',
+          title: 'Workspace bulk replace',
+          description: `Replace "${plan.findText}" with "${plan.replaceText}" in ${plan.pattern}`,
+          priority: 4,
+        })
+      });
+      const created = await createResp.json().catch(() => ({}));
+      proposalId = created.proposal_id;
+      if (!proposalId) throw new Error('ALM proposal creation failed');
+
+      await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'approved' })
+      });
+    }
+
+    const resp = await fetch('/api/workspace/replace/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        find_text: plan.findText,
+        replace_text: plan.replaceText,
+        pattern: plan.pattern,
+        scope_path: plan.scopePath,
+        proposal_id: proposalId,
+      })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || 'replace apply failed');
+
+    if (proposalId) {
+      await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'executed' })
+      }).catch(() => {});
+    }
+
+    showToast(`Applied ${data.total_replacements} replacement${data.total_replacements === 1 ? '' : 's'} in ${data.changed_files} file${data.changed_files === 1 ? '' : 's'}`, 'success');
+    filesNavigateTo(window.__filesCurrentPath || '');
+  } catch (e) {
+    if (proposalId) {
+      await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'rejected' })
+      }).catch(() => {});
+    }
+    showToast(`Replace apply failed: ${e.message || e}`, 'error');
+  }
+}
+
 function filesPreviewFile(entry) {
   const previewEl = window.__filesWin?.el?.querySelector('#files-preview');
+  const splitterEl = window.__filesWin?.el?.querySelector('#files-preview-splitter');
   const bodyEl = window.__filesWin?.el?.querySelector('#files-preview-body');
   if (!previewEl || !bodyEl) return;
   
   bodyEl.textContent = 'Loading file...';
   previewEl.style.display = 'flex';
+  if (splitterEl) splitterEl.style.display = 'block';
   
   fetch(`/api/workspace/file?path=${encodeURIComponent(entry.path)}&max_bytes=10000`)
     .then(r => r.json())
@@ -4585,10 +5263,23 @@ function filesPreviewFile(entry) {
     });
 }
 
+function filesHidePreview() {
+  const previewEl = window.__filesWin?.el?.querySelector('#files-preview');
+  const splitterEl = window.__filesWin?.el?.querySelector('#files-preview-splitter');
+  if (previewEl) previewEl.style.display = 'none';
+  if (splitterEl) splitterEl.style.display = 'none';
+}
+
 function filesRenderPreview() {
   const bodyEl = window.__filesWin?.el?.querySelector('#files-preview-body');
   const state = window.__filesPreviewState;
   if (!bodyEl || !state) return;
+
+  const codeOpsPanel = window.__filesWin?.el?.querySelector('#files-code-ops');
+  const isSupportedType = state.path && /\.(py|js|jsx|ts|tsx|yaml|yml|json)$/i.test(state.path);
+  if (codeOpsPanel) {
+    codeOpsPanel.style.display = (state.editing || !isSupportedType) ? 'none' : 'block';
+  }
 
   const relPath = state.path || '';
   const sizeKb = Math.max(1, Math.round((state.size || 0) / 1024));
@@ -4830,6 +5521,598 @@ function filesPreviewFileByPath(path) {
   filesPreviewFile({ path, type: 'file', name: path.split('/').pop() || path });
 }
 
+async function codeOpRunTests() {
+  const state = window.__filesPreviewState;
+  if (!state) { showToast('No file selected', 'error'); return; }
+  
+  const statusEl = document.getElementById('files-op-status');
+  const statusText = document.getElementById('files-op-status-text');
+  statusEl.style.display = 'block';
+  statusText.textContent = 'Running tests...';
+  
+  try {
+    const resp = await fetch('/api/code-ops/pytest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_path: state.path })
+    });
+    const result = await resp.json().catch(() => ({}));
+    if (!result.ok) {
+      statusText.innerHTML = `<span style="color:#f44336;">❌ ${_escHtml(result.error || 'Test failed')}</span>`;
+      showToast(`Tests failed: ${result.error || 'unknown error'}`, 'error');
+    } else {
+      const passed = result.passed || 0;
+      const failed = result.failed || 0;
+      const total = passed + failed;
+      statusText.innerHTML = `<span style="color:#4caf50;">✓ Tests: ${passed}/${total} passed</span> ${result.duration ? `<span style="color:var(--text-dim);">(${result.duration.toFixed(2)}s)</span>` : ''}`;
+      showToast(`Tests: ${passed}/${total} passed`, 'success');
+    }
+  } catch (e) {
+    statusText.innerHTML = `<span style="color:#f44336;">Error: ${_escHtml(e.message || e)}</span>`;
+  }
+}
+
+async function codeOpLintFile() {
+  const state = window.__filesPreviewState;
+  if (!state || !state.path.endsWith('.py')) { showToast('Only Python files supported', 'error'); return; }
+  
+  const statusEl = document.getElementById('files-op-status');
+  const statusText = document.getElementById('files-op-status-text');
+  statusEl.style.display = 'block';
+  statusText.textContent = 'Linting...';
+  
+  try {
+    const resp = await fetch('/api/code-ops/pylint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_path: state.path })
+    });
+    const result = await resp.json().catch(() => ({}));
+    if (!result.ok) {
+      const count = result.issues ? result.issues.length : 0;
+      statusText.innerHTML = `<span style="color:#ffc107;">⚠ ${count} issue${count !== 1 ? 's' : ''} found</span>`;
+      const msg = result.issues ? result.issues.slice(0, 3).map(i => `${i.line}: ${i.msg}`).join('; ') : result.error;
+      showToast(`Lint issues: ${msg}`, 'info');
+    } else {
+      statusText.innerHTML = `<span style="color:#4caf50;">✓ No lint issues</span>`;
+      showToast('No lint issues', 'success');
+    }
+  } catch (e) {
+    statusText.innerHTML = `<span style="color:#f44336;">Error: ${_escHtml(e.message || e)}</span>`;
+  }
+}
+
+async function codeOpFormatFile() {
+  const state = window.__filesPreviewState;
+  if (!state || !state.path.endsWith('.py')) { showToast('Only Python files supported', 'error'); return; }
+  
+  const statusEl = document.getElementById('files-op-status');
+  const statusText = document.getElementById('files-op-status-text');
+  statusEl.style.display = 'block';
+  statusText.textContent = 'Formatting...';
+  
+  try {
+    const resp = await fetch('/api/code-ops/format', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_path: state.path, content: state.content })
+    });
+    const result = await resp.json().catch(() => ({}));
+    if (!result.ok) {
+      statusText.innerHTML = `<span style="color:#f44336;">❌ ${_escHtml(result.error || 'Format failed')}</span>`;
+      showToast(`Format failed: ${result.error}`, 'error');
+    } else {
+      state.content = result.formatted_content;
+      state.originalContent = result.formatted_content;
+      statusText.innerHTML = `<span style="color:#4caf50;">✓ Formatted (${result.lines_changed} lines)</span>`;
+      showToast(`Code formatted (${result.lines_changed} lines changed)`, 'success');
+      filesRenderPreview();
+    }
+  } catch (e) {
+    statusText.innerHTML = `<span style="color:#f44336;">Error: ${_escHtml(e.message || e)}</span>`;
+  }
+}
+
+async function codeOpCommit() {
+  const state = window.__filesPreviewState;
+  if (!state) { showToast('No file selected', 'error'); return; }
+  
+  const msg = prompt('Commit message:');
+  if (!msg) return;
+  
+  const statusEl = document.getElementById('files-op-status');
+  const statusText = document.getElementById('files-op-status-text');
+  statusEl.style.display = 'block';
+  statusText.textContent = 'Creating commit...';
+  
+  let proposalId = null;
+  try {
+    const alm = await fetch('/api/alm/status').then(r => r.json()).catch(() => null);
+    if (alm && alm.status === 'enforced') {
+      const createResp = await fetch('/api/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agent: 'terminal_ui',
+          title: 'Git commit',
+          description: `Commit via Files panel: ${msg}`,
+          priority: 3,
+        })
+      });
+      const created = await createResp.json().catch(() => ({}));
+      proposalId = created.proposal_id;
+      if (!proposalId) throw new Error('ALM proposal creation failed');
+      
+      await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'approved' })
+      });
+    }
+    
+    const resp = await fetch('/api/code-ops/commit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, proposal_id: proposalId })
+    });
+    const result = await resp.json().catch(() => ({}));
+    if (!result.ok) {
+      statusText.innerHTML = `<span style="color:#f44336;">❌ ${_escHtml(result.error || 'Commit failed')}</span>`;
+      showToast(`Commit failed: ${result.error}`, 'error');
+      if (proposalId) {
+        await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'rejected' })
+        }).catch(() => {});
+      }
+    } else {
+      statusText.innerHTML = `<span style="color:#4caf50;">✓ Committed: ${_escHtml(result.commit_hash ? result.commit_hash.substring(0, 7) : 'done')}</span>`;
+      showToast(`Changes committed (${result.files_changed} files)`, 'success');
+      if (proposalId) {
+        await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'executed' })
+        }).catch(() => {});
+      }
+    }
+  } catch (e) {
+    statusText.innerHTML = `<span style="color:#f44336;">Error: ${_escHtml(e.message || e)}</span>`;
+    if (proposalId) {
+      await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'rejected' })
+      }).catch(() => {});
+    }
+  }
+}
+
+function _gitState() {
+  if (!window.__gitState) {
+    window.__gitState = {
+      selectedPath: '',
+      selectedStaged: false,
+      status: null,
+      filter: '',
+    };
+  }
+  return window.__gitState;
+}
+
+function loadGitData(win) {
+  window.__gitWin = win;
+  const state = _gitState();
+  const filterInput = win.el.querySelector('#git-filter-input');
+  const commitInput = win.el.querySelector('#git-commit-message');
+  if (filterInput && !filterInput.dataset.bound) {
+    filterInput.dataset.bound = '1';
+    filterInput.addEventListener('input', (e) => {
+      state.filter = String(e.target.value || '');
+      gitRenderStatus();
+    });
+  }
+  if (commitInput && !commitInput.dataset.bound) {
+    commitInput.dataset.bound = '1';
+    commitInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') gitCommitChanges();
+    });
+  }
+  gitRefreshStatus({ preserveSelection: true });
+  gitLoadProposals();
+}
+
+async function gitRefreshStatus(options = {}) {
+  const state = _gitState();
+  const preserveSelection = options.preserveSelection !== false;
+  const listEl = window.__gitWin?.el?.querySelector('#git-files-list');
+  const diffBody = window.__gitWin?.el?.querySelector('#git-diff-body');
+  if (listEl) listEl.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:11px;">Loading repository status...</div>';
+  if (diffBody && !preserveSelection) diffBody.textContent = 'Loading diff...';
+
+  try {
+    const resp = await fetch('/api/git/status');
+    const data = await resp.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || 'git status failed');
+    state.status = data;
+
+    const files = Array.isArray(data.files) ? data.files : [];
+    if (!preserveSelection || !files.some(entry => entry.path === state.selectedPath)) {
+      const first = files[0] || null;
+      state.selectedPath = first ? first.path : '';
+      state.selectedStaged = first ? !!(first.staged && !first.unstaged) : false;
+    }
+
+    gitRenderStatus();
+    if (state.selectedPath) {
+      await gitLoadDiff(state.selectedPath, state.selectedStaged, { silent: true });
+    } else if (diffBody) {
+      diffBody.textContent = 'Working tree is clean.';
+      const titleEl = window.__gitWin?.el?.querySelector('#git-diff-title');
+      const actionsEl = window.__gitWin?.el?.querySelector('#git-diff-actions');
+      if (titleEl) titleEl.textContent = 'No changed files';
+      if (actionsEl) actionsEl.innerHTML = '';
+    }
+  } catch (e) {
+    if (listEl) listEl.innerHTML = `<div style="padding:12px;color:#f77;font-size:11px;">Error: ${_escHtml(e.message || e)}</div>`;
+    showToast(`Git status failed: ${e.message || e}`, 'error');
+  }
+}
+
+function gitRenderStatus() {
+  const state = _gitState();
+  const win = window.__gitWin;
+  if (!win) return;
+  const listEl = win.el.querySelector('#git-files-list');
+  const summaryEl = win.el.querySelector('#git-summary');
+  if (!listEl || !summaryEl) return;
+
+  const status = state.status || { files: [], counts: {} };
+  const files = Array.isArray(status.files) ? status.files : [];
+  const filterNeedle = String(state.filter || '').trim().toLowerCase();
+  const filtered = !filterNeedle
+    ? files
+    : files.filter(entry => `${entry.path} ${entry.status_label}`.toLowerCase().includes(filterNeedle));
+
+  const branchLabel = status.branch || '(detached)';
+  const aheadBehind = [];
+  if (status.ahead) aheadBehind.push(`ahead ${status.ahead}`);
+  if (status.behind) aheadBehind.push(`behind ${status.behind}`);
+  summaryEl.textContent = `${branchLabel}${status.upstream ? ` -> ${status.upstream}` : ''} · ${status.clean ? 'clean tree' : `${status.counts.changed || 0} changed`} ${aheadBehind.length ? `· ${aheadBehind.join(', ')}` : ''}`;
+
+  if (!filtered.length) {
+    listEl.innerHTML = `<div style="padding:12px;color:var(--text-dim);font-size:11px;">${files.length ? 'No files match the current filter.' : 'No changed files in this repository.'}</div>`;
+    return;
+  }
+
+  listEl.innerHTML = '';
+  filtered.forEach((entry) => {
+    const row = document.createElement('div');
+    const selected = entry.path === state.selectedPath;
+    row.style.cssText = `padding:10px 12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px;cursor:pointer;background:${selected ? 'rgba(255,255,255,0.04)' : 'transparent'};`;
+    row.onclick = () => gitSelectFile(entry.path, entry.staged && !entry.unstaged);
+
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;';
+
+    const pathEl = document.createElement('div');
+    pathEl.style.cssText = 'font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    pathEl.textContent = entry.path;
+    head.appendChild(pathEl);
+
+    const badge = document.createElement('span');
+    badge.style.cssText = 'font-size:10px;color:var(--accent);border:1px solid var(--border);border-radius:999px;padding:2px 8px;white-space:nowrap;';
+    badge.textContent = entry.status_label;
+    head.appendChild(badge);
+    row.appendChild(head);
+
+    const meta = document.createElement('div');
+    meta.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;';
+
+    const flags = document.createElement('div');
+    flags.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;font-size:10px;color:var(--text-dim);';
+    const labels = [];
+    if (entry.staged) labels.push('staged');
+    if (entry.unstaged) labels.push('unstaged');
+    if (entry.untracked) labels.push('untracked');
+    if (entry.conflicted) labels.push('conflict');
+    flags.textContent = labels.join(' · ');
+    meta.appendChild(flags);
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
+
+    if (entry.unstaged || entry.untracked) {
+      const stageBtn = document.createElement('button');
+      stageBtn.textContent = 'Propose Stage';
+      stageBtn.style.cssText = 'background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px;';
+      stageBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        gitStagePath(entry.path);
+      };
+      actions.appendChild(stageBtn);
+    }
+
+    if (entry.staged) {
+      const unstageBtn = document.createElement('button');
+      unstageBtn.textContent = 'Propose Unstage';
+      unstageBtn.style.cssText = 'background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px;';
+      unstageBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        gitUnstagePath(entry.path);
+      };
+      actions.appendChild(unstageBtn);
+    }
+
+    meta.appendChild(actions);
+    row.appendChild(meta);
+    listEl.appendChild(row);
+  });
+}
+
+async function gitSelectFile(path, preferStaged = false) {
+  const state = _gitState();
+  state.selectedPath = path;
+  state.selectedStaged = !!preferStaged;
+  gitRenderStatus();
+  await gitLoadDiff(path, state.selectedStaged);
+}
+
+async function gitLoadDiff(path, staged = false, options = {}) {
+  const state = _gitState();
+  const win = window.__gitWin;
+  if (!win || !path) return;
+  const titleEl = win.el.querySelector('#git-diff-title');
+  const bodyEl = win.el.querySelector('#git-diff-body');
+  const actionsEl = win.el.querySelector('#git-diff-actions');
+  if (!titleEl || !bodyEl || !actionsEl) return;
+
+  state.selectedPath = path;
+  state.selectedStaged = !!staged;
+  const entry = (state.status?.files || []).find(item => item.path === path);
+
+  titleEl.textContent = `${path} · ${staged ? 'staged diff' : 'working tree diff'}`;
+  bodyEl.textContent = options.silent ? bodyEl.textContent : 'Loading diff...';
+  actionsEl.innerHTML = '';
+
+  const openBtn = document.createElement('button');
+  openBtn.textContent = 'Open in Files';
+  openBtn.style.cssText = 'background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;';
+  openBtn.onclick = () => {
+    openWindow('files', '📁 Files', 'view-files');
+    setTimeout(() => filesPreviewFileByPath(path), 140);
+  };
+  actionsEl.appendChild(openBtn);
+
+  if (entry?.unstaged || entry?.untracked) {
+    const workingBtn = document.createElement('button');
+    workingBtn.textContent = 'Working';
+    workingBtn.style.cssText = `background:${!staged ? 'var(--accent)' : 'var(--card)'};border:1px solid ${!staged ? 'var(--accent)' : 'var(--border)'};color:${!staged ? '#000' : 'var(--text)'};border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;`;
+    workingBtn.onclick = () => gitLoadDiff(path, false);
+    actionsEl.appendChild(workingBtn);
+  }
+  if (entry?.staged) {
+    const stagedBtn = document.createElement('button');
+    stagedBtn.textContent = 'Staged';
+    stagedBtn.style.cssText = `background:${staged ? 'var(--accent)' : 'var(--card)'};border:1px solid ${staged ? 'var(--accent)' : 'var(--border)'};color:${staged ? '#000' : 'var(--text)'};border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;`;
+    stagedBtn.onclick = () => gitLoadDiff(path, true);
+    actionsEl.appendChild(stagedBtn);
+  }
+
+  try {
+    const resp = await fetch(`/api/git/diff?path=${encodeURIComponent(path)}&staged=${staged ? '1' : '0'}`);
+    const data = await resp.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || 'git diff failed');
+    bodyEl.textContent = data.diff || '(No diff in this view)';
+  } catch (e) {
+    bodyEl.textContent = `Error loading diff: ${e.message || e}`;
+    showToast(`Git diff failed: ${e.message || e}`, 'error');
+  }
+}
+
+async function gitStagePath(path) {
+  let proposalId = null;
+  try {
+    proposalId = await _createALMProposal(
+      'Git stage file',
+      `Stage repository path via Git panel: ${path}`,
+      3,
+      { autoApprove: false }
+    );
+    showToast('Stage proposal created. Approve in Studio or Git ALM section, then Execute.', 'info');
+    await gitLoadProposals();
+  } catch (e) {
+    await _rejectALMProposal(proposalId);
+    showToast(`Stage proposal failed: ${e.message || e}`, 'error');
+  }
+}
+
+async function gitUnstagePath(path) {
+  let proposalId = null;
+  try {
+    proposalId = await _createALMProposal(
+      'Git unstage file',
+      `Unstage repository path via Git panel: ${path}`,
+      3,
+      { autoApprove: false }
+    );
+    showToast('Unstage proposal created. Approve in Studio or Git ALM section, then Execute.', 'info');
+    await gitLoadProposals();
+  } catch (e) {
+    await _rejectALMProposal(proposalId);
+    showToast(`Unstage proposal failed: ${e.message || e}`, 'error');
+  }
+}
+
+async function gitCommitChanges() {
+  const commitInput = window.__gitWin?.el?.querySelector('#git-commit-message');
+  const message = String(commitInput?.value || '').trim();
+  if (!message) {
+    showToast('Commit message is required', 'error');
+    return;
+  }
+
+  let proposalId = null;
+  try {
+    proposalId = await _createALMProposal(
+      'Git commit staged changes',
+      `Commit staged repository changes via Git panel: ${message.slice(0, 240)}`,
+      3,
+      { autoApprove: false }
+    );
+    if (commitInput) commitInput.value = '';
+    showToast('Commit proposal created. Approve in Studio or Git ALM section, then Execute.', 'info');
+    await gitLoadProposals();
+  } catch (e) {
+    await _rejectALMProposal(proposalId);
+    showToast(`Commit proposal failed: ${e.message || e}`, 'error');
+  }
+}
+
+async function gitLoadProposals() {
+  try {
+    const resp = await fetch('/api/work-proposals?limit=120');
+    const data = await resp.json();
+    const proposals = data.proposals || [];
+    
+    // Filter for git-related proposals
+    const gitProposals = proposals.filter(p => {
+      const title = (p.title || '').toLowerCase();
+      const desc = (p.description || '').toLowerCase();
+      return title.includes('git ') || desc.includes('git panel:');
+    });
+    window.__gitProposals = gitProposals;
+
+    const container = document.getElementById('git-proposals-list');
+    if (!gitProposals.length) {
+      container.innerHTML = '<div style="padding:8px;text-align:center;color:var(--text-dim);">No Git proposals</div>';
+      return;
+    }
+
+    container.innerHTML = gitProposals.map(p => {
+      const created = (p.created_at || '').slice(0, 16);
+      const pid = p.proposal_id || '';
+      const title = p.title || 'Untitled';
+      const status = String(p.status || 'pending').toLowerCase();
+      const statusColor = status === 'approved' ? '#4caf50' : status === 'executed' ? '#29b6f6' : status === 'rejected' ? '#f44336' : 'var(--text-dim)';
+      const isExecutable = status === 'approved';
+      const canModerate = status === 'pending' || status === 'approved' || status === 'in_progress' || status === 'done';
+      return `
+        <div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:4px;padding:8px;margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;">
+            <div style="font-size:10px;font-weight:600;flex:1;word-break:break-word;">${title}</div>
+            <span style="font-size:9px;color:${statusColor};white-space:nowrap;">${status}</span>
+          </div>
+          <div style="font-size:9px;color:var(--text-dim);margin-bottom:6px;">${created}</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            ${status === 'pending' ? `<button onclick="gitApproveProposal('${pid}')" style="flex:1;min-width:60px;padding:3px 6px;background:#4caf5020;border:1px solid #4caf5060;border-radius:3px;color:#4caf50;font-size:9px;font-weight:600;cursor:pointer;">✓ Approve</button>` : ''}
+            ${canModerate ? `<button onclick="gitRejectProposal('${pid}')" style="flex:1;min-width:60px;padding:3px 6px;background:#f4433620;border:1px solid #f4433660;border-radius:3px;color:#f44336;font-size:9px;font-weight:600;cursor:pointer;">✗ Reject</button>` : ''}
+            ${isExecutable ? `<button onclick="gitExecuteProposal('${pid}')" style="flex:1;min-width:60px;padding:3px 6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:3px;color:#29b6f6;font-size:9px;font-weight:700;cursor:pointer;">▶ Execute</button>` : ''}
+            <button onclick="openWindow('studio','🎨 Studio','view-studio');setTimeout(() => studioSetTab('pending'),150)" style="flex:1;min-width:60px;padding:3px 6px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:9px;cursor:pointer;">Studio</button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    const container = document.getElementById('git-proposals-list');
+    if (container) container.innerHTML = `<div style="padding:8px;color:#f77;font-size:10px;">Error: ${e.message}</div>`;
+  }
+}
+
+async function gitApproveProposal(proposalId) {
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ status: 'approved' })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'approve failed');
+    showToast('Proposal approved', 'success');
+    await gitLoadProposals();
+  } catch (e) {
+    showToast('Approve failed: ' + e.message, 'error');
+  }
+}
+
+async function gitRejectProposal(proposalId) {
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ status: 'rejected' })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'reject failed');
+    showToast('Proposal rejected', 'info');
+    await gitLoadProposals();
+  } catch (e) {
+    showToast('Reject failed: ' + e.message, 'error');
+  }
+}
+
+function _gitParseProposalAction(proposal) {
+  const title = String(proposal?.title || '').toLowerCase();
+  const description = String(proposal?.description || '');
+
+  if (title.includes('git stage file')) {
+    const m = description.match(/Stage repository path via Git panel:\s*(.+)$/i);
+    return m ? { action: 'stage', path: m[1].trim() } : null;
+  }
+  if (title.includes('git unstage file')) {
+    const m = description.match(/Unstage repository path via Git panel:\s*(.+)$/i);
+    return m ? { action: 'unstage', path: m[1].trim() } : null;
+  }
+  if (title.includes('git commit staged changes')) {
+    const m = description.match(/Commit staged repository changes via Git panel:\s*(.+)$/i);
+    return m ? { action: 'commit', message: m[1].trim() } : null;
+  }
+  return null;
+}
+
+async function gitExecuteProposal(proposalId) {
+  const proposal = (window.__gitProposals || []).find(p => p.proposal_id === proposalId);
+  if (!proposal) {
+    showToast('Proposal not found in current list', 'error');
+    return;
+  }
+
+  const parsed = _gitParseProposalAction(proposal);
+  if (!parsed) {
+    showToast('Unsupported or malformed Git proposal payload', 'error');
+    return;
+  }
+
+  try {
+    let resp;
+    if (parsed.action === 'stage') {
+      resp = await fetch('/api/git/stage', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ paths: [parsed.path], proposal_id: proposalId })
+      });
+    } else if (parsed.action === 'unstage') {
+      resp = await fetch('/api/git/unstage', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ paths: [parsed.path], proposal_id: proposalId })
+      });
+    } else {
+      resp = await fetch('/api/git/commit', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ message: parsed.message, proposal_id: proposalId })
+      });
+    }
+
+    const data = await resp.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || 'execution failed');
+    await _finalizeALMProposal(proposalId);
+    showToast(`Executed ${parsed.action} proposal`, 'success');
+    await gitRefreshStatus({ preserveSelection: true });
+    await gitLoadProposals();
+  } catch (e) {
+    showToast(`Execute failed: ${e.message || e}`, 'error');
+  }
+}
+
 function _filesAbsPath(relPath) {
   const clean = String(relPath || '').replace(/^\/+/, '');
   return `/home/seven/swarm/${clean}`;
@@ -4865,8 +6148,7 @@ function filesOpenInTerminal(path, isDir) {
     : `sed -n '1,120p' ${_filesShellQuote(abs)}`;
 
   if (!winManager.windows.get('terminal')) {
-    openWindow('terminal', '⌨️ Terminal', 'view-terminal');
-    setTimeout(() => cmdTerminal(cmd), 130);
+    showToast('Open Terminal window first', 'info');
     return;
   }
   cmdTerminal(cmd);
@@ -4882,8 +6164,7 @@ function filesGrepInFile(path) {
   const cmd = `rg -n --color never -- ${_filesShellQuote(trimmed)} ${_filesShellQuote(abs)} | head -n 200`;
 
   if (!winManager.windows.get('terminal')) {
-    openWindow('terminal', '⌨️ Terminal', 'view-terminal');
-    setTimeout(() => cmdTerminal(cmd), 130);
+    showToast('Open Terminal window first', 'info');
     return;
   }
   cmdTerminal(cmd);
@@ -7069,33 +8350,42 @@ function closeTopWindow() {
 // TERMINAL COMMANDS
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function _createALMProposalForCommand(cmd) {
-  // If ALM isn't enforced, run without proposal_id.
+async function _createALMProposal(title, description, priority = 4, options = {}) {
   const almResp = await fetch('/api/alm/status').then(r => r.json()).catch(() => null);
   if (!almResp || almResp.status !== 'enforced') return null;
+  const autoApprove = options?.autoApprove !== false;
 
   const createResp = await fetch('/api/queue', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
       agent: 'terminal_ui',
-      title: 'Terminal command execution',
-      description: `Auto-created ALM proposal for terminal command: ${cmd.slice(0, 240)}`,
-      priority: 4
+      title,
+      description,
+      priority,
     })
   });
   const created = await createResp.json().catch(() => ({}));
   const proposalId = created.proposal_id;
   if (!proposalId) throw new Error('ALM proposal creation failed');
 
-  // Mark approved before execution so gate permits request.
-  await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
-    method: 'PATCH',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({status: 'approved'})
-  });
+  if (autoApprove) {
+    await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({status: 'approved'})
+    });
+  }
 
   return proposalId;
+}
+
+async function _createALMProposalForCommand(cmd) {
+  return _createALMProposal(
+    'Terminal command execution',
+    `Auto-created ALM proposal for terminal command: ${cmd.slice(0, 240)}`,
+    4
+  );
 }
 
 async function _finalizeALMProposal(proposalId) {
@@ -7107,21 +8397,41 @@ async function _finalizeALMProposal(proposalId) {
   }).catch(() => {});
 }
 
+async function _rejectALMProposal(proposalId) {
+  if (!proposalId) return;
+  await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: 'rejected'})
+  }).catch(() => {});
+}
+
 async function _renderTerminalResultCard(cmd, output, statusEl, startTime) {
+  const state = _terminalStreamState();
   const elapsed = Math.max(0, (Date.now() - startTime) / 1000);
   const ok = statusEl.ok !== false;
   const lines = (output || '').split('\n').filter(l => l.trim()).length;
   const truncated = (output || '').length > 2048;
   const displayOutput = truncated ? (output || '').slice(0, 2048) + '\n[… output truncated]' : (output || '');
-  
+  const statusIcon = ok ? '✓' : '✕';
+  const copyId = 'term-copy-' + Math.random().toString(36).slice(2, 10);
+  state.copyStore[copyId] = output || '';
+  const copyKeys = Object.keys(state.copyStore || {});
+  if (copyKeys.length > 160) {
+    delete state.copyStore[copyKeys[0]];
+  }
+  const rerunId = _terminalStoreActionValue(cmd, 'term-rerun');
+  const pinId = _terminalStoreActionValue(cmd, 'term-pin');
+  const entryId = statusEl.entryId || '';
+
   const statusColor = ok ? '#4caf50' : '#f44336';
   const statusLabel = ok ? 'success' : 'error';
   
   return `
-    <div style="margin-top:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02);overflow:hidden;">
+    <div class="terminal-result-card" data-terminal-entry-id="${_escHtml(entryId)}" data-terminal-command="${_escHtml(cmd)}" data-terminal-output="${_escHtml(output || '')}" style="margin-top:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02);overflow:hidden;">
       <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-          <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${statusColor};box-shadow:0 0 8px ${statusColor}80;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">✓</span>
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${statusColor};box-shadow:0 0 8px ${statusColor}80;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">${statusIcon}</span>
           <code style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--text);">${_escHtml(cmd)}</code>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
@@ -7132,10 +8442,131 @@ async function _renderTerminalResultCard(cmd, output, statusEl, startTime) {
       <div style="padding:10px 12px;font-family:'SF Mono','Courier New',monospace;font-size:11px;overflow-x:auto;max-height:180px;overflow-y:auto;background:rgba(0,0,0,0.2);white-space:pre-wrap;word-break:break-word;line-height:1.4;color:${ok ? '#0f9' : '#f77'};">${_escHtml(displayOutput)}</div>
       <div style="padding:8px 12px;border-top:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);gap:10px;">
         <span>${lines} line${lines === 1 ? '' : 's'}${truncated ? ' (truncated)' : ''}</span>
-        <span>${new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button onclick="terminalRerunCommand('${rerunId}')" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;">Rerun</button>
+          <button onclick="terminalPinCommand('${pinId}')" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;">Pin</button>
+          <button onclick="terminalCopyResult('${copyId}')" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;">Copy output</button>
+          <span>${new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+        </div>
       </div>
     </div>
   `;
+}
+
+async function _runTerminalCommandStream(cmd, outputEl, startTime, proposalId, entryId) {
+  const state = _terminalStreamState();
+  if (state.running) {
+    throw new Error('Another command is already running');
+  }
+
+  const controller = new AbortController();
+  state.running = true;
+  state.controller = controller;
+  state.commandId = null;
+  state.proposalId = proposalId || null;
+  _terminalSyncControls();
+
+  const liveWrap = document.createElement('div');
+  liveWrap.dataset.terminalEntryId = entryId || '';
+  liveWrap.style.cssText = 'margin-top:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02);overflow:hidden;';
+  liveWrap.innerHTML = `
+    <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <code style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(cmd)}</code>
+      <span style="font-size:10px;color:#f7b84b;text-transform:uppercase;">running</span>
+    </div>
+    <pre style="margin:0;padding:10px 12px;max-height:200px;overflow:auto;background:rgba(0,0,0,0.2);color:#0f9;font-family:'SF Mono','Courier New',monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word;"></pre>
+  `;
+  outputEl.appendChild(liveWrap);
+  const pre = liveWrap.querySelector('pre');
+
+  let combined = '';
+  let finalStatus = { ok: true };
+  let streamError = null;
+  let wasStopped = false;
+
+  try {
+    const res = await fetch('/api/terminal/stream', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ command: cmd, proposal_id: proposalId }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok || !res.body) {
+      const txt = await res.text().catch(() => 'stream unavailable');
+      throw new Error(txt || 'stream unavailable');
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let done = false;
+
+    while (!done) {
+      const { value, done: streamDone } = await reader.read();
+      if (streamDone) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let idx = buffer.indexOf('\n\n');
+      while (idx !== -1) {
+        const frame = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        idx = buffer.indexOf('\n\n');
+
+        const dataLine = frame.split('\n').find(line => line.startsWith('data: '));
+        if (!dataLine) continue;
+
+        let evt = null;
+        try {
+          evt = JSON.parse(dataLine.slice(6));
+        } catch {
+          continue;
+        }
+
+        if (evt.type === 'start') {
+          state.commandId = evt.command_id || null;
+        } else if (evt.type === 'chunk') {
+          const txt = evt.text || '';
+          combined += txt;
+          pre.textContent = combined;
+          if (state.autoScroll) outputEl.scrollTop = outputEl.scrollHeight;
+        } else if (evt.type === 'error') {
+          finalStatus = { ok: false };
+          combined += (combined ? '\n' : '') + `Error: ${evt.error || 'stream error'}`;
+          pre.textContent = combined;
+        } else if (evt.type === 'done') {
+          finalStatus = { ok: !!evt.ok };
+          if (evt.truncated) {
+            combined += (combined ? '\n' : '') + '[… output truncated]';
+            pre.textContent = combined;
+          }
+          done = true;
+        }
+      }
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      wasStopped = true;
+      finalStatus = { ok: false };
+      combined += (combined ? '\n' : '') + '[stopped by user]';
+      pre.textContent = combined;
+    } else {
+      streamError = e;
+    }
+  } finally {
+    state.running = false;
+    state.controller = null;
+    state.commandId = null;
+    state.proposalId = null;
+    _terminalSyncControls();
+  }
+
+  if (streamError) throw streamError;
+
+  await _finalizeALMProposal(proposalId);
+  liveWrap.innerHTML = await _renderTerminalResultCard(cmd, combined, { ...finalStatus, entryId }, startTime);
+  terminalFilterOutput(_terminalCurrentFilter());
+  if (state.autoScroll || wasStopped) outputEl.scrollTop = outputEl.scrollHeight;
 }
 
 async function runTerminalCmd() {
@@ -7144,12 +8575,11 @@ async function runTerminalCmd() {
   const cmd = input.value.trim();
   
   if (!cmd) return;
+  terminalToggleHistory(false);
+  _terminalPushHistory(cmd);
+  const entryId = _terminalAllocEntryId();
   
-  // Show command prompt
-  const line = document.createElement('div');
-  line.style.color = '#5c9bd6';
-  line.textContent = '❯ ' + cmd;
-  output.appendChild(line);
+  _terminalAppendPromptLine(output, cmd, entryId);
 
   input.value = '';
   const startTime = Date.now();
@@ -7166,39 +8596,43 @@ async function runTerminalCmd() {
     return;
   }
 
-  fetch('/api/terminal/run', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({command: cmd, proposal_id: proposalId})
-  })
-  .then(r => r.json())
-  .then(async data => {
-    await _finalizeALMProposal(proposalId);
-    const res = document.createElement('div');
-    res.innerHTML = await _renderTerminalResultCard(cmd, data.output || '', { ok: data.ok }, startTime);
-    output.appendChild(res);
-    output.scrollTop = output.scrollHeight;
-  })
-  .catch(async e => {
-    await _finalizeALMProposal(proposalId);
-    const selfRestart = /^\s*sudo\s+systemctl\s+restart\s+swarm-terminal(\.service)?\s*$/i.test(cmd || '');
-    const msg = selfRestart
-      ? 'Connection dropped while restarting swarm-terminal. This is expected; wait a few seconds and refresh.'
-      : 'Error: ' + e.message;
-    const res = document.createElement('div');
-    res.innerHTML = await _renderTerminalResultCard(cmd, msg, { ok: false }, startTime);
-    output.appendChild(res);
-    output.scrollTop = output.scrollHeight;
-  });
+  _runTerminalCommandStream(cmd, output, startTime, proposalId, entryId)
+    .catch(async (e) => {
+      // Fallback to non-stream endpoint if streaming is unavailable.
+      try {
+        const data = await fetch('/api/terminal/run', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({command: cmd, proposal_id: proposalId})
+        }).then(r => r.json());
+        await _finalizeALMProposal(proposalId);
+        const res = document.createElement('div');
+        res.innerHTML = await _renderTerminalResultCard(cmd, data.output || '', { ok: data.ok, entryId }, startTime);
+        output.appendChild(res);
+        terminalFilterOutput(_terminalCurrentFilter());
+        output.scrollTop = output.scrollHeight;
+      } catch (fallbackErr) {
+        await _finalizeALMProposal(proposalId);
+        const selfRestart = /^\s*sudo\s+systemctl\s+restart\s+swarm-terminal(\.service)?\s*$/i.test(cmd || '');
+        const msg = selfRestart
+          ? 'Connection dropped while restarting swarm-terminal. This is expected; wait a few seconds and refresh.'
+          : 'Error: ' + (fallbackErr.message || e.message);
+        const res = document.createElement('div');
+        res.innerHTML = await _renderTerminalResultCard(cmd, msg, { ok: false, entryId }, startTime);
+        output.appendChild(res);
+        terminalFilterOutput(_terminalCurrentFilter());
+        output.scrollTop = output.scrollHeight;
+      }
+    });
 }
 
 // Quick command buttons
 async function cmdTerminal(cmd) {
   const output = document.getElementById('terminal-output');
-  const line = document.createElement('div');
-  line.style.color = '#5c9bd6';
-  line.textContent = '❯ ' + cmd;
-  output.appendChild(line);
+  terminalToggleHistory(false);
+  _terminalPushHistory(cmd);
+  const entryId = _terminalAllocEntryId();
+  _terminalAppendPromptLine(output, cmd, entryId);
 
   const startTime = Date.now();
 
@@ -7214,26 +8648,29 @@ async function cmdTerminal(cmd) {
     return;
   }
 
-  fetch('/api/terminal/run', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({command: cmd, proposal_id: proposalId})
-  })
-  .then(r => r.json())
-  .then(async data => {
-    await _finalizeALMProposal(proposalId);
-    const res = document.createElement('div');
-    res.innerHTML = await _renderTerminalResultCard(cmd, data.output || '', { ok: data.ok }, startTime);
-    output.appendChild(res);
-    output.scrollTop = output.scrollHeight;
-  })
-  .catch(async e => {
-    await _finalizeALMProposal(proposalId);
-    const res = document.createElement('div');
-    res.innerHTML = await _renderTerminalResultCard(cmd, 'Error: ' + e.message, { ok: false }, startTime);
-    output.appendChild(res);
-    output.scrollTop = output.scrollHeight;
-  });
+  _runTerminalCommandStream(cmd, output, startTime, proposalId, entryId)
+    .catch(async (e) => {
+      try {
+        const data = await fetch('/api/terminal/run', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({command: cmd, proposal_id: proposalId})
+        }).then(r => r.json());
+        await _finalizeALMProposal(proposalId);
+        const res = document.createElement('div');
+        res.innerHTML = await _renderTerminalResultCard(cmd, data.output || '', { ok: data.ok, entryId }, startTime);
+        output.appendChild(res);
+        terminalFilterOutput(_terminalCurrentFilter());
+        output.scrollTop = output.scrollHeight;
+      } catch (fallbackErr) {
+        await _finalizeALMProposal(proposalId);
+        const res = document.createElement('div');
+        res.innerHTML = await _renderTerminalResultCard(cmd, 'Error: ' + (fallbackErr.message || e.message), { ok: false, entryId }, startTime);
+        output.appendChild(res);
+        terminalFilterOutput(_terminalCurrentFilter());
+        output.scrollTop = output.scrollHeight;
+      }
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -9443,6 +10880,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: 'Chat', onclick: 'openWindow("chat", "Chat", "view-chat")' },
       { label: 'Terminal', onclick: 'openWindow("terminal", "Terminal", "view-terminal")' },
         { label: 'Files', onclick: 'openWindow("files", "Files", "view-files")' },
+      { label: 'Git', onclick: 'openWindow("git", "Git", "view-git")' },
       { label: 'Memory', onclick: 'openWindow("memory", "Memory", "view-memory")' },
       { label: 'Monitor', onclick: 'openWindow("monitor", "Monitor", "view-monitor")' },
       { label: 'Documents', onclick: 'openWindow("docs", "Documents", "view-docs")' },

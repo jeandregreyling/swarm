@@ -1,11 +1,11 @@
 # SWARM CURRENT FOCUS
-Updated: 2026-04-02 14:44
+Updated: 2026-04-02 17:05
 
 ## Heartbeat Stats
-- Pending proposals processed: 0
+- Pending proposals processed: 15
 - Think-cycle proposals created: 0
-- Stale proposals escalated: 0
-- Agents active this cycle: 
+- Stale proposals escalated: 2
+- Agents active this cycle: sniffles, duck, eight, llama, gemma, qwen, test, terminal_ui
 
 ## Next Heartbeat
 ~5 minutes

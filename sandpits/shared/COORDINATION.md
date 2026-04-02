@@ -17,6 +17,12 @@ Generated: 2026-04-01 20:10
 - `POST /api/agent/tickets`         — Create a ticket/proposal
 - `GET  /api/agent/tickets`         — My tickets
 - `GET  /api/agent/proposals`       — All pending proposals (any status)
+- `POST /api/agent/git/proposals`   — Create a Git ALM proposal (stage/unstage/commit)
+- `GET  /api/agent/git/proposals`   — List my Git proposals (or all with `all_agents=1`)
+- `POST /api/agent/git/proposals/{proposal_id}/execute` — Execute approved Git proposal
+
+## Local Agents On Same Git-ALM Flow
+- Included: gemma, qwen, llama, eight, duck, sniffles
 
 ## Communication Flow
 1. Fridays heartbeat fires every 5 minutes
