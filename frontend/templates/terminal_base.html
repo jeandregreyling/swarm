@@ -8416,6 +8416,7 @@ function createNewThread() {
 function initializeChatPanel() {
   applyThreadAgentSelection(window.__fridaysChatConversationId);
   renderChatAgentToggles();
+  _loadAgentTemps();
   renderReplyBanner();
   renderChatQuickChips();
   renderChatAttachments();
