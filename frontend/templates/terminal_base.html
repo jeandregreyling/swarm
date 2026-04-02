@@ -4647,6 +4647,98 @@ function filesCancelEdit() {
   filesRenderPreview();
 }
 
+function _filesGenerateDiff(original, modified) {
+  // Simple line-by-line diff with context
+  const origLines = original.split('\n');
+  const modLines = modified.split('\n');
+  const maxLen = Math.max(origLines.length, modLines.length);
+  const changes = [];
+  
+  for (let i = 0; i < maxLen; i++) {
+    const origLine = origLines[i] || '';
+    const modLine = modLines[i] || '';
+    if (origLine !== modLine) {
+      changes.push({
+        lineNum: i + 1,
+        type: origLine ? (modLine ? 'changed' : 'removed') : 'added',
+        original: origLine,
+        modified: modLine,
+      });
+    }
+  }
+  return changes;
+}
+
+function _filesShowDiffModal(filePath, originalContent, newContent) {
+  // Create modal to show diff
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10000;';
+  modal.id = 'files-diff-modal';
+  
+  const changes = _filesGenerateDiff(originalContent, newContent);
+  const changesSummary = {
+    added: changes.filter(c => c.type === 'added').length,
+    removed: changes.filter(c => c.type === 'removed').length,
+    changed: changes.filter(c => c.type === 'changed').length,
+  };
+  
+  let diffHtml = '<div style="display:flex;flex-direction:column;gap:4px;max-height:360px;overflow-y:auto;">';
+  
+  changes.forEach(change => {
+    const bgColor = change.type === 'added' ? 'rgba(76,175,80,0.15)' 
+                  : change.type === 'removed' ? 'rgba(244,67,54,0.15)'
+                  : 'rgba(255,193,7,0.15)';
+    const textColor = change.type === 'added' ? '#4caf50'
+                    : change.type === 'removed' ? '#f44336'
+                    : '#ffc107';
+    
+    const icon = change.type === 'added' ? '+ ' : change.type === 'removed' ? '- ' : '~ ';
+    
+    diffHtml += `
+      <div style="background:${bgColor};border-left:3px solid ${textColor};padding:6px 8px;font-family:monospace;font-size:10px;line-height:1.4;color:var(--text-dim);">
+        <div style="color:${textColor};font-weight:700;margin-bottom:3px;font-size:9px;">Line ${change.lineNum}</div>
+        ${change.type !== 'added' ? `<div style="margin-bottom:2px;white-space:pre-wrap;word-break:break-all;opacity:0.7;"><span style="opacity:0.5;">${icon}</span>${_escHtml(change.original)}</div>` : ''}
+        ${change.type !== 'removed' ? `<div style="white-space:pre-wrap;word-break:break-all;"><span style="opacity:0.5;">${icon}</span>${_escHtml(change.modified)}</div>` : ''}
+      </div>
+    `;
+  });
+  
+  diffHtml += '</div>';
+  
+  const content = document.createElement('div');
+  content.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;max-width:600px;max-height:80vh;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px rgba(0,0,0,0.3);';
+  
+  content.innerHTML = `
+    <div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">📋 Review Changes</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;">
+        <span style="color:#4caf50;">+ ${changesSummary.added} added</span> · 
+        <span style="color:#f44336;">- ${changesSummary.removed} removed</span> · 
+        <span style="color:#ffc107;">~ ${changesSummary.changed} changed</span>
+      </div>
+    </div>
+    <div style="flex:1;border:1px solid var(--border);border-radius:6px;padding:8px;overflow-y:auto;background:rgba(0,0,0,0.15);">
+      ${diffHtml}
+    </div>
+    <div style="display:flex;gap:6px;justify-content:flex-end;">
+      <button id="files-diff-cancel" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:6px 12px;cursor:pointer;font-size:10px;">Cancel</button>
+      <button id="files-diff-confirm" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:10px;font-weight:700;">Confirm & Save</button>
+    </div>
+  `;
+  
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+  
+  const cancelBtn = modal.querySelector('#files-diff-cancel');
+  const confirmBtn = modal.querySelector('#files-diff-confirm');
+  
+  cancelBtn.onclick = () => modal.remove();
+  confirmBtn.onclick = async () => {
+    modal.remove();
+    await filesSaveEditConfirmed(newContent);
+  };
+}
+
 async function filesSaveEdit() {
   const state = window.__filesPreviewState;
   const bodyEl = window.__filesWin?.el?.querySelector('#files-preview-body');
@@ -4658,6 +4750,15 @@ async function filesSaveEdit() {
     showToast('No changes to save', 'error');
     return;
   }
+
+  // Show diff preview modal
+  _filesShowDiffModal(state.path, state.originalContent, nextContent);
+}
+
+async function filesSaveEditConfirmed(nextContent) {
+  const state = window.__filesPreviewState;
+  const bodyEl = window.__filesWin?.el?.querySelector('#files-preview-body');
+  if (!state || !bodyEl) return;
 
   let proposalId = null;
   try {
