@@ -4,6 +4,9 @@ python-telegram-bot
 discord.py
 ollama
 psutil
+pytest
+pylint
+black
 
 # Optional integrations referenced by the codebase. Install as needed when
 # validating those paths or enabling those features in a clean environment.

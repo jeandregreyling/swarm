@@ -26,7 +26,7 @@ _Maintained by Nine (Ghost Layer). Last updated: 2026-03-26 14:55:00 (Session 11
 ---
 
 ## BUG-002: TRUST/NOTIFY/IGNORE flow — broken pipe
-- **Status:** deferred
+- **Status:** deferred.
 - **Found:** 2026-03-25 (noted in Session 10)
 - **Service:** email_handler / unknown sender notification flow
 - **Error:** Unknown sender notification emails unreliable (sometimes not received); TRUST reply processing intermittent
