@@ -5323,10 +5323,9 @@ def api_chat():
             elif selected_agent == 'ten':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.ten import copilot_agent
-                _stage('waiting on GPT runtime', est_eta)
-                future = executor.submit(copilot_agent.chat, effective_prompt, history)
+                future = executor.submit(copilot_agent.chat, effective_prompt, history, stage_cb)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
-                response_text = answer or '[ten unavailable — check GITHUB_TOKEN in /etc/environment]'
+                response_text = answer or '[ten unavailable — check GITHUB_TOKEN in .env.agents]'
                 tokens_used = tokens or 0
             elif selected_agent == 'eleven':
                 _stage('dispatching to ghost datacenter', est_eta)

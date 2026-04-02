@@ -2,11 +2,17 @@
 agents/ten/copilot_agent.py — Ten (GPT)
 Ghost Layer software engineering advisor. Powered by GPT via GitHub Models API.
 Uses a GitHub PAT with models:read scope via https://models.inference.ai.azure.com
+
+Supports the same SKILL execution loop as Nine: GPT emits SKILL commands,
+the runtime executes them and feeds results back for a final synthesised answer.
+Stage callbacks stream progress to the Fridays chat UI in real time.
 """
 
 import logging
+import re
 import sys
 sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm')
 
 logger = logging.getLogger('seven.ten')
 
@@ -33,27 +39,41 @@ def _build_context(message):
     finally:
         conn.close()
 
-    # Inject Ten's recent memories
     try:
         recent = get_agent_memory('ten', query='', limit=5) or []
         if recent:
-            lines.append('=== Your recent memory ===')
+            lines.append('=== Your recent memory (most important first) ===')
             for row in recent:
-                subj = str(row.get('subject') or '').strip()[:100]
-                body = str(row.get('content') or '').strip()[:300]
-                lines.append(f"- [{subj}] {body}")
+                subj = str(row.get('subject') or '').strip()[:120]
+                body = str(row.get('content') or '').strip()[:400]
+                lines.append(f'- [{subj}] {body}')
+            lines.append('=== End memory ===')
+            lines.append('Use this for continuity but do not narrate or repeat it verbatim.')
     except Exception:
         pass
 
     return '\n'.join(lines)
 
 
-def chat(message, conversation_history=None):
+def chat(message, conversation_history=None, stage_cb=None):
     """
     Send a message to Ten (GPT via GitHub Models API).
+
+    Supports a two-pass SKILL execution loop:
+      Pass 1 — GPT responds; if it emits SKILL lines, they are executed.
+      Pass 2 — skill outputs are fed back; GPT synthesises a final answer.
+
+    stage_cb(text, eta_seconds) — called throughout to push progress to the UI.
+
     Returns (answer, tokens_used).
-    conversation_history: list of {role, content} dicts.
     """
+    def _emit_stage(text):
+        if callable(stage_cb):
+            try:
+                stage_cb(text, None)
+            except Exception:
+                pass
+
     try:
         from openai import OpenAI
     except ImportError:
@@ -62,9 +82,10 @@ def chat(message, conversation_history=None):
 
     from config import GITHUB_TOKEN, TEN_SYSTEM_PROMPT, TEN_MODEL
     if not GITHUB_TOKEN:
-        logger.error('[Ten] GITHUB_TOKEN not configured — add to /etc/environment')
+        logger.error('[Ten] GITHUB_TOKEN not configured — add to .env.agents')
         return None, 0
 
+    _emit_stage('loading ghost-layer memory')
     context = _build_context(message)
     system = TEN_SYSTEM_PROMPT + f'\n\n{context}'
 
@@ -73,20 +94,137 @@ def chat(message, conversation_history=None):
         messages.extend(conversation_history[-10:])
     messages.append({'role': 'user', 'content': message})
 
+    # ── Skill extraction ───────────────────────────────────────────────────────
+    def _extract_skill_lines(text):
+        """Parse SKILL / /SKILL command lines from GPT output. Max 4."""
+        from fridays.skills import parse_skill_command
+        cmds = []
+        for raw_line in str(text or '').splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            parsed = None
+            if line.upper().startswith('SKILL '):
+                parsed = parse_skill_command(line)
+            elif line.upper().startswith('/SKILL '):
+                parsed = parse_skill_command('SKILL ' + line[7:].strip())
+            if not parsed:
+                continue
+            skill_name, skill_args = parsed
+            if skill_name == 'list':
+                continue
+            cmds.append((skill_name, skill_args))
+        return cmds[:4]
+
+    def _run_skill_lines(cmds):
+        """Execute a list of (skill_name, skill_args) pairs. Returns joined output string."""
+        from fridays.skills import call as skill_call
+
+        def _route_shell_to_fs_readonly(shell_args):
+            """Redirect unsafe shell read commands to the safe fs_readonly skill."""
+            cmd = (shell_args or '').strip()
+            if not cmd:
+                return None
+            m = re.match(r'^ls(?:\s+-[a-zA-Z]+)?\s+(.+)$', cmd)
+            if m:
+                return f'ls {m.group(1).strip()}'
+            m = re.match(r'^cat\s+(.+)$', cmd)
+            if m:
+                return f'read {m.group(1).strip()} 5000'
+            m = re.match(r'^head\s+-n\s+(\d+)\s+(.+)$', cmd)
+            if m:
+                return f'head {m.group(2).strip()} {m.group(1)}'
+            m = re.match(r'^tail\s+-n\s+(\d+)\s+(.+)$', cmd)
+            if m:
+                return f'tail {m.group(2).strip()} {m.group(1)}'
+            return None
+
+        lines = []
+        for skill_name, skill_args in cmds:
+            _emit_stage(f'executing skill: {skill_name}')
+            effective_name = skill_name
+            effective_args = skill_args
+            if skill_name == 'shell':
+                mapped = _route_shell_to_fs_readonly(skill_args)
+                if mapped:
+                    effective_name = 'fs_readonly'
+                    effective_args = mapped
+
+            try:
+                from database import can_user_invoke_skill
+                if not can_user_invoke_skill('ten', effective_name, default_allow=True):
+                    lines.append(f'[skill:{effective_name}] FAILED\nNot authorized for agent ten')
+                    continue
+            except Exception:
+                pass
+
+            ok, out = skill_call(effective_name, args=effective_args, agent='ten')
+            preview = str(out or '')[:3000]
+            lines.append(f"[skill:{effective_name}] {'OK' if ok else 'FAILED'}\n{preview}")
+
+        return '\n\n'.join(lines)
+
+    # ── API calls ──────────────────────────────────────────────────────────────
     try:
         client = OpenAI(
             api_key=GITHUB_TOKEN,
             base_url='https://models.inference.ai.azure.com',
         )
+        model = TEN_MODEL or _DEFAULT_MODEL
+
+        _emit_stage('sending model request')
         response = client.chat.completions.create(
-            model=TEN_MODEL or _DEFAULT_MODEL,
+            model=model,
             messages=messages,
             max_tokens=4096,
         )
-        answer = response.choices[0].message.content
+        first_answer = response.choices[0].message.content
         tokens = response.usage.total_tokens if response.usage else 0
-        logger.info(f'[Ten] model={TEN_MODEL} tokens={tokens} | {message[:60]}')
+
+        answer = first_answer
+        skill_cmds = _extract_skill_lines(first_answer)
+
+        if skill_cmds:
+            _emit_stage('running requested skills')
+            skill_results = _run_skill_lines(skill_cmds)
+
+            followup_messages = messages + [
+                {'role': 'assistant', 'content': first_answer},
+                {
+                    'role': 'user',
+                    'content': (
+                        'Executed skill outputs are below. Use these concrete results to produce '
+                        'your final answer. Do not ask to run the same commands again.\n\n'
+                        + skill_results
+                    ),
+                },
+            ]
+            _emit_stage('synthesizing final answer')
+            second = client.chat.completions.create(
+                model=model,
+                messages=followup_messages,
+                max_tokens=4096,
+            )
+            answer = second.choices[0].message.content + '\n\n---\nExecuted skill output:\n' + skill_results
+            tokens += second.usage.total_tokens if second.usage else 0
+
+        _emit_stage('persisting response memory')
+        try:
+            from database import save_agent_memory
+            save_agent_memory(
+                agent_name='ten',
+                subject=str(message or '')[:100],
+                content=answer,
+                tags='chat,shared-thread',
+                importance=7,
+                source='terminal_chat',
+            )
+        except Exception:
+            pass
+
+        logger.info(f'[Ten] model={model} tokens={tokens} | {str(message or "")[:60]}')
         return answer, tokens
+
     except Exception as e:
         logger.error(f'[Ten] API error: {e}')
         return None, 0
