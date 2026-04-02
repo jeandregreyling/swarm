@@ -218,6 +218,186 @@ def _chat_runtime_class(agent):
     return _CHAT_AGENT_RUNTIME_CLASS.get((agent or '').lower(), 'unknown')
 
 
+_CHAT_PARTICIPANT_ALIASES = {
+    'user': 'user',
+    'ghost': 'user',
+    'gemma': 'gemma',
+    'llama': 'llama',
+    'qwen': 'qwen',
+    'eight': 'eight',
+    'librarian': 'librarian',
+    'duck': 'duck',
+    'sniffles': 'sniffles',
+    'nine': 'nine',
+    'claude': 'nine',
+    'ten': 'ten',
+    'copilot': 'ten',
+    'eleven': 'eleven',
+    'grok': 'eleven',
+    'twelve': 'twelve',
+    'timewizard': 'twelve',
+    'timewizardagent': 'twelve',
+    'fridays': 'fridays',
+}
+
+
+def _normalize_chat_participant(name):
+    raw = str(name or '').strip().lower()
+    if not raw:
+        return ''
+    squashed = re.sub(r'[^a-z0-9]+', '', raw)
+    return _CHAT_PARTICIPANT_ALIASES.get(squashed, _CHAT_PARTICIPANT_ALIASES.get(raw, raw))
+
+
+def _display_chat_participant(name):
+    canonical = _normalize_chat_participant(name)
+    labels = {
+        'user': 'USER',
+        'gemma': 'GEMMA',
+        'llama': 'LLAMA',
+        'qwen': 'QWEN',
+        'eight': 'EIGHT',
+        'librarian': 'LIBRARIAN',
+        'duck': 'DUCK',
+        'sniffles': 'SNIFFLES',
+        'nine': 'NINE',
+        'ten': 'TEN',
+        'eleven': 'ELEVEN',
+        'twelve': 'TWELVE',
+        'fridays': 'FRIDAYS',
+    }
+    if canonical in labels:
+        return labels[canonical]
+    return str(name or 'AGENT').strip().upper() or 'AGENT'
+
+
+def _fetch_chat_thread_rows(conv_id, limit=20):
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """SELECT from_agent, to_agent, content
+               FROM messages
+               WHERE conversation_id=?
+                 AND LOWER(from_agent) != 'fridays'
+               ORDER BY id DESC
+               LIMIT ?""",
+            (conv_id, limit)
+        ).fetchall()
+    finally:
+        conn.close()
+    return [dict(r) for r in reversed(rows)]
+
+
+def _chat_history_from_rows(rows):
+    history = []
+    for row in rows:
+        sender = _normalize_chat_participant(row.get('from_agent'))
+        target = _normalize_chat_participant(row.get('to_agent'))
+        role = 'user' if sender == 'user' else 'assistant'
+        route = _display_chat_participant(sender or row.get('from_agent'))
+        if target:
+            route += f' -> {_display_chat_participant(target)}'
+        content = str(row.get('content') or '').strip()
+        history.append({'role': role, 'content': f'{route}: {content}'})
+    return history
+
+
+def _thread_transcript_from_rows(rows):
+    if not rows:
+        return ''
+    lines = []
+    for row in rows:
+        sender = _normalize_chat_participant(row.get('from_agent'))
+        target = _normalize_chat_participant(row.get('to_agent'))
+        route = _display_chat_participant(sender or row.get('from_agent'))
+        if target:
+            route += f' -> {_display_chat_participant(target)}'
+        text = str(row.get('content') or '').strip()
+        lines.append(f'{route}: {text[:500]}')
+    return '\n'.join(lines)
+
+
+def _conversation_reply_context_from_rows(rows, selected_agent):
+    selected = _normalize_chat_participant(selected_agent)
+    latest_sender = 'user'
+    previous_participant = ''
+    prior_agent = ''
+
+    if rows:
+        latest_sender = _normalize_chat_participant(rows[-1].get('from_agent')) or 'user'
+        for row in reversed(rows[:-1]):
+            sender = _normalize_chat_participant(row.get('from_agent'))
+            if sender and sender != selected:
+                previous_participant = sender
+                break
+        for row in reversed(rows[:-1]):
+            sender = _normalize_chat_participant(row.get('from_agent'))
+            if sender and sender not in {'user', selected}:
+                prior_agent = sender
+                break
+
+    default_reply_target = latest_sender or 'user'
+    if default_reply_target == selected:
+        default_reply_target = previous_participant or 'user'
+
+    return {
+        'latest_sender': latest_sender or 'user',
+        'previous_participant': previous_participant,
+        'prior_agent': prior_agent,
+        'default_reply_target': default_reply_target or 'user',
+    }
+
+
+def _build_chat_handoff_block(selected_agent, reply_context):
+    latest_sender = _display_chat_participant(reply_context.get('latest_sender') or 'user')
+    previous_participant = reply_context.get('previous_participant') or ''
+    prior_agent = reply_context.get('prior_agent') or ''
+    default_target = _display_chat_participant(reply_context.get('default_reply_target') or 'user')
+
+    lines = [
+        '=== Thread routing ===',
+        f'You are {selected_agent.upper()}.',
+        f'Latest visible sender: {latest_sender}',
+        f'Default reply target: {default_target}',
+    ]
+    if previous_participant:
+        lines.append(f'Previous participant before that: {_display_chat_participant(previous_participant)}')
+    if prior_agent:
+        lines.append(f'Active collaborator already in thread: {_display_chat_participant(prior_agent)}')
+    lines.extend([
+        'If you are addressing another agent directly, open with their name followed by a comma.',
+        'If the user is looping you into an existing agent discussion, you may reply to that agent directly.',
+        'Otherwise, answer the latest visible sender.',
+        '',
+    ])
+    return '\n'.join(lines)
+
+
+def _infer_reply_target_from_text(response_text):
+    text = str(response_text or '').strip()
+    if not text:
+        return ''
+    first_line = text.splitlines()[0].strip()
+    match = re.match(r'^(?:@)?([A-Za-z][A-Za-z0-9_ /-]{0,30})\s*[:,]\s+', first_line)
+    if not match:
+        return ''
+    return _normalize_chat_participant(match.group(1))
+
+
+def _resolve_chat_reply_target(selected_agent, response_text, reply_context):
+    explicit = _infer_reply_target_from_text(response_text)
+    selected = _normalize_chat_participant(selected_agent)
+    if explicit and explicit != selected and explicit != 'fridays':
+        return explicit
+
+    fallback = _normalize_chat_participant(reply_context.get('default_reply_target')) or 'user'
+    if fallback == selected:
+        fallback = _normalize_chat_participant(reply_context.get('previous_participant')) or 'user'
+    if fallback == 'ghost':
+        return 'user'
+    return fallback or 'user'
+
+
 def _chat_stage_for(agent, elapsed_ms):
     elapsed = max(0, int(elapsed_ms or 0))
     if agent == 'gemma':
@@ -3300,10 +3480,7 @@ def api_chat():
         if not raw:
             return None
 
-        # Accept both legacy and slash forms from the chat window.
-        if upper == '/SKILLS' or upper == 'SKILLS':
-            return 'list', ''
-        if upper == '/SKILL' or upper == 'SKILL':
+        if upper in {'/SKILLS', 'SKILLS', '/SKILL', 'SKILL'}:
             return 'list', ''
 
         if upper.startswith('/SKILL '):
@@ -3320,51 +3497,6 @@ def api_chat():
         skill_name = parts[0].strip().lower()
         skill_args = parts[1].strip() if len(parts) > 1 else ''
         return skill_name, skill_args
-
-    def _conversation_history_for_api(conv_id, limit=20):
-        conn = get_connection()
-        try:
-            rows = conn.execute(
-                """SELECT from_agent, content
-                   FROM messages
-                   WHERE conversation_id=?
-                     AND LOWER(from_agent) != 'fridays'
-                   ORDER BY id DESC
-                   LIMIT ?""",
-                (conv_id, limit)
-            ).fetchall()
-        finally:
-            conn.close()
-        rows = list(reversed(rows))
-        history = []
-        for r in rows:
-            sender = (r['from_agent'] or '').lower()
-            role = 'user' if sender == 'user' else 'assistant'
-            history.append({'role': role, 'content': r['content']})
-        return history
-
-    def _thread_transcript(conv_id, limit=12):
-        conn = get_connection()
-        try:
-            rows = conn.execute(
-                """SELECT from_agent, content
-                   FROM messages
-                   WHERE conversation_id=?
-                     AND LOWER(from_agent) != 'fridays'
-                   ORDER BY id DESC
-                   LIMIT ?""",
-                (conv_id, limit)
-            ).fetchall()
-        finally:
-            conn.close()
-        if not rows:
-            return ''
-        lines = []
-        for r in reversed(rows):
-            who = (r['from_agent'] or 'agent').upper()
-            text = str(r['content'] or '').strip()
-            lines.append(f"{who}: {text[:500]}")
-        return "\n".join(lines)
 
     def _load_local_agent_memories(selected_agent, latest_message, topic_limit=4, recent_limit=2):
         query = str(latest_message or '').strip()[:160]
@@ -3394,24 +3526,25 @@ def api_chat():
             tags = str(row['tags'] or '').strip()
             subject = str(row['subject'] or '').strip()[:120]
             content = str(row['content'] or '').strip().replace('\n', ' ')[:420]
-            prefix = f"[{tags}] " if tags else ''
-            lines.append(f"- {prefix}{subject}: {content}")
+            prefix = f'[{tags}] ' if tags else ''
+            lines.append(f'- {prefix}{subject}: {content}')
 
         return (
-            "\n\n=== Your recent memory ===\n"
-            + "\n".join(lines)
-            + "\n=== End memory ===\n"
-            + "Use this for continuity and hand-off. Do not quote it verbatim unless asked."
+            '\n\n=== Your recent memory ===\n'
+            + '\n'.join(lines)
+            + '\n=== End memory ===\n'
+            + 'Use this for continuity and hand-off. Do not quote it verbatim unless asked.'
         )
 
-    def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message):
+    def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, reply_context):
         memory_block = _build_local_memory_block(selected_agent, latest_message)
-        base_prompt = threaded_prompt + memory_block
+        handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
+        base_prompt = handoff_block + threaded_prompt + memory_block
         if selected_agent in {'duck', 'sniffles'}:
             return (
-                "=== Audit mode ===\n"
-                "Review the thread and latest user message. Focus on factual consistency, risk,"
-                " contradictions, and missing assumptions. Return concise findings only.\n\n"
+                '=== Audit mode ===\n'
+                'Review the thread and latest user message. Focus on factual consistency, risk,'
+                ' contradictions, and missing assumptions. Return concise findings only.\n\n'
                 + base_prompt
             )
         return base_prompt
@@ -3430,8 +3563,8 @@ def api_chat():
             return
 
         content = (
-            f"User asked: {str(latest_message or '').strip()[:400]}\n"
-            f"You answered: {answer[:1600]}"
+            f'User asked: {str(latest_message or '').strip()[:400]}\n'
+            f'You answered: {answer[:1600]}'
         )
         try:
             save_agent_memory(
@@ -3457,7 +3590,6 @@ def api_chat():
 
         base_system = NINE_SYSTEM_PROMPT if selected_agent == 'nine' else TEN_SYSTEM_PROMPT
 
-        # Inject recent memory rows as context at the bottom of the system prompt
         try:
             recent_memories = get_agent_memory(selected_agent, query='', limit=6)
             if recent_memories:
@@ -3465,12 +3597,12 @@ def api_chat():
                 for row in recent_memories:
                     subj = str(row['subject'] or '').strip()[:120]
                     body = str(row['content'] or '').strip()[:400]
-                    mem_lines.append(f"- [{subj}] {body}")
+                    mem_lines.append(f'- [{subj}] {body}')
                 memory_block = (
-                    "\n\n=== Your recent memory (most important first) ===\n"
-                    + "\n".join(mem_lines)
-                    + "\n=== End memory ===\n"
-                    "Use this for continuity but do not narrate or repeat it verbatim."
+                    '\n\n=== Your recent memory (most important first) ===\n'
+                    + '\n'.join(mem_lines)
+                    + '\n=== End memory ===\n'
+                    + 'Use this for continuity but do not narrate or repeat it verbatim.'
                 )
                 system_prompt = base_system.rstrip() + memory_block
             else:
@@ -3497,7 +3629,6 @@ def api_chat():
                 if skill_name == 'list':
                     continue
                 cmds.append((skill_name, skill_args))
-            # Keep runs bounded to avoid command storms.
             return cmds[:4]
 
         def _run_skill_lines(cmds):
@@ -3506,22 +3637,21 @@ def api_chat():
                 if not cmd:
                     return None
 
-                # Prefer fs_readonly for safe repository exploration from chat.
-                m = re.match(r'^ls(?:\s+-[a-zA-Z]+)?\s+(.+)$', cmd)
-                if m:
-                    return f'ls {m.group(1).strip()}'
+                match = re.match(r'^ls(?:\s+-[a-zA-Z]+)?\s+(.+)$', cmd)
+                if match:
+                    return f'ls {match.group(1).strip()}'
 
-                m = re.match(r'^cat\s+(.+)$', cmd)
-                if m:
-                    return f'read {m.group(1).strip()} 5000'
+                match = re.match(r'^cat\s+(.+)$', cmd)
+                if match:
+                    return f'read {match.group(1).strip()} 5000'
 
-                m = re.match(r'^head\s+-n\s+(\d+)\s+(.+)$', cmd)
-                if m:
-                    return f'head {m.group(2).strip()} {m.group(1)}'
+                match = re.match(r'^head\s+-n\s+(\d+)\s+(.+)$', cmd)
+                if match:
+                    return f'head {match.group(2).strip()} {match.group(1)}'
 
-                m = re.match(r'^tail\s+-n\s+(\d+)\s+(.+)$', cmd)
-                if m:
-                    return f'tail {m.group(2).strip()} {m.group(1)}'
+                match = re.match(r'^tail\s+-n\s+(\d+)\s+(.+)$', cmd)
+                if match:
+                    return f'tail {match.group(2).strip()} {match.group(1)}'
 
                 return None
 
@@ -3529,9 +3659,6 @@ def api_chat():
             for skill_name, skill_args in cmds:
                 effective_name = skill_name
                 effective_args = skill_args
-
-                # Heuristic compatibility layer: transform common shell read/list
-                # commands into fs_readonly so Ten/Nine can inspect files safely.
                 if skill_name == 'shell':
                     mapped = _route_shell_to_fs_readonly(skill_args)
                     if mapped:
@@ -3555,7 +3682,6 @@ def api_chat():
         first_answer = response.content[0].text
         tokens = response.usage.input_tokens + response.usage.output_tokens
 
-        # Tool loop: when agent emits explicit SKILL lines, run them and feed outputs back.
         answer = first_answer
         skill_cmds = _extract_skill_lines(first_answer)
         if skill_cmds:
@@ -3566,7 +3692,7 @@ def api_chat():
                 {
                     'role': 'user',
                     'content': (
-                        'Executed skill outputs are below. Use these concrete results to produce your final answer. '\
+                        'Executed skill outputs are below. Use these concrete results to produce your final answer. '
                         'Do not ask to run the same commands again in this response.\\n\\n'
                         + skill_results
                     ),
@@ -3592,7 +3718,7 @@ def api_chat():
         log_activity('terminal', f'{selected_agent}_chat', f'tokens={tokens} | {message[:80]}')
         return answer, tokens, None
 
-    def _run_single_agent(selected_agent, prompt, history, transcript, persistent_mode=False, stage_cb=None):
+    def _run_single_agent(selected_agent, prompt, history, reply_context, persistent_mode=False, stage_cb=None):
         def _duck_fast_check(text):
             t = (text or '').strip()
             if not t:
@@ -3620,6 +3746,7 @@ def api_chat():
         started_at = time.time()
         executor = ThreadPoolExecutor(max_workers=1)
         est_eta = _chat_eta_seconds(selected_agent)
+        effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
         _stage('queued', est_eta)
         local_timeout = 12
         if selected_agent == 'sniffles':
@@ -3627,9 +3754,6 @@ def api_chat():
         elif selected_agent == 'duck':
             local_timeout = 18
         if persistent_mode:
-            # Persistent mode: give local CPU-only inference a long ceiling so swap pressure
-            # doesn't kill a valid run. 900s (15 min) covers worst-case NVMe swap scenarios.
-            # Ghost-layer agents (external APIs) get 240s since network stalls are different.
             if selected_agent in {'gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles'}:
                 local_timeout = 900
             else:
@@ -3637,42 +3761,41 @@ def api_chat():
         try:
             if selected_agent in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
                 _stage('loading local memory', est_eta)
-                local_prompt = _build_local_agent_prompt(selected_agent, prompt, message)
                 if selected_agent in {'duck', 'sniffles'}:
                     _stage('assembling audit context', est_eta)
                 else:
                     _stage('processing thread hand-off', est_eta)
-                future = executor.submit(orchestrator.ask_agent, selected_agent, local_prompt)
+                future = executor.submit(orchestrator.ask_agent, selected_agent, effective_prompt)
                 _stage('running local inference', est_eta)
                 response_text = future.result(timeout=local_timeout)
                 _stage('storing agent memory', 0)
                 _persist_local_agent_memory(selected_agent, message, response_text)
             elif selected_agent == 'nine':
                 _stage('dispatching to ghost datacenter', est_eta)
-                future = executor.submit(_run_ghost_layer_chat, selected_agent, message, history)
-                answer, tokens, err = future.result(timeout=240 if persistent_mode else 20)
-                if err:
-                    raise RuntimeError(err)
+                future = executor.submit(_run_ghost_layer_chat, selected_agent, effective_prompt, history)
+                answer, tokens, api_err = future.result(timeout=240 if persistent_mode else 20)
+                if api_err:
+                    raise RuntimeError(api_err)
                 response_text = answer
                 tokens_used = tokens
             elif selected_agent == 'ten':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.ten import copilot_agent
-                future = executor.submit(copilot_agent.chat, message, history)
+                future = executor.submit(copilot_agent.chat, effective_prompt, history)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[ten unavailable — check GITHUB_TOKEN in /etc/environment]'
                 tokens_used = tokens or 0
             elif selected_agent == 'eleven':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.eleven import grok_agent
-                future = executor.submit(grok_agent.chat, message, history)
+                future = executor.submit(grok_agent.chat, effective_prompt, history)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[eleven unavailable]'
                 tokens_used = tokens or 0
             elif selected_agent == 'twelve':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.twelve import twelve_agent
-                future = executor.submit(twelve_agent.chat, message, history)
+                future = executor.submit(twelve_agent.chat, effective_prompt, history)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[twelve unavailable]'
                 tokens_used = tokens or 0
@@ -3680,19 +3803,15 @@ def api_chat():
         except FuturesTimeoutError:
             _stage('timed out waiting for completion', 0)
             if persistent_mode:
-                # In persistent mode, a local timeout means the background run exceeded
-                # the maximum execution budget. Surface this as a failure so the UI can
-                # show a clear status instead of storing a placeholder as final output.
                 raise RuntimeError(f'{selected_agent} timed out after {local_timeout}s')
-            elif selected_agent == 'duck':
+            if selected_agent == 'duck':
                 response_text = _duck_fast_check(message)
             elif selected_agent in {'gemma', 'llama', 'qwen', 'librarian'}:
-                # Let outer fanout register this as a persistent pending job.
                 raise
             else:
                 response_text = (
-                    f"[{selected_agent}] is taking longer than expected. "
-                    "Try again in a moment or switch to another agent."
+                    f'[{selected_agent}] is taking longer than expected. '
+                    'Try again in a moment or switch to another agent.'
                 )
         finally:
             executor.shutdown(wait=False)
@@ -3710,7 +3829,7 @@ def api_chat():
                 parsed = int(requested_conv_id)
                 conn = get_connection()
                 try:
-                    exists = conn.execute("SELECT 1 FROM conversations WHERE id=?", (parsed,)).fetchone()
+                    exists = conn.execute('SELECT 1 FROM conversations WHERE id=?', (parsed,)).fetchone()
                 finally:
                     conn.close()
                 if exists:
@@ -3764,7 +3883,7 @@ def api_chat():
 
             skill_response = (
                 f"[skill:{skill_name}] {'OK' if skill_ok else 'FAILED'}\n"
-                f"{skill_output}"
+                f'{skill_output}'
             )
             log_message(conv_id, 'fridays', skill_response, to_agent='user', message_type='response')
 
@@ -3794,13 +3913,18 @@ def api_chat():
                 'conversation_id': conv_id,
             })
 
-        history = _conversation_history_for_api(conv_id)
-        transcript = _thread_transcript(conv_id)
+        thread_rows = _fetch_chat_thread_rows(conv_id, limit=20)
+        history = _chat_history_from_rows(thread_rows)
+        transcript = _thread_transcript_from_rows(thread_rows[-12:])
+        reply_contexts = {
+            selected_agent: _conversation_reply_context_from_rows(thread_rows, selected_agent)
+            for selected_agent in normalized_agents
+        }
         threaded_prompt = (
-            "=== Shared conversation thread (latest) ===\n"
+            '=== Shared conversation thread (latest) ===\n'
             f"{transcript or 'No previous messages.'}\n\n"
-            "=== New user message ===\n"
-            f"{message}"
+            '=== New user message ===\n'
+            f'{message}'
         )
 
         responses_map = {}
@@ -3811,8 +3935,8 @@ def api_chat():
             runnable_agents = [a for a in runnable_agents if a != 'sniffles']
             deferred_agents.add('sniffles')
 
-        def _register_persistent_job(selected_agent, future, job_ref=None):
-            job_id = f"chatjob-{uuid.uuid4().hex[:12]}"
+        def _register_persistent_job(selected_agent, future, reply_context, job_ref=None):
+            job_id = f'chatjob-{uuid.uuid4().hex[:12]}'
             started_ts = time.time()
             now_iso = _chat_now_iso()
             eta_seconds = _chat_eta_seconds(selected_agent)
@@ -3846,12 +3970,11 @@ def api_chat():
                         cancelled = bool(existing and existing.get('status') == 'cancelled')
                     if cancelled:
                         return
-                    log_message(conv_id, selected_agent, response_text, to_agent='user', message_type='response')
+                    response_target = _resolve_chat_reply_target(selected_agent, response_text, reply_context)
+                    log_message(conv_id, selected_agent, response_text, to_agent=response_target, message_type='response')
                     with _CHAT_JOB_LOCK:
                         job = _CHAT_JOBS.get(job_id)
-                        if job:
-                            if job.get('status') == 'cancelled':
-                                return
+                        if job and job.get('status') != 'cancelled':
                             job.update({
                                 'status': 'completed',
                                 'stage': 'completed',
@@ -3870,14 +3993,13 @@ def api_chat():
                         return
                     fail_msg = f'[{selected_agent}] background run failed: {err_text}'
                     try:
-                        log_message(conv_id, selected_agent, fail_msg, to_agent='user', message_type='response')
+                        response_target = _resolve_chat_reply_target(selected_agent, fail_msg, reply_context)
+                        log_message(conv_id, selected_agent, fail_msg, to_agent=response_target, message_type='response')
                     except Exception:
                         pass
                     with _CHAT_JOB_LOCK:
                         job = _CHAT_JOBS.get(job_id)
-                        if job:
-                            if job.get('status') == 'cancelled':
-                                return
+                        if job and job.get('status') != 'cancelled':
                             job.update({
                                 'status': 'failed',
                                 'stage': 'failed',
@@ -3914,7 +4036,6 @@ def api_chat():
                 return threaded_prompt
 
             active_labels = [_agent_label(a) for a in runnable_agents]
-            peer_list = ', '.join(_agent_label(a) for a in runnable_agents if a != selected_agent)
             if debate_turn:
                 turn_lines = '\n'.join(
                     f"{_agent_label(item['agent'])}: {str(item['response'])[:800]}"
@@ -3925,17 +4046,17 @@ def api_chat():
 
             return (
                 threaded_prompt
-                + "\n\n=== Multi-Agent Debate Mode (Current Turn) ===\n"
+                + '\n\n=== Multi-Agent Debate Mode (Current Turn) ===\n'
                 + f"You are {_agent_label(selected_agent)}.\n"
                 + f"ACTIVE AGENTS IN THIS CHAT: {', '.join(active_labels)}.\n"
-                + "RULES: Only address agents from the list above. Do NOT mention, ask, or direct questions to "
-                + "any agent, person, or entity not in ACTIVE AGENTS. Do NOT ask Ghost to respond — "
-                + "Ghost has already sent their message above.\n"
-                + "Read the peer responses below and reply to them where useful. "
-                + "When another active agent already covered a point, extend or challenge it instead of restating it. "
-                + "If you agree or disagree, name the agent and explain in 1-2 lines. "
-                + "Then give your own answer.\n\n"
-                + "Peer responses so far this turn:\n"
+                + 'RULES: Only address agents from the list above. Do NOT mention, ask, or direct questions to '
+                + 'any agent, person, or entity not in ACTIVE AGENTS. Do NOT ask Ghost to respond — '
+                + 'Ghost has already sent their message above.\n'
+                + 'Read the peer responses below and reply to them where useful. '
+                + 'When another active agent already covered a point, extend or challenge it instead of restating it. '
+                + 'If you agree or disagree, name the agent and explain in 1-2 lines. '
+                + 'Then give your own answer.\n\n'
+                + 'Peer responses so far this turn:\n'
                 + turn_lines
             )
 
@@ -3956,7 +4077,7 @@ def api_chat():
                     selected_agent,
                     agent_prompt,
                     history,
-                    transcript,
+                    reply_contexts[selected_agent],
                     True,
                     _stage_cb,
                 )
@@ -3966,17 +4087,17 @@ def api_chat():
                     pending = False
                     pending_job_id = None
                 except FuturesTimeoutError:
-                    pending_job_id = _register_persistent_job(selected_agent, future, job_ref)
+                    pending_job_id = _register_persistent_job(selected_agent, future, reply_contexts[selected_agent], job_ref)
                     pending_jobs.append(pending_job_id)
                     pending = True
                     eta_seconds = _chat_eta_seconds(selected_agent)
                     response_text, tokens_used = (
-                        f"[{selected_agent}] acknowledged. Running now. ETA ~{eta_seconds}s; monitor shows live stage.",
+                        f'[{selected_agent}] acknowledged. Running now. ETA ~{eta_seconds}s; monitor shows live stage.',
                         0,
                     )
                     elapsed_ms = int(wait_timeout * 1000)
-                except Exception as err:
-                    response_text, tokens_used = (f'[{selected_agent}] error: {str(err)}', 0)
+                except Exception as exc:
+                    response_text, tokens_used = (f'[{selected_agent}] error: {str(exc)}', 0)
                     elapsed_ms = 0
                     pending = False
                     pending_job_id = None
@@ -3993,11 +4114,7 @@ def api_chat():
                 'pending': pending,
                 'job_id': pending_job_id,
             }
-
-            debate_turn.append({
-                'agent': selected_agent,
-                'response': response_text,
-            })
+            debate_turn.append({'agent': selected_agent, 'response': response_text})
 
         for agent_name in deferred_agents:
             responses_map[agent_name] = {
@@ -4019,7 +4136,8 @@ def api_chat():
         for entry in responses:
             if entry.get('pending'):
                 continue
-            log_message(conv_id, entry['agent'], entry['response'], to_agent='user', message_type='response')
+            response_target = _resolve_chat_reply_target(entry['agent'], entry['response'], reply_contexts[entry['agent']])
+            log_message(conv_id, entry['agent'], entry['response'], to_agent=response_target, message_type='response')
 
         primary = responses[0] if responses else {'agent': normalized_agents[0], 'response': '', 'tokens': 0}
 
@@ -4033,8 +4151,8 @@ def api_chat():
             'agents': normalized_agents,
             'conversation_id': conv_id,
         })
-    except Exception as e:
-        return jsonify({'ok': False, 'response': f'Error: {str(e)}'}), 500
+    except Exception as exc:
+        return jsonify({'ok': False, 'response': f'Error: {str(exc)}'}), 500
 
 
 @app.route('/api/chat/jobs/status')
