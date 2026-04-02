@@ -2544,7 +2544,6 @@ input[type="range"]::-moz-range-thumb:hover {
             </div>
           </div>
           <div id="chat-agent-toggles" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
-          <div id="chat-temp-sliders" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);flex-direction:column;gap:4px;"></div>
         </div>
         <input id="chat-attachment-input" type="file" multiple onchange="handleChatAttachmentInput(event)">
         <div class="chat-compose-shell">
@@ -6601,16 +6600,16 @@ async function cmdTerminal(cmd) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CHAT_AGENT_OPTIONS = [
-  { value: 'gemma',    label: 'Gemma',    tier: 'local' },
-  { value: 'llama',    label: 'LLaMA',    tier: 'local' },
-  { value: 'qwen',     label: 'Qwen',     tier: 'local' },
-  { value: 'eight',    label: 'Eight',    tier: 'local' },
-  { value: 'duck',     label: 'Duck',     tier: 'local' },
-  { value: 'sniffles', label: 'Sniffles', tier: 'local' },
-  { value: 'nine',     label: 'Nine',     tier: 'paid' },
-  { value: 'ten',      label: 'Ten',      tier: 'paid' },
-  { value: 'eleven',   label: 'Eleven',   tier: 'paid' },
-  { value: 'twelve',   label: 'Twelve',   tier: 'paid' }
+  { value: 'gemma',    label: 'Gemma',    tier: 'local', hasTemp: true  },
+  { value: 'llama',    label: 'LLaMA',    tier: 'local', hasTemp: true  },
+  { value: 'qwen',     label: 'Qwen',     tier: 'local', hasTemp: true  },
+  { value: 'eight',    label: 'Eight',    tier: 'local', hasTemp: true  },
+  { value: 'duck',     label: 'Duck',     tier: 'local', hasTemp: true  },
+  { value: 'sniffles', label: 'Sniffles', tier: 'local', hasTemp: true  },
+  { value: 'nine',     label: 'Nine',     tier: 'paid',  hasTemp: false },
+  { value: 'ten',      label: 'Copilot',  tier: 'paid',  hasTemp: true  },
+  { value: 'eleven',   label: 'Grok',     tier: 'paid',  hasTemp: false },
+  { value: 'twelve',   label: 'Vortex',   tier: 'paid',  hasTemp: true  }
 ];
 
 const CHAT_CUSTOM_DICTIONARY_KEY = 'fridays-chat-custom-dictionary-v1';
@@ -6695,11 +6694,11 @@ function applyThreadAgentSelection(convId = window.__fridaysChatConversationId) 
 function onChatAgentToggleChange(input) {
   if (!input) return;
   window.__fridaysChatEnabledAgents[input.value] = !!input.checked;
-  const enabled = Object.values(window.__fridaysChatEnabledAgents).filter(Boolean).length;
-  if (!enabled) {
-    window.__fridaysChatEnabledAgents.gemma = true;
-    const g = document.querySelector('.chat-agent-toggle[value="gemma"]');
-    if (g) g.checked = true;
+  // Update slider row for this agent when toggled
+  const row = document.querySelector(`[data-temp-row="${input.value}"]`);
+  if (row) {
+    row.style.opacity = input.checked ? '1' : '0.3';
+    row.style.pointerEvents = input.checked ? 'auto' : 'none';
   }
   persistThreadAgentSelection();
   updateComposerMeta();
@@ -7479,10 +7478,10 @@ const _CHAT_AGENT_META = {
   librarian: { icon: '📚', purpose: 'Silent memory indexing and retrieval.',                              runtime: 'local', tier: 'local' },
   duck:      { icon: '🦆', purpose: 'Audit pass and contradiction detection.',                            runtime: 'local', tier: 'local' },
   sniffles:  { icon: '🧪', purpose: 'Forensic memory integrity checks.',                                  runtime: 'local', tier: 'local' },
-  nine:      { icon: '👻', purpose: 'Ghost layer architect for system planning.',                         runtime: 'paid',  tier: 'paid' },
-  ten:       { icon: '🛠️', purpose: 'Engineering advisor for implementation quality.',                   runtime: 'paid',  tier: 'paid' },
-  eleven:    { icon: '⚡', purpose: 'Lateral ideation and alternative strategies.',                       runtime: 'paid',  tier: 'paid' },
-  twelve:    { icon: '🌀', purpose: 'Temporal/planning continuity and sequencing (Claude Haiku).',        runtime: 'paid',  tier: 'paid' },
+  nine:      { icon: '👻', purpose: 'Nine · Ghost layer architect. System planning (Claude Sonnet).',    runtime: 'paid',  tier: 'paid' },
+  ten:       { icon: '🛠️', purpose: 'Copilot · Engineering advisor for implementation quality.',         runtime: 'paid',  tier: 'paid' },
+  eleven:    { icon: '⚡', purpose: 'Grok · Reasoning advisor and lateral ideation.',                    runtime: 'paid',  tier: 'paid' },
+  twelve:    { icon: '🌀', purpose: 'Vortex · Temporal continuity and sequencing (Claude Haiku).',       runtime: 'paid',  tier: 'paid' },
   you:       { icon: '👤', purpose: 'Human operator input.',                                              runtime: 'human', tier: 'human' },
 };
 
@@ -8055,38 +8054,32 @@ function renderChatAgentToggles() {
   const host = document.getElementById('chat-agent-toggles');
   if (!host) return;
   host.innerHTML = CHAT_AGENT_OPTIONS.map(agent => {
-    const checked = window.__fridaysChatEnabledAgents[agent.value] ? 'checked' : '';
+    const isOn = !!window.__fridaysChatEnabledAgents[agent.value];
+    const checked = isOn ? 'checked' : '';
     const tierDotClass = agent.tier === 'paid' ? 'agent-tier-paid-dot' : 'agent-tier-local-dot';
     const tierLabel = agent.tier === 'paid' ? 'Paid' : 'Local';
-    return `<label style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border);border-radius:999px;background:var(--card);font-size:10px;cursor:pointer;line-height:1;" title="${agent.label} · ${tierLabel}">
-      <input class="chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked} onchange="onChatAgentToggleChange(this)" style="width:10px;height:10px;margin:0;accent-color:var(--accent);">
-      <span class="agent-tier-dot ${tierDotClass}" style="width:5px;height:5px;"></span>
-      <span style="font-weight:500;">${agent.label}</span>
-    </label>`;
-  }).join('');
-  renderTempSliders();
-}
-
-window.__agentTemps = window.__agentTemps || {};
-
-function renderTempSliders() {
-  const host = document.getElementById('chat-temp-sliders');
-  if (!host) return;
-  const enabled = CHAT_AGENT_OPTIONS.filter(a => window.__fridaysChatEnabledAgents[a.value]);
-  if (!enabled.length) { host.style.display = 'none'; return; }
-  host.style.display = 'flex';
-  host.innerHTML = enabled.map(agent => {
-    const temp = (window.__agentTemps[agent.value] ?? 0.7).toFixed(2);
-    const id = 'temp-val-' + agent.value;
-    return `<div style="display:flex;align-items:center;gap:7px;">
-      <span style="font-size:9px;color:var(--text-dim);width:46px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;" title="${_escapeHtml(agent.label)}">${_escapeHtml(agent.label)}</span>
-      <input type="range" min="0" max="1" step="0.05" value="${temp}"
-        style="flex:1;height:3px;accent-color:var(--accent);cursor:pointer;outline:none;"
-        oninput="document.getElementById('${id}').textContent=parseFloat(this.value).toFixed(2);_setAgentTemp('${agent.value}',this.value)">
-      <span id="${id}" style="font-size:9px;color:var(--text-dim);width:26px;text-align:right;font-variant-numeric:tabular-nums;flex-shrink:0;">${temp}</span>
+    const temp = agent.hasTemp ? (window.__agentTemps[agent.value] ?? 0.7).toFixed(2) : null;
+    const vid = 'atv-' + agent.value;
+    const sliderRow = temp !== null ? `
+      <div data-temp-row="${agent.value}" style="display:flex;align-items:center;gap:3px;padding:0 1px;opacity:${isOn ? '1' : '0.3'};pointer-events:${isOn ? 'auto' : 'none'};transition:opacity 0.15s;">
+        <input type="range" min="0" max="1" step="0.05" value="${temp}"
+          style="flex:1;height:2px;accent-color:var(--accent);cursor:pointer;"
+          onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"
+          oninput="document.getElementById('${vid}').textContent=parseFloat(this.value).toFixed(2);_setAgentTemp('${agent.value}',this.value)">
+        <span id="${vid}" style="font-size:8px;color:var(--text-dim);width:20px;text-align:right;font-variant-numeric:tabular-nums;">${temp}</span>
+      </div>` : `<div style="height:2px;"></div>`;
+    return `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--border);border-radius:8px;background:var(--card);min-width:66px;cursor:default;">
+      <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;line-height:1;white-space:nowrap;" title="${agent.label} · ${tierLabel}">
+        <input class="chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked} onchange="onChatAgentToggleChange(this)" style="width:10px;height:10px;margin:0;accent-color:var(--accent);">
+        <span class="agent-tier-dot ${tierDotClass}" style="width:5px;height:5px;flex-shrink:0;"></span>
+        <span style="font-weight:500;">${agent.label}</span>
+      </label>
+      ${sliderRow}
     </div>`;
   }).join('');
 }
+
+window.__agentTemps = window.__agentTemps || {};
 
 function _setAgentTemp(agentName, value) {
   const temp = Math.round(parseFloat(value) * 100) / 100;
@@ -8104,9 +8097,9 @@ function _loadAgentTemps() {
     .then(agents => {
       window.__agentTemps = window.__agentTemps || {};
       (Array.isArray(agents) ? agents : []).forEach(a => {
-        if (a.name && a.temperature != null) window.__agentTemps[a.name] = a.temperature;
+        if (a.name && a.temperature != null) window.__agentTemps[a.name.toLowerCase()] = a.temperature;
       });
-      renderTempSliders();
+      renderChatAgentToggles();
     })
     .catch(() => {});
 }
