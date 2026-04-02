@@ -266,10 +266,10 @@ def _display_chat_participant(name):
         'librarian': 'LIBRARIAN',
         'duck': 'DUCK',
         'sniffles': 'SNIFFLES',
-        'nine': 'NINE',
-        'ten': 'TEN',
-        'eleven': 'ELEVEN',
-        'twelve': 'TWELVE',
+        'nine': 'NINE (CLAUDE SONNET 4.6)',
+        'ten': 'TEN (GPT-5.3-CODEX)',
+        'eleven': 'ELEVEN (GROK API)',
+        'twelve': 'TWELVE (CLAUDE HAIKU)',
         'fridays': 'FRIDAYS',
     }
     if canonical in labels:
@@ -2273,7 +2273,8 @@ def api_queue_patch(queue_id):
 @app.route('/api/work-proposals', methods=['GET'])
 def api_work_proposals_list():
     """List work proposals from DB with optional status/agent filters."""
-    status = (request.args.get('status') or '').strip()
+    statuses = request.args.getlist('status')
+    statuses = [s.strip() for s in statuses if s.strip()]
     agent = (request.args.get('agent') or '').strip()
     try:
         limit = int(request.args.get('limit', 100))
@@ -2282,9 +2283,10 @@ def api_work_proposals_list():
 
     clauses = []
     params = []
-    if status:
-        clauses.append('status=?')
-        params.append(status)
+    if statuses:
+        placeholders = ','.join(['?' for _ in statuses])
+        clauses.append(f'status IN ({placeholders})')
+        params.extend(statuses)
     if agent:
         clauses.append('agent=?')
         params.append(agent)
@@ -2306,6 +2308,9 @@ def api_work_proposals_list():
 def api_work_proposals_patch(proposal_id):
     """Update proposal status for approval/execution workflows."""
     data = request.get_json() or {}
+    identity, err = _resolve_identity_or_response(data)
+    if err:
+        return err
     status = (data.get('status') or '').strip().lower()
     ticket_number = (data.get('ticket_number') or '').strip()
     ticket_id     = data.get('ticket_id')
@@ -2324,6 +2329,20 @@ def api_work_proposals_patch(proposal_id):
 
     if not row:
         return jsonify({'ok': False, 'error': 'proposal not found'}), 404
+
+    ghost_layer_users = {'ghost', 'nine', 'ten', 'eleven', 'twelve', 'duck', 'sniffles'}
+    proposal_agent = str(row['agent'] or '').strip().lower()
+    effective_user = identity['effective_user']
+
+    if proposal_agent not in ghost_layer_users and status in {'in_progress', 'done', 'executed'}:
+        if effective_user not in ghost_layer_users:
+            return jsonify({
+                'ok': False,
+                'error': 'non-ghost proposals must be implemented by a ghost-layer user',
+                'proposal_id': proposal_id,
+                'proposal_agent': proposal_agent,
+                'effective_user': effective_user,
+            }), 403
 
     current_status = (row['status'] or '').lower()
     allowed_transitions = {
@@ -2393,7 +2412,7 @@ def api_work_proposals_patch(proposal_id):
     if not row:
         return jsonify({'ok': False, 'error': 'proposal not found'}), 404
 
-    log_activity('terminal', 'proposal_status_updated', f'{proposal_id} -> {status}')
+    log_activity('terminal', 'proposal_status_updated', f'{proposal_id} -> {status} by {effective_user}')
     _safe_time_event(
         agent=row['agent'] or 'terminal_ui',
         action='proposal_status_updated',
@@ -2437,6 +2456,50 @@ def api_work_proposals_patch(proposal_id):
     if duck_review:
         payload['duck_review'] = duck_review
     return jsonify(payload)
+
+
+@app.route('/api/work-proposals/<proposal_id>', methods=['DELETE'])
+def api_work_proposals_delete(proposal_id):
+    """Delete proposal records (Ghost-layer only)."""
+    data = request.get_json(silent=True) or {}
+    identity, err = _resolve_identity_or_response(data)
+    if err:
+        return err
+
+    effective_user = identity['effective_user']
+    ghost_layer_users = {'ghost', 'nine', 'ten', 'eleven', 'twelve', 'duck', 'sniffles'}
+    if effective_user not in ghost_layer_users:
+        return jsonify({
+            'ok': False,
+            'error': 'proposal deletion requires ghost-layer identity',
+            'effective_user': effective_user,
+        }), 403
+
+    conn = get_connection()
+    row = conn.execute(
+        'SELECT id, proposal_id, agent, title, description, status, queue_id, ticket_number '
+        'FROM work_proposals WHERE proposal_id=?',
+        (proposal_id,)
+    ).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'proposal not found'}), 404
+
+    conn.execute('DELETE FROM work_proposals WHERE proposal_id=?', (proposal_id,))
+    conn.commit()
+    conn.close()
+
+    deleted = dict(row)
+    log_activity('terminal', 'proposal_deleted', f"{proposal_id} by {effective_user}")
+    _safe_time_event(
+        agent=deleted.get('agent') or 'terminal_ui',
+        action='proposal_deleted',
+        event_type='proposal',
+        target=proposal_id,
+        details={'status': deleted.get('status'), 'effective_user': effective_user}
+    )
+
+    return jsonify({'ok': True, 'deleted': deleted})
 
 
 def _git_repo_root() -> Path:
@@ -4846,6 +4909,115 @@ def api_chat():
         skill_args = parts[1].strip() if len(parts) > 1 else ''
         return skill_name, skill_args
 
+    def _is_execution_confirmation(text):
+        raw = str(text or '').strip().lower()
+        if not raw:
+            return False
+        confirmations = {
+            'go ahead', 'yes', 'y', 'yep', 'yeah', 'continue', 'proceed', 'do it',
+            'go for it', 'execute', 'run it', 'ship it'
+        }
+        if raw in confirmations:
+            return True
+        return bool(re.search(r'\b(go\s+ahead|continue|proceed|do\s+it|execute|run\s+it|ship\s+it|yes)\b', raw))
+
+    def _derive_proposal_from_text(selected_agent, text, user_prompt):
+        body = str(text or '').strip()
+        if not body:
+            return None
+
+        if not re.search(r'proposal|draft|title|scope|description', body, re.IGNORECASE):
+            return None
+
+        title = ''
+        desc = ''
+
+        m_title = re.search(r'(?:\*\*\s*)?title(?:\s*\*\*)?\s*:\s*(.+)', body, re.IGNORECASE)
+        if m_title:
+            title = m_title.group(1).strip().strip('*').strip()
+
+        m_desc = re.search(r'(?:\*\*\s*)?description(?:\s*\*\*)?\s*:\s*([\s\S]{20,1200})', body, re.IGNORECASE)
+        if m_desc:
+            desc = m_desc.group(1).strip()
+            desc = re.split(r'\n\s*(?:---|##+\s+|\*\*\w)', desc, maxsplit=1)[0].strip()
+
+        if not title:
+            title = f'{selected_agent} proposal from chat confirmation'
+        if not desc:
+            desc = str(user_prompt or '').strip()[:600] or body[:600]
+
+        if not title or not desc:
+            return None
+
+        return title[:180], desc[:1500]
+
+    def _extract_skill_lines_from_text(text):
+        from fridays.skills import parse_skill_command
+
+        cmds = []
+        for raw_line in str(text or '').splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            parsed = None
+            if line.upper().startswith('SKILL '):
+                parsed = parse_skill_command(line)
+            elif line.upper().startswith('/SKILL '):
+                parsed = parse_skill_command('SKILL ' + line[7:].strip())
+            if not parsed:
+                continue
+            skill_name, skill_args = parsed
+            if skill_name == 'list':
+                continue
+            cmds.append((skill_name, skill_args))
+        return cmds[:4]
+
+    def _execute_agent_skill_lines(selected_agent, response_text, request_data):
+        from fridays.skills import call as skill_call, REGISTRY as SKILL_REGISTRY
+
+        # Restrict auto-execution to explicit proposal-creation actions.
+        allowed_auto_skills = {'alm_create_proposal', 'ticket_create'}
+        cmds = _extract_skill_lines_from_text(response_text)
+        if not cmds:
+            derived = _derive_proposal_from_text(selected_agent, response_text, message)
+            if not derived:
+                return ''
+            title, desc = derived
+            safe_title = str(title).replace('"', "'")
+            safe_desc = str(desc).replace('"', "'")
+            synthetic_args = f'"{safe_title}" "{safe_desc}"'
+            ok, out = skill_call('alm_create_proposal', args=synthetic_args, agent=selected_agent)
+            preview = str(out or '')[:3000]
+            return f"[skill:alm_create_proposal] {'OK' if ok else 'FAILED'}\\n{preview}"
+
+        lines = []
+        for skill_name, skill_args in cmds:
+            if skill_name not in allowed_auto_skills:
+                lines.append(f'[skill:{skill_name}] SKIPPED\\nAuto-execution only allows proposal skills.')
+                continue
+
+            meta = SKILL_REGISTRY.get(skill_name)
+            if not meta:
+                lines.append(f'[skill:{skill_name}] FAILED\\nUnknown skill')
+                continue
+
+            if not can_user_invoke_skill(selected_agent, skill_name, default_allow=True):
+                lines.append(f'[skill:{skill_name}] FAILED\\nNot authorized for user {selected_agent}')
+                continue
+
+            trust_level = int(meta.get('trust_level', 0) or 0)
+            if trust_level >= 1 and skill_name not in {'ticket_create', 'alm_create_proposal'}:
+                gate = _alm_gate_or_response(request_data, f'chat_skill_{skill_name}')
+                if gate:
+                    lines.append(f'[skill:{skill_name}] FAILED\\nALM gate blocked execution (approval required).')
+                    continue
+
+            ok, out = skill_call(skill_name, args=skill_args, agent=selected_agent)
+            preview = str(out or '')[:3000]
+            lines.append(f"[skill:{skill_name}] {'OK' if ok else 'FAILED'}\\n{preview}")
+
+        return '\\n\\n'.join(lines)
+
     def _load_local_agent_memories(selected_agent, latest_message, topic_limit=4, recent_limit=2):
         query = str(latest_message or '').strip()[:160]
         collected = []
@@ -5108,6 +5280,15 @@ def api_chat():
         executor = ThreadPoolExecutor(max_workers=1)
         est_eta = _chat_eta_seconds(selected_agent)
         effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
+        if _is_execution_confirmation(message):
+            effective_prompt = (
+                effective_prompt
+                + '\n\n=== EXECUTION CONFIRMATION ===\n'
+                + 'User explicitly approved execution. If your next step is to create a work proposal, '
+                + 'output exactly one executable command line in this format and then brief context:\n'
+                + 'SKILL alm_create_proposal "<title>" "<description>"\n'
+                + 'Do not ask for reconfirmation.'
+            )
         _stage('queued', est_eta)
         local_timeout = 12
         if selected_agent == 'sniffles':
@@ -5238,7 +5419,7 @@ def api_chat():
                         'error': f'user {effective_user} is not authorized for skill {skill_name}'
                     }), 403
                 trust_level = int(meta.get('trust_level', 0) or 0)
-                if trust_level >= 1:
+                if trust_level >= 1 and skill_name not in {'ticket_create', 'alm_create_proposal'}:
                     gate = _alm_gate_or_response(data, f'chat_skill_{skill_name}')
                     if gate:
                         return gate
@@ -5329,6 +5510,16 @@ def api_chat():
                 updated_iso = _chat_now_iso()
                 try:
                     response_text, tokens_used, elapsed_ms = done_future.result()
+                    if selected_agent in {'nine', 'ten', 'eleven', 'twelve'} and _is_execution_confirmation(message):
+                        try:
+                            skill_output = _execute_agent_skill_lines(selected_agent, response_text, data)
+                            if skill_output:
+                                response_text = f"{response_text}\n\n---\nAuto-executed skill output:\n{skill_output}"
+                        except Exception as skill_exc:
+                            response_text = (
+                                f"{response_text}\n\n---\n"
+                                f"Auto-executed skill output:\n[skill:auto] FAILED\\n{skill_exc}"
+                            )
                     with _CHAT_JOB_LOCK:
                         existing = _CHAT_JOBS.get(job_id)
                         cancelled = bool(existing and existing.get('status') == 'cancelled')
@@ -5478,6 +5669,14 @@ def api_chat():
                 'pending': pending,
                 'job_id': pending_job_id,
             }
+
+            if (not pending) and selected_agent in {'nine', 'ten', 'eleven', 'twelve'} and _is_execution_confirmation(message):
+                skill_output = _execute_agent_skill_lines(selected_agent, response_text, data)
+                if skill_output:
+                    responses_map[selected_agent]['response'] = (
+                        f"{response_text}\n\n---\nAuto-executed skill output:\n{skill_output}"
+                    )
+
             debate_turn.append({'agent': selected_agent, 'response': response_text})
 
         for agent_name in deferred_agents:
@@ -5742,7 +5941,7 @@ def api_agents_capabilities_update():
     identity, err = _resolve_identity_or_response(data)
     if err:
         return err
-    if identity['acting_user'] != 'ghost':
+    if identity['effective_user'] != 'ghost':
         return jsonify({'ok': False, 'error': 'only ghost can update agent capabilities'}), 403
 
     target_agent = str(data.get('agent') or '').strip().lower()

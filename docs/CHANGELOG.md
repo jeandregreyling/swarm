@@ -7,6 +7,28 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
+## Version 2026-04-02 Session 6 — Capability Matrix + Model Naming Alignment
+
+### Changes by Ten (GPT-5.3-Codex) (Ghost Layer) - GOVERNANCE TOGGLES + DOC ALIGNMENT
+
+**2026-04-02 07:05 UTC** Ten: aligned active governance docs with the new capability-matrix controls and updated numbered-agent model naming to match runtime roster and UI labels.
+
+- **Type:** Governance documentation / Naming consistency / Operator UX
+- **Status:** COMPLETE
+- **Documentation updates:**
+  - `docs/ALM_DRIVER.md`
+    - documented `POST /api/agents/capabilities` Ghost-only enforcement
+    - documented `GET /api/agents/capability-matrix` visibility endpoint
+    - added High-Access Toggle governance section and bundle capability list
+  - `docs/ARCHITECTURE.md`
+    - updated Ten model from `gpt-4.1` -> `gpt-5.3-codex`
+    - updated Eleven label from `grok-3` -> `grok-api`
+    - updated Twelve model label to `claude-haiku`
+    - corrected paid-tier runtime table to mixed providers (Anthropic + GitHub Models + xAI)
+    - corrected memory table descriptions for `memory_ten`, `memory_grok`, `memory_twelve`
+- **Runtime consistency note:**
+  - Skills capability changes now require effective Ghost identity in both API enforcement and UI guard messaging.
+
 ## Version 2026-03-31 Session 5 — Validation Environment Alignment + UAT Green
 
 ### Changes by Ten (GPT) (Ghost Layer) - TEST ENVIRONMENT ALIGNMENT + CHAT TIMEOUT CORRECTION

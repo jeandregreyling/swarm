@@ -75,7 +75,7 @@
 |-------|-------|------|-------------|---------|--------|
 | **eight** | qwen2.5:latest | SAP HCM/ABAP | memory_eight | 37 | 🟢 Active |
 | **nine** | (Claude API) | Architect | memory_nine | 36 | 🟡 API-based |
-| **ten** | (Gemini) | Code Advisor | memory_ten | 0 | 🔴 **DORMANT** |
+| **ten** | (Gemini) *—historical, from audit 28 March 2026 — now GPT-5.3-Codex* | Code Advisor | memory_ten | 0 | 🔴 **DORMANT at audit time** |
 | **grok** | (Grok model) | Ghost Layer | memory_grok | 41 | 🟢 Active |
 
 ### Legacy Agents (Uppercase - Duplicates?)
@@ -107,9 +107,9 @@
 | memory_llama | 42 | LLaMA | 🟢 Active |
 | memory_qwen | 23 | Qwen | 🟢 Active |
 | memory_eight | 37 | Eight (SAP) | 🟢 Active |
-| memory_nine | 36 | Nine (Claude Sonnet) | 🟢 Active |
-| memory_ten | 0 | Ten (GPT) | 🔴 **EMPTY** |
-| memory_grok | 41 | Eleven (Grok 3) | 🟢 Active |
+| memory_nine | 36 | Nine (Claude Sonnet 4.6) | 🟢 Active |
+| memory_ten | 0 | Ten (GPT-5.3-Codex) *— dormant at audit time* | 🔴 **EMPTY** |
+| memory_grok | 41 | Eleven (Grok API) — *historical reference (audit from 28 March 2026)* | 🟢 Active |
 
 ### Pipeline Tables
 | Table | Purpose | Status |
@@ -341,7 +341,7 @@ Outcome logged
 ## ⚠️ What Needs Work
 
 1. **Dashboard interactivity** — 3 key views (Chat, Terminal, Skills) not wired to backend
-2. **Agent Ten integration** — Gemini connector broken. Memory pool empty.
+2. **Agent Ten integration** — Gemini connector was dormant (audit 28 March 2026). Now uses GPT-5.3-Codex.
 3. **Documentation** — PROJECT.md out of sync. No DECISIONS log. Change history invisible.
 4. **Testing** — No systematic test suite. Manual validation only.
 5. **Logging** — Activity log exists but may not be complete. Need audit trail for decisions.
@@ -352,7 +352,7 @@ Outcome logged
 ## 🎯 Immediate Next Steps
 
 1. **Wire chat/terminal/skills views** — Connect JS functions to backend
-2. **Fix Agent Ten** — Debug Gemini connection or disable gracefully
+2. **Fix Agent Ten** — Debug GPT-5.3-Codex connection or disable gracefully
 3. **Clean agent registry** — Remove duplicates, keep lowercase only
 4. **Create DECISIONS log** — Timestamp every design choice from now on
 5. **Add Agent Twelve** — Register Claude (me) with sandpit and memory pool
