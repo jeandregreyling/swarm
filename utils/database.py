@@ -1071,6 +1071,8 @@ AGENT_CAPABILITY_REGISTRY = {
     'skill_schedule':   {'desc': 'Create scheduled tasks',                                'trust': 2},
     'memory_write':     {'desc': 'Save to own agent memory',                              'trust': 1},
     'memory_read_all':  {'desc': 'Read memory of other agents (cross-agent awareness)',   'trust': 2},
+    'git_propose':      {'desc': 'Create ALM-gated Git proposals (stage/unstage/commit)', 'trust': 1},
+    'git_execute':      {'desc': 'Execute approved ALM-gated Git proposals',               'trust': 2},
     'propose_work':     {'desc': 'Self-initiate work proposals without human prompt',     'trust': 2},
     'coordinate':       {'desc': 'Send coordination messages to other local agents',      'trust': 2},
 }

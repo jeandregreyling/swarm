@@ -43,7 +43,9 @@ from database import (get_connection, new_conversation, log_message,
                        list_user_profiles, get_user_profile, upsert_user_profile,
                        list_user_skill_permissions, set_user_skill_permission,
                        can_user_invoke_skill, initialise_database,
-                       get_agent_memory, save_agent_memory)
+                       get_agent_memory, save_agent_memory, agent_has_capability,
+                       grant_agent_capability, revoke_agent_capability,
+                       get_agent_capabilities, AGENT_CAPABILITY_REGISTRY)
 from ticket import create as ticket_create, librarian_close
 import queue_manager as _queue_manager
 
@@ -550,6 +552,76 @@ _AGENT_TABLES = {
     'sniffles': 'memory',
 }
 
+
+def _collect_local_file_memories(query='', agent='', limit=120):
+    """Collect local file-based memories from sandpits for UI visibility."""
+    sandpit_root = Path('/home/seven/swarm/sandpits')
+    if not sandpit_root.exists():
+        return []
+
+    query_l = str(query or '').strip().lower()
+    agent_l = str(agent or '').strip().lower()
+    rows = []
+
+    # Keep this tight so Memory tile stays readable and fast.
+    file_priority = (
+        'WHO_AM_I.md',
+        'DISPATCHED_WORK.md',
+        'THINK.md',
+        'MEMORY.md',
+        'NOTES.md',
+        'notes.md',
+    )
+    shared_files = ('COORDINATION.md', 'CURRENT_FOCUS.md', 'STALE_PROPOSALS.md')
+
+    def _match_and_add(path: Path, owner_agent: str, importance: int):
+        if not path.exists() or not path.is_file():
+            return
+        try:
+            content = path.read_text(encoding='utf-8', errors='ignore')
+        except Exception:
+            return
+
+        subject = path.name
+        searchable = f"{subject}\n{content}".lower()
+        if query_l and query_l not in searchable:
+            return
+
+        # Stable synthetic id for read-only UI cards.
+        synthetic_id = int(uuid.uuid5(uuid.NAMESPACE_URL, str(path)).int % 2_000_000_000)
+        mtime = datetime.fromtimestamp(path.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+
+        rows.append({
+            'id': synthetic_id,
+            'source_table': 'local_file',
+            'agent': owner_agent,
+            'subject': subject,
+            'content': content[:4000],
+            'tags': 'local_file,sandpit',
+            'importance': importance,
+            'created_at': mtime,
+            'source': str(path),
+        })
+
+    for child in sandpit_root.iterdir():
+        if not child.is_dir():
+            continue
+        name_l = child.name.lower()
+        if agent_l and agent_l not in (name_l,):
+            continue
+
+        if name_l == 'shared':
+            for fname in shared_files:
+                _match_and_add(child / fname, 'shared', 6)
+            continue
+
+        for fname in file_priority:
+            imp = 8 if fname == 'WHO_AM_I.md' else 5
+            _match_and_add(child / fname, name_l, imp)
+
+    rows.sort(key=lambda r: (r.get('created_at') or ''), reverse=True)
+    return rows[:max(1, int(limit or 120))]
+
 def _memory_search(query='', min_importance=3, agent='', limit=50):
     conn = get_connection()
     like = f'%{query}%'
@@ -1002,6 +1074,12 @@ def api_agent_git_create_proposal():
     if error_response:
         return error_response
 
+    try:
+        if not agent_has_capability(agent_id, 'git_propose'):
+            return jsonify({'ok': False, 'error': f'agent {agent_id} lacks git_propose capability'}), 403
+    except Exception:
+        pass
+
     data = request.get_json() or {}
     action = str(data.get('action') or '').strip().lower()
     priority = int(data.get('priority', 4) or 4)
@@ -1085,6 +1163,12 @@ def api_agent_git_execute_proposal(proposal_id):
     agent_id, error_response = _validate_agent_request()
     if error_response:
         return error_response
+
+    try:
+        if not agent_has_capability(agent_id, 'git_execute'):
+            return jsonify({'ok': False, 'error': f'agent {agent_id} lacks git_execute capability'}), 403
+    except Exception:
+        pass
 
     conn = get_connection()
     row = conn.execute(
@@ -1470,8 +1554,14 @@ def api_memory():
     mn    = int(request.args.get('min', 3))
     agent = request.args.get('agent', '')
     limit = max(1, min(int(request.args.get('limit', 120) or 120), 500))
+    include_local = request.args.get('include_local', '1') != '0'
     
     rows = _memory_search(q, mn, agent, limit=limit)
+    if include_local:
+        local_rows = _collect_local_file_memories(query=q, agent=agent, limit=limit)
+        rows = list(rows) + local_rows
+        rows.sort(key=lambda r: (r.get('created_at') or ''), reverse=True)
+        rows = rows[:limit]
     
     # Group results by agent for frontend
     grouped = {}
@@ -5602,6 +5692,121 @@ def api_agents():
         entry['ghost_layer'] = a.get('ghost_layer', False)  # Pass through boolean for frontend classification
         result.append(entry)
     return jsonify(result)
+
+
+@app.route('/api/agents/capability-matrix')
+def api_agents_capability_matrix():
+    """Read-only matrix of granted capabilities per agent for governance UI."""
+    include_inactive = request.args.get('include_inactive', '0') == '1'
+    try:
+        from database import get_agent_capabilities, AGENT_CAPABILITY_REGISTRY
+
+        roster_agents = sorted({str(a.get('name', '')).strip().lower() for a in _AGENT_ROSTER if a.get('name')})
+        if include_inactive:
+            extras = {'fridays', 'ghost'}
+            roster_agents = sorted(set(roster_agents) | extras)
+
+        matrix = []
+        for agent_name in roster_agents:
+            caps = get_agent_capabilities(agent_name)
+            granted = []
+            for cap in caps:
+                if not bool(cap.get('granted')):
+                    continue
+                cname = str(cap.get('capability') or '').strip().lower()
+                meta = AGENT_CAPABILITY_REGISTRY.get(cname, {})
+                granted.append({
+                    'capability': cname,
+                    'description': meta.get('desc', ''),
+                    'trust_level': int(cap.get('trust_level') or meta.get('trust', 0) or 0),
+                    'granted_by': cap.get('granted_by', ''),
+                    'granted_at': cap.get('granted_at', ''),
+                })
+
+            granted.sort(key=lambda item: (item.get('trust_level', 0), item.get('capability', '')))
+            matrix.append({
+                'agent': agent_name,
+                'granted_count': len(granted),
+                'capabilities': granted,
+            })
+
+        return jsonify({'ok': True, 'agents': matrix})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@app.route('/api/agents/capabilities', methods=['POST'])
+def api_agents_capabilities_update():
+    """Grant or revoke one or more capabilities for a target agent."""
+    data = request.get_json() or {}
+    identity, err = _resolve_identity_or_response(data)
+    if err:
+        return err
+    if identity['acting_user'] != 'ghost':
+        return jsonify({'ok': False, 'error': 'only ghost can update agent capabilities'}), 403
+
+    target_agent = str(data.get('agent') or '').strip().lower()
+    if not target_agent:
+        return jsonify({'ok': False, 'error': 'agent required'}), 400
+
+    known_agents = {str(a.get('name') or '').strip().lower() for a in _AGENT_ROSTER if a.get('name')}
+    if target_agent not in known_agents:
+        return jsonify({'ok': False, 'error': f'unknown agent: {target_agent}'}), 404
+
+    raw_caps = data.get('capabilities', data.get('capability', []))
+    if isinstance(raw_caps, str):
+        raw_caps = [raw_caps]
+    capabilities = []
+    for cap in (raw_caps or []):
+        cname = str(cap or '').strip().lower()
+        if cname and cname not in capabilities:
+            capabilities.append(cname)
+    if not capabilities:
+        return jsonify({'ok': False, 'error': 'capability or capabilities required'}), 400
+
+    invalid = [c for c in capabilities if c not in AGENT_CAPABILITY_REGISTRY]
+    if invalid:
+        return jsonify({'ok': False, 'error': f'unknown capabilities: {", ".join(invalid)}'}), 400
+
+    enabled = bool(data.get('enabled', True))
+    proposal_id = str(data.get('proposal_id') or '').strip()
+    notes = str(data.get('notes') or '').strip()
+    granted_by = str(identity.get('effective_user') or 'ghost').strip().lower() or 'ghost'
+
+    changed = []
+    for cap in capabilities:
+        if enabled:
+            grant_agent_capability(
+                target_agent,
+                cap,
+                granted_by=granted_by,
+                proposal_id=proposal_id,
+                notes=notes,
+            )
+        else:
+            revoke_agent_capability(target_agent, cap)
+        changed.append({'capability': cap, 'enabled': enabled})
+
+    granted_rows = [
+        row for row in get_agent_capabilities(target_agent)
+        if bool(row.get('granted'))
+    ]
+    granted_rows.sort(key=lambda item: (int(item.get('trust_level') or 0), str(item.get('capability') or '')))
+
+    action_label = 'grant' if enabled else 'revoke'
+    log_activity(
+        'terminal',
+        'agent_capabilities_updated',
+        f'{target_agent}:{action_label}:{",".join(capabilities)} by {granted_by}'
+    )
+
+    return jsonify({
+        'ok': True,
+        'agent': target_agent,
+        'changed': changed,
+        'granted_count': len(granted_rows),
+        'capabilities': granted_rows,
+    })
 
 
 @app.route('/api/agents/<name>/toggle', methods=['POST'])
