@@ -50,6 +50,25 @@ THINK_CYCLE_LIMIT = 3         # max new proposals per agent per heartbeat
 SANDPIT_ROOT      = SWARM_ROOT / 'sandpits'
 ENV_AGENTS_FILE   = SWARM_ROOT / '.env.agents'
 
+
+def _env_int(name, default, min_value=1):
+    raw = os.environ.get(name, '').strip()
+    if not raw:
+        return default
+    try:
+        return max(min_value, int(raw))
+    except Exception:
+        logger.warning(f'[Fridays] Invalid integer for {name}: {raw!r}; using default {default}')
+        return default
+
+
+GIT_PROPOSAL_POLL_SECONDS = _env_int('GIT_PROPOSAL_POLL_SECONDS', 5, min_value=1)
+GIT_PROPOSAL_TIMEOUT_SECONDS = _env_int('GIT_PROPOSAL_TIMEOUT_SECONDS', 300, min_value=1)
+GIT_EXECUTE_PER_AGENT_PER_HEARTBEAT = _env_int('GIT_EXECUTE_PER_AGENT_PER_HEARTBEAT', 3, min_value=1)
+
+# ── Local agents participating in shared workflows ───────────────────────────
+LOCAL_AGENTS = ['gemma', 'qwen', 'llama', 'eight', 'duck', 'sniffles']
+
 # ── Which agents think proactively each heartbeat ─────────────────────────────
 THINKING_AGENTS = ['gemma', 'qwen', 'llama', 'eight']
 
@@ -115,6 +134,182 @@ def _get_pending_proposals():
     if err or not result:
         return []
     return result.get('proposals', [])
+
+
+def agent_git_create_proposal(agent_id, action, paths=None, message='', priority=4):
+    """
+    Shared helper for local agents to create Git ALM proposals.
+    action: stage | unstage | commit
+    """
+    action = str(action or '').strip().lower()
+    if action not in ('stage', 'unstage', 'commit'):
+        return None, 'invalid action'
+    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS:
+        return None, f'unsupported local agent: {agent_id}'
+
+    payload = {
+        'action': action,
+        'priority': int(priority or 4),
+    }
+    if action in ('stage', 'unstage'):
+        clean_paths = [str(p).strip() for p in (paths or []) if str(p).strip()]
+        payload['paths'] = clean_paths
+    else:
+        payload['message'] = str(message or '').strip()
+
+    return _agent_api('POST', '/api/agent/git/proposals', agent_id=agent_id, data=payload)
+
+
+def agent_git_list_proposals(agent_id, status='', all_agents=False, limit=50):
+    """Shared helper for local agents to list Git ALM proposals."""
+    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS:
+        return None, f'unsupported local agent: {agent_id}'
+
+    q = []
+    if status:
+        q.append(f'status={status}')
+    if all_agents:
+        q.append('all_agents=1')
+    q.append(f'limit={int(limit or 50)}')
+    query = '&'.join(q)
+    return _agent_api('GET', f'/api/agent/git/proposals?{query}', agent_id=agent_id)
+
+
+def agent_git_execute_proposal(agent_id, proposal_id):
+    """Shared helper for local agents to execute an approved Git proposal."""
+    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS:
+        return None, f'unsupported local agent: {agent_id}'
+    pid = str(proposal_id or '').strip()
+    if not pid:
+        return None, 'proposal_id required'
+    return _agent_api('POST', f'/api/agent/git/proposals/{pid}/execute', agent_id=agent_id, data={})
+
+
+def agent_git_wait_for_decision(agent_id, proposal_id, timeout_seconds=GIT_PROPOSAL_TIMEOUT_SECONDS,
+                                poll_seconds=GIT_PROPOSAL_POLL_SECONDS):
+    """
+    Wait until a Git proposal reaches a terminal decision state.
+
+    Returns:
+      ({'proposal_id': ..., 'status': ..., 'proposal': {...}}, None) on success
+      (None, 'error message') on timeout or request error
+    """
+    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS:
+        return None, f'unsupported local agent: {agent_id}'
+
+    pid = str(proposal_id or '').strip()
+    if not pid:
+        return None, 'proposal_id required'
+
+    timeout_seconds = max(1, int(timeout_seconds or GIT_PROPOSAL_TIMEOUT_SECONDS))
+    poll_seconds = max(1, int(poll_seconds or GIT_PROPOSAL_POLL_SECONDS))
+    deadline = time.time() + timeout_seconds
+
+    while time.time() < deadline:
+        result, err = agent_git_list_proposals(
+            agent_id=agent_id,
+            status='',
+            all_agents=True,
+            limit=200,
+        )
+        if err:
+            return None, err
+        proposals = (result or {}).get('proposals', [])
+        proposal = next((p for p in proposals if str(p.get('proposal_id') or '') == pid), None)
+        if proposal:
+            status = str(proposal.get('status') or '').strip().lower()
+            if status in ('approved', 'rejected', 'executed'):
+                return {
+                    'proposal_id': pid,
+                    'status': status,
+                    'proposal': proposal,
+                }, None
+        time.sleep(poll_seconds)
+
+    return None, f'timeout waiting for proposal decision: {pid}'
+
+
+def agent_git_execute_when_approved(agent_id, proposal_id,
+                                    timeout_seconds=GIT_PROPOSAL_TIMEOUT_SECONDS,
+                                    poll_seconds=GIT_PROPOSAL_POLL_SECONDS):
+    """
+    Wait for ALM decision and execute when approved.
+
+    Returns:
+      ({'ok': True, ...}, None) when executed or already executed
+      (None, 'error message') when rejected, timed out, or execution failed
+    """
+    decision, err = agent_git_wait_for_decision(
+        agent_id=agent_id,
+        proposal_id=proposal_id,
+        timeout_seconds=timeout_seconds,
+        poll_seconds=poll_seconds,
+    )
+    if err:
+        return None, err
+
+    status = decision.get('status')
+    if status == 'rejected':
+        return None, f'proposal rejected: {proposal_id}'
+    if status == 'executed':
+        return {
+            'ok': True,
+            'proposal_id': proposal_id,
+            'status': 'already_executed',
+            'result': None,
+        }, None
+    if status != 'approved':
+        return None, f'proposal not executable in status: {status}'
+
+    exec_result, exec_err = agent_git_execute_proposal(agent_id, proposal_id)
+    if exec_err:
+        return None, exec_err
+
+    return {
+        'ok': True,
+        'proposal_id': proposal_id,
+        'status': 'executed',
+        'result': exec_result,
+    }, None
+
+
+def agent_git_propose_and_execute(agent_id, action, paths=None, message='', priority=4,
+                                  timeout_seconds=GIT_PROPOSAL_TIMEOUT_SECONDS,
+                                  poll_seconds=GIT_PROPOSAL_POLL_SECONDS):
+    """
+    One-call helper: create a proposal, wait for approval, then execute.
+
+    Note: execution only happens if ALM status becomes approved before timeout.
+    """
+    created, create_err = agent_git_create_proposal(
+        agent_id=agent_id,
+        action=action,
+        paths=paths,
+        message=message,
+        priority=priority,
+    )
+    if create_err:
+        return None, create_err
+
+    proposal_id = (created or {}).get('proposal_id')
+    if not proposal_id:
+        return None, 'proposal creation succeeded without proposal_id'
+
+    executed, exec_err = agent_git_execute_when_approved(
+        agent_id=agent_id,
+        proposal_id=proposal_id,
+        timeout_seconds=timeout_seconds,
+        poll_seconds=poll_seconds,
+    )
+    if exec_err:
+        return None, exec_err
+
+    return {
+        'ok': True,
+        'proposal_id': proposal_id,
+        'created': created,
+        'executed': executed,
+    }, None
 
 
 def _naive_route(proposal):
@@ -224,6 +419,9 @@ def _update_focus_file(stats):
         f"- Pending proposals processed: {stats.get('dispatched', 0)}\n"
         f"- Think-cycle proposals created: {stats.get('self_proposed', 0)}\n"
         f"- Stale proposals escalated: {stats.get('escalated', 0)}\n"
+        f"- Git proposals auto-executed: {stats.get('git_auto_executed', 0)}\n"
+        f"- Git proposal execution failures: {stats.get('git_auto_failed', 0)}\n"
+        f"- Git proposals deferred by per-agent cap: {stats.get('git_auto_skipped_cap', 0)}\n"
         f"- Agents active this cycle: {', '.join(stats.get('active_agents', []))}\n\n"
         f"## Next Heartbeat\n"
         f"~{HEARTBEAT_SECONDS // 60} minutes\n\n"
@@ -265,9 +463,62 @@ def _check_stale_proposals(proposals):
     return escalated
 
 
+def _process_local_agent_git_queue(per_agent_limit=GIT_EXECUTE_PER_AGENT_PER_HEARTBEAT):
+    """
+    Execute approved Git proposals for each local agent.
+
+    This is a concrete runtime integration so local agents share one ALM Git
+    execution pathway without custom polling loops.
+    """
+    executed = []
+    failed = []
+    skipped_due_to_cap = []
+    per_agent_limit = max(1, int(per_agent_limit or GIT_EXECUTE_PER_AGENT_PER_HEARTBEAT))
+
+    for agent_name in LOCAL_AGENTS:
+        listing, err = agent_git_list_proposals(
+            agent_id=agent_name,
+            status='approved',
+            all_agents=False,
+            limit=50,
+        )
+        if err:
+            failed.append({'agent': agent_name, 'proposal_id': '', 'error': err})
+            continue
+
+        proposals = (listing or {}).get('proposals', [])
+        executed_for_agent = 0
+        for proposal in proposals:
+            pid = str(proposal.get('proposal_id') or '').strip()
+            if not pid:
+                continue
+            if executed_for_agent >= per_agent_limit:
+                skipped_due_to_cap.append({'agent': agent_name, 'proposal_id': pid})
+                continue
+            result, exec_err = agent_git_execute_proposal(agent_name, pid)
+            if exec_err:
+                failed.append({'agent': agent_name, 'proposal_id': pid, 'error': exec_err})
+                logger.warning(f'[Fridays] Git execute failed: {agent_name} {pid} {exec_err}')
+                continue
+
+            executed.append({'agent': agent_name, 'proposal_id': pid, 'result': result})
+            executed_for_agent += 1
+            logger.info(f'[Fridays] Git executed: {agent_name} {pid}')
+
+    return executed, failed, skipped_due_to_cap
+
+
 def run_heartbeat():
     """Execute one full heartbeat cycle. Returns a stats dict."""
-    stats = {'dispatched': 0, 'self_proposed': 0, 'escalated': 0, 'active_agents': []}
+    stats = {
+        'dispatched': 0,
+        'self_proposed': 0,
+        'escalated': 0,
+        'git_auto_executed': 0,
+        'git_auto_failed': 0,
+        'git_auto_skipped_cap': 0,
+        'active_agents': [],
+    }
     
     logger.info('[Fridays] ── Heartbeat ──────────────────────────')
     
@@ -303,19 +554,40 @@ def run_heartbeat():
     stats['escalated'] = len(stale)
     if stale:
         logger.warning(f'[Fridays] {len(stale)} stale proposals: {stale}')
+
+    # 5. Execute approved git proposals for local agents
+    git_executed, git_failed, git_skipped_cap = _process_local_agent_git_queue(
+        per_agent_limit=GIT_EXECUTE_PER_AGENT_PER_HEARTBEAT
+    )
+    stats['git_auto_executed'] = len(git_executed)
+    stats['git_auto_failed'] = len(git_failed)
+    stats['git_auto_skipped_cap'] = len(git_skipped_cap)
+    if git_executed:
+        for item in git_executed:
+            if item['agent'] not in stats['active_agents']:
+                stats['active_agents'].append(item['agent'])
+    if git_skipped_cap:
+        logger.info(f'[Fridays] Git queue cap skipped {len(git_skipped_cap)} proposal(s) this heartbeat')
     
-    # 5. Update focus file
+    # 6. Update focus file
     _update_focus_file(stats)
     
-    # 6. Log completion
+    # 7. Log completion
     try:
         from database import log_activity
         log_activity('fridays', 'heartbeat_complete',
-                     f'dispatched={stats["dispatched"]} self_proposed={stats["self_proposed"]} escalated={stats["escalated"]}')
+                     f'dispatched={stats["dispatched"]} self_proposed={stats["self_proposed"]} escalated={stats["escalated"]} '
+                     f'git_auto_executed={stats["git_auto_executed"]} git_auto_failed={stats["git_auto_failed"]} '
+                     f'git_auto_skipped_cap={stats["git_auto_skipped_cap"]}')
     except Exception:
         pass
     
-    logger.info(f'[Fridays] Heartbeat done — dispatched={stats["dispatched"]}, self_proposed={stats["self_proposed"]}')
+    logger.info(
+        f'[Fridays] Heartbeat done — dispatched={stats["dispatched"]}, '
+        f'self_proposed={stats["self_proposed"]}, '
+        f'git_auto_executed={stats["git_auto_executed"]}, git_auto_failed={stats["git_auto_failed"]}, '
+        f'git_auto_skipped_cap={stats["git_auto_skipped_cap"]}'
+    )
     return stats
 
 

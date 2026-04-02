@@ -31,3 +31,15 @@
 - [09:33] INTERNAL-QWEN-0333 (qwen): Qwen Task
 - [09:33] INTERNAL-QWEN-0332 (qwen): Qwen Coordination Task
 - [09:33] INTERNAL-GHOST-0323 (ghost): qa-probe
+- [16:50] INTERNAL-TERMINAL_UI-0350 (terminal_ui): stream smoke2
+- [16:50] INTERNAL-TERMINAL_UI-0349 (terminal_ui): stream smoke
+- [16:55] INTERNAL-TERMINAL_UI-0350 (terminal_ui): stream smoke2
+- [16:55] INTERNAL-TERMINAL_UI-0349 (terminal_ui): stream smoke
+- [16:59] INTERNAL-TERMINAL_UI-0350 (terminal_ui): stream smoke2
+- [16:59] INTERNAL-TERMINAL_UI-0349 (terminal_ui): stream smoke
+- [17:00] INTERNAL-TERMINAL_UI-0350 (terminal_ui): stream smoke2
+- [17:00] INTERNAL-TERMINAL_UI-0349 (terminal_ui): stream smoke
+- [17:01] INTERNAL-TERMINAL_UI-0350 (terminal_ui): stream smoke2
+- [17:01] INTERNAL-TERMINAL_UI-0349 (terminal_ui): stream smoke
+- [17:05] INTERNAL-TERMINAL_UI-0350 (terminal_ui): stream smoke2
+- [17:05] INTERNAL-TERMINAL_UI-0349 (terminal_ui): stream smoke

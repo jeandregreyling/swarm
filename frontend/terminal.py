@@ -173,6 +173,10 @@ orchestrator.ask_agent = _patched_ask_agent
 # ticket_number → queue.Queue of event dicts. None = stream closed.
 _streams = {}
 
+# ── Active terminal shell streams (for stop support) ─────────────────────────
+_SHELL_STREAM_LOCK = threading.Lock()
+_SHELL_STREAM_PROCS = {}
+
 # ── Persistent chat jobs (timeout-safe) ───────────────────────────────────────
 _CHAT_JOB_LOCK = threading.Lock()
 _CHAT_JOBS = {}
@@ -821,7 +825,7 @@ def _validate_agent_request():
         return None, (jsonify({'ok': False, 'error': 'invalid agent API key'}), 403)
     
     # Valid agent_id should match known local agents
-    valid_agents = ('gemma', 'qwen', 'llama', 'sniffles', 'duck', 'librarian', 'nine', 'ten', 'eleven', 'twelve')
+    valid_agents = ('gemma', 'qwen', 'llama', 'eight', 'sniffles', 'duck', 'librarian', 'nine', 'ten', 'eleven', 'twelve')
     if agent_id.lower() not in valid_agents:
         log_activity('terminal', 'agent_auth_unknown', f'unknown agent_id: {agent_id}')
         # Still allow it; agents can register themselves
@@ -980,6 +984,139 @@ def api_agent_list_proposals():
         return jsonify({'ok': True, 'proposals': proposals})
     finally:
         conn.close()
+
+
+@app.route('/api/agent/git/proposals', methods=['POST'])
+def api_agent_git_create_proposal():
+    """
+    Agent creates a Git ALM proposal (stage, unstage, or commit).
+
+    Requires: X-Agent-Key, X-Agent-Id headers
+    JSON:
+      - action: stage | unstage | commit
+      - paths: ["file1", ...] or path: "file1" (for stage/unstage)
+      - message: commit message (for commit)
+      - priority: optional 1..10
+    """
+    agent_id, error_response = _validate_agent_request()
+    if error_response:
+        return error_response
+
+    data = request.get_json() or {}
+    action = str(data.get('action') or '').strip().lower()
+    priority = int(data.get('priority', 4) or 4)
+
+    if action not in ('stage', 'unstage', 'commit'):
+        return jsonify({'ok': False, 'error': 'action must be stage, unstage, or commit'}), 400
+
+    raw_paths = data.get('paths') or []
+    if isinstance(raw_paths, str):
+        raw_paths = [raw_paths]
+    if not raw_paths and data.get('path'):
+        raw_paths = [data.get('path')]
+    message = str(data.get('message') or '').strip()
+
+    try:
+        rel_paths = [_git_rel_path(item) for item in raw_paths if str(item or '').strip()]
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+    if action in ('stage', 'unstage') and not rel_paths:
+        return jsonify({'ok': False, 'error': 'paths required for stage/unstage'}), 400
+    if action == 'commit' and not message:
+        return jsonify({'ok': False, 'error': 'message required for commit'}), 400
+
+    title = {
+        'stage': 'Git stage file',
+        'unstage': 'Git unstage file',
+        'commit': 'Git commit staged changes',
+    }[action]
+    description = _build_git_operation_description(action, rel_paths, message)
+
+    queue_id, proposal_id = intake_internal(agent_id, title, description, priority=priority)
+    log_activity('terminal', 'agent_git_proposal_created', f'agent={agent_id} proposal_id={proposal_id} action={action}')
+    return jsonify({
+        'ok': True,
+        'agent_id': agent_id,
+        'queue_id': queue_id,
+        'proposal_id': proposal_id,
+        'action': action,
+        'paths': rel_paths,
+        'message': message,
+    }), 201
+
+
+@app.route('/api/agent/git/proposals', methods=['GET'])
+def api_agent_git_list_proposals():
+    """List git proposals for current agent (or all agents when all_agents=1)."""
+    agent_id, error_response = _validate_agent_request()
+    if error_response:
+        return error_response
+
+    status = request.args.get('status', '').strip().lower()
+    include_all_agents = request.args.get('all_agents', '0') == '1'
+    limit = int(request.args.get('limit', 50) or 50)
+
+    conn = get_connection()
+    try:
+        query = (
+            "SELECT proposal_id, agent, title, description, status, queue_id, created_at, updated_at "
+            "FROM work_proposals WHERE (lower(title) LIKE 'git %' OR lower(description) LIKE '%git panel:%')"
+        )
+        params = []
+        if status:
+            query += ' AND lower(status)=?'
+            params.append(status)
+        if not include_all_agents:
+            query += ' AND lower(agent)=?'
+            params.append(agent_id.lower())
+        query += ' ORDER BY created_at DESC LIMIT ?'
+        params.append(limit)
+
+        rows = conn.execute(query, tuple(params)).fetchall()
+        return jsonify({'ok': True, 'agent_id': agent_id, 'proposals': [dict(r) for r in rows]})
+    finally:
+        conn.close()
+
+
+@app.route('/api/agent/git/proposals/<proposal_id>/execute', methods=['POST'])
+def api_agent_git_execute_proposal(proposal_id):
+    """Execute an approved git proposal created by the same agent."""
+    agent_id, error_response = _validate_agent_request()
+    if error_response:
+        return error_response
+
+    conn = get_connection()
+    row = conn.execute(
+        'SELECT proposal_id, agent, title, description, status FROM work_proposals WHERE proposal_id=?',
+        (proposal_id,)
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({'ok': False, 'error': f'proposal not found: {proposal_id}'}), 404
+
+    if str(row['agent'] or '').lower() != agent_id.lower():
+        return jsonify({'ok': False, 'error': 'agent can only execute its own proposals'}), 403
+
+    gate = _alm_gate_or_response({'proposal_id': proposal_id}, 'agent_git_execute')
+    if gate:
+        return gate
+
+    operation = _parse_git_operation_from_proposal(row['title'], row['description'])
+    if not operation:
+        return jsonify({'ok': False, 'error': 'unable to parse git operation from proposal'}), 400
+
+    try:
+        result = _execute_git_operation(operation, proposal_id=proposal_id)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if str(row['status'] or '').lower() != 'executed':
+        update_proposal_status(proposal_id, 'executed')
+
+    log_activity('terminal', 'agent_git_proposal_executed', f'agent={agent_id} proposal_id={proposal_id}')
+    return jsonify({'ok': True, 'proposal_id': proposal_id, 'operation': operation, 'result': result})
 
 
 @app.route('/api/agent/capabilities', methods=['GET'])
@@ -2212,6 +2349,401 @@ def api_work_proposals_patch(proposal_id):
     return jsonify(payload)
 
 
+def _git_repo_root() -> Path:
+    return Path('/home/seven/swarm')
+
+
+def _git_rel_path(path_value: str) -> str:
+    rel_path = str(path_value or '').strip().replace('\\', '/').lstrip('/')
+    if not rel_path:
+        raise ValueError('path required')
+    repo_root = _git_repo_root().resolve()
+    full_path = (repo_root / rel_path).resolve()
+    if not str(full_path).startswith(str(repo_root)):
+        raise ValueError('path outside repository')
+    try:
+        return str(full_path.relative_to(repo_root)).replace('\\', '/')
+    except Exception as exc:
+        raise ValueError(f'invalid repository path: {exc}') from exc
+
+
+def _run_git_command(args, timeout=20):
+    import subprocess
+
+    repo_root = _git_repo_root()
+    proc = subprocess.run(
+        ['git', '-C', str(repo_root), *args],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+    return proc
+
+
+def _build_git_operation_description(action: str, paths=None, message='') -> str:
+    paths = [str(p).strip() for p in (paths or []) if str(p).strip()]
+    action = str(action or '').strip().lower()
+    message = str(message or '').strip()
+
+    if action == 'stage':
+        human = f"Stage repository path via Git panel: {paths[0] if paths else ''}"
+    elif action == 'unstage':
+        human = f"Unstage repository path via Git panel: {paths[0] if paths else ''}"
+    else:
+        human = f"Commit staged repository changes via Git panel: {message}"
+
+    payload = {
+        'kind': 'git_operation',
+        'action': action,
+        'paths': paths,
+        'message': message,
+    }
+    return f"{human}\n\nALM Git payload:\n{json.dumps(payload, ensure_ascii=True)}"
+
+
+def _parse_git_operation_from_proposal(title: str, description: str):
+    title_l = str(title or '').lower()
+    desc = str(description or '')
+
+    marker = re.search(r'ALM Git payload:\s*(\{.*\})\s*$', desc, flags=re.IGNORECASE | re.DOTALL)
+    if marker:
+        try:
+            payload = json.loads(marker.group(1))
+            action = str(payload.get('action') or '').strip().lower()
+            if action in ('stage', 'unstage'):
+                return {
+                    'action': action,
+                    'paths': [str(p).strip() for p in (payload.get('paths') or []) if str(p).strip()],
+                }
+            if action == 'commit':
+                return {'action': action, 'message': str(payload.get('message') or '').strip()}
+        except Exception:
+            pass
+
+    if 'git stage file' in title_l:
+        m = re.search(r'Stage repository path via Git panel:\s*(.+)$', desc, flags=re.IGNORECASE | re.MULTILINE)
+        return {'action': 'stage', 'paths': [m.group(1).strip()]} if m else None
+    if 'git unstage file' in title_l:
+        m = re.search(r'Unstage repository path via Git panel:\s*(.+)$', desc, flags=re.IGNORECASE | re.MULTILINE)
+        return {'action': 'unstage', 'paths': [m.group(1).strip()]} if m else None
+    if 'git commit staged changes' in title_l:
+        m = re.search(r'Commit staged repository changes via Git panel:\s*(.+)$', desc, flags=re.IGNORECASE | re.MULTILINE)
+        return {'action': 'commit', 'message': m.group(1).strip()} if m else None
+    return None
+
+
+def _execute_git_operation(operation: dict, proposal_id=''):
+    action = str((operation or {}).get('action') or '').strip().lower()
+    if action not in ('stage', 'unstage', 'commit'):
+        raise ValueError('unsupported git action')
+
+    if action in ('stage', 'unstage'):
+        raw_paths = operation.get('paths') or []
+        rel_paths = [_git_rel_path(item) for item in raw_paths if str(item or '').strip()]
+        if not rel_paths:
+            raise ValueError('paths required')
+        cmd = ['add', '--', *rel_paths] if action == 'stage' else ['reset', 'HEAD', '--', *rel_paths]
+        proc = _run_git_command(cmd, timeout=20)
+        if proc.returncode != 0:
+            raise RuntimeError((proc.stderr or proc.stdout or f'git {action} failed').strip()[:500])
+        return {'action': action, 'paths': rel_paths, 'count': len(rel_paths)}
+
+    message = str(operation.get('message') or '').strip()
+    if not message:
+        raise ValueError('message required')
+
+    staged = _run_git_command(['diff', '--cached', '--name-only'], timeout=20)
+    if staged.returncode != 0:
+        raise RuntimeError((staged.stderr or staged.stdout or 'git diff failed').strip()[:500])
+
+    staged_paths = [line.strip() for line in (staged.stdout or '').splitlines() if line.strip()]
+    if not staged_paths:
+        raise ValueError('no staged changes to commit')
+
+    final_message = message if not proposal_id else f'{message} (proposal:{proposal_id[:12]})'
+    commit = _run_git_command(['commit', '-m', final_message], timeout=40)
+    if commit.returncode != 0:
+        raise RuntimeError((commit.stderr or commit.stdout or 'git commit failed').strip()[:500])
+
+    rev = _run_git_command(['rev-parse', 'HEAD'], timeout=10)
+    commit_hash = (rev.stdout or '').strip() if rev.returncode == 0 else ''
+    return {
+        'action': 'commit',
+        'commit_hash': commit_hash,
+        'files_changed': len(staged_paths),
+        'paths': staged_paths[:200],
+        'message': final_message,
+    }
+
+
+def _parse_git_status_porcelain(status_text: str):
+    branch = ''
+    upstream = ''
+    ahead = 0
+    behind = 0
+    detached = False
+    files = []
+
+    for raw_line in (status_text or '').splitlines():
+        line = raw_line.rstrip('\n')
+        if not line:
+            continue
+        if line.startswith('## '):
+            header = line[3:]
+            if header.startswith('HEAD '):
+                detached = True
+            branch_part = header.split('...')[0].strip()
+            branch = branch_part.replace('No commits yet on ', '').strip()
+            if '...' in header:
+                upstream = header.split('...', 1)[1].split(' [', 1)[0].strip()
+            if '[' in header and ']' in header:
+                details = header.split('[', 1)[1].split(']', 1)[0]
+                for part in details.split(','):
+                    piece = part.strip()
+                    if piece.startswith('ahead '):
+                        try:
+                            ahead = int(piece.split(' ', 1)[1])
+                        except Exception:
+                            ahead = 0
+                    elif piece.startswith('behind '):
+                        try:
+                            behind = int(piece.split(' ', 1)[1])
+                        except Exception:
+                            behind = 0
+            continue
+
+        if len(line) < 4:
+            continue
+
+        x = line[0]
+        y = line[1]
+        path_text = line[3:].strip()
+        display_path = path_text.split(' -> ')[-1].strip()
+        staged = x not in (' ', '?')
+        unstaged = y != ' '
+        untracked = x == '?' and y == '?'
+        deleted = x == 'D' or y == 'D'
+        renamed = x == 'R' or y == 'R' or ' -> ' in path_text
+        conflicted = x == 'U' or y == 'U' or (x == 'A' and y == 'A') or (x == 'D' and y == 'D')
+
+        if conflicted:
+            status_label = 'conflict'
+        elif untracked:
+            status_label = 'untracked'
+        elif deleted:
+            status_label = 'deleted'
+        elif renamed:
+            status_label = 'renamed'
+        elif staged and unstaged:
+            status_label = 'mixed'
+        elif staged:
+            status_label = 'staged'
+        elif unstaged:
+            status_label = 'modified'
+        else:
+            status_label = 'unknown'
+
+        files.append({
+            'path': display_path,
+            'raw_path': path_text,
+            'x': x,
+            'y': y,
+            'staged': staged,
+            'unstaged': unstaged,
+            'untracked': untracked,
+            'deleted': deleted,
+            'renamed': renamed,
+            'conflicted': conflicted,
+            'status_label': status_label,
+        })
+
+    return {
+        'branch': branch,
+        'upstream': upstream,
+        'ahead': ahead,
+        'behind': behind,
+        'detached': detached,
+        'files': files,
+    }
+
+
+@app.route('/api/git/status', methods=['GET'])
+def api_git_status():
+    """Return repository status for the Fridays Git panel."""
+    try:
+        proc = _run_git_command(['status', '--porcelain=1', '--branch'], timeout=20)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': (proc.stderr or proc.stdout or 'git status failed').strip()[:500]}), 500
+
+    parsed = _parse_git_status_porcelain(proc.stdout or '')
+    files = parsed['files']
+    return jsonify({
+        'ok': True,
+        'branch': parsed['branch'],
+        'upstream': parsed['upstream'],
+        'ahead': parsed['ahead'],
+        'behind': parsed['behind'],
+        'detached': parsed['detached'],
+        'clean': len(files) == 0,
+        'counts': {
+            'changed': len(files),
+            'staged': sum(1 for entry in files if entry['staged']),
+            'unstaged': sum(1 for entry in files if entry['unstaged']),
+            'untracked': sum(1 for entry in files if entry['untracked']),
+            'conflicted': sum(1 for entry in files if entry['conflicted']),
+        },
+        'files': files,
+    })
+
+
+@app.route('/api/git/diff', methods=['GET'])
+def api_git_diff():
+    """Return a unified diff for a repository path."""
+    path_value = request.args.get('path', '')
+    staged = request.args.get('staged', '0') == '1'
+    try:
+        rel_path = _git_rel_path(path_value)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+    args = ['diff']
+    if staged:
+        args.append('--cached')
+    args.extend(['--', rel_path])
+
+    try:
+        proc = _run_git_command(args, timeout=20)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': (proc.stderr or proc.stdout or 'git diff failed').strip()[:500]}), 500
+
+    diff_text = proc.stdout or ''
+    truncated = len(diff_text) > 120000
+    if truncated:
+        diff_text = diff_text[:120000] + '\n[... diff truncated]'
+
+    return jsonify({
+        'ok': True,
+        'path': rel_path,
+        'staged': staged,
+        'diff': diff_text,
+        'truncated': truncated,
+    })
+
+
+@app.route('/api/git/stage', methods=['POST'])
+def api_git_stage():
+    """Stage one or more repository paths."""
+    data = request.get_json() or {}
+    gate = _alm_gate_or_response(data, 'exec_write')
+    if gate:
+        return gate
+
+    raw_paths = data.get('paths') or []
+    if isinstance(raw_paths, str):
+        raw_paths = [raw_paths]
+    try:
+        rel_paths = [_git_rel_path(item) for item in raw_paths if str(item or '').strip()]
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+    if not rel_paths:
+        return jsonify({'ok': False, 'error': 'paths required'}), 400
+
+    try:
+        proc = _run_git_command(['add', '--', *rel_paths], timeout=20)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': (proc.stderr or proc.stdout or 'git add failed').strip()[:500]}), 500
+
+    log_activity('terminal', 'git_stage', ', '.join(rel_paths[:8]))
+    return jsonify({'ok': True, 'paths': rel_paths, 'count': len(rel_paths)})
+
+
+@app.route('/api/git/unstage', methods=['POST'])
+def api_git_unstage():
+    """Unstage one or more repository paths."""
+    data = request.get_json() or {}
+    gate = _alm_gate_or_response(data, 'exec_write')
+    if gate:
+        return gate
+
+    raw_paths = data.get('paths') or []
+    if isinstance(raw_paths, str):
+        raw_paths = [raw_paths]
+    try:
+        rel_paths = [_git_rel_path(item) for item in raw_paths if str(item or '').strip()]
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+    if not rel_paths:
+        return jsonify({'ok': False, 'error': 'paths required'}), 400
+
+    try:
+        proc = _run_git_command(['reset', 'HEAD', '--', *rel_paths], timeout=20)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': (proc.stderr or proc.stdout or 'git reset failed').strip()[:500]}), 500
+
+    log_activity('terminal', 'git_unstage', ', '.join(rel_paths[:8]))
+    return jsonify({'ok': True, 'paths': rel_paths, 'count': len(rel_paths)})
+
+
+@app.route('/api/git/commit', methods=['POST'])
+def api_git_commit():
+    """Commit staged repository changes."""
+    data = request.get_json() or {}
+    gate = _alm_gate_or_response(data, 'exec_write')
+    if gate:
+        return gate
+
+    message = str(data.get('message') or '').strip()
+    proposal_id = str(data.get('proposal_id') or '').strip()
+    if not message:
+        return jsonify({'ok': False, 'error': 'message required'}), 400
+
+    try:
+        staged = _run_git_command(['diff', '--cached', '--name-only'], timeout=20)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if staged.returncode != 0:
+        return jsonify({'ok': False, 'error': (staged.stderr or staged.stdout or 'git diff failed').strip()[:500]}), 500
+
+    staged_paths = [line.strip() for line in (staged.stdout or '').splitlines() if line.strip()]
+    if not staged_paths:
+        return jsonify({'ok': False, 'error': 'no staged changes to commit'}), 400
+
+    final_message = message if not proposal_id else f'{message} (proposal:{proposal_id[:12]})'
+    try:
+        commit = _run_git_command(['commit', '-m', final_message], timeout=40)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if commit.returncode != 0:
+        return jsonify({'ok': False, 'error': (commit.stderr or commit.stdout or 'git commit failed').strip()[:500]}), 500
+
+    rev = _run_git_command(['rev-parse', 'HEAD'], timeout=10)
+    commit_hash = (rev.stdout or '').strip() if rev.returncode == 0 else ''
+    log_activity('terminal', 'git_commit', commit_hash[:12] or final_message[:48])
+    return jsonify({
+        'ok': True,
+        'commit_hash': commit_hash,
+        'files_changed': len(staged_paths),
+        'paths': staged_paths[:200],
+        'message': final_message,
+    })
+
+
 @app.route('/api/deferred', methods=['GET'])
 def api_deferred_list():
     """List unresolved deferred / pinned items."""
@@ -2392,7 +2924,7 @@ def resend_ticket(ticket_number):
 @app.route('/api/tickets/<ticket_number>/assign', methods=['POST'])
 def assign_ticket(ticket_number):
     """Manually assign a ticket to a specific agent."""
-    _valid_agents = {'gemma', 'llama', 'qwen', 'eight', 'librarian'}
+    _valid_agents = {'gemma', 'llama', 'qwen', 'eight', 'duck', 'sniffles', 'librarian'}
     data  = request.get_json() or {}
     agent = (data.get('agent') or '').strip()
     if agent not in _valid_agents:
@@ -2955,10 +3487,144 @@ def api_shell_execute():
         }), 500
 
 
+@app.route('/api/shell/stream', methods=['POST'])
+def api_shell_stream():
+    """Execute a whitelisted shell command and stream output via SSE."""
+    from fridays import shell_agent as _shell
+
+    data = request.get_json() or {}
+    command = str(data.get('command') or '').strip()
+
+    gate = _alm_gate_or_response(data, 'shell_execute')
+    if gate:
+        return gate
+
+    if not command:
+        return jsonify({'ok': False, 'error': 'Command is required'}), 400
+
+    match = _shell._match_whitelist(command)
+    if match is None:
+        return jsonify({'ok': False, 'error': f'Command not on whitelist: {command[:100]}'}), 403
+
+    max_output = int(getattr(_shell, 'MAX_OUTPUT', 4000))
+    timeout_sec = int(getattr(_shell, 'TIMEOUT_SEC', 30))
+
+    def _emit(payload):
+        return f"data: {json.dumps(payload)}\n\n"
+
+    def _generate():
+        import subprocess
+        started = time.time()
+        total = 0
+        proc = None
+        truncated = False
+        command_id = uuid.uuid4().hex
+
+        try:
+            proc = subprocess.Popen(
+                command,
+                shell=True,
+                cwd='/home/seven/swarm',
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+
+            with _SHELL_STREAM_LOCK:
+                _SHELL_STREAM_PROCS[command_id] = proc
+
+            yield _emit({'type': 'start', 'command': command, 'command_id': command_id})
+
+            while True:
+                if proc.stdout is None:
+                    break
+                line = proc.stdout.readline()
+                if line == '' and proc.poll() is not None:
+                    break
+
+                if line:
+                    total += len(line)
+                    if total > max_output:
+                        allowed = max(0, max_output - (total - len(line)))
+                        clipped = line[:allowed]
+                        if clipped:
+                            yield _emit({'type': 'chunk', 'text': clipped})
+                        truncated = True
+                        proc.kill()
+                        break
+                    yield _emit({'type': 'chunk', 'text': line})
+
+                if time.time() - started > timeout_sec:
+                    proc.kill()
+                    yield _emit({'type': 'error', 'error': 'command timed out'})
+                    return
+
+            returncode = proc.wait(timeout=1) if proc else 1
+            elapsed_ms = int((time.time() - started) * 1000)
+            yield _emit({
+                'type': 'done',
+                'ok': returncode == 0 and not truncated,
+                'returncode': returncode,
+                'truncated': truncated,
+                'elapsed_ms': elapsed_ms,
+                'command_id': command_id,
+            })
+        except Exception as e:
+            if proc and proc.poll() is None:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+            yield _emit({'type': 'error', 'error': str(e), 'command_id': command_id})
+        finally:
+            with _SHELL_STREAM_LOCK:
+                _SHELL_STREAM_PROCS.pop(command_id, None)
+
+    return Response(
+        _generate(),
+        mimetype='text/event-stream',
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
+    )
+
+
 @app.route('/api/terminal/run', methods=['POST'])
 def api_terminal_run():
     """Alias for /api/shell/execute for backward compatibility."""
     return api_shell_execute()
+
+
+@app.route('/api/terminal/stream', methods=['POST'])
+def api_terminal_stream():
+    """Alias for /api/shell/stream for backward compatibility."""
+    return api_shell_stream()
+
+
+@app.route('/api/shell/stream/stop', methods=['POST'])
+def api_shell_stream_stop():
+    """Stop a running shell stream command by command_id."""
+    data = request.get_json() or {}
+    command_id = str(data.get('command_id') or '').strip()
+    if not command_id:
+        return jsonify({'ok': False, 'error': 'command_id required'}), 400
+
+    stopped = False
+    with _SHELL_STREAM_LOCK:
+        proc = _SHELL_STREAM_PROCS.get(command_id)
+    if proc and proc.poll() is None:
+        try:
+            proc.kill()
+            stopped = True
+        except Exception:
+            stopped = False
+
+    return jsonify({'ok': True, 'command_id': command_id, 'stopped': stopped})
+
+
+@app.route('/api/terminal/stream/stop', methods=['POST'])
+def api_terminal_stream_stop():
+    """Alias for /api/shell/stream/stop."""
+    return api_shell_stream_stop()
 
 
 @app.route('/api/hands/run', methods=['POST'])
@@ -3224,6 +3890,339 @@ def api_workspace_search():
         'count': len(matches),
         'truncated': len(matches) >= max_results,
     })
+
+
+def _workspace_replace_candidates(scope_path, pattern, max_files=300):
+    """Return candidate files inside workspace for find/replace operations."""
+    swarm_root = Path('/home/seven/swarm')
+    rel_scope = str(scope_path or '').strip().lstrip('/')
+    scope = (swarm_root / rel_scope).resolve() if rel_scope else swarm_root
+    if not str(scope).startswith(str(swarm_root)):
+        raise ValueError('scope outside workspace')
+    if not scope.exists():
+        raise ValueError('scope not found')
+
+    def _skip(path_obj):
+        parts = path_obj.parts
+        if any(part.startswith('.') for part in parts):
+            return True
+        if any(part in ('__pycache__', '.pytest_cache', 'node_modules') for part in parts):
+            return True
+        return False
+
+    candidates = []
+    if scope.is_file():
+        if not _skip(scope.relative_to(swarm_root)):
+            candidates.append(scope)
+        return swarm_root, candidates
+
+    for path in scope.rglob(pattern or '*.py'):
+        if len(candidates) >= max_files:
+            break
+        if not path.is_file():
+            continue
+        rel = path.relative_to(swarm_root)
+        if _skip(rel):
+            continue
+        try:
+            if path.stat().st_size > 1_000_000:
+                continue
+        except Exception:
+            continue
+        candidates.append(path)
+    return swarm_root, candidates
+
+
+@app.route('/api/workspace/replace/preview', methods=['POST'])
+def api_workspace_replace_preview():
+    """Preview bulk find/replace without writing files."""
+    data = request.get_json() or {}
+    find_text = str(data.get('find_text') or '')
+    replace_text = str(data.get('replace_text') or '')
+    pattern = str(data.get('pattern') or '*.py').strip() or '*.py'
+    scope_path = str(data.get('scope_path') or '').strip()
+
+    if not find_text:
+        return jsonify({'ok': False, 'error': 'find_text required'}), 400
+    if len(find_text) > 5000:
+        return jsonify({'ok': False, 'error': 'find_text too large'}), 400
+
+    try:
+        swarm_root, candidates = _workspace_replace_candidates(scope_path, pattern, max_files=400)
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+
+    matches = []
+    total_replacements = 0
+    scanned = 0
+    for file_path in candidates:
+        scanned += 1
+        try:
+            content = file_path.read_text(encoding='utf-8', errors='replace')
+        except Exception:
+            continue
+        occurrences = content.count(find_text)
+        if occurrences <= 0:
+            continue
+        total_replacements += occurrences
+        line_hits = []
+        for idx, line in enumerate(content.splitlines(), start=1):
+            if find_text in line:
+                line_hits.append(idx)
+                if len(line_hits) >= 8:
+                    break
+        matches.append({
+            'path': str(file_path.relative_to(swarm_root)),
+            'occurrences': occurrences,
+            'lines': line_hits,
+        })
+
+    return jsonify({
+        'ok': True,
+        'scope_path': scope_path,
+        'pattern': pattern,
+        'find_text': find_text,
+        'replace_text': replace_text,
+        'scanned_files': scanned,
+        'matched_files': len(matches),
+        'total_replacements': total_replacements,
+        'matches': matches[:200],
+        'truncated': len(matches) > 200,
+    })
+
+
+@app.route('/api/workspace/replace/apply', methods=['POST'])
+def api_workspace_replace_apply():
+    """Apply bulk find/replace across workspace files."""
+    data = request.get_json() or {}
+    gate = _alm_gate_or_response(data, 'exec_write')
+    if gate:
+        return gate
+
+    find_text = str(data.get('find_text') or '')
+    replace_text = str(data.get('replace_text') or '')
+    pattern = str(data.get('pattern') or '*.py').strip() or '*.py'
+    scope_path = str(data.get('scope_path') or '').strip()
+
+    if not find_text:
+        return jsonify({'ok': False, 'error': 'find_text required'}), 400
+    if len(find_text) > 5000:
+        return jsonify({'ok': False, 'error': 'find_text too large'}), 400
+
+    try:
+        swarm_root, candidates = _workspace_replace_candidates(scope_path, pattern, max_files=400)
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+
+    changed_files = []
+    total_replacements = 0
+    for file_path in candidates:
+        try:
+            content = file_path.read_text(encoding='utf-8', errors='replace')
+        except Exception:
+            continue
+
+        occurrences = content.count(find_text)
+        if occurrences <= 0:
+            continue
+
+        updated = content.replace(find_text, replace_text)
+        if updated == content:
+            continue
+
+        try:
+            file_path.write_text(updated, encoding='utf-8')
+        except Exception:
+            continue
+
+        total_replacements += occurrences
+        changed_files.append({
+            'path': str(file_path.relative_to(swarm_root)),
+            'occurrences': occurrences,
+        })
+
+    log_activity('terminal', 'workspace_replace_apply', f"scope={scope_path or '/'} pattern={pattern} files={len(changed_files)} replacements={total_replacements}")
+    return jsonify({
+        'ok': True,
+        'scope_path': scope_path,
+        'pattern': pattern,
+        'changed_files': len(changed_files),
+        'total_replacements': total_replacements,
+        'changes': changed_files[:200],
+        'truncated': len(changed_files) > 200,
+    })
+
+
+@app.route('/api/code-ops/pytest', methods=['POST'])
+def api_code_ops_pytest():
+    """Run pytest on a file inside the workspace."""
+    data = request.get_json() or {}
+    file_path = str(data.get('file_path') or '').strip()
+    if not file_path:
+        return jsonify({'ok': False, 'error': 'file_path required'}), 400
+
+    try:
+        swarm_root = Path('/home/seven/swarm')
+        full_path = (swarm_root / file_path).resolve()
+        if not str(full_path).startswith(str(swarm_root)):
+            return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
+        if not full_path.exists() or not full_path.is_file():
+            return jsonify({'ok': False, 'error': 'file not found'}), 404
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'invalid path: {e}'}), 400
+
+    import subprocess
+    try:
+        proc = subprocess.run(
+            [sys.executable, '-m', 'pytest', str(full_path), '-q', '--maxfail=20'],
+            cwd=str(swarm_root),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        output = ((proc.stdout or '') + '\n' + (proc.stderr or '')).strip()
+        passed = output.count(' passed')
+        failed = output.count(' failed')
+        return jsonify({
+            'ok': proc.returncode == 0,
+            'passed': passed,
+            'failed': failed,
+            'returncode': proc.returncode,
+            'output': output[-8000:],
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'error': 'pytest timed out'}), 504
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/code-ops/pylint', methods=['POST'])
+def api_code_ops_pylint():
+    """Run pylint on a Python file inside the workspace."""
+    data = request.get_json() or {}
+    file_path = str(data.get('file_path') or '').strip()
+    if not file_path:
+        return jsonify({'ok': False, 'error': 'file_path required'}), 400
+    if not file_path.endswith('.py'):
+        return jsonify({'ok': False, 'error': 'only .py files supported'}), 400
+
+    try:
+        swarm_root = Path('/home/seven/swarm')
+        full_path = (swarm_root / file_path).resolve()
+        if not str(full_path).startswith(str(swarm_root)):
+            return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
+        if not full_path.exists() or not full_path.is_file():
+            return jsonify({'ok': False, 'error': 'file not found'}), 404
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'invalid path: {e}'}), 400
+
+    import subprocess
+    try:
+        proc = subprocess.run(
+            [sys.executable, '-m', 'pylint', str(full_path), '--output-format=text', '--score=n'],
+            cwd=str(swarm_root),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        output = ((proc.stdout or '') + '\n' + (proc.stderr or '')).strip()
+        issue_lines = [ln for ln in output.splitlines() if ': ' in ln and ('warning' in ln.lower() or 'error' in ln.lower() or 'convention' in ln.lower() or 'refactor' in ln.lower())]
+        issues = [{'line': 0, 'msg': ln[:240]} for ln in issue_lines[:20]]
+        return jsonify({
+            'ok': len(issues) == 0 and proc.returncode == 0,
+            'count': len(issues),
+            'issues': issues,
+            'returncode': proc.returncode,
+            'output': output[-8000:],
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'error': 'pylint timed out'}), 504
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/code-ops/format', methods=['POST'])
+def api_code_ops_format():
+    """Format Python source text using black and return formatted content."""
+    data = request.get_json() or {}
+    file_path = str(data.get('file_path') or '').strip()
+    content = str(data.get('content') or '')
+    if not file_path:
+        return jsonify({'ok': False, 'error': 'file_path required'}), 400
+    if not file_path.endswith('.py'):
+        return jsonify({'ok': False, 'error': 'only .py files supported'}), 400
+
+    try:
+        swarm_root = Path('/home/seven/swarm')
+        full_path = (swarm_root / file_path).resolve()
+        if not str(full_path).startswith(str(swarm_root)):
+            return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'invalid path: {e}'}), 400
+
+    try:
+        import black
+        formatted = black.format_str(content, mode=black.FileMode())
+    except ImportError:
+        return jsonify({'ok': False, 'error': 'black not installed'}), 500
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'black format failed: {e}'}), 400
+
+    orig_lines = content.split('\n')
+    new_lines = formatted.split('\n')
+    changed = sum(1 for a, b in zip(orig_lines, new_lines) if a != b) + abs(len(orig_lines) - len(new_lines))
+    return jsonify({
+        'ok': True,
+        'formatted_content': formatted,
+        'lines_changed': changed,
+    })
+
+
+@app.route('/api/code-ops/commit', methods=['POST'])
+def api_code_ops_commit():
+    """Commit staged workspace changes."""
+    data = request.get_json() or {}
+    gate = _alm_gate_or_response(data, 'exec_write')
+    if gate:
+        return gate
+
+    message = str(data.get('message') or 'Update via Files panel').strip()
+    proposal_id = str(data.get('proposal_id') or '').strip()
+    if not message:
+        return jsonify({'ok': False, 'error': 'message required'}), 400
+
+    import subprocess
+    try:
+        swarm_root = '/home/seven/swarm'
+        subprocess.run(['git', '-C', swarm_root, 'add', '-A'], capture_output=True, text=True, timeout=20)
+        status = subprocess.run(['git', '-C', swarm_root, 'status', '--porcelain'], capture_output=True, text=True, timeout=20)
+        status_lines = [ln for ln in (status.stdout or '').splitlines() if ln.strip()]
+        if not status_lines:
+            return jsonify({'ok': True, 'message': 'No changes to commit', 'files_changed': 0})
+
+        final_msg = message
+        if proposal_id:
+            final_msg = f"{message} (proposal:{proposal_id[:12]})"
+
+        commit = subprocess.run(
+            ['git', '-C', swarm_root, 'commit', '-m', final_msg],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if commit.returncode != 0:
+            return jsonify({'ok': False, 'error': (commit.stderr or commit.stdout or 'commit failed').strip()[:500]}), 500
+
+        rev = subprocess.run(['git', '-C', swarm_root, 'rev-parse', 'HEAD'], capture_output=True, text=True, timeout=10)
+        commit_hash = (rev.stdout or '').strip()
+        return jsonify({
+            'ok': True,
+            'commit_hash': commit_hash,
+            'files_changed': len(status_lines),
+            'message': 'Changes committed',
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @app.route('/api/monitor/stats')
