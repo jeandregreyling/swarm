@@ -5,7 +5,7 @@
 
 **Last Updated:** 2026-03-30 10:30 UTC  
 **Session:** Session 5 — Critical Fixes + World Clocks  
-**Auditor:** Copilot (Ghost Layer)  
+**Auditor:** Ten (GPT)  
 
 Canonical ledgers for this tracker:
 - Changes: `docs/changes/CHANGELOG_OPERATIONS.md`
@@ -82,9 +82,9 @@ Canonical ledgers for this tracker:
 
 | Backlog ID | Priority | Item | Owner | Status |
 |------------|----------|------|-------|--------|
-| OPS-CH-001 | HIGH | Run governed E2E cycle for Email + Telegram + Discord, with queue/ticket closure assertions | Copilot/Twelve | OPEN |
-| OPS-CH-002 | HIGH | Validate channel response consistency under error injection (ensure queue reset + retry path) | Copilot | OPEN |
-| OPS-VTX-001 | MEDIUM | Validate Vortex slider preview in primary 5050 service after restart with updated restore logic | Copilot | OPEN |
+| OPS-CH-001 | HIGH | Run governed E2E cycle for Email + Telegram + Discord, with queue/ticket closure assertions | Ten (GPT)/Twelve | OPEN |
+| OPS-CH-002 | HIGH | Validate channel response consistency under error injection (ensure queue reset + retry path) | Ten (GPT) | OPEN |
+| OPS-VTX-001 | MEDIUM | Validate Vortex slider preview in primary 5050 service after restart with updated restore logic | Ten (GPT) | OPEN |
 
 ---
 
@@ -96,8 +96,8 @@ Canonical ledgers for this tracker:
 | 2 | Document all findings in BUGS_AUDIT.md | ✅ COMPLETE | Twelve | FRIDAYS_AUDIT_SUMMARY.md and BUGS_AUDIT created |
 | 3 | **Fix broken pipes systematically** | ✅ COMPLETE | Twelve | Docs tile fixed (BRK-001); Chat timeout identified (BRK-002); Agent tasks created |
 | 4 | Test each tile after fixes | ✅ EXECUTED | Twelve | 18/19 E2E tests PASS; results in ALM_TEST_SPECIFICATION.md |
-| 5 | Update CHANGELOG with all changes | ✅ COMPLETE | Copilot | All fixes + world clocks documented in CHANGELOG.md |
-| 6 | Fix critical user-facing bugs | ✅ COMPLETE | Copilot | BUG-1 through BUG-5 fixed; Telegram listener restored |
+| 5 | Update CHANGELOG with all changes | ✅ COMPLETE | Ten (GPT) | All fixes + world clocks documented in CHANGELOG.md |
+| 6 | Fix critical user-facing bugs | ✅ COMPLETE | Ten (GPT) | BUG-1 through BUG-5 fixed; Telegram listener restored |
 
 ---
 
@@ -120,9 +120,9 @@ Canonical ledgers for this tracker:
 
 | Backlog ID | Priority | Item | Owner | Status |
 |------------|----------|------|-------|--------|
-| OPS-DRY-001 | HIGH | Add pinned test environment with pytest installed for `python3 -m pytest tests -q` | Copilot | OPEN |
-| OPS-DRY-002 | HIGH | Add model-stub mode to `utils/simulate.py` so full dry simulation finishes without live model latency | Copilot | OPEN |
-| OPS-APR-001 | MEDIUM | Reconcile proposal file status vs DB status for `NINE-021` (file says executed, DB still pending) | Nine/Copilot | ✅ CLOSED |
+| OPS-DRY-001 | HIGH | Add pinned test environment with pytest installed for `python3 -m pytest tests -q` | Ten (GPT) | OPEN |
+| OPS-DRY-002 | HIGH | Add model-stub mode to `utils/simulate.py` so full dry simulation finishes without live model latency | Ten (GPT) | OPEN |
+| OPS-APR-001 | MEDIUM | Reconcile proposal file status vs DB status for `NINE-021` (file says executed, DB still pending) | Nine/Ten (GPT) | ✅ CLOSED |
 
 ### Self-Audit Delta (10:18 UTC)
 

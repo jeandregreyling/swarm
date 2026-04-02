@@ -3,7 +3,7 @@
 <!-- markdownlint-disable -->
 
 Audit window: 10:10-10:18 UTC
-Auditor: Copilot (Ghost Layer)
+Auditor: Ten (GPT)
 
 ## Addendum - 2026-03-29 15:33 UTC
 
@@ -146,7 +146,7 @@ Result:
 ## 7. Incident Addendum (Localhost outage + ALM stability)
 
 Audit window: 2026-03-30 01:51-02:03 UTC
-Auditor: Copilot (Ghost Layer)
+Auditor: Ten (GPT)
 
 ### Incident summary
 - User reported localhost unavailable and requested ALM + self-audit verification.

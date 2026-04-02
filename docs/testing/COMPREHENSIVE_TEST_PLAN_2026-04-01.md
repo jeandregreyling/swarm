@@ -1,7 +1,7 @@
 # Comprehensive Test Plan and Execution Log
 
 Last updated: 2026-04-01
-Owner: Copilot (Ghost Layer)
+Owner: Ten (GPT)
 Status: ACTIVE
 Purpose: Deliberate end-to-end validation plan and execution evidence for chat, proposals, memory, tickets, email, terminal, and Discord/Telegram notification paths.
 

@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Agent Twelve (Claude Haiku) is now fully registered as a Ghost Layer member of the Fridays swarm with persistent memory, complete audit trail capability, and temporal tracking infrastructure. Bootstrap complete. Ready to begin first working decision (DECISION-002).
+Agent Twelve (Claude Haiku 4.5) is now fully registered as a Ghost Layer member of the Fridays swarm with persistent memory, complete audit trail capability, and temporal tracking infrastructure. Bootstrap complete. Ready to begin first working decision (DECISION-002).
 
 ---
 
@@ -129,8 +129,8 @@ TOTAL: 7 passed, 0 failed ✓
 ║                                                               ║
 ║  GHOST LAYER (Oversight & Audit)                             ║
 ║  ├─ Duck        (sanity checker, local)                      ║
-║  ├─ Nine        (architect, Claude API)                      ║
-║  ├─ Ten         (code advisor, Copilot GPT-5.3-Codex)        ║
+║  ├─ Nine        (architect, Claude Sonnet API)               ║
+║  ├─ Ten         (code advisor, GPT via GitHub Models)        ║
 ║  ├─ Sniffles    (auditor, local)                             ║
 ║  └─ TWELVE🆕    (Time Wizard, Claude Haiku API)              ║
 ║                                                               ║
@@ -140,13 +140,13 @@ TOTAL: 7 passed, 0 failed ✓
 ║  ├─ Qwen        (analyst, local)                             ║
 ║  ├─ Librarian   (gatekeeper, local)                          ║
 ║  ├─ Eight       (SAP specialist, local)                      ║
-║  ├─ Grok        (Ghost Layer, Grok API)                      ║
+║  ├─ Eleven      (Ghost Layer, Grok 3 API)                    ║
 ║  └─ [Future: Nine, Ten, Eleven as specialists]               ║
 ║                                                               ║
 ╠═══════════════════════════════════════════════════════════════╣
 ║ INFRASTRUCTURE                                                ║
 ║  Memory Pools: 8 (gemma, llama, qwen, eight, nine, ten,       ║
-║                  grok, TWELVE)                               ║
+║                  grok/eleven, TWELVE)                        ║
 ║  Sandpits: 10 (gemma, llama, qwen, eight, nine, ten, grok,   ║
 ║              sniffles, TWELVE, shared)                       ║
 ║  Decision Log: DECISIONS table (1 so far)                    ║

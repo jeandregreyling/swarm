@@ -2967,6 +2967,265 @@ def api_hands_run():
     return api_shell_execute()
 
 
+@app.route('/api/workspace/dir', methods=['GET'])
+def api_workspace_dir():
+    """
+    Browse workspace directory structure.
+    Query params:
+    - path: directory path to list (default: /home/seven/swarm) — must be within SWARM_ROOT
+    - depth: recursion depth for tree listing (default: 1, max: 3) — 0 = flat list only
+    
+    Returns: {ok, path, entries: [{name, type, size, modified, is_dir, permissions, ...}]}
+    """
+    import stat as _stat
+    
+    base_path = request.args.get('path', '/home/seven/swarm').strip() or '/home/seven/swarm'
+    try:
+        depth = int(request.args.get('depth', 1) or 1)
+    except ValueError:
+        depth = 1
+    depth = max(0, min(depth, 3))  # Cap at 3 levels
+    
+    # Security: only allow paths within SWARM_ROOT
+    try:
+        swarm_root = Path('/home/seven/swarm')
+        requested = Path(base_path).resolve()
+        if not str(requested).startswith(str(swarm_root)):
+            return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'invalid path: {e}'}), 400
+    
+    if not requested.exists():
+        return jsonify({'ok': False, 'error': 'path not found'}), 404
+    if not requested.is_dir():
+        return jsonify({'ok': False, 'error': 'path is not a directory'}), 400
+    
+    def _entry_dict(path):
+        """Convert a file/dir to a dict with metadata."""
+        try:
+            stat = path.stat()
+            is_dir = path.is_dir()
+            return {
+                'name': path.name,
+                'type': 'dir' if is_dir else 'file',
+                'size': stat.st_size if not is_dir else 0,
+                'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                'permissions': oct(stat.st_mode)[-3:],
+                'path': str(path.relative_to(swarm_root)),
+            }
+        except Exception:
+            return None
+    
+    def _list_dir_recursive(dir_path, current_depth):
+        """Recursively list directory with depth limit."""
+        entries = []
+        try:
+            items = sorted(dir_path.iterdir(), key=lambda p: (not p.is_dir(), p.name))
+            for item in items:
+                # Skip hidden files/dirs and common noise
+                if item.name.startswith('.') or item.name in ('__pycache__', '.pytest_cache', 'node_modules'):
+                    continue
+                entry = _entry_dict(item)
+                if entry:
+                    entries.append(entry)
+                    # Recurse into subdirs if within limit
+                    if item.is_dir() and current_depth < depth:
+                        entries.extend(_list_dir_recursive(item, current_depth + 1))
+        except PermissionError:
+            pass
+        return entries
+    
+    entries = _list_dir_recursive(requested, 0)
+    
+    return jsonify({
+        'ok': True,
+        'path': str(requested.relative_to(swarm_root)),
+        'absolute_path': str(requested),
+        'entries': entries,
+        'count': len(entries),
+        'depth_limit': depth,
+    })
+
+
+@app.route('/api/workspace/file', methods=['GET'])
+def api_workspace_file():
+    """
+    Read a file from the workspace.
+    Query params:
+    - path: file path relative to SWARM_ROOT (required)
+    - max_bytes: max size to read (default: 100000, max: 500000)
+    
+    Returns: {ok, path, content, size, mime_type}
+    """
+    import mimetypes
+    
+    file_path = request.args.get('path', '').strip()
+    if not file_path:
+        return jsonify({'ok': False, 'error': 'path required'}), 400
+    
+    try:
+        max_bytes = int(request.args.get('max_bytes', 100000) or 100000)
+    except ValueError:
+        max_bytes = 100000
+    max_bytes = max(1024, min(max_bytes, 500000))  # 1KB min, 500KB max
+    
+    try:
+        swarm_root = Path('/home/seven/swarm')
+        full_path = (swarm_root / file_path).resolve()
+        
+        # Security check
+        if not str(full_path).startswith(str(swarm_root)):
+            return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'invalid path: {e}'}), 400
+    
+    if not full_path.exists():
+        return jsonify({'ok': False, 'error': 'file not found'}), 404
+    if not full_path.is_file():
+        return jsonify({'ok': False, 'error': 'path is not a file'}), 400
+    
+    try:
+        size = full_path.stat().st_size
+        mime_type, _ = mimetypes.guess_type(str(full_path))
+        
+        # Read file content (with limit)
+        with open(full_path, 'r', encoding='utf-8', errors='replace') as fh:
+            content = fh.read(max_bytes)
+        
+        # Flag if truncated
+        truncated = size > max_bytes
+        
+        return jsonify({
+            'ok': True,
+            'path': str(full_path.relative_to(swarm_root)),
+            'content': content,
+            'size': size,
+            'truncated': truncated,
+            'mime_type': mime_type or 'text/plain',
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/workspace/file', methods=['PUT'])
+def api_workspace_file_save():
+    """
+    Save a text file inside the workspace.
+    JSON body:
+    - path: file path relative to SWARM_ROOT (required)
+    - content: new text content (required)
+    - proposal_id: required when ALM gate is active
+    """
+    data = request.get_json() or {}
+    gate = _alm_gate_or_response(data, 'workspace_file_write')
+    if gate:
+        return gate
+
+    file_path = str(data.get('path') or '').strip()
+    if not file_path:
+        return jsonify({'ok': False, 'error': 'path required'}), 400
+
+    if 'content' not in data:
+        return jsonify({'ok': False, 'error': 'content required'}), 400
+    content = str(data.get('content') or '')
+
+    # Soft limit to keep payloads bounded in UI workflow.
+    if len(content.encode('utf-8', errors='replace')) > 1_000_000:
+        return jsonify({'ok': False, 'error': 'content too large (max 1MB)'}), 413
+
+    try:
+        swarm_root = Path('/home/seven/swarm')
+        full_path = (swarm_root / file_path).resolve()
+        if not str(full_path).startswith(str(swarm_root)):
+            return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'invalid path: {e}'}), 400
+
+    if not full_path.exists():
+        return jsonify({'ok': False, 'error': 'file not found'}), 404
+    if not full_path.is_file():
+        return jsonify({'ok': False, 'error': 'path is not a file'}), 400
+
+    # Basic binary-file guard for UI save operations.
+    try:
+        with open(full_path, 'rb') as fh:
+            probe = fh.read(4096)
+        if b'\x00' in probe:
+            return jsonify({'ok': False, 'error': 'refusing to overwrite binary file'}), 400
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'file probe failed: {e}'}), 500
+
+    try:
+        with open(full_path, 'w', encoding='utf-8') as fh:
+            fh.write(content)
+        size = full_path.stat().st_size
+        rel_path = str(full_path.relative_to(swarm_root))
+        log_activity('terminal', 'workspace_file_saved', rel_path)
+        return jsonify({'ok': True, 'path': rel_path, 'size': size})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/workspace/search', methods=['GET'])
+def api_workspace_search():
+    """
+    Search for files in workspace by name pattern.
+    Query params:
+    - pattern: filename pattern (glob-style, * = wildcard, default: *)
+    - max_results: max results to return (default: 50, max: 500)
+    
+    Returns: {ok, pattern, matches: [{name, path, size, type}]}
+    """
+    from fnmatch import fnmatch
+    
+    pattern = request.args.get('pattern', '*').strip() or '*'
+    try:
+        max_results = int(request.args.get('max_results', 50) or 50)
+    except ValueError:
+        max_results = 50
+    max_results = max(1, min(max_results, 500))
+    
+    swarm_root = Path('/home/seven/swarm')
+    matches = []
+    
+    try:
+        for path in swarm_root.rglob('*'):
+            # Skip hidden, noise
+            if any(part.startswith('.') for part in path.parts):
+                continue
+            if any(part in ('__pycache__', '.pytest_cache', 'node_modules') for part in path.parts):
+                continue
+            
+            # Match against pattern
+            if not fnmatch(path.name, pattern):
+                continue
+            
+            if len(matches) >= max_results:
+                break
+            
+            try:
+                stat = path.stat()
+                matches.append({
+                    'name': path.name,
+                    'path': str(path.relative_to(swarm_root)),
+                    'type': 'dir' if path.is_dir() else 'file',
+                    'size': stat.st_size if path.is_file() else 0,
+                    'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                })
+            except Exception:
+                pass
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    
+    return jsonify({
+        'ok': True,
+        'pattern': pattern,
+        'matches': matches,
+        'count': len(matches),
+        'truncated': len(matches) >= max_results,
+    })
+
+
 @app.route('/api/monitor/stats')
 def api_monitor_stats():
     """System snapshot + API usage counts for Monitor tab."""
@@ -3578,17 +3837,25 @@ def api_chat():
         except Exception as exc:
             log_activity('terminal', 'chat_memory_persist_warning', f'{selected_agent}: {exc}')
 
-    def _run_ghost_layer_chat(selected_agent, prompt, history):
+    def _run_ghost_layer_chat(selected_agent, prompt, history, stage_cb=None):
         from claude_api import _load_api_key, CLAUDE_MODEL
         import anthropic
         from config import NINE_SYSTEM_PROMPT, TEN_SYSTEM_PROMPT
         from fridays.skills import parse_skill_command, call as skill_call
+
+        def _emit_stage(text):
+            if callable(stage_cb):
+                try:
+                    stage_cb(text, None)
+                except Exception:
+                    pass
 
         api_key = _load_api_key()
         if not api_key:
             return None, 0, 'ANTHROPIC_API_KEY not configured'
 
         base_system = NINE_SYSTEM_PROMPT if selected_agent == 'nine' else TEN_SYSTEM_PROMPT
+        _emit_stage('loading ghost-layer memory')
 
         try:
             recent_memories = get_agent_memory(selected_agent, query='', limit=6)
@@ -3657,6 +3924,7 @@ def api_chat():
 
             lines = []
             for skill_name, skill_args in cmds:
+                _emit_stage(f'executing skill: {skill_name}')
                 effective_name = skill_name
                 effective_args = skill_args
                 if skill_name == 'shell':
@@ -3673,6 +3941,7 @@ def api_chat():
                 lines.append(f"[skill:{effective_name}] {'OK' if ok else 'FAILED'}\\n{preview}")
             return '\\n\\n'.join(lines)
 
+        _emit_stage('sending model request')
         response = client.messages.create(
             model=CLAUDE_MODEL,
             max_tokens=4096,
@@ -3685,6 +3954,7 @@ def api_chat():
         answer = first_answer
         skill_cmds = _extract_skill_lines(first_answer)
         if skill_cmds:
+            _emit_stage('running requested skills')
             skill_results = _run_skill_lines(skill_cmds)
             followup_messages = (history[-10:] if history else []) + [
                 {'role': 'user', 'content': prompt},
@@ -3698,6 +3968,7 @@ def api_chat():
                     ),
                 },
             ]
+            _emit_stage('synthesizing final answer')
             second = client.messages.create(
                 model=CLAUDE_MODEL,
                 max_tokens=4096,
@@ -3707,6 +3978,7 @@ def api_chat():
             answer = second.content[0].text + '\\n\\n---\\nExecuted skill output:\\n' + skill_results
             tokens += second.usage.input_tokens + second.usage.output_tokens
 
+        _emit_stage('persisting response memory')
         save_agent_memory(
             agent_name=selected_agent,
             subject=message[:100],
@@ -3772,7 +4044,7 @@ def api_chat():
                 _persist_local_agent_memory(selected_agent, message, response_text)
             elif selected_agent == 'nine':
                 _stage('dispatching to ghost datacenter', est_eta)
-                future = executor.submit(_run_ghost_layer_chat, selected_agent, effective_prompt, history)
+                future = executor.submit(_run_ghost_layer_chat, selected_agent, effective_prompt, history, stage_cb)
                 answer, tokens, api_err = future.result(timeout=240 if persistent_mode else 20)
                 if api_err:
                     raise RuntimeError(api_err)
@@ -3781,6 +4053,7 @@ def api_chat():
             elif selected_agent == 'ten':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.ten import copilot_agent
+                _stage('waiting on GPT runtime', est_eta)
                 future = executor.submit(copilot_agent.chat, effective_prompt, history)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[ten unavailable — check GITHUB_TOKEN in /etc/environment]'
@@ -3788,6 +4061,7 @@ def api_chat():
             elif selected_agent == 'eleven':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.eleven import grok_agent
+                _stage('waiting on Grok runtime', est_eta)
                 future = executor.submit(grok_agent.chat, effective_prompt, history)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[eleven unavailable]'
@@ -3795,6 +4069,7 @@ def api_chat():
             elif selected_agent == 'twelve':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.twelve import twelve_agent
+                _stage('waiting on Claude Haiku runtime', est_eta)
                 future = executor.submit(twelve_agent.chat, effective_prompt, history)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[twelve unavailable]'

@@ -1,6 +1,6 @@
 """
-agents/eleven/grok_agent.py — Eleven (Grok)
-Ghost Layer lateral thinker. Powered by xAI Grok API (OpenAI-compatible).
+agents/eleven/grok_agent.py — Eleven (Grok 3)
+Ghost Layer lateral thinker. Powered by xAI Grok API.
 """
 
 import logging
@@ -49,7 +49,7 @@ def _build_context(message):
 
 def chat(message, conversation_history=None):
     """
-    Send a message to Eleven (Grok). Returns (answer, tokens_used).
+    Send a message to Eleven (Grok 3). Returns (answer, tokens_used).
     conversation_history: list of {role, content} dicts for multi-turn context.
     """
     try:

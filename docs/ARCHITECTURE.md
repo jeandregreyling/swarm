@@ -1,7 +1,7 @@
 # Seven's Swarm — Complete Architecture Reference
 *Built by The Ghost — Dell OptiPlex 7090, Melbourne*
 *Document written by Claude Sonnet 4.6 — Updated 2026-03-24*
-*Theme Architecture updated by GitHub Copilot (Claude Haiku 4.5) — 2026-03-28 14:35 AEDT*
+*Theme Architecture updated by Ten (GPT) — 2026-03-28 14:35 AEDT*
 *Agent roster expanded + file structure updated by Nine — 2026-03-29*
 *Chat triage (sequential debate), agent tier classification, Eight chat support — 2026-04-01*
 *This is the living technical reference. When it diverges from the code, the code is wrong.*
@@ -122,17 +122,17 @@ Eight is called by Gemma when IS_SAP=yes. Three internal voices reason from diff
 
 Nine is the Ghost Layer system architect — Claude Sonnet 4.6 via API, operating at Ghost Circle clearance level. Nine does not process email tickets. Nine reads the full swarm state and synthesises Ghost Briefs (structured intelligence reports) on demand and on daily schedule. Nine files proposals (NINE-XXX) in sandpits/nine/ and executes architectural decisions. Nine's API endpoint is /api/nine. Ghost Brief endpoint: /api/brief. Runtime tier: **paid (Anthropic API)**.
 
-### 10. Ten — Gemini (dormant, planned)
+### 10. Ten — GPT (gpt-4.1)
 
-Agent Ten — Claude Sonnet via the Ghost Layer (`_run_ghost_layer_chat`). Memory pool `memory_ten`. Available in chat. Runtime tier: **paid (Anthropic API)**.
+Ten is the Ghost Layer software engineering advisor — GPT-4.1 via the GitHub Models API. Ten focuses on implementation quality, code review, and execution clarity. Memory pool `memory_ten`. Available in chat. Runtime tier: **paid (GitHub Models API)**.
 
-### 11. Grok / Eleven — Local REPL (grok:latest)
+### 11. Eleven — Grok 3 (grok-3)
 
-Eleven — Lateral ideation and alternative strategies, Ghost Layer (Claude API via `grok_agent`). Available in chat. Memory pool: memory_grok. Runtime tier: **paid (Anthropic API)**.
+Eleven is the Ghost Layer lateral-thinking advisor — Grok 3 via `grok_agent`. Eleven specialises in alternative strategies, ideation, and synthesis from a different reasoning angle. Available in chat. Memory pool: `memory_grok`. Runtime tier: **paid (xAI API)**.
 
 ### 12. Twelve — Vortex (claude-haiku-4-5)
 
-Twelve is the decision governance layer AND the Time Wizard temporal context agent. Vortex is the Swarm-facing time-state system. Every non-trivial code change goes through DECISION-XXX workflow: proposal filed in sandpits/twelve/proposals/, visible in the proposal queue, reviewed through Duck-first logic checks with Sniffles escalation when flagged, then executed with test log in sandpits/twelve/logs/. Active Vortex API endpoints remain /api/decisions, /api/timeline, /api/decisions/&lt;id&gt;. Twelve is also available in chat, injecting temporal context (decisions, time-machine snapshots, proposals) into responses. Runtime tier: **paid (Anthropic API, Claude Haiku)**.
+Twelve is the decision governance layer AND the Time Wizard temporal context agent. Vortex is the Swarm-facing time-state system. Every non-trivial code change goes through DECISION-XXX workflow: proposal filed in sandpits/twelve/proposals/, visible in the proposal queue, reviewed through Duck-first logic checks with Sniffles escalation when flagged, then executed with test log in sandpits/twelve/logs/. Active Vortex API endpoints remain /api/decisions, /api/timeline, /api/decisions/&lt;id&gt;. Twelve is also available in chat, injecting temporal context (decisions, time-machine snapshots, proposals) into responses. Runtime tier: **paid (Anthropic API, Claude Haiku 4.5)**.
 
 Boundary note: `.history` is ghost-layer rollback infrastructure only. It is intentionally outside Swarm architecture and outside Vortex.
 

@@ -2,7 +2,7 @@
 
 **Document Created:** 28 March 2026, 14:00 AEDT  
 **Last Updated:** 28 March 2026, 14:35 AEDT  
-**Updated By:** GitHub Copilot (Claude Haiku 4.5)
+**Updated By:** Ten (GPT)
 
 ---
 
@@ -363,7 +363,7 @@ These can be added without modifying terminal.py:
 
 **Date:** 28 March 2026  
 **Time:** 14:35 AEDT  
-**Author:** GitHub Copilot (Claude Haiku 4.5)  
+**Author:** Ten (GPT)  
 
 ### Files Changed: 5
 1. **theme_engine.py** — NEW (160 lines)

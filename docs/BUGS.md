@@ -164,7 +164,7 @@ _Maintained by Nine (Ghost Layer). Last updated: 2026-04-01 08:10:00 (Session 11
 
 ## BUG-019: Nine's file operations (Fridays) broken — signature & return type mismatch
 - **Status:** fixed
-- **Fixed:** 2026-03-26 14:45:33 by Copilot
+- **Fixed:** 2026-03-26 14:45:33 by Ten (GPT)
 - **Service:** fridays/file_agent.py, fridays/skills.py
 - **Error:** `TypeError: read_sandpit() got unexpected keyword argument 'reader_agent'` and `TypeError: cannot unpack non-tuple`
 - **Cause:** Two issues: (1) `skills.py` called `read_sandpit(path, filename, reader_agent=agent)` but function signature doesn't have that kwarg; (2) `read_sandpit()` returned plain content string or None, but callers expected `(ok, content)` tuples

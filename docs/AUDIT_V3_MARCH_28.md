@@ -107,9 +107,9 @@
 | memory_llama | 42 | LLaMA | 🟢 Active |
 | memory_qwen | 23 | Qwen | 🟢 Active |
 | memory_eight | 37 | Eight (SAP) | 🟢 Active |
-| memory_nine | 36 | Nine (Claude) | 🟢 Active |
-| memory_ten | 0 | Ten (Gemini) | 🔴 **EMPTY** |
-| memory_grok | 41 | Grok | 🟢 Active |
+| memory_nine | 36 | Nine (Claude Sonnet) | 🟢 Active |
+| memory_ten | 0 | Ten (GPT) | 🔴 **EMPTY** |
+| memory_grok | 41 | Eleven (Grok 3) | 🟢 Active |
 
 ### Pipeline Tables
 | Table | Purpose | Status |
@@ -118,7 +118,7 @@
 | tickets | Task tracking | 0 open |
 | ticket_notes | Ticket comments | (not queried) |
 
-**ISSUE**: Agent Ten (Gemini) memory pool exists but is empty. Either Ten isn't working or relationship is broken.
+**ISSUE**: Agent Ten (GPT) memory pool exists but is empty. Either Ten isn't working or the memory relationship is broken.
 
 ---
 
@@ -246,7 +246,7 @@
 | **Chat view not wired** | Can't send messages | view-chat exists, sendMessage() undefined |
 | **Terminal shell not wired** | Can't run commands | view-terminal exists, runTerminalCmd() undefined |
 | **Skills not wired** | Can't run skills | view-skills exists, populateSkills() undefined |
-| **Agent Ten (Gemini) dormant** | Memory pool empty | Model connection broken? |
+| **Agent Ten (GPT) dormant** | Memory pool empty | Model connection broken? |
 | **Agent duplicates in DB** | Confusion about active agents | 15 agents: 10 active + 5 duplicates |
 
 ### Medium Priority

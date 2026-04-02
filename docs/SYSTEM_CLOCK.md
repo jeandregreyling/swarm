@@ -1,7 +1,7 @@
 # SYSTEM_CLOCK.md — Unified Time Source for Seven's Swarm
 
 _System clock design document and implementation guide._
-_Last updated: 2026-03-26 by Copilot_
+_Last updated: 2026-03-26 by Ten (GPT)_
 
 ---
 
