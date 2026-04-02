@@ -274,7 +274,7 @@ Before creating ANY new file:
 | `sandpits/nine/NINE_DECISION_INDEX.md` | ACTIVE | Agent Nine decision index |
 | `sandpits/nine/proposals/NINE-0*.md` | ACTIVE | Agent Nine proposals |
 | `sandpits/nine/session_*.log` | ARCHIVE | Agent Nine session logs |
-| `sandpits/ten/` | ACTIVE | Agent Ten working directory (Copilot / GPT-5.3-Codex) |
+| `sandpits/ten/` | ACTIVE | Agent Ten working directory (Ten (GPT) / GPT-4.1) |
 | `sandpits/ten/README.md` | ACTIVE | Agent Ten workspace conventions and ALM notes |
 | `sandpits/grok/` | ACTIVE | Grok agent sandpit |
 | `sandpits/grok/GHOST_LAYER_SNAPSHOT.md` | ARCHIVE | Ghost layer state snapshot |

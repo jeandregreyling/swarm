@@ -1,6 +1,6 @@
 """
-agents/twelve/twelve_agent.py — Twelve (Time Wizard)
-Ghost Layer temporal awareness agent. Powered by Claude Haiku.
+agents/twelve/twelve_agent.py — Twelve (Claude Haiku)
+Ghost Layer temporal awareness agent. Powered by Claude Haiku via Anthropic API.
 """
 
 import logging
@@ -74,7 +74,7 @@ def _build_context(message):
 
 def chat(message, conversation_history=None):
     """
-    Send a message to Twelve (Claude Haiku). Returns (answer, tokens_used).
+    Send a message to Twelve (Claude Haiku 4.5). Returns (answer, tokens_used).
     conversation_history: list of {role, content} dicts for multi-turn context.
     """
     try:

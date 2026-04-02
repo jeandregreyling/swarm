@@ -1,7 +1,7 @@
 # ALM Driver - Documentation-First Lifecycle
 
 Date: 2026-03-30
-Owner: Ghost Layer / Copilot
+Owner: Ghost Layer / Ten (GPT)
 Scope: All mutating actions while Vortex is active
 
 ## Purpose

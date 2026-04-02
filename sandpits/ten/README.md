@@ -1,6 +1,6 @@
 # Ten Sandpit
 
-Workspace for Ten (Copilot / GPT-5.3-Codex).
+Workspace for Ten (GPT via GitHub Models).
 
 ## Layout
 - proposals/: Draft and approved proposal docs

@@ -828,15 +828,20 @@ def _seed_agents():
         ('duck',      'qwen:1.5b',       0.1, 'Sanity checker — YES/NO after every ticket'),
         ('sniffles',  'deepseek-r1:7b',  0.2, 'Inspector — memory auditor, read only'),
         ('ghost',     'external',        0.0, 'Human operator. Ghost Layer. Builds, approves, decides. Full access.'),
-        ('nine',      'claude-sonnet-4-6', 0.3, 'System architect — builds the swarm. Ghost Layer. Session memory in memory_nine.'),
-        ('ten',       'gemini-1.5-pro',  0.4, 'Software Engineering Advisor — provides code quality and clarity insights. Ghost Layer.'),
-        ('eleven',    'grok-beta',        0.5, 'Grok — lateral thinking, creative synthesis. Ghost Layer.'),
-        ('twelve',    'claude-haiku',     0.3, 'Time Wizard — temporal awareness, decision tracking, time machine.'),
+        ('nine',      'claude-sonnet-4-6',     0.3, 'Nine (Claude Sonnet) — system architect. Ghost Layer. Session memory in memory_nine.'),
+        ('ten',       'gpt-4.1',               0.4, 'Ten (GPT) — software engineering advisor, code quality, implementation clarity. Ghost Layer.'),
+        ('eleven',    'grok-3',                0.5, 'Eleven (Grok 3) — lateral thinking, creative synthesis. Ghost Layer.'),
+        ('twelve',    'claude-haiku-4-5-20251001', 0.3, 'Twelve (Claude Haiku) — time wizard, temporal awareness, decision tracking, time machine.'),
     ]
     conn = get_connection()
     for name, model, temp, role in roster:
         conn.execute(
-            "INSERT OR IGNORE INTO agents (name,model,temperature,role) VALUES (?,?,?,?)",
+            """INSERT INTO agents (name,model,temperature,role)
+               VALUES (?,?,?,?)
+               ON CONFLICT(name) DO UPDATE SET
+                   model=excluded.model,
+                   temperature=excluded.temperature,
+                   role=excluded.role""",
             (name, model, temp, role)
         )
     conn.commit()

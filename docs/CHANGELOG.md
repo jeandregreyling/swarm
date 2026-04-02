@@ -9,9 +9,9 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ## Version 2026-03-31 Session 5 — Validation Environment Alignment + UAT Green
 
-### Changes by Copilot (Ghost Layer) - TEST ENVIRONMENT ALIGNMENT + CHAT TIMEOUT CORRECTION
+### Changes by Ten (GPT) (Ghost Layer) - TEST ENVIRONMENT ALIGNMENT + CHAT TIMEOUT CORRECTION
 
-**2026-03-31 12:22 UTC** Copilot: Aligned the project venv with the repo's validated runtime/test baseline, restored the documented `/api/chat` timeout behavior, and re-ran the full Fridays UAT gate to green.
+**2026-03-31 12:22 UTC** Ten (GPT): Aligned the project venv with the repo's validated runtime/test baseline, restored the documented `/api/chat` timeout behavior, and re-ran the full Fridays UAT gate to green.
 
 - **Type:** Validation hardening / Dependency baseline / Chat responsiveness
 - **Status:** COMPLETE
@@ -101,9 +101,9 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ## Version 2026-03-30 Session 5 (SUPERSEDED)
 
-### Changes by Copilot (Ghost Layer) - CHANNEL STABILIZATION + VORTEX DRIFT PREVIEW CORRECTION
+### Changes by Ten (GPT) (Ghost Layer) - CHANNEL STABILIZATION + VORTEX DRIFT PREVIEW CORRECTION
 
-**2026-03-30 13:30 UTC** Copilot: Started channel reliability hardening pass for Telegram/Discord/Email flows, fixed queue recovery on channel pipeline failures, and aligned UAT/backlog artifacts with ALM + Vortex evidence requirements.
+**2026-03-30 13:30 UTC** Ten (GPT): Started channel reliability hardening pass for Telegram/Discord/Email flows, fixed queue recovery on channel pipeline failures, and aligned UAT/backlog artifacts with ALM + Vortex evidence requirements.
 
 - **Type:** Reliability hardening / Workflow recovery / Test governance
 - **Status:** ✅ IN PROGRESS (first stabilization slice complete)
@@ -121,11 +121,11 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
   - decision record: `sandpits/twelve/proposals/DECISION-007-channel-reliability-stabilization.md`
   - test record: `sandpits/twelve/logs/TEST-007-channel-reliability-stabilization.md`
 
-### Changes by Copilot (Ghost Layer) - VORTEX GOVERNANCE BOUNDARY + DUCK REVIEW PATH
+### Changes by Ten (GPT) (Ghost Layer) - VORTEX GOVERNANCE BOUNDARY + DUCK REVIEW PATH
 
-**2026-03-30 01:19 UTC** Copilot: Formalized Vortex as the Swarm-facing time-state layer, documented Duck-first review flow, and explicitly excluded `.history` from Fridays architecture.
+**2026-03-30 01:19 UTC** Ten (GPT): Formalized Vortex as the Swarm-facing time-state layer, documented Duck-first review flow, and explicitly excluded `.history` from Fridays architecture.
 
-**2026-03-30 12:30 UTC** Copilot: Baked Duck-first proposal review into the runtime work-proposal API so `approved` now requires a Duck pass and `executed` cannot skip the approved state.
+**2026-03-30 12:30 UTC** Ten (GPT): Baked Duck-first proposal review into the runtime work-proposal API so `approved` now requires a Duck pass and `executed` cannot skip the approved state.
 
 - **Type:** Governance architecture / Boundary enforcement / Traceability
 - **Status:** ✅ COMPLETE
@@ -147,7 +147,7 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 **Decision ID**: 006
 **Proposed**: 2026-03-30T02:06:39Z
 **Executed**: 2026-03-30T02:07:10Z
-**Agent**: Copilot (Ghost Layer)
+**Agent**: Ten (GPT) (Ghost Layer)
 **Work Proposal ID**: INTERNAL-TERMINAL_UI-0132
 **Git Commit Hash**: [pending]
 
@@ -195,7 +195,7 @@ The Duck-first review path for Vortex governance existed in active documentation
 **Test ID**: TEST-006
 **Decision**: DECISION-006 - Duck-Reviewed Runtime Approval
 **Date**: 2026-03-30
-**Tester**: Copilot (Ghost Layer)
+**Tester**: Ten (GPT) (Ghost Layer)
 **Linked Work Proposal**: INTERNAL-TERMINAL_UI-0132
 
 ## Scope
@@ -275,9 +275,9 @@ Validate the runtime Duck review gate for work-proposal approvals and confirm ex
   - `frontend/theme_engine.py`
   - `frontend/terminal.py`
 
-### Changes by Copilot (Ghost Layer) - ESC ARCHITECTURE INVARIANT + DOCS READING HUB + GOVERNANCE TRACEABILITY
+### Changes by Ten (GPT) (Ghost Layer) - ESC ARCHITECTURE INVARIANT + DOCS READING HUB + GOVERNANCE TRACEABILITY
 
-**2026-03-30 00:43 UTC** Copilot: Baked deterministic ESC close behavior and docs home catalogue improvements into architecture policy, with executed ALM proposal evidence.
+**2026-03-30 00:43 UTC** Ten (GPT): Baked deterministic ESC close behavior and docs home catalogue improvements into architecture policy, with executed ALM proposal evidence.
 
 - **Type:** UX architecture hardening / Governance policy / Traceability
 - **Status:** ✅ COMPLETE
@@ -302,9 +302,9 @@ Validate the runtime Duck review gate for work-proposal approvals and confirm ex
   - `GET /api/alm/status` returned enforced governance state
   - `GET /api/docs` returned non-empty docs catalogue payload
 
-### Changes by Copilot (Ghost Layer) - TIME WIZARD + ALL-AGENT PROPOSALS STABILIZATION
+### Changes by Ten (GPT) (Ghost Layer) - TIME WIZARD + ALL-AGENT PROPOSALS STABILIZATION
 
-**2026-03-29 15:33 UTC** Copilot: Finalized compatibility and stability fixes for Time Wizard startup and all-agent proposal execution flow.
+**2026-03-29 15:33 UTC** Ten (GPT): Finalized compatibility and stability fixes for Time Wizard startup and all-agent proposal execution flow.
 
 - **Type:** Runtime compatibility / Workflow stabilization / Verification
 - **Status:** ✅ COMPLETE
@@ -323,9 +323,9 @@ Validate the runtime Duck review gate for work-proposal approvals and confirm ex
   - `GET /api/queue` ✅
   - `GET /api/work-proposals` ✅
 
-### Changes by Copilot (Ghost Layer) - LOCALHOST STABILIZATION + ALM/SELF-AUDIT HARDENING
+### Changes by Ten (GPT) (Ghost Layer) - LOCALHOST STABILIZATION + ALM/SELF-AUDIT HARDENING
 
-**2026-03-30 15:03 UTC** Copilot: Restored localhost service stability, reinforced ALM status path under polling pressure, and logged executed ALM proposal evidence.
+**2026-03-30 15:03 UTC** Ten (GPT): Restored localhost service stability, reinforced ALM status path under polling pressure, and logged executed ALM proposal evidence.
 
 - **Type:** Incident response / Runtime stability / Governance tracking
 - **Status:** ✅ COMPLETE
@@ -343,9 +343,9 @@ Validate the runtime Duck review gate for work-proposal approvals and confirm ex
   - `python3 -m py_compile frontend/terminal.py frontend/theme_engine.py` ✅
   - `SIMULATE=true python3 tests/test_triage_queue_dryrun.py` ✅ (24/24)
 
-### Changes by Copilot (Ghost Layer) - ALM POLICY ENFORCEMENT (DOCUMENTATION-DRIVEN)
+### Changes by Ten (GPT) (Ghost Layer) - ALM POLICY ENFORCEMENT (DOCUMENTATION-DRIVEN)
 
-**2026-03-30 10:30 UTC** Copilot: Activated documentation-first ALM controls and proposal gate enforcement.
+**2026-03-30 10:30 UTC** Ten (GPT): Activated documentation-first ALM controls and proposal gate enforcement.
 
 - **Type:** Governance / Runtime Enforcement / Auditability
 - **Status:** ✅ COMPLETE
@@ -381,9 +381,9 @@ Validate the runtime Duck review gate for work-proposal approvals and confirm ex
 
 ---
 
-### Changes by Copilot (Ghost Layer) — SELF-AUDIT + CONNECTION FIXES + BACKLOG CLEARANCE
+### Changes by Ten (GPT) (Ghost Layer) — SELF-AUDIT + CONNECTION FIXES + BACKLOG CLEARANCE
 
-**2026-03-30 10:18 UTC** Copilot: Completed self-audit run, restored missing queue/proposal APIs, and cleared proposal backlog.
+**2026-03-30 10:18 UTC** Ten (GPT): Completed self-audit run, restored missing queue/proposal APIs, and cleared proposal backlog.
 
 - **Type:** Validation / Bug Fix / Operations
 - **Status:** ✅ COMPLETE
@@ -405,9 +405,9 @@ Validate the runtime Duck review gate for work-proposal approvals and confirm ex
 
 ---
 
-### Changes by Copilot (Ghost Layer) — PROACTIVE OPERATIONS SWEEP (DRY TEST + BACKLOG/BUGS + APPROVALS/PROPOSALS)
+### Changes by Ten (GPT) (Ghost Layer) — PROACTIVE OPERATIONS SWEEP (DRY TEST + BACKLOG/BUGS + APPROVALS/PROPOSALS)
 
-**2026-03-30 10:05 UTC** Copilot: Executed proactive dry-test sweep and reconciled operational tracking docs.
+**2026-03-30 10:05 UTC** Ten (GPT): Executed proactive dry-test sweep and reconciled operational tracking docs.
 
 - **Type:** Validation / Documentation / Backlog hygiene
 - **Status:** ✅ COMPLETE (with explicit blockers logged)
@@ -427,9 +427,9 @@ Validate the runtime Duck review gate for work-proposal approvals and confirm ex
 
 ---
 
-### Changes by Copilot (Ghost Layer) — COMPREHENSIVE SYSTEM FIXES: UI, CHAT, WORLD CLOCKS, TIME WIZARD
+### Changes by Ten (GPT) (Ghost Layer) — COMPREHENSIVE SYSTEM FIXES: UI, CHAT, WORLD CLOCKS, TIME WIZARD
 
-**2026-03-29 00:15 — 2026-03-30 09:45** Copilot: 5 critical UI bug fixes + chat timeout + world clocks + Time Wizard initialization
+**2026-03-29 00:15 — 2026-03-30 09:45** Ten (GPT): 5 critical UI bug fixes + chat timeout + world clocks + Time Wizard initialization
 
 **Summary:**
 - ✅ Implemented dynamic world clocks (5 timezones, 1s real-time update)
@@ -730,7 +730,7 @@ fridays/scheduler.py                  | +12 initialization code
   - Field name aliases confirmed working
   - Performance metrics collected (sub-200ms response times)
 - **Documentation:** Created FRIDAYS_AUDIT_SUMMARY.md and BUGS_AUDIT_28_March_2026.md with complete audit trail, root cause analysis, and fix verification
-- **Next Phase:** Ready for Nine (Copilot) integration; all foundational systems verified stable
+- **Next Phase:** Ready for Ten (GPT) integration; all foundational systems verified stable
 
 ---
 
@@ -782,7 +782,7 @@ fridays/scheduler.py                  | +12 initialization code
 - **Files Changed:** sandpits.py (minor), test commands
 - **Impact:** Proposal write/read/list now reliable for Phase 6 agency.
 
-### Changes by Agent Ten (Gemini Code Assist)
+### Changes by Agent Ten (GPT)
 
 **2026-03-26 17:15:00** Agent Ten: Finalized Phase D UI/UX Overhaul
 - **Type:** Feature
@@ -796,11 +796,11 @@ fridays/scheduler.py                  | +12 initialization code
 - **Files Changed:** `templates/terminal.html`, `CHANGELOG.md`, `PROJECT.md`, `SYSTEM_CLOCK.md`, `FEATURES_TODO.md`
 - **Impact:** Fridays dashboard now displays a live, centralized system clock, enhancing time consistency verification.
 
-**2026-03-26 16:30:00** Agent Ten: Integrated Agent Ten (Gemini Code Assist)
+**2026-03-26 16:30:00** Agent Ten: Integrated Agent Ten (GPT)
 - **Type:** Feature
 - **Priority:** High
 - **Files Changed:** `database.py`, `terminal.py`, `orchestrator.py`, `PROJECT.md`, `CHANGELOG.md`, `templates/terminal.html`
-- **Impact:** Agent Ten (Gemini Code Assist) added as "Software Engineering Advisor" with dedicated memory and dashboard visibility.
+- **Impact:** Agent Ten (GPT) added as "Software Engineering Advisor" with dedicated memory and dashboard visibility.
 
 **2026-03-26 16:00:00** Agent Ten: Restored Project Explorer and Changes Tab
 - **Type:** Bug Fix
@@ -826,14 +826,14 @@ fridays/scheduler.py                  | +12 initialization code
 - **Files Changed:** `database.py`, `orchestrator.py`, `vs_tools.py`, `templates/terminal.html`
 - **Impact:** Nine now has full read/list/write access to `/home/seven/swarm` (via Ghost consent); her memory recall and persistence are significantly improved.
 
-### Changes by Copilot (Claude Haiku 4.5)
+### Changes by Ten (GPT)
 
-**2026-03-26 15:45:00** Copilot: Standardized Agent Documentation & Versioning constraints
+**2026-03-26 15:45:00** Ten (GPT): Standardized Agent Documentation & Versioning constraints
 - **Type:** Refactor
 - **Files Changed:** `PROJECT.md`, `orchestrator.py`, `CHANGELOG.md`
 - **Impact:** Mandatory precise timestamping and VCS usage for all agent-led changes.
 
-**2026-03-26 16:30:00** Copilot: Integrated Agent Ten (Gemini Code Assist)
+**2026-03-26 16:30:00** Ten (GPT): Integrated Agent Ten (GPT)
 - **Type:** Feature
 - **Files Changed:** `database.py`, `terminal.py`, `orchestrator.py`, `PROJECT.md`, `CHANGELOG.md`, `templates/terminal.html`
 - **Type:** Refactor
@@ -845,16 +845,16 @@ fridays/scheduler.py                  | +12 initialization code
 - **Files Changed:** `templates/terminal.html`, `CHANGELOG.md`, `FEATURES_TODO.md`
 - **Impact:** Studio layout gap resolved; New standalone Terminal tab implemented for direct shell access.
 
-**2026-03-26 16:50:00** Copilot: Implemented Phase B-1: Visible System Clock in Fridays UI
+**2026-03-26 16:50:00** Ten (GPT): Implemented Phase B-1: Visible System Clock in Fridays UI
 - **Type:** Feature
 - **Priority:** High
 - **Files Changed:** `templates/terminal.html`, `CHANGELOG.md`, `PROJECT.md`, `SYSTEM_CLOCK.md`, `FEATURES_TODO.md`
 - **Impact:** Fridays dashboard now displays a live, centralized system clock, enhancing time consistency verification.
 - **Impact:** Mandatory precise timestamping and VCS usage for all agent-led changes.
 
-### Changes by Copilot (Claude Haiku 4.5)
+### Changes by Ten (GPT)
 
-**2026-03-26 14:45:33** Copilot: Fixed Nine's file operations in Fridays
+**2026-03-26 14:45:33** Ten (GPT): Fixed Nine's file operations in Fridays
 - **Type:** Bug Fix
 - **Files Changed:**
   - `fridays/file_agent.py` (read_sandpit signature, return types)
@@ -863,7 +863,7 @@ fridays/scheduler.py                  | +12 initialization code
 - **Impact:** File read/write operations now work without TypeError
 - **Details:** Standardized all file functions to return (ok, content) tuples consistently
 
-**2026-03-26 14:50:00** Copilot: Reviewed comprehensive project architecture
+**2026-03-26 14:50:00** Ten (GPT): Reviewed comprehensive project architecture
 - **Type:** Code Review
 - **Finding:** Core system is Alpha/Early Beta, well-designed with exceptional documentation
 - **Output:** ARCHITECTURE_REVIEW.md (in progress)
@@ -893,25 +893,25 @@ fridays/scheduler.py                  | +12 initialization code
 
 ### Phase A: File Versioning & Change Tracking
 
-**[QUEUE]** Copilot: Add sudo permission toggle flag
+**[QUEUE]** Ten (GPT): Add sudo permission toggle flag
 - **Type:** Feature
 - **Priority:** High
 - **Description:** Granular on/off switch for sudo elevation per command
 - **Scope:** fridays/shell_agent.py, terminal.py
 
-**[QUEUE]** Copilot: Expand Nine write access to full /swarm
+**[QUEUE]** Ten (GPT): Expand Nine write access to full /swarm
 - **Type:** Feature
 - **Priority:** High
 - **Description:** Nine can modify any file in /swarm with full logging
 - **Scope:** vs_tools.py, config.py (permissions)
 
-**[QUEUE]** Copilot: Build file change detection & versioning
+**[QUEUE]** Ten (GPT): Build file change detection & versioning
 - **Type:** Feature
 - **Priority:** High
 - **Description:** Track before/after for all file writes, store in database
 - **Scope:** New module: file_versioning.py, database schema update
 
-**[QUEUE]** Copilot: Integrate versioning into documents section
+**[QUEUE]** Ten (GPT): Integrate versioning into documents section
 - **Type:** Feature
 - **Priority:** High
 - **Description:** UI for browsing file history, comparing versions
@@ -919,13 +919,13 @@ fridays/scheduler.py                  | +12 initialization code
 
 ### Phase B: System Clock & Consistency
 
-**[QUEUE]** Copilot: Add visible system clock to Fridays UI
+**[QUEUE]** Ten (GPT): Add visible system clock to Fridays UI
 - **Type:** Feature
 - **Priority:** High
 - **Description:** Display current system time (HH:MM:SS) in banner, use as source of truth
 - **Scope:** templates/terminal.html, JavaScript clock component
 
-**[QUEUE]** Copilot: Migrate all agents to use system clock
+**[QUEUE]** Ten (GPT): Migrate all agents to use system clock
 - **Type:** Refactor
 - **Priority:** High
 - **Description:** Replace `datetime.now()` with centralized clock service
@@ -933,13 +933,13 @@ fridays/scheduler.py                  | +12 initialization code
 
 ### Phase C: Time Machine Backup System
 
-**[QUEUE]** Copilot: Design & implement time machine versioning
+**[QUEUE]** Ten (GPT): Design & implement time machine versioning
 - **Type:** Infrastructure
 - **Priority:** High
 - **Description:** Git-like version control with daily snapshots, point-in-time restore
 - **Scope:** New module: time_machine.py, backup architecture
 
-**[QUEUE]** Copilot: Implement daily checkpoint tagging
+**[QUEUE]** Ten (GPT): Implement daily checkpoint tagging
 - **Type:** Feature
 - **Priority:** Medium
 - **Description:** Daily automatic tags (YYYY-MM-DD-HH:MM:SS), separate bin for rollback
@@ -947,17 +947,17 @@ fridays/scheduler.py                  | +12 initialization code
 
 ### Phase D: UI/UX Improvements
 
-**[QUEUE]** Copilot: Rename VS → Studio throughout interface
+**[QUEUE]** Ten (GPT): Rename VS → Studio throughout interface
 - **Type:** UI/UX
 - **Priority:** Medium
 - **Files:** templates/terminal.html, terminal.py, all references
 
-**[QUEUE]** Copilot: Fix CSS layout (black gap between banner and content)
+**[QUEUE]** Ten (GPT): Fix CSS layout (black gap between banner and content)
 - **Type:** UI/UX
 - **Priority:** Medium
 - **Files:** templates/terminal.html, CSS section
 
-**[QUEUE]** Copilot: Build Terminal window in Studio
+**[QUEUE]** Ten (GPT): Build Terminal window in Studio
 - **Type:** Feature
 - **Priority:** High
 - **Description:** New tab for bidirectional command execution with Nine visibility
@@ -965,13 +965,13 @@ fridays/scheduler.py                  | +12 initialization code
 
 ### Phase E: Access Control & Sandpit Enforcement
 
-**[QUEUE]** Copilot: Enforce sandpit read-only access across agents
+**[QUEUE]** Ten (GPT): Enforce sandpit read-only access across agents
 - **Type:** Feature
 - **Priority:** Medium
 - **Description:** Agents can read other agents' sandpits but cannot write (enforce)
 - **Scope:** fridays/file_agent.py, sandpits.py
 
-**[QUEUE]** Copilot: Expand all agents' read access to /swarm
+**[QUEUE]** Ten (GPT): Expand all agents' read access to /swarm
 - **Type:** Feature
 - **Priority:** Medium
 - **Description:** All agents can read project root files (with restrictions)
@@ -979,7 +979,7 @@ fridays/scheduler.py                  | +12 initialization code
 
 ### Phase F: Verification & Bug Resolution
 
-**[QUEUE]** Copilot: Verify Discord bot token validity
+**[QUEUE]** Ten (GPT): Verify Discord bot token validity
 - **Type:** Verification
 - **Priority:** Low
 - **Status:** Investigation shows code is correct; likely token issue
