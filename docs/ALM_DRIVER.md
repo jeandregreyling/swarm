@@ -45,10 +45,12 @@ Implemented in `frontend/terminal.py`:
 - `POST /api/skills/run` requires `proposal_id`
 - `POST /api/exec` requires `proposal_id`
 - `POST /api/exec/write` requires `proposal_id`
+- `POST /api/agents/capabilities` requires Ghost identity (effective user `ghost`)
 
-Visibility endpoint:
+Visibility endpoints:
 
 - `GET /api/alm/status` exposes governance state for Fridays UI and audits.
+- `GET /api/agents/capability-matrix` exposes granted capabilities and trust levels by agent.
 
 Gate behavior:
 
@@ -61,6 +63,40 @@ Configuration:
 
 - `ALM_REQUIRE_APPROVALS=1` (default) enforces gate
 - `ALM_REQUIRE_APPROVALS=0` disables gate for emergency debugging only
+
+## Capability Governance (High-Access Toggle)
+
+Fridays Skills now includes an Agent Capability Matrix with operational controls:
+
+- filter presets (`Git Executors`, `High Trust (2+)`, `No Git Access`)
+- one-click high-access bundle enable/disable per agent
+- per-agent quick toggle for `git_execute`
+
+Runtime policy:
+
+1. Capability mutation is Ghost-only at API layer.
+2. UI blocks capability mutation unless effective identity is `ghost`.
+3. Every capability mutation is logged in activity for audit trace.
+
+High-access bundle used by the UI:
+
+- `git_propose`
+- `git_execute`
+- `propose_work`
+- `coordinate`
+- `shared_write`
+- `memory_read_all`
+- `skill_shell`
+- `skill_schedule`
+
+Mutation endpoint contract:
+
+- `POST /api/agents/capabilities`
+  - input: `agent`, `capability` or `capabilities`, `enabled`, identity payload
+  - success: returns updated granted capability rows for target agent
+  - auth failure: HTTP `403`
+  - unknown capability: HTTP `400`
+  - unknown agent: HTTP `404`
 
 ## Required Documentation Artifacts Per Change
 

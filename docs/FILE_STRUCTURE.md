@@ -54,7 +54,7 @@ Domain-specific agents:
 - `agent_proposals.py` — Proposal framework (used for decisions).
 - `agent_email_ghost.py` — Email approval/routing logic.
 
-Future: `nine.py` (Claude via API), `ten.py` (Gemini), `twelve.py` (Time Wizard config)
+Future: `nine.py` (Claude Sonnet 4.6 via API), `ten.py` (GPT-5.3-Codex), `twelve.py` (Time Wizard config)
 
 **Trust Level**: Medium (reads memory, creates proposals, affects queue)
 

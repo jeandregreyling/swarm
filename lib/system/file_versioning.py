@@ -50,7 +50,7 @@ def _ensure_dirs():
 def _init_versioning_tables():
     """Create file_versions and audit_log tables if they don't exist."""
     conn = get_connection()
-    conn.execute("""
+    conn.executescript("""
         CREATE TABLE IF NOT EXISTS file_versions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             file_path TEXT NOT NULL,

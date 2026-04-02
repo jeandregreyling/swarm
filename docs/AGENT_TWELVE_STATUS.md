@@ -140,7 +140,7 @@ TOTAL: 7 passed, 0 failed ✓
 ║  ├─ Qwen        (analyst, local)                             ║
 ║  ├─ Librarian   (gatekeeper, local)                          ║
 ║  ├─ Eight       (SAP specialist, local)                      ║
-║  ├─ Eleven      (Ghost Layer, Grok 3 API)                    ║
+║  ├─ Eleven      (Ghost Layer, Grok API)                     ║
 ║  └─ [Future: Nine, Ten, Eleven as specialists]               ║
 ║                                                               ║
 ╠═══════════════════════════════════════════════════════════════╣
