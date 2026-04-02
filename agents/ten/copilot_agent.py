@@ -226,5 +226,10 @@ def chat(message, conversation_history=None, stage_cb=None):
         return answer, tokens
 
     except Exception as e:
-        logger.error(f'[Ten] API error: {e}')
-        return None, 0
+        msg = str(e)
+        logger.error(f'[Ten] API error: {msg}')
+        if 'RateLimitReached' in msg or '429' in msg or 'rate limit' in msg.lower():
+            return f'[Ten] GitHub Models rate limit reached (50 req/day free tier). Resets in ~24h. Error: {msg}', 0
+        if '401' in msg or 'Unauthorized' in msg or 'authentication' in msg.lower():
+            return '[Ten] GitHub token rejected (401). Regenerate PAT with Models scope at github.com/settings/tokens.', 0
+        return f'[Ten] API error: {msg}', 0
