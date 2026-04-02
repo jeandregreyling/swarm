@@ -178,19 +178,26 @@ Your job: deliver one clear answer. Lead with the recommended approach or direct
 # Nine's sandpit: sandpits/nine/ — architectural notes, draft code, session plans.
 
 def _load_env_key(name):
-    """Load an API key from environment or /etc/environment."""
+    """Load an API key from environment, /etc/environment, or .env.agents."""
     import os
     val = os.environ.get(name, '')
     if val:
         return val
-    try:
-        with open('/etc/environment') as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith(f'{name}='):
-                    return line.split('=', 1)[1].strip().strip('"').strip("'")
-    except Exception:
-        pass
+    _env_files = [
+        '/etc/environment',
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.agents'),
+    ]
+    for path in _env_files:
+        try:
+            with open(path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('#') or '=' not in line:
+                        continue
+                    if line.startswith(f'{name}='):
+                        return line.split('=', 1)[1].strip().strip('"').strip("'")
+        except Exception:
+            pass
     return ''
 
 XAI_API_KEY = _load_env_key('XAI_API_KEY')
