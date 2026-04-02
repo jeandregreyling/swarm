@@ -94,3 +94,9 @@
 **From**: test
 **Description**: Testing ALM integration with Git panel
 **Status**: dispatched
+
+## [17:55] INTERNAL-TEST-0358
+**Title**: Git stage test file
+**From**: test
+**Description**: Testing ALM integration with Git panel
+**Status**: dispatched
