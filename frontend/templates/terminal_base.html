@@ -10178,10 +10178,11 @@ function _appendChatBubble(sender, text, opts = {}) {
   const _tsDate = _now.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   const _tsToday = new Date().toDateString() === _now.toDateString();
   const _tsLabel = _tsTime + (_tsToday ? '' : ' · ' + _tsDate);
+  const _tokCount = (!isUser && opts.tokens > 0) ? Number(opts.tokens).toLocaleString() + ' tok' : '';
   bubble.innerHTML = `
     <div class="chat-meta ${isUser ? '' : 'icon-meta'}" style="display:flex;align-items:center;gap:8px;">
       <span>${senderMetaHtml}</span>
-      <span style="font-size:9px;color:var(--text-dim);opacity:0.7;margin-left:auto;white-space:nowrap;">${_tsLabel}</span>
+      <span style="font-size:9px;color:var(--text-dim);opacity:0.7;margin-left:auto;white-space:nowrap;">${_tokCount ? `<span style="opacity:0.55;margin-right:5px;">${_escapeHtml(_tokCount)}</span>` : ''}${_tsLabel}</span>
     </div>
     ${quoted}
     <div class="chat-text">${bodyHtml}</div>
@@ -11140,7 +11141,7 @@ function sendMessage() {
 
     if (immediateResponses.length) {
       immediateResponses.forEach(entry => {
-        _appendChatBubble(entry.agent || 'agent', entry.response || '...');
+        _appendChatBubble(entry.agent || 'agent', entry.response || '...', { tokens: entry.tokens || 0 });
       });
       const first = immediateResponses[0];
       notifyDesktop(
