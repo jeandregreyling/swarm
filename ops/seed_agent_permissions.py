@@ -52,6 +52,8 @@ BASELINE = [
     'sandpit_write',
     'skill_search',
     'memory_write',
+    'git_propose',
+    'git_execute',
     'propose_work',
     'coordinate',
 ]
@@ -63,7 +65,7 @@ ANALYST_EXTRA = ['skill_browse', 'memory_read_all', 'shared_write']
 SPECIALIST_EXTRA = ['skill_shell']
 
 # guard/checker — read/monitor only, cannot initiate
-GUARD_PACK = ['ticket_query', 'sandpit_read', 'skill_search', 'memory_write']
+GUARD_PACK = ['ticket_query', 'sandpit_read', 'skill_search', 'memory_write', 'git_propose', 'git_execute']
 
 AGENT_ROLE_MAP = {
     # coordinator
