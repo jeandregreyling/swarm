@@ -3,7 +3,7 @@
     "name": "Fridays",
     "description": "Fridays theme - Sevens Swarm. Time-of-day adaptive colors.",
     "author": "Seven",
-    "version": "1.0"
+    "version": "2.0"
   },
   "colors": {
     "--bg": "#0D0D10",
@@ -35,7 +35,9 @@
       "--accent": "#FFB347",
       "--accent-hover": "#FFC461",
       "--window-bg": "#FFFBF0",
-      "--window-header": "#FFF8F0"
+      "--window-header": "#FFF8F0",
+      "--radius": "8px",
+      "--shadow": "0 8px 32px rgba(80,40,0,0.10)"
     },
     "afternoon": {
       "--bg": "#FFF5E6",
@@ -47,7 +49,9 @@
       "--accent": "#FF9E4D",
       "--accent-hover": "#FFB366",
       "--window-bg": "#FFF9F0",
-      "--window-header": "#FFF5E6"
+      "--window-header": "#FFF5E6",
+      "--radius": "8px",
+      "--shadow": "0 8px 32px rgba(80,40,0,0.10)"
     },
     "evening": {
       "--bg": "#1A0F2E",
@@ -59,7 +63,9 @@
       "--accent": "#FF1493",
       "--accent-hover": "#FF69B4",
       "--window-bg": "#2D1B4E",
-      "--window-header": "#1A0F2E"
+      "--window-header": "#1A0F2E",
+      "--radius": "10px",
+      "--shadow": "0 20px 60px rgba(0,0,0,0.6)"
     },
     "night": {
       "--bg": "#0A0515",
@@ -71,8 +77,95 @@
       "--accent": "#00D9FF",
       "--accent-hover": "#40E0FF",
       "--window-bg": "#1A0F2E",
-      "--window-header": "#0A0515"
+      "--window-header": "#0A0515",
+      "--radius": "10px",
+      "--shadow": "0 20px 60px rgba(0,0,0,0.65)"
+    },
+    "obsidian": {
+      "--bg": "#0A0A0B",
+      "--card": "#111113",
+      "--card-hover": "#18181B",
+      "--border": "#27272A",
+      "--text": "#FAFAFA",
+      "--text-dim": "#71717A",
+      "--accent": "#6366F1",
+      "--accent-hover": "#818CF8",
+      "--window-bg": "#111113",
+      "--window-header": "#0A0A0B",
+      "--radius": "8px",
+      "--shadow": "0 0 0 1px rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.85)"
+    },
+    "void": {
+      "--bg": "#09090B",
+      "--card": "#111111",
+      "--card-hover": "#1A1A1A",
+      "--border": "#333333",
+      "--text": "#EDEDED",
+      "--text-dim": "#888888",
+      "--accent": "#0070F3",
+      "--accent-hover": "#338EF7",
+      "--window-bg": "#111111",
+      "--window-header": "#060606",
+      "--radius": "8px",
+      "--shadow": "0 0 0 1px rgba(255,255,255,0.06), 0 24px 80px rgba(0,0,0,0.9)"
+    },
+    "aurora": {
+      "--bg": "#0D0E17",
+      "--card": "#13141F",
+      "--card-hover": "#1A1C2E",
+      "--border": "#1E2035",
+      "--text": "#F1F0FF",
+      "--text-dim": "#6B7280",
+      "--accent": "#8B5CF6",
+      "--accent-hover": "#A78BFA",
+      "--window-bg": "#13141F",
+      "--window-header": "#0D0E17",
+      "--radius": "12px",
+      "--shadow": "0 0 0 1px rgba(139,92,246,0.12), 0 20px 60px rgba(0,0,0,0.8)"
+    },
+    "ember": {
+      "--bg": "#0C0B0A",
+      "--card": "#141210",
+      "--card-hover": "#1E1C19",
+      "--border": "#2A2520",
+      "--text": "#F5F0EB",
+      "--text-dim": "#8A7F75",
+      "--accent": "#FF6B35",
+      "--accent-hover": "#FF8C5A",
+      "--window-bg": "#141210",
+      "--window-header": "#0C0B0A",
+      "--radius": "10px",
+      "--shadow": "0 0 0 1px rgba(255,107,53,0.08), 0 20px 56px rgba(0,0,0,0.85)"
+    },
+    "graphite": {
+      "--bg": "#0F1117",
+      "--card": "#1A1D27",
+      "--card-hover": "#212433",
+      "--border": "#2A2F3E",
+      "--text": "#FFFFFF",
+      "--text-dim": "#A3ACB9",
+      "--accent": "#635BFF",
+      "--accent-hover": "#7A73FF",
+      "--window-bg": "#1A1D27",
+      "--window-header": "#0F1117",
+      "--radius": "8px",
+      "--shadow": "0 0 0 1px rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.75)"
+    },
+    "rose": {
+      "--bg": "#0D0809",
+      "--card": "#160E10",
+      "--card-hover": "#1E1316",
+      "--border": "#2A181C",
+      "--text": "#F5E8EA",
+      "--text-dim": "#7A555A",
+      "--accent": "#FB7185",
+      "--accent-hover": "#FDA4AF",
+      "--window-bg": "#160E10",
+      "--window-header": "#0D0809",
+      "--radius": "12px",
+      "--shadow": "0 0 0 1px rgba(251,113,133,0.08), 0 20px 56px rgba(0,0,0,0.85)"
     }
   },
-  "custom_css": ""
+  "custom_css": "",
+  "custom_js": ""
 }

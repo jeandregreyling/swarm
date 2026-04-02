@@ -2550,6 +2550,26 @@ input[type="range"]::-moz-range-thumb:hover {
             <p>Seven + Fridays. Ask anything — or run skills, schedule tasks, browse the web.</p>
           </div>
         </div>
+        <!-- Agent Workflow Tracker Panel -->
+        <div id="agent-workflow-panel" style="position:absolute;bottom:0;right:0;width:320px;max-height:280px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin:8px;box-shadow:var(--shadow);overflow-y:auto;display:none;z-index:1000;font-family:monospace;font-size:11px;">
+          <div style="position:sticky;top:0;background:var(--window-header);padding:8px 12px;border-bottom:1px solid var(--border);font-weight:700;display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:var(--accent);">🛠️ Agent Workflow</span>
+            <button onclick="document.getElementById('agent-workflow-panel').style.display='none'" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;">✕</button>
+          </div>
+          <div id="workflow-content" style="padding:10px;color:var(--text-dim);">
+            <div style="color:var(--text);margin-bottom:8px;"><strong>Current Task:</strong></div>
+            <div id="workflow-task" style="background:var(--bg);padding:6px;border-radius:4px;margin-bottom:8px;color:var(--text);font-size:10px;"> None</div>
+            
+            <div style="color:var(--text);margin-bottom:8px;margin-top:8px;"><strong>Files Read:</strong></div>
+            <div id="workflow-files-read" style="background:var(--bg);padding:6px;border-radius:4px;margin-bottom:8px;color:#8a9c4d;max-height:80px;overflow-y:auto;">None</div>
+            
+            <div style="color:var(--text);margin-bottom:8px;"><strong>Files Modified:</strong></div>
+            <div id="workflow-files-modified" style="background:var(--bg);padding:6px;border-radius:4px;margin-bottom:8px;color:#ff9e4d;max-height:80px;overflow-y:auto;">None</div>
+            
+            <div style="color:var(--text);margin-bottom:8px;"><strong>Status:</strong></div>
+            <div id="workflow-status" style="background:var(--bg);padding:6px;border-radius:4px;color:var(--accent);">Ready</div>
+          </div>
+        </div>
       </div>
     </div>
     <div id="input-area">
@@ -2771,14 +2791,14 @@ input[type="range"]::-moz-range-thumb:hover {
       </div>
       <div id="memory-agent-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
         <button class="mem-tab active" data-agent="" onclick="_memTab(this,'')">All</button>
-        <button class="mem-tab" data-agent="nine"    onclick="_memTab(this,'nine')">Nine</button>
-        <button class="mem-tab" data-agent="ten"     onclick="_memTab(this,'ten')">GitHub (Ten)</button>
+        <button class="mem-tab" data-agent="nine"    onclick="_memTab(this,'nine')">Nine (Claude Sonnet 4.6)</button>
+        <button class="mem-tab" data-agent="ten"     onclick="_memTab(this,'ten')">Ten (GPT-5.3-Codex)</button>
         <button class="mem-tab" data-agent="gemma"   onclick="_memTab(this,'gemma')">Gemma</button>
         <button class="mem-tab" data-agent="llama"   onclick="_memTab(this,'llama')">LLaMA</button>
         <button class="mem-tab" data-agent="eight"   onclick="_memTab(this,'eight')">Eight</button>
         <button class="mem-tab" data-agent="qwen"    onclick="_memTab(this,'qwen')">Qwen</button>
-        <button class="mem-tab" data-agent="grok"    onclick="_memTab(this,'grok')">Grok</button>
-        <button class="mem-tab" data-agent="twelve"  onclick="_memTab(this,'twelve')">Twelve</button>
+        <button class="mem-tab" data-agent="grok"    onclick="_memTab(this,'grok')">Eleven (Grok API)</button>
+        <button class="mem-tab" data-agent="twelve"  onclick="_memTab(this,'twelve')">Twelve (Claude Haiku)</button>
         <button class="mem-tab" data-agent="librarian" onclick="_memTab(this,'librarian')">Librarian</button>
       </div>
       <div id="memory-source-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
@@ -2894,7 +2914,7 @@ input[type="range"]::-moz-range-thumb:hover {
           style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">In Progress</button>
         <button id="studio-tab-all"
           onclick="studioSetTab('all')"
-          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">All History</button>
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">History</button>
         <button onclick="studioSetTab(window._studioTab || 'pending')"
           style="margin-left:4px;background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">&#8635;</button>
       </div>
@@ -3459,7 +3479,9 @@ function getTimeOfDay() {
 }
 
 // Color palettes — time-of-day + named premium themes
-const TIME_PERIOD_COLORS = {
+const TIME_PERIOD_COLORS = window._fridays && window._fridays.time_of_day
+  ? window._fridays.time_of_day
+  : {
   morning: {
     '--bg': '#fff8ef',
     '--card': '#ffffff',
@@ -3516,7 +3538,6 @@ const TIME_PERIOD_COLORS = {
     '--radius': '10px',
     '--shadow': '0 20px 60px rgba(0,0,0,0.65)',
   },
-  // ── Premium named themes ──────────────────────────────────────────────────
   obsidian: {
     '--bg': '#0A0A0B', '--card': '#111113', '--card-hover': '#18181B',
     '--bg-input': '#0e0e10', '--border': '#27272A',
@@ -4220,6 +4241,10 @@ function _escHtml(v) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function _jsStr(v) {
+  return JSON.stringify(String(v ?? ''));
 }
 
 function openConversationDetail(convId) {
@@ -5986,18 +6011,12 @@ async function gitLoadProposals() {
     const resp = await fetch('/api/work-proposals?limit=120');
     const data = await resp.json();
     const proposals = data.proposals || [];
-    
-    // Filter for git-related proposals
-    const gitProposals = proposals.filter(p => {
-      const title = (p.title || '').toLowerCase();
-      const desc = (p.description || '').toLowerCase();
-      return title.includes('git ') || desc.includes('git panel:');
-    });
+    const gitProposals = proposals;
     window.__gitProposals = gitProposals;
 
     const container = document.getElementById('git-proposals-list');
     if (!gitProposals.length) {
-      container.innerHTML = '<div style="padding:8px;text-align:center;color:var(--text-dim);">No Git proposals</div>';
+      container.innerHTML = '<div style="padding:8px;text-align:center;color:var(--text-dim);">No proposals</div>';
       return;
     }
 
@@ -6020,8 +6039,9 @@ async function gitLoadProposals() {
             ${status === 'pending' ? `<button onclick="gitApproveProposal('${pid}')" style="flex:1;min-width:60px;padding:3px 6px;background:#4caf5020;border:1px solid #4caf5060;border-radius:3px;color:#4caf50;font-size:9px;font-weight:600;cursor:pointer;">✓ Approve</button>` : ''}
             ${canModerate ? `<button onclick="gitRejectProposal('${pid}')" style="flex:1;min-width:60px;padding:3px 6px;background:#f4433620;border:1px solid #f4433660;border-radius:3px;color:#f44336;font-size:9px;font-weight:600;cursor:pointer;">✗ Reject</button>` : ''}
             ${isExecutable ? `<button onclick="gitExecuteProposal('${pid}')" style="flex:1;min-width:60px;padding:3px 6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:3px;color:#29b6f6;font-size:9px;font-weight:700;cursor:pointer;">▶ Execute</button>` : ''}
+            <button onclick="gitDeleteProposal('${pid}')" style="flex:1;min-width:60px;padding:3px 6px;background:#f4433620;border:1px solid #f4433660;border-radius:3px;color:#f44336;font-size:9px;font-weight:600;cursor:pointer;">🗑 Delete</button>
             <button onclick="gitOpenVortex('${pid}')" style="flex:1;min-width:60px;padding:3px 6px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:9px;cursor:pointer;">🌀 Vortex</button>
-            <button onclick="openWindow('studio','🎨 Studio','view-studio');setTimeout(() => studioSetTab('pending'),150)" style="flex:1;min-width:60px;padding:3px 6px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:9px;cursor:pointer;">Studio</button>
+            <button onclick="openWindow('studio','🎨 Studio','view-studio');setTimeout(() => studioSetTab('all'),150)" style="flex:1;min-width:60px;padding:3px 6px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:9px;cursor:pointer;">Studio</button>
           </div>
         </div>`;
     }).join('');
@@ -6060,6 +6080,16 @@ async function gitRejectProposal(proposalId) {
     await gitLoadProposals();
   } catch (e) {
     showToast('Reject failed: ' + e.message, 'error');
+  }
+}
+
+async function gitDeleteProposal(proposalId) {
+  if (!confirm(`Delete proposal ${proposalId}? This cannot be undone.`)) return;
+  try {
+    await deleteProposal(proposalId);
+    await gitLoadProposals();
+  } catch (e) {
+    showToast('Delete failed: ' + (e.message || e), 'error');
   }
 }
 
@@ -7496,10 +7526,10 @@ function loadCapabilityMatrix(host) {
             <option value="eight">eight</option>
             <option value="duck">duck</option>
             <option value="sniffles">sniffles</option>
-            <option value="nine">nine</option>
-            <option value="ten">ten</option>
-            <option value="eleven">eleven</option>
-            <option value="twelve">twelve</option>
+            <option value="nine">nine (claude-sonnet-4-6)</option>
+            <option value="ten">ten (gpt-5.3-codex)</option>
+            <option value="eleven">eleven (grok-api)</option>
+            <option value="twelve">twelve (claude-haiku)</option>
           </select>
           <button id="capability-high-enable" style="padding:5px 10px;background:#4caf5020;border:1px solid #4caf5060;border-radius:6px;color:#4caf50;font-size:11px;cursor:pointer;font-weight:700;">Enable High Access</button>
           <button id="capability-high-disable" style="padding:5px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:11px;cursor:pointer;font-weight:700;">Disable High Access</button>
@@ -7671,6 +7701,12 @@ async function toggleSingleAgentCapability(agent, capability, enabled) {
 
 async function setAgentCapabilities(agent, capabilities, enabled) {
   if (!agent || !Array.isArray(capabilities) || !capabilities.length) return;
+  const auth = _getAuthState();
+  const effective = auth.proxy_as || auth.acting_user;
+  if (effective !== 'ghost') {
+    showToast('Capability changes require Ghost identity. Use Identity switch first.', 'error');
+    return;
+  }
   try {
     const res = await fetch('/api/agents/capabilities', {
       method: 'POST',
@@ -7995,9 +8031,9 @@ function studioSetTab(tab) {
 function loadProposals(container, tab) {
   const mode = tab || window._studioTab || 'pending';
   const url = mode === 'all'
-    ? '/api/work-proposals?limit=200'
+    ? '/api/work-proposals?status=done&status=executed&status=rejected&limit=400'
     : mode === 'in_progress'
-      ? '/api/work-proposals?status=in_progress&limit=200'
+      ? '/api/work-proposals?status=in_progress&status=approved&limit=200'
       : '/api/work-proposals?status=pending&limit=200';
 
   fetch(url)
@@ -8009,11 +8045,11 @@ function loadProposals(container, tab) {
         container.innerHTML = `
           <div style="text-align:center;padding:40px 20px;color:var(--text-dim);">
             <div style="font-size:32px;margin-bottom:12px;">${mode==='all'?'📋':'📭'}</div>
-            <div style="font-size:14px;font-weight:600;">${mode==='all'?'No proposals yet':mode==='in_progress'?'Nothing in progress':'No pending proposals'}</div>
+            <div style="font-size:14px;font-weight:600;">${mode==='all'?'No completed or rejected proposals yet':mode==='in_progress'?'No approved or in-progress proposals':'No pending proposals'}</div>
           </div>`;
         return;
       }
-      const labels = { pending:'Pending Review', in_progress:'In Progress', all:'All History' };
+      const labels = { pending:'Pending Review', in_progress:'In Progress & Approved', all:'History' };
       container.innerHTML = `
         <div style="padding:12px 0 8px;font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
           ${proposals.length} Proposal${proposals.length!==1?'s':''} — ${labels[mode]||mode}
@@ -8029,10 +8065,14 @@ function _proposalCard(p) {
   const status = (p.status || 'pending').toLowerCase();
   const m = _PROPOSAL_STATUS[status] || _PROPOSAL_STATUS.pending;
   const pid = p.proposal_id || '';
-  const title = p.title || pid || 'Untitled';
+  const pidJs = _jsStr(pid);
+  const title = _escHtml(p.title || pid || 'Untitled');
   const created = (p.created_at || '').slice(0,16);
+  const agent = _escHtml(p.agent || '?');
+  const description = p.description || '';
+  const descriptionPreview = _escHtml(description.slice(0,300));
   const ticketLink = p.ticket_number
-    ? `<span style="padding:2px 6px;border-radius:8px;background:#2196f320;color:#2196f3;font-size:10px;border:1px solid #2196f340;cursor:pointer;" onclick="event.stopPropagation();openTicketDetail('${p.ticket_number}')">🎫 ${p.ticket_number}</span>`
+    ? `<span style="padding:2px 6px;border-radius:8px;background:#2196f320;color:#2196f3;font-size:10px;border:1px solid #2196f340;cursor:pointer;" onclick='event.stopPropagation();openTicketDetail(${_jsStr(p.ticket_number)})'>🎫 ${_escHtml(p.ticket_number)}</span>`
     : '';
 
   // Pipeline mini-bar (only for non-rejected)
@@ -8050,45 +8090,53 @@ function _proposalCard(p) {
 
   const actionBtns = status === 'pending' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
-      <button onclick="event.stopPropagation();moveProposal('${pid}','approved')"
+      <button onclick='event.stopPropagation();moveProposal(${pidJs},"approved")'
         style="flex:1;padding:6px;background:#4caf5020;border:1px solid #4caf5060;border-radius:4px;color:#4caf50;font-size:11px;font-weight:600;cursor:pointer;">✓ Approve</button>
-      <button onclick="event.stopPropagation();moveProposal('${pid}','rejected')"
+      <button onclick='event.stopPropagation();moveProposal(${pidJs},"rejected")'
         style="flex:1;padding:6px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;font-weight:600;cursor:pointer;">✗ Reject</button>
     </div>` :
   status === 'approved' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
-      <button onclick="event.stopPropagation();moveProposal('${pid}','in_progress')"
+      <button onclick='event.stopPropagation();moveProposal(${pidJs},"in_progress")'
         style="flex:1;padding:6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:11px;font-weight:600;cursor:pointer;">▶ Start</button>
-      <button onclick="event.stopPropagation();moveProposal('${pid}','rejected')"
+      <button onclick='event.stopPropagation();moveProposal(${pidJs},"rejected")'
         style="flex:1;padding:6px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;font-weight:600;cursor:pointer;">✗ Reject</button>
     </div>` :
   status === 'in_progress' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
-      <button onclick="event.stopPropagation();moveProposal('${pid}','done')"
+      <button onclick='event.stopPropagation();moveProposal(${pidJs},"done")'
         style="flex:1;padding:6px;background:#ab47bc20;border:1px solid #ab47bc60;border-radius:4px;color:#ab47bc;font-size:11px;font-weight:600;cursor:pointer;">✓ Mark Done</button>
-      <button onclick="event.stopPropagation();moveProposal('${pid}','rejected')"
+      <button onclick='event.stopPropagation();moveProposal(${pidJs},"rejected")'
         style="flex:1;padding:6px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;font-weight:600;cursor:pointer;">✗ Reject</button>
     </div>` :
   status === 'done' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
-      <button onclick="event.stopPropagation();moveProposal('${pid}','executed')"
+      <button onclick='event.stopPropagation();moveProposal(${pidJs},"executed")'
         style="flex:1;padding:6px;background:#2196f320;border:1px solid #2196f360;border-radius:4px;color:#2196f3;font-size:11px;font-weight:600;cursor:pointer;">✓ Verify &amp; Close</button>
-      <button onclick="event.stopPropagation();moveProposal('${pid}','in_progress')"
+      <button onclick='event.stopPropagation();moveProposal(${pidJs},"in_progress")'
         style="flex:1;padding:6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:11px;font-weight:600;cursor:pointer;">↩ Reopen</button>
     </div>` : '';
+  const deleteBtn = `
+    <button onclick='event.stopPropagation();deleteProposalSafe(${pidJs})'
+      title="Delete proposal"
+      aria-label="Delete proposal"
+      style="margin-left:6px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:13px;font-weight:700;cursor:pointer;flex:0 0 auto;">🗑</button>`;
 
-  return `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:6px;padding:14px;margin-bottom:10px;opacity:${status==='rejected'?'0.6':'1'};cursor:pointer;" onclick="openProposalDetail('${pid}')">
+  return `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:6px;padding:14px;margin-bottom:10px;opacity:${status==='rejected'?'0.6':'1'};cursor:pointer;" onclick='openProposalDetail(${pidJs})'>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
       <div style="flex:1;">
         <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${title}</div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-          <span style="font-size:10px;color:var(--text-dim);">By ${p.agent||'?'} · ${created}</span>
+          <span style="font-size:10px;color:var(--text-dim);">By ${agent} · ${created}</span>
           ${ticketLink}
         </div>
       </div>
-      <span style="padding:2px 8px;border-radius:10px;background:${m.bg};color:${m.color};font-size:10px;font-weight:700;white-space:nowrap;border:1px solid ${m.border};">${m.label}</span>
+      <div style="display:flex;align-items:center;gap:6px;flex:0 0 auto;">
+        <span style="padding:2px 8px;border-radius:10px;background:${m.bg};color:${m.color};font-size:10px;font-weight:700;white-space:nowrap;border:1px solid ${m.border};">${m.label}</span>
+        ${deleteBtn}
+      </div>
     </div>
-    ${p.description ? `<div style="margin-top:8px;font-size:11px;color:var(--text-dim);white-space:pre-wrap;max-height:60px;overflow:hidden;line-height:1.5;font-family:monospace;">${(p.description||'').slice(0,300)}${(p.description||'').length>300?'…':''}</div>` : ''}
+    ${description ? `<div style="margin-top:8px;font-size:11px;color:var(--text-dim);white-space:pre-wrap;max-height:60px;overflow:hidden;line-height:1.5;font-family:monospace;">${descriptionPreview}${description.length>300?'…':''}</div>` : ''}
     ${pipelineHtml}
     ${actionBtns}
   </div>`;
@@ -8098,7 +8146,7 @@ function moveProposal(proposalId, newStatus) {
   fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: newStatus })
+    body: JSON.stringify({ ..._authPayload(), status: newStatus })
   })
     .then(r => r.json())
     .then(data => {
@@ -8112,6 +8160,47 @@ function moveProposal(proposalId, newStatus) {
       if (container) loadProposals(container, window._studioTab || 'pending');
     })
     .catch(e => showToast('Error: ' + e.message, 'error'));
+}
+
+async function deleteProposal(proposalId, closeModal = false) {
+  const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ..._authPayload() })
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || data.ok === false) {
+    throw new Error(data.error || `HTTP ${resp.status}`);
+  }
+  showToast('Proposal deleted', 'success');
+
+  if (closeModal) {
+    const dm = document.getElementById('proposal-detail-modal');
+    if (dm?.classList.contains('open')) dm.classList.remove('open');
+  }
+
+  const container = document.getElementById('studio-content');
+  if (container) loadProposals(container, window._studioTab || 'pending');
+  if (typeof gitLoadProposals === 'function') gitLoadProposals();
+  if (typeof loadAttentionPanel === 'function') loadAttentionPanel();
+  return data;
+}
+
+async function deleteProposalSafe(proposalId, closeModal = false) {
+  if (!proposalId) {
+    showToast('No proposal ID', 'error');
+    return;
+  }
+  const confirmed = confirm(`Delete proposal ${proposalId}? This cannot be undone.`);
+  if (!confirmed) return;
+  try {
+    const result = await deleteProposal(proposalId, closeModal);
+    console.log('Delete succeeded:', result);
+  } catch (e) {
+    const msg = e.message || String(e);
+    console.error('Delete failed:', msg);
+    showToast('Delete failed: ' + msg, 'error');
+  }
 }
 
 // Keep voteProposal as alias for ALM terminal auto-approve
@@ -8160,6 +8249,13 @@ function _proposalPipelineBar(status) {
 function openProposalDetail(proposalId) {
   const p = (window._proposals || []).find(x => (x.proposal_id || '') === proposalId);
   if (!p) return;
+  const pidJs = _jsStr(p.proposal_id || '');
+  const ticketJs = _jsStr(p.ticket_number || '');
+  const safeTitle = _escHtml(p.title || p.proposal_id || 'Untitled Proposal');
+  const safeDescription = _escHtml(p.description || '');
+  const safeAgent = _escHtml(p.agent || '');
+  const safeProposalId = _escHtml(p.proposal_id || '—');
+  const safeTicketNumber = _escHtml(p.ticket_number || '');
 
   let modal = document.getElementById('proposal-detail-modal');
   if (!modal) {
@@ -8185,7 +8281,6 @@ function openProposalDetail(proposalId) {
   const updated = (p.updated_at || '').slice(0, 16);
   const title = p.title || p.proposal_id || 'Untitled Proposal';
   const artifacts = proposalTestArtifacts(p);
-  const isActionable = ['pending','approved','in_progress','done'].includes(status);
 
   document.getElementById('pdet-title').textContent = title;
   document.getElementById('pdet-body').innerHTML = `
@@ -8193,13 +8288,13 @@ function openProposalDetail(proposalId) {
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
       <span style="padding:3px 10px;border-radius:12px;background:${m.bg};color:${m.color};font-size:11px;font-weight:700;border:1px solid ${m.border};">${m.label}</span>
-      ${p.agent ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Agent: ${p.agent}</span>` : ''}
-      ${p.ticket_number ? `<span onclick="openTicketDetail('${p.ticket_number}')" style="padding:3px 10px;border-radius:12px;background:#2196f320;color:#2196f3;font-size:11px;cursor:pointer;border:1px solid #2196f340;">Ticket: ${p.ticket_number}</span>` : ''}
+      ${p.agent ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Agent: ${safeAgent}</span>` : ''}
+      ${p.ticket_number ? `<span onclick='openTicketDetail(${ticketJs})' style="padding:3px 10px;border-radius:12px;background:#2196f320;color:#2196f3;font-size:11px;cursor:pointer;border:1px solid #2196f340;">Ticket: ${safeTicketNumber}</span>` : ''}
       ${p.queue_id ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Queue: ${p.queue_id}</span>` : ''}
     </div>
 
     <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px;">
-      <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;width:130px;">Proposal ID</td><td style="font-family:monospace;font-size:11px;">${p.proposal_id||'—'}</td></tr>
+      <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;width:130px;">Proposal ID</td><td style="font-family:monospace;font-size:11px;">${safeProposalId}</td></tr>
       <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Created</td><td>${created||'—'}</td></tr>
       ${updated && updated !== created ? `<tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Updated</td><td>${updated}</td></tr>` : ''}
     </table>
@@ -8207,7 +8302,7 @@ function openProposalDetail(proposalId) {
     ${p.description ? `
     <div style="margin-bottom:14px;">
       <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Description</div>
-      <div style="background:var(--card);padding:12px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:280px;overflow-y:auto;font-family:monospace;line-height:1.5;">${p.description}</div>
+      <div style="background:var(--card);padding:12px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:280px;overflow-y:auto;font-family:monospace;line-height:1.5;">${safeDescription}</div>
     </div>` : ''}
 
     <div style="margin-bottom:14px;">
@@ -8217,34 +8312,37 @@ function openProposalDetail(proposalId) {
       </div>
     </div>
 
-    ${isActionable ? `
     <div style="padding-top:12px;border-top:1px solid var(--border);">
       <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Actions</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         ${status==='pending' ? `
-          <button onclick="moveProposal('${p.proposal_id}','approved'); document.getElementById('proposal-detail-modal').classList.remove('open')"
+          <button onclick='moveProposal(${pidJs},"approved")'
             style="padding:8px 16px;background:#4caf5020;border:1px solid #4caf5060;border-radius:4px;color:#4caf50;font-size:12px;font-weight:600;cursor:pointer;">&#10003; Approve</button>
-          <button onclick="moveProposal('${p.proposal_id}','rejected'); document.getElementById('proposal-detail-modal').classList.remove('open')"
+          <button onclick='moveProposal(${pidJs},"rejected")'
             style="padding:8px 16px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:12px;font-weight:600;cursor:pointer;">&#10007; Reject</button>` : ''}
         ${status==='approved' ? `
-          <button onclick="moveProposal('${p.proposal_id}','in_progress'); document.getElementById('proposal-detail-modal').classList.remove('open')"
+          <button onclick='moveProposal(${pidJs},"in_progress")'
             style="padding:8px 16px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:12px;font-weight:600;cursor:pointer;">&#9654; Start Work</button>
-          <button onclick="moveProposal('${p.proposal_id}','rejected'); document.getElementById('proposal-detail-modal').classList.remove('open')"
+          <button onclick='moveProposal(${pidJs},"rejected")'
             style="padding:8px 16px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:12px;font-weight:600;cursor:pointer;">&#10007; Reject</button>` : ''}
         ${status==='in_progress' ? `
-          <button onclick="moveProposal('${p.proposal_id}','done'); document.getElementById('proposal-detail-modal').classList.remove('open')"
+          <button onclick='moveProposal(${pidJs},"done")'
             style="padding:8px 16px;background:#ab47bc20;border:1px solid #ab47bc60;border-radius:4px;color:#ab47bc;font-size:12px;font-weight:600;cursor:pointer;">&#10003; Mark Done</button>
-          <button onclick="moveProposal('${p.proposal_id}','rejected'); document.getElementById('proposal-detail-modal').classList.remove('open')"
+          <button onclick='moveProposal(${pidJs},"rejected")'
             style="padding:8px 16px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:12px;font-weight:600;cursor:pointer;">&#10007; Reject</button>` : ''}
         ${status==='done' ? `
-          <button onclick="moveProposal('${p.proposal_id}','executed'); document.getElementById('proposal-detail-modal').classList.remove('open')"
+          <button onclick='moveProposal(${pidJs},"executed")'
             style="padding:8px 16px;background:#2196f320;border:1px solid #2196f360;border-radius:4px;color:#2196f3;font-size:12px;font-weight:600;cursor:pointer;">&#10003; Verify &amp; Close</button>
-          <button onclick="moveProposal('${p.proposal_id}','in_progress'); document.getElementById('proposal-detail-modal').classList.remove('open')"
+          <button onclick='moveProposal(${pidJs},"in_progress")'
             style="padding:8px 16px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:12px;font-weight:600;cursor:pointer;">&#x21A9; Reopen</button>` : ''}
-        <button onclick="pinItemToDeferred('${p.proposal_id}','${title.replace(/'/g,"\\'").slice(0,80)}','proposal')"
+        <button onclick='deleteProposalSafe(${pidJs}, true)'
+          title="Delete proposal"
+          aria-label="Delete proposal"
+          style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:14px;font-weight:700;cursor:pointer;">&#128465;</button>
+        <button onclick='pinItemToDeferred(${pidJs}, ${_jsStr(title.slice(0,80))}, "proposal")'
           style="padding:8px 16px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:12px;cursor:pointer;">&#128204; Pin to Brief</button>
       </div>
-    </div>` : ''}`;
+    </div>`;
 
   modal.classList.add('open');
 }
@@ -9009,10 +9107,10 @@ const CHAT_AGENT_OPTIONS = [
   { value: 'eight',    label: 'Eight',    tier: 'local', hasTemp: true  },
   { value: 'duck',     label: 'Duck',     tier: 'local', hasTemp: true  },
   { value: 'sniffles', label: 'Sniffles', tier: 'local', hasTemp: true  },
-  { value: 'nine',     label: 'Claude',   tier: 'paid',  hasTemp: false },
-  { value: 'ten',      label: 'Copilot',  tier: 'paid',  hasTemp: true  },
-  { value: 'eleven',   label: 'Grok',     tier: 'paid',  hasTemp: false },
-  { value: 'twelve',   label: 'Vortex',   tier: 'paid',  hasTemp: true  }
+  { value: 'nine',     label: 'Nine · Claude Sonnet 4.6', tier: 'paid',  hasTemp: false },
+  { value: 'ten',      label: 'Ten · GPT-5.3-Codex',      tier: 'paid',  hasTemp: true  },
+  { value: 'eleven',   label: 'Eleven · Grok API',        tier: 'paid',  hasTemp: false },
+  { value: 'twelve',   label: 'Twelve · Claude Haiku',    tier: 'paid',  hasTemp: true  }
 ];
 
 const CHAT_CUSTOM_DICTIONARY_KEY = 'fridays-chat-custom-dictionary-v1';
@@ -10786,7 +10884,10 @@ async function renameThread(convId) {
 
 function _confirmDelete(message, onConfirm) {
   const SKIP_KEY = 'fridays_skip_del_confirm';
-  if (localStorage.getItem(SKIP_KEY) === '1') { onConfirm(); return; }
+  if (localStorage.getItem(SKIP_KEY) === '1') { 
+    Promise.resolve().then(() => onConfirm());
+    return; 
+  }
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
@@ -10805,8 +10906,12 @@ function _confirmDelete(message, onConfirm) {
   document.body.appendChild(overlay);
   const close = () => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); };
   overlay.querySelector('#_del_ok').onclick = () => {
-    if (overlay.querySelector('#_del_skip').checked) localStorage.setItem(SKIP_KEY, '1');
-    close(); onConfirm();
+    const skipCheckbox = overlay.querySelector('#_del_skip');
+    if (skipCheckbox && skipCheckbox.checked) {
+      localStorage.setItem(SKIP_KEY, '1');
+    }
+    close();
+    Promise.resolve().then(() => onConfirm());
   };
   overlay.querySelector('#_del_cancel').onclick = close;
   overlay.onclick = e => { if (e.target === overlay) close(); };
@@ -12135,6 +12240,84 @@ async function setSkillPerm(username, skillName, allowed) {
 
 function _esc(text) {
   return String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENT WORKFLOW TRACKER — Display agent action logs in chat
+// ═══════════════════════════════════════════════════════════════════════════
+
+window._workflowState = {
+  task: 'Theme System Fix',
+  filesRead: [],
+  filesModified: [],
+  status: 'Ready',
+  logs: []
+};
+
+function showWorkflowPanel() {
+  document.getElementById('agent-workflow-panel').style.display = 'block';
+}
+
+function hideWorkflowPanel() {
+  document.getElementById('agent-workflow-panel').style.display = 'none';
+}
+
+function logWorkflowFile(filepath, action) {
+  if (!window._workflowState) window._workflowState = { task: '', filesRead: [], filesModified: [], status: 'Ready', logs: [] };
+  
+  const panel = document.getElementById('agent-workflow-panel');
+  if (!panel) return;
+  
+  if (action === 'read') {
+    if (!window._workflowState.filesRead.includes(filepath)) {
+      window._workflowState.filesRead.push(filepath);
+    }
+    const readDiv = document.getElementById('workflow-files-read');
+    if (readDiv) {
+      readDiv.innerHTML = window._workflowState.filesRead
+        .map(f => `<div style="margin:2px 0;">📄 ${_esc(f)}</div>`)
+        .join('');
+    }
+  } else if (action === 'modify' || action === 'modified') {
+    if (!window._workflowState.filesModified.includes(filepath)) {
+      window._workflowState.filesModified.push(filepath);
+    }
+    const modDiv = document.getElementById('workflow-files-modified');
+    if (modDiv) {
+      modDiv.innerHTML = window._workflowState.filesModified
+        .map(f => `<div style="margin:2px 0;color:#ff9e4d;">✏️ ${_esc(f)}</div>`)
+        .join('');
+    }
+  }
+  
+  showWorkflowPanel();
+}
+
+function setWorkflowTask(taskName) {
+  if (!window._workflowState) window._workflowState = { task: '', filesRead: [], filesModified: [], status: 'Ready', logs: [] };
+  window._workflowState.task = taskName;
+  const taskDiv = document.getElementById('workflow-task');
+  if (taskDiv) taskDiv.textContent = taskName || 'None';
+  showWorkflowPanel();
+}
+
+function setWorkflowStatus(status) {
+  if (!window._workflowState) window._workflowState = { task: '', filesRead: [], filesModified: [], status: 'Ready', logs: [] };
+  window._workflowState.status = status;
+  const statusDiv = document.getElementById('workflow-status');
+  if (statusDiv) statusDiv.textContent = status || 'Ready';
+  if (status === 'Completed' || status === 'Complete') statusDiv.style.color = '#4caf50';
+  else if (status === 'Error' || status === 'Failed') statusDiv.style.color = '#ff6b6b';
+  else statusDiv.style.color = 'var(--accent)';
+}
+
+function clearWorkflow() {
+  window._workflowState = { task: '', filesRead: [], filesModified: [], status: 'Ready', logs: [] };
+  document.getElementById('workflow-task').textContent = 'None';
+  document.getElementById('workflow-files-read').textContent = 'None';
+  document.getElementById('workflow-files-modified').textContent = 'None';
+  document.getElementById('workflow-status').textContent = 'Ready';
+  hideWorkflowPanel();
 }
 
 </script>

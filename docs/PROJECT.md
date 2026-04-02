@@ -41,7 +41,7 @@ SEVEN     — Who they are. How they think. The brain.
             Memory pools, debate pipeline, FL-001 routing, Ghost Circle.
 
 EIGHT     — What they know. The specialist layer.
-            Eight = SAP HCM/ABAP. Ghost Layer specialists: Nine (Claude Sonnet), Ten (GPT), Eleven (Grok 3), Twelve (Claude Haiku).
+            Eight = SAP HCM/ABAP. Ghost Layer specialists: Nine (Claude Sonnet 4.6), Ten (GPT-5.3-Codex), Eleven (Grok API), Twelve (Claude Haiku).
             Each specialist has own memory pool, uses Seven's infrastructure.
 
 FRIDAYS   — What they can do. The action layer.
@@ -97,15 +97,15 @@ Terminal UI. Independent search per agent. Debate properly wired. Eight as SAP s
 ### Phase 3 — Fridays Action Layer (RL-017 to RL-021)
 Sandpits created. Browser agent. File agent. Shell agent (sandboxed). Skills framework. Agents start at Level 1 and earn their way up.
 - **RL-017 COMPLETE** — Sandpits. Directory structure + `sandpits.py` + `sandpit_log` DB table. Trust level enforcement (Level 0-5). Sniffles audits sandpits + memory. Terminal Sandpits view. Proposal system tested and working. Gemma/LLaMA/Qwen/Eight at Level 2, Nine at Level 3.
-- **RL-017 COMPLETE** — Sandpits + Trust Ladder + Proposal System. Sniffles audits sandpits. Eleven (Grok 3) seeded as Agent 11 (Ghost Layer).
-- **RL-017 COMPLETE** — Sandpits + Trust Ladder + Proposal System. Sniffles audits sandpits. Eleven (Grok 3) seeded as Agent 11 (Ghost Layer, Level 3).
-- **RL-017 COMPLETE** — Sandpits + Trust Ladder + Proposal System. Eleven (Grok 3) seeded as Agent 11 (Ghost Layer).
+- **RL-017 COMPLETE** — Sandpits + Trust Ladder + Proposal System. Sniffles audits sandpits. Eleven (Grok API) seeded as Agent 11 (Ghost Layer).
+- **RL-017 COMPLETE** — Sandpits + Trust Ladder + Proposal System. Sniffles audits sandpits. Eleven (Grok API) seeded as Agent 11 (Ghost Layer, Level 3).
+- **RL-017 COMPLETE** — Sandpits + Trust Ladder + Proposal System. Eleven (Grok API) seeded as Agent 11 (Ghost Layer).
 
 ### Phase 4 — Platform Expansion (RL-022 to RL-025)
 Telegram. Discord. WhatsApp. One swarm, many front doors. Same trusted sender model as email.
 
 ### Phase 5 — Specialist Agents (Eight onward)
-Eight (SAP), Nine (Claude Sonnet architecture), Ten (GPT engineering), Eleven (Grok 3 ideation), Twelve (Claude Haiku temporal governance). Each specialist has its own sandpit, memory pool, and role on top of Seven's infrastructure.
+Eight (SAP), Nine (Claude Sonnet 4.6 architecture), Ten (GPT-5.3-Codex engineering), Eleven (Grok API ideation), Twelve (Claude Haiku temporal governance). Each specialist has its own sandpit, memory pool, and role on top of Seven's infrastructure.
 
 ### Phase 6 — Agent Agency (RL-030 to RL-033) (In Progress)
 Agents evolve from purely reactive to proactive. They can read KB docs, draft proposals, email Ghost, and collaborate via shared sandpit. Hands still off the real system — but minds are active between conversations.
@@ -152,7 +152,7 @@ The Ghost Layer is the oversight, audit, and build layer of the swarm. **Only th
 |--------|----------|------|
 | Ghost | Human operator | Builds, approves, decides. Full system authority. Final word on everything. |
 | Nine | Claude Sonnet 4.6 (Anthropic API) | System architect. Designs and builds the swarm. Session memory in memory_nine. Level 3 trust. |
-| Ten | GPT-4.1 (GitHub Models API) | Software Engineering Advisor. Provides code quality and clarity insights. Session memory in memory_ten. Level 3 trust. |
+| Ten | GPT-5.3-Codex (GitHub Models API) | Software Engineering Advisor. Provides code quality and clarity insights. Session memory in memory_ten. Level 3 trust. |
 | Duck | qwen:1.5b (local) | Sanity checker. YES/NO quality gate after every ticket. Flags failures to Sniffles. |
 | Sniffles | deepseek-r1:7b (local) | Memory and sandpit auditor. PASS/WARN/FLAG. Runs when queue is quiet. |
 

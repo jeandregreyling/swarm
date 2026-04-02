@@ -28,6 +28,7 @@ Every skill call is logged to ghost_circle.
 import sys
 import logging
 import fnmatch
+import re
 from pathlib import Path
 from datetime import datetime
 
@@ -116,6 +117,12 @@ REGISTRY = {
         'trust_level': 1,
         'usage': 'SKILL ticket_create <title> || <description>',
         'example': 'SKILL ticket_create Validate queue edge-case || Run sandbox test for duplicate queue ids and report findings',
+    },
+    'alm_create_proposal': {
+        'description': 'Create an ALM work proposal/ticket. Accepts quoted title+description or <title> || <description>.',
+        'trust_level': 1,
+        'usage': 'SKILL alm_create_proposal "<title>" "<description>"',
+        'example': 'SKILL alm_create_proposal "Per-window theme propagation" "Ensure windows inherit app theme at creation and support local overrides."',
     },
     'fs_readonly': {
         'description': 'Read-only filesystem helper for workspace discovery (ls/find/read/head/tail).',
@@ -425,6 +432,37 @@ def _skill_ticket_create(args, agent, **_):
         return False, f'ticket_create failed: {e}'
 
 
+def _skill_alm_create_proposal(args, agent, **_):
+    payload = (args or '').strip()
+    if not payload:
+        return False, 'Usage: SKILL alm_create_proposal "<title>" "<description>"'
+
+    title = ''
+    description = ''
+
+    # Preferred format: two quoted strings
+    m = re.match(r'^"([^"]+)"\s+"([\s\S]+)"$', payload)
+    if m:
+        title, description = m.group(1).strip(), m.group(2).strip()
+    elif '||' in payload:
+        # Compatibility format
+        title, description = [x.strip() for x in payload.split('||', 1)]
+    else:
+        # Fallback: first sentence as title, full body as description
+        title = payload.split('.', 1)[0].strip()[:120] or 'ALM proposal from skill'
+        description = payload
+
+    if not title:
+        return False, 'alm_create_proposal requires a non-empty title.'
+
+    try:
+        from queue_manager import intake_internal
+        queue_id, proposal_id = intake_internal(agent, title, description, priority=5)
+        return True, f'ALM proposal created: queue_id={queue_id}, proposal_id={proposal_id}'
+    except Exception as e:
+        return False, f'alm_create_proposal failed: {e}'
+
+
 _HANDLERS = {
     'shell':          _skill_shell,
     'browse':         _skill_browse,
@@ -438,6 +476,7 @@ _HANDLERS = {
     'proposals':      _skill_proposals,
     'memory_search':  _skill_memory_search,
     'ticket_create':  _skill_ticket_create,
+    'alm_create_proposal': _skill_alm_create_proposal,
     'fs_readonly':    _skill_fs_readonly,
 }
 

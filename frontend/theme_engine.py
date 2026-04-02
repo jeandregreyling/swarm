@@ -336,14 +336,20 @@ if (!window.__almPollTimer) {{
         time_wizard_js = self.get_time_wizard_js()
         alm_js = self.get_alm_js()
         
+        # Load fridays.json for window._fridays injection (dynamic JS colors)
+        fridays_data = self.load_theme(theme_name)
+        fridays_json = json.dumps(fridays_data)
+        
         # Inject into placeholders
         html = html.replace('{{ theme_css }}', theme_css)
         html = html.replace('{{ theme_js }}', theme_js)
+        html = html.replace('{{ fridays_json }}', fridays_json)
         
         # Inject governance + time data into script tags before </body>
         time_wizard_script = f'<script>{time_wizard_js}</script>'
         alm_script = f'<script>{alm_js}</script>'
-        html = html.replace('</body>', f'{time_wizard_script}\n{alm_script}\n</body>')
+        fridays_init = f'<script>window._fridays = {fridays_json};</script>'
+        html = html.replace('</body>', f'{fridays_init}\n{time_wizard_script}\n{alm_script}\n</body>')
         
         return html
 

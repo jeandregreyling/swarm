@@ -36,7 +36,10 @@ logger = logging.getLogger('seven.file_agent')
 SANDPIT_ROOT  = Path('/home/seven/swarm/sandpits')
 SWARM_ROOT    = Path('/home/seven/swarm')
 
-AGENT_SANDPITS = ['gemma', 'llama', 'qwen', 'eight', 'shared']
+AGENT_SANDPITS = [
+    'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles',
+    'nine', 'ten', 'eleven', 'twelve', 'ghost', 'shared'
+]
 
 
 def _ensure_sandpits():
