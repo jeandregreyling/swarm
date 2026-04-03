@@ -211,6 +211,8 @@ _CHAT_AGENT_RUNTIME_CLASS = {
     'twelve': 'paid',
 }
 
+_CHAT_SINGLE_TASK_LOCAL_AGENTS = {'gemma', 'llama', 'qwen', 'eight'}
+
 
 def _chat_now_iso():
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -467,6 +469,71 @@ def _cleanup_chat_jobs_locked():
             stale.append(jid)
     for jid in stale:
         _CHAT_JOBS.pop(jid, None)
+
+
+def _chat_find_running_job_for_agent_locked(agent_name):
+    target = str(agent_name or '').strip().lower()
+    if not target:
+        return None
+    for job in _CHAT_JOBS.values():
+        if str(job.get('agent') or '').strip().lower() != target:
+            continue
+        if str(job.get('status') or 'running') == 'running':
+            return job
+    return None
+
+
+def _chat_try_hard_kill_local_agent(agent_name):
+    """Best-effort hard kill for local Ollama-backed jobs."""
+    name = str(agent_name or '').strip().lower()
+    if not name:
+        return {'agent': name, 'attempted': False, 'ok': False, 'detail': 'missing-agent'}
+    if _chat_runtime_class(name) != 'local':
+        return {'agent': name, 'attempted': False, 'ok': True, 'detail': 'non-local-agent'}
+
+    model = None
+    try:
+        model = orchestrator.AGENTS.get(name)
+    except Exception:
+        model = None
+
+    attempts = []
+
+    if model:
+        try:
+            import ollama  # type: ignore
+            stop_fn = getattr(ollama, 'stop', None)
+            if callable(stop_fn):
+                try:
+                    stop_fn(model)
+                    attempts.append(f'ollama.stop({model})')
+                    return {'agent': name, 'attempted': True, 'ok': True, 'detail': '; '.join(attempts)}
+                except TypeError:
+                    stop_fn(model=model)
+                    attempts.append(f'ollama.stop(model={model})')
+                    return {'agent': name, 'attempted': True, 'ok': True, 'detail': '; '.join(attempts)}
+        except Exception as exc:
+            attempts.append(f'python-stop-failed:{exc}')
+
+        try:
+            import subprocess
+            proc = subprocess.run(['ollama', 'stop', str(model)], capture_output=True, text=True, timeout=6)
+            if proc.returncode == 0:
+                attempts.append(f'cli-stop:{model}')
+                return {'agent': name, 'attempted': True, 'ok': True, 'detail': '; '.join(attempts)}
+            attempts.append(f'cli-stop-rc:{proc.returncode}')
+        except Exception as exc:
+            attempts.append(f'cli-stop-failed:{exc}')
+
+    try:
+        import subprocess
+        proc = subprocess.run(['pkill', '-9', '-f', 'ollama'], capture_output=True, text=True, timeout=6)
+        attempts.append(f'pkill-ollama-rc:{proc.returncode}')
+        ok = proc.returncode in (0, 1)
+        return {'agent': name, 'attempted': True, 'ok': ok, 'detail': '; '.join(attempts)}
+    except Exception as exc:
+        attempts.append(f'pkill-failed:{exc}')
+        return {'agent': name, 'attempted': True, 'ok': False, 'detail': '; '.join(attempts)}
 
 
 def _chat_job_public(job):
@@ -5729,6 +5796,31 @@ def api_chat():
             )
 
         for selected_agent in runnable_agents:
+            selected_agent_key = str(selected_agent or '').strip().lower()
+            if selected_agent_key in _CHAT_SINGLE_TASK_LOCAL_AGENTS:
+                with _CHAT_JOB_LOCK:
+                    _cleanup_chat_jobs_locked()
+                    running_job = _chat_find_running_job_for_agent_locked(selected_agent_key)
+                if running_job:
+                    busy_conv = int(running_job.get('conversation_id') or 0)
+                    busy_job_id = str(running_job.get('job_id') or '').strip()
+                    busy_stage = str(running_job.get('stage') or 'running').strip()
+                    responses_map[selected_agent] = {
+                        'agent': selected_agent,
+                        'response': (
+                            f'[{selected_agent}] is already assigned to one active task '
+                            f'(thread #{busy_conv}, job {busy_job_id or "unknown"}, stage: {busy_stage}). '
+                            'Each local worker can run one task at a time. Cancel that run to move this agent to another thread now.'
+                        ),
+                        'tokens': 0,
+                        'elapsed_ms': 0,
+                        'runtime_class': _chat_runtime_class(selected_agent),
+                        'eta_seconds': 0,
+                        'pending': False,
+                        'job_id': None,
+                    }
+                    continue
+
             job_ref = {'job_id': None}
 
             def _stage_cb(stage_text, eta_seconds=None, _job_ref=job_ref):
@@ -5883,6 +5975,7 @@ def api_chat_jobs_cancel():
     """
     data = request.get_json() or {}
     raw_ids = data.get('job_ids') or []
+    hard_kill = bool(data.get('hard_kill', True))
     if isinstance(raw_ids, str):
         raw_ids = [x.strip() for x in raw_ids.split(',') if x.strip()]
     want_ids = {str(x).strip() for x in raw_ids if str(x).strip()}
@@ -5897,6 +5990,7 @@ def api_chat_jobs_cancel():
 
     cancelled = []
     skipped = []
+    local_agents_to_kill = set()
     with _CHAT_JOB_LOCK:
         _cleanup_chat_jobs_locked()
         for job_id, job in list(_CHAT_JOBS.items()):
@@ -5929,12 +6023,28 @@ def api_chat_jobs_cancel():
                 'updated_ts': now_ts,
                 'updated_at': now_iso,
             })
+            if hard_kill and _chat_runtime_class(job.get('agent')) == 'local':
+                local_agents_to_kill.add(str(job.get('agent') or '').strip().lower())
             cancelled.append({'job_id': job_id, 'agent': job.get('agent'), 'cancel_signal_sent': cancel_signal_sent})
+
+    hard_kill_results = []
+    if hard_kill and local_agents_to_kill:
+        for agent_name in sorted(a for a in local_agents_to_kill if a):
+            result = _chat_try_hard_kill_local_agent(agent_name)
+            hard_kill_results.append(result)
+            log_activity('terminal', 'chat_job_hard_kill', f"agent={agent_name} ok={result.get('ok')} detail={result.get('detail', '')[:120]}")
 
     for item in cancelled:
         log_activity('terminal', 'chat_job_cancelled', f"job_id={item['job_id']} agent={item.get('agent')}")
 
-    return jsonify({'ok': True, 'cancelled': cancelled, 'skipped': skipped, 'count': len(cancelled)})
+    return jsonify({
+        'ok': True,
+        'cancelled': cancelled,
+        'skipped': skipped,
+        'hard_kill': hard_kill,
+        'hard_kill_results': hard_kill_results,
+        'count': len(cancelled),
+    })
 
 
 @app.route('/api/activity')
