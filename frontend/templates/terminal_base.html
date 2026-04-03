@@ -2550,7 +2550,6 @@ body.theme-rose {
    SETTINGS MODAL
    ───────────────────────────────────────────────────────────────────────── */
 #settings-modal,
-#troubleshoot-modal,
 #ticket-detail-modal,
 #memory-detail-modal,
 #doc-detail-modal,
@@ -2570,7 +2569,6 @@ body.theme-rose {
   pointer-events: none;
 }
 #settings-modal.open,
-#troubleshoot-modal.open,
 #ticket-detail-modal.open,
 #memory-detail-modal.open,
 #doc-detail-modal.open,
@@ -2582,7 +2580,6 @@ body.theme-rose {
   pointer-events: auto;
 }
 #ticket-detail-modal .modal-content,
-#troubleshoot-modal .modal-content,
 #memory-detail-modal .modal-content,
 #doc-detail-modal .modal-content,
 #proposal-detail-modal .modal-content,
@@ -2593,6 +2590,34 @@ body.theme-rose {
   border-radius: var(--radius);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   overflow: hidden;
+}
+
+#troubleshoot-modal {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: min(980px, calc(100vw - 32px));
+  height: min(56vh, 520px);
+  z-index: 9600;
+  display: none;
+  pointer-events: none;
+}
+
+#troubleshoot-modal.open {
+  display: block;
+  animation: fade-in 0.2s ease-out;
+}
+
+#troubleshoot-modal .modal-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  pointer-events: auto;
 }
 #settings-box {
   background: var(--card);
@@ -2961,6 +2986,10 @@ input[type="range"]::-moz-range-thumb:hover {
         <button onclick="applyTimeTheme('night');_markThemeActive(this)" data-theme="night"
           style="flex:1;padding:7px 6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">&#127769; Night</button>
       </div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+        <button id="reset-window-layout-btn" onclick="resetWindowLayout()"
+          style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">Reset Window Layout</button>
+      </div>
     </div>
 
     <div class="settings-section">
@@ -3016,17 +3045,18 @@ input[type="range"]::-moz-range-thumb:hover {
      ════════════════════════════════════════════════════════════════════════ -->
 
 <div id="troubleshoot-modal">
-  <div class="modal-content" style="width:92%;max-width:980px;max-height:88vh;display:flex;flex-direction:column;">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);">
+  <div class="modal-content">
+    <div id="troubleshoot-drag-handle" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);cursor:move;user-select:none;">
       <div>
         <div style="font-size:13px;font-weight:700;">🧪 Troubleshoot</div>
-        <div style="font-size:11px;color:var(--text-dim);">Live client diagnostics for click and runtime errors</div>
+        <div style="font-size:11px;color:var(--text-dim);">Live trace while you interact with the UI</div>
       </div>
-      <button onclick="toggleTroubleshootPanel(false)" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">✕</button>
+      <button id="troubleshoot-close-btn" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">✕</button>
     </div>
     <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-      <button onclick="clearTroubleshootLogs()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Clear</button>
-      <button onclick="copyTroubleshootLogs()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Copy Logs</button>
+      <button id="troubleshoot-toggle-btn" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Start Trace</button>
+      <button id="troubleshoot-clear-btn" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Clear</button>
+      <button id="troubleshoot-copy-btn" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Copy Logs</button>
       <span id="troubleshoot-summary" style="margin-left:auto;font-size:11px;color:var(--text-dim);"></span>
     </div>
     <div id="troubleshoot-log-body" style="flex:1;overflow:auto;padding:12px 14px;font-family:'SF Mono',monospace;font-size:11px;color:var(--text-dim);white-space:pre-wrap;line-height:1.45;"></div>
@@ -3836,11 +3866,13 @@ class WindowManager {
       height: Math.min(600, window.innerHeight * 0.7),
       x: Math.random() * 100 + 50,
       y: Math.random() * 100 + 50,
-      docked: true,
+      docked: false,
     };
 
     const persisted = this.savedState?.[id] || {};
     const config = { ...defaults, ...persisted, ...options };
+    // Tile opens should use remembered floating geometry, not dock-first behavior.
+    config.docked = false;
     const initialWindowTheme = config.windowTheme || 'auto';
     const initialThemeLabel = _windowThemeLabel(initialWindowTheme);
 
@@ -3876,7 +3908,6 @@ class WindowManager {
       </div>
       <div class="window-controls">
         <button class="window-btn" onclick="openWindowHelp('${id}')" title="Help">?</button>
-        <button class="window-btn" onclick="winManager.toggleDock('${id}')" title="Pop out / Dock">⇱</button>
         <button class="window-btn" onclick="winManager.toggleMaximize('${id}')" title="Maximize">⬚</button>
         <button class="window-btn" onclick="winManager.minimize('${id}')" title="Minimize">_</button>
         <button class="window-btn" onclick="winManager.pin('${id}')" title="Pin">📌</button>
@@ -4040,7 +4071,8 @@ class WindowManager {
   setDocked(id, docked) {
     const win = this.windows.get(id);
     if (!win) return;
-    win.docked = !!docked;
+    // Docking disabled: always keep windows as floating.
+    win.docked = false;
     if (win.docked) {
       win.el.classList.add('docked-right');
       win.el.style.width = (win.config.width || Math.max(520, Math.min(860, Math.round(window.innerWidth * 0.42)))) + 'px';
@@ -4064,8 +4096,8 @@ class WindowManager {
   toggleDock(id) {
     const win = this.windows.get(id);
     if (!win) return;
-    this.setDocked(id, !win.docked);
-    showToast(win.docked ? `Docked ${win.title}` : `Popped out ${win.title}`, 'info');
+    this.setDocked(id, false);
+    showToast('Dock mode disabled: windows stay floating', 'info');
   }
 
   minimize(id) {
@@ -4083,6 +4115,14 @@ class WindowManager {
       showToast(`Restored ${win.title}`, 'info');
     }
     this.save();
+  }
+
+  minimizeAllToTaskbar() {
+    this.windows.forEach((win, id) => {
+      if (!win.minimized) {
+        this.minimize(id);
+      }
+    });
   }
 
   toggleMaximize(id) {
@@ -4168,6 +4208,20 @@ class WindowManager {
   close(id) {
     const win = this.windows.get(id);
     if (win) {
+      // Persist last known floating geometry even after the window is closed.
+      this.savedState = this.savedState || {};
+      this.savedState[id] = {
+        x: win.el.offsetLeft,
+        y: win.el.offsetTop,
+        width: win.el.offsetWidth,
+        height: win.el.offsetHeight,
+        minimized: false,
+        maximized: false,
+        fullscreen: false,
+        pinned: !!win.pinned,
+        docked: false,
+        windowTheme: win.windowTheme || 'auto',
+      };
       win.el.remove();
       this.windows.delete(id);
       const taskbarBtn = document.querySelector(`[data-winid="${id}"]`);
@@ -4202,7 +4256,7 @@ class WindowManager {
   }
 
   save() {
-    const state = {};
+    const state = { ...(this.savedState || {}) };
     this.windows.forEach((win, id) => {
       state[id] = {
         x: win.el.offsetLeft,
@@ -4213,10 +4267,11 @@ class WindowManager {
         maximized: win.maximized,
         fullscreen: win.fullscreen,
         pinned: win.pinned,
-        docked: win.docked,
+        docked: false,
         windowTheme: win.windowTheme || 'auto',
       };
     });
+    this.savedState = state;
     localStorage.setItem('fridays-windows', JSON.stringify(state));
   }
 
@@ -4231,6 +4286,25 @@ class WindowManager {
     } else {
       this.savedState = {};
     }
+  }
+}
+
+function resetWindowLayout() {
+  try {
+    localStorage.removeItem('fridays-windows');
+    if (winManager) {
+      winManager.savedState = {};
+      winManager.windows.forEach((win, id) => {
+        win.el.remove();
+        const taskbarBtn = document.querySelector(`[data-winid="${id}"]`);
+        if (taskbarBtn) taskbarBtn.remove();
+      });
+      winManager.windows.clear();
+      winManager.save();
+    }
+    showToast('Window layout reset', 'success');
+  } catch (e) {
+    showToast('Layout reset failed: ' + (e?.message || e), 'error');
   }
 }
 
@@ -4962,6 +5036,10 @@ function showToast(message, type = 'info') {
   toast.className = `toast ${type}`;
   toast.textContent = message;
   container.appendChild(toast);
+
+  // Pipe UI toasts into troubleshoot trace while tracing is enabled.
+  const logLevel = String(type || 'info').toLowerCase() === 'error' ? 'error' : 'info';
+  _troubleshootLog(logLevel, 'Toast', `${type}: ${message}`);
   
   setTimeout(() => {
     toast.classList.add('remove');
@@ -4974,6 +5052,10 @@ function _troubleshootState() {
     window.__fridaysTroubleshoot = {
       logs: [],
       max: 250,
+      enabled: false,
+      panelOpen: false,
+      panelX: null,
+      panelY: null,
     };
   }
   return window.__fridaysTroubleshoot;
@@ -4989,6 +5071,7 @@ function _troubleshootTimestamp() {
 
 function _troubleshootLog(level, message, details) {
   const state = _troubleshootState();
+  if (!state.enabled) return;
   state.logs.push({
     ts: _troubleshootTimestamp(),
     level: String(level || 'info').toLowerCase(),
@@ -5006,20 +5089,47 @@ function _renderTroubleshootBadge() {
   const btn = document.getElementById('troubleshoot-btn');
   if (!btn) return;
   const state = _troubleshootState();
+  if (!state.panelOpen) {
+    btn.textContent = state.enabled ? '🧪 Trace: ON' : '🧪 Trace';
+    btn.style.color = state.enabled ? '#72e6a6' : 'var(--text-dim)';
+    btn.style.borderColor = state.enabled ? '#22c55e66' : 'var(--border)';
+    return;
+  }
+  if (!state.enabled) {
+    btn.textContent = '🧪 Trace: OFF';
+    btn.style.color = 'var(--text-dim)';
+    btn.style.borderColor = 'var(--border)';
+    return;
+  }
   const errors = state.logs.filter(item => item.level === 'error').length;
   const warns = state.logs.filter(item => item.level === 'warn').length;
   if (errors > 0) {
-    btn.textContent = `🧪 Troubleshoot (${errors})`;
+    btn.textContent = `🧪 Trace: ON (${errors})`;
     btn.style.color = '#f77';
     btn.style.borderColor = '#f4433666';
   } else if (warns > 0) {
-    btn.textContent = `🧪 Troubleshoot (${warns})`;
+    btn.textContent = `🧪 Trace: ON (${warns})`;
     btn.style.color = '#ffb366';
     btn.style.borderColor = '#f59e0b66';
   } else {
-    btn.textContent = '🧪 Troubleshoot';
-    btn.style.color = 'var(--text-dim)';
-    btn.style.borderColor = 'var(--border)';
+    btn.textContent = '🧪 Trace: ON';
+    btn.style.color = '#72e6a6';
+    btn.style.borderColor = '#22c55e66';
+  }
+}
+
+function _renderTroubleshootToggleBtn() {
+  const toggleBtn = document.getElementById('troubleshoot-toggle-btn');
+  if (!toggleBtn) return;
+  const state = _troubleshootState();
+  if (state.enabled) {
+    toggleBtn.textContent = 'Stop Trace';
+    toggleBtn.style.color = '#72e6a6';
+    toggleBtn.style.borderColor = '#22c55e66';
+  } else {
+    toggleBtn.textContent = 'Start Trace';
+    toggleBtn.style.color = 'var(--text)';
+    toggleBtn.style.borderColor = 'var(--border)';
   }
 }
 
@@ -5028,6 +5138,12 @@ function _renderTroubleshootPanel() {
   const summary = document.getElementById('troubleshoot-summary');
   if (!body || !summary) return;
   const state = _troubleshootState();
+  _renderTroubleshootToggleBtn();
+  if (!state.enabled) {
+    summary.textContent = 'Tracing is OFF';
+    body.textContent = 'Click the Trace button to start recording UI actions and runtime errors.';
+    return;
+  }
   const rows = state.logs.slice(-180);
   const errors = state.logs.filter(item => item.level === 'error').length;
   const warns = state.logs.filter(item => item.level === 'warn').length;
@@ -5046,11 +5162,67 @@ function _renderTroubleshootPanel() {
 function toggleTroubleshootPanel(forceOpen) {
   const modal = document.getElementById('troubleshoot-modal');
   if (!modal) return;
-  const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !modal.classList.contains('open');
-  modal.classList.toggle('open', shouldOpen);
-  if (shouldOpen) {
-    _renderTroubleshootPanel();
+  const state = _troubleshootState();
+  const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !state.panelOpen;
+  state.panelOpen = shouldOpen;
+  modal.classList.toggle('open', state.panelOpen);
+  _renderTroubleshootBadge();
+  _renderTroubleshootPanel();
+}
+
+function toggleTroubleshootEnabled(forceEnabled) {
+  const state = _troubleshootState();
+  const shouldEnable = typeof forceEnabled === 'boolean' ? forceEnabled : !state.enabled;
+  state.enabled = shouldEnable;
+  if (state.enabled) {
+    state.logs.push({
+      ts: _troubleshootTimestamp(),
+      level: 'info',
+      message: 'Trace started',
+      details: 'User enabled troubleshoot tracing',
+    });
+    if (state.logs.length > state.max) {
+      state.logs.splice(0, state.logs.length - state.max);
+    }
+    state.panelOpen = true;
+    document.getElementById('troubleshoot-modal')?.classList.add('open');
   }
+  _renderTroubleshootBadge();
+  _renderTroubleshootPanel();
+}
+
+function _initTroubleshootDrag() {
+  const modal = document.getElementById('troubleshoot-modal');
+  const handle = document.getElementById('troubleshoot-drag-handle');
+  if (!modal || !handle || handle.dataset.dragBound === '1') return;
+  handle.dataset.dragBound = '1';
+  handle.addEventListener('mousedown', (event) => {
+    if (event.target.closest('button')) return;
+    const rect = modal.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left;
+    const offsetY = event.clientY - rect.top;
+    const onMove = (e) => {
+      const minX = 8;
+      const minY = 8;
+      const maxX = Math.max(minX, window.innerWidth - rect.width - 8);
+      const maxY = Math.max(minY, window.innerHeight - rect.height - 8);
+      const left = Math.min(maxX, Math.max(minX, e.clientX - offsetX));
+      const top = Math.min(maxY, Math.max(minY, e.clientY - offsetY));
+      modal.style.left = left + 'px';
+      modal.style.top = top + 'px';
+      modal.style.right = 'auto';
+      modal.style.bottom = 'auto';
+      const state = _troubleshootState();
+      state.panelX = left;
+      state.panelY = top;
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
 }
 
 function clearTroubleshootLogs() {
@@ -5077,6 +5249,15 @@ async function copyTroubleshootLogs() {
   } catch (e) {
     showToast('Copy failed: ' + (e?.message || e), 'error');
   }
+}
+
+function _troubleshootTargetLabel(node) {
+  if (!node || !node.tagName) return 'unknown';
+  const tag = String(node.tagName).toLowerCase();
+  const id = node.id ? `#${node.id}` : '';
+  const cls = node.classList && node.classList.length ? '.' + Array.from(node.classList).slice(0, 3).join('.') : '';
+  const text = (node.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 64);
+  return `${tag}${id}${cls}${text ? ` :: ${text}` : ''}`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -7664,10 +7845,6 @@ function loadMonitorData(win) {
       ).join('');
       content.innerHTML = `
         <div style="font-size:12px;line-height:1.6;padding:4px 0;">
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-            <a href="/v2" style="text-decoration:none;" class="chat-action-btn">⚙ Switch to Console Layer</a>
-            <a href="/" style="text-decoration:none;" class="chat-action-btn">🎨 Fridays Layer</a>
-          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
             <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
               <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">CPU</div>
@@ -11846,9 +12023,10 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
   }
 
   const patternsFor = (target) => ([
-    new RegExp(`^@?${target}\\b[\\s,:-]+(.{6,260}\\?)$`, 'i'),
+    new RegExp(`^@?${target}\\b[\\s,:-]+(.{6,260})$`, 'i'),
+    new RegExp(`(?:^|\\s)@${target}\\b[\\s,:-]+(.{6,260})$`, 'i'),
     new RegExp(`(?:ask|question\\s+for|for)\\s+${target}\\b[\\s,:-]+(.{6,260}\\?)$`, 'i'),
-    new RegExp(`${target}\\s*[:,]\\s*(.{6,260}\\?)$`, 'i'),
+    new RegExp(`${target}\\s*[:,]\\s*(.{6,260})$`, 'i'),
     // Match target-directed clause after a prior sentence, with or without question mark.
     new RegExp(`(?:^|[.!?]\\s+)${target}\\s*[:,]\\s*(.{6,260}?)(?:[.!?]|$)`, 'i'),
   ]);
@@ -11877,7 +12055,7 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
       }
       if (!captured) continue;
 
-      const normalizedQ = captured.replace(/\s+/g, ' ').trim().slice(0, 260);
+      const normalizedQ = _normalizeRelayQuestion(captured);
       if (!normalizedQ) continue;
       const sig = `${target}|${normalizedQ.toLowerCase()}`;
       if (seen.has(sig)) continue;
@@ -12388,6 +12566,11 @@ function _appendChatBubble(sender, text, opts = {}) {
   if (opts.conversationId) bubble.dataset.conversationId = String(opts.conversationId);
   applyBubbleColorOverrideToNode(bubble);
   messages.appendChild(bubble);
+  if (!isUser && relayCandidates.length && window.__fridaysChatRelayAuto) {
+    relayCandidates.forEach(c => {
+      queueRelayHandoff({ from: senderIdentity.key, target: c.target, question: c.question }, true);
+    });
+  }
   _recordTimelineEvent({
     bubbleId: bubble.id,
     sender: senderKey,
@@ -13536,9 +13719,18 @@ function sendMessage(source = 'user', relayMeta = null) {
     }
 
     // If the user explicitly asked to route to an agent, honor that intent first.
-    const mergedHandoffs = userIntentRelayHandoffs.length
-      ? userIntentRelayHandoffs.slice()
-      : discovered.slice();
+    const mergedHandoffs = [];
+    const mergedSeen = new Set();
+    [...userIntentRelayHandoffs, ...discovered].forEach((h) => {
+      const key = [
+        String(h?.from || '').toLowerCase(),
+        String(h?.target || '').toLowerCase(),
+        String(h?.question || '').toLowerCase().slice(0, 260),
+      ].join('|');
+      if (!key || mergedSeen.has(key)) return;
+      mergedSeen.add(key);
+      mergedHandoffs.push(h);
+    });
     if (window.__fridaysChatRelayAuto && mergedHandoffs.length) {
       mergedHandoffs.forEach(h => queueRelayHandoff(h, true));
     }
@@ -13610,6 +13802,35 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('auth-user-pill')?.addEventListener('click', () => openIdentityManager());
   document.getElementById('home-help-btn')?.addEventListener('click', () => openWindowHelp('home'));
   document.getElementById('home-settings-btn')?.addEventListener('click', () => toggleSettings());
+  document.getElementById('troubleshoot-toggle-btn')?.addEventListener('click', () => toggleTroubleshootEnabled());
+  document.getElementById('troubleshoot-close-btn')?.addEventListener('click', () => {
+    const state = _troubleshootState();
+    state.panelOpen = false;
+    document.getElementById('troubleshoot-modal')?.classList.remove('open');
+    _renderTroubleshootBadge();
+  });
+  document.getElementById('troubleshoot-clear-btn')?.addEventListener('click', () => clearTroubleshootLogs());
+  document.getElementById('troubleshoot-copy-btn')?.addEventListener('click', () => copyTroubleshootLogs());
+  _initTroubleshootDrag();
+
+  // Clicking empty home background should minimize open windows to taskbar.
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!target) return;
+    if (!target.closest('#home-page')) return;
+    if (target.closest('.floating-window, #taskbar, #settings-modal, #troubleshoot-modal, #command-palette')) return;
+    if (target.closest('.home-card, .stat-card, .chat-action-btn, button, a, input, textarea, select, [role="button"], [onclick], [data-win-id]')) return;
+    if (!winManager || !winManager.windows || winManager.windows.size === 0) return;
+    winManager.minimizeAllToTaskbar();
+  }, true);
+
+  document.addEventListener('click', (event) => {
+    const state = _troubleshootState();
+    if (!state.enabled) return;
+    const target = event.target;
+    if (target?.closest?.('#troubleshoot-modal')) return;
+    _troubleshootLog('info', 'Click', _troubleshootTargetLabel(target));
+  }, true);
 
   window.addEventListener('error', (event) => {
     const msg = event?.message || 'Unknown script error';
@@ -13682,11 +13903,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.getElementById('troubleshoot-modal')?.addEventListener('click', (e) => {
-    if (e.target.id === 'troubleshoot-modal') {
-      toggleTroubleshootPanel(false);
-    }
-  });
+  _renderTroubleshootPanel();
   
   // Show keyboard hints (auto-hide after 5 seconds)
   const hints = document.getElementById('keyboard-hints');
