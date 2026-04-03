@@ -547,6 +547,8 @@ _AGENT_TABLES = {
     'eleven':   'memory_grok',
     'grok':     'memory_grok',
     'twelve':   'memory_twelve',
+    'scholar':  'memory',
+    'seeker':   'memory',
     'librarian':'memory',
     'duck':     'memory',
     'sniffles': 'memory',
@@ -897,7 +899,7 @@ def _validate_agent_request():
         return None, (jsonify({'ok': False, 'error': 'invalid agent API key'}), 403)
     
     # Valid agent_id should match known local agents
-    valid_agents = ('gemma', 'qwen', 'llama', 'eight', 'sniffles', 'duck', 'librarian', 'nine', 'ten', 'eleven', 'twelve')
+    valid_agents = {a['name'].lower() for a in _AGENT_ROSTER}
     if agent_id.lower() not in valid_agents:
         log_activity('terminal', 'agent_auth_unknown', f'unknown agent_id: {agent_id}')
         # Still allow it; agents can register themselves
@@ -3077,7 +3079,7 @@ def resend_ticket(ticket_number):
 @app.route('/api/tickets/<ticket_number>/assign', methods=['POST'])
 def assign_ticket(ticket_number):
     """Manually assign a ticket to a specific agent."""
-    _valid_agents = {'gemma', 'llama', 'qwen', 'eight', 'duck', 'sniffles', 'librarian'}
+    _valid_agents = {a['name'].lower() for a in _AGENT_ROSTER if a['name'].lower() != 'ghost'}
     data  = request.get_json() or {}
     agent = (data.get('agent') or '').strip()
     if agent not in _valid_agents:
@@ -5341,13 +5343,6 @@ def api_chat():
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[twelve unavailable]'
                 tokens_used = tokens or 0
-            elif selected_agent == 'sonic':
-                _stage('dispatching to ghost datacenter', est_eta)
-                from agents.sonic import sonic_agent
-                future = executor.submit(sonic_agent.chat, effective_prompt, history, stage_cb)
-                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
-                response_text = answer or '[sonic unavailable]'
-                tokens_used = tokens or 0
             elif selected_agent == 'scholar':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.scholar import scholar_agent
@@ -5891,11 +5886,44 @@ _AGENT_ROSTER = [
     {'name': 'Ten',       'model': 'gpt-5.3-codex',          'role': 'Software Engineering Advisor · Copilot · Ghost Layer', 'default_temp': 0.4, 'ghost_layer': True},
     {'name': 'Eleven',    'model': 'grok-api',               'role': 'Reasoning Advisor · Ghost Layer', 'default_temp': None, 'no_temp': True, 'ghost_layer': True},
     {'name': 'Twelve',    'model': 'claude-haiku',           'role': 'Vortex · Ghost Layer',        'default_temp': 0.3, 'ghost_layer': True},
-    {'name': 'Sonic',     'model': 'claude-3-5-sonnet',      'role': 'Velocity Coder · Ghost Layer', 'default_temp': 0.2, 'ghost_layer': True},
     {'name': 'Scholar',   'model': 'gemini-2.0-flash',       'role': 'Vision & Reasoning · Ghost Layer', 'default_temp': 0.4, 'ghost_layer': True},
     {'name': 'Seeker',    'model': 'tavily-search',          'role': 'Real-Time Intelligence · Ghost Layer', 'default_temp': 0.5, 'ghost_layer': True},
     {'name': 'Ghost',     'model': '(human operator)',        'role': 'Operator · Ghost Layer',      'default_temp': None, 'no_temp': True,  'ghost_layer': True, 'no_toggle': True},
 ]
+
+
+def _agent_reachability_status(agent_name):
+    """Return 'online', 'degraded', or 'offline' based on real API key / service availability."""
+    name = (agent_name or '').strip().lower()
+    if name in DISABLED_AGENTS:
+        return 'offline'
+    # Local Ollama agents — assume online if not disabled
+    if name in {'gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles', 'eight'}:
+        return 'online'
+    # Ghost operator — always online
+    if name == 'ghost':
+        return 'online'
+    # Ghost Layer API-backed agents — check key presence
+    try:
+        from config import (
+            GITHUB_TOKEN, XAI_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY,
+        )
+        from claude_api import _load_api_key
+        anthropic_key = _load_api_key()
+    except Exception:
+        return 'unknown'
+    key_map = {
+        'nine':    anthropic_key,
+        'twelve':  anthropic_key,
+        'ten':     GITHUB_TOKEN,
+        'eleven':  XAI_API_KEY,
+        'scholar': GEMINI_API_KEY,
+        'seeker':  TAVILY_API_KEY,
+    }
+    key = key_map.get(name)
+    if key is None:
+        return 'online'  # unknown agent, assume online
+    return 'online' if key else 'offline'
 
 
 @app.route('/api/agents')
@@ -5905,8 +5933,8 @@ def api_agents():
         entry = dict(a)
         entry['enabled']     = a['name'] not in DISABLED_AGENTS
         entry['temperature'] = orchestrator.TEMPERATURES.get(a['name'], a['default_temp'])
-        entry['status']      = 'online'  # All roster agents are online
-        entry['ghost_layer'] = a.get('ghost_layer', False)  # Pass through boolean for frontend classification
+        entry['status']      = _agent_reachability_status(a['name'])
+        entry['ghost_layer'] = a.get('ghost_layer', False)
         result.append(entry)
     return jsonify(result)
 
