@@ -831,11 +831,158 @@ body.theme-rose {
   display: flex;
   flex-direction: column;
 }
+#chat-layout {
+  --chat-ui-scale: 1;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+#chat-layout.chat-font-scaled .chat-font-scope,
+#chat-layout.chat-font-scaled .chat-font-scope * {
+  font-size: calc(var(--chat-ui-scale, 1) * 1em);
+}
 #chat-main {
+  flex: 1;
+  min-width: 0;
   position: relative;
   background:
     radial-gradient(1100px 340px at 10% -30%, rgba(255,255,255,0.07), transparent 60%),
     radial-gradient(900px 320px at 100% -40%, rgba(99, 170, 255, 0.12), transparent 58%);
+}
+.chat-dock-resizer {
+  width: 8px;
+  cursor: ew-resize;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));
+}
+.chat-dock-resizer:hover {
+  background: color-mix(in oklab, var(--accent) 28%, rgba(255,255,255,0.03));
+}
+#chat-right-dock {
+  width: 420px;
+  min-width: 280px;
+  max-width: 70%;
+  border-left: 1px solid var(--border);
+  background: color-mix(in oklab, var(--window-header) 92%, var(--card) 8%);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  transition: width 0.16s ease;
+}
+#chat-right-dock.collapsed {
+  width: 0 !important;
+  min-width: 0;
+  border-left: none;
+  overflow: hidden;
+}
+#chat-dock-restore-btn {
+  position: absolute;
+  right: 12px;
+  top: 58px;
+  z-index: 50;
+  display: none;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-dim);
+  border-radius: 8px;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+#chat-layout.dock-collapsed #chat-dock-restore-btn {
+  display: inline-flex;
+}
+#chat-dock-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.chat-dock-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.chat-dock-grow {
+  flex: 1;
+}
+.chat-dock-btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.chat-dock-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+#chat-font-size-range {
+  width: 110px;
+}
+#chat-thread-rail {
+  width: 280px;
+  min-width: 220px;
+  max-width: 42%;
+  border-right: 1px solid var(--border);
+  background: color-mix(in oklab, var(--window-header) 92%, var(--card) 8%);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+#chat-thread-rail.collapsed {
+  width: 0 !important;
+  min-width: 0;
+  border-right: none;
+  overflow: hidden;
+}
+#chat-thread-restore-btn {
+  position: absolute;
+  left: 12px;
+  top: 58px;
+  z-index: 50;
+  display: none;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-dim);
+  border-radius: 8px;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+#chat-layout.threads-collapsed #chat-thread-restore-btn {
+  display: inline-flex;
+}
+.chat-thread-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.chat-thread-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.chat-thread-grow {
+  flex: 1;
+}
+.chat-thread-resizer {
+  width: 8px;
+  cursor: ew-resize;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));
+}
+.chat-thread-resizer:hover {
+  background: color-mix(in oklab, var(--accent) 28%, rgba(255,255,255,0.03));
 }
 #chat-topbar {
   display: flex;
@@ -886,7 +1033,7 @@ body.theme-rose {
 #chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 12px 8px 12px 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -894,7 +1041,7 @@ body.theme-rose {
 #input-area {
   padding: 10px 12px 12px;
   border-top: 1px solid var(--border);
-  background: var(--bg);
+  background: transparent;
   flex-shrink: 0;
 }
 #input-wrapper {
@@ -964,6 +1111,9 @@ body.theme-rose {
 .chat-section:not(.collapsed) .chat-section-caret::before {
   content: '▼';
 }
+.chat-section.runtime-hidden .chat-section-caret::before {
+  content: '▲';
+}
 .chat-main-shell {
   display: flex;
   flex-direction: column;
@@ -983,6 +1133,17 @@ body.theme-rose {
 .chat-main-shell #chat-messages {
   padding-top: 10px;
 }
+.chat-dock-panel.collapsed #input-area,
+.chat-dock-panel.collapsed #chat-thread-search,
+.chat-dock-panel.collapsed #chat-thread-list {
+  display: none;
+}
+.chat-dock-panel .chat-section-header {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.chat-dock-panel .chat-section-content {
+  padding-top: 8px;
+}
 .chat-agent-row {
   display: flex;
   flex-direction: column;
@@ -991,6 +1152,22 @@ body.theme-rose {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(255,255,255,0.02);
+}
+.agent-bubble-color {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.agent-bubble-color::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.agent-bubble-color::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
 }
 .chat-agent-row-head {
   display: flex;
@@ -1020,10 +1197,10 @@ body.theme-rose {
   gap: 4px;
 }
 .chat-compose-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  align-items: center;
   gap: 10px;
-  align-items: end;
+  flex-wrap: nowrap;
 }
 .chat-compose-main {
   display: flex;
@@ -1132,12 +1309,12 @@ body.theme-rose {
 }
 #question-input {
   width: 100%;
-  min-height: 36px;
-  max-height: 180px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 2px 4px;
+  min-height: 38px;
+  max-height: 120px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
   color: var(--text);
   caret-color: var(--accent);
   font-family: inherit;
@@ -1154,12 +1331,12 @@ body.theme-rose {
 }
 #question-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 #send-btn {
-  min-width: 72px;
-  min-height: 36px;
-  padding: 8px 16px;
+  min-width: 74px;
+  min-height: 38px;
+  padding: 8px 14px;
   background: var(--accent);
   border: none;
   border-radius: var(--radius, 10px);
@@ -1173,6 +1350,16 @@ body.theme-rose {
   white-space: nowrap;
 }
 #send-btn:hover { opacity: 0.82; }
+.chat-compose-shell #question-input {
+  flex: 1;
+}
+.chat-compose-shell .chat-attach-btn {
+  padding: 8px 10px;
+  min-height: 38px;
+}
+.chat-compose-shell .chat-context-controls {
+  margin-left: 0;
+}
 #terminal-output {
   font-family: 'SF Mono', 'Fira Code', monospace;
   font-size: 12px;
@@ -1310,22 +1497,70 @@ body.theme-rose {
   border-left: 3px solid var(--accent);
 }
 .chat-bubble {
-  max-width: 86%;
+  max-width: 98%;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 7px 10px;
   background: var(--card);
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   animation: chat-bubble-in 0.22s cubic-bezier(.22,.9,.34,1);
+  align-self: flex-start;
 }
 @keyframes chat-bubble-in {
   from { opacity: 0; transform: translateY(6px) scale(0.988); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .chat-bubble.user {
-  margin-left: auto;
-  background: rgba(76, 175, 80, 0.14);
-  border-color: rgba(76, 175, 80, 0.35);
+  margin-left: 0;
+}
+.chat-bubble.sender-you {
+  background: rgba(66, 165, 245, 0.14);
+  border-color: rgba(66, 165, 245, 0.35);
+}
+.chat-bubble.sender-gemma {
+  background: rgba(76, 175, 80, 0.12);
+  border-color: rgba(76, 175, 80, 0.34);
+}
+.chat-bubble.sender-llama {
+  background: rgba(255, 167, 38, 0.12);
+  border-color: rgba(255, 167, 38, 0.34);
+}
+.chat-bubble.sender-qwen {
+  background: rgba(171, 71, 188, 0.12);
+  border-color: rgba(171, 71, 188, 0.34);
+}
+.chat-bubble.sender-eight {
+  background: rgba(0, 188, 212, 0.12);
+  border-color: rgba(0, 188, 212, 0.34);
+}
+.chat-bubble.sender-duck {
+  background: rgba(255, 202, 40, 0.14);
+  border-color: rgba(255, 202, 40, 0.36);
+}
+.chat-bubble.sender-sniffles {
+  background: rgba(239, 83, 80, 0.12);
+  border-color: rgba(239, 83, 80, 0.34);
+}
+.chat-bubble.sender-nine {
+  background: rgba(121, 134, 203, 0.14);
+  border-color: rgba(121, 134, 203, 0.36);
+}
+.chat-bubble.sender-ten {
+  background: rgba(255, 112, 67, 0.14);
+  border-color: rgba(255, 112, 67, 0.36);
+}
+.chat-bubble.sender-eleven {
+  background: rgba(102, 187, 106, 0.14);
+  border-color: rgba(102, 187, 106, 0.36);
+}
+.chat-bubble.sender-twelve {
+  background: rgba(38, 198, 218, 0.14);
+  border-color: rgba(38, 198, 218, 0.36);
+}
+.chat-bubble.sender-system,
+.chat-bubble.sender-fridays {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
 }
 .chat-meta {
   font-size: 9px;
@@ -1791,8 +2026,38 @@ body.theme-rose {
   color: #f5a623;
 }
 @media (max-width: 860px) {
+  #chat-layout {
+    flex-direction: column;
+  }
+  #chat-thread-rail {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  #chat-thread-restore-btn {
+    display: none !important;
+  }
+  .chat-thread-resizer {
+    display: none;
+  }
+  .chat-dock-resizer {
+    display: none;
+  }
+  #chat-right-dock,
+  #chat-right-dock.collapsed {
+    width: 100% !important;
+    min-width: 0;
+    max-width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+  #chat-dock-restore-btn {
+    display: none !important;
+  }
   .chat-compose-shell {
-    grid-template-columns: 1fr;
+    flex-wrap: wrap;
   }
   .chat-attach-inline-name {
     max-width: 180px;
@@ -2691,13 +2956,28 @@ input[type="range"]::-moz-range-thumb:hover {
 
 <template id="view-chat">
   <div class="content-view">
-    <div id="chat-layout" style="display:flex;flex:1;min-height:0;">
-      <aside id="chat-thread-rail" style="width:260px;max-width:36%;border-right:1px solid var(--border);background:var(--window-header);display:flex;flex-direction:column;min-height:0;">
-        <div style="padding:10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Threads</div>
-        <input id="chat-thread-search" type="text" placeholder="Search threads..." />
-        <div id="chat-thread-list" style="overflow-y:auto;flex:1;"></div>
+    <div id="chat-layout" class="chat-font-scaled">
+      <aside id="chat-thread-rail" class="chat-font-scope">
+        <div class="chat-thread-header">
+          <span class="chat-thread-title">Thread Rail</span>
+          <span class="chat-thread-grow"></span>
+          <button type="button" class="chat-dock-btn" onclick="toggleThreadRail()" title="Collapse thread rail">⟨</button>
+        </div>
+        <div id="chat-section-threads" class="chat-section">
+          <button type="button" class="chat-section-header" onclick="toggleChatSection('threads')" aria-controls="chat-section-threads-content" aria-expanded="true">
+            <span class="chat-section-title">🧵 Threads</span>
+            <span class="chat-section-caret" aria-hidden="true"></span>
+          </button>
+          <div id="chat-section-threads-content" class="chat-section-content">
+            <input id="chat-thread-search" type="text" placeholder="Search threads..." />
+            <div id="chat-thread-list" style="overflow-y:auto;flex:1;min-height:140px;"></div>
+          </div>
+        </div>
       </aside>
-      <div id="chat-main" style="display:flex;flex-direction:column;flex:1;min-width:0;">
+
+      <div id="chat-thread-resizer" class="chat-thread-resizer" onmousedown="startChatThreadResize(event)" title="Drag to resize thread rail"></div>
+
+      <div id="chat-main" class="chat-font-scope" style="display:flex;flex-direction:column;min-width:0;">
         <div id="chat-topbar">
           <div>
             <div class="chat-title">Fridays Chat Console</div>
@@ -2711,7 +2991,7 @@ input[type="range"]::-moz-range-thumb:hover {
           </div>
         </div>
         <div id="chat-section-main" class="chat-section chat-main-shell">
-          <button type="button" class="chat-section-header" onclick="toggleChatSection('main')" aria-controls="chat-section-main-content" aria-expanded="true">
+          <button type="button" class="chat-section-header" onclick="toggleMainRuntimePanel()" aria-controls="chat-thread-runtime" aria-expanded="true">
             <span class="chat-section-title">💬 Main Chat</span>
             <span class="chat-section-caret" aria-hidden="true"></span>
           </button>
@@ -2725,6 +3005,39 @@ input[type="range"]::-moz-range-thumb:hover {
             </div>
           </div>
         </div>
+
+        <div id="input-area">
+          <div id="input-wrapper">
+            <input id="chat-attachment-input" type="file" multiple onchange="handleChatAttachmentInput(event)">
+            <div class="chat-compose-shell">
+              <button class="chat-attach-btn" onclick="pickChatAttachments()" title="Attach up to 6 files. Text and image files are supported.">📎</button>
+              <span id="chat-attach-inline-state" class="chat-attach-inline-state" aria-live="polite"></span>
+              <textarea id="question-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
+                onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
+              <span class="chat-context-controls" style="margin-left:0;">
+                <select id="chat-history-mode" class="chat-context-select" onchange="onChatHistoryModeChange()" title="Control what prior messages are sent to selected agents">
+                  <option value="full">Full</option>
+                  <option value="recent">Recent</option>
+                  <option value="none">Only this</option>
+                </select>
+                <span id="chat-history-limit-wrap" class="chat-context-limit-wrap">
+                  <select id="chat-history-limit" class="chat-context-select" onchange="onChatHistoryLimitChange()" title="Number of recent messages to include">
+                    <option value="4">4</option>
+                    <option value="6">6</option>
+                    <option value="8" selected>8</option>
+                    <option value="12">12</option>
+                    <option value="16">16</option>
+                  </select>
+                </span>
+              </span>
+              <button id="send-btn" onclick="sendMessage()">Send</button>
+            </div>
+            <div id="chat-attachments"></div>
+            <div id="chat-spell-helper" style="display:none; margin-top:0; font-size:11px; color: var(--text-dim);"></div>
+            <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span></div>
+          </div>
+        </div>
+
         <!-- Agent Workflow Tracker Panel -->
         <div id="agent-workflow-panel" style="position:absolute;bottom:0;right:0;width:320px;max-height:280px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin:8px;box-shadow:var(--shadow);overflow-y:auto;display:none;z-index:1000;font-family:monospace;font-size:11px;">
           <div style="position:sticky;top:0;background:var(--window-header);padding:8px 12px;border-bottom:1px solid var(--border);font-weight:700;display:flex;justify-content:space-between;align-items:center;">
@@ -2746,102 +3059,69 @@ input[type="range"]::-moz-range-thumb:hover {
           </div>
         </div>
       </div>
-    </div>
-    <div id="input-area">
-      <div id="input-wrapper">
-        <div id="chat-section-meta" class="chat-section collapsed" data-chat-default="collapsed">
-          <button type="button" class="chat-section-header" onclick="toggleChatSection('meta')" aria-controls="chat-section-meta-content" aria-expanded="false">
-            <span class="chat-section-title">⚙️ System & User Meta</span>
-            <span class="chat-section-caret" aria-hidden="true"></span>
-          </button>
-          <div id="chat-section-meta-content" class="chat-section-content">
-            <div id="chat-controls">
-              <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 160px; max-width: 240px; font-size:12px;">
-                <option value="">New Thread</option>
-              </select>
-              <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
-              <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
-              <!-- Overflow menu for less-common actions -->
-              <div style="position:relative;margin-left:auto;">
-                <button id="chat-more-btn" onclick="_chatMoreMenu()" style="background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;" title="More options">⋯</button>
-                <div id="chat-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,0.3));min-width:160px;z-index:999;padding:4px 0;">
-                  <button onclick="renameCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Rename thread</button>
-                  <button onclick="deleteCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ff8a8a;padding:8px 14px;cursor:pointer;font-size:12px;">Delete thread</button>
-                  <button onclick="clearAllChatHistory();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Clear history</button>
-                  <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
-                  <button onclick="openChatDictionaryManager();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Dictionary</button>
-                  <button onclick="exportChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Export dictionary</button>
-                  <button onclick="importChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Import dictionary</button>
-                  <button onclick="clearChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Reset dictionary</button>
-                </div>
-              </div>
-            </div>
-          </div>
+      <div id="chat-dock-resizer" class="chat-dock-resizer" onmousedown="startChatDockResize(event)" title="Drag to resize side panel"></div>
+
+      <aside id="chat-right-dock" class="chat-font-scope" style="width:420px;">
+        <div id="chat-dock-header">
+          <span class="chat-dock-title">Right Control Dock</span>
+          <span class="chat-dock-grow"></span>
+          <input id="chat-font-size-range" type="range" min="0.9" max="1.5" step="0.05" value="1" oninput="setChatUiScale(this.value)" title="Scale chat/menu font size">
+          <button type="button" class="chat-dock-btn" onclick="toggleChatDock()" title="Collapse right dock">◀</button>
         </div>
 
-        <div id="chat-section-agents" class="chat-section collapsed" data-chat-default="collapsed">
-          <button type="button" class="chat-section-header" onclick="toggleChatSection('agents')" aria-controls="chat-section-agents-content" aria-expanded="false">
-            <span class="chat-section-title">🧠 Agent Controls</span>
-            <span class="chat-section-caret" aria-hidden="true"></span>
-          </button>
-          <div id="chat-section-agents-content" class="chat-section-content">
-            <div class="chat-agent-row">
-              <div class="chat-agent-row-head">
-                <div class="chat-agent-row-title">Agents In This Thread</div>
-                <div class="chat-agent-legend">
-                  <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-local-dot"></span><span>Local</span></span>
-                  <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-paid-dot"></span><span>Paid API</span></span>
-                </div>
-              </div>
-              <div id="chat-agent-toggles" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
-            </div>
-          </div>
-        </div>
-
-        <input id="chat-attachment-input" type="file" multiple onchange="handleChatAttachmentInput(event)">
-        <div class="chat-compose-shell">
-          <div class="chat-compose-main">
-            <div class="chat-compose-toolbar">
-              <div class="chat-compose-actions">
-                <button class="chat-attach-btn" onclick="pickChatAttachments()" title="Attach up to 6 files. Text and image files are supported.">📎 Attach files</button>
-                <span class="chat-attach-hint">Drop documents or images here, or use the attach button.</span>
-                <span id="chat-attach-inline-state" class="chat-attach-inline-state" aria-live="polite"></span>
-                <span class="chat-context-controls">
-                  <span class="chat-context-label">Context</span>
-                  <select id="chat-history-mode" class="chat-context-select" onchange="onChatHistoryModeChange()" title="Control what prior messages are sent to selected agents">
-                    <option value="full">Full thread</option>
-                    <option value="recent">Recent only</option>
-                    <option value="none">This message only</option>
-                  </select>
-                  <span id="chat-history-limit-wrap" class="chat-context-limit-wrap">
-                    <select id="chat-history-limit" class="chat-context-select" onchange="onChatHistoryLimitChange()" title="Number of recent messages to include">
-                      <option value="4">Last 4</option>
-                      <option value="6">Last 6</option>
-                      <option value="8" selected>Last 8</option>
-                      <option value="12">Last 12</option>
-                      <option value="16">Last 16</option>
-                    </select>
-                  </span>
-                </span>
-              </div>
-            </div>
-            <textarea id="question-input" placeholder="Ask the swarm..." rows="2" spellcheck="true" autocapitalize="sentences" autocorrect="on"
-              onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"
-              oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,180)+'px'"></textarea>
-            <div id="chat-section-attachments" class="chat-section collapsed" data-chat-default="collapsed">
-              <button type="button" class="chat-section-header" onclick="toggleChatSection('attachments')" aria-controls="chat-section-attachments-content" aria-expanded="false">
-                <span class="chat-section-title">📎 Attachments</span>
+        <div class="chat-dock-panel">
+            <div id="chat-section-meta" class="chat-section collapsed" data-chat-default="collapsed">
+              <button type="button" class="chat-section-header" onclick="toggleChatSection('meta')" aria-controls="chat-section-meta-content" aria-expanded="false">
+                <span class="chat-section-title">⚙️ System & User Meta</span>
                 <span class="chat-section-caret" aria-hidden="true"></span>
               </button>
-              <div id="chat-section-attachments-content" class="chat-section-content">
-                <div id="chat-attachments"></div>
+              <div id="chat-section-meta-content" class="chat-section-content">
+                <div id="chat-controls">
+                  <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 160px; max-width: 240px; font-size:12px;">
+                    <option value="">New Thread</option>
+                  </select>
+                  <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
+                  <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
+                  <div style="position:relative;margin-left:auto;">
+                    <button id="chat-more-btn" onclick="_chatMoreMenu()" style="background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;" title="More options">⋯</button>
+                    <div id="chat-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,0.3));min-width:160px;z-index:999;padding:4px 0;">
+                      <button onclick="renameCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Rename thread</button>
+                      <button onclick="deleteCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ff8a8a;padding:8px 14px;cursor:pointer;font-size:12px;">Delete thread</button>
+                      <button onclick="clearAllChatHistory();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Clear history</button>
+                      <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+                      <button onclick="openChatDictionaryManager();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Dictionary</button>
+                      <button onclick="exportChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Export dictionary</button>
+                      <button onclick="importChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Import dictionary</button>
+                      <button onclick="clearChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Reset dictionary</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div id="chat-spell-helper" style="display:none; margin-top:0; font-size:11px; color: var(--text-dim);"></div>
-            <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span></div>
-          </div>
-          <button id="send-btn" onclick="sendMessage()">Send<br><span style="font-size:11px;font-weight:500;opacity:0.82;">Enter</span></button>
+
+            <div id="chat-section-agents" class="chat-section collapsed" data-chat-default="collapsed">
+              <button type="button" class="chat-section-header" onclick="toggleChatSection('agents')" aria-controls="chat-section-agents-content" aria-expanded="false">
+                <span class="chat-section-title">🧠 Agent Controls</span>
+                <span class="chat-section-caret" aria-hidden="true"></span>
+              </button>
+              <div id="chat-section-agents-content" class="chat-section-content">
+                <div class="chat-agent-row">
+                  <div class="chat-agent-row-head">
+                    <div class="chat-agent-row-title">Agents In This Thread</div>
+                    <div class="chat-agent-legend">
+                      <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-local-dot"></span><span>Local</span></span>
+                      <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-paid-dot"></span><span>Paid API</span></span>
+                    </div>
+                  </div>
+                  <div id="chat-agent-toggles" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+                </div>
+              </div>
+            </div>
         </div>
+      </aside>
+
+      <button id="chat-dock-restore-btn" type="button" onclick="toggleChatDock()" title="Expand right dock">▶</button>
+      <button id="chat-thread-restore-btn" type="button" onclick="toggleThreadRail()" title="Expand thread rail">⟩</button>
       </div>
     </div>
   </div>
@@ -9336,6 +9616,13 @@ const CHAT_DESKTOP_NOTIFY_KEY = 'fridays-chat-desktop-notify-v1';
 const CHAT_THREAD_AGENT_KEY = 'fridays-chat-thread-agents-v1';
 const CHAT_HISTORY_MODE_KEY = 'fridays-chat-history-mode-v1';
 const CHAT_HISTORY_LIMIT_KEY = 'fridays-chat-history-limit-v1';
+const CHAT_THREAD_WIDTH_KEY = 'fridays-chat-thread-width-v1';
+const CHAT_THREAD_COLLAPSED_KEY = 'fridays-chat-thread-collapsed-v1';
+const CHAT_DOCK_WIDTH_KEY = 'fridays-chat-dock-width-v1';
+const CHAT_DOCK_COLLAPSED_KEY = 'fridays-chat-dock-collapsed-v1';
+const CHAT_UI_SCALE_KEY = 'fridays-chat-ui-scale-v1';
+const CHAT_RUNTIME_PANEL_HIDDEN_KEY = 'fridays-chat-runtime-hidden-v1';
+const CHAT_ACTOR_BUBBLE_COLORS_KEY = 'fridays-chat-actor-bubble-colors-v1';
 const CHAT_ATTACH_MAX_FILES = 6;
 const CHAT_ATTACH_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const CHAT_ATTACH_MAX_TEXT_CHARS_PER_FILE = 8000;
@@ -9372,6 +9659,20 @@ window.__fridaysChatAttachments = window.__fridaysChatAttachments || [];
 window.__fridaysBubbleAttachmentStore = window.__fridaysBubbleAttachmentStore || {};
 window.__fridaysChatHistoryMode = window.__fridaysChatHistoryMode || localStorage.getItem(CHAT_HISTORY_MODE_KEY) || 'full';
 window.__fridaysChatHistoryLimit = Number(window.__fridaysChatHistoryLimit || localStorage.getItem(CHAT_HISTORY_LIMIT_KEY) || 8);
+window.__fridaysChatThreadWidth = Number(window.__fridaysChatThreadWidth || localStorage.getItem(CHAT_THREAD_WIDTH_KEY) || 280);
+window.__fridaysChatThreadCollapsed = window.__fridaysChatThreadCollapsed ?? (localStorage.getItem(CHAT_THREAD_COLLAPSED_KEY) === '1');
+window.__fridaysChatDockWidth = Number(window.__fridaysChatDockWidth || localStorage.getItem(CHAT_DOCK_WIDTH_KEY) || 420);
+window.__fridaysChatDockCollapsed = window.__fridaysChatDockCollapsed ?? (localStorage.getItem(CHAT_DOCK_COLLAPSED_KEY) === '1');
+window.__fridaysChatUiScale = Number(window.__fridaysChatUiScale || localStorage.getItem(CHAT_UI_SCALE_KEY) || 1);
+window.__fridaysChatRuntimeHidden = window.__fridaysChatRuntimeHidden ?? (localStorage.getItem(CHAT_RUNTIME_PANEL_HIDDEN_KEY) === '1');
+window.__fridaysActorBubbleColors = window.__fridaysActorBubbleColors || (() => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHAT_ACTOR_BUBBLE_COLORS_KEY) || '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch (_) {
+    return {};
+  }
+})();
 window.__fridaysDesktopNotificationsEnabled = window.__fridaysDesktopNotificationsEnabled ?? (localStorage.getItem(CHAT_DESKTOP_NOTIFY_KEY) === '1');
 window.__fridaysThreadAgentSelections = window.__fridaysThreadAgentSelections || _loadThreadAgentSelections();
 window.__fridaysThreadRuntimePollTimer = window.__fridaysThreadRuntimePollTimer || null;
@@ -9526,7 +9827,8 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
     ? ('Live jobs: ' + running.length + ' running')
     : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread'));
 
-  host.classList.toggle('open', list.length > 0 || running.length > 0);
+  const shouldShow = !window.__fridaysChatRuntimeHidden && (list.length > 0 || running.length > 0);
+  host.classList.toggle('open', shouldShow);
   host.innerHTML = `
     <div class="chat-thread-runtime-head">
       <div class="chat-thread-runtime-title">Thread Runtime · #${Number(convId)}</div>
@@ -10267,15 +10569,175 @@ function _syncChatSectionAria(sectionKey) {
 }
 
 function toggleChatSection(sectionKey) {
+  if (String(sectionKey || '').trim() === 'main') {
+    toggleMainRuntimePanel();
+    return;
+  }
   const section = _chatSectionElement(sectionKey);
   if (!section) return;
   section.classList.toggle('collapsed');
   _syncChatSectionAria(sectionKey);
 }
 
+function _applyMainRuntimePanelState() {
+  const section = _chatSectionElement('main');
+  if (!section) return;
+  section.classList.toggle('runtime-hidden', !!window.__fridaysChatRuntimeHidden);
+  const header = section.querySelector('.chat-section-header');
+  if (header) {
+    header.setAttribute('aria-expanded', window.__fridaysChatRuntimeHidden ? 'false' : 'true');
+  }
+}
+
+function toggleMainRuntimePanel(forceVisible = null) {
+  if (forceVisible === true) {
+    window.__fridaysChatRuntimeHidden = false;
+  } else if (forceVisible === false) {
+    window.__fridaysChatRuntimeHidden = true;
+  } else {
+    window.__fridaysChatRuntimeHidden = !window.__fridaysChatRuntimeHidden;
+  }
+  localStorage.setItem(CHAT_RUNTIME_PANEL_HIDDEN_KEY, window.__fridaysChatRuntimeHidden ? '1' : '0');
+  _applyMainRuntimePanelState();
+  pollActiveThreadRuntime(true);
+}
+
+function _clampChatDockWidth(width) {
+  const n = Number(width || 420);
+  if (!Number.isFinite(n)) return 420;
+  return Math.max(280, Math.min(760, Math.round(n)));
+}
+
+function _clampChatThreadWidth(width) {
+  const n = Number(width || 280);
+  if (!Number.isFinite(n)) return 280;
+  return Math.max(220, Math.min(520, Math.round(n)));
+}
+
+function _applyChatDockLayoutState() {
+  const layout = document.getElementById('chat-layout');
+  const rail = document.getElementById('chat-thread-rail');
+  const dock = document.getElementById('chat-right-dock');
+  const slider = document.getElementById('chat-font-size-range');
+  if (!layout || !dock || !rail) return;
+
+  const threadCollapsed = !!window.__fridaysChatThreadCollapsed;
+  layout.classList.toggle('threads-collapsed', threadCollapsed);
+  rail.classList.toggle('collapsed', threadCollapsed);
+
+  const threadWidth = _clampChatThreadWidth(window.__fridaysChatThreadWidth);
+  if (!threadCollapsed) {
+    rail.style.width = `${threadWidth}px`;
+    window.__fridaysChatThreadWidth = threadWidth;
+  }
+
+  const collapsed = !!window.__fridaysChatDockCollapsed;
+  layout.classList.toggle('dock-collapsed', collapsed);
+  dock.classList.toggle('collapsed', collapsed);
+
+  const width = _clampChatDockWidth(window.__fridaysChatDockWidth);
+  if (!collapsed) {
+    dock.style.width = `${width}px`;
+    window.__fridaysChatDockWidth = width;
+  }
+
+  const scale = Math.max(0.9, Math.min(1.5, Number(window.__fridaysChatUiScale || 1)));
+  layout.style.setProperty('--chat-ui-scale', String(scale));
+  if (slider) slider.value = String(scale);
+}
+
+function toggleThreadRail(forceExpanded = null) {
+  const shouldExpand = forceExpanded === true;
+  const shouldCollapse = forceExpanded === false;
+  if (shouldExpand) {
+    window.__fridaysChatThreadCollapsed = false;
+  } else if (shouldCollapse) {
+    window.__fridaysChatThreadCollapsed = true;
+  } else {
+    window.__fridaysChatThreadCollapsed = !window.__fridaysChatThreadCollapsed;
+  }
+  localStorage.setItem(CHAT_THREAD_COLLAPSED_KEY, window.__fridaysChatThreadCollapsed ? '1' : '0');
+  _applyChatDockLayoutState();
+}
+
+function toggleChatDock(forceExpanded = null) {
+  const shouldExpand = forceExpanded === true;
+  const shouldCollapse = forceExpanded === false;
+  if (shouldExpand) {
+    window.__fridaysChatDockCollapsed = false;
+  } else if (shouldCollapse) {
+    window.__fridaysChatDockCollapsed = true;
+  } else {
+    window.__fridaysChatDockCollapsed = !window.__fridaysChatDockCollapsed;
+  }
+  localStorage.setItem(CHAT_DOCK_COLLAPSED_KEY, window.__fridaysChatDockCollapsed ? '1' : '0');
+  _applyChatDockLayoutState();
+}
+
+function setChatUiScale(scale) {
+  const next = Math.max(0.9, Math.min(1.5, Number(scale || 1)));
+  window.__fridaysChatUiScale = next;
+  localStorage.setItem(CHAT_UI_SCALE_KEY, String(next));
+  _applyChatDockLayoutState();
+}
+
+function startChatDockResize(event) {
+  if (window.__fridaysChatDockCollapsed) return;
+  const dock = document.getElementById('chat-right-dock');
+  if (!dock) return;
+  event.preventDefault();
+
+  const onMove = (ev) => {
+    const width = window.innerWidth - Number(ev.clientX || 0);
+    const next = _clampChatDockWidth(width);
+    window.__fridaysChatDockWidth = next;
+    dock.style.width = `${next}px`;
+  };
+
+  const onUp = () => {
+    localStorage.setItem(CHAT_DOCK_WIDTH_KEY, String(window.__fridaysChatDockWidth));
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  };
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+function startChatThreadResize(event) {
+  if (window.__fridaysChatThreadCollapsed) return;
+  const rail = document.getElementById('chat-thread-rail');
+  if (!rail) return;
+  event.preventDefault();
+
+  const onMove = (ev) => {
+    const width = Number(ev.clientX || 0);
+    const next = _clampChatThreadWidth(width);
+    window.__fridaysChatThreadWidth = next;
+    rail.style.width = `${next}px`;
+  };
+
+  const onUp = () => {
+    localStorage.setItem(CHAT_THREAD_WIDTH_KEY, String(window.__fridaysChatThreadWidth));
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  };
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+function initChatDockLayout() {
+  window.__fridaysChatThreadWidth = _clampChatThreadWidth(window.__fridaysChatThreadWidth);
+  window.__fridaysChatDockWidth = _clampChatDockWidth(window.__fridaysChatDockWidth);
+  window.__fridaysChatUiScale = Math.max(0.9, Math.min(1.5, Number(window.__fridaysChatUiScale || 1)));
+  _applyChatDockLayoutState();
+}
+
 function initChatSections() {
   const defaults = {
     main: true,
+    threads: true,
     meta: false,
     agents: false,
     attachments: false,
@@ -10286,6 +10748,7 @@ function initChatSections() {
     section.classList.toggle('collapsed', !expanded);
     _syncChatSectionAria(key);
   });
+  _applyMainRuntimePanelState();
 }
 
 function updateComposerMeta() {
@@ -10652,12 +11115,70 @@ function _appendThinkingBubble(agent, runtimeClass, job = {}) {
   });
 }
 
+function _hexToRgba(hex, alpha) {
+  const raw = String(hex || '').trim();
+  const normalized = raw.replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return '';
+  const intVal = Number.parseInt(normalized, 16);
+  const r = (intVal >> 16) & 255;
+  const g = (intVal >> 8) & 255;
+  const b = intVal & 255;
+  const a = Math.max(0, Math.min(1, Number(alpha || 1)));
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function _getActorBubbleColor(actorKey) {
+  const key = String(actorKey || '').trim().toLowerCase();
+  if (!key) return '';
+  return String((window.__fridaysActorBubbleColors || {})[key] || '').trim();
+}
+
+function _saveActorBubbleColors() {
+  localStorage.setItem(CHAT_ACTOR_BUBBLE_COLORS_KEY, JSON.stringify(window.__fridaysActorBubbleColors || {}));
+}
+
+function applyBubbleColorOverrideToNode(node) {
+  if (!node) return;
+  const className = String(node.className || '');
+  const m = className.match(/\bsender-([a-z0-9_-]+)\b/);
+  const key = m ? m[1] : '';
+  const color = _getActorBubbleColor(key);
+  if (!color) {
+    node.style.removeProperty('background');
+    node.style.removeProperty('border-color');
+    return;
+  }
+  const bg = _hexToRgba(color, 0.14);
+  const border = _hexToRgba(color, 0.36);
+  if (bg) node.style.background = bg;
+  if (border) node.style.borderColor = border;
+}
+
+function _applyBubbleColorOverrides() {
+  document.querySelectorAll('.chat-bubble').forEach(applyBubbleColorOverrideToNode);
+}
+
+function setActorBubbleColor(actorKey, colorValue) {
+  const key = String(actorKey || '').trim().toLowerCase();
+  if (!key) return;
+  const color = String(colorValue || '').trim();
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
+  window.__fridaysActorBubbleColors = window.__fridaysActorBubbleColors || {};
+  window.__fridaysActorBubbleColors[key] = color;
+  _saveActorBubbleColors();
+  _applyBubbleColorOverrides();
+}
+
 function _appendChatBubble(sender, text, opts = {}) {
   const messages = _chatMessagesEl();
   if (!messages) return;
   const isUser = sender === 'you';
+  const senderIdentity = _chatAgentIdentity(sender);
+  const senderKey = String((isUser ? 'you' : senderIdentity.key) || 'agent')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '');
   const bubble = document.createElement('div');
-  bubble.className = 'chat-bubble' + (isUser ? ' user' : '');
+  bubble.className = 'chat-bubble' + (isUser ? ' user' : '') + ' sender-' + senderKey;
   const safeSender = _escapeHtml(sender);
   const senderMetaHtml = isUser ? 'you' : _chatAgentIdentityHtml(sender, true);
   const msgId = opts.msgId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
@@ -10711,6 +11232,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   bubble.dataset.msgId = msgId;
   if (opts.messageId) bubble.dataset.messageId = String(opts.messageId);
   if (opts.conversationId) bubble.dataset.conversationId = String(opts.conversationId);
+  applyBubbleColorOverrideToNode(bubble);
   messages.appendChild(bubble);
   messages.scrollTop = messages.scrollHeight;
 }
@@ -11165,12 +11687,23 @@ function getEnabledChatAgents() {
 function renderChatAgentToggles() {
   const host = document.getElementById('chat-agent-toggles');
   if (!host) return;
-  host.innerHTML = CHAT_AGENT_OPTIONS.map(agent => {
+  const userColor = _getActorBubbleColor('you') || '#42a5f5';
+  const userCard = `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--border);border-radius:8px;background:var(--card);min-width:66px;">
+    <div style="display:inline-flex;align-items:center;gap:4px;font-size:10px;line-height:1;white-space:nowrap;" title="Your bubble color">
+      <span class="agent-tier-dot" style="width:5px;height:5px;flex-shrink:0;background:${_escapeHtml(userColor)};"></span>
+      <span style="font-weight:500;">You</span>
+      <input class="agent-bubble-color" type="color" value="${_escapeHtml(userColor)}" title="Choose your bubble color" oninput="setActorBubbleColor('you', this.value)">
+    </div>
+    <div style="height:2px;"></div>
+  </div>`;
+
+  const agentCards = CHAT_AGENT_OPTIONS.map(agent => {
     const isOn = !!window.__fridaysChatEnabledAgents[agent.value];
     const checked = isOn ? 'checked' : '';
     const tierDotClass = agent.tier === 'paid' ? 'agent-tier-paid-dot' : 'agent-tier-local-dot';
     const tierLabel = agent.tier === 'paid' ? 'Paid' : 'Local';
     const temp = agent.hasTemp ? (window.__agentTemps[agent.value] ?? 0.7).toFixed(2) : null;
+    const bubbleColor = _getActorBubbleColor(agent.value) || (agent.tier === 'paid' ? '#ff7043' : '#4caf50');
     const vid = 'atv-' + agent.value;
     const sliderRow = temp !== null ? `
       <div data-temp-row="${agent.value}" style="display:flex;align-items:center;gap:3px;padding:0 1px;opacity:${isOn ? '1' : '0.3'};pointer-events:${isOn ? 'auto' : 'none'};transition:opacity 0.15s;">
@@ -11183,12 +11716,15 @@ function renderChatAgentToggles() {
     return `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--border);border-radius:8px;background:var(--card);min-width:66px;cursor:default;">
       <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;line-height:1;white-space:nowrap;" title="${agent.label} · ${tierLabel}">
         <input class="chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked} onchange="onChatAgentToggleChange(this)" style="width:10px;height:10px;margin:0;accent-color:var(--accent);">
-        <span class="agent-tier-dot ${tierDotClass}" style="width:5px;height:5px;flex-shrink:0;"></span>
+        <span class="agent-tier-dot ${tierDotClass}" style="width:5px;height:5px;flex-shrink:0;background:${_escapeHtml(bubbleColor)};"></span>
         <span style="font-weight:500;">${agent.label}</span>
+        <input class="agent-bubble-color" type="color" value="${_escapeHtml(bubbleColor)}" title="Choose ${agent.label} bubble color" oninput="setActorBubbleColor('${agent.value}', this.value)">
       </label>
       ${sliderRow}
     </div>`;
   }).join('');
+
+  host.innerHTML = userCard + agentCards;
 }
 
 window.__agentTemps = window.__agentTemps || {};
@@ -11540,6 +12076,7 @@ function initializeChatPanel() {
   applyThreadAgentSelection(window.__fridaysChatConversationId);
   renderChatAgentToggles();
   _loadAgentTemps();
+  initChatDockLayout();
   initChatSections();
   renderReplyBanner();
   renderChatAttachments();
@@ -11550,6 +12087,7 @@ function initializeChatPanel() {
   updateComposerMeta();
   updateNotificationControls();
   updateChatStatusPills();
+  _applyBubbleColorOverrides();
   startThreadRuntimePolling();
   if (!window.__fridaysChatConversationId) {
     _renderWelcome();
