@@ -90,7 +90,7 @@ def delete(path: str, timeout: int = 8):
 _results = []  # (req_id, name, status, detail)
 
 
-def test(req_id: str, name: str):
+def register_test(req_id: str, name: str):
     """Decorator that registers a test."""
     def decorator(fn):
         def wrapper():
@@ -114,7 +114,7 @@ _tests = []
 # SUITE A: Core data endpoints
 # ══════════════════════════════════════════════════════════════════════════════
 
-@test('REQ-001', 'GET /api/conversations — chat history loads')
+@register_test('REQ-001', 'GET /api/conversations — chat history loads')
 def t_conversations():
     status, data = get('/api/conversations')
     assert status == 200, f'HTTP {status}'
@@ -126,7 +126,7 @@ def t_conversations():
     return f'{len(data)} conversations, fields OK'
 
 
-@test('REQ-002', 'POST /api/chat — responds within timeout (server has 10s budget)')
+@register_test('REQ-002', 'POST /api/chat — responds within timeout (server has 10s budget)')
 def t_chat():
     # Server wraps ask_agent in ThreadPoolExecutor with timeout=10.
     # Allow 15s for client so server can return the fallback on Ollama miss.
@@ -144,7 +144,7 @@ def t_chat():
     return f'HTTP {status}, response keys: {list(data.keys())}, timed_out={timed_out}'
 
 
-@test('REQ-003', 'GET /api/memory — memory search returns grouped results')
+@register_test('REQ-003', 'GET /api/memory — memory search returns grouped results')
 def t_memory():
     status, data = get('/api/memory?q=test&min=1')
     assert status == 200, f'HTTP {status}'
@@ -153,7 +153,7 @@ def t_memory():
     return f'{sum(len(v) for v in data["results"].values())} memory items across {len(data["results"])} agents'
 
 
-@test('REQ-004', 'GET /api/system — system monitoring returns health data')
+@register_test('REQ-004', 'GET /api/system — system monitoring returns health data')
 def t_system():
     status, data = get('/api/system')
     assert status == 200, f'HTTP {status}'
@@ -161,7 +161,7 @@ def t_system():
     return f'system keys: {list(data.keys())[:6]}'
 
 
-@test('REQ-005a', 'GET /api/tickets — ticket list loads')
+@register_test('REQ-005a', 'GET /api/tickets — ticket list loads')
 def t_tickets():
     status, data = get('/api/tickets')
     assert status == 200, f'HTTP {status}'
@@ -174,7 +174,7 @@ def t_tickets():
     return f'{len(data)} tickets, statuses: {statuses}'
 
 
-@test('REQ-005b', 'GET /api/tickets/<ticket_number> — ticket detail with notes/duck')
+@register_test('REQ-005b', 'GET /api/tickets/<ticket_number> — ticket detail with notes/duck')
 def t_ticket_detail():
     # Get first ticket number from the list
     status, data = get('/api/tickets')
@@ -190,7 +190,7 @@ def t_ticket_detail():
     return f'ticket {tn}: {len(detail["messages"])} messages, {len(detail["notes"])} notes'
 
 
-@test('REQ-006', 'GET /api/queue — queue entries accessible')
+@register_test('REQ-006', 'GET /api/queue — queue entries accessible')
 def t_queue():
     status, data = get('/api/queue')
     assert status == 200, f'HTTP {status}'
@@ -199,7 +199,7 @@ def t_queue():
     return f'{len(entries)} queue entries'
 
 
-@test('REQ-007', 'GET /api/proposals — work-file proposals list')
+@register_test('REQ-007', 'GET /api/proposals — work-file proposals list')
 def t_proposals():
     status, data = get('/api/proposals')
     assert status == 200, f'HTTP {status}'
@@ -207,7 +207,7 @@ def t_proposals():
     return f'{len(data["proposals"])} file-based proposals'
 
 
-@test('REQ-008', 'GET /api/work-proposals — DB work proposals list')
+@register_test('REQ-008', 'GET /api/work-proposals — DB work proposals list')
 def t_work_proposals():
     status, data = get('/api/work-proposals')
     assert status == 200, f'HTTP {status}'
@@ -215,7 +215,7 @@ def t_work_proposals():
     return f'{len(data["proposals"])} work proposals, statuses: {set(p["status"] for p in data["proposals"])}'
 
 
-@test('REQ-009', 'GET /api/kb — knowledge base accessible')
+@register_test('REQ-009', 'GET /api/kb — knowledge base accessible')
 def t_kb():
     status, data = get('/api/kb')
     assert status == 200, f'HTTP {status}'
@@ -223,7 +223,7 @@ def t_kb():
     return f'{len(data)} KB docs'
 
 
-@test('REQ-014', 'GET /api/system/time — time endpoint returns valid fields')
+@register_test('REQ-014', 'GET /api/system/time — time endpoint returns valid fields')
 def t_system_time():
     status, data = get('/api/system/time')
     assert status == 200, f'HTTP {status}'
@@ -233,7 +233,7 @@ def t_system_time():
     return f'time={data["timestamp"]}, unix={data["unix"]}'
 
 
-@test('REQ-015', 'GET /api/nine/history — Nine agent history accessible')
+@register_test('REQ-015', 'GET /api/nine/history — Nine agent history accessible')
 def t_nine_history():
     status, data = get('/api/nine/history')
     assert status == 200, f'HTTP {status}'
@@ -242,7 +242,7 @@ def t_nine_history():
     return f'{count} nine history entries'
 
 
-@test('REQ-016', 'GET /api/killswitch/buttons — killswitch button config readable')
+@register_test('REQ-016', 'GET /api/killswitch/buttons — killswitch button config readable')
 def t_killswitch():
     status, data = get('/api/killswitch/buttons')
     assert status == 200, f'HTTP {status}'
@@ -254,7 +254,7 @@ def t_killswitch():
 # SUITE B: Vortex / Time Wizard
 # ══════════════════════════════════════════════════════════════════════════════
 
-@test('REQ-010', 'GET /api/time/timeline — Vortex timeline loads')
+@register_test('REQ-010', 'GET /api/time/timeline — Vortex timeline loads')
 def t_vortex_timeline():
     status, data = get('/api/time/timeline')
     assert status == 200, f'HTTP {status}'
@@ -263,7 +263,7 @@ def t_vortex_timeline():
     return f'{len(events)} timeline events'
 
 
-@test('REQ-011', 'GET /api/time/checkpoints — checkpoint list loads, no full_state blobs')
+@register_test('REQ-011', 'GET /api/time/checkpoints — checkpoint list loads, no full_state blobs')
 def t_vortex_checkpoints():
     status, data = get('/api/time/checkpoints')
     assert status == 200, f'HTTP {status}'
@@ -275,7 +275,7 @@ def t_vortex_checkpoints():
     return f'{len(checkpoints)} checkpoints, no oversized blobs'
 
 
-@test('REQ-012', 'POST /api/time/restore — dry-run preview returns ok=true, no real restore')
+@register_test('REQ-012', 'POST /api/time/restore — dry-run preview returns ok=true, no real restore')
 def t_vortex_dryrun():
     # First get a checkpoint to test against
     status, cp_data = get('/api/time/checkpoints')
@@ -300,7 +300,7 @@ def t_vortex_dryrun():
 # SUITE C: Decisions
 # ══════════════════════════════════════════════════════════════════════════════
 
-@test('REQ-013', 'GET /api/decisions — decisions list with total count')
+@register_test('REQ-013', 'GET /api/decisions — decisions list with total count')
 def t_decisions():
     status, data = get('/api/decisions')
     assert status == 200, f'HTTP {status}'
@@ -314,7 +314,7 @@ def t_decisions():
 # SUITE D: Lifecycle tests (mutating — use unique IDs, clean up after)
 # ══════════════════════════════════════════════════════════════════════════════
 
-@test('REQ-018', 'PATCH /api/tickets/<tn> — tags and priority write and read back')
+@register_test('REQ-018', 'PATCH /api/tickets/<tn> — tags and priority write and read back')
 def t_ticket_patch():
     status, tickets = get('/api/tickets')
     assert status == 200 and tickets, 'Ticket list failed'
@@ -338,7 +338,7 @@ def t_ticket_patch():
     return f'ticket {tn}: tags written+read OK, priority 7 accepted'
 
 
-@test('REQ-019', 'KB create → read → update → delete lifecycle')
+@register_test('REQ-019', 'KB create → read → update → delete lifecycle')
 def t_kb_lifecycle():
     uid = uuid.uuid4().hex[:8]
     doc_name = f'e2e-test-{uid}'
@@ -366,7 +366,7 @@ def t_kb_lifecycle():
     return f'KB doc "{doc_name}" (id={doc_id}): create→read→delete OK'
 
 
-@test('REQ-020', 'POST /api/queue — internal queue entry create and read back')
+@register_test('REQ-020', 'POST /api/queue — internal queue entry create and read back')
 def t_queue_create():
     uid = uuid.uuid4().hex[:8]
     status, data = post('/api/queue', {
@@ -390,7 +390,7 @@ def t_queue_create():
     return f'queue entry id={queue_id} created and verified'
 
 
-@test('REQ-017', 'Work-proposal ALM gate: missing proposal_id returns 428')
+@register_test('REQ-017', 'Work-proposal ALM gate: missing proposal_id returns 428')
 def t_alm_gate():
     # Work-proposals PATCH without proposal_id should fail with 428 (or 400)
     # when ALM_REQUIRE_APPROVALS is on (the default)
