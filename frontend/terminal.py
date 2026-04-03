@@ -1361,7 +1361,7 @@ def api_conversation_messages(conv_id):
         return jsonify({'error': 'not found'}), 404
     # All messages for this conversation, ordered chronologically
     rows = conn.execute(
-        """SELECT id, from_agent AS sender, content, to_agent, message_type, created_at
+        """SELECT id, from_agent AS sender, content, to_agent, message_type, tokens_used, created_at
            FROM messages WHERE conversation_id=? ORDER BY id ASC""",
         (conv_id,)
     ).fetchall()
@@ -5548,7 +5548,14 @@ def api_chat():
                     if cancelled:
                         return
                     response_target = _resolve_chat_reply_target(selected_agent, response_text, reply_context)
-                    log_message(conv_id, selected_agent, response_text, to_agent=response_target, message_type='response')
+                    log_message(
+                        conv_id,
+                        selected_agent,
+                        response_text,
+                        to_agent=response_target,
+                        message_type='response',
+                        tokens_used=int(tokens_used or 0),
+                    )
                     with _CHAT_JOB_LOCK:
                         job = _CHAT_JOBS.get(job_id)
                         if job and job.get('status') != 'cancelled':
@@ -5571,7 +5578,14 @@ def api_chat():
                     fail_msg = f'[{selected_agent}] background run failed: {err_text}'
                     try:
                         response_target = _resolve_chat_reply_target(selected_agent, fail_msg, reply_context)
-                        log_message(conv_id, selected_agent, fail_msg, to_agent=response_target, message_type='response')
+                        log_message(
+                            conv_id,
+                            selected_agent,
+                            fail_msg,
+                            to_agent=response_target,
+                            message_type='response',
+                            tokens_used=0,
+                        )
                     except Exception:
                         pass
                     with _CHAT_JOB_LOCK:
@@ -5722,7 +5736,14 @@ def api_chat():
             if entry.get('pending'):
                 continue
             response_target = _resolve_chat_reply_target(entry['agent'], entry['response'], reply_contexts[entry['agent']])
-            log_message(conv_id, entry['agent'], entry['response'], to_agent=response_target, message_type='response')
+            log_message(
+                conv_id,
+                entry['agent'],
+                entry['response'],
+                to_agent=response_target,
+                message_type='response',
+                tokens_used=int(entry.get('tokens') or 0),
+            )
 
         primary = responses[0] if responses else {'agent': normalized_agents[0], 'response': '', 'tokens': 0}
 

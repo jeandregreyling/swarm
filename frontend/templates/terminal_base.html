@@ -684,6 +684,24 @@ body.theme-rose {
   flex: 1;
   min-width: 0;
 }
+.window-theme-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+}
+.window-theme-slider {
+  width: 128px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.window-theme-value {
+  font-size: 10px;
+  color: var(--text-dim);
+  min-width: 56px;
+  text-transform: capitalize;
+  font-weight: 600;
+}
 .window-theme-quick {
   display: flex;
   gap: 6px;
@@ -1616,6 +1634,10 @@ body.theme-rose {
   border-style: dashed;
   background: color-mix(in srgb, var(--card) 82%, var(--window-header) 18%);
 }
+.chat-bubble.reply-targeted {
+  outline: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
 .chat-pending-stage {
   margin-top: 4px;
   font-size: 12px;
@@ -1740,6 +1762,25 @@ body.theme-rose {
   color: var(--text);
   border-color: var(--accent);
 }
+.chat-handoff-actions {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chat-handoff-btn {
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.chat-handoff-btn:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
 .skill-events {
   margin-top: 10px;
   display: flex;
@@ -1836,6 +1877,110 @@ body.theme-rose {
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+}
+.chat-flow-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.chat-relay-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  min-height: 24px;
+}
+.chat-relay-select {
+  background: var(--card);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10px;
+  padding: 1px 6px;
+}
+.chat-history-inline-wrap {
+  display: none;
+}
+.chat-history-inline-wrap.visible {
+  display: inline-flex;
+}
+.chat-relay-slider-row {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#chat-relay-turns-slider {
+  flex: 1;
+  min-width: 120px;
+  accent-color: var(--accent);
+}
+.chat-relay-turns-value {
+  min-width: 34px;
+  text-align: right;
+  font-size: 10px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.chat-relay-status {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.chat-relay-timeline-head {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.chat-relay-timeline {
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 240px;
+  overflow: auto;
+  background: rgba(0,0,0,0.12);
+}
+.chat-relay-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 10px;
+}
+.chat-relay-item:last-child {
+  border-bottom: none;
+}
+.chat-relay-item-time {
+  color: var(--text-dim);
+  opacity: 0.7;
+  width: 52px;
+}
+.chat-relay-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.chat-relay-item-jump {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.chat-relay-item-jump:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 #chat-attachment-input {
   display: none;
@@ -3014,22 +3159,6 @@ input[type="range"]::-moz-range-thumb:hover {
               <span id="chat-attach-inline-state" class="chat-attach-inline-state" aria-live="polite"></span>
               <textarea id="question-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
                 onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
-              <span class="chat-context-controls" style="margin-left:0;">
-                <select id="chat-history-mode" class="chat-context-select" onchange="onChatHistoryModeChange()" title="Control what prior messages are sent to selected agents">
-                  <option value="full">Full</option>
-                  <option value="recent">Recent</option>
-                  <option value="none">Only this</option>
-                </select>
-                <span id="chat-history-limit-wrap" class="chat-context-limit-wrap">
-                  <select id="chat-history-limit" class="chat-context-select" onchange="onChatHistoryLimitChange()" title="Number of recent messages to include">
-                    <option value="4">4</option>
-                    <option value="6">6</option>
-                    <option value="8" selected>8</option>
-                    <option value="12">12</option>
-                    <option value="16">16</option>
-                  </select>
-                </span>
-              </span>
               <button id="send-btn" onclick="sendMessage()">Send</button>
             </div>
             <div id="chat-attachments"></div>
@@ -3115,6 +3244,60 @@ input[type="range"]::-moz-range-thumb:hover {
                   </div>
                   <div id="chat-agent-toggles" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
                 </div>
+              </div>
+            </div>
+
+            <div id="chat-section-flow" class="chat-section" data-chat-default="open">
+              <button type="button" class="chat-section-header" onclick="toggleChatSection('flow')" aria-controls="chat-section-flow-content" aria-expanded="true">
+                <span class="chat-section-title">🔀 Conversation Flow</span>
+                <span class="chat-section-caret" aria-hidden="true"></span>
+              </button>
+              <div id="chat-section-flow-content" class="chat-section-content">
+                <div class="chat-flow-grid">
+                  <label class="chat-relay-toggle" title="Which thread context is sent to selected agents.">
+                    <span>Context</span>
+                    <select id="chat-history-mode" class="chat-relay-select" onchange="onChatHistoryModeChange()">
+                      <option value="full">Full thread</option>
+                      <option value="recent">Recent only</option>
+                      <option value="none">Only this turn</option>
+                    </select>
+                  </label>
+                  <label id="chat-history-limit-wrap" class="chat-relay-toggle chat-history-inline-wrap" title="Number of recent messages to include when using Recent mode.">
+                    <span>Recent count</span>
+                    <select id="chat-history-limit" class="chat-relay-select" onchange="onChatHistoryLimitChange()">
+                      <option value="4">4</option>
+                      <option value="6">6</option>
+                      <option value="8">8</option>
+                      <option value="12">12</option>
+                      <option value="16">16</option>
+                      <option value="24">24</option>
+                    </select>
+                  </label>
+                  <label class="chat-relay-toggle" title="Automatically relay agent-to-agent questions as explicit chat turns.">
+                    <input id="chat-relay-auto" type="checkbox" onchange="onChatRelayAutoToggle()">
+                    <span>Auto Relay</span>
+                  </label>
+                  <label class="chat-relay-toggle" title="When enabled, relay turns always send full thread context regardless of Context mode.">
+                    <input id="chat-relay-force-full" type="checkbox" onchange="onChatRelayForceFullContextToggle()">
+                    <span>Relay uses full context</span>
+                  </label>
+                </div>
+                <div class="chat-relay-slider-row">
+                  <span style="font-size:10px;color:var(--text-dim);">Agent-to-agent turns</span>
+                  <input id="chat-relay-turns-slider" type="range" min="1" max="12" step="1" value="4" oninput="onChatRelayTurnsSliderChange()" title="Maximum automatic relay turns per user send">
+                  <span id="chat-relay-turns-value" class="chat-relay-turns-value">4</span>
+                  <label class="chat-relay-toggle" style="padding:2px 8px;" title="Unlimited relay turns for the current send chain.">
+                    <input id="chat-relay-infinite" type="checkbox" onchange="onChatRelayInfiniteToggle()">
+                    <span>Infinite</span>
+                  </label>
+                  <button class="chat-action-btn" onclick="clearRelayQueue()" title="Clear queued relay actions">Clear queue</button>
+                </div>
+                <div id="chat-relay-status" class="chat-relay-status">Relay idle</div>
+                <div class="chat-relay-timeline-head">
+                  <span>Relay Timeline</span>
+                  <button class="chat-action-btn" onclick="clearRelayTimeline()">Clear timeline</button>
+                </div>
+                <div id="chat-relay-timeline" class="chat-relay-timeline"></div>
               </div>
             </div>
         </div>
@@ -3578,6 +3761,9 @@ class WindowManager {
 
     const persisted = this.savedState?.[id] || {};
     const config = { ...defaults, ...persisted, ...options };
+    const initialWindowTheme = config.windowTheme || 'auto';
+    const initialThemeIndex = _windowThemeIndex(initialWindowTheme);
+    const initialThemeLabel = _windowThemeLabel(initialWindowTheme);
 
     // Get template
     const template = document.getElementById(contentTemplateId);
@@ -3598,6 +3784,10 @@ class WindowManager {
     header.className = 'window-header';
     header.innerHTML = `
       <div class="window-title-wrap">
+        <div class="window-theme-slider-row" title="Per-window theme. Auto follows main theme selection.">
+          <input type="range" class="window-theme-slider" min="0" max="10" step="1" value="${initialThemeIndex}" oninput="onWindowThemeSliderChange('${id}', this.value)">
+          <span id="win-theme-label-${id}" class="window-theme-value">${initialThemeLabel}</span>
+        </div>
         <div class="window-title">${title}</div>
       </div>
       <div class="window-controls">
@@ -4094,15 +4284,41 @@ const TIME_PERIOD_COLORS = window._fridays && window._fridays.time_of_day
 
 const _DARK_THEMES = new Set(['evening','night','obsidian','void','aurora','ember','graphite','rose','apple','nature','mint']);
 const _NAMED_THEMES = new Set(['obsidian','void','aurora','ember','graphite','rose','apple','nature','mint']);
+const FRIDAYS_THEME_MODE_KEY = 'fridays_theme_mode';
+const WINDOW_THEME_MODES = ['auto', 'morning', 'afternoon', 'evening', 'night', 'obsidian', 'void', 'aurora', 'ember', 'graphite', 'rose'];
+
+function _windowThemeIndex(mode) {
+  const key = String(mode || 'auto').toLowerCase();
+  const idx = WINDOW_THEME_MODES.indexOf(key);
+  return idx >= 0 ? idx : 0;
+}
+
+function _windowThemeFromIndex(index) {
+  const i = Math.max(0, Math.min(WINDOW_THEME_MODES.length - 1, Number(index || 0)));
+  return WINDOW_THEME_MODES[i] || 'auto';
+}
+
+function _windowThemeLabel(mode) {
+  const key = String(mode || 'auto').toLowerCase();
+  if (key === 'auto') return 'Auto';
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
 
 function resolveThemeMode(mode) {
-  const resolved = mode === 'auto' ? getTimeOfDay() : mode;
+  const requested = String(mode || 'auto').toLowerCase();
+  let resolved = requested;
+  if (requested === 'auto') {
+    const mainSelected = String(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto').toLowerCase();
+    resolved = mainSelected === 'auto' ? getTimeOfDay() : mainSelected;
+  }
   const isDark = _DARK_THEMES.has(resolved);
   return { resolved, isDark };
 }
 
 function applyTimeTheme(time) {
-  const mode = resolveThemeMode(time || 'auto');
+  const selectedMode = String(time || 'auto').toLowerCase();
+  window._selectedThemeMode = selectedMode;
+  const mode = resolveThemeMode(selectedMode);
   const colors = TIME_PERIOD_COLORS[mode.resolved] || TIME_PERIOD_COLORS.afternoon;
 
   // Remove all named theme classes
@@ -4123,6 +4339,7 @@ function applyTimeTheme(time) {
 
   // Persist
   window._currentTheme = mode.resolved;
+  try { localStorage.setItem(FRIDAYS_THEME_MODE_KEY, selectedMode); } catch(e) {}
   try { localStorage.setItem('fridays_theme', mode.resolved); } catch(e) {}
 
   refreshAutoWindowThemes();
@@ -4157,6 +4374,11 @@ function applyWindowThemeToWindow(win, mode) {
     chip.classList.toggle('active', chip.dataset.theme === mode);
   });
 
+  const slider = win.el.querySelector('.window-theme-slider');
+  if (slider) slider.value = String(_windowThemeIndex(mode || 'auto'));
+  const labelEl = win.el.querySelector('#win-theme-label-' + win.id);
+  if (labelEl) labelEl.textContent = _windowThemeLabel(mode || 'auto');
+
   win.el.classList.toggle('window-dark', resolvedMode.isDark);
   win.el.classList.toggle('window-light', !resolvedMode.isDark);
 
@@ -4175,11 +4397,16 @@ function refreshAutoWindowThemes() {
 function setWindowQuickTheme(id, mode) {
   const win = winManager.windows.get(id);
   if (!win) return;
-  const next = ['auto', 'morning', 'afternoon', 'evening', 'night'].includes(mode) ? mode : 'auto';
+  const next = WINDOW_THEME_MODES.includes(String(mode || '').toLowerCase()) ? String(mode).toLowerCase() : 'auto';
   applyWindowThemeToWindow(win, next);
   winManager.save();
-  const label = next === 'auto' ? 'Auto' : next[0].toUpperCase() + next.slice(1);
+  const label = _windowThemeLabel(next);
   showToast(`${win.title.replace(/^[^\w\s]+\s*/, '')}: ${label} theme`, 'info');
+}
+
+function onWindowThemeSliderChange(id, sliderValue) {
+  const mode = _windowThemeFromIndex(sliderValue);
+  setWindowQuickTheme(id, mode);
 }
 
 function loadSettings() {
@@ -4200,7 +4427,10 @@ function loadSettings() {
   }
 
   // Restore saved named theme (e.g. obsidian/void) or fall back to settings.time
-  const savedTheme = localStorage.getItem('fridays_theme') || settings.time || 'auto';
+  const savedTheme = localStorage.getItem(FRIDAYS_THEME_MODE_KEY)
+    || localStorage.getItem('fridays_theme')
+    || settings.time
+    || 'auto';
   applyTimeTheme(savedTheme);
 
   // Mark the active theme button in the settings modal
@@ -4614,7 +4844,7 @@ function initClocks() {
 
 function saveSettings() {
   // Current theme set by applyTimeTheme()
-  const currentTheme = window._currentTheme || localStorage.getItem('fridays_theme') || 'auto';
+  const currentTheme = window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto';
 
   const settings = {
     time: currentTheme,
@@ -4624,6 +4854,7 @@ function saveSettings() {
   };
 
   localStorage.setItem('fridays-settings', JSON.stringify(settings));
+  localStorage.setItem(FRIDAYS_THEME_MODE_KEY, currentTheme);
   showToast('Theme saved', 'success');
 
   document.documentElement.style.setProperty('--glass-opacity', (100 - settings.opacity) / 100);
@@ -9623,6 +9854,9 @@ const CHAT_DOCK_COLLAPSED_KEY = 'fridays-chat-dock-collapsed-v1';
 const CHAT_UI_SCALE_KEY = 'fridays-chat-ui-scale-v1';
 const CHAT_RUNTIME_PANEL_HIDDEN_KEY = 'fridays-chat-runtime-hidden-v1';
 const CHAT_ACTOR_BUBBLE_COLORS_KEY = 'fridays-chat-actor-bubble-colors-v1';
+const CHAT_RELAY_AUTO_KEY = 'fridays-chat-relay-auto-v1';
+const CHAT_RELAY_MAX_KEY = 'fridays-chat-relay-max-v1';
+const CHAT_RELAY_FORCE_FULL_KEY = 'fridays-chat-relay-force-full-v1';
 const CHAT_ATTACH_MAX_FILES = 6;
 const CHAT_ATTACH_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const CHAT_ATTACH_MAX_TEXT_CHARS_PER_FILE = 8000;
@@ -9649,7 +9883,7 @@ const CHAT_TYPO_SUGGESTIONS = {
 
 window.__fridaysChatConversationId = window.__fridaysChatConversationId || null;
 window.__fridaysChatEnabledAgents = window.__fridaysChatEnabledAgents || { gemma: true };
-window.__fridaysReplyTarget = window.__fridaysReplyTarget || null;
+window.__fridaysReplyTargets = Array.isArray(window.__fridaysReplyTargets) ? window.__fridaysReplyTargets : [];
 window.__fridaysChatForceNewThread = window.__fridaysChatForceNewThread || false;
 window.__fridaysChatPendingJobIds = window.__fridaysChatPendingJobIds || [];
 window.__fridaysChatPendingConversationId = window.__fridaysChatPendingConversationId || null;
@@ -9665,6 +9899,15 @@ window.__fridaysChatDockWidth = Number(window.__fridaysChatDockWidth || localSto
 window.__fridaysChatDockCollapsed = window.__fridaysChatDockCollapsed ?? (localStorage.getItem(CHAT_DOCK_COLLAPSED_KEY) === '1');
 window.__fridaysChatUiScale = Number(window.__fridaysChatUiScale || localStorage.getItem(CHAT_UI_SCALE_KEY) || 1);
 window.__fridaysChatRuntimeHidden = window.__fridaysChatRuntimeHidden ?? (localStorage.getItem(CHAT_RUNTIME_PANEL_HIDDEN_KEY) === '1');
+window.__fridaysChatRelayAuto = window.__fridaysChatRelayAuto ?? (localStorage.getItem(CHAT_RELAY_AUTO_KEY) !== '0');
+window.__fridaysChatRelayInfinite = window.__fridaysChatRelayInfinite ?? (localStorage.getItem(CHAT_RELAY_MAX_KEY) === 'inf');
+window.__fridaysChatRelayMaxPerTurn = Number(window.__fridaysChatRelayMaxPerTurn || localStorage.getItem(CHAT_RELAY_MAX_KEY) || 4);
+window.__fridaysChatRelayForceFull = window.__fridaysChatRelayForceFull ?? (localStorage.getItem(CHAT_RELAY_FORCE_FULL_KEY) !== '0');
+window.__fridaysChatRelayBudget = Number(window.__fridaysChatRelayBudget || 0);
+window.__fridaysChatRelayQueue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
+window.__fridaysChatRelayBusy = !!window.__fridaysChatRelayBusy;
+window.__fridaysChatRelaySeen = window.__fridaysChatRelaySeen || {};
+window.__fridaysChatTimeline = Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : [];
 window.__fridaysActorBubbleColors = window.__fridaysActorBubbleColors || (() => {
   try {
     const raw = JSON.parse(localStorage.getItem(CHAT_ACTOR_BUBBLE_COLORS_KEY) || '{}');
@@ -11005,9 +11248,323 @@ function _chatAgentMeta(sender) {
   return _CHAT_AGENT_META[normalized] || { icon: '🤖', purpose: `Agent: ${normalized || 'unknown'}.`, runtime: 'unknown' };
 }
 
+function _chatRelayConfig() {
+  const max = Math.max(1, Math.min(12, Number(window.__fridaysChatRelayMaxPerTurn || 4)));
+  return {
+    auto: !!window.__fridaysChatRelayAuto,
+    infinite: !!window.__fridaysChatRelayInfinite,
+    maxPerTurn: window.__fridaysChatRelayInfinite ? Number.POSITIVE_INFINITY : max,
+    forceFullContext: !!window.__fridaysChatRelayForceFull,
+  };
+}
+
+function _renderChatRelayControls() {
+  const autoEl = document.getElementById('chat-relay-auto');
+  const maxEl = document.getElementById('chat-relay-turns-slider');
+  const maxValueEl = document.getElementById('chat-relay-turns-value');
+  const infEl = document.getElementById('chat-relay-infinite');
+  const forceFullEl = document.getElementById('chat-relay-force-full');
+  const statusEl = document.getElementById('chat-relay-status');
+  if (autoEl) autoEl.checked = !!window.__fridaysChatRelayAuto;
+  const sliderVal = String(Math.max(1, Math.min(12, Number(window.__fridaysChatRelayMaxPerTurn || 4))));
+  if (maxEl) maxEl.value = sliderVal;
+  if (infEl) infEl.checked = !!window.__fridaysChatRelayInfinite;
+  if (forceFullEl) forceFullEl.checked = !!window.__fridaysChatRelayForceFull;
+  if (maxValueEl) maxValueEl.textContent = window.__fridaysChatRelayInfinite ? 'inf' : sliderVal;
+  if (statusEl) {
+    const queued = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue.length : 0;
+    const rawBudget = Number(window.__fridaysChatRelayBudget || 0);
+    const budget = rawBudget < 0 ? 'inf' : String(Math.max(0, rawBudget));
+    statusEl.textContent = queued
+      ? `Relay queue: ${queued} · budget ${budget}`
+      : `Relay ${window.__fridaysChatRelayAuto ? 'auto-on' : 'manual-only'} · budget ${budget}`;
+  }
+}
+
+function onChatRelayAutoToggle() {
+  const autoEl = document.getElementById('chat-relay-auto');
+  window.__fridaysChatRelayAuto = !!(autoEl && autoEl.checked);
+  localStorage.setItem(CHAT_RELAY_AUTO_KEY, window.__fridaysChatRelayAuto ? '1' : '0');
+  _renderChatRelayControls();
+}
+
+function onChatRelayMaxChange() {
+  onChatRelayTurnsSliderChange();
+}
+
+function onChatRelayTurnsSliderChange() {
+  const maxEl = document.getElementById('chat-relay-turns-slider');
+  const next = Math.max(1, Math.min(12, Number(maxEl && maxEl.value || 4)));
+  window.__fridaysChatRelayMaxPerTurn = next;
+  if (!window.__fridaysChatRelayInfinite) {
+    localStorage.setItem(CHAT_RELAY_MAX_KEY, String(next));
+  }
+  _renderChatRelayControls();
+}
+
+function onChatRelayInfiniteToggle() {
+  const infEl = document.getElementById('chat-relay-infinite');
+  window.__fridaysChatRelayInfinite = !!(infEl && infEl.checked);
+  if (window.__fridaysChatRelayInfinite) {
+    localStorage.setItem(CHAT_RELAY_MAX_KEY, 'inf');
+  } else {
+    localStorage.setItem(CHAT_RELAY_MAX_KEY, String(Math.max(1, Math.min(12, Number(window.__fridaysChatRelayMaxPerTurn || 4)))));
+  }
+  _renderChatRelayControls();
+}
+
+function onChatRelayForceFullContextToggle() {
+  const chk = document.getElementById('chat-relay-force-full');
+  window.__fridaysChatRelayForceFull = !!(chk && chk.checked);
+  localStorage.setItem(CHAT_RELAY_FORCE_FULL_KEY, window.__fridaysChatRelayForceFull ? '1' : '0');
+  _renderChatRelayControls();
+}
+
+function _isKnownChatAgent(agentKey) {
+  const key = String(agentKey || '').toLowerCase().trim();
+  return CHAT_AGENT_OPTIONS.some(a => a.value === key);
+}
+
+function _relayEncode(value) {
+  try {
+    return btoa(unescape(encodeURIComponent(String(value || ''))));
+  } catch (_) {
+    return '';
+  }
+}
+
+function _relayDecode(value) {
+  try {
+    return decodeURIComponent(escape(atob(String(value || ''))));
+  } catch (_) {
+    return '';
+  }
+}
+
+function _extractAgentDirectedQuestions(text, fromAgent) {
+  const raw = String(text || '');
+  if (!raw) return [];
+  const fromKey = String(fromAgent || '').toLowerCase().trim();
+  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const out = [];
+  const seen = new Set();
+
+  const patternsFor = (target) => ([
+    new RegExp(`^@?${target}\\b[\\s,:-]+(.{6,260}\\?)$`, 'i'),
+    new RegExp(`(?:ask|question\\s+for|for)\\s+${target}\\b[\\s,:-]+(.{6,260}\\?)$`, 'i'),
+    new RegExp(`${target}\\s*[:,]\\s*(.{6,260}\\?)$`, 'i'),
+  ]);
+
+  for (const line of lines) {
+    for (const opt of CHAT_AGENT_OPTIONS) {
+      const target = String(opt.value || '').toLowerCase();
+      if (!target || target === fromKey) continue;
+      const alt = String(opt.label || '').toLowerCase();
+      const variants = [target];
+      if (alt && alt !== target) variants.push(alt.replace(/\s+/g, ''));
+
+      let captured = '';
+      for (const variant of variants) {
+        const safeVariant = variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const rules = patternsFor(safeVariant);
+        rules.push(new RegExp(`(?:ask|query|relay|route|send)\\s+(?:to\\s+)?${safeVariant}\\b[\\s,:-]+(.{6,260})$`, 'i'));
+        for (const re of rules) {
+          const m = line.match(re);
+          if (m && m[1]) {
+            captured = String(m[1] || '').trim();
+            break;
+          }
+        }
+        if (captured) break;
+      }
+      if (!captured) continue;
+
+      const normalizedQ = captured.replace(/\s+/g, ' ').trim().slice(0, 260);
+      if (!normalizedQ) continue;
+      const sig = `${target}|${normalizedQ.toLowerCase()}`;
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      out.push({
+        from: fromKey || 'agent',
+        target,
+        question: normalizedQ,
+      });
+    }
+  }
+  return out.slice(0, 4);
+}
+
+function _applySingleAgentSelection(agentKey) {
+  const target = String(agentKey || '').toLowerCase().trim();
+  if (!target) return;
+  Object.keys(window.__fridaysChatEnabledAgents || {}).forEach(k => {
+    window.__fridaysChatEnabledAgents[k] = (k === target);
+  });
+  persistThreadAgentSelection();
+  renderChatAgentToggles();
+  updateComposerMeta();
+  updateChatStatusPills();
+}
+
+function _relayPromptText(handoff) {
+  const fromLabel = _chatAgentLabel(handoff.from || 'agent');
+  const targetLabel = _chatAgentLabel(handoff.target || 'agent');
+  return `[Relay ${fromLabel} -> ${targetLabel}] ${String(handoff.question || '').trim()}`;
+}
+
+function _relaySignature(handoff) {
+  return [
+    String(handoff.from || '').toLowerCase(),
+    String(handoff.target || '').toLowerCase(),
+    String(handoff.question || '').toLowerCase().slice(0, 260),
+  ].join('|');
+}
+
+function queueRelayHandoffFromButton(btn) {
+  if (!btn) return;
+  const handoff = {
+    from: String(btn.dataset.relayFrom || '').toLowerCase(),
+    target: String(btn.dataset.relayTarget || '').toLowerCase(),
+    question: _relayDecode(btn.dataset.relayQuestion || ''),
+    auto: false,
+  };
+  queueRelayHandoff(handoff, false);
+}
+
+function queueRelayHandoff(handoff, autoMode = false) {
+  const target = String(handoff && handoff.target || '').toLowerCase().trim();
+  const question = String(handoff && handoff.question || '').trim();
+  if (!target || !question || !_isKnownChatAgent(target)) return;
+
+  const item = {
+    from: String(handoff.from || 'agent').toLowerCase().trim(),
+    target,
+    question,
+    auto: !!autoMode,
+  };
+  const sig = _relaySignature(item);
+  const now = Date.now();
+  const seen = window.__fridaysChatRelaySeen || {};
+  if (seen[sig] && (now - Number(seen[sig] || 0) < 8 * 60 * 1000)) {
+    return;
+  }
+
+  if (item.auto && !window.__fridaysChatRelayAuto) return;
+  if (item.auto && Number(window.__fridaysChatRelayBudget || 0) === 0) return;
+
+  seen[sig] = now;
+  window.__fridaysChatRelaySeen = seen;
+  window.__fridaysChatRelayQueue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
+  window.__fridaysChatRelayQueue.push(item);
+  _renderChatRelayControls();
+  _processRelayQueue();
+}
+
+function _processRelayQueue() {
+  if (window.__fridaysChatRelayBusy) return;
+  const queue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
+  if (!queue.length) {
+    _renderChatRelayControls();
+    return;
+  }
+  const next = queue.shift();
+  window.__fridaysChatRelayQueue = queue;
+  if (!next || !next.target || !next.question) {
+    _renderChatRelayControls();
+    _processRelayQueue();
+    return;
+  }
+  if (next.auto && Number(window.__fridaysChatRelayBudget || 0) === 0) {
+    _renderChatRelayControls();
+    _processRelayQueue();
+    return;
+  }
+  if (next.auto && Number(window.__fridaysChatRelayBudget || 0) > 0) {
+    window.__fridaysChatRelayBudget = Math.max(0, Number(window.__fridaysChatRelayBudget || 0) - 1);
+  }
+  window.__fridaysChatRelayBusy = true;
+  const input = document.getElementById('question-input');
+  if (!input) {
+    window.__fridaysChatRelayBusy = false;
+    _renderChatRelayControls();
+    return;
+  }
+  _applySingleAgentSelection(next.target);
+  input.value = _relayPromptText(next);
+  showToast(`Relaying ${_chatAgentLabel(next.from)} -> ${_chatAgentLabel(next.target)}`, next.auto ? 'info' : 'success');
+  Promise.resolve(sendMessage('relay', next))
+    .finally(() => {
+      window.__fridaysChatRelayBusy = false;
+      _renderChatRelayControls();
+      setTimeout(_processRelayQueue, 0);
+    });
+}
+
 function _chatThinkingHistoryState() {
   window.__fridaysChatJobHistory = window.__fridaysChatJobHistory || {};
   return window.__fridaysChatJobHistory;
+}
+
+function _timelineTextSnippet(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+}
+
+function _recordTimelineEvent(entry) {
+  if (!entry || !entry.bubbleId) return;
+  window.__fridaysChatTimeline = Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : [];
+  window.__fridaysChatTimeline.push({
+    bubbleId: String(entry.bubbleId),
+    sender: String(entry.sender || 'agent').toLowerCase(),
+    label: String(entry.label || _chatAgentLabel(entry.sender || 'agent')),
+    text: _timelineTextSnippet(entry.text || ''),
+    ts: Date.now(),
+    relay: !!entry.relay,
+  });
+  if (window.__fridaysChatTimeline.length > 220) {
+    window.__fridaysChatTimeline = window.__fridaysChatTimeline.slice(-220);
+  }
+  renderChatRelayTimeline();
+}
+
+function clearRelayTimeline() {
+  window.__fridaysChatTimeline = [];
+  renderChatRelayTimeline();
+}
+
+function renderChatRelayTimeline() {
+  const host = document.getElementById('chat-relay-timeline');
+  if (!host) return;
+  const rows = (Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : []).slice(-120);
+  if (!rows.length) {
+    host.innerHTML = '<div style="padding:8px 10px;font-size:10px;color:var(--text-dim);">No relay/response events yet.</div>';
+    return;
+  }
+  host.innerHTML = rows.map(row => {
+    const t = new Date(Number(row.ts || Date.now()));
+    const hh = t.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const chip = row.relay ? 'relay' : 'msg';
+    return `<div class="chat-relay-item">
+      <span class="chat-relay-item-time">${_escapeHtml(hh)}</span>
+      <span class="chat-relay-item-label" title="${_escapeHtml(row.label + ': ' + row.text)}">[${_escapeHtml(chip)}] ${_escapeHtml(row.label)} · ${_escapeHtml(row.text || '(no text)')}</span>
+      <button class="chat-relay-item-jump" onclick="jumpToChatBubble('${_escapeHtml(row.bubbleId)}')">Jump</button>
+    </div>`;
+  }).join('');
+  host.scrollTop = host.scrollHeight;
+}
+
+function jumpToChatBubble(bubbleId) {
+  const id = String(bubbleId || '').trim();
+  if (!id) return;
+  const node = document.getElementById(id);
+  if (!node) return;
+  node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  node.classList.add('reply-targeted');
+  setTimeout(() => node.classList.remove('reply-targeted'), 900);
+}
+
+function clearRelayQueue() {
+  window.__fridaysChatRelayQueue = [];
+  _renderChatRelayControls();
 }
 
 function _formatPendingElapsed(ms) {
@@ -11182,7 +11739,12 @@ function _appendChatBubble(sender, text, opts = {}) {
   const safeSender = _escapeHtml(sender);
   const senderMetaHtml = isUser ? 'you' : _chatAgentIdentityHtml(sender, true);
   const msgId = opts.msgId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
-  const quoted = opts.quoted ? `<div class="chat-meta">↳ replying to ${_escapeHtml(opts.quoted.sender)}: ${_escapeHtml(opts.quoted.preview)}</div>` : '';
+  const quotedItems = Array.isArray(opts.quoted)
+    ? opts.quoted
+    : (opts.quoted ? [opts.quoted] : []);
+  const quoted = quotedItems.length
+    ? `<div class="chat-meta">${quotedItems.map(q => `↳ replying to ${_escapeHtml(q.sender)}: ${_escapeHtml(q.preview)}`).join('<br>')}</div>`
+    : '';
   const extracted = _extractAttachmentsFromMessage(text);
   const parsedSkill = isUser ? { text: extracted.text, events: [] } : _parseSkillEvents(extracted.text);
   const visibleText = parsedSkill.text || (parsedSkill.events.length ? 'Executed skill run(s):' : extracted.text);
@@ -11191,6 +11753,10 @@ function _appendChatBubble(sender, text, opts = {}) {
   const bodyHtml = isUser ? `<span style="white-space:pre-wrap;">${_escapeHtml(visibleText)}</span>` : _renderMarkdown(visibleText);
   const attachmentsHtml = _renderBubbleAttachments(bubbleAttachments);
   const eventsHtml = isUser ? '' : _renderSkillEvents(parsedSkill.events, sender);
+  const relayCandidates = isUser ? [] : _extractAgentDirectedQuestions(visibleText, senderIdentity.key);
+  const relayButtonsHtml = relayCandidates.length
+    ? `<div class="chat-handoff-actions">${relayCandidates.map(c => `<button class="chat-handoff-btn" data-relay-from="${_escapeHtml(senderIdentity.key)}" data-relay-target="${_escapeHtml(c.target)}" data-relay-question="${_escapeHtml(_relayEncode(c.question))}" onclick="queueRelayHandoffFromButton(this)">Route to ${_escapeHtml(_chatAgentLabel(c.target))}</button>`).join('')}</div>`
+    : '';
   const localText = _escapeHtml(String(opts.localPromptText || visibleText || '').slice(0, 4000));
   const userActionRow = isUser
     ? `<div class="chat-actions">
@@ -11204,8 +11770,8 @@ function _appendChatBubble(sender, text, opts = {}) {
     <div class="chat-actions">
       <button class="chat-action-btn" onclick="reactToMessage('${msgId}','👍')">👍</button>
       <button class="chat-action-btn" onclick="reactToMessage('${msgId}','🤔')">🤔</button>
-      <button class="chat-action-btn" data-reply-sender="${safeSender}" data-reply-preview="${_escapeHtml(text).slice(0, 120)}" onclick="setReplyTarget(this.dataset.replySender, this.dataset.replyPreview)">Reply</button>
-      <button class="chat-action-btn" onclick="suggestAnotherAgent('${safeSender}','${_escapeHtml(text).slice(0, 160)}')">Ask another</button>
+      <button class="chat-action-btn" data-reply-sender="${safeSender}" data-reply-preview="${_escapeHtml(text).slice(0, 120)}" data-reply-msgid="${_escapeHtml(String(opts.messageId || ''))}" onclick="setReplyTarget(this.dataset.replySender, this.dataset.replyPreview, this.dataset.replyMsgid)">Reply</button>
+      <button class="chat-action-btn" data-suggest-sender="${safeSender}" data-suggest-preview="${_escapeHtml(text).slice(0, 160)}" onclick="suggestAnotherAgent(this.dataset.suggestSender, this.dataset.suggestPreview)">Ask another</button>
       ${opts.messageId && opts.conversationId
         ? `<button class="chat-action-btn" onclick="deleteChatMessage(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Delete</button>`
         : ''}
@@ -11216,7 +11782,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   const _tsDate = _now.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   const _tsToday = new Date().toDateString() === _now.toDateString();
   const _tsLabel = _tsTime + (_tsToday ? '' : ' · ' + _tsDate);
-  const _tokCount = (!isUser && opts.tokens > 0) ? Number(opts.tokens).toLocaleString() + ' tok' : '';
+  const _tokCount = !isUser ? (Number(opts.tokens || 0).toLocaleString() + ' tok') : '';
   bubble.innerHTML = `
     <div class="chat-meta ${isUser ? '' : 'icon-meta'}" style="display:flex;align-items:center;gap:8px;">
       <span>${senderMetaHtml}</span>
@@ -11226,14 +11792,24 @@ function _appendChatBubble(sender, text, opts = {}) {
     <div class="chat-text">${bodyHtml}</div>
     ${attachmentsHtml}
     ${eventsHtml}
+    ${relayButtonsHtml}
     ${actionRow}
   `;
 
   bubble.dataset.msgId = msgId;
+  bubble.id = 'chat-bubble-' + String(msgId).replace(/[^a-zA-Z0-9_-]/g, '');
   if (opts.messageId) bubble.dataset.messageId = String(opts.messageId);
   if (opts.conversationId) bubble.dataset.conversationId = String(opts.conversationId);
   applyBubbleColorOverrideToNode(bubble);
   messages.appendChild(bubble);
+  _recordTimelineEvent({
+    bubbleId: bubble.id,
+    sender: senderKey,
+    label: _chatAgentLabel(senderKey),
+    text: visibleText,
+    relay: !!(opts.relayMeta || /^\[Relay\s/i.test(String(visibleText || ''))),
+  });
+  _applyReplyTargetHighlights();
   messages.scrollTop = messages.scrollHeight;
 }
 
@@ -11305,36 +11881,75 @@ function reactToMessage(msgId, emoji) {
   el.appendChild(badge);
 }
 
-function setReplyTarget(sender, preview) {
-  const normalizedSender = (sender || 'agent').toLowerCase();
-  const trimmedPreview = String(preview || '').replace(/\s+/g, ' ').trim().slice(0, 180);
-  window.__fridaysReplyTarget = {
-    sender: normalizedSender,
-    preview: trimmedPreview,
-  };
+function _applyReplyTargetHighlights() {
+  document.querySelectorAll('.chat-bubble.reply-targeted').forEach(n => n.classList.remove('reply-targeted'));
+  const targets = Array.isArray(window.__fridaysReplyTargets) ? window.__fridaysReplyTargets : [];
+  targets.forEach(t => {
+    const msgId = String(t && t.messageId || '').trim();
+    if (!msgId) return;
+    const node = document.querySelector('.chat-bubble[data-message-id="' + msgId + '"]');
+    if (node) node.classList.add('reply-targeted');
+  });
+}
 
-  if (window.__fridaysChatEnabledAgents[normalizedSender] !== undefined) {
-    window.__fridaysChatEnabledAgents[normalizedSender] = true;
+function setReplyTarget(sender, preview, messageId) {
+  const normalizedSender = String(sender || 'agent').toLowerCase().trim();
+  const trimmedPreview = String(preview || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+  const normalizedMsgId = String(messageId || '').trim();
+  if (!trimmedPreview) return;
+
+  const next = Array.isArray(window.__fridaysReplyTargets) ? window.__fridaysReplyTargets.slice() : [];
+  const existingIdx = next.findIndex(t => t && t.sender === normalizedSender && t.preview === trimmedPreview && String(t.messageId || '') === normalizedMsgId);
+  const target = { sender: normalizedSender, preview: trimmedPreview, messageId: normalizedMsgId };
+  if (existingIdx >= 0) next.splice(existingIdx, 1);
+  next.push(target);
+  window.__fridaysReplyTargets = next;
+
+  const senderTargets = new Set(
+    next
+      .map(t => String(t && t.sender || '').toLowerCase())
+      .filter(s => Object.prototype.hasOwnProperty.call(window.__fridaysChatEnabledAgents || {}, s))
+  );
+  if (senderTargets.size) {
+    const allAgentKeys = Object.keys(window.__fridaysChatEnabledAgents || {});
+    allAgentKeys.forEach(k => {
+      window.__fridaysChatEnabledAgents[k] = senderTargets.has(k);
+    });
     persistThreadAgentSelection();
     renderChatAgentToggles();
     updateComposerMeta();
+    updateChatStatusPills();
   }
 
   const input = document.getElementById('question-input');
   if (input && !String(input.value || '').trim()) {
-    const targetLabel = _chatAgentLabel(normalizedSender);
-    input.value = `@${targetLabel}\n> ${trimmedPreview}\n\n`;
+    const tags = next.map(t => '@' + _chatAgentLabel(t.sender)).join(' ');
+    const quotes = next.map(t => `> [${_chatAgentLabel(t.sender)}] ${t.preview}`).join('\n');
+    input.value = `${tags}\n${quotes}\n\n`;
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
   }
 
   renderReplyBanner();
+  _applyReplyTargetHighlights();
   updateChatSpellHelper();
 }
 
 function clearReplyTarget() {
-  window.__fridaysReplyTarget = null;
+  window.__fridaysReplyTargets = [];
   renderReplyBanner();
+  _applyReplyTargetHighlights();
+}
+
+function clearReplyTargetAt(index) {
+  const idx = Number(index);
+  if (!Number.isFinite(idx) || idx < 0) return;
+  const next = Array.isArray(window.__fridaysReplyTargets) ? window.__fridaysReplyTargets.slice() : [];
+  if (idx >= next.length) return;
+  next.splice(idx, 1);
+  window.__fridaysReplyTargets = next;
+  renderReplyBanner();
+  _applyReplyTargetHighlights();
 }
 
 function renderReplyBanner() {
@@ -11347,14 +11962,23 @@ function renderReplyBanner() {
     banner.className = 'reply-banner';
     wrapper.prepend(banner);
   }
-  if (!window.__fridaysReplyTarget) {
+  const targets = Array.isArray(window.__fridaysReplyTargets) ? window.__fridaysReplyTargets : [];
+  if (!targets.length) {
     banner.style.display = 'none';
     return;
   }
   banner.style.display = 'flex';
+  const targetNames = Array.from(new Set(targets.map(t => _chatAgentLabel(t.sender))));
   banner.innerHTML = `
-    <span>Replying to <strong>${_escapeHtml(window.__fridaysReplyTarget.sender)}</strong>: ${_escapeHtml(window.__fridaysReplyTarget.preview)}</span>
-    <button class="reply-clear-btn" onclick="clearReplyTarget()">Clear</button>
+    <span>Replying to <strong>${targets.length}</strong> message(s) · ${_escapeHtml(targetNames.join(', '))}</span>
+    <span style="display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;">
+      ${targets.map((t, idx) => `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border:1px solid var(--border);border-radius:999px;font-size:10px;max-width:240px;">
+        <span style="white-space:nowrap;color:var(--text-dim);">${_escapeHtml(_chatAgentLabel(t.sender))}:</span>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${_escapeHtml(t.preview)}</span>
+        <button class="reply-clear-btn" style="padding:0 4px;line-height:1.2;" onclick="clearReplyTargetAt(${idx})">x</button>
+      </span>`).join('')}
+    </span>
+    <button class="reply-clear-btn" onclick="clearReplyTarget()">Clear all</button>
   `;
 }
 
@@ -11374,15 +11998,21 @@ function suggestAnotherAgent(sender, preview) {
   const normalized = String(sender || '').toLowerCase();
   const suggested = map[normalized] || 'qwen';
   const suggestedLabel = _chatAgentLabel(suggested);
+  const sourceLabel = _chatAgentLabel(normalized);
   const checkbox = document.querySelector('.chat-agent-toggle[value="' + suggested + '"]');
   if (checkbox) {
     checkbox.checked = true;
     window.__fridaysChatEnabledAgents[suggested] = true;
     persistThreadAgentSelection();
+    renderChatAgentToggles();
+    updateComposerMeta();
+    updateChatStatusPills();
   }
   const input = document.getElementById('question-input');
   if (input && !input.value.trim()) {
-    input.value = `[Thought from ${_chatAgentLabel(normalized)}] ${String(preview || '').slice(0, 130)}\n\n${suggestedLabel}, what is your take?`;
+    input.value = `[Thought from ${sourceLabel}] ${String(preview || '').slice(0, 130)}\n\n${suggestedLabel}, what is your take?`;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
   }
   showToast('Suggested ' + suggestedLabel + ' for a second opinion', 'info');
 }
@@ -11756,6 +12386,8 @@ function _renderWelcome() {
   const messages = _chatMessagesEl();
   if (!messages) return;
   _syncThinkingBubbles([]);
+  window.__fridaysChatTimeline = [];
+  renderChatRelayTimeline();
   messages.innerHTML = `
     <div class="welcome">
       <h3>Good to see you, Ghost.</h3>
@@ -11824,6 +12456,8 @@ function renderChatMessages(rows) {
     _renderWelcome();
     return;
   }
+  window.__fridaysChatTimeline = [];
+  renderChatRelayTimeline();
   messages.innerHTML = '';
   rows.forEach(row => {
     const sender = (row.sender || 'agent').toString().toLowerCase();
@@ -11843,6 +12477,7 @@ function renderChatMessages(rows) {
       _appendChatBubble(sender, content, {
         messageId: msgId,
         conversationId: convId,
+        tokens: Number(row.tokens_used || 0),
       });
     }
   });
@@ -12084,6 +12719,8 @@ function initializeChatPanel() {
   initChatAttachmentDnD();
   renderChatThreadRail();
   initChatSpellHelper();
+  _renderChatRelayControls();
+  renderChatRelayTimeline();
   updateComposerMeta();
   updateNotificationControls();
   updateChatStatusPills();
@@ -12120,9 +12757,10 @@ function initChatSpellHelper() {
   updateChatStatusPills();
 }
 
-function sendMessage() {
+function sendMessage(source = 'user', relayMeta = null) {
   const input = document.getElementById('question-input');
   const messages = _chatMessagesEl();
+  if (!input || !messages) return Promise.resolve(false);
   const msg = input.value.trim();
   const selectedAgents = getEnabledChatAgents();
   let convId = window.__fridaysChatConversationId || null;
@@ -12136,14 +12774,26 @@ function sendMessage() {
 
   const hasAttachments = (window.__fridaysChatAttachments || []).length > 0;
   const contextCfg = getChatContextConfig();
-  if (!msg && !hasAttachments) return;
+  if (source === 'relay' && window.__fridaysChatRelayForceFull) {
+    contextCfg.historyMode = 'full';
+    contextCfg.historyLimit = 30;
+  }
+  if (!msg && !hasAttachments) return Promise.resolve(false);
   if (!selectedAgents.length) {
     showToast('Turn on at least one agent toggle', 'error');
-    return;
+    return Promise.resolve(false);
+  }
+  if (source === 'user') {
+    const relayCfg = _chatRelayConfig();
+    window.__fridaysChatRelayBudget = relayCfg.infinite ? -1 : relayCfg.maxPerTurn;
+    window.__fridaysChatRelayQueue = [];
+    window.__fridaysChatRelayBusy = false;
+    _renderChatRelayControls();
   }
 
-  const wireMsg = window.__fridaysReplyTarget
-    ? `[Reply to ${window.__fridaysReplyTarget.sender}]\nQuoted: "${window.__fridaysReplyTarget.preview}"\n\n${msg}`
+  const replyTargets = Array.isArray(window.__fridaysReplyTargets) ? window.__fridaysReplyTargets : [];
+  const wireMsg = replyTargets.length
+    ? `[Reply to ${Array.from(new Set(replyTargets.map(t => t.sender))).join(', ')}]\nQuoted:\n${replyTargets.map(t => `- ${t.sender}: "${t.preview}"`).join('\n')}\n\n${msg}`
     : msg;
   const attachmentPayload = _buildAttachmentPayload();
   const wireMsgWithAttachments = wireMsg + (attachmentPayload.wireBlock || '');
@@ -12152,9 +12802,10 @@ function sendMessage() {
     ? '[' + _chatAgentListText(selectedAgents) + '] ' + msg
     : '[' + _chatAgentListText(selectedAgents) + '] (attachment)';
   _appendChatBubble('you', userBubbleText, {
-    quoted: window.__fridaysReplyTarget || null
+    quoted: replyTargets.length ? replyTargets : null
     , localPromptText: msg || ''
     , attachments: attachmentPayload.bubbleAttachments || []
+    , relayMeta: relayMeta || null
   });
 
   const estMs = _estimateBatchMs(selectedAgents);
@@ -12169,7 +12820,7 @@ function sendMessage() {
   updateComposerMeta();
   updateChatSpellHelper();
   
-  fetch('/api/chat', {
+  return fetch('/api/chat', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -12213,6 +12864,16 @@ function sendMessage() {
       immediateResponses.forEach(entry => {
         _appendChatBubble(entry.agent || 'agent', entry.response || '...', { tokens: entry.tokens || 0 });
       });
+
+      const discovered = [];
+      immediateResponses.forEach(entry => {
+        const from = String(entry.agent || 'agent').toLowerCase();
+        _extractAgentDirectedQuestions(entry.response || '', from).forEach(h => discovered.push(h));
+      });
+      if (window.__fridaysChatRelayAuto && discovered.length) {
+        discovered.forEach(h => queueRelayHandoff(h, true));
+      }
+
       const first = immediateResponses[0];
       notifyDesktop(
         'Fridays · ' + _chatAgentLabel(first.agent || 'agent'),
@@ -12270,6 +12931,12 @@ function sendMessage() {
       window.__fridaysChatPendingPollTimer = null;
     }
     _appendChatBubble('system', 'Error: ' + e.message);
+  })
+  .finally(() => {
+    _renderChatRelayControls();
+    if (!window.__fridaysChatRelayBusy) {
+      _processRelayQueue();
+    }
   });
 }
 
@@ -12284,8 +12951,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Update time-of-day theme every minute
   setInterval(() => {
-    const settings = JSON.parse(localStorage.getItem('fridays-settings') || '{"time":"auto"}');
-    if (settings.time === 'auto') {
+    const selectedMode = String(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto').toLowerCase();
+    if (selectedMode === 'auto') {
       applyTimeTheme('auto');
     }
   }, 60000);
