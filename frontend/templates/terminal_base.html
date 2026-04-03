@@ -11240,6 +11240,18 @@ function _chatAgentListText(agentKeys) {
     .join(', ');
 }
 
+function _chatTargetsPrefixFromRaw(rawTargets) {
+  const raw = String(rawTargets || '').trim();
+  if (!raw) return '';
+  const agents = raw
+    .split(',')
+    .map(a => String(a || '').trim().toLowerCase())
+    .filter(Boolean)
+    .filter(a => _isKnownChatAgent(a));
+  if (!agents.length) return '';
+  return '[' + _chatAgentListText(agents) + '] ';
+}
+
 function _chatAgentMeta(sender) {
   const raw = String(sender || '').trim().toLowerCase();
   const normalized = raw.replace(/\[.*?\]/g, '').trim();
@@ -11427,12 +11439,14 @@ function _extractUserRequestedHandoffs(message, selectedAgents) {
       new RegExp(`(?:^|\\b)ask\\s+${escaped}[\\s,:-]+(.{6,260})$`, 'i'),
       new RegExp(`(?:^|\\b)have\\s+${escaped}\\s+(.{6,260})$`, 'i'),
       new RegExp(`(?:^|\\b)can\\s+${escaped}\\s+(.{6,260})$`, 'i'),
+      new RegExp(`(?:^|\\b)if\\s+${escaped}\\s+(?:is|\\'s|is\\s+currently)\\s+online\\b`, 'i'),
     ];
 
     for (const re of rules) {
       const m = text.match(re);
-      if (!m || !m[1]) continue;
-      const question = _normalizeRelayQuestion(m[1]);
+      if (!m) continue;
+      const derived = m[1] ? m[1] : `are you online`;
+      const question = _normalizeRelayQuestion(derived);
       if (!question) continue;
       const sig = `${target}|${question.toLowerCase()}`;
       if (seen.has(sig)) continue;
@@ -12102,65 +12116,88 @@ function _estimateBatchMs(agents) {
 function _createLoadingPanel(agents) {
   const messages = _chatMessagesEl();
   if (!messages) return null;
-  const panel = document.createElement('div');
-  panel.className = 'chat-status-card';
-  panel.innerHTML = `
-    <div class="chat-status-head">
-      <div>
-        <div class="chat-status-title">Swarm Runtime</div>
-        <div class="chat-status-subtitle">Live progress for the agents working on this turn</div>
-      </div>
-      <button class="chat-action-btn" onclick="stopPendingAgents()">Stop</button>
-    </div>
-    <div class="chat-text" id="chat-progress-head">Awaiting ${agents.length} agent ack(s)...</div>
-    <div id="chat-progress-bars" class="chat-progress-grid">
-      ${agents.map(a => `
-        <div class="chat-progress-row" data-agent="${a}">
-          <div class="chat-progress-row-head">
-            <span style="display:inline-flex;align-items:center;gap:6px;">${_chatAgentIdentityHtml(a, false)}</span>
-            <span data-state="${a}" style="color:var(--text-dim);">alive · queued</span>
-          </div>
-          <div class="chat-progress-track">
-            <div class="chat-progress-fill" data-fill="${a}"></div>
-          </div>
+  let panel = document.getElementById('chat-shared-loading-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'chat-shared-loading-panel';
+    panel.className = 'chat-status-card';
+    panel.innerHTML = `
+      <div class="chat-status-head">
+        <div>
+          <div class="chat-status-title">Swarm Runtime</div>
+          <div class="chat-status-subtitle">Live progress for the agents working on this turn</div>
         </div>
-      `).join('')}
-    </div>
-    <div id="chat-progress-eta" class="chat-meta" style="margin-top:10px;">Collecting per-agent ETA...</div>
-  `;
-  messages.appendChild(panel);
+        <button class="chat-action-btn" onclick="stopPendingAgents()">Stop</button>
+      </div>
+      <div class="chat-text" id="chat-progress-head">Awaiting agent acknowledgement...</div>
+      <div id="chat-progress-bars" class="chat-progress-grid"></div>
+      <div id="chat-progress-eta" class="chat-meta" style="margin-top:10px;">Collecting per-agent ETA...</div>
+    `;
+    messages.appendChild(panel);
+  }
+
+  const bars = panel.querySelector('#chat-progress-bars');
+  (agents || []).forEach(a => {
+    if (!bars || bars.querySelector('.chat-progress-row[data-agent="' + a + '"]')) return;
+    const row = document.createElement('div');
+    row.className = 'chat-progress-row';
+    row.dataset.agent = a;
+    row.innerHTML = `
+      <div class="chat-progress-row-head">
+        <span style="display:inline-flex;align-items:center;gap:6px;">${_chatAgentIdentityHtml(a, false)}</span>
+        <span data-state="${a}" style="color:var(--text-dim);">alive · queued</span>
+      </div>
+      <div class="chat-progress-track">
+        <div class="chat-progress-fill" data-fill="${a}"></div>
+      </div>
+    `;
+    bars.appendChild(row);
+  });
+
+  const headEl = panel.querySelector('#chat-progress-head');
+  if (headEl) headEl.textContent = `Awaiting ${Math.max(1, (agents || []).length)} agent ack(s)...`;
   messages.scrollTop = messages.scrollHeight;
   return panel;
 }
 
 function _startLoadingTicker(panel, agents, estimateMs) {
   if (!panel) return { stop: () => {} };
-  const started = Date.now();
+  const shared = window.__fridaysSharedLoadingState || {
+    timer: null,
+    started: Date.now(),
+    activeRequests: 0,
+    perAgentTargetMs: {},
+  };
+  window.__fridaysSharedLoadingState = shared;
+  shared.activeRequests += 1;
+  shared.started = shared.started || Date.now();
   const etaEl = panel.querySelector('#chat-progress-eta');
   const headEl = panel.querySelector('#chat-progress-head');
   let stickyPending = false;
-  const perAgentTargetMs = {};
   agents.forEach(a => {
-    perAgentTargetMs[a] = Math.max(1000, Number(estimateMs || 12000));
+    shared.perAgentTargetMs[a] = Math.max(1000, Number(shared.perAgentTargetMs[a] || estimateMs || 12000));
   });
-  const timer = setInterval(() => {
-    const elapsed = Date.now() - started;
-    agents.forEach(a => {
-      const target = Math.max(1000, Number(perAgentTargetMs[a] || estimateMs || 12000));
-      const pct = Math.min(95, Math.max(4, Math.floor((elapsed / target) * 100)));
-      const fill = panel.querySelector('[data-fill="' + a + '"]');
-      if (fill) fill.style.width = pct + '%';
-    });
-    const etaMs = Math.max(0, estimateMs - elapsed);
-    if (etaEl) {
-      etaEl.textContent = stickyPending
-        ? 'Still running. Tracking live model progress...'
-        : ('ETA ~ ' + (etaMs / 1000).toFixed(1) + 's');
-    }
-    if (headEl && !stickyPending) headEl.textContent = 'Waiting for agent acknowledgement...';
-  }, 140);
+  if (!shared.timer) {
+    shared.timer = setInterval(() => {
+      const elapsed = Date.now() - shared.started;
+      Object.keys(shared.perAgentTargetMs || {}).forEach(a => {
+        const target = Math.max(1000, Number(shared.perAgentTargetMs[a] || estimateMs || 12000));
+        const pct = Math.min(95, Math.max(4, Math.floor((elapsed / target) * 100)));
+        const fill = panel.querySelector('[data-fill="' + a + '"]');
+        if (fill) fill.style.width = pct + '%';
+      });
+      const etaMs = Math.max(0, Number(estimateMs || 12000) - elapsed);
+      if (etaEl) {
+        etaEl.textContent = stickyPending
+          ? 'Still running. Tracking live model progress...'
+          : ('ETA ~ ' + (etaMs / 1000).toFixed(1) + 's');
+      }
+      if (headEl && !stickyPending) headEl.textContent = 'Waiting for agent acknowledgement...';
+    }, 140);
+  }
 
-  return {
+  const ctl = {
+    _stopped: false,
     setPending: (jobs) => {
       stickyPending = true;
       if (headEl) headEl.textContent = 'Long-running response detected. Live stage updates enabled.';
@@ -12168,7 +12205,7 @@ function _startLoadingTicker(panel, agents, estimateMs) {
         jobs.forEach(j => {
           if (!j || !j.agent) return;
           const etaSeconds = Number(j.eta_seconds || 0);
-          if (etaSeconds > 0) perAgentTargetMs[j.agent] = etaSeconds * 1000;
+          if (etaSeconds > 0) shared.perAgentTargetMs[j.agent] = etaSeconds * 1000;
           const state = panel.querySelector('[data-state="' + j.agent + '"]');
           if (state) {
             const runtimeClass = j.runtime_class ? ('[' + j.runtime_class + '] ') : '';
@@ -12187,7 +12224,7 @@ function _startLoadingTicker(panel, agents, estimateMs) {
         if (!j || !j.agent) return;
         const etaRemaining = Number(j.eta_remaining_seconds || 0);
         const etaSeconds = Number(j.eta_seconds || 0);
-        if (etaSeconds > 0) perAgentTargetMs[j.agent] = etaSeconds * 1000;
+        if (etaSeconds > 0) shared.perAgentTargetMs[j.agent] = etaSeconds * 1000;
         const state = panel.querySelector('[data-state="' + j.agent + '"]');
         if (state) {
           const runtimeClass = j.runtime_class ? ('[' + j.runtime_class + '] ') : '';
@@ -12207,7 +12244,7 @@ function _startLoadingTicker(panel, agents, estimateMs) {
           fill.style.background = '#f44336';
         } else {
           running += 1;
-          const target = Math.max(1000, Number(perAgentTargetMs[j.agent] || estimateMs || 12000));
+          const target = Math.max(1000, Number(shared.perAgentTargetMs[j.agent] || estimateMs || 12000));
           const pct = Math.min(98, Math.max(35, Math.floor((Number(j.elapsed_ms || 0) / target) * 100)));
           fill.style.width = pct + '%';
         }
@@ -12230,12 +12267,9 @@ function _startLoadingTicker(panel, agents, estimateMs) {
       }
     },
     stop: (responses) => {
-      clearInterval(timer);
-      agents.forEach(a => {
-        const fill = panel.querySelector('[data-fill="' + a + '"]');
-        if (fill) fill.style.width = '100%';
-      });
-      if (etaEl) etaEl.textContent = 'Completed';
+      if (ctl._stopped) return;
+      ctl._stopped = true;
+      shared.activeRequests = Math.max(0, Number(shared.activeRequests || 0) - 1);
       if (Array.isArray(responses)) {
         const profile = _getLatencyProfile();
         responses.forEach(r => {
@@ -12246,29 +12280,56 @@ function _startLoadingTicker(panel, agents, estimateMs) {
         });
         _saveLatencyProfile(profile);
       }
+      if (shared.activeRequests > 0 || (window.__fridaysChatPendingJobIds || []).length) {
+        if (headEl) headEl.textContent = 'Waiting for remaining request(s)...';
+        return;
+      }
+      if (shared.timer) {
+        clearInterval(shared.timer);
+      }
+      shared.timer = null;
+      shared.started = Date.now();
+      shared.perAgentTargetMs = {};
+      if (etaEl) etaEl.textContent = 'Completed';
       setTimeout(() => panel.remove(), 320);
     }
   };
+
+  return ctl;
 }
 
 function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
   if (!conversationId || !Array.isArray(jobIds) || !jobIds.length) return;
-  window.__fridaysChatPendingConversationId = conversationId;
-  window.__fridaysChatPendingJobIds = jobIds.slice();
-  if (window.__fridaysChatPendingPollTimer) {
+  const sameConv = Number(window.__fridaysChatPendingConversationId || 0) === Number(conversationId || 0);
+  if (!sameConv && window.__fridaysChatPendingPollTimer) {
     clearInterval(window.__fridaysChatPendingPollTimer);
     window.__fridaysChatPendingPollTimer = null;
+    window.__fridaysChatPendingJobIds = [];
+    window.__fridaysChatPendingLoadCtls = [];
   }
+  window.__fridaysChatPendingConversationId = conversationId;
+  const merged = Array.from(new Set([...(window.__fridaysChatPendingJobIds || []), ...jobIds]));
+  window.__fridaysChatPendingJobIds = merged;
+  window.__fridaysChatPendingLoadCtls = Array.isArray(window.__fridaysChatPendingLoadCtls) ? window.__fridaysChatPendingLoadCtls : [];
+  if (loadingCtl && !window.__fridaysChatPendingLoadCtls.includes(loadingCtl)) {
+    window.__fridaysChatPendingLoadCtls.push(loadingCtl);
+  }
+  if (window.__fridaysChatPendingPollTimer) return;
+
   let ticks = 0;
   const maxTicks = 180; // ~6 minutes at 2s interval
   const timer = setInterval(() => {
     ticks += 1;
-    const q = encodeURIComponent(jobIds.join(','));
+    const ids = (window.__fridaysChatPendingJobIds || []).slice();
+    if (!ids.length) return;
+    const q = encodeURIComponent(ids.join(','));
     fetch('/api/chat/jobs/status?conversation_id=' + encodeURIComponent(conversationId) + '&job_ids=' + q)
       .then(r => r.json())
       .then(data => {
         const jobs = (data && Array.isArray(data.jobs)) ? data.jobs : [];
-        loadingCtl.updateJobs(jobs);
+        (window.__fridaysChatPendingLoadCtls || []).forEach(ctl => {
+          try { ctl.updateJobs(jobs); } catch (_) {}
+        });
         _renderThreadRuntimePanel(jobs, 'live');
         _syncThinkingBubbles(jobs);
         const done = jobs.every(j => j.status === 'completed' || j.status === 'failed' || j.status === 'cancelled');
@@ -12278,8 +12339,12 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
             window.__fridaysChatPendingPollTimer = null;
             window.__fridaysChatPendingJobIds = [];
             window.__fridaysChatPendingConversationId = null;
+            const loadCtls = (window.__fridaysChatPendingLoadCtls || []).slice();
+            window.__fridaysChatPendingLoadCtls = [];
+            loadCtls.forEach(ctl => {
+              try { ctl.stop([]); } catch (_) {}
+            });
           }
-          loadingCtl.stop([]);
           loadConversationMessages(conversationId);
           refreshChatThreadList(conversationId);
           pollActiveThreadRuntime(true);
@@ -12308,8 +12373,12 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
             window.__fridaysChatPendingPollTimer = null;
             window.__fridaysChatPendingJobIds = [];
             window.__fridaysChatPendingConversationId = null;
+            const loadCtls = (window.__fridaysChatPendingLoadCtls || []).slice();
+            window.__fridaysChatPendingLoadCtls = [];
+            loadCtls.forEach(ctl => {
+              try { ctl.stop([]); } catch (_) {}
+            });
           }
-          loadingCtl.stop([]);
           _appendChatBubble('system', 'Stopped waiting for background response status (timeout).');
           notifyDesktop('Fridays Chat', 'Background run timed out while polling status.', {
             tag: 'fridays-chat-timeout-' + String(conversationId || 'none')
@@ -12343,6 +12412,11 @@ async function stopPendingAgents() {
       clearInterval(window.__fridaysChatPendingPollTimer);
       window.__fridaysChatPendingPollTimer = null;
     }
+    const loadCtls = (window.__fridaysChatPendingLoadCtls || []).slice();
+    window.__fridaysChatPendingLoadCtls = [];
+    loadCtls.forEach(ctl => {
+      try { ctl.stop([]); } catch (_) {}
+    });
     window.__fridaysChatPendingJobIds = [];
     window.__fridaysChatPendingConversationId = null;
     if (convId) {
@@ -12516,7 +12590,11 @@ function renderChatMessages(rows) {
     const convId = Number(window.__fridaysChatConversationId || 0);
     if (sender === 'user') {
       const extracted = _extractAttachmentsFromMessage(content);
-      _appendChatBubble('you', content, {
+      const prefix = _chatTargetsPrefixFromRaw(row.to_agent);
+      const renderedText = /^\s*\[[^\]]+\]\s/.test(String(content || ''))
+        ? content
+        : (prefix ? (prefix + content) : content);
+      _appendChatBubble('you', renderedText, {
         messageId: msgId,
         conversationId: convId,
         editable: true,
