@@ -10488,6 +10488,7 @@ window.__fridaysChatRelayForceFull = window.__fridaysChatRelayForceFull ?? (loca
 window.__fridaysChatRelayBudget = Number(window.__fridaysChatRelayBudget || 0);
 window.__fridaysChatRelayQueue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
 window.__fridaysChatRelayBusy = !!window.__fridaysChatRelayBusy;
+window.__fridaysChatRelayProcessing = !!window.__fridaysChatRelayProcessing;
 window.__fridaysChatRelayActive = !!window.__fridaysChatRelayActive;
 window.__fridaysChatRelayRetryTimer = window.__fridaysChatRelayRetryTimer || null;
 window.__fridaysChatRelayHoldReason = String(window.__fridaysChatRelayHoldReason || '');
@@ -12905,7 +12906,9 @@ function queueRelayHandoff(handoff, autoMode = false) {
 }
 
 async function _processRelayQueue() {
-  if (window.__fridaysChatRelayBusy) return;
+  if (window.__fridaysChatRelayBusy || window.__fridaysChatRelayProcessing) return;
+  window.__fridaysChatRelayProcessing = true;
+  try {
   const queue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
   window.__fridaysChatRelayActive = queue.length > 0;
   if (!queue.length) {
@@ -12937,9 +12940,11 @@ async function _processRelayQueue() {
         ? `turn budget exhausted (${dropped} deferred)`
         : 'turn budget exhausted';
       window.__fridaysChatRelayHoldStamp = Date.now();
-      window.__fridaysChatRelayLastHoldKey = '';
+      const deferKey = `turn-budget-deferred:${dropped}`;
+      const shouldLog = window.__fridaysChatRelayLastHoldKey !== deferKey;
+      window.__fridaysChatRelayLastHoldKey = deferKey;
       _relayClearRetryTimer();
-      if (dropped > 0) {
+      if (dropped > 0 && shouldLog) {
         _appendInfoLogEntry('duck', `Turn budget exhausted; deferred ${dropped} auto relay ticket${dropped === 1 ? '' : 's'} until the next user turn.`, true);
       }
       _renderChatRelayControls();
@@ -12995,6 +13000,9 @@ async function _processRelayQueue() {
       pollActiveThreadRuntime(true);
       setTimeout(() => _processRelayQueue(), 0);
     });
+  } finally {
+    window.__fridaysChatRelayProcessing = false;
+  }
 }
 
 function _chatThinkingHistoryState() {
