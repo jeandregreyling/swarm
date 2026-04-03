@@ -14855,8 +14855,18 @@ function sendMessage(source = 'user', relayMeta = null) {
       mergedSeen.add(key);
       mergedHandoffs.push(h);
     });
-    if (window.__fridaysChatRelayAuto && mergedHandoffs.length) {
-      mergedHandoffs.forEach(h => queueRelayHandoff(h, true));
+    if (mergedHandoffs.length) {
+      mergedHandoffs.forEach(h => {
+        const isUserDirected = String(h?.source || '').toLowerCase() === 'user-intent';
+        if (isUserDirected) {
+          // Explicit user-directed handoffs should run even when auto relay budget is exhausted.
+          queueRelayHandoff(h, false);
+          return;
+        }
+        if (window.__fridaysChatRelayAuto) {
+          queueRelayHandoff(h, true);
+        }
+      });
     }
 
     if (pendingResponses.length) {
