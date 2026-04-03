@@ -3386,10 +3386,7 @@ input[type="range"]::-moz-range-thumb:hover {
           <div id="chat-section-main-content" class="chat-section-content">
             <div id="chat-thread-runtime" class="chat-thread-runtime"></div>
             <div id="chat-messages" style="flex:1; overflow-y: auto;">
-              <div class="welcome">
-                <h3>Good to see you, Ghost.</h3>
-                <p>Seven + Fridays. Ask anything — or run skills, schedule tasks, browse the web.</p>
-              </div>
+              <div class="welcome" style="display:none;"></div>
             </div>
           </div>
         </div>
@@ -12086,15 +12083,20 @@ function _chatAgentListText(agentKeys) {
 }
 
 function _chatTargetsPrefixFromRaw(rawTargets) {
+  const agents = _chatTargetAgentsFromRaw(rawTargets);
+  if (!agents.length) return '';
+  return '[' + _chatAgentListText(agents) + '] ';
+}
+
+function _chatTargetAgentsFromRaw(rawTargets) {
   const raw = String(rawTargets || '').trim();
-  if (!raw) return '';
+  if (!raw) return [];
   const agents = raw
     .split(',')
     .map(a => String(a || '').trim().toLowerCase())
     .filter(Boolean)
     .filter(a => _isKnownChatAgent(a));
-  if (!agents.length) return '';
-  return '[' + _chatAgentListText(agents) + '] ';
+  return agents;
 }
 
 function _chatAgentMeta(sender) {
@@ -12940,8 +12942,11 @@ function _appendChatBubble(sender, text, opts = {}) {
     : '';
   const replayText = _escapeHtml(String(visibleText || '').replace(/\s+/g, ' ').trim().slice(0, 1800));
   const localText = _escapeHtml(String(opts.localPromptText || visibleText || '').slice(0, 4000));
+  const selectedAgentsRaw = Array.isArray(opts.selectedAgents) ? opts.selectedAgents : [];
+  const selectedAgentsCsv = _escapeHtml(selectedAgentsRaw.map(a => String(a || '').toLowerCase().trim()).filter(Boolean).join(','));
   const userActionRow = isUser
     ? `<div class="chat-actions">
+      <button class="chat-action-btn" onclick="resendUserMessage('${localText}', '${selectedAgentsCsv}')">Resend</button>
       ${opts.editable && opts.messageId && opts.conversationId
         ? `<button class="chat-action-btn" onclick="editOwnPrompt(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Change</button>
            <button class="chat-action-btn" onclick="deleteOwnPrompt(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Delete</button>`
@@ -12954,8 +12959,7 @@ function _appendChatBubble(sender, text, opts = {}) {
       <button class="chat-action-btn" onclick="reactToMessage('${msgId}','🤔')">🤔</button>
       <button class="chat-action-btn" data-reply-sender="${safeSender}" data-reply-preview="${_escapeHtml(text).slice(0, 120)}" data-reply-msgid="${_escapeHtml(String(opts.messageId || ''))}" onclick="setReplyTarget(this.dataset.replySender, this.dataset.replyPreview, this.dataset.replyMsgid)">Reply</button>
       <button class="chat-action-btn" data-suggest-sender="${safeSender}" data-suggest-preview="${_escapeHtml(text).slice(0, 160)}" onclick="showAgentPickerDropdown(this, this.dataset.suggestSender, this.dataset.suggestPreview)">Ask another</button>
-      <button class="chat-action-btn" data-agent="${_escapeHtml(senderIdentity.key)}" data-text="${replayText}" onclick="resendAgentTask(this.dataset.agent, this.dataset.text, false)">Resend</button>
-      <button class="chat-action-btn" data-agent="${_escapeHtml(senderIdentity.key)}" data-text="${replayText}" data-msgid="${_escapeHtml(String(msgId))}" onclick="resendAgentTask(this.dataset.agent, this.dataset.text, true, this.dataset.msgid)">Reprocess</button>
+      <button class="chat-action-btn" data-agent="${_escapeHtml(senderIdentity.key)}" data-text="${replayText}" data-msgid="${_escapeHtml(String(msgId))}" onclick="reprocessAgentMessage(this.dataset.agent, this.dataset.text, this.dataset.msgid)">Reprocess</button>
       ${opts.messageId && opts.conversationId
         ? `<button class="chat-action-btn" onclick="deleteChatMessage(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Delete</button>`
         : ''}
@@ -13010,6 +13014,10 @@ async function editOwnPrompt(convId, msgId) {
   const nextText = String(edited || '').trim();
   if (!nextText) {
     showToast('Prompt cannot be empty', 'error');
+    return;
+  }
+  if (nextText === String(currentText || '').trim()) {
+    showToast('No changes detected', 'info');
     return;
   }
   try {
@@ -13069,29 +13077,53 @@ function reactToMessage(msgId, emoji) {
   el.appendChild(badge);
 }
 
-function resendAgentTask(agentKey, previousText, reprocess = false, bubbleMsgId = '') {
+function resendUserMessage(previousText, targetAgentsCsv = '') {
+  const seed = String(previousText || '').trim();
+  if (!seed) {
+    showToast('No message text available to resend', 'error');
+    return;
+  }
+  const input = document.getElementById('question-input');
+  if (!input) return;
+  input.value = seed;
+
+  const targetAgents = String(targetAgentsCsv || '')
+    .split(',')
+    .map(a => String(a || '').trim().toLowerCase())
+    .filter(a => a && _isKnownChatAgent(a));
+  if (targetAgents.length) {
+    window.__fridaysChatEnabledAgents = window.__fridaysChatEnabledAgents || {};
+    Object.keys(window.__fridaysChatEnabledAgents).forEach(k => {
+      window.__fridaysChatEnabledAgents[k] = targetAgents.includes(k);
+    });
+    persistThreadAgentSelection();
+    renderChatAgentToggles();
+    updateComposerMeta();
+    updateChatStatusPills();
+  }
+
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  sendMessage('user');
+}
+
+function reprocessAgentMessage(agentKey, previousText, bubbleMsgId = '') {
   const target = String(agentKey || '').toLowerCase().trim();
   if (!target || !_isKnownChatAgent(target)) {
-    showToast('Cannot resend: unknown agent', 'error');
+    showToast('Cannot reprocess: unknown agent', 'error');
     return;
   }
   const input = document.getElementById('question-input');
   if (!input) return;
   const seed = String(previousText || '').trim();
   if (!seed) {
-    showToast('No previous message text available to resend', 'error');
+    showToast('No previous message text available to reprocess', 'error');
     return;
   }
 
-  if (reprocess) {
-    input.value = `Reprocess and replace your previous answer using latest context. Keep it concise and corrected.\n\nPrevious answer:\n${seed}`;
-    window.__fridaysReplaceBubbleId = String(bubbleMsgId || '');
-    window.__fridaysReplaceAgentKey = target;
-  } else {
-    input.value = seed;
-    window.__fridaysReplaceBubbleId = '';
-    window.__fridaysReplaceAgentKey = '';
-  }
+  input.value = `Reprocess and replace your previous answer using latest context. Keep it concise and corrected.\n\nPrevious answer:\n${seed}`;
+  window.__fridaysReplaceBubbleId = String(bubbleMsgId || '');
+  window.__fridaysReplaceAgentKey = target;
 
   window.__fridaysChatEnabledAgents = window.__fridaysChatEnabledAgents || {};
   Object.keys(window.__fridaysChatEnabledAgents).forEach(k => {
@@ -13104,7 +13136,7 @@ function resendAgentTask(agentKey, previousText, reprocess = false, bubbleMsgId 
 
   input.focus();
   input.setSelectionRange(input.value.length, input.value.length);
-  showToast(reprocess ? 'Reprocess prompt staged' : 'Resend prompt staged', 'info');
+  sendMessage('user');
 }
 
 function _applyReplyTargetHighlights() {
@@ -13799,13 +13831,7 @@ function _renderWelcome() {
   _syncThinkingBubbles([]);
   window.__fridaysChatTimeline = [];
   renderChatRelayTimeline();
-  messages.innerHTML = `
-    <div class="welcome">
-      <h3>Good to see you, Ghost.</h3>
-      <p>Seven + Fridays. Ask anything — or run safe actions with SKILL commands.</p>
-      <p style="margin-top:8px;color:var(--text-dim);font-size:12px;">Examples: <strong>SKILL list</strong>, <strong>SKILL shell df -h</strong>, <strong>/skill memory_search queue backlog</strong></p>
-    </div>
-  `;
+  messages.innerHTML = '';
 }
 
 function renderChatThreadRail() {
@@ -13877,6 +13903,7 @@ function renderChatMessages(rows) {
     const convId = Number(window.__fridaysChatConversationId || 0);
     if (sender === 'user') {
       const extracted = _extractAttachmentsFromMessage(content);
+      const rawTargetAgents = _chatTargetAgentsFromRaw(row.to_agent);
       const prefix = _chatTargetsPrefixFromRaw(row.to_agent);
       const renderedText = /^\s*\[[^\]]+\]\s/.test(String(content || ''))
         ? content
@@ -13885,6 +13912,7 @@ function renderChatMessages(rows) {
         messageId: msgId,
         conversationId: convId,
         editable: true,
+        selectedAgents: rawTargetAgents,
         localPromptText: extracted.text,
         attachments: extracted.attachments,
       });
@@ -14263,6 +14291,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   } else {
     _appendChatBubble('you', userBubbleText, {
       quoted: replyTargets.length ? replyTargets : null
+      , selectedAgents: selectedAgents
       , localPromptText: msg || ''
       , attachments: attachmentPayload.bubbleAttachments || []
       , relayMeta: relayMeta || null
