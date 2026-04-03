@@ -12268,6 +12268,15 @@ function _applyManualRelayRules(text, fromKey, seen, out) {
   });
 }
 
+function _relayQuestionKey(question) {
+  return String(question || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 180);
+}
+
 function _extractAgentDirectedQuestions(text, fromAgent) {
   const raw = String(text || '');
   if (!raw) return [];
@@ -12307,7 +12316,7 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
       if (!opt || !normalizedBody) return;
       const target = String(opt.value || '').toLowerCase();
       if (!target || target === fromKey) return;
-      const sig = `${target}|${normalizedBody.toLowerCase()}`;
+      const sig = `${target}|${_relayQuestionKey(normalizedBody)}`;
       if (seen.has(sig)) return;
       seen.add(sig);
       out.push({ from: fromKey || 'agent', target, question: normalizedBody });
@@ -12316,18 +12325,106 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
 
   // Catch multi-directive narration in a single paragraph:
   // "LLaMA, inspect logs... Qwen, prioritize likely causes..."
-  const clauseRegex = /(?:^|[\n.;!?]\s*|\s)(@?[A-Za-z][A-Za-z0-9_.\- ]{1,24})\s*[:,]\s*([\s\S]{6,260}?)(?=(?:\s+@?[A-Za-z][A-Za-z0-9_.\- ]{1,24}\s*[:,])|(?:[\n.;!?]|$))/gim;
-  let clauseMatch;
-  while ((clauseMatch = clauseRegex.exec(raw)) !== null) {
-    const target = resolveAgentName(clauseMatch[1]);
-    if (!target || target === fromKey) continue;
-    const normalizedQ = _normalizeRelayQuestion(String(clauseMatch[2] || '').trim());
-    if (!normalizedQ) continue;
-    const sig = `${target}|${normalizedQ.toLowerCase()}`;
-    if (seen.has(sig)) continue;
-    seen.add(sig);
-    out.push({ from: fromKey || 'agent', target, question: normalizedQ });
+  if (!groupedTargets) {
+    const markers = [];
+    const markerSeen = new Set();
+    CHAT_AGENT_OPTIONS.forEach(opt => {
+      const variants = [String(opt.value || '').toLowerCase()];
+      const label = String(opt.label || '').toLowerCase();
+      if (label && !variants.includes(label)) variants.push(label);
+      variants.forEach(variant => {
+        const safeVariant = variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`(?:^|[\\n.;!?]\\s*|\\s)(@?${safeVariant})\\s*[:,]`, 'gim');
+        let addressMatch;
+        while ((addressMatch = re.exec(raw)) !== null) {
+          const token = String(addressMatch[1] || '').trim();
+          const target = resolveAgentName(token);
+          if (!target || target === fromKey) continue;
+          const tokenStart = addressMatch.index + String(addressMatch[0] || '').indexOf(token);
+          const key = `${target}|${tokenStart}`;
+          if (markerSeen.has(key)) continue;
+          markerSeen.add(key);
+          markers.push({
+            target,
+            bodyStart: re.lastIndex,
+            matchStart: tokenStart,
+          });
+        }
+      });
+    });
+    markers.sort((a, b) => a.matchStart - b.matchStart);
+    markers.forEach((marker, index) => {
+      const nextStart = index + 1 < markers.length ? markers[index + 1].matchStart : raw.length;
+      const body = String(raw.slice(marker.bodyStart, nextStart) || '').trim();
+      if (!body || /^@?[A-Za-z][A-Za-z0-9_.\- ]{1,24}\s*[:,]/.test(body)) return;
+      const normalizedQ = _normalizeRelayQuestion(body);
+      if (!normalizedQ) return;
+      const sig = `${marker.target}|${_relayQuestionKey(normalizedQ)}`;
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      out.push({ from: fromKey || 'agent', target: marker.target, question: normalizedQ });
+    });
   }
+
+  const sentenceChunks = raw
+    .split(/\r?\n|(?<=[.!?])\s+/)
+    .map(s => String(s || '').trim())
+    .filter(Boolean);
+
+  sentenceChunks.forEach(sentence => {
+    const assistMatch = sentence.match(/([A-Za-z][A-Za-z0-9_.\- ]{1,24}(?:\s*(?:,|and)\s*[A-Za-z][A-Za-z0-9_.\- ]{1,24})+)\s+(?:will|can|should)\s+(.{6,220})/i);
+    if (assistMatch) {
+      const names = String(assistMatch[1] || '')
+        .split(/\s*(?:,|and)\s*/i)
+        .map(n => resolveAgentName(n))
+        .filter(Boolean);
+      let task = String(assistMatch[2] || '').trim()
+        .replace(/^assist\s+in\s+/i, '')
+        .replace(/^assist\s+with\s+/i, '')
+        .replace(/^help\s+with\s+/i, '')
+        .replace(/^help\s+/i, '');
+      const normalizedQ = _normalizeRelayQuestion(task);
+      if (normalizedQ) {
+        names.forEach(target => {
+          if (!target || target === fromKey) return;
+          const sig = `${target}|${_relayQuestionKey(normalizedQ)}`;
+          if (seen.has(sig)) return;
+          seen.add(sig);
+          out.push({ from: fromKey || 'agent', target, question: normalizedQ });
+        });
+      }
+    }
+
+    const assignmentMatch = sentence.match(/assign(?:ed)?\s+(.{3,120}?)\s+to\s+([A-Za-z][A-Za-z0-9_.\- ]{1,24})\s+(?:for|to)\s+(.{4,180})/i);
+    if (assignmentMatch) {
+      const target = resolveAgentName(assignmentMatch[2]);
+      const task = `${String(assignmentMatch[1] || '').trim()} ${String(assignmentMatch[3] || '').trim()}`;
+      const normalizedQ = _normalizeRelayQuestion(task);
+      if (target && target !== fromKey && normalizedQ) {
+        const sig = `${target}|${_relayQuestionKey(normalizedQ)}`;
+        if (!seen.has(sig)) {
+          seen.add(sig);
+          out.push({ from: fromKey || 'agent', target, question: normalizedQ });
+        }
+      }
+    }
+
+    if (/\bteam\b/i.test(sentence)) {
+      const teamTask = String(sentence)
+        .replace(/.*?\bteam\b\s+(?:for|to|will)?\s*/i, '')
+        .trim();
+      const normalizedQ = _normalizeRelayQuestion(teamTask || sentence);
+      if (normalizedQ) {
+        ['gemma', 'llama', 'qwen'].forEach(target => {
+          if (!_isKnownChatAgent(target) || target === fromKey) return;
+          const sig = `${target}|${_relayQuestionKey(normalizedQ)}`;
+          if (seen.has(sig)) return;
+          seen.add(sig);
+          out.push({ from: fromKey || 'agent', target, question: normalizedQ });
+        });
+      }
+    }
+  });
 
   const patternsFor = (target) => ([
     new RegExp(`^@?${target}\\b[\\s,:-]+(.{6,260})$`, 'i'),
@@ -12339,6 +12436,8 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
   ]);
 
   for (const line of lines) {
+    if (/^\s*[A-Za-z0-9_.\- ]+(?:\s*,\s*[A-Za-z0-9_.\- ]+)+\s*:/.test(line)) continue;
+    if (/^\s*@?[A-Za-z][A-Za-z0-9_.\- ]{1,24}\s*[:,]/.test(line)) continue;
     for (const opt of CHAT_AGENT_OPTIONS) {
       const target = String(opt.value || '').toLowerCase();
       if (!target || target === fromKey) continue;
@@ -12363,7 +12462,7 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
 
       const normalizedQ = _normalizeRelayQuestion(captured);
       if (!normalizedQ) continue;
-      const sig = `${target}|${normalizedQ.toLowerCase()}`;
+      const sig = `${target}|${_relayQuestionKey(normalizedQ)}`;
       if (seen.has(sig)) continue;
       seen.add(sig);
       out.push({
@@ -12420,7 +12519,7 @@ function _extractUserRequestedHandoffs(message, selectedAgents) {
     if (!target || target === sender) continue;
     const question = _normalizeRelayQuestion(queueMatch[2]);
     if (!question) continue;
-    const sig = `${target}|${question.toLowerCase()}`;
+    const sig = `${target}|${_relayQuestionKey(question)}`;
     if (seen.has(sig)) continue;
     seen.add(sig);
     handoffs.push({ from: sender, target, question, source: 'user-queue' });
@@ -12434,7 +12533,7 @@ function _extractUserRequestedHandoffs(message, selectedAgents) {
     if (teamQuestion) {
       localCoreTargets.forEach(target => {
         if (target === lead) return;
-        const sig = `${target}|${teamQuestion.toLowerCase()}`;
+        const sig = `${target}|${_relayQuestionKey(teamQuestion)}`;
         if (seen.has(sig)) return;
         seen.add(sig);
         handoffs.push({ from: lead || sender, target, question: teamQuestion, source: 'team-intent' });
@@ -12446,7 +12545,7 @@ function _extractUserRequestedHandoffs(message, selectedAgents) {
     const question = _normalizeRelayQuestion(localFanoutMatch[1]);
     if (question) {
       localCoreTargets.forEach(target => {
-        const sig = `${target}|${question.toLowerCase()}`;
+        const sig = `${target}|${_relayQuestionKey(question)}`;
         if (seen.has(sig)) return;
         seen.add(sig);
         handoffs.push({ from: sender, target, question, source: 'user-intent' });
@@ -12462,7 +12561,7 @@ function _extractUserRequestedHandoffs(message, selectedAgents) {
     if (!impliedTargets.length && fallbackTarget) impliedTargets.push(fallbackTarget);
     impliedTargets.forEach(target => {
       if (!target || !_isKnownChatAgent(target) || !impliedQuestion) return;
-      const sig = `${target}|${impliedQuestion.toLowerCase()}`;
+      const sig = `${target}|${_relayQuestionKey(impliedQuestion)}`;
       if (seen.has(sig)) return;
       seen.add(sig);
       handoffs.push({ from: sender, target, question: impliedQuestion, source: 'user-intent' });
@@ -12488,7 +12587,7 @@ function _extractUserRequestedHandoffs(message, selectedAgents) {
       const derived = m[1] ? m[1] : `are you online`;
       const question = _normalizeRelayQuestion(derived);
       if (!question) continue;
-      const sig = `${target}|${question.toLowerCase()}`;
+      const sig = `${target}|${_relayQuestionKey(question)}`;
       if (seen.has(sig)) continue;
       seen.add(sig);
       handoffs.push({ from: sender, target, question, source: 'user-intent' });
