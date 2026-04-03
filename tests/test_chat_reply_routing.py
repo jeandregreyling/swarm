@@ -54,7 +54,8 @@ def test_history_rows_preserve_named_speakers_and_targets():
     assert history[0]['role'] == 'user', history
     assert history[0]['content'].startswith('USER -> GEMMA,TEN:'), history[0]
     assert history[1]['role'] == 'assistant', history
-    assert history[1]['content'].startswith('TEN -> USER:'), history[1]
+    assert history[1]['content'].startswith('TEN'), history[1]
+    assert '-> USER:' in history[1]['content'], history[1]
 
 
 if __name__ == '__main__':

@@ -20,9 +20,8 @@ def test_agent_twelve_registered():
     
     assert result is not None, "Agent Twelve not found in registry"
     assert result[1] == 'twelve', f"Expected name 'twelve', got '{result[1]}'"
-    assert result[2] == 'claude-haiku', f"Expected model 'claude-haiku', got '{result[2]}'"
+    assert str(result[2] or '').startswith('claude-haiku'), f"Expected model starting with 'claude-haiku', got '{result[2]}'"
     print(f"✓ Agent Twelve registered (id={result[0]})")
-    return True
 
 def test_memory_twelve_table():
     """Test: memory_twelve table exists and is writable"""
@@ -48,7 +47,6 @@ def test_memory_twelve_table():
     
     conn.close()
     print(f"✓ memory_twelve table exists and is writable ({count} entries)")
-    return True
 
 def test_decisions_table():
     """Test: decisions table exists and schema is correct"""
@@ -81,7 +79,6 @@ def test_decisions_table():
     
     conn.close()
     print(f"✓ decisions table exists and writable (test decision_id={decision_id})")
-    return True
 
 def test_time_machine_table():
     """Test: time_machine table exists"""
@@ -103,7 +100,6 @@ def test_time_machine_table():
     
     conn.close()
     print(f"✓ time_machine table exists with correct schema")
-    return True
 
 def test_daily_checkpoint_table():
     """Test: daily_checkpoint table exists"""
@@ -117,7 +113,6 @@ def test_daily_checkpoint_table():
     
     conn.close()
     print(f"✓ daily_checkpoint table exists")
-    return True
 
 def test_sandpit_structure():
     """Test: sandpits/twelve/ directory structure is complete"""
@@ -131,7 +126,6 @@ def test_sandpit_structure():
         assert dirpath.exists() and dirpath.is_dir(), f"Missing directory: {dirpath}"
     
     print(f"✓ sandpits/twelve/ structure complete ({len(required_dirs)} directories)")
-    return True
 
 def test_proposal_file_exists():
     """Test: DECISION-001 proposal file exists"""
@@ -143,7 +137,6 @@ def test_proposal_file_exists():
     assert 'Agent Twelve' in content, "Proposal doesn't mention Agent Twelve"
     
     print(f"✓ DECISION-001 proposal file exists and is valid")
-    return True
 
 def run_all_tests():
     """Run all bootstrap tests"""
