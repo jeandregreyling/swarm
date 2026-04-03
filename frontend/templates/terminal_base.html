@@ -690,15 +690,10 @@ body.theme-rose {
   gap: 8px;
   min-height: 20px;
 }
-.window-theme-slider {
-  width: 128px;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
 .window-theme-value {
   font-size: 10px;
   color: var(--text-dim);
-  min-width: 56px;
+  min-width: 52px;
   text-transform: capitalize;
   font-weight: 600;
 }
@@ -3762,7 +3757,6 @@ class WindowManager {
     const persisted = this.savedState?.[id] || {};
     const config = { ...defaults, ...persisted, ...options };
     const initialWindowTheme = config.windowTheme || 'auto';
-    const initialThemeIndex = _windowThemeIndex(initialWindowTheme);
     const initialThemeLabel = _windowThemeLabel(initialWindowTheme);
 
     // Get template
@@ -3784,8 +3778,13 @@ class WindowManager {
     header.className = 'window-header';
     header.innerHTML = `
       <div class="window-title-wrap">
-        <div class="window-theme-slider-row" title="Per-window theme. Auto follows main theme selection.">
-          <input type="range" class="window-theme-slider" min="0" max="10" step="1" value="${initialThemeIndex}" oninput="onWindowThemeSliderChange('${id}', this.value)">
+        <div class="window-theme-slider-row" title="Per-window theme. Default follows main theme selection.">
+          <div class="window-theme-quick" style="margin:0;">
+            <button class="window-theme-chip" data-theme="auto" onclick="setWindowQuickTheme('${id}','auto')">Default</button>
+            <button class="window-theme-chip" data-theme="morning" onclick="setWindowQuickTheme('${id}','morning')">Morning</button>
+            <button class="window-theme-chip" data-theme="afternoon" onclick="setWindowQuickTheme('${id}','afternoon')">Noon</button>
+            <button class="window-theme-chip" data-theme="evening" onclick="setWindowQuickTheme('${id}','evening')">Evening</button>
+          </div>
           <span id="win-theme-label-${id}" class="window-theme-value">${initialThemeLabel}</span>
         </div>
         <div class="window-title">${title}</div>
@@ -4301,6 +4300,7 @@ function _windowThemeFromIndex(index) {
 function _windowThemeLabel(mode) {
   const key = String(mode || 'auto').toLowerCase();
   if (key === 'auto') return 'Auto';
+  if (key === 'afternoon') return 'Noon';
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
@@ -4371,11 +4371,9 @@ function applyWindowThemeToWindow(win, mode) {
 
   const chips = win.el.querySelectorAll('.window-theme-chip');
   chips.forEach((chip) => {
-    chip.classList.toggle('active', chip.dataset.theme === mode);
+    chip.classList.toggle('active', chip.dataset.theme === (mode || 'auto'));
   });
 
-  const slider = win.el.querySelector('.window-theme-slider');
-  if (slider) slider.value = String(_windowThemeIndex(mode || 'auto'));
   const labelEl = win.el.querySelector('#win-theme-label-' + win.id);
   if (labelEl) labelEl.textContent = _windowThemeLabel(mode || 'auto');
 
@@ -11394,6 +11392,49 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
   return out.slice(0, 4);
 }
 
+function _normalizeRelayQuestion(raw) {
+  let q = String(raw || '').replace(/\s+/g, ' ').trim();
+  q = q.replace(/^["'`\-:\s]+/, '').replace(/["'`\s]+$/, '');
+  if (!q) return '';
+  if (!/[?!.]$/.test(q)) q += '?';
+  return q.slice(0, 260);
+}
+
+function _extractUserRequestedHandoffs(message, selectedAgents) {
+  const text = String(message || '');
+  if (!text) return [];
+  const selected = new Set((selectedAgents || []).map(a => String(a || '').toLowerCase()));
+  const sender = (selectedAgents && selectedAgents.length) ? String(selectedAgents[0]).toLowerCase() : 'user';
+  const handoffs = [];
+  const seen = new Set();
+
+  for (const opt of CHAT_AGENT_OPTIONS) {
+    const target = String(opt.value || '').toLowerCase();
+    if (!target || selected.has(target)) continue;
+
+    const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rules = [
+      new RegExp(`(?:^|\\b)ask\\s+${escaped}\\s+to\\s+(.{6,260})$`, 'i'),
+      new RegExp(`(?:^|\\b)ask\\s+${escaped}[\\s,:-]+(.{6,260})$`, 'i'),
+      new RegExp(`(?:^|\\b)have\\s+${escaped}\\s+(.{6,260})$`, 'i'),
+      new RegExp(`(?:^|\\b)can\\s+${escaped}\\s+(.{6,260})$`, 'i'),
+    ];
+
+    for (const re of rules) {
+      const m = text.match(re);
+      if (!m || !m[1]) continue;
+      const question = _normalizeRelayQuestion(m[1]);
+      if (!question) continue;
+      const sig = `${target}|${question.toLowerCase()}`;
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      handoffs.push({ from: sender, target, question, source: 'user-intent' });
+    }
+  }
+
+  return handoffs.slice(0, 4);
+}
+
 function _applySingleAgentSelection(agentKey) {
   const target = String(agentKey || '').toLowerCase().trim();
   if (!target) return;
@@ -12774,6 +12815,9 @@ function sendMessage(source = 'user', relayMeta = null) {
 
   const hasAttachments = (window.__fridaysChatAttachments || []).length > 0;
   const contextCfg = getChatContextConfig();
+  const userIntentRelayHandoffs = source === 'user'
+    ? _extractUserRequestedHandoffs(msg, selectedAgents)
+    : [];
   if (source === 'relay' && window.__fridaysChatRelayForceFull) {
     contextCfg.historyMode = 'full';
     contextCfg.historyLimit = 30;
@@ -12870,8 +12914,16 @@ function sendMessage(source = 'user', relayMeta = null) {
         const from = String(entry.agent || 'agent').toLowerCase();
         _extractAgentDirectedQuestions(entry.response || '', from).forEach(h => discovered.push(h));
       });
-      if (window.__fridaysChatRelayAuto && discovered.length) {
-        discovered.forEach(h => queueRelayHandoff(h, true));
+      const mergedHandoffs = discovered.slice();
+      if (userIntentRelayHandoffs.length) {
+        userIntentRelayHandoffs.forEach(h => {
+          const sig = _relaySignature(h);
+          const duplicate = mergedHandoffs.some(existing => _relaySignature(existing) === sig);
+          if (!duplicate) mergedHandoffs.push(h);
+        });
+      }
+      if (window.__fridaysChatRelayAuto && mergedHandoffs.length) {
+        mergedHandoffs.forEach(h => queueRelayHandoff(h, true));
       }
 
       const first = immediateResponses[0];
