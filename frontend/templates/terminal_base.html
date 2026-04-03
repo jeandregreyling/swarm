@@ -3170,11 +3170,25 @@ input[type="range"]::-moz-range-thumb:hover {
             <div class="chat-title">Fridays Chat Console</div>
             <div class="chat-subtitle">Multi-agent conversation with live orchestration</div>
           </div>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <span class="chat-pill" id="chat-thread-pill">Thread: New</span>
-            <span class="chat-pill" id="chat-runtime-pill">Runtime: Idle</span>
-            <span class="chat-pill" id="chat-dictionary-pill">Dictionary: 0</span>
-            <span class="chat-pill" id="chat-notify-pill">Notifications: Off</span>
+          <div id="chat-controls">
+            <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 180px; max-width: 300px; font-size:12px;">
+              <option value="">New Thread</option>
+            </select>
+            <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
+            <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
+            <div style="position:relative;">
+              <button id="chat-more-btn" onclick="_chatMoreMenu()" style="background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;" title="More options">⋯</button>
+              <div id="chat-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,0.3));min-width:160px;z-index:999;padding:4px 0;">
+                <button onclick="renameCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Rename thread</button>
+                <button onclick="deleteCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ff8a8a;padding:8px 14px;cursor:pointer;font-size:12px;">Delete thread</button>
+                <button onclick="clearAllChatHistory();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Clear history</button>
+                <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+                <button onclick="openChatDictionaryManager();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Dictionary</button>
+                <button onclick="exportChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Export dictionary</button>
+                <button onclick="importChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Import dictionary</button>
+                <button onclick="clearChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Reset dictionary</button>
+              </div>
+            </div>
           </div>
         </div>
         <div id="chat-section-main" class="chat-section chat-main-shell">
@@ -3205,7 +3219,7 @@ input[type="range"]::-moz-range-thumb:hover {
             </div>
             <div id="chat-attachments"></div>
             <div id="chat-spell-helper" style="display:none; margin-top:0; font-size:11px; color: var(--text-dim);"></div>
-            <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span></div>
+            <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span><span id="chat-dictionary-inline">Dictionary: 0</span></div>
           </div>
         </div>
 
@@ -3241,34 +3255,6 @@ input[type="range"]::-moz-range-thumb:hover {
         </div>
 
         <div class="chat-dock-panel">
-            <div id="chat-section-meta" class="chat-section collapsed" data-chat-default="collapsed">
-              <button type="button" class="chat-section-header" onclick="toggleChatSection('meta')" aria-controls="chat-section-meta-content" aria-expanded="false">
-                <span class="chat-section-title">⚙️ System & User Meta</span>
-                <span class="chat-section-caret" aria-hidden="true"></span>
-              </button>
-              <div id="chat-section-meta-content" class="chat-section-content">
-                <div id="chat-controls">
-                  <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 160px; max-width: 240px; font-size:12px;">
-                    <option value="">New Thread</option>
-                  </select>
-                  <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
-                  <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
-                  <div style="position:relative;margin-left:auto;">
-                    <button id="chat-more-btn" onclick="_chatMoreMenu()" style="background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;" title="More options">⋯</button>
-                    <div id="chat-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,0.3));min-width:160px;z-index:999;padding:4px 0;">
-                      <button onclick="renameCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Rename thread</button>
-                      <button onclick="deleteCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ff8a8a;padding:8px 14px;cursor:pointer;font-size:12px;">Delete thread</button>
-                      <button onclick="clearAllChatHistory();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Clear history</button>
-                      <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
-                      <button onclick="openChatDictionaryManager();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Dictionary</button>
-                      <button onclick="exportChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Export dictionary</button>
-                      <button onclick="importChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Import dictionary</button>
-                      <button onclick="clearChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Reset dictionary</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <div id="chat-section-agents" class="chat-section collapsed" data-chat-default="collapsed">
               <button type="button" class="chat-section-header" onclick="toggleChatSection('agents')" aria-controls="chat-section-agents-content" aria-expanded="false">
@@ -10030,45 +10016,10 @@ function _setActiveThreadId(convId) {
 }
 
 function updateChatStatusPills() {
-  const threadPill = document.getElementById('chat-thread-pill');
-  const runtimePill = document.getElementById('chat-runtime-pill');
-  const dictPill = document.getElementById('chat-dictionary-pill');
-  const notifyPill = document.getElementById('chat-notify-pill');
-  if (threadPill) {
-    const activeId = window.__fridaysChatConversationId;
-    const row = (window._chatConversations || []).find(c => Number(c.id) === Number(activeId));
-    const title = row ? (row.title || ('#' + row.id)) : 'New';
-    threadPill.textContent = 'Thread: ' + String(title).slice(0, 28);
-  }
-  if (runtimePill) {
-    const jobs = (window.__fridaysThreadRuntimeSnapshot && window.__fridaysThreadRuntimeSnapshot.jobs) || [];
-    const running = jobs.filter(j => String(j.status || 'running') === 'running').length;
-    const failed = jobs.filter(j => String(j.status || '') === 'failed').length;
-    if (!window.__fridaysChatConversationId) {
-      runtimePill.textContent = 'Runtime: No Thread';
-      runtimePill.classList.remove('on');
-    } else if (running > 0) {
-      runtimePill.textContent = 'Runtime: ' + running + ' Active';
-      runtimePill.classList.add('on');
-    } else if (failed > 0) {
-      runtimePill.textContent = 'Runtime: Issues';
-      runtimePill.classList.add('on');
-    } else {
-      runtimePill.textContent = jobs.length ? 'Runtime: Settled' : 'Runtime: Idle';
-      runtimePill.classList.toggle('on', jobs.length > 0);
-    }
-  }
-  if (dictPill) {
+  const dictInline = document.getElementById('chat-dictionary-inline');
+  if (dictInline) {
     const size = Array.from(window.__fridaysChatCustomDictionary || []).length;
-    dictPill.textContent = 'Dictionary: ' + size;
-  }
-  if (notifyPill) {
-    const on = !!window.__fridaysDesktopNotificationsEnabled;
-    const available = typeof Notification !== 'undefined';
-    let label = on ? 'Notifications: On' : 'Notifications: Off';
-    if (available && Notification.permission === 'denied') label = 'Notifications: Blocked';
-    notifyPill.textContent = label;
-    notifyPill.classList.toggle('on', on && (!available || Notification.permission === 'granted'));
+    dictInline.textContent = 'Dictionary: ' + size;
   }
 }
 
