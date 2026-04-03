@@ -1830,8 +1830,6 @@ body.theme-rose {
   padding: 1px 7px;
   font-size: 10px;
   cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 .chat-action-btn:hover {
   color: var(--text);
@@ -1957,7 +1955,6 @@ body.theme-rose {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  overflow: hidden;
 }
 .chat-relay-toggle {
   display: inline-flex;
@@ -1967,8 +1964,6 @@ body.theme-rose {
   border: 1px solid var(--border);
   border-radius: 999px;
   min-height: 24px;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 .chat-relay-select {
   background: var(--card);
@@ -1977,8 +1972,6 @@ body.theme-rose {
   border-radius: 6px;
   font-size: 10px;
   padding: 1px 6px;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 .chat-history-inline-wrap {
   display: none;
@@ -1991,14 +1984,11 @@ body.theme-rose {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 2px;
+  flex-wrap: wrap;
 }
-#chat-relay-turns-slider,
-.chat-relay-turns-slider {
-  flex: 0 1 120px;
-  min-width: 80px;
+#chat-relay-turns-slider {
+  flex: 1;
+  min-width: 120px;
   accent-color: var(--accent);
 }
 .chat-relay-turns-value {
@@ -3413,19 +3403,7 @@ input[type="range"]::-moz-range-thumb:hover {
                       <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-paid-dot"></span><span>Paid API</span></span>
                     </div>
                   </div>
-                  <div class="chat-agent-toggles" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
-                </div>
-                <div style="padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">
-                  <div class="chat-agent-row-head" style="margin-bottom:8px;">
-                    <div class="chat-agent-row-title">🚔 Relay Manager</div>
-                  </div>
-                  <div class="chat-relay-manager-host" style="display:flex; gap:6px; flex-wrap:wrap; overflow:hidden; align-items:flex-start;"></div>
-                </div>
-                <div style="padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">
-                  <div class="chat-agent-row-head" style="margin-bottom:8px;">
-                    <div class="chat-agent-row-title">👁️ Relay Monitor</div>
-                  </div>
-                  <div class="chat-relay-monitor-host" style="display:flex; gap:6px; flex-wrap:wrap; overflow:hidden; align-items:flex-start;"></div>
+                  <div id="chat-agent-toggles" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
                 </div>
               </div>
             </div>
@@ -3439,15 +3417,15 @@ input[type="range"]::-moz-range-thumb:hover {
                 <div class="chat-flow-grid">
                   <label class="chat-relay-toggle" title="Which thread context is sent to selected agents.">
                     <span>Context</span>
-                    <select class="chat-history-mode" class="chat-relay-select" onchange="onChatHistoryModeChange()">
+                    <select id="chat-history-mode" class="chat-relay-select" onchange="onChatHistoryModeChange()">
                       <option value="full">Full thread</option>
                       <option value="recent">Recent only</option>
                       <option value="none">Only this turn</option>
                     </select>
                   </label>
-                  <label class="chat-history-limit-wrap" class="chat-relay-toggle chat-history-inline-wrap" title="Number of recent messages to include when using Recent mode.">
+                  <label id="chat-history-limit-wrap" class="chat-relay-toggle chat-history-inline-wrap" title="Number of recent messages to include when using Recent mode.">
                     <span>Recent count</span>
-                    <select class="chat-history-limit" class="chat-relay-select" onchange="onChatHistoryLimitChange()">
+                    <select id="chat-history-limit" class="chat-relay-select" onchange="onChatHistoryLimitChange()">
                       <option value="4">4</option>
                       <option value="6">6</option>
                       <option value="8">8</option>
@@ -3457,20 +3435,20 @@ input[type="range"]::-moz-range-thumb:hover {
                     </select>
                   </label>
                   <label class="chat-relay-toggle" title="Automatically relay agent-to-agent questions as explicit chat turns.">
-                    <input class="chat-relay-auto" type="checkbox" onchange="onChatRelayAutoToggle()">
+                    <input id="chat-relay-auto" type="checkbox" onchange="onChatRelayAutoToggle()">
                     <span>Auto Relay</span>
                   </label>
                   <label class="chat-relay-toggle" title="When enabled, relay turns always send full thread context regardless of Context mode.">
-                    <input class="chat-relay-force-full" type="checkbox" onchange="onChatRelayForceFullContextToggle()">
+                    <input id="chat-relay-force-full" type="checkbox" onchange="onChatRelayForceFullContextToggle()">
                     <span>Relay uses full context</span>
                   </label>
                 </div>
                 <div class="chat-relay-slider-row">
                   <span style="font-size:10px;color:var(--text-dim);">Agent-to-agent turns</span>
-                  <input class="chat-relay-turns-slider" type="range" min="1" max="12" step="1" value="4" oninput="onChatRelayTurnsSliderChange()" title="Maximum automatic relay turns per user send">
-                  <span class="chat-relay-turns-value" class="chat-relay-turns-value">4</span>
+                  <input id="chat-relay-turns-slider" type="range" min="1" max="12" step="1" value="4" oninput="onChatRelayTurnsSliderChange()" title="Maximum automatic relay turns per user send">
+                  <span id="chat-relay-turns-value" class="chat-relay-turns-value">4</span>
                   <label class="chat-relay-toggle" style="padding:2px 8px;" title="Unlimited relay turns for the current send chain.">
-                    <input class="chat-relay-infinite" type="checkbox" onchange="onChatRelayInfiniteToggle()">
+                    <input id="chat-relay-infinite" type="checkbox" onchange="onChatRelayInfiniteToggle()">
                     <span>Infinite</span>
                   </label>
                   <button class="chat-action-btn" onclick="clearRelayQueue()" title="Clear queued relay actions">Clear queue</button>
@@ -3487,13 +3465,13 @@ input[type="range"]::-moz-range-thumb:hover {
                     <button class="chat-action-btn" onclick="renderRelayRuleList()">Refresh</button>
                   </div>
                   <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:8px;margin-bottom:8px;">
-                    <input class="relay-rule-pattern" type="text" placeholder="match text or phrase"
+                    <input id="relay-rule-pattern" type="text" placeholder="match text or phrase"
                       style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;font-size:11px;">
-                    <select class="relay-rule-target" class="chat-relay-select">
+                    <select id="relay-rule-target" class="chat-relay-select">
                       <option value="">Target agent</option>
                     </select>
                   </div>
-                  <input class="relay-rule-template" type="text" placeholder="optional rewrite, use {match}"
+                  <input id="relay-rule-template" type="text" placeholder="optional rewrite, use {match}"
                     style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;font-size:11px;margin-bottom:8px;">
                   <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
                     <button class="chat-action-btn" onclick="addRelayRule()">Add rule</button>
@@ -11791,27 +11769,19 @@ function _renderChatHistoryControls() {
 }
 
 function onChatHistoryModeChange() {
-  const modeSelectors = document.querySelectorAll('.chat-history-mode');
-  const val = modeSelectors.length > 0 ? modeSelectors[0].value : 'full';
-  window.__fridaysChatHistoryMode = _normalizeChatHistoryMode(val);
+  const modeSel = document.getElementById('chat-history-mode');
+  if (!modeSel) return;
+  window.__fridaysChatHistoryMode = _normalizeChatHistoryMode(modeSel.value);
   localStorage.setItem(CHAT_HISTORY_MODE_KEY, window.__fridaysChatHistoryMode);
-  // Sync all selectors
-  modeSelectors.forEach(sel => {
-    sel.value = window.__fridaysChatHistoryMode;
-  });
   _renderChatHistoryControls();
   updateComposerMeta();
 }
 
 function onChatHistoryLimitChange() {
-  const limitSelectors = document.querySelectorAll('.chat-history-limit');
-  const val = limitSelectors.length > 0 ? limitSelectors[0].value : '4';
-  window.__fridaysChatHistoryLimit = _normalizeChatHistoryLimit(val);
+  const limitSel = document.getElementById('chat-history-limit');
+  if (!limitSel) return;
+  window.__fridaysChatHistoryLimit = _normalizeChatHistoryLimit(limitSel.value);
   localStorage.setItem(CHAT_HISTORY_LIMIT_KEY, String(window.__fridaysChatHistoryLimit));
-  // Sync all selectors
-  limitSelectors.forEach(sel => {
-    sel.value = String(window.__fridaysChatHistoryLimit);
-  });
   _renderChatHistoryControls();
   updateComposerMeta();
 }
@@ -12051,14 +12021,9 @@ function _renderChatRelayControls() {
 }
 
 function onChatRelayAutoToggle() {
-  const autoEls = document.querySelectorAll('.chat-relay-auto');
-  const val = autoEls.length > 0 ? autoEls[0].checked : false;
-  window.__fridaysChatRelayAuto = !!val;
+  const autoEl = document.getElementById('chat-relay-auto');
+  window.__fridaysChatRelayAuto = !!(autoEl && autoEl.checked);
   localStorage.setItem(CHAT_RELAY_AUTO_KEY, window.__fridaysChatRelayAuto ? '1' : '0');
-  // Sync all windows
-  autoEls.forEach(el => {
-    el.checked = val;
-  });
   _renderChatRelayControls();
 }
 
@@ -12067,48 +12032,30 @@ function onChatRelayMaxChange() {
 }
 
 function onChatRelayTurnsSliderChange() {
-  const sliders = document.querySelectorAll('.chat-relay-turns-slider');
-  const maxEl = sliders.length > 0 ? sliders[0] : null;
+  const maxEl = document.getElementById('chat-relay-turns-slider');
   const next = Math.max(1, Math.min(12, Number(maxEl && maxEl.value || 4)));
   window.__fridaysChatRelayMaxPerTurn = next;
   if (!window.__fridaysChatRelayInfinite) {
     localStorage.setItem(CHAT_RELAY_MAX_KEY, String(next));
   }
-  // Sync all sliders and values
-  sliders.forEach(slider => {
-    slider.value = next;
-  });
-  document.querySelectorAll('.chat-relay-turns-value').forEach(val => {
-    val.textContent = next;
-  });
   _renderChatRelayControls();
 }
 
 function onChatRelayInfiniteToggle() {
-  const infEls = document.querySelectorAll('.chat-relay-infinite');
-  const val = infEls.length > 0 ? infEls[0].checked : false;
-  window.__fridaysChatRelayInfinite = !!val;
+  const infEl = document.getElementById('chat-relay-infinite');
+  window.__fridaysChatRelayInfinite = !!(infEl && infEl.checked);
   if (window.__fridaysChatRelayInfinite) {
     localStorage.setItem(CHAT_RELAY_MAX_KEY, 'inf');
   } else {
     localStorage.setItem(CHAT_RELAY_MAX_KEY, String(Math.max(1, Math.min(12, Number(window.__fridaysChatRelayMaxPerTurn || 4)))));
   }
-  // Sync all checkboxes
-  infEls.forEach(el => {
-    el.checked = val;
-  });
   _renderChatRelayControls();
 }
 
 function onChatRelayForceFullContextToggle() {
-  const chks = document.querySelectorAll('.chat-relay-force-full');
-  const val = chks.length > 0 ? chks[0].checked : false;
-  window.__fridaysChatRelayForceFull = !!val;
+  const chk = document.getElementById('chat-relay-force-full');
+  window.__fridaysChatRelayForceFull = !!(chk && chk.checked);
   localStorage.setItem(CHAT_RELAY_FORCE_FULL_KEY, window.__fridaysChatRelayForceFull ? '1' : '0');
-  // Sync all checkboxes
-  chks.forEach(el => {
-    el.checked = val;
-  });
   _renderChatRelayControls();
 }
 
@@ -13453,8 +13400,8 @@ function getEnabledChatAgents() {
 }
 
 function renderChatAgentToggles() {
-  const hosts = Array.from(document.querySelectorAll('.chat-agent-toggles'));
-  if (!hosts.length) return;
+  const host = document.getElementById('chat-agent-toggles');
+  if (!host) return;
   const userColor = _getActorBubbleColor('you') || '#42a5f5';
   const userCard = `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--border);border-radius:8px;background:var(--card);min-width:66px;">
     <div style="display:inline-flex;align-items:center;gap:4px;font-size:10px;line-height:1;white-space:nowrap;" title="Your bubble color">
@@ -13492,14 +13439,7 @@ function renderChatAgentToggles() {
     </div>`;
   }).join('');
 
-  const contentHtml = userCard + agentCards;
-  hosts.forEach(host => {
-    host.innerHTML = contentHtml;
-  });
-  
-  // Render relay manager (Duck) and monitor (Librarian)
-  renderRelayManagerCard();
-  renderRelayMonitorCard();
+  host.innerHTML = userCard + agentCards;
 }
 
 window.__agentTemps = window.__agentTemps || {};
@@ -13525,62 +13465,6 @@ function _loadAgentTemps() {
       renderChatAgentToggles();
     })
     .catch(() => {});
-}
-
-function renderRelayManagerCard() {
-  const hosts = Array.from(document.querySelectorAll('.chat-relay-manager-host'));
-  if (!hosts.length) return;
-  
-  const duckAgent = CHAT_AGENT_OPTIONS.find(a => a.value === 'duck');
-  if (!duckAgent) return;
-  
-  const isOn = !!window.__fridaysChatEnabledAgents[duckAgent.value];
-  const checked = isOn ? 'checked' : '';
-  const bubbleColor = _getActorBubbleColor(duckAgent.value) || '#4caf50';
-  const vid = 'atv-' + duckAgent.value;
-  const temp = (window.__agentTemps[duckAgent.value] ?? 0.7).toFixed(2);
-  const sliderRow = `
-    <div data-temp-row="${duckAgent.value}" style="display:flex;align-items:center;gap:3px;padding:0 1px;opacity:${isOn ? '1' : '0.3'};pointer-events:${isOn ? 'auto' : 'none'};transition:opacity 0.15s;">
-      <input type="range" min="0" max="1" step="0.05" value="${temp}"
-        style="flex:1;height:2px;accent-color:var(--accent);cursor:pointer;"
-        onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"
-        oninput="document.getElementById('${vid}').textContent=parseFloat(this.value).toFixed(2);_setAgentTemp('${duckAgent.value}',this.value)">
-      <span id="${vid}" style="font-size:8px;color:var(--text-dim);width:20px;text-align:right;font-variant-numeric:tabular-nums;">${temp}</span>
-    </div>`;
-  
-  const managerCard = `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--accent);border-radius:8px;background:color-mix(in oklab, var(--accent) 12%, var(--card));min-width:90px;">
-    <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;line-height:1;white-space:nowrap;" title="${duckAgent.label} · Relay Manager">
-      <input class="chat-agent-toggle" type="checkbox" value="${duckAgent.value}" ${checked} onchange="onChatAgentToggleChange(this)" style="width:10px;height:10px;margin:0;accent-color:var(--accent);">
-      <span class="agent-tier-dot" style="width:5px;height:5px;flex-shrink:0;background:${_escapeHtml(bubbleColor)};"></span>
-      <span style="font-weight:600;color:var(--accent);">🚔 Duck</span>
-      <input class="agent-bubble-color" type="color" value="${_escapeHtml(bubbleColor)}" title="Choose ${duckAgent.label} bubble color" oninput="setActorBubbleColor('${duckAgent.value}', this.value)">
-    </label>
-    ${sliderRow}
-  </div>`;
-  
-  hosts.forEach(host => {
-    host.innerHTML = managerCard;
-  });
-}
-
-function renderRelayMonitorCard() {
-  const hosts = Array.from(document.querySelectorAll('.chat-relay-monitor-host'));
-  if (!hosts.length) return;
-  
-  const librarianConfig = {value: 'librarian', label: 'Librarian', tier: 'local', hasTemp: false};
-  const bubbleColor = _getActorBubbleColor(librarianConfig.value) || '#7c7cba';
-  
-  const monitorCard = `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--border);border-radius:8px;background:color-mix(in oklab, var(--card) 92%, transparent);min-width:90px;opacity:0.7;cursor:not-allowed;">
-    <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;line-height:1;white-space:nowrap;" title="${librarianConfig.label} · Relay Monitor (read-only)">
-      <span class="agent-tier-dot" style="width:5px;height:5px;flex-shrink:0;background:${_escapeHtml(bubbleColor)};"></span>
-      <span style="font-weight:600;color:var(--text-dim);">👁️ Librarian</span>
-    </label>
-    <div style="font-size:9px;color:var(--text-dim);padding:0 4px;font-style:italic;">observing relay queue...</div>
-  </div>`;
-  
-  hosts.forEach(host => {
-    host.innerHTML = monitorCard;
-  });
 }
 
 function _renderWelcome() {
