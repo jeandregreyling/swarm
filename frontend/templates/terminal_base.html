@@ -1862,6 +1862,18 @@ body.theme-rose {
   text-transform: uppercase;
   color: var(--text);
 }
+.chat-info-log-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.chat-info-log-time {
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.9;
+  white-space: nowrap;
+}
 .chat-handoff-actions {
   margin-top: 6px;
   display: flex;
@@ -13014,23 +13026,32 @@ function _timelineTextSnippet(text) {
   return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 140);
 }
 
+function _chatLogTimeLabel(ts = Date.now()) {
+  const d = new Date(Number(ts || Date.now()));
+  return d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+}
+
 function _appendInfoLogEntry(actor, text, relay = false) {
   const messages = _chatMessagesEl();
   if (!messages) return;
   const key = String(actor || 'system').toLowerCase().trim();
   const label = _chatAgentLabel(key);
   const icon = key === 'duck' ? '🦆' : (key === 'librarian' ? '👁️' : 'ℹ️');
+  const ts = Date.now();
+  const timeLabel = _chatLogTimeLabel(ts);
   const row = document.createElement('div');
   row.className = 'chat-info-log';
+  row.dataset.logTs = String(ts);
   const msgId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   row.id = 'chat-bubble-' + msgId;
-  row.innerHTML = `<strong>${icon} ${_escapeHtml(label)} Log</strong><span>${_escapeHtml(String(text || ''))}</span>`;
+  row.innerHTML = `<span class="chat-info-log-head"><strong>${icon} ${_escapeHtml(label)} Log</strong><span class="chat-info-log-time">${_escapeHtml(timeLabel)}</span></span><span>${_escapeHtml(String(text || ''))}</span>`;
   messages.appendChild(row);
   _recordTimelineEvent({
     bubbleId: row.id,
     sender: key,
     label,
     text: String(text || ''),
+    ts,
     relay: !!relay,
   });
   messages.scrollTop = messages.scrollHeight;
@@ -13056,12 +13077,13 @@ function showRelayLogs(filter = 'all') {
 function _recordTimelineEvent(entry) {
   if (!entry || !entry.bubbleId) return;
   window.__fridaysChatTimeline = Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : [];
+  const eventTs = Number(entry.ts || Date.now());
   window.__fridaysChatTimeline.push({
     bubbleId: String(entry.bubbleId),
     sender: String(entry.sender || 'agent').toLowerCase(),
     label: String(entry.label || _chatAgentLabel(entry.sender || 'agent')),
     text: _timelineTextSnippet(entry.text || ''),
-    ts: Date.now(),
+    ts: Number.isFinite(eventTs) ? eventTs : Date.now(),
     relay: !!entry.relay,
   });
   if (window.__fridaysChatTimeline.length > 220) {
