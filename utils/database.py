@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS messages (
     to_agent TEXT,
     content TEXT NOT NULL,
     message_type TEXT DEFAULT 'response',
+    tokens_used INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS memory (
@@ -513,6 +514,11 @@ def _migrate_schema(conn=None):
     ticket_cols = {row[1] for row in conn.execute("PRAGMA table_info(tickets)").fetchall()}
     if 'email_message_id' not in ticket_cols:
         conn.execute("ALTER TABLE tickets ADD COLUMN email_message_id TEXT DEFAULT ''")
+        conn.commit()
+    # New columns on messages
+    message_cols = {row[1] for row in conn.execute("PRAGMA table_info(messages)").fetchall()}
+    if 'tokens_used' not in message_cols:
+        conn.execute("ALTER TABLE messages ADD COLUMN tokens_used INTEGER DEFAULT 0")
         conn.commit()
     # New tables
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
@@ -1124,11 +1130,11 @@ def new_conversation(title, source='email', sender=''):
     return conv_id
 
 
-def log_message(conv_id, from_agent, content, to_agent='', message_type='chat'):
+def log_message(conv_id, from_agent, content, to_agent='', message_type='chat', tokens_used=0):
     conn = get_connection()
     conn.execute(
-        "INSERT INTO messages (conversation_id,from_agent,to_agent,content,message_type) VALUES (?,?,?,?,?)",
-        (conv_id, from_agent, to_agent, content, message_type)
+        "INSERT INTO messages (conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,?,?,?,?,?)",
+        (conv_id, from_agent, to_agent, content, message_type, int(tokens_used or 0))
     )
     conn.commit()
     conn.close()
