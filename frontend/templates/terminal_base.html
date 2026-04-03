@@ -12253,6 +12253,19 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
   const out = [];
   const seen = new Set();
 
+  const resolveAgentName = (name) => {
+    const probe = String(name || '').trim().toLowerCase().replace(/^@+/, '');
+    if (!probe) return '';
+    const normalized = probe.replace(/[^a-z0-9]/g, '');
+    const found = CHAT_AGENT_OPTIONS.find(a => {
+      const key = String(a.value || '').toLowerCase();
+      const label = String(a.label || '').toLowerCase();
+      const labelNormalized = label.replace(/[^a-z0-9]/g, '');
+      return key === probe || label === probe || key.replace(/[^a-z0-9]/g, '') === normalized || labelNormalized === normalized;
+    });
+    return found ? String(found.value || '').toLowerCase() : '';
+  };
+
   // Support grouped directives like "GEMMA, LLaMA, QWEN: <request>".
   const groupedTargets = raw.match(/(^|\n)\s*([A-Za-z0-9_.\- ]+(?:\s*,\s*[A-Za-z0-9_.\- ]+)+)\s*:\s*([\s\S]{8,320})/);
   if (groupedTargets) {
@@ -12276,6 +12289,21 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
       seen.add(sig);
       out.push({ from: fromKey || 'agent', target, question: normalizedBody });
     });
+  }
+
+  // Catch multi-directive narration in a single paragraph:
+  // "LLaMA, inspect logs... Qwen, prioritize likely causes..."
+  const clauseRegex = /(?:^|[\n.;!?]\s*|\s)(@?[A-Za-z][A-Za-z0-9_.\- ]{1,24})\s*[:,]\s*([\s\S]{6,260}?)(?=(?:\s+@?[A-Za-z][A-Za-z0-9_.\- ]{1,24}\s*[:,])|(?:[\n.;!?]|$))/gim;
+  let clauseMatch;
+  while ((clauseMatch = clauseRegex.exec(raw)) !== null) {
+    const target = resolveAgentName(clauseMatch[1]);
+    if (!target || target === fromKey) continue;
+    const normalizedQ = _normalizeRelayQuestion(String(clauseMatch[2] || '').trim());
+    if (!normalizedQ) continue;
+    const sig = `${target}|${normalizedQ.toLowerCase()}`;
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    out.push({ from: fromKey || 'agent', target, question: normalizedQ });
   }
 
   const patternsFor = (target) => ([
@@ -12569,6 +12597,9 @@ function queueRelayHandoff(handoff, autoMode = false) {
   window.__fridaysChatRelaySeen = seen;
   window.__fridaysChatRelayQueue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
   window.__fridaysChatRelayQueue.push(item);
+  if (item.auto) {
+    _appendChatBubble('duck', `Queued relay: ${_chatAgentLabel(item.from)} -> ${_chatAgentLabel(item.target)}.`);
+  }
   _renderChatRelayControls();
   _processRelayQueue();
 }
@@ -12604,6 +12635,9 @@ function _processRelayQueue() {
   }
   _applySingleAgentSelection(next.target);
   input.value = _relayPromptText(next);
+  if (next.auto) {
+    _appendChatBubble('duck', `Dispatching relay to ${_chatAgentLabel(next.target)}.`);
+  }
   showToast(`${_chatAgentLabel(next.from)} → ${_chatAgentLabel(next.target)}`, next.auto ? 'info' : 'success');
   Promise.resolve(sendMessage('relay', next))
     .finally(() => {
