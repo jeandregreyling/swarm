@@ -10468,6 +10468,7 @@ window.__fridaysChatRelayForceFull = window.__fridaysChatRelayForceFull ?? (loca
 window.__fridaysChatRelayBudget = Number(window.__fridaysChatRelayBudget || 0);
 window.__fridaysChatRelayQueue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
 window.__fridaysChatRelayBusy = !!window.__fridaysChatRelayBusy;
+window.__fridaysChatRelayActive = !!window.__fridaysChatRelayActive;
 window.__fridaysChatRelaySeen = window.__fridaysChatRelaySeen || {};
 window.__fridaysChatTimeline = Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : [];
 window.__fridaysChatRelayRules = Array.isArray(window.__fridaysChatRelayRules) ? window.__fridaysChatRelayRules : (() => {
@@ -10642,6 +10643,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
   const failed = list.filter(j => String(j.status || '') === 'failed');
   const loadingAgents = Array.isArray(window.__fridaysRuntimeLoadingAgents) ? window.__fridaysRuntimeLoadingAgents : [];
   const hasPendingJobs = Array.isArray(window.__fridaysChatPendingJobIds) && window.__fridaysChatPendingJobIds.length > 0;
+  const relayActive = !!window.__fridaysChatRelayBusy || !!window.__fridaysChatRelayActive || ((window.__fridaysChatRelayQueue || []).length > 0);
   const canStop = running.length > 0 || loadingAgents.length > 0 || hasPendingJobs;
   const headline = running.length
     ? ('Live jobs: ' + running.length + ' running')
@@ -10649,7 +10651,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
       ? 'Awaiting agent acknowledgement...'
       : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread')));
 
-  const shouldShow = !window.__fridaysChatRuntimeHidden && (window.__fridaysChatRuntimePinned || list.length > 0 || running.length > 0 || loadingAgents.length > 0 || hasPendingJobs);
+  const shouldShow = !window.__fridaysChatRuntimeHidden && (window.__fridaysChatRuntimePinned || list.length > 0 || running.length > 0 || loadingAgents.length > 0 || hasPendingJobs || relayActive);
   hosts.forEach(host => {
     host.classList.toggle('open', shouldShow);
   });
@@ -10717,11 +10719,12 @@ function pollActiveThreadRuntime(force = false) {
     ? window.__fridaysRuntimeLoadingAgents
     : [];
   const hasPendingJobs = Array.isArray(window.__fridaysChatPendingJobIds) && window.__fridaysChatPendingJobIds.length > 0;
+  const relayActive = !!window.__fridaysChatRelayBusy || !!window.__fridaysChatRelayActive || ((window.__fridaysChatRelayQueue || []).length > 0);
   const hasActiveSnapshot = snapshotJobs.some(j => String(j.status || 'running') === 'running');
   if (!force && window.__fridaysChatPendingPollTimer) {
     return Promise.resolve();
   }
-  if (!force && !window.__fridaysChatRuntimePinned && !hasPendingJobs && !loadingAgents.length && !hasActiveSnapshot) {
+  if (!force && !window.__fridaysChatRuntimePinned && !hasPendingJobs && !loadingAgents.length && !hasActiveSnapshot && !relayActive) {
     return Promise.resolve();
   }
   return fetch('/api/chat/jobs/status?conversation_id=' + encodeURIComponent(convId))
@@ -12554,10 +12557,16 @@ function removeRelayRule(index) {
 }
 
 function _relaySignature(handoff) {
+  const normalizeQuestionSig = (question) => String(question || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 140);
   return [
     String(handoff.from || '').toLowerCase(),
     String(handoff.target || '').toLowerCase(),
-    String(handoff.question || '').toLowerCase().slice(0, 260),
+    normalizeQuestionSig(handoff.question || ''),
   ].join('|');
 }
 
@@ -12590,15 +12599,26 @@ function queueRelayHandoff(handoff, autoMode = false) {
     return;
   }
 
+  const queue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
+  if (queue.some(q => _relaySignature(q) === sig)) {
+    return;
+  }
+
   if (item.auto && !window.__fridaysChatRelayAuto) return;
   if (item.auto && Number(window.__fridaysChatRelayBudget || 0) === 0) return;
 
   seen[sig] = now;
   window.__fridaysChatRelaySeen = seen;
-  window.__fridaysChatRelayQueue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
+  window.__fridaysChatRelayQueue = queue;
   window.__fridaysChatRelayQueue.push(item);
   if (item.auto) {
-    _appendChatBubble('duck', `Queued relay: ${_chatAgentLabel(item.from)} -> ${_chatAgentLabel(item.target)}.`);
+    _appendChatBubble('duck', `Queued relay ticket for ${_chatAgentLabel(item.target)}.`);
+    const libSeen = window.__fridaysLibrarianRelayAudit || {};
+    if (!libSeen[sig] || (now - Number(libSeen[sig] || 0) > 8 * 60 * 1000)) {
+      _appendChatBubble('librarian', `Audit captured: ${_chatAgentLabel(item.from)} assigned ${_chatAgentLabel(item.target)}.`);
+      libSeen[sig] = now;
+      window.__fridaysLibrarianRelayAudit = libSeen;
+    }
   }
   _renderChatRelayControls();
   _processRelayQueue();
@@ -12627,22 +12647,27 @@ function _processRelayQueue() {
     window.__fridaysChatRelayBudget = Math.max(0, Number(window.__fridaysChatRelayBudget || 0) - 1);
   }
   window.__fridaysChatRelayBusy = true;
+  window.__fridaysChatRelayActive = true;
+  pollActiveThreadRuntime(true);
   const input = document.getElementById('question-input');
   if (!input) {
     window.__fridaysChatRelayBusy = false;
+    window.__fridaysChatRelayActive = false;
     _renderChatRelayControls();
     return;
   }
   _applySingleAgentSelection(next.target);
   input.value = _relayPromptText(next);
   if (next.auto) {
-    _appendChatBubble('duck', `Dispatching relay to ${_chatAgentLabel(next.target)}.`);
+    _appendChatBubble('duck', `Dispatching ${_chatAgentLabel(next.target)} relay ticket.`);
   }
   showToast(`${_chatAgentLabel(next.from)} → ${_chatAgentLabel(next.target)}`, next.auto ? 'info' : 'success');
   Promise.resolve(sendMessage('relay', next))
     .finally(() => {
       window.__fridaysChatRelayBusy = false;
+      window.__fridaysChatRelayActive = Array.isArray(window.__fridaysChatRelayQueue) && window.__fridaysChatRelayQueue.length > 0;
       _renderChatRelayControls();
+      pollActiveThreadRuntime(true);
       setTimeout(_processRelayQueue, 0);
     });
 }
@@ -12711,7 +12736,9 @@ function jumpToChatBubble(bubbleId) {
 
 function clearRelayQueue() {
   window.__fridaysChatRelayQueue = [];
+  window.__fridaysChatRelayActive = false;
   _renderChatRelayControls();
+  pollActiveThreadRuntime(true);
 }
 
 function _formatPendingElapsed(ms) {
@@ -12911,6 +12938,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   const relayButtonsHtml = relayCandidates.length
     ? `<div class="chat-handoff-actions">${relayCandidates.map(c => `<button class="chat-handoff-btn" data-relay-from="${_escapeHtml(senderIdentity.key)}" data-relay-target="${_escapeHtml(c.target)}" data-relay-question="${_escapeHtml(_relayEncode(c.question))}" onclick="queueRelayHandoffFromButton(this)">Route to ${_escapeHtml(_chatAgentLabel(c.target))}</button>`).join('')}</div>`
     : '';
+  const replayText = _escapeHtml(String(visibleText || '').replace(/\s+/g, ' ').trim().slice(0, 1800));
   const localText = _escapeHtml(String(opts.localPromptText || visibleText || '').slice(0, 4000));
   const userActionRow = isUser
     ? `<div class="chat-actions">
@@ -12926,6 +12954,8 @@ function _appendChatBubble(sender, text, opts = {}) {
       <button class="chat-action-btn" onclick="reactToMessage('${msgId}','🤔')">🤔</button>
       <button class="chat-action-btn" data-reply-sender="${safeSender}" data-reply-preview="${_escapeHtml(text).slice(0, 120)}" data-reply-msgid="${_escapeHtml(String(opts.messageId || ''))}" onclick="setReplyTarget(this.dataset.replySender, this.dataset.replyPreview, this.dataset.replyMsgid)">Reply</button>
       <button class="chat-action-btn" data-suggest-sender="${safeSender}" data-suggest-preview="${_escapeHtml(text).slice(0, 160)}" onclick="showAgentPickerDropdown(this, this.dataset.suggestSender, this.dataset.suggestPreview)">Ask another</button>
+      <button class="chat-action-btn" data-agent="${_escapeHtml(senderIdentity.key)}" data-text="${replayText}" onclick="resendAgentTask(this.dataset.agent, this.dataset.text, false)">Resend</button>
+      <button class="chat-action-btn" data-agent="${_escapeHtml(senderIdentity.key)}" data-text="${replayText}" data-msgid="${_escapeHtml(String(msgId))}" onclick="resendAgentTask(this.dataset.agent, this.dataset.text, true, this.dataset.msgid)">Reprocess</button>
       ${opts.messageId && opts.conversationId
         ? `<button class="chat-action-btn" onclick="deleteChatMessage(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Delete</button>`
         : ''}
@@ -13037,6 +13067,44 @@ function reactToMessage(msgId, emoji) {
   badge.textContent = emoji;
   badge.style.cursor = 'default';
   el.appendChild(badge);
+}
+
+function resendAgentTask(agentKey, previousText, reprocess = false, bubbleMsgId = '') {
+  const target = String(agentKey || '').toLowerCase().trim();
+  if (!target || !_isKnownChatAgent(target)) {
+    showToast('Cannot resend: unknown agent', 'error');
+    return;
+  }
+  const input = document.getElementById('question-input');
+  if (!input) return;
+  const seed = String(previousText || '').trim();
+  if (!seed) {
+    showToast('No previous message text available to resend', 'error');
+    return;
+  }
+
+  if (reprocess) {
+    input.value = `Reprocess and replace your previous answer using latest context. Keep it concise and corrected.\n\nPrevious answer:\n${seed}`;
+    window.__fridaysReplaceBubbleId = String(bubbleMsgId || '');
+    window.__fridaysReplaceAgentKey = target;
+  } else {
+    input.value = seed;
+    window.__fridaysReplaceBubbleId = '';
+    window.__fridaysReplaceAgentKey = '';
+  }
+
+  window.__fridaysChatEnabledAgents = window.__fridaysChatEnabledAgents || {};
+  Object.keys(window.__fridaysChatEnabledAgents).forEach(k => {
+    window.__fridaysChatEnabledAgents[k] = (k === target);
+  });
+  persistThreadAgentSelection();
+  renderChatAgentToggles();
+  updateComposerMeta();
+  updateChatStatusPills();
+
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  showToast(reprocess ? 'Reprocess prompt staged' : 'Resend prompt staged', 'info');
 }
 
 function _applyReplyTargetHighlights() {
@@ -14170,6 +14238,11 @@ function sendMessage(source = 'user', relayMeta = null) {
     window.__fridaysChatRelayBudget = relayCfg.infinite ? -1 : relayCfg.maxPerTurn;
     window.__fridaysChatRelayQueue = [];
     window.__fridaysChatRelayBusy = false;
+    window.__fridaysChatRelayActive = false;
+    if (window.__fridaysReplaceBubbleId) {
+      const oldNode = document.getElementById('chat-bubble-' + String(window.__fridaysReplaceBubbleId || '').replace(/[^a-zA-Z0-9_-]/g, ''));
+      if (oldNode) oldNode.remove();
+    }
     _renderChatRelayControls();
   }
 
@@ -14183,12 +14256,18 @@ function sendMessage(source = 'user', relayMeta = null) {
   const userBubbleText = msg
     ? '[' + _chatAgentListText(selectedAgents) + '] ' + msg
     : '[' + _chatAgentListText(selectedAgents) + '] (attachment)';
-  _appendChatBubble('you', userBubbleText, {
-    quoted: replyTargets.length ? replyTargets : null
-    , localPromptText: msg || ''
-    , attachments: attachmentPayload.bubbleAttachments || []
-    , relayMeta: relayMeta || null
-  });
+  if (source === 'relay') {
+    _appendChatBubble('duck', `Relay ticket sent to ${_chatAgentLabel(selectedAgents[0] || relayMeta?.target || 'agent')}.`, {
+      relayMeta: relayMeta || null,
+    });
+  } else {
+    _appendChatBubble('you', userBubbleText, {
+      quoted: replyTargets.length ? replyTargets : null
+      , localPromptText: msg || ''
+      , attachments: attachmentPayload.bubbleAttachments || []
+      , relayMeta: relayMeta || null
+    });
+  }
 
   const estMs = _estimateBatchMs(selectedAgents);
   const loadingPanel = _createLoadingPanel(selectedAgents);
@@ -14246,6 +14325,12 @@ function sendMessage(source = 'user', relayMeta = null) {
     if (immediateResponses.length) {
       immediateResponses.forEach(entry => {
         _appendChatBubble(entry.agent || 'agent', entry.response || '...', { tokens: entry.tokens || 0 });
+        if (source === 'user' && window.__fridaysReplaceBubbleId && window.__fridaysReplaceAgentKey && String(entry.agent || '').toLowerCase() === String(window.__fridaysReplaceAgentKey || '').toLowerCase()) {
+          const oldNode = document.getElementById('chat-bubble-' + String(window.__fridaysReplaceBubbleId || '').replace(/[^a-zA-Z0-9_-]/g, ''));
+          if (oldNode) oldNode.remove();
+          window.__fridaysReplaceBubbleId = '';
+          window.__fridaysReplaceAgentKey = '';
+        }
       });
 
       immediateResponses.forEach(entry => {
