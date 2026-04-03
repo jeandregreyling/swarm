@@ -12245,7 +12245,7 @@ function _applySingleAgentSelection(agentKey) {
 function _relayPromptText(handoff) {
   const fromLabel = _chatAgentLabel(handoff.from || 'agent');
   const targetLabel = _chatAgentLabel(handoff.target || 'agent');
-  return `[Relay for ${targetLabel}] ${fromLabel} asked: ${String(handoff.question || '').trim()} Respond as ${targetLabel}.`;
+  return `${fromLabel} to ${targetLabel}: ${String(handoff.question || '').trim()}`;  
 }
 
 function populateRelayRuleTargetOptions() {
@@ -12387,7 +12387,7 @@ function _processRelayQueue() {
   }
   _applySingleAgentSelection(next.target);
   input.value = _relayPromptText(next);
-  showToast(`Relaying ${_chatAgentLabel(next.from)} -> ${_chatAgentLabel(next.target)}`, next.auto ? 'info' : 'success');
+  showToast(`${_chatAgentLabel(next.from)} → ${_chatAgentLabel(next.target)}`, next.auto ? 'info' : 'success');
   Promise.resolve(sendMessage('relay', next))
     .finally(() => {
       window.__fridaysChatRelayBusy = false;
@@ -12674,7 +12674,7 @@ function _appendChatBubble(sender, text, opts = {}) {
       <button class="chat-action-btn" onclick="reactToMessage('${msgId}','👍')">👍</button>
       <button class="chat-action-btn" onclick="reactToMessage('${msgId}','🤔')">🤔</button>
       <button class="chat-action-btn" data-reply-sender="${safeSender}" data-reply-preview="${_escapeHtml(text).slice(0, 120)}" data-reply-msgid="${_escapeHtml(String(opts.messageId || ''))}" onclick="setReplyTarget(this.dataset.replySender, this.dataset.replyPreview, this.dataset.replyMsgid)">Reply</button>
-      <button class="chat-action-btn" data-suggest-sender="${safeSender}" data-suggest-preview="${_escapeHtml(text).slice(0, 160)}" onclick="suggestAnotherAgent(this.dataset.suggestSender, this.dataset.suggestPreview)">Ask another</button>
+      <button class="chat-action-btn" data-suggest-sender="${safeSender}" data-suggest-preview="${_escapeHtml(text).slice(0, 160)}" onclick="showAgentPickerDropdown(this, this.dataset.suggestSender, this.dataset.suggestPreview)">Ask another</button>
       ${opts.messageId && opts.conversationId
         ? `<button class="chat-action-btn" onclick="deleteChatMessage(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Delete</button>`
         : ''}
@@ -12758,11 +12758,10 @@ function revisePromptDraft(text) {
 }
 
 async function deleteOwnPrompt(convId, msgId) {
-  return deleteChatMessage(convId, msgId, 'Delete this prompt from chat history?');
+  return deleteChatMessage(convId, msgId);
 }
 
-async function deleteChatMessage(convId, msgId, promptText = 'Delete this message from chat history?') {
-  if (!confirm(promptText)) return;
+async function deleteChatMessage(convId, msgId) {
   try {
     const resp = await fetch(`/api/conversations/${convId}/messages/${msgId}`, {
       method: 'DELETE',
@@ -12890,39 +12889,114 @@ function renderReplyBanner() {
   `;
 }
 
-function suggestAnotherAgent(sender, preview) {
-  const map = {
-    gemma: 'qwen',
-    llama: 'qwen',
-    qwen: 'llama',
-    eight: 'gemma',
-    duck: 'sniffles',
-    sniffles: 'duck',
-    nine: 'ten',
-    ten: 'nine',
-    eleven: 'twelve',
-    twelve: 'eleven'
-  };
+function showAgentPickerDropdown(triggerBtn, sender, preview) {
+  const existing = document.getElementById('ask-another-picker');
+  if (existing) { existing.remove(); return; }
+
+  const picker = document.createElement('div');
+  picker.id = 'ask-another-picker';
+  picker.style.cssText = 'position:fixed;z-index:9100;background:var(--bg-card,#1e1e2e);border:1px solid var(--border,#444);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.55);min-width:190px;padding:6px 0;font-size:13px;';
+
+  const rect = triggerBtn.getBoundingClientRect();
+  picker.style.top = Math.min(rect.bottom + 4, window.innerHeight - 280) + 'px';
+  picker.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
+
   const normalized = String(sender || '').toLowerCase();
-  const suggested = map[normalized] || 'qwen';
-  const suggestedLabel = _chatAgentLabel(suggested);
   const sourceLabel = _chatAgentLabel(normalized);
-  const checkbox = document.querySelector('.chat-agent-toggle[value="' + suggested + '"]');
-  if (checkbox) {
-    checkbox.checked = true;
-    window.__fridaysChatEnabledAgents[suggested] = true;
-    persistThreadAgentSelection();
-    renderChatAgentToggles();
-    updateComposerMeta();
-    updateChatStatusPills();
+  const selected = new Set();
+
+  const header = document.createElement('div');
+  header.style.cssText = 'padding:7px 13px 6px;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--border,#333);margin-bottom:3px;';
+  header.innerHTML = `Ask another agent <span style="opacity:0.55;font-size:10px;">(Ctrl+click = multi)</span>`;
+  picker.appendChild(header);
+
+  CHAT_AGENT_OPTIONS.forEach(agent => {
+    if (agent.value === normalized) return;
+    const item = document.createElement('div');
+    item.style.cssText = 'padding:7px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;';
+    item.dataset.agentValue = agent.value;
+
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.style.pointerEvents = 'none';
+    check.style.accentColor = 'var(--accent,#7c3aed)';
+
+    const lbl = document.createElement('span');
+    lbl.textContent = agent.label;
+    lbl.style.flex = '1';
+
+    item.appendChild(check);
+    item.appendChild(lbl);
+
+    const updateStyle = () => {
+      item.style.background = selected.has(agent.value) ? 'var(--bg-hover,rgba(122,80,220,0.15))' : '';
+    };
+    item.addEventListener('mouseenter', () => { if (!selected.has(agent.value)) item.style.background = 'var(--bg-hover,rgba(255,255,255,0.06))'; });
+    item.addEventListener('mouseleave', updateStyle);
+
+    item.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (selected.has(agent.value)) { selected.delete(agent.value); check.checked = false; }
+        else { selected.add(agent.value); check.checked = true; }
+        updateStyle();
+      } else {
+        _applyAskAnotherAgents([agent.value], normalized, preview);
+        picker.remove();
+        document.removeEventListener('mousedown', outsideClick, true);
+      }
+    });
+    picker.appendChild(item);
+  });
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.textContent = 'Ask selected';
+  confirmBtn.style.cssText = 'display:block;width:calc(100% - 24px);margin:8px 12px 6px;padding:6px 10px;background:var(--accent,#7c3aed);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;';
+  confirmBtn.addEventListener('click', () => {
+    if (selected.size === 0) { showToast('Pick at least one agent', 'warning'); return; }
+    _applyAskAnotherAgents([...selected], normalized, preview);
+    picker.remove();
+    document.removeEventListener('mousedown', outsideClick, true);
+  });
+  picker.appendChild(confirmBtn);
+
+  document.body.appendChild(picker);
+
+  function outsideClick(e) {
+    if (!picker.contains(e.target) && e.target !== triggerBtn) {
+      picker.remove();
+      document.removeEventListener('mousedown', outsideClick, true);
+    }
   }
+  document.addEventListener('mousedown', outsideClick, true);
+}
+
+function _applyAskAnotherAgents(agentValues, senderKey, preview) {
+  const sourceLabel = _chatAgentLabel(String(senderKey || ''));
+  agentValues.forEach(agentKey => {
+    const checkbox = document.querySelector('.chat-agent-toggle[value="' + agentKey + '"]');
+    if (checkbox) {
+      checkbox.checked = true;
+      if (window.__fridaysChatEnabledAgents) window.__fridaysChatEnabledAgents[agentKey] = true;
+    }
+  });
+  persistThreadAgentSelection();
+  renderChatAgentToggles();
+  updateComposerMeta();
+  updateChatStatusPills();
+
+  const targetLabels = agentValues.map(v => _chatAgentLabel(v)).join(' & ');
   const input = document.getElementById('question-input');
   if (input && !input.value.trim()) {
-    input.value = `[Thought from ${sourceLabel}] ${String(preview || '').slice(0, 130)}\n\n${suggestedLabel}, what is your take?`;
+    if (agentValues.length === 1) {
+      input.value = `[Thought from ${sourceLabel}] ${String(preview || '').slice(0, 130)}\n\n${_chatAgentLabel(agentValues[0])}, what is your take?`;
+    } else {
+      const names = agentValues.map(v => _chatAgentLabel(v)).join(', ');
+      input.value = `[Thought from ${sourceLabel}] ${String(preview || '').slice(0, 130)}\n\n${names} — what are your takes?`;
+    }
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
   }
-  showToast('Suggested ' + suggestedLabel + ' for a second opinion', 'info');
+  showToast('Asking ' + targetLabels, 'info');
 }
 
 function _getLatencyProfile() {
