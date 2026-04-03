@@ -8,14 +8,16 @@ pytest
 pylint
 black
 
-# Optional integrations referenced by the codebase. Install as needed when
-# validating those paths or enabling those features in a clean environment.
-# anthropic
-# duckduckgo-search
-# tavily-python
+# Core integrations — required for full swarm functionality
+anthropic
+duckduckgo-search
+openai
+google-genai
+tavily-python
+
+# Optional integrations — install as needed
 # google-api-python-client
 # google-auth-oauthlib
-# openai
 # pdfplumber
 # python-docx
 # beautifulsoup4
