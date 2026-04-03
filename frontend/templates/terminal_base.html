@@ -12373,6 +12373,12 @@ function _isKnownChatAgent(agentKey) {
   return CHAT_AGENT_OPTIONS.some(a => a.value === key);
 }
 
+function _isAutoRelayTargetEnabled(agentKey) {
+  const key = String(agentKey || '').toLowerCase().trim();
+  if (!key) return false;
+  return !!(window.__fridaysChatEnabledAgents && window.__fridaysChatEnabledAgents[key]);
+}
+
 function _relayEncode(value) {
   try {
     return btoa(unescape(encodeURIComponent(String(value || ''))));
@@ -13380,6 +13386,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   messages.appendChild(bubble);
   if (!isUser && relayCandidates.length && window.__fridaysChatRelayAuto) {
     relayCandidates.forEach(c => {
+      if (!_isAutoRelayTargetEnabled(c.target)) return;
       queueRelayHandoff({ from: senderIdentity.key, target: c.target, question: c.question }, true);
     });
   }
@@ -14095,7 +14102,7 @@ function renderChatAgentToggles() {
     <div style="height:2px;"></div>
   </div>`;
 
-  const agentCards = CHAT_AGENT_OPTIONS.map(agent => {
+  const agentCards = CHAT_AGENT_OPTIONS.filter(agent => agent.value !== 'duck').map(agent => {
     const isOn = !!window.__fridaysChatEnabledAgents[agent.value];
     const checked = isOn ? 'checked' : '';
     const tierDotClass = agent.tier === 'paid' ? 'agent-tier-paid-dot' : 'agent-tier-local-dot';
@@ -14863,7 +14870,7 @@ function sendMessage(source = 'user', relayMeta = null) {
           queueRelayHandoff(h, false);
           return;
         }
-        if (window.__fridaysChatRelayAuto) {
+        if (window.__fridaysChatRelayAuto && _isAutoRelayTargetEnabled(h?.target)) {
           queueRelayHandoff(h, true);
         }
       });
