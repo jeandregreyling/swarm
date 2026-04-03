@@ -882,6 +882,7 @@ body.theme-rose {
   flex-direction: column;
   min-height: 0;
   transition: width 0.16s ease;
+  scrollbar-gutter: stable;
 }
 #chat-right-dock.collapsed {
   width: 0 !important;
@@ -911,6 +912,7 @@ body.theme-rose {
   gap: 8px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .chat-dock-title {
   font-size: 11px;
@@ -1153,9 +1155,20 @@ body.theme-rose {
 }
 .chat-dock-panel .chat-section-header {
   border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
 }
 .chat-dock-panel .chat-section-content {
   padding-top: 8px;
+}
+.chat-dock-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 8px;
 }
 .chat-agent-row {
   display: flex;
@@ -2049,28 +2062,80 @@ body.theme-rose {
 
 .chat-thread-runtime-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 4px;
 }
 
 .chat-thread-runtime-row {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 8px;
-  background: color-mix(in oklab, var(--card) 90%, var(--window-header) 10%);
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: color-mix(in oklab, var(--card) 88%, var(--window-header) 12%);
+  transition: all 0.3s ease;
+}
+
+.chat-thread-runtime-row.initializing {
+  background: color-mix(in oklab, #4a7aff 20%, var(--card) 80%);
+  border-color: #4a7aff;
+  box-shadow: 0 0 8px rgba(74, 122, 255, 0.4), inset 0 0 4px rgba(74, 122, 255, 0.1);
+}
+
+.chat-thread-runtime-row.compiling {
+  background: color-mix(in oklab, #ffb800 18%, var(--card) 82%);
+  border-color: #ffb800;
+  box-shadow: 0 0 6px rgba(255, 184, 0, 0.3);
+}
+
+.chat-thread-runtime-row.completed {
+  background: color-mix(in oklab, #4ade80 15%, var(--card) 85%);
+  border-color: #4ade80;
+}
+
+.chat-thread-runtime-row.failed {
+  background: color-mix(in oklab, #f44336 15%, var(--card) 85%);
+  border-color: #f44336;
 }
 
 .chat-thread-runtime-row-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
-  font-size: 11px;
+  gap: 5px;
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+
+.chat-thread-runtime-row-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chat-thread-runtime-row-time {
+  font-size: 9px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.chat-thread-runtime-progress {
+  height: 4px;
+  background: var(--window-header);
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 2px 0 0 0;
+}
+
+.chat-thread-runtime-progress-fill {
+  height: 100%;
+  width: 4%;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 70%, #fff), var(--accent));
+  transition: width 0.2s linear;
 }
 
 .chat-thread-runtime-stage {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -2082,37 +2147,19 @@ body.theme-rose {
   color: var(--text);
 }
 .chat-progress-grid {
-  margin-top: 10px;
-  display: grid;
-  gap: 8px;
+  display: none;
 }
 .chat-progress-row {
-  padding: 8px 10px;
-  border: 1px solid rgba(255,255,255,0.04);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.02);
+  display: none;
 }
 .chat-progress-row-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-bottom: 6px;
+  display: none;
 }
 .chat-progress-track {
-  height: 8px;
-  background: var(--window-header);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  overflow: hidden;
+  display: none;
 }
 .chat-progress-fill {
-  height: 100%;
-  width: 4%;
-  background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 70%, #fff), var(--accent));
-  transition: width 0.2s linear;
+  display: none;
 }
 .chat-attachment-chip {
   display: inline-flex;
@@ -10042,6 +10089,94 @@ function _chatRuntimeSortWeight(status) {
   return 3;
 }
 
+function _updateThreadRuntimeLoading() {
+  const host = document.getElementById('chat-thread-runtime');
+  if (!host) return;
+  
+  // Merge loading agents from _createLoadingPanel with actual jobs
+  const loadingAgents = Array.isArray(window.__fridaysRuntimeLoadingAgents) ? window.__fridaysRuntimeLoadingAgents : [];
+  const jobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs) ? window.__fridaysThreadRuntimeSnapshot.jobs : [];
+  
+  // Create rows for both active jobs and loading agents
+  const allAgents = new Map();
+  
+  jobs.forEach(j => {
+    allAgents.set(String(j.agent || 'agent').toLowerCase(), { job: j, type: 'job' });
+  });
+  
+  loadingAgents.forEach(a => {
+    const key = String(a || '').toLowerCase();
+    if (!allAgents.has(key)) {
+      allAgents.set(key, { agent: a, type: 'loading' });
+    }
+  });
+  
+  // Re-render the runtime panel with updated state
+  const convId = window.__fridaysChatConversationId;
+  if (!convId || allAgents.size === 0) return;
+  
+  const gridEl = host.querySelector('.chat-thread-runtime-grid');
+  if (!gridEl) return;
+  
+  Array.from(allAgents.entries()).forEach(([key, entry]) => {
+    let row = gridEl.querySelector('.chat-thread-runtime-row[data-agent="' + key + '"]');
+    
+    if (entry.type === 'job') {
+      const job = entry.job;
+      const agent = String(job.agent || 'agent');
+      const state = _chatRuntimeStateLabel(job);
+      const elapsed = Number(job.elapsed_ms || 0);
+      const eta = Number(job.eta_remaining_seconds || 0);
+      const target = Math.max(1000, Number(job.eta_seconds || 12000) * 1000);
+      const pct = Math.min(98, Math.max(4, Math.floor((elapsed / target) * 100)));
+      
+      let statusClass = '';
+      if (job.status === 'completed') statusClass = 'completed';
+      else if (job.status === 'failed') statusClass = 'failed';
+      else if (job.stage === 'thinking' || job.stage === 'processing') statusClass = 'compiling';
+      else statusClass = 'initializing';
+      
+      if (!row) {
+        row = document.createElement('div');
+        row.className = 'chat-thread-runtime-row ' + statusClass;
+        row.dataset.agent = key;
+        gridEl.appendChild(row);
+      }
+      
+      row.className = 'chat-thread-runtime-row ' + statusClass;
+      row.innerHTML = `
+        <div class="chat-thread-runtime-row-head">
+          <div class="chat-thread-runtime-row-agent">${_chatAgentIdentityHtml(agent, false)}</div>
+          <div class="chat-thread-runtime-row-time">${eta > 0 ? '~' + eta + 's' : '+' + Math.round(elapsed / 1000) + 's'}</div>
+        </div>
+        <div class="chat-thread-runtime-progress">
+          <div class="chat-thread-runtime-progress-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="chat-thread-runtime-stage">${_escapeHtml(state)}</div>
+      `;
+    } else {
+      if (!row) {
+        row = document.createElement('div');
+        row.className = 'chat-thread-runtime-row initializing';
+        row.dataset.agent = key;
+        gridEl.appendChild(row);
+      }
+      
+      row.className = 'chat-thread-runtime-row initializing';
+      row.innerHTML = `
+        <div class="chat-thread-runtime-row-head">
+          <div class="chat-thread-runtime-row-agent">${_chatAgentIdentityHtml(entry.agent, false)}</div>
+          <div class="chat-thread-runtime-row-time">awaiting</div>
+        </div>
+        <div class="chat-thread-runtime-progress">
+          <div class="chat-thread-runtime-progress-fill" style="width:4%"></div>
+        </div>
+        <div class="chat-thread-runtime-stage">Initializing...</div>
+      `;
+    }
+  });
+}
+
 function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
   const host = document.getElementById('chat-thread-runtime');
   if (!host) return;
@@ -10081,13 +10216,25 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
           const agent = String(job.agent || 'agent');
           const state = _chatRuntimeStateLabel(job);
           const eta = Number(job.eta_remaining_seconds || 0);
-          const elapsedMs = Number(job.elapsed_ms || 0);
-          const elapsedS = Number.isFinite(elapsedMs) ? Math.max(0, Math.round(elapsedMs / 1000)) : 0;
+          const elapsed = Number(job.elapsed_ms || 0);
+          const target = Math.max(1000, Number(job.eta_seconds || 12000) * 1000);
+          const pct = Math.min(98, Math.max(4, Math.floor((elapsed / target) * 100)));
+          const elapsedS = Number.isFinite(elapsed) ? Math.max(0, Math.round(elapsed / 1000)) : 0;
+          
+          let statusClass = '';
+          if (job.status === 'completed') statusClass = 'completed';
+          else if (job.status === 'failed') statusClass = 'failed';
+          else if (job.stage === 'thinking' || job.stage === 'processing') statusClass = 'compiling';
+          else statusClass = 'initializing';
+          
           return `
-            <div class="chat-thread-runtime-row">
+            <div class="chat-thread-runtime-row ${statusClass}" data-agent="${_escapeHtml(agent.toLowerCase())}">
               <div class="chat-thread-runtime-row-head">
-                <span style="display:inline-flex;align-items:center;gap:6px;">${_chatAgentIdentityHtml(agent, false)}</span>
-                <span style="font-size:10px;color:var(--text-dim);">${eta > 0 ? ('~' + eta + 's') : ('+' + elapsedS + 's')}</span>
+                <div class="chat-thread-runtime-row-agent">${_chatAgentIdentityHtml(agent, false)}</div>
+                <div class="chat-thread-runtime-row-time">${eta > 0 ? ('~' + eta + 's') : ('+' + elapsedS + 's')}</div>
+              </div>
+              <div class="chat-thread-runtime-progress">
+                <div class="chat-thread-runtime-progress-fill" style="width:${pct}%"></div>
               </div>
               <div class="chat-thread-runtime-stage">${_escapeHtml(state)}</div>
             </div>
@@ -10098,6 +10245,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
   `;
 
   window.__fridaysThreadRuntimeSnapshot = { jobs: list, updatedAt: new Date().toISOString() };
+  _updateThreadRuntimeLoading();
   updateChatStatusPills();
 }
 
@@ -12114,50 +12262,19 @@ function _estimateBatchMs(agents) {
 }
 
 function _createLoadingPanel(agents) {
-  const messages = _chatMessagesEl();
-  if (!messages) return null;
-  let panel = document.getElementById('chat-shared-loading-panel');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'chat-shared-loading-panel';
-    panel.className = 'chat-status-card';
-    panel.innerHTML = `
-      <div class="chat-status-head">
-        <div>
-          <div class="chat-status-title">Swarm Runtime</div>
-          <div class="chat-status-subtitle">Live progress for the agents working on this turn</div>
-        </div>
-        <button class="chat-action-btn" onclick="stopPendingAgents()">Stop</button>
-      </div>
-      <div class="chat-text" id="chat-progress-head">Awaiting agent acknowledgement...</div>
-      <div id="chat-progress-bars" class="chat-progress-grid"></div>
-      <div id="chat-progress-eta" class="chat-meta" style="margin-top:10px;">Collecting per-agent ETA...</div>
-    `;
-    messages.appendChild(panel);
+  // Runtime status now displays in thread runtime panel instead of in-chat
+  // Store agents to display with loading/initializing state
+  window.__fridaysRuntimeLoadingAgents = Array.isArray(agents) ? agents.slice() : [];
+  
+  // Trigger thread runtime panel to show loading indicators
+  const host = document.getElementById('chat-thread-runtime');
+  if (host && host.querySelector('.chat-thread-runtime-grid')) {
+    _updateThreadRuntimeLoading();
+    host.classList.add('open');
   }
-
-  const bars = panel.querySelector('#chat-progress-bars');
-  (agents || []).forEach(a => {
-    if (!bars || bars.querySelector('.chat-progress-row[data-agent="' + a + '"]')) return;
-    const row = document.createElement('div');
-    row.className = 'chat-progress-row';
-    row.dataset.agent = a;
-    row.innerHTML = `
-      <div class="chat-progress-row-head">
-        <span style="display:inline-flex;align-items:center;gap:6px;">${_chatAgentIdentityHtml(a, false)}</span>
-        <span data-state="${a}" style="color:var(--text-dim);">alive · queued</span>
-      </div>
-      <div class="chat-progress-track">
-        <div class="chat-progress-fill" data-fill="${a}"></div>
-      </div>
-    `;
-    bars.appendChild(row);
-  });
-
-  const headEl = panel.querySelector('#chat-progress-head');
-  if (headEl) headEl.textContent = `Awaiting ${Math.max(1, (agents || []).length)} agent ack(s)...`;
-  messages.scrollTop = messages.scrollHeight;
-  return panel;
+  
+  // Return dummy panel for API compatibility with _startLoadingTicker
+  return host || document.createElement('div');
 }
 
 function _startLoadingTicker(panel, agents, estimateMs) {
