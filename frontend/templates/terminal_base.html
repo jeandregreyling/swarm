@@ -8077,6 +8077,12 @@ function loadHomeStats() {
       const mem = data.ram_percent  != null ? data.ram_percent  : parseStat(data.memory_usage);
       const agents = parseStat(data.open_tickets || data.agents_online);
       updateChatMiniSystemStats(cpu, mem);
+      window.__fridaysChatRelayResource = {
+        cpuPercent: Number.isFinite(Number(cpu)) ? Number(cpu) : null,
+        ramPercent: Number.isFinite(Number(mem)) ? Number(mem) : null,
+        sampledAt: Date.now(),
+        source: 'home',
+      };
 
       const activeModels = Array.isArray(data.active_models) ? data.active_models : [];
       const vramGb = activeModels.reduce((sum, model) => {
@@ -10483,6 +10489,11 @@ window.__fridaysChatRelayBudget = Number(window.__fridaysChatRelayBudget || 0);
 window.__fridaysChatRelayQueue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
 window.__fridaysChatRelayBusy = !!window.__fridaysChatRelayBusy;
 window.__fridaysChatRelayActive = !!window.__fridaysChatRelayActive;
+window.__fridaysChatRelayRetryTimer = window.__fridaysChatRelayRetryTimer || null;
+window.__fridaysChatRelayHoldReason = String(window.__fridaysChatRelayHoldReason || '');
+window.__fridaysChatRelayHoldStamp = Number(window.__fridaysChatRelayHoldStamp || 0);
+window.__fridaysChatRelayLastHoldKey = String(window.__fridaysChatRelayLastHoldKey || '');
+window.__fridaysChatRelayResource = window.__fridaysChatRelayResource || { cpuPercent: null, ramPercent: null, sampledAt: 0, source: 'init' };
 window.__fridaysChatRelaySeen = window.__fridaysChatRelaySeen || {};
 window.__fridaysChatTimeline = Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : [];
 window.__fridaysChatTimelineFilter = String(window.__fridaysChatTimelineFilter || 'all').toLowerCase();
@@ -12133,6 +12144,141 @@ function _chatRelayConfig() {
   };
 }
 
+const CHAT_RELAY_RESOURCE_LIMITS = {
+  queueCap: 20,
+  monitorTtlMs: 4500,
+  maxRunningJobs: 3,
+  softCpuPercent: 82,
+  softRamPercent: 86,
+  retryMsNormal: 1300,
+  retryMsHot: 2600,
+};
+
+function _relayQueueCap() {
+  return Math.max(6, Number(CHAT_RELAY_RESOURCE_LIMITS.queueCap || 20));
+}
+
+function _relayRunningJobsCount() {
+  const jobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs)
+    ? window.__fridaysThreadRuntimeSnapshot.jobs
+    : [];
+  const running = jobs.filter(j => String(j?.status || 'running') === 'running').length;
+  const pending = Array.isArray(window.__fridaysChatPendingJobIds) ? window.__fridaysChatPendingJobIds.length : 0;
+  return Math.max(running, pending);
+}
+
+function _relayClearRetryTimer() {
+  if (window.__fridaysChatRelayRetryTimer) {
+    clearTimeout(window.__fridaysChatRelayRetryTimer);
+    window.__fridaysChatRelayRetryTimer = null;
+  }
+}
+
+function _relayScheduleRetry(delayMs = CHAT_RELAY_RESOURCE_LIMITS.retryMsNormal) {
+  if (window.__fridaysChatRelayRetryTimer) return;
+  const delay = Math.max(350, Number(delayMs || CHAT_RELAY_RESOURCE_LIMITS.retryMsNormal));
+  window.__fridaysChatRelayRetryTimer = setTimeout(() => {
+    window.__fridaysChatRelayRetryTimer = null;
+    _processRelayQueue();
+  }, delay);
+}
+
+function _relayMonitorFresh(ttlMs = CHAT_RELAY_RESOURCE_LIMITS.monitorTtlMs) {
+  const snap = window.__fridaysChatRelayResource || {};
+  const ts = Number(snap.sampledAt || 0);
+  return ts > 0 && (Date.now() - ts) <= Math.max(1000, Number(ttlMs || CHAT_RELAY_RESOURCE_LIMITS.monitorTtlMs));
+}
+
+function _refreshRelayResourceSnapshot(force = false) {
+  if (!force && _relayMonitorFresh()) {
+    return Promise.resolve(window.__fridaysChatRelayResource || {});
+  }
+  if (window.__fridaysChatRelayResourceFetchPromise) {
+    return window.__fridaysChatRelayResourceFetchPromise;
+  }
+  window.__fridaysChatRelayResourceFetchPromise = fetch('/api/monitor')
+    .then(r => r.json())
+    .then(data => {
+      const parseStat = (val) => {
+        if (val == null) return null;
+        const n = Number(val);
+        if (Number.isFinite(n)) return n;
+        const m = String(val).match(/\d+\.?\d*/);
+        return m ? Number(m[0]) : null;
+      };
+      const cpu = data && data.cpu_percent != null ? Number(data.cpu_percent) : parseStat(data && data.system_load);
+      const ram = data && data.ram_percent != null ? Number(data.ram_percent) : parseStat(data && data.memory_usage);
+      if (Number.isFinite(cpu) || Number.isFinite(ram)) {
+        updateChatMiniSystemStats(cpu, ram);
+      }
+      window.__fridaysChatRelayResource = {
+        cpuPercent: Number.isFinite(cpu) ? cpu : null,
+        ramPercent: Number.isFinite(ram) ? ram : null,
+        sampledAt: Date.now(),
+        source: 'monitor',
+      };
+      return window.__fridaysChatRelayResource;
+    })
+    .catch(() => window.__fridaysChatRelayResource || {})
+    .finally(() => {
+      window.__fridaysChatRelayResourceFetchPromise = null;
+    });
+  return window.__fridaysChatRelayResourceFetchPromise;
+}
+
+async function _relayDispatchGate(item) {
+  const relayItem = item || {};
+  const queue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
+  const budget = Number(window.__fridaysChatRelayBudget || 0);
+  if (relayItem.auto && budget === 0) {
+    return {
+      allow: false,
+      reason: 'turn budget exhausted',
+      retryMs: CHAT_RELAY_RESOURCE_LIMITS.retryMsNormal,
+      deferToBack: true,
+    };
+  }
+
+  const runningJobs = _relayRunningJobsCount();
+  if (runningJobs >= Number(CHAT_RELAY_RESOURCE_LIMITS.maxRunningJobs || 3)) {
+    return {
+      allow: false,
+      reason: `runtime busy (${runningJobs} jobs active)`,
+      retryMs: CHAT_RELAY_RESOURCE_LIMITS.retryMsHot,
+      deferToBack: false,
+    };
+  }
+
+  await _refreshRelayResourceSnapshot(false);
+  const sample = window.__fridaysChatRelayResource || {};
+  const cpu = Number(sample.cpuPercent);
+  const ram = Number(sample.ramPercent);
+  const cpuHot = Number.isFinite(cpu) && cpu >= Number(CHAT_RELAY_RESOURCE_LIMITS.softCpuPercent || 82);
+  const ramHot = Number.isFinite(ram) && ram >= Number(CHAT_RELAY_RESOURCE_LIMITS.softRamPercent || 86);
+  if (cpuHot || ramHot) {
+    const reason = cpuHot && ramHot
+      ? `resource hold (cpu ${Math.round(cpu)}%, ram ${Math.round(ram)}%)`
+      : (cpuHot ? `resource hold (cpu ${Math.round(cpu)}%)` : `resource hold (ram ${Math.round(ram)}%)`);
+    return {
+      allow: false,
+      reason,
+      retryMs: CHAT_RELAY_RESOURCE_LIMITS.retryMsHot,
+      deferToBack: false,
+    };
+  }
+
+  if (queue.length > _relayQueueCap()) {
+    return {
+      allow: false,
+      reason: `queue pressure (${queue.length}/${_relayQueueCap()})`,
+      retryMs: CHAT_RELAY_RESOURCE_LIMITS.retryMsNormal,
+      deferToBack: false,
+    };
+  }
+
+  return { allow: true };
+}
+
 function _renderChatRelayControls() {
   const autoEl = document.getElementById('chat-relay-auto');
   const maxEl = document.getElementById('chat-relay-turns-slider');
@@ -12150,9 +12296,10 @@ function _renderChatRelayControls() {
     const queued = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue.length : 0;
     const rawBudget = Number(window.__fridaysChatRelayBudget || 0);
     const budget = rawBudget < 0 ? 'inf' : String(Math.max(0, rawBudget));
+    const hold = String(window.__fridaysChatRelayHoldReason || '').trim();
     statusEl.textContent = queued
-      ? `Relay queue: ${queued} · budget ${budget}`
-      : `Relay ${window.__fridaysChatRelayAuto ? 'auto-on' : 'manual-only'} · budget ${budget}`;
+      ? `Relay queue: ${queued} · budget ${budget}${hold ? ` · hold ${hold}` : ''}`
+      : `Relay ${window.__fridaysChatRelayAuto ? 'auto-on' : 'manual-only'} · budget ${budget}${hold ? ` · ${hold}` : ''}`;
   }
 }
 
@@ -12725,12 +12872,25 @@ function queueRelayHandoff(handoff, autoMode = false) {
   }
 
   if (item.auto && !window.__fridaysChatRelayAuto) return;
-  if (item.auto && Number(window.__fridaysChatRelayBudget || 0) === 0) return;
+
+  const cap = _relayQueueCap();
+  if (queue.length >= cap) {
+    if (item.auto) {
+      _appendInfoLogEntry('duck', `Backpressure: relay queue full (${queue.length}/${cap}).`, true);
+    }
+    window.__fridaysChatRelayHoldReason = `queue full (${queue.length}/${cap})`;
+    window.__fridaysChatRelayHoldStamp = Date.now();
+    _renderChatRelayControls();
+    return;
+  }
 
   seen[sig] = now;
   window.__fridaysChatRelaySeen = seen;
   window.__fridaysChatRelayQueue = queue;
   window.__fridaysChatRelayQueue.push(item);
+  window.__fridaysChatRelayActive = true;
+  window.__fridaysChatRelayHoldReason = '';
+  window.__fridaysChatRelayHoldStamp = 0;
   if (item.auto) {
     _appendInfoLogEntry('duck', `Queued relay ticket for ${_chatAgentLabel(item.target)}.`, true);
     const libSeen = window.__fridaysLibrarianRelayAudit || {};
@@ -12744,25 +12904,70 @@ function queueRelayHandoff(handoff, autoMode = false) {
   _processRelayQueue();
 }
 
-function _processRelayQueue() {
+async function _processRelayQueue() {
   if (window.__fridaysChatRelayBusy) return;
   const queue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
+  window.__fridaysChatRelayActive = queue.length > 0;
   if (!queue.length) {
+    window.__fridaysChatRelayHoldReason = '';
+    window.__fridaysChatRelayHoldStamp = 0;
+    _relayClearRetryTimer();
     _renderChatRelayControls();
     return;
   }
-  const next = queue.shift();
-  window.__fridaysChatRelayQueue = queue;
+  const next = queue[0];
   if (!next || !next.target || !next.question) {
+    queue.shift();
+    window.__fridaysChatRelayQueue = queue;
     _renderChatRelayControls();
-    _processRelayQueue();
+    setTimeout(() => _processRelayQueue(), 0);
     return;
   }
-  if (next.auto && Number(window.__fridaysChatRelayBudget || 0) === 0) {
+
+  const gate = await _relayDispatchGate(next);
+  if (!gate || !gate.allow) {
+    const reason = String((gate && gate.reason) || 'resource hold').trim();
+    if (reason === 'turn budget exhausted') {
+      const before = queue.length;
+      const kept = queue.filter(item => !item?.auto);
+      const dropped = Math.max(0, before - kept.length);
+      window.__fridaysChatRelayQueue = kept;
+      window.__fridaysChatRelayActive = kept.length > 0;
+      window.__fridaysChatRelayHoldReason = dropped > 0
+        ? `turn budget exhausted (${dropped} deferred)`
+        : 'turn budget exhausted';
+      window.__fridaysChatRelayHoldStamp = Date.now();
+      window.__fridaysChatRelayLastHoldKey = '';
+      _relayClearRetryTimer();
+      if (dropped > 0) {
+        _appendInfoLogEntry('duck', `Turn budget exhausted; deferred ${dropped} auto relay ticket${dropped === 1 ? '' : 's'} until the next user turn.`, true);
+      }
+      _renderChatRelayControls();
+      return;
+    }
+    window.__fridaysChatRelayHoldReason = reason;
+    window.__fridaysChatRelayHoldStamp = Date.now();
+    const holdKey = `${next.from || 'agent'}>${next.target || 'agent'}:${reason}`;
+    if (window.__fridaysChatRelayLastHoldKey !== holdKey) {
+      window.__fridaysChatRelayLastHoldKey = holdKey;
+      _appendInfoLogEntry('duck', `Relay hold: ${reason}.`, true);
+    }
+    if (gate && gate.deferToBack && queue.length > 1) {
+      queue.push(queue.shift());
+      window.__fridaysChatRelayQueue = queue;
+    }
     _renderChatRelayControls();
-    _processRelayQueue();
+    _relayScheduleRetry((gate && gate.retryMs) || CHAT_RELAY_RESOURCE_LIMITS.retryMsNormal);
     return;
   }
+
+  window.__fridaysChatRelayHoldReason = '';
+  window.__fridaysChatRelayHoldStamp = 0;
+  window.__fridaysChatRelayLastHoldKey = '';
+  _relayClearRetryTimer();
+
+  queue.shift();
+  window.__fridaysChatRelayQueue = queue;
   if (next.auto && Number(window.__fridaysChatRelayBudget || 0) > 0) {
     window.__fridaysChatRelayBudget = Math.max(0, Number(window.__fridaysChatRelayBudget || 0) - 1);
   }
@@ -12788,7 +12993,7 @@ function _processRelayQueue() {
       window.__fridaysChatRelayActive = Array.isArray(window.__fridaysChatRelayQueue) && window.__fridaysChatRelayQueue.length > 0;
       _renderChatRelayControls();
       pollActiveThreadRuntime(true);
-      setTimeout(_processRelayQueue, 0);
+      setTimeout(() => _processRelayQueue(), 0);
     });
 }
 
@@ -14444,6 +14649,10 @@ function sendMessage(source = 'user', relayMeta = null) {
     window.__fridaysChatRelayQueue = [];
     window.__fridaysChatRelayBusy = false;
     window.__fridaysChatRelayActive = false;
+    window.__fridaysChatRelayHoldReason = '';
+    window.__fridaysChatRelayHoldStamp = 0;
+    window.__fridaysChatRelayLastHoldKey = '';
+    _relayClearRetryTimer();
     if (window.__fridaysReplaceBubbleId) {
       const oldNode = document.getElementById('chat-bubble-' + String(window.__fridaysReplaceBubbleId || '').replace(/[^a-zA-Z0-9_-]/g, ''));
       if (oldNode) oldNode.remove();
