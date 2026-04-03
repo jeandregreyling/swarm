@@ -1410,19 +1410,15 @@ def api_conversation_message_patch(conv_id, msg_id):
 
 @app.route('/api/conversations/<int:conv_id>/messages/<int:msg_id>', methods=['DELETE'])
 def api_conversation_message_delete(conv_id, msg_id):
-    """Delete a single user-authored prompt message inside a conversation."""
+    """Delete a single message inside a conversation."""
     conn = get_connection()
     row = conn.execute(
-        "SELECT id, from_agent FROM messages WHERE id=? AND conversation_id=?",
+        "SELECT id, from_agent, to_agent FROM messages WHERE id=? AND conversation_id=?",
         (msg_id, conv_id)
     ).fetchone()
     if not row:
         conn.close()
         return jsonify({'ok': False, 'error': 'message not found'}), 404
-
-    if str(row['from_agent'] or '').strip().lower() != 'user':
-        conn.close()
-        return jsonify({'ok': False, 'error': 'only user prompts are deletable'}), 403
 
     conn.execute("DELETE FROM messages WHERE id=? AND conversation_id=?", (msg_id, conv_id))
     conn.commit()
@@ -4859,9 +4855,20 @@ def api_chat():
     requested_agents = data.get('agents')
     requested_conv_id = data.get('conversation_id')
     force_new_thread = bool(data.get('new_thread'))
+    history_mode = str(data.get('history_mode') or 'full').strip().lower()
+    history_limit_raw = data.get('history_limit')
 
     if not message:
         return jsonify({'ok': False, 'response': 'Empty message'}), 400
+
+    if history_mode not in {'full', 'recent', 'none'}:
+        history_mode = 'full'
+
+    try:
+        history_limit = int(history_limit_raw) if history_limit_raw is not None else 8
+    except Exception:
+        history_limit = 8
+    history_limit = max(1, min(30, history_limit))
 
     allowed_agents = {a['name'].lower() for a in _AGENT_ROSTER if a['name'].lower() != 'ghost'}
 
@@ -5468,7 +5475,12 @@ def api_chat():
                 'conversation_id': conv_id,
             })
 
-        thread_rows = _fetch_chat_thread_rows(conv_id, limit=20)
+        if history_mode == 'none':
+            thread_rows = []
+        elif history_mode == 'recent':
+            thread_rows = _fetch_chat_thread_rows(conv_id, limit=history_limit)
+        else:
+            thread_rows = _fetch_chat_thread_rows(conv_id, limit=60)
         history = _chat_history_from_rows(thread_rows)
         transcript = _thread_transcript_from_rows(thread_rows[-12:])
         reply_contexts = {
@@ -5722,6 +5734,8 @@ def api_chat():
             'responses': responses,
             'pending_jobs': pending_jobs,
             'agents': normalized_agents,
+            'history_mode': history_mode,
+            'history_limit': history_limit if history_mode == 'recent' else None,
             'conversation_id': conv_id,
         })
     except Exception as exc:
