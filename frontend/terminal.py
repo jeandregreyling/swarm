@@ -5075,6 +5075,81 @@ def api_chat():
             )
         return base_prompt
 
+    def _should_attach_ticket_snapshot(latest_message, thread_rows):
+        text = str(latest_message or '').strip().lower()
+        if not text and thread_rows:
+            text = str(thread_rows[-1].get('message') or '').strip().lower()
+        if not text:
+            return False
+        triggers = (
+            'ticket', 'tickets', 'queue', 'triage', 'open',
+            'proposal', 'proposals', 'backlog', 'pending',
+            'work item', 'work items', 'action plan', 'status'
+        )
+        return any(term in text for term in triggers)
+
+    def _build_ticket_snapshot_block(limit=8):
+        conn = get_connection()
+        try:
+            queue_rows = conn.execute(
+                "SELECT status, COUNT(*) AS c FROM queue GROUP BY status"
+            ).fetchall()
+            queue_counts = {str(r['status'] or 'unknown').lower(): int(r['c'] or 0) for r in queue_rows}
+            queue_total = sum(queue_counts.values())
+
+            proposal_rows = conn.execute(
+                "SELECT status, COUNT(*) AS c FROM work_proposals GROUP BY status"
+            ).fetchall()
+            proposal_counts = {str(r['status'] or 'unknown').lower(): int(r['c'] or 0) for r in proposal_rows}
+
+            pending_rows = conn.execute(
+                """
+                SELECT wp.proposal_id, wp.agent, wp.title, wp.status, wp.queue_id,
+                       q.status AS queue_status, q.created_at
+                FROM work_proposals wp
+                LEFT JOIN queue q ON q.id = wp.queue_id
+                WHERE lower(coalesce(wp.status, '')) IN ('pending', 'approved', 'in_progress')
+                ORDER BY coalesce(q.created_at, wp.created_at) DESC
+                LIMIT ?
+                """,
+                (int(max(1, min(20, limit))),)
+            ).fetchall()
+
+            lines = []
+            for row in pending_rows:
+                pid = str(row['proposal_id'] or '').strip() or '(no-id)'
+                agent_name = str(row['agent'] or 'unknown').strip()
+                title = str(row['title'] or '').strip().replace('\n', ' ')
+                title = title[:140] if len(title) > 140 else title
+                p_status = str(row['status'] or 'unknown').strip().lower()
+                q_status = str(row['queue_status'] or 'unknown').strip().lower()
+                lines.append(f"- {pid} | {agent_name} | {p_status}/{q_status} | {title}")
+
+            queue_open = int(queue_counts.get('queued', 0) + queue_counts.get('processing', 0))
+            queue_done = int(queue_counts.get('completed', 0) + queue_counts.get('done', 0))
+            queue_failed = int(queue_counts.get('failed', 0))
+
+            prop_pending = int(proposal_counts.get('pending', 0))
+            prop_approved = int(proposal_counts.get('approved', 0))
+            prop_in_progress = int(proposal_counts.get('in_progress', 0))
+            prop_executed = int(proposal_counts.get('executed', 0) + proposal_counts.get('done', 0))
+
+            return (
+                "\n\n=== Live Ticket Snapshot ===\n"
+                f"Queue: total={queue_total}, open={queue_open}, done={queue_done}, failed={queue_failed}\n"
+                f"Proposals: pending={prop_pending}, approved={prop_approved}, in_progress={prop_in_progress}, executed={prop_executed}\n"
+                "Open proposal samples (newest first):\n"
+                + ("\n".join(lines) if lines else "- none")
+                + "\nUse this snapshot directly as ground truth for this turn."
+                + " If the user asks about open tickets/triage/action plan, answer from these counts and samples first"
+                + " and do NOT ask the user to provide the same ticket list again unless snapshot shows none."
+            )
+        except Exception as exc:
+            log_activity('terminal', 'chat_ticket_snapshot_warning', str(exc)[:180])
+            return ''
+        finally:
+            conn.close()
+
     def _persist_local_agent_memory(selected_agent, latest_message, response_text):
         answer = str(response_text or '').strip()
         if not answer:
@@ -5493,6 +5568,8 @@ def api_chat():
             '=== New user message ===\n'
             f'{message}'
         )
+        if _should_attach_ticket_snapshot(message, thread_rows):
+            threaded_prompt += _build_ticket_snapshot_block(limit=10)
 
         responses_map = {}
         pending_jobs = []
