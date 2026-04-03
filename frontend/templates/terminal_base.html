@@ -11397,6 +11397,14 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
 function _normalizeRelayQuestion(raw) {
   let q = String(raw || '').replace(/\s+/g, ' ').trim();
   q = q.replace(/^["'`\-:\s]+/, '').replace(/["'`\s]+$/, '');
+  if (/^if\s+/i.test(q)) {
+    q = q.replace(/^if\s+/i, '').trim();
+  }
+  q = q
+    .replace(/^he\s+is\b/i, 'you are')
+    .replace(/^he's\b/i, 'you are')
+    .replace(/^she\s+is\b/i, 'you are')
+    .replace(/^she's\b/i, 'you are');
   if (!q) return '';
   if (!/[?!.]$/.test(q)) q += '?';
   return q.slice(0, 260);
@@ -12931,14 +12939,10 @@ function sendMessage(source = 'user', relayMeta = null) {
       );
     }
 
-    const mergedHandoffs = discovered.slice();
-    if (userIntentRelayHandoffs.length) {
-      userIntentRelayHandoffs.forEach(h => {
-        const sig = _relaySignature(h);
-        const duplicate = mergedHandoffs.some(existing => _relaySignature(existing) === sig);
-        if (!duplicate) mergedHandoffs.push(h);
-      });
-    }
+    // If the user explicitly asked to route to an agent, honor that intent first.
+    const mergedHandoffs = userIntentRelayHandoffs.length
+      ? userIntentRelayHandoffs.slice()
+      : discovered.slice();
     if (window.__fridaysChatRelayAuto && mergedHandoffs.length) {
       mergedHandoffs.forEach(h => queueRelayHandoff(h, true));
     }
