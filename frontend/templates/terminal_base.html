@@ -840,10 +840,6 @@ body.theme-rose {
   border-color: var(--accent);
   color: #fff;
 }
-#view-chat {
-  display: flex;
-  flex-direction: column;
-}
 #chat-layout {
   --chat-ui-scale: 1;
   display: flex;
@@ -2434,10 +2430,12 @@ body.theme-rose {
   align-items: flex-start;
   justify-content: center;
   padding-top: 80px;
+  pointer-events: none;
 }
 #command-palette.open {
   display: flex;
   animation: fade-in 0.15s ease-out;
+  pointer-events: auto;
 }
 #command-palette-box {
   background: var(--card);
@@ -2552,6 +2550,7 @@ body.theme-rose {
    SETTINGS MODAL
    ───────────────────────────────────────────────────────────────────────── */
 #settings-modal,
+#troubleshoot-modal,
 #ticket-detail-modal,
 #memory-detail-modal,
 #doc-detail-modal,
@@ -2568,8 +2567,10 @@ body.theme-rose {
   z-index: 10000;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 #settings-modal.open,
+#troubleshoot-modal.open,
 #ticket-detail-modal.open,
 #memory-detail-modal.open,
 #doc-detail-modal.open,
@@ -2578,8 +2579,10 @@ body.theme-rose {
 #window-help-modal.open {
   display: flex;
   animation: fade-in 0.2s ease-out;
+  pointer-events: auto;
 }
 #ticket-detail-modal .modal-content,
+#troubleshoot-modal .modal-content,
 #memory-detail-modal .modal-content,
 #doc-detail-modal .modal-content,
 #proposal-detail-modal .modal-content,
@@ -2613,11 +2616,13 @@ body.theme-rose {
   z-index: 10001;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 #timezone-picker-modal.open {
   display: flex;
   animation: fade-in 0.2s ease-out;
+  pointer-events: auto;
 }
 
 #timezone-picker-box {
@@ -3007,6 +3012,28 @@ input[type="range"]::-moz-range-thumb:hover {
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════
+     TROUBLESHOOT MODAL
+     ════════════════════════════════════════════════════════════════════════ -->
+
+<div id="troubleshoot-modal">
+  <div class="modal-content" style="width:92%;max-width:980px;max-height:88vh;display:flex;flex-direction:column;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-size:13px;font-weight:700;">🧪 Troubleshoot</div>
+        <div style="font-size:11px;color:var(--text-dim);">Live client diagnostics for click and runtime errors</div>
+      </div>
+      <button onclick="toggleTroubleshootPanel(false)" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button onclick="clearTroubleshootLogs()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Clear</button>
+      <button onclick="copyTroubleshootLogs()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Copy Logs</button>
+      <span id="troubleshoot-summary" style="margin-left:auto;font-size:11px;color:var(--text-dim);"></span>
+    </div>
+    <div id="troubleshoot-log-body" style="flex:1;overflow:auto;padding:12px 14px;font-family:'SF Mono',monospace;font-size:11px;color:var(--text-dim);white-space:pre-wrap;line-height:1.45;"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
      TOAST NOTIFICATIONS
      ════════════════════════════════════════════════════════════════════════ -->
 
@@ -3025,11 +3052,12 @@ input[type="range"]::-moz-range-thumb:hover {
     <div id="world-clocks"></div>
     <div id="time-display"></div>
     <div id="home-controls">
-      <button id="auth-user-pill" onclick="openIdentityManager()" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Identity & proxy user">
+      <button id="auth-user-pill" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Identity & proxy user">
         <span>👤</span><span id="auth-user-pill-label">ghost</span>
       </button>
-      <button onclick="openWindowHelp('home')" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Help">?</button>
-      <button onclick="toggleSettings()" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings">⚙️</button>
+      <button id="troubleshoot-btn" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px;" title="Open diagnostics and error log">🧪 Troubleshoot</button>
+      <button id="home-help-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Help">?</button>
+      <button id="home-settings-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings">⚙️</button>
     </div>
   </div>
 
@@ -3038,62 +3066,62 @@ input[type="range"]::-moz-range-thumb:hover {
     <div class="home-section">
       <div class="home-section-title"><span>⚡</span> Quick Access</div>
       <div class="card-grid" id="quick-cards">
-        <div class="home-card" onclick="openWindow('chat', '💬 Chat', 'view-chat')">
+        <div class="home-card" data-win-id="chat" data-win-title="💬 Chat" data-win-template="view-chat">
           <div class="card-icon">💬</div>
           <div class="card-title">Chat</div>
           <div class="card-desc">Ask the swarm</div>
         </div>
-        <div class="home-card" onclick="openWindow('terminal', '⌨️ Terminal', 'view-terminal')">
+        <div class="home-card" data-win-id="terminal" data-win-title="⌨️ Terminal" data-win-template="view-terminal">
           <div class="card-icon">⌨️</div>
           <div class="card-title">Terminal</div>
           <div class="card-desc">Shell commands</div>
-                <div class="home-card" onclick="openWindow('files', '📁 Files', 'view-files')">
-                  <div class="card-icon">📁</div>
-                  <div class="card-title">Files</div>
-                  <div class="card-desc">Browse workspace</div>
-                </div>
         </div>
-        <div class="home-card" onclick="openWindow('memory', '🧠 Memory', 'view-memory')">
+        <div class="home-card" data-win-id="files" data-win-title="📁 Files" data-win-template="view-files">
+          <div class="card-icon">📁</div>
+          <div class="card-title">Files</div>
+          <div class="card-desc">Browse workspace</div>
+        </div>
+        <div class="home-card" data-win-id="memory" data-win-title="🧠 Memory" data-win-template="view-memory">
           <div class="card-icon">🧠</div>
           <div class="card-title">Memory</div>
           <div class="card-desc">Swarm knowledge</div>
         </div>
-        <div class="home-card" onclick="openWindow('monitor', '📡 Monitor', 'view-monitor')">
+        <div class="home-card" data-win-id="monitor" data-win-title="📡 Monitor" data-win-template="view-monitor">
           <div class="card-icon">📡</div>
           <div class="card-title">Monitor</div>
           <div class="card-desc">System status</div>
         </div>
-        <div class="home-card" onclick="openWindow('docs', '📚 Docs', 'view-docs')">
+        <div class="home-card" data-win-id="docs" data-win-title="📚 Docs" data-win-template="view-docs">
           <div class="card-icon">📚</div>
           <div class="card-title">Docs</div>
           <div class="card-desc">Projects & notes</div>
         </div>
-        <div class="home-card" onclick="openWindow('skills', '⚙️ Skills', 'view-skills')">
+        <div class="home-card" data-win-id="skills" data-win-title="⚙️ Skills" data-win-template="view-skills">
           <div class="card-icon">⚙️</div>
           <div class="card-title">Skills</div>
           <div class="card-desc">Available tools</div>
         </div>
-        <div class="home-card" onclick="openWindow('tickets', '🎫 Tickets', 'view-tickets')">
+        <div class="home-card" data-win-id="tickets" data-win-title="🎫 Tickets" data-win-template="view-tickets">
           <div class="card-icon">🎫</div>
           <div class="card-title">Tickets</div>
           <div class="card-desc">Task tracking</div>
         </div>
-        <div class="home-card" onclick="openWindow('studio', '🎨 Studio', 'view-studio')">
+        <div class="home-card" data-win-id="studio" data-win-title="🎨 Studio" data-win-template="view-studio">
           <div class="card-icon">🎨</div>
           <div class="card-title">Studio</div>
           <div class="card-desc">Swarm cockpit</div>
         </div>
-        <div class="home-card" onclick="openWindow('time-wizard', '🌀 Vortex', 'view-time-wizard')">
+        <div class="home-card" data-win-id="time-wizard" data-win-title="🌀 Vortex" data-win-template="view-time-wizard">
           <div class="card-icon">🌀</div>
           <div class="card-title">Vortex</div>
           <div class="card-desc">State timeline</div>
         </div>
-        <div class="home-card" onclick="openWindow('access', '🔑 Access', 'view-access')">
+        <div class="home-card" data-win-id="access" data-win-title="🔑 Access" data-win-template="view-access">
           <div class="card-icon">🔑</div>
           <div class="card-title">Access</div>
           <div class="card-desc">Senders &amp; permissions</div>
         </div>
-        <div class="home-card" onclick="openWindow('git', '🌿 Git', 'view-git')">
+        <div class="home-card" data-win-id="git" data-win-title="🌿 Git" data-win-template="view-git">
           <div class="card-icon">🌿</div>
           <div class="card-title">Git</div>
           <div class="card-desc">Changes, diffs, commit</div>
@@ -3109,19 +3137,19 @@ input[type="range"]::-moz-range-thumb:hover {
     <div class="home-section">
       <div class="home-section-title"><span>👁</span> Needs Attention</div>
       <div id="attention-panel" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">
-        <div class="stat-card" style="cursor:pointer;" onclick="openWindow('tickets','🎫 Tickets','view-tickets')" title="Open Tickets">
+        <div class="stat-card" style="cursor:pointer;" data-win-id="tickets" data-win-title="🎫 Tickets" data-win-template="view-tickets" title="Open Tickets">
           <div class="stat-value" id="attn-open-tickets">—</div>
           <div class="stat-label">Open Tickets</div>
         </div>
-        <div class="stat-card" style="cursor:pointer;" onclick="openWindow('studio','🎨 Studio','view-studio')" title="Proposals awaiting action">
+        <div class="stat-card" style="cursor:pointer;" data-win-id="studio" data-win-title="🎨 Studio" data-win-template="view-studio" title="Proposals awaiting action">
           <div class="stat-value" id="attn-proposals">—</div>
           <div class="stat-label">Active Proposals</div>
         </div>
-        <div class="stat-card" style="cursor:pointer;" onclick="openWindow('docs','📚 Docs','view-docs');setTimeout(()=>docsSetTab('pinboard'),120);" title="Pinned items">
+        <div class="stat-card" style="cursor:pointer;" data-win-id="docs" data-win-title="📚 Docs" data-win-template="view-docs" data-after-open="docsSetTab:pinboard" title="Pinned items">
           <div class="stat-value" id="attn-pinned">—</div>
           <div class="stat-label">Pinned Items</div>
         </div>
-        <div class="stat-card" style="cursor:pointer;" onclick="openWindow('docs','📚 Docs','view-docs');setTimeout(()=>docsSetTab('brief'),120);" title="Ghost Brief freshness">
+        <div class="stat-card" style="cursor:pointer;" data-win-id="docs" data-win-title="📚 Docs" data-win-template="view-docs" data-after-open="docsSetTab:brief" title="Ghost Brief freshness">
           <div class="stat-value" id="attn-brief">—</div>
           <div class="stat-label">Last Brief</div>
         </div>
@@ -3390,39 +3418,6 @@ input[type="range"]::-moz-range-thumb:hover {
 
       <button id="chat-dock-restore-btn" type="button" onclick="toggleChatDock()" title="Expand right dock">▶</button>
       <button id="chat-thread-restore-btn" type="button" onclick="toggleThreadRail()" title="Expand thread rail">⟩</button>
-      </div>
-    </div>
-  </div>
-</template>
-
-<template id="view-terminal">
-  <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
-    <div id="terminal-layout" style="display:flex;flex:1;min-height:0;">
-      <div id="terminal-main" style="flex:1;display:flex;flex-direction:column;min-width:0;">
-        <div id="terminal-output" style="flex:1; overflow-y:auto; font-family: 'SF Mono', monospace; font-size: 12px; color: #0f9; white-space: pre-wrap; padding: 12px;">Welcome to Fridays Terminal</div>
-        <div id="terminal-history-panel" style="display:none;border-top:1px solid var(--border);background:var(--window-header);padding:8px 12px;max-height:180px;overflow:auto;"></div>
-        <div style="padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
-          <button id="terminal-shortcuts-main-toggle" onclick="toggleTerminalShortcuts()" title="Hide shortcuts" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;">⚡ Shortcuts</button>
-          <button id="terminal-history-btn" onclick="terminalToggleHistory()" title="Show recent terminal commands" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;">History</button>
-          <button onclick="terminalClearOutput()" title="Clear terminal output" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap;">Clear</button>
-          <span style="color: #0f9; font-weight: bold;">$</span>
-          <input id="terminal-input" type="text" placeholder="Enter command..." style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); outline: none;" onkeydown="terminalHandleInputKeydown(event)">
-          <input id="terminal-filter-input" type="text" placeholder="Filter output" style="width: 150px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); outline: none;" oninput="terminalFilterOutput(this.value)">
-          <button id="terminal-autoscroll-toggle" onclick="terminalToggleAutoScroll()" title="Toggle auto-scroll" style="background:var(--card);border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:6px 8px;cursor:pointer;font-size:11px;white-space:nowrap;">Auto-scroll: On</button>
-          <button id="terminal-stop-btn" onclick="terminalStopActive()" title="Stop running command" disabled style="background:transparent;border:1px solid #f4433688;color:#f44336;border-radius:4px;padding:6px 10px;cursor:not-allowed;font-size:11px;white-space:nowrap;opacity:0.55;">Stop</button>
-        </div>
-      </div>
-      <aside id="terminal-shortcuts-panel" style="width:230px;max-width:38%;border-left:1px solid var(--border);background:var(--window-header);display:flex;flex-direction:column;position:relative;">
-        <div id="terminal-shortcuts-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--border);">
-          <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">⚡ Shortcuts</div>
-          <div id="terminal-shortcuts-header-controls" style="display:flex;gap:6px;align-items:center;">
-            <button id="terminal-shortcuts-add" onclick="addTerminalShortcut()" title="Add shortcut" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 7px;cursor:pointer;font-size:12px;">+</button>
-            <button id="terminal-shortcuts-toggle" onclick="toggleTerminalShortcuts()" title="Collapse" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 7px;cursor:pointer;font-size:12px;">⟩</button>
-          </div>
-        </div>
-        <button id="terminal-shortcuts-restore" onclick="toggleTerminalShortcuts()" title="Expand shortcuts" style="display:none;position:absolute;top:8px;left:8px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:12px;line-height:1;">⟨</button>
-        <div id="terminal-buttons"></div>
-      </aside>
     </div>
   </div>
 </template>
@@ -3890,6 +3885,7 @@ class WindowManager {
       </div>
     `;
 
+    const handles = [
       'ne', 'nw', 'se', 'sw',
     ].map(dir => {
       const el = document.createElement('div');
@@ -4973,6 +4969,116 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
+function _troubleshootState() {
+  if (!window.__fridaysTroubleshoot) {
+    window.__fridaysTroubleshoot = {
+      logs: [],
+      max: 250,
+    };
+  }
+  return window.__fridaysTroubleshoot;
+}
+
+function _troubleshootTimestamp() {
+  try {
+    return new Date().toISOString();
+  } catch {
+    return String(Date.now());
+  }
+}
+
+function _troubleshootLog(level, message, details) {
+  const state = _troubleshootState();
+  state.logs.push({
+    ts: _troubleshootTimestamp(),
+    level: String(level || 'info').toLowerCase(),
+    message: String(message || ''),
+    details: details == null ? '' : String(details),
+  });
+  if (state.logs.length > state.max) {
+    state.logs.splice(0, state.logs.length - state.max);
+  }
+  _renderTroubleshootBadge();
+  _renderTroubleshootPanel();
+}
+
+function _renderTroubleshootBadge() {
+  const btn = document.getElementById('troubleshoot-btn');
+  if (!btn) return;
+  const state = _troubleshootState();
+  const errors = state.logs.filter(item => item.level === 'error').length;
+  const warns = state.logs.filter(item => item.level === 'warn').length;
+  if (errors > 0) {
+    btn.textContent = `🧪 Troubleshoot (${errors})`;
+    btn.style.color = '#f77';
+    btn.style.borderColor = '#f4433666';
+  } else if (warns > 0) {
+    btn.textContent = `🧪 Troubleshoot (${warns})`;
+    btn.style.color = '#ffb366';
+    btn.style.borderColor = '#f59e0b66';
+  } else {
+    btn.textContent = '🧪 Troubleshoot';
+    btn.style.color = 'var(--text-dim)';
+    btn.style.borderColor = 'var(--border)';
+  }
+}
+
+function _renderTroubleshootPanel() {
+  const body = document.getElementById('troubleshoot-log-body');
+  const summary = document.getElementById('troubleshoot-summary');
+  if (!body || !summary) return;
+  const state = _troubleshootState();
+  const rows = state.logs.slice(-180);
+  const errors = state.logs.filter(item => item.level === 'error').length;
+  const warns = state.logs.filter(item => item.level === 'warn').length;
+  summary.textContent = `${rows.length} shown · ${errors} errors · ${warns} warnings`;
+  if (!rows.length) {
+    body.textContent = 'No client errors captured yet.';
+    return;
+  }
+  body.textContent = rows.map((item) => {
+    const head = `[${item.ts}] [${item.level.toUpperCase()}] ${item.message}`;
+    return item.details ? `${head}\n  ${item.details}` : head;
+  }).join('\n\n');
+  body.scrollTop = body.scrollHeight;
+}
+
+function toggleTroubleshootPanel(forceOpen) {
+  const modal = document.getElementById('troubleshoot-modal');
+  if (!modal) return;
+  const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !modal.classList.contains('open');
+  modal.classList.toggle('open', shouldOpen);
+  if (shouldOpen) {
+    _renderTroubleshootPanel();
+  }
+}
+
+function clearTroubleshootLogs() {
+  const state = _troubleshootState();
+  state.logs = [];
+  _renderTroubleshootBadge();
+  _renderTroubleshootPanel();
+  showToast('Troubleshoot log cleared', 'info');
+}
+
+async function copyTroubleshootLogs() {
+  const state = _troubleshootState();
+  const text = state.logs.map((item) => {
+    const head = `[${item.ts}] [${item.level.toUpperCase()}] ${item.message}`;
+    return item.details ? `${head}\n  ${item.details}` : head;
+  }).join('\n\n');
+  if (!text) {
+    showToast('No troubleshoot logs to copy', 'info');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Troubleshoot logs copied', 'success');
+  } catch (e) {
+    showToast('Copy failed: ' + (e?.message || e), 'error');
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // WINDOW ICONS MAPPING
 // ═══════════════════════════════════════════════════════════════════════════
@@ -4996,27 +5102,38 @@ const windowIcons = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function openWindow(id, title, templateId) {
+  _troubleshootLog('info', 'openWindow requested', `id=${id} title=${title} template=${templateId}`);
   // Strip any existing emoji from title  
   const cleanTitle = title.replace(/^[^\w\s]+ /, '').trim();
   const icon = windowIcons[id] || '📦';
   const titleWithIcon = `${icon} ${cleanTitle}`;
   const win = winManager.create(id, titleWithIcon, templateId);
+  if (!win) {
+    _troubleshootLog('error', 'winManager.create returned no window', `id=${id}`);
+    return;
+  }
   
   // Load data based on window type
   setTimeout(() => {
-    if (id === 'chat') loadChatData(win);
-    else if (id === 'terminal') loadTerminalData(win);
-    else if (id === 'files') loadFilesData(win);
-    else if (id === 'git') loadGitData(win);
-    else if (id === 'memory') loadMemoryData(win);
-    else if (id === 'monitor') loadMonitorData(win);
-    else if (id === 'docs') loadDocsData(win);
-    else if (id === 'skills') loadSkillsData(win);
-    else if (id === 'tickets') loadTicketsData(win);
-    else if (id === 'studio') loadStudioData(win);
-    else if (id === 'time-wizard') initTimeWizard();
-    else if (id === 'ghost-brief') initGhostBrief();
-    else if (id === 'access') loadAccessData(win);
+    try {
+      if (id === 'chat') loadChatData(win);
+      else if (id === 'terminal') loadTerminalData(win);
+      else if (id === 'files') loadFilesData(win);
+      else if (id === 'git') loadGitData(win);
+      else if (id === 'memory') loadMemoryData(win);
+      else if (id === 'monitor') loadMonitorData(win);
+      else if (id === 'docs') loadDocsData(win);
+      else if (id === 'skills') loadSkillsData(win);
+      else if (id === 'tickets') loadTicketsData(win);
+      else if (id === 'studio') loadStudioData(win);
+      else if (id === 'time-wizard') initTimeWizard();
+      else if (id === 'ghost-brief') initGhostBrief();
+      else if (id === 'access') loadAccessData(win);
+      _troubleshootLog('info', 'Window opened', `id=${id}`);
+    } catch (err) {
+      _troubleshootLog('error', 'Window loader failed', `id=${id} error=${err?.message || err}`);
+      throw err;
+    }
   }, 100);
   
   showToast(`Opened ${cleanTitle}`, 'success');
@@ -5026,6 +5143,44 @@ function goHome() {
   // Close all open windows and return to home
   Array.from(winManager.windows.keys()).forEach(id => {
     winManager.close(id);
+  });
+}
+
+function bindHomeLaunchClicks() {
+  const launchNodes = Array.from(document.querySelectorAll('#quick-cards .home-card, #home-content .stat-card'));
+  launchNodes.forEach((node) => {
+    if (node.dataset.launchBound === '1') return;
+    node.dataset.launchBound = '1';
+    node.addEventListener('click', (event) => {
+      // Primary path: data attributes. Fallback: legacy inline onclick parser.
+      if (event.defaultPrevented) return;
+      let winId = String(node.dataset.winId || '').trim();
+      let winTitle = String(node.dataset.winTitle || '').trim();
+      let winTemplate = String(node.dataset.winTemplate || '').trim();
+      if (!winId || !winTitle || !winTemplate) {
+        const inline = String(node.getAttribute('onclick') || '');
+        const match = inline.match(/openWindow\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'([^']+)'\)/);
+        if (!match) return;
+        winId = match[1];
+        winTitle = match[2];
+        winTemplate = match[3];
+      }
+      event.preventDefault();
+      try {
+        _troubleshootLog('info', 'Card click launch', `id=${winId} template=${winTemplate}`);
+        openWindow(winId, winTitle, winTemplate);
+        const afterOpen = String(node.dataset.afterOpen || '').trim();
+        if (afterOpen.startsWith('docsSetTab:')) {
+          const tab = afterOpen.split(':')[1] || 'all';
+          setTimeout(() => {
+            if (typeof docsSetTab === 'function') docsSetTab(tab);
+          }, 120);
+        }
+      } catch (err) {
+        _troubleshootLog('error', 'Card click launch failed', String(err?.message || err));
+        showToast('Open window failed: ' + (err?.message || err), 'error');
+      }
+    }, { capture: true });
   });
 }
 
@@ -5191,6 +5346,15 @@ function loadTerminalData(win) {
   _terminalSyncHistoryUi();
 }
 
+function _terminalWindow() {
+  return winManager && winManager.windows ? winManager.windows.get('terminal') : null;
+}
+
+function _terminalFind(selector) {
+  const terminalWin = _terminalWindow();
+  return terminalWin && terminalWin.el ? terminalWin.el.querySelector(selector) : null;
+}
+
 function _terminalStreamState() {
   if (!window.__terminalStreamState) {
     let history = [];
@@ -5236,13 +5400,13 @@ function _terminalReadActionValue(actionId) {
 }
 
 function _terminalHistoryPanel() {
-  return document.getElementById('terminal-history-panel');
+  return _terminalFind('#terminal-history-panel');
 }
 
 function _terminalSyncHistoryUi() {
   const state = _terminalStreamState();
   const panel = _terminalHistoryPanel();
-  const btn = document.getElementById('terminal-history-btn');
+  const btn = _terminalFind('#terminal-history-btn');
   if (btn) {
     const count = Array.isArray(state.history) ? state.history.length : 0;
     btn.textContent = count ? `History (${count})` : 'History';
@@ -5313,12 +5477,12 @@ function _terminalAllocEntryId() {
 }
 
 function _terminalCurrentFilter() {
-  const filterInput = document.getElementById('terminal-filter-input');
+  const filterInput = _terminalFind('#terminal-filter-input');
   return String(filterInput ? filterInput.value : '').trim().toLowerCase();
 }
 
 function terminalFilterOutput(value) {
-  const output = document.getElementById('terminal-output');
+  const output = _terminalFind('#terminal-output');
   if (!output) return;
   const needle = String(value || '').trim().toLowerCase();
   const cards = Array.from(output.querySelectorAll('.terminal-result-card'));
@@ -5446,7 +5610,7 @@ function terminalToggleHistory(force) {
 }
 
 function terminalFillFromHistory(cmd) {
-  const input = document.getElementById('terminal-input');
+  const input = _terminalFind('#terminal-input');
   if (!input) return;
   input.value = String(cmd || '');
   const len = input.value.length;
@@ -5480,7 +5644,7 @@ function terminalClearOutput() {
     showToast('Stop the active command before clearing output', 'error');
     return;
   }
-  const output = document.getElementById('terminal-output');
+  const output = _terminalFind('#terminal-output');
   _terminalResetOutput(output);
 }
 
@@ -5557,8 +5721,8 @@ function terminalPinCommand(actionId) {
 
 function _terminalSyncControls() {
   const state = _terminalStreamState();
-  const stopBtn = document.getElementById('terminal-stop-btn');
-  const autoBtn = document.getElementById('terminal-autoscroll-toggle');
+  const stopBtn = _terminalFind('#terminal-stop-btn');
+  const autoBtn = _terminalFind('#terminal-autoscroll-toggle');
   if (stopBtn) {
     stopBtn.disabled = !state.running;
     stopBtn.style.cursor = state.running ? 'pointer' : 'not-allowed';
@@ -9807,8 +9971,9 @@ async function _runTerminalCommandStream(cmd, outputEl, startTime, proposalId, e
 }
 
 async function runTerminalCmd() {
-  const input = document.getElementById('terminal-input');
-  const output = document.getElementById('terminal-output');
+  const input = _terminalFind('#terminal-input');
+  const output = _terminalFind('#terminal-output');
+  if (!input || !output) return;
   const cmd = input.value.trim();
   
   if (!cmd) return;
@@ -9865,7 +10030,8 @@ async function runTerminalCmd() {
 
 // Quick command buttons
 async function cmdTerminal(cmd) {
-  const output = document.getElementById('terminal-output');
+  const output = _terminalFind('#terminal-output');
+  if (!output) return;
   terminalToggleHistory(false);
   _terminalPushHistory(cmd);
   const entryId = _terminalAllocEntryId();
@@ -10099,119 +10265,41 @@ function _chatRuntimeSortWeight(status) {
 }
 
 function _updateThreadRuntimeLoading() {
+  const snapshotJobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs) ? window.__fridaysThreadRuntimeSnapshot.jobs : [];
+  _renderThreadRuntimePanel(snapshotJobs, 'live');
+}
+
+function _chatRuntimeStatusClass(job) {
+  if (!job) return 'initializing';
+  if (job.status === 'completed') return 'completed';
+  if (job.status === 'failed' || job.status === 'cancelled') return 'failed';
+  if (job.stage === 'thinking' || job.stage === 'processing') return 'compiling';
+  return 'initializing';
+}
+
+function _renderThreadRuntimeChip(agent, state, statusClass, timeLabel) {
+  return `
+    <div class="chat-thread-runtime-row ${statusClass}" data-agent="${_escapeHtml(String(agent || '').toLowerCase())}">
+      <span class="chat-thread-runtime-light ${statusClass}"></span>
+      <div class="chat-thread-runtime-row-agent">${_chatAgentIdentityHtml(agent, false)}</div>
+      <div class="chat-thread-runtime-stage">${_escapeHtml(state)}</div>
+      <div class="chat-thread-runtime-row-time">${_escapeHtml(timeLabel || '')}</div>
+    </div>
+  `;
+}
+
+function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
   const host = document.getElementById('chat-thread-runtime');
   if (!host) return;
-  
-  // Merge loading agents from _createLoadingPanel with actual jobs
-  const loadingAgents = Array.isArray(window.__fridaysRuntimeLoadingAgents) ? window.__fridaysRuntimeLoadingAgents : [];
-  const jobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs) ? window.__fridaysThreadRuntimeSnapshot.jobs : [];
-  
-  // Create rows for both active jobs and loading agents
-  const allAgents = new Map();
-  
-  jobs.forEach(j => {
-    allAgents.set(String(j.agent || 'agent').toLowerCase(), { job: j, type: 'job' });
-  });
-  
-  loadingAgents.forEach(a => {
-    const key = String(a || '').toLowerCase();
-    if (!allAgents.has(key)) {
-      allAgents.set(key, { agent: a, type: 'loading' });
-    }
-  });
-  
-  // Re-render the runtime panel with updated state
-  const convId = window.__fridaysChatConversationId;
-  if (!convId || allAgents.size === 0) return;
-  
-  const gridEl = host.querySelector('.chat-thread-runtime-grid');
-  if (!gridEl) return;
-  
-  Array.from(allAgents.entries()).forEach(([key, entry]) => {
-    let row = gridEl.querySelector('.chat-thread-runtime-row[data-agent="' + key + '"]');
-    
-    if (entry.type === 'job') {
-      const job = entry.job;
-      const agent = String(job.agent || 'agent');
-      const state = _chatRuntimeStateLabel(job);
-      const elapsed = Number(job.elapsed_ms || 0);
-      const eta = Number(job.eta_remaining_seconds || 0);
-      const target = Math.max(1000, Number(job.eta_seconds || 12000) * 1000);
-      const pct = Math.min(98, Math.max(4, Math.floor((elapsed / target) * 100)));
-      
-      let statusClass = '';
-      if (job.status === 'completed') statusClass = 'completed';
-      else if (job.status === 'failed') statusClass = 'failed';
-      else if (job.stage === 'thinking' || job.stage === 'processing') statusClass = 'compiling';
-      else statusClass = 'initializing';
-      
-      if (!row) {
-        row = document.createElement('div');
-        row.className = 'chat-thread-runtime-row ' + statusClass;
-        row.dataset.agent = key;
-        gridEl.appendChild(row);
-      }
-      
-      row.className = 'chat-thread-runtime-row ' + statusClass;
-      row.innerHTML = `
-        .chat-thread-runtime-row-head {
-          display: contents;
-        }
-      `;
-    } else {
-      if (!row) {
-        row = document.createElement('div');
-        row.className = 'chat-thread-runtime-row initializing';
-        row.dataset.agent = key;
-        gridEl.appendChild(row);
-      }
-      
-      row.className = 'chat-thread-runtime-row initializing';
-      row.innerHTML = `
-        <div class="chat-thread-runtime-row-head">
-          margin-left: auto;
-          <div class="chat-thread-runtime-row-agent">${_chatAgentIdentityHtml(entry.agent, false)}</div>
-          <div class="chat-thread-runtime-row-time">awaiting</div>
-        </div>
-          display: none;
-    }
-  });
-}
-          display: none;
 
   const convId = window.__fridaysChatConversationId;
   if (!convId) {
-          font-size: 8px;
+    host.classList.remove('open');
     host.innerHTML = '';
     window.__fridaysThreadRuntimeSnapshot = { jobs: [], updatedAt: new Date().toISOString() };
     updateChatStatusPills();
     return;
-          max-width: 180px;
   }
-        .chat-thread-runtime-light {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          flex-shrink: 0;
-          animation: think-blink 1.1s ease-in-out infinite;
-        }
-        .chat-thread-runtime-light.initializing {
-          background: #4a7aff;
-          box-shadow: 0 0 6px rgba(74, 122, 255, 0.55);
-        }
-        .chat-thread-runtime-light.compiling {
-          background: #ffb800;
-          box-shadow: 0 0 6px rgba(255, 184, 0, 0.55);
-        }
-        .chat-thread-runtime-light.completed {
-          background: #4ade80;
-          box-shadow: 0 0 5px rgba(74, 222, 128, 0.38);
-          animation: none;
-        }
-        .chat-thread-runtime-light.failed {
-          background: #f44336;
-          box-shadow: 0 0 5px rgba(244, 67, 54, 0.45);
-        }
 
   const list = Array.isArray(jobs) ? jobs.slice() : [];
   list.sort((a, b) => {
@@ -10224,6 +10312,7 @@ function _updateThreadRuntimeLoading() {
   const failed = list.filter(j => String(j.status || '') === 'failed');
   const loadingAgents = Array.isArray(window.__fridaysRuntimeLoadingAgents) ? window.__fridaysRuntimeLoadingAgents : [];
   const hasPendingJobs = Array.isArray(window.__fridaysChatPendingJobIds) && window.__fridaysChatPendingJobIds.length > 0;
+  const canStop = running.length > 0 || loadingAgents.length > 0 || hasPendingJobs;
   const headline = running.length
     ? ('Live jobs: ' + running.length + ' running')
     : (loadingAgents.length || hasPendingJobs
@@ -10232,50 +10321,44 @@ function _updateThreadRuntimeLoading() {
 
   const shouldShow = !window.__fridaysChatRuntimeHidden && (window.__fridaysChatRuntimePinned || list.length > 0 || running.length > 0 || loadingAgents.length > 0 || hasPendingJobs);
   host.classList.toggle('open', shouldShow);
+
+  const chips = [];
+  const seen = new Set();
+  list.forEach(job => {
+    const agent = String(job.agent || 'agent');
+    const key = agent.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    const eta = Number(job.eta_remaining_seconds || 0);
+    const elapsed = Number(job.elapsed_ms || 0);
+    const elapsedS = Number.isFinite(elapsed) ? Math.max(0, Math.round(elapsed / 1000)) : 0;
+    chips.push(_renderThreadRuntimeChip(
+      agent,
+      _chatRuntimeStateLabel(job),
+      _chatRuntimeStatusClass(job),
+      eta > 0 ? ('~' + eta + 's') : ('+' + elapsedS + 's')
+    ));
+  });
+  loadingAgents.forEach(agent => {
+    const key = String(agent || '').toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    chips.push(_renderThreadRuntimeChip(agent, 'Initializing...', 'initializing', 'awaiting'));
+  });
+
   host.innerHTML = `
     <div class="chat-thread-runtime-head">
       <div style="display:flex;align-items:center;gap:6px;min-width:0;">
         <div class="chat-thread-runtime-title">Thread Runtime · #${Number(convId)}</div>
         <button class="chat-runtime-pin ${window.__fridaysChatRuntimePinned ? 'on' : ''}" onclick="toggleRuntimePin()" title="Keep runtime strip visible">${window.__fridaysChatRuntimePinned ? 'Pinned' : 'Pin'}</button>
+        ${canStop ? '<button class="chat-action-btn" onclick="stopPendingAgents()" title="Stop active agent runs">Stop</button>' : ''}
       </div>
       <div class="chat-thread-runtime-meta">${_escapeHtml(sourceLabel)} · ${_escapeHtml(headline)}</div>
     </div>
-    ${(list.length || loadingAgents.length || hasPendingJobs) ? `
-      <div class="chat-thread-runtime-grid">
-        ${list.map(job => {
-          const agent = String(job.agent || 'agent');
-          const state = _chatRuntimeStateLabel(job);
-          const eta = Number(job.eta_remaining_seconds || 0);
-          const elapsed = Number(job.elapsed_ms || 0);
-          const target = Math.max(1000, Number(job.eta_seconds || 12000) * 1000);
-          const pct = Math.min(98, Math.max(4, Math.floor((elapsed / target) * 100)));
-          const elapsedS = Number.isFinite(elapsed) ? Math.max(0, Math.round(elapsed / 1000)) : 0;
-          
-          let statusClass = '';
-          if (job.status === 'completed') statusClass = 'completed';
-          else if (job.status === 'failed') statusClass = 'failed';
-          else if (job.stage === 'thinking' || job.stage === 'processing') statusClass = 'compiling';
-          else statusClass = 'initializing';
-          
-          return `
-            <div class="chat-thread-runtime-row ${statusClass}" data-agent="${_escapeHtml(agent.toLowerCase())}">
-              <div class="chat-thread-runtime-row-head">
-                <div class="chat-thread-runtime-row-agent">${_chatAgentIdentityHtml(agent, false)}</div>
-                <div class="chat-thread-runtime-row-time">${eta > 0 ? ('~' + eta + 's') : ('+' + elapsedS + 's')}</div>
-              </div>
-              <div class="chat-thread-runtime-progress">
-                <div class="chat-thread-runtime-progress-fill" style="width:${pct}%"></div>
-              </div>
-              <div class="chat-thread-runtime-stage">${_escapeHtml(state)}</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    ` : ''}
+    ${(chips.length || hasPendingJobs) ? `<div class="chat-thread-runtime-grid">${chips.join('')}</div>` : ''}
   `;
 
   window.__fridaysThreadRuntimeSnapshot = { jobs: list, updatedAt: new Date().toISOString() };
-  _updateThreadRuntimeLoading();
   updateChatStatusPills();
 }
 
@@ -10290,6 +10373,20 @@ function pollActiveThreadRuntime(force = false) {
   if (!convId) {
     _renderThreadRuntimePanel([], 'idle');
     _syncThinkingBubbles([]);
+    return Promise.resolve();
+  }
+  const snapshotJobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs)
+    ? window.__fridaysThreadRuntimeSnapshot.jobs
+    : [];
+  const loadingAgents = Array.isArray(window.__fridaysRuntimeLoadingAgents)
+    ? window.__fridaysRuntimeLoadingAgents
+    : [];
+  const hasPendingJobs = Array.isArray(window.__fridaysChatPendingJobIds) && window.__fridaysChatPendingJobIds.length > 0;
+  const hasActiveSnapshot = snapshotJobs.some(j => String(j.status || 'running') === 'running');
+  if (!force && window.__fridaysChatPendingPollTimer) {
+    return Promise.resolve();
+  }
+  if (!force && !window.__fridaysChatRuntimePinned && !hasPendingJobs && !loadingAgents.length && !hasActiveSnapshot) {
     return Promise.resolve();
   }
   return fetch('/api/chat/jobs/status?conversation_id=' + encodeURIComponent(convId))
@@ -12085,6 +12182,9 @@ function _renderThinkingBubble(job, history) {
   if (elapsedMs > 0) metaBits.push('elapsed ' + _formatPendingElapsed(elapsedMs));
   if (job.status && job.status !== 'running') metaBits.push(String(job.status));
   const ts = new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const stopBtn = job.status === 'running'
+    ? '<button class="chat-action-btn" style="padding:1px 7px;font-size:10px;" onclick="stopPendingAgents()">Stop</button>'
+    : '';
   return `
     <div class="chat-meta icon-meta" style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
       <span>${identity}</span>
@@ -12095,7 +12195,7 @@ function _renderThinkingBubble(job, history) {
     <div class="chat-pending-stage">${_escapeHtml(currentStage)}</div>
     <div class="chat-pending-progress"><div class="chat-pending-progress-fill" style="width:${pct}%"></div></div>
     <div class="chat-pending-meta">${metaBits.map(bit => `<span>${_escapeHtml(bit)}</span>`).join('')}</div>
-    <div class="chat-pending-footer">${_escapeHtml(latestStageNote || 'Live job trace for this thread. Final reply will replace this placeholder when the run completes.')}</div>`;
+    <div class="chat-pending-footer" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">${_escapeHtml(latestStageNote || 'Live job trace for this thread. Final reply will replace this placeholder when the run completes.')} ${stopBtn}</div>`;
 }
 
 function _upsertThinkingBubble(job) {
@@ -13502,6 +13602,26 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load settings and apply time-of-day theme
   loadSettings();
   initClocks();
+  bindHomeLaunchClicks();
+  _renderTroubleshootBadge();
+
+  // Wire header buttons via JS (inline onclick may be suppressed)
+  document.getElementById('troubleshoot-btn')?.addEventListener('click', () => toggleTroubleshootPanel());
+  document.getElementById('auth-user-pill')?.addEventListener('click', () => openIdentityManager());
+  document.getElementById('home-help-btn')?.addEventListener('click', () => openWindowHelp('home'));
+  document.getElementById('home-settings-btn')?.addEventListener('click', () => toggleSettings());
+
+  window.addEventListener('error', (event) => {
+    const msg = event?.message || 'Unknown script error';
+    const where = `${event?.filename || 'unknown'}:${event?.lineno || 0}:${event?.colno || 0}`;
+    _troubleshootLog('error', msg, where);
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event?.reason;
+    const text = reason && reason.message ? reason.message : String(reason || 'Unhandled rejection');
+    _troubleshootLog('error', 'Unhandled promise rejection', text);
+  });
   
   // Update time-of-day theme every minute
   setInterval(() => {
@@ -13559,6 +13679,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('settings-modal').addEventListener('click', (e) => {
     if (e.target.id === 'settings-modal') {
       closeSettings();
+    }
+  });
+
+  document.getElementById('troubleshoot-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'troubleshoot-modal') {
+      toggleTroubleshootPanel(false);
     }
   });
   
