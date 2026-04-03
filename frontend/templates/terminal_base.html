@@ -12436,6 +12436,7 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
   ]);
 
   for (const line of lines) {
+    if (/([A-Za-z][A-Za-z0-9_.\- ]{1,24}(?:\s*(?:,|and)\s*[A-Za-z][A-Za-z0-9_.\- ]{1,24})+)\s+(?:will|can|should)\s+/i.test(line)) continue;
     if (/^\s*[A-Za-z0-9_.\- ]+(?:\s*,\s*[A-Za-z0-9_.\- ]+)+\s*:/.test(line)) continue;
     if (/^\s*@?[A-Za-z][A-Za-z0-9_.\- ]{1,24}\s*[:,]/.test(line)) continue;
     for (const opt of CHAT_AGENT_OPTIONS) {
