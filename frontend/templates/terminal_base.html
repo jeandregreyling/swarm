@@ -10529,6 +10529,9 @@ window.__fridaysDesktopNotificationsEnabled = window.__fridaysDesktopNotificatio
 window.__fridaysThreadAgentSelections = window.__fridaysThreadAgentSelections || _loadThreadAgentSelections();
 window.__fridaysThreadRuntimePollTimer = window.__fridaysThreadRuntimePollTimer || null;
 window.__fridaysThreadRuntimeSnapshot = window.__fridaysThreadRuntimeSnapshot || { jobs: [], updatedAt: null };
+window.__fridaysChatLiveSyncTimer = window.__fridaysChatLiveSyncTimer || null;
+window.__fridaysChatLiveSyncThreadRefreshTimer = window.__fridaysChatLiveSyncThreadRefreshTimer || null;
+window.__fridaysChatLastRenderSig = String(window.__fridaysChatLastRenderSig || '');
 window.__fridaysLastMentionedAgents = Array.isArray(window.__fridaysLastMentionedAgents) ? window.__fridaysLastMentionedAgents : [];
 window.__fridaysMentionState = window.__fridaysMentionState || { open: false, start: -1, end: -1, active: 0, items: [] };
 
@@ -14332,19 +14335,72 @@ function renderChatMessages(rows) {
   _syncThinkingBubbles(snapshotJobs);
 }
 
-function loadConversationMessages(convId) {
+function _chatRowsSignature(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) return 'empty';
+  const last = list[list.length - 1] || {};
+  const lastId = Number(last.id || 0);
+  const sender = String(last.sender || '').toLowerCase().trim();
+  const len = String(last.content || '').length;
+  return `${list.length}:${lastId}:${sender}:${len}`;
+}
+
+function loadConversationMessages(convId, options = {}) {
   if (!convId) {
     _renderWelcome();
-    return;
+    window.__fridaysChatLastRenderSig = '';
+    return Promise.resolve(false);
   }
-  fetch('/api/conversations/' + convId + '/messages')
+  const requestedConvId = Number(convId);
+  const force = !!options.force;
+  const allowStale = !!options.allowStale;
+  return fetch('/api/conversations/' + convId + '/messages')
     .then(r => r.json())
     .then(data => {
-      renderChatMessages(data.messages || []);
+      const activeConvId = Number(window.__fridaysChatConversationId || 0);
+      if (!allowStale && activeConvId && activeConvId !== requestedConvId) {
+        return false;
+      }
+      const rows = data.messages || [];
+      const nextSig = `${requestedConvId}:${_chatRowsSignature(rows)}`;
+      if (!force && window.__fridaysChatLastRenderSig === nextSig) {
+        return false;
+      }
+      window.__fridaysChatLastRenderSig = nextSig;
+      renderChatMessages(rows);
+      return true;
     })
     .catch(e => {
-      _appendChatBubble('system', 'Error loading thread: ' + e.message);
+      if (!options.silent) {
+        _appendChatBubble('system', 'Error loading thread: ' + e.message);
+      }
+      return false;
     });
+}
+
+function startChatLiveSyncService() {
+  if (window.__fridaysChatLiveSyncTimer) {
+    clearInterval(window.__fridaysChatLiveSyncTimer);
+    window.__fridaysChatLiveSyncTimer = null;
+  }
+  if (window.__fridaysChatLiveSyncThreadRefreshTimer) {
+    clearInterval(window.__fridaysChatLiveSyncThreadRefreshTimer);
+    window.__fridaysChatLiveSyncThreadRefreshTimer = null;
+  }
+
+  const syncNow = () => {
+    const convId = Number(window.__fridaysChatConversationId || 0);
+    if (!convId) return;
+    loadConversationMessages(convId, { silent: true, force: false, allowStale: false });
+  };
+
+  syncNow();
+  window.__fridaysChatLiveSyncTimer = setInterval(syncNow, 1800);
+  window.__fridaysChatLiveSyncThreadRefreshTimer = setInterval(() => {
+    const convId = Number(window.__fridaysChatConversationId || 0);
+    if (!convId) return;
+    refreshChatThreadList(convId);
+  }, 15000);
 }
 
 function refreshChatThreadList(preferredId = null) {
@@ -14933,6 +14989,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initChatSpellHelper();
   populateRelayRuleTargetOptions();
   renderRelayRuleList();
+  startChatLiveSyncService();
   
   // Settings modal handlers
   document.querySelectorAll('[data-time]').forEach(btn => {
