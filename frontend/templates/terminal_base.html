@@ -933,8 +933,15 @@ body.theme-rose {
   color: var(--text);
   border-color: var(--accent);
 }
-#chat-font-size-range {
-  width: 110px;
+#chat-font-size-select,
+#theme-font-size-select {
+  min-width: 92px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 11px;
 }
 #chat-thread-rail {
   width: 280px;
@@ -3015,7 +3022,24 @@ input[type="range"]::-moz-range-thumb:hover {
         <button onclick="applyTimeTheme('night');_markThemeActive(this)" data-theme="night"
           style="flex:1;padding:7px 6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">&#127769; Night</button>
       </div>
+      <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div style="font-size:11px;color:var(--text-dim);">System Default Font Size</div>
+        <select id="theme-font-size-select" onchange="setChatUiScale(this.value)" title="Set default chat font scale">
+          <option value="0.80">80%</option>
+          <option value="0.85">85%</option>
+          <option value="0.90">90%</option>
+          <option value="0.95" selected>95% (System Default)</option>
+          <option value="1.00">100%</option>
+          <option value="1.05">105%</option>
+          <option value="1.10">110%</option>
+          <option value="1.15">115%</option>
+          <option value="1.20">120%</option>
+          <option value="1.30">130%</option>
+        </select>
+      </div>
       <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+        <button onclick="resetThemeAndFontDefaults()"
+          style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;margin-right:8px;">Reset Theme + Font</button>
         <button id="reset-window-layout-btn" onclick="resetWindowLayout()"
           style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">Reset Window Layout</button>
       </div>
@@ -3331,7 +3355,18 @@ input[type="range"]::-moz-range-thumb:hover {
               </div>
               <div style="display:flex; gap:8px; align-items:center; white-space:nowrap;">
                 <span style="font-size:9px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">Font Size</span>
-                <input id="chat-font-size-range" type="range" min="0.7" max="1.35" step="0.05" value="0.95" oninput="setChatUiScale(this.value)" title="Scale chat/menu font size" style="width:100px; accent-color:var(--accent);">
+                <select id="chat-font-size-select" onchange="setChatUiScale(this.value)" title="Scale chat/menu font size">
+                  <option value="0.80">80%</option>
+                  <option value="0.85">85%</option>
+                  <option value="0.90">90%</option>
+                  <option value="0.95" selected>95%</option>
+                  <option value="1.00">100%</option>
+                  <option value="1.05">105%</option>
+                  <option value="1.10">110%</option>
+                  <option value="1.15">115%</option>
+                  <option value="1.20">120%</option>
+                  <option value="1.30">130%</option>
+                </select>
               </div>
             </div>
           </div>
@@ -4674,6 +4709,8 @@ function loadSettings() {
   // Update opacity display
   const opacityValue = document.getElementById('opacity-value');
   if (opacityValue) opacityValue.textContent = transparency + '%';
+
+  _syncChatUiScaleControls(window.__fridaysChatUiScale || CHAT_UI_SCALE_DEFAULT);
 
   return settings;
 }
@@ -10372,6 +10409,8 @@ const CHAT_THREAD_COLLAPSED_KEY = 'fridays-chat-thread-collapsed-v1';
 const CHAT_DOCK_WIDTH_KEY = 'fridays-chat-dock-width-v1';
 const CHAT_DOCK_COLLAPSED_KEY = 'fridays-chat-dock-collapsed-v1';
 const CHAT_UI_SCALE_KEY = 'fridays-chat-ui-scale-v1';
+const CHAT_UI_SCALE_DEFAULT = 0.95;
+const CHAT_UI_SCALE_OPTIONS = [0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20, 1.30];
 const CHAT_RUNTIME_PANEL_HIDDEN_KEY = 'fridays-chat-runtime-hidden-v1';
 const CHAT_RUNTIME_PIN_KEY = 'fridays-chat-runtime-pin-v1';
 const CHAT_ACTOR_BUBBLE_COLORS_KEY = 'fridays-chat-actor-bubble-colors-v1';
@@ -10419,7 +10458,7 @@ window.__fridaysChatThreadWidth = Number(window.__fridaysChatThreadWidth || loca
 window.__fridaysChatThreadCollapsed = window.__fridaysChatThreadCollapsed ?? (localStorage.getItem(CHAT_THREAD_COLLAPSED_KEY) === '1');
 window.__fridaysChatDockWidth = Number(window.__fridaysChatDockWidth || localStorage.getItem(CHAT_DOCK_WIDTH_KEY) || 420);
 window.__fridaysChatDockCollapsed = window.__fridaysChatDockCollapsed ?? (localStorage.getItem(CHAT_DOCK_COLLAPSED_KEY) === '1');
-window.__fridaysChatUiScale = Number(window.__fridaysChatUiScale || localStorage.getItem(CHAT_UI_SCALE_KEY) || 0.95);
+window.__fridaysChatUiScale = Number(window.__fridaysChatUiScale || localStorage.getItem(CHAT_UI_SCALE_KEY) || CHAT_UI_SCALE_DEFAULT);
 window.__fridaysChatRuntimeHidden = window.__fridaysChatRuntimeHidden ?? (localStorage.getItem(CHAT_RUNTIME_PANEL_HIDDEN_KEY) === '1');
 window.__fridaysChatRuntimePinned = window.__fridaysChatRuntimePinned ?? (localStorage.getItem(CHAT_RUNTIME_PIN_KEY) !== '0');
 window.__fridaysChatRelayAuto = window.__fridaysChatRelayAuto ?? (localStorage.getItem(CHAT_RELAY_AUTO_KEY) !== '0');
@@ -11434,17 +11473,52 @@ function _clampChatThreadWidth(width) {
   return Math.max(220, Math.min(520, Math.round(n)));
 }
 
+function _normalizeChatUiScale(scale) {
+  const n = Number(scale);
+  const fallback = Number(window.__fridaysChatUiScale || CHAT_UI_SCALE_DEFAULT);
+  const base = Number.isFinite(n) ? n : fallback;
+  let best = CHAT_UI_SCALE_OPTIONS[0];
+  let bestDistance = Math.abs(base - best);
+  CHAT_UI_SCALE_OPTIONS.forEach(opt => {
+    const distance = Math.abs(base - opt);
+    if (distance < bestDistance) {
+      best = opt;
+      bestDistance = distance;
+    }
+  });
+  return Number(best.toFixed(2));
+}
+
+function _chatUiScaleOptionValue(scale) {
+  return _normalizeChatUiScale(scale).toFixed(2);
+}
+
+function _syncChatUiScaleControls(scale) {
+  const value = _chatUiScaleOptionValue(scale);
+  document.querySelectorAll('[id="chat-font-size-select"]').forEach(select => {
+    if (select) select.value = value;
+  });
+  const themeSelect = document.getElementById('theme-font-size-select');
+  if (themeSelect) themeSelect.value = value;
+}
+
+function resetThemeAndFontDefaults() {
+  applyTimeTheme('auto');
+  setChatUiScale(CHAT_UI_SCALE_DEFAULT);
+  showToast('Theme and font reset to system defaults', 'success');
+}
+
 function _applyChatDockLayoutState() {
   const threadCollapsed = !!window.__fridaysChatThreadCollapsed;
   const threadWidth = _clampChatThreadWidth(window.__fridaysChatThreadWidth);
   const collapsed = !!window.__fridaysChatDockCollapsed;
   const width = _clampChatDockWidth(window.__fridaysChatDockWidth);
-  const scale = Math.max(0.7, Math.min(1.35, Number(window.__fridaysChatUiScale || 0.95)));
+  const scale = _normalizeChatUiScale(window.__fridaysChatUiScale || CHAT_UI_SCALE_DEFAULT);
 
   document.querySelectorAll('[id="chat-layout"]').forEach(layout => {
     const rail = layout.querySelector('[id="chat-thread-rail"]');
     const dock = layout.querySelector('[id="chat-right-dock"]');
-    const slider = layout.querySelector('[id="chat-font-size-range"]');
+    const fontSelect = layout.querySelector('[id="chat-font-size-select"]');
     if (!rail || !dock) return;
 
     layout.classList.toggle('threads-collapsed', threadCollapsed);
@@ -11462,8 +11536,9 @@ function _applyChatDockLayoutState() {
     }
 
     layout.style.setProperty('--chat-ui-scale', String(scale));
-    if (slider) slider.value = String(scale);
+    if (fontSelect) fontSelect.value = _chatUiScaleOptionValue(scale);
   });
+  _syncChatUiScaleControls(scale);
 }
 
 function toggleThreadRail(forceExpanded = null) {
@@ -11495,7 +11570,7 @@ function toggleChatDock(forceExpanded = null) {
 }
 
 function setChatUiScale(scale) {
-  const next = Math.max(0.7, Math.min(1.35, Number(scale || 0.95)));
+  const next = _normalizeChatUiScale(scale);
   window.__fridaysChatUiScale = next;
   localStorage.setItem(CHAT_UI_SCALE_KEY, String(next));
   _applyChatDockLayoutState();
@@ -11550,7 +11625,7 @@ function startChatThreadResize(event) {
 function initChatDockLayout() {
   window.__fridaysChatThreadWidth = _clampChatThreadWidth(window.__fridaysChatThreadWidth);
   window.__fridaysChatDockWidth = _clampChatDockWidth(window.__fridaysChatDockWidth);
-  window.__fridaysChatUiScale = Math.max(0.9, Math.min(1.5, Number(window.__fridaysChatUiScale || 1)));
+  window.__fridaysChatUiScale = _normalizeChatUiScale(window.__fridaysChatUiScale || CHAT_UI_SCALE_DEFAULT);
   _applyChatDockLayoutState();
 }
 
@@ -12301,6 +12376,20 @@ function _extractUserRequestedHandoffs(message, selectedAgents) {
   }
 
   const localCoreTargets = ['gemma', 'llama', 'qwen'].filter(a => _isKnownChatAgent(a));
+  const teamworkSignal = /\b(team|swarm|everyone|all\s+agents?|rest\s+of\s+the\s+team)\b/i.test(text);
+  if (teamworkSignal && Array.isArray(selectedAgents) && selectedAgents.length === 1 && localCoreTargets.length) {
+    const lead = String(selectedAgents[0] || '').toLowerCase();
+    const teamQuestion = _normalizeRelayQuestion(text);
+    if (teamQuestion) {
+      localCoreTargets.forEach(target => {
+        if (target === lead) return;
+        const sig = `${target}|${teamQuestion.toLowerCase()}`;
+        if (seen.has(sig)) return;
+        seen.add(sig);
+        handoffs.push({ from: lead || sender, target, question: teamQuestion, source: 'team-intent' });
+      });
+    }
+  }
   const localFanoutMatch = text.match(/(?:^|\b)ask\s+(?:the\s+)?local\s+agents?\s+(.{6,260})$/i);
   if (localFanoutMatch && localCoreTargets.length) {
     const question = _normalizeRelayQuestion(localFanoutMatch[1]);
