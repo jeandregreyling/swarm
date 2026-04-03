@@ -10150,18 +10150,22 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
 
   const running = list.filter(j => String(j.status || 'running') === 'running');
   const failed = list.filter(j => String(j.status || '') === 'failed');
+  const loadingAgents = Array.isArray(window.__fridaysRuntimeLoadingAgents) ? window.__fridaysRuntimeLoadingAgents : [];
+  const hasPendingJobs = Array.isArray(window.__fridaysChatPendingJobIds) && window.__fridaysChatPendingJobIds.length > 0;
   const headline = running.length
     ? ('Live jobs: ' + running.length + ' running')
-    : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread'));
+    : (loadingAgents.length || hasPendingJobs
+      ? 'Awaiting agent acknowledgement...'
+      : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread')));
 
-  const shouldShow = !window.__fridaysChatRuntimeHidden && (list.length > 0 || running.length > 0);
+  const shouldShow = !window.__fridaysChatRuntimeHidden && (list.length > 0 || running.length > 0 || loadingAgents.length > 0 || hasPendingJobs);
   host.classList.toggle('open', shouldShow);
   host.innerHTML = `
     <div class="chat-thread-runtime-head">
       <div class="chat-thread-runtime-title">Thread Runtime · #${Number(convId)}</div>
       <div class="chat-thread-runtime-meta">${_escapeHtml(sourceLabel)} · ${_escapeHtml(headline)}</div>
     </div>
-    ${list.length ? `
+    ${(list.length || loadingAgents.length || hasPendingJobs) ? `
       <div class="chat-thread-runtime-grid">
         ${list.map(job => {
           const agent = String(job.agent || 'agent');
@@ -11458,6 +11462,31 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
   const out = [];
   const seen = new Set();
 
+  // Support grouped directives like "GEMMA, LLaMA, QWEN: <request>".
+  const groupedTargets = raw.match(/(^|\n)\s*([A-Za-z0-9_.\- ]+(?:\s*,\s*[A-Za-z0-9_.\- ]+)+)\s*:\s*([\s\S]{8,320})/);
+  if (groupedTargets) {
+    const targetChunk = String(groupedTargets[2] || '');
+    const firstBodyLine = String(groupedTargets[3] || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean)[0] || '';
+    const normalizedBody = _normalizeRelayQuestion(
+      firstBodyLine.replace(/^could\s+you\s+/i, '').replace(/^please\s+/i, '')
+    );
+    const names = targetChunk.split(',').map(n => String(n || '').trim().toLowerCase()).filter(Boolean);
+    names.forEach(name => {
+      const opt = CHAT_AGENT_OPTIONS.find(a => {
+        const key = String(a.value || '').toLowerCase();
+        const label = String(a.label || '').toLowerCase();
+        return key === name || label === name || label.replace(/\s+/g, '') === name.replace(/\s+/g, '');
+      });
+      if (!opt || !normalizedBody) return;
+      const target = String(opt.value || '').toLowerCase();
+      if (!target || target === fromKey) return;
+      const sig = `${target}|${normalizedBody.toLowerCase()}`;
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      out.push({ from: fromKey || 'agent', target, question: normalizedBody });
+    });
+  }
+
   const patternsFor = (target) => ([
     new RegExp(`^@?${target}\\b[\\s,:-]+(.{6,260}\\?)$`, 'i'),
     new RegExp(`(?:ask|question\\s+for|for)\\s+${target}\\b[\\s,:-]+(.{6,260}\\?)$`, 'i'),
@@ -11502,7 +11531,7 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
       });
     }
   }
-  return out.slice(0, 4);
+  return out.slice(0, 6);
 }
 
 function _normalizeRelayQuestion(raw) {
@@ -12219,7 +12248,9 @@ function _createLoadingPanel(agents) {
   
   // Trigger thread runtime panel to show loading indicators
   const host = document.getElementById('chat-thread-runtime');
-  if (host && host.querySelector('.chat-thread-runtime-grid')) {
+  if (host) {
+    const snapshotJobs = (window.__fridaysThreadRuntimeSnapshot && window.__fridaysThreadRuntimeSnapshot.jobs) || [];
+    _renderThreadRuntimePanel(snapshotJobs, 'send');
     _updateThreadRuntimeLoading();
     host.classList.add('open');
   }
@@ -12358,6 +12389,7 @@ function _startLoadingTicker(panel, agents, estimateMs) {
       shared.timer = null;
       shared.started = Date.now();
       shared.perAgentTargetMs = {};
+      window.__fridaysRuntimeLoadingAgents = [];
       if (etaEl) etaEl.textContent = 'Completed';
       setTimeout(() => panel.remove(), 320);
     }
@@ -12415,6 +12447,7 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
           }
           loadConversationMessages(conversationId);
           refreshChatThreadList(conversationId);
+          window.__fridaysRuntimeLoadingAgents = [];
           pollActiveThreadRuntime(true);
           const failed = jobs.filter(j => j.status === 'failed');
           const cancelled = jobs.filter(j => j.status === 'cancelled');
@@ -12448,6 +12481,8 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
             });
           }
           _appendChatBubble('system', 'Stopped waiting for background response status (timeout).');
+          window.__fridaysRuntimeLoadingAgents = [];
+          pollActiveThreadRuntime(true);
           notifyDesktop('Fridays Chat', 'Background run timed out while polling status.', {
             tag: 'fridays-chat-timeout-' + String(conversationId || 'none')
           });
@@ -12487,6 +12522,7 @@ async function stopPendingAgents() {
     });
     window.__fridaysChatPendingJobIds = [];
     window.__fridaysChatPendingConversationId = null;
+    window.__fridaysRuntimeLoadingAgents = [];
     if (convId) {
       loadConversationMessages(convId);
       refreshChatThreadList(convId);
