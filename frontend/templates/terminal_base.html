@@ -1060,6 +1060,7 @@ body.theme-rose {
   flex-shrink: 0;
 }
 #input-wrapper {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1359,6 +1360,42 @@ body.theme-rose {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
 }
+.chat-mention-menu {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(100% + 4px);
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow, 0 8px 24px rgba(0,0,0,0.3));
+  z-index: 1500;
+  display: none;
+}
+.chat-mention-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+.chat-mention-item:hover,
+.chat-mention-item.active {
+  background: color-mix(in oklab, var(--accent) 18%, var(--card));
+}
+.chat-mention-meta {
+  color: var(--text-dim);
+  font-size: 10px;
+}
 #send-btn {
   min-width: 74px;
   min-height: 38px;
@@ -1647,17 +1684,31 @@ body.theme-rose {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .chat-pending-stage {
-  margin-top: 4px;
-  font-size: 12px;
+  margin-top: 2px;
+  font-size: 11px;
   color: var(--text);
 }
 .chat-pending-meta {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-dim);
+}
+.chat-pending-progress {
+  margin-top: 4px;
+  height: 3px;
+  background: var(--window-header);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.chat-pending-progress-fill {
+  height: 100%;
+  width: 4%;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 70%, #fff), var(--accent));
+  transition: width 0.2s linear;
 }
 .chat-pending-history {
   margin: 8px 0 0;
@@ -1669,8 +1720,8 @@ body.theme-rose {
   margin: 2px 0;
 }
 .chat-pending-footer {
-  margin-top: 8px;
-  font-size: 10px;
+  margin-top: 4px;
+  font-size: 9px;
   color: var(--text-dim);
 }
 .chat-text {
@@ -2032,7 +2083,7 @@ body.theme-rose {
 .chat-thread-runtime {
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklab, var(--window-header) 88%, var(--accent) 12%);
-  padding: 8px 12px;
+  padding: 4px 8px;
   display: none;
 }
 
@@ -2044,32 +2095,32 @@ body.theme-rose {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .chat-thread-runtime-title {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--text);
   letter-spacing: 0.2px;
 }
 
 .chat-thread-runtime-meta {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-dim);
 }
 
 .chat-thread-runtime-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 3px;
 }
 
 .chat-thread-runtime-row {
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 6px;
+  border-radius: 5px;
+  padding: 2px 4px;
   background: color-mix(in oklab, var(--card) 88%, var(--window-header) 12%);
   transition: all 0.3s ease;
 }
@@ -2100,9 +2151,9 @@ body.theme-rose {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 5px;
-  margin-bottom: 3px;
-  font-size: 10px;
+  gap: 4px;
+  margin-bottom: 2px;
+  font-size: 9px;
 }
 
 .chat-thread-runtime-row-agent {
@@ -2113,13 +2164,13 @@ body.theme-rose {
 }
 
 .chat-thread-runtime-row-time {
-  font-size: 9px;
+  font-size: 8px;
   color: var(--text-dim);
   white-space: nowrap;
 }
 
 .chat-thread-runtime-progress {
-  height: 4px;
+  height: 3px;
   background: var(--window-header);
   border: 0.5px solid var(--border);
   border-radius: 999px;
@@ -2135,11 +2186,25 @@ body.theme-rose {
 }
 
 .chat-thread-runtime-stage {
-  font-size: 9px;
+  font-size: 8px;
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.chat-runtime-pin {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-dim);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 9px;
+  cursor: pointer;
+}
+.chat-runtime-pin.on {
+  color: var(--text);
+  border-color: color-mix(in oklab, var(--accent) 65%, var(--border));
+  background: color-mix(in oklab, var(--accent) 18%, var(--card));
 }
 
 .chat-pill.on {
@@ -3175,20 +3240,8 @@ input[type="range"]::-moz-range-thumb:hover {
               <option value="">New Thread</option>
             </select>
             <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
+            <input id="chat-font-size-range" type="range" min="0.9" max="1.5" step="0.05" value="1" oninput="setChatUiScale(this.value)" title="Scale chat/menu font size">
             <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
-            <div style="position:relative;">
-              <button id="chat-more-btn" onclick="_chatMoreMenu()" style="background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;" title="More options">⋯</button>
-              <div id="chat-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,0.3));min-width:160px;z-index:999;padding:4px 0;">
-                <button onclick="renameCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Rename thread</button>
-                <button onclick="deleteCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ff8a8a;padding:8px 14px;cursor:pointer;font-size:12px;">Delete thread</button>
-                <button onclick="clearAllChatHistory();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Clear history</button>
-                <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
-                <button onclick="openChatDictionaryManager();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Dictionary</button>
-                <button onclick="exportChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Export dictionary</button>
-                <button onclick="importChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Import dictionary</button>
-                <button onclick="clearChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Reset dictionary</button>
-              </div>
-            </div>
           </div>
         </div>
         <div id="chat-section-main" class="chat-section chat-main-shell">
@@ -3214,9 +3267,10 @@ input[type="range"]::-moz-range-thumb:hover {
               <button class="chat-attach-btn" onclick="pickChatAttachments()" title="Attach up to 6 files. Text and image files are supported.">📎</button>
               <span id="chat-attach-inline-state" class="chat-attach-inline-state" aria-live="polite"></span>
               <textarea id="question-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
-                onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
+                onkeydown="if(event.key==='Enter' && !event.shiftKey && !event.defaultPrevented) { event.preventDefault(); sendMessage(); }"></textarea>
               <button id="send-btn" onclick="sendMessage()">Send</button>
             </div>
+            <div id="chat-mention-menu" class="chat-mention-menu" role="listbox" aria-label="Agent mentions"></div>
             <div id="chat-attachments"></div>
             <div id="chat-spell-helper" style="display:none; margin-top:0; font-size:11px; color: var(--text-dim);"></div>
             <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span><span id="chat-dictionary-inline">Dictionary: 0</span></div>
@@ -3248,9 +3302,7 @@ input[type="range"]::-moz-range-thumb:hover {
 
       <aside id="chat-right-dock" class="chat-font-scope" style="width:420px;">
         <div id="chat-dock-header">
-          <span class="chat-dock-title">Right Control Dock</span>
           <span class="chat-dock-grow"></span>
-          <input id="chat-font-size-range" type="range" min="0.9" max="1.5" step="0.05" value="1" oninput="setChatUiScale(this.value)" title="Scale chat/menu font size">
           <button type="button" class="chat-dock-btn" onclick="toggleChatDock()" title="Collapse right dock">◀</button>
         </div>
 
@@ -9884,6 +9936,7 @@ const CHAT_DOCK_WIDTH_KEY = 'fridays-chat-dock-width-v1';
 const CHAT_DOCK_COLLAPSED_KEY = 'fridays-chat-dock-collapsed-v1';
 const CHAT_UI_SCALE_KEY = 'fridays-chat-ui-scale-v1';
 const CHAT_RUNTIME_PANEL_HIDDEN_KEY = 'fridays-chat-runtime-hidden-v1';
+const CHAT_RUNTIME_PIN_KEY = 'fridays-chat-runtime-pin-v1';
 const CHAT_ACTOR_BUBBLE_COLORS_KEY = 'fridays-chat-actor-bubble-colors-v1';
 const CHAT_RELAY_AUTO_KEY = 'fridays-chat-relay-auto-v1';
 const CHAT_RELAY_MAX_KEY = 'fridays-chat-relay-max-v1';
@@ -9930,6 +9983,7 @@ window.__fridaysChatDockWidth = Number(window.__fridaysChatDockWidth || localSto
 window.__fridaysChatDockCollapsed = window.__fridaysChatDockCollapsed ?? (localStorage.getItem(CHAT_DOCK_COLLAPSED_KEY) === '1');
 window.__fridaysChatUiScale = Number(window.__fridaysChatUiScale || localStorage.getItem(CHAT_UI_SCALE_KEY) || 1);
 window.__fridaysChatRuntimeHidden = window.__fridaysChatRuntimeHidden ?? (localStorage.getItem(CHAT_RUNTIME_PANEL_HIDDEN_KEY) === '1');
+window.__fridaysChatRuntimePinned = window.__fridaysChatRuntimePinned ?? (localStorage.getItem(CHAT_RUNTIME_PIN_KEY) === '1');
 window.__fridaysChatRelayAuto = window.__fridaysChatRelayAuto ?? (localStorage.getItem(CHAT_RELAY_AUTO_KEY) !== '0');
 window.__fridaysChatRelayInfinite = window.__fridaysChatRelayInfinite ?? (localStorage.getItem(CHAT_RELAY_MAX_KEY) === 'inf');
 window.__fridaysChatRelayMaxPerTurn = Number(window.__fridaysChatRelayMaxPerTurn || localStorage.getItem(CHAT_RELAY_MAX_KEY) || 4);
@@ -9951,6 +10005,8 @@ window.__fridaysDesktopNotificationsEnabled = window.__fridaysDesktopNotificatio
 window.__fridaysThreadAgentSelections = window.__fridaysThreadAgentSelections || _loadThreadAgentSelections();
 window.__fridaysThreadRuntimePollTimer = window.__fridaysThreadRuntimePollTimer || null;
 window.__fridaysThreadRuntimeSnapshot = window.__fridaysThreadRuntimeSnapshot || { jobs: [], updatedAt: null };
+window.__fridaysLastMentionedAgents = Array.isArray(window.__fridaysLastMentionedAgents) ? window.__fridaysLastMentionedAgents : [];
+window.__fridaysMentionState = window.__fridaysMentionState || { open: false, start: -1, end: -1, active: 0, items: [] };
 
 function _threadSelectionKey(convId) {
   return convId ? String(convId) : 'new';
@@ -10158,11 +10214,14 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
       ? 'Awaiting agent acknowledgement...'
       : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread')));
 
-  const shouldShow = !window.__fridaysChatRuntimeHidden && (list.length > 0 || running.length > 0 || loadingAgents.length > 0 || hasPendingJobs);
+  const shouldShow = !window.__fridaysChatRuntimeHidden && (window.__fridaysChatRuntimePinned || list.length > 0 || running.length > 0 || loadingAgents.length > 0 || hasPendingJobs);
   host.classList.toggle('open', shouldShow);
   host.innerHTML = `
     <div class="chat-thread-runtime-head">
-      <div class="chat-thread-runtime-title">Thread Runtime · #${Number(convId)}</div>
+      <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+        <div class="chat-thread-runtime-title">Thread Runtime · #${Number(convId)}</div>
+        <button class="chat-runtime-pin ${window.__fridaysChatRuntimePinned ? 'on' : ''}" onclick="toggleRuntimePin()" title="Keep runtime strip visible">${window.__fridaysChatRuntimePinned ? 'Pinned' : 'Pin'}</button>
+      </div>
       <div class="chat-thread-runtime-meta">${_escapeHtml(sourceLabel)} · ${_escapeHtml(headline)}</div>
     </div>
     ${(list.length || loadingAgents.length || hasPendingJobs) ? `
@@ -10202,6 +10261,12 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
   window.__fridaysThreadRuntimeSnapshot = { jobs: list, updatedAt: new Date().toISOString() };
   _updateThreadRuntimeLoading();
   updateChatStatusPills();
+}
+
+function toggleRuntimePin() {
+  window.__fridaysChatRuntimePinned = !window.__fridaysChatRuntimePinned;
+  localStorage.setItem(CHAT_RUNTIME_PIN_KEY, window.__fridaysChatRuntimePinned ? '1' : '0');
+  pollActiveThreadRuntime(true);
 }
 
 function pollActiveThreadRuntime(force = false) {
@@ -11112,6 +11177,176 @@ function updateComposerMeta() {
   right.textContent = `${enabled} agent${enabled === 1 ? '' : 's'} on · ${attached} file${attached === 1 ? '' : 's'} · ${modeLabel}`;
 }
 
+function _normalizeMentionKey(raw) {
+  return String(raw || '').toLowerCase().trim().replace(/^@+/, '').replace(/\s+/g, '');
+}
+
+function _agentFromMentionToken(token) {
+  const key = _normalizeMentionKey(token);
+  if (!key) return null;
+  return CHAT_AGENT_OPTIONS.find(opt => {
+    const value = _normalizeMentionKey(opt.value);
+    const label = _normalizeMentionKey(opt.label);
+    return value === key || label === key;
+  }) || null;
+}
+
+function _extractMentionedAgents(text) {
+  const raw = String(text || '');
+  const out = [];
+  const seen = new Set();
+  const re = /(^|\s)@([a-zA-Z0-9_.\- ]{1,40})/g;
+  let m;
+  while ((m = re.exec(raw)) !== null) {
+    const token = String(m[2] || '').trim();
+    const opt = _agentFromMentionToken(token);
+    if (!opt) continue;
+    const key = String(opt.value || '').toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
+
+function _enableMentionedAgents(agentKeys) {
+  const keys = Array.isArray(agentKeys) ? agentKeys : [];
+  if (!keys.length) return;
+  let changed = false;
+  keys.forEach(k => {
+    const key = String(k || '').toLowerCase();
+    if (!key || !Object.prototype.hasOwnProperty.call(window.__fridaysChatEnabledAgents || {}, key)) return;
+    if (!window.__fridaysChatEnabledAgents[key]) {
+      window.__fridaysChatEnabledAgents[key] = true;
+      changed = true;
+    }
+  });
+  if (!changed) return;
+  persistThreadAgentSelection();
+  renderChatAgentToggles();
+  updateComposerMeta();
+}
+
+function _mentionContextAtCursor(input) {
+  if (!input) return null;
+  const value = String(input.value || '');
+  const end = Number(input.selectionStart || 0);
+  const prefix = value.slice(0, end);
+  const match = prefix.match(/(^|\s)@([a-zA-Z0-9_.\- ]*)$/);
+  if (!match) return null;
+  return {
+    query: String(match[2] || '').trim(),
+    start: end - String(match[2] || '').length - 1,
+    end,
+  };
+}
+
+function _closeMentionMenu() {
+  const menu = document.getElementById('chat-mention-menu');
+  if (menu) {
+    menu.style.display = 'none';
+    menu.innerHTML = '';
+  }
+  window.__fridaysMentionState = { open: false, start: -1, end: -1, active: 0, items: [] };
+}
+
+function _renderMentionMenu(input, ctx) {
+  const menu = document.getElementById('chat-mention-menu');
+  if (!menu || !input || !ctx) return;
+  const query = _normalizeMentionKey(ctx.query);
+  const enabled = window.__fridaysChatEnabledAgents || {};
+  const items = CHAT_AGENT_OPTIONS
+    .map(opt => ({
+      key: String(opt.value || '').toLowerCase(),
+      label: String(opt.label || opt.value || ''),
+      tier: String(opt.tier || 'local'),
+      icon: _chatAgentMeta(opt.value).icon || '🤖',
+    }))
+    .filter(item => !query || _normalizeMentionKey(item.key).includes(query) || _normalizeMentionKey(item.label).includes(query))
+    .slice(0, 12);
+
+  if (!items.length) {
+    _closeMentionMenu();
+    return;
+  }
+
+  const prev = window.__fridaysMentionState || { active: 0 };
+  const active = Math.max(0, Math.min(items.length - 1, Number(prev.active || 0)));
+  window.__fridaysMentionState = { open: true, start: ctx.start, end: ctx.end, active, items };
+  menu.style.display = 'block';
+  menu.innerHTML = items.map((item, idx) => `
+    <button class="chat-mention-item ${idx === active ? 'active' : ''}" data-mention-idx="${idx}" type="button">
+      <span>${_escapeHtml(item.icon)} ${_escapeHtml(item.label)}</span>
+      <span class="chat-mention-meta">${enabled[item.key] ? 'enabled' : item.tier}</span>
+    </button>
+  `).join('');
+
+  menu.querySelectorAll('.chat-mention-item').forEach(btn => {
+    btn.onclick = () => {
+      const idx = Number(btn.dataset.mentionIdx || 0);
+      _selectMentionItem(input, idx);
+    };
+  });
+}
+
+function _selectMentionItem(input, idxOverride = null) {
+  const state = window.__fridaysMentionState || {};
+  if (!state.open || !Array.isArray(state.items) || !state.items.length || !input) return false;
+  const idx = idxOverride === null
+    ? Math.max(0, Math.min(state.items.length - 1, Number(state.active || 0)))
+    : Math.max(0, Math.min(state.items.length - 1, Number(idxOverride || 0)));
+  const chosen = state.items[idx];
+  if (!chosen) return false;
+  const value = String(input.value || '');
+  const before = value.slice(0, Math.max(0, Number(state.start || 0)));
+  const after = value.slice(Math.max(0, Number(state.end || 0)));
+  const insertion = '@' + chosen.key + ' ';
+  input.value = before + insertion + after;
+  const caret = (before + insertion).length;
+  input.focus();
+  input.setSelectionRange(caret, caret);
+  _enableMentionedAgents([chosen.key]);
+  window.__fridaysLastMentionedAgents = [chosen.key];
+  _closeMentionMenu();
+  updateComposerMeta();
+  updateChatSpellHelper();
+  return true;
+}
+
+function _handleMentionInput(input) {
+  const ctx = _mentionContextAtCursor(input);
+  if (!ctx) {
+    _closeMentionMenu();
+    return;
+  }
+  _renderMentionMenu(input, ctx);
+}
+
+function _handleMentionKeydown(event, input) {
+  const state = window.__fridaysMentionState || {};
+  if (!state.open) return false;
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    const delta = event.key === 'ArrowDown' ? 1 : -1;
+    const next = Math.max(0, Math.min((state.items || []).length - 1, Number(state.active || 0) + delta));
+    state.active = next;
+    window.__fridaysMentionState = state;
+    const ctx = _mentionContextAtCursor(input);
+    if (ctx) _renderMentionMenu(input, ctx);
+    return true;
+  }
+  if (event.key === 'Enter' || event.key === 'Tab') {
+    event.preventDefault();
+    return _selectMentionItem(input);
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    _closeMentionMenu();
+    return true;
+  }
+  return false;
+}
+
 function _normalizeChatHistoryMode(mode) {
   const val = String(mode || '').trim().toLowerCase();
   if (val === 'recent' || val === 'none') return val;
@@ -11557,6 +11792,35 @@ function _extractUserRequestedHandoffs(message, selectedAgents) {
   const handoffs = [];
   const seen = new Set();
 
+  const localCoreTargets = ['gemma', 'llama', 'qwen'].filter(a => _isKnownChatAgent(a));
+  const localFanoutMatch = text.match(/(?:^|\b)ask\s+(?:the\s+)?local\s+agents?\s+(.{6,260})$/i);
+  if (localFanoutMatch && localCoreTargets.length) {
+    const question = _normalizeRelayQuestion(localFanoutMatch[1]);
+    if (question) {
+      localCoreTargets.forEach(target => {
+        const sig = `${target}|${question.toLowerCase()}`;
+        if (seen.has(sig)) return;
+        seen.add(sig);
+        handoffs.push({ from: sender, target, question, source: 'user-intent' });
+      });
+    }
+  }
+
+  const impliedTargetMatch = text.match(/(?:^|\b)ask\s+(?:that|this|the)\s+agent\s+(.{4,260})$/i);
+  if (impliedTargetMatch) {
+    const impliedQuestion = _normalizeRelayQuestion(impliedTargetMatch[1]);
+    const impliedTargets = (window.__fridaysLastMentionedAgents || []).slice(0, 1);
+    const fallbackTarget = (selectedAgents || []).length ? String(selectedAgents[0] || '').toLowerCase() : '';
+    if (!impliedTargets.length && fallbackTarget) impliedTargets.push(fallbackTarget);
+    impliedTargets.forEach(target => {
+      if (!target || !_isKnownChatAgent(target) || !impliedQuestion) return;
+      const sig = `${target}|${impliedQuestion.toLowerCase()}`;
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      handoffs.push({ from: sender, target, question: impliedQuestion, source: 'user-intent' });
+    });
+  }
+
   for (const opt of CHAT_AGENT_OPTIONS) {
     const target = String(opt.value || '').toLowerCase();
     if (!target) continue;
@@ -11782,8 +12046,12 @@ function _renderThinkingBubble(job, history) {
   const etaRemaining = Number(job.eta_remaining_seconds || 0);
   const etaSeconds = Number(job.eta_seconds || 0);
   const elapsedMs = Number(job.elapsed_ms || 0);
-  const stageList = Array.isArray(history) && history.length
-    ? `<ol class="chat-pending-history">${history.slice(-5).map(step => `<li>${_escapeHtml(step)}</li>`).join('')}</ol>`
+  const targetMs = Math.max(1000, Number((job.eta_seconds || 12) * 1000));
+  const pct = job.status === 'completed'
+    ? 100
+    : (job.status === 'failed' ? 100 : Math.min(98, Math.max(4, Math.floor((elapsedMs / targetMs) * 100))));
+  const latestStageNote = Array.isArray(history) && history.length
+    ? String(history[history.length - 1] || '')
     : '';
   const metaBits = [];
   if (etaRemaining > 0) metaBits.push('ETA ~' + etaRemaining + 's');
@@ -11799,9 +12067,9 @@ function _renderThinkingBubble(job, history) {
       <span style="font-size:9px;color:var(--text-dim);opacity:0.55;margin-left:auto;">${ts}</span>
     </div>
     <div class="chat-pending-stage">${_escapeHtml(currentStage)}</div>
+    <div class="chat-pending-progress"><div class="chat-pending-progress-fill" style="width:${pct}%"></div></div>
     <div class="chat-pending-meta">${metaBits.map(bit => `<span>${_escapeHtml(bit)}</span>`).join('')}</div>
-    ${stageList}
-    <div class="chat-pending-footer">Live job trace for this thread. Final reply will replace this placeholder when the run completes.</div>`;
+    <div class="chat-pending-footer">${_escapeHtml(latestStageNote || 'Live job trace for this thread. Final reply will replace this placeholder when the run completes.')}</div>`;
 }
 
 function _upsertThinkingBubble(job) {
@@ -12974,12 +13242,26 @@ function initChatSpellHelper() {
     return;
   }
   input.dataset.spellBound = '1';
+  input.addEventListener('keydown', (ev) => {
+    if (_handleMentionKeydown(ev, input)) return;
+  });
+  input.addEventListener('input', () => _handleMentionInput(input));
+  input.addEventListener('click', () => _handleMentionInput(input));
   input.addEventListener('input', updateChatSpellHelper);
   input.addEventListener('input', updateComposerMeta);
   input.addEventListener('keyup', updateChatSpellHelper);
   input.addEventListener('keyup', updateComposerMeta);
   input.addEventListener('click', updateChatSpellHelper);
   input.addEventListener('click', updateComposerMeta);
+  if (document.body && document.body.dataset.chatMentionBound !== '1') {
+    document.body.dataset.chatMentionBound = '1';
+    document.addEventListener('click', (ev) => {
+      const wrapper = document.getElementById('input-wrapper');
+      if (!wrapper) return;
+      if (wrapper.contains(ev.target)) return;
+      _closeMentionMenu();
+    });
+  }
   if (search && search.dataset.bound !== '1') {
     search.dataset.bound = '1';
     search.addEventListener('input', renderChatThreadRail);
@@ -12994,7 +13276,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   const messages = _chatMessagesEl();
   if (!input || !messages) return Promise.resolve(false);
   const msg = input.value.trim();
-  const selectedAgents = getEnabledChatAgents();
+  let selectedAgents = getEnabledChatAgents();
   let convId = window.__fridaysChatConversationId || null;
   if (!convId && !window.__fridaysChatForceNewThread) {
     const first = (window._chatConversations || [])[0];
@@ -13006,6 +13288,12 @@ function sendMessage(source = 'user', relayMeta = null) {
 
   const hasAttachments = (window.__fridaysChatAttachments || []).length > 0;
   const contextCfg = getChatContextConfig();
+  const mentionedAgents = source === 'user' ? _extractMentionedAgents(msg) : [];
+  if (mentionedAgents.length) {
+    _enableMentionedAgents(mentionedAgents);
+    selectedAgents = getEnabledChatAgents();
+    window.__fridaysLastMentionedAgents = mentionedAgents.slice(0, 4);
+  }
   const userIntentRelayHandoffs = source === 'user'
     ? _extractUserRequestedHandoffs(msg, selectedAgents)
     : [];
