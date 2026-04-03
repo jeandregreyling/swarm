@@ -11351,6 +11351,8 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
     new RegExp(`^@?${target}\\b[\\s,:-]+(.{6,260}\\?)$`, 'i'),
     new RegExp(`(?:ask|question\\s+for|for)\\s+${target}\\b[\\s,:-]+(.{6,260}\\?)$`, 'i'),
     new RegExp(`${target}\\s*[:,]\\s*(.{6,260}\\?)$`, 'i'),
+    // Match target-directed clause after a prior sentence, with or without question mark.
+    new RegExp(`(?:^|[.!?]\\s+)${target}\\s*[:,]\\s*(.{6,260}?)(?:[.!?]|$)`, 'i'),
   ]);
 
   for (const line of lines) {
@@ -11403,14 +11405,13 @@ function _normalizeRelayQuestion(raw) {
 function _extractUserRequestedHandoffs(message, selectedAgents) {
   const text = String(message || '');
   if (!text) return [];
-  const selected = new Set((selectedAgents || []).map(a => String(a || '').toLowerCase()));
   const sender = (selectedAgents && selectedAgents.length) ? String(selectedAgents[0]).toLowerCase() : 'user';
   const handoffs = [];
   const seen = new Set();
 
   for (const opt of CHAT_AGENT_OPTIONS) {
     const target = String(opt.value || '').toLowerCase();
-    if (!target || selected.has(target)) continue;
+    if (!target) continue;
 
     const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const rules = [
@@ -12903,28 +12904,17 @@ function sendMessage(source = 'user', relayMeta = null) {
     const immediateResponses = allResponses.filter(entry => !entry.pending);
     const pendingResponses = allResponses.filter(entry => entry.pending);
     const pendingJobs = Array.isArray(data.pending_jobs) ? data.pending_jobs : [];
+    const discovered = [];
 
     if (immediateResponses.length) {
       immediateResponses.forEach(entry => {
         _appendChatBubble(entry.agent || 'agent', entry.response || '...', { tokens: entry.tokens || 0 });
       });
 
-      const discovered = [];
       immediateResponses.forEach(entry => {
         const from = String(entry.agent || 'agent').toLowerCase();
         _extractAgentDirectedQuestions(entry.response || '', from).forEach(h => discovered.push(h));
       });
-      const mergedHandoffs = discovered.slice();
-      if (userIntentRelayHandoffs.length) {
-        userIntentRelayHandoffs.forEach(h => {
-          const sig = _relaySignature(h);
-          const duplicate = mergedHandoffs.some(existing => _relaySignature(existing) === sig);
-          if (!duplicate) mergedHandoffs.push(h);
-        });
-      }
-      if (window.__fridaysChatRelayAuto && mergedHandoffs.length) {
-        mergedHandoffs.forEach(h => queueRelayHandoff(h, true));
-      }
 
       const first = immediateResponses[0];
       notifyDesktop(
@@ -12939,6 +12929,18 @@ function sendMessage(source = 'user', relayMeta = null) {
         String(data.response || '').replace(/\s+/g, ' ').slice(0, 180),
         { tag: 'fridays-chat-reply-' + String(data.conversation_id || convId || 'none') }
       );
+    }
+
+    const mergedHandoffs = discovered.slice();
+    if (userIntentRelayHandoffs.length) {
+      userIntentRelayHandoffs.forEach(h => {
+        const sig = _relaySignature(h);
+        const duplicate = mergedHandoffs.some(existing => _relaySignature(existing) === sig);
+        if (!duplicate) mergedHandoffs.push(h);
+      });
+    }
+    if (window.__fridaysChatRelayAuto && mergedHandoffs.length) {
+      mergedHandoffs.forEach(h => queueRelayHandoff(h, true));
     }
 
     if (pendingResponses.length) {
