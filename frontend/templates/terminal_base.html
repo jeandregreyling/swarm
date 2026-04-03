@@ -3323,15 +3323,22 @@ input[type="range"]::-moz-range-thumb:hover {
       <div id="chat-main" class="chat-font-scope" style="display:flex;flex-direction:column;min-width:0;">
         <div id="chat-topbar">
           <div>
-            <div class="chat-title">Fridays Chat Console</div>
-            <div class="chat-subtitle">Multi-agent conversation with live orchestration <span class="chat-mini-system">CPU --% · RAM --%</span></div>
+            <div style="display:flex; gap:12px; align-items:center; margin-bottom:6px;">
+              <div style="flex:1;">
+                <div class="chat-title">Fridays Chat Console</div>
+                <div class="chat-subtitle">Multi-agent conversation with live orchestration <span class="chat-mini-system">CPU --% · RAM --%</span></div>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center; white-space:nowrap;">
+                <span style="font-size:9px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">Font Size</span>
+                <input id="chat-font-size-range" type="range" min="0.7" max="1.35" step="0.05" value="0.95" oninput="setChatUiScale(this.value)" title="Scale chat/menu font size" style="width:100px; accent-color:var(--accent);">
+              </div>
+            </div>
           </div>
           <div id="chat-controls">
             <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 180px; max-width: 300px; font-size:12px;">
               <option value="">New Thread</option>
             </select>
             <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
-            <input id="chat-font-size-range" type="range" min="0.7" max="1.35" step="0.05" value="0.95" oninput="setChatUiScale(this.value)" title="Scale chat/menu font size">
             <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
           </div>
         </div>
@@ -3486,10 +3493,10 @@ input[type="range"]::-moz-range-thumb:hover {
                     <span style="font-size:11px;font-weight:700;color:var(--text);">Relay Rules</span>
                     <button class="chat-action-btn" onclick="renderRelayRuleList()">Refresh</button>
                   </div>
-                  <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:8px;margin-bottom:8px;">
+                  <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:8px;">
                     <input class="relay-rule-pattern" type="text" placeholder="match text or phrase"
                       style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;font-size:11px;">
-                    <select class="relay-rule-target" class="chat-relay-select">
+                    <select class="relay-rule-target chat-relay-select" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;">
                       <option value="">Target agent</option>
                     </select>
                   </div>
@@ -13539,6 +13546,12 @@ function renderRelayManagerCard() {
   const bubbleColor = _getActorBubbleColor(duckAgent.value) || '#4caf50';
   const vid = 'atv-' + duckAgent.value;
   const temp = (window.__agentTemps[duckAgent.value] ?? 0.7).toFixed(2);
+  
+  // Show queue status
+  const queueLen = (window.__fridaysChatRelayQueue || []).length;
+  const queueStatus = queueLen > 0 ? `queue: ${queueLen}` : 'idle';
+  const queueColor = queueLen > 0 ? 'var(--accent)' : 'var(--text-dim)';
+  
   const sliderRow = `
     <div data-temp-row="${duckAgent.value}" style="display:flex;align-items:center;gap:3px;padding:0 1px;opacity:${isOn ? '1' : '0.3'};pointer-events:${isOn ? 'auto' : 'none'};transition:opacity 0.15s;">
       <input type="range" min="0" max="1" step="0.05" value="${temp}"
@@ -13548,7 +13561,7 @@ function renderRelayManagerCard() {
       <span id="${vid}" style="font-size:8px;color:var(--text-dim);width:20px;text-align:right;font-variant-numeric:tabular-nums;">${temp}</span>
     </div>`;
   
-  const managerCard = `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--accent);border-radius:8px;background:color-mix(in oklab, var(--accent) 12%, var(--card));min-width:90px;">
+  const managerCard = `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--accent);border-radius:8px;background:color-mix(in oklab, var(--accent) 12%, var(--card));min-width:100px;">
     <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;line-height:1;white-space:nowrap;" title="${duckAgent.label} · Relay Manager">
       <input class="chat-agent-toggle" type="checkbox" value="${duckAgent.value}" ${checked} onchange="onChatAgentToggleChange(this)" style="width:10px;height:10px;margin:0;accent-color:var(--accent);">
       <span class="agent-tier-dot" style="width:5px;height:5px;flex-shrink:0;background:${_escapeHtml(bubbleColor)};"></span>
@@ -13556,6 +13569,7 @@ function renderRelayManagerCard() {
       <input class="agent-bubble-color" type="color" value="${_escapeHtml(bubbleColor)}" title="Choose ${duckAgent.label} bubble color" oninput="setActorBubbleColor('${duckAgent.value}', this.value)">
     </label>
     ${sliderRow}
+    <div style="font-size:8px;color:${queueColor};padding:0 4px;margin-top:2px;font-variant-numeric:tabular-nums;">${queueStatus}</div>
   </div>`;
   
   hosts.forEach(host => {
@@ -13570,12 +13584,16 @@ function renderRelayMonitorCard() {
   const librarianConfig = {value: 'librarian', label: 'Librarian', tier: 'local', hasTemp: false};
   const bubbleColor = _getActorBubbleColor(librarianConfig.value) || '#7c7cba';
   
-  const monitorCard = `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--border);border-radius:8px;background:color-mix(in oklab, var(--card) 92%, transparent);min-width:90px;opacity:0.7;cursor:not-allowed;">
+  // Show relay timeline count
+  const timelineLen = (window.__fridaysChatTimeline || []).length;
+  const monitorStatus = timelineLen > 0 ? `${timelineLen} event${timelineLen !== 1 ? 's' : ''}` : 'no activity';
+  
+  const monitorCard = `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--border);border-radius:8px;background:color-mix(in oklab, var(--card) 92%, transparent);min-width:100px;opacity:0.85;">
     <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;line-height:1;white-space:nowrap;" title="${librarianConfig.label} · Relay Monitor (read-only)">
       <span class="agent-tier-dot" style="width:5px;height:5px;flex-shrink:0;background:${_escapeHtml(bubbleColor)};"></span>
       <span style="font-weight:600;color:var(--text-dim);">👁️ Librarian</span>
     </label>
-    <div style="font-size:9px;color:var(--text-dim);padding:0 4px;font-style:italic;">observing relay queue...</div>
+    <div style="font-size:8px;color:var(--text-dim);padding:0 4px;font-style:italic;">${monitorStatus}</div>
   </div>`;
   
   hosts.forEach(host => {
@@ -14000,7 +14018,14 @@ function sendMessage(source = 'user', relayMeta = null) {
   const contextCfg = getChatContextConfig();
   const mentionedAgents = source === 'user' ? _extractMentionedAgents(msg) : [];
   if (mentionedAgents.length) {
-    _enableMentionedAgents(mentionedAgents);
+    // If user explicitly mentions agents, deselect all others
+    window.__fridaysChatEnabledAgents = {};
+    mentionedAgents.forEach(agent => {
+      window.__fridaysChatEnabledAgents[agent] = true;
+    });
+    renderChatAgentToggles();
+    window.__fridaysLastMentionedAgents = mentionedAgents.slice(0, 4);
+    persistThreadAgentSelection();
     selectedAgents = getEnabledChatAgents();
     window.__fridaysLastMentionedAgents = mentionedAgents.slice(0, 4);
   }
