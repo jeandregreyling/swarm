@@ -922,6 +922,67 @@ body.theme-rose {
 #chat-controls > * {
   flex: 0 0 auto;
 }
+.chat-section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+}
+.chat-section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.chat-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chat-section-caret {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.chat-section-content {
+  padding: 6px 8px 10px;
+}
+.chat-section.collapsed .chat-section-content {
+  display: none;
+}
+.chat-section.collapsed .chat-section-caret::before {
+  content: '▶';
+}
+.chat-section:not(.collapsed) .chat-section-caret::before {
+  content: '▼';
+}
+.chat-main-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.chat-main-shell .chat-section-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  padding: 0;
+}
+.chat-main-shell #chat-thread-runtime {
+  margin: 0 0 6px;
+}
+.chat-main-shell #chat-messages {
+  padding-top: 10px;
+}
 .chat-agent-row {
   display: flex;
   flex-direction: column;
@@ -982,6 +1043,33 @@ body.theme-rose {
   align-items: center;
   flex-wrap: wrap;
 }
+.chat-context-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.chat-context-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.chat-context-select {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+.chat-context-limit-wrap {
+  display: none;
+}
+.chat-context-limit-wrap.visible {
+  display: inline-flex;
+}
 .chat-attach-btn {
   display: inline-flex;
   align-items: center;
@@ -1001,6 +1089,46 @@ body.theme-rose {
 .chat-attach-hint {
   font-size: 11px;
   color: var(--text-dim);
+}
+.chat-attach-inline-state {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text);
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.03);
+}
+.chat-attach-inline-state.visible {
+  display: inline-flex;
+}
+.chat-attach-inline-name {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-attach-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chat-attach-inline-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 7px;
+}
+.chat-attach-inline-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 #question-input {
   width: 100%;
@@ -1463,26 +1591,6 @@ body.theme-rose {
   color: var(--text);
   border-color: var(--accent);
 }
-.chat-quick-row {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-.chat-quick-chip {
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text-dim);
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 10px;
-  cursor: pointer;
-}
-.chat-quick-chip:hover {
-  color: var(--text);
-  border-color: var(--accent);
-  background: var(--card-hover);
-}
 #chat-composer-meta {
   margin-top: 0;
   padding-top: 8px;
@@ -1686,6 +1794,9 @@ body.theme-rose {
   .chat-compose-shell {
     grid-template-columns: 1fr;
   }
+  .chat-attach-inline-name {
+    max-width: 180px;
+  }
   #send-btn {
     min-height: 48px;
     width: 100%;
@@ -1705,6 +1816,62 @@ body.theme-rose {
   padding: 1px 6px;
 }
 .chat-attachment-remove:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.chat-bubble-attachments {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.chat-bubble-attachment-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.03);
+}
+.chat-bubble-attachment-icon {
+  font-size: 15px;
+  line-height: 1;
+  margin-top: 2px;
+}
+.chat-bubble-attachment-main {
+  min-width: 0;
+  flex: 1;
+}
+.chat-bubble-attachment-name {
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chat-bubble-attachment-meta {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.chat-bubble-attachment-actions {
+  margin-top: 5px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chat-bubble-attachment-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px 8px;
+}
+.chat-bubble-attachment-btn:hover {
   color: var(--text);
   border-color: var(--accent);
 }
@@ -2543,11 +2710,19 @@ input[type="range"]::-moz-range-thumb:hover {
             <span class="chat-pill" id="chat-notify-pill">Notifications: Off</span>
           </div>
         </div>
-        <div id="chat-thread-runtime" class="chat-thread-runtime"></div>
-        <div id="chat-messages" style="flex:1; overflow-y: auto;">
-          <div class="welcome">
-            <h3>Good to see you, Ghost.</h3>
-            <p>Seven + Fridays. Ask anything — or run skills, schedule tasks, browse the web.</p>
+        <div id="chat-section-main" class="chat-section chat-main-shell">
+          <button type="button" class="chat-section-header" onclick="toggleChatSection('main')" aria-controls="chat-section-main-content" aria-expanded="true">
+            <span class="chat-section-title">💬 Main Chat</span>
+            <span class="chat-section-caret" aria-hidden="true"></span>
+          </button>
+          <div id="chat-section-main-content" class="chat-section-content">
+            <div id="chat-thread-runtime" class="chat-thread-runtime"></div>
+            <div id="chat-messages" style="flex:1; overflow-y: auto;">
+              <div class="welcome">
+                <h3>Good to see you, Ghost.</h3>
+                <p>Seven + Fridays. Ask anything — or run skills, schedule tasks, browse the web.</p>
+              </div>
+            </div>
           </div>
         </div>
         <!-- Agent Workflow Tracker Panel -->
@@ -2574,51 +2749,94 @@ input[type="range"]::-moz-range-thumb:hover {
     </div>
     <div id="input-area">
       <div id="input-wrapper">
-        <div class="chat-quick-row" id="chat-quick-row"></div>
-        <div id="chat-controls">
-          <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 160px; max-width: 240px; font-size:12px;">
-            <option value="">New Thread</option>
-          </select>
-          <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
-          <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
-          <!-- Overflow menu for less-common actions -->
-          <div style="position:relative;margin-left:auto;">
-            <button id="chat-more-btn" onclick="_chatMoreMenu()" style="background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;" title="More options">⋯</button>
-            <div id="chat-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,0.3));min-width:160px;z-index:999;padding:4px 0;">
-              <button onclick="renameCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Rename thread</button>
-              <button onclick="deleteCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ff8a8a;padding:8px 14px;cursor:pointer;font-size:12px;">Delete thread</button>
-              <button onclick="clearAllChatHistory();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Clear history</button>
-              <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
-              <button onclick="openChatDictionaryManager();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Dictionary</button>
-              <button onclick="exportChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Export dictionary</button>
-              <button onclick="importChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Import dictionary</button>
-              <button onclick="clearChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Reset dictionary</button>
+        <div id="chat-section-meta" class="chat-section collapsed" data-chat-default="collapsed">
+          <button type="button" class="chat-section-header" onclick="toggleChatSection('meta')" aria-controls="chat-section-meta-content" aria-expanded="false">
+            <span class="chat-section-title">⚙️ System & User Meta</span>
+            <span class="chat-section-caret" aria-hidden="true"></span>
+          </button>
+          <div id="chat-section-meta-content" class="chat-section-content">
+            <div id="chat-controls">
+              <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 160px; max-width: 240px; font-size:12px;">
+                <option value="">New Thread</option>
+              </select>
+              <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
+              <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
+              <!-- Overflow menu for less-common actions -->
+              <div style="position:relative;margin-left:auto;">
+                <button id="chat-more-btn" onclick="_chatMoreMenu()" style="background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;" title="More options">⋯</button>
+                <div id="chat-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,0.3));min-width:160px;z-index:999;padding:4px 0;">
+                  <button onclick="renameCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Rename thread</button>
+                  <button onclick="deleteCurrentThread();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ff8a8a;padding:8px 14px;cursor:pointer;font-size:12px;">Delete thread</button>
+                  <button onclick="clearAllChatHistory();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Clear history</button>
+                  <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+                  <button onclick="openChatDictionaryManager();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Dictionary</button>
+                  <button onclick="exportChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Export dictionary</button>
+                  <button onclick="importChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 14px;cursor:pointer;font-size:12px;">Import dictionary</button>
+                  <button onclick="clearChatDictionary();_chatMoreClose()" style="display:block;width:100%;text-align:left;background:none;border:none;color:#ffb36b;padding:8px 14px;cursor:pointer;font-size:12px;">Reset dictionary</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="chat-agent-row">
-          <div class="chat-agent-row-head">
-            <div class="chat-agent-row-title">Agents In This Thread</div>
-            <div class="chat-agent-legend">
-              <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-local-dot"></span><span>Local</span></span>
-              <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-paid-dot"></span><span>Paid API</span></span>
+
+        <div id="chat-section-agents" class="chat-section collapsed" data-chat-default="collapsed">
+          <button type="button" class="chat-section-header" onclick="toggleChatSection('agents')" aria-controls="chat-section-agents-content" aria-expanded="false">
+            <span class="chat-section-title">🧠 Agent Controls</span>
+            <span class="chat-section-caret" aria-hidden="true"></span>
+          </button>
+          <div id="chat-section-agents-content" class="chat-section-content">
+            <div class="chat-agent-row">
+              <div class="chat-agent-row-head">
+                <div class="chat-agent-row-title">Agents In This Thread</div>
+                <div class="chat-agent-legend">
+                  <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-local-dot"></span><span>Local</span></span>
+                  <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-paid-dot"></span><span>Paid API</span></span>
+                </div>
+              </div>
+              <div id="chat-agent-toggles" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
             </div>
           </div>
-          <div id="chat-agent-toggles" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
         </div>
+
         <input id="chat-attachment-input" type="file" multiple onchange="handleChatAttachmentInput(event)">
         <div class="chat-compose-shell">
           <div class="chat-compose-main">
             <div class="chat-compose-toolbar">
               <div class="chat-compose-actions">
-                <button class="chat-attach-btn" onclick="pickChatAttachments()">📎 Attach files</button>
+                <button class="chat-attach-btn" onclick="pickChatAttachments()" title="Attach up to 6 files. Text and image files are supported.">📎 Attach files</button>
                 <span class="chat-attach-hint">Drop documents or images here, or use the attach button.</span>
+                <span id="chat-attach-inline-state" class="chat-attach-inline-state" aria-live="polite"></span>
+                <span class="chat-context-controls">
+                  <span class="chat-context-label">Context</span>
+                  <select id="chat-history-mode" class="chat-context-select" onchange="onChatHistoryModeChange()" title="Control what prior messages are sent to selected agents">
+                    <option value="full">Full thread</option>
+                    <option value="recent">Recent only</option>
+                    <option value="none">This message only</option>
+                  </select>
+                  <span id="chat-history-limit-wrap" class="chat-context-limit-wrap">
+                    <select id="chat-history-limit" class="chat-context-select" onchange="onChatHistoryLimitChange()" title="Number of recent messages to include">
+                      <option value="4">Last 4</option>
+                      <option value="6">Last 6</option>
+                      <option value="8" selected>Last 8</option>
+                      <option value="12">Last 12</option>
+                      <option value="16">Last 16</option>
+                    </select>
+                  </span>
+                </span>
               </div>
             </div>
             <textarea id="question-input" placeholder="Ask the swarm..." rows="2" spellcheck="true" autocapitalize="sentences" autocorrect="on"
               onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"
               oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,180)+'px'"></textarea>
-            <div id="chat-attachments"></div>
+            <div id="chat-section-attachments" class="chat-section collapsed" data-chat-default="collapsed">
+              <button type="button" class="chat-section-header" onclick="toggleChatSection('attachments')" aria-controls="chat-section-attachments-content" aria-expanded="false">
+                <span class="chat-section-title">📎 Attachments</span>
+                <span class="chat-section-caret" aria-hidden="true"></span>
+              </button>
+              <div id="chat-section-attachments-content" class="chat-section-content">
+                <div id="chat-attachments"></div>
+              </div>
+            </div>
             <div id="chat-spell-helper" style="display:none; margin-top:0; font-size:11px; color: var(--text-dim);"></div>
             <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span></div>
           </div>
@@ -9116,7 +9334,10 @@ const CHAT_AGENT_OPTIONS = [
 const CHAT_CUSTOM_DICTIONARY_KEY = 'fridays-chat-custom-dictionary-v1';
 const CHAT_DESKTOP_NOTIFY_KEY = 'fridays-chat-desktop-notify-v1';
 const CHAT_THREAD_AGENT_KEY = 'fridays-chat-thread-agents-v1';
+const CHAT_HISTORY_MODE_KEY = 'fridays-chat-history-mode-v1';
+const CHAT_HISTORY_LIMIT_KEY = 'fridays-chat-history-limit-v1';
 const CHAT_ATTACH_MAX_FILES = 6;
+const CHAT_ATTACH_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const CHAT_ATTACH_MAX_TEXT_CHARS_PER_FILE = 8000;
 const CHAT_ATTACH_MAX_TOTAL_INLINE_CHARS = 24000;
 const CHAT_TYPO_SUGGESTIONS = {
@@ -9148,6 +9369,9 @@ window.__fridaysChatPendingConversationId = window.__fridaysChatPendingConversat
 window.__fridaysChatPendingPollTimer = window.__fridaysChatPendingPollTimer || null;
 window.__fridaysChatCustomDictionary = window.__fridaysChatCustomDictionary || new Set();
 window.__fridaysChatAttachments = window.__fridaysChatAttachments || [];
+window.__fridaysBubbleAttachmentStore = window.__fridaysBubbleAttachmentStore || {};
+window.__fridaysChatHistoryMode = window.__fridaysChatHistoryMode || localStorage.getItem(CHAT_HISTORY_MODE_KEY) || 'full';
+window.__fridaysChatHistoryLimit = Number(window.__fridaysChatHistoryLimit || localStorage.getItem(CHAT_HISTORY_LIMIT_KEY) || 8);
 window.__fridaysDesktopNotificationsEnabled = window.__fridaysDesktopNotificationsEnabled ?? (localStorage.getItem(CHAT_DESKTOP_NOTIFY_KEY) === '1');
 window.__fridaysThreadAgentSelections = window.__fridaysThreadAgentSelections || _loadThreadAgentSelections();
 window.__fridaysThreadRuntimePollTimer = window.__fridaysThreadRuntimePollTimer || null;
@@ -9399,14 +9623,32 @@ async function _readAttachmentText(file) {
 }
 
 function pickChatAttachments() {
+  openChatAttachmentPicker(false);
+}
+
+function changeChatAttachments() {
+  openChatAttachmentPicker(true);
+}
+
+function openChatAttachmentPicker(replaceExisting) {
   const input = document.getElementById('chat-attachment-input');
   if (!input) return;
+  input.dataset.replaceMode = replaceExisting ? '1' : '0';
   input.click();
 }
 
 async function handleChatAttachmentInput(event) {
   const input = event?.target || document.getElementById('chat-attachment-input');
-  if (!input || !input.files || !input.files.length) return;
+  if (!input) return;
+  const replaceMode = input.dataset.replaceMode === '1';
+  input.dataset.replaceMode = '0';
+  if (!input.files || !input.files.length) {
+    input.value = '';
+    return;
+  }
+  if (replaceMode) {
+    clearChatAttachments();
+  }
   await ingestChatAttachments(input.files);
   input.value = '';
 }
@@ -9429,6 +9671,10 @@ async function ingestChatAttachments(fileList) {
   }
 
   for (const file of picked) {
+    if (Number(file.size || 0) > CHAT_ATTACH_MAX_SIZE_BYTES) {
+      showToast(`${file.name}: exceeds 10 MB limit`, 'error');
+      continue;
+    }
     const duplicate = current.find(a => a.name === file.name && Number(a.size || 0) === Number(file.size || 0));
     if (duplicate) continue;
     const isText = _isTextLikeAttachment(file);
@@ -9470,10 +9716,31 @@ function clearChatAttachments() {
   updateComposerMeta();
 }
 
+function renderChatAttachmentInlineState() {
+  const host = document.getElementById('chat-attach-inline-state');
+  if (!host) return;
+  const attachments = Array.isArray(window.__fridaysChatAttachments) ? window.__fridaysChatAttachments : [];
+  if (!attachments.length) {
+    host.innerHTML = '';
+    host.classList.remove('visible');
+    return;
+  }
+
+  const first = attachments[0];
+  const firstLabel = `${first.name} (${_humanBytes(first.size)})`;
+  const summary = attachments.length === 1
+    ? firstLabel
+    : `${attachments.length} files attached · ${firstLabel}`;
+
+  host.innerHTML = `<span class="chat-attach-inline-name" title="${_escapeHtml(summary)}">${_escapeHtml(summary)}</span><span class="chat-attach-inline-actions"><button type="button" class="chat-attach-inline-btn" onclick="changeChatAttachments()">Change</button><button type="button" class="chat-attach-inline-btn" onclick="clearChatAttachments()">Remove</button></span>`;
+  host.classList.add('visible');
+}
+
 function renderChatAttachments() {
   const host = document.getElementById('chat-attachments');
   if (!host) return;
   const attachments = Array.isArray(window.__fridaysChatAttachments) ? window.__fridaysChatAttachments : [];
+  renderChatAttachmentInlineState();
   if (!attachments.length) {
     host.innerHTML = '';
     host.style.display = 'none';
@@ -9486,8 +9753,172 @@ function renderChatAttachments() {
     const thumb = att.isImage && att.previewUrl
       ? `<img class="chat-attachment-thumb" src="${_escapeHtml(att.previewUrl)}" alt="${_escapeHtml(att.name)}">`
       : '';
-    return `<span class="chat-attachment-chip">${thumb}<span class="chat-attachment-label" title="${_escapeHtml(label)}">${_escapeHtml(label)}</span><button class="chat-attachment-remove" onclick="removeChatAttachment('${_escapeHtml(att.id)}')">✕</button></span>`;
+    return `<span class="chat-attachment-chip">${thumb}<span class="chat-attachment-label" title="${_escapeHtml(label)}">${_escapeHtml(label)}</span><button type="button" class="chat-attachment-remove" onclick="removeChatAttachment('${_escapeHtml(att.id)}')">✕</button></span>`;
   }).join('');
+}
+
+function _rememberBubbleAttachment(att) {
+  const id = 'att_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  window.__fridaysBubbleAttachmentStore[id] = {
+    name: String(att?.name || 'attachment'),
+    type: String(att?.type || 'application/octet-stream'),
+    size: Number(att?.size || 0),
+    sizeLabel: String(att?.sizeLabel || ''),
+    inlineText: String(att?.inlineText || ''),
+    previewUrl: String(att?.previewUrl || ''),
+    truncated: !!att?.truncated,
+    source: String(att?.source || 'composer'),
+  };
+  return id;
+}
+
+function openBubbleAttachment(attachmentId) {
+  const att = (window.__fridaysBubbleAttachmentStore || {})[String(attachmentId || '')];
+  if (!att) {
+    showToast('Attachment preview is unavailable', 'error');
+    return;
+  }
+  if (att.previewUrl) {
+    window.open(att.previewUrl, '_blank', 'noopener');
+    return;
+  }
+  if (att.inlineText) {
+    const blob = new Blob([att.inlineText], { type: att.type || 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => {
+      try { URL.revokeObjectURL(url); } catch (_) {}
+    }, 15000);
+    return;
+  }
+  showToast('No preview content stored for this attachment', 'info');
+}
+
+function downloadBubbleAttachment(attachmentId) {
+  const att = (window.__fridaysBubbleAttachmentStore || {})[String(attachmentId || '')];
+  if (!att) {
+    showToast('Attachment download is unavailable', 'error');
+    return;
+  }
+  let blob = null;
+  if (att.inlineText) {
+    blob = new Blob([att.inlineText], { type: att.type || 'text/plain' });
+  } else if (att.previewUrl && att.previewUrl.startsWith('blob:')) {
+    const link = document.createElement('a');
+    link.href = att.previewUrl;
+    link.download = att.name || 'attachment';
+    link.click();
+    return;
+  }
+  if (!blob) {
+    showToast('No downloadable content stored for this attachment', 'info');
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = att.name || 'attachment';
+  link.click();
+  setTimeout(() => {
+    try { URL.revokeObjectURL(url); } catch (_) {}
+  }, 15000);
+}
+
+function _renderBubbleAttachments(attachments) {
+  if (!Array.isArray(attachments) || !attachments.length) return '';
+  const rows = attachments.map(att => {
+    const normalized = {
+      name: String(att?.name || 'attachment'),
+      type: String(att?.type || 'application/octet-stream'),
+      size: Number(att?.size || 0),
+      sizeLabel: String(att?.sizeLabel || ''),
+      inlineText: String(att?.inlineText || ''),
+      previewUrl: String(att?.previewUrl || ''),
+      truncated: !!att?.truncated,
+      isImage: !!att?.isImage,
+      isText: att?.isText !== false,
+      source: String(att?.source || 'composer'),
+    };
+    const icon = normalized.isImage ? '🖼️' : (normalized.isText ? '📄' : '📦');
+    const sizeText = normalized.sizeLabel || _humanBytes(normalized.size);
+    const meta = `${normalized.type || 'unknown'} · ${sizeText}${normalized.truncated ? ' · clipped' : ''}`;
+    const attachmentId = _rememberBubbleAttachment(normalized);
+    const canOpen = !!(normalized.previewUrl || normalized.inlineText);
+    const canDownload = !!(normalized.inlineText || normalized.previewUrl);
+    const actions = `<div class="chat-bubble-attachment-actions">${canOpen ? `<button type="button" class="chat-bubble-attachment-btn" onclick="openBubbleAttachment('${_escapeHtml(attachmentId)}')">Open</button>` : ''}${canDownload ? `<button type="button" class="chat-bubble-attachment-btn" onclick="downloadBubbleAttachment('${_escapeHtml(attachmentId)}')">Download</button>` : ''}</div>`;
+    return `<div class="chat-bubble-attachment-row"><span class="chat-bubble-attachment-icon">${icon}</span><div class="chat-bubble-attachment-main"><div class="chat-bubble-attachment-name" title="${_escapeHtml(normalized.name)}">${_escapeHtml(normalized.name)}</div><div class="chat-bubble-attachment-meta">${_escapeHtml(meta)}</div>${actions}</div></div>`;
+  }).join('');
+  return `<div class="chat-bubble-attachments">${rows}</div>`;
+}
+
+function _extractAttachmentsFromMessage(content) {
+  const raw = String(content || '');
+  const marker = '\n\n[Attachments]\n';
+  const idx = raw.indexOf(marker);
+  if (idx < 0) {
+    return { text: raw, attachments: [] };
+  }
+
+  const baseText = raw.slice(0, idx).trimEnd();
+  const block = raw.slice(idx + 2);
+  const lines = block.split(/\r?\n/);
+  const attachments = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = String(lines[i] || '');
+    const infoMatch = line.match(/^-\s+(.+?)\s+\((.+?),\s*([^)]+)\)(.*)$/);
+    if (infoMatch) {
+      const flags = String(infoMatch[4] || '');
+      attachments.push({
+        name: String(infoMatch[1] || 'attachment').trim(),
+        type: String(infoMatch[2] || 'application/octet-stream').trim(),
+        sizeLabel: String(infoMatch[3] || '0 B').trim(),
+        isText: !flags.includes('[binary metadata only]'),
+        isImage: String(infoMatch[2] || '').toLowerCase().startsWith('image/'),
+        truncated: flags.includes('[clipped]'),
+        inlineText: '',
+        source: 'history',
+      });
+      i += 1;
+      continue;
+    }
+
+    const fileStart = line.match(/^--- FILE:\s+(.+?)\s+---$/);
+    if (fileStart) {
+      const fileName = String(fileStart[1] || 'attachment').trim();
+      const payload = [];
+      i += 1;
+      while (i < lines.length && !/^--- END FILE:/.test(String(lines[i] || ''))) {
+        payload.push(String(lines[i] || ''));
+        i += 1;
+      }
+      const endLine = i < lines.length ? String(lines[i] || '') : '';
+      const clipped = /\(clipped\)/i.test(endLine);
+      const existing = attachments.find(a => a.name === fileName) || null;
+      if (existing) {
+        existing.inlineText = payload.join('\n');
+        existing.truncated = existing.truncated || clipped;
+      } else {
+        attachments.push({
+          name: fileName,
+          type: 'text/plain',
+          sizeLabel: 'inline',
+          isText: true,
+          isImage: false,
+          truncated: clipped,
+          inlineText: payload.join('\n'),
+          source: 'history',
+        });
+      }
+      i += 1;
+      continue;
+    }
+
+    i += 1;
+  }
+
+  return { text: baseText, attachments };
 }
 
 function initChatAttachmentDnD() {
@@ -9521,15 +9952,29 @@ function initChatAttachmentDnD() {
 
 function _buildAttachmentPayload() {
   const attachments = Array.isArray(window.__fridaysChatAttachments) ? window.__fridaysChatAttachments : [];
-  if (!attachments.length) return { wireBlock: '', bubbleSummary: '' };
+  if (!attachments.length) return { wireBlock: '', bubbleSummary: '', bubbleAttachments: [] };
 
   let remaining = CHAT_ATTACH_MAX_TOTAL_INLINE_CHARS;
   const wireLines = ['[Attachments]'];
   const bubbleLines = [];
+  const bubbleAttachments = [];
 
   attachments.forEach(att => {
     const info = `${att.name} (${att.type || 'unknown'}, ${_humanBytes(att.size)})`;
-    bubbleLines.push(`- ${info}${att.truncated ? ' [clipped]' : ''}${att.isText ? '' : ' [binary metadata only]'}`);
+    const infoFlags = `${att.truncated ? ' [clipped]' : ''}${att.isText ? '' : ' [binary metadata only]'}`;
+    bubbleLines.push(`- ${info}${infoFlags}`);
+    wireLines.push(`- ${info}${infoFlags}`);
+    bubbleAttachments.push({
+      name: att.name,
+      type: att.type,
+      size: Number(att.size || 0),
+      isText: !!att.isText,
+      isImage: !!att.isImage,
+      inlineText: String(att.inlineText || ''),
+      truncated: !!att.truncated,
+      previewUrl: String(att.previewUrl || ''),
+      source: 'composer',
+    });
 
     if (att.isText && att.inlineText && remaining > 0) {
       const nextText = String(att.inlineText || '');
@@ -9539,14 +9984,13 @@ function _buildAttachmentPayload() {
       wireLines.push(`--- FILE: ${att.name} ---`);
       wireLines.push(slice);
       wireLines.push(`--- END FILE: ${att.name}${att.truncated || clipped ? ' (clipped)' : ''} ---`);
-    } else {
-      wireLines.push(`- ${info} [content not inlined]`);
     }
   });
 
   return {
     wireBlock: '\n\n' + wireLines.join('\n'),
-    bubbleSummary: '\n\nAttached files:\n' + bubbleLines.join('\n')
+    bubbleSummary: '\n\nAttached files:\n' + bubbleLines.join('\n'),
+    bubbleAttachments,
   };
 }
 
@@ -9809,29 +10253,39 @@ function clearChatDictionary() {
   showToast('Dictionary reset', 'success');
 }
 
-function renderChatQuickChips() {
-  const host = document.getElementById('chat-quick-row');
-  if (!host) return;
-  const chips = [
-    { label: 'Summarize Last Thread', text: 'Summarize the key decisions and next actions from this thread.' },
-    { label: 'Create Action Plan', text: 'Create a practical step-by-step action plan for this.' },
-    { label: 'Find Risks', text: 'List the top risks and concrete mitigations.' },
-    { label: 'Draft Message', text: 'Draft a clear, concise message I can send to my team.' },
-    { label: 'Check Spelling', text: 'Please correct spelling and grammar in my draft.' },
-  ];
-  host.innerHTML = chips.map(chip =>
-    `<button class="chat-quick-chip" onclick="applyQuickChip('${_escapeHtml(chip.text)}')">${_escapeHtml(chip.label)}</button>`
-  ).join('');
+function _chatSectionElement(sectionKey) {
+  return document.getElementById('chat-section-' + String(sectionKey || '').trim());
 }
 
-function applyQuickChip(text) {
-  const input = document.getElementById('question-input');
-  if (!input) return;
-  input.value = String(text || '');
-  input.focus();
-  input.setSelectionRange(input.value.length, input.value.length);
-  updateComposerMeta();
-  updateChatSpellHelper();
+function _syncChatSectionAria(sectionKey) {
+  const section = _chatSectionElement(sectionKey);
+  if (!section) return;
+  const header = section.querySelector('.chat-section-header');
+  if (!header) return;
+  const expanded = !section.classList.contains('collapsed');
+  header.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+}
+
+function toggleChatSection(sectionKey) {
+  const section = _chatSectionElement(sectionKey);
+  if (!section) return;
+  section.classList.toggle('collapsed');
+  _syncChatSectionAria(sectionKey);
+}
+
+function initChatSections() {
+  const defaults = {
+    main: true,
+    meta: false,
+    agents: false,
+    attachments: false,
+  };
+  Object.entries(defaults).forEach(([key, expanded]) => {
+    const section = _chatSectionElement(key);
+    if (!section) return;
+    section.classList.toggle('collapsed', !expanded);
+    _syncChatSectionAria(key);
+  });
 }
 
 function updateComposerMeta() {
@@ -9844,8 +10298,65 @@ function updateComposerMeta() {
   const words = (txt.trim().match(/\S+/g) || []).length;
   const enabled = getEnabledChatAgents().length;
   const attached = (window.__fridaysChatAttachments || []).length;
+  const mode = String(window.__fridaysChatHistoryMode || 'full');
+  const limit = Number(window.__fridaysChatHistoryLimit || 8);
+  const modeLabel = mode === 'none' ? 'this message only' : (mode === 'recent' ? `last ${limit}` : 'full thread');
   left.textContent = `${chars} chars · ${words} words`;
-  right.textContent = `${enabled} agent${enabled === 1 ? '' : 's'} on · ${attached} file${attached === 1 ? '' : 's'}`;
+  right.textContent = `${enabled} agent${enabled === 1 ? '' : 's'} on · ${attached} file${attached === 1 ? '' : 's'} · ${modeLabel}`;
+}
+
+function _normalizeChatHistoryMode(mode) {
+  const val = String(mode || '').trim().toLowerCase();
+  if (val === 'recent' || val === 'none') return val;
+  return 'full';
+}
+
+function _normalizeChatHistoryLimit(limit) {
+  const n = Number(limit || 8);
+  if (!Number.isFinite(n)) return 8;
+  return Math.max(1, Math.min(30, Math.round(n)));
+}
+
+function getChatContextConfig() {
+  return {
+    historyMode: _normalizeChatHistoryMode(window.__fridaysChatHistoryMode),
+    historyLimit: _normalizeChatHistoryLimit(window.__fridaysChatHistoryLimit),
+  };
+}
+
+function _renderChatHistoryControls() {
+  const modeSel = document.getElementById('chat-history-mode');
+  const limitSel = document.getElementById('chat-history-limit');
+  const wrap = document.getElementById('chat-history-limit-wrap');
+  if (!modeSel || !limitSel || !wrap) return;
+  const cfg = getChatContextConfig();
+  modeSel.value = cfg.historyMode;
+  limitSel.value = String(cfg.historyLimit);
+  wrap.classList.toggle('visible', cfg.historyMode === 'recent');
+}
+
+function onChatHistoryModeChange() {
+  const modeSel = document.getElementById('chat-history-mode');
+  if (!modeSel) return;
+  window.__fridaysChatHistoryMode = _normalizeChatHistoryMode(modeSel.value);
+  localStorage.setItem(CHAT_HISTORY_MODE_KEY, window.__fridaysChatHistoryMode);
+  _renderChatHistoryControls();
+  updateComposerMeta();
+}
+
+function onChatHistoryLimitChange() {
+  const limitSel = document.getElementById('chat-history-limit');
+  if (!limitSel) return;
+  window.__fridaysChatHistoryLimit = _normalizeChatHistoryLimit(limitSel.value);
+  localStorage.setItem(CHAT_HISTORY_LIMIT_KEY, String(window.__fridaysChatHistoryLimit));
+  _renderChatHistoryControls();
+  updateComposerMeta();
+}
+
+function initChatHistoryControls() {
+  window.__fridaysChatHistoryMode = _normalizeChatHistoryMode(window.__fridaysChatHistoryMode);
+  window.__fridaysChatHistoryLimit = _normalizeChatHistoryLimit(window.__fridaysChatHistoryLimit);
+  _renderChatHistoryControls();
 }
 
 function _chatMessagesEl() {
@@ -10151,18 +10662,21 @@ function _appendChatBubble(sender, text, opts = {}) {
   const senderMetaHtml = isUser ? 'you' : _chatAgentIdentityHtml(sender, true);
   const msgId = opts.msgId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
   const quoted = opts.quoted ? `<div class="chat-meta">↳ replying to ${_escapeHtml(opts.quoted.sender)}: ${_escapeHtml(opts.quoted.preview)}</div>` : '';
-  const parsedSkill = isUser ? { text: text, events: [] } : _parseSkillEvents(text);
-  const visibleText = parsedSkill.text || (parsedSkill.events.length ? 'Executed skill run(s):' : text);
+  const extracted = _extractAttachmentsFromMessage(text);
+  const parsedSkill = isUser ? { text: extracted.text, events: [] } : _parseSkillEvents(extracted.text);
+  const visibleText = parsedSkill.text || (parsedSkill.events.length ? 'Executed skill run(s):' : extracted.text);
+  const bubbleAttachments = Array.isArray(opts.attachments) && opts.attachments.length ? opts.attachments : extracted.attachments;
   // User messages: plain escaped text. Agent messages: rendered markdown.
-  const bodyHtml = isUser ? `<span style="white-space:pre-wrap;">${_escapeHtml(text)}</span>` : _renderMarkdown(visibleText);
+  const bodyHtml = isUser ? `<span style="white-space:pre-wrap;">${_escapeHtml(visibleText)}</span>` : _renderMarkdown(visibleText);
+  const attachmentsHtml = _renderBubbleAttachments(bubbleAttachments);
   const eventsHtml = isUser ? '' : _renderSkillEvents(parsedSkill.events, sender);
-  const localText = _escapeHtml(String(opts.localPromptText || text || '').slice(0, 4000));
+  const localText = _escapeHtml(String(opts.localPromptText || visibleText || '').slice(0, 4000));
   const userActionRow = isUser
     ? `<div class="chat-actions">
       ${opts.editable && opts.messageId && opts.conversationId
         ? `<button class="chat-action-btn" onclick="editOwnPrompt(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Change</button>
            <button class="chat-action-btn" onclick="deleteOwnPrompt(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Delete</button>`
-        : `<button class="chat-action-btn" onclick="revisePromptDraft('${localText}')">Change</button>`}
+        : `<button class="chat-action-btn" onclick="revisePromptDraft('${localText}')">Change Text</button>`}
     </div>`
     : '';
   const actionRow = isUser ? userActionRow : `
@@ -10171,6 +10685,9 @@ function _appendChatBubble(sender, text, opts = {}) {
       <button class="chat-action-btn" onclick="reactToMessage('${msgId}','🤔')">🤔</button>
       <button class="chat-action-btn" data-reply-sender="${safeSender}" data-reply-preview="${_escapeHtml(text).slice(0, 120)}" onclick="setReplyTarget(this.dataset.replySender, this.dataset.replyPreview)">Reply</button>
       <button class="chat-action-btn" onclick="suggestAnotherAgent('${safeSender}','${_escapeHtml(text).slice(0, 160)}')">Ask another</button>
+      ${opts.messageId && opts.conversationId
+        ? `<button class="chat-action-btn" onclick="deleteChatMessage(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Delete</button>`
+        : ''}
     </div>`;
 
   const _now = new Date();
@@ -10186,6 +10703,7 @@ function _appendChatBubble(sender, text, opts = {}) {
     </div>
     ${quoted}
     <div class="chat-text">${bodyHtml}</div>
+    ${attachmentsHtml}
     ${eventsHtml}
     ${actionRow}
   `;
@@ -10234,7 +10752,11 @@ function revisePromptDraft(text) {
 }
 
 async function deleteOwnPrompt(convId, msgId) {
-  if (!confirm('Delete this prompt from chat history?')) return;
+  return deleteChatMessage(convId, msgId, 'Delete this prompt from chat history?');
+}
+
+async function deleteChatMessage(convId, msgId, promptText = 'Delete this message from chat history?') {
+  if (!confirm(promptText)) return;
   try {
     const resp = await fetch(`/api/conversations/${convId}/messages/${msgId}`, {
       method: 'DELETE',
@@ -10243,11 +10765,11 @@ async function deleteOwnPrompt(convId, msgId) {
     if (!resp.ok || !data.ok) {
       throw new Error((data && data.error) || `HTTP ${resp.status}`);
     }
-    showToast('Prompt deleted', 'success');
+    showToast('Message deleted', 'success');
     loadConversationMessages(convId);
     refreshChatThreadList(convId);
   } catch (e) {
-    showToast('Failed to delete prompt: ' + (e.message || e), 'error');
+    showToast('Failed to delete message: ' + (e.message || e), 'error');
   }
 }
 
@@ -10773,13 +11295,19 @@ function renderChatMessages(rows) {
     const msgId = Number(row.id || 0);
     const convId = Number(window.__fridaysChatConversationId || 0);
     if (sender === 'user') {
+      const extracted = _extractAttachmentsFromMessage(content);
       _appendChatBubble('you', content, {
         messageId: msgId,
         conversationId: convId,
         editable: true,
+        localPromptText: extracted.text,
+        attachments: extracted.attachments,
       });
     } else {
-      _appendChatBubble(sender, content);
+      _appendChatBubble(sender, content, {
+        messageId: msgId,
+        conversationId: convId,
+      });
     }
   });
   const snapshotJobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs)
@@ -11012,9 +11540,10 @@ function initializeChatPanel() {
   applyThreadAgentSelection(window.__fridaysChatConversationId);
   renderChatAgentToggles();
   _loadAgentTemps();
+  initChatSections();
   renderReplyBanner();
-  renderChatQuickChips();
   renderChatAttachments();
+  initChatHistoryControls();
   initChatAttachmentDnD();
   renderChatThreadRail();
   initChatSpellHelper();
@@ -11068,6 +11597,7 @@ function sendMessage() {
   }
 
   const hasAttachments = (window.__fridaysChatAttachments || []).length > 0;
+  const contextCfg = getChatContextConfig();
   if (!msg && !hasAttachments) return;
   if (!selectedAgents.length) {
     showToast('Turn on at least one agent toggle', 'error');
@@ -11085,13 +11615,9 @@ function sendMessage() {
     : '[' + _chatAgentListText(selectedAgents) + '] (attachment)';
   _appendChatBubble('you', userBubbleText, {
     quoted: window.__fridaysReplyTarget || null
-    , localPromptText: msg || '(attachment)'
+    , localPromptText: msg || ''
+    , attachments: attachmentPayload.bubbleAttachments || []
   });
-  if (attachmentPayload.bubbleSummary) {
-    _appendChatBubble('you', attachmentPayload.bubbleSummary, {
-      localPromptText: attachmentPayload.bubbleSummary,
-    });
-  }
 
   const estMs = _estimateBatchMs(selectedAgents);
   const loadingPanel = _createLoadingPanel(selectedAgents);
@@ -11113,6 +11639,8 @@ function sendMessage() {
       agents: selectedAgents,
       conversation_id: convId,
       new_thread: !!window.__fridaysChatForceNewThread,
+      history_mode: contextCfg.historyMode,
+      history_limit: contextCfg.historyMode === 'recent' ? contextCfg.historyLimit : undefined,
       ..._authPayload(),
     })
   })
@@ -11186,6 +11714,9 @@ function sendMessage() {
       if (window.__fridaysChatPendingPollTimer) {
         clearInterval(window.__fridaysChatPendingPollTimer);
         window.__fridaysChatPendingPollTimer = null;
+      }
+      if (data && data.conversation_id) {
+        loadConversationMessages(data.conversation_id);
       }
       pollActiveThreadRuntime(true);
     }
