@@ -38,12 +38,20 @@ def chat(message, conversation_history=None, stage_cb=None):
         return '[Seeker] TAVILY_API_KEY not configured', 0
 
     _emit('preparing search query')
+    # Extract the latest user message from threaded prompt if present
+    raw = str(message or '').strip()
+    if '=== New user message ===' in raw:
+        parts = raw.split('=== New user message ===', 1)
+        search_query = parts[1].strip()[:380]
+    else:
+        search_query = raw[:380]
+
     try:
         client = TavilyClient(api_key=TAVILY_API_KEY)
 
         _emit('searching the web')
         result = client.search(
-            query=message,
+            query=search_query,
             search_depth='advanced',
             max_results=8,
             include_answer=True,

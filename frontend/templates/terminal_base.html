@@ -11067,7 +11067,8 @@ function sendMessage() {
     }
   }
 
-  if (!msg) return;
+  const hasAttachments = (window.__fridaysChatAttachments || []).length > 0;
+  if (!msg && !hasAttachments) return;
   if (!selectedAgents.length) {
     showToast('Turn on at least one agent toggle', 'error');
     return;
@@ -11079,9 +11080,12 @@ function sendMessage() {
   const attachmentPayload = _buildAttachmentPayload();
   const wireMsgWithAttachments = wireMsg + (attachmentPayload.wireBlock || '');
   
-  _appendChatBubble('you', '[' + _chatAgentListText(selectedAgents) + '] ' + msg, {
+  const userBubbleText = msg
+    ? '[' + _chatAgentListText(selectedAgents) + '] ' + msg
+    : '[' + _chatAgentListText(selectedAgents) + '] (attachment)';
+  _appendChatBubble('you', userBubbleText, {
     quoted: window.__fridaysReplyTarget || null
-    , localPromptText: msg
+    , localPromptText: msg || '(attachment)'
   });
   if (attachmentPayload.bubbleSummary) {
     _appendChatBubble('you', attachmentPayload.bubbleSummary, {
