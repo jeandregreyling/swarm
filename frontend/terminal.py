@@ -4863,10 +4863,7 @@ def api_chat():
     if not message:
         return jsonify({'ok': False, 'response': 'Empty message'}), 400
 
-    allowed_agents = {
-        'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles',
-        'nine', 'ten', 'eleven', 'twelve'
-    }
+    allowed_agents = {a['name'].lower() for a in _AGENT_ROSTER if a['name'].lower() != 'ghost'}
 
     if isinstance(requested_agents, list) and requested_agents:
         normalized_agents = []
