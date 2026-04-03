@@ -5330,18 +5330,37 @@ def api_chat():
             elif selected_agent == 'eleven':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.eleven import grok_agent
-                _stage('waiting on Grok runtime', est_eta)
-                future = executor.submit(grok_agent.chat, effective_prompt, history)
+                future = executor.submit(grok_agent.chat, effective_prompt, history, stage_cb)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[eleven unavailable]'
                 tokens_used = tokens or 0
             elif selected_agent == 'twelve':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.twelve import twelve_agent
-                _stage('waiting on Claude Haiku runtime', est_eta)
-                future = executor.submit(twelve_agent.chat, effective_prompt, history)
+                future = executor.submit(twelve_agent.chat, effective_prompt, history, stage_cb)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[twelve unavailable]'
+                tokens_used = tokens or 0
+            elif selected_agent == 'sonic':
+                _stage('dispatching to ghost datacenter', est_eta)
+                from agents.sonic import sonic_agent
+                future = executor.submit(sonic_agent.chat, effective_prompt, history, stage_cb)
+                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                response_text = answer or '[sonic unavailable]'
+                tokens_used = tokens or 0
+            elif selected_agent == 'scholar':
+                _stage('dispatching to ghost datacenter', est_eta)
+                from agents.scholar import scholar_agent
+                future = executor.submit(scholar_agent.chat, effective_prompt, history, stage_cb)
+                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                response_text = answer or '[scholar unavailable]'
+                tokens_used = tokens or 0
+            elif selected_agent == 'seeker':
+                _stage('dispatching to ghost datacenter', est_eta)
+                from agents.seeker import seeker_agent
+                future = executor.submit(seeker_agent.chat, effective_prompt, history, stage_cb)
+                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                response_text = answer or '[seeker unavailable]'
                 tokens_used = tokens or 0
             _stage('finalizing answer', 0)
         except FuturesTimeoutError:
