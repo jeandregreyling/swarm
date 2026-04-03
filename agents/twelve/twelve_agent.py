@@ -72,11 +72,19 @@ def _build_context(message):
     return '\n'.join(lines)
 
 
-def chat(message, conversation_history=None):
+def chat(message, conversation_history=None, stage_cb=None):
     """
     Send a message to Twelve (Claude Haiku 4.5). Returns (answer, tokens_used).
     conversation_history: list of {role, content} dicts for multi-turn context.
+    stage_cb(text, eta): called throughout for live progress in Fridays UI.
     """
+    def _emit(text):
+        if callable(stage_cb):
+            try:
+                stage_cb(text, None)
+            except Exception:
+                pass
+
     try:
         import anthropic
     except ImportError:
@@ -88,8 +96,9 @@ def chat(message, conversation_history=None):
     api_key = _load_api_key()
     if not api_key:
         logger.error('[Twelve] ANTHROPIC_API_KEY not configured')
-        return None, 0
+        return '[Twelve] ANTHROPIC_API_KEY not configured', 0
 
+    _emit('loading ghost-layer memory')
     context = _build_context(message)
     system = TWELVE_SYSTEM_PROMPT + f'\n\n{context}'
 
@@ -99,6 +108,7 @@ def chat(message, conversation_history=None):
     messages.append({'role': 'user', 'content': message})
 
     try:
+        _emit('sending model request')
         client = anthropic.Anthropic(api_key=api_key)
         response = client.messages.create(
             model=HAIKU_MODEL,
@@ -108,8 +118,28 @@ def chat(message, conversation_history=None):
         )
         answer = response.content[0].text
         tokens = response.usage.input_tokens + response.usage.output_tokens
+
+        _emit('persisting response memory')
+        try:
+            from database import save_agent_memory
+            save_agent_memory(
+                agent_name=AGENT_NAME,
+                subject=str(message or '')[:100],
+                content=answer,
+                tags='chat,shared-thread',
+                importance=7,
+                source='terminal_chat',
+            )
+        except Exception:
+            pass
+
         logger.info(f'[Twelve] tokens={tokens} | {message[:60]}')
         return answer, tokens
     except Exception as e:
-        logger.error(f'[Twelve] API error: {e}')
-        return None, 0
+        msg = str(e)
+        logger.error(f'[Twelve] API error: {msg}')
+        if 'credit balance' in msg.lower() or 'billing' in msg.lower():
+            return '[Twelve] Anthropic credit balance too low. Add credits at console.anthropic.com/settings/billing.', 0
+        if '401' in msg or 'authentication' in msg.lower():
+            return '[Twelve] Anthropic API key invalid or expired.', 0
+        return f'[Twelve] API error: {msg}', 0

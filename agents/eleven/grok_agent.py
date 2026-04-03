@@ -47,11 +47,19 @@ def _build_context(message):
     return '\n'.join(lines)
 
 
-def chat(message, conversation_history=None):
+def chat(message, conversation_history=None, stage_cb=None):
     """
     Send a message to Eleven (Grok 3). Returns (answer, tokens_used).
     conversation_history: list of {role, content} dicts for multi-turn context.
+    stage_cb(text, eta): called throughout for live progress in Fridays UI.
     """
+    def _emit(text):
+        if callable(stage_cb):
+            try:
+                stage_cb(text, None)
+            except Exception:
+                pass
+
     try:
         from openai import OpenAI
     except ImportError:
@@ -62,15 +70,17 @@ def chat(message, conversation_history=None):
         logger.error('[Eleven] XAI_API_KEY not configured')
         return None, 0
 
+    _emit('loading ghost-layer memory')
     context = _build_context(message)
     system = ELEVEN_SYSTEM_PROMPT + f'\n\n{context}'
 
     messages = [{'role': 'system', 'content': system}]
     if conversation_history:
-        messages.extend(conversation_history[-10:])  # last 10 turns
+        messages.extend(conversation_history[-10:])
     messages.append({'role': 'user', 'content': message})
 
     try:
+        _emit('sending model request')
         client = OpenAI(api_key=XAI_API_KEY, base_url='https://api.x.ai/v1')
         response = client.chat.completions.create(
             model=XAI_MODEL,
@@ -79,8 +89,28 @@ def chat(message, conversation_history=None):
         )
         answer = response.choices[0].message.content
         tokens = response.usage.total_tokens if response.usage else 0
+
+        _emit('persisting response memory')
+        try:
+            from database import save_agent_memory
+            save_agent_memory(
+                agent_name=AGENT_NAME,
+                subject=str(message or '')[:100],
+                content=answer,
+                tags='chat,shared-thread',
+                importance=7,
+                source='terminal_chat',
+            )
+        except Exception:
+            pass
+
         logger.info(f'[Eleven] tokens={tokens} | {message[:60]}')
         return answer, tokens
     except Exception as e:
-        logger.error(f'[Eleven] API error: {e}')
-        return None, 0
+        msg = str(e)
+        logger.error(f'[Eleven] API error: {msg}')
+        if '401' in msg or 'authentication' in msg.lower():
+            return '[Eleven] xAI API key invalid or expired.', 0
+        if '429' in msg or 'rate limit' in msg.lower():
+            return f'[Eleven] xAI rate limit hit. {msg}', 0
+        return f'[Eleven] API error: {msg}', 0
