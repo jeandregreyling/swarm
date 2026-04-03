@@ -66,26 +66,42 @@ GIT_PROPOSAL_POLL_SECONDS = _env_int('GIT_PROPOSAL_POLL_SECONDS', 5, min_value=1
 GIT_PROPOSAL_TIMEOUT_SECONDS = _env_int('GIT_PROPOSAL_TIMEOUT_SECONDS', 300, min_value=1)
 GIT_EXECUTE_PER_AGENT_PER_HEARTBEAT = _env_int('GIT_EXECUTE_PER_AGENT_PER_HEARTBEAT', 3, min_value=1)
 
-# ── Local agents participating in shared workflows ───────────────────────────
+# ── Local Ollama agents participating in shared workflows ─────────────────────
 LOCAL_AGENTS = ['gemma', 'qwen', 'llama', 'eight', 'duck', 'sniffles']
 
-# ── Which agents think proactively each heartbeat ─────────────────────────────
+# ── Ghost Layer agents (API-backed, reactive — not driven by heartbeat think) ──
+GHOST_LAYER_AGENTS = ['nine', 'ten', 'eleven', 'twelve', 'scholar', 'seeker']
+
+# ── Which local agents think proactively each heartbeat ───────────────────────
 THINKING_AGENTS = ['gemma', 'qwen', 'llama', 'eight']
 
 # ── Agent dispatch routing ─────────────────────────────────────────────────────
 # Maps capability/tag patterns to agent names
 DISPATCH_ROUTES = {
-    'sap':       'eight',
-    'hcm':       'eight',
-    'analysis':  'qwen',
-    'analyse':   'qwen',
-    'research':  'llama',
-    'search':    'llama',
-    'route':     'gemma',
-    'synthesis': 'gemma',
-    'coordinate':'gemma',
-    'audit':     'sniffles',
-    'memory':    'sniffles',
+    'sap':        'eight',
+    'hcm':        'eight',
+    'payroll':    'eight',
+    'analysis':   'qwen',
+    'analyse':    'qwen',
+    'research':   'llama',
+    'search':     'llama',
+    'route':      'gemma',
+    'synthesis':  'gemma',
+    'coordinate': 'gemma',
+    'audit':      'sniffles',
+    'memory':     'sniffles',
+    # Ghost Layer dispatch routes
+    'architect':  'nine',
+    'design':     'nine',
+    'code':       'ten',
+    'implement':  'ten',
+    'reason':     'eleven',
+    'lateral':    'eleven',
+    'time':       'twelve',
+    'history':    'twelve',
+    'vision':     'scholar',
+    'web':        'seeker',
+    'news':       'seeker',
 }
 
 
@@ -144,8 +160,8 @@ def agent_git_create_proposal(agent_id, action, paths=None, message='', priority
     action = str(action or '').strip().lower()
     if action not in ('stage', 'unstage', 'commit'):
         return None, 'invalid action'
-    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS:
-        return None, f'unsupported local agent: {agent_id}'
+    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS + GHOST_LAYER_AGENTS:
+        return None, f'unsupported agent: {agent_id}'
 
     payload = {
         'action': action,
@@ -162,7 +178,7 @@ def agent_git_create_proposal(agent_id, action, paths=None, message='', priority
 
 def agent_git_list_proposals(agent_id, status='', all_agents=False, limit=50):
     """Shared helper for local agents to list Git ALM proposals."""
-    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS:
+    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS + GHOST_LAYER_AGENTS:
         return None, f'unsupported local agent: {agent_id}'
 
     q = []
@@ -177,7 +193,7 @@ def agent_git_list_proposals(agent_id, status='', all_agents=False, limit=50):
 
 def agent_git_execute_proposal(agent_id, proposal_id):
     """Shared helper for local agents to execute an approved Git proposal."""
-    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS:
+    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS + GHOST_LAYER_AGENTS:
         return None, f'unsupported local agent: {agent_id}'
     pid = str(proposal_id or '').strip()
     if not pid:
@@ -194,7 +210,7 @@ def agent_git_wait_for_decision(agent_id, proposal_id, timeout_seconds=GIT_PROPO
       ({'proposal_id': ..., 'status': ..., 'proposal': {...}}, None) on success
       (None, 'error message') on timeout or request error
     """
-    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS:
+    if str(agent_id or '').strip().lower() not in LOCAL_AGENTS + GHOST_LAYER_AGENTS:
         return None, f'unsupported local agent: {agent_id}'
 
     pid = str(proposal_id or '').strip()

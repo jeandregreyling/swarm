@@ -18,7 +18,7 @@ AGENT_POOL_MAP = {
     'duck': 'memory', 'sniffles': 'memory',
     'ten': 'memory_ten', 'twelve': 'memory_twelve',
     'eleven': 'memory_grok', 'grok': 'memory_grok',
-    'sonic': 'memory_sonic', 'scholar': 'memory_scholar', 'seeker': 'memory_seeker'
+    'scholar': 'memory', 'seeker': 'memory'
 }
 
 def get_connection():
@@ -129,42 +129,6 @@ CREATE TABLE IF NOT EXISTS memory_nine (
 CREATE TABLE IF NOT EXISTS memory_ten (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     agent TEXT DEFAULT 'ten',
-    subject TEXT DEFAULT '',
-    content TEXT NOT NULL,
-    tags TEXT DEFAULT '',
-    importance INTEGER DEFAULT 7,
-    source TEXT DEFAULT 'session',
-    ticket_ref TEXT DEFAULT '',
-    archived INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS memory_sonic (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    agent TEXT DEFAULT 'sonic',
-    subject TEXT DEFAULT '',
-    content TEXT NOT NULL,
-    tags TEXT DEFAULT '',
-    importance INTEGER DEFAULT 7,
-    source TEXT DEFAULT 'session',
-    ticket_ref TEXT DEFAULT '',
-    archived INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS memory_scholar (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    agent TEXT DEFAULT 'scholar',
-    subject TEXT DEFAULT '',
-    content TEXT NOT NULL,
-    tags TEXT DEFAULT '',
-    importance INTEGER DEFAULT 7,
-    source TEXT DEFAULT 'session',
-    ticket_ref TEXT DEFAULT '',
-    archived INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS memory_seeker (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    agent TEXT DEFAULT 'seeker',
     subject TEXT DEFAULT '',
     content TEXT NOT NULL,
     tags TEXT DEFAULT '',

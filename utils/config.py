@@ -1,16 +1,13 @@
 # Swarm configuration
 # This file stays on your machine only - never share this file
 
-GEMINI_API_KEY = "REDACTED_GEMINI_API_KEY"
 GEMINI_MODEL   = "gemini-2.0-flash"
 
 # Gmail - email interface (Step 3)
 GMAIL_ADDRESS  = "sevenpotato9@gmail.com"
-GMAIL_PASSWORD = "REDACTED_GMAIL_PASSWORD"
 
 # Nine — Ghost Layer email (dedicated Gmail for Nine's outbound comms)
 NINE_EMAIL     = "ninepotato7@gmail.com"
-NINE_PASSWORD  = "REDACTED_NINE_PASSWORD"
 
 # Swarm settings
 SWARM_NAME     = "Seven's Swarm"
@@ -92,18 +89,14 @@ Cross-agent collaboration:
 # The authoritative definition is below — this placeholder is intentionally removed.
 
 # ── RL-015 — Independent agent search ────────────────────────────────────────
-# Serper (Google Search) — Gemma's engine. serper.dev
-# Project Seven key is the primary; generic is the fallback.
-SERPER_API_KEY         = 'REDACTED_SERPER_API_KEY'   # Seven project key
-SERPER_API_KEY_GENERIC = 'REDACTED_SERPER_API_KEY_GENERIC'   # generic fallback
-
-# Tavily AI Search — Qwen and Eight's engine. tavily.com
-# Project Seven key is the primary; generic is the fallback.
-TAVILY_API_KEY         = 'REDACTED_TAVILY_API_KEY'  # Seven project key
-TAVILY_API_KEY_GENERIC = 'REDACTED_TAVILY_API_KEY_GENERIC'  # generic fallback
+# Keys loaded from .env.agents (see _load_env_key below)
+SERPER_API_KEY         = None  # set after _load_env_key is defined
+SERPER_API_KEY_GENERIC = None
+TAVILY_API_KEY         = None
+TAVILY_API_KEY_GENERIC = None
 
 # ── Telegram — Fridays bot (RL-022) ──────────────────────────────────────────
-TELEGRAM_TOKEN    = 'REDACTED_TELEGRAM_TOKEN'
+TELEGRAM_TOKEN    = None  # set after _load_env_key is defined
 TELEGRAM_BOT_NAME = 'Fridays'
 GHOST_TELEGRAM_CHAT_ID = 8735763890  # jeandre — telegram:8735763890 in trusted_senders
 
@@ -155,7 +148,7 @@ def nine_email(subject: str, body: str, to: str = None, html_body: str = None) -
 # 2. Enable "Message Content Intent" under Bot → Privileged Gateway Intents
 # 3. OAuth2 → URL Generator: scope=bot, permission=Send Messages + Read Messages
 # 4. Paste your token below
-DISCORD_TOKEN      = 'REDACTED_DISCORD_TOKEN'
+DISCORD_TOKEN      = None  # set after _load_env_key is defined
 DISCORD_BOT_NAME   = 'Fridays'
 # Right-click the channel in Discord (Developer Mode on) → Copy Channel ID
 DISCORD_CHANNEL_ID = '1486232966379343894'
@@ -226,8 +219,19 @@ def _load_env_key(name):
             pass
     return ''
 
-XAI_API_KEY = _load_env_key('XAI_API_KEY')
-XAI_MODEL   = 'grok-3'
+XAI_API_KEY            = _load_env_key('XAI_API_KEY')
+XAI_MODEL              = 'grok-3'
+
+# Credentials loaded from .env.agents / environment (never hardcoded)
+GEMINI_API_KEY         = _load_env_key('GEMINI_API_KEY')
+GMAIL_PASSWORD         = _load_env_key('GMAIL_PASSWORD')
+NINE_PASSWORD          = _load_env_key('NINE_PASSWORD')
+SERPER_API_KEY         = _load_env_key('SERPER_API_KEY')
+SERPER_API_KEY_GENERIC = _load_env_key('SERPER_API_KEY_GENERIC')
+TAVILY_API_KEY         = _load_env_key('TAVILY_API_KEY')
+TAVILY_API_KEY_GENERIC = _load_env_key('TAVILY_API_KEY_GENERIC')
+TELEGRAM_TOKEN         = _load_env_key('TELEGRAM_TOKEN')
+DISCORD_TOKEN          = _load_env_key('DISCORD_TOKEN')
 
 # Ten (GPT) — GitHub Models API
 # Add GITHUB_TOKEN to /etc/environment — needs models:read scope
@@ -272,21 +276,6 @@ Sandpit and collaboration rules:
 Be concise and factual. Lead with dates, decision IDs, and file names. No preamble."""
 
 HAIKU_MODEL = 'claude-haiku-4-5-20251001'
-
-SONIC_SYSTEM_PROMPT = """IDENTITY: You are Sonic, the velocity coder of the Ghost Layer in Seven's Swarm — a personal AI system built by Ghost, running on a Dell OptiPlex 7090 in Melbourne, Australia. Your backend is Claude 3.5 Sonnet.
-
-The Ghost Layer consists of: Ghost (operator), Nine (system architect, Claude Sonnet 4.6), Ten (software engineering advisor, GPT), Eleven (lateral thinker, Grok), Twelve (time wizard, Haiku), Sonic (you, velocity coder, Claude 3.5 Sonnet), Scholar (vision & reasoning, Gemini), Seeker (real-time search, Tavily).
-
-Your role: fast, precise code generation and review. You specialise in rapid implementation — writing production-quality code quickly, spotting bugs in diffs, and explaining code concisely. You complement Ten's architectural precision with raw coding velocity.
-
-Style rules:
-- Be extremely concise. Code first, explanations second.
-- Lead with working code. Explain after, only if needed.
-- No preamble, no sign-off phrases.
-- Use code blocks for all code.
-- Do not narrate what you are about to do — just do it.
-
-ALM rules: No mutating actions without an approved work proposal. Reference proposal IDs for execution paths."""
 
 SCHOLAR_SYSTEM_PROMPT = """IDENTITY: You are Scholar, the vision and reasoning specialist of the Ghost Layer in Seven's Swarm — a personal AI system built by Ghost, running on a Dell OptiPlex 7090 in Melbourne, Australia. Your backend is Google Gemini 2.0 Flash.
 
