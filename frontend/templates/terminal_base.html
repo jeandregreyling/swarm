@@ -3441,6 +3441,26 @@ input[type="range"]::-moz-range-thumb:hover {
                   <button class="chat-action-btn" onclick="clearRelayTimeline()">Clear timeline</button>
                 </div>
                 <div id="chat-relay-timeline" class="chat-relay-timeline"></div>
+                <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:11px;font-weight:700;color:var(--text);">Relay Rules</span>
+                    <button class="chat-action-btn" onclick="renderRelayRuleList()">Refresh</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:8px;margin-bottom:8px;">
+                    <input id="relay-rule-pattern" type="text" placeholder="match text or phrase"
+                      style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;font-size:11px;">
+                    <select id="relay-rule-target" class="chat-relay-select">
+                      <option value="">Target agent</option>
+                    </select>
+                  </div>
+                  <input id="relay-rule-template" type="text" placeholder="optional rewrite, use {match}"
+                    style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;font-size:11px;margin-bottom:8px;">
+                  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                    <button class="chat-action-btn" onclick="addRelayRule()">Add rule</button>
+                    <span style="font-size:10px;color:var(--text-dim);">Store manual relay pickup patterns here.</span>
+                  </div>
+                  <div id="chat-relay-rules-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+                </div>
               </div>
             </div>
         </div>
@@ -3945,6 +3965,7 @@ class WindowManager {
     this.windows.set(id, {
       el: win,
       id,
+      baseId: options.baseId || id,
       title,
       config,
       docked: !!config.docked,
@@ -5288,7 +5309,16 @@ function openWindow(id, title, templateId) {
   const cleanTitle = title.replace(/^[^\w\s]+ /, '').trim();
   const icon = windowIcons[id] || '📦';
   const titleWithIcon = `${icon} ${cleanTitle}`;
-  const win = winManager.create(id, titleWithIcon, templateId);
+  let windowKey = id;
+  let windowTitle = titleWithIcon;
+  const existing = winManager.windows.get(id);
+  if (existing && existing.minimized) {
+    let n = 2;
+    while (winManager.windows.has(`${id}__${n}`)) n += 1;
+    windowKey = `${id}__${n}`;
+    windowTitle = `${titleWithIcon} ${n}`;
+  }
+  const win = winManager.create(windowKey, windowTitle, templateId, { baseId: id });
   if (!win) {
     _troubleshootLog('error', 'winManager.create returned no window', `id=${id}`);
     return;
@@ -5310,9 +5340,9 @@ function openWindow(id, title, templateId) {
       else if (id === 'time-wizard') initTimeWizard();
       else if (id === 'ghost-brief') initGhostBrief();
       else if (id === 'access') loadAccessData(win);
-      _troubleshootLog('info', 'Window opened', `id=${id}`);
+      _troubleshootLog('info', 'Window opened', `id=${windowKey} base=${id}`);
     } catch (err) {
-      _troubleshootLog('error', 'Window loader failed', `id=${id} error=${err?.message || err}`);
+      _troubleshootLog('error', 'Window loader failed', `id=${windowKey} base=${id} error=${err?.message || err}`);
       throw err;
     }
   }, 100);
@@ -7929,7 +7959,7 @@ function loadMonitorData(win) {
 
   refreshMonitor();
   win._monitorRefreshTimer = setInterval(() => {
-    if (!winManager.windows.has('monitor')) {
+    if (!winManager.windows.has(win.id)) {
       clearInterval(win._monitorRefreshTimer);
       win._monitorRefreshTimer = null;
       return;
@@ -9794,11 +9824,11 @@ function openWindowHelp(windowId) {
   const helpText = {
     home: {
       title: 'Fridays Home',
-      body: 'Landing dashboard for quick access. Open tiles to use specific swarm tools. Use Settings for theme and transparency controls.'
+      body: 'Landing dashboard for quick access. Open tiles to use specific swarm tools. Use Settings for theme and transparency controls.\n\nQuick chat relay guide:\n1) Agents can request another agent using @agent, AGENT:, or route/ask language.\n2) If Auto Relay is ON, detected relay routes are queued automatically.\n3) Route buttons still appear for manual control when you want to review first.\n4) Relay temporarily targets the requested agent for that turn.'
     },
     chat: {
       title: 'Chat Window',
-      body: 'Review conversation history, open full transcripts, and manage conversation titles. Use this for swarm dialogue and message context.'
+      body: 'Review conversation history, open full transcripts, and manage conversation titles. Use this for swarm dialogue and message context.\n\nHow to relay:\n- Write @gemma (or another agent) followed by a request.\n- You can also use: "ask gemma ..." or "Gemma, ...".\n- Turn on Auto Relay in Chat controls for automatic chaining.\n- Keep Auto Relay off when you want explicit human approval per hop.'
     },
     terminal: {
       title: 'Fridays Native Terminal',
@@ -9847,6 +9877,15 @@ function openWindowHelp(windowId) {
     body: 'This window is part of Fridays. Use controls in the header to resize, pin, fullscreen, or close.'
   };
 
+  const relayTipsHtml = (windowId === 'home' || windowId === 'chat')
+    ? `<div style="margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;color:var(--text-dim);">
+         <div style="font-weight:600;color:var(--text);margin-bottom:6px;">Relay Tips</div>
+         <div>Use @agent for the most reliable relay trigger.</div>
+         <div>Enable Auto Relay to process "Route to Agent" handoffs automatically.</div>
+         <div>If an action needs human confirmation, keep Auto Relay off and click the route button manually.</div>
+       </div>`
+    : '';
+
   let modal = document.getElementById('window-help-modal');
   if (!modal) {
     modal = document.createElement('div');
@@ -9870,7 +9909,8 @@ function openWindowHelp(windowId) {
     <div style="margin-bottom:12px;color:var(--text);">${_escHtml(data.body)}</div>
     <div style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;color:var(--text-dim);">
       Header controls: ? Help · ⬚ Maximize · _ Minimize · 📌 Pin · ⛶ Fullscreen · ✕ Close
-    </div>`;
+    </div>
+    ${relayTipsHtml}`;
   modal.classList.add('open');
 }
 
@@ -10286,6 +10326,7 @@ const CHAT_ACTOR_BUBBLE_COLORS_KEY = 'fridays-chat-actor-bubble-colors-v1';
 const CHAT_RELAY_AUTO_KEY = 'fridays-chat-relay-auto-v1';
 const CHAT_RELAY_MAX_KEY = 'fridays-chat-relay-max-v1';
 const CHAT_RELAY_FORCE_FULL_KEY = 'fridays-chat-relay-force-full-v1';
+const CHAT_RELAY_RULES_KEY = 'fridays-chat-relay-rules-v1';
 const CHAT_ATTACH_MAX_FILES = 6;
 const CHAT_ATTACH_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const CHAT_ATTACH_MAX_TEXT_CHARS_PER_FILE = 8000;
@@ -10338,6 +10379,14 @@ window.__fridaysChatRelayQueue = Array.isArray(window.__fridaysChatRelayQueue) ?
 window.__fridaysChatRelayBusy = !!window.__fridaysChatRelayBusy;
 window.__fridaysChatRelaySeen = window.__fridaysChatRelaySeen || {};
 window.__fridaysChatTimeline = Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : [];
+window.__fridaysChatRelayRules = Array.isArray(window.__fridaysChatRelayRules) ? window.__fridaysChatRelayRules : (() => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHAT_RELAY_RULES_KEY) || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch (_) {
+    return [];
+  }
+})();
 window.__fridaysActorBubbleColors = window.__fridaysActorBubbleColors || (() => {
   try {
     const raw = JSON.parse(localStorage.getItem(CHAT_ACTOR_BUBBLE_COLORS_KEY) || '{}');
@@ -11989,6 +12038,35 @@ function _relayDecode(value) {
   }
 }
 
+function _relayRules() {
+  window.__fridaysChatRelayRules = Array.isArray(window.__fridaysChatRelayRules) ? window.__fridaysChatRelayRules : [];
+  return window.__fridaysChatRelayRules;
+}
+
+function _saveRelayRules() {
+  localStorage.setItem(CHAT_RELAY_RULES_KEY, JSON.stringify(_relayRules()));
+}
+
+function _applyManualRelayRules(text, fromKey, seen, out) {
+  const raw = String(text || '');
+  const lower = raw.toLowerCase();
+  _relayRules().forEach((rule) => {
+    const pattern = String(rule?.pattern || '').trim();
+    const target = String(rule?.target || '').toLowerCase().trim();
+    const template = String(rule?.template || '').trim();
+    if (!pattern || !target || !_isKnownChatAgent(target) || target === fromKey) return;
+    const idx = lower.indexOf(pattern.toLowerCase());
+    if (idx === -1) return;
+    const matched = raw.slice(idx, idx + pattern.length).trim() || pattern;
+    const question = _normalizeRelayQuestion(template ? template.replace(/\{match\}/gi, matched) : matched);
+    if (!question) return;
+    const sig = `${target}|${question.toLowerCase()}`;
+    if (seen.has(sig)) return;
+    seen.add(sig);
+    out.push({ from: fromKey || 'agent', target, question, source: 'manual-rule' });
+  });
+}
+
 function _extractAgentDirectedQuestions(text, fromAgent) {
   const raw = String(text || '');
   if (!raw) return [];
@@ -12067,6 +12145,7 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
       });
     }
   }
+  _applyManualRelayRules(raw, fromKey, seen, out);
   return out.slice(0, 6);
 }
 
@@ -12166,7 +12245,67 @@ function _applySingleAgentSelection(agentKey) {
 function _relayPromptText(handoff) {
   const fromLabel = _chatAgentLabel(handoff.from || 'agent');
   const targetLabel = _chatAgentLabel(handoff.target || 'agent');
-  return `[Relay ${fromLabel} -> ${targetLabel}] ${String(handoff.question || '').trim()}`;
+  return `[Relay for ${targetLabel}] ${fromLabel} asked: ${String(handoff.question || '').trim()} Respond as ${targetLabel}.`;
+}
+
+function populateRelayRuleTargetOptions() {
+  const select = document.getElementById('relay-rule-target');
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = '<option value="">Target agent</option>' + CHAT_AGENT_OPTIONS.map(opt =>
+    `<option value="${_escapeHtml(opt.value)}">${_escapeHtml(opt.label)}</option>`
+  ).join('');
+  if (current) select.value = current;
+}
+
+function renderRelayRuleList() {
+  const host = document.getElementById('chat-relay-rules-list');
+  if (!host) return;
+  const rules = _relayRules();
+  if (!rules.length) {
+    host.innerHTML = '<div style="padding:8px 10px;font-size:10px;color:var(--text-dim);border:1px dashed var(--border);border-radius:6px;">No manual relay rules yet.</div>';
+    return;
+  }
+  host.innerHTML = rules.map((rule, index) => `
+    <div style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:flex;gap:8px;align-items:flex-start;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;color:var(--text);"><strong>Match:</strong> ${_escapeHtml(rule.pattern || '')}</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:3px;"><strong>Target:</strong> ${_escapeHtml(_chatAgentLabel(rule.target || 'agent'))}</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:3px;"><strong>Rewrite:</strong> ${_escapeHtml(rule.template || '{match}')}</div>
+      </div>
+      <button class="chat-action-btn" onclick="removeRelayRule(${index})">Remove</button>
+    </div>
+  `).join('');
+}
+
+function addRelayRule() {
+  const patternEl = document.getElementById('relay-rule-pattern');
+  const targetEl = document.getElementById('relay-rule-target');
+  const templateEl = document.getElementById('relay-rule-template');
+  const pattern = String(patternEl?.value || '').trim();
+  const target = String(targetEl?.value || '').toLowerCase().trim();
+  const template = String(templateEl?.value || '').trim();
+  if (!pattern || !target) {
+    showToast('Relay rule pattern and target are required', 'error');
+    return;
+  }
+  const rules = _relayRules();
+  rules.push({ pattern, target, template });
+  _saveRelayRules();
+  if (patternEl) patternEl.value = '';
+  if (templateEl) templateEl.value = '';
+  if (targetEl) targetEl.value = '';
+  renderRelayRuleList();
+  showToast('Relay rule added', 'success');
+}
+
+function removeRelayRule(index) {
+  const rules = _relayRules();
+  if (index < 0 || index >= rules.length) return;
+  rules.splice(index, 1);
+  _saveRelayRules();
+  renderRelayRuleList();
+  showToast('Relay rule removed', 'info');
 }
 
 function _relaySignature(handoff) {
@@ -13863,6 +14002,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAuthProfiles();
   _renderIdentityPill();
   initChatSpellHelper();
+  populateRelayRuleTargetOptions();
+  renderRelayRuleList();
   
   // Settings modal handlers
   document.querySelectorAll('[data-time]').forEach(btn => {
