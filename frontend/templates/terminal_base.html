@@ -3408,10 +3408,9 @@ input[type="range"]::-moz-range-thumb:hover {
           </div>
         </div>
         <div id="chat-section-main" class="chat-section chat-main-shell">
-          <button type="button" class="chat-section-header" onclick="toggleMainRuntimePanel()" aria-controls="chat-thread-runtime" aria-expanded="true">
+          <div class="chat-section-header" aria-controls="chat-thread-runtime" aria-expanded="true">
             <span class="chat-section-title">💬 Main Chat</span>
-            <span class="chat-section-caret" aria-hidden="true"></span>
-          </button>
+          </div>
           <div id="chat-section-main-content" class="chat-section-content">
             <div id="chat-thread-runtime" class="chat-thread-runtime"></div>
             <div id="chat-messages" style="flex:1; overflow-y: auto;">
@@ -10491,8 +10490,8 @@ window.__fridaysChatThreadCollapsed = window.__fridaysChatThreadCollapsed ?? (lo
 window.__fridaysChatDockWidth = Number(window.__fridaysChatDockWidth || localStorage.getItem(CHAT_DOCK_WIDTH_KEY) || 420);
 window.__fridaysChatDockCollapsed = window.__fridaysChatDockCollapsed ?? (localStorage.getItem(CHAT_DOCK_COLLAPSED_KEY) === '1');
 window.__fridaysChatUiScale = Number(window.__fridaysChatUiScale || localStorage.getItem(CHAT_UI_SCALE_KEY) || CHAT_UI_SCALE_DEFAULT);
-window.__fridaysChatRuntimeHidden = window.__fridaysChatRuntimeHidden ?? (localStorage.getItem(CHAT_RUNTIME_PANEL_HIDDEN_KEY) === '1');
-window.__fridaysChatRuntimePinned = window.__fridaysChatRuntimePinned ?? (localStorage.getItem(CHAT_RUNTIME_PIN_KEY) !== '0');
+window.__fridaysChatRuntimeHidden = false;
+window.__fridaysChatRuntimePinned = true;
 window.__fridaysChatRelayAuto = window.__fridaysChatRelayAuto ?? (localStorage.getItem(CHAT_RELAY_AUTO_KEY) !== '0');
 window.__fridaysChatRelayInfinite = window.__fridaysChatRelayInfinite ?? (localStorage.getItem(CHAT_RELAY_MAX_KEY) === 'inf');
 window.__fridaysChatRelayMaxPerTurn = Number(window.__fridaysChatRelayMaxPerTurn || localStorage.getItem(CHAT_RELAY_MAX_KEY) || 4);
@@ -10690,7 +10689,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
       ? 'Awaiting agent acknowledgement...'
       : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread')));
 
-  const shouldShow = !window.__fridaysChatRuntimeHidden && (window.__fridaysChatRuntimePinned || list.length > 0 || running.length > 0 || loadingAgents.length > 0 || hasPendingJobs || relayActive);
+  const shouldShow = true;
   hosts.forEach(host => {
     host.classList.toggle('open', shouldShow);
   });
@@ -10723,7 +10722,6 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
     <div class="chat-thread-runtime-head">
       <div style="display:flex;align-items:center;gap:6px;min-width:0;">
         <div class="chat-thread-runtime-title">Thread Runtime · #${Number(convId)}</div>
-        <button class="chat-runtime-pin ${window.__fridaysChatRuntimePinned ? 'on' : ''}" onclick="toggleRuntimePin()" title="Keep runtime strip visible">${window.__fridaysChatRuntimePinned ? 'Pinned' : 'Pin'}</button>
         ${canStop ? '<button class="chat-action-btn" onclick="stopPendingAgents()" title="Stop active agent runs">Stop</button>' : ''}
       </div>
       <div class="chat-thread-runtime-meta">${_escapeHtml(sourceLabel)} · ${_escapeHtml(headline)}</div>
@@ -10739,8 +10737,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
 }
 
 function toggleRuntimePin() {
-  window.__fridaysChatRuntimePinned = !window.__fridaysChatRuntimePinned;
-  localStorage.setItem(CHAT_RUNTIME_PIN_KEY, window.__fridaysChatRuntimePinned ? '1' : '0');
+  window.__fridaysChatRuntimePinned = true;
   pollActiveThreadRuntime(true);
 }
 
@@ -10761,9 +10758,6 @@ function pollActiveThreadRuntime(force = false) {
   const relayActive = !!window.__fridaysChatRelayBusy || !!window.__fridaysChatRelayActive || ((window.__fridaysChatRelayQueue || []).length > 0);
   const hasActiveSnapshot = snapshotJobs.some(j => String(j.status || 'running') === 'running');
   if (!force && window.__fridaysChatPendingPollTimer) {
-    return Promise.resolve();
-  }
-  if (!force && !window.__fridaysChatRuntimePinned && !hasPendingJobs && !loadingAgents.length && !hasActiveSnapshot && !relayActive) {
     return Promise.resolve();
   }
   return fetch('/api/chat/jobs/status?conversation_id=' + encodeURIComponent(convId))
@@ -11469,7 +11463,6 @@ function _syncChatSectionAria(sectionKey) {
 
 function toggleChatSection(sectionKey) {
   if (String(sectionKey || '').trim() === 'main') {
-    toggleMainRuntimePanel();
     return;
   }
   const section = _chatSectionElement(sectionKey);
@@ -11482,23 +11475,17 @@ function _applyMainRuntimePanelState() {
   const sections = Array.from(document.querySelectorAll('[id="chat-section-main"]'));
   if (!sections.length) return;
   sections.forEach(section => {
-    section.classList.toggle('runtime-hidden', !!window.__fridaysChatRuntimeHidden);
+    section.classList.remove('runtime-hidden');
     const header = section.querySelector('.chat-section-header');
     if (header) {
-      header.setAttribute('aria-expanded', window.__fridaysChatRuntimeHidden ? 'false' : 'true');
+      header.setAttribute('aria-expanded', 'true');
     }
   });
 }
 
 function toggleMainRuntimePanel(forceVisible = null) {
-  if (forceVisible === true) {
-    window.__fridaysChatRuntimeHidden = false;
-  } else if (forceVisible === false) {
-    window.__fridaysChatRuntimeHidden = true;
-  } else {
-    window.__fridaysChatRuntimeHidden = !window.__fridaysChatRuntimeHidden;
-  }
-  localStorage.setItem(CHAT_RUNTIME_PANEL_HIDDEN_KEY, window.__fridaysChatRuntimeHidden ? '1' : '0');
+  window.__fridaysChatRuntimeHidden = false;
+  window.__fridaysChatRuntimePinned = true;
   _applyMainRuntimePanelState();
   pollActiveThreadRuntime(true);
 }
@@ -14048,14 +14035,17 @@ async function stopPendingAgents() {
     const resp = await fetch('/api/chat/jobs/cancel', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ job_ids: jobIds, conversation_id: convId || null })
+      body: JSON.stringify({ job_ids: jobIds, conversation_id: convId || null, hard_kill: true })
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok || !data.ok) {
       throw new Error((data && data.error) || `HTTP ${resp.status}`);
     }
     const count = Number(data.count || 0);
-    showToast(count > 0 ? `Stopped ${count} agent run(s)` : 'No running jobs were stoppable', count > 0 ? 'success' : 'info');
+    const hardKills = Array.isArray(data.hard_kill_results) ? data.hard_kill_results : [];
+    const hardKillOk = hardKills.filter(item => item && item.ok).length;
+    const suffix = hardKillOk > 0 ? ` · hard-killed ${hardKillOk} local runtime${hardKillOk === 1 ? '' : 's'}` : '';
+    showToast(count > 0 ? `Stopped ${count} agent run(s)${suffix}` : 'No running jobs were stoppable', count > 0 ? 'success' : 'info');
     if (window.__fridaysChatPendingPollTimer) {
       clearInterval(window.__fridaysChatPendingPollTimer);
       window.__fridaysChatPendingPollTimer = null;
