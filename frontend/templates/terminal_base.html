@@ -1845,6 +1845,23 @@ body.theme-rose {
   color: var(--text);
   border-color: var(--accent);
 }
+.chat-info-log {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.chat-info-log strong {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text);
+}
 .chat-handoff-actions {
   margin-top: 6px;
   display: flex;
@@ -10468,6 +10485,7 @@ window.__fridaysChatRelayBusy = !!window.__fridaysChatRelayBusy;
 window.__fridaysChatRelayActive = !!window.__fridaysChatRelayActive;
 window.__fridaysChatRelaySeen = window.__fridaysChatRelaySeen || {};
 window.__fridaysChatTimeline = Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : [];
+window.__fridaysChatTimelineFilter = String(window.__fridaysChatTimelineFilter || 'all').toLowerCase();
 window.__fridaysChatRelayRules = Array.isArray(window.__fridaysChatRelayRules) ? window.__fridaysChatRelayRules : (() => {
   try {
     const raw = JSON.parse(localStorage.getItem(CHAT_RELAY_RULES_KEY) || '[]');
@@ -12614,10 +12632,10 @@ function queueRelayHandoff(handoff, autoMode = false) {
   window.__fridaysChatRelayQueue = queue;
   window.__fridaysChatRelayQueue.push(item);
   if (item.auto) {
-    _appendChatBubble('duck', `Queued relay ticket for ${_chatAgentLabel(item.target)}.`);
+    _appendInfoLogEntry('duck', `Queued relay ticket for ${_chatAgentLabel(item.target)}.`, true);
     const libSeen = window.__fridaysLibrarianRelayAudit || {};
     if (!libSeen[sig] || (now - Number(libSeen[sig] || 0) > 8 * 60 * 1000)) {
-      _appendChatBubble('librarian', `Audit captured: ${_chatAgentLabel(item.from)} assigned ${_chatAgentLabel(item.target)}.`);
+      _appendInfoLogEntry('librarian', `Audit captured: ${_chatAgentLabel(item.from)} assigned ${_chatAgentLabel(item.target)}.`, true);
       libSeen[sig] = now;
       window.__fridaysLibrarianRelayAudit = libSeen;
     }
@@ -12661,7 +12679,7 @@ function _processRelayQueue() {
   _applySingleAgentSelection(next.target);
   input.value = _relayPromptText(next);
   if (next.auto) {
-    _appendChatBubble('duck', `Dispatching ${_chatAgentLabel(next.target)} relay ticket.`);
+    _appendInfoLogEntry('duck', `Dispatching ${_chatAgentLabel(next.target)} relay ticket.`, true);
   }
   showToast(`${_chatAgentLabel(next.from)} → ${_chatAgentLabel(next.target)}`, next.auto ? 'info' : 'success');
   Promise.resolve(sendMessage('relay', next))
@@ -12681,6 +12699,45 @@ function _chatThinkingHistoryState() {
 
 function _timelineTextSnippet(text) {
   return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+}
+
+function _appendInfoLogEntry(actor, text, relay = false) {
+  const messages = _chatMessagesEl();
+  if (!messages) return;
+  const key = String(actor || 'system').toLowerCase().trim();
+  const label = _chatAgentLabel(key);
+  const icon = key === 'duck' ? '🦆' : (key === 'librarian' ? '👁️' : 'ℹ️');
+  const row = document.createElement('div');
+  row.className = 'chat-info-log';
+  const msgId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  row.id = 'chat-bubble-' + msgId;
+  row.innerHTML = `<strong>${icon} ${_escapeHtml(label)} Log</strong><span>${_escapeHtml(String(text || ''))}</span>`;
+  messages.appendChild(row);
+  _recordTimelineEvent({
+    bubbleId: row.id,
+    sender: key,
+    label,
+    text: String(text || ''),
+    relay: !!relay,
+  });
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function setRelayTimelineFilter(filter = 'all') {
+  window.__fridaysChatTimelineFilter = String(filter || 'all').toLowerCase();
+  renderChatRelayTimeline();
+}
+
+function showRelayLogs(filter = 'all') {
+  const key = String(filter || 'all').toLowerCase();
+  setRelayTimelineFilter(key);
+  const metaSection = _chatSectionElement('meta');
+  if (metaSection) {
+    metaSection.classList.remove('collapsed');
+    _syncChatSectionAria('meta');
+  }
+  const timeline = document.getElementById('chat-relay-timeline');
+  if (timeline) timeline.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function _recordTimelineEvent(entry) {
@@ -12708,9 +12765,15 @@ function clearRelayTimeline() {
 function renderChatRelayTimeline() {
   const host = document.getElementById('chat-relay-timeline');
   if (!host) return;
-  const rows = (Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : []).slice(-120);
+  const mode = String(window.__fridaysChatTimelineFilter || 'all').toLowerCase();
+  const rows = (Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : [])
+    .filter(row => {
+      if (mode === 'all') return true;
+      return String(row?.sender || '').toLowerCase() === mode;
+    })
+    .slice(-120);
   if (!rows.length) {
-    host.innerHTML = '<div style="padding:8px 10px;font-size:10px;color:var(--text-dim);">No relay/response events yet.</div>';
+    host.innerHTML = '<div style="padding:8px 10px;font-size:10px;color:var(--text-dim);">No matching relay log events.</div>';
     return;
   }
   host.innerHTML = rows.map(row => {
@@ -13634,7 +13697,13 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
 }
 
 async function stopPendingAgents() {
-  const jobIds = (window.__fridaysChatPendingJobIds || []).slice();
+  const runtimeJobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs)
+    ? window.__fridaysThreadRuntimeSnapshot.jobs
+    : [];
+  const runtimeRunningIds = runtimeJobs
+    .filter(j => String(j?.status || 'running') === 'running' && j?.job_id)
+    .map(j => String(j.job_id));
+  const jobIds = Array.from(new Set([...(window.__fridaysChatPendingJobIds || []).slice(), ...runtimeRunningIds]));
   const convId = window.__fridaysChatPendingConversationId || window.__fridaysChatConversationId;
   if (!jobIds.length) {
     showToast('No long-running agents to stop right now', 'info');
@@ -13664,6 +13733,8 @@ async function stopPendingAgents() {
     window.__fridaysChatPendingJobIds = [];
     window.__fridaysChatPendingConversationId = null;
     window.__fridaysRuntimeLoadingAgents = [];
+    _syncThinkingBubbles([]);
+    _renderThreadRuntimePanel([], 'stopped');
     if (convId) {
       loadConversationMessages(convId);
       refreshChatThreadList(convId);
@@ -13794,6 +13865,9 @@ function renderRelayManagerCard() {
     </label>
     ${sliderRow}
     <div style="font-size:8px;color:${queueColor};padding:0 4px;margin-top:2px;font-variant-numeric:tabular-nums;">${queueStatus}</div>
+    <div style="display:flex;justify-content:flex-end;padding:0 2px;">
+      <button class="chat-action-btn" style="padding:1px 6px;font-size:9px;" onclick="showRelayLogs('duck')">Duck Log</button>
+    </div>
   </div>`;
   
   hosts.forEach(host => {
@@ -13818,6 +13892,9 @@ function renderRelayMonitorCard() {
       <span style="font-weight:600;color:var(--text-dim);">👁️ Librarian</span>
     </label>
     <div style="font-size:8px;color:var(--text-dim);padding:0 4px;font-style:italic;">${monitorStatus}</div>
+    <div style="display:flex;justify-content:flex-end;padding:0 2px;">
+      <button class="chat-action-btn" style="padding:1px 6px;font-size:9px;" onclick="showRelayLogs('librarian')">Librarian Log</button>
+    </div>
   </div>`;
   
   hosts.forEach(host => {
@@ -14285,9 +14362,7 @@ function sendMessage(source = 'user', relayMeta = null) {
     ? '[' + _chatAgentListText(selectedAgents) + '] ' + msg
     : '[' + _chatAgentListText(selectedAgents) + '] (attachment)';
   if (source === 'relay') {
-    _appendChatBubble('duck', `Relay ticket sent to ${_chatAgentLabel(selectedAgents[0] || relayMeta?.target || 'agent')}.`, {
-      relayMeta: relayMeta || null,
-    });
+    _appendInfoLogEntry('duck', `Relay ticket sent to ${_chatAgentLabel(selectedAgents[0] || relayMeta?.target || 'agent')}.`, true);
   } else {
     _appendChatBubble('you', userBubbleText, {
       quoted: replyTargets.length ? replyTargets : null
