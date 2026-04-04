@@ -296,3 +296,10 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: All docs lint-clean. Registry and README links intact.
 - Rollback: Revert documentation files only — no code changes in this entry.
 
+- Time (UTC): 2026-04-04T00:02:00Z
+- Actor: Nine (Claude Sonnet 4.6)
+- Scope: docs/ARCHITECTURE.md, docs/FEATURES_TODO.md, docs/PROJECT.md, memory/project_swarm.md
+- Change: Agent roster finalised. 11 AI agents, Ghost as human operator (unnumbered). Agents 1-7 now carry number + model consistently: 1 One (Gemma3), 2 Two (LlaMA), 3 Three (Mistral) replaces Qwen as pipeline Analyst, 4 Qwen stays as Deep Analyst, 5 Librarian absorbs Vortex (checkpoints + decision logging), 6 Duck, 7 Sniffles. Agent 8 Eight model updated to gemma4:26b. Ghost Layer: 9 Nine (Claude), 10 Ten (Github), 11 Eleven (Grok). Agent 12 Twelve/Vortex retired — no separate agent, no API cost. Vortex tile and API endpoints remain, Librarian is their engine. memory_mistral table added to schema. memory_twelve retired.
+- Validation: ARCHITECTURE.md roster, tier table, DB schema table, system flow, and memory pool descriptions all updated consistently.
+- Rollback: Revert documentation files. Code changes (adding Mistral agent, updating Eight model, Librarian Vortex integration) are separate implementation tasks not yet executed.
+

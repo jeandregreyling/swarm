@@ -340,3 +340,11 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Continue Terminal tile review and hardening. Update migration status table in ARCHITECTURE.md as each tile completes.
 
+- Audit ID: AUDIT-20260404-000200
+- Time (UTC): 2026-04-04T00:02:00Z
+- Actor: Nine (Claude Sonnet 4.6)
+- Objective: Finalise and document agent roster — consistent numbering, model assignment, retirement of Agent 12
+- Evidence: Roster confirmed by Ghost. ARCHITECTURE.md agent section fully rewritten: 11 agents, Ghost unnumbered as human operator, agents 1-7 carry number+model, Three (Mistral) replaces Qwen as pipeline Analyst, Qwen retained as Deep Analyst (4), Librarian absorbs Vortex (5), Eight updated to gemma4:26b (8), Twelve retired. DB schema table updated (memory_mistral added, memory_twelve removed, decisions table ownership updated). Agent tier table updated. System flow updated. CHANGELOG_OPERATIONS.md appended.
+- Result: PASS
+- Follow-up: Implementation tasks pending — pull mistral:latest and gemma4:26b from Ollama, add memory_mistral table to database.py, wire Three into pipeline, update Librarian to run Vortex checkpoint on close, retire Twelve agent code.
+
