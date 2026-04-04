@@ -3778,12 +3778,12 @@ input[type="range"]::-moz-range-thumb:hover {
         <button class="mem-tab active" data-agent="" onclick="_memTab(this,'')">All</button>
         <button class="mem-tab" data-agent="nine"    onclick="_memTab(this,'nine')">Nine (Claude Sonnet 4.6)</button>
         <button class="mem-tab" data-agent="ten"     onclick="_memTab(this,'ten')">Ten (GPT-5.3-Codex)</button>
-        <button class="mem-tab" data-agent="gemma"   onclick="_memTab(this,'gemma')">Gemma</button>
-        <button class="mem-tab" data-agent="llama"   onclick="_memTab(this,'llama')">LLaMA</button>
+        <button class="mem-tab" data-agent="gemma"   onclick="_memTab(this,'gemma')">1 · Gemma3</button>
+        <button class="mem-tab" data-agent="llama"   onclick="_memTab(this,'llama')">2 · LlaMA</button>
         <button class="mem-tab" data-agent="eight"   onclick="_memTab(this,'eight')">Eight</button>
         <button class="mem-tab" data-agent="qwen"    onclick="_memTab(this,'qwen')">Qwen</button>
         <button class="mem-tab" data-agent="grok"    onclick="_memTab(this,'grok')">Eleven (Grok API)</button>
-        <button class="mem-tab" data-agent="twelve"  onclick="_memTab(this,'twelve')">Twelve (Claude Haiku)</button>
+        <button class="mem-tab" data-agent="librarian" onclick="_memTab(this,'librarian')">5 · Vortex</button>
         <button class="mem-tab" data-agent="librarian" onclick="_memTab(this,'librarian')">Librarian</button>
       </div>
       <div id="memory-source-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
@@ -8891,16 +8891,17 @@ function loadCapabilityMatrix(host) {
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);">
           <label style="font-size:11px;color:var(--text-dim);">High access agent:</label>
           <select id="capability-high-agent" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;min-width:140px;">
-            <option value="gemma">gemma</option>
-            <option value="qwen">qwen</option>
-            <option value="llama">llama</option>
-            <option value="eight">eight</option>
-            <option value="duck">duck</option>
-            <option value="sniffles">sniffles</option>
-            <option value="nine">nine (claude-sonnet-4-6)</option>
-            <option value="ten">ten (gpt-5.3-codex)</option>
-            <option value="eleven">eleven (grok-api)</option>
-            <option value="twelve">twelve (claude-haiku)</option>
+            <option value="gemma">1 · Gemma3</option>
+            <option value="llama">2 · LlaMA</option>
+            <option value="mistral">3 · Mistral</option>
+            <option value="qwen">4 · Qwen</option>
+            <option value="librarian">5 · Vortex (Librarian)</option>
+            <option value="duck">6 · Duck</option>
+            <option value="sniffles">7 · Sniffles</option>
+            <option value="eight">8 · Eight</option>
+            <option value="nine">9 · Claude (Nine)</option>
+            <option value="ten">10 · Github (Ten)</option>
+            <option value="eleven">11 · Grok (Eleven)</option>
           </select>
           <button id="capability-high-enable" style="padding:5px 10px;background:#4caf5020;border:1px solid #4caf5060;border-radius:6px;color:#4caf50;font-size:11px;cursor:pointer;font-weight:700;">Enable High Access</button>
           <button id="capability-high-disable" style="padding:5px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:11px;cursor:pointer;font-weight:700;">Disable High Access</button>
@@ -10483,21 +10484,51 @@ async function cmdTerminal(cmd) {
 // MESSAGE FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CHAT_AGENT_OPTIONS = [
-  { value: 'gemma',    label: 'Gemma',    tier: 'local', hasTemp: true  },
-  { value: 'llama',    label: 'LLaMA',    tier: 'local', hasTemp: true  },
-  { value: 'mistral',  label: 'Mistral',  tier: 'local', hasTemp: true  },
-  { value: 'qwen',     label: 'Qwen',     tier: 'local', hasTemp: true  },
-  { value: 'eight',    label: 'Eight',    tier: 'local', hasTemp: true  },
-  { value: 'duck',     label: 'Duck',     tier: 'local', hasTemp: true  },
-  { value: 'sniffles', label: 'Sniffles', tier: 'local', hasTemp: true  },
-  { value: 'nine',     label: 'Nine · Claude Sonnet 4.6', tier: 'paid',  hasTemp: false },
-  { value: 'ten',      label: 'Ten · GPT-5.3-Codex',      tier: 'paid',  hasTemp: true  },
-  { value: 'eleven',   label: 'Eleven · Grok API',        tier: 'paid',  hasTemp: false },
-  { value: 'twelve',   label: 'Twelve · Claude Haiku',    tier: 'paid',  hasTemp: true  },
-  { value: 'scholar',  label: 'Scholar · Gemini Flash',   tier: 'paid',  hasTemp: false },
-  { value: 'seeker',   label: 'Seeker · Tavily Search',   tier: 'paid',  hasTemp: false },
+// Agent options — internal `value` keys never change.
+// `label` and `number` are data not code — fetched from DB on load via _loadAgentRegistry().
+// Fallback labels below are already correct; the fetch keeps them in sync if DB changes.
+// To rename an agent or swap its model: UPDATE agents SET label=... WHERE name=... in the DB.
+let CHAT_AGENT_OPTIONS = [
+  { value: 'gemma',    label: '1 · Gemma3',   number: 1,  tier: 'local', hasTemp: true  },
+  { value: 'llama',    label: '2 · LlaMA',    number: 2,  tier: 'local', hasTemp: true  },
+  { value: 'mistral',  label: '3 · Mistral',  number: 3,  tier: 'local', hasTemp: true  },
+  { value: 'qwen',     label: '4 · Qwen',     number: 4,  tier: 'local', hasTemp: true  },
+  { value: 'librarian',label: '5 · Vortex',   number: 5,  tier: 'local', hasTemp: false },
+  { value: 'duck',     label: '6 · Duck',     number: 6,  tier: 'local', hasTemp: true  },
+  { value: 'sniffles', label: '7 · Sniffles', number: 7,  tier: 'local', hasTemp: true  },
+  { value: 'eight',    label: '8 · Eight',    number: 8,  tier: 'local', hasTemp: true  },
+  { value: 'nine',     label: '9 · Claude',   number: 9,  tier: 'paid',  hasTemp: false },
+  { value: 'ten',      label: '10 · Github',  number: 10, tier: 'paid',  hasTemp: true  },
+  { value: 'eleven',   label: '11 · Grok',    number: 11, tier: 'paid',  hasTemp: false },
+  { value: 'scholar',  label: 'Scholar · Gemini Flash',  tier: 'paid',  hasTemp: false },
+  { value: 'seeker',   label: 'Seeker · Tavily Search',  tier: 'paid',  hasTemp: false },
 ];
+
+// Fetch agent registry from DB and update labels in CHAT_AGENT_OPTIONS.
+// Called once on load. On failure the hardcoded fallback labels above remain.
+function _loadAgentRegistry() {
+  fetch('/api/agents')
+    .then(r => r.ok ? r.json() : null)
+    .catch(() => null)
+    .then(data => {
+      if (!Array.isArray(data)) return;
+      const byValue = {};
+      data.forEach(a => { if (a.name) byValue[a.name.toLowerCase()] = a; });
+      let changed = false;
+      CHAT_AGENT_OPTIONS.forEach(opt => {
+        const reg = byValue[opt.value.toLowerCase()];
+        if (!reg) return;
+        const num = reg.number != null ? reg.number : opt.number;
+        const lbl = reg.label || opt.label;
+        const newLabel = num != null ? `${num} · ${lbl}` : lbl;
+        if (opt.label !== newLabel) { opt.label = newLabel; changed = true; }
+        if (num != null) opt.number = num;
+      });
+      if (changed) {
+        if (typeof renderChatAgentToggles === 'function') renderChatAgentToggles();
+      }
+    });
+}
 
 const CHAT_CUSTOM_DICTIONARY_KEY = 'fridays-chat-custom-dictionary-v1';
 const CHAT_DESKTOP_NOTIFY_KEY = 'fridays-chat-desktop-notify-v1';
@@ -12157,20 +12188,21 @@ function _renderSkillEvents(events, sender) {
 }
 
 const _CHAT_AGENT_META = {
-  gemma:     { icon: '🧭', purpose: 'Orchestrator. Routes requests and synthesises swarm output.',        runtime: 'local', tier: 'local' },
-  llama:     { icon: '🦙', purpose: 'Fast researcher with web access.',                                   runtime: 'local', tier: 'local' },
-  qwen:      { icon: '🧠', purpose: 'Deep reasoning and analytical pass.',                                runtime: 'local', tier: 'local' },
-  eight:     { icon: '8️⃣', purpose: 'SAP specialist — Functional/Technical/Devil three-voice debate.',   runtime: 'local', tier: 'local' },
-  librarian: { icon: '📚', purpose: 'Silent memory indexing and retrieval.',                              runtime: 'local', tier: 'local' },
-  duck:      { icon: '🦆', purpose: 'Audit pass and contradiction detection.',                            runtime: 'local', tier: 'local' },
-  sniffles:  { icon: '🧪', purpose: 'Forensic memory integrity checks.',                                  runtime: 'local', tier: 'local' },
-  nine:      { icon: '👻', purpose: 'Nine · Claude Sonnet architect for system planning.',               runtime: 'paid',  tier: 'paid' },
-  ten:       { icon: '🛠️', purpose: 'Ten · GPT engineering advisor for implementation quality.',         runtime: 'paid',  tier: 'paid' },
-  eleven:    { icon: '⚡', purpose: 'Eleven · Grok 3 reasoning advisor and lateral ideation.',           runtime: 'paid',  tier: 'paid' },
-  twelve:    { icon: '🌀', purpose: 'Twelve · Claude Haiku for temporal continuity and sequencing.',     runtime: 'paid',  tier: 'paid' },
-  scholar:   { icon: '🔬', purpose: 'Scholar · Gemini 2.0 Flash for vision and deep reasoning.',      runtime: 'paid',  tier: 'paid' },
-  seeker:    { icon: '🔍', purpose: 'Seeker · Tavily live web search and real-time synthesis.',         runtime: 'paid',  tier: 'paid' },
-  you:       { icon: '👤', purpose: 'Human operator input.',                                              runtime: 'human', tier: 'human' },
+  // Internal key → icon, purpose, runtime. Label comes from CHAT_AGENT_OPTIONS (DB-driven).
+  gemma:     { icon: '🧭', purpose: '1 · Gemma3. Director — routes, synthesises, speaks last.',                   runtime: 'local', tier: 'local' },
+  llama:     { icon: '🦙', purpose: '2 · LlaMA. Correspondent — web search, fast first response.',                runtime: 'local', tier: 'local' },
+  mistral:   { icon: '🔷', purpose: '3 · Mistral. Analyst — deep reasoning, debates, challenges Two.',            runtime: 'local', tier: 'local' },
+  qwen:      { icon: '🧠', purpose: '4 · Qwen. Deep Analyst — specialist depth, multilingual reasoning.',         runtime: 'local', tier: 'local' },
+  librarian: { icon: '📚', purpose: '5 · Vortex. Gatekeeper + time machine checkpoints.',                         runtime: 'local', tier: 'local' },
+  duck:      { icon: '🦆', purpose: '6 · Duck. Sanity checker — YES/NO after every ticket.',                      runtime: 'local', tier: 'local' },
+  sniffles:  { icon: '🧪', purpose: '7 · Sniffles. Inspector — memory auditor, read only.',                       runtime: 'local', tier: 'local' },
+  eight:     { icon: '8️⃣', purpose: '8 · Eight. SAP specialist — Functional/Technical/Devil three-voice debate.', runtime: 'local', tier: 'local' },
+  nine:      { icon: '👻', purpose: '9 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals.',       runtime: 'paid',  tier: 'paid' },
+  ten:       { icon: '🛠️', purpose: '10 · Github. Engineering advisor — code quality, implementation clarity.',   runtime: 'paid',  tier: 'paid' },
+  eleven:    { icon: '⚡', purpose: '11 · Grok. Lateral thinking advisor — creative synthesis, alternatives.',     runtime: 'paid',  tier: 'paid' },
+  scholar:   { icon: '🔬', purpose: 'Scholar · Gemini 2.0 Flash for vision and deep reasoning.',                  runtime: 'paid',  tier: 'paid' },
+  seeker:    { icon: '🔍', purpose: 'Seeker · Tavily live web search and real-time synthesis.',                    runtime: 'paid',  tier: 'paid' },
+  you:       { icon: '👤', purpose: 'Human operator input.',                                                       runtime: 'human', tier: 'human' },
 };
 
 function _chatAgentLabel(sender) {
@@ -15422,6 +15454,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 60000);
   
+  _loadAgentRegistry(); // Load agent numbers + labels from DB — updates CHAT_AGENT_OPTIONS
   loadHomeStats(); // Load system stats with colors and trends
   setInterval(loadHomeStats, 10000); // Update stats every 10 seconds
   loadOllamaPanel(); // Load Ollama model panel

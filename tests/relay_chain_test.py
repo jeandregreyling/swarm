@@ -32,7 +32,7 @@ def _b(s): return f'\033[1m{s}\033[0m'    # bold
 
 # --- helpers ---------------------------------------------------------------
 
-def _send(message: str, agents: list, conv_id=None, new_thread=False) -> dict:
+def _send(message: str, agents: list, conv_id=None, new_thread=False, relay_from=None) -> dict:
     """POST /api/chat and return the parsed response dict."""
     payload = {
         'message': message,
@@ -44,6 +44,8 @@ def _send(message: str, agents: list, conv_id=None, new_thread=False) -> dict:
         payload['new_thread'] = True
     else:
         payload['conversation_id'] = conv_id
+    if relay_from:
+        payload['relay_from'] = str(relay_from).lower()
     resp = requests.post(f'{BASE}/api/chat', json=payload, headers=HEADERS, timeout=30)
     resp.raise_for_status()
     return resp.json()
@@ -109,7 +111,7 @@ def _get_messages(conv_id: int) -> list:
     return sorted(data.get('messages', []), key=lambda m: m.get('id', 0))
 
 
-def _hop(label: str, message: str, agents: list, conv_id=None, new_thread=False):
+def _hop(label: str, message: str, agents: list, conv_id=None, new_thread=False, relay_from=None):
     """
     Send one hop of the relay chain. Returns (conv_id, responses_map).
     responses_map is {agent_key: response_text}.
@@ -118,7 +120,7 @@ def _hop(label: str, message: str, agents: list, conv_id=None, new_thread=False)
     print(f'\n  {_b("→")} [{label}] sending to {_y(agent_str)}', flush=True)
     print(f'     msg: "{message[:120]}{"…" if len(message)>120 else ""}"', flush=True)
 
-    data = _send(message, agents, conv_id=conv_id, new_thread=new_thread)
+    data = _send(message, agents, conv_id=conv_id, new_thread=new_thread, relay_from=relay_from)
     conv_id = int(data.get('conversation_id') or 0)
     print(f'     conv_id={conv_id}', flush=True)
 
@@ -194,13 +196,13 @@ def thread1():
     conv_id, r = _hop('T1-Gemma', 'What are the main trade-offs between CPU and GPU inference for local LLMs? Please keep it concise.', ['gemma'], new_thread=True)
     passed &= _check(r, ['gemma'])
 
-    conv_id, r = _hop('T1-LLaMA', 'Can you search for any recent benchmarks comparing CPU-only vs GPU LLM inference speed and cost? Keep it brief.', ['llama'], conv_id=conv_id)
+    conv_id, r = _hop('T1-LLaMA', 'Can you search for any recent benchmarks comparing CPU-only vs GPU LLM inference speed and cost? Keep it brief.', ['llama'], conv_id=conv_id, relay_from='gemma')
     passed &= _check(r, ['llama'])
 
-    conv_id, r = _hop('T1-Qwen', 'Gemma gave trade-offs and LLaMA found benchmarks. Please analyse — what conclusion would you draw for a CPU-only home server? One paragraph max.', ['qwen'], conv_id=conv_id)
+    conv_id, r = _hop('T1-Qwen', 'Gemma gave trade-offs and LLaMA found benchmarks. Please analyse — what conclusion would you draw for a CPU-only home server? One paragraph max.', ['qwen'], conv_id=conv_id, relay_from='llama')
     passed &= _check(r, ['qwen'])
 
-    conv_id, r = _hop('T1-LLaMA-final', 'Qwen gave an analysis above. Can you verify it with any recent sources and give a one-sentence verdict?', ['llama'], conv_id=conv_id)
+    conv_id, r = _hop('T1-LLaMA-final', 'Qwen gave an analysis above. Can you verify it with any recent sources and give a one-sentence verdict?', ['llama'], conv_id=conv_id, relay_from='qwen')
     passed &= _check(r, ['llama'])
 
     result = _g('PASS') if passed else _r('FAIL')
@@ -218,10 +220,10 @@ def thread2():
     conv_id, r = _hop('T2-LLaMA-start', 'What is the current capital of Australia, and who is the current Prime Minister? Quick answer only.', ['llama'], new_thread=True)
     passed &= _check(r, ['llama'])
 
-    conv_id, r = _hop('T2-Gemma', 'LLaMA just answered above. Please synthesise the response and flag anything uncertain or worth verifying.', ['gemma'], conv_id=conv_id)
+    conv_id, r = _hop('T2-Gemma', 'LLaMA just answered above. Please synthesise the response and flag anything uncertain or worth verifying.', ['gemma'], conv_id=conv_id, relay_from='llama')
     passed &= _check(r, ['gemma'])
 
-    conv_id, r = _hop('T2-LLaMA-end', 'Gemma flagged something for verification. Can you do a quick check and confirm the final facts?', ['llama'], conv_id=conv_id)
+    conv_id, r = _hop('T2-LLaMA-end', 'Gemma flagged something for verification. Can you do a quick check and confirm the final facts?', ['llama'], conv_id=conv_id, relay_from='gemma')
     passed &= _check(r, ['llama'])
 
     result = _g('PASS') if passed else _r('FAIL')
@@ -239,10 +241,10 @@ def thread3():
     conv_id, r = _hop('T3-Mistral-start', 'Reason through the key risks of running AI inference models on a machine with no GPU and 33GB RAM. Structured list, max 5 points.', ['mistral'], new_thread=True)
     passed &= _check(r, ['mistral'])
 
-    conv_id, r = _hop('T3-LLaMA', 'Mistral listed risks above. Can you find any real-world forum posts or articles where people share experience with CPU-only local AI setups?', ['llama'], conv_id=conv_id)
+    conv_id, r = _hop('T3-LLaMA', 'Mistral listed risks above. Can you find any real-world forum posts or articles where people share experience with CPU-only local AI setups?', ['llama'], conv_id=conv_id, relay_from='mistral')
     passed &= _check(r, ['llama'])
 
-    conv_id, r = _hop('T3-Mistral-end', 'LLaMA shared real-world experiences. Update your risk analysis with any new evidence. Has anything changed in your assessment?', ['mistral'], conv_id=conv_id)
+    conv_id, r = _hop('T3-Mistral-end', 'LLaMA shared real-world experiences. Update your risk analysis with any new evidence. Has anything changed in your assessment?', ['mistral'], conv_id=conv_id, relay_from='llama')
     passed &= _check(r, ['mistral'])
 
     result = _g('PASS') if passed else _r('FAIL')
@@ -260,10 +262,10 @@ def thread4():
     conv_id, r = _hop('T4-Gemma', 'We need to discuss SAP HCM payroll processing. Can you introduce the topic and route to Eight for the detailed analysis?', ['gemma'], new_thread=True)
     passed &= _check(r, ['gemma'])
 
-    conv_id, r = _hop('T4-Eight', 'What is the correct processing sequence for a payroll run in SAP HCM, and what schema controls it? Brief technical answer.', ['eight'], conv_id=conv_id)
+    conv_id, r = _hop('T4-Eight', 'What is the correct processing sequence for a payroll run in SAP HCM, and what schema controls it? Brief technical answer.', ['eight'], conv_id=conv_id, relay_from='gemma')
     passed &= _check(r, ['eight'])
 
-    conv_id, r = _hop('T4-Gemma-close', 'Eight gave a technical answer on SAP payroll. Synthesise it for a non-SAP audience in two sentences.', ['gemma'], conv_id=conv_id)
+    conv_id, r = _hop('T4-Gemma-close', 'Eight gave a technical answer on SAP payroll. Synthesise it for a non-SAP audience in two sentences.', ['gemma'], conv_id=conv_id, relay_from='eight')
     passed &= _check(r, ['gemma'])
 
     result = _g('PASS') if passed else _r('FAIL')
@@ -281,13 +283,13 @@ def thread5():
     conv_id, r = _hop('T5-Gemma', 'Briefly introduce the topic of quantisation in local LLMs — what is it and why does it matter? Two sentences max.', ['gemma'], new_thread=True)
     passed &= _check(r, ['gemma'])
 
-    conv_id, r = _hop('T5-Mistral', 'Gemma introduced LLM quantisation above. Analyse the trade-offs between Q4, Q5, and Q8 quantisation levels for a CPU-only machine. Structured, concise.', ['mistral'], conv_id=conv_id)
+    conv_id, r = _hop('T5-Mistral', 'Gemma introduced LLM quantisation above. Analyse the trade-offs between Q4, Q5, and Q8 quantisation levels for a CPU-only machine. Structured, concise.', ['mistral'], conv_id=conv_id, relay_from='gemma')
     passed &= _check(r, ['mistral'])
 
-    conv_id, r = _hop('T5-LLaMA', 'Mistral analysed quantisation levels above. Can you find any benchmark data or community experience on real-world performance differences between these levels?', ['llama'], conv_id=conv_id)
+    conv_id, r = _hop('T5-LLaMA', 'Mistral analysed quantisation levels above. Can you find any benchmark data or community experience on real-world performance differences between these levels?', ['llama'], conv_id=conv_id, relay_from='mistral')
     passed &= _check(r, ['llama'])
 
-    conv_id, r = _hop('T5-Mistral-final', 'LLaMA found real-world benchmarks. Update your analysis — does the evidence confirm or challenge your earlier assessment? One paragraph.', ['mistral'], conv_id=conv_id)
+    conv_id, r = _hop('T5-Mistral-final', 'LLaMA found real-world benchmarks. Update your analysis — does the evidence confirm or challenge your earlier assessment? One paragraph.', ['mistral'], conv_id=conv_id, relay_from='llama')
     passed &= _check(r, ['mistral'])
 
     result = _g('PASS') if passed else _r('FAIL')

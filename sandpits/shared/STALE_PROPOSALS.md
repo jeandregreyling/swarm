@@ -2218,3 +2218,27 @@
 - [20:07] INTERNAL-GHOST-0413 (ghost): [shell] pwd
 - [20:07] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
 - [20:07] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [20:12] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [20:12] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [20:12] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [20:12] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [20:12] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [20:12] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [20:17] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [20:17] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [20:17] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [20:17] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [20:17] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [20:17] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [20:22] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [20:22] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [20:22] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [20:22] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [20:22] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [20:22] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [20:27] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [20:27] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [20:27] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [20:27] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [20:27] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [20:27] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
