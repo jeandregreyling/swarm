@@ -1,6 +1,6 @@
 [Unit]
 Description=Seven's Swarm — Fridays Telegram Bot
-After=network.target ollama.service swarm-listener.service
+After=network.target ollama.service swarm-prewarm.service swarm-listener.service
 
 [Service]
 Type=simple
