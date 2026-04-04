@@ -1926,6 +1926,18 @@ body.theme-rose {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
+.chat-relay-dispatch {
+  margin: 2px 12px 4px 28px;
+  padding: 2px 10px;
+  font-size: 10px;
+  color: var(--text-dim);
+  border-left: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  opacity: 0.75;
+  font-style: italic;
+}
+.chat-relay-dispatch .relay-from,
+.chat-relay-dispatch .relay-to { font-weight: 600; font-style: normal; color: var(--text); }
+.chat-relay-dispatch .relay-arrow { color: var(--accent); font-style: normal; margin: 0 3px; }
 .skill-events {
   margin-top: 10px;
   display: flex;
@@ -10468,6 +10480,7 @@ async function cmdTerminal(cmd) {
 const CHAT_AGENT_OPTIONS = [
   { value: 'gemma',    label: 'Gemma',    tier: 'local', hasTemp: true  },
   { value: 'llama',    label: 'LLaMA',    tier: 'local', hasTemp: true  },
+  { value: 'mistral',  label: 'Mistral',  tier: 'local', hasTemp: true  },
   { value: 'qwen',     label: 'Qwen',     tier: 'local', hasTemp: true  },
   { value: 'eight',    label: 'Eight',    tier: 'local', hasTemp: true  },
   { value: 'duck',     label: 'Duck',     tier: 'local', hasTemp: true  },
@@ -12338,12 +12351,22 @@ async function _librarianReviewResponse(text, fromAgent, convId) {
     const queuedTargets = new Set(
       (window.__fridaysChatRelayQueue || []).map(x => String(x.target || '').toLowerCase())
     );
+    // Also dedup against recently-fired seen signatures (by target, ignoring from — prevents
+    // 'agent' fallback from bypassing dedup when data-sender wasn't available).
+    const recentlySeen = window.__fridaysChatRelaySeen || {};
+    const _now = Date.now();
+    const recentTargets = new Set(
+      Object.entries(recentlySeen)
+        .filter(([, ts]) => _now - Number(ts || 0) < 8 * 60 * 1000)
+        .map(([sig]) => sig.split('|')[1] || '')
+    );
     let newCount = 0;
     for (const c of candidates) {
       const target = String(c.target || '').toLowerCase().trim();
       const question = String(c.question || '').trim();
       if (!target || !question) continue;
       if (queuedTargets.has(target)) continue;      // already queued by regex relay
+      if (recentTargets.has(target)) continue;      // already fired recently (any from)
       if (target === String(fromAgent || '').toLowerCase()) continue; // don't re-route to sender
       queueRelayHandoff({ from: fromAgent, target, question }, true);
       queuedTargets.add(target);
@@ -12365,6 +12388,12 @@ async function _librarianReviewResponse(text, fromAgent, convId) {
 window.__librarianReviewTimer = null;
 
 function _librarianReviewDebounced(text, fromAgent, convId, delayMs = 350) {
+  // Mark the current last bubble as pending review so the watchdog won't re-trigger it.
+  const _lrBubbles = document.querySelectorAll('.chat-bubble:not(.user)');
+  if (_lrBubbles.length) {
+    const _lrLast = _lrBubbles[_lrBubbles.length - 1];
+    if (_lrLast.id) window.__librarianLastReviewedBubbleId = _lrLast.id;
+  }
   if (window.__librarianReviewTimer) clearTimeout(window.__librarianReviewTimer);
   window.__librarianReviewTimer = setTimeout(() => {
     window.__librarianReviewTimer = null;
@@ -12761,7 +12790,7 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
         .trim();
       const normalizedQ = _normalizeRelayQuestion(teamTask || sentence);
       if (normalizedQ) {
-        ['gemma', 'llama', 'qwen'].forEach(target => {
+        ['gemma', 'llama', 'mistral', 'qwen'].forEach(target => {
           if (!_isKnownChatAgent(target) || target === fromKey) return;
           const sig = `${target}|${_relayQuestionKey(normalizedQ)}`;
           if (seen.has(sig)) return;
@@ -12872,7 +12901,7 @@ function _extractUserRequestedHandoffs(message, selectedAgents) {
     handoffs.push({ from: sender, target, question, source: 'user-queue' });
   }
 
-  const localCoreTargets = ['gemma', 'llama', 'qwen'].filter(a => _isKnownChatAgent(a));
+  const localCoreTargets = ['gemma', 'llama', 'mistral', 'qwen'].filter(a => _isKnownChatAgent(a));
   const teamworkSignal = /\b(team|swarm|everyone|all\s+agents?|rest\s+of\s+the\s+team)\b/i.test(text);
   if (teamworkSignal && Array.isArray(selectedAgents) && selectedAgents.length === 1 && localCoreTargets.length) {
     const lead = String(selectedAgents[0] || '').toLowerCase();
@@ -13077,7 +13106,7 @@ function queueRelayHandoff(handoff, autoMode = false) {
   const cap = _relayQueueCap();
   if (queue.length >= cap) {
     if (item.auto) {
-      _appendInfoLogEntry('duck', `Backpressure: relay queue full (${queue.length}/${cap}).`, true);
+      _appendInfoLogEntry('librarian', `Backpressure: relay queue full (${queue.length}/${cap}).`, true);
     }
     window.__fridaysChatRelayHoldReason = `queue full (${queue.length}/${cap})`;
     window.__fridaysChatRelayHoldStamp = Date.now();
@@ -13093,7 +13122,7 @@ function queueRelayHandoff(handoff, autoMode = false) {
   window.__fridaysChatRelayHoldReason = '';
   window.__fridaysChatRelayHoldStamp = 0;
   if (item.auto) {
-    _appendInfoLogEntry('duck', `Queued relay ticket for ${_chatAgentLabel(item.target)}.`, true);
+    _appendInfoLogEntry('librarian', `Queued relay ticket for ${_chatAgentLabel(item.target)}.`, true);
     const libSeen = window.__fridaysLibrarianRelayAudit || {};
     if (!libSeen[sig] || (now - Number(libSeen[sig] || 0) > 8 * 60 * 1000)) {
       _appendInfoLogEntry('librarian', `Audit captured: ${_chatAgentLabel(item.from)} assigned ${_chatAgentLabel(item.target)}.`, true);
@@ -13145,7 +13174,7 @@ async function _processRelayQueue() {
       window.__fridaysChatRelayLastHoldKey = deferKey;
       _relayClearRetryTimer();
       if (dropped > 0 && shouldLog) {
-        _appendInfoLogEntry('duck', `Turn budget exhausted; deferred ${dropped} auto relay ticket${dropped === 1 ? '' : 's'} until the next user turn.`, true);
+        _appendInfoLogEntry('librarian', `Turn budget exhausted; deferred ${dropped} auto relay ticket${dropped === 1 ? '' : 's'} until the next user turn.`, true);
       }
       _renderChatRelayControls();
       return;
@@ -13155,7 +13184,7 @@ async function _processRelayQueue() {
     const holdKey = `${next.from || 'agent'}>${next.target || 'agent'}:${reason}`;
     if (window.__fridaysChatRelayLastHoldKey !== holdKey) {
       window.__fridaysChatRelayLastHoldKey = holdKey;
-      _appendInfoLogEntry('duck', `Relay hold: ${reason}.`, true);
+      _appendInfoLogEntry('librarian', `Relay hold: ${reason}.`, true);
     }
     if (gate && gate.deferToBack && queue.length > 1) {
       queue.push(queue.shift());
@@ -13189,7 +13218,7 @@ async function _processRelayQueue() {
   _applySingleAgentSelection(next.target);
   input.value = _relayPromptText(next);
   if (next.auto) {
-    _appendInfoLogEntry('duck', `Dispatching ${_chatAgentLabel(next.target)} relay ticket.`, true);
+    _appendInfoLogEntry('librarian', `Dispatching ${_chatAgentLabel(next.target)} relay ticket.`, true);
   }
   showToast(`${_chatAgentLabel(next.from)} → ${_chatAgentLabel(next.target)}`, next.auto ? 'info' : 'success');
   Promise.resolve(sendMessage('relay', next))
@@ -13571,6 +13600,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   `;
 
   bubble.dataset.msgId = msgId;
+  bubble.dataset.sender = senderKey;
   bubble.id = 'chat-bubble-' + String(msgId).replace(/[^a-zA-Z0-9_-]/g, '');
   if (opts.messageId) bubble.dataset.messageId = String(opts.messageId);
   if (opts.conversationId) bubble.dataset.conversationId = String(opts.conversationId);
@@ -15004,7 +15034,19 @@ function sendMessage(source = 'user', relayMeta = null) {
     ? '[' + _chatAgentListText(selectedAgents) + '] ' + msg
     : '[' + _chatAgentListText(selectedAgents) + '] (attachment)';
   if (source === 'relay') {
-    _appendInfoLogEntry('duck', `Relay ticket sent to ${_chatAgentLabel(selectedAgents[0] || relayMeta?.target || 'agent')}.`, true);
+    const _rFromKey = String(relayMeta?.from || 'agent').toLowerCase();
+    const _rToKey = String(relayMeta?.target || selectedAgents[0] || 'agent').toLowerCase();
+    const _rFromLabel = _chatAgentLabel(_rFromKey);
+    const _rToLabel = _chatAgentLabel(_rToKey);
+    const _rMessages = _chatMessagesEl();
+    if (_rMessages) {
+      const _rDiv = document.createElement('div');
+      _rDiv.className = 'chat-relay-dispatch';
+      _rDiv.innerHTML = `<span class="relay-from">${_escapeHtml(_rFromLabel)}</span><span class="relay-arrow">→</span><span class="relay-to">${_escapeHtml(_rToLabel)}</span>: <span>${_escapeHtml(String(msg || '').slice(0, 160))}</span>`;
+      _rMessages.appendChild(_rDiv);
+      _rMessages.scrollTop = _rMessages.scrollHeight;
+    }
+    _appendInfoLogEntry('librarian', `↳ Relay: ${_rFromLabel} → ${_rToLabel}`, true);
   } else {
     _appendChatBubble('you', userBubbleText, {
       quoted: replyTargets.length ? replyTargets : null

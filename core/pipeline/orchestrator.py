@@ -40,7 +40,8 @@ except Exception as _e:
 from email_cleaner import filter_non_english
 from system_clock import get_system_clock
 from config import (GEMMA_SYSTEM_PROMPT, LLAMA_SYSTEM_PROMPT,
-                     QWEN_SYSTEM_PROMPT, LIBRARIAN_SYSTEM_PROMPT)
+                     QWEN_SYSTEM_PROMPT, LIBRARIAN_SYSTEM_PROMPT,
+                     MISTRAL_SYSTEM_PROMPT)
 from logging_bridge import log_action, log_agent_thinking, batch_commit
 import ollama
 import logging
@@ -68,6 +69,7 @@ def _get_eight_module():
 AGENTS = {
     'gemma':     'gemma3:latest',
     'llama':     'llama3.2:latest',
+    'mistral':   'mistral:latest',
     'qwen':      'qwen2.5:latest',
     'eight':     'gemma4:26b',
     'librarian': 'qwen:latest',
@@ -78,6 +80,7 @@ AGENTS = {
 TEMPERATURES = {
     'gemma':     0.3,
     'llama':     0.6,
+    'mistral':   0.6,
     'qwen':      0.7,
     'eight':     0.5,
     'librarian': 0.1,
@@ -137,6 +140,7 @@ SNIFFLES_SYSTEM_PROMPT = (
 SYSTEM_PROMPTS = {
     'gemma':     GEMMA_SYSTEM_PROMPT,
     'llama':     LLAMA_SYSTEM_PROMPT,
+    'mistral':   MISTRAL_SYSTEM_PROMPT,
     'qwen':      QWEN_SYSTEM_PROMPT,
     'eight':     EIGHT_CHAT_SYSTEM_PROMPT,
     'librarian': LIBRARIAN_SYSTEM_PROMPT,
@@ -149,7 +153,10 @@ SYSTEM_PROMPTS = {
 # pressure by paging idle models out and back in at ~2-3 GB/s.
 # RAM residents: gemma, llama, qwen, duck, librarian.
 # NVMe-swap residents (larger / less frequent): eight (qwen2.5 ×3), sniffles (deepseek-r1).
-MODEL_KEEP_ALIVE = {agent: -1 for agent in ('gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles', 'eight')}
+# Active agents — prewarmed and kept resident in RAM/NVMe swap.
+# qwen is on the virtual RAM layer: present in AGENTS but NOT prewarmed.
+# Load qwen manually via /api/ollama/load when a second analyst voice is needed.
+MODEL_KEEP_ALIVE = {agent: -1 for agent in ('gemma', 'llama', 'mistral', 'librarian', 'duck', 'sniffles', 'eight')}
 
 # Per-agent token counts from last successful ask_agent() call.
 # Keyed by lowercase agent name. Written by ask_agent(); read by terminal._run_single_agent().
@@ -178,7 +185,7 @@ def _apply_local_memory_policy(routing):
         routing['agents'] = 'llama'
         log_action(
             'orchestrator',
-            'memory_policy:defer_qwen',
+            'memory_policy:defer_mistral',
             f'available_gb={avail_gb} < {MIN_FREE_GB_FOR_BOTH}; using llama-only',
             'warn',
         )
@@ -390,14 +397,14 @@ _LIBRARIAN_RELAY_REVIEW_SYSTEM = (
     'respond, take over a task, or handle something — even without explicit routing syntax '
     'like "Agent:" or "@agent".\n\n'
     'Examples of implicit handoffs:\n'
-    '- "I think Qwen would be better at analysing this." → qwen\n'
+    '- "I think Mistral would be better at analysing this." → mistral\n'
     '- "LLaMA knows more about internet search." → llama\n'
     '- "This is a memory/indexing task." → librarian\n'
-    '- Trailing off with "... Qwen, what do you think?" → qwen\n'
+    '- Trailing off with "... Mistral, what do you think?" → mistral\n'
     '- "A researcher would find this easily." → llama (researcher role)\n\n'
     'Known agents:\n'
     '  Local — gemma (orchestrator), llama (researcher, internet access), '
-    'qwen (analyst, deep reasoning), eight (SAP/HR specialist), '
+    'mistral (analyst, deep reasoning), eight (SAP/HR specialist), '
     'sniffles (memory/accuracy auditor), duck (sanity checker / contradiction detector), '
     'librarian (memory keeper + relay monitor).\n'
     '  Ghost Layer (online) — nine (Claude Sonnet, system architect), '
@@ -407,7 +414,7 @@ _LIBRARIAN_RELAY_REVIEW_SYSTEM = (
     'Do NOT flag patterns already captured by explicit @agent or "Agent: " prefixes. '
     'Only flag genuinely implicit signals.\n\n'
     'Respond ONLY as valid JSON. Nothing else. No explanation. No markdown fences.\n'
-    '{"candidates":[{"target":"qwen","question":"Can you analyse this data?"}]}\n'
+    '{"candidates":[{"target":"mistral","question":"Can you analyse this data?"}]}\n'
     'If no implicit handoffs exist: {"candidates":[]}'
 )
 
@@ -489,14 +496,14 @@ def gemma_route(question, context):
         'NEEDS_WEB: yes/no\n'
         'NEEDS_BROWSER: yes/no\n'
         'NEEDS_SHELL: yes/no\n'
-        'AGENTS: llama/qwen/both\n'
+        'AGENTS: llama/mistral/both\n'
         'MODE: consult/debate\n'
         'IS_IDENTITY: yes/no\n'
         'IS_SAP: yes/no\n'
         'IS_SYSTEM: yes/no\n'
         'REASON: one sentence\n\n'
         'Rules:\n'
-        '- IS_IDENTITY=yes ONLY for: who are you, what is your role, tell me about the swarm, questions about Gemma/LLaMA/Qwen/Librarian/Sniffles/Ghost/Nine\n'
+        '- IS_IDENTITY=yes ONLY for: who are you, what is your role, tell me about the swarm, questions about Gemma/LLaMA/Mistral/Librarian/Sniffles/Ghost/Nine\n'
         '- IS_IDENTITY=no for ALL factual, geographic, scientific, historical, weather questions\n'
         '- IS_SAP=yes for any question involving SAP, HCM, ABAP, payroll configuration, wage types, infotypes, schemas, PCRs, ECP, EC Payroll, retro accounting\n'
         '- IS_SAP=no for everything else\n'
@@ -526,12 +533,12 @@ def gemma_route(question, context):
     is_sap_gemma = 'yes' in _get_val('is_sap')
     needs_web = 'yes' in _get_val('needs_web', 'yes')
     is_system = 'yes' in _get_val('is_system')
-    # Normalise agents: Gemma sometimes returns 'llama/qwen' meaning both agents
+    # Normalise agents: Gemma sometimes returns 'llama/mistral' meaning both agents
     _agents_raw = _get_val('agents', 'llama')
-    if 'llama' in _agents_raw and 'qwen' in _agents_raw:
+    if 'llama' in _agents_raw and ('mistral' in _agents_raw or 'qwen' in _agents_raw):
         _agents = 'both'
-    elif 'qwen' in _agents_raw:
-        _agents = 'qwen'
+    elif 'mistral' in _agents_raw or 'qwen' in _agents_raw:
+        _agents = 'mistral'
     elif 'llama' in _agents_raw:
         _agents = 'llama'
     else:
@@ -601,7 +608,7 @@ def consult(question):
         print('[Gemma] no web search needed')
 
     llama_answer = ''
-    qwen_answer = ''
+    mistral_answer = ''
 
     # LLaMA answers if needed
     if routing['agents'] in ['llama', 'both']:
@@ -619,38 +626,38 @@ def consult(question):
         save_agent_memory('LLaMA', question[:50], llama_answer,
                           tags=tag_content(llama_answer), importance=5)
 
-    # Qwen answers if needed — with independent Tavily research
-    qwen_web_context = ''
+    # Mistral answers if needed — with independent Tavily research
+    mistral_web_context = ''
     if _TAVILY_OK and routing.get('needs_web') and not routing.get('is_identity'):
-        qwen_web = tavily_search(question)
-        if qwen_web and not qwen_web.startswith('[Tavily search unavailable'):
-            qwen_web_context = '[Qwen / Tavily]\n' + qwen_web + '\n\n'
+        mistral_web = tavily_search(question)
+        if mistral_web and not mistral_web.startswith('[Tavily search unavailable'):
+            mistral_web_context = '[Mistral / Tavily]\n' + mistral_web + '\n\n'
 
-    if routing['agents'] in ['qwen', 'both']:
-        qwen_own = build_agent_context('Qwen', question)
-        qwen_prompt = (
+    if routing['agents'] in ['mistral', 'both']:
+        mistral_own = build_agent_context('Mistral', question)
+        mistral_prompt = (
             shared_context +
-            qwen_own +
-            web_context + qwen_web_context +
+            mistral_own +
+            web_context + mistral_web_context +
             ('LLaMA said: ' + llama_answer + '\n\n' if llama_answer else '') +
             '=== The Ghost asks ===\n' + question + '\n\n'
             'Your job is to add depth or challenge what LLaMA said if it is incomplete or wrong. '
             'You have your own independent Tavily search results above — use them. '
             'If you disagree say so clearly. If you are uncertain say so.'
         )
-        qwen_answer = filter_non_english(ask_agent('Qwen', qwen_prompt))
-        log_message(conv_id, 'Qwen', qwen_answer, to_agent='Gemma', message_type='chat')
-        save_agent_memory('Qwen', question[:50], qwen_answer,
-                          tags=tag_content(qwen_answer), importance=5)
+        mistral_answer = filter_non_english(ask_agent('Mistral', mistral_prompt))
+        log_message(conv_id, 'Mistral', mistral_answer, to_agent='Gemma', message_type='chat')
+        save_agent_memory('Mistral', question[:50], mistral_answer,
+                          tags=tag_content(mistral_answer), importance=5)
 
-    # Debate escalation — fires if Gemma routed as debate OR Qwen signals disagreement
+    # Debate escalation — fires if Gemma routed as debate OR Mistral signals disagreement
     llama_r2 = ''
-    qwen_r2 = ''
+    mistral_r2 = ''
     debate_fired = False
-    if llama_answer and qwen_answer:
-        if routing.get('mode') == 'debate' or _detect_disagreement(qwen_answer):
+    if llama_answer and mistral_answer:
+        if routing.get('mode') == 'debate' or _detect_disagreement(mistral_answer):
             debate_fired = True
-            llama_r2, qwen_r2 = _run_debate_r2(question, web_context, llama_answer, qwen_answer, conv_id)
+            llama_r2, mistral_r2 = _run_debate_r2(question, web_context, llama_answer, mistral_answer, conv_id)
 
     # Gemma synthesises (judge prompt if debate fired)
     gemma_own = build_agent_context('Gemma', question)
@@ -658,9 +665,9 @@ def consult(question):
         gemma_prompt = (
             shared_context + gemma_own + web_context +
             'LLaMA R1: ' + llama_answer + '\n\n'
-            'Qwen R1: ' + qwen_answer + '\n\n'
+            'Mistral R1: ' + mistral_answer + '\n\n'
             'LLaMA challenge: ' + llama_r2 + '\n\n'
-            'Qwen challenge: ' + qwen_r2 + '\n\n'
+            'Mistral challenge: ' + mistral_r2 + '\n\n'
             '=== The Ghost asks ===\n' + question + '\n\n'
             'You are the judge. Review the debate and decide who made the stronger case, '
             'or where both were right or wrong. Deliver one clear final verdict. '
@@ -670,7 +677,7 @@ def consult(question):
         gemma_prompt = (
             shared_context + gemma_own + web_context +
             ('LLaMA said: ' + llama_answer + '\n\n' if llama_answer else '') +
-            ('Qwen said: ' + qwen_answer + '\n\n' if qwen_answer else '') +
+            ('Mistral said: ' + mistral_answer + '\n\n' if mistral_answer else '') +
             '=== The Ghost asks ===\n' + question + '\n\n'
             'Synthesise. Call out disagreements. Be direct. No preamble.'
         )
@@ -683,14 +690,14 @@ def consult(question):
 
     return {
         'llama': llama_answer,
-        'qwen': qwen_answer,
+        'mistral': mistral_answer,
         'gemma': gemma_answer,
         'web': web_results,
         'routing': routing,
         'conv_id': conv_id,
         'debate': debate_fired,
         'llama_r2': llama_r2,
-        'qwen_r2': qwen_r2,
+        'mistral_r2': mistral_r2,
     }
 
 # Keep stage functions for listener.py compatibility
@@ -778,35 +785,35 @@ def consult_stage2(question, web_results, llama_answer, shared_context, conv_id,
         routing = {'agents': 'both', 'is_identity': False}
     web_context = ('=== Web research ===\n' + web_results + '\n\n') if web_results else ''
 
-    # Qwen's independent Tavily search — AI-extracted content, separate from LLaMA's DDG
-    qwen_web_context = ''
+    # Mistral's independent Tavily search — AI-extracted content, separate from LLaMA's DDG
+    mistral_web_context = ''
     if _TAVILY_OK and routing.get('needs_web') and not routing.get('is_identity'):
-        qwen_web = tavily_search(question)
-        if qwen_web and not qwen_web.startswith('[Tavily search unavailable'):
-            qwen_web_context = '[Qwen / Tavily]\n' + qwen_web + '\n\n'
+        mistral_web = tavily_search(question)
+        if mistral_web and not mistral_web.startswith('[Tavily search unavailable'):
+            mistral_web_context = '[Mistral / Tavily]\n' + mistral_web + '\n\n'
 
-    qwen_answer = ''
-    if routing['agents'] in ['qwen', 'both']:
-        qwen_own = build_agent_context('Qwen', question)
-        qwen_prompt = (
-            shared_context + qwen_own + web_context + qwen_web_context +
+    mistral_answer = ''
+    if routing['agents'] in ['mistral', 'both']:
+        mistral_own = build_agent_context('Mistral', question)
+        mistral_prompt = (
+            shared_context + mistral_own + web_context + mistral_web_context +
             ('LLaMA said: ' + llama_answer + '\n\n' if llama_answer else '') +
             '=== The question ===\n' + question + '\n\n'
             'Add depth or challenge LLaMA if wrong. You have your own independent Tavily search results above — use them. Be direct. If uncertain say so.'
         )
-        qwen_answer = filter_non_english(ask_agent('Qwen', qwen_prompt))
-        log_message(conv_id, 'Qwen', qwen_answer, to_agent='Gemma', message_type='chat')
-        save_agent_memory('Qwen', question[:50], qwen_answer,
-                          tags=tag_content(qwen_answer), importance=5)
+        mistral_answer = filter_non_english(ask_agent('Mistral', mistral_prompt))
+        log_message(conv_id, 'Mistral', mistral_answer, to_agent='Gemma', message_type='chat')
+        save_agent_memory('Mistral', question[:50], mistral_answer,
+                          tags=tag_content(mistral_answer), importance=5)
 
     # Debate escalation
     llama_r2 = ''
-    qwen_r2 = ''
+    mistral_r2 = ''
     debate_fired = False
-    if llama_answer and qwen_answer:
-        if routing.get('mode') == 'debate' or _detect_disagreement(qwen_answer):
+    if llama_answer and mistral_answer:
+        if routing.get('mode') == 'debate' or _detect_disagreement(mistral_answer):
             debate_fired = True
-            llama_r2, qwen_r2 = _run_debate_r2(question, web_context, llama_answer, qwen_answer, conv_id)
+            llama_r2, mistral_r2 = _run_debate_r2(question, web_context, llama_answer, mistral_answer, conv_id)
 
     gemma_own = build_agent_context('Gemma', question)
     if debate_fired:
@@ -837,7 +844,7 @@ def consult_stage2(question, web_results, llama_answer, shared_context, conv_id,
     librarian_index(conv_id, clean_subject, gemma_answer)
 
     # Return debate data so callers (terminal, listener) can surface it
-    return qwen_answer, gemma_answer, {'fired': debate_fired, 'llama_r2': llama_r2, 'qwen_r2': qwen_r2}
+    return mistral_answer, gemma_answer, {'fired': debate_fired, 'llama_r2': llama_r2, 'mistral_r2': mistral_r2}
 
 if __name__ == '__main__':
     print(f'\n[{get_system_clock().timestamp_compact()}] You are the Ghost. The swarm is listening.')
