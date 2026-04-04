@@ -2198,13 +2198,14 @@ body.theme-rose {
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklab, var(--window-header) 88%, var(--accent) 12%);
   padding: 4px 8px;
-  display: block;
-  flex-shrink: 0;
-  min-height: 28px;
+  display: block !important;
+  flex-shrink: 0 !important;
+  min-height: 28px !important;
+  overflow: visible;
 }
 
 .chat-thread-runtime.open {
-  display: block;
+  display: block !important;
 }
 
 .chat-thread-runtime-head {
@@ -3477,7 +3478,7 @@ input[type="range"]::-moz-range-thumb:hover {
             <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
           </div>
         </div>
-        <div id="chat-thread-runtime" class="chat-thread-runtime"></div>
+        <div id="chat-thread-runtime" class="chat-thread-runtime"><div class="chat-thread-runtime-head"><div class="chat-thread-runtime-title" style="opacity:0.45;">Thread Runtime · idle</div></div></div>
         <div id="chat-section-main" class="chat-section chat-main-shell">
           <div class="chat-section-header" aria-controls="chat-section-main-content" aria-expanded="true">
             <span class="chat-section-title">💬 Main Chat</span>
@@ -14214,12 +14215,12 @@ function _createLoadingPanel(agents) {
   window.__fridaysRuntimeLoadingAgents = Array.isArray(agents) ? agents.slice() : [];
   
   // Trigger thread runtime panel to show loading indicators
-  const host = document.getElementById('chat-thread-runtime');
+  const host = document.querySelector('[id="chat-thread-runtime"]');
   if (host) {
     const snapshotJobs = (window.__fridaysThreadRuntimeSnapshot && window.__fridaysThreadRuntimeSnapshot.jobs) || [];
     _renderThreadRuntimePanel(snapshotJobs, 'send');
     _updateThreadRuntimeLoading();
-    host.classList.add('open');
+    // Note: host.classList.add('open') removed — display:block !important in CSS, open class is redundant
   }
   
   // Return dummy panel for API compatibility with _startLoadingTicker
