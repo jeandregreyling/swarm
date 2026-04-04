@@ -2914,3 +2914,93 @@
 - [04:47] INTERNAL-GHOST-0413 (ghost): [shell] pwd
 - [04:47] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
 - [04:47] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [04:52] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [04:52] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [04:52] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [04:52] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [04:52] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [04:52] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [04:57] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [04:57] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [04:57] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [04:57] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [04:57] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [04:57] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:02] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:02] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:02] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:02] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:02] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:02] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:07] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:07] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:07] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:07] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:07] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:07] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:12] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:12] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:12] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:12] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:12] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:12] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:17] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:17] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:17] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:17] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:17] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:17] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:22] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:22] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:22] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:22] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:22] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:22] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:27] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:27] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:27] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:27] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:27] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:27] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:32] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:32] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:32] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:32] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:32] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:32] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:37] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:37] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:37] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:37] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:37] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:37] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:42] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:42] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:42] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:42] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:42] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:42] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:47] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:47] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:47] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:47] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:47] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:47] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:52] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:52] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:52] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:52] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:52] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:52] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [05:57] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [05:57] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [05:57] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [05:57] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [05:57] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [05:57] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [06:02] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [06:02] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [06:02] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [06:02] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [06:02] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [06:02] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test

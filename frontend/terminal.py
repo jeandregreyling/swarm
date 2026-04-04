@@ -19,8 +19,16 @@ sys.path.insert(0, str(SWARM_ROOT))
 sys.path.insert(0, str(SWARM_ROOT / 'utils'))
 sys.path.insert(0, str(SWARM_ROOT / 'core' / 'pipeline'))
 sys.path.insert(0, str(SWARM_ROOT / 'lib' / 'system'))
+sys.path.insert(0, str(SWARM_ROOT / 'lib' / 'search'))
 sys.path.insert(0, str(SWARM_ROOT / 'frontend'))
 sys.path.insert(0, str(SWARM_ROOT / 'core'))  # must precede lib/system to avoid shadow time_machine
+
+try:
+    from internet_tavily import search as _tavily_search
+    _TAVILY_OK = True
+except Exception as _e_tav:
+    _TAVILY_OK = False
+    _tavily_search = None
 
 from flask import Flask, render_template, request, Response, jsonify
 import json
@@ -5558,6 +5566,17 @@ def api_chat():
                 local_timeout = 900
             else:
                 local_timeout = 240
+
+        # Tavily web research for Mistral (same service Qwen used) — injected before model call
+        if selected_agent == 'mistral' and _TAVILY_OK and _tavily_search:
+            try:
+                _stage('searching web · Tavily', est_eta)
+                _web = _tavily_search(message)
+                if _web and not _web.startswith('[Tavily search unavailable'):
+                    effective_prompt = '[Mistral / Tavily]\n' + _web + '\n\n' + effective_prompt
+            except Exception:
+                pass
+
         try:
             if selected_agent in {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
                 _model_name = orchestrator.AGENTS.get(selected_agent, selected_agent)
