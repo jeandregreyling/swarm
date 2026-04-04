@@ -491,6 +491,7 @@ def _chat_update_job(job_id, *, stage=None, status=None, eta_seconds=None, error
         now_iso = _chat_now_iso()
         if stage is not None:
             job['stage'] = str(stage)
+            job.setdefault('stage_trace', []).append({'text': str(stage), 'ts': now_ts})
         if status is not None:
             job['status'] = str(status)
         if eta_seconds is not None:
@@ -603,6 +604,7 @@ def _chat_job_public(job):
         'updated_at': job.get('updated_at'),
         'elapsed_ms': elapsed_ms,
         'error': job.get('error', ''),
+        'stage_trace': job.get('stage_trace') or [],
     }
 
 from vs_tools import vs_bp
@@ -5795,6 +5797,7 @@ def api_chat():
                     'updated_at': now_iso,
                     'future': future,
                     'cancel_requested': False,
+                    'stage_trace': [],
                 }
             # Persist to DB so the frontend can learn job outcome after a restart.
             persist_chat_job(
@@ -5965,8 +5968,10 @@ def api_chat():
                     continue
 
             job_ref = {'job_id': None}
+            _agent_stage_trace = []
 
-            def _stage_cb(stage_text, eta_seconds=None, _job_ref=job_ref):
+            def _stage_cb(stage_text, eta_seconds=None, _job_ref=job_ref, _trace=_agent_stage_trace):
+                _trace.append({'text': str(stage_text), 'ts': time.time()})
                 job_id = _job_ref.get('job_id')
                 if not job_id:
                     return
@@ -5990,6 +5995,14 @@ def api_chat():
             except FuturesTimeoutError:
                 pending_job_id = _register_persistent_job(selected_agent, future, reply_contexts[selected_agent], job_ref)
                 pending_jobs.append(pending_job_id)
+                # Sync stages that fired before job_id was set into the job record.
+                if _agent_stage_trace and pending_job_id:
+                    with _CHAT_JOB_LOCK:
+                        _pj = _CHAT_JOBS.get(pending_job_id)
+                        if _pj is not None:
+                            existing = _pj.get('stage_trace') or []
+                            # Merge pre-timeout trace entries at the front.
+                            _pj['stage_trace'] = [e for e in _agent_stage_trace if e not in existing] + existing
                 pending = True
                 eta_seconds = _chat_eta_seconds(selected_agent)
                 response_text, tokens_used = (
@@ -6012,6 +6025,7 @@ def api_chat():
                 'eta_seconds': _chat_eta_seconds(selected_agent) if pending else 0,
                 'pending': pending,
                 'job_id': pending_job_id,
+                'stage_trace': [] if pending else _agent_stage_trace,
             }
 
             if (not pending) and selected_agent in {'nine', 'ten', 'eleven', 'twelve'} and _is_execution_confirmation(message):
