@@ -307,7 +307,7 @@ def _display_chat_participant(name):
         'librarian': 'LIBRARIAN',
         'duck': 'DUCK',
         'sniffles': 'SNIFFLES',
-        'nine': 'NINE (CLAUDE SONNET 4.6)',
+        'nine': 'NINE (GROQ LLAMA 3.3 70B)',
         'ten': 'TEN (GPT-5.3-CODEX)',
         'eleven': 'ELEVEN (GROK API)',
         'twelve': 'TWELVE (CLAUDE HAIKU)',
@@ -5592,13 +5592,12 @@ def api_chat():
                 _stage('writing to memory', 0)
                 _persist_local_agent_memory(selected_agent, message, response_text)
             elif selected_agent == 'nine':
-                _stage('dispatching to ghost datacenter', est_eta)
-                future = executor.submit(_run_ghost_layer_chat, selected_agent, effective_prompt, history, stage_cb)
-                answer, tokens, api_err = future.result(timeout=240 if persistent_mode else 20)
-                if api_err:
-                    raise RuntimeError(api_err)
-                response_text = answer
-                tokens_used = tokens
+                _stage('dispatching to Groq', est_eta)
+                from agents.nine import nine_agent
+                future = executor.submit(nine_agent.chat, effective_prompt, history, stage_cb)
+                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                response_text = answer or '[nine unavailable]'
+                tokens_used = tokens or 0
             elif selected_agent == 'ten':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.ten import copilot_agent
@@ -6326,11 +6325,12 @@ def _agent_reachability_status(agent_name):
             GITHUB_TOKEN, XAI_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY,
             GROQ_API_KEY,
         )
+        from claude_api import ANTHROPIC_API_KEY
     except Exception:
         return 'unknown'
     key_map = {
         'nine':    GROQ_API_KEY,
-        'twelve':  GROQ_API_KEY,
+        'twelve':  ANTHROPIC_API_KEY,
         'ten':     GITHUB_TOKEN,
         'eleven':  XAI_API_KEY,
         'scholar': GEMINI_API_KEY,
