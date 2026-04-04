@@ -1958,6 +1958,51 @@ body.theme-rose {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border-radius: 3px; padding: 0 3px;
 }
+.chat-bubble-trace {
+  margin-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: 7px;
+}
+.chat-bubble-trace summary {
+  cursor: pointer;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.chat-bubble-trace summary::before { content: '▶'; font-size: 7px; transition: transform 0.15s; }
+.chat-bubble-trace[open] summary::before { transform: rotate(90deg); }
+.chat-bubble-trace summary:hover { opacity: 0.8; }
+.chat-bubble-trace-body {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.chat-bubble-trace-step {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  padding: 2px 0;
+}
+.chat-bubble-trace-num {
+  font-size: 8px;
+  opacity: 0.35;
+  min-width: 14px;
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.chat-bubble-trace-text {
+  font-size: 11px;
+  opacity: 0.6;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
 .skill-events {
   margin-top: 10px;
   display: flex;
@@ -3569,12 +3614,6 @@ input[type="range"]::-moz-range-thumb:hover {
                 </div>
                 <div style="padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">
                   <div class="chat-agent-row-head" style="margin-bottom:8px;">
-                    <div class="chat-agent-row-title">🚔 Relay Manager</div>
-                  </div>
-                  <div class="chat-relay-manager-host" style="display:flex; gap:6px; flex-wrap:wrap; overflow:hidden; align-items:flex-start;"></div>
-                </div>
-                <div style="padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">
-                  <div class="chat-agent-row-head" style="margin-bottom:8px;">
                     <div class="chat-agent-row-title">👁️ Relay Monitor</div>
                   </div>
                   <div class="chat-relay-monitor-host" style="display:flex; gap:6px; flex-wrap:wrap; overflow:hidden; align-items:flex-start;"></div>
@@ -3853,9 +3892,14 @@ input[type="range"]::-moz-range-thumb:hover {
 </template>
 
 <template id="view-monitor">
-  <div class="content-view" style="padding: 16px; overflow-y: auto;">
-    <h3 style="margin-bottom: 12px;">📡 System Monitor</h3>
-    <div id="monitor-content">
+  <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;font-weight:700;">📡 System Monitor</span>
+      <span id="monitor-refresh-indicator" style="font-size:10px;color:var(--text-dim);">auto-refresh 2.5s</span>
+      <div style="flex:1;"></div>
+      <button onclick="monitorManualRefresh()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">↻ Refresh</button>
+    </div>
+    <div id="monitor-content" style="flex:1;overflow-y:auto;padding:16px;">
       <div style="color: var(--text-dim); font-size: 12px;">Loading system information...</div>
     </div>
   </div>
@@ -8137,141 +8181,169 @@ function loadMonitorData(win) {
   const content = win.el.querySelector('#monitor-content');
   if (!content) return;
 
-  if (win._monitorRefreshTimer) {
-    clearInterval(win._monitorRefreshTimer);
-    win._monitorRefreshTimer = null;
-  }
+  // Clear any previous timers on this win object
+  if (win._monitorTimer)    { clearInterval(win._monitorTimer);    win._monitorTimer    = null; }
+  if (win._monitorAlmTimer) { clearInterval(win._monitorAlmTimer); win._monitorAlmTimer = null; }
+
+  window.__monitorWin = win;
+
+  const H = _escHtml;  // local alias
+  const bar = (pct, color) =>
+    `<div style="background:var(--border);border-radius:3px;height:6px;margin-top:3px;"><div style="background:${color};height:6px;border-radius:3px;width:${Math.min(pct,100)}%;transition:width 0.4s;"></div></div>`;
+
+  const renderMonitorAlm = () => {
+    fetch('/api/alm/status')
+      .then(r => r.json())
+      .then(alm => {
+        const el = win.el.querySelector('#monitor-alm-status');
+        if (!el) return;
+        const badge = alm.status === 'enforced'
+          ? '<span style="padding:2px 8px;border-radius:10px;background:#4caf5020;color:#4caf50;border:1px solid #4caf5060;font-size:10px;font-weight:700;">ENFORCED</span>'
+          : '<span style="padding:2px 8px;border-radius:10px;background:#ffa50022;color:#ffa500;border:1px solid #ffa50055;font-size:10px;font-weight:700;">WARN</span>';
+        el.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div style="font-weight:600;">ALM Governance</div>
+            ${badge}
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">
+            Vortex: <strong>${alm.time_wizard_active ? 'active' : 'inactive'}</strong> ·
+            Sniffles: <strong>${alm.sniffles_enabled ? 'enabled' : 'disabled'}</strong><br>
+            Queue: <strong>${alm.work_proposals?.pending || 0}</strong> pending / <strong>${alm.work_proposals?.executed || 0}</strong> executed
+          </div>`;
+      })
+      .catch(() => {
+        const el = win.el.querySelector('#monitor-alm-status');
+        if (el) el.innerHTML = '<div style="font-weight:600;">ALM Governance</div><div style="font-size:11px;color:#f77;">Failed to load status</div>';
+      });
+  };
 
   const renderMonitor = (data) => {
-      const cpuColor  = data.cpu_percent > 70 ? '#f44' : data.cpu_percent > 50 ? '#ffa500' : '#4caf50';
-      const ramColor  = data.ram_percent > 80 ? '#f44' : data.ram_percent > 60 ? '#ffa500' : '#4caf50';
-      const tempColor = data.cpu_temp_c  > 75 ? '#f44' : data.cpu_temp_c > 60 ? '#ffa500' : '#4caf50';
-      const swapColor = (data.swap_percent || 0) > 10 ? '#f44' : (data.swap_percent || 0) > 3 ? '#ffa500' : '#4caf50';
-      const bar = (pct, color) => `<div style="background:var(--border);border-radius:3px;height:6px;margin-top:3px;"><div style="background:${color};height:6px;border-radius:3px;width:${Math.min(pct,100)}%;transition:width 0.4s;"></div></div>`;
-      const disks = (data.disks || []).map(d =>
-        `<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;"><span>${d.label || d.mountpoint}</span><span style="color:var(--text-dim);">${d.used_gb}GB / ${d.total_gb}GB (${d.percent}%)</span></div>${bar(d.percent, d.percent>85?'#f44':d.percent>70?'#ffa500':'#4caf50')}</div>`
-      ).join('');
-      const pools = Object.entries(data.memory_pools || {}).map(([k,v]) =>
-        `<span style="margin-right:10px;">${k.replace('memory_','')}: <strong>${v}</strong></span>`
-      ).join('');
-      const activeModels = (data.active_models || []).map(m => {
-        const sizeGb = (Number(m.size || 0) / (1024 * 1024 * 1024)).toFixed(2);
-        const vramGb = (Number(m.size_vram || 0) / (1024 * 1024 * 1024)).toFixed(2);
-        return `<div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);margin-bottom:6px;">
-          <div style="font-size:11px;font-weight:600;">${m.name || 'unknown model'}</div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Resident: ${sizeGb} GB · VRAM: ${vramGb} GB</div>
-          <div style="font-size:10px;color:var(--text-dim);">Expires: ${m.expires_at || 'n/a'}</div>
-        </div>`;
-      }).join('');
-      const runtimeJobs = (data.runtime_jobs || []).map(j => {
-        const elapsed = (Number(j.elapsed_ms || 0) / 1000).toFixed(1);
-        const eta = Number(j.eta_remaining_seconds || 0);
-        const runtimeCls = j.runtime_class ? `[${j.runtime_class}] ` : '';
-        return `<div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);margin-bottom:6px;">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-            <div style="font-size:11px;font-weight:600;">${j.agent || 'agent'}</div>
-            <div style="font-size:10px;color:var(--text-dim);">${elapsed}s elapsed</div>
-          </div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">${runtimeCls}${j.stage || j.status || 'running'}</div>
-          <div style="font-size:10px;color:var(--text-dim);">ETA remaining: ${eta}s</div>
-        </div>`;
-      }).join('');
-      const monitorInsights = (data.monitor_insights || []).map(line =>
-        `<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">• ${line}</div>`
-      ).join('');
-      content.innerHTML = `
-        <div style="font-size:12px;line-height:1.6;padding:4px 0;">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-            <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
-              <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">CPU</div>
-              <div style="font-size:18px;font-weight:700;color:${cpuColor};">${(data.cpu_percent||0).toFixed(0)}%</div>
-              ${bar(data.cpu_percent||0, cpuColor)}
-              <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">Temp: <span style="color:${tempColor};">${data.cpu_temp_c||0}°C</span></div>
-            </div>
-            <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
-              <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">RAM</div>
-              <div style="font-size:18px;font-weight:700;color:${ramColor};">${(data.ram_percent||0).toFixed(0)}%</div>
-              ${bar(data.ram_percent||0, ramColor)}
-              <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">${data.ram_used_gb||0}GB / ${data.ram_total_gb||0}GB</div>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-            <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
-              <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">Acceleration</div>
-              <div style="font-size:16px;font-weight:700;color:var(--text);">${data.inference_mode || 'unknown'}</div>
-              <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">VRAM in use: ${(Number(data.vram_used_gb || 0)).toFixed(2)} GB</div>
-              <div style="color:var(--text-dim);font-size:10px;">Model residency: ${(Number(data.resident_models_gb || 0)).toFixed(2)} GB</div>
-            </div>
-            <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
-              <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">Swap</div>
-              <div style="font-size:18px;font-weight:700;color:${swapColor};">${(data.swap_percent||0).toFixed(1)}%</div>
-              ${bar(data.swap_percent||0, swapColor)}
-              <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">Tracks spillover memory pressure during fanout.</div>
-            </div>
-          </div>
-          <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Disks</div>${disks || '<span style="color:var(--text-dim);">No disk data</span>'}</div>
-          <div style="margin-bottom:10px;"><div style="font-weight:600;margin-bottom:4px;">Pipeline</div>
-            <div>Queue: <strong>${data.queue_depth||0}</strong> pending · <strong>${data.queue_processing||0}</strong> processing</div>
-            <div>Open tickets: <strong>${data.open_tickets||0}</strong> · Consults today: <strong>${data.consults_today||0}</strong></div>
-            <div>Active model: <strong>${data.active_model||'none'}</strong></div>
-          </div>
-          <div style="margin-bottom:12px;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--card);">
-            <div style="font-weight:600;margin-bottom:6px;">Inference Intelligence</div>
-            ${monitorInsights || '<span style="color:var(--text-dim);font-size:11px;">No advisory insights.</span>'}
-          </div>
-          <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Agent Runtime (Live)</div>${runtimeJobs || '<span style="color:var(--text-dim);font-size:11px;">No active agent jobs.</span>'}</div>
-          <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Model Residency (${data.active_models_count || 0})</div>${activeModels || '<span style="color:var(--text-dim);font-size:11px;">No resident models reported.</span>'}</div>
-          ${pools ? `<div style="margin-bottom:4px;"><div style="font-weight:600;margin-bottom:4px;">Memory Pools</div><div style="font-size:11px;color:var(--text-dim);">${pools}</div></div>` : ''}
-          <div id="monitor-alm-status" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
-            <div style="font-weight:600;margin-bottom:4px;">ALM Governance</div>
-            <div style="font-size:11px;color:var(--text-dim);">Loading governance status...</div>
-          </div>
-          <div style="color:var(--text-dim);font-size:10px;margin-top:8px;">Updated ${data.last_activity||data.timestamp||'—'}</div>
-        </div>`;
+    const cpuColor  = data.cpu_percent > 70 ? '#f44' : data.cpu_percent > 50 ? '#ffa500' : '#4caf50';
+    const ramColor  = data.ram_percent > 80 ? '#f44' : data.ram_percent > 60 ? '#ffa500' : '#4caf50';
+    const tempColor = data.cpu_temp_c  > 75 ? '#f44' : data.cpu_temp_c > 60 ? '#ffa500' : '#4caf50';
+    const swapColor = (data.swap_percent || 0) > 10 ? '#f44' : (data.swap_percent || 0) > 3 ? '#ffa500' : '#4caf50';
 
-      fetch('/api/alm/status')
-        .then(r => r.json())
-        .then(alm => {
-          const el = win.el.querySelector('#monitor-alm-status');
-          if (!el) return;
-          const badge = alm.status === 'enforced'
-            ? '<span style="padding:2px 8px;border-radius:10px;background:#4caf5020;color:#4caf50;border:1px solid #4caf5060;font-size:10px;font-weight:700;">ENFORCED</span>'
-            : '<span style="padding:2px 8px;border-radius:10px;background:#ffa50022;color:#ffa500;border:1px solid #ffa50055;font-size:10px;font-weight:700;">WARN</span>';
-          el.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-              <div style="font-weight:600;">ALM Governance</div>
-              ${badge}
-            </div>
-            <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">
-              Vortex: <strong>${alm.time_wizard_active ? 'active' : 'inactive'}</strong> ·
-              Sniffles: <strong>${alm.sniffles_enabled ? 'enabled' : 'disabled'}</strong><br>
-              Queue: <strong>${alm.work_proposals?.pending || 0}</strong> pending / <strong>${alm.work_proposals?.executed || 0}</strong> executed
-            </div>`;
-        })
-        .catch(() => {
-          const el = win.el.querySelector('#monitor-alm-status');
-          if (el) el.innerHTML = '<div style="font-weight:600;">ALM Governance</div><div style="font-size:11px;color:#f77;">Failed to load status</div>';
-        });
+    const disks = (data.disks || []).map(d =>
+      `<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;">
+        <span>${H(d.label || d.mountpoint)}</span>
+        <span style="color:var(--text-dim);">${H(String(d.used_gb))}GB / ${H(String(d.total_gb))}GB (${H(String(d.percent))}%)</span>
+       </div>${bar(d.percent, d.percent>85?'#f44':d.percent>70?'#ffa500':'#4caf50')}</div>`
+    ).join('');
+
+    const pools = Object.entries(data.memory_pools || {}).map(([k, v]) =>
+      `<span style="margin-right:10px;">${H(k.replace('memory_',''))}: <strong>${H(String(v))}</strong></span>`
+    ).join('');
+
+    const activeModels = (data.active_models || []).map(m => {
+      const sizeGb = (Number(m.size || 0) / (1024 * 1024 * 1024)).toFixed(2);
+      const vramGb = (Number(m.size_vram || 0) / (1024 * 1024 * 1024)).toFixed(2);
+      return `<div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:600;">${H(m.name || 'unknown model')}</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Resident: ${sizeGb} GB · VRAM: ${vramGb} GB</div>
+        <div style="font-size:10px;color:var(--text-dim);">Expires: ${H(m.expires_at || 'n/a')}</div>
+      </div>`;
+    }).join('');
+
+    const runtimeJobs = (data.runtime_jobs || []).map(j => {
+      const elapsed    = (Number(j.elapsed_ms || 0) / 1000).toFixed(1);
+      const eta        = Number(j.eta_remaining_seconds || 0);
+      const runtimeCls = j.runtime_class ? `[${H(j.runtime_class)}] ` : '';
+      return `<div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+          <div style="font-size:11px;font-weight:600;">${H(j.agent || 'agent')}</div>
+          <div style="font-size:10px;color:var(--text-dim);">${elapsed}s elapsed</div>
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">${runtimeCls}${H(j.stage || j.status || 'running')}</div>
+        <div style="font-size:10px;color:var(--text-dim);">ETA remaining: ${eta}s</div>
+      </div>`;
+    }).join('');
+
+    const monitorInsights = (data.monitor_insights || []).map(line =>
+      `<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">• ${H(line)}</div>`
+    ).join('');
+
+    content.innerHTML = `
+      <div style="font-size:12px;line-height:1.6;padding:4px 0;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+          <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
+            <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">CPU</div>
+            <div style="font-size:18px;font-weight:700;color:${cpuColor};">${(data.cpu_percent||0).toFixed(0)}%</div>
+            ${bar(data.cpu_percent||0, cpuColor)}
+            <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">Temp: <span style="color:${tempColor};">${data.cpu_temp_c||0}°C</span></div>
+          </div>
+          <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
+            <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">RAM</div>
+            <div style="font-size:18px;font-weight:700;color:${ramColor};">${(data.ram_percent||0).toFixed(0)}%</div>
+            ${bar(data.ram_percent||0, ramColor)}
+            <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">${data.ram_used_gb||0}GB / ${data.ram_total_gb||0}GB</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+          <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
+            <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">Acceleration</div>
+            <div style="font-size:16px;font-weight:700;color:var(--text);">${H(data.inference_mode || 'unknown')}</div>
+            <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">VRAM in use: ${(Number(data.vram_used_gb || 0)).toFixed(2)} GB</div>
+            <div style="color:var(--text-dim);font-size:10px;">Model residency: ${(Number(data.resident_models_gb || 0)).toFixed(2)} GB</div>
+          </div>
+          <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
+            <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">Swap</div>
+            <div style="font-size:18px;font-weight:700;color:${swapColor};">${(data.swap_percent||0).toFixed(1)}%</div>
+            ${bar(data.swap_percent||0, swapColor)}
+            <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">Tracks spillover memory pressure during fanout.</div>
+          </div>
+        </div>
+        <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Disks</div>${disks || '<span style="color:var(--text-dim);">No disk data</span>'}</div>
+        <div style="margin-bottom:10px;"><div style="font-weight:600;margin-bottom:4px;">Pipeline</div>
+          <div>Queue: <strong>${data.queue_depth||0}</strong> pending · <strong>${data.queue_processing||0}</strong> processing</div>
+          <div>Open tickets: <strong>${data.open_tickets||0}</strong> · Consults today: <strong>${data.consults_today||0}</strong></div>
+          <div>Active model: <strong>${H(data.active_model||'none')}</strong></div>
+        </div>
+        <div style="margin-bottom:12px;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--card);">
+          <div style="font-weight:600;margin-bottom:6px;">Inference Intelligence</div>
+          ${monitorInsights || '<span style="color:var(--text-dim);font-size:11px;">No advisory insights.</span>'}
+        </div>
+        <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Agent Runtime (Live)</div>${runtimeJobs || '<span style="color:var(--text-dim);font-size:11px;">No active agent jobs.</span>'}</div>
+        <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Model Residency (${data.active_models_count || 0})</div>${activeModels || '<span style="color:var(--text-dim);font-size:11px;">No resident models reported.</span>'}</div>
+        ${pools ? `<div style="margin-bottom:4px;"><div style="font-weight:600;margin-bottom:4px;">Memory Pools</div><div style="font-size:11px;color:var(--text-dim);">${pools}</div></div>` : ''}
+        <div id="monitor-alm-status" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
+          <div style="font-weight:600;margin-bottom:4px;">ALM Governance</div>
+          <div style="font-size:11px;color:var(--text-dim);">Loading governance status...</div>
+        </div>
+        <div style="color:var(--text-dim);font-size:10px;margin-top:8px;">Updated ${H(data.last_activity||data.timestamp||'—')}</div>
+      </div>`;
+
+    // Render ALM inline after main content is set (first render only or on demand)
+    renderMonitorAlm();
   };
 
   const refreshMonitor = () => {
+    // Guard: stop if window has been closed
+    if (!winManager.windows.has(win.id)) {
+      if (win._monitorTimer)    { clearInterval(win._monitorTimer);    win._monitorTimer    = null; }
+      if (win._monitorAlmTimer) { clearInterval(win._monitorAlmTimer); win._monitorAlmTimer = null; }
+      return;
+    }
     fetch('/api/monitor')
       .then(r => r.json())
       .then(renderMonitor)
       .catch(e => {
-        content.innerHTML = `<span style="color:#f77;">Error loading monitor: ${e.message}</span>`;
+        content.innerHTML = `<span style="color:#f77;">Error loading monitor: ${_escHtml(e.message)}</span>`;
       });
   };
 
+  win._monitorRefreshFn = refreshMonitor;
   refreshMonitor();
-  win._monitorRefreshTimer = setInterval(() => {
-    if (!winManager.windows.has(win.id)) {
-      clearInterval(win._monitorRefreshTimer);
-      win._monitorRefreshTimer = null;
-      return;
-    }
-    refreshMonitor();
-  }, 2500);
+  // Fast refresh for live stats (2.5s), slow refresh for ALM (30s)
+  win._monitorTimer    = setInterval(refreshMonitor,    2500);
+  win._monitorAlmTimer = setInterval(renderMonitorAlm, 30000);
+}
+
+function monitorManualRefresh() {
+  const win = window.__monitorWin;
+  if (!win) return;
+  const indicator = win.el.querySelector('#monitor-refresh-indicator');
+  if (indicator) { indicator.textContent = 'refreshing…'; setTimeout(() => { indicator.textContent = 'auto-refresh 2.5s'; }, 800); }
+  if (win._monitorRefreshFn) win._monitorRefreshFn();
 }
 
 function loadHomeStats() {
@@ -8856,13 +8928,18 @@ function renderDocsCatalogue(docs) {
     const size = d.size ? `${Math.round(d.size / 1024)}KB` : '—';
     const mod = d.modified_at || 'unknown';
     const kindTag = (d.kind || 'doc').toUpperCase();
-    return `<div style="margin-bottom:10px;padding:11px 12px;background:var(--card);border-radius:6px;border:1px solid var(--border);cursor:pointer;" onclick="openDocDetail('${fname.replace(/'/g, '')}', '${title.replace(/'/g, '')}'); updateDocsLastChange('${title.replace(/'/g, '')}','${mod}','${size}','${kindTag}')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+    const titleH = _escHtml(title);
+    const descH  = _escHtml(desc || (d.section ? `Section: ${d.section}` : ''));
+    const modH   = _escHtml(mod);
+    const sizeH  = _escHtml(size);
+    const kindH  = _escHtml(kindTag);
+    return `<div style="margin-bottom:10px;padding:11px 12px;background:var(--card);border-radius:6px;border:1px solid var(--border);cursor:pointer;" onclick="openDocDetail(${JSON.stringify(fname)},${JSON.stringify(title)}); updateDocsLastChange(${JSON.stringify(title)},${JSON.stringify(mod)},${JSON.stringify(size)},${JSON.stringify(kindTag)})" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <strong style="font-size:12px;">📄 ${title}</strong>
-        <span style="font-size:10px;color:var(--text-dim);">${kindTag}</span>
+        <strong style="font-size:12px;">📄 ${titleH}</strong>
+        <span style="font-size:10px;color:var(--text-dim);">${kindH}</span>
       </div>
-      <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${desc || (d.section ? `Section: ${d.section}` : '')}</div>
-      <div style="font-size:10px;color:var(--text-dim);margin-top:5px;">Last changed: ${mod} · ${size}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${descH}</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:5px;">Last changed: ${modH} · ${sizeH}</div>
     </div>`;
   }).join('');
 }
@@ -8903,13 +8980,14 @@ function loadDocsALMHistory(content) {
           const m = statusMeta[st] || statusMeta.pending;
           const created = (p.created_at || '').slice(0,16);
           const updated = (p.updated_at || '').slice(0,16);
-          const title = p.title || p.proposal_id || 'Untitled Proposal';
+          const title = _escHtml(p.title || p.proposal_id || 'Untitled Proposal');
           const pid = p.proposal_id || '';
+          const pidSafe = _escHtml(pid);
           return `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:6px;padding:12px;margin-bottom:10px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-              <div style="flex:1;cursor:pointer;" onclick="openProposalDetail('${pid}')">
+              <div style="flex:1;cursor:pointer;" onclick="openProposalDetail(${JSON.stringify(pid)})">
                 <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${title}</div>
-                <div style="font-size:10px;color:var(--text-dim);">${p.agent || 'agent'} · ${created}${updated && updated !== created ? ' → ' + updated : ''} · <span style="font-family:monospace;">${pid}</span></div>
+                <div style="font-size:10px;color:var(--text-dim);">${_escHtml(p.agent || 'agent')} · ${created}${updated && updated !== created ? ' → ' + updated : ''} · <span style="font-family:monospace;">${pidSafe}</span></div>
               </div>
               <span style="padding:2px 8px;border-radius:10px;background:${m.bg};color:${m.color};font-size:10px;font-weight:700;border:1px solid ${m.border};">${st}</span>
             </div>
@@ -8955,12 +9033,13 @@ function loadSkillsData(win) {
     .then(r => r.json())
     .then(data => {
       const skills = Array.isArray(data) ? data : (data.skills || []);
+      window.__skillNames = skills.map(s => (s.name || '').trim().toLowerCase()).filter(Boolean);
       if (skills.length > 0) {
         content.innerHTML = skills.map(s => {
-          const name = s.name || '?';
-          const desc = s.description || '';
-          const usage = s.usage ? `<div style="font-family:monospace;font-size:10px;color:var(--accent);margin-top:4px;">${s.usage}</div>` : '';
-          const example = s.example ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">e.g. ${s.example}</div>` : '';
+          const name    = _escHtml(s.name || '?');
+          const desc    = _escHtml(s.description || '');
+          const usage   = s.usage   ? `<div style="font-family:monospace;font-size:10px;color:var(--accent);margin-top:4px;">${_escHtml(s.usage)}</div>` : '';
+          const example = s.example ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">e.g. ${_escHtml(s.example)}</div>` : '';
           return `<div style="margin-bottom:10px;padding:10px;background:var(--card);border-radius:4px;border:1px solid var(--border);">
             <strong>${name}</strong><br>
             <span style="color:var(--text-dim);font-size:11px;">${desc}</span>
@@ -9376,8 +9455,7 @@ function createUserProfileFromSkills() {
 function loadSkillPermissionEditor() {
   const host = document.getElementById('skills-permissions-content');
   const selector = document.getElementById('skills-user-select');
-  const skillsContainer = document.getElementById('skills-content');
-  if (!host || !selector || !skillsContainer) return;
+  if (!host || !selector) return;
 
   const username = (selector.value || '').trim().toLowerCase();
   if (!username) {
@@ -9385,9 +9463,7 @@ function loadSkillPermissionEditor() {
     return;
   }
 
-  const skillNames = Array.from(skillsContainer.querySelectorAll('strong'))
-    .map(el => (el.textContent || '').trim().toLowerCase())
-    .filter(Boolean);
+  const skillNames = Array.isArray(window.__skillNames) ? window.__skillNames : [];
 
   fetch('/api/skills/permissions?username=' + encodeURIComponent(username))
     .then(r => r.json().then(data => ({ status: r.status, data })))
@@ -9410,7 +9486,7 @@ function loadSkillPermissionEditor() {
             <div style="font-size:12px;font-weight:600;">${skill}</div>
             <div style="font-size:10px;color:var(--text-dim);">${hint}</div>
           </div>
-          <input type="checkbox" ${allowed ? 'checked' : ''} ${readonly ? 'disabled' : ''} onchange="setSkillPermissionToggle('${username}','${skill}',this.checked)">
+          <input type="checkbox" ${allowed ? 'checked' : ''} ${readonly ? 'disabled' : ''} onchange="setSkillPermissionToggle(${JSON.stringify(username)},${JSON.stringify(skill)},this.checked)">
         </label>`;
       }).join('') + (readonly ? '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">Only ghost can update permissions.</div>' : '');
     })
@@ -9460,25 +9536,26 @@ function loadTicketsData(win) {
           const st    = t.status || 'unknown';
           const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : '#888';
           const stBg    = st === 'open' ? 'rgba(76,175,80,0.15)' : st === 'in_progress' ? 'rgba(255,165,0,0.15)' : 'rgba(136,136,136,0.15)';
-          return `<div style="background:var(--card);padding:12px;border-radius:4px;margin-bottom:8px;border-left:3px solid ${stColor};cursor:pointer;" onclick="openTicketDetail('${num}')">
+          return `<div class="ticket-row" style="background:var(--card);padding:12px;border-radius:4px;margin-bottom:8px;border-left:3px solid ${stColor};cursor:pointer;" onclick="openTicketDetail(${JSON.stringify(num)})">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-              <strong style="font-size:12px;font-family:monospace;">${num}</strong>
-              <span style="font-size:10px;padding:2px 7px;border-radius:3px;background:${stBg};color:${stColor};font-weight:600;">${st}</span>
+              <strong style="font-size:12px;font-family:monospace;">${_escHtml(num)}</strong>
+              <span style="font-size:10px;padding:2px 7px;border-radius:3px;background:${stBg};color:${stColor};font-weight:600;">${_escHtml(st)}</span>
             </div>
-            <div style="margin-top:5px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${title}</div>
-            <div style="margin-top:3px;font-size:10px;color:var(--text-dim);">${ts.slice(0,16)}</div>
+            <div style="margin-top:5px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(title)}</div>
+            <div style="margin-top:3px;font-size:10px;color:var(--text-dim);">${_escHtml(ts.slice(0,16))}</div>
           </div>`;
         }).join('');
       } else {
         content.innerHTML = '<div style="padding:20px;color:var(--text-dim);text-align:center;font-size:12px;">No tickets found.</div>';
       }
 
-      // Wire search input after content is rendered
+      // Wire search input after content is rendered (guard against double-registration)
       const searchInput = win.el.querySelector('#ticket-search');
-      if (searchInput) {
+      if (searchInput && !searchInput.dataset.bound) {
+        searchInput.dataset.bound = '1';
         searchInput.addEventListener('input', (e) => {
           const q = e.target.value.toLowerCase();
-          content.querySelectorAll('[onclick^="openTicketDetail"]').forEach(el => {
+          content.querySelectorAll('.ticket-row').forEach(el => {
             el.style.display = el.textContent.toLowerCase().includes(q) ? 'block' : 'none';
           });
         });
@@ -9793,13 +9870,13 @@ function openProposalDetail(proposalId) {
       <span style="padding:3px 10px;border-radius:12px;background:${m.bg};color:${m.color};font-size:11px;font-weight:700;border:1px solid ${m.border};">${m.label}</span>
       ${p.agent ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Agent: ${safeAgent}</span>` : ''}
       ${p.ticket_number ? `<span onclick='openTicketDetail(${ticketJs})' style="padding:3px 10px;border-radius:12px;background:#2196f320;color:#2196f3;font-size:11px;cursor:pointer;border:1px solid #2196f340;">Ticket: ${safeTicketNumber}</span>` : ''}
-      ${p.queue_id ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Queue: ${p.queue_id}</span>` : ''}
+      ${p.queue_id ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Queue: ${_escHtml(String(p.queue_id))}</span>` : ''}
     </div>
 
     <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px;">
       <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;width:130px;">Proposal ID</td><td style="font-family:monospace;font-size:11px;">${safeProposalId}</td></tr>
-      <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Created</td><td>${created||'—'}</td></tr>
-      ${updated && updated !== created ? `<tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Updated</td><td>${updated}</td></tr>` : ''}
+      <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Created</td><td>${_escHtml(created||'—')}</td></tr>
+      ${updated && updated !== created ? `<tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Updated</td><td>${_escHtml(updated)}</td></tr>` : ''}
     </table>
 
     ${p.description ? `
@@ -9929,40 +10006,44 @@ function openTicketDetail(ticketNumber) {
       const stColor = t.status === 'open' ? '#4caf50' : t.status === 'in_progress' ? '#ffa500' : '#888';
       const noteRows = notes.map(n =>
         `<div style="padding:8px 10px;background:var(--bg);border-radius:4px;border-left:2px solid var(--accent);margin-bottom:6px;font-size:12px;">
-          <div style="color:var(--text-dim);font-size:10px;margin-bottom:4px;">${(n.created_at||'').slice(0,16)} — ${n.author||'system'}</div>
-          <div style="white-space:pre-wrap;">${n.content||''}</div>
+          <div style="color:var(--text-dim);font-size:10px;margin-bottom:4px;">${_escHtml((n.created_at||'').slice(0,16))} — ${_escHtml(n.author||'system')}</div>
+          <div style="white-space:pre-wrap;">${_escHtml(n.content||'')}</div>
         </div>`
       ).join('');
 
+      // Pre-compute JS-safe ticket number for inline button handlers
+      const tnJs = JSON.stringify(ticketNumber);
+      const questionHintJs = JSON.stringify((t.question||'').slice(0,80));
+
       document.getElementById('tdet-body').innerHTML = `
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-          <span style="padding:3px 10px;border-radius:12px;background:${stColor}22;color:${stColor};font-size:11px;font-weight:700;border:1px solid ${stColor}44;">${t.status}</span>
-          <span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Priority: ${t.priority||5}</span>
-          ${t.snooze_count ? `<span style="padding:3px 10px;border-radius:12px;background:#ff980022;color:#ff9800;font-size:11px;">💤 ${t.snooze_count} snooze</span>` : ''}
+          <span style="padding:3px 10px;border-radius:12px;background:${stColor}22;color:${stColor};font-size:11px;font-weight:700;border:1px solid ${stColor}44;">${_escHtml(t.status||'unknown')}</span>
+          <span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Priority: ${_escHtml(String(t.priority||5))}</span>
+          ${t.snooze_count ? `<span style="padding:3px 10px;border-radius:12px;background:#ff980022;color:#ff9800;font-size:11px;">💤 ${_escHtml(String(t.snooze_count))} snooze</span>` : ''}
         </div>
 
         <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px;">
-          <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;width:120px;">From</td><td>${t.sender_email||'—'}</td></tr>
-          <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Created</td><td>${(t.created_at||'').slice(0,16)}</td></tr>
-          ${t.closed_at ? `<tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Closed</td><td>${t.closed_at.slice(0,16)}</td></tr>` : ''}
-          ${t.gemma_routing ? `<tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Routing</td><td style="font-size:10px;color:var(--text-dim);">${t.gemma_routing}</td></tr>` : ''}
+          <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;width:120px;">From</td><td>${_escHtml(t.sender_email||'—')}</td></tr>
+          <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Created</td><td>${_escHtml((t.created_at||'').slice(0,16))}</td></tr>
+          ${t.closed_at ? `<tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Closed</td><td>${_escHtml(t.closed_at.slice(0,16))}</td></tr>` : ''}
+          ${t.gemma_routing ? `<tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Routing</td><td style="font-size:10px;color:var(--text-dim);">${_escHtml(t.gemma_routing)}</td></tr>` : ''}
         </table>
 
         <div style="margin-bottom:14px;">
           <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Question</div>
-          <div style="background:var(--card);padding:12px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:200px;overflow-y:auto;">${t.question||'—'}</div>
+          <div style="background:var(--card);padding:12px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:200px;overflow-y:auto;">${_escHtml(t.question||'—')}</div>
         </div>
 
         ${t.duck_result ? `
         <div style="margin-bottom:14px;">
           <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Duck Result</div>
-          <div style="background:var(--card);padding:12px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:150px;overflow-y:auto;">${t.duck_result}</div>
+          <div style="background:var(--card);padding:12px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:150px;overflow-y:auto;">${_escHtml(t.duck_result)}</div>
         </div>` : ''}
 
         ${t.final_answer ? `
         <div style="margin-bottom:14px;">
           <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Final Answer</div>
-          <div style="background:var(--card);padding:12px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:250px;overflow-y:auto;">${t.final_answer}</div>
+          <div style="background:var(--card);padding:12px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:250px;overflow-y:auto;">${_escHtml(t.final_answer)}</div>
         </div>` : ''}
 
         ${noteRows ? `
@@ -9973,11 +10054,11 @@ function openTicketDetail(ticketNumber) {
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
           ${t.status !== 'closed'
-            ? `<button onclick="closeTicketFromModal('${ticketNumber}')" style="padding:6px 14px;background:#f443361a;border:1px solid #f4433644;border-radius:4px;color:#f44336;font-size:12px;cursor:pointer;">Close Ticket</button>`
-            : `<button onclick="reopenTicketFromModal('${ticketNumber}')" style="padding:6px 14px;background:#4caf501a;border:1px solid #4caf5044;border-radius:4px;color:#4caf50;font-size:12px;cursor:pointer;">Reopen</button>`}
-          <button onclick="createProposalFromTicket('${ticketNumber}', ${JSON.stringify((t.question||'').slice(0,80)).replace(/"/g,'&quot;')})"
+            ? `<button onclick="closeTicketFromModal(${tnJs})" style="padding:6px 14px;background:#f443361a;border:1px solid #f4433644;border-radius:4px;color:#f44336;font-size:12px;cursor:pointer;">Close Ticket</button>`
+            : `<button onclick="reopenTicketFromModal(${tnJs})" style="padding:6px 14px;background:#4caf501a;border:1px solid #4caf5044;border-radius:4px;color:#4caf50;font-size:12px;cursor:pointer;">Reopen</button>`}
+          <button onclick="createProposalFromTicket(${tnJs}, ${questionHintJs})"
             style="padding:6px 14px;background:#4caf501a;border:1px solid #4caf5044;border-radius:4px;color:#4caf50;font-size:12px;cursor:pointer;">+ Proposal</button>
-          <button onclick="pinItemToDeferred('${ticketNumber}', ${JSON.stringify((t.question||'').slice(0,80)).replace(/"/g,'&quot;')}, 'ticket')"
+          <button onclick="pinItemToDeferred(${tnJs}, ${questionHintJs}, 'ticket')"
             style="padding:6px 14px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:12px;cursor:pointer;">&#128204; Pin</button>
           <button onclick="document.getElementById('ticket-detail-modal').classList.remove('open')"
                   style="padding:6px 14px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;cursor:pointer;">Close</button>
@@ -13798,6 +13879,10 @@ function _appendChatBubble(sender, text, opts = {}) {
   const _tsToday = new Date().toDateString() === _now.toDateString();
   const _tsLabel = _tsTime + (_tsToday ? '' : ' · ' + _tsDate);
   const _tokCount = !isUser ? (Number(opts.tokens || 0).toLocaleString() + ' tok') : '';
+  const _traceItems = (!isUser && Array.isArray(opts.stageTrace) && opts.stageTrace.length) ? opts.stageTrace : null;
+  const traceHtml = _traceItems
+    ? `<details class="chat-bubble-trace"><summary>Trace &middot; ${_traceItems.length} step${_traceItems.length !== 1 ? 's' : ''}</summary><div class="chat-bubble-trace-body">${_traceItems.map((s, i) => `<div class="chat-bubble-trace-step"><span class="chat-bubble-trace-num">${i + 1}</span><span class="chat-bubble-trace-text">${_escapeHtml(String(s && s.text != null ? s.text : s))}</span></div>`).join('')}</div></details>`
+    : '';
   bubble.innerHTML = `
     <div class="chat-meta ${isUser ? '' : 'icon-meta'}" style="display:flex;align-items:center;gap:8px;">
       <span>${senderMetaHtml}</span>
@@ -13808,6 +13893,7 @@ function _appendChatBubble(sender, text, opts = {}) {
     ${attachmentsHtml}
     ${eventsHtml}
     ${relayButtonsHtml}
+    ${traceHtml}
     ${actionRow}
   `;
 
@@ -14242,8 +14328,10 @@ function _createLoadingPanel(agents) {
     // Note: host.classList.add('open') removed — display:block !important in CSS, open class is redundant
   }
   
-  // Return dummy panel for API compatibility with _startLoadingTicker
-  return host || document.createElement('div');
+  // Return a detached dummy div for API compatibility with _startLoadingTicker.
+  // Do NOT return the real host element — _startLoadingTicker.stop() calls panel.remove(),
+  // which would permanently delete #chat-thread-runtime from the DOM.
+  return document.createElement('div');
 }
 
 function _startLoadingTicker(panel, agents, estimateMs) {
@@ -14436,6 +14524,16 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
           // `_appendChatBubble` uses fromHistory:true for loaded history so the relay
           // auto-fire guard is skipped; process relay here before the history reload.
           const completedNow = jobs.filter(j => j.status === 'completed');
+          // Store stage traces so renderChatMessages can inject them into the freshly-loaded bubbles.
+          if (completedNow.length) {
+            window.__fridaysPendingBubbleTraces = window.__fridaysPendingBubbleTraces || {};
+            completedNow.forEach(j => {
+              const tr = j.stage_trace;
+              if (Array.isArray(tr) && tr.length) {
+                window.__fridaysPendingBubbleTraces[String(j.agent || '').toLowerCase()] = tr;
+              }
+            });
+          }
           if (completedNow.length && window.__fridaysChatRelayAuto) {
             // Budget may be 0 if the page was loaded/refreshed while the job was
             // running — the user's original sendMessage() never set it this session.
@@ -14465,7 +14563,12 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
           const failed = jobs.filter(j => j.status === 'failed');
           const cancelled = jobs.filter(j => j.status === 'cancelled');
           if (failed.length) {
-            _appendChatBubble('system', 'One or more long-running responses failed. See thread for details.');
+            const failReasons = failed.map(j => {
+              const who = _chatAgentLabel(j.agent || 'agent');
+              const why = String(j.error || '').trim();
+              return why ? `${who}: ${why}` : who;
+            });
+            _appendChatBubble('system', `${failed.length > 1 ? `${failed.length} agents` : failReasons[0]} failed. ${failReasons.length > 1 ? failReasons.join('; ') : (String(failed[0].error || '').trim() ? '' : 'Check logs for details.')}`);
             notifyDesktop('Fridays Chat', `${failed.length} long-running response(s) failed.`, {
               tag: 'fridays-chat-status-' + String(conversationId || 'none')
             });
@@ -14579,7 +14682,7 @@ function renderChatAgentToggles() {
     <div style="height:2px;"></div>
   </div>`;
 
-  const agentCards = CHAT_AGENT_OPTIONS.filter(agent => agent.value !== 'duck').map(agent => {
+  const agentCards = CHAT_AGENT_OPTIONS.map(agent => {
     const isOn = !!window.__fridaysChatEnabledAgents[agent.value];
     const checked = isOn ? 'checked' : '';
     const tierDotClass = agent.tier === 'paid' ? 'agent-tier-paid-dot' : 'agent-tier-local-dot';
@@ -14610,9 +14713,8 @@ function renderChatAgentToggles() {
   hosts.forEach(host => {
     host.innerHTML = contentHtml;
   });
-  
-  // Render relay manager (Duck) and monitor (Librarian)
-  renderRelayManagerCard();
+
+  // Render relay monitor (Librarian)
   renderRelayMonitorCard();
 }
 
@@ -14849,6 +14951,26 @@ function renderChatMessages(rows) {
       if (actionsRow) actionsRow.insertAdjacentElement('beforebegin', buttonsDiv);
       else lastAgentBubble.appendChild(buttonsDiv);
     }
+  }
+
+  // Inject pending stage traces into the most recent bubble for each agent.
+  // Populated by _pollPendingChatJobs when async jobs complete.
+  const pendingTraces = window.__fridaysPendingBubbleTraces;
+  if (pendingTraces && typeof pendingTraces === 'object') {
+    Object.entries(pendingTraces).forEach(([agentKey, trace]) => {
+      if (!Array.isArray(trace) || !trace.length) return;
+      const sel = '.chat-bubble.sender-' + agentKey.replace(/[^a-z0-9_-]/g, '');
+      const agentBubbles = messages.querySelectorAll(sel);
+      const targetBubble = agentBubbles.length ? agentBubbles[agentBubbles.length - 1] : null;
+      if (!targetBubble || targetBubble.querySelector('.chat-bubble-trace')) return;
+      const traceEl = document.createElement('details');
+      traceEl.className = 'chat-bubble-trace';
+      traceEl.innerHTML = `<summary>Trace \u00b7 ${trace.length} step${trace.length !== 1 ? 's' : ''}</summary><div class="chat-bubble-trace-body">${trace.map((s, i) => `<div class="chat-bubble-trace-step"><span class="chat-bubble-trace-num">${i + 1}</span><span class="chat-bubble-trace-text">${_escapeHtml(String(s && s.text != null ? s.text : s))}</span></div>`).join('')}</div>`;
+      const actionsEl = targetBubble.querySelector('.chat-actions');
+      if (actionsEl) actionsEl.insertAdjacentElement('beforebegin', traceEl);
+      else targetBubble.appendChild(traceEl);
+    });
+    window.__fridaysPendingBubbleTraces = {};
   }
 }
 
@@ -15348,6 +15470,7 @@ function sendMessage(source = 'user', relayMeta = null) {
       immediateResponses.forEach(entry => {
         _appendChatBubble(entry.agent || 'agent', entry.response || '...', {
           tokens: entry.tokens || 0,
+          stageTrace: entry.stage_trace || [],
           ...(source === 'relay' && relayMeta ? { chainDepth: Number(relayMeta.chainDepth ?? -1) } : {}),
         });
         if (source === 'user' && window.__fridaysReplaceBubbleId && window.__fridaysReplaceAgentKey && String(entry.agent || '').toLowerCase() === String(window.__fridaysReplaceAgentKey || '').toLowerCase()) {
@@ -15815,9 +15938,9 @@ function updateTicketQueue() {
           const st    = t.status || 'unknown';
           const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : '#888';
           const stBg    = st === 'open' ? 'rgba(76,175,80,0.15)' : st === 'in_progress' ? 'rgba(255,165,0,0.15)' : 'rgba(136,136,136,0.15)';
-          return `<div class="ticket-item" style="display:flex;justify-content:space-between;align-items:center;" onclick="openTicketDetail('${num}')">
-            <span style="flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">#${num} — ${title}</span>
-            <span style="font-size:9px;padding:3px 8px;border-radius:3px;background:${stBg};color:${stColor};white-space:nowrap;margin-left:8px;font-weight:600;">${st}</span>
+          return `<div class="ticket-item" style="display:flex;justify-content:space-between;align-items:center;" onclick="openTicketDetail(${JSON.stringify(num)})">
+            <span style="flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">#${_escHtml(num)} — ${_escHtml(title)}</span>
+            <span style="font-size:9px;padding:3px 8px;border-radius:3px;background:${stBg};color:${stColor};white-space:nowrap;margin-left:8px;font-weight:600;">${_escHtml(st)}</span>
           </div>`;
         }).join('');
       } else {
@@ -17040,7 +17163,7 @@ function agentsSubmitAdd() {
     if (data.ok) {
       document.getElementById('agents-add-modal')?.remove();
       agentsRefresh();
-      showToast(`Agent "${payload.label}" added`, 'ok');
+      showToast(`Agent "${payload.label}" added`, 'success');
     } else {
       if (errEl) { errEl.textContent = data.error || 'Failed to add agent.'; errEl.style.color = '#ff6b6b'; }
     }
@@ -17094,11 +17217,11 @@ function agentsSaveGlobal(key) {
       // Update local cache
       const idx = (window.__globalsData || []).findIndex(g => g.key === key);
       if (idx >= 0) window.__globalsData[idx].value = value;
-      showToast(`"${key}" saved`, 'ok');
+      showToast(`"${key}" saved`, 'success');
     } else {
-      showToast(data.error || 'Save failed', 'err');
+      showToast(data.error || 'Save failed', 'error');
     }
-  }).catch(err => showToast(err.message, 'err'));
+  }).catch(err => showToast(err.message, 'error'));
 }
 
 </script>

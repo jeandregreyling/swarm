@@ -1044,9 +1044,10 @@ def _seed_agents():
         ( 6,  'duck',      'Duck',      'qwen:1.5b',                 0.1,  'Sanity checker — YES/NO after every ticket'),
         ( 7,  'sniffles',  'Sniffles',  'deepseek-r1:7b',            0.2,  'Inspector — memory auditor, read only, chain-of-thought'),
         ( 8,  'eight',     'Eight',     'gemma4:26b',                0.5,  'SAP specialist — three-voice debate (Functional/Technical/Devil)'),
-        ( 9,  'nine',      'Claude',    'claude-sonnet-4-6',         0.3,  'System architect — Ghost Layer, Ghost Briefs, proposals'),
+        ( 9,  'nine',      'Groq',      'llama-3.3-70b-versatile',   0.5,  'System architect — Ghost Layer, Ghost Briefs, proposals'),
         (10,  'ten',       'Github',    'gpt-5.3-codex',             0.4,  'Engineering advisor — code quality, implementation clarity'),
         (11,  'eleven',    'Grok',      'grok-api',                  0.5,  'Lateral thinking advisor — creative synthesis, alternatives'),
+        (12,  'twelve',    'Claude',    'claude-haiku',              0.3,  'System oversight — Ghost Layer, session continuity'),
     ]
     conn = get_connection()
     for number, name, label, model, temp, role in roster:
@@ -1063,7 +1064,6 @@ def _seed_agents():
         )
     # Retire agents that no longer exist as standalone entries
     for retired_name, retired_note in [
-        ('twelve', 'RETIRED 2026-04-04 — functionality absorbed into Librarian (Agent 5)'),
         ('grok',   'RETIRED 2026-04-04 — alias consolidated into eleven (Agent 11)'),
     ]:
         conn.execute(
