@@ -3811,15 +3811,15 @@ input[type="range"]::-moz-range-thumb:hover {
       </div>
       <div id="memory-agent-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
         <button class="mem-tab active" data-agent="" onclick="_memTab(this,'')">All</button>
-        <button class="mem-tab" data-agent="nine"    onclick="_memTab(this,'nine')">Nine (Claude Sonnet 4.6)</button>
-        <button class="mem-tab" data-agent="ten"     onclick="_memTab(this,'ten')">Ten (GPT-5.3-Codex)</button>
-        <button class="mem-tab" data-agent="gemma"   onclick="_memTab(this,'gemma')">1 · Gemma3</button>
-        <button class="mem-tab" data-agent="llama"   onclick="_memTab(this,'llama')">2 · LlaMA</button>
-        <button class="mem-tab" data-agent="eight"   onclick="_memTab(this,'eight')">Eight</button>
-        <button class="mem-tab" data-agent="qwen"    onclick="_memTab(this,'qwen')">Qwen</button>
-        <button class="mem-tab" data-agent="grok"    onclick="_memTab(this,'grok')">Eleven (Grok API)</button>
-        <button class="mem-tab" data-agent="librarian" onclick="_memTab(this,'librarian')">5 · Vortex</button>
-        <button class="mem-tab" data-agent="librarian" onclick="_memTab(this,'librarian')">Librarian</button>
+        <button class="mem-tab" data-agent="gemma"     onclick="_memTab(this,'gemma')">1 · Gemma3</button>
+        <button class="mem-tab" data-agent="llama"     onclick="_memTab(this,'llama')">2 · LlaMA</button>
+        <button class="mem-tab" data-agent="qwen"      onclick="_memTab(this,'qwen')">4 · Qwen</button>
+        <button class="mem-tab" data-agent="librarian" onclick="_memTab(this,'librarian')">5 · Librarian</button>
+        <button class="mem-tab" data-agent="eight"     onclick="_memTab(this,'eight')">8 · Eight</button>
+        <button class="mem-tab" data-agent="nine"      onclick="_memTab(this,'nine')">9 · Nine (Groq)</button>
+        <button class="mem-tab" data-agent="ten"       onclick="_memTab(this,'ten')">10 · Ten</button>
+        <button class="mem-tab" data-agent="eleven"    onclick="_memTab(this,'eleven')">11 · Eleven (Grok)</button>
+        <button class="mem-tab" data-agent="twelve"    onclick="_memTab(this,'twelve')">12 · Twelve</button>
       </div>
       <div id="memory-source-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
         <button class="mem-tab active" data-source="all" onclick="_memSourceTab(this,'all')">All Sources</button>
@@ -7811,6 +7811,13 @@ function filesNavigateHome() {
   filesNavigateTo('');
 }
 
+function _tableToAgent(table) {
+  const map = { memory:'librarian', memory_llama:'llama', memory_qwen:'qwen', memory_gemma:'gemma',
+                memory_eight:'eight', memory_nine:'nine', memory_ten:'ten', memory_grok:'grok',
+                memory_twelve:'twelve', memory_eleven:'eleven', memory_mistral:'mistral' };
+  return map[table] || 'librarian';
+}
+
 function loadMemoryData(win) {
   const list = win.el.querySelector('#memory-list');
   if (!list) return;
@@ -7818,12 +7825,6 @@ function loadMemoryData(win) {
   window.__memoryCache = [];
   window.__memoryAgent = window.__memoryAgent || '';
   window.__memorySource = window.__memorySource || 'all';
-
-  const _tableToAgent = (table) => {
-    const map = { memory:'librarian', memory_llama:'llama', memory_qwen:'qwen', memory_gemma:'gemma',
-                  memory_eight:'eight', memory_nine:'nine', memory_ten:'ten', memory_grok:'grok', memory_twelve:'twelve' };
-    return map[table] || 'librarian';
-  };
 
   const _renderList = (flat, agentFilter) => {
     const sourceMode = window.__memorySource || 'all';
@@ -7929,96 +7930,19 @@ function _memExpand(id, table) {
     <div style="font-size:10px;color:var(--text-dim);">${(m.created_at||'').slice(0,16)} · source: ${sourcePath}</div>
     ${isLocalFile ?
       `<div style="margin-top:10px;font-size:11px;color:var(--text-dim);">This entry is read-only and sourced from a local sandpit file.</div>` :
-      `<div style="display:flex;gap:6px;margin-top:10px;">
-        <button class="chat-action-btn" onclick="memoryEdit(${id},'${table}')">Edit</button>
-        <button class="chat-action-btn" onclick="memoryAppend(${id},'${table}')">Append</button>
-        <button class="chat-action-btn" style="color:#f77;" onclick="if(confirm('Delete this memory?')){fetch('/api/memory/${id}?table=${table}',{method:'DELETE'}).then(()=>{document.getElementById('mem-detail').style.display='none';loadMemoryData(window.__memoryWin);});}">Delete</button>
-      </div>`
+      `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+        <button class="chat-action-btn" onclick="memoryEdit(${id},'${table}')">✏️ Edit</button>
+        <button class="chat-action-btn" onclick="memoryAppend(${id},'${table}')">➕ Append</button>
+        <button class="chat-action-btn" onclick="memoryAttach(${id},'${table}')">📎 Attach</button>
+        <button class="chat-action-btn" onclick="memoryAssign(${id},'${table}','${_escHtml(agent)}')">🔁 Share</button>
+        <button class="chat-action-btn" onclick="memoryDelete(${id},'${table}')" style="border-color:#f44336;color:#f44336;">🗑 Delete</button>
+      </div>
+      <div id="mem-det-action-area" style="margin-top:10px;"></div>`
     }
   `;
   detail.style.display = 'block';
 }
 
-function expandMemory(el, id, table) {
-  const tableToAgent = (tbl) => {
-    const map = {
-      memory: 'librarian', memory_llama: 'llama', memory_qwen: 'qwen', memory_gemma: 'gemma',
-      memory_eight: 'eight', memory_nine: 'nine', memory_ten: 'ten', memory_grok: 'grok', memory_twelve: 'twelve'
-    };
-    return map[tbl] || 'librarian';
-  };
-
-  const renderMemoryBody = (m, titleFallback) => {
-    const body = document.getElementById('mem-det-body');
-    if (!body) return;
-    const mid = m && m.id ? m.id : id;
-    const mt = m && m.source_table ? m.source_table : table;
-    const agent = tableToAgent(mt);
-    body.innerHTML = `
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
-        ${m.agent ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--accent);font-size:10px;border:1px solid var(--border);">${m.agent}</span>` : ''}
-        ${m.importance ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">importance: ${m.importance}</span>` : ''}
-        ${m.tags ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">${m.tags}</span>` : ''}
-        ${m.created_at ? `<span style="padding:2px 8px;background:var(--card);border-radius:10px;color:var(--text-dim);font-size:10px;border:1px solid var(--border);">${String(m.created_at).slice(0,16)}</span>` : ''}
-      </div>
-      ${m.subject ? `<div style="font-weight:600;margin-bottom:8px;">${m.subject}</div>` : ''}
-      <div style="background:var(--card);padding:12px;border-radius:4px;white-space:pre-wrap;line-height:1.6;max-height:42vh;overflow:auto;">${m.content || titleFallback || ''}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
-        <button class="chat-action-btn" onclick="memoryEdit(${mid}, '${mt}')">✏️ Edit</button>
-        <button class="chat-action-btn" onclick="memoryAppend(${mid}, '${mt}')">➕ Append</button>
-        <button class="chat-action-btn" onclick="memoryAttach(${mid}, '${mt}')">📎 Attach</button>
-        <button class="chat-action-btn" onclick="memoryAssign(${mid}, '${mt}', '${agent}')">🔁 Share</button>
-        <button class="chat-action-btn" onclick="memoryDelete(${mid}, '${mt}')" style="border-color:#f44336;color:#f44336;">🗑 Delete</button>
-      </div>
-      <div id="mem-det-action-area" style="margin-top:12px;"></div>
-    `;
-  };
-
-  // Build detail modal
-  let modal = document.getElementById('memory-detail-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'memory-detail-modal';
-    modal.onclick = e => { if (e.target === modal) modal.classList.remove('open'); };
-    modal.innerHTML = `
-      <div class="modal-content" style="width:90%;max-width:700px;max-height:85vh;display:flex;flex-direction:column;">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
-          <h3 id="mem-det-title" style="margin:0;font-size:14px;"></h3>
-          <button onclick="document.getElementById('memory-detail-modal').classList.remove('open')"
-                  style="background:none;border:none;color:var(--text);font-size:18px;cursor:pointer;">✕</button>
-        </div>
-        <div id="mem-det-body" style="overflow-y:auto;padding:16px;flex:1;font-size:12px;"></div>
-      </div>`;
-    document.body.appendChild(modal);
-  }
-
-  // Pull data from the row's data attributes set during render
-  const title   = el.querySelector('div:first-child')?.textContent || '(memory)';
-  const meta    = el.querySelector('div:last-child')?.textContent  || '';
-  document.getElementById('mem-det-title').textContent = '🧠 ' + title;
-  document.getElementById('mem-det-body').innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Loading…</div>';
-  modal.classList.add('open');
-
-  // Fetch from API using id + table
-  const url = table ? `/api/agents/${encodeURIComponent(tableToAgent(table))}/memory?limit=400&min_importance=1` : '/api/memory?limit=400&min=1';
-  fetch(url)
-    .then(r => r.json())
-    .then(data => {
-      let entries = [];
-      if (data.results && typeof data.results === 'object') {
-        Object.values(data.results).forEach(arr => entries.push(...arr));
-      } else if (Array.isArray(data)) {
-        entries = data;
-      } else if (Array.isArray(data.entries)) {
-        entries = data.entries;
-      }
-      const m = entries.find(e => String(e.id) === String(id)) || { id, source_table: table, content: title };
-      renderMemoryBody(m, title);
-    })
-    .catch(() => {
-      renderMemoryBody({ id, source_table: table, content: meta || title }, title);
-    });
-}
 
 function memoryEdit(id, table) {
   const m = (window.__memoryCache || []).find(x => String(x.id) === String(id) && String(x.source_table || 'memory') === String(table)) || {};
@@ -16765,8 +16689,8 @@ function agentsRefresh() {
     fetch('/api/agents/config').then(r => r.json()),
     fetch('/api/swarm/globals').then(r => r.json())
   ]).then(([agentsData, globalsData]) => {
-    window.__agentsData  = agentsData.agents  || [];
-    window.__globalsData = globalsData.globals || [];
+    window.__agentsData  = Array.isArray(agentsData)  ? agentsData  : (agentsData.agents  || []);
+    window.__globalsData = Array.isArray(globalsData) ? globalsData : (globalsData.globals || []);
     agentsRenderList(window.__agentsData);
     agentsRenderGlobals(window.__globalsData);
     if (window.__agentsData.length > 0) agentsShowDetail(window.__agentsData[0]);
@@ -16938,22 +16862,22 @@ function agentsSaveKey(name) {
   const keyInput = document.getElementById('agent-key-value');
   const keyVar   = document.getElementById('agent-key-var')?.value.trim() || '';
   const keyValue = keyInput?.value.trim() || '';
-  if (!keyValue) { showToast('Paste a key value first', 'warn'); return; }
-  if (!keyVar)   { showToast('Set the API key variable name first', 'warn'); return; }
+  if (!keyValue) { showToast('Paste a key value first', 'info'); return; }
+  if (!keyVar)   { showToast('Set the API key variable name first', 'info'); return; }
   fetch(`/api/agents/key/${encodeURIComponent(name)}`, {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ key_var: keyVar, key_value: keyValue })
+    body: JSON.stringify({ key_var: keyVar, value: keyValue })
   }).then(r => r.json()).then(data => {
     if (data.ok) {
       if (keyInput) keyInput.value = '';
-      showToast('Key saved to .env.agents', 'ok');
+      showToast('Key saved to .env.agents', 'success');
       const agent = (window.__agentsData || []).find(a => a.name === name);
       if (agent) agent.api_key_set = true;
     } else {
-      showToast(data.error || 'Failed to save key', 'err');
+      showToast(data.error || 'Failed to save key', 'error');
     }
-  }).catch(err => showToast(err.message, 'err'));
+  }).catch(err => showToast(err.message, 'error'));
 }
 
 function agentsShowAdd() {
@@ -17091,15 +17015,16 @@ function agentsRenderGlobals(globals) {
 function agentsSaveGlobal(key) {
   const el = document.getElementById(`global-val-${key}`);
   if (!el) return;
-  const value   = el.value;
-  const globals = (window.__globalsData || []).map(g => g.key === key ? {...g, value} : g);
+  const value = el.value;
   fetch('/api/swarm/globals', {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ globals })
+    body: JSON.stringify({ key, value })
   }).then(r => r.json()).then(data => {
     if (data.ok) {
-      window.__globalsData = globals;
+      // Update local cache
+      const idx = (window.__globalsData || []).findIndex(g => g.key === key);
+      if (idx >= 0) window.__globalsData[idx].value = value;
       showToast(`"${key}" saved`, 'ok');
     } else {
       showToast(data.error || 'Save failed', 'err');
