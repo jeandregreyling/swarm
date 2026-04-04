@@ -151,6 +151,11 @@ SYSTEM_PROMPTS = {
 # NVMe-swap residents (larger / less frequent): eight (qwen2.5 ×3), sniffles (deepseek-r1).
 MODEL_KEEP_ALIVE = {agent: -1 for agent in ('gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles', 'eight')}
 
+# Per-agent token counts from last successful ask_agent() call.
+# Keyed by lowercase agent name. Written by ask_agent(); read by terminal._run_single_agent().
+# Safe under the _CHAT_SINGLE_TASK_LOCAL_AGENTS constraint (one job per agent at a time).
+_LAST_EVAL_COUNT: dict = {}
+
 MIN_FREE_GB_FOR_BOTH = float(os.environ.get('SWARM_MIN_FREE_GB_FOR_BOTH', '7.0'))
 
 
@@ -211,6 +216,12 @@ def ask_agent(agent_name, prompt, retries=2):
                 keep_alive=keep_alive,
             )
             answer = response['message']['content']
+            # Capture token count for verbose thinking-tile display (non-streaming).
+            try:
+                ec = int(getattr(response, 'eval_count', None) or response.get('eval_count') or 0)
+            except Exception:
+                ec = 0
+            _LAST_EVAL_COUNT[agent_name] = ec
             elapsed_ms = int((time.time() - start_time) * 1000)
             log_agent_thinking(agent_name, f'responded to prompt', elapsed_ms)
             batch_commit(f'[{agent_name}] completed query')
