@@ -193,6 +193,13 @@ _CHAT_JOB_LOCK = threading.Lock()
 _CHAT_JOBS = {}
 _CHAT_JOB_TTL_SECONDS = 2 * 60 * 60
 
+# ── Shared thread pools for chat dispatch ─────────────────────────────────────
+# Two separate pools to prevent deadlock from nested submits:
+#   _CHAT_DISPATCH_EXECUTOR  — outer layer: api_chat submits _run_single_agent here
+#   _CHAT_WORKER_EXECUTOR    — inner layer: _run_single_agent submits agent calls here
+_CHAT_DISPATCH_EXECUTOR = ThreadPoolExecutor(max_workers=12, thread_name_prefix='chat-dispatch')
+_CHAT_WORKER_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix='chat-worker')
+
 _CHAT_AGENT_ETA_SECONDS = {
     'gemma': 85,
     'llama': 70,
@@ -4933,6 +4940,245 @@ def api_alm_status():
     })
 
 
+
+# ── Chat helpers — module-level (extracted from api_chat for testability) ─────
+
+def _parse_chat_skill_command(text):
+    raw = (text or '').strip()
+    upper = raw.upper()
+    if not raw:
+        return None
+
+    if upper in {'/SKILLS', 'SKILLS', '/SKILL', 'SKILL'}:
+        return 'list', ''
+
+    if upper.startswith('/SKILL '):
+        payload = raw[7:].strip()
+    elif upper.startswith('SKILL '):
+        payload = raw[6:].strip()
+    else:
+        return None
+
+    if not payload:
+        return 'list', ''
+
+    parts = payload.split(None, 1)
+    skill_name = parts[0].strip().lower()
+    skill_args = parts[1].strip() if len(parts) > 1 else ''
+    return skill_name, skill_args
+def _is_execution_confirmation(text):
+    raw = str(text or '').strip().lower()
+    if not raw:
+        return False
+    confirmations = {
+        'go ahead', 'yes', 'y', 'yep', 'yeah', 'continue', 'proceed', 'do it',
+        'go for it', 'execute', 'run it', 'ship it'
+    }
+    if raw in confirmations:
+        return True
+    return bool(re.search(r'\b(go\s+ahead|continue|proceed|do\s+it|execute|run\s+it|ship\s+it|yes)\b', raw))
+def _derive_proposal_from_text(selected_agent, text, user_prompt):
+    body = str(text or '').strip()
+    if not body:
+        return None
+
+    # Require at least one structured field label in colon form.
+    # Bare mentions of words like "title" or "description" in a conversational
+    # response must not auto-trigger proposal creation.
+    if not re.search(r'(?:title|description|scope|goal|objective)\s*:', body, re.IGNORECASE):
+        return None
+
+    title = ''
+    desc = ''
+
+    m_title = re.search(r'(?:\*\*\s*)?title(?:\s*\*\*)?\s*:\s*(.+)', body, re.IGNORECASE)
+    if m_title:
+        title = m_title.group(1).strip().strip('*').strip()
+
+    m_desc = re.search(r'(?:\*\*\s*)?description(?:\s*\*\*)?\s*:\s*([\s\S]{20,1200})', body, re.IGNORECASE)
+    if m_desc:
+        desc = m_desc.group(1).strip()
+        desc = re.split(r'\n\s*(?:---|##+\s+|\*\*\w)', desc, maxsplit=1)[0].strip()
+
+    if not title:
+        title = f'{selected_agent} proposal from chat confirmation'
+    if not desc:
+        desc = str(user_prompt or '').strip()[:600] or body[:600]
+
+    if not title or not desc:
+        return None
+
+    return title[:180], desc[:1500]
+def _extract_skill_lines_from_text(text):
+    from fridays.skills import parse_skill_command
+
+    cmds = []
+    for raw_line in str(text or '').splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        parsed = None
+        if line.upper().startswith('SKILL '):
+            parsed = parse_skill_command(line)
+        elif line.upper().startswith('/SKILL '):
+            parsed = parse_skill_command('SKILL ' + line[7:].strip())
+        if not parsed:
+            continue
+        skill_name, skill_args = parsed
+        if skill_name == 'list':
+            continue
+        cmds.append((skill_name, skill_args))
+    return cmds[:4]
+def _load_local_agent_memories(selected_agent, latest_message, topic_limit=4, recent_limit=2):
+    query = str(latest_message or '').strip()[:160]
+    collected = []
+    seen_ids = set()
+
+    for search_query, limit in ((query, topic_limit), ('', recent_limit)):
+        try:
+            rows = get_agent_memory(selected_agent, query=search_query, limit=limit) or []
+        except Exception:
+            rows = []
+        for row in rows:
+            row_id = row['id'] if 'id' in row.keys() else id(row)
+            if row_id in seen_ids:
+                continue
+            seen_ids.add(row_id)
+            collected.append(row)
+    return collected
+def _build_local_memory_block(selected_agent, latest_message):
+    memories = _load_local_agent_memories(selected_agent, latest_message)
+    if not memories:
+        return ''
+
+    lines = []
+    for row in memories:
+        tags = str(row['tags'] or '').strip()
+        subject = str(row['subject'] or '').strip()[:120]
+        content = str(row['content'] or '').strip().replace('\n', ' ')[:420]
+        prefix = f'[{tags}] ' if tags else ''
+        lines.append(f'- {prefix}{subject}: {content}')
+
+    return (
+        '\n\n=== Your recent memory ===\n'
+        + '\n'.join(lines)
+        + '\n=== End memory ===\n'
+        + 'Use this for continuity and hand-off. Do not quote it verbatim unless asked.'
+    )
+def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, reply_context):
+    memory_block = _build_local_memory_block(selected_agent, latest_message)
+    handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
+    base_prompt = handoff_block + threaded_prompt + memory_block
+    if selected_agent in {'duck', 'sniffles'}:
+        return (
+            '=== Audit mode ===\n'
+            'Review the thread and latest user message. Focus on factual consistency, risk,'
+            ' contradictions, and missing assumptions. Return concise findings only.\n\n'
+            + base_prompt
+        )
+    return base_prompt
+def _should_attach_ticket_snapshot(latest_message, thread_rows):
+    text = str(latest_message or '').strip().lower()
+    if not text and thread_rows:
+        text = str(thread_rows[-1].get('message') or '').strip().lower()
+    if not text:
+        return False
+    triggers = (
+        'ticket', 'tickets', 'queue', 'triage', 'open',
+        'proposal', 'proposals', 'backlog', 'pending',
+        'work item', 'work items', 'action plan', 'status'
+    )
+    return any(term in text for term in triggers)
+def _build_ticket_snapshot_block(limit=8):
+    conn = get_connection()
+    try:
+        queue_rows = conn.execute(
+            "SELECT status, COUNT(*) AS c FROM queue GROUP BY status"
+        ).fetchall()
+        queue_counts = {str(r['status'] or 'unknown').lower(): int(r['c'] or 0) for r in queue_rows}
+        queue_total = sum(queue_counts.values())
+
+        proposal_rows = conn.execute(
+            "SELECT status, COUNT(*) AS c FROM work_proposals GROUP BY status"
+        ).fetchall()
+        proposal_counts = {str(r['status'] or 'unknown').lower(): int(r['c'] or 0) for r in proposal_rows}
+
+        pending_rows = conn.execute(
+            """
+            SELECT wp.proposal_id, wp.agent, wp.title, wp.status, wp.queue_id,
+                   q.status AS queue_status, q.created_at
+            FROM work_proposals wp
+            LEFT JOIN queue q ON q.id = wp.queue_id
+            WHERE lower(coalesce(wp.status, '')) IN ('pending', 'approved', 'in_progress')
+            ORDER BY coalesce(q.created_at, wp.created_at) DESC
+            LIMIT ?
+            """,
+            (int(max(1, min(20, limit))),)
+        ).fetchall()
+
+        lines = []
+        for row in pending_rows:
+            pid = str(row['proposal_id'] or '').strip() or '(no-id)'
+            agent_name = str(row['agent'] or 'unknown').strip()
+            title = str(row['title'] or '').strip().replace('\n', ' ')
+            title = title[:140] if len(title) > 140 else title
+            p_status = str(row['status'] or 'unknown').strip().lower()
+            q_status = str(row['queue_status'] or 'unknown').strip().lower()
+            lines.append(f"- {pid} | {agent_name} | {p_status}/{q_status} | {title}")
+
+        queue_open = int(queue_counts.get('queued', 0) + queue_counts.get('processing', 0))
+        queue_done = int(queue_counts.get('completed', 0) + queue_counts.get('done', 0))
+        queue_failed = int(queue_counts.get('failed', 0))
+
+        prop_pending = int(proposal_counts.get('pending', 0))
+        prop_approved = int(proposal_counts.get('approved', 0))
+        prop_in_progress = int(proposal_counts.get('in_progress', 0))
+        prop_executed = int(proposal_counts.get('executed', 0) + proposal_counts.get('done', 0))
+
+        return (
+            "\n\n=== Live Ticket Snapshot ===\n"
+            f"Queue: total={queue_total}, open={queue_open}, done={queue_done}, failed={queue_failed}\n"
+            f"Proposals: pending={prop_pending}, approved={prop_approved}, in_progress={prop_in_progress}, executed={prop_executed}\n"
+            "Open proposal samples (newest first):\n"
+            + ("\n".join(lines) if lines else "- none")
+            + "\nUse this snapshot directly as ground truth for this turn."
+            + " If the user asks about open tickets/triage/action plan, answer from these counts and samples first"
+            + " and do NOT ask the user to provide the same ticket list again unless snapshot shows none."
+        )
+    except Exception as exc:
+        log_activity('terminal', 'chat_ticket_snapshot_warning', str(exc)[:180])
+        return ''
+    finally:
+        conn.close()
+def _persist_local_agent_memory(selected_agent, latest_message, response_text):
+    answer = str(response_text or '').strip()
+    if not answer:
+        return
+
+    lowered = answer.lower()
+    if lowered.startswith(f'[{selected_agent}] acknowledged.'):
+        return
+    if 'taking longer than expected' in lowered:
+        return
+    if lowered.endswith('no response'):
+        return
+
+    content = (
+        f'User asked: {str(latest_message or '').strip()[:400]}\n'
+        f'You answered: {answer[:1600]}'
+    )
+    try:
+        save_agent_memory(
+            agent_name=selected_agent,
+            subject=str(latest_message or '').strip()[:100] or f'{selected_agent} terminal chat',
+            content=content,
+            tags='chat,terminal-ui,shared-thread',
+            importance=7,
+            source='terminal_chat',
+        )
+    except Exception as exc:
+        log_activity('terminal', 'chat_memory_persist_warning', f'{selected_agent}: {exc}')
+
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     """Send a chat message to one or more agents on a shared conversation thread."""
@@ -4977,93 +5223,6 @@ def api_chat():
     identity, err = _resolve_identity_or_response(data)
     if err:
         return err
-
-    def _parse_chat_skill_command(text):
-        raw = (text or '').strip()
-        upper = raw.upper()
-        if not raw:
-            return None
-
-        if upper in {'/SKILLS', 'SKILLS', '/SKILL', 'SKILL'}:
-            return 'list', ''
-
-        if upper.startswith('/SKILL '):
-            payload = raw[7:].strip()
-        elif upper.startswith('SKILL '):
-            payload = raw[6:].strip()
-        else:
-            return None
-
-        if not payload:
-            return 'list', ''
-
-        parts = payload.split(None, 1)
-        skill_name = parts[0].strip().lower()
-        skill_args = parts[1].strip() if len(parts) > 1 else ''
-        return skill_name, skill_args
-
-    def _is_execution_confirmation(text):
-        raw = str(text or '').strip().lower()
-        if not raw:
-            return False
-        confirmations = {
-            'go ahead', 'yes', 'y', 'yep', 'yeah', 'continue', 'proceed', 'do it',
-            'go for it', 'execute', 'run it', 'ship it'
-        }
-        if raw in confirmations:
-            return True
-        return bool(re.search(r'\b(go\s+ahead|continue|proceed|do\s+it|execute|run\s+it|ship\s+it|yes)\b', raw))
-
-    def _derive_proposal_from_text(selected_agent, text, user_prompt):
-        body = str(text or '').strip()
-        if not body:
-            return None
-
-        if not re.search(r'proposal|draft|title|scope|description', body, re.IGNORECASE):
-            return None
-
-        title = ''
-        desc = ''
-
-        m_title = re.search(r'(?:\*\*\s*)?title(?:\s*\*\*)?\s*:\s*(.+)', body, re.IGNORECASE)
-        if m_title:
-            title = m_title.group(1).strip().strip('*').strip()
-
-        m_desc = re.search(r'(?:\*\*\s*)?description(?:\s*\*\*)?\s*:\s*([\s\S]{20,1200})', body, re.IGNORECASE)
-        if m_desc:
-            desc = m_desc.group(1).strip()
-            desc = re.split(r'\n\s*(?:---|##+\s+|\*\*\w)', desc, maxsplit=1)[0].strip()
-
-        if not title:
-            title = f'{selected_agent} proposal from chat confirmation'
-        if not desc:
-            desc = str(user_prompt or '').strip()[:600] or body[:600]
-
-        if not title or not desc:
-            return None
-
-        return title[:180], desc[:1500]
-
-    def _extract_skill_lines_from_text(text):
-        from fridays.skills import parse_skill_command
-
-        cmds = []
-        for raw_line in str(text or '').splitlines():
-            line = raw_line.strip()
-            if not line:
-                continue
-            parsed = None
-            if line.upper().startswith('SKILL '):
-                parsed = parse_skill_command(line)
-            elif line.upper().startswith('/SKILL '):
-                parsed = parse_skill_command('SKILL ' + line[7:].strip())
-            if not parsed:
-                continue
-            skill_name, skill_args = parsed
-            if skill_name == 'list':
-                continue
-            cmds.append((skill_name, skill_args))
-        return cmds[:4]
 
     def _execute_agent_skill_lines(selected_agent, response_text, request_data):
         from fridays.skills import call as skill_call, REGISTRY as SKILL_REGISTRY
@@ -5111,166 +5270,11 @@ def api_chat():
 
         return '\\n\\n'.join(lines)
 
-    def _load_local_agent_memories(selected_agent, latest_message, topic_limit=4, recent_limit=2):
-        query = str(latest_message or '').strip()[:160]
-        collected = []
-        seen_ids = set()
-
-        for search_query, limit in ((query, topic_limit), ('', recent_limit)):
-            try:
-                rows = get_agent_memory(selected_agent, query=search_query, limit=limit) or []
-            except Exception:
-                rows = []
-            for row in rows:
-                row_id = row['id'] if 'id' in row.keys() else id(row)
-                if row_id in seen_ids:
-                    continue
-                seen_ids.add(row_id)
-                collected.append(row)
-        return collected
-
-    def _build_local_memory_block(selected_agent, latest_message):
-        memories = _load_local_agent_memories(selected_agent, latest_message)
-        if not memories:
-            return ''
-
-        lines = []
-        for row in memories:
-            tags = str(row['tags'] or '').strip()
-            subject = str(row['subject'] or '').strip()[:120]
-            content = str(row['content'] or '').strip().replace('\n', ' ')[:420]
-            prefix = f'[{tags}] ' if tags else ''
-            lines.append(f'- {prefix}{subject}: {content}')
-
-        return (
-            '\n\n=== Your recent memory ===\n'
-            + '\n'.join(lines)
-            + '\n=== End memory ===\n'
-            + 'Use this for continuity and hand-off. Do not quote it verbatim unless asked.'
-        )
-
-    def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, reply_context):
-        memory_block = _build_local_memory_block(selected_agent, latest_message)
-        handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
-        base_prompt = handoff_block + threaded_prompt + memory_block
-        if selected_agent in {'duck', 'sniffles'}:
-            return (
-                '=== Audit mode ===\n'
-                'Review the thread and latest user message. Focus on factual consistency, risk,'
-                ' contradictions, and missing assumptions. Return concise findings only.\n\n'
-                + base_prompt
-            )
-        return base_prompt
-
-    def _should_attach_ticket_snapshot(latest_message, thread_rows):
-        text = str(latest_message or '').strip().lower()
-        if not text and thread_rows:
-            text = str(thread_rows[-1].get('message') or '').strip().lower()
-        if not text:
-            return False
-        triggers = (
-            'ticket', 'tickets', 'queue', 'triage', 'open',
-            'proposal', 'proposals', 'backlog', 'pending',
-            'work item', 'work items', 'action plan', 'status'
-        )
-        return any(term in text for term in triggers)
-
-    def _build_ticket_snapshot_block(limit=8):
-        conn = get_connection()
-        try:
-            queue_rows = conn.execute(
-                "SELECT status, COUNT(*) AS c FROM queue GROUP BY status"
-            ).fetchall()
-            queue_counts = {str(r['status'] or 'unknown').lower(): int(r['c'] or 0) for r in queue_rows}
-            queue_total = sum(queue_counts.values())
-
-            proposal_rows = conn.execute(
-                "SELECT status, COUNT(*) AS c FROM work_proposals GROUP BY status"
-            ).fetchall()
-            proposal_counts = {str(r['status'] or 'unknown').lower(): int(r['c'] or 0) for r in proposal_rows}
-
-            pending_rows = conn.execute(
-                """
-                SELECT wp.proposal_id, wp.agent, wp.title, wp.status, wp.queue_id,
-                       q.status AS queue_status, q.created_at
-                FROM work_proposals wp
-                LEFT JOIN queue q ON q.id = wp.queue_id
-                WHERE lower(coalesce(wp.status, '')) IN ('pending', 'approved', 'in_progress')
-                ORDER BY coalesce(q.created_at, wp.created_at) DESC
-                LIMIT ?
-                """,
-                (int(max(1, min(20, limit))),)
-            ).fetchall()
-
-            lines = []
-            for row in pending_rows:
-                pid = str(row['proposal_id'] or '').strip() or '(no-id)'
-                agent_name = str(row['agent'] or 'unknown').strip()
-                title = str(row['title'] or '').strip().replace('\n', ' ')
-                title = title[:140] if len(title) > 140 else title
-                p_status = str(row['status'] or 'unknown').strip().lower()
-                q_status = str(row['queue_status'] or 'unknown').strip().lower()
-                lines.append(f"- {pid} | {agent_name} | {p_status}/{q_status} | {title}")
-
-            queue_open = int(queue_counts.get('queued', 0) + queue_counts.get('processing', 0))
-            queue_done = int(queue_counts.get('completed', 0) + queue_counts.get('done', 0))
-            queue_failed = int(queue_counts.get('failed', 0))
-
-            prop_pending = int(proposal_counts.get('pending', 0))
-            prop_approved = int(proposal_counts.get('approved', 0))
-            prop_in_progress = int(proposal_counts.get('in_progress', 0))
-            prop_executed = int(proposal_counts.get('executed', 0) + proposal_counts.get('done', 0))
-
-            return (
-                "\n\n=== Live Ticket Snapshot ===\n"
-                f"Queue: total={queue_total}, open={queue_open}, done={queue_done}, failed={queue_failed}\n"
-                f"Proposals: pending={prop_pending}, approved={prop_approved}, in_progress={prop_in_progress}, executed={prop_executed}\n"
-                "Open proposal samples (newest first):\n"
-                + ("\n".join(lines) if lines else "- none")
-                + "\nUse this snapshot directly as ground truth for this turn."
-                + " If the user asks about open tickets/triage/action plan, answer from these counts and samples first"
-                + " and do NOT ask the user to provide the same ticket list again unless snapshot shows none."
-            )
-        except Exception as exc:
-            log_activity('terminal', 'chat_ticket_snapshot_warning', str(exc)[:180])
-            return ''
-        finally:
-            conn.close()
-
-    def _persist_local_agent_memory(selected_agent, latest_message, response_text):
-        answer = str(response_text or '').strip()
-        if not answer:
-            return
-
-        lowered = answer.lower()
-        if lowered.startswith(f'[{selected_agent}] acknowledged.'):
-            return
-        if 'taking longer than expected' in lowered:
-            return
-        if lowered.endswith('no response'):
-            return
-
-        content = (
-            f'User asked: {str(latest_message or '').strip()[:400]}\n'
-            f'You answered: {answer[:1600]}'
-        )
-        try:
-            save_agent_memory(
-                agent_name=selected_agent,
-                subject=str(latest_message or '').strip()[:100] or f'{selected_agent} terminal chat',
-                content=content,
-                tags='chat,terminal-ui,shared-thread',
-                importance=7,
-                source='terminal_chat',
-            )
-        except Exception as exc:
-            log_activity('terminal', 'chat_memory_persist_warning', f'{selected_agent}: {exc}')
-
     def _run_ghost_layer_chat(selected_agent, prompt, history, stage_cb=None):
         from claude_api import _load_api_key, CLAUDE_MODEL
         import anthropic
         from config import NINE_SYSTEM_PROMPT, TEN_SYSTEM_PROMPT
-        from fridays.skills import parse_skill_command, call as skill_call
+        from fridays.skills import call as skill_call
 
         def _emit_stage(text):
             if callable(stage_cb):
@@ -5307,25 +5311,6 @@ def api_chat():
             system_prompt = base_system
 
         client = anthropic.Anthropic(api_key=api_key)
-
-        def _extract_skill_lines(text):
-            cmds = []
-            for raw_line in str(text or '').splitlines():
-                line = raw_line.strip()
-                if not line:
-                    continue
-                parsed = None
-                if line.upper().startswith('SKILL '):
-                    parsed = parse_skill_command(line)
-                elif line.upper().startswith('/SKILL '):
-                    parsed = parse_skill_command('SKILL ' + line[7:].strip())
-                if not parsed:
-                    continue
-                skill_name, skill_args = parsed
-                if skill_name == 'list':
-                    continue
-                cmds.append((skill_name, skill_args))
-            return cmds[:4]
 
         def _run_skill_lines(cmds):
             def _route_shell_to_fs_readonly(shell_args):
@@ -5381,7 +5366,7 @@ def api_chat():
         tokens = response.usage.input_tokens + response.usage.output_tokens
 
         answer = first_answer
-        skill_cmds = _extract_skill_lines(first_answer)
+        skill_cmds = _extract_skill_lines_from_text(first_answer)
         if skill_cmds:
             _emit_stage('running requested skills')
             skill_results = _run_skill_lines(skill_cmds)
@@ -5445,7 +5430,7 @@ def api_chat():
         response_text = None
         tokens_used = 0
         started_at = time.time()
-        executor = ThreadPoolExecutor(max_workers=1)
+        executor = _CHAT_WORKER_EXECUTOR
         est_eta = _chat_eta_seconds(selected_agent)
         effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
         if _is_execution_confirmation(message):
@@ -5539,9 +5524,6 @@ def api_chat():
                     f'[{selected_agent}] is taking longer than expected. '
                     'Try again in a moment or switch to another agent.'
                 )
-        finally:
-            executor.shutdown(wait=False)
-
         if response_text is None:
             response_text = f'[{selected_agent}] no response'
 
@@ -5866,39 +5848,35 @@ def api_chat():
                 _chat_update_job(job_id, stage=stage_text, eta_seconds=eta_seconds)
 
             agent_prompt = _build_debate_prompt(selected_agent)
-            single_executor = ThreadPoolExecutor(max_workers=1)
+            future = _CHAT_DISPATCH_EXECUTOR.submit(
+                _run_single_agent,
+                selected_agent,
+                agent_prompt,
+                history,
+                reply_contexts[selected_agent],
+                True,
+                _stage_cb,
+            )
             try:
-                future = single_executor.submit(
-                    _run_single_agent,
-                    selected_agent,
-                    agent_prompt,
-                    history,
-                    reply_contexts[selected_agent],
-                    True,
-                    _stage_cb,
+                wait_timeout = 20 if selected_agent == 'sniffles' else 10
+                response_text, tokens_used, elapsed_ms = future.result(timeout=wait_timeout)
+                pending = False
+                pending_job_id = None
+            except FuturesTimeoutError:
+                pending_job_id = _register_persistent_job(selected_agent, future, reply_contexts[selected_agent], job_ref)
+                pending_jobs.append(pending_job_id)
+                pending = True
+                eta_seconds = _chat_eta_seconds(selected_agent)
+                response_text, tokens_used = (
+                    f'[{selected_agent}] acknowledged. Running now. ETA ~{eta_seconds}s; monitor shows live stage.',
+                    0,
                 )
-                try:
-                    wait_timeout = 20 if selected_agent == 'sniffles' else 10
-                    response_text, tokens_used, elapsed_ms = future.result(timeout=wait_timeout)
-                    pending = False
-                    pending_job_id = None
-                except FuturesTimeoutError:
-                    pending_job_id = _register_persistent_job(selected_agent, future, reply_contexts[selected_agent], job_ref)
-                    pending_jobs.append(pending_job_id)
-                    pending = True
-                    eta_seconds = _chat_eta_seconds(selected_agent)
-                    response_text, tokens_used = (
-                        f'[{selected_agent}] acknowledged. Running now. ETA ~{eta_seconds}s; monitor shows live stage.',
-                        0,
-                    )
-                    elapsed_ms = int(wait_timeout * 1000)
-                except Exception as exc:
-                    response_text, tokens_used = (f'[{selected_agent}] error: {str(exc)}', 0)
-                    elapsed_ms = 0
-                    pending = False
-                    pending_job_id = None
-            finally:
-                single_executor.shutdown(wait=False, cancel_futures=False)
+                elapsed_ms = int(wait_timeout * 1000)
+            except Exception as exc:
+                response_text, tokens_used = (f'[{selected_agent}] error: {str(exc)}', 0)
+                elapsed_ms = 0
+                pending = False
+                pending_job_id = None
 
             responses_map[selected_agent] = {
                 'agent': selected_agent,
