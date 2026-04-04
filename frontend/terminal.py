@@ -5194,6 +5194,37 @@ def _persist_local_agent_memory(selected_agent, latest_message, response_text):
     except Exception as exc:
         log_activity('terminal', 'chat_memory_persist_warning', f'{selected_agent}: {exc}')
 
+def _friendly_api_error(exc) -> str:
+    """Return a concise, human-readable description of an API exception."""
+    import re as _re
+    # SDK-style structured errors (Anthropic, OpenAI) expose .body or .message
+    body = getattr(exc, 'body', None)
+    if isinstance(body, dict):
+        inner = body.get('error') or {}
+        msg = inner.get('message') if isinstance(inner, dict) else None
+        if msg:
+            return str(msg)
+    sdk_msg = getattr(exc, 'message', None)
+    if sdk_msg and sdk_msg != str(exc):
+        return str(sdk_msg)
+    # Try to pull 'message': '...' out of the string representation
+    raw = str(exc)
+    m = _re.search(r"'message':\s*'([^']+)'", raw) or _re.search(r'"message":\s*"([^"]+)"', raw)
+    if m:
+        return m.group(1)
+    # Known substrings → friendly labels
+    if 'credit balance' in raw.lower() or 'billing' in raw.lower():
+        return 'API credit balance too low — please top up billing'
+    if 'rate limit' in raw.lower() or '429' in raw:
+        return 'Rate limit reached — please retry shortly'
+    if 'invalid api key' in raw.lower() or '401' in raw:
+        return 'Invalid or missing API key'
+    if 'context length' in raw.lower() or 'token' in raw.lower() and 'exceed' in raw.lower():
+        return 'Context length exceeded'
+    # Fallback: first 120 chars stripped of dict noise
+    return raw[:120]
+
+
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     """Send a chat message to one or more agents on a shared conversation thread."""
@@ -5203,6 +5234,7 @@ def api_chat():
     requested_agents = data.get('agents')
     requested_conv_id = data.get('conversation_id')
     force_new_thread = bool(data.get('new_thread'))
+    relay_from = str(data.get('relay_from') or '').strip().lower() or None
     history_mode = str(data.get('history_mode') or 'full').strip().lower()
     history_limit_raw = data.get('history_limit')
 
@@ -5576,7 +5608,8 @@ def api_chat():
             conv_id = new_conversation(f'{title_agents}: {message[:90]}', source='terminal-ui')
 
         to_agent = normalized_agents[0] if len(normalized_agents) == 1 else ','.join(normalized_agents)
-        log_message(conv_id, 'user', message, to_agent=to_agent, message_type='chat')
+        msg_sender = relay_from if relay_from else 'user'
+        log_message(conv_id, msg_sender, message, to_agent=to_agent, message_type='relay' if relay_from else 'chat')
 
         parsed_skill = _parse_chat_skill_command(message)
         if parsed_skill:
@@ -5889,7 +5922,7 @@ def api_chat():
                 )
                 elapsed_ms = int(wait_timeout * 1000)
             except Exception as exc:
-                response_text, tokens_used = (f'[{selected_agent}] error: {str(exc)}', 0)
+                response_text, tokens_used = (f'[{selected_agent}] Unavailable: {_friendly_api_error(exc)}', 0)
                 elapsed_ms = 0
                 pending = False
                 pending_job_id = None
