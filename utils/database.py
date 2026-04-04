@@ -788,6 +788,18 @@ def _migrate_schema(conn=None):
         if tbl not in tables:
             conn.execute(ddl)
             conn.commit()
+
+    # Add number + label columns to agents table (idempotent — ALTER TABLE ignored if column exists)
+    for col_ddl in [
+        "ALTER TABLE agents ADD COLUMN number INTEGER DEFAULT 0",
+        "ALTER TABLE agents ADD COLUMN label  TEXT    DEFAULT ''",
+    ]:
+        try:
+            conn.execute(col_ddl)
+            conn.commit()
+        except Exception:
+            pass  # column already exists — safe to ignore
+
     if _close:
         conn.close()
 
@@ -884,33 +896,68 @@ def get_project_docs(tag='all'):
 
 
 def _seed_agents():
+    # number: permanent agent number (0=Ghost/human, 1-11=AI agents, -1=retired)
+    # name:   stable internal code key — never changes even if model swaps
+    # label:  display name shown in UI — change this when model/nickname changes
+    # model:  current Ollama or API model string
     roster = [
-        ('gemma',     'gemma3:latest',   0.3, 'Director — routes, synthesises, speaks last'),
-        ('llama',     'llama3.2:latest', 0.6, 'Correspondent — web search, fast first response'),
-        ('qwen',      'qwen2.5:latest',  0.7, 'Analyst — deep reasoning, debates, challenges'),
-        ('librarian', 'qwen:1.5b',       0.1, 'Gatekeeper — tags only, never speaks'),
-        ('eight',     'qwen2.5:latest',  0.7, 'SAP specialist — three-voice debate (Functional/Technical/Devil) + synthesis'),
-        ('duck',      'qwen:1.5b',       0.1, 'Sanity checker — YES/NO after every ticket'),
-        ('sniffles',  'deepseek-r1:7b',  0.2, 'Inspector — memory auditor, read only'),
-        ('ghost',     'external',        0.0, 'Human operator. Ghost Layer. Builds, approves, decides. Full access.'),
-        ('nine',      'claude-sonnet-4-6',     0.3, 'Nine (Claude Sonnet) — system architect. Ghost Layer. Session memory in memory_nine.'),
-        ('ten',       'gpt-4.1',               0.4, 'Ten (GPT) — software engineering advisor, code quality, implementation clarity. Ghost Layer.'),
-        ('eleven',    'grok-3',                0.5, 'Eleven (Grok 3) — lateral thinking, creative synthesis. Ghost Layer.'),
-        ('twelve',    'claude-haiku-4-5-20251001', 0.3, 'Twelve (Claude Haiku) — time wizard, temporal awareness, decision tracking, time machine.'),
+        # num  name         label        model                        temp  role
+        ( 0,  'ghost',     'Ghost',     'external',                  0.0,  'Human operator. Builds, approves, decides. Full system authority.'),
+        ( 1,  'gemma',     'Gemma3',    'gemma3:latest',             0.3,  'Director — routes, synthesises, speaks last'),
+        ( 2,  'llama',     'LlaMA',     'llama3.2:latest',           0.6,  'Correspondent — web search, fast first response'),
+        ( 3,  'mistral',   'Mistral',   'mistral:latest',            0.7,  'Analyst — deep reasoning, debates, challenges Two'),
+        ( 4,  'qwen',      'Qwen',      'qwen2.5:latest',            0.7,  'Deep Analyst — specialist depth, multilingual reasoning'),
+        ( 5,  'librarian', 'Vortex',    'qwen:1.5b',                 0.1,  'Gatekeeper + Vortex — tags, queues, closes, checkpoints'),
+        ( 6,  'duck',      'Duck',      'qwen:1.5b',                 0.1,  'Sanity checker — YES/NO after every ticket'),
+        ( 7,  'sniffles',  'Sniffles',  'deepseek-r1:7b',            0.2,  'Inspector — memory auditor, read only, chain-of-thought'),
+        ( 8,  'eight',     'Eight',     'gemma4:26b',                0.5,  'SAP specialist — three-voice debate (Functional/Technical/Devil)'),
+        ( 9,  'nine',      'Claude',    'claude-sonnet-4-6',         0.3,  'System architect — Ghost Layer, Ghost Briefs, proposals'),
+        (10,  'ten',       'Github',    'gpt-5.3-codex',             0.4,  'Engineering advisor — code quality, implementation clarity'),
+        (11,  'eleven',    'Grok',      'grok-api',                  0.5,  'Lateral thinking advisor — creative synthesis, alternatives'),
     ]
     conn = get_connection()
-    for name, model, temp, role in roster:
+    for number, name, label, model, temp, role in roster:
         conn.execute(
-            """INSERT INTO agents (name,model,temperature,role)
-               VALUES (?,?,?,?)
+            """INSERT INTO agents (number, name, label, model, temperature, role)
+               VALUES (?,?,?,?,?,?)
                ON CONFLICT(name) DO UPDATE SET
+                   number=excluded.number,
+                   label=excluded.label,
                    model=excluded.model,
                    temperature=excluded.temperature,
                    role=excluded.role""",
-            (name, model, temp, role)
+            (number, name, label, model, temp, role)
+        )
+    # Retire agents that no longer exist as standalone entries
+    for retired_name, retired_note in [
+        ('twelve', 'RETIRED 2026-04-04 — functionality absorbed into Librarian (Agent 5)'),
+        ('grok',   'RETIRED 2026-04-04 — alias consolidated into eleven (Agent 11)'),
+    ]:
+        conn.execute(
+            "UPDATE agents SET number=-1, label='Retired', role=? WHERE name=?",
+            (retired_note, retired_name)
         )
     conn.commit()
     conn.close()
+
+
+def get_agent_registry():
+    """Return all active agents ordered by number. Excludes retired (number=-1)."""
+    try:
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                """SELECT number, name, label, model, temperature, role
+                   FROM agents
+                   WHERE number >= 0
+                   ORDER BY number ASC"""
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.warning(f'get_agent_registry failed: {e}')
+        return []
 
 
 def _seed_moderator():
