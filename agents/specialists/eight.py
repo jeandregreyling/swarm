@@ -42,13 +42,27 @@ _BYSTANDER_MODELS = ('qwen:latest', 'llama3.2:latest')
 
 
 def _unload_bystanders():
-    """Evict resident bystander models so qwen2.5 + gemma3 fit in RAM."""
+    """Evict resident bystander models so qwen2.5 + gemma3 fit in RAM.
+    Ollama queues the unload until any in-flight request on that model
+    completes, so this is safe to call while other jobs are running."""
     for model in _BYSTANDER_MODELS:
         try:
             ollama.generate(model=model, prompt=' ', keep_alive=0)
             print(f'[Eight] Unloaded {model} from memory')
         except Exception:
             pass  # model not loaded — no-op
+
+
+def _reload_bystanders():
+    """Pre-warm bystander models back into RAM after Eight finishes.
+    Uses a single-token generate with keep_alive=-1 (keep until Ollama
+    decides to evict) so they are instantly ready for the next request."""
+    for model in _BYSTANDER_MODELS:
+        try:
+            ollama.generate(model=model, prompt=' ', keep_alive=-1)
+            print(f'[Eight] Reloaded {model} into memory')
+        except Exception as exc:
+            print(f'[Eight] Warning: could not reload {model}: {exc}')
 
 
 def _ask_voice(voice_name, system_prompt, user_prompt, temperature):
@@ -181,6 +195,10 @@ def consult(question, web_results, shared_context, conv_id, status_cb=None):
 
     log_message(conv_id, 'Eight/Gemma', gemma_verdict, to_agent='Ghost', message_type='eight_verdict')
     promote_to_verified(question[:50], gemma_verdict, tags='verified,eight,sap,verdict')
+
+    # Restore bystander models so the rest of the swarm is ready immediately.
+    _status('Restoring swarm models...')
+    _reload_bystanders()
 
     return {
         'functional': functional,
