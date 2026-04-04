@@ -1198,8 +1198,8 @@ body.theme-rose {
   flex: 1;
   padding: 0;
 }
-.chat-main-shell #chat-thread-runtime {
-  margin: 0 0 6px;
+#chat-main #chat-thread-runtime {
+  margin: 0;
 }
 .chat-main-shell #chat-messages {
   padding-top: 10px;
@@ -1914,6 +1914,7 @@ body.theme-rose {
   flex-wrap: wrap;
 }
 .chat-handoff-btn {
+  display: inline-block;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--text);
@@ -1921,6 +1922,7 @@ body.theme-rose {
   padding: 2px 8px;
   font-size: 10px;
   cursor: pointer;
+  user-select: text;
 }
 .chat-handoff-btn:hover {
   border-color: var(--accent);
@@ -2196,7 +2198,9 @@ body.theme-rose {
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklab, var(--window-header) 88%, var(--accent) 12%);
   padding: 4px 8px;
-  display: none;
+  display: block;
+  flex-shrink: 0;
+  min-height: 28px;
 }
 
 .chat-thread-runtime.open {
@@ -3473,12 +3477,12 @@ input[type="range"]::-moz-range-thumb:hover {
             <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
           </div>
         </div>
+        <div id="chat-thread-runtime" class="chat-thread-runtime"></div>
         <div id="chat-section-main" class="chat-section chat-main-shell">
-          <div class="chat-section-header" aria-controls="chat-thread-runtime" aria-expanded="true">
+          <div class="chat-section-header" aria-controls="chat-section-main-content" aria-expanded="true">
             <span class="chat-section-title">💬 Main Chat</span>
           </div>
           <div id="chat-section-main-content" class="chat-section-content">
-            <div id="chat-thread-runtime" class="chat-thread-runtime"></div>
             <div id="chat-messages" style="flex:1; overflow-y: auto;">
               <div class="welcome" style="display:none;"></div>
             </div>
@@ -5731,11 +5735,14 @@ function loadTerminalData(win) {
   }
   _terminalSyncControls();
   _terminalSyncHistoryUi();
+  _loadDbShortcuts(); // load custom shortcuts from DB (async, refreshes buttons when done)
 }
 
 function _terminalWindow() {
   return winManager && winManager.windows ? winManager.windows.get('terminal') : null;
 }
+
+const TERMINAL_HISTORY_MAX = 80;
 
 function _terminalFind(selector) {
   const terminalWin = _terminalWindow();
@@ -5757,7 +5764,7 @@ function _terminalStreamState() {
       commandId: null,
       proposalId: null,
       autoScroll: true,
-      history: history.slice(-80),
+      history: history.slice(-TERMINAL_HISTORY_MAX),
       historyIndex: -1,
       draft: '',
       copyStore: {},
@@ -5848,6 +5855,13 @@ function _terminalRenderHistoryPanel() {
     runBtn.onclick = () => terminalRunFromHistory(cmd);
     row.appendChild(runBtn);
 
+    const favBtn = document.createElement('button');
+    favBtn.textContent = '★';
+    favBtn.title = 'Save to shortcuts';
+    favBtn.style.cssText = 'background:transparent;border:1px solid var(--border);color:#f7b84b;border-radius:4px;padding:3px 7px;cursor:pointer;font-size:11px;';
+    favBtn.onclick = () => _terminalSaveToShortcuts(cmd, favBtn);
+    row.appendChild(favBtn);
+
     panel.appendChild(row);
   });
 }
@@ -5911,7 +5925,7 @@ function _terminalAppendPromptLine(output, cmd, entryId) {
 function _persistTerminalHistory() {
   const state = _terminalStreamState();
   try {
-    localStorage.setItem('fridays-terminal-history', JSON.stringify((state.history || []).slice(-80)));
+    localStorage.setItem('fridays-terminal-history', JSON.stringify((state.history || []).slice(-TERMINAL_HISTORY_MAX)));
   } catch {}
   if (state.historyOpen) {
     _terminalRenderHistoryPanel();
@@ -5926,7 +5940,7 @@ function _terminalPushHistory(cmd) {
   const history = Array.isArray(state.history) ? state.history : [];
   if (history[history.length - 1] !== clean) {
     history.push(clean);
-    state.history = history.slice(-80);
+    state.history = history.slice(-TERMINAL_HISTORY_MAX);
     _persistTerminalHistory();
   }
   state.historyIndex = -1;
@@ -6180,82 +6194,225 @@ const DEFAULT_TERMINAL_SHORTCUTS = [
   { icon: '🧠', label: 'System Memory', cmd: 'free -h' },
 ];
 
-function getCustomTerminalShortcuts() {
+// ── Terminal shortcuts (DB-backed) ───────────────────────────────────────────
+// Custom shortcuts stored in terminal_shortcuts table via /api/terminal/shortcuts.
+// DEFAULT_TERMINAL_SHORTCUTS are hardcoded and never stored in DB.
+
+let _terminalDbShortcuts = []; // in-memory cache, loaded from DB on tile open
+
+async function _loadDbShortcuts() {
+  // One-time migration: move any localStorage custom shortcuts to DB
   try {
-    const raw = JSON.parse(localStorage.getItem('fridays-terminal-shortcuts-custom') || '[]');
-    return Array.isArray(raw) ? raw : [];
+    const legacy = JSON.parse(localStorage.getItem('fridays-terminal-shortcuts-custom') || '[]');
+    if (Array.isArray(legacy) && legacy.length > 0) {
+      for (const item of legacy) {
+        if (item.label && item.cmd) {
+          await fetch('/api/terminal/shortcuts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ icon: item.icon || '⚡', label: item.label, cmd: item.cmd })
+          }).catch(() => {});
+        }
+      }
+      localStorage.removeItem('fridays-terminal-shortcuts-custom');
+    }
+  } catch {}
+
+  try {
+    const data = await fetch('/api/terminal/shortcuts').then(r => r.json());
+    _terminalDbShortcuts = Array.isArray(data) ? data : [];
   } catch {
-    return [];
+    _terminalDbShortcuts = [];
   }
+  _terminalRefreshButtons();
 }
 
-function saveCustomTerminalShortcuts(items) {
-  localStorage.setItem('fridays-terminal-shortcuts-custom', JSON.stringify(items || []));
+function _terminalRefreshButtons() {
+  const win = _terminalWindow();
+  if (!win) return;
+  const c = win.el.querySelector('#terminal-buttons');
+  if (c) renderTerminalQuickButtons(c, win);
 }
 
 function renderTerminalQuickButtons(btnContainer, win) {
   if (!btnContainer) return;
-  const custom = getCustomTerminalShortcuts();
-  const all = [
-    ...DEFAULT_TERMINAL_SHORTCUTS.map(i => ({ ...i, _custom: false })),
-    ...custom.map((i, idx) => ({ ...i, _custom: true, _idx: idx })),
-  ];
+  // All shortcuts come from DB — defaults were seeded server-side
+  const all = _terminalDbShortcuts.length ? _terminalDbShortcuts : DEFAULT_TERMINAL_SHORTCUTS;
 
   btnContainer.innerHTML = '';
   all.forEach((item) => {
     const btn = document.createElement('button');
-    btn.className = 'cmd-btn' + (item._custom ? ' custom' : '');
-    const remove = item._custom
-      ? `<button class="cmd-remove" title="Remove shortcut" onclick="event.stopPropagation(); removeTerminalShortcut(${item._idx})">✕</button>`
+    btn.className = 'cmd-btn custom';
+    const removeBtn = item.id
+      ? `<button class="cmd-remove" title="Remove shortcut" onclick="event.stopPropagation(); _scDelete(${item.id})">✕</button>`
       : '';
-    btn.innerHTML = `${remove}<span>${item.icon || '⚡'}</span> ${_escHtml(item.label || 'Shortcut')}<span class="cmd-meta">${_escHtml((item.cmd || '').slice(0, 90))}${(item.cmd || '').length > 90 ? '…' : ''}</span>`;
+    btn.innerHTML = `${removeBtn}<span>${item.icon || '⚡'}</span> ${_escHtml(item.label || 'Shortcut')}<span class="cmd-meta">${_escHtml((item.cmd || '').slice(0, 90))}${(item.cmd || '').length > 90 ? '…' : ''}</span>`;
     btn.onclick = () => cmdTerminal(item.cmd || '');
     btnContainer.appendChild(btn);
   });
 }
 
+// Open shortcut manager modal (replaces prompt() dialogs)
 function addTerminalShortcut() {
-  const label = prompt('Shortcut label (e.g. Reload ALM):', 'My Shortcut');
-  if (label == null) return;
-  const cmd = prompt('Command to run in Fridays Terminal:', 'echo hello');
-  if (cmd == null) return;
-  const cleanLabel = label.trim();
-  const cleanCmd = cmd.trim();
-  if (!cleanLabel || !cleanCmd) {
-    showToast('Shortcut label and command are required', 'error');
-    return;
-  }
-  const icon = (prompt('Optional icon (single emoji):', '⚡') || '⚡').trim().slice(0, 2) || '⚡';
-  const custom = getCustomTerminalShortcuts();
-  custom.push({ icon, label: cleanLabel, cmd: cleanCmd });
-  saveCustomTerminalShortcuts(custom);
-  const chatWin = winManager.windows.get('terminal');
-  if (chatWin) {
-    const c = chatWin.el.querySelector('#terminal-buttons');
-    renderTerminalQuickButtons(c, chatWin);
-  }
-  showToast('Shortcut added', 'success');
+  if (document.getElementById('terminal-shortcut-modal')) return;
+
+  const inputStyle = 'background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 8px;font-size:12px;outline:none;';
+  const btnStyle   = 'border:1px solid var(--border);border-radius:4px;padding:4px 10px;cursor:pointer;font-size:11px;';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'terminal-shortcut-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:var(--bg,#12121a);border:1px solid var(--border);border-radius:10px;width:580px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.6);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div style="font-weight:700;font-size:13px;">⚡ Shortcuts Manager</div>
+        <button onclick="document.getElementById('terminal-shortcut-modal').remove()" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;line-height:1;padding:0 2px;">✕</button>
+      </div>
+      <div id="sc-modal-list" style="overflow-y:auto;flex:1;padding:0;"></div>
+      <div style="border-top:1px solid var(--border);padding:12px 16px;flex-shrink:0;">
+        <div style="font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Add Shortcut</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="sc-new-icon" value="⚡" maxlength="4" style="${inputStyle}width:44px;text-align:center;font-size:16px;" title="Icon (emoji)">
+          <input id="sc-new-label" placeholder="Label" style="${inputStyle}flex:1;" onkeydown="if(event.key==='Enter')_scAdd()">
+          <input id="sc-new-cmd" placeholder="Command" style="${inputStyle}flex:2;font-family:monospace;" onkeydown="if(event.key==='Enter')_scAdd()">
+          <button onclick="_scAdd()" style="${btnStyle}background:var(--accent,#7c5cfc);color:#fff;border-color:transparent;font-weight:600;">+ Add</button>
+        </div>
+      </div>
+    </div>
+  `;
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+  _scModalRenderList();
+  overlay.querySelector('#sc-new-label').focus();
 }
 
-function removeTerminalShortcut(idx) {
-  const custom = getCustomTerminalShortcuts();
-  if (idx < 0 || idx >= custom.length) return;
-  custom.splice(idx, 1);
-  saveCustomTerminalShortcuts(custom);
-  const termWin = winManager.windows.get('terminal');
-  if (termWin) {
-    const c = termWin.el.querySelector('#terminal-buttons');
-    renderTerminalQuickButtons(c, termWin);
+function _scModalRenderList() {
+  const list = document.getElementById('sc-modal-list');
+  if (!list) return;
+  const rowStyle = 'display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;';
+  const btnStyle = 'border:1px solid var(--border);border-radius:3px;padding:2px 8px;cursor:pointer;font-size:10px;';
+
+  if (!_terminalDbShortcuts.length) {
+    list.innerHTML = '<div style="padding:16px;font-size:11px;color:var(--text-dim);text-align:center;">No shortcuts yet — add one below.</div>';
+    return;
   }
-  showToast('Shortcut removed', 'info');
+
+  let html = '';
+  _terminalDbShortcuts.forEach(item => {
+    html += `
+      <div id="sc-row-${item.id}" style="${rowStyle}">
+        <span style="font-size:16px;min-width:24px;">${_escHtml(item.icon || '⚡')}</span>
+        <span style="flex:1;font-weight:500;">${_escHtml(item.label)}</span>
+        <code style="flex:2;color:var(--text-dim);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(item.cmd)}</code>
+        <button onclick="_scEditRow(${item.id})" style="${btnStyle}background:var(--card);color:var(--text);">Edit</button>
+        <button onclick="_scDelete(${item.id})" style="${btnStyle}background:transparent;color:#f44336;border-color:#f4433655;">✕</button>
+      </div>`;
+  });
+  list.innerHTML = html;
 }
+
+function _scEditRow(id) {
+  const item = _terminalDbShortcuts.find(s => s.id === id);
+  if (!item) return;
+  const row = document.getElementById('sc-row-' + id);
+  if (!row) return;
+  const inputStyle = 'background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 7px;font-size:11px;outline:none;';
+  row.innerHTML = `
+    <input value="${_escHtml(item.icon||'⚡')}" maxlength="4" style="${inputStyle}width:44px;text-align:center;font-size:14px;" id="sc-edit-icon-${id}">
+    <input value="${_escHtml(item.label)}" style="${inputStyle}flex:1;" id="sc-edit-label-${id}" onkeydown="if(event.key==='Enter')_scSave(${id})">
+    <input value="${_escHtml(item.cmd)}" style="${inputStyle}flex:2;font-family:monospace;" id="sc-edit-cmd-${id}" onkeydown="if(event.key==='Enter')_scSave(${id})">
+    <button onclick="_scSave(${id})" style="border:none;border-radius:3px;padding:3px 10px;cursor:pointer;font-size:10px;background:var(--accent,#7c5cfc);color:#fff;font-weight:600;">Save</button>
+    <button onclick="_scModalRenderList()" style="border:1px solid var(--border);border-radius:3px;padding:3px 8px;cursor:pointer;font-size:10px;background:transparent;color:var(--text-dim);">Cancel</button>
+  `;
+  row.style.flexWrap = 'wrap';
+  row.querySelector('#sc-edit-label-' + id).focus();
+}
+
+async function _scSave(id) {
+  const icon  = (document.getElementById('sc-edit-icon-' + id)?.value || '⚡').trim().slice(0, 4) || '⚡';
+  const label = (document.getElementById('sc-edit-label-' + id)?.value || '').trim();
+  const cmd   = (document.getElementById('sc-edit-cmd-' + id)?.value || '').trim();
+  if (!label || !cmd) { showToast('Label and command are required', 'error'); return; }
+  try {
+    await fetch(`/api/terminal/shortcuts/${id}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ icon, label, cmd })
+    });
+    const entry = _terminalDbShortcuts.find(s => s.id === id);
+    if (entry) { entry.icon = icon; entry.label = label; entry.cmd = cmd; }
+    _scModalRenderList();
+    _terminalRefreshButtons();
+    showToast('Shortcut updated', 'success');
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'error');
+  }
+}
+
+async function _scAdd() {
+  const icon  = (document.getElementById('sc-new-icon')?.value  || '⚡').trim().slice(0, 4) || '⚡';
+  const label = (document.getElementById('sc-new-label')?.value || '').trim();
+  const cmd   = (document.getElementById('sc-new-cmd')?.value   || '').trim();
+  if (!label || !cmd) { showToast('Label and command are required', 'error'); return; }
+  try {
+    const res  = await fetch('/api/terminal/shortcuts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ icon, label, cmd })
+    }).then(r => r.json());
+    _terminalDbShortcuts.push({ id: res.id, icon, label, cmd, sort_order: 0 });
+    _scModalRenderList();
+    _terminalRefreshButtons();
+    if (document.getElementById('sc-new-label')) document.getElementById('sc-new-label').value = '';
+    if (document.getElementById('sc-new-cmd'))   document.getElementById('sc-new-cmd').value   = '';
+    if (document.getElementById('sc-new-icon'))  document.getElementById('sc-new-icon').value  = '⚡';
+    showToast('Shortcut added', 'success');
+  } catch (e) {
+    showToast('Add failed: ' + e.message, 'error');
+  }
+}
+
+async function _scDelete(id) {
+  try {
+    await fetch(`/api/terminal/shortcuts/${id}`, { method: 'DELETE' });
+    _terminalDbShortcuts = _terminalDbShortcuts.filter(s => s.id !== id);
+    _scModalRenderList();
+    _terminalRefreshButtons();
+    showToast('Shortcut removed', 'info');
+  } catch (e) {
+    showToast('Delete failed: ' + e.message, 'error');
+  }
+}
+
+// Save a command from history directly to shortcuts (no modal needed)
+async function _terminalSaveToShortcuts(cmd, btnEl) {
+  const already = _terminalDbShortcuts.some(s => s.cmd.trim() === cmd.trim());
+  if (already) { showToast('Already in shortcuts', 'info'); return; }
+  try {
+    const label = cmd.length > 32 ? cmd.slice(0, 32) + '…' : cmd;
+    const res = await fetch('/api/terminal/shortcuts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ icon: '⚡', label, cmd })
+    }).then(r => r.json());
+    _terminalDbShortcuts.push({ id: res.id, icon: '⚡', label, cmd, sort_order: 0 });
+    _terminalRefreshButtons();
+    if (btnEl) { btnEl.textContent = '★'; btnEl.style.color = '#4caf50'; btnEl.disabled = true; }
+    showToast('Saved to shortcuts', 'success');
+  } catch (e) {
+    showToast('Save failed: ' + e.message, 'error');
+  }
+}
+
+// Legacy helpers kept so any old stored references don't throw
+function getCustomTerminalShortcuts() { return []; }
+function saveCustomTerminalShortcuts() {}
+function removeTerminalShortcut() {}
 
 function toggleTerminalShortcuts() {
   const termWin = winManager.windows.get('terminal');
   if (!termWin) return;
-  const panel = termWin.el.querySelector('#terminal-shortcuts-panel');
-  if (!panel) return;
-  const collapsed = panel.style.width === '42px';
+  const collapsed = sessionStorage.getItem('fridays-terminal-shortcuts-collapsed') === '1';
   const nextCollapsed = !collapsed;
   applyTerminalShortcutsState(termWin, nextCollapsed);
   sessionStorage.setItem('fridays-terminal-shortcuts-collapsed', nextCollapsed ? '1' : '0');
@@ -10216,43 +10373,32 @@ async function _renderTerminalResultCard(cmd, output, statusEl, startTime) {
   const elapsed = Math.max(0, (Date.now() - startTime) / 1000);
   const ok = statusEl.ok !== false;
   const lines = (output || '').split('\n').filter(l => l.trim()).length;
-  const truncated = (output || '').length > 2048;
-  const displayOutput = truncated ? (output || '').slice(0, 2048) + '\n[… output truncated]' : (output || '');
-  const statusIcon = ok ? '✓' : '✕';
+  const truncated = (output || '').length > 4000;
+  const displayOutput = truncated ? (output || '').slice(0, 4000) + '\n[… output truncated]' : (output || '');
   const copyId = 'term-copy-' + Math.random().toString(36).slice(2, 10);
   state.copyStore[copyId] = output || '';
   const copyKeys = Object.keys(state.copyStore || {});
-  if (copyKeys.length > 160) {
-    delete state.copyStore[copyKeys[0]];
-  }
+  if (copyKeys.length > 160) delete state.copyStore[copyKeys[0]];
   const rerunId = _terminalStoreActionValue(cmd, 'term-rerun');
-  const pinId = _terminalStoreActionValue(cmd, 'term-pin');
+  const pinId   = _terminalStoreActionValue(cmd, 'term-pin');
   const entryId = statusEl.entryId || '';
-
   const statusColor = ok ? '#4caf50' : '#f44336';
-  const statusLabel = ok ? 'success' : 'error';
-  
+  const statusLabel = ok ? '✓' : '✕';
+  const btnStyle = 'background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:1px 7px;cursor:pointer;font-size:10px;';
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
   return `
-    <div class="terminal-result-card" data-terminal-entry-id="${_escHtml(entryId)}" data-terminal-command="${_escHtml(cmd)}" data-terminal-output="${_escHtml(output || '')}" style="margin-top:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02);overflow:hidden;">
-      <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-          <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${statusColor};box-shadow:0 0 8px ${statusColor}80;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">${statusIcon}</span>
-          <code style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--text);">${_escHtml(cmd)}</code>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-          <span style="font-size:10px;color:var(--text-dim);">${Math.round(elapsed * 100) / 100}s</span>
-          <span style="padding:2px 7px;background:${statusColor}22;border:1px solid ${statusColor}55;border-radius:4px;color:${statusColor};font-size:10px;font-weight:600;text-transform:uppercase;">${statusLabel}</span>
-        </div>
-      </div>
-      <div style="padding:10px 12px;font-family:'SF Mono','Courier New',monospace;font-size:11px;overflow-x:auto;max-height:180px;overflow-y:auto;background:rgba(0,0,0,0.2);white-space:pre-wrap;word-break:break-word;line-height:1.4;color:${ok ? '#0f9' : '#f77'};">${_escHtml(displayOutput)}</div>
-      <div style="padding:8px 12px;border-top:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);gap:10px;">
-        <span>${lines} line${lines === 1 ? '' : 's'}${truncated ? ' (truncated)' : ''}</span>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <button onclick="terminalRerunCommand('${rerunId}')" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;">Rerun</button>
-          <button onclick="terminalPinCommand('${pinId}')" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;">Pin</button>
-          <button onclick="terminalCopyResult('${copyId}')" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;">Copy output</button>
-          <span>${new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-        </div>
+    <div class="terminal-result-card" data-terminal-entry-id="${_escHtml(entryId)}" data-terminal-command="${_escHtml(cmd)}" data-terminal-output="${_escHtml((output||'').slice(0,2000))}" style="margin-top:2px;">
+      <pre style="margin:0;padding:2px 0 4px;font-family:'SF Mono','Courier New',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5;color:${ok ? '#0f9' : '#f77'};">${_escHtml(displayOutput)}</pre>
+      <div style="display:flex;align-items:center;gap:8px;padding:3px 0 10px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:10px;color:var(--text-dim);">
+        <span style="color:${statusColor};font-weight:600;">${statusLabel}</span>
+        <span>${Math.round(elapsed * 100) / 100}s</span>
+        <span>${lines} line${lines === 1 ? '' : 's'}${truncated ? ' · truncated' : ''}</span>
+        <span style="flex:1;"></span>
+        <button onclick="terminalRerunCommand('${rerunId}')" style="${btnStyle}">↩ Rerun</button>
+        <button onclick="terminalPinCommand('${pinId}')" style="${btnStyle}">📌 Pin</button>
+        <button onclick="terminalCopyResult('${copyId}')" style="${btnStyle}">Copy</button>
+        <span>${ts}</span>
       </div>
     </div>
   `;
@@ -10273,13 +10419,10 @@ async function _runTerminalCommandStream(cmd, outputEl, startTime, proposalId, e
 
   const liveWrap = document.createElement('div');
   liveWrap.dataset.terminalEntryId = entryId || '';
-  liveWrap.style.cssText = 'margin-top:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02);overflow:hidden;';
+  liveWrap.style.cssText = 'margin-top:2px;';
   liveWrap.innerHTML = `
-    <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <code style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(cmd)}</code>
-      <span style="font-size:10px;color:#f7b84b;text-transform:uppercase;">running</span>
-    </div>
-    <pre style="margin:0;padding:10px 12px;max-height:200px;overflow:auto;background:rgba(0,0,0,0.2);color:#0f9;font-family:'SF Mono','Courier New',monospace;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word;"></pre>
+    <pre style="margin:0;padding:2px 0 4px;font-family:'SF Mono','Courier New',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5;color:#0f9;min-height:1.4em;"></pre>
+    <div style="font-size:10px;color:#f7b84b;padding:2px 0 8px;">● running…</div>
   `;
   outputEl.appendChild(liveWrap);
   const pre = liveWrap.querySelector('pre');
@@ -10394,12 +10537,11 @@ async function runTerminalCmd() {
   try {
     proposalId = await _createALMProposalForCommand(cmd);
   } catch (e) {
-    const res = document.createElement('div');
-    res.style.color = '#f77';
-    res.textContent = 'ALM proposal error: ' + (e.message || e);
-    output.appendChild(res);
-    output.scrollTop = output.scrollHeight;
-    return;
+    // ALM proposal failure is non-fatal — log to output and continue without a proposal ID.
+    const warn = document.createElement('div');
+    warn.style.cssText = 'font-size:10px;color:var(--text-dim);padding:2px 0;';
+    warn.textContent = '⚠ ALM proposal unavailable — command will still run.';
+    output.appendChild(warn);
   }
 
   _runTerminalCommandStream(cmd, output, startTime, proposalId, entryId)
@@ -10434,6 +10576,10 @@ async function runTerminalCmd() {
 
 // Quick command buttons
 async function cmdTerminal(cmd) {
+  if (_terminalStreamState().running) {
+    showToast('Wait for the active command to finish first', 'error');
+    return;
+  }
   const output = _terminalFind('#terminal-output');
   if (!output) return;
   terminalToggleHistory(false);
@@ -10447,12 +10593,11 @@ async function cmdTerminal(cmd) {
   try {
     proposalId = await _createALMProposalForCommand(cmd);
   } catch (e) {
-    const res = document.createElement('div');
-    res.style.color = '#f77';
-    res.textContent = 'ALM proposal error: ' + (e.message || e);
-    output.appendChild(res);
-    output.scrollTop = output.scrollHeight;
-    return;
+    // ALM proposal failure is non-fatal — log to output and continue without a proposal ID.
+    const warn = document.createElement('div');
+    warn.style.cssText = 'font-size:10px;color:var(--text-dim);padding:2px 0;';
+    warn.textContent = '⚠ ALM proposal unavailable — command will still run.';
+    output.appendChild(warn);
   }
 
   _runTerminalCommandStream(cmd, output, startTime, proposalId, entryId)
@@ -10766,9 +10911,9 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
   const convId = window.__fridaysChatConversationId;
   const convIdNum = Number(convId);
   if (!convId || !Number.isFinite(convIdNum) || convIdNum <= 0) {
+    // Keep bar visible but show idle state instead of hiding it
     hosts.forEach(host => {
-      host.classList.remove('open');
-      host.innerHTML = '';
+      host.innerHTML = '<div class="chat-thread-runtime-head"><div class="chat-thread-runtime-title" style="opacity:0.45;">Thread Runtime · idle</div></div>';
     });
     window.__fridaysThreadRuntimeSnapshot = { jobs: [], updatedAt: new Date().toISOString() };
     window.__fridaysRuntimeLastCompletedJobs = null;
@@ -10815,10 +10960,8 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
       ? 'Awaiting agent acknowledgement...'
       : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (cooldownActive ? 'Last round complete' : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread'))));
 
-  const shouldShow = true;
-  hosts.forEach(host => {
-    host.classList.toggle('open', shouldShow);
-  });
+  // Bar is always visible — no open/close toggling needed.
+  // (Previously: const shouldShow = true; host.classList.toggle('open', shouldShow))
 
   const chips = [];
   const seen = new Set();
@@ -12887,7 +13030,13 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
     }
   }
   _applyManualRelayRules(raw, fromKey, seen, out);
-  return out.slice(0, 6);
+  // Maximum one Route button per target agent — deduplicate across all branches
+  const seenTargets = new Set();
+  return out.filter(entry => {
+    if (seenTargets.has(entry.target)) return false;
+    seenTargets.add(entry.target);
+    return true;
+  }).slice(0, 6);
 }
 
 function _normalizeRelayQuestion(raw) {
@@ -13606,7 +13755,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   const eventsHtml = isUser ? '' : _renderSkillEvents(parsedSkill.events, sender);
   const relayCandidates = isUser ? [] : _extractAgentDirectedQuestions(visibleText, senderIdentity.key);
   const relayButtonsHtml = relayCandidates.length
-    ? `<div class="chat-handoff-actions">${relayCandidates.map(c => `<button class="chat-handoff-btn" data-relay-from="${_escapeHtml(senderIdentity.key)}" data-relay-target="${_escapeHtml(c.target)}" data-relay-question="${_escapeHtml(_relayEncode(c.question))}" onclick="queueRelayHandoffFromButton(this)">Route to ${_escapeHtml(_chatAgentLabel(c.target))}</button>`).join('')}</div>`
+    ? `<div class="chat-handoff-actions">${relayCandidates.map(c => `<span class="chat-handoff-btn" role="button" tabindex="0" data-relay-from="${_escapeHtml(senderIdentity.key)}" data-relay-target="${_escapeHtml(c.target)}" data-relay-question="${_escapeHtml(_relayEncode(c.question))}" onclick="queueRelayHandoffFromButton(this)">Route to ${_escapeHtml(_chatAgentLabel(c.target))}</span>`).join('')}</div>`
     : '';
   const replayText = _escapeHtml(String(visibleText || '').replace(/\s+/g, ' ').trim().slice(0, 1800));
   const localText = _escapeHtml(String(opts.localPromptText || visibleText || '').slice(0, 4000));
@@ -14674,7 +14823,7 @@ function renderChatMessages(rows) {
       const buttonsDiv = document.createElement('div');
       buttonsDiv.className = 'chat-handoff-actions';
       buttonsDiv.innerHTML = relayCandidates.map(c =>
-        `<button class="chat-handoff-btn" data-relay-from="${_escapeHtml(fromKey)}" data-relay-target="${_escapeHtml(c.target)}" data-relay-question="${_escapeHtml(_relayEncode(c.question))}" onclick="queueRelayHandoffFromButton(this)">Route to ${_escapeHtml(_chatAgentLabel(c.target))}</button>`
+        `<span class="chat-handoff-btn" role="button" tabindex="0" data-relay-from="${_escapeHtml(fromKey)}" data-relay-target="${_escapeHtml(c.target)}" data-relay-question="${_escapeHtml(_relayEncode(c.question))}" onclick="queueRelayHandoffFromButton(this)">Route to ${_escapeHtml(_chatAgentLabel(c.target))}</span>`
       ).join('');
       const actionsRow = lastAgentBubble.querySelector('.chat-actions');
       if (actionsRow) actionsRow.insertAdjacentElement('beforebegin', buttonsDiv);
