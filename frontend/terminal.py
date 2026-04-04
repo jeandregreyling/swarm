@@ -6280,7 +6280,7 @@ _AGENT_ROSTER = [
     {'name': 'Duck',      'model': 'qwen:latest',            'role': 'Checker',                     'default_temp': 0.1},
     {'name': 'Sniffles',  'model': 'deepseek-r1:7b',         'role': 'Auditor',                     'default_temp': 0.1},
     {'name': 'Eight',     'model': 'qwen2.5:latest',         'role': 'SAP Specialist',              'default_temp': 0.7},
-    {'name': 'Nine',      'model': 'claude-sonnet-4-6',      'role': 'System Architect · Ghost Layer', 'default_temp': None, 'no_temp': True,  'ghost_layer': True},
+    {'name': 'Nine',      'model': 'llama-3.3-70b-versatile', 'role': 'System Architect · Ghost Layer', 'default_temp': None, 'no_temp': True,  'ghost_layer': True},
     {'name': 'Ten',       'model': 'gpt-5.3-codex',          'role': 'Software Engineering Advisor · Copilot · Ghost Layer', 'default_temp': 0.4, 'ghost_layer': True},
     {'name': 'Eleven',    'model': 'grok-api',               'role': 'Reasoning Advisor · Ghost Layer', 'default_temp': None, 'no_temp': True, 'ghost_layer': True},
     {'name': 'Twelve',    'model': 'claude-haiku',           'role': 'Vortex · Ghost Layer',        'default_temp': 0.3, 'ghost_layer': True},
@@ -6305,14 +6305,13 @@ def _agent_reachability_status(agent_name):
     try:
         from config import (
             GITHUB_TOKEN, XAI_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY,
+            GROQ_API_KEY,
         )
-        from claude_api import _load_api_key
-        anthropic_key = _load_api_key()
     except Exception:
         return 'unknown'
     key_map = {
-        'nine':    anthropic_key,
-        'twelve':  anthropic_key,
+        'nine':    GROQ_API_KEY,
+        'twelve':  GROQ_API_KEY,
         'ten':     GITHUB_TOKEN,
         'eleven':  XAI_API_KEY,
         'scholar': GEMINI_API_KEY,
