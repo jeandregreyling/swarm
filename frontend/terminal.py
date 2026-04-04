@@ -5455,21 +5455,23 @@ def api_chat():
         elif selected_agent == 'duck':
             local_timeout = 18
         if persistent_mode:
-            if selected_agent in {'gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles'}:
+            if selected_agent in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
                 local_timeout = 900
             else:
                 local_timeout = 240
         try:
             if selected_agent in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
-                _stage('loading local memory', est_eta)
+                _model_name = orchestrator.AGENTS.get(selected_agent, selected_agent)
+                _stage(f'reading memory · {_model_name}', est_eta)
                 if selected_agent in {'duck', 'sniffles'}:
-                    _stage('assembling audit context', est_eta)
+                    _stage(f'building audit context · {_model_name}', est_eta)
                 else:
-                    _stage('processing thread hand-off', est_eta)
+                    _stage(f'preparing prompt · {_model_name}', est_eta)
                 future = executor.submit(orchestrator.ask_agent, selected_agent, effective_prompt)
-                _stage('running local inference', est_eta)
+                _stage(f'generating · {_model_name}', est_eta)
                 response_text = future.result(timeout=local_timeout)
-                _stage('storing agent memory', 0)
+                tokens_used = orchestrator._LAST_EVAL_COUNT.get(selected_agent, 0)
+                _stage('writing to memory', 0)
                 _persist_local_agent_memory(selected_agent, message, response_text)
             elif selected_agent == 'nine':
                 _stage('dispatching to ghost datacenter', est_eta)
@@ -7769,6 +7771,27 @@ def api_ollama_unload():
         return jsonify({'ok': True, 'model': model})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ollama/ps')
+def api_ollama_ps():
+    """Show models currently loaded (resident in RAM or being actively used)."""
+    import ollama as _ollama
+    try:
+        result = _ollama.ps()
+        models = []
+        for m in (result.models if hasattr(result, 'models') else []):
+            size_bytes  = int(getattr(m, 'size', 0) or 0)
+            vram_bytes  = int(getattr(m, 'size_vram', 0) or 0)
+            models.append({
+                'name':       getattr(m, 'model', '') or getattr(m, 'name', '') or '',
+                'size_gb':    round(size_bytes / (1024 ** 3), 2),
+                'size_vram_gb': round(vram_bytes / (1024 ** 3), 2),
+                'expires_at': str(getattr(m, 'expires_at', '') or ''),
+            })
+        return jsonify({'ok': True, 'models': models, 'count': len(models)})
+    except Exception as e:
+        return jsonify({'ok': True, 'models': [], 'count': 0, 'error': str(e)})
 
 
 if __name__ == '__main__':
