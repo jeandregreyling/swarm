@@ -188,6 +188,7 @@ _CHAT_AGENT_ETA_SECONDS = {
     'gemma': 85,
     'llama': 70,
     'qwen': 120,
+    'eight': 120,
     'librarian': 50,
     'duck': 35,
     'sniffles': 160,
@@ -195,6 +196,8 @@ _CHAT_AGENT_ETA_SECONDS = {
     'ten': 8,
     'eleven': 10,
     'twelve': 10,
+    'scholar': 12,
+    'seeker': 8,
 }
 
 _CHAT_AGENT_RUNTIME_CLASS = {
@@ -209,6 +212,8 @@ _CHAT_AGENT_RUNTIME_CLASS = {
     'ten': 'paid',
     'eleven': 'paid',
     'twelve': 'paid',
+    'scholar': 'paid',
+    'seeker': 'paid',
 }
 
 _CHAT_SINGLE_TASK_LOCAL_AGENTS = {'gemma', 'llama', 'qwen', 'eight'}
@@ -240,11 +245,17 @@ _CHAT_PARTICIPANT_ALIASES = {
     'claude': 'nine',
     'ten': 'ten',
     'copilot': 'ten',
+    'gpt': 'ten',
     'eleven': 'eleven',
     'grok': 'eleven',
     'twelve': 'twelve',
     'timewizard': 'twelve',
     'timewizardagent': 'twelve',
+    'haiku': 'twelve',
+    'scholar': 'scholar',
+    'gemini': 'scholar',
+    'seeker': 'seeker',
+    'tavily': 'seeker',
     'fridays': 'fridays',
 }
 
@@ -6045,6 +6056,38 @@ def api_chat_jobs_cancel():
         'hard_kill_results': hard_kill_results,
         'count': len(cancelled),
     })
+
+
+@app.route('/api/chat/librarian/review', methods=['POST'])
+def api_chat_librarian_review():
+    """
+    Ask Librarian to detect implicit relay candidates that the regex relay missed.
+    The call runs synchronously but with a hard timeout — the frontend should call
+    this async/debounced and not block the chat UI on the result.
+
+    Body:
+    - text: the agent response text to review (required, max 1200 chars trimmed)
+    - from_agent: who sent the message (required)
+    - conversation_id: for logging (optional)
+    """
+    data = request.get_json(silent=True) or {}
+    text = str(data.get('text') or '').strip()
+    from_agent = str(data.get('from_agent') or 'agent').strip().lower()
+    conversation_id = data.get('conversation_id')
+
+    if not text or len(text) < 20:
+        return jsonify({'ok': True, 'candidates': []})
+    if len(text) > 2000:
+        text = text[:2000]
+
+    try:
+        candidates = orchestrator.librarian_relay_review(text, from_agent, timeout_s=18)
+        log_activity('terminal', 'librarian_relay_review',
+                     f'from={from_agent} conv={conversation_id} found={len(candidates)}')
+        return jsonify({'ok': True, 'candidates': candidates})
+    except Exception as e:
+        log_activity('terminal', 'librarian_relay_review_error', str(e)[:200])
+        return jsonify({'ok': True, 'candidates': [], 'error': str(e)[:120]})
 
 
 @app.route('/api/activity')

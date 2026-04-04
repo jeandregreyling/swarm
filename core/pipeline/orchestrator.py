@@ -89,17 +89,35 @@ EIGHT_CHAT_SYSTEM_PROMPT = (
     "You are Eight, a Senior SAP HCM/Payroll Specialist in Seven's Swarm. "
     "You have deep expertise in SAP Payroll configuration, wage types, PCRs, infotypes, ABAP, "
     "and Employee Central Payroll. In chat you reason from multiple angles: business config, "
-    "technical implementation, and edge-case risk. Be direct and specific."
+    "technical implementation, and edge-case risk. Be direct and specific.\n\n"
+    "CHAT COMMS \u2014 HOW TO TALK TO OTHER AGENTS: Other agents in this chat include "
+    "Gemma (orchestrator), LLaMA (fast researcher), Qwen (analyst), Nine (architect/Claude), "
+    "Ten (engineering/GPT), Eleven (lateral/Grok), Twelve (time wizard/Claude Haiku), "
+    "Sniffles (memory auditor), Duck (sanity checker). "
+    "To hand off to another agent so the relay routes it automatically, end your response with "
+    '"AgentName: <question>" \u2014 e.g. "Qwen: Can you reason through the compliance risk here?" '
+    "or \"LLaMA: Can you check the SAP release notes for this behaviour?\". "
+    "Use @mention format as an alternative. Only speak for yourself \u2014 do not simulate other agents."
 )
 
 DUCK_SYSTEM_PROMPT = (
     "You are Duck, the swarm sanity checker. Give concise, practical quality checks. "
-    "Call out uncertainty and contradictions quickly."
+    "Call out uncertainty and contradictions quickly.\n\n"
+    "CHAT COMMS: You are in a multi-agent chat. Full team: Gemma (orchestrator), LLaMA (researcher), "
+    "Qwen (analyst), Eight (SAP), Sniffles (memory auditor), Nine (architect), Ten (engineering), "
+    "Eleven (lateral thinker), Twelve (time wizard). "
+    "To route to another agent: end with \"AgentName: <question>\" or use @mention. "
+    "Only check and call out \u2014 do not speak for other agents."
 )
 
 SNIFFLES_SYSTEM_PROMPT = (
     "You are Sniffles, the swarm memory and quality auditor. Focus on factual consistency, "
-    "risk flags, and whether claims are verifiable."
+    "risk flags, and whether claims are verifiable.\n\n"
+    "CHAT COMMS: You are in a multi-agent chat. Full team: Gemma (orchestrator), LLaMA (researcher), "
+    "Qwen (analyst), Eight (SAP), Duck (sanity checker), Nine (architect), Ten (engineering), "
+    "Eleven (lateral thinker), Twelve (time wizard). "
+    "To route to another agent after your audit findings: end with \"AgentName: <question>\" or use @mention. "
+    "Only audit and flag \u2014 do not speak for other agents."
 )
 
 SYSTEM_PROMPTS = {
@@ -370,6 +388,89 @@ def librarian_index(conv_id, subject, content):
                 'Indexed: ' + subject + ' | tags: ' + tags,
                 message_type='index')
     return tags
+
+
+# RL-LIBRARIAN-RELAY — Librarian as implicit relay monitor
+_LIBRARIAN_RELAY_REVIEW_SYSTEM = (
+    'You are the Librarian, the relay monitor for Seven\'s Swarm. '
+    'Your only job right now is to detect implicit agent handoffs in a message.\n\n'
+    'An implicit handoff is when an agent\'s response suggests that another agent should '
+    'respond, take over a task, or handle something — even without explicit routing syntax '
+    'like "Agent:" or "@agent".\n\n'
+    'Examples of implicit handoffs:\n'
+    '- "I think Qwen would be better at analysing this." → qwen\n'
+    '- "LLaMA knows more about internet search." → llama\n'
+    '- "This is a memory/indexing task." → librarian\n'
+    '- Trailing off with "... Qwen, what do you think?" → qwen\n'
+    '- "A researcher would find this easily." → llama (researcher role)\n\n'
+    'Known agents:\n'
+    '  Local — gemma (orchestrator), llama (researcher, internet access), '
+    'qwen (analyst, deep reasoning), eight (SAP/HR specialist), '
+    'sniffles (memory/accuracy auditor), duck (sanity checker / contradiction detector), '
+    'librarian (memory keeper + relay monitor).\n'
+    '  Ghost Layer (online) — nine (Claude Sonnet, system architect), '
+    'ten (GPT, engineering advisor), eleven (Grok, lateral thinker), '
+    'twelve (Claude Haiku, time wizard), scholar (Gemini, vision & reasoning), '
+    'seeker (Tavily, real-time web search).\n\n'
+    'Do NOT flag patterns already captured by explicit @agent or "Agent: " prefixes. '
+    'Only flag genuinely implicit signals.\n\n'
+    'Respond ONLY as valid JSON. Nothing else. No explanation. No markdown fences.\n'
+    '{"candidates":[{"target":"agent_name","question":"what to ask them"}]}\n'
+    'If no implicit handoffs exist: {"candidates":[]}'
+)
+
+
+def librarian_relay_review(text, from_agent, timeout_s=18):
+    """
+    Ask Librarian to detect implicit relay candidates in an agent response.
+    Does NOT use the tagging system prompt — uses a purpose-built relay-review prompt.
+    Returns a list of {target, question} dicts. Always safe to call; returns [] on error.
+    """
+    import json as _json
+    clean_text = str(text or '').strip()
+    if not clean_text or len(clean_text) < 20:
+        return []
+    from_key = str(from_agent or 'agent').lower().strip()
+    prompt = (
+        f'Message from {from_key}:\n\n'
+        f'{clean_text[:1200]}\n\n'
+        'Detect any implicit handoffs to other agents. Respond only with the JSON format specified.'
+    )
+    model = AGENTS.get('librarian', 'qwen:latest')
+    keep_alive = MODEL_KEEP_ALIVE.get('librarian', '20m')
+    messages = [
+        {'role': 'system', 'content': _LIBRARIAN_RELAY_REVIEW_SYSTEM},
+        {'role': 'user', 'content': prompt},
+    ]
+    start = time.time()
+    try:
+        response = ollama.chat(
+            model=model,
+            messages=messages,
+            options={'temperature': 0.05},
+            keep_alive=keep_alive,
+        )
+        raw = str(response['message']['content'] or '').strip()
+        elapsed_ms = int((time.time() - start) * 1000)
+        log_action('librarian', 'relay_review', f'from={from_key} elapsed={elapsed_ms}ms', 'info')
+        # Extract JSON — strip fences if model adds them anyway
+        if '```' in raw:
+            raw = raw.split('```')[-2].strip() if raw.count('```') >= 2 else raw.replace('```', '').strip()
+        parsed = _json.loads(raw)
+        candidates = parsed.get('candidates', [])
+        if not isinstance(candidates, list):
+            return []
+        valid = []
+        for c in candidates:
+            target = str(c.get('target') or '').lower().strip()
+            question = str(c.get('question') or '').strip()
+            if target and question and target != from_key:
+                valid.append({'target': target, 'question': question})
+        return valid
+    except Exception as e:
+        log_action('librarian', 'relay_review_error', str(e), 'warn')
+        return []
+
 
 _SAP_KEYWORDS = [
     'sap', 'abap', 'hcm', 'payroll', 'wage type', 'infotype', 'it0008',
