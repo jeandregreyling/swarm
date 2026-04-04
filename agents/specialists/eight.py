@@ -35,6 +35,21 @@ MODEL      = 'qwen2.5:latest'
 TEMP_PRECISE = 0.2
 TEMP_DEVIL   = 0.6
 
+# Models that must be evicted before Eight can load qwen2.5 (4.7 GB) × 3.
+# These are the always-resident models; keeping them loaded causes Ollama to
+# stall indefinitely trying to fit qwen2.5 into already-full RAM.
+_BYSTANDER_MODELS = ('qwen:latest', 'llama3.2:latest')
+
+
+def _unload_bystanders():
+    """Evict resident bystander models so qwen2.5 + gemma3 fit in RAM."""
+    for model in _BYSTANDER_MODELS:
+        try:
+            ollama.generate(model=model, prompt=' ', keep_alive=0)
+            print(f'[Eight] Unloaded {model} from memory')
+        except Exception:
+            pass  # model not loaded — no-op
+
 
 def _ask_voice(voice_name, system_prompt, user_prompt, temperature):
     print(f'\n[Eight/{voice_name}] thinking...')
@@ -82,6 +97,10 @@ def consult(question, web_results, shared_context, conv_id, status_cb=None):
             status_cb(msg)
 
     _status(f'SAP question: {question[:80]}' + ('...' if len(question) > 80 else ''))
+
+    # Free RAM: qwen2.5 (4.7 GB) × 3 won't load while qwen + llama are resident.
+    _status('Clearing bystander models from memory...')
+    _unload_bystanders()
 
     # Eight's independent SAP search — Tavily targeting SAP Help Portal, SCN, community
     eight_search = ''
