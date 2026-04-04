@@ -2208,6 +2208,11 @@ body.theme-rose {
   border-color: #4ade80;
 }
 
+.chat-thread-runtime-row.cooldown {
+  opacity: 0.45;
+  transition: opacity 0.6s ease;
+}
+
 .chat-thread-runtime-row.failed {
   background: color-mix(in oklab, #f44336 15%, var(--card) 85%);
   border-color: #f44336;
@@ -10427,7 +10432,9 @@ const CHAT_AGENT_OPTIONS = [
   { value: 'nine',     label: 'Nine · Claude Sonnet 4.6', tier: 'paid',  hasTemp: false },
   { value: 'ten',      label: 'Ten · GPT-5.3-Codex',      tier: 'paid',  hasTemp: true  },
   { value: 'eleven',   label: 'Eleven · Grok API',        tier: 'paid',  hasTemp: false },
-  { value: 'twelve',   label: 'Twelve · Claude Haiku',    tier: 'paid',  hasTemp: true  }
+  { value: 'twelve',   label: 'Twelve · Claude Haiku',    tier: 'paid',  hasTemp: true  },
+  { value: 'scholar',  label: 'Scholar · Gemini Flash',   tier: 'paid',  hasTemp: false },
+  { value: 'seeker',   label: 'Seeker · Tavily Search',   tier: 'paid',  hasTemp: false },
 ];
 
 const CHAT_CUSTOM_DICTIONARY_KEY = 'fridays-chat-custom-dictionary-v1';
@@ -10662,13 +10669,17 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
   const hosts = Array.from(document.querySelectorAll('[id="chat-thread-runtime"]'));
   if (!hosts.length) return;
 
+  // Guard: treat 0, NaN, null, undefined all as "no active thread".
   const convId = window.__fridaysChatConversationId;
-  if (!convId) {
+  const convIdNum = Number(convId);
+  if (!convId || !Number.isFinite(convIdNum) || convIdNum <= 0) {
     hosts.forEach(host => {
       host.classList.remove('open');
       host.innerHTML = '';
     });
     window.__fridaysThreadRuntimeSnapshot = { jobs: [], updatedAt: new Date().toISOString() };
+    window.__fridaysRuntimeLastCompletedJobs = null;
+    window.__fridaysRuntimeLastCompletedAt = 0;
     updateChatStatusPills();
     return;
   }
@@ -10680,17 +10691,36 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
     return String(a.agent || '').localeCompare(String(b.agent || ''));
   });
 
+  // When jobs finish, remember them for a 12-second cooldown so the bar doesn't snap
+  // to "No runtime jobs" immediately — gives users continuity between rounds.
+  const RUNTIME_COOLDOWN_MS = 12000;
+  const now = Date.now();
   const running = list.filter(j => String(j.status || 'running') === 'running');
+  const completed = list.filter(j => String(j.status || '') === 'completed');
   const failed = list.filter(j => String(j.status || '') === 'failed');
   const loadingAgents = Array.isArray(window.__fridaysRuntimeLoadingAgents) ? window.__fridaysRuntimeLoadingAgents : [];
   const hasPendingJobs = Array.isArray(window.__fridaysChatPendingJobIds) && window.__fridaysChatPendingJobIds.length > 0;
   const relayActive = !!window.__fridaysChatRelayBusy || !!window.__fridaysChatRelayActive || ((window.__fridaysChatRelayQueue || []).length > 0);
+
+  // Keep the last set of completed jobs for the cooldown window.
+  if (completed.length > 0 && running.length === 0 && !hasPendingJobs && !loadingAgents.length) {
+    window.__fridaysRuntimeLastCompletedJobs = completed.slice();
+    window.__fridaysRuntimeLastCompletedAt = now;
+  }
+  const cooldownActive = !running.length && !hasPendingJobs && !loadingAgents.length &&
+    Array.isArray(window.__fridaysRuntimeLastCompletedJobs) &&
+    window.__fridaysRuntimeLastCompletedJobs.length > 0 &&
+    (now - Number(window.__fridaysRuntimeLastCompletedAt || 0)) < RUNTIME_COOLDOWN_MS;
+  const displayList = (running.length || hasPendingJobs || loadingAgents.length)
+    ? list
+    : (cooldownActive ? window.__fridaysRuntimeLastCompletedJobs : list);
+
   const canStop = running.length > 0 || loadingAgents.length > 0 || hasPendingJobs;
   const headline = running.length
     ? ('Live jobs: ' + running.length + ' running')
     : (loadingAgents.length || hasPendingJobs
       ? 'Awaiting agent acknowledgement...'
-      : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread')));
+      : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (cooldownActive ? 'Last round complete' : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread'))));
 
   const shouldShow = true;
   hosts.forEach(host => {
@@ -10699,7 +10729,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
 
   const chips = [];
   const seen = new Set();
-  list.forEach(job => {
+  displayList.forEach(job => {
     const agent = String(job.agent || 'agent');
     const key = agent.toLowerCase();
     if (seen.has(key)) return;
@@ -10707,10 +10737,11 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
     const eta = Number(job.eta_remaining_seconds || 0);
     const elapsed = Number(job.elapsed_ms || 0);
     const elapsedS = Number.isFinite(elapsed) ? Math.max(0, Math.round(elapsed / 1000)) : 0;
+    const chipClass = cooldownActive ? _chatRuntimeStatusClass(job) + ' cooldown' : _chatRuntimeStatusClass(job);
     chips.push(_renderThreadRuntimeChip(
       agent,
       _chatRuntimeStateLabel(job),
-      _chatRuntimeStatusClass(job),
+      chipClass,
       eta > 0 ? ('~' + eta + 's') : ('+' + elapsedS + 's')
     ));
   });
@@ -10746,7 +10777,8 @@ function toggleRuntimePin() {
 
 function pollActiveThreadRuntime(force = false) {
   const convId = window.__fridaysChatConversationId;
-  if (!convId) {
+  const convIdNum = Number(convId);
+  if (!convId || !Number.isFinite(convIdNum) || convIdNum <= 0) {
     _renderThreadRuntimePanel([], 'idle');
     _syncThinkingBubbles([]);
     return Promise.resolve();
@@ -12074,6 +12106,8 @@ const _CHAT_AGENT_META = {
   ten:       { icon: '🛠️', purpose: 'Ten · GPT engineering advisor for implementation quality.',         runtime: 'paid',  tier: 'paid' },
   eleven:    { icon: '⚡', purpose: 'Eleven · Grok 3 reasoning advisor and lateral ideation.',           runtime: 'paid',  tier: 'paid' },
   twelve:    { icon: '🌀', purpose: 'Twelve · Claude Haiku for temporal continuity and sequencing.',     runtime: 'paid',  tier: 'paid' },
+  scholar:   { icon: '🔬', purpose: 'Scholar · Gemini 2.0 Flash for vision and deep reasoning.',      runtime: 'paid',  tier: 'paid' },
+  seeker:    { icon: '🔍', purpose: 'Seeker · Tavily live web search and real-time synthesis.',         runtime: 'paid',  tier: 'paid' },
   you:       { icon: '👤', purpose: 'Human operator input.',                                              runtime: 'human', tier: 'human' },
 };
 
@@ -12227,6 +12261,105 @@ function _refreshRelayResourceSnapshot(force = false) {
       window.__fridaysChatRelayResourceFetchPromise = null;
     });
   return window.__fridaysChatRelayResourceFetchPromise;
+}
+
+/* ── Librarian relay monitor ────────────────────────────────────────────────
+   Librarian runs AFTER the regex relay to catch implicit handoffs the pattern
+   matcher missed. Fires async/debounced so it never blocks bubble rendering.
+   Relies on /api/chat/librarian/review (backend qwen:latest at temp 0.05).
+   Results are fed back into the normal relay queue machinery.
+   ────────────────────────────────────────────────────────────────────────── */
+
+async function _librarianReviewResponse(text, fromAgent, convId) {
+  if (!text || !window.__fridaysChatRelayAuto) return;
+  const cleanText = String(text || '').trim();
+  if (cleanText.length < 20) return;
+
+  try {
+    const resp = await fetch('/api/chat/librarian/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: cleanText.slice(0, 2000),
+        from_agent: String(fromAgent || 'agent').toLowerCase(),
+        conversation_id: convId || null,
+      }),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(22000) : undefined,
+    });
+    if (!resp.ok) return;
+    const data = await resp.json().catch(() => ({}));
+    const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+    if (!candidates.length) return;
+
+    // De-duplicate against whatever is already in the relay queue
+    const queuedTargets = new Set(
+      (window.__fridaysChatRelayQueue || []).map(x => String(x.target || '').toLowerCase())
+    );
+    let newCount = 0;
+    for (const c of candidates) {
+      const target = String(c.target || '').toLowerCase().trim();
+      const question = String(c.question || '').trim();
+      if (!target || !question) continue;
+      if (queuedTargets.has(target)) continue;      // already queued by regex relay
+      if (target === String(fromAgent || '').toLowerCase()) continue; // don't re-route to sender
+      queueRelayHandoff({ from: fromAgent, target, question }, true);
+      queuedTargets.add(target);
+      newCount++;
+    }
+    if (newCount > 0) {
+      _appendInfoLogEntry('librarian',
+        `Implicit relay detected \u2192 ${candidates.map(c => c.target).join(', ')} (${newCount} queued)`);
+    } else {
+      _appendInfoLogEntry('librarian', 'Relay review: no new implicit handoffs found.');
+    }
+  } catch (err) {
+    // Non-critical — don't surface to user
+    console.debug('[Librarian] relay review error:', err);
+  }
+}
+
+// Debounce state for _librarianReviewResponse
+window.__librarianReviewTimer = null;
+
+function _librarianReviewDebounced(text, fromAgent, convId, delayMs = 350) {
+  if (window.__librarianReviewTimer) clearTimeout(window.__librarianReviewTimer);
+  window.__librarianReviewTimer = setTimeout(() => {
+    window.__librarianReviewTimer = null;
+    _librarianReviewResponse(text, fromAgent, convId);
+  }, delayMs);
+}
+
+// Watchdog — runs every 10 s while chat is active.
+// If the relay queue is empty and the last non-user message hasn't been
+// Librarian-reviewed yet, trigger a review of that last message.
+window.__librarianWatchdogTimer = null;
+window.__librarianLastReviewedBubbleId = null;
+
+function _librarianQueueWatchdog() {
+  if (!window.__fridaysChatRelayAuto) return;
+  const queue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
+  if (queue.length > 0) return;  // queue busy — regex relay is handling things
+
+  // Find last agent bubble
+  const bubbles = document.querySelectorAll('.chat-bubble:not(.user-bubble)');
+  if (!bubbles.length) return;
+  const last = bubbles[bubbles.length - 1];
+  const bubbleId = last.id || null;
+  if (!bubbleId || bubbleId === window.__librarianLastReviewedBubbleId) return;
+  window.__librarianLastReviewedBubbleId = bubbleId;
+
+  const textEl = last.querySelector('.chat-text');
+  const text = textEl ? (textEl.innerText || textEl.textContent || '') : '';
+  const fromAgent = String(last.dataset.sender || last.dataset.agent || 'agent').toLowerCase();
+  const convId = last.dataset.conversationId || window.__fridaysActiveChatConvId || null;
+
+  _appendInfoLogEntry('librarian', 'Watchdog: checking last response for implicit relay…');
+  _librarianReviewResponse(text, fromAgent, convId);
+}
+
+function _librarianStartWatchdog() {
+  if (window.__librarianWatchdogTimer) clearInterval(window.__librarianWatchdogTimer);
+  window.__librarianWatchdogTimer = setInterval(_librarianQueueWatchdog, 10000);
 }
 
 async function _relayDispatchGate(item) {
@@ -13384,11 +13517,18 @@ function _appendChatBubble(sender, text, opts = {}) {
   if (opts.conversationId) bubble.dataset.conversationId = String(opts.conversationId);
   applyBubbleColorOverrideToNode(bubble);
   messages.appendChild(bubble);
-  if (!isUser && relayCandidates.length && window.__fridaysChatRelayAuto) {
+  if (!isUser && relayCandidates.length && window.__fridaysChatRelayAuto && !opts.fromHistory) {
     relayCandidates.forEach(c => {
-      if (!_isAutoRelayTargetEnabled(c.target)) return;
+      // Do not gate on _isAutoRelayTargetEnabled here — the relay target is temporarily
+      // enabled by _processRelayQueue when the item is dispatched. Blocking here prevents
+      // the item from ever reaching the queue even though Route-to buttons are shown.
       queueRelayHandoff({ from: senderIdentity.key, target: c.target, question: c.question }, true);
     });
+  }
+  // Librarian review — fires async/debounced to catch implicit handoffs the regex missed.
+  // Only runs when auto-relay is on and this is a fresh (non-history) agent bubble.
+  if (!isUser && window.__fridaysChatRelayAuto && !opts.fromHistory) {
+    _librarianReviewDebounced(visibleText, senderIdentity.key, opts.conversationId || null);
   }
   _recordTimelineEvent({
     bubbleId: bubble.id,
@@ -14327,12 +14467,14 @@ function renderChatMessages(rows) {
         selectedAgents: rawTargetAgents,
         localPromptText: extracted.text,
         attachments: extracted.attachments,
+        fromHistory: true,
       });
     } else {
       _appendChatBubble(sender, content, {
         messageId: msgId,
         conversationId: convId,
         tokens: Number(row.tokens_used || 0),
+        fromHistory: true,
       });
     }
   });
@@ -15007,6 +15149,7 @@ document.addEventListener('DOMContentLoaded', () => {
   populateRelayRuleTargetOptions();
   renderRelayRuleList();
   startChatLiveSyncService();
+  _librarianStartWatchdog();
   
   // Settings modal handlers
   document.querySelectorAll('[data-time]').forEach(btn => {
