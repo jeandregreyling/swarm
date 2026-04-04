@@ -718,7 +718,8 @@ def librarian_triage(from_addr, subject, body):
         response = ollama.chat(
             model='qwen:latest',
             messages=[{'role': 'user', 'content': prompt}],
-            options={'temperature': 0.1}
+            options={'temperature': 0.1},
+            keep_alive=-1,
         )
         text = response['message']['content'].strip()
         lines = [l.strip() for l in text.splitlines() if l.strip()]
@@ -842,34 +843,19 @@ def handle_followup_email(e, clean_from, subject, body, thread_cc, ticket):
             gemma_answer = eight_result['gemma_verdict']
             email2 = (
                 'Eight has finished deliberating on your follow-up.\r\n\r\n'
-                '[Functional analysis]:\r\n' + eight_result.get('functional', '') + '\r\n\r\n'
-                '[Technical analysis]:\r\n' + eight_result.get('technical', '') + '\r\n\r\n'
-                "[Devil's Advocate]:\r\n" + eight_result.get('devil', '') + '\r\n\r\n'
-                '[Eight — Final verdict]:\r\n' + gemma_answer + '\r\n\r\n'
+                '[Eight — SAP verdict]:\r\n' + gemma_answer + '\r\n\r\n'
                 '---\r\n'
                 f'Re: {augmented_q[:100]}\r\n'
-                "Sent by Eight | Seven's Swarm | sevenpotato9@gmail.com" # [2026-03-26 17:15:00] Agent Ten: Added timestamp to email body
+                "Sent by Eight | Seven's Swarm | sevenpotato9@gmail.com"
             )
         except Exception as eight_err:
             log_activity('listener', 'eight_error', f'{ticket_number} followup: {eight_err}')
-            _conn = get_connection()
-            _partial = _conn.execute(
-                'SELECT from_agent, content FROM messages '
-                'WHERE conversation_id=? AND message_type IN ("eight_voice","eight_verdict") '
-                'ORDER BY id', (conv_id,)
-            ).fetchall()
-            _conn.close()
-            _parts = {r['from_agent']: r['content'] for r in _partial}
-            gemma_answer = _parts.get('Eight/Gemma', '(Eight synthesis did not complete)')
+            gemma_answer = '(Eight did not complete)'
             email2 = (
-                'Eight encountered an error on your follow-up but here is what was completed:\r\n\r\n' +
-                ('[Functional analysis]:\r\n' + _parts['Eight/Functional'] + '\r\n\r\n' if 'Eight/Functional' in _parts else '') +
-                ('[Technical analysis]:\r\n' + _parts['Eight/Technical'] + '\r\n\r\n' if 'Eight/Technical' in _parts else '') +
-                ("[Devil's Advocate]:\r\n" + _parts['Eight/Devil'] + '\r\n\r\n' if 'Eight/Devil' in _parts else '') +
-                '[Eight — Verdict]:\r\n' + gemma_answer + '\r\n\r\n'
-                f'⚠ Pipeline did not complete fully. Error: {str(eight_err)[:200]}\r\n\r\n'
+                'Eight encountered an error on your follow-up.\r\n\r\n'
+                f'⚠ Error: {str(eight_err)[:200]}\r\n\r\n'
                 '---\r\n'
-                f'Re: {augmented_q[:100]}\r\n' # [2026-03-26 17:15:00] Agent Ten: Added timestamp to email body
+                f'Re: {augmented_q[:100]}\r\n'
                 "Sent by Eight | Seven's Swarm | sevenpotato9@gmail.com"
             )
     else:
@@ -1194,35 +1180,18 @@ def process_emails(emails=None):
                 gemma_answer = eight_result['gemma_verdict']
                 email2 = (
                     'Eight has finished deliberating.\r\n\r\n'
-                    '[Functional analysis]:\r\n' + eight_result.get('functional', '') + '\r\n\r\n'
-                    '[Technical analysis]:\r\n' + eight_result.get('technical', '') + '\r\n\r\n'
-                    '[Devil\'s Advocate]:\r\n' + eight_result.get('devil', '') + '\r\n\r\n'
-                    '[Eight — Final verdict]:\r\n' + gemma_answer + '\r\n\r\n'
+                    '[Eight — SAP verdict]:\r\n' + gemma_answer + '\r\n\r\n'
                     '---\r\n'
                     'Re: ' + question[:100] + '\r\n'
                     "Sent by Eight | Seven's Swarm | sevenpotato9@gmail.com"
                 ) + f'\r\n\r\n(Timestamp: {get_timestamp()})'
             except Exception as eight_err:
-                # Pipeline crashed mid-run. Recover whatever voices were logged to DB.
                 print(f'[Listener] Eight pipeline error: {eight_err}')
                 log_activity('listener', 'eight_error', f'{ticket_number}: {eight_err}')
-                # Pull partial messages already committed to DB
-                _conn = get_connection()
-                _partial = _conn.execute(
-                    'SELECT from_agent, content FROM messages '
-                    'WHERE conversation_id=? AND message_type IN ("eight_voice","eight_verdict") '
-                    'ORDER BY id', (conv_id,)
-                ).fetchall()
-                _conn.close()
-                _parts = {r['from_agent']: r['content'] for r in _partial}
-                gemma_answer = _parts.get('Eight/Gemma', '(Eight synthesis did not complete)')
+                gemma_answer = '(Eight did not complete)'
                 email2 = (
-                    'Eight encountered an error but here is what was completed:\r\n\r\n' +
-                    ('[Functional analysis]:\r\n' + _parts['Eight/Functional'] + '\r\n\r\n' if 'Eight/Functional' in _parts else '') +
-                    ('[Technical analysis]:\r\n' + _parts['Eight/Technical'] + '\r\n\r\n' if 'Eight/Technical' in _parts else '') +
-                    ('[Devil\'s Advocate]:\r\n' + _parts['Eight/Devil'] + '\r\n\r\n' if 'Eight/Devil' in _parts else '') +
-                    '[Eight — Verdict]:\r\n' + gemma_answer + '\r\n\r\n'
-                    '⚠ Pipeline did not complete fully. Error: ' + str(eight_err)[:200] + '\r\n\r\n'
+                    'Eight encountered an error.\r\n\r\n'
+                    f'⚠ Error: {str(eight_err)[:200]}\r\n\r\n'
                     '---\r\n'
                     'Re: ' + question[:100] + '\r\n'
                     "Sent by Eight | Seven's Swarm | sevenpotato9@gmail.com"
