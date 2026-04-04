@@ -6367,6 +6367,158 @@ def api_agents():
     return jsonify(result)
 
 
+# ── Agents tile — full config API ─────────────────────────────────────────────
+
+@app.route('/api/agents/config')
+def api_agents_config_get():
+    """Full agent config for the Agents tile — includes system_prompt, api_key_var, tier."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT number, name, label, model, role, temperature,
+                  system_prompt, api_key_var, tier, enabled
+           FROM agents WHERE number >= 0 ORDER BY number ASC"""
+    ).fetchall()
+    conn.close()
+    result = []
+    for r in rows:
+        d = dict(r)
+        # Never send the actual key — send presence flag only
+        key_var = d.get('api_key_var') or ''
+        if key_var:
+            import os
+            raw = os.environ.get(key_var, '')
+            if not raw:
+                try:
+                    from config import _load_env_key
+                    raw = _load_env_key(key_var)
+                except Exception:
+                    raw = ''
+            d['api_key_set'] = bool(raw)
+        else:
+            d['api_key_set'] = None  # not applicable
+        d['status'] = _agent_reachability_status(d['name'])
+        result.append(d)
+    return jsonify(result)
+
+
+@app.route('/api/agents/config/<name>', methods=['PUT'])
+def api_agents_config_put(name):
+    """Update an agent's config fields."""
+    data  = request.get_json() or {}
+    conn  = get_connection()
+    row   = conn.execute("SELECT id FROM agents WHERE name=?", (name,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': f'Agent {name} not found'}), 404
+
+    allowed = ['label', 'model', 'role', 'temperature', 'system_prompt', 'tier', 'enabled']
+    updates = {k: v for k, v in data.items() if k in allowed}
+    if not updates:
+        conn.close()
+        return jsonify({'error': 'No valid fields to update'}), 400
+
+    set_clause = ', '.join(f'{k}=?' for k in updates)
+    conn.execute(f"UPDATE agents SET {set_clause} WHERE name=?", (*updates.values(), name))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/agents/config', methods=['POST'])
+def api_agents_config_post():
+    """Add a new agent."""
+    data  = request.get_json() or {}
+    name  = (data.get('name') or '').strip().lower()
+    label = (data.get('label') or '').strip()
+    model = (data.get('model') or '').strip()
+    if not name or not model:
+        return jsonify({'error': 'name and model required'}), 400
+
+    conn = get_connection()
+    existing = conn.execute("SELECT id FROM agents WHERE name=?", (name,)).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({'error': f'Agent {name} already exists'}), 409
+
+    max_num = conn.execute("SELECT MAX(number) FROM agents WHERE number >= 0").fetchone()[0] or 0
+    conn.execute(
+        """INSERT INTO agents (name, label, model, role, temperature, system_prompt, api_key_var, tier, number, enabled)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
+        (name, label or name, model,
+         data.get('role', ''), float(data.get('temperature', 0.5) or 0.5),
+         data.get('system_prompt', ''), data.get('api_key_var', ''),
+         data.get('tier', 'local'), max_num + 1)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/agents/key/<name>', methods=['PUT'])
+def api_agents_key_put(name):
+    """Write an API key to .env.agents for the named agent."""
+    import re as _re
+    data    = request.get_json() or {}
+    key_var = (data.get('key_var') or '').strip()
+    value   = (data.get('value')   or '').strip()
+
+    if not key_var or not _re.match(r'^[A-Z][A-Z0-9_]{2,60}$', key_var):
+        return jsonify({'error': 'Invalid key variable name'}), 400
+    if not value:
+        return jsonify({'error': 'Key value required'}), 400
+
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.agents')
+    try:
+        try:
+            with open(env_path, 'r') as f:
+                lines = f.readlines()
+        except FileNotFoundError:
+            lines = []
+
+        new_lines = [l for l in lines if not l.startswith(f'{key_var}=')]
+        new_lines.append(f'{key_var}={value}\n')
+
+        with open(env_path, 'w') as f:
+            f.writelines(new_lines)
+
+        # Also update api_key_var in agents table
+        conn = get_connection()
+        conn.execute("UPDATE agents SET api_key_var=? WHERE name=?", (key_var, name))
+        conn.commit()
+        conn.close()
+
+        from database import log_activity
+        log_activity('terminal', 'agent_key_updated', f'{name}: {key_var} set')
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/swarm/globals')
+def api_swarm_globals_get():
+    conn = get_connection()
+    rows = conn.execute("SELECT key, value, description FROM swarm_globals ORDER BY id").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/swarm/globals', methods=['PUT'])
+def api_swarm_globals_put():
+    data = request.get_json() or {}
+    key   = (data.get('key')   or '').strip()
+    value = (data.get('value') or '').strip()
+    if not key:
+        return jsonify({'error': 'key required'}), 400
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO swarm_globals (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now')",
+        (key, value)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/api/agents/capability-matrix')
 def api_agents_capability_matrix():
     """Read-only matrix of granted capabilities per agent for governance UI."""
