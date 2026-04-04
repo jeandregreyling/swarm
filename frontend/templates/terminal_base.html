@@ -14568,7 +14568,14 @@ function renderChatMessages(rows) {
     const content = row.content || '';
     const msgId = Number(row.id || 0);
     const convId = Number(window.__fridaysChatConversationId || 0);
-    if (sender === 'user') {
+    if (row.message_type === 'relay') {
+      const _rFromLabel = _chatAgentLabel(sender);
+      const _rToLabel = _chatAgentLabel(String(row.to_agent || '').split(',')[0].trim());
+      const _rDiv = document.createElement('div');
+      _rDiv.className = 'chat-relay-dispatch';
+      _rDiv.innerHTML = `<span class="relay-from">${_escapeHtml(_rFromLabel)}</span><span class="relay-arrow">→</span><span class="relay-to">${_escapeHtml(_rToLabel)}</span>: <span>${_escapeHtml(String(content).slice(0, 160))}</span>`;
+      messages.appendChild(_rDiv);
+    } else if (sender === 'user') {
       const extracted = _extractAttachmentsFromMessage(content);
       const rawTargetAgents = _chatTargetAgentsFromRaw(row.to_agent);
       const prefix = _chatTargetsPrefixFromRaw(row.to_agent);
@@ -15079,6 +15086,7 @@ function sendMessage(source = 'user', relayMeta = null) {
       new_thread: !!window.__fridaysChatForceNewThread,
       history_mode: contextCfg.historyMode,
       history_limit: contextCfg.historyMode === 'recent' ? contextCfg.historyLimit : undefined,
+      ...(source === 'relay' && relayMeta?.from ? { relay_from: String(relayMeta.from).toLowerCase() } : {}),
       ..._authPayload(),
     })
   })
