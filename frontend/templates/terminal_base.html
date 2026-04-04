@@ -3828,10 +3828,10 @@ input[type="range"]::-moz-range-thumb:hover {
         <button class="mem-tab" data-agent="qwen"      onclick="_memTab(this,'qwen')">4 · Qwen</button>
         <button class="mem-tab" data-agent="librarian" onclick="_memTab(this,'librarian')">5 · Librarian</button>
         <button class="mem-tab" data-agent="eight"     onclick="_memTab(this,'eight')">8 · Eight</button>
-        <button class="mem-tab" data-agent="nine"      onclick="_memTab(this,'nine')">9 · Nine (Groq)</button>
+        <button class="mem-tab" data-agent="nine"      onclick="_memTab(this,'nine')">9 · Groq</button>
         <button class="mem-tab" data-agent="ten"       onclick="_memTab(this,'ten')">10 · Ten</button>
-        <button class="mem-tab" data-agent="eleven"    onclick="_memTab(this,'eleven')">11 · Eleven (Grok)</button>
-        <button class="mem-tab" data-agent="twelve"    onclick="_memTab(this,'twelve')">12 · Twelve</button>
+        <button class="mem-tab" data-agent="eleven"    onclick="_memTab(this,'eleven')">11 · Grok</button>
+        <button class="mem-tab" data-agent="twelve"    onclick="_memTab(this,'twelve')">12 · Claude</button>
       </div>
       <div id="memory-source-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
         <button class="mem-tab active" data-source="all" onclick="_memSourceTab(this,'all')">All Sources</button>
@@ -4487,9 +4487,9 @@ class WindowManager {
     btn.onclick = () => {
       const win = this.windows.get(id);
       if (win && win.minimized) {
-        this.minimize(id);
-      } else {
-        this.focus(id);
+        this.minimize(id); // restore
+      } else if (win) {
+        this.minimize(id); // minimize (toggle)
       }
     };
     const taskbar = document.getElementById('taskbar');
@@ -5535,6 +5535,11 @@ function openWindow(id, title, templateId) {
   let windowKey = id;
   let windowTitle = titleWithIcon;
   const existing = winManager.windows.get(id);
+  if (existing && !existing.minimized) {
+    // Window is open — clicking again toggles it to minimized
+    winManager.minimize(id);
+    return;
+  }
   if (existing && existing.minimized) {
     let n = 2;
     while (winManager.windows.has(`${id}__${n}`)) n += 1;
@@ -9024,9 +9029,10 @@ function loadCapabilityMatrix(host) {
             <option value="duck">6 · Duck</option>
             <option value="sniffles">7 · Sniffles</option>
             <option value="eight">8 · Eight</option>
-            <option value="nine">9 · Claude (Nine)</option>
+            <option value="nine">9 · Groq (Nine)</option>
             <option value="ten">10 · Github (Ten)</option>
             <option value="eleven">11 · Grok (Eleven)</option>
+            <option value="twelve">12 · Claude (Twelve)</option>
           </select>
           <button id="capability-high-enable" style="padding:5px 10px;background:#4caf5020;border:1px solid #4caf5060;border-radius:6px;color:#4caf50;font-size:11px;cursor:pointer;font-weight:700;">Enable High Access</button>
           <button id="capability-high-disable" style="padding:5px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:11px;cursor:pointer;font-weight:700;">Disable High Access</button>
@@ -10610,9 +10616,10 @@ let CHAT_AGENT_OPTIONS = [
   { value: 'duck',     label: '6 · Duck',     number: 6,  tier: 'local', hasTemp: true  },
   { value: 'sniffles', label: '7 · Sniffles', number: 7,  tier: 'local', hasTemp: true  },
   { value: 'eight',    label: '8 · Eight',    number: 8,  tier: 'local', hasTemp: true  },
-  { value: 'nine',     label: '9 · Claude',   number: 9,  tier: 'paid',  hasTemp: false },
+  { value: 'nine',     label: '9 · Groq',     number: 9,  tier: 'paid',  hasTemp: false },
   { value: 'ten',      label: '10 · Github',  number: 10, tier: 'paid',  hasTemp: true  },
   { value: 'eleven',   label: '11 · Grok',    number: 11, tier: 'paid',  hasTemp: false },
+  { value: 'twelve',   label: '12 · Claude',  number: 12, tier: 'paid',  hasTemp: false },
   { value: 'scholar',  label: 'Scholar · Gemini Flash',  tier: 'paid',  hasTemp: false },
   { value: 'seeker',   label: 'Seeker · Tavily Search',  tier: 'paid',  hasTemp: false },
 ];
@@ -12308,9 +12315,10 @@ const _CHAT_AGENT_META = {
   duck:      { icon: '🦆', purpose: '6 · Duck. Sanity checker — YES/NO after every ticket.',                      runtime: 'local', tier: 'local' },
   sniffles:  { icon: '🧪', purpose: '7 · Sniffles. Inspector — memory auditor, read only.',                       runtime: 'local', tier: 'local' },
   eight:     { icon: '8️⃣', purpose: '8 · Eight. SAP specialist — Functional/Technical/Devil three-voice debate.', runtime: 'local', tier: 'local' },
-  nine:      { icon: '👻', purpose: '9 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals.',       runtime: 'paid',  tier: 'paid' },
+  nine:      { icon: '🦙', purpose: '9 · Groq. LlaMA 3.3 70B via Groq — fast, high-capacity reasoning.',        runtime: 'paid',  tier: 'paid' },
   ten:       { icon: '🛠️', purpose: '10 · Github. Engineering advisor — code quality, implementation clarity.',   runtime: 'paid',  tier: 'paid' },
   eleven:    { icon: '⚡', purpose: '11 · Grok. Lateral thinking advisor — creative synthesis, alternatives.',     runtime: 'paid',  tier: 'paid' },
+  twelve:    { icon: '👻', purpose: '12 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals.',       runtime: 'paid',  tier: 'paid' },
   scholar:   { icon: '🔬', purpose: 'Scholar · Gemini 2.0 Flash for vision and deep reasoning.',                  runtime: 'paid',  tier: 'paid' },
   seeker:    { icon: '🔍', purpose: 'Seeker · Tavily live web search and real-time synthesis.',                    runtime: 'paid',  tier: 'paid' },
   you:       { icon: '👤', purpose: 'Human operator input.',                                                       runtime: 'human', tier: 'human' },
