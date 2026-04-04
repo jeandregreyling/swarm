@@ -6268,6 +6268,15 @@ def _agent_reachability_status(agent_name):
 
 @app.route('/api/agents')
 def api_agents():
+    from database import get_agent_registry
+    # Build a lookup of number + label from the DB registry (keyed by internal name)
+    registry_map = {}
+    try:
+        for row in get_agent_registry():
+            registry_map[row['name'].lower()] = {'number': row['number'], 'label': row['label']}
+    except Exception:
+        pass  # registry unavailable — fall back gracefully, UI gets empty number/label
+
     result = []
     for a in _AGENT_ROSTER:
         entry = dict(a)
@@ -6275,6 +6284,9 @@ def api_agents():
         entry['temperature'] = orchestrator.TEMPERATURES.get(a['name'], a['default_temp'])
         entry['status']      = _agent_reachability_status(a['name'])
         entry['ghost_layer'] = a.get('ghost_layer', False)
+        reg = registry_map.get((a.get('name') or '').lower(), {})
+        entry['number'] = reg.get('number', None)
+        entry['label']  = reg.get('label', a.get('name', ''))
         result.append(entry)
     return jsonify(result)
 
