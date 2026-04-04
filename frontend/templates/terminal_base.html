@@ -12684,7 +12684,21 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
       }
     }
 
-    const assignmentMatch = sentence.match(/assign(?:ed)?\s+(.{3,120}?)\s+to\s+([A-Za-z][A-Za-z0-9_.\- ]{1,24})\s+(?:for|to)\s+(.{4,180})/i);
+    // Delegation patterns: "direct LLaMA to X", "ask Qwen to Y", "have Eight check Z"
+    const delegationRe = /(?:direct(?:ing)?|ask(?:ing)?|hav(?:ing|e)|send(?:ing)?)\s+([A-Za-z][A-Za-z0-9_. \-]{1,24}?)\s+to\s+(.{4,200}?)(?=[.;!?\n]|$)/gi;
+    let delMatch;
+    while ((delMatch = delegationRe.exec(sentence)) !== null) {
+      const target = resolveAgentName(delMatch[1]);
+      if (!target || target === fromKey) continue;
+      const normalizedQ = _normalizeRelayQuestion(String(delMatch[2] || '').trim());
+      if (!normalizedQ) continue;
+      const sig = `${target}|${_relayQuestionKey(normalizedQ)}`;
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      out.push({ from: fromKey || 'agent', target, question: normalizedQ });
+    }
+
+    const assignmentMatch = sentence.match(/assign(?:ing|ed)?\s+(.{3,120}?)\s+to\s+([A-Za-z][A-Za-z0-9_.\- ]{1,24})\s+(?:for|to)\s+(.{4,180})/i);
     if (assignmentMatch) {
       const target = resolveAgentName(assignmentMatch[2]);
       const task = `${String(assignmentMatch[1] || '').trim()} ${String(assignmentMatch[3] || '').trim()}`;

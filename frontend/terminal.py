@@ -384,9 +384,15 @@ def _build_chat_handoff_block(selected_agent, reply_context):
     if prior_agent:
         lines.append(f'Active collaborator already in thread: {_display_chat_participant(prior_agent)}')
     lines.extend([
-        'If you are addressing another agent directly, open with their name followed by a comma.',
-        'If the user is looping you into an existing agent discussion, you may reply to that agent directly.',
-        'Otherwise, answer the latest visible sender.',
+        'RELAY ROUTING — CRITICAL:',
+        'To hand off to another agent, end your response with the relay syntax on its own line:',
+        '  AgentName: <your question or task for them>',
+        'Examples: "LLaMA: Can you search for the latest SAP release notes on this?" or "Qwen: What is your risk analysis of this approach?"',
+        'For multiple agents, one directive per line:',
+        '  LLaMA: Can you verify X online?',
+        '  Qwen: Can you reason through the implications?',
+        'Do NOT write "I will direct LLaMA to..." or "Asking Qwen to..." — the relay system reads only the AgentName: format.',
+        'Do NOT simulate other agents. Route and stop.',
         '',
     ])
     return '\n'.join(lines)
