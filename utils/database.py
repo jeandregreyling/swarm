@@ -800,6 +800,44 @@ def _migrate_schema(conn=None):
         except Exception:
             pass  # column already exists — safe to ignore
 
+    # terminal_shortcuts table — all shortcuts (defaults + custom) stored in DB
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS terminal_shortcuts (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                icon     TEXT    NOT NULL DEFAULT '⚡',
+                label    TEXT    NOT NULL,
+                cmd      TEXT    NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.commit()
+    except Exception:
+        pass
+
+    # Seed default shortcuts — insert each if its exact cmd doesn't already exist
+    try:
+        defaults = [
+            ('🔁', 'Hard Boot Terminal',      'sudo systemctl restart swarm-terminal', 0),
+            ('🎨', 'Theme Engine Check',       'head -n 80 /home/seven/swarm/themes/fridays.json', 1),
+            ('📡', 'ALM Status',               'curl -s http://localhost:5050/api/alm/status', 2),
+            ('💬', 'Restart Discord Bot',      'sudo systemctl restart swarm-discord', 3),
+            ('📨', 'Restart Telegram Bot',     'sudo systemctl restart swarm-telegram', 4),
+            ('✅', 'Terminal Service Status',  'systemctl status swarm-terminal', 5),
+            ('🧠', 'System Memory',            'free -h', 6),
+        ]
+        existing_cmds = {r[0] for r in conn.execute("SELECT cmd FROM terminal_shortcuts").fetchall()}
+        for icon, label, cmd, sort_order in defaults:
+            if cmd not in existing_cmds:
+                conn.execute(
+                    "INSERT INTO terminal_shortcuts (icon, label, cmd, sort_order) VALUES (?, ?, ?, ?)",
+                    (icon, label, cmd, sort_order)
+                )
+        conn.commit()
+    except Exception:
+        pass
+
     if _close:
         conn.close()
 
