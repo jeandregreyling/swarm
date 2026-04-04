@@ -429,7 +429,7 @@ _LIBRARIAN_RELAY_REVIEW_SYSTEM = (
     'Do NOT flag patterns already captured by explicit @agent or "Agent: " prefixes. '
     'Only flag genuinely implicit signals.\n\n'
     'Respond ONLY as valid JSON. Nothing else. No explanation. No markdown fences.\n'
-    '{"candidates":[{"target":"agent_name","question":"what to ask them"}]}\n'
+    '{"candidates":[{"target":"qwen","question":"Can you analyse this data?"}]}\n'
     'If no implicit handoffs exist: {"candidates":[]}'
 )
 

@@ -12907,6 +12907,8 @@ function _applySingleAgentSelection(agentKey) {
   Object.keys(window.__fridaysChatEnabledAgents || {}).forEach(k => {
     window.__fridaysChatEnabledAgents[k] = (k === target);
   });
+  // Always ensure the target is enabled — even if it was never in the dict
+  window.__fridaysChatEnabledAgents[target] = true;
   persistThreadAgentSelection();
   renderChatAgentToggles();
   updateComposerMeta();
