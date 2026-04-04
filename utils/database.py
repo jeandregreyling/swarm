@@ -838,6 +838,101 @@ def _migrate_schema(conn=None):
     except Exception:
         pass
 
+    # agents table — add system_prompt and api_key_var columns
+    for col_ddl in [
+        "ALTER TABLE agents ADD COLUMN system_prompt TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN api_key_var   TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN tier          TEXT DEFAULT 'local'",
+        "ALTER TABLE agents ADD COLUMN enabled       INTEGER DEFAULT 1",
+    ]:
+        try:
+            conn.execute(col_ddl)
+            conn.commit()
+        except Exception:
+            pass
+
+    # Seed system_prompt + api_key_var + tier for each agent (only if empty)
+    try:
+        import config as _cfg
+        GEMMA_SYSTEM_PROMPT     = getattr(_cfg, 'GEMMA_SYSTEM_PROMPT',     '')
+        LLAMA_SYSTEM_PROMPT     = getattr(_cfg, 'LLAMA_SYSTEM_PROMPT',     '')
+        QWEN_SYSTEM_PROMPT      = getattr(_cfg, 'QWEN_SYSTEM_PROMPT',      '')
+        LIBRARIAN_SYSTEM_PROMPT = getattr(_cfg, 'LIBRARIAN_SYSTEM_PROMPT', '')
+        MISTRAL_SYSTEM_PROMPT   = getattr(_cfg, 'MISTRAL_SYSTEM_PROMPT',   '')
+        NINE_SYSTEM_PROMPT      = getattr(_cfg, 'NINE_SYSTEM_PROMPT',      '')
+        TEN_SYSTEM_PROMPT       = getattr(_cfg, 'TEN_SYSTEM_PROMPT',       '')
+        ELEVEN_SYSTEM_PROMPT    = getattr(_cfg, 'ELEVEN_SYSTEM_PROMPT',    '')
+        TWELVE_SYSTEM_PROMPT    = getattr(_cfg, 'TWELVE_SYSTEM_PROMPT',    '')
+    except Exception:
+        GEMMA_SYSTEM_PROMPT = LLAMA_SYSTEM_PROMPT = QWEN_SYSTEM_PROMPT = ''
+        LIBRARIAN_SYSTEM_PROMPT = MISTRAL_SYSTEM_PROMPT = ''
+        NINE_SYSTEM_PROMPT = TEN_SYSTEM_PROMPT = ELEVEN_SYSTEM_PROMPT = TWELVE_SYSTEM_PROMPT = ''
+
+    _prompt_seed = [
+        ('gemma',     GEMMA_SYSTEM_PROMPT,     '',              'local'),
+        ('llama',     LLAMA_SYSTEM_PROMPT,      '',              'local'),
+        ('mistral',   MISTRAL_SYSTEM_PROMPT,    '',              'local'),
+        ('qwen',      QWEN_SYSTEM_PROMPT,       '',              'local'),
+        ('librarian', LIBRARIAN_SYSTEM_PROMPT,  '',              'local'),
+        ('duck',      '',                       '',              'local'),
+        ('sniffles',  '',                       '',              'local'),
+        ('eight',     '',                       '',              'local'),
+        ('nine',      NINE_SYSTEM_PROMPT,       'GROQ_API_KEY',  'paid'),
+        ('ten',       TEN_SYSTEM_PROMPT,        'GITHUB_TOKEN',  'paid'),
+        ('eleven',    ELEVEN_SYSTEM_PROMPT,     'XAI_API_KEY',   'paid'),
+        ('ghost',     '',                       '',              'human'),
+    ]
+    try:
+        for name, prompt, key_var, tier in _prompt_seed:
+            conn.execute(
+                """UPDATE agents SET
+                     system_prompt = CASE WHEN (system_prompt IS NULL OR system_prompt = '') THEN ? ELSE system_prompt END,
+                     api_key_var   = CASE WHEN (api_key_var   IS NULL OR api_key_var   = '') THEN ? ELSE api_key_var   END,
+                     tier          = CASE WHEN (tier          IS NULL OR tier          = '') THEN ? ELSE tier          END
+                   WHERE name = ?""",
+                (prompt, key_var, tier, name)
+            )
+        conn.commit()
+    except Exception:
+        pass
+
+    # swarm_globals table — shared rules and global parameters
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS swarm_globals (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                key        TEXT NOT NULL UNIQUE,
+                value      TEXT NOT NULL DEFAULT '',
+                description TEXT DEFAULT '',
+                updated_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.commit()
+    except Exception:
+        pass
+
+    # Seed default globals
+    _globals_seed = [
+        ('global_rules',
+         'Never hallucinate. Never fabricate facts. Never impersonate external services. Always state uncertainty. Do not break character.',
+         'Rules prepended to every agent prompt'),
+        ('global_max_tokens',
+         '4096',
+         'Default max tokens for API agents'),
+        ('global_context_window',
+         '8192',
+         'Target context window size for all agents'),
+    ]
+    try:
+        for key, value, desc in _globals_seed:
+            conn.execute(
+                "INSERT OR IGNORE INTO swarm_globals (key, value, description) VALUES (?, ?, ?)",
+                (key, value, desc)
+            )
+        conn.commit()
+    except Exception:
+        pass
+
     if _close:
         conn.close()
 
