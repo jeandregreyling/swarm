@@ -14140,6 +14140,13 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
           // auto-fire guard is skipped; process relay here before the history reload.
           const completedNow = jobs.filter(j => j.status === 'completed');
           if (completedNow.length && window.__fridaysChatRelayAuto) {
+            // Budget may be 0 if the page was loaded/refreshed while the job was
+            // running — the user's original sendMessage() never set it this session.
+            // Re-initialise so the relay chain can fire from this async completion.
+            if (Number(window.__fridaysChatRelayBudget || 0) === 0) {
+              const asyncRelayCfg = _chatRelayConfig();
+              window.__fridaysChatRelayBudget = asyncRelayCfg.infinite ? -1 : asyncRelayCfg.maxPerTurn;
+            }
             fetch('/api/conversations/' + conversationId + '/messages')
               .then(r => r.json())
               .then(d => {
