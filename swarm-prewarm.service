@@ -1,0 +1,19 @@
+[Unit]
+Description=Seven's Swarm — pre-warm Ollama models into memory
+After=network-online.target ollama.service
+Wants=ollama.service
+# Run once per boot; don't block other swarm services from starting
+Before=swarm-terminal.service swarm-discord.service swarm-telegram.service
+
+[Service]
+Type=oneshot
+User=seven
+WorkingDirectory=/home/seven/swarm
+ExecStart=/bin/bash /home/seven/swarm/swarm-prewarm.sh
+TimeoutStartSec=900
+StandardOutput=journal
+StandardError=journal
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

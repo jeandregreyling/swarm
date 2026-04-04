@@ -622,6 +622,39 @@ body.theme-rose {
   background: linear-gradient(135deg, var(--card) 0%, rgba(239, 68, 68, 0.08) 100%);
   border-color: rgba(239, 68, 68, 0.3);
 }
+/* ── Ollama model rows ── */
+.model-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.model-dot.dot-loaded { background: #4caf50; box-shadow: 0 0 5px rgba(76,175,80,0.7); }
+.model-dot.dot-off    { background: #e53935; }
+.model-dot.dot-none   { background: #444; }
+.model-dot.dot-busy   { background: #ff9800; box-shadow: 0 0 5px rgba(255,152,0,0.6); animation: dot-pulse 0.85s infinite; }
+@keyframes dot-pulse  { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.model-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px; border-radius: 5px;
+  cursor: pointer; user-select: none;
+  transition: background 0.12s;
+}
+.model-row:hover        { background: var(--card-hover); }
+.model-row.row-busy     { cursor: wait; }
+.model-row.row-missing  { cursor: default; opacity: 0.45; }
+.model-row-name {
+  flex: 1; font-size: 11px; font-weight: 600;
+  font-family: 'SF Mono', monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.model-row-mem {
+  font-size: 10px; color: #4caf50; white-space: nowrap; font-weight: 500;
+}
+.model-row-mem.mem-off { color: var(--text-dim); }
+.model-sub-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text-dim); font-weight: 600; margin: 12px 0 4px;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    FLOATING WINDOWS
    ───────────────────────────────────────────────────────────────────────── */
@@ -3277,9 +3310,14 @@ input[type="range"]::-moz-range-thumb:hover {
       </div>
     </div>
 
-    <!-- System Status -->
+    <!-- System Status + Models (combined) -->
     <div class="home-section">
-      <div class="home-section-title"><span>🖥️</span> System Status</div>
+      <div class="home-section-title" style="display:flex;align-items:center;gap:6px;">
+        <span>🖥️</span> System Status
+        <button onclick="loadOllamaPanel()" title="Refresh models" style="margin-left:auto;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;">↻</button>
+      </div>
+
+      <!-- Stat cards row -->
       <div class="stats-grid" id="stats-grid">
         <div class="stat-card">
           <div class="stat-value" id="stat-cpu">—</div>
@@ -3306,6 +3344,11 @@ input[type="range"]::-moz-range-thumb:hover {
           <div class="stat-label">ALM</div>
         </div>
       </div>
+
+      <!-- Swarm model rows -->
+      <div class="model-sub-label">Models</div>
+      <div id="ollama-swarm-list"><div style="font-size:11px;color:var(--text-dim);padding:4px 0;">Loading…</div></div>
+      <div id="ollama-status-msg" style="font-size:11px;color:var(--text-dim);margin-top:6px;min-height:16px;"></div>
     </div>
 
     <!-- Activity Log -->
@@ -15135,6 +15178,112 @@ function sendMessage(source = 'user', relayMeta = null) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// OLLAMA MODEL PANEL
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Swarm models in display order — matches orchestrator.py AGENTS
+const SWARM_MODELS = [
+  'gemma3:latest', 'gemma4:26b', 'llama3.2:latest',
+  'qwen2.5:latest', 'qwen:latest', 'deepseek-r1:7b',
+];
+
+function loadOllamaPanel() {
+  Promise.all([
+    fetch('/api/ollama/models').then(r => r.json()).catch(() => ({ models: [] })),
+    fetch('/api/monitor').then(r => r.json()).catch(() => ({ active_models: [] })),
+  ]).then(([installed, monitor]) => {
+    const installedMap = {};
+    (Array.isArray(installed.models) ? installed.models : []).forEach(m => {
+      if (m && m.name) installedMap[m.name] = m;
+    });
+
+    const loadedMap = {};
+    (Array.isArray(monitor.active_models) ? monitor.active_models : []).forEach(m => {
+      if (m && m.name) loadedMap[m.name] = m;
+    });
+
+    const rows = SWARM_MODELS.map(name => {
+      const inst    = installedMap[name];
+      const loaded  = loadedMap[name];
+      const missing = !inst;
+
+      let dotCls, memText, rowCls, clickAttr;
+
+      if (missing) {
+        dotCls    = 'dot-none';
+        memText   = 'not installed';
+        rowCls    = 'row-missing';
+        clickAttr = '';
+      } else if (loaded) {
+        const vramGb = Number(loaded.size_vram || 0) / 1024 ** 3;
+        const ramGb  = Number(loaded.size  || 0) / 1024 ** 3;
+        const loc    = vramGb > 0.01 ? `${vramGb.toFixed(1)} GB VRAM` : `${ramGb.toFixed(1)} GB RAM`;
+        dotCls    = 'dot-loaded';
+        memText   = loc;
+        rowCls    = '';
+        clickAttr = `onclick="ollamaToggle('${name}')"`;
+      } else {
+        dotCls    = 'dot-off';
+        memText   = '—';
+        rowCls    = '';
+        clickAttr = `onclick="ollamaToggle('${name}')"`;
+      }
+
+      return `<div class="model-row ${rowCls}" id="mrow-${name.replace(/[^a-z0-9]/gi,'-')}" ${clickAttr}>
+        <span class="model-dot ${dotCls}" id="mdot-${name.replace(/[^a-z0-9]/gi,'-')}"></span>
+        <span class="model-row-name" title="${name}">${name}</span>
+        <span class="model-row-mem ${loaded ? '' : 'mem-off'}" id="mmem-${name.replace(/[^a-z0-9]/gi,'-')}">${memText}</span>
+      </div>`;
+    }).join('');
+
+    const list = document.getElementById('ollama-swarm-list');
+    if (list) list.innerHTML = rows;
+  }).catch(e => console.error('loadOllamaPanel error:', e));
+}
+
+function ollamaToggle(name) {
+  const safeName = name.replace(/[^a-z0-9]/gi, '-');
+  const dot  = document.getElementById(`mdot-${safeName}`);
+  const row  = document.getElementById(`mrow-${safeName}`);
+  const mem  = document.getElementById(`mmem-${safeName}`);
+  const msg  = document.getElementById('ollama-status-msg');
+
+  // Check current state by dot class
+  const isLoaded = dot && dot.classList.contains('dot-loaded');
+
+  // Mark busy
+  if (dot) { dot.className = 'model-dot dot-busy'; }
+  if (row) { row.classList.add('row-busy'); row.onclick = null; }
+  if (mem) { mem.textContent = isLoaded ? 'unloading…' : 'loading…'; mem.className = 'model-row-mem mem-off'; }
+  if (msg) msg.textContent = `${isLoaded ? 'Unloading' : 'Loading'} ${name}…`;
+
+  const url = isLoaded ? '/api/ollama/unload' : '/api/ollama/load';
+
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: name }),
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (msg) msg.textContent = d.ok
+      ? `✓ ${name} ${isLoaded ? 'unloaded' : 'loaded'}`
+      : `✗ ${d.error || 'failed'}`;
+    loadOllamaPanel();
+  })
+  .catch(e => {
+    if (msg) msg.textContent = `✗ ${e.message}`;
+    loadOllamaPanel();
+  })
+  .finally(() => {
+    setTimeout(() => {
+      const el = document.getElementById('ollama-status-msg');
+      if (el) el.textContent = '';
+    }, 4000);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -15202,6 +15351,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   loadHomeStats(); // Load system stats with colors and trends
   setInterval(loadHomeStats, 10000); // Update stats every 10 seconds
+  loadOllamaPanel(); // Load Ollama model panel
+  setInterval(loadOllamaPanel, 15000); // Refresh every 15 seconds
   loadAttentionPanel(); // Needs-attention summary
   setInterval(loadAttentionPanel, 30000); // Refresh every 30 seconds
   updateActivityLog();
