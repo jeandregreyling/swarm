@@ -69,7 +69,7 @@ AGENTS = {
     'gemma':     'gemma3:latest',
     'llama':     'llama3.2:latest',
     'qwen':      'qwen2.5:latest',
-    'eight':     'qwen2.5:latest',
+    'eight':     'gemma4:26b',
     'librarian': 'qwen:latest',
     'duck':      'llama3.2:latest',
     'sniffles':  'deepseek-r1:7b',
@@ -145,16 +145,11 @@ SYSTEM_PROMPTS = {
     'Ten':       'You are Ten, a Software Engineering Advisor. Your role is to provide code quality, clarity, and architectural insights. You are part of the Ghost Layer.',
 }
 
-# Keep local models warm long enough to avoid frequent reloads.
-# Qwen remains short-lived so it can yield memory when not needed.
-MODEL_KEEP_ALIVE = {
-    'gemma': os.environ.get('SWARM_KEEPALIVE_GEMMA', '45m'),
-    'llama': os.environ.get('SWARM_KEEPALIVE_LLAMA', '45m'),
-    'qwen': os.environ.get('SWARM_KEEPALIVE_QWEN', '25m'),
-    'librarian': os.environ.get('SWARM_KEEPALIVE_LIBRARIAN', '20m'),
-    'duck': os.environ.get('SWARM_KEEPALIVE_DUCK', '20m'),
-    'sniffles': os.environ.get('SWARM_KEEPALIVE_SNIFFLES', '45m'),
-}
+# All models stay resident indefinitely — the 127 GB NVMe swap handles memory
+# pressure by paging idle models out and back in at ~2-3 GB/s.
+# RAM residents: gemma, llama, qwen, duck, librarian.
+# NVMe-swap residents (larger / less frequent): eight (qwen2.5 ×3), sniffles (deepseek-r1).
+MODEL_KEEP_ALIVE = {agent: -1 for agent in ('gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles', 'eight')}
 
 MIN_FREE_GB_FOR_BOTH = float(os.environ.get('SWARM_MIN_FREE_GB_FOR_BOTH', '7.0'))
 
@@ -186,37 +181,9 @@ def _apply_local_memory_policy(routing):
 
 
 def _select_keep_alive(agent_name):
-    """Choose keep-alive based on current memory headroom.
-
-    High headroom keeps local models warm longer. Low headroom reduces residency
-    for heavier models to avoid memory churn.
-    """
-    base = MODEL_KEEP_ALIVE.get(agent_name, '5m')
-    avail_gb = _available_memory_gb()
-    if avail_gb is None:
-        return base
-
-    if avail_gb < 4.0:
-        # Under pressure: aggressively shorten heavy model residency.
-        if agent_name in {'qwen', 'sniffles'}:
-            return '5m'
-        if agent_name in {'duck', 'librarian'}:
-            return '8m'
-        return base
-
-    if avail_gb >= 14.0:
-        # Plenty of headroom: keep local helpers warm longer for continuity.
-        boosts = {
-            'gemma': '60m',
-            'llama': '60m',
-            'qwen': '45m',
-            'librarian': '35m',
-            'duck': '35m',
-            'sniffles': '60m',
-        }
-        return boosts.get(agent_name, base)
-
-    return base
+    """All agents keep_alive=-1: models stay resident in RAM or NVMe swap
+    indefinitely. The OS pages idle models to the 127 GB NVMe swap as needed."""
+    return MODEL_KEEP_ALIVE.get(agent_name, -1)
 
 def ask_agent(agent_name, prompt, retries=2):
     agent_name = agent_name.lower()  # normalize — AGENTS dict uses lowercase keys
