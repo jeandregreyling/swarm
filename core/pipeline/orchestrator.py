@@ -254,7 +254,7 @@ def _swarm_awareness_block():
     """RL-017c — inject swarm roster so agents know who they work with."""
     web_status = []
     if _SERPER_OK:  web_status.append('Gemma→Google/Serper')
-    if _TAVILY_OK:  web_status.append('Qwen/Eight→Tavily')
+    if _TAVILY_OK:  web_status.append('Mistral/Eight→Tavily')
     web_status.append('LLaMA→DuckDuckGo')
     return (
         '=== Swarm roster ===\n'
