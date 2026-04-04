@@ -3530,20 +3530,20 @@ input[type="range"]::-moz-range-thumb:hover {
                     </select>
                   </label>
                   <label class="chat-relay-toggle" title="Automatically relay agent-to-agent questions as explicit chat turns.">
-                    <input class="chat-relay-auto" type="checkbox" onchange="onChatRelayAutoToggle()">
+                    <input id="chat-relay-auto" class="chat-relay-auto" type="checkbox" onchange="onChatRelayAutoToggle()">
                     <span>Auto Relay</span>
                   </label>
                   <label class="chat-relay-toggle" title="When enabled, relay turns always send full thread context regardless of Context mode.">
-                    <input class="chat-relay-force-full" type="checkbox" onchange="onChatRelayForceFullContextToggle()">
+                    <input id="chat-relay-force-full" class="chat-relay-force-full" type="checkbox" onchange="onChatRelayForceFullContextToggle()">
                     <span>Relay uses full context</span>
                   </label>
                 </div>
                 <div class="chat-relay-slider-row">
                   <span style="font-size:10px;color:var(--text-dim);">Agent-to-agent turns</span>
-                  <input class="chat-relay-turns-slider" type="range" min="1" max="12" step="1" value="4" oninput="onChatRelayTurnsSliderChange()" title="Maximum automatic relay turns per user send">
-                  <span class="chat-relay-turns-value" class="chat-relay-turns-value">4</span>
+                  <input id="chat-relay-turns-slider" class="chat-relay-turns-slider" type="range" min="1" max="12" step="1" value="4" oninput="onChatRelayTurnsSliderChange()" title="Maximum automatic relay turns per user send">
+                  <span id="chat-relay-turns-value" class="chat-relay-turns-value">4</span>
                   <label class="chat-relay-toggle" style="padding:2px 8px;" title="Unlimited relay turns for the current send chain.">
-                    <input class="chat-relay-infinite" type="checkbox" onchange="onChatRelayInfiniteToggle()">
+                    <input id="chat-relay-infinite" class="chat-relay-infinite" type="checkbox" onchange="onChatRelayInfiniteToggle()">
                     <span>Infinite</span>
                   </label>
                   <button class="chat-action-btn" onclick="clearRelayQueue()" title="Clear queued relay actions">Clear queue</button>
@@ -12340,8 +12340,8 @@ function _librarianQueueWatchdog() {
   const queue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
   if (queue.length > 0) return;  // queue busy — regex relay is handling things
 
-  // Find last agent bubble
-  const bubbles = document.querySelectorAll('.chat-bubble:not(.user-bubble)');
+  // Find last agent bubble (user bubbles have class 'user', not 'user-bubble')
+  const bubbles = document.querySelectorAll('.chat-bubble:not(.user)');
   if (!bubbles.length) return;
   const last = bubbles[bubbles.length - 1];
   const bubbleId = last.id || null;
@@ -14522,6 +14522,29 @@ function renderChatMessages(rows) {
     ? window.__fridaysThreadRuntimeSnapshot.jobs
     : [];
   _syncThinkingBubbles(snapshotJobs);
+
+  // Inject Route-to buttons on the last agent bubble rendered from history.
+  // _appendChatBubble skips relay extraction when fromHistory=true, so we do it here.
+  // This lets the user manually route if auto-relay didn't fire yet.
+  const allBubbles = (messages || document).querySelectorAll('.chat-bubble:not(.user)');
+  const lastAgentBubble = allBubbles.length ? allBubbles[allBubbles.length - 1] : null;
+  if (lastAgentBubble && !lastAgentBubble.querySelector('.chat-handoff-actions')) {
+    const textEl = lastAgentBubble.querySelector('.chat-text');
+    const visibleText = textEl ? (textEl.innerText || textEl.textContent || '') : '';
+    const senderClass = Array.from(lastAgentBubble.classList).find(c => c.startsWith('sender-'));
+    const fromKey = senderClass ? senderClass.replace('sender-', '') : 'agent';
+    const relayCandidates = _extractAgentDirectedQuestions(visibleText, fromKey);
+    if (relayCandidates.length) {
+      const buttonsDiv = document.createElement('div');
+      buttonsDiv.className = 'chat-handoff-actions';
+      buttonsDiv.innerHTML = relayCandidates.map(c =>
+        `<button class="chat-handoff-btn" data-relay-from="${_escapeHtml(fromKey)}" data-relay-target="${_escapeHtml(c.target)}" data-relay-question="${_escapeHtml(_relayEncode(c.question))}" onclick="queueRelayHandoffFromButton(this)">Route to ${_escapeHtml(_chatAgentLabel(c.target))}</button>`
+      ).join('');
+      const actionsRow = lastAgentBubble.querySelector('.chat-actions');
+      if (actionsRow) actionsRow.insertAdjacentElement('beforebegin', buttonsDiv);
+      else lastAgentBubble.appendChild(buttonsDiv);
+    }
+  }
 }
 
 function _chatRowsSignature(rows) {
