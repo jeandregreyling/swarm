@@ -3893,6 +3893,64 @@ def api_hands_run():
     return api_shell_execute()
 
 
+@app.route('/api/terminal/shortcuts', methods=['GET'])
+def api_terminal_shortcuts_get():
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT id, icon, label, cmd, sort_order FROM terminal_shortcuts ORDER BY sort_order ASC, id ASC"
+    ).fetchall()
+    conn.close()
+    return jsonify([{'id': r[0], 'icon': r[1], 'label': r[2], 'cmd': r[3], 'sort_order': r[4]} for r in rows])
+
+
+@app.route('/api/terminal/shortcuts', methods=['POST'])
+def api_terminal_shortcuts_post():
+    data = request.get_json() or {}
+    icon  = (data.get('icon')  or '⚡').strip()[:4]
+    label = (data.get('label') or '').strip()
+    cmd   = (data.get('cmd')   or '').strip()
+    sort_order = int(data.get('sort_order') or 0)
+    if not label or not cmd:
+        return jsonify({'error': 'label and cmd required'}), 400
+    conn = get_connection()
+    cur = conn.execute(
+        "INSERT INTO terminal_shortcuts (icon, label, cmd, sort_order) VALUES (?, ?, ?, ?)",
+        (icon, label, cmd, sort_order)
+    )
+    conn.commit()
+    new_id = cur.lastrowid
+    conn.close()
+    return jsonify({'ok': True, 'id': new_id})
+
+
+@app.route('/api/terminal/shortcuts/<int:shortcut_id>', methods=['PUT'])
+def api_terminal_shortcuts_put(shortcut_id):
+    data = request.get_json() or {}
+    icon  = (data.get('icon')  or '⚡').strip()[:4]
+    label = (data.get('label') or '').strip()
+    cmd   = (data.get('cmd')   or '').strip()
+    sort_order = int(data.get('sort_order') or 0)
+    if not label or not cmd:
+        return jsonify({'error': 'label and cmd required'}), 400
+    conn = get_connection()
+    conn.execute(
+        "UPDATE terminal_shortcuts SET icon=?, label=?, cmd=?, sort_order=? WHERE id=?",
+        (icon, label, cmd, sort_order, shortcut_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/terminal/shortcuts/<int:shortcut_id>', methods=['DELETE'])
+def api_terminal_shortcuts_delete(shortcut_id):
+    conn = get_connection()
+    conn.execute("DELETE FROM terminal_shortcuts WHERE id=?", (shortcut_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/api/workspace/dir', methods=['GET'])
 def api_workspace_dir():
     """
@@ -6785,30 +6843,25 @@ def api_nine_chat():
 
     from database import get_agent_memory, save_agent_memory
     try:
-        from claude_api import _load_api_key, CLAUDE_MODEL
-        from config import NINE_SYSTEM_PROMPT
-        import anthropic
+        from config import GROQ_API_KEY, NINE_MODEL, NINE_SYSTEM_PROMPT
+        from groq import Groq
 
-        api_key = _load_api_key()
-        if not api_key:
-            return jsonify({'error': 'ANTHROPIC_API_KEY not configured — add to /etc/environment'}), 500
+        if not GROQ_API_KEY:
+            return jsonify({'error': 'GROQ_API_KEY not configured — add to /etc/environment'}), 500
 
         conn       = get_connection()
         queued     = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
         processing = conn.execute("SELECT COUNT(*) FROM queue WHERE status='processing'").fetchone()[0]
         open_t     = conn.execute("SELECT COUNT(*) FROM tickets WHERE status='open'").fetchone()[0]
-        
-        # Recall: Recent flow + Relevant context
+
         nine_history  = conn.execute("SELECT subject, content, created_at FROM memory_nine WHERE archived=0 ORDER BY created_at DESC LIMIT 10").fetchall()
         nine_relevant = get_agent_memory('nine', query=message, limit=5)
 
-        # Pending proposals
         try:
             from sandpits import list_proposals
             proposals = list_proposals()[:5]
         except Exception:
             proposals = []
-        # Open debates
         open_debates = conn.execute(
             "SELECT topic, rounds FROM debates WHERE status='open' ORDER BY created_at DESC LIMIT 5"
         ).fetchall() if 'debates' in [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()] else []
@@ -6840,15 +6893,17 @@ def api_nine_chat():
 
         full_message = ctx + f"\n=== Ghost asks ===\n{message}"
 
-        client   = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model=CLAUDE_MODEL,
+        client   = Groq(api_key=GROQ_API_KEY)
+        response = client.chat.completions.create(
+            model=NINE_MODEL,
             max_tokens=4096,
-            system=NINE_SYSTEM_PROMPT,
-            messages=[{'role': 'user', 'content': full_message}]
+            messages=[
+                {'role': 'system', 'content': NINE_SYSTEM_PROMPT},
+                {'role': 'user',   'content': full_message},
+            ]
         )
-        answer = response.content[0].text
-        tokens = response.usage.input_tokens + response.usage.output_tokens
+        answer = response.choices[0].message.content
+        tokens = response.usage.prompt_tokens + response.usage.completion_tokens
 
         save_agent_memory(
             agent_name='nine', subject=message[:100], content=answer,
@@ -6858,7 +6913,7 @@ def api_nine_chat():
         from database import log_activity
         log_activity('terminal', 'nine_consulted', f'tokens={tokens} | {message[:80]}')
 
-        return jsonify({'answer': answer, 'tokens': tokens})
+        return jsonify({'answer': answer, 'tokens': tokens, 'model': NINE_MODEL})
 
     except Exception as e:
         print(f'[Terminal] Nine error: {e}')
@@ -6867,7 +6922,7 @@ def api_nine_chat():
 
 @app.route('/api/nine/stream', methods=['POST'])
 def api_nine_stream():
-    """Streaming version of Nine chat via SSE."""
+    """Streaming version of Nine chat via SSE — Groq."""
     from datetime import datetime as _dt
     data    = request.get_json() or {}
     message = (data.get('message') or '').strip()
@@ -6876,20 +6931,18 @@ def api_nine_stream():
 
     from database import get_agent_memory, save_agent_memory
     try:
-        from claude_api import _load_api_key, CLAUDE_MODEL
-        from config import NINE_SYSTEM_PROMPT
-        import anthropic
+        from config import GROQ_API_KEY, NINE_MODEL, NINE_SYSTEM_PROMPT
+        from groq import Groq
 
-        api_key = _load_api_key()
-        if not api_key:
+        if not GROQ_API_KEY:
             def _err():
-                yield 'data: {"error": "ANTHROPIC_API_KEY not set"}\n\n'
+                yield 'data: {"error": "GROQ_API_KEY not set"}\n\n'
             return Response(_err(), mimetype='text/event-stream')
 
-        conn       = get_connection()
-        queued     = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
-        open_t     = conn.execute("SELECT COUNT(*) FROM tickets WHERE status='open'").fetchone()[0]
-        nine_history = conn.execute("SELECT subject, content, created_at FROM memory_nine WHERE archived=0 ORDER BY created_at DESC LIMIT 8").fetchall()
+        conn          = get_connection()
+        queued        = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
+        open_t        = conn.execute("SELECT COUNT(*) FROM tickets WHERE status='open'").fetchone()[0]
+        nine_history  = conn.execute("SELECT subject, content, created_at FROM memory_nine WHERE archived=0 ORDER BY created_at DESC LIMIT 8").fetchall()
         nine_relevant = get_agent_memory('nine', query=message, limit=4)
         conn.close()
 
@@ -6905,30 +6958,33 @@ def api_nine_stream():
                 ctx += f"[{str(m['created_at'] or '')[:16]}] {m['subject']}: {str(m['content'] or '')[:1000]}\n"
         full_message = ctx + f"\n=== Ghost asks ===\n{message}"
 
-        client = anthropic.Anthropic(api_key=api_key)
+        client = Groq(api_key=GROQ_API_KEY)
 
         def _generate():
             full_answer = []
             try:
-                with client.messages.stream(
-                    model=CLAUDE_MODEL,
+                stream = client.chat.completions.create(
+                    model=NINE_MODEL,
                     max_tokens=4096,
-                    system=NINE_SYSTEM_PROMPT,
-                    messages=[{'role': 'user', 'content': full_message}]
-                ) as stream:
-                    for text in stream.text_stream:
+                    messages=[
+                        {'role': 'system', 'content': NINE_SYSTEM_PROMPT},
+                        {'role': 'user',   'content': full_message},
+                    ],
+                    stream=True,
+                )
+                for chunk in stream:
+                    text = chunk.choices[0].delta.content or ''
+                    if text:
                         full_answer.append(text)
                         yield f'data: {json.dumps({"text": text})}\n\n'
                 answer = ''.join(full_answer)
-                tokens = stream.get_final_message().usage
-                total  = tokens.input_tokens + tokens.output_tokens
                 save_agent_memory(
                     agent_name='nine', subject=message[:100], content=answer,
                     tags='vs,dashboard', importance=8, source='vs_tab'
                 )
                 from database import log_activity
-                log_activity('terminal', 'nine_consulted', f'tokens={total} | {message[:80]}')
-                yield f'data: {json.dumps({"done": True, "tokens": total})}\n\n'
+                log_activity('terminal', 'nine_consulted', f'model={NINE_MODEL} | {message[:80]}')
+                yield f'data: {json.dumps({"done": True, "model": NINE_MODEL})}\n\n'
             except Exception as e:
                 yield f'data: {json.dumps({"error": str(e)})}\n\n'
 

@@ -331,9 +331,8 @@ You have three inputs:
 Your job: deliver one clear answer. Lead with the recommended approach or direct answer. Integrate the technical detail from the Technical voice where it adds value. Highlight the single most important risk or edge case the Devil's Advocate raised — only if it is real and material. Use correct SAP terminology throughout (PCR not 'rule', IT0008 not 'basic pay infotype', XDIVID not 'factoring step'). Be direct. 3-6 sentences unless complexity demands more. No preamble."""
 
 # ── Nine — System Architect (RL-034) ─────────────────────────────────────────
-# Nine is Claude (Anthropic). Not a local Ollama agent — accessed via Ghost Circle
-# (ANTHROPIC_API_KEY). Nine exists in the Ghost Circle layer: Ghost and Nine are
-# the only agents that can see the full swarm from outside it.
+# Nine runs on Groq (llama-3.3-70b-versatile). Add GROQ_API_KEY to /etc/environment.
+# Nine exists in the Ghost Circle layer — sees full swarm state when consulted.
 # Nine's role: build and improve the swarm itself. Session memory in memory_nine.
 # Nine's sandpit: sandpits/nine/ — architectural notes, draft code, session plans.
 
@@ -362,6 +361,10 @@ def _load_env_key(name):
 
 XAI_API_KEY            = _load_env_key('XAI_API_KEY')
 XAI_MODEL              = 'grok-3'
+
+# Nine (Groq) — llama-3.3-70b-versatile
+GROQ_API_KEY           = _load_env_key('GROQ_API_KEY')
+NINE_MODEL             = 'llama-3.3-70b-versatile'
 
 # Credentials loaded from .env.agents / environment (never hardcoded)
 GEMINI_API_KEY         = _load_env_key('GEMINI_API_KEY')
