@@ -45,7 +45,9 @@ from database import (get_connection, new_conversation, log_message,
                        can_user_invoke_skill, initialise_database,
                        get_agent_memory, save_agent_memory, agent_has_capability,
                        grant_agent_capability, revoke_agent_capability,
-                       get_agent_capabilities, AGENT_CAPABILITY_REGISTRY)
+                       get_agent_capabilities, AGENT_CAPABILITY_REGISTRY,
+                       persist_chat_job, update_chat_job_db,
+                       get_chat_jobs_by_ids, mark_orphaned_chat_jobs)
 from ticket import create as ticket_create, librarian_close
 import queue_manager as _queue_manager
 
@@ -156,6 +158,13 @@ try:
     initialise_database()
 except Exception as exc:
     print(f'[Terminal] database bootstrap warning: {exc}')
+
+# Mark any chat jobs that were still 'running' in DB as failed —
+# they belong to a previous process that is no longer alive.
+try:
+    mark_orphaned_chat_jobs()
+except Exception as exc:
+    print(f'[Terminal] chat job orphan cleanup warning: {exc}')
 
 # ── Kill switches ──────────────────────────────────────────────────────────────
 # Any agent name in this set is skipped by the pipeline.
@@ -5681,6 +5690,15 @@ def api_chat():
                     'future': future,
                     'cancel_requested': False,
                 }
+            # Persist to DB so the frontend can learn job outcome after a restart.
+            persist_chat_job(
+                job_id=job_id,
+                conversation_id=conv_id,
+                agent=selected_agent,
+                runtime_class=_chat_runtime_class(selected_agent),
+                eta_seconds=eta_seconds,
+                started_at=now_iso,
+            )
             if isinstance(job_ref, dict):
                 job_ref['job_id'] = job_id
 
@@ -5725,6 +5743,10 @@ def api_chat():
                                 'elapsed_ms': int(elapsed_ms or 0),
                                 'tokens': int(tokens_used or 0),
                             })
+                    update_chat_job_db(
+                        job_id, status='completed', stage='completed',
+                        elapsed_ms=int(elapsed_ms or 0), tokens=int(tokens_used or 0),
+                    )
                 except Exception as exc:
                     err_text = str(exc or '').strip() or exc.__class__.__name__
                     with _CHAT_JOB_LOCK:
@@ -5756,6 +5778,7 @@ def api_chat():
                                 'updated_ts': updated_ts,
                                 'updated_at': updated_iso,
                             })
+                    update_chat_job_db(job_id, status='failed', stage='failed', error=err_text)
 
             future.add_done_callback(_finish_job)
             return job_id
@@ -5974,6 +5997,29 @@ def api_chat_jobs_status():
                 continue
             jobs.append(_chat_job_public(job))
 
+    # For any explicitly requested IDs not found in memory, fall back to DB.
+    # This surfaces outcomes for jobs that finished after a server restart.
+    if want_ids:
+        found_in_memory = {j['job_id'] for j in jobs}
+        missing_ids = want_ids - found_in_memory
+        if missing_ids:
+            for row in get_chat_jobs_by_ids(missing_ids):
+                elapsed = int(row.get('elapsed_ms') or 0)
+                jobs.append({
+                    'job_id': row.get('job_id'),
+                    'conversation_id': row.get('conversation_id'),
+                    'agent': row.get('agent'),
+                    'status': row.get('status') or 'failed',
+                    'runtime_class': row.get('runtime_class') or _chat_runtime_class(row.get('agent')),
+                    'stage': row.get('stage') or 'unknown',
+                    'eta_seconds': int(row.get('eta_seconds') or 0),
+                    'eta_remaining_seconds': 0,
+                    'started_at': row.get('started_at'),
+                    'updated_at': row.get('updated_at'),
+                    'elapsed_ms': elapsed,
+                    'error': row.get('error') or '',
+                })
+
     jobs.sort(key=lambda j: (j.get('status') != 'running', j.get('agent') or ''))
     return jsonify({'ok': True, 'jobs': jobs})
 
@@ -6036,6 +6082,8 @@ def api_chat_jobs_cancel():
                 'updated_ts': now_ts,
                 'updated_at': now_iso,
             })
+            update_chat_job_db(job_id, status='cancelled', stage='cancelled by user',
+                               error='cancelled by user')
             if hard_kill and _chat_runtime_class(job.get('agent')) == 'local':
                 local_agents_to_kill.add(str(job.get('agent') or '').strip().lower())
             cancelled.append({'job_id': job_id, 'agent': job.get('agent'), 'cancel_signal_sent': cancel_signal_sent})
