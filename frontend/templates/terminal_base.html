@@ -1946,6 +1946,18 @@ body.theme-rose {
   user-select: none; vertical-align: middle;
 }
 .chat-relay-dispatch .relay-stop:hover { opacity: 1; color: var(--danger, #e05); }
+.relay-chain-badge {
+  margin-left: 6px; font-style: normal; font-size: 9px; font-weight: 700;
+  color: var(--accent); opacity: 0.85;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-radius: 4px; padding: 0 4px; vertical-align: middle;
+}
+.chat-bubble-chain-badge {
+  font-size: 9px; color: var(--accent); opacity: 0.75; margin-left: 5px;
+  font-weight: 700; font-style: normal; vertical-align: middle;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 3px; padding: 0 3px;
+}
 .skill-events {
   margin-top: 10px;
   display: flex;
@@ -12575,12 +12587,23 @@ async function _relayDispatchGate(item) {
   const relayItem = item || {};
   const queue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
   const budget = Number(window.__fridaysChatRelayBudget || 0);
-  if (relayItem.auto && budget === 0) {
+  const _chainDepth = Number(relayItem.chainDepth ?? -1);
+  const _hasChainBudget = _chainDepth >= 0;
+  // Chain-budget relays bypass the global turn budget but have their own per-chain depth limit.
+  if (relayItem.auto && !_hasChainBudget && budget === 0) {
     return {
       allow: false,
       reason: 'turn budget exhausted',
       retryMs: CHAT_RELAY_RESOURCE_LIMITS.retryMsNormal,
       deferToBack: true,
+    };
+  }
+  if (relayItem.auto && _hasChainBudget && _chainDepth === 0) {
+    return {
+      allow: false,
+      reason: 'chain budget exhausted',
+      retryMs: CHAT_RELAY_RESOURCE_LIMITS.retryMsNormal,
+      deferToBack: false,
     };
   }
 
@@ -13133,7 +13156,9 @@ function _applySingleAgentSelection(agentKey) {
 function _relayPromptText(handoff) {
   const fromLabel = _chatAgentLabel(handoff.from || 'agent');
   const targetLabel = _chatAgentLabel(handoff.target || 'agent');
-  return `${fromLabel} to ${targetLabel}: ${String(handoff.question || '').trim()}`;  
+  const depth = Number(handoff.chainDepth ?? -1);
+  const chainTag = depth >= 0 ? ` [⛓${depth}]` : '';
+  return `${fromLabel} to ${targetLabel}${chainTag}: ${String(handoff.question || '').trim()}`;
 }
 
 function populateRelayRuleTargetOptions() {
@@ -13231,6 +13256,9 @@ function queueRelayHandoff(handoff, autoMode = false) {
     target,
     question,
     auto: !!autoMode,
+    // chainDepth >= 0 means this relay has its own per-chain budget (independent of global turn budget).
+    // -1 means fall back to the global turn budget.
+    chainDepth: Number.isFinite(Number(handoff.chainDepth)) ? Math.max(0, Number(handoff.chainDepth)) : -1,
   };
   const sig = _relaySignature(item);
   const now = Date.now();
@@ -13265,7 +13293,8 @@ function queueRelayHandoff(handoff, autoMode = false) {
   window.__fridaysChatRelayHoldReason = '';
   window.__fridaysChatRelayHoldStamp = 0;
   if (item.auto) {
-    _appendInfoLogEntry('librarian', `Queued relay ticket for ${_chatAgentLabel(item.target)}.`, true);
+    const _chainTag = item.chainDepth >= 0 ? ` Chain ⛓${item.chainDepth}.` : '';
+    _appendInfoLogEntry('librarian', `Queued relay ticket for ${_chatAgentLabel(item.target)}.${_chainTag}`, true);
     const libSeen = window.__fridaysLibrarianRelayAudit || {};
     if (!libSeen[sig] || (now - Number(libSeen[sig] || 0) > 8 * 60 * 1000)) {
       _appendInfoLogEntry('librarian', `Audit captured: ${_chatAgentLabel(item.from)} assigned ${_chatAgentLabel(item.target)}.`, true);
@@ -13345,7 +13374,8 @@ async function _processRelayQueue() {
 
   queue.shift();
   window.__fridaysChatRelayQueue = queue;
-  if (next.auto && Number(window.__fridaysChatRelayBudget || 0) > 0) {
+  // Chain-budget relays manage their own depth — don't deplete the global turn budget.
+  if (next.auto && Number(next.chainDepth ?? -1) < 0 && Number(window.__fridaysChatRelayBudget || 0) > 0) {
     window.__fridaysChatRelayBudget = Math.max(0, Number(window.__fridaysChatRelayBudget || 0) - 1);
   }
   window.__fridaysChatRelayBusy = true;
@@ -13361,7 +13391,8 @@ async function _processRelayQueue() {
   _applySingleAgentSelection(next.target);
   input.value = _relayPromptText(next);
   if (next.auto) {
-    _appendInfoLogEntry('librarian', `Dispatching ${_chatAgentLabel(next.target)} relay ticket.`, true);
+    const _dispatchChainTag = Number(next.chainDepth ?? -1) >= 0 ? ` ⛓${next.chainDepth} remaining.` : '';
+    _appendInfoLogEntry('librarian', `Dispatching ${_chatAgentLabel(next.target)} relay ticket.${_dispatchChainTag}`, true);
   }
   showToast(`${_chatAgentLabel(next.from)} → ${_chatAgentLabel(next.target)}`, next.auto ? 'info' : 'success');
   Promise.resolve(sendMessage('relay', next))
@@ -13747,7 +13778,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   bubble.innerHTML = `
     <div class="chat-meta ${isUser ? '' : 'icon-meta'}" style="display:flex;align-items:center;gap:8px;">
       <span>${senderMetaHtml}</span>
-      <span style="font-size:9px;color:var(--text-dim);opacity:0.7;margin-left:auto;white-space:nowrap;">${_tokCount ? `<span style="opacity:0.55;margin-right:5px;">${_escapeHtml(_tokCount)}</span>` : ''}${_tsLabel}</span>
+      <span style="font-size:9px;color:var(--text-dim);opacity:0.7;margin-left:auto;white-space:nowrap;">${_tokCount ? `<span style="opacity:0.55;margin-right:5px;">${_escapeHtml(_tokCount)}</span>` : ''}${_tsLabel}${!isUser && Number(opts.chainDepth) > 0 ? `<span class="chat-bubble-chain-badge" title="Relay chain: ${Number(opts.chainDepth)} hop${Number(opts.chainDepth) !== 1 ? 's' : ''} remaining">\u26d3${Number(opts.chainDepth)}</span>` : ''}</span>
     </div>
     ${quoted}
     <div class="chat-text">${bodyHtml}</div>
@@ -13765,11 +13796,17 @@ function _appendChatBubble(sender, text, opts = {}) {
   applyBubbleColorOverrideToNode(bubble);
   messages.appendChild(bubble);
   if (!isUser && relayCandidates.length && window.__fridaysChatRelayAuto && !opts.fromHistory) {
+    // If this bubble is itself a relay response, propagate chain depth (decrement by 1).
+    // For direct user→agent responses (no chainDepth), assign the initial chain depth.
+    const _parentDepth = Number.isFinite(Number(opts.chainDepth)) ? Number(opts.chainDepth) : -1;
+    const _outDepth = _parentDepth >= 0
+      ? Math.max(0, _parentDepth - 1)
+      : Math.min(3, Math.max(1, Number(window.__fridaysChatRelayMaxPerTurn || 4)));
     relayCandidates.forEach(c => {
       // Do not gate on _isAutoRelayTargetEnabled here — the relay target is temporarily
       // enabled by _processRelayQueue when the item is dispatched. Blocking here prevents
       // the item from ever reaching the queue even though Route-to buttons are shown.
-      queueRelayHandoff({ from: senderIdentity.key, target: c.target, question: c.question }, true);
+      queueRelayHandoff({ from: senderIdentity.key, target: c.target, question: c.question, chainDepth: _outDepth }, true);
     });
   }
   // Librarian review — fires async/debounced to catch implicit handoffs the regex missed.
@@ -15208,7 +15245,7 @@ function sendMessage(source = 'user', relayMeta = null) {
     if (_rMessages) {
       const _rDiv = document.createElement('div');
       _rDiv.className = 'chat-relay-dispatch';
-      _rDiv.innerHTML = `<span class="relay-from">${_escapeHtml(_rFromLabel)}</span><span class="relay-arrow">→</span><span class="relay-to">${_escapeHtml(_rToLabel)}</span>: <span>${_escapeHtml(String(msg || '').slice(0, 160))}</span><span class="relay-stop" title="Stop this relay">✕</span>`;
+      _rDiv.innerHTML = `<span class="relay-from">${_escapeHtml(_rFromLabel)}</span><span class="relay-arrow">→</span><span class="relay-to">${_escapeHtml(_rToLabel)}</span>: <span>${_escapeHtml(String(msg || '').slice(0, 160))}</span>${Number.isFinite(Number(relayMeta?.chainDepth)) && Number(relayMeta.chainDepth) >= 0 ? `<span class="relay-chain-badge">⛓${Number(relayMeta.chainDepth)}</span>` : ''}<span class="relay-stop" title="Stop this relay">✕</span>`;
       _rDiv.querySelector('.relay-stop').addEventListener('click', () => _dismissRelayBar(_rDiv, _rToKey));
       _rMessages.appendChild(_rDiv);
       _rMessages.scrollTop = _rMessages.scrollHeight;
@@ -15280,7 +15317,10 @@ function sendMessage(source = 'user', relayMeta = null) {
 
     if (immediateResponses.length) {
       immediateResponses.forEach(entry => {
-        _appendChatBubble(entry.agent || 'agent', entry.response || '...', { tokens: entry.tokens || 0 });
+        _appendChatBubble(entry.agent || 'agent', entry.response || '...', {
+          tokens: entry.tokens || 0,
+          ...(source === 'relay' && relayMeta ? { chainDepth: Number(relayMeta.chainDepth ?? -1) } : {}),
+        });
         if (source === 'user' && window.__fridaysReplaceBubbleId && window.__fridaysReplaceAgentKey && String(entry.agent || '').toLowerCase() === String(window.__fridaysReplaceAgentKey || '').toLowerCase()) {
           const oldNode = document.getElementById('chat-bubble-' + String(window.__fridaysReplaceBubbleId || '').replace(/[^a-zA-Z0-9_-]/g, ''));
           if (oldNode) oldNode.remove();
@@ -15301,7 +15341,9 @@ function sendMessage(source = 'user', relayMeta = null) {
         { tag: 'fridays-chat-reply-' + String(data.conversation_id || convId || 'none') }
       );
     } else if (!pendingJobs.length) {
-      _appendChatBubble(data.agent || selectedAgents[0], data.response || '...');
+      _appendChatBubble(data.agent || selectedAgents[0], data.response || '...', {
+        ...(source === 'relay' && relayMeta ? { chainDepth: Number(relayMeta.chainDepth ?? -1) } : {}),
+      });
       notifyDesktop(
         'Fridays · ' + _chatAgentLabel(data.agent || selectedAgents[0]),
         String(data.response || '').replace(/\s+/g, ' ').slice(0, 180),
