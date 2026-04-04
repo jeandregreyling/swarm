@@ -10913,7 +10913,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
   const failed = list.filter(j => String(j.status || '') === 'failed');
   const loadingAgents = Array.isArray(window.__fridaysRuntimeLoadingAgents) ? window.__fridaysRuntimeLoadingAgents : [];
   const hasPendingJobs = Array.isArray(window.__fridaysChatPendingJobIds) && window.__fridaysChatPendingJobIds.length > 0;
-  const relayActive = !!window.__fridaysChatRelayBusy || !!window.__fridaysChatRelayActive || ((window.__fridaysChatRelayQueue || []).length > 0);
+  const relayActive = (Number(window.__fridaysChatRelayInFlight || 0) > 0) || !!window.__fridaysChatRelayActive || ((window.__fridaysChatRelayQueue || []).length > 0);
 
   // Keep the last set of completed jobs for the cooldown window.
   if (completed.length > 0 && running.length === 0 && !hasPendingJobs && !loadingAgents.length) {
@@ -11001,7 +11001,7 @@ function pollActiveThreadRuntime(force = false) {
     ? window.__fridaysRuntimeLoadingAgents
     : [];
   const hasPendingJobs = Array.isArray(window.__fridaysChatPendingJobIds) && window.__fridaysChatPendingJobIds.length > 0;
-  const relayActive = !!window.__fridaysChatRelayBusy || !!window.__fridaysChatRelayActive || ((window.__fridaysChatRelayQueue || []).length > 0);
+  const relayActive = (Number(window.__fridaysChatRelayInFlight || 0) > 0) || !!window.__fridaysChatRelayActive || ((window.__fridaysChatRelayQueue || []).length > 0);
   const hasActiveSnapshot = snapshotJobs.some(j => String(j.status || 'running') === 'running');
   if (!force && window.__fridaysChatPendingPollTimer) {
     return Promise.resolve();
@@ -12315,7 +12315,7 @@ const _CHAT_AGENT_META = {
   duck:      { icon: '🦆', purpose: '6 · Duck. Sanity checker — YES/NO after every ticket.',                      runtime: 'local', tier: 'local' },
   sniffles:  { icon: '🧪', purpose: '7 · Sniffles. Inspector — memory auditor, read only.',                       runtime: 'local', tier: 'local' },
   eight:     { icon: '8️⃣', purpose: '8 · Eight. SAP specialist — Functional/Technical/Devil three-voice debate.', runtime: 'local', tier: 'local' },
-  nine:      { icon: '🦙', purpose: '9 · Groq. LlaMA 3.3 70B via Groq — fast, high-capacity reasoning.',        runtime: 'paid',  tier: 'paid' },
+  nine:      { icon: '🔶', purpose: '9 · Groq. LlaMA 3.3 70B via Groq — fast, high-capacity reasoning.',        runtime: 'paid',  tier: 'paid' },
   ten:       { icon: '🛠️', purpose: '10 · Github. Engineering advisor — code quality, implementation clarity.',   runtime: 'paid',  tier: 'paid' },
   eleven:    { icon: '⚡', purpose: '11 · Grok. Lateral thinking advisor — creative synthesis, alternatives.',     runtime: 'paid',  tier: 'paid' },
   twelve:    { icon: '👻', purpose: '12 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals.',       runtime: 'paid',  tier: 'paid' },
@@ -12579,6 +12579,11 @@ function _librarianQueueWatchdog() {
 
   const textEl = last.querySelector('.chat-text');
   const text = textEl ? (textEl.innerText || textEl.textContent || '') : '';
+  // Skip error bubbles (0 tokens) — they must not trigger relays.
+  if (Number(last.dataset.tokens || 0) === 0) {
+    _appendInfoLogEntry('librarian', 'Watchdog: skipping error/zero-token bubble.');
+    return;
+  }
   const fromAgent = String(last.dataset.sender || last.dataset.agent || 'agent').toLowerCase();
   const convId = last.dataset.conversationId || window.__fridaysActiveChatConvId || null;
 
@@ -12615,7 +12620,7 @@ async function _relayDispatchGate(item) {
     };
   }
 
-  const runningJobs = _relayRunningJobsCount();
+  const runningJobs = Math.max(_relayRunningJobsCount(), Number(window.__fridaysChatRelayInFlight || 0));
   if (runningJobs >= Number(CHAT_RELAY_RESOURCE_LIMITS.maxRunningJobs || 3)) {
     return {
       allow: false,
@@ -13315,7 +13320,7 @@ function queueRelayHandoff(handoff, autoMode = false) {
 }
 
 async function _processRelayQueue() {
-  if (window.__fridaysChatRelayBusy || window.__fridaysChatRelayProcessing) return;
+  if (window.__fridaysChatRelayProcessing) return;
   window.__fridaysChatRelayProcessing = true;
   try {
   const queue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
@@ -13386,12 +13391,14 @@ async function _processRelayQueue() {
   if (next.auto && Number(next.chainDepth ?? -1) < 0 && Number(window.__fridaysChatRelayBudget || 0) > 0) {
     window.__fridaysChatRelayBudget = Math.max(0, Number(window.__fridaysChatRelayBudget || 0) - 1);
   }
+  window.__fridaysChatRelayInFlight = (window.__fridaysChatRelayInFlight || 0) + 1;
   window.__fridaysChatRelayBusy = true;
   window.__fridaysChatRelayActive = true;
   pollActiveThreadRuntime(true);
   const input = document.getElementById('question-input');
   if (!input) {
-    window.__fridaysChatRelayBusy = false;
+    window.__fridaysChatRelayInFlight = Math.max(0, (window.__fridaysChatRelayInFlight || 1) - 1);
+    window.__fridaysChatRelayBusy = (window.__fridaysChatRelayInFlight || 0) > 0;
     window.__fridaysChatRelayActive = false;
     _renderChatRelayControls();
     return;
@@ -13405,12 +13412,15 @@ async function _processRelayQueue() {
   showToast(`${_chatAgentLabel(next.from)} → ${_chatAgentLabel(next.target)}`, next.auto ? 'info' : 'success');
   Promise.resolve(sendMessage('relay', next))
     .finally(() => {
-      window.__fridaysChatRelayBusy = false;
+      window.__fridaysChatRelayInFlight = Math.max(0, (window.__fridaysChatRelayInFlight || 1) - 1);
+      window.__fridaysChatRelayBusy = (window.__fridaysChatRelayInFlight || 0) > 0;
       window.__fridaysChatRelayActive = Array.isArray(window.__fridaysChatRelayQueue) && window.__fridaysChatRelayQueue.length > 0;
       _renderChatRelayControls();
       pollActiveThreadRuntime(true);
       setTimeout(() => _processRelayQueue(), 0);
     });
+  // Immediately try next item — don't wait for this relay to finish.
+  setTimeout(() => _processRelayQueue(), 0);
   } finally {
     window.__fridaysChatRelayProcessing = false;
   }
@@ -13798,12 +13808,13 @@ function _appendChatBubble(sender, text, opts = {}) {
 
   bubble.dataset.msgId = msgId;
   bubble.dataset.sender = senderKey;
+  bubble.dataset.tokens = String(Number(opts.tokens || 0));
   bubble.id = 'chat-bubble-' + String(msgId).replace(/[^a-zA-Z0-9_-]/g, '');
   if (opts.messageId) bubble.dataset.messageId = String(opts.messageId);
   if (opts.conversationId) bubble.dataset.conversationId = String(opts.conversationId);
   applyBubbleColorOverrideToNode(bubble);
   messages.appendChild(bubble);
-  if (!isUser && relayCandidates.length && window.__fridaysChatRelayAuto && !opts.fromHistory) {
+  if (!isUser && relayCandidates.length && window.__fridaysChatRelayAuto && !opts.fromHistory && Number(opts.tokens || 0) > 0) {
     // If this bubble is itself a relay response, propagate chain depth (decrement by 1).
     // For direct user→agent responses (no chainDepth), assign the initial chain depth.
     const _parentDepth = Number.isFinite(Number(opts.chainDepth)) ? Number(opts.chainDepth) : -1;
@@ -13818,8 +13829,9 @@ function _appendChatBubble(sender, text, opts = {}) {
     });
   }
   // Librarian review — fires async/debounced to catch implicit handoffs the regex missed.
-  // Only runs when auto-relay is on and this is a fresh (non-history) agent bubble.
-  if (!isUser && window.__fridaysChatRelayAuto && !opts.fromHistory) {
+  // Only runs when auto-relay is on, fresh (non-history) agent bubble, non-zero tokens,
+  // AND the regex found no explicit relay candidates (librarian is the fallback, not a supplement).
+  if (!isUser && window.__fridaysChatRelayAuto && !opts.fromHistory && Number(opts.tokens || 0) > 0 && relayCandidates.length === 0) {
     _librarianReviewDebounced(visibleText, senderIdentity.key, opts.conversationId || null);
   }
   _recordTimelineEvent({
@@ -15222,6 +15234,7 @@ function sendMessage(source = 'user', relayMeta = null) {
     window.__fridaysChatRelayBudget = relayCfg.infinite ? -1 : relayCfg.maxPerTurn;
     window.__fridaysChatRelayQueue = [];
     window.__fridaysChatRelayBusy = false;
+    window.__fridaysChatRelayInFlight = 0;
     window.__fridaysChatRelayActive = false;
     window.__fridaysChatRelayHoldReason = '';
     window.__fridaysChatRelayHoldStamp = 0;
@@ -15431,9 +15444,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   })
   .finally(() => {
     _renderChatRelayControls();
-    if (!window.__fridaysChatRelayBusy) {
-      _processRelayQueue();
-    }
+    _processRelayQueue();
   });
 }
 
