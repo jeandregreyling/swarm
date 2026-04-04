@@ -13,6 +13,7 @@ DB_PATH = '/home/seven/swarm/swarm_memory.db'
 # Global mapping to ensure consistency across the swarm
 AGENT_POOL_MAP = {
     'llama': 'memory_llama', 'qwen': 'memory_qwen',
+    'mistral': 'memory_mistral',
     'gemma': 'memory_gemma', 'eight': 'memory_eight',
     'nine': 'memory_nine', 'librarian': 'memory',
     'duck': 'memory', 'sniffles': 'memory',

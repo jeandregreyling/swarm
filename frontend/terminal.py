@@ -203,6 +203,7 @@ _CHAT_WORKER_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix='ch
 _CHAT_AGENT_ETA_SECONDS = {
     'gemma': 85,
     'llama': 70,
+    'mistral': 90,
     'qwen': 120,
     'eight': 120,
     'librarian': 50,
@@ -219,6 +220,7 @@ _CHAT_AGENT_ETA_SECONDS = {
 _CHAT_AGENT_RUNTIME_CLASS = {
     'gemma': 'local',
     'llama': 'local',
+    'mistral': 'local',
     'qwen': 'local',
     'eight': 'local',
     'librarian': 'local',
@@ -232,7 +234,7 @@ _CHAT_AGENT_RUNTIME_CLASS = {
     'seeker': 'paid',
 }
 
-_CHAT_SINGLE_TASK_LOCAL_AGENTS = {'gemma', 'llama', 'qwen', 'eight'}
+_CHAT_SINGLE_TASK_LOCAL_AGENTS = {'gemma', 'llama', 'mistral', 'qwen', 'eight'}
 
 
 def _chat_now_iso():
@@ -252,6 +254,7 @@ _CHAT_PARTICIPANT_ALIASES = {
     'ghost': 'user',
     'gemma': 'gemma',
     'llama': 'llama',
+    'mistral': 'mistral',
     'qwen': 'qwen',
     'eight': 'eight',
     'librarian': 'librarian',
@@ -290,6 +293,7 @@ def _display_chat_participant(name):
         'user': 'USER',
         'gemma': 'GEMMA',
         'llama': 'LLAMA',
+        'mistral': 'MISTRAL',
         'qwen': 'QWEN',
         'eight': 'EIGHT',
         'librarian': 'LIBRARIAN',
@@ -455,7 +459,7 @@ def _chat_stage_for(agent, elapsed_ms):
         if elapsed < 16000:
             return 'reviewing evidence'
         return 'writing findings'
-    if agent in {'llama', 'qwen', 'eight', 'librarian'}:
+    if agent in {'llama', 'mistral', 'qwen', 'eight', 'librarian'}:
         if elapsed < 4000:
             return 'loading local memory'
         if elapsed < 16000:
@@ -639,6 +643,7 @@ def _tickets(limit=100, status=None):
 
 _AGENT_TABLES = {
     'llama':    'memory_llama',
+    'mistral':  'memory_mistral',
     'qwen':     'memory_qwen',
     'gemma':    'memory_gemma',
     'eight':    'memory_eight',
@@ -729,7 +734,7 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
     like = f'%{query}%'
 
     agent_key = agent.lower() if agent else ''
-    if agent_key in ('llama', 'qwen', 'gemma', 'eight', 'nine', 'ten', 'grok', 'eleven'):
+    if agent_key in ('llama', 'mistral', 'qwen', 'gemma', 'eight', 'nine', 'ten', 'grok', 'eleven'):
         tbl = _AGENT_TABLES[agent_key]
         archived_clause = "AND archived = 0"
         rows = conn.execute(
@@ -771,6 +776,11 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
                  AND importance >= ? AND archived = 0
                UNION ALL
+               SELECT id, 'memory_mistral' AS source_table, agent, subject, content, tags, importance, created_at
+               FROM memory_mistral
+               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
+                 AND importance >= ? AND archived = 0
+               UNION ALL
                SELECT id, 'memory_qwen' AS source_table, agent, subject, content, tags, importance, created_at
                FROM memory_qwen
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
@@ -807,6 +817,7 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
                  AND importance >= ? AND archived = 0
                ORDER BY created_at DESC, importance DESC LIMIT ?""",
             (like, like, like, min_importance,
+             like, like, like, min_importance,
              like, like, like, min_importance,
              like, like, like, min_importance,
              like, like, like, min_importance,
@@ -1692,7 +1703,7 @@ def api_studio():
 
 @app.route('/api/memory/<int:row_id>', methods=['DELETE'])
 def delete_memory(row_id):
-    _ALLOWED_TABLES = {'memory', 'memory_llama', 'memory_qwen', 'memory_gemma', 'memory_eight',
+    _ALLOWED_TABLES = {'memory', 'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma', 'memory_eight',
                         'memory_nine', 'memory_ten', 'memory_grok', 'memory_twelve'}
     table = request.args.get('table', 'memory')
     if table not in _ALLOWED_TABLES:
@@ -1710,7 +1721,7 @@ def delete_memory(row_id):
 @app.route('/api/memory/<int:row_id>', methods=['PATCH'])
 def update_memory(row_id):
     _ALLOWED_TABLES = {
-        'memory', 'memory_llama', 'memory_qwen', 'memory_gemma', 'memory_eight',
+        'memory', 'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma', 'memory_eight',
         'memory_nine', 'memory_ten', 'memory_grok', 'memory_twelve'
     }
     data = request.get_json() or {}
@@ -1781,7 +1792,7 @@ def attach_memory(row_id):
     value = (data.get('value') or '').strip()
     table = (data.get('table') or request.args.get('table') or 'memory').strip()
     allowed = {
-        'memory', 'memory_llama', 'memory_qwen', 'memory_gemma', 'memory_eight',
+        'memory', 'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma', 'memory_eight',
         'memory_nine', 'memory_ten', 'memory_grok', 'memory_twelve'
     }
     if table not in allowed:
@@ -1822,7 +1833,7 @@ def assign_memory(row_id):
         return jsonify({'error': 'targets required'}), 400
 
     allowed = {
-        'memory', 'memory_llama', 'memory_qwen', 'memory_gemma', 'memory_eight',
+        'memory', 'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma', 'memory_eight',
         'memory_nine', 'memory_ten', 'memory_grok', 'memory_twelve'
     }
     if from_table not in allowed:
@@ -3129,8 +3140,10 @@ def resend_ticket(ticket_number):
             sections['eight'] = r['content']
         elif agent == 'llama' and 'llama' not in sections:
             sections['llama'] = r['content']
+        elif agent == 'mistral' and mtype != 'debate_r2' and 'mistral' not in sections:
+            sections['mistral'] = r['content']
         elif agent == 'qwen' and mtype != 'debate_r2' and 'qwen' not in sections:
-            sections['qwen'] = r['content']
+            sections['qwen'] = r['content']  # backward compat with old conversations
         elif agent == 'gemma' and mtype == 'chat' and 'gemma' not in sections:
             sections['gemma'] = r['content']
 
@@ -3148,6 +3161,8 @@ def resend_ticket(ticket_number):
         parts = ['The swarm has finished deliberating.\r\n']
         if sections.get('llama'):
             parts.append(f"[LLaMA]:\r\n{sections['llama']}\r\n")
+        if sections.get('mistral'):
+            parts.append(f"[Mistral]:\r\n{sections['mistral']}\r\n")
         if sections.get('qwen'):
             parts.append(f"[Qwen]:\r\n{sections['qwen']}\r\n")
         parts.append(f"[Gemma — Final verdict]:\r\n{gemma_verdict}\r\n")
@@ -5449,12 +5464,12 @@ def api_chat():
         elif selected_agent == 'duck':
             local_timeout = 18
         if persistent_mode:
-            if selected_agent in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
+            if selected_agent in {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
                 local_timeout = 900
             else:
                 local_timeout = 240
         try:
-            if selected_agent in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
+            if selected_agent in {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
                 _model_name = orchestrator.AGENTS.get(selected_agent, selected_agent)
                 _stage(f'reading memory · {_model_name}', est_eta)
                 if selected_agent in {'duck', 'sniffles'}:
@@ -5517,7 +5532,7 @@ def api_chat():
                 raise RuntimeError(f'{selected_agent} timed out after {local_timeout}s')
             if selected_agent == 'duck':
                 response_text = _duck_fast_check(message)
-            elif selected_agent in {'gemma', 'llama', 'qwen', 'librarian'}:
+            elif selected_agent in {'gemma', 'llama', 'mistral', 'qwen', 'librarian'}:
                 raise
             else:
                 response_text = (
@@ -5772,6 +5787,7 @@ def api_chat():
             labels = {
                 'gemma': 'Gemma',
                 'llama': 'LLaMA',
+                'mistral': 'Mistral',
                 'qwen': 'Qwen',
                 'eight': 'Eight',
                 'librarian': 'Librarian',
@@ -6167,6 +6183,7 @@ def api_activity_stream():
 _AGENT_ROSTER = [
     {'name': 'Gemma',     'model': 'gemma3:latest',          'role': 'Director',                    'default_temp': 0.3},
     {'name': 'LLaMA',     'model': 'llama3.2:latest',        'role': 'Researcher',                  'default_temp': 0.6},
+    {'name': 'Mistral',   'model': 'mistral:latest',         'role': 'Analyst',                     'default_temp': 0.6},
     {'name': 'Qwen',      'model': 'qwen2.5:latest',         'role': 'Analyst',                     'default_temp': 0.7},
     {'name': 'Librarian', 'model': 'qwen:latest',            'role': 'Archivist',                   'default_temp': 0.1},
     {'name': 'Duck',      'model': 'qwen:latest',            'role': 'Checker',                     'default_temp': 0.1},
@@ -6188,7 +6205,7 @@ def _agent_reachability_status(agent_name):
     if name in DISABLED_AGENTS:
         return 'offline'
     # Local Ollama agents — assume online if not disabled
-    if name in {'gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles', 'eight'}:
+    if name in {'gemma', 'llama', 'mistral', 'qwen', 'librarian', 'duck', 'sniffles', 'eight'}:
         return 'online'
     # Ghost operator — always online
     if name == 'ghost':
@@ -6418,16 +6435,16 @@ def chat():
                 # ── Standard pipeline ─────────────────────────────────────────
                 q.put({'type': 'agent', 'agent': 'LLaMA', 'text': llama})
 
-                q.put({'type': 'status', 'text': 'Qwen analysing...'})
-                qwen, gemma, debate = orchestrator.consult_stage2(
+                q.put({'type': 'status', 'text': 'Mistral analysing...'})
+                mistral, gemma, debate = orchestrator.consult_stage2(
                     question, web, llama, ctx, conv_id, routing
                 )
-                q.put({'type': 'agent', 'agent': 'Qwen', 'text': qwen})
+                q.put({'type': 'agent', 'agent': 'Mistral', 'text': mistral})
 
                 if debate['fired']:
                     q.put({'type': 'status', 'text': 'Debate detected — running challenge round...'})
-                    q.put({'type': 'debate_r2', 'agent': 'LLaMA', 'text': debate['llama_r2']})
-                    q.put({'type': 'debate_r2', 'agent': 'Qwen',  'text': debate['qwen_r2']})
+                    q.put({'type': 'debate_r2', 'agent': 'LLaMA',   'text': debate['llama_r2']})
+                    q.put({'type': 'debate_r2', 'agent': 'Mistral', 'text': debate['mistral_r2']})
 
                 q.put({'type': 'agent', 'agent': 'Gemma', 'text': gemma})
                 final_answer = gemma
@@ -6531,17 +6548,17 @@ def _run_pending_for_trusted(target_email, approved_by):
                 '[Eight — Final verdict]:\r\n' + gemma_answer
             )
         else:
-            qwen_answer, gemma_answer, debate = consult_stage2(
+            mistral_answer, gemma_answer, debate = consult_stage2(
                 pending_body, web_results, llama_answer, shared_context, conv_id, routing
             )
             debate_section = ''
             if debate['fired']:
                 debate_section = (
                     '[Debate]\r\nLLaMA: ' + debate['llama_r2'] + '\r\n'
-                    'Qwen: ' + debate['qwen_r2'] + '\r\n\r\n'
+                    'Mistral: ' + debate['mistral_r2'] + '\r\n\r\n'
                 )
             email2_body = (
-                '[Qwen]:\r\n' + qwen_answer + '\r\n\r\n' +
+                '[Mistral]:\r\n' + mistral_answer + '\r\n\r\n' +
                 debate_section +
                 '[Gemma — Final verdict]:\r\n' + gemma_answer
             )
@@ -7075,7 +7092,7 @@ def api_agent_memory(agent):
     # Map agent name to memory table
     agent_key = agent.lower()
     memory_tables = {
-        'gemma': 'memory_gemma', 'llama': 'memory_llama', 'qwen': 'memory_qwen',
+        'gemma': 'memory_gemma', 'llama': 'memory_llama', 'mistral': 'memory_mistral', 'qwen': 'memory_qwen',
         'eight': 'memory_eight', 'nine': 'memory_nine', 'ten': 'memory_ten',
         'twelve': 'memory_twelve', 'eleven': 'memory_grok', 'grok': 'memory_grok',
         'librarian': 'memory', 'duck': 'memory', 'sniffles': 'memory'
@@ -7150,7 +7167,7 @@ def api_agent_memory_write(agent):
     
     agent_key = agent.lower()
     memory_tables = {
-        'gemma': 'memory_gemma', 'llama': 'memory_llama', 'qwen': 'memory_qwen',
+        'gemma': 'memory_gemma', 'llama': 'memory_llama', 'mistral': 'memory_mistral', 'qwen': 'memory_qwen',
         'eight': 'memory_eight', 'nine': 'memory_nine', 'ten': 'memory_ten',
         'twelve': 'memory_twelve', 'eleven': 'memory_grok', 'grok': 'memory_grok',
         'librarian': 'memory', 'duck': 'memory', 'sniffles': 'memory'
@@ -7212,7 +7229,7 @@ def api_agents_memories_query():
         return jsonify({'error': 'q (query) required'}), 400
     
     memory_tables = {
-        'gemma': 'memory_gemma', 'llama': 'memory_llama', 'qwen': 'memory_qwen',
+        'gemma': 'memory_gemma', 'llama': 'memory_llama', 'mistral': 'memory_mistral', 'qwen': 'memory_qwen',
         'eight': 'memory_eight', 'nine': 'memory_nine', 'ten': 'memory_ten',
         'twelve': 'memory_twelve', 'eleven': 'memory_grok', 'grok': 'memory_grok',
         'librarian': 'memory', 'duck': 'memory', 'sniffles': 'memory'

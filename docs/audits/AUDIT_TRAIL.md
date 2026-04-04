@@ -324,3 +324,19 @@ Do not rewrite history entries. Append only.
 - Result: PASS
 - Follow-up: Disable swarm-fridays service and revert frontend/terminal.py endpoint additions
 
+- Audit ID: AUDIT-20260404-000000
+- Time (UTC): 2026-04-04T00:00:00Z
+- Actor: Nine (Claude Sonnet 4.6)
+- Objective: Chat tile full code review and hardening — 5 bugs identified and fixed
+- Evidence: (1) `chat_jobs` table created in DB, orphan cleanup runs on startup, poll fallback confirmed in `api_chat_jobs_status`. (2) 10 functions extracted to module level via Python AST script — no signature changes, no behaviour changes. (3) Duplicate `_extract_skill_lines` removed, call sites updated. (4) Proposal guard regex updated — confirmed no colon-form false positive. (5) Two module-level ThreadPoolExecutors replace per-request creation — no shutdown calls in hot path. py_compile passes on both modified files.
+- Result: PASS
+- Follow-up: Terminal tile review and hardening in progress. Rollback: git checkout HEAD -- frontend/terminal.py utils/database.py
+
+- Audit ID: AUDIT-20260404-000100
+- Time (UTC): 2026-04-04T00:01:00Z
+- Actor: Nine (Claude Sonnet 4.6)
+- Objective: Document frontend tile modularisation plan and desktop application roadmap in project docs
+- Evidence: ARCHITECTURE.md updated with Frontend Evolution section (tile structure, blueprint auto-registration, ES module approach, desktop path, migration status table). FEATURES_TODO.md updated with Phase G (Tile Modularisation, 7 sub-tasks) and Phase H (Desktop App, 2 sub-tasks). PROJECT.md Recent Architectural Changes section updated. CHANGELOG_OPERATIONS.md entries appended. No code changes in this audit entry.
+- Result: PASS
+- Follow-up: Continue Terminal tile review and hardening. Update migration status table in ARCHITECTURE.md as each tile completes.
+

@@ -10,7 +10,8 @@ import ollama
 AGENTS = {
     'Gemma':     'gemma3:latest',
     'LLaMA':     'llama3.2:latest',
-    'Qwen':      'qwen2.5:latest',
+    'Mistral':   'mistral:latest',
+    'Qwen':      'qwen2.5:latest',   # virtual RAM layer — on-demand only
     'Librarian': 'qwen:latest',
 }
 
@@ -74,28 +75,28 @@ def debate(question):
     llama_r1 = ask_agent('LLaMA', llama_prompt)
     log_message(conv_id, 'LLaMA', llama_r1, message_type='debate_r1')
 
-    qwen_prompt = context + '=== Live web results ===\n' + web_results + '\n\n=== The Ghost asks ===\n' + question + '\n\nYou are Qwen. Give your best answer in 3-4 sentences. Be confident and specific. State facts, not hedges.'
+    mistral_prompt = context + '=== Live web results ===\n' + web_results + '\n\n=== The Ghost asks ===\n' + question + '\n\nYou are Mistral. Give your best answer in 3-4 sentences. Be confident and specific. State facts, not hedges.'
 
-    qwen_r1 = ask_agent('Qwen', qwen_prompt)
-    log_message(conv_id, 'Qwen', qwen_r1, message_type='debate_r1')
+    mistral_r1 = ask_agent('Mistral', mistral_prompt)
+    log_message(conv_id, 'Mistral', mistral_r1, message_type='debate_r1')
 
     # Round 2 - Challenge
     print('\n--- Round 2: Challenge ---')
 
-    llama_challenge = 'You are LLaMA in a debate.\n\nYou said: ' + llama_r1 + '\n\nQwen said: ' + qwen_r1 + '\n\nDo you agree or disagree with Qwen? If you disagree, state specifically what is wrong and why. If you agree, add something Qwen missed. Be direct. 2-3 sentences only.'
+    llama_challenge = 'You are LLaMA in a debate.\n\nYou said: ' + llama_r1 + '\n\nMistral said: ' + mistral_r1 + '\n\nDo you agree or disagree with Mistral? If you disagree, state specifically what is wrong and why. If you agree, add something Mistral missed. Be direct. 2-3 sentences only.'
 
     llama_r2 = ask_agent('LLaMA', llama_challenge)
     log_message(conv_id, 'LLaMA', llama_r2, message_type='debate_r2')
 
-    qwen_challenge = 'You are Qwen in a debate.\n\nYou said: ' + qwen_r1 + '\n\nLLaMA said: ' + llama_r1 + '\n\nDo you agree or disagree with LLaMA? If you disagree, state specifically what is wrong and why. If you agree, add something LLaMA missed. Be direct. 2-3 sentences only.'
+    mistral_challenge = 'You are Mistral in a debate.\n\nYou said: ' + mistral_r1 + '\n\nLLaMA said: ' + llama_r1 + '\n\nDo you agree or disagree with LLaMA? If you disagree, state specifically what is wrong and why. If you agree, add something LLaMA missed. Be direct. 2-3 sentences only.'
 
-    qwen_r2 = ask_agent('Qwen', qwen_challenge)
-    log_message(conv_id, 'Qwen', qwen_r2, message_type='debate_r2')
+    mistral_r2 = ask_agent('Mistral', mistral_challenge)
+    log_message(conv_id, 'Mistral', mistral_r2, message_type='debate_r2')
 
     # Round 3 - Gemma judges
     print('\n--- Round 3: Gemma rules ---')
 
-    gemma_prompt = context + '=== Live web results ===\n' + web_results + '\n\n=== The Ghost asked ===\n' + question + '\n\n=== The debate ===\n\nLLaMA round 1: ' + llama_r1 + '\nQwen round 1: ' + qwen_r1 + '\n\nLLaMA challenge: ' + llama_r2 + '\nQwen challenge: ' + qwen_r2 + '\n\nYou are Gemma, the judge. Review the debate and the web results. Decide who made the stronger case or where both were right or wrong. Deliver one clear final verdict to the Ghost. Be direct. No pleasantries. 3-4 sentences maximum.'
+    gemma_prompt = context + '=== Live web results ===\n' + web_results + '\n\n=== The Ghost asked ===\n' + question + '\n\n=== The debate ===\n\nLLaMA round 1: ' + llama_r1 + '\nMistral round 1: ' + mistral_r1 + '\n\nLLaMA challenge: ' + llama_r2 + '\nMistral challenge: ' + mistral_r2 + '\n\nYou are Gemma, the judge. Review the debate and the web results. Decide who made the stronger case or where both were right or wrong. Deliver one clear final verdict to the Ghost. Be direct. No pleasantries. 3-4 sentences maximum.'
 
     verdict = ask_agent('Gemma', gemma_prompt)
     log_message(conv_id, 'Gemma', verdict,
@@ -106,9 +107,9 @@ def debate(question):
     print('\n=== Gemma verdict for the Ghost ===')
     print('\nQuestion: ' + question)
     print('\nLLaMA (R1): ' + llama_r1)
-    print('\nQwen (R1): ' + qwen_r1)
+    print('\nMistral (R1): ' + mistral_r1)
     print('\nLLaMA challenges: ' + llama_r2)
-    print('\nQwen challenges: ' + qwen_r2)
+    print('\nMistral challenges: ' + mistral_r2)
     print('\nVerdict: ' + verdict)
 
     return verdict

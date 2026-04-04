@@ -37,8 +37,8 @@ MODELS=(
   "gemma4:26b"
   "gemma3:latest"
   "llama3.2:latest"
+  "mistral:latest"
   "qwen:latest"
-  "qwen2.5:latest"
   "deepseek-r1:7b"
 )
 

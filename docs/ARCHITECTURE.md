@@ -528,6 +528,109 @@ Claude API key lives in /etc/environment — not in config.py at runtime. Rotate
 
 ---
 
+---
+
+## Frontend Architecture — Current State & Evolution Path
+
+*Decided: 2026-04-04. Owner: Ghost + Nine.*
+
+### Current State (Monolith)
+
+The Fridays UI is a single-file monolith:
+- `frontend/terminal.py` — ~16,000+ lines of Python. All Flask routes for all tiles in one file.
+- `frontend/templates/terminal_base.html` — ~16,500 lines. All tile HTML + JavaScript in one file.
+
+**Problem:** Any edit to one tile risks breaking every other tile. A bad edit to the Chat tile crashes the whole server. Editing safely at this scale requires treating the file like live surgery.
+
+### Target State (Tile Module Architecture)
+
+Each tile becomes a self-contained unit. The base layer becomes a thin shell.
+
+```plaintext
+frontend/
+  terminal.py                    ← base only: startup, auth, ALM gate, blueprint registration
+  tiles/
+    chat/
+      routes.py                  ← all /api/chat/* Flask routes (Blueprint)
+      chat.js                    ← Chat tile JavaScript (ES module)
+      chat.html                  ← Chat tile HTML fragment
+    terminal_tile/
+      routes.py
+      terminal.js
+      terminal.html
+    files/
+      routes.py
+      files.js
+      files.html
+    alm/
+      routes.py
+      alm.js
+      alm.html
+    monitor/
+      routes.py
+      monitor.js
+      monitor.html
+  static/
+    utils/
+      ui.js                      ← shared: showToast, _escHtml, winManager
+      api.js                     ← shared fetch helpers
+  templates/
+    base.html                    ← shell: loads shared JS/CSS, fetches + injects tile fragments
+```
+
+**How tile injection works (no build tooling needed):**
+The base HTML loads, then fetches each tile's HTML fragment from its own route and injects it into the DOM. Tiles are self-contained HTML+JS served by their own blueprint. No Jinja2 server-side rendering required.
+
+**How Flask blueprints work:**
+`terminal.py` scans `tiles/*/routes.py` and auto-registers each as a Flask Blueprint. Adding a new tile = create a folder + `routes.py` + register. Removing a tile = delete the folder.
+
+### Desktop Application Path
+
+Long-term target: standalone desktop app via **Electron** or **Tauri**.
+
+- Flask runs as a bundled local subprocess on `localhost:5050`
+- Electron/Tauri wraps the web frontend as the app shell
+- Nothing in the Flask backend changes — it remains the API layer
+- The ES module frontend transfers directly into the desktop build
+
+**Why this path:**
+- The stack is already web-native (Python/Flask + HTML/JS)
+- No rewrite of backend logic required
+- Electron has the largest ecosystem; Tauri is lighter (Rust, uses OS webview)
+- Either option works — the frontend modularisation done now is the prerequisite
+
+**What transfers directly:**
+- Flask Blueprints → same, running as local subprocess
+- ES module JS tiles → same, loaded by Electron/Tauri webview
+- SQLite database → bundled with the app
+- Ollama → local, already running separately
+
+**What needs new work at desktop time:**
+- App packaging (electron-builder / Tauri CLI)
+- Auto-update mechanism
+- System tray integration
+- Native file dialogs (optional — current file tile works fine without them)
+
+### Migration Sequencing
+
+Tiles are reviewed and extracted one at a time. Each tile is only moved when it has been:
+1. Fully reviewed (issues documented)
+2. Bugs fixed
+3. Code cleaned to a standard that makes extraction safe
+
+**Status:**
+
+| Tile        | Review                    | Bugs Fixed              | Extracted     |
+| ----------- | ------------------------- | ----------------------- | ------------- |
+| Chat        | ✅ Done (2026-04-04)      | ✅ 5 fixes applied      | ⬜ Pending    |
+| Terminal    | 🔄 In progress            | ⬜ Pending              | ⬜ Pending    |
+| Files       | ⬜ Not started            | —                       | —             |
+| ALM/Studio  | ⬜ Not started            | —                       | —             |
+| Monitor     | ⬜ Not started            | —                       | —             |
+| Vortex      | ⬜ Not started            | —                       | —             |
+
+---
+
 *The Ghost speaks. The swarm thinks. The Librarian remembers.*
 *The Duck checks. Sniffles watches. Claude advises when asked.*
 *You can only do what you can do when you can do it.*
