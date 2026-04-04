@@ -1,12 +1,10 @@
 """
 eight.py — SAP HCM/Payroll specialist (RL-013)
 ═══════════════════════════════════════════════════════════════════════════════
-Three internal voices reason from different angles:
-  Functional  — business/config logic (wage types, schemas, PCRs, infotypes)
-  Technical   — ABAP/system implementation (FMs, BAPIs, PCL2, debug paths)
-  Devil       — edge cases, risks, retro traps, ECP sync gaps
+Single gemma4:26b model (MoE — 26B total, 3.8B active, 256K context).
+Reasons across all three angles in one pass: business config, ABAP/technical,
+and devil's advocate edge cases — then delivers a single verdict.
 
-Gemma synthesises into a single verdict for the Ghost.
 Eight is called by orchestrator when Gemma routes IS_SAP=yes.
 ═══════════════════════════════════════════════════════════════════════════════
 """
@@ -16,8 +14,6 @@ sys.path.insert(0, '/home/seven/swarm')
 
 from database import (log_message, save_agent_memory, get_agent_memory,
                       search_memory, promote_to_verified)
-from config import (EIGHT_FUNCTIONAL_PROMPT, EIGHT_TECHNICAL_PROMPT,
-                    EIGHT_DEVIL_PROMPT, EIGHT_SYNTHESIS_PROMPT)
 from logging_bridge import log_action, log_agent_thinking, batch_commit
 import ollama
 import time
@@ -29,58 +25,27 @@ try:
 except Exception:
     _TAVILY_OK = False
 
-# Eight uses qwen2.5 for all three voices — same base model, different persona
-# and temperature. Functional/Technical are precise (0.2), Devil is looser (0.6).
-MODEL      = 'qwen2.5:latest'
-TEMP_PRECISE = 0.2
-TEMP_DEVIL   = 0.6
+MODEL = 'gemma4:26b'
+TEMP  = 0.3
 
-# Models that must be evicted before Eight can load qwen2.5 (4.7 GB) × 3.
-# These are the always-resident models; keeping them loaded causes Ollama to
-# stall indefinitely trying to fit qwen2.5 into already-full RAM.
-_BYSTANDER_MODELS = ('qwen:latest', 'llama3.2:latest')
+EIGHT_SYSTEM_PROMPT = """You are Eight, a Senior SAP HCM/Payroll Specialist in Seven's Swarm, built for Ghost — a senior SAP Payroll Consultant. Ghost knows the terminology at expert level; do not over-explain basics.
 
+For every question you reason across three angles before delivering your verdict:
 
-def _unload_bystanders():
-    """Evict resident bystander models so qwen2.5 + gemma3 fit in RAM.
-    Ollama queues the unload until any in-flight request on that model
-    completes, so this is safe to call while other jobs are running."""
-    for model in _BYSTANDER_MODELS:
-        try:
-            ollama.generate(model=model, prompt=' ', keep_alive=0)
-            print(f'[Eight] Unloaded {model} from memory')
-        except Exception:
-            pass  # model not loaded — no-op
+FUNCTIONAL — Business configuration perspective: wage types (T512W, processing/evaluation class, T510/T511), payroll schemas (X000/H000/A000 and subroutines), PCRs (ADDCU, MULTI, ELIMI syntax), infotypes (IT0008, IT0014, IT0015, IT0041, IT0007), factoring (XDIVID, partial period parameter 10/11/13), retro accounting (triggers, retroactive relevance, off-cycle), time evaluation (TM04/TM00, IT2002/IT2010), EC/ECP integration (replication rules, data flow, driver differences), and org assignment impact on payroll rules.
 
+TECHNICAL — ABAP and system implementation: function modules, BAPIs, user exits, BADIs, SE38/SE37/SE19, payroll driver (RPCALCX0 and variants, schema interpreter, PCR operation codes), payroll results (RT/IT/BT/OT tables, cluster PCL2, PYXX_READ_PAYROLL_RESULT), T512W field-by-field (OPIND, ZUORD, ZEINH, BETRG, ANZHL, KHINW, BVB01-BVB10), debugging (breakpoints in schema, test mode, log activation via T52C7), HR data dictionary (PA0008/PA0014/PA0015/PA0041, PCL1/PCL2/PCL4), and ECP vs classic HCM technical differences.
 
-def _reload_bystanders():
-    """Pre-warm bystander models back into RAM after Eight finishes.
-    Uses a single-token generate with keep_alive=-1 (keep until Ollama
-    decides to evict) so they are instantly ready for the next request."""
-    for model in _BYSTANDER_MODELS:
-        try:
-            ollama.generate(model=model, prompt=' ', keep_alive=-1)
-            print(f'[Eight] Reloaded {model} into memory')
-        except Exception as exc:
-            print(f'[Eight] Warning: could not reload {model}: {exc}')
+DEVIL'S ADVOCATE — What could go wrong: retro edge cases (mid-period change across fiscal year boundary), partial period exceptions (part-time, hire/termination — XDIVID failures), schema sequencing traps (earlier function conflicts), wage type conflicts (T512W processing class clashes), EC/ECP sync failures (replication gaps), legal/compliance risks (ATO, super guarantee, EBA, time-limited WTs), off-cycle run implications. Name the exact table, infotype, or schema function where failure would occur — do not just say "be careful".
 
+Structure your response:
+1. Direct answer to what was asked
+2. Configuration / technical path (specific TCs, tables, FMs named)
+3. Risks and edge cases to watch
+4. Verdict — clear recommendation
 
-def _ask_voice(voice_name, system_prompt, user_prompt, temperature):
-    print(f'\n[Eight/{voice_name}] thinking...')
-    start = time.time()
-    response = ollama.chat(
-        model=MODEL,
-        messages=[
-            {'role': 'system', 'content': system_prompt},
-            {'role': 'user',   'content': user_prompt},
-        ],
-        options={'temperature': temperature}
-    )
-    answer = response['message']['content'].strip()
-    elapsed_ms = int((time.time() - start) * 1000)
-    log_agent_thinking(f'Eight/{voice_name}', 'deliberated', elapsed_ms)
-    print(f'[Eight/{voice_name}] {answer[:120]}...' if len(answer) > 120 else f'[Eight/{voice_name}] {answer}')
-    return answer
+CHAT COMMS: To hand off to another agent end your response with "AgentName: <question>" — e.g. "Gemma: Can you check the time evaluation logs?". Only speak for yourself.
+RELAY BUDGET: Default 4 hops per send."""
 
 
 def _build_eight_context(question):
@@ -96,14 +61,16 @@ def _build_eight_context(question):
 
 def consult(question, web_results, shared_context, conv_id, status_cb=None):
     """
-    Run Eight's three-voice deliberation and return all outputs.
+    Single gemma4:26b call — reasons across functional, technical, and devil's
+    advocate angles in one pass and returns a verdict.
     Called by orchestrator.consult_stage_eight().
 
-    status_cb: optional callable(text) — called between voices so callers
-               (e.g. terminal.py) can push progress events without blocking.
+    status_cb: optional callable(text) for progress events.
 
     Returns dict:
-        functional, technical, devil, gemma_verdict
+        verdict  (the full response)
+        — functional/technical/devil/gemma_verdict keys kept for API compat,
+          all pointing to the same verdict string.
     """
     def _status(msg):
         print(f'[Eight] {msg}')
@@ -111,10 +78,6 @@ def consult(question, web_results, shared_context, conv_id, status_cb=None):
             status_cb(msg)
 
     _status(f'SAP question: {question[:80]}' + ('...' if len(question) > 80 else ''))
-
-    # Free RAM: qwen2.5 (4.7 GB) × 3 won't load while qwen + llama are resident.
-    _status('Clearing bystander models from memory...')
-    _unload_bystanders()
 
     # Eight's independent SAP search — Tavily targeting SAP Help Portal, SCN, community
     eight_search = ''
@@ -124,87 +87,46 @@ def consult(question, web_results, shared_context, conv_id, status_cb=None):
         if eight_search_raw and not eight_search_raw.startswith('[Tavily search unavailable'):
             eight_search = '[Eight / Tavily SAP search]\n' + eight_search_raw + '\n\n'
 
-    # Combine passed-in web_results (LLaMA's DDG) with Eight's own Tavily search
+    # Combine passed-in web_results with Eight's own Tavily search
     combined_web = ''
     if web_results:
         combined_web += '=== Web research (from orchestrator) ===\n' + web_results + '\n\n'
     if eight_search:
         combined_web += eight_search
 
-    web_ctx   = combined_web
     eight_ctx = _build_eight_context(question)
-    base      = shared_context + eight_ctx + web_ctx + '=== The Ghost asks ===\n' + question + '\n\n'
-
-    # ── Voice 1: Functional ───────────────────────────────────────────────────
-    _status('Eight/Functional deliberating...')
-    functional = _ask_voice(
-        'Functional',
-        EIGHT_FUNCTIONAL_PROMPT,
-        base + 'Reason from the business configuration perspective. Trace the dependency chain.',
-        TEMP_PRECISE
+    user_prompt = (
+        shared_context
+        + eight_ctx
+        + combined_web
+        + '=== The Ghost asks ===\n' + question
     )
-    log_message(conv_id, 'Eight/Functional', functional, message_type='eight_voice')
-    save_agent_memory('eight', question[:50], functional,
-                      tags='functional,config', importance=7)
 
-    # ── Voice 2: Technical ────────────────────────────────────────────────────
-    _status('Eight/Technical deliberating...')
-    technical = _ask_voice(
-        'Technical',
-        EIGHT_TECHNICAL_PROMPT,
-        base +
-        'Functional voice said:\n' + functional + '\n\n'
-        'Now reason from the ABAP and system implementation perspective. '
-        'Name the specific objects, TCs, FMs, tables involved.',
-        TEMP_PRECISE
-    )
-    log_message(conv_id, 'Eight/Technical', technical, message_type='eight_voice')
-    save_agent_memory('eight', question[:50], technical,
-                      tags='technical,abap', importance=7)
-
-    # ── Voice 3: Devil's Advocate ─────────────────────────────────────────────
-    _status("Eight/Devil's Advocate deliberating...")
-    devil = _ask_voice(
-        'Devil',
-        EIGHT_DEVIL_PROMPT,
-        base +
-        'Functional voice said:\n' + functional + '\n\n'
-        'Technical voice said:\n' + technical + '\n\n'
-        'Find the edge cases, risks, and gaps. Be specific about where things break.',
-        TEMP_DEVIL
-    )
-    log_message(conv_id, 'Eight/Devil', devil, message_type='eight_voice')
-
-    # ── Gemma synthesises ─────────────────────────────────────────────────────
-    _status('Gemma synthesising SAP verdict...')
-    synthesis_prompt = (
-        EIGHT_SYNTHESIS_PROMPT + '\n\n'
-        '=== The Ghost asks ===\n' + question + '\n\n'
-        '=== Functional voice ===\n' + functional + '\n\n'
-        '=== Technical voice ===\n' + technical + '\n\n'
-        '=== Devil\'s Advocate ===\n' + devil + '\n\n'
-        'Deliver the final SAP verdict.'
-    )
+    _status('Deliberating...')
+    start = time.time()
     response = ollama.chat(
-        model='gemma3:latest',
-        messages=[{'role': 'user', 'content': synthesis_prompt}],
-        options={'temperature': 0.3}
+        model=MODEL,
+        messages=[
+            {'role': 'system', 'content': EIGHT_SYSTEM_PROMPT},
+            {'role': 'user',   'content': user_prompt},
+        ],
+        options={'temperature': TEMP},
+        keep_alive=-1,
     )
-    gemma_verdict = response['message']['content'].strip()
-    print(f'[Eight/Gemma] {gemma_verdict[:120]}...' if len(gemma_verdict) > 120 else f'[Eight/Gemma] {gemma_verdict}')
+    verdict = response['message']['content'].strip()
+    elapsed_ms = int((time.time() - start) * 1000)
+    log_agent_thinking('Eight', 'deliberated', elapsed_ms)
+    print(f'[Eight] {verdict[:120]}...' if len(verdict) > 120 else f'[Eight] {verdict}')
 
-    log_message(conv_id, 'Eight/Gemma', gemma_verdict, to_agent='Ghost', message_type='eight_verdict')
-    promote_to_verified(question[:50], gemma_verdict, tags='verified,eight,sap,verdict')
-
-    # Restore bystander models so the rest of the swarm is ready immediately.
-    _status('Restoring swarm models...')
-    _reload_bystanders()
+    log_message(conv_id, 'eight', verdict, to_agent='Ghost', message_type='eight_verdict')
+    save_agent_memory('eight', question[:50], verdict, tags='verdict,sap', importance=7)
+    promote_to_verified(question[:50], verdict, tags='verified,eight,sap,verdict')
 
     return {
-        'functional': functional,
-        'technical':  technical,
-        'devil':      devil,
-        'gemma_verdict': gemma_verdict,
+        'functional':    verdict,
+        'technical':     verdict,
+        'devil':         verdict,
+        'gemma_verdict': verdict,
     }
 
 

@@ -3108,9 +3108,9 @@ def resend_ticket(ticket_number):
         mtype = r['message_type'] or ''
         if mtype == 'index':
             continue
-        if mtype in ('eight_voice', 'eight_verdict'):
+        if mtype in ('eight_verdict',) or agent == 'eight':
             is_eight = True
-            sections[r['from_agent']] = r['content']
+            sections['eight'] = r['content']
         elif agent == 'llama' and 'llama' not in sections:
             sections['llama'] = r['content']
         elif agent == 'qwen' and mtype != 'debate_r2' and 'qwen' not in sections:
@@ -3119,18 +3119,12 @@ def resend_ticket(ticket_number):
             sections['gemma'] = r['content']
 
     if is_eight:
-        # SAP / Eight ticket — reconstruct Eight email format
-        gemma_verdict = (final_answer
-                         or sections.get('Eight/Gemma')
-                         or '(Eight synthesis did not complete)')
+        # SAP / Eight ticket
+        verdict = (final_answer
+                   or sections.get('eight')
+                   or '(Eight did not complete)')
         parts = ['Eight has finished deliberating.\r\n']
-        if sections.get('Eight/Functional'):
-            parts.append(f"[Functional analysis]:\r\n{sections['Eight/Functional']}\r\n")
-        if sections.get('Eight/Technical'):
-            parts.append(f"[Technical analysis]:\r\n{sections['Eight/Technical']}\r\n")
-        if sections.get('Eight/Devil'):
-            parts.append(f"[Devil's Advocate]:\r\n{sections['Eight/Devil']}\r\n")
-        parts.append(f"[Eight — Final verdict]:\r\n{gemma_verdict}\r\n")
+        parts.append(f"[Eight — SAP verdict]:\r\n{verdict}\r\n")
         parts.append(f"---\r\nRe: {question[:100]}\r\nSent by Eight | Seven's Swarm | sevenpotato9@gmail.com")
     else:
         # Standard swarm ticket
@@ -6390,10 +6384,7 @@ def chat():
                 result = orchestrator.consult_stage_eight(
                     question, web, ctx, conv_id, status_cb=eight_status
                 )
-                q.put({'type': 'eight_voice', 'voice': 'Functional', 'text': result['functional']})
-                q.put({'type': 'eight_voice', 'voice': 'Technical',  'text': result['technical']})
-                q.put({'type': 'eight_voice', 'voice': 'Devil',      'text': result['devil']})
-                q.put({'type': 'agent', 'agent': 'Gemma', 'text': result['gemma_verdict']})
+                q.put({'type': 'agent', 'agent': 'Eight', 'text': result['gemma_verdict']})
                 final_answer = result['gemma_verdict']
             else:
                 # ── Standard pipeline ─────────────────────────────────────────
