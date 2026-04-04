@@ -14135,6 +14135,25 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
               try { ctl.stop([]); } catch (_) {}
             });
           }
+          // Extract relay candidates from completed async responses.
+          // `_appendChatBubble` uses fromHistory:true for loaded history so the relay
+          // auto-fire guard is skipped; process relay here before the history reload.
+          const completedNow = jobs.filter(j => j.status === 'completed');
+          if (completedNow.length && window.__fridaysChatRelayAuto) {
+            fetch('/api/conversations/' + conversationId + '/messages')
+              .then(r => r.json())
+              .then(d => {
+                const rows = (d && Array.isArray(d.messages)) ? d.messages : [];
+                const agentRows = rows.filter(r => r.sender && r.sender !== 'user' && r.message_type === 'response');
+                agentRows.slice(-completedNow.length).forEach(row => {
+                  const from = String(row.sender || '').toLowerCase();
+                  _extractAgentDirectedQuestions(String(row.content || ''), from).forEach(c => {
+                    queueRelayHandoff({ from: c.from, target: c.target, question: c.question }, true);
+                  });
+                });
+              })
+              .catch(() => {});
+          }
           loadConversationMessages(conversationId);
           refreshChatThreadList(conversationId);
           window.__fridaysRuntimeLoadingAgents = [];
