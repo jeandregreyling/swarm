@@ -8,8 +8,9 @@ Local agents can take 60-300s depending on load.
 Chains:
   T1: Gemma → LLaMA → Qwen → LLaMA
   T2: LLaMA  (start) → Gemma → LLaMA (end)
-  T3: Qwen   (start) → LLaMA → Qwen  (end)
+  T3: Mistral (start) → LLaMA → Mistral (end)   [analyst relay]
   T4: Eight  → Gemma (Eight must appear somewhere in the thread)
+  T5: Gemma  → Mistral → LLaMA → Mistral        [full analyst round-trip]
 """
 
 import time
@@ -176,7 +177,7 @@ def _check(responses_map: dict, expected_agents: list) -> bool:
                 if ':' in stripped and not stripped.startswith('http'):
                     parts = stripped.split(':', 1)
                     name = parts[0].strip().lower()
-                    if name in {'gemma','llama','qwen','eight','sniffles','duck','nine','ten','eleven','twelve','scholar','seeker','librarian'}:
+                    if name in {'gemma','llama','qwen','mistral','eight','sniffles','duck','nine','ten','eleven','twelve','scholar','seeker','librarian'}:
                         relay_hint = f' → relay detected: [{stripped[:80]}]'
                         break
             print(_g(f'      PASS  {agent} ({len(text)} chars{relay_hint})'))
@@ -228,21 +229,21 @@ def thread2():
     return passed
 
 
-# ── THREAD 3: Qwen (start) → LLaMA → Qwen (end) ─────────────────────────
+# ── THREAD 3: Mistral (start) → LLaMA → Mistral (end) ──────────────────
 
 def thread3():
-    print(_b('\n══ THREAD 3: Qwen → LLaMA → Qwen ══'))
+    print(_b('\n══ THREAD 3: Mistral → LLaMA → Mistral ══'))
     passed = True
     conv_id = None
 
-    conv_id, r = _hop('T3-Qwen-start', 'Reason through the key risks of running AI inference models on a machine with no GPU and 33GB RAM. Structured list, max 5 points.', ['qwen'], new_thread=True)
-    passed &= _check(r, ['qwen'])
+    conv_id, r = _hop('T3-Mistral-start', 'Reason through the key risks of running AI inference models on a machine with no GPU and 33GB RAM. Structured list, max 5 points.', ['mistral'], new_thread=True)
+    passed &= _check(r, ['mistral'])
 
-    conv_id, r = _hop('T3-LLaMA', 'Qwen listed risks above. Can you find any real-world forum posts or articles where people share experience with CPU-only local AI setups?', ['llama'], conv_id=conv_id)
+    conv_id, r = _hop('T3-LLaMA', 'Mistral listed risks above. Can you find any real-world forum posts or articles where people share experience with CPU-only local AI setups?', ['llama'], conv_id=conv_id)
     passed &= _check(r, ['llama'])
 
-    conv_id, r = _hop('T3-Qwen-end', 'LLaMA shared real-world experiences. Update your risk analysis with any new evidence. Has anything changed in your assessment?', ['qwen'], conv_id=conv_id)
-    passed &= _check(r, ['qwen'])
+    conv_id, r = _hop('T3-Mistral-end', 'LLaMA shared real-world experiences. Update your risk analysis with any new evidence. Has anything changed in your assessment?', ['mistral'], conv_id=conv_id)
+    passed &= _check(r, ['mistral'])
 
     result = _g('PASS') if passed else _r('FAIL')
     print(f'\n  Thread 3 result: {result}')
@@ -270,6 +271,30 @@ def thread4():
     return passed
 
 
+# ── THREAD 5: Gemma → Mistral → LLaMA → Mistral (full analyst round-trip) ─
+
+def thread5():
+    print(_b('\n══ THREAD 5: Gemma → Mistral → LLaMA → Mistral ══'))
+    passed = True
+    conv_id = None
+
+    conv_id, r = _hop('T5-Gemma', 'Briefly introduce the topic of quantisation in local LLMs — what is it and why does it matter? Two sentences max.', ['gemma'], new_thread=True)
+    passed &= _check(r, ['gemma'])
+
+    conv_id, r = _hop('T5-Mistral', 'Gemma introduced LLM quantisation above. Analyse the trade-offs between Q4, Q5, and Q8 quantisation levels for a CPU-only machine. Structured, concise.', ['mistral'], conv_id=conv_id)
+    passed &= _check(r, ['mistral'])
+
+    conv_id, r = _hop('T5-LLaMA', 'Mistral analysed quantisation levels above. Can you find any benchmark data or community experience on real-world performance differences between these levels?', ['llama'], conv_id=conv_id)
+    passed &= _check(r, ['llama'])
+
+    conv_id, r = _hop('T5-Mistral-final', 'LLaMA found real-world benchmarks. Update your analysis — does the evidence confirm or challenge your earlier assessment? One paragraph.', ['mistral'], conv_id=conv_id)
+    passed &= _check(r, ['mistral'])
+
+    result = _g('PASS') if passed else _r('FAIL')
+    print(f'\n  Thread 5 result: {result}')
+    return passed
+
+
 # ── main ───────────────────────────────────────────────────────────────────
 
 def main():
@@ -288,10 +313,11 @@ def main():
 
     results = {}
     threads = [
-        ('Thread 1 (Gemma→LLaMA→Qwen→LLaMA)', thread1),
-        ('Thread 2 (LLaMA→Gemma→LLaMA)',       thread2),
-        ('Thread 3 (Qwen→LLaMA→Qwen)',          thread3),
-        ('Thread 4 (includes Eight)',            thread4),
+        ('Thread 1 (Gemma→LLaMA→Qwen→LLaMA)',         thread1),
+        ('Thread 2 (LLaMA→Gemma→LLaMA)',               thread2),
+        ('Thread 3 (Mistral→LLaMA→Mistral)',           thread3),
+        ('Thread 4 (includes Eight)',                   thread4),
+        ('Thread 5 (Gemma→Mistral→LLaMA→Mistral)',     thread5),
     ]
 
     for name, fn in threads:
