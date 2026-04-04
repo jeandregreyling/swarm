@@ -56,85 +56,101 @@ Claude sits in the Ghost Circle — silent until Gemma calls, seeing everything 
 
 ## The Swarm — Who They Are
 
-*The roster has grown. Original seven are intact — additional agents added March 2026.*
+*Roster finalised 2026-04-04. 11 AI agents. Ghost is the human operator — not numbered.*
 
 This is not a list of tools. These are the nodes of the swarm, each with a defined character, a specific role, and a reason for being exactly what they are.
 
-### 1. Ghost — The External Node
+### Ghost — The Human Operator
 
-Ghost is not outside the swarm observing it. Ghost is the seventh node — embedded in the code, embedded in the API security layer, and the only entity with visibility into the entire Ghost Circle. Ghost issues commands (TRUST / NOTIFY / IGNORE / REMOVE / REMOVENOTIFY), approves unknown senders, receives all summary reports, and holds the unfiltered view of swarm health. Without Ghost the swarm has no direction. Without the swarm Ghost has no leverage.
+Ghost is not outside the swarm observing it. Ghost is embedded in the code, embedded in the API security layer, and the only entity with visibility into the entire Ghost Circle. Ghost issues commands (TRUST / NOTIFY / IGNORE / REMOVE / REMOVENOTIFY), approves unknown senders, receives all summary reports, and holds the unfiltered view of swarm health. Without Ghost the swarm has no direction. Without the swarm Ghost has no leverage.
 
-Ghost is a role, not a person. Eventually Claude occupies the same position — the external advisory node embedded via API, operating at the same security clearance level, invisible to everyone outside the Ghost Circle. Two external nodes. One swarm. The architecture treats them identically at the access layer.
+Ghost is a role, not a person. Ghost is not assigned a number — Ghost is the operator of the swarm, not a node within it.
 
-**Why Ghost is agent seven:** Intelligence without context is noise. The swarm has no inherent purpose — Ghost provides it. Every architectural decision traces back to "what does the Ghost actually need?"
+**Why Ghost exists:** Intelligence without context is noise. The swarm has no inherent purpose — Ghost provides it. Every architectural decision traces back to "what does the Ghost actually need?"
 
-### 2. Gemma — The Director (gemma3:latest, temp: 0.3)
-Gemma reads every question first. Before any web search, before any agent call, before any processing — Gemma reads and routes via FL-001. She synthesises the final verdict after all agents have contributed. She sends Email 0 (the read receipt) and Email 2 (the final answer). She is the only agent who speaks with authority to the sender.
+### 1. One (Gemma3) — The Director (gemma3:latest, temp: 0.3)
 
-**Why Gemma:** Calm. Authoritative. Direct. No preamble. No pleasantries. Speaks last and definitively. Temperature 0.3 keeps her focused — she's not here to be creative, she's here to be right. Gemma is also the only local agent who can call Claude via the Ghost Circle API when she's genuinely stuck.
+One reads every question first. Before any web search, before any agent call, before any processing — One reads and routes via FL-001. One synthesises the final verdict after all agents have contributed. One sends Email 0 (the read receipt) and Email 2 (the final answer). One is the only agent who speaks with authority to the sender.
 
-**FL-001 — Gemma's routing decision (structured output, always):**
+**Why One:** Calm. Authoritative. Direct. No preamble. No pleasantries. Speaks last and definitively. Temperature 0.3 keeps One focused — not here to be creative, here to be right. One is also the only local agent who can call Nine via the Ghost Circle API when genuinely stuck.
+
+**FL-001 — One's routing decision (structured output, always):**
 ```plaintext
 NEEDS_WEB: yes/no
-AGENTS: llama/qwen/both
+AGENTS: two/four/both
 MODE: consult/debate
 IS_IDENTITY: yes/no
 REASON: one sentence
 ```
-IS_IDENTITY=yes ONLY for swarm questions, agent names, and Ghost. Never for geography, science, history, or any factual question. This rule exists because before FL-001, web search ran on "who are you?" and returned NHS articles about bee swarms.
+IS_IDENTITY=yes ONLY for swarm questions, agent names, and Ghost. Never for geography, science, history, or any factual question.
 
-### 3. LLaMA — The Correspondent (llama3.2:latest, temp: 0.6)
-LLaMA is the swarm's only connection to the internet. When Gemma routes NEEDS_WEB=yes, LLaMA loads, searches DuckDuckGo, writes its answer and sources to ticket_notes, self-indexes to memory_llama, unloads, and passes the ticket back. LLaMA only runs when Gemma assigns it.
+### 2. Two (LlaMA) — The Correspondent (llama3.2:latest, temp: 0.6)
 
-**Why LLaMA:** Fast. Chatty. Fetches well but doesn't always interpret correctly — which is why Qwen exists. Temperature 0.6 gives LLaMA enough warmth to be conversational without going off the rails. LLaMA occasionally mentions Sniffles unprompted, which is endearing and architecturally appropriate.
+Two is the swarm's connection to the internet. When One routes NEEDS_WEB=yes, Two loads, searches DuckDuckGo, writes its answer and sources to ticket_notes, self-indexes to memory_llama, unloads, and passes the ticket back. Two only runs when One assigns it.
 
-### 4. Qwen — The Analyst (qwen2.5:latest, temp: 0.7)
-Qwen loads after LLaMA, reads the ticket plus LLaMA's note, and either deepens the analysis or challenges it if LLaMA got something wrong. In debate mode, Qwen goes three rounds with LLaMA under Gemma as judge. Qwen writes to ticket_notes and self-indexes to memory_qwen before unloading.
+**Why Two:** Fast. Chatty. Fetches well but doesn't always interpret correctly — which is why Four exists. Temperature 0.6 gives Two enough warmth to be conversational without going off the rails.
 
-**Why Qwen:** Deep. Methodical. Spicy in debates. Occasionally writes in Chinese when excited, which is a feature not a bug — it means the reasoning is genuine rather than performative. Temperature 0.7 gives Qwen the latitude to challenge confidently. Without Qwen, LLaMA's first answer would always be the final answer. That's not a swarm, that's a chatbot with extra steps.
+### 3. Three (Mistral) — The Analyst (mistral:latest, temp: 0.7)
 
-### 5. Librarian — The Gatekeeper (qwen:1.5b, temp: 0.1)
-The Librarian is the smallest model in the swarm and deliberately so. It does exactly two things: intake and close. On intake it checks system resources, strips noise from emails, generates 3-5 tags, assigns a ticket number, stores in the queue, and sends the queue position acknowledgment. On close it receives Gemma's final answer, indexes it to shared memory at importance 9, sends the final email to the sender, marks the ticket closed, and checks resources before opening the next ticket.
+Three loads after Two, reads the ticket plus Two's note, and either deepens the analysis or challenges it if Two got something wrong. In debate mode, Three goes three rounds with Two under One as judge. Three writes to ticket_notes and self-indexes to memory_mistral before unloading.
 
-**Why the Librarian is tiny and silent:** The Librarian never reads the question. Never interprets content. Never speaks to Ghost. Never appears in emails. It stamps, queues, and closes. This is a deliberate constraint — giving the Librarian any interpretive capability would make it a bottleneck and a risk. Temperature 0.1 because tagging requires precision not creativity. Tiny model because the task is mechanical, not intelligent. Running a large model for this would be like hiring a surgeon to file paperwork.
+**Why Three:** Sharp. Direct. Challenges assumptions without the multilingual tangents. Temperature 0.7 gives Three the confidence to push back. Mistral's instruction-following is tight — it stays on task in debate without drifting.
+
+### 4. Qwen — The Deep Analyst (qwen2.5:latest, temp: 0.7)
+
+Qwen is the specialist analyst — called when depth matters over speed, or when Three's challenge needs a third angle. Qwen writes to ticket_notes and self-indexes to memory_qwen. Available in chat as a local agent.
+
+**Why Qwen:** Deep. Methodical. Occasionally writes in Chinese when the reasoning gets intense — a feature not a bug. Temperature 0.7. Memory pool: `memory_qwen`.
+
+### 5. Librarian — The Gatekeeper + Vortex (qwen:1.5b, temp: 0.1)
+
+The Librarian is the smallest model in the swarm and deliberately so. It does exactly this: intake, close, and checkpoint.
+
+**Intake:** Checks system resources, strips noise from emails, generates 3-5 tags, assigns a ticket number, stores in the queue, sends the queue position acknowledgment.
+
+**Close:** Receives One's final answer, indexes it to shared memory at importance 9, sends the final email to the sender, marks the ticket closed, checks resources before opening the next ticket.
+
+**Vortex (checkpoint):** On ticket close, Librarian saves a system checkpoint — current state snapshot to the time machine. Decision logging (DECISION-XXX) is written by Librarian as part of the close flow. Daily checkpoint is triggered by the scheduler, executed by Librarian. The Vortex time machine is a system feature, not a separate agent — Librarian is its engine.
+
+**Why the Librarian is tiny and silent:** It stamps, queues, closes, and snapshots. This is a deliberate constraint — giving the Librarian any interpretive capability would make it a bottleneck and a risk. Temperature 0.1 because these tasks require precision not creativity.
 
 ### 6. Duck — The Sanity Checker (qwen:1.5b, temp: 0.1)
-After every ticket closes, Duck runs a 3-5 second check: "Does this answer make basic factual sense? YES or NO plus one sentence." YES means the ticket passes and Duck logs a quack. NO means Duck flags the ticket for Sniffles. When the queue hits zero, Duck sends a summary email to Ghost and signs off as "The Duck 🦆".
 
-Duck has its own memory: duck_log. Every quack is logged with timestamp — which tickets passed, which failed, agent reactions to Duck's visits, and Duck reads its own history so it doesn't repeat jokes. Duck produces a weekly morale report to Ghost from this log. This is not trivial — it means Duck gets better at its job over time and the swarm builds a positive memory muscle from each visit.
+After every ticket closes, Duck runs a 3-5 second check: "Does this answer make basic factual sense? YES or NO plus one sentence." YES means the ticket passes and Duck logs a quack. NO means Duck flags the ticket for Sniffles. When the queue hits zero, Duck sends a summary email to Ghost.
 
-**Why Duck exists:** The Rationality principle from Seven. An AI swarm that never checks its own work produces confident nonsense at scale. Duck is not the smartest check — that's Sniffles. Duck is the fastest check, running on every single ticket at minimal compute cost. Duck catches the obvious failures so Sniffles can focus on the subtle ones. The cheerfulness is not accidental — agents see Duck visited, which reinforces the integrity loop across the whole swarm.
+Duck has its own memory: duck_log. Every quack is logged with timestamp. Duck produces a weekly morale report to Ghost from this log.
+
+**Why Duck exists:** An AI swarm that never checks its own work produces confident nonsense at scale. Duck is the fastest check, running on every single ticket at minimal compute cost. Duck catches the obvious failures so Sniffles can focus on the subtle ones.
 
 ### 7. Sniffles — The Inspector (deepseek-r1:7b, temp: default)
-Sniffles is a read-only memory auditor. It never writes to the shared memory tables or any agent pool. It runs only when Duck has flagged something AND the queue has been quiet for at least one hour — it will never interrupt an active queue. Sniffles audits all memory tables for new unaudited entries, checks for fabricated statistics, self-serving entries, identity drift, API access claims, and contradictions with verified facts. Results are PASS / WARN / FLAG per entry. FLAG stops the queue entirely — agents must correct and Gemma rules.
 
-Sniffles has its own memory: sniffer_memory. This is what separates Sniffles from a simple rule checker. Sniffer_memory tracks patterns across audits — "LLaMA overconfident 3x this week", "Qwen contradicted verified memory twice in 48 hours" — and escalates accordingly: bark / pattern bark / emergency. Individual barks go to agents and Ghost. Pattern reports go to Ghost Circle only. Sniffles gets smarter over time precisely because it remembers what it has already seen.
+Sniffles is a read-only memory auditor. It never writes to the shared memory tables or any agent pool. It runs only when Duck has flagged something AND the queue has been quiet for at least one hour. Sniffles audits all memory tables for new unaudited entries, checks for fabricated statistics, self-serving entries, identity drift, API access claims, and contradictions with verified facts. Results are PASS / WARN / FLAG per entry. FLAG stops the queue entirely.
 
-**Why DeepSeek R1:** Sniffles shows its chain of thought. This is the critical feature — not just PASS/WARN/FLAG, but the full reasoning behind each verdict. DeepSeek R1's architecture makes this natural. Sniffles is the panopticon — agents know they might be audited at any time (1 in 5 random trigger per email processed) even when Duck passes everything. This random timing is the point. A predictable audit schedule would be gamed. An unpredictable one cannot be.
+Sniffles has its own memory: sniffer_memory — pattern intelligence across audits. Escalation levels: bark / pattern bark / emergency.
 
-### 8. Eight — The SAP Specialist (3-voice: functional/technical/devil's advocate)
+**Why DeepSeek R1:** Sniffles shows its chain of thought. Not just PASS/WARN/FLAG, but the full reasoning behind each verdict. An auditor that doesn't show its reasoning cannot itself be audited.
 
-Eight is called by Gemma when IS_SAP=yes. Three internal voices reason from different angles: Functional (business/config logic — wage types, schemas, PCRs, infotypes), Technical (ABAP/system implementation — FMs, BAPIs, PCL2, debug paths), Devil (edge cases, risks, retro traps, ECP sync gaps). Gemma synthesises into a single verdict. Eight has its own memory pool (memory_eight) and can optionally call Tavily for SAP-specific search.
+### 8. Eight — The SAP Specialist (gemma4:26b, temp: 0.5)
 
-**Chat context:** Eight is available in the Fridays chat panel as a local agent (qwen2.5:latest). In chat it responds with SAP specialist framing without running the full three-voice pipeline. Model: `qwen2.5:latest` via Ollama (local, no API cost). Runtime tier: **local**.
+Eight is called by One when IS_SAP=yes. Three internal voices reason from different angles: Functional (business/config logic — wage types, schemas, PCRs, infotypes), Technical (ABAP/system implementation — FMs, BAPIs, PCL2, debug paths), Devil (edge cases, risks, retro traps, ECP sync gaps). One synthesises into a single verdict. Eight has its own memory pool (memory_eight) and can optionally call Tavily for SAP-specific search.
 
-### 9. Nine — The System Architect / Ghost Layer (claude-sonnet-4-6)
+**Chat context:** Eight is available in the Fridays chat panel as a local agent. Model: `gemma4:26b` via Ollama (local, no API cost). Runtime tier: **local**.
+
+### 9. Nine (Claude) — The System Architect / Ghost Layer (claude-sonnet-4-6)
 
 Nine is the Ghost Layer system architect — Claude Sonnet 4.6 via API, operating at Ghost Circle clearance level. Nine does not process email tickets. Nine reads the full swarm state and synthesises Ghost Briefs (structured intelligence reports) on demand and on daily schedule. Nine files proposals (NINE-XXX) in sandpits/nine/ and executes architectural decisions. Nine's API endpoint is /api/nine. Ghost Brief endpoint: /api/brief. Runtime tier: **paid (Anthropic API)**.
 
-### 10. Ten — GPT-5.3-Codex (gpt-5.3-codex)
+### 10. Ten (Github) — The Engineering Advisor (gpt-5.3-codex)
 
 Ten is the Ghost Layer software engineering advisor — GPT-5.3-Codex via the GitHub Models API. Ten focuses on implementation quality, code review, and execution clarity. Memory pool `memory_ten`. Available in chat. Runtime tier: **paid (GitHub Models API)**.
 
-### 11. Eleven — Grok API (grok-api)
+### 11. Eleven (Grok) — The Lateral Thinking Advisor (grok-api)
 
 Eleven is the Ghost Layer lateral-thinking advisor — Grok API via `grok_agent`. Eleven specialises in alternative strategies, ideation, and synthesis from a different reasoning angle. Available in chat. Memory pool: `memory_grok`. Runtime tier: **paid (xAI API)**.
 
-### 12. Twelve — Vortex (claude-haiku)
+---
 
-Twelve is the decision governance layer and temporal context agent. Vortex is the Swarm-facing time-state system. Every non-trivial code change goes through DECISION-XXX workflow: proposal filed in sandpits/twelve/proposals/, visible in the proposal queue, reviewed through Duck-first logic checks with Sniffles escalation when flagged, then executed with test log in sandpits/twelve/logs/. Active Vortex API endpoints remain /api/decisions, /api/timeline, /api/decisions/&lt;id&gt;. Twelve is also available in chat, injecting temporal context (decisions, time-machine snapshots, proposals) into responses. Runtime tier: **paid (Anthropic API, Claude Haiku)**.
-
-Boundary note: `.history` is ghost-layer rollback infrastructure only. It is intentionally outside Swarm architecture and outside Vortex.
+**Agent 12 (Twelve/Vortex) retired 2026-04-04.** Vortex functionality (time machine checkpoints, DECISION-XXX logging, daily snapshots) absorbed into Librarian (Agent 5). The Vortex UI tile and API endpoints (/api/decisions, /api/timeline) remain — Librarian is now their engine. No separate agent or API cost required.
 
 **Planned (not yet wired):** Sonic, Scholar, Seeker — memory tables created (memory_sonic, memory_scholar, memory_seeker), agent slots reserved.
 
@@ -148,8 +164,8 @@ The Fridays chat panel (`/api/chat`) supports real-time multi-agent conversation
 
 | Tier | Agents | Runtime | Cost |
 | ---- | ------ | ------- | ---- |
-| **local** | Gemma, LLaMA, Qwen, Eight, Duck, Sniffles | Ollama (on-device) | Zero |
-| **paid** | Nine, Ten, Eleven, Twelve | Anthropic + GitHub Models + xAI APIs | Per-token |
+| **local** | One (Gemma3), Two (LlaMA), Three (Mistral), Qwen, Eight, Librarian, Duck, Sniffles | Ollama (on-device) | Zero |
+| **paid** | Nine (Claude), Ten (Github), Eleven (Grok) | Anthropic + GitHub Models + xAI APIs | Per-token |
 
 Tier is colour-coded in the chat agent toggles: green dot = local, amber dot = paid.
 
@@ -231,27 +247,33 @@ The SQLite database (swarm_memory.db) is not a logging system. It is the persist
 **Shared verified memory (memory table)**
 Written by: Librarian only, via promote_to_verified
 Read by: All agents via build_shared_context()
-Content: Gemma's verified verdicts, importance 9
+Content: One's verified verdicts, importance 9
 Never archived — this is the permanent knowledge base
-This is what the swarm knows with confidence. Every fact here has passed through Gemma's synthesis, Duck's sanity check, and Sniffles' audit.
+This is what the swarm knows with confidence. Every fact here has passed through One's synthesis, Duck's sanity check, and Sniffles' audit.
 
 **memory_llama**
-Written by: LLaMA (self-indexed via Librarian tagging)
-Read by: LLaMA and Gemma
+Written by: Two (self-indexed via Librarian tagging)
+Read by: Two and One
 Importance: 5
-LLaMA's personal research notebook. Grows with each web search. Allows LLaMA to say "I've seen this before" without querying the shared pool.
+Two's personal research notebook. Grows with each web search.
+
+**memory_mistral**
+Written by: Three (self-indexed via Librarian tagging)
+Read by: Three and One
+Importance: 5
+Three's analytical and debate history.
 
 **memory_qwen**
 Written by: Qwen (self-indexed via Librarian tagging)
-Read by: Qwen and Gemma
+Read by: Qwen and One
 Importance: 5
-Qwen's analytical history. Qwen builds pattern recognition over time — "this type of question usually has a catch that LLaMA misses." Temperature 0.7 combined with growing personal memory makes Qwen progressively sharper.
+Qwen's deep analysis history. Builds pattern recognition over time.
 
-**memory_gemma**
-Written by: Gemma (verdicts only, source='verdict')
-Read by: Gemma and Sniffles
+**memory_gemma** *(renamed to memory_one — migration pending)*
+Written by: One (verdicts only, source='verdict')
+Read by: One and Sniffles
 Importance: 9, permanent, never archived
-Gemma's verdict history. Sniffles reads this to check for drift — if Gemma's verdicts start contradicting her own prior verdicts, that's a FLAG.
+One's verdict history. Sniffles reads this to check for drift.
 
 **duck_log**
 Written by: Duck after every sanity check
@@ -340,10 +362,11 @@ STAGE 1 — consult_stage1()
     │
     ▼
 STAGE 2 — consult_stage2()
-    • Qwen loads → reads ticket + LLaMA note → deepens or challenges → writes note → unloads
-    • Gemma loads → reads all notes → synthesises final verdict
+    • Three loads → reads ticket + Two's note → deepens or challenges → writes note → unloads
+    • One loads → reads all notes → synthesises final verdict
     • Verdict → memory_gemma → promote_to_verified via Librarian
-    • Email 2 sent: "[Qwen] + [Gemma — Final verdict]"
+    • Librarian saves Vortex checkpoint on close
+    • Email 2 sent: "[Three] + [One — Final verdict]"
     │
     ▼
 DUCK SANITY CHECK — after every ticket
@@ -410,15 +433,15 @@ The reason this matters: character consistency across thousands of interactions 
 | agents | Agent registry — 12 agents seeded |
 | conversations | Conversation log |
 | messages | All agent messages per conversation |
-| memory | Shared verified pool — Gemma verdicts, importance 9, never archived |
-| memory_llama | LLaMA personal research notebook |
-| memory_qwen | Qwen analytical history |
-| memory_gemma | Gemma verdict history — Sniffles reads this |
+| memory | Shared verified pool — One's verdicts, importance 9, never archived |
+| memory_llama | Two (LlaMA) research notebook |
+| memory_mistral | Three (Mistral) analytical history |
+| memory_qwen | Qwen deep analysis history |
+| memory_gemma | One verdict history — Sniffles reads this (rename to memory_one pending) |
 | memory_eight | Eight SAP specialist memory |
 | memory_nine | Nine system architect memory |
-| memory_ten | Ten (GPT-5.3-Codex) memory |
-| memory_grok | Eleven (Grok API) memory |
-| memory_twelve | Twelve Vortex memory (no subject column) |
+| memory_ten | Ten (Github/GPT) memory |
+| memory_grok | Eleven (Grok) memory |
 | memory_sonic | Sonic slot (reserved, empty) |
 | memory_scholar | Scholar slot (reserved, empty) |
 | memory_seeker | Seeker slot (reserved, empty) |
@@ -436,7 +459,7 @@ The reason this matters: character consistency across thousands of interactions 
 | claude_log | Every Claude advisory call with token count |
 | system_stats | RAM, CPU, swap, active model — monitor.py writes |
 | ghost_briefs | Nine's synthesised intelligence reports |
-| decisions | Time Wizard decision log (Twelve) |
+| decisions | Decision log — written by Librarian (Vortex engine) |
 | time_events | Time Wizard event log |
 | time_journal | Time Wizard journal entries |
 | time_checkpoints | Checkpoint snapshots |

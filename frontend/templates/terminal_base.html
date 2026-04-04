@@ -1938,6 +1938,12 @@ body.theme-rose {
 .chat-relay-dispatch .relay-from,
 .chat-relay-dispatch .relay-to { font-weight: 600; font-style: normal; color: var(--text); }
 .chat-relay-dispatch .relay-arrow { color: var(--accent); font-style: normal; margin: 0 3px; }
+.chat-relay-dispatch .relay-stop {
+  margin-left: 8px; cursor: pointer; opacity: 0.45; font-style: normal;
+  font-size: 11px; font-weight: 700; color: var(--text-dim);
+  user-select: none; vertical-align: middle;
+}
+.chat-relay-dispatch .relay-stop:hover { opacity: 1; color: var(--danger, #e05); }
 .skill-events {
   margin-top: 10px;
   display: flex;
@@ -13351,6 +13357,21 @@ function jumpToChatBubble(bubbleId) {
   setTimeout(() => node.classList.remove('reply-targeted'), 900);
 }
 
+function _dismissRelayBar(barEl, targetKey) {
+  // Remove this bar from the DOM
+  if (barEl && barEl.parentNode) barEl.parentNode.removeChild(barEl);
+  // If we know the target, drop matching ticket(s) from the live queue
+  if (targetKey) {
+    const tKey = String(targetKey).toLowerCase();
+    if (Array.isArray(window.__fridaysChatRelayQueue)) {
+      window.__fridaysChatRelayQueue = window.__fridaysChatRelayQueue.filter(
+        t => String(t.target || '').toLowerCase() !== tKey
+      );
+    }
+    _renderChatRelayControls();
+  }
+}
+
 function clearRelayQueue() {
   window.__fridaysChatRelayQueue = [];
   window.__fridaysChatRelayActive = false;
@@ -14573,7 +14594,8 @@ function renderChatMessages(rows) {
       const _rToLabel = _chatAgentLabel(String(row.to_agent || '').split(',')[0].trim());
       const _rDiv = document.createElement('div');
       _rDiv.className = 'chat-relay-dispatch';
-      _rDiv.innerHTML = `<span class="relay-from">${_escapeHtml(_rFromLabel)}</span><span class="relay-arrow">→</span><span class="relay-to">${_escapeHtml(_rToLabel)}</span>: <span>${_escapeHtml(String(content).slice(0, 160))}</span>`;
+      _rDiv.innerHTML = `<span class="relay-from">${_escapeHtml(_rFromLabel)}</span><span class="relay-arrow">→</span><span class="relay-to">${_escapeHtml(_rToLabel)}</span>: <span>${_escapeHtml(String(content).slice(0, 160))}</span><span class="relay-stop" title="Dismiss this relay">✕</span>`;
+      _rDiv.querySelector('.relay-stop').addEventListener('click', () => _dismissRelayBar(_rDiv, null));
       messages.appendChild(_rDiv);
     } else if (sender === 'user') {
       const extracted = _extractAttachmentsFromMessage(content);
@@ -15049,7 +15071,8 @@ function sendMessage(source = 'user', relayMeta = null) {
     if (_rMessages) {
       const _rDiv = document.createElement('div');
       _rDiv.className = 'chat-relay-dispatch';
-      _rDiv.innerHTML = `<span class="relay-from">${_escapeHtml(_rFromLabel)}</span><span class="relay-arrow">→</span><span class="relay-to">${_escapeHtml(_rToLabel)}</span>: <span>${_escapeHtml(String(msg || '').slice(0, 160))}</span>`;
+      _rDiv.innerHTML = `<span class="relay-from">${_escapeHtml(_rFromLabel)}</span><span class="relay-arrow">→</span><span class="relay-to">${_escapeHtml(_rToLabel)}</span>: <span>${_escapeHtml(String(msg || '').slice(0, 160))}</span><span class="relay-stop" title="Stop this relay">✕</span>`;
+      _rDiv.querySelector('.relay-stop').addEventListener('click', () => _dismissRelayBar(_rDiv, _rToKey));
       _rMessages.appendChild(_rDiv);
       _rMessages.scrollTop = _rMessages.scrollHeight;
     }
