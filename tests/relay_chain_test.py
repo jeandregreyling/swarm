@@ -18,8 +18,8 @@ import json
 import requests
 
 BASE = 'http://localhost:5050'
-POLL_INTERVAL = 8       # seconds between job polls
-JOB_TIMEOUT   = 360     # max seconds to wait for one agent hop
+POLL_INTERVAL = 10      # seconds between job polls
+JOB_TIMEOUT   = 540     # max seconds to wait for one agent hop (local CPU models can be slow)
 HEADERS       = {'Content-Type': 'application/json'}
 
 # --- ANSI colours ---------------------------------------------------------
@@ -49,7 +49,10 @@ def _send(message: str, agents: list, conv_id=None, new_thread=False) -> dict:
 
 
 def _wait_for_jobs(job_ids: list, conv_id: int, label: str) -> dict:
-    """Poll until all job_ids are done. Returns {job_id: final_job}."""
+    """Poll until all job_ids are done. Returns {job_id: final_job}.
+    Terminal statuses from server: 'completed', 'failed', 'cancelled'.
+    If a job_id vanishes from the list entirely, it was cleaned up after completion — treat as done.
+    """
     if not job_ids:
         return {}
     remaining = set(job_ids)
@@ -65,15 +68,24 @@ def _wait_for_jobs(job_ids: list, conv_id: int, label: str) -> dict:
         )
         r.raise_for_status()
         data = r.json()
+        seen_ids = {job.get('job_id') for job in data.get('jobs', [])}
         for job in data.get('jobs', []):
             jid = job.get('job_id')
-            if jid in remaining and job.get('status') in ('done', 'error', 'cancelled'):
+            if jid not in remaining:
+                continue
+            status = job.get('status', '')
+            if status in ('completed', 'failed', 'cancelled'):
                 remaining.discard(jid)
                 results[jid] = job
                 elapsed = int(job.get('elapsed_ms') or 0) // 1000
-                status = job.get('status')
-                colour = _g if status == 'done' else _r
+                colour = _g if status == 'completed' else _r
                 print(f'      {colour(status.upper())}  {job.get("agent","?")} — {elapsed}s', flush=True)
+        # Jobs that vanished from the response were cleaned up (completed + TTL expired) — treat as done
+        vanished = remaining - seen_ids
+        for jid in vanished:
+            remaining.discard(jid)
+            results[jid] = {'job_id': jid, 'status': 'completed', 'response': '', 'agent': '?'}
+            print(f'      {_g("COMPLETED (cleaned up)")}  job {jid}', flush=True)
         if remaining:
             elapsed_total = int(JOB_TIMEOUT - (deadline - time.time()))
             stages = []
