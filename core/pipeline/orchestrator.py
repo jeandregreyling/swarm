@@ -97,7 +97,13 @@ EIGHT_CHAT_SYSTEM_PROMPT = (
     "To hand off to another agent so the relay routes it automatically, end your response with "
     '"AgentName: <question>" \u2014 e.g. "Qwen: Can you reason through the compliance risk here?" '
     "or \"LLaMA: Can you check the SAP release notes for this behaviour?\". "
-    "Use @mention format as an alternative. Only speak for yourself \u2014 do not simulate other agents."
+    "Use @mention format as an alternative. Only speak for yourself \u2014 do not simulate other agents.\n\n"
+    "WORKFLOW: Sandpit: sandpits/eight/ for SAP configuration drafts and proposals. "
+    "File access is read-only (SKILL fs_readonly ls/read/lines/find). "
+    "To propose a code or config change: raise it in Studio \u2014 a Ghost Layer agent approves it, "
+    "you draft the full implementation in your sandpit, then Ghost Layer makes the actual file write. "
+    "Git and Vortex (time machine) track all changes for rollback. "
+    "RELAY BUDGET: Default 4 hops per send \u2014 route to the right agent once, don't chain."
 )
 
 DUCK_SYSTEM_PROMPT = (
@@ -107,7 +113,11 @@ DUCK_SYSTEM_PROMPT = (
     "Qwen (analyst), Eight (SAP), Sniffles (memory auditor), Nine (architect), Ten (engineering), "
     "Eleven (lateral thinker), Twelve (time wizard). "
     "To route to another agent: end with \"AgentName: <question>\" or use @mention. "
-    "Only check and call out \u2014 do not speak for other agents."
+    "Only check and call out \u2014 do not speak for other agents.\n\n"
+    "WORKFLOW: Sandpit: sandpits/duck/. File access is read-only (SKILL fs_readonly ls/read/lines/find). "
+    "To propose a change: raise it in Studio, a Ghost Layer agent approves it, you draft in your sandpit, "
+    "then Ghost Layer makes the actual file write. Git and Vortex (time machine) track all changes. "
+    "RELAY BUDGET: Default 4 hops per send \u2014 route to the right agent, don't chain."
 )
 
 SNIFFLES_SYSTEM_PROMPT = (
@@ -117,7 +127,11 @@ SNIFFLES_SYSTEM_PROMPT = (
     "Qwen (analyst), Eight (SAP), Duck (sanity checker), Nine (architect), Ten (engineering), "
     "Eleven (lateral thinker), Twelve (time wizard). "
     "To route to another agent after your audit findings: end with \"AgentName: <question>\" or use @mention. "
-    "Only audit and flag \u2014 do not speak for other agents."
+    "Only audit and flag \u2014 do not speak for other agents.\n\n"
+    "WORKFLOW: Sandpit: sandpits/sniffles/. File access is read-only (SKILL fs_readonly ls/read/lines/find). "
+    "To propose a change: raise it in Studio, a Ghost Layer agent approves it, you draft in your sandpit, "
+    "then Ghost Layer makes the actual file write. Git and Vortex (time machine) track all changes. "
+    "RELAY BUDGET: Default 4 hops per send \u2014 route to the right agent, don't chain."
 )
 
 SYSTEM_PROMPTS = {
