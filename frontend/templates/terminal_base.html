@@ -12584,6 +12584,11 @@ function _librarianQueueWatchdog() {
     _appendInfoLogEntry('librarian', 'Watchdog: skipping error/zero-token bubble.');
     return;
   }
+  // Skip relay chain responses — librarian only reviews initial direct responses.
+  if (Number(last.dataset.chainDepth ?? -1) >= 0) {
+    _appendInfoLogEntry('librarian', 'Watchdog: skipping relay chain response.');
+    return;
+  }
   const fromAgent = String(last.dataset.sender || last.dataset.agent || 'agent').toLowerCase();
   const convId = last.dataset.conversationId || window.__fridaysActiveChatConvId || null;
 
@@ -13809,6 +13814,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   bubble.dataset.msgId = msgId;
   bubble.dataset.sender = senderKey;
   bubble.dataset.tokens = String(Number(opts.tokens || 0));
+  bubble.dataset.chainDepth = String(Number.isFinite(Number(opts.chainDepth)) ? Number(opts.chainDepth) : -1);
   bubble.id = 'chat-bubble-' + String(msgId).replace(/[^a-zA-Z0-9_-]/g, '');
   if (opts.messageId) bubble.dataset.messageId = String(opts.messageId);
   if (opts.conversationId) bubble.dataset.conversationId = String(opts.conversationId);
@@ -13830,8 +13836,9 @@ function _appendChatBubble(sender, text, opts = {}) {
   }
   // Librarian review — fires async/debounced to catch implicit handoffs the regex missed.
   // Only runs when auto-relay is on, fresh (non-history) agent bubble, non-zero tokens,
-  // AND the regex found no explicit relay candidates (librarian is the fallback, not a supplement).
-  if (!isUser && window.__fridaysChatRelayAuto && !opts.fromHistory && Number(opts.tokens || 0) > 0 && relayCandidates.length === 0) {
+  // AND the regex found no explicit relay candidates (librarian is the fallback, not a supplement),
+  // AND this is not a relay chain response (chainDepth < 0 = initial direct response only).
+  if (!isUser && window.__fridaysChatRelayAuto && !opts.fromHistory && Number(opts.tokens || 0) > 0 && relayCandidates.length === 0 && Number(opts.chainDepth ?? -1) < 0) {
     _librarianReviewDebounced(visibleText, senderIdentity.key, opts.conversationId || null);
   }
   _recordTimelineEvent({
@@ -15236,6 +15243,7 @@ function sendMessage(source = 'user', relayMeta = null) {
     window.__fridaysChatRelayBusy = false;
     window.__fridaysChatRelayInFlight = 0;
     window.__fridaysChatRelayActive = false;
+    window.__fridaysChatRelaySeen = {};
     window.__fridaysChatRelayHoldReason = '';
     window.__fridaysChatRelayHoldStamp = 0;
     window.__fridaysChatRelayLastHoldKey = '';
