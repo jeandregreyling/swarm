@@ -282,3 +282,17 @@ This is the canonical append-only change ledger for operational and code changes
 - Validation: Validated via py_compile + live endpoint tests + one heartbeat run
 - Rollback: Disable swarm-fridays service and revert frontend/terminal.py endpoint additions
 
+- Time (UTC): 2026-04-04T00:00:00Z
+- Actor: Nine (Claude Sonnet 4.6)
+- Scope: utils/database.py, frontend/terminal.py
+- Change: Chat tile hardening — 5 production bugs fixed. (1) Added chat_jobs DB table + 4 helper functions + startup orphan cleanup for job state persistence across restarts. (2) Extracted 10 nested functions from `api_chat()` to module level using AST-safe script. (3) Removed duplicate `_extract_skill_lines` inside `_run_ghost_layer_chat`; unified to `_extract_skill_lines_from_text`. (4) Tightened proposal auto-creation guard to require colon-form field labels. (5) Replaced per-request ThreadPoolExecutor with two named module-level pools (`_CHAT_DISPATCH_EXECUTOR`, `_CHAT_WORKER_EXECUTOR`).
+- Validation: py_compile clean; server restarts without error; chat jobs survive restart; no false-positive proposals; no ThreadPoolExecutor deadlock risk.
+- Rollback: git checkout HEAD -- frontend/terminal.py utils/database.py and restart swarm-terminal service.
+
+- Time (UTC): 2026-04-04T00:01:00Z
+- Actor: Nine (Claude Sonnet 4.6)
+- Scope: docs/ARCHITECTURE.md, docs/PROJECT.md, docs/FEATURES_TODO.md
+- Change: Documented frontend tile modularisation plan and desktop application roadmap. Added Frontend Evolution section to ARCHITECTURE.md covering tile module structure, Flask Blueprint auto-registration, ES module JS approach, desktop path via Electron/Tauri, and tile migration status table. Added Phase G (Tile Modularisation) and Phase H (Desktop App) to FEATURES_TODO.md. Updated PROJECT.md Recent Architectural Changes.
+- Validation: All docs lint-clean. Registry and README links intact.
+- Rollback: Revert documentation files only — no code changes in this entry.
+

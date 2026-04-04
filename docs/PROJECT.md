@@ -1,10 +1,44 @@
 # PROJECT.md — Seven's Swarm
 *The Coder's bible. When this diverges from the code, the code is wrong.*
-*Last updated: 2026-03-28 14:35:00 (Session 13 — Theme Architecture Refactor. See THEME_ARCHITECTURE_CHANGES.md)*
+*Last updated: 2026-04-04 (Session 14/15 — Chat tile hardening + Frontend modularisation roadmap)*
 
 ---
 
-## 🔄 Recent Architectural Changes (28 March 2026)
+## 🔄 Recent Architectural Changes (04 April 2026)
+
+**Chat Tile Hardened** — Five production bugs fixed in the Chat tile during a full code review pass.
+
+**What Changed:**
+- ✅ `chat_jobs` DB table added — job state survives server restarts, poll fallback for missing in-memory jobs
+- ✅ 10 nested functions extracted from `api_chat()` to module level — safer editing going forward
+- ✅ Duplicate `_extract_skill_lines` removed — single canonical `_extract_skill_lines_from_text`
+- ✅ Proposal auto-creation guard tightened — requires colon-form field labels, not bare keyword match
+- ✅ Per-request `ThreadPoolExecutor` replaced — two named module-level pools (`_CHAT_DISPATCH_EXECUTOR`, `_CHAT_WORKER_EXECUTOR`) prevent deadlock and churn
+
+**Frontend Modularisation Decided** — The current monolith (`terminal.py` + `terminal_base.html`) will be split tile-by-tile as each tile is reviewed and cleaned.
+
+**Target structure:**
+```
+frontend/
+  terminal.py              ← base: startup, auth, shared middleware only
+  tiles/
+    chat/routes.py         ← /api/chat/* blueprint
+    terminal_tile/routes.py
+    files/routes.py
+    alm/routes.py
+  static/tiles/
+    chat.js / chat.html
+    terminal.js / terminal.html
+    ...
+```
+
+**Desktop App Roadmap Locked** — Long-term target is Electron or Tauri wrapping the Flask backend as a local subprocess. The tile modularisation and ES module approach adopted now will transfer directly to the desktop build with no structural rework.
+
+**Details:** See [ARCHITECTURE.md](ARCHITECTURE.md) — Frontend Evolution section
+
+---
+
+## 🔄 Previous Architectural Changes (28 March 2026)
 
 **Theme Layer Separation Completed** — The Fridays web UI has been refactored to separate visual presentation from core terminal logic.
 

@@ -3,22 +3,24 @@
 <!-- markdownlint-disable -->
 
 _Comprehensive list of all planned features, organized by phase and priority._
-_Last updated: 2026-03-30 10:05:00 by Ten (GPT)_
+_Last updated: 2026-04-04 by Nine (Claude Sonnet 4.6)_
 
 ---
 
 ## Executive Summary
 
-**20 tasks** across 6 phases. Estimated timeline: **4-6 weeks** to full implementation.
+**26 tasks** across 8 phases. Estimated timeline: **6-9 weeks** to full implementation.
 
 | Phase | Name | Priority | Est. Size | Status |
-|-------|------|----------|-----------|--------|
+| ----- | ---- | -------- | --------- | ------ |
 | **A** | File Versioning & Change Tracking | 🔴 High | 4 weeks | DONE |
 | **B** | System Clock & Time Consistency | 🔴 High | 1 week | DONE |
 | **C** | Time Machine Backup System | 🔴 High | 2 weeks | Queued |
 | **D** | UI/UX Improvements | 🟡 Medium | 1 week | DONE |
 | **E** | Access Control & Sandpits | 🟡 Medium | 1 week | Queued |
 | **F** | Verification & Bug Resolution | 🟢 Low | 2 days | Queued |
+| **G** | Frontend Tile Modularisation | 🔴 High | 3 weeks | In Progress |
+| **H** | Desktop Application Path | 🟡 Medium | 4 weeks | Planned |
 
 ---
 
@@ -438,6 +440,136 @@ CREATE TABLE file_versions (
 - [ ] No stale `pending` proposals after execution
 - [ ] Reconciliation report generated automatically
 - [ ] Dashboard and docs show identical proposal statuses
+
+---
+
+---
+
+## Phase G: Frontend Tile Modularisation (HIGH PRIORITY)
+
+*Decided: 2026-04-04. See ARCHITECTURE.md — Frontend Evolution section for full design.*
+
+The current monolith (`terminal.py` ~16k lines + `terminal_base.html` ~16.5k lines) is being split tile-by-tile into self-contained Flask Blueprints + ES module HTML/JS fragments. Each tile is reviewed and cleaned before extraction. No tile is extracted until it passes review.
+
+**Why:** A bad edit to one tile currently risks crashing the whole server. Isolation = safety.
+
+### G-1: Chat Tile — Review & Hardening
+
+**Status:** DONE (2026-04-04)
+
+**What was done:**
+- [x] Full code review completed — 5 issues identified
+- [x] BUG: Chat job state lost on server restart → `chat_jobs` DB table + startup orphan cleanup
+- [x] BUG: 10 functions nested inside `api_chat()` → extracted to module level via AST script
+- [x] BUG: Duplicate `_extract_skill_lines` → removed inner copy, unified to `_extract_skill_lines_from_text`
+- [x] BUG: False-positive proposal auto-creation → gate requires colon-form field labels
+- [x] BUG: Per-request `ThreadPoolExecutor` churn + deadlock risk → two named module-level pools
+- [ ] Extract to `tiles/chat/routes.py` (pending modularisation pass)
+
+---
+
+### G-2: Terminal Tile — Review & Hardening
+
+**Status:** In Progress (2026-04-04)
+
+**What was found:**
+- Shortcut system incomplete — no edit, no reorder, no delete for defaults, `prompt()` dialogs only
+- Sudo safe list (`_SUDO_ALLOWED`) hardcoded regex — no UI or API to manage it
+- `addTerminalShortcut()` has a copy-paste variable name error (`chatWin` instead of `termWin`) — works but misleading
+
+**Pending fixes:**
+- [ ] Shortcut manager modal — edit/delete for all shortcuts (default + custom), drag-to-reorder, unified localStorage storage
+- [ ] Sudo allowlist — `sudo_allowlist` DB table, 3 API endpoints (GET/POST/DELETE), frontend panel
+- [ ] Extract to `tiles/terminal_tile/routes.py` (after fixes)
+
+---
+
+### G-3: Files Tile — Review & Hardening
+
+**Status:** Not started
+
+- [ ] Full code review (same depth as Chat + Terminal reviews)
+- [ ] Document issues
+- [ ] Fix identified bugs
+- [ ] Extract to `tiles/files/routes.py`
+
+---
+
+### G-4: ALM/Studio Tile — Review & Hardening
+
+**Status:** Not started
+
+- [ ] Full code review
+- [ ] Document issues
+- [ ] Fix identified bugs
+- [ ] Extract to `tiles/alm/routes.py`
+
+---
+
+### G-5: Monitor Tile — Review & Hardening
+
+**Status:** Not started
+
+- [ ] Full code review
+- [ ] Document issues
+- [ ] Fix identified bugs
+- [ ] Extract to `tiles/monitor/routes.py`
+
+---
+
+### G-6: Vortex Tile — Review & Hardening
+
+**Status:** Not started
+
+- [ ] Full code review (Vortex not fully linked — link as part of this pass)
+- [ ] Document issues
+- [ ] Fix identified bugs
+- [ ] Extract to `tiles/vortex/routes.py`
+
+---
+
+### G-7: Base Layer Extraction
+
+**Status:** Blocked on G-1 through G-6
+
+- [ ] Reduce `terminal.py` to: startup, auth, ALM gate, blueprint auto-registration
+- [ ] Reduce `terminal_base.html` to: shell layout, shared JS utilities, tile injection loader
+- [ ] Validate all tiles load correctly via fragment injection
+
+---
+
+## Phase H: Desktop Application Path (MEDIUM PRIORITY)
+
+*Decided: 2026-04-04. Prerequisite: Phase G complete.*
+
+Target: standalone desktop app via Electron or Tauri. Flask runs as a bundled local subprocess. Frontend becomes a packaged web app. No backend rewrite required.
+
+### H-1: Electron Prototype
+
+**Status:** Planned (post Phase G)
+
+- [ ] Evaluate Electron vs Tauri — decide based on team familiarity and bundle size
+- [ ] Wrap Flask server as child process in Electron main process
+- [ ] Point Electron webview at `localhost:5050`
+- [ ] Test all tile functions work inside webview
+- [ ] Basic window chrome (title bar, system tray icon)
+
+**Files to create:**
+- `desktop/main.js` — Electron main process
+- `desktop/package.json` — Electron app manifest
+- `desktop/preload.js` — IPC bridge if needed
+
+---
+
+### H-2: App Packaging & Distribution
+
+**Status:** Planned (post H-1)
+
+- [ ] Configure electron-builder or Tauri CLI for Linux (.deb / AppImage)
+- [ ] Bundle Flask + Python runtime (or document dependency install)
+- [ ] Bundle SQLite database at first run
+- [ ] Auto-update mechanism (optional)
+- [ ] System tray: show/hide, quit
 
 ---
 
