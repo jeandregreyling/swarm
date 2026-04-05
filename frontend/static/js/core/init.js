@@ -1,0 +1,270 @@
+// Boot sequence — DOMContentLoaded, intervals, SSE
+// Extracted from terminal_base.html
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Load settings and apply time-of-day theme
+  loadSettings();
+  initClocks();
+  bindHomeLaunchClicks();
+  _renderTroubleshootBadge();
+
+  // Wire header buttons via JS (inline onclick may be suppressed)
+  document.getElementById('troubleshoot-btn')?.addEventListener('click', () => toggleTroubleshootPanel());
+  document.getElementById('auth-user-pill')?.addEventListener('click', () => openIdentityManager());
+  document.getElementById('home-help-btn')?.addEventListener('click', () => openWindowHelp('home'));
+  document.getElementById('home-settings-btn')?.addEventListener('click', () => toggleSettings());
+  document.getElementById('troubleshoot-toggle-btn')?.addEventListener('click', () => toggleTroubleshootEnabled());
+  document.getElementById('troubleshoot-close-btn')?.addEventListener('click', () => {
+    const state = _troubleshootState();
+    state.panelOpen = false;
+    document.getElementById('troubleshoot-modal')?.classList.remove('open');
+    _renderTroubleshootBadge();
+  });
+  document.getElementById('troubleshoot-clear-btn')?.addEventListener('click', () => clearTroubleshootLogs());
+  document.getElementById('troubleshoot-copy-btn')?.addEventListener('click', () => copyTroubleshootLogs());
+  _initTroubleshootDrag();
+
+  // Clicking empty home background should minimize open windows to taskbar.
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!target) return;
+    if (!target.closest('#home-page')) return;
+    if (target.closest('.floating-window, #taskbar, #settings-modal, #troubleshoot-modal, #command-palette')) return;
+    if (target.closest('.home-card, .stat-card, .chat-action-btn, button, a, input, textarea, select, [role="button"], [onclick], [data-win-id]')) return;
+    if (!winManager || !winManager.windows || winManager.windows.size === 0) return;
+    winManager.minimizeAllToTaskbar();
+  }, true);
+
+  document.addEventListener('click', (event) => {
+    const state = _troubleshootState();
+    if (!state.enabled) return;
+    const target = event.target;
+    if (target?.closest?.('#troubleshoot-modal')) return;
+    _troubleshootLog('info', 'Click', _troubleshootTargetLabel(target));
+  }, true);
+
+  window.addEventListener('error', (event) => {
+    const msg = event?.message || 'Unknown script error';
+    const where = `${event?.filename || 'unknown'}:${event?.lineno || 0}:${event?.colno || 0}`;
+    _troubleshootLog('error', msg, where);
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event?.reason;
+    const text = reason && reason.message ? reason.message : String(reason || 'Unhandled rejection');
+    _troubleshootLog('error', 'Unhandled promise rejection', text);
+  });
+  
+  // Update time-of-day theme every minute
+  setInterval(() => {
+    const selectedMode = String(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto').toLowerCase();
+    if (selectedMode === 'auto') {
+      applyTimeTheme('auto');
+    }
+  }, 60000);
+  
+  _loadAgentRegistry(); // Load agent numbers + labels from DB — updates CHAT_AGENT_OPTIONS
+  loadHomeStats(); // Load system stats with colors and trends
+  setInterval(loadHomeStats, 10000); // Update stats every 10 seconds
+  loadOllamaPanel(); // Load Ollama model panel
+  setInterval(loadOllamaPanel, 15000); // Refresh every 15 seconds
+  loadAttentionPanel(); // Needs-attention summary
+  setInterval(loadAttentionPanel, 30000); // Refresh every 30 seconds
+  updateActivityLog();
+  setInterval(updateActivityLog, 5000);
+  updateTicketQueue();
+  setInterval(updateTicketQueue, 10000);
+  loadAuthProfiles();
+  _renderIdentityPill();
+  initChatSpellHelper();
+  populateRelayRuleTargetOptions();
+  renderRelayRuleList();
+  startChatLiveSyncService();
+  _librarianStartWatchdog();
+  
+  // Settings modal handlers
+  document.querySelectorAll('[data-time]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('[data-time]').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+    });
+  });
+  
+  document.querySelectorAll('[data-color]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('[data-color]').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      // Apply accent color immediately
+      const color = e.target.dataset.color;
+      document.documentElement.style.setProperty('--accent', color);
+    });
+  });
+  
+  document.getElementById('opacity-slider').addEventListener('input', (e) => {
+    // Slider reversed: right = more transparent (left = more opaque)
+    const sliderValue = parseInt(e.target.value);
+    const displayTransparency = 100 - sliderValue;
+    const actualOpacity = sliderValue / 100;
+    document.getElementById('opacity-value').textContent = displayTransparency + '%';
+    document.documentElement.style.setProperty('--glass-opacity', actualOpacity);
+  });
+  
+  // (time-slider removed — themes are now applied directly from buttons)
+
+
+  document.getElementById('close-settings').addEventListener('click', saveSettings);
+  
+  // Close settings on click outside
+  document.getElementById('settings-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'settings-modal') {
+      closeSettings();
+    }
+  });
+
+  _renderTroubleshootPanel();
+  
+  // Show keyboard hints (auto-hide after 5 seconds)
+  const hints = document.getElementById('keyboard-hints');
+  hints.style.display = 'block';
+  setTimeout(() => {
+    hints.classList.add('fade-out');
+    setTimeout(() => { hints.style.display = 'none'; }, 300);
+  }, 5000);
+  
+  // Command palette + ESC handling (capture phase for consistency)
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      const palette = document.getElementById('command-palette');
+      palette.classList.toggle('open');
+      if (palette.classList.contains('open')) {
+        document.getElementById('command-palette-input').focus();
+      }
+      return;
+    }
+    
+    // ESC invariant: close top overlay first, else close top window.
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (closeTopModal()) return;
+      if (closeTopWindow()) return;
+      const palette = document.getElementById('command-palette');
+      if (palette?.classList.contains('open')) {
+        palette.classList.remove('open');
+      }
+    }
+  }, true);
+  
+  // Command palette search
+  const paletteInput = document.getElementById('command-palette-input');
+  paletteInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    const results = document.getElementById('command-palette-results');
+    
+    const commands = [
+      { label: 'Chat', onclick: 'openWindow("chat", "Chat", "view-chat")' },
+      { label: 'Terminal', onclick: 'openWindow("terminal", "Terminal", "view-terminal")' },
+        { label: 'Files', onclick: 'openWindow("files", "Files", "view-files")' },
+      { label: 'Git', onclick: 'openWindow("git", "Git", "view-git")' },
+      { label: 'Memory', onclick: 'openWindow("memory", "Memory", "view-memory")' },
+      { label: 'Monitor', onclick: 'openWindow("monitor", "Monitor", "view-monitor")' },
+      { label: 'Documents', onclick: 'openWindow("docs", "Documents", "view-docs")' },
+      { label: 'Skills', onclick: 'openWindow("skills", "Skills", "view-skills")' },
+      { label: 'Tickets', onclick: 'openWindow("tickets", "Tickets", "view-tickets")' },
+      { label: 'Studio', onclick: 'openWindow("studio", "Studio", "view-studio")' },
+      { label: 'Vortex', onclick: 'openWindow("time-wizard", "🌀 Vortex", "view-time-wizard")' },
+      { label: 'Ghost Brief', onclick: 'openWindow("ghost-brief", "📋 Ghost Brief", "view-ghost-brief")' },
+    ];
+    
+    const filtered = commands.filter(c => c.label.toLowerCase().includes(query));
+    results.innerHTML = filtered.map(c => `
+      <div class="palette-item" onclick="${c.onclick}; document.getElementById('command-palette').classList.remove('open');">
+        ${c.label}
+      </div>
+    `).join('');
+  });
+  
+  // Filter activity log
+  document.getElementById('activity-filter').addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    document.querySelectorAll('#activity-log .activity-item').forEach(item => {
+      item.style.display = item.textContent.toLowerCase().includes(query) ? 'block' : 'none';
+    });
+  });
+  
+  // Filter ticket queue
+  document.getElementById('ticket-filter').addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    document.querySelectorAll('#ticket-queue .ticket-item').forEach(item => {
+      item.style.display = item.textContent.toLowerCase().includes(query) ? 'flex' : 'none';
+    });
+  });
+  
+  // Close palette on click outside
+  document.getElementById('command-palette').addEventListener('click', (e) => {
+    if (e.target.id === 'command-palette') {
+      e.target.classList.remove('open');
+    }
+  });
+  
+  // ESC key closes focused/topmost window (already handled above)
+});
+
+function updateActivityLog() {
+  const log = document.getElementById('activity-log');
+  if (!log) return;
+  
+  fetch('/api/activity')
+    .then(r => r.json())
+    .then(data => {
+      if (data.activities && data.activities.length > 0) {
+        log.innerHTML = data.activities.slice(0, 10).map(act => {
+          let color = 'var(--text)';
+          if (act.level === 'error') color = '#f77';
+          else if (act.level === 'warning') color = '#ffa500';
+          else if (act.level === 'success') color = '#4caf50';
+          return `<div class="activity-item" style="color: ${color};"><span style="color: var(--text-dim); font-size: 9px;">[${act.timestamp}]</span> ${act.message}</div>`;
+        }).join('');
+      }
+    })
+    .catch(e => {
+      log.innerHTML = '<div style="padding: 12px; color: var(--text-dim);">Activity log unavailable</div>';
+    });
+}
+
+function updateTicketQueue() {
+  const queue = document.getElementById('ticket-queue');
+  if (!queue) return;
+
+  fetch('/api/tickets?status=open')
+    .then(r => r.json())
+    .then(data => {
+      const all = Array.isArray(data) ? data : (data.tickets || []);
+      // Belt-and-braces: filter client-side in case API doesn't support ?status
+      const open = all.filter(t => t.status !== 'closed').slice(0, 8);
+      if (open.length > 0) {
+        queue.innerHTML = open.map(t => {
+          const num   = t.number || t.ticket_number || '?';
+          const title = (t.title || t.question || 'Untitled').slice(0, 60);
+          const st    = t.status || 'unknown';
+          const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : '#888';
+          const stBg    = st === 'open' ? 'rgba(76,175,80,0.15)' : st === 'in_progress' ? 'rgba(255,165,0,0.15)' : 'rgba(136,136,136,0.15)';
+          return `<div class="ticket-item" style="display:flex;justify-content:space-between;align-items:center;" onclick="openTicketDetail(${JSON.stringify(num)})">
+            <span style="flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">#${_escHtml(num)} — ${_escHtml(title)}</span>
+            <span style="font-size:9px;padding:3px 8px;border-radius:3px;background:${stBg};color:${stColor};white-space:nowrap;margin-left:8px;font-weight:600;">${_escHtml(st)}</span>
+          </div>`;
+        }).join('');
+      } else {
+        queue.innerHTML = '<div style="padding: 12px; color: var(--text-dim);">✓ No open tickets</div>';
+      }
+    })
+    .catch(() => {
+      queue.innerHTML = '<div style="padding: 12px; color: var(--text-dim);">Ticket queue unavailable</div>';
+    });
+}
+

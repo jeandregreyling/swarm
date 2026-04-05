@@ -1,0 +1,995 @@
+"""
+db._schema — Schema definition, initialisation, migrations, and seeding.
+"""
+from ._connection import get_connection, logger
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS agents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    model TEXT NOT NULL,
+    temperature REAL DEFAULT 0.3,
+    role TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS conversations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    source TEXT DEFAULT 'email',
+    sender TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id INTEGER REFERENCES conversations(id),
+    from_agent TEXT NOT NULL,
+    to_agent TEXT,
+    content TEXT NOT NULL,
+    message_type TEXT DEFAULT 'response',
+    tokens_used INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'unknown',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 5,
+    source TEXT DEFAULT 'unknown',
+    verified INTEGER DEFAULT 0,
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_llama (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'llama',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 5,
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_qwen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'qwen',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 5,
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_gemma (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'gemma',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    source TEXT DEFAULT 'unknown',
+    importance INTEGER DEFAULT 9,
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_eight (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'eight',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'learned',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_nine (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'nine',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'session',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_ten (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'ten',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'session',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_addr TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    question TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    priority INTEGER DEFAULT 5,
+    status TEXT DEFAULT 'queued',
+    source_type TEXT DEFAULT 'email',
+    agent TEXT DEFAULT '',
+    system_snapshot TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    processed_at TEXT,
+    completed_at TEXT
+);
+CREATE TABLE IF NOT EXISTS tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_number TEXT UNIQUE NOT NULL,
+    queue_id INTEGER,
+    sender_email TEXT NOT NULL,
+    question TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    routing_decision TEXT DEFAULT '',
+    agents_assigned TEXT DEFAULT '',
+    mode TEXT DEFAULT '',
+    is_identity INTEGER DEFAULT 0,
+    needs_web INTEGER DEFAULT 0,
+    gemma_initial TEXT DEFAULT '',
+    final_answer TEXT,
+    web_results TEXT DEFAULT '',
+    status TEXT DEFAULT 'open',
+    gemma_routing TEXT DEFAULT '',
+    duck_result TEXT DEFAULT '',
+    duck_visited INTEGER DEFAULT 0,
+    sniffles_result TEXT DEFAULT '',
+    sniffles_checked INTEGER DEFAULT 0,
+    email_message_id TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    closed_at TEXT
+);
+CREATE TABLE IF NOT EXISTS ticket_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER REFERENCES tickets(id),
+    agent TEXT NOT NULL,
+    note_type TEXT DEFAULT 'response',
+    content TEXT NOT NULL,
+    confidence REAL DEFAULT 0.8,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS duck_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER,
+    ticket_number TEXT NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    result TEXT NOT NULL,
+    reason TEXT DEFAULT '',
+    agent_reactions TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS sniffer_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name TEXT NOT NULL,
+    entry_id INTEGER,
+    result TEXT NOT NULL,
+    reasoning TEXT NOT NULL,
+    audited_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS sniffer_memory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pattern_type TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    occurrence_count INTEGER DEFAULT 1,
+    escalation_level TEXT DEFAULT 'bark',
+    first_seen TEXT DEFAULT (datetime('now')),
+    last_seen TEXT DEFAULT (datetime('now')),
+    reported INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS trusted_senders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    added_by TEXT NOT NULL,
+    notes TEXT DEFAULT '',
+    added_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS moderators (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    name TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    added_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS notification_senders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    added_by TEXT DEFAULT 'ghost',
+    notes TEXT DEFAULT '',
+    added_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS pending_emails (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_addr TEXT NOT NULL,
+    subject TEXT,
+    body TEXT,
+    message_id TEXT DEFAULT '',
+    received_at TEXT DEFAULT (datetime('now')),
+    status TEXT DEFAULT 'pending'
+);
+CREATE TABLE IF NOT EXISTS ghost_circle (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_type TEXT NOT NULL,
+    source TEXT NOT NULL,
+    content TEXT NOT NULL,
+    ticket_ref TEXT DEFAULT '',
+    severity TEXT DEFAULT 'info',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS claude_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER,
+    ticket_number TEXT NOT NULL,
+    problem_type TEXT DEFAULT '',
+    query_sent TEXT NOT NULL,
+    response TEXT NOT NULL,
+    model_used TEXT NOT NULL,
+    tokens_used INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS system_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recorded_at TEXT DEFAULT (datetime('now')),
+    ram_total_gb REAL,
+    ram_used_gb REAL,
+    ram_available_gb REAL,
+    cpu_percent REAL,
+    swap_used_gb REAL,
+    active_model TEXT DEFAULT '',
+    consultations_today INTEGER DEFAULT 0,
+    last_consultation TEXT,
+    cpu_temp_c REAL
+);
+CREATE TABLE IF NOT EXISTS project_docs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_name TEXT NOT NULL,
+    content TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS sandpit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    path TEXT NOT NULL,
+    size_bytes INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'ok',
+    reason TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS trusted_domains (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    domain TEXT UNIQUE NOT NULL,
+    channel TEXT DEFAULT 'email',
+    added_by TEXT NOT NULL,
+    notes TEXT DEFAULT '',
+    added_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS snoozed_tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_number TEXT NOT NULL,
+    sender_email TEXT NOT NULL,
+    wake_at TEXT NOT NULL,
+    note TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    fired INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS approval_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT UNIQUE NOT NULL,
+    action TEXT NOT NULL,
+    target_email TEXT NOT NULL,
+    created_by TEXT DEFAULT 'system',
+    created_at TEXT DEFAULT (datetime('now')),
+    used_at TEXT,
+    status TEXT DEFAULT 'pending'
+);
+CREATE TABLE IF NOT EXISTS activity_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    service TEXT NOT NULL,
+    event TEXT NOT NULL,
+    detail TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS memory_grok (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'grok',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'session',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_twelve (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'twelve',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'session',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS decisions (
+    decision_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT (datetime('now')),
+    agent TEXT NOT NULL,
+    component TEXT DEFAULT '',
+    proposal_file TEXT DEFAULT '',
+    decision TEXT NOT NULL,
+    reasoning TEXT DEFAULT '',
+    test_status TEXT DEFAULT 'PENDING',
+    commit_hash TEXT DEFAULT '',
+    checkpoint_id INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    archived INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS time_machine (
+    checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT (datetime('now')),
+    agent TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    before_code TEXT DEFAULT '',
+    after_code TEXT NOT NULL,
+    before_hash TEXT DEFAULT '',
+    after_hash TEXT DEFAULT '',
+    test_results TEXT DEFAULT '',
+    decision_id INTEGER DEFAULT 0,
+    commit_hash TEXT DEFAULT '',
+    outcome TEXT DEFAULT 'success',
+    is_rollback_point INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS time_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT '',
+    event_type TEXT NOT NULL,
+    agent TEXT NOT NULL,
+    action TEXT DEFAULT '',
+    target TEXT DEFAULT '',
+    state_hash TEXT DEFAULT '',
+    details TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS time_journal (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL,
+    timestamp TEXT DEFAULT '',
+    session_id TEXT DEFAULT '',
+    phase TEXT DEFAULT '',
+    status TEXT DEFAULT 'active',
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS time_checkpoints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    checkpoint_name TEXT UNIQUE NOT NULL,
+    timestamp TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    agent TEXT NOT NULL,
+    full_state TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS daily_checkpoint (
+    checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    codebase_hash TEXT,
+    memory_state TEXT,
+    decisions_count INTEGER DEFAULT 0,
+    description TEXT,
+    is_stable INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS ghost_briefs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    generated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    brief_type TEXT DEFAULT 'on_demand',
+    content TEXT NOT NULL,
+    raw_data_snapshot TEXT,
+    tokens_used INTEGER DEFAULT 0,
+    triggered_by TEXT DEFAULT 'system'
+);
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    schedule TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    action_data TEXT NOT NULL,
+    last_run TEXT,
+    next_run TEXT,
+    enabled INTEGER DEFAULT 1,
+    created_by TEXT DEFAULT 'ghost',
+    created_at TEXT
+);
+CREATE TABLE IF NOT EXISTS work_proposals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    proposal_id TEXT UNIQUE NOT NULL,
+    agent TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    status TEXT DEFAULT 'pending',
+    proposal_file TEXT DEFAULT '',
+    ticket_number TEXT DEFAULT '',
+    queue_id INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS user_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    display_name TEXT DEFAULT '',
+    user_type TEXT DEFAULT 'human',
+    linked_agent TEXT DEFAULT '',
+    is_active INTEGER DEFAULT 1,
+    can_proxy INTEGER DEFAULT 0,
+    created_by TEXT DEFAULT 'system',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS user_skill_permissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    skill_name TEXT NOT NULL,
+    allowed INTEGER DEFAULT 1,
+    created_by TEXT DEFAULT 'ghost',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(username, skill_name)
+);
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
+CREATE INDEX IF NOT EXISTS idx_memory_importance ON memory(importance);
+CREATE INDEX IF NOT EXISTS idx_work_proposals_agent ON work_proposals(agent);
+CREATE INDEX IF NOT EXISTS idx_work_proposals_status ON work_proposals(status);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_active ON user_profiles(is_active);
+CREATE INDEX IF NOT EXISTS idx_user_skill_permissions_user ON user_skill_permissions(username);
+"""
+
+
+def initialise_database():
+    conn = get_connection()
+    conn.executescript(SCHEMA)
+    conn.commit()
+    _migrate_schema(conn)
+    conn.close()
+    _seed_agents()
+    _seed_moderator()
+    _seed_user_profiles()
+
+
+def _migrate_schema(conn=None):
+    """Add columns/tables to existing deployments that were added after initial deploy."""
+    _close = conn is None
+    if _close:
+        conn = get_connection()
+    # New columns on tickets
+    ticket_cols = {row[1] for row in conn.execute("PRAGMA table_info(tickets)").fetchall()}
+    if 'email_message_id' not in ticket_cols:
+        conn.execute("ALTER TABLE tickets ADD COLUMN email_message_id TEXT DEFAULT ''")
+        conn.commit()
+    # New columns on messages
+    message_cols = {row[1] for row in conn.execute("PRAGMA table_info(messages)").fetchall()}
+    if 'tokens_used' not in message_cols:
+        conn.execute("ALTER TABLE messages ADD COLUMN tokens_used INTEGER DEFAULT 0")
+        conn.commit()
+    # New tables
+    tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    # Add channel column to trusted_domains if missing
+    if 'trusted_domains' in tables:
+        domain_cols = {row[1] for row in conn.execute("PRAGMA table_info(trusted_domains)").fetchall()}
+        if 'channel' not in domain_cols:
+            conn.execute("ALTER TABLE trusted_domains ADD COLUMN channel TEXT DEFAULT 'email'")
+            conn.commit()
+    if 'trusted_domains' not in tables:
+        conn.execute("""CREATE TABLE IF NOT EXISTS trusted_domains (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            domain TEXT UNIQUE NOT NULL,
+            channel TEXT DEFAULT 'email',
+            added_by TEXT NOT NULL,
+            notes TEXT DEFAULT '',
+            added_at TEXT DEFAULT (datetime('now'))
+        )""")
+        conn.commit()
+    if 'snoozed_tickets' not in tables:
+        conn.execute("""CREATE TABLE IF NOT EXISTS snoozed_tickets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticket_number TEXT NOT NULL,
+            sender_email TEXT NOT NULL,
+            wake_at TEXT NOT NULL,
+            note TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now')),
+            fired INTEGER DEFAULT 0
+        )""")
+        conn.commit()
+    if 'project_docs' not in tables:
+        conn.execute("""CREATE TABLE IF NOT EXISTS project_docs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            doc_name TEXT NOT NULL,
+            content TEXT DEFAULT '',
+            tags TEXT DEFAULT 'all',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        )""")
+        conn.commit()
+    else:
+        # Add tags column to existing project_docs if missing
+        doc_cols = {row[1] for row in conn.execute('PRAGMA table_info(project_docs)').fetchall()}
+        if 'tags' not in doc_cols:
+            conn.execute("ALTER TABLE project_docs ADD COLUMN tags TEXT DEFAULT 'all'")
+            conn.commit()
+    if 'memory_nine' not in tables:
+        conn.execute("""CREATE TABLE IF NOT EXISTS memory_nine (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent TEXT DEFAULT 'nine',
+            subject TEXT DEFAULT '',
+            content TEXT NOT NULL,
+            tags TEXT DEFAULT '',
+            importance INTEGER DEFAULT 7,
+            source TEXT DEFAULT 'session',
+            ticket_ref TEXT DEFAULT '',
+            archived INTEGER DEFAULT 0,
+            created_at TEXT
+        )""")
+        conn.commit()
+    if 'memory_ten' not in tables:
+        conn.execute("""CREATE TABLE IF NOT EXISTS memory_ten (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent TEXT DEFAULT 'ten',
+            subject TEXT DEFAULT '',
+            content TEXT NOT NULL,
+            tags TEXT DEFAULT '',
+            importance INTEGER DEFAULT 7,
+            source TEXT DEFAULT 'session',
+            ticket_ref TEXT DEFAULT '',
+            archived INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now'))
+        )""")
+        conn.commit()
+    if 'approval_tokens' not in tables:
+        conn.execute("""CREATE TABLE IF NOT EXISTS approval_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token TEXT UNIQUE NOT NULL,
+            action TEXT NOT NULL,
+            target_email TEXT NOT NULL DEFAULT '',
+            created_by TEXT DEFAULT 'system',
+            created_at TEXT DEFAULT (datetime('now')),
+            used_at TEXT,
+            status TEXT DEFAULT 'pending'
+        )""")
+        conn.commit()
+    if 'debates' not in tables:
+        conn.execute("""CREATE TABLE IF NOT EXISTS debates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic TEXT NOT NULL,
+            initiator TEXT DEFAULT 'nine',
+            status TEXT DEFAULT 'open',
+            rounds INTEGER DEFAULT 0,
+            consensus TEXT DEFAULT '',
+            proposal_id INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            closed_at TEXT
+        )""")
+        conn.execute("""CREATE TABLE IF NOT EXISTS debate_turns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            debate_id INTEGER NOT NULL,
+            agent TEXT NOT NULL,
+            position TEXT NOT NULL,
+            round INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now'))
+        )""")
+        conn.commit()
+    if 'file_writes' not in tables:
+        conn.execute("""CREATE TABLE IF NOT EXISTS file_writes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            path TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            previous_content TEXT DEFAULT '',
+            new_content TEXT NOT NULL,
+            applied_by TEXT DEFAULT 'ghost',
+            created_at TEXT DEFAULT (datetime('now'))
+        )""")
+        conn.commit()
+    if 'user_profiles' not in tables:
+        conn.execute("""CREATE TABLE IF NOT EXISTS user_profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            display_name TEXT DEFAULT '',
+            user_type TEXT DEFAULT 'human',
+            linked_agent TEXT DEFAULT '',
+            is_active INTEGER DEFAULT 1,
+            can_proxy INTEGER DEFAULT 0,
+            created_by TEXT DEFAULT 'system',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        )""")
+        conn.commit()
+    if 'user_skill_permissions' not in tables:
+        conn.execute("""CREATE TABLE IF NOT EXISTS user_skill_permissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            skill_name TEXT NOT NULL,
+            allowed INTEGER DEFAULT 1,
+            created_by TEXT DEFAULT 'ghost',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(username, skill_name)
+        )""")
+        conn.commit()
+    # memory_twelve: bootstrap test created it with a different schema; add missing columns
+    if 'memory_twelve' in tables:
+        mt_cols = {row[1] for row in conn.execute('PRAGMA table_info(memory_twelve)').fetchall()}
+        if 'subject' not in mt_cols:
+            conn.execute("ALTER TABLE memory_twelve ADD COLUMN subject TEXT DEFAULT ''")
+            conn.commit()
+        if 'source' not in mt_cols:
+            conn.execute("ALTER TABLE memory_twelve ADD COLUMN source TEXT DEFAULT 'session'")
+            conn.commit()
+        if 'ticket_ref' not in mt_cols:
+            conn.execute("ALTER TABLE memory_twelve ADD COLUMN ticket_ref TEXT DEFAULT ''")
+            conn.commit()
+    # Queue: add source_type and agent columns for internal entries
+    queue_cols = {row[1] for row in conn.execute("PRAGMA table_info(queue)").fetchall()}
+    if 'source_type' not in queue_cols:
+        conn.execute("ALTER TABLE queue ADD COLUMN source_type TEXT DEFAULT 'email'")
+        conn.commit()
+    if 'agent' not in queue_cols:
+        conn.execute("ALTER TABLE queue ADD COLUMN agent TEXT DEFAULT ''")
+        conn.commit()
+    # Time Wizard tables (exist in live DB, now added to schema; migrate for safety)
+    for tbl, ddl in [
+        ('memory_grok', """CREATE TABLE IF NOT EXISTS memory_grok (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'grok',
+            subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '',
+            importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session',
+            ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')))"""),
+        ('memory_twelve', """CREATE TABLE IF NOT EXISTS memory_twelve (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'twelve',
+            subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '',
+            importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session',
+            ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')))"""),
+        ('decisions', """CREATE TABLE IF NOT EXISTS decisions (
+            decision_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT DEFAULT (datetime('now')), agent TEXT NOT NULL,
+            component TEXT DEFAULT '', proposal_file TEXT DEFAULT '',
+            decision TEXT NOT NULL, reasoning TEXT DEFAULT '',
+            test_status TEXT DEFAULT 'PENDING', commit_hash TEXT DEFAULT '',
+            checkpoint_id INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')), archived INTEGER DEFAULT 0)"""),
+        ('time_machine', """CREATE TABLE IF NOT EXISTS time_machine (
+            checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT DEFAULT (datetime('now')), agent TEXT NOT NULL,
+            file_path TEXT NOT NULL, before_code TEXT DEFAULT '',
+            after_code TEXT NOT NULL, before_hash TEXT DEFAULT '',
+            after_hash TEXT DEFAULT '', test_results TEXT DEFAULT '',
+            decision_id INTEGER DEFAULT 0, commit_hash TEXT DEFAULT '',
+            outcome TEXT DEFAULT 'success', is_rollback_point INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')))"""),
+        ('time_events', """CREATE TABLE IF NOT EXISTS time_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT '',
+            event_type TEXT NOT NULL, agent TEXT NOT NULL,
+            action TEXT DEFAULT '', target TEXT DEFAULT '',
+            state_hash TEXT DEFAULT '', details TEXT DEFAULT '{}',
+            created_at TEXT DEFAULT (datetime('now')))"""),
+        ('time_journal', """CREATE TABLE IF NOT EXISTS time_journal (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL,
+            timestamp TEXT DEFAULT '', session_id TEXT DEFAULT '',
+            phase TEXT DEFAULT '', status TEXT DEFAULT 'active',
+            notes TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')))"""),
+        ('time_checkpoints', """CREATE TABLE IF NOT EXISTS time_checkpoints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, checkpoint_name TEXT UNIQUE NOT NULL,
+            timestamp TEXT DEFAULT '', description TEXT DEFAULT '',
+            agent TEXT NOT NULL, full_state TEXT DEFAULT '{}',
+            created_at TEXT DEFAULT (datetime('now')))"""),
+        ('daily_checkpoint', """CREATE TABLE IF NOT EXISTS daily_checkpoint (
+            checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            codebase_hash TEXT, memory_state TEXT,
+            decisions_count INTEGER DEFAULT 0,
+            description TEXT, is_stable INTEGER DEFAULT 0)"""),
+        ('ghost_briefs', """CREATE TABLE IF NOT EXISTS ghost_briefs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            generated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            brief_type TEXT DEFAULT 'on_demand',
+            content TEXT NOT NULL, raw_data_snapshot TEXT,
+            tokens_used INTEGER DEFAULT 0,
+            triggered_by TEXT DEFAULT 'system')"""),
+        ('scheduled_tasks', """CREATE TABLE IF NOT EXISTS scheduled_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL, schedule TEXT NOT NULL,
+            action_type TEXT NOT NULL, action_data TEXT NOT NULL,
+            last_run TEXT, next_run TEXT, enabled INTEGER DEFAULT 1,
+            created_by TEXT DEFAULT 'ghost', created_at TEXT)"""),
+        ('work_proposals', """CREATE TABLE IF NOT EXISTS work_proposals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            proposal_id TEXT UNIQUE NOT NULL, agent TEXT NOT NULL,
+            title TEXT NOT NULL, description TEXT DEFAULT '',
+            status TEXT DEFAULT 'pending', proposal_file TEXT DEFAULT '',
+            ticket_number TEXT DEFAULT '', queue_id INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')))"""),
+        ('agent_capabilities', """CREATE TABLE IF NOT EXISTS agent_capabilities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent_name TEXT NOT NULL,
+            capability TEXT NOT NULL,
+            granted INTEGER DEFAULT 0,
+            trust_level INTEGER DEFAULT 0,
+            granted_by TEXT DEFAULT 'system',
+            proposal_id TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            granted_at TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(agent_name, capability))"""),
+        ('chat_jobs', """CREATE TABLE IF NOT EXISTS chat_jobs (
+            job_id TEXT PRIMARY KEY,
+            conversation_id INTEGER DEFAULT 0,
+            agent TEXT DEFAULT '',
+            status TEXT DEFAULT 'running',
+            runtime_class TEXT DEFAULT '',
+            stage TEXT DEFAULT '',
+            eta_seconds INTEGER DEFAULT 60,
+            elapsed_ms INTEGER DEFAULT 0,
+            tokens INTEGER DEFAULT 0,
+            error TEXT DEFAULT '',
+            stage_trace_json TEXT DEFAULT '[]',
+            started_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        )"""),
+    ]:
+        if tbl not in tables:
+            conn.execute(ddl)
+            conn.commit()
+
+    # Add number + label columns to agents table (idempotent — ALTER TABLE ignored if column exists)
+    for col_ddl in [
+        "ALTER TABLE agents ADD COLUMN number INTEGER DEFAULT 0",
+        "ALTER TABLE agents ADD COLUMN label  TEXT    DEFAULT ''",
+        "ALTER TABLE chat_jobs ADD COLUMN stage_trace_json TEXT DEFAULT '[]'",
+    ]:
+        try:
+            conn.execute(col_ddl)
+            conn.commit()
+        except Exception:
+            pass  # column already exists — safe to ignore
+
+    # terminal_shortcuts table — all shortcuts (defaults + custom) stored in DB
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS terminal_shortcuts (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                icon     TEXT    NOT NULL DEFAULT '⚡',
+                label    TEXT    NOT NULL,
+                cmd      TEXT    NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.commit()
+    except Exception:
+        pass
+
+    # Seed default shortcuts — insert each if its exact cmd doesn't already exist
+    try:
+        defaults = [
+            ('🔁', 'Hard Boot Terminal',      'sudo systemctl restart swarm-terminal', 0),
+            ('🎨', 'Theme Engine Check',       'head -n 80 /home/seven/swarm/themes/fridays.json', 1),
+            ('📡', 'ALM Status',               'curl -s http://localhost:5050/api/alm/status', 2),
+            ('💬', 'Restart Discord Bot',      'sudo systemctl restart swarm-discord', 3),
+            ('📨', 'Restart Telegram Bot',     'sudo systemctl restart swarm-telegram', 4),
+            ('✅', 'Terminal Service Status',  'systemctl status swarm-terminal', 5),
+            ('🧠', 'System Memory',            'free -h', 6),
+        ]
+        existing_cmds = {r[0] for r in conn.execute("SELECT cmd FROM terminal_shortcuts").fetchall()}
+        for icon, label, cmd, sort_order in defaults:
+            if cmd not in existing_cmds:
+                conn.execute(
+                    "INSERT INTO terminal_shortcuts (icon, label, cmd, sort_order) VALUES (?, ?, ?, ?)",
+                    (icon, label, cmd, sort_order)
+                )
+        conn.commit()
+    except Exception:
+        pass
+
+    # agents table — add system_prompt and api_key_var columns
+    for col_ddl in [
+        "ALTER TABLE agents ADD COLUMN system_prompt TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN api_key_var   TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN tier          TEXT DEFAULT 'local'",
+        "ALTER TABLE agents ADD COLUMN enabled       INTEGER DEFAULT 1",
+    ]:
+        try:
+            conn.execute(col_ddl)
+            conn.commit()
+        except Exception:
+            pass
+
+    # Seed system_prompt + api_key_var + tier for each agent (only if empty)
+    try:
+        import config as _cfg
+        GEMMA_SYSTEM_PROMPT     = getattr(_cfg, 'GEMMA_SYSTEM_PROMPT',     '')
+        LLAMA_SYSTEM_PROMPT     = getattr(_cfg, 'LLAMA_SYSTEM_PROMPT',     '')
+        QWEN_SYSTEM_PROMPT      = getattr(_cfg, 'QWEN_SYSTEM_PROMPT',      '')
+        LIBRARIAN_SYSTEM_PROMPT = getattr(_cfg, 'LIBRARIAN_SYSTEM_PROMPT', '')
+        MISTRAL_SYSTEM_PROMPT   = getattr(_cfg, 'MISTRAL_SYSTEM_PROMPT',   '')
+        NINE_SYSTEM_PROMPT      = getattr(_cfg, 'NINE_SYSTEM_PROMPT',      '')
+        TEN_SYSTEM_PROMPT       = getattr(_cfg, 'TEN_SYSTEM_PROMPT',       '')
+        ELEVEN_SYSTEM_PROMPT    = getattr(_cfg, 'ELEVEN_SYSTEM_PROMPT',    '')
+        TWELVE_SYSTEM_PROMPT    = getattr(_cfg, 'TWELVE_SYSTEM_PROMPT',    '')
+    except Exception:
+        GEMMA_SYSTEM_PROMPT = LLAMA_SYSTEM_PROMPT = QWEN_SYSTEM_PROMPT = ''
+        LIBRARIAN_SYSTEM_PROMPT = MISTRAL_SYSTEM_PROMPT = ''
+        NINE_SYSTEM_PROMPT = TEN_SYSTEM_PROMPT = ELEVEN_SYSTEM_PROMPT = TWELVE_SYSTEM_PROMPT = ''
+
+    _prompt_seed = [
+        ('gemma',     GEMMA_SYSTEM_PROMPT,     '',              'local'),
+        ('llama',     LLAMA_SYSTEM_PROMPT,      '',              'local'),
+        ('mistral',   MISTRAL_SYSTEM_PROMPT,    '',              'local'),
+        ('qwen',      QWEN_SYSTEM_PROMPT,       '',              'local'),
+        ('librarian', LIBRARIAN_SYSTEM_PROMPT,  '',              'local'),
+        ('duck',      '',                       '',              'local'),
+        ('sniffles',  '',                       '',              'local'),
+        ('eight',     '',                       '',              'local'),
+        ('nine',      NINE_SYSTEM_PROMPT,       'GROQ_API_KEY',  'paid'),
+        ('ten',       TEN_SYSTEM_PROMPT,        'GITHUB_TOKEN',  'paid'),
+        ('eleven',    ELEVEN_SYSTEM_PROMPT,     'XAI_API_KEY',   'paid'),
+        ('ghost',     '',                       '',              'human'),
+    ]
+    try:
+        for name, prompt, key_var, tier in _prompt_seed:
+            conn.execute(
+                """UPDATE agents SET
+                     system_prompt = CASE WHEN (system_prompt IS NULL OR system_prompt = '') THEN ? ELSE system_prompt END,
+                     api_key_var   = CASE WHEN (api_key_var   IS NULL OR api_key_var   = '') THEN ? ELSE api_key_var   END,
+                     tier          = CASE WHEN (tier          IS NULL OR tier          = '') THEN ? ELSE tier          END
+                   WHERE name = ?""",
+                (prompt, key_var, tier, name)
+            )
+        conn.commit()
+    except Exception:
+        pass
+
+    # swarm_globals table — shared rules and global parameters
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS swarm_globals (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                key        TEXT NOT NULL UNIQUE,
+                value      TEXT NOT NULL DEFAULT '',
+                description TEXT DEFAULT '',
+                updated_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.commit()
+    except Exception:
+        pass
+
+    # Seed default globals
+    _globals_seed = [
+        ('global_rules',
+         'Never hallucinate. Never fabricate facts. Never impersonate external services. Always state uncertainty. Do not break character.',
+         'Rules prepended to every agent prompt'),
+        ('global_max_tokens',
+         '4096',
+         'Default max tokens for API agents'),
+        ('global_context_window',
+         '8192',
+         'Target context window size for all agents'),
+    ]
+    try:
+        for key, value, desc in _globals_seed:
+            conn.execute(
+                "INSERT OR IGNORE INTO swarm_globals (key, value, description) VALUES (?, ?, ?)",
+                (key, value, desc)
+            )
+        conn.commit()
+    except Exception:
+        pass
+
+    if _close:
+        conn.close()
+
+
+def _seed_agents():
+    # number: permanent agent number (0=Ghost/human, 1-11=AI agents, -1=retired)
+    # name:   stable internal code key — never changes even if model swaps
+    # label:  display name shown in UI — change this when model/nickname changes
+    # model:  current Ollama or API model string
+    roster = [
+        # num  name         label        model                        temp  role
+        ( 0,  'ghost',     'Ghost',     'external',                  0.0,  'Human operator. Builds, approves, decides. Full system authority.'),
+        ( 1,  'gemma',     'Gemma3',    'gemma3:latest',             0.3,  'Director — routes, synthesises, speaks last'),
+        ( 2,  'llama',     'LlaMA',     'llama3.2:latest',           0.6,  'Correspondent — web search, fast first response'),
+        ( 3,  'mistral',   'Mistral',   'mistral:latest',            0.7,  'Analyst — deep reasoning, debates, challenges Two'),
+        ( 4,  'qwen',      'Qwen',      'qwen2.5:latest',            0.7,  'Deep Analyst — specialist depth, multilingual reasoning'),
+        ( 5,  'librarian', 'Vortex',    'qwen:1.5b',                 0.1,  'Gatekeeper + Vortex — tags, queues, closes, checkpoints'),
+        ( 6,  'duck',      'Duck',      'qwen:1.5b',                 0.1,  'Sanity checker — YES/NO after every ticket'),
+        ( 7,  'sniffles',  'Sniffles',  'deepseek-r1:7b',            0.2,  'Inspector — memory auditor, read only, chain-of-thought'),
+        ( 8,  'eight',     'Eight',     'gemma4:26b',                0.5,  'SAP specialist — three-voice debate (Functional/Technical/Devil)'),
+        ( 9,  'nine',      'Groq',      'llama-3.3-70b-versatile',   0.5,  'System architect — Ghost Layer, Ghost Briefs, proposals'),
+        (10,  'ten',       'Github',    'gpt-5.3-codex',             0.4,  'Engineering advisor — code quality, implementation clarity'),
+        (11,  'eleven',    'Grok',      'grok-api',                  0.5,  'Lateral thinking advisor — creative synthesis, alternatives'),
+        (12,  'twelve',    'Claude',    'claude-haiku',              0.3,  'System oversight — Ghost Layer, session continuity'),
+    ]
+    conn = get_connection()
+    for number, name, label, model, temp, role in roster:
+        conn.execute(
+            """INSERT INTO agents (number, name, label, model, temperature, role)
+               VALUES (?,?,?,?,?,?)
+               ON CONFLICT(name) DO UPDATE SET
+                   number=excluded.number,
+                   label=excluded.label,
+                   model=excluded.model,
+                   temperature=excluded.temperature,
+                   role=excluded.role""",
+            (number, name, label, model, temp, role)
+        )
+    # Retire agents that no longer exist as standalone entries
+    for retired_name, retired_note in [
+        ('grok',   'RETIRED 2026-04-04 — alias consolidated into eleven (Agent 11)'),
+    ]:
+        conn.execute(
+            "UPDATE agents SET number=-1, label='Retired', role=? WHERE name=?",
+            (retired_note, retired_name)
+        )
+    conn.commit()
+    conn.close()
+
+
+def _seed_moderator():
+    try:
+        from config import GHOST_EMAIL
+        conn = get_connection()
+        conn.execute("INSERT OR IGNORE INTO moderators (email) VALUES (?)", (GHOST_EMAIL.lower(),))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Could not seed moderator: {e}")
+
+
+def _seed_user_profiles():
+    """Create default profiles for Ghost and all known agents."""
+    conn = get_connection()
+    try:
+        conn.execute(
+            """INSERT OR IGNORE INTO user_profiles
+               (username, display_name, user_type, linked_agent, is_active, can_proxy, created_by)
+               VALUES ('ghost', 'Ghost', 'human', '', 1, 1, 'system')"""
+        )
+
+        rows = conn.execute("SELECT name FROM agents").fetchall()
+        for row in rows:
+            name = (row['name'] or '').strip().lower()
+            if not name:
+                continue
+            conn.execute(
+                """INSERT OR IGNORE INTO user_profiles
+                   (username, display_name, user_type, linked_agent, is_active, can_proxy, created_by)
+                   VALUES (?, ?, 'agent', ?, 1, 0, 'system')""",
+                (name, name.capitalize(), name)
+            )
+        conn.commit()
+    finally:
+        conn.close()

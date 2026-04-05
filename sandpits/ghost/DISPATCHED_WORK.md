@@ -22072,3 +22072,1455 @@ Args: pwd
 Result: /home/seven/swarm
 
 **Status**: dispatched
+
+## [09:52] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [09:52] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [09:52] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [09:52] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [09:57] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [09:57] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [09:57] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [09:57] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:02] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:02] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:02] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:02] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:07] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:07] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:07] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:07] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:12] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:12] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:12] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:12] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:17] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:17] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:17] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:17] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:22] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:22] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:22] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:22] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:27] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:27] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:27] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:27] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:32] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:32] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:32] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:32] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:37] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:37] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:37] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:37] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:42] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:42] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:42] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:42] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:47] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:47] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:47] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:47] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:52] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:52] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:52] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:52] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:57] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:57] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [10:57] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [10:57] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:02] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:02] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:02] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:02] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:07] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:07] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:07] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:07] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:12] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:12] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:12] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:12] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:17] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:17] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:17] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:17] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:22] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:22] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:22] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:22] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:27] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:27] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:27] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:27] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:32] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:32] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:32] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:32] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:37] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:37] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:37] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:37] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:42] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:42] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:42] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:42] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:47] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:47] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:47] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:47] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:52] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:52] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:52] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:52] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:57] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:57] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [11:57] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [11:57] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:02] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:02] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:02] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:02] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:07] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:07] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:07] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:07] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:12] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:12] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:12] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:12] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:17] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:17] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:17] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:17] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:22] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:22] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:22] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:22] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:27] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:27] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:27] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:27] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:32] INTERNAL-GHOST-0421
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 43122 Apr  3 16:47 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:32] INTERNAL-GHOST-0420
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched
+
+## [12:32] INTERNAL-GHOST-0414
+**Title**: [shell] ls -la sandpits/ten/
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: ls -la sandpits/ten/
+Result: total 84
+drwxrwxr-x  7 seven seven  4096 Apr  3 11:36 .
+drwxrwxr-x 19 seven seven  4096 Apr  2 19:01 ..
+drwxrwxr-x  2 seven seven  4096 Mar 31 12:26 archive
+-rw-r--r--  1 seven seven 41776 Apr  3 16:37 DISPATCHED_WORK.md
+drwxrwxr
+**Status**: dispatched
+
+## [12:32] INTERNAL-GHOST-0413
+**Title**: [shell] pwd
+**From**: ghost
+**Description**: Agent ghost executed skill `shell`.
+Args: pwd
+Result: /home/seven/swarm
+
+**Status**: dispatched

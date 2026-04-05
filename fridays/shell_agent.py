@@ -144,13 +144,57 @@ def _log_sandpit(agent, command, output, trust_level):
         logger.warning(f'[Shell] sandpit_log write failed: {e}')
 
 
+def _request_sudo_approval(agent, command, desc):
+    """
+    Gate level-4 commands behind Ghost approval.
+    Creates an approval token and notifies Ghost via Telegram.
+    Returns (False, message) — the command is NOT executed immediately.
+    """
+    try:
+        from database import create_approval_token, log_activity
+        token = create_approval_token(
+            action='shell_exec',
+            target_email=command[:200],
+            created_by=agent,
+        )
+        log_activity('shell', 'sudo_requested',
+                     f'{agent} requested: {command[:200]} | token={token[:12]}...')
+
+        # Notify Ghost via Telegram
+        try:
+            from config import nine_notify
+            nine_notify(
+                f'🔐 SUDO request from {agent}\n'
+                f'Command: {command[:150]}\n'
+                f'Approve at: /api/shell/approve/{token}'
+            )
+        except Exception:
+            pass
+
+        _log_ghost_circle(agent, command, f'SUDO_PENDING token={token[:12]}',
+                         trust_level=4, allowed=False)
+        return False, (
+            f'[Shell] Level 4 command requires Ghost approval.\n'
+            f'Command: {command}\n'
+            f'Approval token: {token}\n'
+            f'Ghost has been notified. Waiting for approval at /api/shell/approve/{token}'
+        )
+    except Exception as e:
+        logger.error(f'[Shell] sudo approval request failed: {e}')
+        return False, f'[Shell] Could not request sudo approval: {e}'
+
+
+# Agents that bypass the sudo gate (they ARE Ghost)
+_SUDO_BYPASS_AGENTS = {'ghost', 'fridays', 'shell'}
+
+
 def run(command, agent='shell', notify_ghost=True):
     """
     Run a whitelisted shell command. Returns (success, output).
 
     - Blocked commands return (False, reason).
+    - Level 4 commands from non-Ghost agents require approval.
     - All executions logged to ghost_circle and sandpit_log.
-    - ghost_circle entry is suppressed for Level 0/2 when notify_ghost=False.
     - Output capped at MAX_OUTPUT chars.
     - Hard timeout of TIMEOUT_SEC seconds.
     """
@@ -166,6 +210,10 @@ def run(command, agent='shell', notify_ghost=True):
 
     trust_level, desc = match
     logger.info(f'[Shell] {agent} running (L{trust_level} — {desc}): {command[:100]}')
+
+    # Level 4 gate: non-Ghost agents must get approval first
+    if trust_level >= 4 and agent.lower() not in _SUDO_BYPASS_AGENTS:
+        return _request_sudo_approval(agent, command, desc)
 
     try:
         result = subprocess.run(

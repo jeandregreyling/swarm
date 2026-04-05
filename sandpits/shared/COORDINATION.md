@@ -1,5 +1,5 @@
 # SWARM COORDINATION MANIFEST
-Generated: 2026-04-02 17:27
+Generated: 2026-04-05 11:59
 
 ## Who Is Running
 | Agent     | Role            | Can Initiate | Reports To |
@@ -19,7 +19,7 @@ Generated: 2026-04-02 17:27
 - `GET  /api/agent/proposals`       — All pending proposals (any status)
 - `POST /api/agent/git/proposals`   — Create a Git ALM proposal (stage/unstage/commit)
 - `GET  /api/agent/git/proposals`   — List my Git proposals (or all with `all_agents=1`)
-- `POST /api/agent/git/proposals/INTERNAL-FRIDAYS-0379/execute` — Execute approved Git proposal
+- `POST /api/agent/git/proposals/INTERNAL-SEEKER-0462/execute` — Execute approved Git proposal
 
 ## Local Agents On Same Git-ALM Flow
 - Included: gemma, qwen, llama, eight, duck, sniffles

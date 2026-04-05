@@ -120,47 +120,21 @@ def chat(message, conversation_history=None, stage_cb=None):
         """Execute a list of (skill_name, skill_args) pairs. Returns joined output string."""
         from fridays.skills import call as skill_call
 
-        def _route_shell_to_fs_readonly(shell_args):
-            """Redirect unsafe shell read commands to the safe fs_readonly skill."""
-            cmd = (shell_args or '').strip()
-            if not cmd:
-                return None
-            m = re.match(r'^ls(?:\s+-[a-zA-Z]+)?\s+(.+)$', cmd)
-            if m:
-                return f'ls {m.group(1).strip()}'
-            m = re.match(r'^cat\s+(.+)$', cmd)
-            if m:
-                return f'read {m.group(1).strip()} 5000'
-            m = re.match(r'^head\s+-n\s+(\d+)\s+(.+)$', cmd)
-            if m:
-                return f'head {m.group(2).strip()} {m.group(1)}'
-            m = re.match(r'^tail\s+-n\s+(\d+)\s+(.+)$', cmd)
-            if m:
-                return f'tail {m.group(2).strip()} {m.group(1)}'
-            return None
-
         lines = []
         for skill_name, skill_args in cmds:
             _emit_stage(f'executing skill: {skill_name}')
-            effective_name = skill_name
-            effective_args = skill_args
-            if skill_name == 'shell':
-                mapped = _route_shell_to_fs_readonly(skill_args)
-                if mapped:
-                    effective_name = 'fs_readonly'
-                    effective_args = mapped
 
             try:
                 from database import can_user_invoke_skill
-                if not can_user_invoke_skill('ten', effective_name, default_allow=True):
-                    lines.append(f'[skill:{effective_name}] FAILED\nNot authorized for agent ten')
+                if not can_user_invoke_skill('ten', skill_name, default_allow=True):
+                    lines.append(f'[skill:{skill_name}] FAILED\nNot authorized for agent ten')
                     continue
             except Exception:
                 pass
 
-            ok, out = skill_call(effective_name, args=effective_args, agent='ten')
+            ok, out = skill_call(skill_name, args=skill_args, agent='ten')
             preview = str(out or '')[:8000]
-            lines.append(f"[skill:{effective_name}] {'OK' if ok else 'FAILED'}\n{preview}")
+            lines.append(f"[skill:{skill_name}] {'OK' if ok else 'FAILED'}\n{preview}")
 
         return '\n\n'.join(lines)
 
