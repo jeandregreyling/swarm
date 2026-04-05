@@ -345,11 +345,18 @@ if (!window.__almPollTimer) {{
         html = html.replace('{{ theme_js }}', theme_js)
         html = html.replace('{{ fridays_json }}', fridays_json)
         
-        # Inject governance + time data into script tags before </body>
+        # Inject governance + time data into script tags.
+        # Prefer <!-- DYNAMIC_SCRIPTS --> placeholder (before external JS loads)
+        # so window._fridays is available when core scripts parse.
+        # Fall back to </body> injection for backward compatibility.
         time_wizard_script = f'<script>{time_wizard_js}</script>'
         alm_script = f'<script>{alm_js}</script>'
         fridays_init = f'<script>window._fridays = {fridays_json};</script>'
-        html = html.replace('</body>', f'{fridays_init}\n{time_wizard_script}\n{alm_script}\n</body>')
+        dynamic_block = f'{fridays_init}\n{time_wizard_script}\n{alm_script}'
+        if '<!-- DYNAMIC_SCRIPTS -->' in html:
+            html = html.replace('<!-- DYNAMIC_SCRIPTS -->', dynamic_block)
+        else:
+            html = html.replace('</body>', f'{dynamic_block}\n</body>')
         
         return html
 

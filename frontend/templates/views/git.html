@@ -1,0 +1,45 @@
+<!-- git.html — extracted from terminal_base.html -->
+<!-- Original: <template id="view-git"> -->
+  <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:13px;font-weight:700;">🌿 Git Changes</div>
+          <div id="git-summary" style="font-size:11px;color:var(--text-dim);">Loading repository status...</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input id="git-filter-input" type="text" placeholder="Filter files" style="width:180px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+          <button onclick="gitRefreshStatus()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Refresh</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input id="git-commit-message" type="text" placeholder="Commit message for staged changes" style="flex:1;min-width:220px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+        <button onclick="gitCommitChanges()" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:11px;font-weight:700;">Propose Commit</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
+      <div style="flex:1;display:flex;min-height:0;">
+        <div id="git-files-list" style="flex:0 0 340px;overflow-y:auto;border-right:1px solid var(--border);min-width:260px;"></div>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+          <div id="git-diff-toolbar" style="padding:10px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div id="git-diff-title" style="font-size:11px;font-weight:700;color:var(--text-dim);">Select a changed file</div>
+            <div id="git-diff-actions" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;"></div>
+          </div>
+          <div id="git-diff-body" style="flex:1;overflow:auto;padding:12px;font-size:11px;font-family:monospace;color:var(--text-dim);white-space:pre-wrap;word-break:break-word;">Choose a file to inspect its diff.</div>
+        </div>
+      </div>
+      <div id="git-proposals-section" style="border-top:1px solid var(--border);padding:12px;background:rgba(255,255,255,0.01);max-height:240px;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Git ALM Proposals</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <button onclick="gitCreateVortexCheckpoint('git-panel-manual')" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">🌀 Snapshot</button>
+            <button onclick="gitOpenVortex()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">Vortex</button>
+            <button onclick="gitLoadProposals()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">↻</button>
+          </div>
+        </div>
+        <div id="git-proposals-list" style="font-size:11px;color:var(--text-dim);">
+          <div style="padding:8px;text-align:center;">No proposals</div>
+        </div>
+      </div>
+    </div>
+  </div>
