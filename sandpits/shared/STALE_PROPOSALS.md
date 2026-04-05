@@ -3307,3 +3307,432 @@
 - [09:47] INTERNAL-GHOST-0413 (ghost): [shell] pwd
 - [09:47] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
 - [09:47] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [09:52] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [09:52] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [09:52] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [09:52] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [09:52] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [09:52] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [09:52] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [09:52] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [09:52] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [09:52] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [09:52] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [09:52] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [09:52] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [09:57] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [09:57] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [09:57] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [09:57] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [09:57] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [09:57] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [09:57] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [09:57] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [09:57] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [09:57] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [09:57] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [09:57] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [09:57] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:02] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:02] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:02] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:02] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:02] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:02] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:02] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:02] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:02] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:02] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:02] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:02] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:02] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:07] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:07] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:07] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:07] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:07] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:07] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:07] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:07] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:07] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:07] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:07] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:07] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:07] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:12] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:12] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:12] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:12] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:12] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:12] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:12] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:12] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:12] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:12] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:12] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:12] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:12] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:17] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:17] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:17] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:17] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:17] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:17] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:17] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:17] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:17] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:17] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:17] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:17] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:17] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:22] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:22] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:22] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:22] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:22] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:22] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:22] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:22] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:22] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:22] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:22] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:22] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:22] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:27] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:27] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:27] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:27] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:27] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:27] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:27] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:27] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:27] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:27] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:27] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:27] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:27] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:32] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:32] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:32] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:32] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:32] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:32] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:32] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:32] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:32] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:32] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:32] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:32] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:32] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:37] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:37] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:37] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:37] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:37] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:37] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:37] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:37] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:37] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:37] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:37] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:37] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:37] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:42] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:42] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:42] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:42] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:42] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:42] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:42] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:42] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:42] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:42] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:42] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:42] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:42] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:47] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:47] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:47] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:47] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:47] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:47] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:47] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:47] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:47] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:47] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:47] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:47] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:47] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:52] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:52] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:52] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:52] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:52] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:52] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:52] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:52] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:52] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:52] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:52] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:52] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:52] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [10:57] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [10:57] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [10:57] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [10:57] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [10:57] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [10:57] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [10:57] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [10:57] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [10:57] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [10:57] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [10:57] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [10:57] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [10:57] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:02] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:02] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:02] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:02] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:02] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:02] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:02] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:02] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:02] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:02] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:02] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:02] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:02] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:07] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:07] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:07] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:07] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:07] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:07] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:07] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:07] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:07] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:07] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:07] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:07] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:07] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:12] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:12] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:12] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:12] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:12] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:12] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:12] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:12] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:12] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:12] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:12] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:12] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:12] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:17] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:17] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:17] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:17] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:17] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:17] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:17] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:17] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:17] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:17] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:17] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:17] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:17] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:22] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:22] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:22] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:22] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:22] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:22] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:22] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:22] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:22] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:22] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:22] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:22] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:22] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:27] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:27] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:27] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:27] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:27] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:27] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:27] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:27] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:27] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:27] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:27] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:27] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:27] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:32] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:32] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:32] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:32] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:32] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:32] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:32] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:32] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:32] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:32] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:32] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:32] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:32] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:37] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:37] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:37] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:37] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:37] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:37] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:37] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:37] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:37] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:37] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:37] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:37] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:37] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:42] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:42] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:42] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:42] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:42] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:42] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:42] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:42] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:42] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:42] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:42] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:42] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:42] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:47] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:47] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:47] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:47] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:47] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:47] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:47] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:47] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:47] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:47] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:47] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:47] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:47] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:52] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:52] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:52] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:52] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:52] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:52] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:52] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:52] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:52] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:52] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:52] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:52] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:52] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [11:57] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [11:57] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [11:57] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [11:57] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [11:57] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [11:57] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [11:57] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [11:57] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [11:57] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [11:57] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [11:57] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [11:57] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [11:57] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [12:02] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [12:02] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [12:02] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [12:02] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [12:02] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [12:02] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [12:02] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [12:02] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [12:02] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [12:02] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [12:02] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [12:02] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [12:02] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [12:07] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [12:07] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [12:07] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [12:07] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [12:07] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [12:07] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [12:07] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [12:07] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [12:07] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [12:07] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [12:07] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [12:07] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [12:07] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [12:12] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [12:12] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [12:12] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [12:12] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [12:12] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [12:12] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [12:12] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [12:12] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [12:12] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [12:12] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [12:12] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [12:12] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [12:12] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [12:17] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [12:17] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [12:17] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [12:17] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [12:17] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [12:17] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [12:17] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [12:17] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [12:17] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [12:17] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [12:17] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [12:17] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [12:17] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [12:22] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [12:22] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [12:22] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [12:22] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [12:22] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [12:22] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [12:22] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [12:22] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [12:22] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [12:22] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [12:22] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [12:22] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [12:22] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [12:27] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [12:27] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [12:27] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [12:27] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [12:27] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [12:27] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [12:27] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [12:27] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [12:27] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [12:27] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [12:27] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [12:27] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [12:27] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test
+- [12:32] INTERNAL-ELEVEN-0447 (eleven): Relay Test Confirmation from Eleven
+- [12:32] INTERNAL-NINE-0446 (nine): Relay Test with 10 and 11
+- [12:32] INTERNAL-NINE-0445 (nine): Relay Test with 10 and 11
+- [12:32] INTERNAL-NINE-0444 (nine): Relay Test with 10 and 11
+- [12:32] INTERNAL-NINE-0443 (nine): Relay Test with 10 and 11
+- [12:32] INTERNAL-NINE-0442 (nine): Relay Test with 10 and 11
+- [12:32] INTERNAL-ELEVEN-0441 (eleven): Relay System Stress Test for Simultaneous Directives
+- [12:32] INTERNAL-GHOST-0421 (ghost): [shell] ls -la sandpits/ten/
+- [12:32] INTERNAL-GHOST-0420 (ghost): [shell] pwd
+- [12:32] INTERNAL-GHOST-0414 (ghost): [shell] ls -la sandpits/ten/
+- [12:32] INTERNAL-GHOST-0413 (ghost): [shell] pwd
+- [12:32] INTERNAL-TEN-0407 (ten): [fs_patch] sandpits/ten/skill_test.txt <<<OLD>>>hello from test<<<NEW>>>patched 
+- [12:32] INTERNAL-TEN-0406 (ten): [fs_write] sandpits/ten/skill_test.txt hello from test

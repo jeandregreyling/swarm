@@ -1,0 +1,40 @@
+<!-- files.html — extracted from terminal_base.html -->
+<!-- Original: <template id="view-files"> -->
+  <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
+    <div style="padding:12px 14px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:700;">📁 Workspace Files</span>
+        <input id="files-path-input" type="text" placeholder="Enter path or search..." style="flex:1;padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
+        <button onclick="filesNavigateHome()" title="Go to workspace root" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">🏠</button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+        <input id="files-find-input" type="text" placeholder="Find text" style="flex:1;min-width:130px;padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+        <input id="files-replace-input" type="text" placeholder="Replace with" style="flex:1;min-width:130px;padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+        <input id="files-replace-pattern" type="text" placeholder="*.py" value="*.py" style="width:90px;padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+        <button onclick="filesReplacePreview()" title="Preview replacements" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;">Preview</button>
+        <button onclick="filesReplaceApply()" title="Apply replacements" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;font-weight:700;">Apply</button>
+      </div>
+      <div id="files-breadcrumb" style="font-size:10px;color:var(--text-dim);font-family:monospace;overflow-x:auto;white-space:nowrap;padding:4px 0;"></div>
+    </div>
+    <div style="flex:1;display:flex;min-height:0;gap:1px;">
+      <div id="files-list" style="flex:1;overflow-y:auto;border-right:1px solid var(--border);min-width:0;"></div>
+      <div id="files-preview-splitter" title="Drag to resize preview • Double-click to reset" style="width:8px;cursor:col-resize;background:linear-gradient(to right, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);display:none;flex-shrink:0;"></div>
+      <div id="files-preview" style="flex:0 0 280px;background:var(--window-header);border-left:1px solid var(--border);overflow-y:auto;display:none;flex-direction:column;">
+        <div style="padding:10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;">
+          <span>Preview</span>
+          <button onclick="filesHidePreview()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;">✕</button>
+        </div>
+        <div id="files-preview-body" style="padding:10px;overflow-y:auto;font-size:11px;font-family:monospace;color:var(--text-dim);white-space:pre-wrap;word-break:break-word;"></div>
+        <div id="files-code-ops" style="flex-shrink:0;padding:10px;border-top:1px solid var(--border);display:none;">
+          <div style="font-size:9px;font-weight:700;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Code Operations</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;">
+            <button id="files-btn-test" onclick="codeOpRunTests()" title="Run pytest on current file" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;">▶ Test</button>
+            <button id="files-btn-lint" onclick="codeOpLintFile()" title="Run pylint on current file" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;">🔍 Lint</button>
+            <button id="files-btn-format" onclick="codeOpFormatFile()" title="Format code with black" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;">✏️ Format</button>
+            <button id="files-btn-commit" onclick="codeOpCommit()" title="Commit changes to git" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px;cursor:pointer;font-size:9px;">💾 Commit</button>
+          </div>
+          <div id="files-op-status" style="font-size:9px;color:var(--text-dim);display:none;border:1px solid var(--border);border-radius:4px;padding:6px;background:rgba(0,0,0,0.15);max-height:100px;overflow-y:auto;"><span id="files-op-status-text">Ready</span></div>
+        </div>
+      </div>
+    </div>
+  </div>

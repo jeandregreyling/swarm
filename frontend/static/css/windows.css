@@ -1,0 +1,148 @@
+/* windows.css — extracted from terminal_base.html */
+/* ─────────────────────────────────────────────────────────────────────────
+   FLOATING WINDOWS
+   ───────────────────────────────────────────────────────────────────────── */
+#window-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+#window-container > * { pointer-events: auto; }
+.floating-window {
+  position: fixed;
+  background: var(--window-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow, 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 100;
+  min-width: 300px;
+  min-height: 200px;
+  opacity: var(--glass-opacity, 1);
+  backdrop-filter: blur(var(--glass-blur, 0px));
+  animation: window-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.floating-window.window-dark {
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+}
+.floating-window.minimized {
+  height: 40px;
+  overflow: hidden;
+  animation: none;
+}
+.window-header {
+  background: var(--window-header);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+.window-header:active { cursor: grabbing; }
+.window-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.window-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.window-theme-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+}
+.window-theme-value {
+  font-size: 10px;
+  color: var(--text-dim);
+  min-width: 52px;
+  text-transform: capitalize;
+  font-weight: 600;
+}
+.window-theme-quick {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.window-theme-chip {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-dim);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  min-width: 24px;
+  height: 22px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.window-theme-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+.window-theme-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, #ffffff 86%);
+}
+.window-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: 12px;
+}
+.window-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  color: var(--text-dim);
+}
+.window-btn:hover {
+  background: var(--card);
+  color: var(--text);
+}
+.window-btn.close:hover {
+  background: var(--danger);
+  color: white;
+}
+.window-content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+.window-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, var(--border) 50%);
+  opacity: 0.5;
+}
+.floating-window:hover .window-resize-handle { opacity: 1; }
