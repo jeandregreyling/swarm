@@ -153,8 +153,8 @@ _CHAT_AGENT_RUNTIME_CLASS = {
     'eleven': 'paid',
     'twelve': 'paid',
     'thirteen': 'paid',
-    'scholar': 'paid',
-    'seeker': 'paid',
+    'scholar': 'service',
+    'seeker': 'service',
 }
 
 _CHAT_SINGLE_TASK_LOCAL_AGENTS = {'gemma', 'llama', 'mistral', 'qwen', 'eight'}
@@ -244,8 +244,8 @@ _AGENT_ROSTER = [
     {'name': 'Eleven',    'model': 'grok-api',                            'role': 'Lateral Thinker · Developer Agent',     'default_temp': None, 'no_temp': True,   'developer_agent': True},
     {'name': 'Twelve',    'model': 'claude-haiku-4-5',                    'role': 'Time Wizard · Developer Agent',         'default_temp': 0.3,                   'developer_agent': True},
     {'name': 'Thirteen',  'model': 'meta-llama/Llama-3.3-70B-Instruct',  'role': 'HuggingFace Specialist · Dev (Testing)','default_temp': 0.5,                   'developer_agent': True},
-    {'name': 'Scholar',   'model': 'gemini-2.0-flash',                    'role': 'Vision & Reasoning',                    'default_temp': 0.4,                   'developer_agent': True},
-    {'name': 'Seeker',    'model': 'tavily-search',                       'role': 'Real-Time Intelligence',                'default_temp': 0.5,                   'developer_agent': True},
+    {'name': 'Scholar',   'model': 'gemini-2.0-flash',                    'role': 'Vision & Reasoning (service)',          'default_temp': 0.4},
+    {'name': 'Seeker',    'model': 'tavily-search',                       'role': 'Real-Time Intelligence (service)',       'default_temp': 0.5},
     {'name': 'Ghost',     'model': '(human operator)',                    'role': 'Operator · Ghost Layer',                'default_temp': None, 'no_temp': True,  'ghost_layer': True, 'no_toggle': True},
 ]
 

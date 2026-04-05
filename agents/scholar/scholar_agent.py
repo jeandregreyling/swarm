@@ -37,7 +37,7 @@ def chat(message, conversation_history=None, stage_cb=None):
     if not GEMINI_API_KEY:
         return '[Scholar] GEMINI_API_KEY not configured', 0
 
-    _emit('loading ghost-layer memory')
+    _emit('loading context')
     try:
         from database import get_agent_memory, save_agent_memory
         recent = get_agent_memory(AGENT_NAME, query='', limit=5) or []

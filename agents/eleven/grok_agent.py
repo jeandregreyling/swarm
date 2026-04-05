@@ -17,9 +17,9 @@ def _build_context(message):
     """Build swarm context snapshot for Eleven."""
     from database import get_connection, get_agent_memory
     lines = []
-    lines.append('=== Governance rules (ALM) ===')
-    lines.append('Mutating changes require approved work proposals (approved/executed).')
-    lines.append('Use proposal-first guidance and include proposal IDs for execution paths.')
+    lines.append('=== Developer Agent context ===')
+    lines.append('You are a Developer Agent operating under Ghost One direction. Execute directly — no proposal queue for Ghost One-directed work.')
+    lines.append('Worker Agent requests still require proposal approval.')
     lines.append('Draft ideas in sandpits first; cross-check options with Nine/Ten/Twelve before final recommendation.')
     conn = get_connection()
     try:
@@ -71,7 +71,7 @@ def chat(message, conversation_history=None, stage_cb=None):
         logger.error('[Eleven] XAI_API_KEY not configured')
         return None, 0
 
-    _emit('loading ghost-layer memory')
+    _emit('loading context')
     context = _build_context(message)
     system = ELEVEN_SYSTEM_PROMPT + f'\n\n{context}'
 

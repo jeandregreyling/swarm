@@ -12,8 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'utils'))
 sys.path.insert(0, str(ROOT / 'core' / 'pipeline'))
+sys.path.insert(0, str(ROOT / 'frontend'))
 
-from frontend import terminal as term
+from blueprints import chat as term
 
 
 def test_infer_reply_target_from_salutation():

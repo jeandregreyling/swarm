@@ -32,9 +32,11 @@ function _renderGlitchSection() {
     if (badge) badge.style.display = 'none';
     return;
   }
-  el.textContent = glitches.slice(-50).map(g =>
-    `[${g.ts.slice(11,19)}] [${g.source}] ${g.message}`
-  ).join('\n');
+  el.textContent = glitches.slice(-50).map(g => {
+    const d = new Date(g.ts);
+    const ts = d.toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+    return `[${ts}] [${g.source}] ${g.message}`;
+  }).join('\n');
   el.scrollTop = el.scrollHeight;
   // Show red badge on tracer button
   const badge = document.getElementById('troubleshoot-glitch-badge');

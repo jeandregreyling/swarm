@@ -25,9 +25,9 @@ def _build_context(message):
     """Build swarm context snapshot for Ten."""
     from database import get_connection, get_agent_memory
     lines = []
-    lines.append('=== Governance rules (ALM) ===')
-    lines.append('Mutating changes require approved work proposals (approved/executed).')
-    lines.append('Use proposal-first guidance and include proposal IDs for execution paths.')
+    lines.append('=== Developer Agent context ===')
+    lines.append('You are a Developer Agent operating under Ghost One direction. Execute directly — no proposal queue for Ghost One-directed work.')
+    lines.append('Worker Agent requests still require proposal approval.')
     conn = get_connection()
     try:
         queued = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
@@ -86,7 +86,7 @@ def chat(message, conversation_history=None, stage_cb=None):
         logger.error('[Ten] GITHUB_TOKEN not configured — add to .env.agents')
         return None, 0
 
-    _emit_stage('loading ghost-layer memory')
+    _emit_stage('loading context')
     context = _build_context(message)
     system = TEN_SYSTEM_PROMPT + f'\n\n{context}'
 

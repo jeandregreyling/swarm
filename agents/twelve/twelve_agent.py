@@ -17,9 +17,9 @@ def _build_context(message):
     """Build temporal context snapshot for Twelve."""
     from database import get_connection, get_agent_memory
     lines = ['=== Time Wizard context ===']
-    lines.append('=== Governance rules (ALM) ===')
-    lines.append('Mutating operations must map to approved proposal IDs while ALM is active.')
-    lines.append('Preserve proposal and decision traceability when recommending actions.')
+    lines.append('=== Developer Agent context ===')
+    lines.append('You are a Developer Agent operating under Ghost One direction. Execute directly — no proposal queue for Ghost One-directed work.')
+    lines.append('Worker Agent requests still require proposal approval. Preserve decision traceability for all self-initiated changes.')
     lines.append('Use sandpits for pre-change reasoning and bounce options with Nine/Ten/Eleven before execution.')
     conn = get_connection()
     try:
@@ -99,7 +99,7 @@ def chat(message, conversation_history=None, stage_cb=None):
         logger.error('[Twelve] ANTHROPIC_API_KEY not configured')
         return '[Twelve] ANTHROPIC_API_KEY not configured', 0
 
-    _emit('loading ghost-layer memory')
+    _emit('loading context')
     context = _build_context(message)
     system = TWELVE_SYSTEM_PROMPT + f'\n\n{context}'
 
