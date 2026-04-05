@@ -1,6 +1,7 @@
 """
+# LINKED TO: utils/config.py — imports SCHOLAR_SYSTEM_PROMPT (edit prompts there, not here)
 agents/scholar/scholar_agent.py — Scholar (Gemini 2.0 Flash)
-Ghost Layer vision & reasoning agent. Powered by Google Gemini API.
+Developer Agent — vision & reasoning. Powered by Google Gemini API.
 """
 
 import logging

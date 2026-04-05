@@ -51,6 +51,57 @@ def api_exec():
 
 
 
+@exec_bp.route('/api/services/<service_id>/restart', methods=['POST'])
+def api_service_restart(service_id):
+    """Restart a swarm-* service. Bypasses ALM — restricted to swarm-* pattern only."""
+    import subprocess as _sp
+    import re
+    if not re.match(r'^swarm-[a-z\-]+$', service_id):
+        return jsonify({'ok': False, 'error': 'Invalid service id'}), 400
+    try:
+        result = _sp.run(
+            ['sudo', 'systemctl', 'restart', service_id],
+            capture_output=True, text=True, timeout=15
+        )
+        output = (result.stdout + result.stderr).strip() or '(done)'
+        ok = result.returncode == 0
+        from database import log_activity
+        log_activity('terminal', 'service_restart', service_id)
+        return jsonify({'ok': ok, 'output': output})
+    except Exception as e:
+        return jsonify({'ok': False, 'output': str(e)})
+
+
+@exec_bp.route('/api/services', methods=['GET'])
+def api_services_status():
+    """Return status for all swarm-* systemd services."""
+    import subprocess as _sp
+    services = [
+        {'id': 'swarm-terminal',    'label': 'Terminal'},
+        {'id': 'swarm-listener',    'label': 'Listener'},
+        {'id': 'swarm-telegram',    'label': 'Telegram'},
+        {'id': 'swarm-discord',     'label': 'Discord'},
+        {'id': 'swarm-fridays',     'label': 'Fridays'},
+        {'id': 'swarm-sniffer',     'label': 'Sniffer'},
+        {'id': 'swarm-monitor',     'label': 'Monitor'},
+        {'id': 'swarm-housekeeping','label': 'Housekeeping'},
+    ]
+    result = []
+    for svc in services:
+        try:
+            r = _sp.run(
+                ['systemctl', 'is-active', svc['id']],
+                capture_output=True, text=True, timeout=3
+            )
+            active = r.stdout.strip() == 'active'
+            status = r.stdout.strip()
+        except Exception as e:
+            active = False
+            status = 'error'
+        result.append({**svc, 'active': active, 'status': status})
+    return jsonify(result)
+
+
 @exec_bp.route('/api/exec/write', methods=['POST'])
 def api_exec_write():
     """Write a file. Path must be inside /home/seven/swarm."""

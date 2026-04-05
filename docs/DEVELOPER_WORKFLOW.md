@@ -47,6 +47,21 @@ Choose the smallest governance class that still preserves accountability.
 
 All classes except truly trivial edits should still appear in the proposal queue so they remain visible in Studio.
 
+## Cross-Reference Rule (Mandatory)
+
+Every file in this codebase that depends on another file for correctness must declare that dependency
+explicitly at the top of the file using a `LINKED TO:` block (see existing examples in
+`utils/config.py`, `frontend/services.py`, `utils/db/_schema.py`). This is not optional polish —
+without it, an AI agent or a new human reader will make changes in one file without realising a
+corresponding change is required in another.
+
+**Rule:** When you edit a file that has a `LINKED TO:` block, you must check every file listed in
+that block and update them if your change affects the contract between the files. When you add a new
+file or create a new coupling between two files, update the `LINKED TO:` block in both directions
+before the edit is considered done.
+
+This rule applies to all change classes including `TRIVIAL`.
+
 ## Fridays-First LLM Memory Checklist
 
 Before asking agents to execute code or operational actions, align them on these non-negotiable facts:

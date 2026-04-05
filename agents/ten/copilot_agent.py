@@ -1,6 +1,7 @@
 """
+# LINKED TO: utils/config.py — imports TEN_SYSTEM_PROMPT (edit prompts there, not here)
 agents/ten/copilot_agent.py — Ten (GPT)
-Ghost Layer software engineering advisor. Powered by GPT via GitHub Models API.
+Developer Agent — software engineer. Powered by GPT via GitHub Models API.
 Uses a GitHub PAT with models:read scope via https://models.inference.ai.azure.com
 
 Supports the same SKILL execution loop as Nine: GPT emits SKILL commands,

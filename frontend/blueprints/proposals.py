@@ -256,15 +256,15 @@ def api_work_proposals_patch(proposal_id):
     if not row:
         return jsonify({'ok': False, 'error': 'proposal not found'}), 404
 
-    ghost_layer_users = {'ghost', 'nine', 'ten', 'eleven', 'twelve', 'duck', 'sniffles'}
+    developer_agents = {'ghost', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'duck', 'sniffles'}
     proposal_agent = str(row['agent'] or '').strip().lower()
     effective_user = identity['effective_user']
 
-    if proposal_agent not in ghost_layer_users and status in {'in_progress', 'done', 'executed'}:
-        if effective_user not in ghost_layer_users:
+    if proposal_agent not in developer_agents and status in {'in_progress', 'done', 'executed'}:
+        if effective_user not in developer_agents:
             return jsonify({
                 'ok': False,
-                'error': 'non-ghost proposals must be implemented by a ghost-layer user',
+                'error': 'non-developer proposals must be implemented by a developer agent or Ghost One',
                 'proposal_id': proposal_id,
                 'proposal_agent': proposal_agent,
                 'effective_user': effective_user,
@@ -394,11 +394,11 @@ def api_work_proposals_delete(proposal_id):
         return err
 
     effective_user = identity['effective_user']
-    ghost_layer_users = {'ghost', 'nine', 'ten', 'eleven', 'twelve', 'duck', 'sniffles'}
-    if effective_user not in ghost_layer_users:
+    developer_agents = {'ghost', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'duck', 'sniffles'}
+    if effective_user not in developer_agents:
         return jsonify({
             'ok': False,
-            'error': 'proposal deletion requires ghost-layer identity',
+            'error': 'proposal deletion requires developer agent or Ghost One identity',
             'effective_user': effective_user,
         }), 403
 

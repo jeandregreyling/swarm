@@ -15,11 +15,15 @@
   --accent-hover: #5486ff;
   --window-bg:    #ffffff;
   --window-header:#f1f6ff;
-  --radius: 8px;
+  --radius: 0px;
   --danger:        #e03c3c;
   --shadow:        0 14px 42px rgba(20, 52, 96, 0.12);
   --glass-opacity: 1;
   --glass-blur:    6px;
+  --edge-glow:     0 0 0 rgba(0,0,0,0);
+  --edge-glow-hover: 0 0 0 rgba(0,0,0,0);
+  --glow-animation: none;
+  --glow-hover-animation: none;
 }
 
 /* Theme injection — time-of-day palettes from fridays.json override above */
@@ -87,6 +91,14 @@ body { margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, Blin
     opacity: 0;
     transform: translateX(400px);
   }
+}
+@keyframes edge-glow-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.04); }
+}
+@keyframes edge-glow-wave {
+  0%, 100% { box-shadow: var(--shadow), var(--edge-glow); }
+  50% { box-shadow: var(--shadow), var(--edge-glow-hover); }
 }
 .skeleton-loader {
   animation: skeleton-pulse 1.5s ease-in-out infinite;

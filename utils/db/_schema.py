@@ -1,5 +1,15 @@
 """
 db._schema — Schema definition, initialisation, migrations, and seeding.
+
+LINKED TO:
+  utils/config.py           — reads all *_SYSTEM_PROMPT constants from there
+                              and writes them into agents.system_prompt.
+                              config.py is the source of truth for prompts.
+  frontend/services.py      — _AGENT_ROSTER must list the same agents as the
+                              roster seeded in _seed_agents() here. If you add
+                              an agent row here, add it to services.py too.
+  ops/seed_agent_permissions.py — AGENT_ROLE_MAP keys must match agent names
+                              seeded in _seed_agents() here.
 """
 from ._connection import get_connection, logger
 
@@ -791,6 +801,21 @@ def _migrate_schema(conn=None):
     except Exception:
         pass
 
+    # Custom sudo whitelist entries for the Fridays terminal
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS sudo_command_whitelist (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                command TEXT NOT NULL UNIQUE,
+                note TEXT DEFAULT '',
+                added_by TEXT DEFAULT 'ghost',
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.commit()
+    except Exception:
+        pass
+
     # Seed default shortcuts — insert each if its exact cmd doesn't already exist
     try:
         defaults = [
@@ -826,46 +851,55 @@ def _migrate_schema(conn=None):
         except Exception:
             pass
 
-    # Seed system_prompt + api_key_var + tier for each agent (only if empty)
+    # Sync system_prompt + api_key_var + tier for each agent from config.py.
+    # system_prompt is always overwritten so config.py stays the source of truth.
     try:
         import config as _cfg
-        GEMMA_SYSTEM_PROMPT     = getattr(_cfg, 'GEMMA_SYSTEM_PROMPT',     '')
-        LLAMA_SYSTEM_PROMPT     = getattr(_cfg, 'LLAMA_SYSTEM_PROMPT',     '')
-        QWEN_SYSTEM_PROMPT      = getattr(_cfg, 'QWEN_SYSTEM_PROMPT',      '')
-        LIBRARIAN_SYSTEM_PROMPT = getattr(_cfg, 'LIBRARIAN_SYSTEM_PROMPT', '')
-        MISTRAL_SYSTEM_PROMPT   = getattr(_cfg, 'MISTRAL_SYSTEM_PROMPT',   '')
-        NINE_SYSTEM_PROMPT      = getattr(_cfg, 'NINE_SYSTEM_PROMPT',      '')
-        TEN_SYSTEM_PROMPT       = getattr(_cfg, 'TEN_SYSTEM_PROMPT',       '')
-        ELEVEN_SYSTEM_PROMPT    = getattr(_cfg, 'ELEVEN_SYSTEM_PROMPT',    '')
-        TWELVE_SYSTEM_PROMPT    = getattr(_cfg, 'TWELVE_SYSTEM_PROMPT',    '')
+        GEMMA_SYSTEM_PROMPT      = getattr(_cfg, 'GEMMA_SYSTEM_PROMPT',     '')
+        LLAMA_SYSTEM_PROMPT      = getattr(_cfg, 'LLAMA_SYSTEM_PROMPT',     '')
+        QWEN_SYSTEM_PROMPT       = getattr(_cfg, 'QWEN_SYSTEM_PROMPT',      '')
+        LIBRARIAN_SYSTEM_PROMPT  = getattr(_cfg, 'LIBRARIAN_SYSTEM_PROMPT', '')
+        MISTRAL_SYSTEM_PROMPT    = getattr(_cfg, 'MISTRAL_SYSTEM_PROMPT',   '')
+        NINE_SYSTEM_PROMPT       = getattr(_cfg, 'NINE_SYSTEM_PROMPT',      '')
+        TEN_SYSTEM_PROMPT        = getattr(_cfg, 'TEN_SYSTEM_PROMPT',       '')
+        ELEVEN_SYSTEM_PROMPT     = getattr(_cfg, 'ELEVEN_SYSTEM_PROMPT',    '')
+        TWELVE_SYSTEM_PROMPT     = getattr(_cfg, 'TWELVE_SYSTEM_PROMPT',    '')
+        THIRTEEN_SYSTEM_PROMPT   = getattr(_cfg, 'THIRTEEN_SYSTEM_PROMPT',  '')
+        SCHOLAR_SYSTEM_PROMPT    = getattr(_cfg, 'SCHOLAR_SYSTEM_PROMPT',   '')
+        SEEKER_SYSTEM_PROMPT     = getattr(_cfg, 'SEEKER_SYSTEM_PROMPT',    '')
     except Exception:
         GEMMA_SYSTEM_PROMPT = LLAMA_SYSTEM_PROMPT = QWEN_SYSTEM_PROMPT = ''
         LIBRARIAN_SYSTEM_PROMPT = MISTRAL_SYSTEM_PROMPT = ''
         NINE_SYSTEM_PROMPT = TEN_SYSTEM_PROMPT = ELEVEN_SYSTEM_PROMPT = TWELVE_SYSTEM_PROMPT = ''
+        THIRTEEN_SYSTEM_PROMPT = SCHOLAR_SYSTEM_PROMPT = SEEKER_SYSTEM_PROMPT = ''
 
     _prompt_seed = [
-        ('gemma',     GEMMA_SYSTEM_PROMPT,     '',              'local'),
-        ('llama',     LLAMA_SYSTEM_PROMPT,      '',              'local'),
-        ('mistral',   MISTRAL_SYSTEM_PROMPT,    '',              'local'),
-        ('qwen',      QWEN_SYSTEM_PROMPT,       '',              'local'),
-        ('librarian', LIBRARIAN_SYSTEM_PROMPT,  '',              'local'),
-        ('duck',      '',                       '',              'local'),
-        ('sniffles',  '',                       '',              'local'),
-        ('eight',     '',                       '',              'local'),
-        ('nine',      NINE_SYSTEM_PROMPT,       'GROQ_API_KEY',  'paid'),
-        ('ten',       TEN_SYSTEM_PROMPT,        'GITHUB_TOKEN',  'paid'),
-        ('eleven',    ELEVEN_SYSTEM_PROMPT,     'XAI_API_KEY',   'paid'),
-        ('ghost',     '',                       '',              'human'),
+        ('gemma',     GEMMA_SYSTEM_PROMPT,     '',                   'local'),
+        ('llama',     LLAMA_SYSTEM_PROMPT,      '',                  'local'),
+        ('mistral',   MISTRAL_SYSTEM_PROMPT,    '',                  'local'),
+        ('qwen',      QWEN_SYSTEM_PROMPT,       '',                  'local'),
+        ('librarian', LIBRARIAN_SYSTEM_PROMPT,  '',                  'local'),
+        ('duck',      '',                       '',                  'local'),
+        ('sniffles',  '',                       '',                  'local'),
+        ('eight',     '',                       '',                  'local'),
+        ('nine',      NINE_SYSTEM_PROMPT,       'GROQ_API_KEY',      'paid'),
+        ('ten',       TEN_SYSTEM_PROMPT,        'GITHUB_TOKEN',      'paid'),
+        ('eleven',    ELEVEN_SYSTEM_PROMPT,     'XAI_API_KEY',       'paid'),
+        ('twelve',    TWELVE_SYSTEM_PROMPT,     'ANTHROPIC_API_KEY', 'paid'),
+        ('thirteen',  THIRTEEN_SYSTEM_PROMPT,   'HF_API_KEY',        'paid'),
+        ('scholar',   SCHOLAR_SYSTEM_PROMPT,    'GEMINI_API_KEY',    'paid'),
+        ('seeker',    SEEKER_SYSTEM_PROMPT,     'TAVILY_API_KEY',    'paid'),
+        ('ghost',     '',                       '',                  'human'),
     ]
     try:
         for name, prompt, key_var, tier in _prompt_seed:
             conn.execute(
                 """UPDATE agents SET
-                     system_prompt = CASE WHEN (system_prompt IS NULL OR system_prompt = '') THEN ? ELSE system_prompt END,
-                     api_key_var   = CASE WHEN (api_key_var   IS NULL OR api_key_var   = '') THEN ? ELSE api_key_var   END,
-                     tier          = CASE WHEN (tier          IS NULL OR tier          = '') THEN ? ELSE tier          END
+                     system_prompt = CASE WHEN ? != '' THEN ? ELSE system_prompt END,
+                     api_key_var   = CASE WHEN (api_key_var IS NULL OR api_key_var = '') THEN ? ELSE api_key_var END,
+                     tier          = CASE WHEN (tier        IS NULL OR tier        = '') THEN ? ELSE tier        END
                    WHERE name = ?""",
-                (prompt, key_var, tier, name)
+                (prompt, prompt, key_var, tier, name)
             )
         conn.commit()
     except Exception:
@@ -928,10 +962,11 @@ def _seed_agents():
         ( 6,  'duck',      'Duck',      'qwen:1.5b',                 0.1,  'Sanity checker — YES/NO after every ticket'),
         ( 7,  'sniffles',  'Sniffles',  'deepseek-r1:7b',            0.2,  'Inspector — memory auditor, read only, chain-of-thought'),
         ( 8,  'eight',     'Eight',     'gemma4:26b',                0.5,  'SAP specialist — three-voice debate (Functional/Technical/Devil)'),
-        ( 9,  'nine',      'Groq',      'llama-3.3-70b-versatile',   0.5,  'System architect — Ghost Layer, Ghost Briefs, proposals'),
-        (10,  'ten',       'Github',    'gpt-5.3-codex',             0.4,  'Engineering advisor — code quality, implementation clarity'),
-        (11,  'eleven',    'Grok',      'grok-api',                  0.5,  'Lateral thinking advisor — creative synthesis, alternatives'),
-        (12,  'twelve',    'Claude',    'claude-haiku',              0.3,  'System oversight — Ghost Layer, session continuity'),
+        ( 9,  'nine',      'Groq',      'llama-3.3-70b-versatile',              0.5,  'Developer Agent — system architect, proposals, Ghost One-directed execution'),
+        (10,  'ten',       'Github',    'gpt-4o',                                0.4,  'Developer Agent — software engineer, code quality, implementation'),
+        (11,  'eleven',    'Grok',      'grok-api',                              0.5,  'Developer Agent — lateral thinker, creative synthesis, alternatives'),
+        (12,  'twelve',    'Claude',    'claude-haiku-4-5',                      0.3,  'Developer Agent — time wizard, session continuity, Vortex'),
+        (13,  'thirteen',  'HuggingFace', 'meta-llama/Llama-3.3-70B-Instruct',  0.5,  'Developer Agent — HuggingFace specialist (testing)'),
     ]
     conn = get_connection()
     for number, name, label, model, temp, role in roster:

@@ -1,6 +1,7 @@
 """
+# LINKED TO: utils/config.py — imports ELEVEN_SYSTEM_PROMPT (edit prompts there, not here)
 agents/eleven/grok_agent.py — Eleven (Grok 3)
-Ghost Layer lateral thinker. Powered by xAI Grok API.
+Developer Agent — lateral thinker. Powered by xAI Grok API.
 """
 
 import logging

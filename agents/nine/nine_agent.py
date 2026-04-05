@@ -1,6 +1,7 @@
 """
+# LINKED TO: utils/config.py — imports NINE_SYSTEM_PROMPT (edit prompts there, not here)
 agents/nine/nine_agent.py — Nine (Groq · llama-3.3-70b-versatile)
-Ghost Layer system architect. Powered by Groq API.
+Developer Agent — system architect. Powered by Groq API.
 """
 
 import logging
@@ -71,7 +72,7 @@ def chat(message, conversation_history=None, stage_cb=None):
         logger.error('[Nine] GROQ_API_KEY not configured')
         return None, 0
 
-    _emit('loading ghost-layer memory')
+    _emit('loading context')
     context = _build_context(message)
     system = NINE_SYSTEM_PROMPT + f'\n\n{context}'
 

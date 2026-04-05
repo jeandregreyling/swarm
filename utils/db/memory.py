@@ -63,7 +63,7 @@ def save_agent_memory(agent_name, subject, content, tags='', importance=5, sourc
         return False
     conn = get_connection()
     # memory_gemma, memory_eight, and memory_nine have a 'source' column
-    if agent_name.lower() in ('gemma', 'eight', 'nine'):
+    if agent_name.lower() in ('gemma', 'eight', 'nine', 'thirteen'):
         conn.execute(
             f"INSERT INTO {table} (agent,subject,content,tags,importance,source) VALUES (?,?,?,?,?,?)",
             (agent_name.lower(), subject[:200], content, tags, importance, source)

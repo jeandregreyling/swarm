@@ -1,6 +1,7 @@
 """
+# LINKED TO: utils/config.py — imports SEEKER_SYSTEM_PROMPT (edit prompts there, not here)
 agents/seeker/seeker_agent.py — Seeker (Tavily Search)
-Ghost Layer real-time intelligence agent. Powered by Tavily AI Search.
+Developer Agent — real-time intelligence. Powered by Tavily AI Search.
 Seeker specialises in live web research — it searches, synthesises, and cites.
 """
 

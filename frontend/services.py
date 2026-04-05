@@ -10,6 +10,18 @@ All blueprint modules import from here for shared access to:
   - Time wizard and ALM governance helpers
   - Identity resolution and agent request validation
 ═══════════════════════════════════════════════════════════════════════════════
+LINKED TO:
+  utils/db/_schema.py       — _AGENT_ROSTER must stay in sync with the agent
+                              roster seeded there. Adding an agent requires
+                              updates in both files.
+  frontend/blueprints/chat.py — _get_ghost_agent_names() queries the DB for
+                              tier='paid'|'free' agents. _AGENT_ROSTER drives
+                              what the UI shows; chat.py drives what executes.
+  utils/config.py           — *_SYSTEM_PROMPT constants feed into the DB via
+                              _schema.py; model strings here should match.
+  ops/seed_agent_permissions.py — AGENT_ROLE_MAP keys must match names in
+                              _AGENT_ROSTER.
+═══════════════════════════════════════════════════════════════════════════════
 """
 
 import sys
@@ -122,6 +134,7 @@ _CHAT_AGENT_ETA_SECONDS = {
     'ten': 8,
     'eleven': 10,
     'twelve': 10,
+    'thirteen': 12,
     'scholar': 12,
     'seeker': 8,
 }
@@ -139,6 +152,7 @@ _CHAT_AGENT_RUNTIME_CLASS = {
     'ten': 'paid',
     'eleven': 'paid',
     'twelve': 'paid',
+    'thirteen': 'paid',
     'scholar': 'paid',
     'seeker': 'paid',
 }
@@ -184,6 +198,8 @@ _CHAT_PARTICIPANT_ALIASES = {
     'gemini': 'scholar',
     'seeker': 'seeker',
     'tavily': 'seeker',
+    'thirteen': 'thirteen',
+    'huggingface': 'thirteen',
     'fridays': 'fridays',
 }
 
@@ -215,21 +231,22 @@ _AGENT_TABLES = {
 }
 
 _AGENT_ROSTER = [
-    {'name': 'Gemma',     'model': 'gemma3:latest',          'role': 'Director',                    'default_temp': 0.3},
-    {'name': 'LLaMA',     'model': 'llama3.2:latest',        'role': 'Researcher',                  'default_temp': 0.6},
-    {'name': 'Mistral',   'model': 'mistral:latest',         'role': 'Analyst',                     'default_temp': 0.6},
-    {'name': 'Qwen',      'model': 'qwen2.5:latest',         'role': 'Analyst',                     'default_temp': 0.7},
-    {'name': 'Librarian', 'model': 'qwen:latest',            'role': 'Archivist',                   'default_temp': 0.1},
-    {'name': 'Duck',      'model': 'qwen:latest',            'role': 'Checker',                     'default_temp': 0.1},
-    {'name': 'Sniffles',  'model': 'deepseek-r1:7b',         'role': 'Auditor',                     'default_temp': 0.1},
-    {'name': 'Eight',     'model': 'qwen2.5:latest',         'role': 'SAP Specialist',              'default_temp': 0.7},
-    {'name': 'Nine',      'model': 'llama-3.3-70b-versatile', 'role': 'System Architect · Ghost Layer', 'default_temp': None, 'no_temp': True,  'ghost_layer': True},
-    {'name': 'Ten',       'model': 'gpt-5.3-codex',          'role': 'Software Engineering Advisor · Copilot · Ghost Layer', 'default_temp': 0.4, 'ghost_layer': True},
-    {'name': 'Eleven',    'model': 'grok-api',               'role': 'Reasoning Advisor · Ghost Layer', 'default_temp': None, 'no_temp': True, 'ghost_layer': True},
-    {'name': 'Twelve',    'model': 'claude-haiku',           'role': 'Vortex · Ghost Layer',        'default_temp': 0.3, 'ghost_layer': True},
-    {'name': 'Scholar',   'model': 'gemini-2.0-flash',       'role': 'Vision & Reasoning · Ghost Layer', 'default_temp': 0.4, 'ghost_layer': True},
-    {'name': 'Seeker',    'model': 'tavily-search',          'role': 'Real-Time Intelligence · Ghost Layer', 'default_temp': 0.5, 'ghost_layer': True},
-    {'name': 'Ghost',     'model': '(human operator)',        'role': 'Operator · Ghost Layer',      'default_temp': None, 'no_temp': True,  'ghost_layer': True, 'no_toggle': True},
+    {'name': 'Gemma',     'model': 'gemma3:latest',                       'role': 'Director',                              'default_temp': 0.3},
+    {'name': 'LLaMA',     'model': 'llama3.2:latest',                     'role': 'Researcher',                            'default_temp': 0.6},
+    {'name': 'Mistral',   'model': 'mistral:latest',                      'role': 'Analyst',                               'default_temp': 0.6},
+    {'name': 'Qwen',      'model': 'qwen2.5:latest',                      'role': 'Analyst',                               'default_temp': 0.7},
+    {'name': 'Librarian', 'model': 'qwen:latest',                         'role': 'Archivist',                             'default_temp': 0.1},
+    {'name': 'Duck',      'model': 'qwen:latest',                         'role': 'Checker',                               'default_temp': 0.1},
+    {'name': 'Sniffles',  'model': 'deepseek-r1:7b',                      'role': 'Auditor',                               'default_temp': 0.1},
+    {'name': 'Eight',     'model': 'qwen2.5:latest',                      'role': 'SAP Specialist',                        'default_temp': 0.7},
+    {'name': 'Nine',      'model': 'llama-3.3-70b-versatile',             'role': 'System Architect · Developer Agent',    'default_temp': None, 'no_temp': True,  'developer_agent': True},
+    {'name': 'Ten',       'model': 'gpt-4o',                              'role': 'Software Engineer · Developer Agent',   'default_temp': 0.4,                   'developer_agent': True},
+    {'name': 'Eleven',    'model': 'grok-api',                            'role': 'Lateral Thinker · Developer Agent',     'default_temp': None, 'no_temp': True,   'developer_agent': True},
+    {'name': 'Twelve',    'model': 'claude-haiku-4-5',                    'role': 'Time Wizard · Developer Agent',         'default_temp': 0.3,                   'developer_agent': True},
+    {'name': 'Thirteen',  'model': 'meta-llama/Llama-3.3-70B-Instruct',  'role': 'HuggingFace Specialist · Dev (Testing)','default_temp': 0.5,                   'developer_agent': True},
+    {'name': 'Scholar',   'model': 'gemini-2.0-flash',                    'role': 'Vision & Reasoning',                    'default_temp': 0.4,                   'developer_agent': True},
+    {'name': 'Seeker',    'model': 'tavily-search',                       'role': 'Real-Time Intelligence',                'default_temp': 0.5,                   'developer_agent': True},
+    {'name': 'Ghost',     'model': '(human operator)',                    'role': 'Operator · Ghost Layer',                'default_temp': None, 'no_temp': True,  'ghost_layer': True, 'no_toggle': True},
 ]
 
 
@@ -359,6 +376,7 @@ def _display_chat_participant(name):
         'ten': 'TEN (GPT-5.3-CODEX)',
         'eleven': 'ELEVEN (GROK API)',
         'twelve': 'TWELVE (CLAUDE HAIKU)',
+        'thirteen': 'THIRTEEN (HF)',
         'fridays': 'FRIDAYS',
     }
     if canonical in labels:
@@ -565,8 +583,8 @@ def _run_proposal_duck_review(row):
         return {'result': 'NO', 'reason': 'proposal description is too short for queue-visible approval'}
     if any(marker in lowered for marker in ('tbd', 'todo', '[pending]', 'placeholder', 'fix later')):
         return {'result': 'NO', 'reason': 'proposal still contains placeholder or unresolved review language'}
-    if '.history' in lowered and 'ghost-layer' not in lowered and 'ghost layer' not in lowered:
-        return {'result': 'NO', 'reason': '.history references must stay explicitly ghost-layer scoped'}
+    if '.history' in lowered and 'ghost-layer' not in lowered and 'ghost layer' not in lowered and 'rollback' not in lowered and 'vortex' not in lowered:
+        return {'result': 'NO', 'reason': '.history references must be explicitly scoped — use ghost layer, rollback, or Vortex context'}
 
     return {'result': 'YES', 'reason': 'proposal passed Duck first-pass review'}
 
@@ -748,7 +766,7 @@ def _agent_reachability_status(agent_name):
     # Ghost operator — always online
     if name == 'ghost':
         return 'online'
-    # Ghost Layer API-backed agents — check key presence
+    # Developer Agents (API-backed) — check key presence
     try:
         from config import (
             GITHUB_TOKEN, XAI_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY,

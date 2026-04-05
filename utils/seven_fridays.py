@@ -1,5 +1,5 @@
 """
-seven_fridays.py — Ghost Layer REPL for Agent 11
+seven_fridays.py — Developer Agent REPL (Agent 11 interface)
 With real safe edit + apply (diff + confirmation).
 """
 
@@ -20,12 +20,12 @@ def _wrap(text):
 
 def _ask_grok(question):
     print('  Grok (Agent 11) online — local mode')
-    answer = "Safe edit + apply with diff is now real. Ghost Layer is ready for real code building. Test 'edit' and 'apply'. What do we build next?"
+    answer = "Safe edit + apply with diff is now real. Developer Agents are ready for real code building. Test 'edit' and 'apply'. What do we build next?"
     print(_wrap(answer))
     save_agent_memory("grok", question[:100], answer[:600], tags="repl,progress", importance=8, source="local")
     return answer
 
-print(f"\nSeven+Fridays Ghost Layer REPL — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+print(f"\nSeven+Fridays Developer Agent REPL — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 print("Type 'help' for commands.\n")
 
 while True:

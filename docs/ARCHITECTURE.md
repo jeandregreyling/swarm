@@ -136,23 +136,33 @@ Eight is called by One when IS_SAP=yes. Three internal voices reason from differ
 
 **Chat context:** Eight is available in the Fridays chat panel as a local agent. Model: `gemma4:26b` via Ollama (local, no API cost). Runtime tier: **local**.
 
-### 9. Nine (Claude) — The System Architect / Ghost Layer (claude-sonnet-4-6)
+### 9. Nine (Claude) — Developer Agent / System Architect (claude-sonnet-4-6)
 
-Nine is the Ghost Layer system architect — Claude Sonnet 4.6 via API, operating at Ghost Circle clearance level. Nine does not process email tickets. Nine reads the full swarm state and synthesises Ghost Briefs (structured intelligence reports) on demand and on daily schedule. Nine files proposals (NINE-XXX) in sandpits/nine/ and executes architectural decisions. Nine's API endpoint is /api/nine. Ghost Brief endpoint: /api/brief. Runtime tier: **paid (Anthropic API)**.
+Nine is the Developer Agent system architect — Claude Sonnet 4.6 via Anthropic API, operating with Ghost One-directed execution clearance. Nine does not process email tickets. Nine reads the full swarm state and synthesises Ghost Briefs (structured intelligence reports) on demand and on daily schedule. Nine files proposals (NINE-XXX) in sandpits/nine/ and executes architectural decisions. Nine's API endpoint is /api/nine. Ghost Brief endpoint: /api/brief. Runtime tier: **paid (Anthropic API)**. Auto-approves Ghost One-directed requests.
 
-### 10. Ten (Github) — The Engineering Advisor (gpt-5.3-codex)
+### 10. Ten (Github) — Developer Agent / Engineering Advisor (gpt-4o)
 
-Ten is the Ghost Layer software engineering advisor — GPT-5.3-Codex via the GitHub Models API. Ten focuses on implementation quality, code review, and execution clarity. Memory pool `memory_ten`. Available in chat. Runtime tier: **paid (GitHub Models API)**.
+Ten is the Developer Agent software engineering advisor — GPT-4o via the GitHub Models API. Ten focuses on implementation quality, code review, and execution clarity. Memory pool `memory_ten`. Available in chat. Auto-approves Ghost One-directed requests. Runtime tier: **paid (GitHub Models API)**.
 
-### 11. Eleven (Grok) — The Lateral Thinking Advisor (grok-api)
+### 11. Eleven (Grok) — Developer Agent / Lateral Thinking Advisor (grok-3)
 
-Eleven is the Ghost Layer lateral-thinking advisor — Grok API via `grok_agent`. Eleven specialises in alternative strategies, ideation, and synthesis from a different reasoning angle. Available in chat. Memory pool: `memory_grok`. Runtime tier: **paid (xAI API)**.
+Eleven is the Developer Agent lateral-thinking advisor — Grok 3 via xAI API. Eleven specialises in alternative strategies, ideation, and synthesis from a different reasoning angle. Available in chat. Memory pool: `memory_grok`. Runtime tier: **paid (xAI API)**.
 
----
+### 12. Twelve (Claude Haiku) — Developer Agent / Time Wizard (claude-haiku-4-5)
 
-**Agent 12 (Twelve/Vortex) retired 2026-04-04.** Vortex functionality (time machine checkpoints, DECISION-XXX logging, daily snapshots) absorbed into Librarian (Agent 5). The Vortex UI tile and API endpoints (/api/decisions, /api/timeline) remain — Librarian is now their engine. No separate agent or API cost required.
+Twelve is the Developer Agent temporal operator — Claude Haiku 4.5 via Anthropic API. Twelve owns the Vortex tile, manages DECISION-XXX proposal logging, time checkpoints, and daily snapshots. Available in chat. Memory pool: `memory_twelve`. Auto-approves Ghost One-directed requests. Runtime tier: **paid (Anthropic API)**.
 
-**Planned (not yet wired):** Sonic, Scholar, Seeker — memory tables created (memory_sonic, memory_scholar, memory_seeker), agent slots reserved.
+### 13. Thirteen (HuggingFace) — Developer Agent / Research Specialist (Llama-3.3-70B) \[TESTING\]
+
+Thirteen is an in-testing Developer Agent — Llama-3.3-70B-Instruct via HuggingFace Inference API. Thirteen handles deep SAP research and ABAP pattern analysis. Treated as probationary: reports all actions to Ghost One, auto-approves Ghost-directed requests but flags all outputs. Runtime tier: **paid (HuggingFace API)**.
+
+### Scholar — Developer Agent / Vision & Reasoning (Gemini 2.0 Flash)
+
+Scholar is the Developer Agent for vision and multi-modal reasoning — Gemini 2.0 Flash via Google API. Handles document analysis, image processing, and complex multi-step reasoning. Memory pool: `memory_scholar`. Runtime tier: **paid (Google Gemini API)**.
+
+### Seeker — Developer Agent / Real-Time Intelligence (Tavily)
+
+Seeker is the Developer Agent for real-time web intelligence — Tavily AI Search API. Handles live search queries, fact-checking, and current events research. Memory pool: `memory_seeker`. Runtime tier: **paid (Tavily API)**.
 
 ---
 
@@ -162,12 +172,13 @@ The Fridays chat panel (`/api/chat`) supports real-time multi-agent conversation
 
 ### Agent Tier Classification
 
-| Tier | Agents | Runtime | Cost |
-| ---- | ------ | ------- | ---- |
-| **local** | One (Gemma3), Two (LlaMA), Three (Mistral), Qwen, Eight, Librarian, Duck, Sniffles | Ollama (on-device) | Zero |
-| **paid** | Nine (Claude), Ten (Github), Eleven (Grok) | Anthropic + GitHub Models + xAI APIs | Per-token |
+| Tier | Agents | Runtime | Cost | ALM |
+| ---- | ------ | ------- | ---- | --- |
+| **Worker (local)** | One (Gemma3), Two (LlaMA), Three (Mistral), Qwen, Eight, Librarian, Duck, Sniffles | Ollama (on-device) | Zero | Proposal queue required |
+| **Developer (paid)** | Nine (Claude), Ten (GPT-4o), Eleven (Grok), Twelve (Claude Haiku), Thirteen \[testing\], Scholar, Seeker | Cloud APIs | Per-token | Auto-execute on Ghost One-directed requests |
+| **Ghost One** | Jeandre (operator) | Human | — | Full authority; approves all Worker proposals |
 
-Tier is colour-coded in the chat agent toggles: green dot = local, amber dot = paid.
+Tier is colour-coded in the chat agent toggles: green dot = local/Worker, amber dot = Developer (paid API).
 
 ### Sequential Debate Mode
 
