@@ -887,8 +887,8 @@ def _migrate_schema(conn=None):
         ('eleven',    ELEVEN_SYSTEM_PROMPT,     'XAI_API_KEY',       'paid'),
         ('twelve',    TWELVE_SYSTEM_PROMPT,     'ANTHROPIC_API_KEY', 'paid'),
         ('thirteen',  THIRTEEN_SYSTEM_PROMPT,   'HF_API_KEY',        'paid'),
-        ('scholar',   SCHOLAR_SYSTEM_PROMPT,    'GEMINI_API_KEY',    'paid'),
-        ('seeker',    SEEKER_SYSTEM_PROMPT,     'TAVILY_API_KEY',    'paid'),
+        ('scholar',   SCHOLAR_SYSTEM_PROMPT,    'GEMINI_API_KEY',    'service'),
+        ('seeker',    SEEKER_SYSTEM_PROMPT,     'TAVILY_API_KEY',    'service'),
         ('ghost',     '',                       '',                  'human'),
     ]
     try:

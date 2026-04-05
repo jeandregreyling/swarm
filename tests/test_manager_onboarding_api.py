@@ -13,7 +13,9 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'utils'))
 sys.path.insert(0, str(ROOT / 'core' / 'pipeline'))
 
-from frontend.terminal import app
+from frontend.terminal import create_app
+
+app = create_app()
 
 
 def _request(client, method, path, body=None):

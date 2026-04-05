@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / 'core' / 'pipeline'))
 
 from frontend import terminal as term
 
-app = term.app
+app = term.create_app()
 
 
 def _request(client, method, path, body=None):

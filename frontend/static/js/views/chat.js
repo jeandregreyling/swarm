@@ -23,8 +23,6 @@ let CHAT_AGENT_OPTIONS = [
   { value: 'eleven',   label: '11 · Grok',    number: 11, tier: 'paid',  hasTemp: false },
   { value: 'twelve',   label: '12 · Claude',  number: 12, tier: 'paid',  hasTemp: false },
   { value: 'thirteen', label: '13 · HF', number: 13, tier: 'free', hasTemp: false },
-  { value: 'scholar',  label: 'Scholar · Gemini Flash',  tier: 'paid',  hasTemp: false },
-  { value: 'seeker',   label: 'Seeker · Tavily Search',  tier: 'paid',  hasTemp: false },
 ];
 
 // Fetch agent registry from DB and update labels in CHAT_AGENT_OPTIONS.
@@ -1748,8 +1746,6 @@ const _CHAT_AGENT_META = {
   ten:       { icon: '🛠️', purpose: '10 · Github. Engineering advisor — code quality, implementation clarity.',   runtime: 'paid',  tier: 'paid' },
   eleven:    { icon: '⚡', purpose: '11 · Grok. Lateral thinking advisor — creative synthesis, alternatives.',     runtime: 'paid',  tier: 'paid' },
   twelve:    { icon: '👻', purpose: '12 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals.',       runtime: 'paid',  tier: 'paid' },
-  scholar:   { icon: '🔬', purpose: 'Scholar · Gemini 2.0 Flash for vision and deep reasoning.',                  runtime: 'paid',  tier: 'paid' },
-  seeker:    { icon: '🔍', purpose: 'Seeker · Tavily live web search and real-time synthesis.',                    runtime: 'paid',  tier: 'paid' },
   you:       { icon: '👤', purpose: 'Human operator input.',                                                       runtime: 'human', tier: 'human' },
 };
 

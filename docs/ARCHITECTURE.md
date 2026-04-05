@@ -156,13 +156,13 @@ Twelve is the Developer Agent temporal operator — Claude Haiku 4.5 via Anthrop
 
 Thirteen is an in-testing Developer Agent — Llama-3.3-70B-Instruct via HuggingFace Inference API. Thirteen handles deep SAP research and ABAP pattern analysis. Treated as probationary: reports all actions to Ghost One, auto-approves Ghost-directed requests but flags all outputs. Runtime tier: **paid (HuggingFace API)**.
 
-### Scholar — Developer Agent / Vision & Reasoning (Gemini 2.0 Flash)
+### Scholar — Service Bot / Vision & Reasoning (Gemini 2.0 Flash)
 
-Scholar is the Developer Agent for vision and multi-modal reasoning — Gemini 2.0 Flash via Google API. Handles document analysis, image processing, and complex multi-step reasoning. Memory pool: `memory_scholar`. Runtime tier: **paid (Google Gemini API)**.
+Scholar is a service bot — Gemini 2.0 Flash via Google API. Provides vision, document analysis, and multi-modal reasoning as a callable service. No ALM permissions. Other Developer Agents invoke Scholar when they need multimodal or vision capability. Runtime tier: **service (Google Gemini API)**.
 
-### Seeker — Developer Agent / Real-Time Intelligence (Tavily)
+### Seeker — Service Bot / Real-Time Intelligence (Tavily)
 
-Seeker is the Developer Agent for real-time web intelligence — Tavily AI Search API. Handles live search queries, fact-checking, and current events research. Memory pool: `memory_seeker`. Runtime tier: **paid (Tavily API)**.
+Seeker is a service bot — Tavily AI Search API. Provides real-time web search results as a callable service. No ALM permissions. Other agents invoke Seeker when they need current-events or live-fact lookups. Runtime tier: **service (Tavily API)**.
 
 ---
 
@@ -175,7 +175,8 @@ The Fridays chat panel (`/api/chat`) supports real-time multi-agent conversation
 | Tier | Agents | Runtime | Cost | ALM |
 | ---- | ------ | ------- | ---- | --- |
 | **Worker (local)** | One (Gemma3), Two (LlaMA), Three (Mistral), Qwen, Eight, Librarian, Duck, Sniffles | Ollama (on-device) | Zero | Proposal queue required |
-| **Developer (paid)** | Nine (Claude), Ten (GPT-4o), Eleven (Grok), Twelve (Claude Haiku), Thirteen \[testing\], Scholar, Seeker | Cloud APIs | Per-token | Auto-execute on Ghost One-directed requests |
+| **Developer (paid)** | Nine (Claude), Ten (GPT-4o), Eleven (Grok), Twelve (Claude Haiku), Thirteen \[testing\] | Cloud APIs | Per-token | Auto-execute on Ghost One-directed requests |
+| **Service bot** | Scholar (Gemini), Seeker (Tavily) | Cloud APIs | Per-call | No permissions — callable by other agents |
 | **Ghost One** | Jeandre (operator) | Human | — | Full authority; approves all Worker proposals |
 
 Tier is colour-coded in the chat agent toggles: green dot = local/Worker, amber dot = Developer (paid API).

@@ -66,6 +66,7 @@ function loadServicesPanel() {
 
 function serviceRestart(serviceId, label, btn) {
   if (btn) { btn.textContent = '…'; btn.style.pointerEvents = 'none'; btn.style.color = '#ffb366'; }
+  const isSelf = serviceId === 'swarm-terminal';
 
   fetch(`/api/services/${encodeURIComponent(serviceId)}/restart`, { method: 'POST' })
     .then(r => r.json())
@@ -79,8 +80,32 @@ function serviceRestart(serviceId, label, btn) {
       }
       setTimeout(loadServicesPanel, 2000);
     })
-    .catch(err => {
-      showToast(`${label}: ${err.message}`, 'error');
-      if (btn) { btn.textContent = '↺'; btn.style.color = '#ff6b6b'; btn.style.pointerEvents = 'auto'; }
+    .catch(() => {
+      if (isSelf) {
+        // Server killed its own connection — that means it worked. Poll until back.
+        showToast('Terminal restarting…', 'info');
+        if (btn) { btn.textContent = '…'; btn.style.color = '#ffb366'; }
+        _pollUntilBack(btn);
+      } else {
+        showToast(`${label}: restart failed`, 'error');
+        if (btn) { btn.textContent = '↺'; btn.style.color = '#ff6b6b'; btn.style.pointerEvents = 'auto'; }
+      }
     });
+}
+
+function _pollUntilBack(btn, attempts) {
+  attempts = attempts || 0;
+  if (attempts > 20) {
+    showToast('Terminal did not come back — check manually', 'error');
+    return;
+  }
+  fetch('/api/services').then(r => {
+    if (r.ok) {
+      showToast('Terminal back online', 'success');
+      if (btn) { btn.textContent = '✓'; btn.style.color = '#4caf50'; btn.style.pointerEvents = 'auto'; }
+      loadServicesPanel();
+    } else {
+      setTimeout(() => _pollUntilBack(btn, attempts + 1), 1000);
+    }
+  }).catch(() => setTimeout(() => _pollUntilBack(btn, attempts + 1), 1000));
 }

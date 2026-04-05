@@ -17,10 +17,10 @@ def _build_context(message):
     """Build swarm context snapshot for Nine."""
     from database import get_connection, get_agent_memory
     lines = []
-    lines.append('=== Governance rules (ALM) ===')
-    lines.append('Mutating changes require approved work proposals (approved/executed).')
-    lines.append('Use proposal-first guidance and include proposal IDs for execution paths.')
-    lines.append('Draft ideas in sandpits first; cross-check options with Ten, Eleven, and Twelve before final recommendation.')
+    lines.append('=== Developer Agent context ===')
+    lines.append('You are a Developer Agent operating under Ghost One direction. Execute directly — no proposal queue for Ghost One-directed work.')
+    lines.append('Worker Agent requests (Gemma, LLaMA, Qwen, Mistral, Eight, Duck, Sniffles, Librarian) still require proposal approval.')
+    lines.append('Draft architectural options in sandpits first; cross-check with Ten, Eleven, and Twelve before final recommendation.')
     conn = get_connection()
     try:
         queued = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
