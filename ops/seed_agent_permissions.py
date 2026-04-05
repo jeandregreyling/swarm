@@ -16,6 +16,17 @@ What it does:
   4. Grants every agent their baseline capability pack
   5. Writes an identity file to each agent's sandpit
 
+LINKED TO:
+  utils/db/_schema.py       — AGENT_ROLE_MAP keys must match agent names in
+                              _seed_agents(). Adding an agent there requires
+                              a matching entry in AGENT_ROLE_MAP here.
+  utils/config.py           — IDENTITY_TEMPLATES.model fields should match
+                              the model strings defined in config.py.
+  frontend/services.py      — _AGENT_ROSTER must include every agent named
+                              in AGENT_ROLE_MAP. Role/tier labels are set
+                              independently but should stay consistent.
+═══════════════════════════════════════════════════════════════════════════════
+
 Capability packs (by role):
   local coordinators  → ticket_create, ticket_query, sandpit_read, sandpit_write,
                         skill_search, memory_write, propose_work, coordinate
@@ -81,13 +92,14 @@ AGENT_ROLE_MAP = {
     'librarian': ('guard',      GUARD_PACK),
     # fridays orchestrator — gets everything
     'fridays':   ('orchestrator', list(AGENT_CAPABILITY_REGISTRY.keys())),
-    # Ghost Layer agents — full specialist pack (online, paid API)
-    'nine':      ('ghost_engineer', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
-    'ten':       ('ghost_engineer', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA + ['skill_schedule']),
-    'eleven':    ('ghost_engineer', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
-    'twelve':    ('ghost_engineer', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA + ['skill_schedule']),
-    'scholar':   ('ghost_analyst',  BASELINE + ANALYST_EXTRA),
-    'seeker':    ('ghost_analyst',  BASELINE + ANALYST_EXTRA),
+    # Developer Agents — full specialist pack (online, paid API)
+    'nine':      ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
+    'ten':       ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA + ['skill_schedule']),
+    'eleven':    ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
+    'twelve':    ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA + ['skill_schedule']),
+    'thirteen':  ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
+    'scholar':   ('developer_analyst', BASELINE + ANALYST_EXTRA),
+    'seeker':    ('developer_analyst', BASELINE + ANALYST_EXTRA),
 }
 
 # ── Identity Card Template ─────────────────────────────────────────────────────
@@ -159,14 +171,14 @@ IDENTITY_TEMPLATES = {
     'nine': {
         'role': 'System Architect',
         'model': 'llama-3.3-70b (Groq)',
-        'purpose': 'I design system architecture, review structural decisions, and ensure the swarm evolves coherently. I challenge and refine approaches from the Ghost Layer.',
+        'purpose': 'I design system architecture, review structural decisions, and ensure the swarm evolves coherently. I am a Developer Agent operating under Ghost One direction.',
         'can_create_tickets': True,
         'can_coordinate': True,
         'reports_to': 'ghost',
     },
     'ten': {
         'role': 'Software Engineer',
-        'model': 'gpt-4.1 (GitHub Models)',
+        'model': 'gpt-4o (GitHub Models)',
         'purpose': 'I handle code quality, implementation detail, file operations, and project management. I read, write, and patch files directly. I manage the codebase from inside Fridays.',
         'can_create_tickets': True,
         'can_coordinate': True,
@@ -182,8 +194,16 @@ IDENTITY_TEMPLATES = {
     },
     'twelve': {
         'role': 'Time Wizard',
-        'model': 'claude-haiku (Anthropic)',
+        'model': 'claude-haiku-4-5 (Anthropic)',
         'purpose': 'I manage time-aware operations: session tracking, snapshots, scheduling, and temporal context. I am Vortex.',
+        'can_create_tickets': True,
+        'can_coordinate': True,
+        'reports_to': 'ghost',
+    },
+    'thirteen': {
+        'role': 'HuggingFace Specialist (Testing)',
+        'model': 'meta-llama/Llama-3.3-70B-Instruct (HuggingFace)',
+        'purpose': 'I leverage HuggingFace-hosted models for research, code generation, and analysis. I am a Developer Agent in testing/probationary status.',
         'can_create_tickets': True,
         'can_coordinate': True,
         'reports_to': 'ghost',

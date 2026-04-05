@@ -22,6 +22,7 @@ let CHAT_AGENT_OPTIONS = [
   { value: 'ten',      label: '10 · Github',  number: 10, tier: 'paid',  hasTemp: true  },
   { value: 'eleven',   label: '11 · Grok',    number: 11, tier: 'paid',  hasTemp: false },
   { value: 'twelve',   label: '12 · Claude',  number: 12, tier: 'paid',  hasTemp: false },
+  { value: 'thirteen', label: '13 · HF', number: 13, tier: 'free', hasTemp: false },
   { value: 'scholar',  label: 'Scholar · Gemini Flash',  tier: 'paid',  hasTemp: false },
   { value: 'seeker',   label: 'Seeker · Tavily Search',  tier: 'paid',  hasTemp: false },
 ];
@@ -1180,9 +1181,35 @@ function _syncChatUiScaleControls(scale) {
 }
 
 function resetThemeAndFontDefaults() {
+  try {
+    const settings = JSON.parse(localStorage.getItem('fridays-settings') || '{}');
+    settings.time = 'auto';
+    settings.atmosphereMode = 'auto';
+    settings.foundationMode = 'auto';
+    settings.atmosphereValue = 38;
+    settings.accentValue = 50;
+    settings.hueValue = 50;
+    settings.contrastValue = 58;
+    settings.glowValue = 52;
+    settings.scene = 'beach';
+    settings.sceneEffect = 'on';
+    settings.opacity = 5;
+    localStorage.setItem('fridays-settings', JSON.stringify(settings));
+    localStorage.setItem('fridays_theme_mode', 'auto');
+    localStorage.setItem('fridays_foundation_mode', 'auto');
+    localStorage.setItem('fridays_atmosphere_value', '38');
+    localStorage.setItem('fridays_accent_value', '50');
+    localStorage.setItem('fridays_hue_value', '50');
+    localStorage.setItem('fridays_contrast_value', '58');
+    localStorage.setItem('fridays_glow_value', '52');
+    localStorage.setItem('fridays_scene', 'beach');
+    localStorage.setItem('fridays_scene_effect', 'on');
+  } catch (_) {}
   applyTimeTheme('auto');
+  if (typeof applyScene === 'function') applyScene('beach');
+  document.documentElement.style.setProperty('--glass-opacity', '0.95');
   setChatUiScale(CHAT_UI_SCALE_DEFAULT);
-  showToast('Theme and font reset to system defaults', 'success');
+  showToast('Atmosphere and font reset to system defaults', 'success');
 }
 
 function _applyChatDockLayoutState() {
@@ -4920,4 +4947,3 @@ function sendMessage(source = 'user', relayMeta = null) {
     _processRelayQueue();
   });
 }
-

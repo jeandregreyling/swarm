@@ -1,4 +1,17 @@
-"""chat.py — Chat Engine routes"""
+"""chat.py — Chat Engine routes
+
+LINKED TO:
+  frontend/services.py      — imports everything via `from services import *`.
+                              _AGENT_ROSTER, _CHAT_AGENT_ETA_SECONDS, and
+                              _alm_gate_or_response all live there.
+  utils/config.py           — agent system prompts loaded dynamically in
+                              _run_ghost_layer_chat() via <NAME>_SYSTEM_PROMPT.
+  utils/db/_schema.py       — _get_ghost_agent_names() queries agents table
+                              for tier IN ('paid','free'). If an agent's tier
+                              is wrong in the DB the ALM gate will mis-fire.
+  frontend/blueprints/proposals.py — ALM gate creates/checks work_proposals;
+                              developer_agents set here must match that file.
+"""
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
 
@@ -285,6 +298,30 @@ def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, r
         )
     return base_prompt
 
+def _get_ghost_agent_names():
+    """Return names of all enabled non-local agents (tier paid/free) from DB."""
+    try:
+        conn = get_connection()
+        rows = conn.execute(
+            "SELECT name FROM agents WHERE tier IN ('paid','free') AND enabled=1"
+        ).fetchall()
+        conn.close()
+        return {r['name'] for r in rows}
+    except Exception:
+        return {'nine', 'ten', 'eleven', 'twelve', 'thirteen'}
+
+
+def _get_agent_labels():
+    """Return {name: label} for all agents from DB, with fallback to name."""
+    try:
+        conn = get_connection()
+        rows = conn.execute("SELECT name, label FROM agents WHERE enabled=1").fetchall()
+        conn.close()
+        return {r['name']: (r['label'] or r['name'].capitalize()) for r in rows}
+    except Exception:
+        return {}
+
+
 def _should_attach_ticket_snapshot(latest_message, thread_rows):
     text = str(latest_message or '').strip().lower()
     if not text and thread_rows:
@@ -471,10 +508,23 @@ def api_chat():
     def _execute_agent_skill_lines(selected_agent, response_text, request_data):
         from fridays.skills import call as skill_call, REGISTRY as SKILL_REGISTRY
 
-        # Restrict auto-execution to explicit proposal-creation actions.
+        # Developer Agents (Nine, Ten, Eleven, Twelve, Thirteen) execute Ghost One-directed
+        # requests immediately — no proposal gate, no ALM confirmation loop.
+        # Worker Agents (Gemma, LLaMA, Qwen, Mistral, Eight, Duck, Sniffles, Librarian)
+        # must route through proposals and wait for approval.
+        _developer_agents = _get_ghost_agent_names()
+        is_developer_agent = selected_agent in _developer_agents
+
         allowed_auto_skills = {'alm_create_proposal', 'ticket_create'}
+        if is_developer_agent:
+            allowed_auto_skills = allowed_auto_skills | {'fs_write', 'fs_patch', 'fs_readonly'}
+
         cmds = _extract_skill_lines_from_text(response_text)
         if not cmds:
+            # Developer agents: do NOT auto-create proposals from structured text.
+            # Their responses are execution narration, not proposal drafts.
+            if is_developer_agent:
+                return ''
             derived = _derive_proposal_from_text(selected_agent, response_text, message)
             if not derived:
                 return ''
@@ -502,7 +552,9 @@ def api_chat():
                 continue
 
             trust_level = int(meta.get('trust_level', 0) or 0)
-            if trust_level >= 1 and skill_name not in {'ticket_create', 'alm_create_proposal'}:
+            # Developer agents bypass the ALM gate for Ghost One-directed chat requests.
+            # Worker agents and self-initiated background work still go through the gate.
+            if trust_level >= 1 and skill_name not in {'ticket_create', 'alm_create_proposal'} and not is_developer_agent:
                 gate = _alm_gate_or_response(request_data, f'chat_skill_{skill_name}')
                 if gate:
                     lines.append(f'[skill:{skill_name}] FAILED\\nALM gate blocked execution (approval required).')
@@ -517,7 +569,7 @@ def api_chat():
     def _run_ghost_layer_chat(selected_agent, prompt, history, stage_cb=None):
         from claude_api import _load_api_key, CLAUDE_MODEL
         import anthropic
-        from config import NINE_SYSTEM_PROMPT, TEN_SYSTEM_PROMPT
+        import config as _config_mod
         from fridays.skills import call as skill_call
 
         def _emit_stage(text):
@@ -531,7 +583,21 @@ def api_chat():
         if not api_key:
             return None, 0, 'ANTHROPIC_API_KEY not configured'
 
-        base_system = NINE_SYSTEM_PROMPT if selected_agent == 'nine' else TEN_SYSTEM_PROMPT
+        # Dynamic system prompt lookup: try <NAME>_SYSTEM_PROMPT in config, fall back to DB
+        _prompt_const = f'{selected_agent.upper()}_SYSTEM_PROMPT'
+        base_system = getattr(_config_mod, _prompt_const, None)
+        if not base_system:
+            try:
+                _db_conn = get_connection()
+                _db_row = _db_conn.execute(
+                    "SELECT system_prompt FROM agents WHERE name=?", (selected_agent,)
+                ).fetchone()
+                _db_conn.close()
+                base_system = (_db_row['system_prompt'] or '') if _db_row else ''
+            except Exception:
+                base_system = ''
+        if not base_system:
+            base_system = getattr(_config_mod, 'TEN_SYSTEM_PROMPT', '')
         _emit_stage('loading ghost-layer memory')
 
         try:
@@ -764,6 +830,20 @@ def api_chat():
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[seeker unavailable]'
                 tokens_used = tokens or 0
+            else:
+                # Dynamic dispatch — any agent with agents/<name>/<name>_agent.py auto-routes here
+                import importlib
+                try:
+                    mod = importlib.import_module(f'agents.{selected_agent}.{selected_agent}_agent')
+                    _stage(f'dispatching to {selected_agent}', est_eta)
+                    future = executor.submit(mod.chat, effective_prompt, history, stage_cb)
+                    answer, tokens = future.result(timeout=120 if persistent_mode else 60)
+                    response_text = answer or f'[{selected_agent} unavailable]'
+                    tokens_used = tokens or 0
+                except ModuleNotFoundError:
+                    response_text = f'[{selected_agent}] agent module not found — bootstrap may be incomplete'
+                except Exception as _dyn_err:
+                    response_text = f'[{selected_agent}] error: {_dyn_err}'
             _stage('finalizing answer', 0)
         except FuturesTimeoutError:
             _stage('timed out waiting for completion', 0)
@@ -945,7 +1025,7 @@ def api_chat():
                 updated_iso = _chat_now_iso()
                 try:
                     response_text, tokens_used, elapsed_ms = done_future.result()
-                    if selected_agent in {'nine', 'ten', 'eleven', 'twelve'} and _is_execution_confirmation(message):
+                    if selected_agent in _get_ghost_agent_names() and _is_execution_confirmation(message):
                         try:
                             skill_output = _execute_agent_skill_lines(selected_agent, response_text, data)
                             if skill_output:
@@ -1031,21 +1111,7 @@ def api_chat():
 
         def _agent_label(agent_key):
             key = str(agent_key or '').strip().lower()
-            labels = {
-                'gemma': 'Gemma',
-                'llama': 'LLaMA',
-                'mistral': 'Mistral',
-                'qwen': 'Qwen',
-                'eight': 'Eight',
-                'librarian': 'Librarian',
-                'duck': 'Duck',
-                'sniffles': 'Sniffles',
-                'nine': 'Nine',
-                'ten': 'Ten',
-                'eleven': 'Eleven',
-                'twelve': 'Twelve',
-            }
-            return labels.get(key, key or 'Agent')
+            return _get_agent_labels().get(key, key.capitalize() or 'Agent')
 
         def _build_debate_prompt(selected_agent):
             if len(runnable_agents) <= 1:
@@ -1163,7 +1229,7 @@ def api_chat():
                 'stage_trace': [] if pending else _agent_stage_trace,
             }
 
-            if (not pending) and selected_agent in {'nine', 'ten', 'eleven', 'twelve'} and _is_execution_confirmation(message):
+            if (not pending) and selected_agent in _get_ghost_agent_names() and _is_execution_confirmation(message):
                 skill_output = _execute_agent_skill_lines(selected_agent, response_text, data)
                 if skill_output:
                     responses_map[selected_agent]['response'] = (

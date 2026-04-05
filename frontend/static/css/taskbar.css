@@ -18,6 +18,9 @@
   overflow-x: auto;
 }
 .taskbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 5px 11px;
   background: transparent;
   border: 1px solid var(--border);
@@ -28,6 +31,17 @@
   white-space: nowrap;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
   color: var(--text-dim);
+}
+.taskbar-btn .window-title-icon {
+  width: 11px;
+  height: 11px;
+}
+.taskbar-btn .window-title-icon svg {
+  width: 11px;
+  height: 11px;
+}
+.taskbar-label {
+  display: inline-block;
 }
 .taskbar-btn:hover { background: var(--card-hover); border-color: rgba(255,255,255,0.12); color: var(--text); }
 .taskbar-btn.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }

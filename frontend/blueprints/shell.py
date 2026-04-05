@@ -247,6 +247,104 @@ def api_terminal_shortcuts_delete(shortcut_id):
     return jsonify({'ok': True})
 
 
+@shell_bp.route('/api/terminal/sudo-whitelist', methods=['GET'])
+def api_terminal_sudo_whitelist_get():
+    from fridays.shell_agent import get_effective_whitelist
+
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT id, command, note, added_by, created_at FROM sudo_command_whitelist ORDER BY created_at ASC, id ASC"
+    ).fetchall()
+    conn.close()
+
+    custom = [
+        {
+            'id': row['id'],
+            'command': row['command'],
+            'note': row['note'],
+            'added_by': row['added_by'],
+            'created_at': row['created_at'],
+            'source': 'custom',
+            'match_type': 'exact',
+            'trust_level': 4,
+            'description': row['note'] or 'custom sudo whitelist entry',
+            'is_custom': True,
+            'is_removable': True,
+        }
+        for row in rows
+    ]
+
+    built_in = [item for item in get_effective_whitelist() if not item.get('is_custom')]
+
+    return jsonify({
+        'built_in': built_in,
+        'custom': custom,
+        'all': built_in + custom,
+    })
+
+
+@shell_bp.route('/api/terminal/sudo-whitelist', methods=['POST'])
+def api_terminal_sudo_whitelist_post():
+    data = request.get_json() or {}
+    command = str(data.get('command') or '').strip()
+    note = str(data.get('note') or '').strip()[:200]
+    added_by = str(data.get('added_by') or 'ghost').strip()[:80] or 'ghost'
+
+    if not command:
+        return jsonify({'ok': False, 'error': 'command required'}), 400
+    if not command.lower().startswith('sudo '):
+        return jsonify({'ok': False, 'error': 'Only sudo commands can be added here'}), 400
+    if any(token in command for token in ['&&', '||', '|', ';', '`', '$(']):
+        return jsonify({'ok': False, 'error': 'Command chaining and shell substitution are not allowed'}), 400
+
+    conn = get_connection()
+    existing = conn.execute(
+        "SELECT id FROM sudo_command_whitelist WHERE command=?",
+        (command,)
+    ).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'Command already exists on whitelist'}), 409
+
+    cur = conn.execute(
+        "INSERT INTO sudo_command_whitelist (command, note, added_by) VALUES (?, ?, ?)",
+        (command, note, added_by)
+    )
+    conn.commit()
+    new_id = cur.lastrowid
+    row = conn.execute(
+        "SELECT id, command, note, added_by, created_at FROM sudo_command_whitelist WHERE id=?",
+        (new_id,)
+    ).fetchone()
+    conn.close()
+
+    return jsonify({
+        'ok': True,
+        'item': {
+            'id': row['id'],
+            'command': row['command'],
+            'note': row['note'],
+            'added_by': row['added_by'],
+            'created_at': row['created_at'],
+            'source': 'custom',
+            'match_type': 'exact',
+            'trust_level': 4,
+            'description': row['note'] or 'custom sudo whitelist entry',
+            'is_custom': True,
+            'is_removable': True,
+        }
+    })
+
+
+@shell_bp.route('/api/terminal/sudo-whitelist/<int:item_id>', methods=['DELETE'])
+def api_terminal_sudo_whitelist_delete(item_id):
+    conn = get_connection()
+    conn.execute("DELETE FROM sudo_command_whitelist WHERE id=?", (item_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'id': item_id})
+
+
 @shell_bp.route('/api/shell/approve/<token>', methods=['GET', 'POST'])
 def api_shell_approve(token):
     """
@@ -291,6 +389,3 @@ def api_shell_approve(token):
         'output': output,
         'approved': True,
     })
-
-
-

@@ -16,6 +16,7 @@ AGENT_POOL_MAP = {
     'duck': 'memory', 'sniffles': 'memory',
     'ten': 'memory_ten', 'twelve': 'memory_twelve',
     'eleven': 'memory_grok', 'grok': 'memory_grok',
+    'thirteen': 'memory_thirteen',
     'scholar': 'memory', 'seeker': 'memory'
 }
 

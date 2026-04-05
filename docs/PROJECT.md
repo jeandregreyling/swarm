@@ -1,6 +1,6 @@
 # PROJECT.md — Seven's Swarm
 *The Coder's bible. When this diverges from the code, the code is wrong.*
-*Last updated: 2026-04-04 (Session 14/15 — Chat tile hardening + Frontend modularisation roadmap)*
+*Last updated: 2026-04-05 (Session 16 — Memory bulk delete hardening + Atmosphere redesign direction locked)*
 
 ---
 
@@ -35,6 +35,33 @@ frontend/
 **Desktop App Roadmap Locked** — Long-term target is Electron or Tauri wrapping the Flask backend as a local subprocess. The tile modularisation and ES module approach adopted now will transfer directly to the desktop build with no structural rework.
 
 **Details:** See [ARCHITECTURE.md](ARCHITECTURE.md) — Frontend Evolution section
+
+---
+
+## 🔄 Current Architectural Direction (05 April 2026)
+
+**Theme System Reframed as Atmosphere** — The old fixed-theme model is being retired in favor of a continuous time-of-day visual engine.
+
+**Naming rule:**
+- UI/product language should say **Atmosphere**
+- Internal code may continue to use **theme** naming for compatibility during the migration
+- Avoid introducing a second parallel concept where "theme" and "atmosphere" mean different systems
+
+**Direction locked:**
+- Remove named preset themes from the main settings experience
+- Replace them with a single **Atmosphere** control that moves continuously from morning → afternoon → evening → night
+- Default state should follow a selected world-clock location rather than the machine timezone alone
+- Manual override should persist until changed back to default/auto behavior
+- Visual changes should be blended, not hard-jumped between discrete palettes
+
+**Implementation order locked:**
+1. Single continuous Atmosphere slider, one selected clock, no weather yet
+2. Bring the selected world-clock location into settings so the UI can "feel like" that place
+3. Expand from one location to the saved front-page clocks list
+4. Add weather as a modifier behind the same slider model
+5. Add favorites/saved moods only after the base model feels right
+
+**Why this matters:** Fridays should feel like a living environment, not a collection of unrelated skins. Time, place, and later weather should all contribute to one coherent visual system.
 
 ---
 

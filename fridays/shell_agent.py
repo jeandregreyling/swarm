@@ -23,6 +23,7 @@ import subprocess
 import shlex
 import logging
 import re
+import sqlite3
 
 sys.path.insert(0, '/home/seven/swarm')
 
@@ -100,6 +101,59 @@ WHITELIST = [
 
 # ── Core execution ────────────────────────────────────────────────────────────
 
+def _load_custom_sudo_whitelist():
+    """
+    Load exact sudo commands approved for the terminal UI from SQLite.
+    Returns a list of command strings.
+    """
+    try:
+        from database import get_connection
+        conn = get_connection()
+        rows = conn.execute(
+            "SELECT command FROM sudo_command_whitelist ORDER BY created_at ASC, id ASC"
+        ).fetchall()
+        conn.close()
+        commands = []
+        for row in rows:
+            value = row['command'] if isinstance(row, sqlite3.Row) else row[0]
+            clean = str(value or '').strip()
+            if clean:
+                commands.append(clean)
+        return commands
+    except Exception:
+        return []
+
+
+def get_effective_whitelist():
+    """
+    Return the effective whitelist as UI-friendly metadata.
+    """
+    items = []
+    for pattern, level, desc in WHITELIST:
+        items.append({
+            'source': 'built_in',
+            'match_type': 'regex',
+            'command': pattern,
+            'trust_level': level,
+            'description': desc,
+            'is_custom': False,
+            'is_removable': False,
+        })
+
+    for command in _load_custom_sudo_whitelist():
+        items.append({
+            'source': 'custom',
+            'match_type': 'exact',
+            'command': command,
+            'trust_level': 4,
+            'description': 'custom sudo whitelist entry',
+            'is_custom': True,
+            'is_removable': True,
+        })
+
+    return items
+
+
 def _match_whitelist(command_str):
     """
     Check command against whitelist. Returns (trust_level, description) or None.
@@ -108,6 +162,11 @@ def _match_whitelist(command_str):
     for pattern, level, desc in WHITELIST:
         if re.match(pattern, cmd, re.IGNORECASE):
             return level, desc
+
+    for allowed_cmd in _load_custom_sudo_whitelist():
+        if cmd == allowed_cmd:
+            return 4, 'custom sudo whitelist entry'
+
     return None
 
 

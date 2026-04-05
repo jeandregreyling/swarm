@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
   initClocks();
   bindHomeLaunchClicks();
+  initHomeCardReorder();
+  initHomeHeaderCollapse();
   _renderTroubleshootBadge();
 
   // Wire header buttons via JS (inline onclick may be suppressed)
@@ -70,6 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
   _loadAgentRegistry(); // Load agent numbers + labels from DB — updates CHAT_AGENT_OPTIONS
   loadHomeStats(); // Load system stats with colors and trends
   setInterval(loadHomeStats, 10000); // Update stats every 10 seconds
+  loadServicesPanel(); // Load service status + restart buttons
+  setInterval(loadServicesPanel, 30000); // Refresh every 30 seconds
   loadOllamaPanel(); // Load Ollama model panel
   setInterval(loadOllamaPanel, 15000); // Refresh every 15 seconds
   loadAttentionPanel(); // Needs-attention summary
@@ -94,22 +98,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   
-  document.querySelectorAll('[data-color]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('[data-color]').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      // Apply accent color immediately
-      const color = e.target.dataset.color;
-      document.documentElement.style.setProperty('--accent', color);
-    });
-  });
-  
   document.getElementById('opacity-slider').addEventListener('input', (e) => {
-    // Slider reversed: right = more transparent (left = more opaque)
-    const sliderValue = parseInt(e.target.value);
-    const displayTransparency = 100 - sliderValue;
-    const actualOpacity = sliderValue / 100;
-    document.getElementById('opacity-value').textContent = displayTransparency + '%';
+    const transparency = Math.max(0, Math.min(30, parseInt(e.target.value || '5', 10)));
+    const actualOpacity = (100 - transparency) / 100;
+    document.getElementById('opacity-value').textContent = transparency + '%';
     document.documentElement.style.setProperty('--glass-opacity', actualOpacity);
   });
   
@@ -215,6 +207,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // ESC key closes focused/topmost window (already handled above)
 });
 
+function initHomeHeaderCollapse() {
+  const homePage = document.getElementById('home-page');
+  const homeContent = document.getElementById('home-content');
+  if (!homePage || !homeContent) return;
+
+  const syncHeaderState = () => {
+    homePage.classList.toggle('header-collapsed', homeContent.scrollTop > 24);
+  };
+
+  homeContent.addEventListener('scroll', syncHeaderState, { passive: true });
+  syncHeaderState();
+}
+
 function updateActivityLog() {
   const log = document.getElementById('activity-log');
   if (!log) return;
@@ -267,4 +272,3 @@ function updateTicketQueue() {
       queue.innerHTML = '<div style="padding: 12px; color: var(--text-dim);">Ticket queue unavailable</div>';
     });
 }
-

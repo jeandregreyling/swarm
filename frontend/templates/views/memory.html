@@ -25,6 +25,13 @@
         <button class="mem-tab" data-source="db" onclick="_memSourceTab(this,'db')">DB Only</button>
         <button class="mem-tab" data-source="local" onclick="_memSourceTab(this,'local')">Local Files</button>
       </div>
+      <div id="memory-bulk-toolbar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 0 10px;">
+        <button id="memory-select-visible-btn" onclick="memorySelectVisible()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Select Visible</button>
+        <button id="memory-clear-selection-btn" onclick="memoryClearSelection()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Clear Selection</button>
+        <button id="memory-bulk-edit-btn" onclick="memoryOpenBulkEdit()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Bulk Edit</button>
+        <button id="memory-bulk-delete-btn" onclick="memoryBulkDelete()" style="background:transparent;border:1px solid #f4433660;color:#f44336;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Bulk Delete</button>
+        <span id="memory-selection-count" style="font-size:10px;color:var(--text-dim);white-space:nowrap;">0 selected</span>
+      </div>
     </div>
     <!-- Memory list -->
     <div id="memory-list" style="flex:1;overflow-y:auto;min-height:0;"></div>

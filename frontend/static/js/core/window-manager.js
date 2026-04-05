@@ -5,6 +5,32 @@
 // WINDOW MANAGER — Floating window system
 // ═══════════════════════════════════════════════════════════════════════════
 
+const FRIDAYS_WINDOW_ICON_SVGS = {
+  chat: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+  terminal: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 3.5h11v9h-11zM5 6l2 2-2 2M8.5 10h2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  files: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+  memory: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 4a2 2 0 0 0-3 1.7v1.8A2.5 2.5 0 0 0 4.8 10H6m4-6a2 2 0 0 1 3 1.7v1.8A2.5 2.5 0 0 1 11.2 10H10M6 4v8m4-8v8M6 8h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  monitor: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 8l2.5-2.5M4.5 11.5A5 5 0 0 1 11.5 4.5M2.8 13.2a7.4 7.4 0 0 1 10.4-10.4M8 8l-1.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  docs: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 3.5h7.5v9H4a1.5 1.5 0 0 0 0-3h7.5M4 3.5a1.5 1.5 0 0 0 0 3M4 6.5h7.5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  skills: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm0-2.2v1.2m0 7.6V13m5-5H11.8M4.2 8H3m8.1-3.1.9-.9M4 12l.9-.9m6.2 0 .9.9M4 4l.9.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  tickets: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 5.5h10v2a1.5 1.5 0 0 0 0 3v2H3v-2a1.5 1.5 0 0 0 0-3zM6 5.5v7" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  studio: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3c-2.8 0-5 1.9-5 4.4 0 2.4 2 4.3 4.5 4.3H9a1.5 1.5 0 0 0 0-3h-.5a.8.8 0 0 1-.8-.8A1.9 1.9 0 0 1 9.6 6H11A2 2 0 0 0 13 4c0-.6-.3-1-.8-1.1A9.4 9.4 0 0 0 8 3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="5.2" cy="7" r=".7" fill="currentColor"/><circle cx="7" cy="5.7" r=".7" fill="currentColor"/></svg>',
+  'time-wizard': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  access: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  'agents-config': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  git: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 4.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm6 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM5 7.5v2c0 .8.7 1.5 1.5 1.5H9.5M9.5 5H11v3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+
+function fridaysCleanWindowTitle(title) {
+  return String(title || '').replace(/^[^\w\s]+ /, '').trim();
+}
+
+function fridaysWindowIconMarkup(id) {
+  const key = String(id || '').toLowerCase();
+  const svg = FRIDAYS_WINDOW_ICON_SVGS[key];
+  return svg ? `<span class="window-title-icon" aria-hidden="true">${svg}</span>` : '';
+}
+
 class WindowManager {
   constructor() {
     this.windows = new Map();
@@ -33,7 +59,6 @@ class WindowManager {
     // Tile opens should use remembered floating geometry, not dock-first behavior.
     config.docked = false;
     const initialWindowTheme = config.windowTheme || 'auto';
-    const initialThemeLabel = _windowThemeLabel(initialWindowTheme);
 
     // Get template
     const template = document.getElementById(contentTemplateId);
@@ -54,16 +79,7 @@ class WindowManager {
     header.className = 'window-header';
     header.innerHTML = `
       <div class="window-title-wrap">
-        <div class="window-theme-slider-row" title="Per-window theme. Default follows main theme selection.">
-          <div class="window-theme-quick" style="margin:0;">
-            <button class="window-theme-chip" data-theme="auto" onclick="setWindowQuickTheme('${id}','auto')">Default</button>
-            <button class="window-theme-chip" data-theme="morning" onclick="setWindowQuickTheme('${id}','morning')">Morning</button>
-            <button class="window-theme-chip" data-theme="afternoon" onclick="setWindowQuickTheme('${id}','afternoon')">Noon</button>
-            <button class="window-theme-chip" data-theme="evening" onclick="setWindowQuickTheme('${id}','evening')">Evening</button>
-          </div>
-          <span id="win-theme-label-${id}" class="window-theme-value">${initialThemeLabel}</span>
-        </div>
-        <div class="window-title">${title}</div>
+        <div class="window-title">${fridaysWindowIconMarkup(id)}<span class="window-title-label">${fridaysCleanWindowTitle(title)}</span></div>
       </div>
       <div class="window-controls">
         <button class="window-btn" onclick="openWindowHelp('${id}')" title="Help">?</button>
@@ -267,12 +283,12 @@ class WindowManager {
     if (win.minimized) {
       // Hide window (move off-screen)
       win.el.style.display = 'none';
-      showToast(`Minimized ${win.title}`, 'info');
+      showToast(`Minimized ${fridaysCleanWindowTitle(win.title)}`, 'info');
     } else {
       // Restore window
       win.el.style.display = 'flex';
       this.focus(id);
-      showToast(`Restored ${win.title}`, 'info');
+      showToast(`Restored ${fridaysCleanWindowTitle(win.title)}`, 'info');
     }
     this.save();
   }
@@ -313,7 +329,7 @@ class WindowManager {
     const win = this.windows.get(id);
     if (win) {
       win.pinned = !win.pinned;
-      showToast(win.pinned ? `Pinned ${win.title}` : `Unpinned ${win.title}`, 'info');
+      showToast(win.pinned ? `Pinned ${fridaysCleanWindowTitle(win.title)}` : `Unpinned ${fridaysCleanWindowTitle(win.title)}`, 'info');
       this.save();
     }
   }
@@ -359,7 +375,7 @@ class WindowManager {
       `;
       win.el.appendChild(quickActions);
       
-      showToast(`Fullscreen: ${win.title}`, 'success');
+      showToast(`Fullscreen: ${fridaysCleanWindowTitle(win.title)}`, 'success');
     }
     win.fullscreen = !win.fullscreen;
     this.save();
@@ -391,15 +407,16 @@ class WindowManager {
   }
 
   addTaskbarBtn(id, title) {
+    const cleanTitle = fridaysCleanWindowTitle(title);
     const btn = document.createElement('button');
     btn.className = 'taskbar-btn active';
     btn.setAttribute('data-winid', id);
-    btn.textContent = title;
+    btn.innerHTML = `${fridaysWindowIconMarkup(id)}<span class="taskbar-label">${cleanTitle}</span>`;
     
     // Add preview tooltip
     const preview = document.createElement('div');
     preview.className = 'taskbar-preview';
-    preview.textContent = title.substring(2); // Remove emoji
+    preview.textContent = cleanTitle;
     btn.appendChild(preview);
     
     btn.onclick = () => {
@@ -469,4 +486,3 @@ function resetWindowLayout() {
 }
 
 const winManager = new WindowManager();
-

@@ -3,13 +3,48 @@
 <!-- markdownlint-disable MD060 -->
 <!-- markdownlint-disable -->
 
-**Last Updated:** 2026-03-30 10:30 UTC  
-**Session:** Session 5 — Critical Fixes + World Clocks  
-**Auditor:** Ten (GPT)  
+**Last Updated:** 2026-04-06 UTC  
+**Session:** Session 7 — Identity Architecture + ALM Gate + Cross-Reference Overhaul  
+**Auditor:** Copilot (Ghost One direction)
 
 Canonical ledgers for this tracker:
 - Changes: `docs/changes/CHANGELOG_OPERATIONS.md`
 - Audit evidence: `docs/audits/AUDIT_TRAIL.md`
+
+## Session 7 Delta — Identity Architecture + Cross-Reference Overhaul
+
+**Update Time:** 2026-04-06 UTC
+
+| Item | Result | Notes |
+|------|--------|-------|
+| System prompts rewritten (all 12) | ✅ DONE | `utils/config.py` — Ghost Layer → Developer/Worker/Ghost One tiers |
+| THIRTEEN_SYSTEM_PROMPT written (was 1-line stub) | ✅ DONE | Full identity, SAP awareness, ALM rules, team roster |
+| SAP awareness added to Nine/Twelve/Thirteen/Eleven | ✅ DONE | Now route SAP questions to Eight correctly |
+| ALM gate bug fixed — confirmation loop | ✅ DONE | `chat.py` — `_derive_proposal_from_text()` suppressed for developer agents |
+| ALM gate bug fixed — fs_write/fs_patch blocking | ✅ DONE | `chat.py` — `trust_level >= 1` gate bypassed for developer agents |
+| Agent roster updated (`services.py`) | ✅ DONE | `developer_agent: True` flags; Ten→gpt-4o; Twelve→claude-haiku-4-5; Thirteen added |
+| Permission model renamed + Thirteen added | ✅ DONE | `proposals.py`, `seed_agent_permissions.py` |
+| DB seeder fixed (always-overwrite prompts) | ✅ DONE | `_schema.py` — prompts no longer locked to first-seed value |
+| Missing agents added to seeder (Twelve/Thirteen/Scholar/Seeker) | ✅ DONE | `_schema.py` `_prompt_seed` |
+| DB sync executed — agents tab shows current prompts | ✅ DONE | Inline Python sync script run |
+| Agent module docstrings updated (all 7 developer agents) | ✅ DONE | "Ghost Layer" → "Developer Agent" |
+| Orchestrator short prompts updated | ✅ DONE | `core/pipeline/orchestrator.py` |
+| LINKED TO cross-reference headers added | ✅ DONE | All 5 core infra files + 7 agent modules |
+| Cross-Reference Rule added to DEVELOPER_WORKFLOW.md | ✅ DONE | Mandatory for all change classes |
+| ARCHITECTURE.md agent tiers updated | ✅ DONE | Nine/Ten/Eleven/Twelve/Thirteen/Scholar/Seeker documented correctly |
+| CHANGELOG.md Session 7 entry written | ✅ DONE | Full change inventory |
+
+## Next: Phase 5 — Cohesion
+
+| Item | Status | Owner |
+|------|--------|-------|
+| `_build_context()` in `nine_agent.py` — remove "Mutating changes require approved proposals" for inline context | 🔲 OPEN | Nine/Ghost One |
+| `_build_context()` in `twelve_agent.py` — same cleanup | 🔲 OPEN | Twelve/Ghost One |
+| `thirteen_agent.py` — flesh out `_build_context()` stub | 🔲 OPEN | Thirteen/Ghost One |
+| Verify relay: developer agents → Worker agents (e.g. Nine → Eight for SAP) | 🔲 OPEN | Nine |
+| Duck + Sniffles awareness of Thirteen | 🔲 OPEN | Ghost One |
+
+---
 
 ## Session 11 Delta - Comprehensive System Validation + Notification Reliability
 
