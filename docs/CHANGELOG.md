@@ -7,6 +7,68 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
+## Version 2026-04-06 Session 7 — Identity Architecture + ALM Gate + Cross-Reference Overhaul
+
+### Changes by Copilot (Ghost One direction) — PHASE 1–4 EXECUTION
+
+**2026-04-06 UTC** Copilot: Full audit-driven overhaul of the ghost-layer → developer agent identity architecture, ALM gate bugs, permission model, and cross-file dependency documentation.
+
+- **Type:** Architecture / Governance / Documentation
+- **Status:** COMPLETE
+
+#### System Prompt Rewrites (`utils/config.py`)
+- Rewrote all 12 agent system prompts (GEMMA, LLAMA, QWEN, LIBRARIAN, MISTRAL, TEN, ELEVEN, TWELVE, NINE, THIRTEEN, SCHOLAR, SEEKER)
+- Removed all "Ghost Layer" references from AI-agent prompts; introduced correct tiers:
+  - **Worker Agents** (local CPU): Gemma, LLaMA, Qwen, Mistral, Eight, Duck, Sniffles, Librarian
+  - **Developer Agents** (paid API, Ghost One-directed): Nine, Ten, Eleven, Twelve, Thirteen, Scholar, Seeker
+  - **Ghost One**: Jeandre — the only human operator; not an AI agent
+- Added SAP HCM/ABAP domain awareness to Nine, Twelve, Thirteen, Eleven
+- Wrote full THIRTEEN_SYSTEM_PROMPT (was a 1-line stub)
+- Removed stale duplicate TEN ALM block that caused U+2014 syntax error
+
+#### Agent Roster + Runtime Maps (`frontend/services.py`)
+- `_AGENT_ROSTER`: replaced `ghost_layer: True` flags with `developer_agent: True` on Nine/Ten/Eleven/Twelve/Thirteen/Scholar/Seeker
+- Corrected Ten model: `gpt-5.3-codex` → `gpt-4o`
+- Corrected Twelve model: `claude-haiku` → `claude-haiku-4-5`
+- Added Thirteen row with ETA, runtime class, and participant aliases
+
+#### ALM Gate Bugs Fixed (`frontend/blueprints/chat.py`)
+- **Bug 1**: `_derive_proposal_from_text()` now suppressed for developer agents — eliminates the "I've drafted a proposal" confirmation loop
+- **Bug 2**: `trust_level >= 1` ALM gate bypassed for developer agents — fs_write/fs_patch skills now execute without blocking
+- `_direct_write_agents` → `_developer_agents`; `is_developer_agent` flag added for consistent gate logic
+
+#### Permission Model (`frontend/blueprints/proposals.py`, `ops/seed_agent_permissions.py`)
+- `ghost_layer_users` sets renamed to `developer_agents` in proposals.py; Thirteen added
+- `ops/seed_agent_permissions.py`: Thirteen added to `AGENT_ROLE_MAP` + `IDENTITY_TEMPLATES`; `ghost_engineer`/`ghost_analyst` roles renamed to `developer_agent`/`developer_analyst`
+
+#### Schema + Seeder (`utils/db/_schema.py`)
+- Agent descriptions updated (Nine/Ten/Twelve); Thirteen added as row 13
+- Seeder fixed: always-overwrite prompt logic (was: only if empty — locked old prompts in forever)
+- Twelve/Thirteen/Scholar/Seeker added to `_prompt_seed` list (were missing — prompts never synced)
+- DB sync executed — agents tab now shows all current prompts
+
+#### Agent Module Docstrings (all 7 developer agent files)
+- `agents/nine/`, `agents/ten/`, `agents/eleven/`, `agents/twelve/`, `agents/thirteen/`, `agents/seeker/`, `agents/scholar/` — "Ghost Layer" → "Developer Agent" throughout
+
+#### Orchestrator (`core/pipeline/orchestrator.py`)
+- EIGHT_CHAT, DUCK, SNIFFLES short prompts updated: Thirteen added, "Ghost Layer" → "Developer Agent"
+- `_swarm_awareness_block()` updated with correct Developer/Worker/Ghost tier structure
+
+#### Cross-Reference Headers (new — all coupled files)
+- Added `LINKED TO:` blocks at the top of all tightly coupled files:
+  `utils/config.py`, `utils/db/_schema.py`, `frontend/services.py`,
+  `frontend/blueprints/chat.py`, `ops/seed_agent_permissions.py`
+- Added per-agent `# LINKED TO: utils/config.py` line to all 7 developer agent modules
+- Added **Cross-Reference Rule** to `docs/DEVELOPER_WORKFLOW.md` (mandatory for all change classes)
+
+#### Documentation (`docs/ARCHITECTURE.md`)
+- Agent descriptions updated: Nine/Ten/Eleven → Developer Agent titles
+- Ten model corrected to `gpt-4o`; Twelve reinstated (not retired); Thirteen added
+- Scholar and Seeker added as active Developer Agents
+- Agent Tier Classification table updated with three tiers and ALM column
+
+---
+
 ## Version 2026-04-02 Session 6 — Capability Matrix + Model Naming Alignment
 
 ### Changes by Ten (GPT-5.3-Codex) (Ghost Layer) - GOVERNANCE TOGGLES + DOC ALIGNMENT

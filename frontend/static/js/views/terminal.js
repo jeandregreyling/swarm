@@ -481,6 +481,7 @@ const DEFAULT_TERMINAL_SHORTCUTS = [
 // DEFAULT_TERMINAL_SHORTCUTS are hardcoded and never stored in DB.
 
 let _terminalDbShortcuts = []; // in-memory cache, loaded from DB on tile open
+let _terminalSudoWhitelist = { built_in: [], custom: [], all: [] };
 
 async function _loadDbShortcuts() {
   // One-time migration: move any localStorage custom shortcuts to DB
@@ -506,7 +507,22 @@ async function _loadDbShortcuts() {
   } catch {
     _terminalDbShortcuts = [];
   }
+
+  try {
+    const whitelist = await fetch('/api/terminal/sudo-whitelist').then(r => r.json());
+    _terminalSudoWhitelist = whitelist && typeof whitelist === 'object'
+      ? {
+          built_in: Array.isArray(whitelist.built_in) ? whitelist.built_in : [],
+          custom: Array.isArray(whitelist.custom) ? whitelist.custom : [],
+          all: Array.isArray(whitelist.all) ? whitelist.all : [],
+        }
+      : { built_in: [], custom: [], all: [] };
+  } catch {
+    _terminalSudoWhitelist = { built_in: [], custom: [], all: [] };
+  }
+
   _terminalRefreshButtons();
+  _scModalRenderList();
 }
 
 function _terminalRefreshButtons() {
@@ -545,19 +561,33 @@ function addTerminalShortcut() {
   overlay.id = 'terminal-shortcut-modal';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
-    <div style="background:var(--bg,#12121a);border:1px solid var(--border);border-radius:10px;width:580px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.6);">
+    <div style="background:var(--bg,#12121a);border:1px solid var(--border);border-radius:10px;width:780px;max-width:96vw;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.6);">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
-        <div style="font-weight:700;font-size:13px;">⚡ Shortcuts Manager</div>
+        <div style="font-weight:700;font-size:13px;">⚡ Terminal Controls</div>
         <button onclick="document.getElementById('terminal-shortcut-modal').remove()" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;line-height:1;padding:0 2px;">✕</button>
       </div>
-      <div id="sc-modal-list" style="overflow-y:auto;flex:1;padding:0;"></div>
-      <div style="border-top:1px solid var(--border);padding:12px 16px;flex-shrink:0;">
-        <div style="font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Add Shortcut</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input id="sc-new-icon" value="⚡" maxlength="4" style="${inputStyle}width:44px;text-align:center;font-size:16px;" title="Icon (emoji)">
-          <input id="sc-new-label" placeholder="Label" style="${inputStyle}flex:1;" onkeydown="if(event.key==='Enter')_scAdd()">
-          <input id="sc-new-cmd" placeholder="Command" style="${inputStyle}flex:2;font-family:monospace;" onkeydown="if(event.key==='Enter')_scAdd()">
-          <button onclick="_scAdd()" style="${btnStyle}background:var(--accent,#7c5cfc);color:#fff;border-color:transparent;font-weight:600;">+ Add</button>
+      <div style="overflow-y:auto;flex:1;padding:0;">
+        <div id="sc-modal-list" style="padding:0;"></div>
+        <div id="sudo-modal-list" style="padding:0;border-top:1px solid var(--border);"></div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding:12px 16px;flex-shrink:0;display:grid;grid-template-columns:1fr;gap:12px;">
+        <div>
+          <div style="font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Add Shortcut</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="sc-new-icon" value="⚡" maxlength="4" style="${inputStyle}width:44px;text-align:center;font-size:16px;" title="Icon (emoji)">
+            <input id="sc-new-label" placeholder="Label" style="${inputStyle}flex:1;" onkeydown="if(event.key==='Enter')_scAdd()">
+            <input id="sc-new-cmd" placeholder="Command" style="${inputStyle}flex:2;font-family:monospace;" onkeydown="if(event.key==='Enter')_scAdd()">
+            <button onclick="_scAdd()" style="${btnStyle}background:var(--accent,#7c5cfc);color:#fff;border-color:transparent;font-weight:600;">+ Add</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Add Sudo Whitelist Entry</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="sudo-new-command" placeholder="sudo systemctl restart my-service" style="${inputStyle}flex:2;font-family:monospace;" onkeydown="if(event.key==='Enter')_sudoWhitelistAdd()">
+            <input id="sudo-new-note" placeholder="Optional note" style="${inputStyle}flex:1;" onkeydown="if(event.key==='Enter')_sudoWhitelistAdd()">
+            <button onclick="_sudoWhitelistAdd()" style="${btnStyle}background:#c46b08;color:#fff;border-color:transparent;font-weight:600;">+ Allow</button>
+          </div>
+          <div style="margin-top:6px;font-size:10px;color:var(--text-dim);">Only exact <code>sudo ...</code> commands are accepted. Chaining like <code>&&</code>, pipes, semicolons, and substitutions are blocked.</div>
         </div>
       </div>
     </div>
@@ -574,23 +604,67 @@ function _scModalRenderList() {
   const rowStyle = 'display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;';
   const btnStyle = 'border:1px solid var(--border);border-radius:3px;padding:2px 8px;cursor:pointer;font-size:10px;';
 
+  let html = '<div style="padding:12px 16px 8px;font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;">Shortcuts</div>';
   if (!_terminalDbShortcuts.length) {
-    list.innerHTML = '<div style="padding:16px;font-size:11px;color:var(--text-dim);text-align:center;">No shortcuts yet — add one below.</div>';
-    return;
+    html += '<div style="padding:0 16px 16px;font-size:11px;color:var(--text-dim);">No shortcuts yet — add one below.</div>';
+  } else {
+    _terminalDbShortcuts.forEach(item => {
+      html += `
+        <div id="sc-row-${item.id}" style="${rowStyle}">
+          <span style="font-size:16px;min-width:24px;">${_escHtml(item.icon || '⚡')}</span>
+          <span style="flex:1;font-weight:500;">${_escHtml(item.label)}</span>
+          <code style="flex:2;color:var(--text-dim);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(item.cmd)}</code>
+          <button onclick="_scEditRow(${item.id})" style="${btnStyle}background:var(--card);color:var(--text);">Edit</button>
+          <button onclick="_scDelete(${item.id})" style="${btnStyle}background:transparent;color:#f44336;border-color:#f4433655;">✕</button>
+        </div>`;
+    });
+  }
+  list.innerHTML = html;
+
+  const sudoList = document.getElementById('sudo-modal-list');
+  if (!sudoList) return;
+
+  const builtIn = Array.isArray(_terminalSudoWhitelist.built_in) ? _terminalSudoWhitelist.built_in : [];
+  const custom = Array.isArray(_terminalSudoWhitelist.custom) ? _terminalSudoWhitelist.custom : [];
+
+  let sudoHtml = '<div style="padding:12px 16px 8px;font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;">Sudo Whitelist</div>';
+  sudoHtml += '<div style="padding:0 16px 10px;font-size:11px;color:var(--text-dim);">Built-in rules are system defaults. Custom entries are exact commands you can add and remove here.</div>';
+
+  if (!custom.length) {
+    sudoHtml += '<div style="padding:0 16px 12px;font-size:11px;color:var(--text-dim);">No custom sudo whitelist entries yet.</div>';
+  } else {
+    custom.forEach((item) => {
+      sudoHtml += `
+        <div style="${rowStyle}">
+          <span style="font-size:15px;min-width:24px;">🔐</span>
+          <div style="flex:1;min-width:0;">
+            <code style="display:block;color:var(--text);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(item.command || '')}</code>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${_escHtml(item.note || 'custom sudo whitelist entry')}</div>
+          </div>
+          <button onclick="_sudoWhitelistDelete(${item.id})" style="${btnStyle}background:transparent;color:#f44336;border-color:#f4433655;">Remove</button>
+        </div>`;
+    });
   }
 
-  let html = '';
-  _terminalDbShortcuts.forEach(item => {
-    html += `
-      <div id="sc-row-${item.id}" style="${rowStyle}">
-        <span style="font-size:16px;min-width:24px;">${_escHtml(item.icon || '⚡')}</span>
-        <span style="flex:1;font-weight:500;">${_escHtml(item.label)}</span>
-        <code style="flex:2;color:var(--text-dim);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(item.cmd)}</code>
-        <button onclick="_scEditRow(${item.id})" style="${btnStyle}background:var(--card);color:var(--text);">Edit</button>
-        <button onclick="_scDelete(${item.id})" style="${btnStyle}background:transparent;color:#f44336;border-color:#f4433655;">✕</button>
-      </div>`;
-  });
-  list.innerHTML = html;
+  sudoHtml += '<div style="padding:10px 16px 6px;font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Built-in sudo rules</div>';
+  if (!builtIn.length) {
+    sudoHtml += '<div style="padding:0 16px 16px;font-size:11px;color:var(--text-dim);">No built-in sudo rules reported.</div>';
+  } else {
+    builtIn
+      .filter(item => Number(item.trust_level) >= 4 && String(item.command || '').includes('sudo'))
+      .forEach((item) => {
+        sudoHtml += `
+          <div style="${rowStyle}">
+            <span style="font-size:15px;min-width:24px;">🧱</span>
+            <div style="flex:1;min-width:0;">
+              <code style="display:block;color:var(--text);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(item.command || '')}</code>
+              <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${_escHtml(item.description || 'built-in rule')} · regex rule</div>
+            </div>
+            <span style="font-size:10px;color:var(--text-dim);">fixed</span>
+          </div>`;
+      });
+  }
+  sudoList.innerHTML = sudoHtml;
 }
 
 function _scEditRow(id) {
@@ -666,6 +740,53 @@ async function _scDelete(id) {
   }
 }
 
+async function _sudoWhitelistAdd() {
+  const command = (document.getElementById('sudo-new-command')?.value || '').trim();
+  const note = (document.getElementById('sudo-new-note')?.value || '').trim();
+  if (!command) { showToast('Sudo command is required', 'error'); return; }
+  try {
+    const res = await fetch('/api/terminal/sudo-whitelist', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ command, note })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || 'Unable to add whitelist entry');
+    }
+    _terminalSudoWhitelist.custom = [...(_terminalSudoWhitelist.custom || []), data.item];
+    _terminalSudoWhitelist.all = [
+      ...(_terminalSudoWhitelist.built_in || []),
+      ...(_terminalSudoWhitelist.custom || []),
+    ];
+    _scModalRenderList();
+    if (document.getElementById('sudo-new-command')) document.getElementById('sudo-new-command').value = '';
+    if (document.getElementById('sudo-new-note')) document.getElementById('sudo-new-note').value = '';
+    showToast('Sudo whitelist entry added', 'success');
+  } catch (e) {
+    showToast('Whitelist add failed: ' + e.message, 'error');
+  }
+}
+
+async function _sudoWhitelistDelete(id) {
+  try {
+    const res = await fetch(`/api/terminal/sudo-whitelist/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || 'Unable to remove whitelist entry');
+    }
+    _terminalSudoWhitelist.custom = (_terminalSudoWhitelist.custom || []).filter(item => item.id !== id);
+    _terminalSudoWhitelist.all = [
+      ...(_terminalSudoWhitelist.built_in || []),
+      ...(_terminalSudoWhitelist.custom || []),
+    ];
+    _scModalRenderList();
+    showToast('Sudo whitelist entry removed', 'info');
+  } catch (e) {
+    showToast('Whitelist delete failed: ' + e.message, 'error');
+  }
+}
+
 // Save a command from history directly to shortcuts (no modal needed)
 async function _terminalSaveToShortcuts(cmd, btnEl) {
   const already = _terminalDbShortcuts.some(s => s.cmd.trim() === cmd.trim());
@@ -699,4 +820,3 @@ function toggleTerminalShortcuts() {
   applyTerminalShortcutsState(termWin, nextCollapsed);
   sessionStorage.setItem('fridays-terminal-shortcuts-collapsed', nextCollapsed ? '1' : '0');
 }
-

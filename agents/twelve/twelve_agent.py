@@ -1,6 +1,7 @@
 """
+# LINKED TO: utils/config.py — imports TWELVE_SYSTEM_PROMPT (edit prompts there, not here)
 agents/twelve/twelve_agent.py — Twelve (Claude Haiku)
-Ghost Layer temporal awareness agent. Powered by Claude Haiku via Anthropic API.
+Developer Agent — time wizard. Powered by Claude Haiku via Anthropic API.
 """
 
 import logging

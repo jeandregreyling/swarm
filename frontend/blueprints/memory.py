@@ -4,24 +4,34 @@ from services import *
 
 memory_bp = Blueprint('memory', __name__)
 
-# Agent memory table mapping
+# Agent memory table mapping — add new agents here only; _memory_search is fully dynamic
 _AGENT_TABLES = {
-    'llama':    'memory_llama',
-    'mistral':  'memory_mistral',
-    'qwen':     'memory_qwen',
-    'gemma':    'memory_gemma',
-    'eight':    'memory_eight',
-    'nine':     'memory_nine',
-    'ten':      'memory_ten',
-    'eleven':   'memory_grok',
-    'grok':     'memory_grok',
-    'twelve':   'memory_twelve',
-    'scholar':  'memory',
-    'seeker':   'memory',
-    'librarian':'memory',
-    'duck':     'memory',
-    'sniffles': 'memory',
+    'llama':     'memory_llama',
+    'mistral':   'memory_mistral',
+    'qwen':      'memory_qwen',
+    'gemma':     'memory_gemma',
+    'eight':     'memory_eight',
+    'nine':      'memory_nine',
+    'ten':       'memory_ten',
+    'eleven':    'memory_grok',
+    'grok':      'memory_grok',
+    'twelve':    'memory_twelve',
+    'thirteen':  'memory_thirteen',
+    'scholar':   'memory',
+    'seeker':    'memory',
+    'librarian': 'memory',
+    'duck':      'memory',
+    'sniffles':  'memory',
 }
+
+# Tables that have a `subject` column (vs memory_twelve which doesn't)
+_SUBJECT_TABLES = {
+    'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma',
+    'memory_eight', 'memory_nine', 'memory_ten', 'memory_grok',
+}
+
+# Full set of valid tables for write/delete operations — derived from _AGENT_TABLES
+_ALL_MEMORY_TABLES = {'memory'} | set(_AGENT_TABLES.values())
 
 
 
@@ -36,7 +46,6 @@ def _collect_local_file_memories(query='', agent='', limit=120):
     agent_l = str(agent or '').strip().lower()
     rows = []
 
-    # Keep this tight so Memory tile stays readable and fast.
     file_priority = (
         'WHO_AM_I.md',
         'DISPATCHED_WORK.md',
@@ -60,7 +69,6 @@ def _collect_local_file_memories(query='', agent='', limit=120):
         if query_l and query_l not in searchable:
             return
 
-        # Stable synthetic id for read-only UI cards.
         synthetic_id = int(uuid.uuid5(uuid.NAMESPACE_URL, str(path)).int % 2_000_000_000)
         mtime = datetime.fromtimestamp(path.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')
 
@@ -97,105 +105,87 @@ def _collect_local_file_memories(query='', agent='', limit=120):
 
 
 def _memory_search(query='', min_importance=3, agent='', limit=50):
+    """
+    Dynamic memory search across all agent tables.
+    Adding an agent to _AGENT_TABLES is all that's needed — no SQL changes required.
+    """
     conn = get_connection()
     like = f'%{query}%'
-
     agent_key = agent.lower() if agent else ''
-    if agent_key in ('llama', 'mistral', 'qwen', 'gemma', 'eight', 'nine', 'ten', 'grok', 'eleven'):
+
+    # ── Single agent query ────────────────────────────────────────────────────
+    if agent_key and agent_key in _AGENT_TABLES:
         tbl = _AGENT_TABLES[agent_key]
-        archived_clause = "AND archived = 0"
+        if tbl in _SUBJECT_TABLES:
+            sql = f"""SELECT id, '{tbl}' AS source_table, agent, subject, content, tags, importance, created_at
+                      FROM {tbl}
+                      WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
+                        AND importance >= ? AND archived = 0
+                      ORDER BY created_at DESC, importance DESC LIMIT ?"""
+            params = (like, like, like, min_importance, limit)
+        else:
+            sql = f"""SELECT id, '{tbl}' AS source_table, agent, '' AS subject, content, tags, importance, created_at
+                      FROM {tbl}
+                      WHERE (content LIKE ? OR content LIKE ? OR tags LIKE ?)
+                        AND importance >= ? AND archived = 0
+                      ORDER BY created_at DESC, importance DESC LIMIT ?"""
+            params = (like, like, like, min_importance, limit)
+        rows = conn.execute(sql, params).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    # ── Generic agent not in our tables (fallback to shared memory table) ────
+    if agent_key:
         rows = conn.execute(
-            f"""SELECT id, '{tbl}' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM {tbl}
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? {archived_clause}
-               ORDER BY created_at DESC, importance DESC LIMIT ?""",
-            (like, like, like, min_importance, limit)
-        ).fetchall()
-    elif agent_key == 'twelve':
-        rows = conn.execute(
-            """SELECT id, 'memory_twelve' AS source_table, agent, '' AS subject, content, tags, importance, created_at
-               FROM memory_twelve
-               WHERE (content LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               ORDER BY created_at DESC, importance DESC LIMIT ?""",
-            (like, like, like, min_importance, limit)
-        ).fetchall()
-    elif agent_key:
-        rows = conn.execute(
-            """SELECT id, 'memory' AS source_table, agent, subject AS title, content, tags, importance, created_at
+            """SELECT id, 'memory' AS source_table, agent, subject AS subject, content, tags, importance, created_at
                FROM memory
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-                 AND agent LIKE ?
+                 AND importance >= ? AND archived = 0 AND agent LIKE ?
                ORDER BY created_at DESC, importance DESC LIMIT ?""",
             (like, like, like, min_importance, f'%{agent}%', limit)
         ).fetchall()
-    else:
-        rows = conn.execute(
-            """SELECT id, 'memory' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM memory
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_llama' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM memory_llama
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_mistral' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM memory_mistral
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_qwen' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM memory_qwen
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_gemma' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM memory_gemma
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_eight' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM memory_eight
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_nine' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM memory_nine
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_ten' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM memory_ten
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_grok' AS source_table, agent, subject, content, tags, importance, created_at
-               FROM memory_grok
-               WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               UNION ALL
-               SELECT id, 'memory_twelve' AS source_table, agent, '' AS subject, content, tags, importance, created_at
-               FROM memory_twelve
-               WHERE (content LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0
-               ORDER BY created_at DESC, importance DESC LIMIT ?""",
-            (like, like, like, min_importance,
-             like, like, like, min_importance,
-             like, like, like, min_importance,
-             like, like, like, min_importance,
-             like, like, like, min_importance,
-             like, like, like, min_importance,
-             like, like, like, min_importance,
-             like, like, like, min_importance,
-             like, like, like, min_importance,
-             like, like, like, min_importance,
-             limit)
-        ).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
 
+    # ── All agents — build UNION dynamically from _AGENT_TABLES ──────────────
+    seen_tables = set()
+    union_parts = []
+    params = []
+
+    # Always include the shared memory table first
+    union_parts.append(
+        """SELECT id, 'memory' AS source_table, agent, subject, content, tags, importance, created_at
+           FROM memory
+           WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
+             AND importance >= ? AND archived = 0"""
+    )
+    params.extend([like, like, like, min_importance])
+    seen_tables.add('memory')
+
+    for tbl in set(_AGENT_TABLES.values()):
+        if tbl in seen_tables or tbl == 'memory':
+            continue
+        seen_tables.add(tbl)
+        if tbl in _SUBJECT_TABLES:
+            union_parts.append(
+                f"""SELECT id, '{tbl}' AS source_table, agent, subject, content, tags, importance, created_at
+                   FROM {tbl}
+                   WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
+                     AND importance >= ? AND archived = 0"""
+            )
+        else:
+            union_parts.append(
+                f"""SELECT id, '{tbl}' AS source_table, agent, '' AS subject, content, tags, importance, created_at
+                   FROM {tbl}
+                   WHERE (content LIKE ? OR content LIKE ? OR tags LIKE ?)
+                     AND importance >= ? AND archived = 0"""
+            )
+        params.extend([like, like, like, min_importance])
+
+    sql = ' UNION ALL '.join(union_parts) + ' ORDER BY created_at DESC, importance DESC LIMIT ?'
+    params.append(limit)
+
+    rows = conn.execute(sql, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -208,22 +198,21 @@ def api_memory():
     agent = request.args.get('agent', '')
     limit = max(1, min(int(request.args.get('limit', 120) or 120), 500))
     include_local = request.args.get('include_local', '1') != '0'
-    
+
     rows = _memory_search(q, mn, agent, limit=limit)
     if include_local:
         local_rows = _collect_local_file_memories(query=q, agent=agent, limit=limit)
         rows = list(rows) + local_rows
         rows.sort(key=lambda r: (r.get('created_at') or ''), reverse=True)
         rows = rows[:limit]
-    
-    # Group results by agent for frontend
+
     grouped = {}
     for row in rows:
         agent_name = row.get('agent', 'unknown')
         if agent_name not in grouped:
             grouped[agent_name] = []
         grouped[agent_name].append(row)
-    
+
     return jsonify({'results': grouped, 'limit': limit})
 
 
@@ -233,11 +222,8 @@ def api_studio():
     """Studio cockpit data — agents, queue, config status."""
     status = get_system_status()
     conn = get_connection()
-    
-    # Get queue length
     queue_info = conn.execute('SELECT COUNT(*) as count FROM queue').fetchone()
     conn.close()
-    
     return jsonify({
         'queue_length': queue_info['count'] if queue_info else 0,
         'system_load': status.get('cpu_percent', 0),
@@ -247,12 +233,138 @@ def api_studio():
 
 
 
+@memory_bp.route('/api/memory/bulk', methods=['PATCH'])
+def bulk_update_memory():
+    data = request.get_json(silent=True) or {}
+    entries = data.get('entries') or []
+    if not isinstance(entries, list) or not entries:
+        return jsonify({'error': 'entries required'}), 400
+
+    updates = data.get('updates') or {}
+    if not isinstance(updates, dict) or not updates:
+        return jsonify({'error': 'updates required'}), 400
+
+    conn = get_connection()
+    try:
+        updated_entries = []
+        skipped = []
+
+        for item in entries:
+            if not isinstance(item, dict):
+                skipped.append({'entry': item, 'reason': 'invalid entry payload'})
+                continue
+
+            row_id = item.get('id')
+            table = str(item.get('table') or 'memory').strip()
+            if not row_id:
+                skipped.append({'entry': item, 'reason': 'missing id'})
+                continue
+            if table not in _ALL_MEMORY_TABLES:
+                skipped.append({'id': row_id, 'table': table, 'reason': 'invalid table'})
+                continue
+
+            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            row = conn.execute(f"SELECT * FROM {table} WHERE id=?", (row_id,)).fetchone()
+            if not row:
+                skipped.append({'id': row_id, 'table': table, 'reason': 'memory row not found'})
+                continue
+
+            row_updates = []
+            params = []
+
+            if 'subject' in updates and 'subject' in cols:
+                row_updates.append('subject=?')
+                params.append(str(updates.get('subject') or '').strip()[:300])
+
+            if 'content' in updates and 'content' in cols:
+                row_updates.append('content=?')
+                params.append(str(updates.get('content') or ''))
+
+            append_text = str(updates.get('append') or '').strip()
+            if append_text and 'content' in cols:
+                current = str(row['content'] or '')
+                merged = current + ('\n\n' if current else '') + append_text
+                row_updates.append('content=?')
+                params.append(merged)
+
+            if 'tags' in updates and 'tags' in cols:
+                row_updates.append('tags=?')
+                params.append(str(updates.get('tags') or '').strip()[:400])
+
+            if 'importance' in updates and 'importance' in cols:
+                try:
+                    imp = int(updates.get('importance'))
+                except Exception:
+                    skipped.append({'id': row_id, 'table': table, 'reason': 'importance must be an integer'})
+                    continue
+                if imp < 1 or imp > 10:
+                    skipped.append({'id': row_id, 'table': table, 'reason': 'importance must be 1-10'})
+                    continue
+                row_updates.append('importance=?')
+                params.append(imp)
+
+            if not row_updates:
+                skipped.append({'id': row_id, 'table': table, 'reason': 'no applicable updatable fields'})
+                continue
+
+            if 'updated_at' in cols:
+                row_updates.append('updated_at=?')
+                params.append(datetime.now(timezone.utc).isoformat())
+
+            params.append(row_id)
+            conn.execute(f"UPDATE {table} SET {', '.join(row_updates)} WHERE id=?", tuple(params))
+            updated_entries.append({'id': row_id, 'table': table})
+
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'ok': True, 'updated': updated_entries, 'skipped': skipped})
+
+
+@memory_bp.route('/api/memory/bulk', methods=['DELETE'])
+def bulk_delete_memory():
+    data = request.get_json(silent=True) or {}
+    entries = data.get('entries') or []
+    if not isinstance(entries, list) or not entries:
+        return jsonify({'error': 'entries required'}), 400
+
+    conn = get_connection()
+    try:
+        deleted = []
+        skipped = []
+
+        for item in entries:
+            if not isinstance(item, dict):
+                skipped.append({'entry': item, 'reason': 'invalid entry payload'})
+                continue
+
+            row_id = item.get('id')
+            table = str(item.get('table') or 'memory').strip()
+            if not row_id:
+                skipped.append({'entry': item, 'reason': 'missing id'})
+                continue
+            if table not in _ALL_MEMORY_TABLES:
+                skipped.append({'id': row_id, 'table': table, 'reason': 'invalid table'})
+                continue
+
+            cur = conn.execute(f'DELETE FROM {table} WHERE id=?', (row_id,))
+            if cur.rowcount:
+                deleted.append({'id': row_id, 'table': table})
+            else:
+                skipped.append({'id': row_id, 'table': table, 'reason': 'memory row not found'})
+
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'ok': True, 'deleted': deleted, 'skipped': skipped})
+
+
 @memory_bp.route('/api/memory/<int:row_id>', methods=['DELETE'])
 def delete_memory(row_id):
-    _ALLOWED_TABLES = {'memory', 'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma', 'memory_eight',
-                        'memory_nine', 'memory_ten', 'memory_grok', 'memory_twelve'}
     table = request.args.get('table', 'memory')
-    if table not in _ALLOWED_TABLES:
+    if table not in _ALL_MEMORY_TABLES:
         return jsonify({'error': 'invalid table'}), 400
     conn = get_connection()
     try:
@@ -260,20 +372,15 @@ def delete_memory(row_id):
         conn.commit()
     finally:
         conn.close()
-    print(f'[Terminal] Deleted memory row {row_id} from {table}')
     return jsonify({'deleted': row_id, 'table': table})
 
 
 
 @memory_bp.route('/api/memory/<int:row_id>', methods=['PATCH'])
 def update_memory(row_id):
-    _ALLOWED_TABLES = {
-        'memory', 'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma', 'memory_eight',
-        'memory_nine', 'memory_ten', 'memory_grok', 'memory_twelve'
-    }
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     table = (data.get('table') or request.args.get('table') or 'memory').strip()
-    if table not in _ALLOWED_TABLES:
+    if table not in _ALL_MEMORY_TABLES:
         return jsonify({'error': 'invalid table'}), 400
 
     conn = get_connection()
@@ -335,15 +442,11 @@ def update_memory(row_id):
 
 @memory_bp.route('/api/memory/<int:row_id>/attach', methods=['POST'])
 def attach_memory(row_id):
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     label = (data.get('label') or '').strip()
     value = (data.get('value') or '').strip()
     table = (data.get('table') or request.args.get('table') or 'memory').strip()
-    allowed = {
-        'memory', 'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma', 'memory_eight',
-        'memory_nine', 'memory_ten', 'memory_grok', 'memory_twelve'
-    }
-    if table not in allowed:
+    if table not in _ALL_MEMORY_TABLES:
         return jsonify({'error': 'invalid table'}), 400
     if not label or not value:
         return jsonify({'error': 'label and value required'}), 400
@@ -372,7 +475,7 @@ def attach_memory(row_id):
 
 @memory_bp.route('/api/memory/<int:row_id>/assign', methods=['POST'])
 def assign_memory(row_id):
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     from_table = (data.get('table') or request.args.get('table') or 'memory').strip()
     targets = data.get('targets') or []
     if isinstance(targets, str):
@@ -381,11 +484,7 @@ def assign_memory(row_id):
     if not targets:
         return jsonify({'error': 'targets required'}), 400
 
-    allowed = {
-        'memory', 'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma', 'memory_eight',
-        'memory_nine', 'memory_ten', 'memory_grok', 'memory_twelve'
-    }
-    if from_table not in allowed:
+    if from_table not in _ALL_MEMORY_TABLES:
         return jsonify({'error': 'invalid source table'}), 400
 
     conn = get_connection()
@@ -398,7 +497,7 @@ def assign_memory(row_id):
         skipped = []
         for agent_name in targets:
             tgt_table = _AGENT_TABLES.get(agent_name)
-            if not tgt_table or tgt_table not in allowed:
+            if not tgt_table or tgt_table not in _ALL_MEMORY_TABLES:
                 skipped.append({'agent': agent_name, 'reason': 'unknown target'})
                 continue
 
@@ -448,7 +547,5 @@ def assign_memory(row_id):
     finally:
         conn.close()
 
-    return jsonify({'ok': True, 'assigned': assigned, 'skipped': skipped, 'source': {'table': from_table, 'id': row_id}})
-
-
-
+    return jsonify({'ok': True, 'assigned': assigned, 'skipped': skipped,
+                    'source': {'table': from_table, 'id': row_id}})

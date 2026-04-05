@@ -5,6 +5,42 @@
 // TOAST NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Always-on glitch log — captures errors regardless of trace state
+// Max 100 entries, persists until page reload
+window.__systemGlitches = window.__systemGlitches || [];
+
+function _glitchLog(source, message) {
+  const entry = {
+    ts: new Date().toISOString(),
+    source: String(source || 'unknown'),
+    message: String(message || ''),
+  };
+  window.__systemGlitches.push(entry);
+  if (window.__systemGlitches.length > 100) window.__systemGlitches.shift();
+  _renderGlitchSection();
+  // Also pipe into trace log if active
+  _troubleshootLog('error', `[${entry.source}]`, entry.message);
+}
+
+function _renderGlitchSection() {
+  const el = document.getElementById('troubleshoot-glitches');
+  if (!el) return;
+  const glitches = window.__systemGlitches || [];
+  if (!glitches.length) {
+    el.textContent = 'No glitches recorded.';
+    const badge = document.getElementById('troubleshoot-glitch-badge');
+    if (badge) badge.style.display = 'none';
+    return;
+  }
+  el.textContent = glitches.slice(-50).map(g =>
+    `[${g.ts.slice(11,19)}] [${g.source}] ${g.message}`
+  ).join('\n');
+  el.scrollTop = el.scrollHeight;
+  // Show red badge on tracer button
+  const badge = document.getElementById('troubleshoot-glitch-badge');
+  if (badge) { badge.textContent = glitches.length; badge.style.display = 'inline'; }
+}
+
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
@@ -12,10 +48,16 @@ function showToast(message, type = 'info') {
   toast.textContent = message;
   container.appendChild(toast);
 
+  // Always log errors/warnings to glitch log
+  const t = String(type || 'info').toLowerCase();
+  if (t === 'error' || t === 'warning') {
+    _glitchLog('toast', message);
+  }
+
   // Pipe UI toasts into troubleshoot trace while tracing is enabled.
-  const logLevel = String(type || 'info').toLowerCase() === 'error' ? 'error' : 'info';
+  const logLevel = t === 'error' ? 'error' : 'info';
   _troubleshootLog(logLevel, 'Toast', `${type}: ${message}`);
-  
+
   setTimeout(() => {
     toast.classList.add('remove');
     setTimeout(() => toast.remove(), 300);
@@ -143,6 +185,7 @@ function toggleTroubleshootPanel(forceOpen) {
   modal.classList.toggle('open', state.panelOpen);
   _renderTroubleshootBadge();
   _renderTroubleshootPanel();
+  _renderGlitchSection();
 }
 
 function toggleTroubleshootEnabled(forceEnabled) {

@@ -13,126 +13,832 @@ function getTimeOfDay() {
   return 'night';
 }
 
-// Color palettes — time-of-day + named premium themes
-const TIME_PERIOD_COLORS = window._fridays && window._fridays.time_of_day
-  ? window._fridays.time_of_day
-  : {
-  morning: {
-    '--bg': '#fff8ef',
-    '--card': '#ffffff',
-    '--card-hover': '#fff3df',
-    '--border': '#f0ddc3',
-    '--text': '#2f271b',
-    '--text-dim': '#897257',
-    '--accent': '#e89242',
-    '--accent-hover': '#f0a562',
-    '--window-bg': '#fffdf9',
-    '--window-header': '#fff2df',
-    '--radius': '8px',
-    '--shadow': '0 8px 32px rgba(80,40,0,0.10)',
+const FRIDAYS_THEME_MODE_KEY = 'fridays_theme_mode';
+const FRIDAYS_ATMOSPHERE_VALUE_KEY = 'fridays_atmosphere_value';
+const FRIDAYS_ACCENT_VALUE_KEY = 'fridays_accent_value';
+const FRIDAYS_HUE_VALUE_KEY = 'fridays_hue_value';
+const FRIDAYS_CONTRAST_VALUE_KEY = 'fridays_contrast_value';
+const FRIDAYS_SCENE_KEY = 'fridays_scene';
+const FRIDAYS_SCENE_EFFECT_KEY = 'fridays_scene_effect';
+const FRIDAYS_FOUNDATION_MODE_KEY = 'fridays_foundation_mode';
+const FRIDAYS_GLOW_VALUE_KEY = 'fridays_glow_value';
+const SCENE_MODES = ['off', 'beach', 'forest', 'rain'];
+const FOUNDATION_MODES = ['auto', 'light', 'dark'];
+const SCENE_EFFECT_MODES = ['on', 'off'];
+const WINDOW_THEME_MODES = ['auto', 'morning', 'afternoon', 'evening', 'night'];
+const ATMOSPHERE_PRESET_VALUES = {
+  morning: 10,
+  afternoon: 38,
+  evening: 70,
+  night: 100,
+  lumen: 16,
+  sky: 42,
+  solar: 62,
+  obsidian: 100,
+  void: 100,
+  aurora: 82,
+  ember: 76,
+  graphite: 92,
+  rose: 74,
+};
+const ATMOSPHERE_KEYFRAMES = [
+  {
+    stop: 0,
+    palette: {
+      '--bg': '#FFF6F8',
+      '--card': '#FFFDFE',
+      '--card-hover': '#FFE9F0',
+      '--hover': '#FFE4EE',
+      '--bg-input': '#FFF3F7',
+      '--border': '#F3D7E2',
+      '--text': '#4B2E42',
+      '--text-dim': '#9A7288',
+      '--text-faint': '#D4B5C3',
+      '--accent': '#FF7DB8',
+      '--accent-hover': '#FF9FCB',
+      '--window-bg': '#FFFDFE',
+      '--window-header': '#FFE7F0',
+      '--glow-a': '#FFD6E7',
+      '--glow-b': '#FFEED7',
+      '--mist': '#FFF6FB',
+    },
   },
-  afternoon: {
-    '--bg': '#edf3ff',
-    '--card': '#ffffff',
-    '--card-hover': '#f2f7ff',
-    '--border': '#d6e0ef',
-    '--text': '#13243b',
-    '--text-dim': '#617590',
-    '--accent': '#2f6bff',
-    '--accent-hover': '#5486ff',
-    '--window-bg': '#ffffff',
-    '--window-header': '#f1f6ff',
-    '--radius': '8px',
-    '--shadow': '0 8px 32px rgba(20,50,100,0.10)',
+  {
+    stop: 38,
+    palette: {
+      '--bg': '#F4FBFF',
+      '--card': '#FFFFFF',
+      '--card-hover': '#E7F5FF',
+      '--hover': '#DEF2FF',
+      '--bg-input': '#EEF9FF',
+      '--border': '#B9D8EE',
+      '--text': '#18384E',
+      '--text-dim': '#58758E',
+      '--text-faint': '#8FAFC5',
+      '--accent': '#27CBFF',
+      '--accent-hover': '#62DEFF',
+      '--window-bg': '#FBFEFF',
+      '--window-header': '#E5F5FF',
+      '--glow-a': '#CDEEFF',
+      '--glow-b': '#E6F6FF',
+      '--mist': '#EDF8FF',
+    },
   },
-  evening: {
-    '--bg': '#161229',
-    '--card': '#241b3e',
-    '--card-hover': '#2e2250',
-    '--border': '#4a3a6c',
-    '--text': '#efe8ff',
-    '--text-dim': '#b4a4d4',
-    '--accent': '#c286ff',
-    '--accent-hover': '#d19bff',
-    '--window-bg': '#1f1737',
-    '--window-header': '#151028',
-    '--radius': '10px',
-    '--shadow': '0 20px 60px rgba(0,0,0,0.6)',
+  {
+    stop: 54,
+    palette: {
+      '--bg': '#FFF8EE',
+      '--card': '#FFFDF9',
+      '--card-hover': '#FFF1DC',
+      '--hover': '#FFE9D0',
+      '--bg-input': '#FFF6E8',
+      '--border': '#E8CCAA',
+      '--text': '#4A311D',
+      '--text-dim': '#8E6B4F',
+      '--text-faint': '#C7A382',
+      '--accent': '#FFB15A',
+      '--accent-hover': '#FFC680',
+      '--window-bg': '#FFFDF9',
+      '--window-header': '#FFF0DB',
+      '--glow-a': '#FFE1B8',
+      '--glow-b': '#FFF1D8',
+      '--mist': '#FFF7EF',
+    },
   },
-  night: {
-    '--bg': '#0e1523',
-    '--card': '#162033',
-    '--card-hover': '#1d2a42',
-    '--border': '#2f466b',
-    '--text': '#e4efff',
-    '--text-dim': '#93a9c9',
-    '--accent': '#6aa4ff',
-    '--accent-hover': '#88b8ff',
-    '--window-bg': '#121d30',
-    '--window-header': '#0c1526',
-    '--radius': '10px',
-    '--shadow': '0 20px 60px rgba(0,0,0,0.65)',
+  {
+    stop: 70,
+    palette: {
+      '--bg': '#2F2336',
+      '--card': '#3F2E49',
+      '--card-hover': '#50385C',
+      '--hover': '#5A4167',
+      '--bg-input': '#382941',
+      '--border': '#9278A0',
+      '--text': '#FFF8FC',
+      '--text-dim': '#E1D0E2',
+      '--text-faint': '#9E88A5',
+      '--accent': '#FF9752',
+      '--accent-hover': '#FFBF8A',
+      '--window-bg': '#392A42',
+      '--window-header': '#261C2E',
+      '--glow-a': '#E98E50',
+      '--glow-b': '#5B4B86',
+      '--mist': '#36283D',
+    },
   },
-  obsidian: {
-    '--bg': '#0A0A0B', '--card': '#111113', '--card-hover': '#18181B',
-    '--bg-input': '#0e0e10', '--border': '#27272A',
-    '--text': '#FAFAFA', '--text-dim': '#71717A',
-    '--accent': '#6366F1', '--accent-hover': '#818CF8',
-    '--window-bg': '#111113', '--window-header': '#0A0A0B',
-    '--shadow': '0 0 0 1px rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.85)',
-    '--radius': '8px',
+  {
+    stop: 100,
+    palette: {
+      '--bg': '#151A22',
+      '--card': '#1F2732',
+      '--card-hover': '#27313E',
+      '--hover': '#2D3948',
+      '--bg-input': '#1A212C',
+      '--border': '#566576',
+      '--text': '#F4F8FD',
+      '--text-dim': '#B7C3D0',
+      '--text-faint': '#74808D',
+      '--accent': '#86B7F2',
+      '--accent-hover': '#B8D6FA',
+      '--window-bg': '#1A212C',
+      '--window-header': '#10151D',
+      '--glow-a': '#293646',
+      '--glow-b': '#18222E',
+      '--mist': '#171D26',
+    },
   },
-  void: {
-    '--bg': '#09090B', '--card': '#111111', '--card-hover': '#1A1A1A',
-    '--bg-input': '#0C0C0C', '--border': '#333333',
-    '--text': '#EDEDED', '--text-dim': '#888888',
-    '--accent': '#0070F3', '--accent-hover': '#338EF7',
-    '--window-bg': '#111111', '--window-header': '#060606',
-    '--shadow': '0 0 0 1px rgba(255,255,255,0.06), 0 24px 80px rgba(0,0,0,0.9)',
-    '--radius': '8px',
+];
+
+const ACCENT_KEYFRAMES = [
+  { stop: 0, color: '#FF7DB8', hover: '#FF9FCB', label: 'Rose' },
+  { stop: 25, color: '#FFB15A', hover: '#FFC680', label: 'Sunrise' },
+  { stop: 50, color: '#27CBFF', hover: '#62DEFF', label: 'Cyan' },
+  { stop: 75, color: '#7BD97B', hover: '#A0E9A0', label: 'Lime' },
+  { stop: 100, color: '#B38CFF', hover: '#CFB3FF', label: 'Violet' },
+];
+
+const SCENE_PALETTE_STRIPS = {
+  off: {
+    gradient: 'linear-gradient(90deg,#ff8fbe 0%,#ffcc9f 18%,#bde9ff 42%,#ffab63 70%,#775ac0 84%,#334253 100%)',
+    labels: ['Pink Dawn', 'Blue Noon', 'Amber Dusk', 'Grey Night'],
   },
-  aurora: {
-    '--bg': '#0D0E17', '--card': '#13141F', '--card-hover': '#1A1C2E',
-    '--bg-input': '#10111B', '--border': '#1E2035',
-    '--text': '#F1F0FF', '--text-dim': '#6B7280',
-    '--accent': '#8B5CF6', '--accent-hover': '#A78BFA',
-    '--window-bg': '#13141F', '--window-header': '#0D0E17',
-    '--shadow': '0 0 0 1px rgba(139,92,246,0.12), 0 20px 60px rgba(0,0,0,0.8)',
-    '--radius': '12px',
+  beach: {
+    gradient: 'linear-gradient(90deg,#0f3c78 0%,#1b5db0 22%,#2c8fd6 46%,#ff9a3d 74%,#ffbf6f 100%)',
+    labels: ['Deep Tide', 'Sea Blue', 'Sunline', 'Warm Surf'],
   },
-  ember: {
-    '--bg': '#0C0B0A', '--card': '#141210', '--card-hover': '#1E1C19',
-    '--bg-input': '#110F0D', '--border': '#2A2520',
-    '--text': '#F5F0EB', '--text-dim': '#8A7F75',
-    '--accent': '#FF6B35', '--accent-hover': '#FF8C5A',
-    '--window-bg': '#141210', '--window-header': '#0C0B0A',
-    '--shadow': '0 0 0 1px rgba(255,107,53,0.08), 0 20px 56px rgba(0,0,0,0.85)',
-    '--radius': '10px',
+  forest: {
+    gradient: 'linear-gradient(90deg,#2b3133 0%,#43544a 22%,#5f7b45 48%,#b4a84c 76%,#e2d066 100%)',
+    labels: ['Dark Bark', 'Pine Green', 'Canopy', 'Yellow Moss'],
   },
-  graphite: {
-    '--bg': '#0F1117', '--card': '#1A1D27', '--card-hover': '#212433',
-    '--bg-input': '#141720', '--border': '#2A2F3E',
-    '--text': '#FFFFFF', '--text-dim': '#A3ACB9',
-    '--accent': '#635BFF', '--accent-hover': '#7A73FF',
-    '--window-bg': '#1A1D27', '--window-header': '#0F1117',
-    '--shadow': '0 0 0 1px rgba(255,255,255,0.04), 0 20px 60px rgba(0,0,0,0.75)',
-    '--radius': '8px',
-  },
-  rose: {
-    '--bg': '#0D0809', '--card': '#160E10', '--card-hover': '#1E1316',
-    '--bg-input': '#120A0C', '--border': '#2A181C',
-    '--text': '#F5E8EA', '--text-dim': '#7A555A',
-    '--accent': '#FB7185', '--accent-hover': '#FDA4AF',
-    '--window-bg': '#160E10', '--window-header': '#0D0809',
-    '--shadow': '0 0 0 1px rgba(251,113,133,0.08), 0 20px 56px rgba(0,0,0,0.85)',
-    '--radius': '12px',
+  rain: {
+    gradient: 'linear-gradient(90deg,#5a6c78 0%,#6d8592 24%,#7ea3ae 48%,#7b9382 76%,#a9b8b2 100%)',
+    labels: ['Rain Grey', 'Soft Blue', 'Wet Glass', 'Green Mist'],
   },
 };
 
-const _DARK_THEMES = new Set(['evening','night','obsidian','void','aurora','ember','graphite','rose','apple','nature','mint']);
-const _NAMED_THEMES = new Set(['obsidian','void','aurora','ember','graphite','rose','apple','nature','mint']);
-const FRIDAYS_THEME_MODE_KEY = 'fridays_theme_mode';
-const WINDOW_THEME_MODES = ['auto', 'morning', 'afternoon', 'evening', 'night', 'obsidian', 'void', 'aurora', 'ember', 'graphite', 'rose'];
+const ATMOSPHERE_TIME_ANCHORS = [
+  { value: 0, minute: 360 },
+  { value: 38, minute: 720 },
+  { value: 70, minute: 1080 },
+  { value: 88, minute: 1320 },
+  { value: 100, minute: 1439 },
+];
+
+function _clampAtmosphereValue(value) {
+  return Math.max(0, Math.min(100, Number(value ?? 0)));
+}
+
+function _clampTransparencyValue(value) {
+  return Math.max(0, Math.min(30, Number(value ?? 0)));
+}
+
+function _normalizeAtmosphereMode(mode) {
+  const key = String(mode || 'auto').toLowerCase();
+  return key === 'auto' ? 'auto' : 'manual';
+}
+
+function _normalizeFoundationMode(mode) {
+  const key = String(mode || 'auto').toLowerCase();
+  return FOUNDATION_MODES.includes(key) ? key : 'auto';
+}
+
+function _normalizeSceneEffectMode(mode) {
+  const key = String(mode || 'on').toLowerCase();
+  return SCENE_EFFECT_MODES.includes(key) ? key : 'on';
+}
+
+function _rgbFromHex(hex) {
+  const clean = String(hex || '').replace('#', '').trim();
+  if (clean.length !== 6) return { r: 0, g: 0, b: 0 };
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+  };
+}
+
+function _hexFromRgb({ r, g, b }) {
+  return '#' + [r, g, b].map((value) => Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, '0')).join('');
+}
+
+function _rgbToHsl({ r, g, b }) {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  const delta = max - min;
+
+  if (delta === 0) {
+    return { h: 0, s: 0, l: l * 100 };
+  }
+
+  const s = delta / (1 - Math.abs((2 * l) - 1));
+  let h;
+  switch (max) {
+    case rn:
+      h = 60 * (((gn - bn) / delta) % 6);
+      break;
+    case gn:
+      h = 60 * (((bn - rn) / delta) + 2);
+      break;
+    default:
+      h = 60 * (((rn - gn) / delta) + 4);
+      break;
+  }
+
+  return { h: (h + 360) % 360, s: s * 100, l: l * 100 };
+}
+
+function _hslToRgb({ h, s, l }) {
+  const hn = (((h % 360) + 360) % 360) / 360;
+  const sn = Math.max(0, Math.min(100, s)) / 100;
+  const ln = Math.max(0, Math.min(100, l)) / 100;
+
+  if (sn === 0) {
+    const gray = ln * 255;
+    return { r: gray, g: gray, b: gray };
+  }
+
+  const q = ln < 0.5 ? ln * (1 + sn) : ln + sn - (ln * sn);
+  const p = (2 * ln) - q;
+  const toChannel = (t) => {
+    let tc = t;
+    if (tc < 0) tc += 1;
+    if (tc > 1) tc -= 1;
+    if (tc < 1 / 6) return p + ((q - p) * 6 * tc);
+    if (tc < 1 / 2) return q;
+    if (tc < 2 / 3) return p + ((q - p) * (2 / 3 - tc) * 6);
+    return p;
+  };
+
+  return {
+    r: toChannel(hn + 1 / 3) * 255,
+    g: toChannel(hn) * 255,
+    b: toChannel(hn - 1 / 3) * 255,
+  };
+}
+
+function _tuneHex(hex, options = {}) {
+  const { hueShift = 0, saturation = 0, contrast = 0, lightness = 0 } = options;
+  const hsl = _rgbToHsl(_rgbFromHex(hex));
+  const contrastShift = (hsl.l >= 50 ? 1 : -1) * contrast;
+  return _hexFromRgb(_hslToRgb({
+    h: hsl.h + hueShift,
+    s: hsl.s + saturation,
+    l: hsl.l + contrastShift + lightness,
+  }));
+}
+
+function _mixHex(a, b, t) {
+  const left = _rgbFromHex(a);
+  const right = _rgbFromHex(b);
+  return _hexFromRgb({
+    r: left.r + ((right.r - left.r) * t),
+    g: left.g + ((right.g - left.g) * t),
+    b: left.b + ((right.b - left.b) * t),
+  });
+}
+
+function _hexWithAlpha(hex, alpha) {
+  const { r, g, b } = _rgbFromHex(hex);
+  const a = Math.max(0, Math.min(1, Number(alpha || 0)));
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function _interpolatePalette(value) {
+  const v = _clampAtmosphereValue(value);
+  let left = ATMOSPHERE_KEYFRAMES[0];
+  let right = ATMOSPHERE_KEYFRAMES[ATMOSPHERE_KEYFRAMES.length - 1];
+
+  for (let i = 0; i < ATMOSPHERE_KEYFRAMES.length - 1; i += 1) {
+    const current = ATMOSPHERE_KEYFRAMES[i];
+    const next = ATMOSPHERE_KEYFRAMES[i + 1];
+    if (v >= current.stop && v <= next.stop) {
+      left = current;
+      right = next;
+      break;
+    }
+  }
+
+  const span = Math.max(1, right.stop - left.stop);
+  const t = Math.max(0, Math.min(1, (v - left.stop) / span));
+  const keys = new Set([...Object.keys(left.palette), ...Object.keys(right.palette)]);
+  const palette = {};
+  keys.forEach((key) => {
+    palette[key] = _mixHex(left.palette[key] || right.palette[key], right.palette[key] || left.palette[key], t);
+  });
+  return palette;
+}
+
+function _interpolateAccent(value) {
+  const v = _clampAtmosphereValue(value);
+  let left = ACCENT_KEYFRAMES[0];
+  let right = ACCENT_KEYFRAMES[ACCENT_KEYFRAMES.length - 1];
+  for (let i = 0; i < ACCENT_KEYFRAMES.length - 1; i += 1) {
+    const current = ACCENT_KEYFRAMES[i];
+    const next = ACCENT_KEYFRAMES[i + 1];
+    if (v >= current.stop && v <= next.stop) {
+      left = current;
+      right = next;
+      break;
+    }
+  }
+  const span = Math.max(1, right.stop - left.stop);
+  const t = Math.max(0, Math.min(1, (v - left.stop) / span));
+  return {
+    color: _mixHex(left.color, right.color, t),
+    hover: _mixHex(left.hover, right.hover, t),
+    label: t < 0.5 ? left.label : right.label,
+  };
+}
+
+function _currentSceneMode() {
+  return _normalizeSceneMode(localStorage.getItem(FRIDAYS_SCENE_KEY) || document.body?.dataset?.scene || 'off');
+}
+
+function _currentSceneEffectMode() {
+  return _normalizeSceneEffectMode(localStorage.getItem(FRIDAYS_SCENE_EFFECT_KEY) || document.body?.dataset?.sceneEffect || 'on');
+}
+
+function _applyScenePalette(palette, scene, atmosphereValue = 38) {
+  const key = _normalizeSceneMode(scene);
+  if (key === 'off') return { ...palette };
+
+  const tuned = { ...palette };
+  const surfaceKeys = ['--bg', '--card', '--card-hover', '--hover', '--bg-input', '--window-bg', '--window-header'];
+  const textKeys = ['--text-dim', '--text-faint', '--border'];
+  const v = _clampAtmosphereValue(atmosphereValue);
+  const morningBoost = v < 26 ? 1 : v < 46 ? 0.65 : 0.25;
+
+  if (key === 'beach') {
+    surfaceKeys.forEach((name) => {
+      tuned[name] = _tuneHex(tuned[name], { hueShift: -18, saturation: 12 + (12 * morningBoost), contrast: 6, lightness: -2 - (4 * morningBoost) });
+    });
+    textKeys.forEach((name) => {
+      tuned[name] = _tuneHex(tuned[name], { hueShift: -14, saturation: 4 + (4 * morningBoost), contrast: 5 });
+    });
+    tuned['--accent'] = _tuneHex(tuned['--accent'], { hueShift: -28, saturation: 22, contrast: 7, lightness: -8 });
+    tuned['--accent-hover'] = _tuneHex(tuned['--accent-hover'], { hueShift: -18, saturation: 18, contrast: 5, lightness: -4 });
+    tuned['--glow-a'] = morningBoost > 0.5 ? '#1A5FB8' : '#2E76C7';
+    tuned['--glow-b'] = morningBoost > 0.5 ? '#FF9B45' : '#FFB45A';
+    tuned['--mist'] = morningBoost > 0.5 ? '#C5DCF0' : '#D8E9F6';
+  } else if (key === 'forest') {
+    surfaceKeys.forEach((name) => {
+      tuned[name] = _tuneHex(tuned[name], { hueShift: 56, saturation: 10 + (10 * morningBoost), contrast: 8, lightness: -8 - (6 * morningBoost) });
+    });
+    textKeys.forEach((name) => {
+      tuned[name] = _tuneHex(tuned[name], { hueShift: 34, saturation: 5 + (3 * morningBoost), contrast: 6 });
+    });
+    tuned['--accent'] = morningBoost > 0.5 ? '#B8C84A' : '#C8C158';
+    tuned['--accent-hover'] = morningBoost > 0.5 ? '#D9E26A' : '#DED676';
+    tuned['--glow-a'] = morningBoost > 0.5 ? '#406B50' : '#456248';
+    tuned['--glow-b'] = morningBoost > 0.5 ? '#C8BE5A' : '#D6BD56';
+    tuned['--mist'] = morningBoost > 0.5 ? '#59675B' : '#505C54';
+  } else if (key === 'rain') {
+    surfaceKeys.forEach((name) => {
+      tuned[name] = _tuneHex(tuned[name], { hueShift: -22, saturation: -4 + (4 * morningBoost), contrast: 5, lightness: -6 - (4 * morningBoost) });
+    });
+    textKeys.forEach((name) => {
+      tuned[name] = _tuneHex(tuned[name], { hueShift: -18, saturation: -2 + (2 * morningBoost), contrast: 4 });
+    });
+    tuned['--accent'] = morningBoost > 0.5 ? '#6D9FA5' : '#7EA8A2';
+    tuned['--accent-hover'] = morningBoost > 0.5 ? '#8FB8B6' : '#9DC0BA';
+    tuned['--glow-a'] = morningBoost > 0.5 ? '#688AA6' : '#7B90A5';
+    tuned['--glow-b'] = morningBoost > 0.5 ? '#7FA394' : '#88A29A';
+    tuned['--mist'] = morningBoost > 0.5 ? '#B9CAD3' : '#C9D6DA';
+  }
+
+  return tuned;
+}
+
+function _atmosphereTimeLabel(value) {
+  const v = _clampAtmosphereValue(value);
+  let left = ATMOSPHERE_TIME_ANCHORS[0];
+  let right = ATMOSPHERE_TIME_ANCHORS[ATMOSPHERE_TIME_ANCHORS.length - 1];
+  for (let i = 0; i < ATMOSPHERE_TIME_ANCHORS.length - 1; i += 1) {
+    const current = ATMOSPHERE_TIME_ANCHORS[i];
+    const next = ATMOSPHERE_TIME_ANCHORS[i + 1];
+    if (v >= current.value && v <= next.value) {
+      left = current;
+      right = next;
+      break;
+    }
+  }
+  const span = Math.max(1, right.value - left.value);
+  const t = Math.max(0, Math.min(1, (v - left.value) / span));
+  const totalMinutes = Math.round(left.minute + ((right.minute - left.minute) * t));
+  const hours = Math.floor(totalMinutes / 60) % 24;
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function _syncScenePaletteStrip(scene) {
+  const key = _normalizeSceneMode(scene);
+  const palette = SCENE_PALETTE_STRIPS[key] || SCENE_PALETTE_STRIPS.off;
+  const strip = document.getElementById('atmosphere-palette-strip');
+  if (strip) strip.style.background = palette.gradient;
+  palette.labels.forEach((label, index) => {
+    const el = document.getElementById(`atmosphere-stop-${index + 1}`);
+    if (el) el.textContent = label;
+  });
+}
+
+function _getAutoAtmosphereValue(date = new Date()) {
+  const minutes = (date.getHours() * 60) + date.getMinutes();
+  const anchors = [
+    { minute: 0, value: 94 },
+    { minute: 360, value: 0 },
+    { minute: 720, value: 38 },
+    { minute: 1080, value: 70 },
+    { minute: 1320, value: 88 },
+    { minute: 1440, value: 94 },
+  ];
+
+  for (let i = 0; i < anchors.length - 1; i += 1) {
+    const current = anchors[i];
+    const next = anchors[i + 1];
+    if (minutes >= current.minute && minutes <= next.minute) {
+      const span = Math.max(1, next.minute - current.minute);
+      const t = (minutes - current.minute) / span;
+      return current.value + ((next.value - current.value) * t);
+    }
+  }
+
+  return 38;
+}
+
+function _atmosphereLabel(value) {
+  const v = _clampAtmosphereValue(value);
+  if (v < 10) return 'Pink Dawn';
+  if (v < 26) return 'Morning Haze';
+  if (v < 46) return 'Blue Noon';
+  if (v < 62) return 'Clear Afternoon';
+  if (v < 82) return 'Amber Dusk';
+  if (v < 94) return 'Violet Evening';
+  return 'Grey Night';
+}
+
+function _atmosphereSegment(value) {
+  const v = _clampAtmosphereValue(value);
+  if (v < 26) return 'morning';
+  if (v < 56) return 'afternoon';
+  if (v < 88) return 'evening';
+  return 'night';
+}
+
+function _buildAtmosphereColors(value) {
+  const v = _clampAtmosphereValue(value);
+  const palette = _interpolatePalette(v);
+  const scene = _currentSceneMode();
+  const foundationMode = _currentFoundationMode();
+  const resolvedFoundation = _resolveFoundationMode(foundationMode, v);
+  const isDark = resolvedFoundation === 'dark';
+  const hueShift = (_currentHueValue() - 50) * 0.7;
+  const contrastDelta = (_currentContrastValue() - 50) * 0.24;
+  const adjustedPalette = {};
+  Object.entries(palette).forEach(([key, color]) => {
+    if (key === '--bg' || key === '--card' || key === '--card-hover' || key === '--hover' || key === '--bg-input' || key === '--window-bg' || key === '--window-header') {
+      adjustedPalette[key] = _tuneHex(color, { hueShift, saturation: 4 + (contrastDelta * 0.2), contrast: contrastDelta });
+    } else if (key === '--border' || key === '--text-dim' || key === '--text-faint') {
+      adjustedPalette[key] = _tuneHex(color, { hueShift, saturation: 2, contrast: contrastDelta * 0.85 });
+    } else if (key === '--text') {
+      adjustedPalette[key] = _tuneHex(color, { hueShift, saturation: 1, contrast: contrastDelta * 0.55 });
+    } else if (key === '--glow-a' || key === '--glow-b' || key === '--mist') {
+      adjustedPalette[key] = _tuneHex(color, { hueShift, saturation: 6, contrast: contrastDelta * 0.45 });
+    } else {
+      adjustedPalette[key] = _tuneHex(color, { hueShift, saturation: 8, contrast: contrastDelta * 0.35 });
+    }
+  });
+  const scenePalette = _applyScenePalette(adjustedPalette, scene, v);
+  Object.keys(adjustedPalette).forEach((key) => {
+    adjustedPalette[key] = scenePalette[key] || adjustedPalette[key];
+  });
+  if (resolvedFoundation === 'dark') {
+    adjustedPalette['--bg'] = '#090b10';
+    adjustedPalette['--card'] = _mixHex(adjustedPalette['--card'], '#13171d', 0.9);
+    adjustedPalette['--card-hover'] = _mixHex(adjustedPalette['--card-hover'], '#181d24', 0.88);
+    adjustedPalette['--hover'] = _mixHex(adjustedPalette['--hover'], '#1b2129', 0.84);
+    adjustedPalette['--bg-input'] = _mixHex(adjustedPalette['--bg-input'], '#11161c', 0.9);
+    adjustedPalette['--window-bg'] = _mixHex(adjustedPalette['--window-bg'], '#10141a', 0.92);
+    adjustedPalette['--window-header'] = _mixHex(adjustedPalette['--window-header'], '#0b0f14', 0.94);
+    adjustedPalette['--border'] = _mixHex(adjustedPalette['--border'], '#39414b', 0.7);
+    adjustedPalette['--text'] = '#F2F4F7';
+    adjustedPalette['--text-dim'] = '#C1C9D3';
+    adjustedPalette['--text-faint'] = '#7E8A96';
+    adjustedPalette['--border'] = '#37414B';
+    adjustedPalette['--glow-a'] = _tuneHex(adjustedPalette['--glow-a'], { saturation: 8, contrast: 12, lightness: -22 });
+    adjustedPalette['--glow-b'] = _tuneHex(adjustedPalette['--glow-b'], { saturation: 8, contrast: 12, lightness: -24 });
+    adjustedPalette['--mist'] = _tuneHex(adjustedPalette['--mist'], { saturation: -6, contrast: 6, lightness: -30 });
+  } else {
+    ['--bg', '--card', '--card-hover', '--hover', '--bg-input', '--window-bg', '--window-header'].forEach((key) => {
+      adjustedPalette[key] = _tuneHex(adjustedPalette[key], { saturation: 1, contrast: 5, lightness: -6 });
+    });
+    adjustedPalette['--mist'] = _tuneHex(adjustedPalette['--mist'], { saturation: -2, contrast: 2, lightness: -10 });
+  }
+  const accent = adjustedPalette['--accent'] || '#27CBFF';
+  const midrange = v >= 44 && v <= 68;
+  const eveningBand = v > 68 && v < 92;
+  return {
+    ...adjustedPalette,
+    '--foundation-mode': resolvedFoundation,
+    '--radius': isDark ? '16px' : '18px',
+    '--mist': midrange
+      ? _hexWithAlpha(adjustedPalette['--mist'] || '#FFF7EF', 0.24)
+      : eveningBand
+        ? _hexWithAlpha(adjustedPalette['--mist'] || '#36283D', 0.08)
+        : _hexWithAlpha(adjustedPalette['--mist'] || '#FFFFFF', isDark ? 0.03 : 0.34),
+    '--shadow': isDark
+      ? `0 22px 64px ${_hexWithAlpha('#000000', 0.34)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.06)}, 0 0 70px ${_hexWithAlpha(accent, 0.10)}`
+      : midrange
+        ? `0 16px 34px ${_hexWithAlpha(accent, 0.12)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.92)}`
+        : `0 18px 48px ${_hexWithAlpha(accent, 0.18)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.86)}`,
+  };
+}
+
+function _currentAccentValue() {
+  return _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ACCENT_VALUE_KEY) ?? 50);
+}
+
+function _currentHueValue() {
+  return _clampAtmosphereValue(localStorage.getItem(FRIDAYS_HUE_VALUE_KEY) ?? 50);
+}
+
+function _currentContrastValue() {
+  return _clampAtmosphereValue(localStorage.getItem(FRIDAYS_CONTRAST_VALUE_KEY) ?? 58);
+}
+
+function _currentGlowValue() {
+  return _clampAtmosphereValue(localStorage.getItem(FRIDAYS_GLOW_VALUE_KEY) ?? 52);
+}
+
+function onAccentSliderInput(value) {
+  const numeric = _clampAtmosphereValue(value);
+  try { localStorage.setItem(FRIDAYS_ACCENT_VALUE_KEY, String(Math.round(numeric))); } catch (e) {}
+  const currentMode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
+  const currentAtmosphereValue = _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38);
+  applyTimeTheme(currentMode, currentMode === 'manual' ? currentAtmosphereValue : null);
+}
+
+function onHueSliderInput(value) {
+  const numeric = _clampAtmosphereValue(value);
+  try { localStorage.setItem(FRIDAYS_HUE_VALUE_KEY, String(Math.round(numeric))); } catch (e) {}
+  const currentMode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
+  const currentAtmosphereValue = _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38);
+  applyTimeTheme(currentMode, currentMode === 'manual' ? currentAtmosphereValue : null);
+}
+
+function onContrastSliderInput(value) {
+  const numeric = _clampAtmosphereValue(value);
+  try { localStorage.setItem(FRIDAYS_CONTRAST_VALUE_KEY, String(Math.round(numeric))); } catch (e) {}
+  const currentMode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
+  const currentAtmosphereValue = _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38);
+  applyTimeTheme(currentMode, currentMode === 'manual' ? currentAtmosphereValue : null);
+}
+
+function onGlowSliderInput(value) {
+  const numeric = _clampAtmosphereValue(value);
+  try { localStorage.setItem(FRIDAYS_GLOW_VALUE_KEY, String(Math.round(numeric))); } catch (e) {}
+  const currentMode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
+  const currentAtmosphereValue = _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38);
+  applyTimeTheme(currentMode, currentMode === 'manual' ? currentAtmosphereValue : null);
+}
+
+function _syncAccentControls(value) {
+  const slider = document.getElementById('accent-slider');
+  const label = document.getElementById('accent-value');
+  const detail = document.getElementById('accent-detail');
+  const numeric = Math.round(_clampAtmosphereValue(value));
+  const accent = _interpolateAccent(numeric);
+  if (slider) slider.value = String(numeric);
+  if (label) label.textContent = `${numeric}%`;
+  if (detail) detail.textContent = `${accent.label} accent`;
+}
+
+function _syncHueControls(value) {
+  const slider = document.getElementById('hue-slider');
+  const label = document.getElementById('hue-value');
+  const detail = document.getElementById('hue-detail');
+  const numeric = Math.round(_clampAtmosphereValue(value));
+  const shift = numeric - 50;
+  if (slider) slider.value = String(numeric);
+  if (label) label.textContent = `${numeric}%`;
+  if (detail) {
+    detail.textContent = shift === 0 ? 'Balanced hue' : shift < 0 ? 'Warmer hue' : 'Cooler hue';
+  }
+}
+
+function _syncContrastControls(value) {
+  const slider = document.getElementById('contrast-slider');
+  const label = document.getElementById('contrast-value');
+  const detail = document.getElementById('contrast-detail');
+  const numeric = Math.round(_clampAtmosphereValue(value));
+  if (slider) slider.value = String(numeric);
+  if (label) label.textContent = `${numeric}%`;
+  if (detail) {
+    detail.textContent = numeric < 42 ? 'Soft contrast' : numeric < 66 ? 'Balanced contrast' : 'Crisp contrast';
+  }
+}
+
+function _syncGlowControls(value) {
+  const slider = document.getElementById('glow-slider');
+  const label = document.getElementById('glow-value');
+  const detail = document.getElementById('glow-detail');
+  const numeric = Math.round(_clampAtmosphereValue(value));
+  if (slider) slider.value = String(numeric);
+  if (label) label.textContent = `${numeric}%`;
+  if (detail) {
+    detail.textContent = numeric < 30 ? 'Quiet glow' : numeric < 65 ? 'Moody glow' : 'Animated glow';
+  }
+}
+
+function _resolveFoundationMode(mode, atmosphereValue) {
+  const normalized = _normalizeFoundationMode(mode);
+  if (normalized === 'light') return 'light';
+  if (normalized === 'dark') return 'dark';
+  return Number(atmosphereValue || 0) >= 72 ? 'dark' : 'light';
+}
+
+function _currentFoundationMode() {
+  return _normalizeFoundationMode(localStorage.getItem(FRIDAYS_FOUNDATION_MODE_KEY) || 'auto');
+}
+
+function _syncFoundationControls(mode, resolvedMode) {
+  const modeLabel = document.getElementById('foundation-mode-label');
+  if (modeLabel) {
+    modeLabel.textContent = mode === 'auto'
+      ? `Following Atmosphere · ${resolvedMode}`
+      : `${resolvedMode.charAt(0).toUpperCase()}${resolvedMode.slice(1)} shell`;
+  }
+  FOUNDATION_MODES.forEach((value) => {
+    const btn = document.getElementById(`foundation-${value}-btn`);
+    if (!btn) return;
+    const active = value === mode;
+    btn.classList.toggle('active', active);
+    btn.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    btn.style.color = active ? 'var(--accent)' : 'var(--text-dim)';
+    btn.style.background = active ? 'color-mix(in srgb, var(--card-hover) 78%, white 22%)' : 'var(--card)';
+    btn.style.boxShadow = active ? '0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent 65%)' : 'none';
+  });
+}
+
+function setFoundationMode(mode) {
+  const nextMode = _normalizeFoundationMode(mode);
+  try { localStorage.setItem(FRIDAYS_FOUNDATION_MODE_KEY, nextMode); } catch (e) {}
+  const currentAtmosphereMode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
+  const currentAtmosphereValue = _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38);
+  applyTimeTheme(currentAtmosphereMode, currentAtmosphereMode === 'manual' ? currentAtmosphereValue : null);
+}
+
+function _normalizeSceneMode(scene) {
+  const key = String(scene || 'beach').toLowerCase();
+  return SCENE_MODES.includes(key) ? key : 'beach';
+}
+
+function _sceneLabel(scene) {
+  const key = _normalizeSceneMode(scene);
+  if (key === 'off') return 'Still background';
+  if (key === 'beach') return 'Beach glow';
+  if (key === 'forest') return 'Forest canopy';
+  if (key === 'rain') return 'Rain drift';
+  return 'Background scene';
+}
+
+function _sceneOpacity(scene) {
+  const key = _normalizeSceneMode(scene);
+  if (key === 'off') return '0.72';
+  if (key === 'rain') return '0.92';
+  if (key === 'forest') return '0.82';
+  return '0.88';
+}
+
+function _syncSceneControls(scene) {
+  const key = _normalizeSceneMode(scene);
+  const detail = document.getElementById('scene-detail');
+  if (detail) detail.textContent = `${_sceneLabel(key)} behind the Atmosphere`;
+  _syncScenePaletteStrip(key);
+  SCENE_MODES.forEach((mode) => {
+    const btn = document.getElementById(`scene-${mode}-btn`);
+    if (!btn) return;
+    const active = mode === key;
+    btn.classList.toggle('active', active);
+    btn.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    btn.style.color = active ? 'var(--accent)' : 'var(--text-dim)';
+    btn.style.background = active ? 'color-mix(in srgb, var(--card-hover) 78%, white 22%)' : 'var(--card)';
+    btn.style.boxShadow = active ? '0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent 65%)' : 'none';
+  });
+}
+
+function _syncSceneEffectControls(mode) {
+  const toggle = document.getElementById('scene-effect-toggle-input');
+  const label = document.getElementById('scene-effect-toggle-label');
+  const isOn = mode === 'on';
+  if (toggle) toggle.checked = isOn;
+  if (label) label.textContent = isOn ? 'Effect On' : 'Effect Off';
+}
+
+function applyScene(scene) {
+  const key = _normalizeSceneMode(scene);
+  document.body.dataset.scene = key;
+  const effectMode = _currentSceneEffectMode();
+  document.body.dataset.sceneEffect = effectMode;
+  document.documentElement.style.setProperty('--scene-opacity', effectMode === 'off' ? '0' : _sceneOpacity(key));
+  try { localStorage.setItem(FRIDAYS_SCENE_KEY, key); } catch (e) {}
+  _syncSceneControls(key);
+  _syncSceneEffectControls(effectMode);
+  return key;
+}
+
+function setSceneMode(scene) {
+  const key = applyScene(scene);
+  try {
+    const settings = JSON.parse(localStorage.getItem('fridays-settings') || '{}');
+    settings.scene = key;
+    localStorage.setItem('fridays-settings', JSON.stringify(settings));
+  } catch (e) {}
+  const currentMode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
+  const currentAtmosphereValue = _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38);
+  applyTimeTheme(currentMode, currentMode === 'manual' ? currentAtmosphereValue : null);
+}
+
+function setSceneEffectMode(mode) {
+  const next = _normalizeSceneEffectMode(mode);
+  try { localStorage.setItem(FRIDAYS_SCENE_EFFECT_KEY, next); } catch (e) {}
+  const currentScene = _currentSceneMode();
+  applyScene(currentScene);
+}
+
+function _resolveAtmosphere(mode, explicitValue = null) {
+  const normalizedMode = _normalizeAtmosphereMode(mode);
+  let value;
+  if (normalizedMode === 'auto') {
+    value = _getAutoAtmosphereValue();
+  } else if (explicitValue !== null && explicitValue !== undefined) {
+    value = explicitValue;
+  } else {
+    value = localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY);
+  }
+
+  if ((value === null || value === undefined || value === '') && mode in ATMOSPHERE_PRESET_VALUES) {
+    value = ATMOSPHERE_PRESET_VALUES[mode];
+  }
+
+  const finalValue = _clampAtmosphereValue(value ?? 38);
+  return {
+    selectedMode: normalizedMode,
+    value: finalValue,
+    isDark: finalValue >= 72,
+    label: _atmosphereLabel(finalValue),
+    segment: _atmosphereSegment(finalValue),
+  };
+}
+
+function _syncAtmosphereControls(mode, value) {
+  const slider = document.getElementById('atmosphere-slider');
+  const valueLabel = document.getElementById('atmosphere-value');
+  const detail = document.getElementById('atmosphere-detail');
+  const modeLabel = document.getElementById('atmosphere-mode-label');
+  const readout = document.getElementById('atmosphere-readout');
+  const autoBtn = document.getElementById('atmosphere-auto-btn');
+  const manualBtn = document.getElementById('atmosphere-manual-btn');
+  const numeric = Math.round(_clampAtmosphereValue(value));
+
+  if (slider) slider.value = String(numeric);
+  if (valueLabel) valueLabel.textContent = _atmosphereTimeLabel(numeric);
+  if (detail) detail.textContent = `${_atmosphereLabel(numeric)} · atmosphere clock`;
+  if (modeLabel) modeLabel.textContent = mode === 'auto' ? 'Following time of day' : 'Manual override';
+  if (readout) readout.textContent = mode === 'auto' ? `${_atmosphereLabel(numeric)} · auto` : `${_atmosphereLabel(numeric)} · manual`;
+  if (autoBtn) {
+    const active = mode === 'auto';
+    autoBtn.classList.toggle('active', active);
+    autoBtn.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    autoBtn.style.color = active ? 'var(--accent)' : 'var(--text)';
+    autoBtn.style.boxShadow = active ? '0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent 65%)' : 'none';
+  }
+  if (manualBtn) {
+    const active = mode !== 'auto';
+    manualBtn.classList.toggle('active', active);
+    manualBtn.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    manualBtn.style.color = active ? 'var(--accent)' : 'var(--text-dim)';
+    manualBtn.style.boxShadow = active ? '0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent 65%)' : 'none';
+  }
+}
+
+function setAtmosphereMode(mode) {
+  const nextMode = _normalizeAtmosphereMode(mode);
+  window._selectedThemeMode = nextMode;
+  try { localStorage.setItem(FRIDAYS_THEME_MODE_KEY, nextMode); } catch (e) {}
+  applyTimeTheme(nextMode);
+}
+
+function onAtmosphereSliderInput(value) {
+  const numeric = _clampAtmosphereValue(value);
+  window._selectedThemeMode = 'manual';
+  try { localStorage.setItem(FRIDAYS_THEME_MODE_KEY, 'manual'); } catch (e) {}
+  try { localStorage.setItem(FRIDAYS_ATMOSPHERE_VALUE_KEY, String(Math.round(numeric))); } catch (e) {}
+  applyTimeTheme('manual', numeric);
+}
 
 function _windowThemeIndex(mode) {
   const key = String(mode || 'auto').toLowerCase();
@@ -147,71 +853,88 @@ function _windowThemeFromIndex(index) {
 
 function _windowThemeLabel(mode) {
   const key = String(mode || 'auto').toLowerCase();
-  if (key === 'auto') return 'Auto';
+  if (key === 'auto') return 'Default';
   if (key === 'afternoon') return 'Noon';
+  if (key === 'evening') return 'Dusk';
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
-function resolveThemeMode(mode) {
-  const requested = String(mode || 'auto').toLowerCase();
-  let resolved = requested;
-  if (requested === 'auto') {
-    const mainSelected = String(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto').toLowerCase();
-    resolved = mainSelected === 'auto' ? getTimeOfDay() : mainSelected;
-  }
-  const isDark = _DARK_THEMES.has(resolved);
-  return { resolved, isDark };
+function resolveThemeMode(mode, explicitValue = null) {
+  return _resolveAtmosphere(mode, explicitValue);
 }
 
-function applyTimeTheme(time) {
-  const selectedMode = String(time || 'auto').toLowerCase();
-  window._selectedThemeMode = selectedMode;
-  const mode = resolveThemeMode(selectedMode);
-  const colors = TIME_PERIOD_COLORS[mode.resolved] || TIME_PERIOD_COLORS.afternoon;
+function resolveWindowThemeMode(mode, explicitValue = null) {
+  const key = String(mode || 'auto').toLowerCase();
+  if (key !== 'auto') {
+    return _resolveAtmosphere(mode, explicitValue);
+  }
+  const globalMode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
+  const globalValue = globalMode === 'manual'
+    ? _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38)
+    : null;
+  return _resolveAtmosphere(globalMode, globalValue);
+}
 
-  // Remove all named theme classes
-  _NAMED_THEMES.forEach(t => document.body.classList.remove('theme-' + t));
+function applyTimeTheme(time, explicitValue = null) {
+  const mode = resolveThemeMode(time, explicitValue);
+  const colors = _buildAtmosphereColors(mode.value);
+  const accentValue = _currentAccentValue();
+  const hueValue = _currentHueValue();
+  const contrastValue = _currentContrastValue();
+  const glowValue = _currentGlowValue();
+  const foundationMode = _currentFoundationMode();
+  const resolvedFoundation = colors['--foundation-mode'] || _resolveFoundationMode(foundationMode, mode.value);
+  const accentBase = _interpolateAccent(accentValue);
+  const hueShift = (hueValue - 50) * 0.5;
+  const contrastDelta = (contrastValue - 50) * 0.18;
+  const accent = {
+    color: _tuneHex(accentBase.color, { hueShift, saturation: 10, contrast: contrastDelta }),
+    hover: _tuneHex(accentBase.hover, { hueShift, saturation: 8, contrast: contrastDelta * 0.8, lightness: 2 }),
+  };
 
-  // Apply CSS vars
+  window._selectedThemeMode = mode.selectedMode;
+  window._currentTheme = mode.label;
+  window._currentAtmosphereValue = mode.value;
+
+  colors['--accent'] = accent.color;
+  colors['--accent-hover'] = accent.hover;
+  colors['--edge-glow'] = `0 0 ${4 + (glowValue * 0.16)}px ${_hexWithAlpha(accent.color, mode.isDark ? 0.08 + (glowValue * 0.0012) : 0.05 + (glowValue * 0.001))}`;
+  colors['--edge-glow-hover'] = `0 0 ${10 + (glowValue * 0.24)}px ${_hexWithAlpha(accent.color, mode.isDark ? 0.14 + (glowValue * 0.0016) : 0.10 + (glowValue * 0.0012))}`;
+  colors['--glow-animation'] = glowValue >= 62 ? 'edge-glow-pulse 9s ease-in-out infinite' : 'none';
+  colors['--glow-hover-animation'] = glowValue >= 42 ? 'edge-glow-wave 3.6s ease-in-out infinite' : 'none';
+  colors['--shadow'] = mode.isDark
+    ? `0 22px 64px ${_hexWithAlpha('#000000', 0.34)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.06)}, 0 0 70px ${_hexWithAlpha(accent.color, 0.12)}`
+    : `0 18px 48px ${_hexWithAlpha(accent.color, mode.value >= 44 && mode.value <= 68 ? 0.12 : 0.18)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.86)}`;
+
   Object.entries(colors).forEach(([key, value]) => {
     document.documentElement.style.setProperty(key, value);
   });
 
-  // For named themes also apply the body class (for gradient bg etc.)
-  if (_NAMED_THEMES.has(mode.resolved)) {
-    document.body.classList.add('theme-' + mode.resolved);
-  }
+  document.body.classList.remove('theme-obsidian', 'theme-void', 'theme-aurora', 'theme-ember', 'theme-graphite', 'theme-rose', 'theme-lumen', 'theme-sky', 'theme-solar');
+  document.body.classList.toggle('mode-dark', resolvedFoundation === 'dark');
+  document.body.classList.toggle('mode-light', resolvedFoundation !== 'dark');
+  document.body.dataset.atmosphereSegment = mode.segment;
+  document.body.dataset.foundation = resolvedFoundation;
+  document.body.style.setProperty('--atmosphere-value', String(Math.round(mode.value)));
 
-  document.body.classList.toggle('mode-dark', mode.isDark);
-  document.body.classList.toggle('mode-light', !mode.isDark);
+  try { localStorage.setItem(FRIDAYS_THEME_MODE_KEY, mode.selectedMode); } catch (e) {}
+  try { localStorage.setItem(FRIDAYS_ATMOSPHERE_VALUE_KEY, String(Math.round(mode.value))); } catch (e) {}
+  try { localStorage.setItem('fridays_theme', mode.label); } catch (e) {}
 
-  // Persist
-  window._currentTheme = mode.resolved;
-  try { localStorage.setItem(FRIDAYS_THEME_MODE_KEY, selectedMode); } catch(e) {}
-  try { localStorage.setItem('fridays_theme', mode.resolved); } catch(e) {}
-
+  _syncAtmosphereControls(mode.selectedMode, mode.value);
+  _syncFoundationControls(foundationMode, resolvedFoundation);
+  _syncAccentControls(accentValue);
+  _syncHueControls(hueValue);
+  _syncContrastControls(contrastValue);
+  _syncGlowControls(glowValue);
   refreshAutoWindowThemes();
-
-  // Sync settings modal highlight
-  _markThemeActive(document.querySelector(`[data-theme="${mode.resolved}"]`));
-}
-
-function _markThemeActive(btn) {
-  // Clear active ring from all theme buttons in the settings modal
-  document.querySelectorAll('#settings-box [data-theme]').forEach(b => {
-    b.style.outline = '';
-    b.style.boxShadow = b.style.boxShadow?.replace(/,?\s*0 0 0 3px[^,)]*/g, '') || '';
-  });
-  if (!btn) return;
-  // Highlight the selected button with an inset ring
-  btn.style.outline = '2px solid var(--accent)';
-  btn.style.outlineOffset = '2px';
 }
 
 function applyWindowThemeToWindow(win, mode) {
   if (!win || !win.el) return;
-  const resolvedMode = resolveThemeMode(mode || 'auto');
-  const colors = TIME_PERIOD_COLORS[resolvedMode.resolved] || TIME_PERIOD_COLORS.afternoon;
+  const resolvedMode = resolveWindowThemeMode(mode || 'auto');
+  const colors = _buildAtmosphereColors(resolvedMode.value);
+  const foundationIsDark = colors['--foundation-mode'] === 'dark';
 
   Object.entries(colors).forEach(([key, value]) => {
     win.el.style.setProperty(key, value);
@@ -223,10 +946,10 @@ function applyWindowThemeToWindow(win, mode) {
   });
 
   const labelEl = win.el.querySelector('#win-theme-label-' + win.id);
-  if (labelEl) labelEl.textContent = _windowThemeLabel(mode || 'auto');
+  if (labelEl) labelEl.textContent = mode === 'auto' ? 'Default' : resolvedMode.label;
 
-  win.el.classList.toggle('window-dark', resolvedMode.isDark);
-  win.el.classList.toggle('window-light', !resolvedMode.isDark);
+  win.el.classList.toggle('window-dark', foundationIsDark);
+  win.el.classList.toggle('window-light', !foundationIsDark);
 
   win.windowTheme = mode;
 }
@@ -247,7 +970,7 @@ function setWindowQuickTheme(id, mode) {
   applyWindowThemeToWindow(win, next);
   winManager.save();
   const label = _windowThemeLabel(next);
-  showToast(`${win.title.replace(/^[^\w\s]+\s*/, '')}: ${label} theme`, 'info');
+  showToast(`${String(win.title || '').replace(/^[^\w\s]+\s*/, '')}: ${label} atmosphere`, 'info');
 }
 
 function onWindowThemeSliderChange(id, sliderValue) {
@@ -258,46 +981,102 @@ function onWindowThemeSliderChange(id, sliderValue) {
 function loadSettings() {
   const defaultSettings = {
     time: 'auto',
+    atmosphereMode: 'auto',
+    foundationMode: 'auto',
+    atmosphereValue: 38,
+    accentValue: 50,
+    hueValue: 50,
+    contrastValue: 58,
+    glowValue: 52,
+    scene: 'beach',
+    sceneEffect: 'on',
     opacity: 5,  // 5% transparent = 95% opaque by default
-    accent: '#FF9E4D',
     setAsDefault: false
   };
 
   const settings = JSON.parse(localStorage.getItem('fridays-settings') || JSON.stringify(defaultSettings));
 
   // settings.opacity stores transparency %. Guard against invisible-window settings.
-  const transparency = Math.max(0, Math.min(85, Number(settings.opacity ?? 0)));
+  const transparency = _clampTransparencyValue(settings.opacity ?? 5);
   if (transparency !== settings.opacity) {
     settings.opacity = transparency;
     localStorage.setItem('fridays-settings', JSON.stringify(settings));
   }
 
-  // Restore saved named theme (e.g. obsidian/void) or fall back to settings.time
-  const savedTheme = localStorage.getItem(FRIDAYS_THEME_MODE_KEY)
-    || localStorage.getItem('fridays_theme')
+  const savedMode = _normalizeAtmosphereMode(
+    localStorage.getItem(FRIDAYS_THEME_MODE_KEY)
+    || settings.atmosphereMode
     || settings.time
-    || 'auto';
-  applyTimeTheme(savedTheme);
-
-  // Mark the active theme button in the settings modal
-  _markThemeActive(document.querySelector(`[data-theme="${savedTheme}"]`));
+    || 'auto'
+  );
+  const savedValue = _clampAtmosphereValue(
+    localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY)
+    ?? settings.atmosphereValue
+    ?? 38
+  );
+  const accentValue = _clampAtmosphereValue(
+    localStorage.getItem(FRIDAYS_ACCENT_VALUE_KEY)
+    ?? settings.accentValue
+    ?? 50
+  );
+  const hueValue = _clampAtmosphereValue(
+    localStorage.getItem(FRIDAYS_HUE_VALUE_KEY)
+    ?? settings.hueValue
+    ?? 50
+  );
+  const contrastValue = _clampAtmosphereValue(
+    localStorage.getItem(FRIDAYS_CONTRAST_VALUE_KEY)
+    ?? settings.contrastValue
+    ?? 58
+  );
+  const scene = _normalizeSceneMode(
+    localStorage.getItem(FRIDAYS_SCENE_KEY)
+    ?? settings.scene
+    ?? 'beach'
+  );
+  const sceneEffect = _normalizeSceneEffectMode(
+    localStorage.getItem(FRIDAYS_SCENE_EFFECT_KEY)
+    ?? settings.sceneEffect
+    ?? 'on'
+  );
+  const glowValue = _clampAtmosphereValue(
+    localStorage.getItem(FRIDAYS_GLOW_VALUE_KEY)
+    ?? settings.glowValue
+    ?? 52
+  );
+  const foundationMode = _normalizeFoundationMode(
+    localStorage.getItem(FRIDAYS_FOUNDATION_MODE_KEY)
+    ?? settings.foundationMode
+    ?? 'auto'
+  );
+  try { localStorage.setItem(FRIDAYS_ACCENT_VALUE_KEY, String(Math.round(accentValue))); } catch (e) {}
+  try { localStorage.setItem(FRIDAYS_HUE_VALUE_KEY, String(Math.round(hueValue))); } catch (e) {}
+  try { localStorage.setItem(FRIDAYS_CONTRAST_VALUE_KEY, String(Math.round(contrastValue))); } catch (e) {}
+  try { localStorage.setItem(FRIDAYS_SCENE_KEY, scene); } catch (e) {}
+  try { localStorage.setItem(FRIDAYS_SCENE_EFFECT_KEY, sceneEffect); } catch (e) {}
+  try { localStorage.setItem(FRIDAYS_FOUNDATION_MODE_KEY, foundationMode); } catch (e) {}
+  try { localStorage.setItem(FRIDAYS_GLOW_VALUE_KEY, String(Math.round(glowValue))); } catch (e) {}
+  applyTimeTheme(savedMode, savedMode === 'manual' ? savedValue : null);
+  applyScene(scene);
 
   // Apply transparency (settings.opacity stores transparency %, so invert to get opacity)
   document.documentElement.style.setProperty('--glass-opacity', (100 - transparency) / 100);
 
   // Sync opacity slider
   const opacitySlider = document.getElementById('opacity-slider');
-  if (opacitySlider) opacitySlider.value = 100 - transparency;
-
-  // Apply accent color
-  document.documentElement.style.setProperty('--accent', settings.accent);
-  document.querySelector(`[data-color="${settings.accent}"]`)?.classList.add('active');
+  if (opacitySlider) opacitySlider.value = transparency;
 
   // Update opacity display
   const opacityValue = document.getElementById('opacity-value');
   if (opacityValue) opacityValue.textContent = transparency + '%';
 
   _syncChatUiScaleControls(window.__fridaysChatUiScale || CHAT_UI_SCALE_DEFAULT);
+  _syncAccentControls(accentValue);
+  _syncHueControls(hueValue);
+  _syncContrastControls(contrastValue);
+  _syncGlowControls(glowValue);
+  _syncSceneControls(scene);
+  _syncSceneEffectControls(sceneEffect);
 
   return settings;
 }
@@ -309,31 +1088,17 @@ function updateTimeDisplay() {
 function updateHomeTimeDisplay() {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-  
-  // Get current theme mood
-  const settings = JSON.parse(localStorage.getItem('fridays-settings') || '{"time":"auto"}');
-  const hour = now.getHours();
-  let currentTheme = settings.time;
-  
-  if (currentTheme === 'auto') {
-    if (hour >= 6 && hour < 12) currentTheme = 'morning';
-    else if (hour >= 12 && hour < 17) currentTheme = 'afternoon';
-    else if (hour >= 17 && hour < 21) currentTheme = 'evening';
-    else currentTheme = 'night';
-  }
-  
-  const moodLabels = {
-    'morning': '🌅 Morning Vibes',
-    'afternoon': '☀️ Afternoon Energy',
-    'evening': '🌆 Evening Mood',
-    'night': '🌙 Night Mode'
-  };
+  const mode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
+  const value = mode === 'auto'
+    ? _getAutoAtmosphereValue(now)
+    : _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38);
+  const moodLabel = _atmosphereLabel(value);
   
   const timeDisplay = document.getElementById('time-display');
   if (timeDisplay) {
     timeDisplay.innerHTML = `
       <div class="actual-time">${timeStr}</div>
-      <div class="feels-like">${moodLabels[currentTheme] || 'Auto'}</div>
+      <div class="feels-like">Atmosphere · ${moodLabel}</div>
     `;
   }
 }
@@ -691,22 +1456,43 @@ function initClocks() {
 }
 
 function saveSettings() {
-  // Current theme set by applyTimeTheme()
-  const currentTheme = window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto';
+  const currentTheme = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
+  const currentAtmosphereValue = _clampAtmosphereValue(
+    document.getElementById('atmosphere-slider')?.value
+    ?? localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY)
+    ?? window._currentAtmosphereValue
+    ?? 38
+  );
 
   const settings = {
     time: currentTheme,
-    opacity: 100 - parseInt(document.getElementById('opacity-slider').value || '95'),
-    accent: Array.from(document.querySelectorAll('[data-color]')).find(b => b.classList.contains('active'))?.dataset.color || '#FF9E4D',
+    atmosphereMode: currentTheme,
+    foundationMode: _normalizeFoundationMode(localStorage.getItem(FRIDAYS_FOUNDATION_MODE_KEY) ?? 'auto'),
+    atmosphereValue: currentAtmosphereValue,
+    accentValue: _clampAtmosphereValue(document.getElementById('accent-slider')?.value ?? localStorage.getItem(FRIDAYS_ACCENT_VALUE_KEY) ?? 50),
+    hueValue: _clampAtmosphereValue(document.getElementById('hue-slider')?.value ?? localStorage.getItem(FRIDAYS_HUE_VALUE_KEY) ?? 50),
+    contrastValue: _clampAtmosphereValue(document.getElementById('contrast-slider')?.value ?? localStorage.getItem(FRIDAYS_CONTRAST_VALUE_KEY) ?? 58),
+    glowValue: _clampAtmosphereValue(document.getElementById('glow-slider')?.value ?? localStorage.getItem(FRIDAYS_GLOW_VALUE_KEY) ?? 52),
+    scene: _normalizeSceneMode(localStorage.getItem(FRIDAYS_SCENE_KEY) ?? 'beach'),
+    sceneEffect: _normalizeSceneEffectMode(localStorage.getItem(FRIDAYS_SCENE_EFFECT_KEY) ?? 'on'),
+    opacity: _clampTransparencyValue(document.getElementById('opacity-slider').value || '5'),
     setAsDefault: false,
   };
 
   localStorage.setItem('fridays-settings', JSON.stringify(settings));
   localStorage.setItem(FRIDAYS_THEME_MODE_KEY, currentTheme);
-  showToast('Theme saved', 'success');
+  localStorage.setItem(FRIDAYS_FOUNDATION_MODE_KEY, settings.foundationMode);
+  localStorage.setItem(FRIDAYS_ATMOSPHERE_VALUE_KEY, String(Math.round(currentAtmosphereValue)));
+  localStorage.setItem(FRIDAYS_ACCENT_VALUE_KEY, String(Math.round(settings.accentValue)));
+  localStorage.setItem(FRIDAYS_HUE_VALUE_KEY, String(Math.round(settings.hueValue)));
+  localStorage.setItem(FRIDAYS_CONTRAST_VALUE_KEY, String(Math.round(settings.contrastValue)));
+  localStorage.setItem(FRIDAYS_GLOW_VALUE_KEY, String(Math.round(settings.glowValue)));
+  localStorage.setItem(FRIDAYS_SCENE_KEY, settings.scene);
+  localStorage.setItem(FRIDAYS_SCENE_EFFECT_KEY, settings.sceneEffect);
+  showToast('Atmosphere saved', 'success');
 
   document.documentElement.style.setProperty('--glass-opacity', (100 - settings.opacity) / 100);
-  document.documentElement.style.setProperty('--accent', settings.accent);
+  applyTimeTheme(currentTheme, currentTheme === 'manual' ? currentAtmosphereValue : null);
 
   closeSettings();
 }
@@ -718,4 +1504,3 @@ function toggleSettings() {
 function closeSettings() {
   document.getElementById('settings-modal').classList.remove('open');
 }
-

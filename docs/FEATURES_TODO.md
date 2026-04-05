@@ -3,13 +3,13 @@
 <!-- markdownlint-disable -->
 
 _Comprehensive list of all planned features, organized by phase and priority._
-_Last updated: 2026-04-04 by Nine (Claude Sonnet 4.6)_
+_Last updated: 2026-04-05 by Codex + Seven planning direction_
 
 ---
 
 ## Executive Summary
 
-**26 tasks** across 8 phases. Estimated timeline: **6-9 weeks** to full implementation.
+**30 tasks** across 9 phases. Estimated timeline: **6-10 weeks** to full implementation.
 
 | Phase | Name | Priority | Est. Size | Status |
 | ----- | ---- | -------- | --------- | ------ |
@@ -21,6 +21,7 @@ _Last updated: 2026-04-04 by Nine (Claude Sonnet 4.6)_
 | **F** | Verification & Bug Resolution | 🟢 Low | 2 days | Queued |
 | **G** | Frontend Tile Modularisation | 🔴 High | 3 weeks | In Progress |
 | **H** | Desktop Application Path | 🟡 Medium | 4 weeks | Planned |
+| **I** | Atmosphere Engine | 🔴 High | 2-3 weeks | Planned |
 
 ---
 
@@ -258,6 +259,102 @@ CREATE TABLE file_versions (
 **Implementation:**
 - [ ] Rename HTML element IDs/classes
 - [ ] Update JavaScript references
+
+---
+
+## Phase I: Atmosphere Engine (HIGH PRIORITY)
+
+### I-1: Replace Fixed Theme Presets with Atmosphere Model
+
+**Description:** Retire the current named-theme UX and replace it with a single continuous Atmosphere control.
+
+**Why:** The current theme set is visually inconsistent and feels like unrelated skins. Fridays should feel like one living environment that shifts across the day.
+
+**Product naming rule:**
+- [ ] User-facing language says `Atmosphere`
+- [ ] Internal compatibility may keep `theme` naming in code/storage during migration
+- [ ] Do not create a separate "Atmosphere system" beside the old theme system; this is the replacement path
+
+**Implementation:**
+- [ ] Remove named preset themes from the main settings UI
+- [ ] Add one continuous morning → night Atmosphere slider
+- [ ] Blend colors across the day instead of snapping between fixed palettes
+- [ ] Preserve current manual override behavior until changed back to default
+
+**Files to Update:**
+- `frontend/static/js/core/theme.js`
+- `frontend/static/css/themes.css`
+- `frontend/static/css/components.css`
+- `frontend/templates/terminal_base.html`
+- `frontend/themes/fridays.json`
+
+**Acceptance Criteria:**
+- [ ] No fixed-preset theme buttons remain in the main settings flow
+- [ ] Slider updates visuals smoothly with no hard jumps
+- [ ] Manual override persists using the current settings model
+
+### I-2: Atmosphere Follows One Selected Clock Location
+
+**Description:** Use one selected world clock as the source of truth for Atmosphere timing.
+
+**Why:** Fridays should be able to "feel like" another place in the world, not only the host machine timezone.
+
+**Implementation:**
+- [ ] Expose the selected clock/location in the Atmosphere settings panel
+- [ ] Read from the existing home-page world clock selection
+- [ ] Default Atmosphere position from the chosen location's local time
+- [ ] Keep manual slider override available
+
+**Acceptance Criteria:**
+- [ ] User can choose which saved clock drives Atmosphere
+- [ ] Auto/default mode follows that location's local time
+- [ ] Manual override still works and persists
+
+### I-3: Expand to All Saved Front-Page Clocks
+
+**Description:** Bring the saved clock list into the Atmosphere screen so the selected location is obvious and editable.
+
+**Implementation:**
+- [ ] Show the current saved clocks in Atmosphere settings
+- [ ] Make location selection use those saved clocks, not a separate duplicated list
+- [ ] Keep the current 5-clock model in sync between home and Atmosphere
+
+**Acceptance Criteria:**
+- [ ] Atmosphere screen shows the same saved locations as the front page
+- [ ] Changing saved clocks is reflected in Atmosphere selection
+
+### I-4: Add Weather Modifiers Behind the Atmosphere Slider
+
+**Description:** Weather becomes a modifier layer on top of the same Atmosphere timeline.
+
+**Why:** "Cloudy and cold London at 8AM" should feel different from "clear and warm Melbourne at 8AM" without becoming a separate theme preset system again.
+
+**Implementation:**
+- [ ] Add weather metadata to each saved clock/location
+- [ ] Support modifier families like cloudy, rainy, hot, cold, clear
+- [ ] Apply weather as palette adjustments behind the same time slider
+- [ ] Keep one coherent Atmosphere model rather than time theme + weather theme stacking
+
+**Dependencies:**
+- [ ] Clock weather lookup/API design
+- [ ] Location-weather refresh schedule
+
+**Acceptance Criteria:**
+- [ ] Atmosphere can reflect both time of day and weather state
+- [ ] Weather effects are additive modifiers, not unrelated preset swaps
+
+### I-5: Favorites and Saved Atmospheres (Later)
+
+**Description:** Allow one or more favorite saved looks per clock/location after the base system is stable.
+
+**Why:** Users will discover combinations they like, but this should not be designed before the core Atmosphere model feels right.
+
+**Implementation:**
+- [ ] Design favorite save model only after I-1 through I-4 feel stable
+- [ ] Consider one favorite per clock first before broader preset storage
+
+**Acceptance Criteria:**
+- [ ] Deferred until the main Atmosphere engine is stable and liked in daily use
 - [ ] Update button labels, tooltips
 - [ ] Update API endpoint docs (if any)
 - [ ] Update CHANGELOG/docs
