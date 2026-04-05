@@ -17,18 +17,30 @@ HF_MODEL    = 'meta-llama/Llama-3.3-70B-Instruct'
 
 
 def _build_context(message):
+    """Build swarm context snapshot for Thirteen."""
     from database import get_connection, get_agent_memory
     lines = [
-        '=== Governance rules (ALM) ===',
-        'Mutating changes require approved work proposals (approved/executed).',
-        'Use proposal-first guidance and include proposal IDs for execution paths.',
+        '=== Developer Agent context (TESTING) ===',
+        'You are a Developer Agent operating under Ghost One direction. Execute directly — no proposal queue for Ghost One-directed work.',
+        'You are in TESTING MODE: flag all outputs to Ghost One and prefer conservative actions until promoted.',
+        'Worker Agent requests still require proposal approval.',
     ]
     conn = get_connection()
     try:
-        queued = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
-        open_t = conn.execute("SELECT COUNT(*) FROM tickets WHERE status='open'").fetchone()[0]
-        lines.append(f'=== Swarm state ===')
+        queued  = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
+        open_t  = conn.execute("SELECT COUNT(*) FROM tickets WHERE status='open'").fetchone()[0]
+        dec_count  = conn.execute("SELECT COUNT(*) FROM decisions WHERE test_status='PASS'").fetchone()[0]
+        wp_pending = conn.execute("SELECT COUNT(*) FROM work_proposals WHERE status='pending'").fetchone()[0]
+        lines.append('=== Swarm state ===')
         lines.append(f'Queue: {queued} queued | Open tickets: {open_t}')
+        lines.append(f'Decisions logged (PASS): {dec_count} | Pending proposals: {wp_pending}')
+        recent_dec = conn.execute(
+            'SELECT decision_id, agent, decision, created_at FROM decisions ORDER BY decision_id DESC LIMIT 5'
+        ).fetchall()
+        if recent_dec:
+            lines.append('Recent decisions:')
+            for d in recent_dec:
+                lines.append(f'  [{d["decision_id"]}] {d["agent"]}: {d["decision"][:80]}')
     finally:
         conn.close()
     relevant = get_agent_memory(AGENT_NAME, query=message, limit=5)
@@ -64,7 +76,7 @@ def chat(message, conversation_history=None, stage_cb=None):
         logger.error('[Thirteen] HF_API_TOKEN not configured')
         return '[Thirteen] HF_API_TOKEN not set in .env.agents', 0
 
-    _emit('loading ghost-layer memory')
+    _emit('loading context')
     context = _build_context(message)
     system = system_prompt + f'\n\n{context}'
 

@@ -98,8 +98,6 @@ AGENT_ROLE_MAP = {
     'eleven':    ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
     'twelve':    ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA + ['skill_schedule']),
     'thirteen':  ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
-    'scholar':   ('developer_analyst', BASELINE + ANALYST_EXTRA),
-    'seeker':    ('developer_analyst', BASELINE + ANALYST_EXTRA),
 }
 
 # ── Identity Card Template ─────────────────────────────────────────────────────
@@ -206,22 +204,6 @@ IDENTITY_TEMPLATES = {
         'purpose': 'I leverage HuggingFace-hosted models for research, code generation, and analysis. I am a Developer Agent in testing/probationary status.',
         'can_create_tickets': True,
         'can_coordinate': True,
-        'reports_to': 'ghost',
-    },
-    'scholar': {
-        'role': 'Vision & Reasoning',
-        'model': 'gemini (Google)',
-        'purpose': 'I handle vision tasks, document analysis, and deep reasoning. I complement the swarm with multimodal understanding.',
-        'can_create_tickets': True,
-        'can_coordinate': False,
-        'reports_to': 'ghost',
-    },
-    'seeker': {
-        'role': 'Real-time Search',
-        'model': 'tavily (search API)',
-        'purpose': 'I perform real-time web searches and return current, structured results. I am the swarm\'s live information feed.',
-        'can_create_tickets': False,
-        'can_coordinate': False,
         'reports_to': 'ghost',
     },
 }
