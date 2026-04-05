@@ -7,15 +7,22 @@ Run:
 
 import sys
 from pathlib import Path
+from flask import jsonify
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'utils'))
 sys.path.insert(0, str(ROOT / 'core' / 'pipeline'))
+sys.path.insert(0, str(ROOT / 'frontend'))
 
 from frontend import terminal as term
 
 app = term.create_app()
+
+# After create_app() the blueprint modules are loaded; import them directly
+# so we can patch _alm_gate_or_response in the right namespace.
+import blueprints.auth as _auth_mod
+import blueprints.time_wizard_bp as _tw_mod
 
 
 def _request(client, method, path, body=None):
@@ -25,13 +32,13 @@ def _request(client, method, path, body=None):
 
 def test_senders_add_is_alm_gated():
     called = {'action': None}
-    original_gate = term._alm_gate_or_response
+    original_gate = _auth_mod._alm_gate_or_response
 
     def fake_gate(data, action_name):
         called['action'] = action_name
-        return term.jsonify({'ok': False, 'error': 'blocked by fake gate'}), 428
+        return jsonify({'ok': False, 'error': 'blocked by fake gate'}), 428
 
-    term._alm_gate_or_response = fake_gate
+    _auth_mod._alm_gate_or_response = fake_gate
     try:
         with app.test_client() as client:
             code, obj = _request(client, 'POST', '/api/senders', {
@@ -43,18 +50,18 @@ def test_senders_add_is_alm_gated():
         assert called['action'] == 'senders_add', f"expected action senders_add, got {called['action']}"
         assert obj.get('ok') is False
     finally:
-        term._alm_gate_or_response = original_gate
+        _auth_mod._alm_gate_or_response = original_gate
 
 
 def test_senders_remove_is_alm_gated():
     called = {'action': None}
-    original_gate = term._alm_gate_or_response
+    original_gate = _auth_mod._alm_gate_or_response
 
     def fake_gate(data, action_name):
         called['action'] = action_name
-        return term.jsonify({'ok': False, 'error': 'blocked by fake gate'}), 428
+        return jsonify({'ok': False, 'error': 'blocked by fake gate'}), 428
 
-    term._alm_gate_or_response = fake_gate
+    _auth_mod._alm_gate_or_response = fake_gate
     try:
         with app.test_client() as client:
             code, obj = _request(client, 'DELETE', '/api/senders', {
@@ -65,18 +72,18 @@ def test_senders_remove_is_alm_gated():
         assert called['action'] == 'senders_remove', f"expected action senders_remove, got {called['action']}"
         assert obj.get('ok') is False
     finally:
-        term._alm_gate_or_response = original_gate
+        _auth_mod._alm_gate_or_response = original_gate
 
 
 def test_manager_onboard_non_dry_run_is_alm_gated():
     called = {'action': None}
-    original_gate = term._alm_gate_or_response
+    original_gate = _auth_mod._alm_gate_or_response
 
     def fake_gate(data, action_name):
         called['action'] = action_name
-        return term.jsonify({'ok': False, 'error': 'blocked by fake gate'}), 428
+        return jsonify({'ok': False, 'error': 'blocked by fake gate'}), 428
 
-    term._alm_gate_or_response = fake_gate
+    _auth_mod._alm_gate_or_response = fake_gate
     try:
         with app.test_client() as client:
             code, obj = _request(client, 'POST', '/api/access/manager/onboard', {
@@ -87,18 +94,18 @@ def test_manager_onboard_non_dry_run_is_alm_gated():
         assert called['action'] == 'manager_onboard', f"expected action manager_onboard, got {called['action']}"
         assert obj.get('ok') is False
     finally:
-        term._alm_gate_or_response = original_gate
+        _auth_mod._alm_gate_or_response = original_gate
 
 
 def test_manager_onboard_dry_run_bypasses_gate():
     called = {'count': 0}
-    original_gate = term._alm_gate_or_response
+    original_gate = _auth_mod._alm_gate_or_response
 
     def fake_gate(data, action_name):
         called['count'] += 1
-        return term.jsonify({'ok': False, 'error': 'should not be called'}), 428
+        return jsonify({'ok': False, 'error': 'should not be called'}), 428
 
-    term._alm_gate_or_response = fake_gate
+    _auth_mod._alm_gate_or_response = fake_gate
     try:
         with app.test_client() as client:
             code, obj = _request(client, 'POST', '/api/access/manager/onboard', {
@@ -111,23 +118,23 @@ def test_manager_onboard_dry_run_bypasses_gate():
         assert obj.get('dry_run') is True
         assert called['count'] == 0, f"gate should not be called in dry_run path, got {called['count']}"
     finally:
-        term._alm_gate_or_response = original_gate
+        _auth_mod._alm_gate_or_response = original_gate
 
 
 def test_time_restore_non_dry_run_is_alm_gated():
     called = {'action': None}
-    original_gate = term._alm_gate_or_response
-    original_restore = term.time_wizard.restore_workflow_state
+    original_gate = _tw_mod._alm_gate_or_response
+    original_restore = _tw_mod.time_wizard.restore_workflow_state
 
     def fake_gate(data, action_name):
         called['action'] = action_name
-        return term.jsonify({'ok': False, 'error': 'blocked by fake gate'}), 428
+        return jsonify({'ok': False, 'error': 'blocked by fake gate'}), 428
 
     def fake_restore(**kwargs):
         return {'ok': True, 'dry_run': kwargs.get('dry_run', True)}
 
-    term._alm_gate_or_response = fake_gate
-    term.time_wizard.restore_workflow_state = fake_restore
+    _tw_mod._alm_gate_or_response = fake_gate
+    _tw_mod.time_wizard.restore_workflow_state = fake_restore
     try:
         with app.test_client() as client:
             code, obj = _request(client, 'POST', '/api/time/restore', {
@@ -138,24 +145,24 @@ def test_time_restore_non_dry_run_is_alm_gated():
         assert called['action'] == 'time_restore', f"expected action time_restore, got {called['action']}"
         assert obj.get('ok') is False
     finally:
-        term._alm_gate_or_response = original_gate
-        term.time_wizard.restore_workflow_state = original_restore
+        _tw_mod._alm_gate_or_response = original_gate
+        _tw_mod.time_wizard.restore_workflow_state = original_restore
 
 
 def test_time_restore_dry_run_bypasses_gate():
     called = {'count': 0}
-    original_gate = term._alm_gate_or_response
-    original_restore = term.time_wizard.restore_workflow_state
+    original_gate = _tw_mod._alm_gate_or_response
+    original_restore = _tw_mod.time_wizard.restore_workflow_state
 
     def fake_gate(data, action_name):
         called['count'] += 1
-        return term.jsonify({'ok': False, 'error': 'should not be called'}), 428
+        return jsonify({'ok': False, 'error': 'should not be called'}), 428
 
     def fake_restore(**kwargs):
         return {'ok': True, 'dry_run': kwargs.get('dry_run', True), 'summary': 'preview'}
 
-    term._alm_gate_or_response = fake_gate
-    term.time_wizard.restore_workflow_state = fake_restore
+    _tw_mod._alm_gate_or_response = fake_gate
+    _tw_mod.time_wizard.restore_workflow_state = fake_restore
     try:
         with app.test_client() as client:
             code, obj = _request(client, 'POST', '/api/time/restore', {
@@ -167,8 +174,8 @@ def test_time_restore_dry_run_bypasses_gate():
         assert obj.get('dry_run') is True
         assert called['count'] == 0, f"gate should not be called in dry_run path, got {called['count']}"
     finally:
-        term._alm_gate_or_response = original_gate
-        term.time_wizard.restore_workflow_state = original_restore
+        _tw_mod._alm_gate_or_response = original_gate
+        _tw_mod.time_wizard.restore_workflow_state = original_restore
 
 
 if __name__ == '__main__':
