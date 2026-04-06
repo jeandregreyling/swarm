@@ -97,25 +97,56 @@ def chat(message, conversation_history=None, stage_cb=None):
 
     # ── Skill extraction ───────────────────────────────────────────────────────
     def _extract_skill_lines(text):
-        """Parse SKILL / /SKILL command lines from GPT output. Max 4."""
+        """
+        Parse SKILL / /SKILL commands from GPT output. Max 6.
+        Handles multi-line skills: a SKILL line followed by continuation lines
+        (before the next SKILL or blank line) is joined so fs_patch with
+        multi-line <<<OLD>>>...<<<NEW>>>... blocks are captured whole.
+        """
         from fridays.skills import parse_skill_command
+        raw = str(text or '')
+        lines = raw.splitlines()
         cmds = []
-        for raw_line in str(text or '').splitlines():
-            line = raw_line.strip()
-            if not line:
+
+        i = 0
+        while i < len(lines) and len(cmds) < 6:
+            line = lines[i].strip()
+            is_skill = line.upper().startswith('SKILL ') or line.upper().startswith('/SKILL ')
+            if not is_skill:
+                i += 1
                 continue
-            parsed = None
-            if line.upper().startswith('SKILL '):
-                parsed = parse_skill_command(line)
-            elif line.upper().startswith('/SKILL '):
-                parsed = parse_skill_command('SKILL ' + line[7:].strip())
+
+            # Collect continuation lines (multi-line fs_patch blocks).
+            # For fs_patch: <<<OLD>>>...content...<<<NEW>>>...new content...
+            # Do NOT stop when <<<NEW>>> appears — new content follows it.
+            # Let blank lines and next SKILL commands terminate the block.
+            collected = [line]
+            i += 1
+            while i < len(lines):
+                nxt = lines[i]
+                nxt_stripped = nxt.strip()
+                # Stop collecting if blank line or next SKILL command
+                if not nxt_stripped:
+                    break
+                if nxt_stripped.upper().startswith('SKILL ') or nxt_stripped.upper().startswith('/SKILL '):
+                    break
+                collected.append(nxt)
+                i += 1
+
+            full_line = ' '.join(collected) if len(collected) == 1 else '\n'.join(collected)
+            # Normalise /SKILL prefix
+            if full_line.strip().upper().startswith('/SKILL '):
+                full_line = 'SKILL ' + full_line.strip()[7:]
+
+            parsed = parse_skill_command(full_line.strip())
             if not parsed:
                 continue
             skill_name, skill_args = parsed
             if skill_name == 'list':
                 continue
             cmds.append((skill_name, skill_args))
-        return cmds[:4]
+
+        return cmds
 
     def _run_skill_lines(cmds):
         """Execute a list of (skill_name, skill_args) pairs. Returns joined output string."""
@@ -168,8 +199,13 @@ def chat(message, conversation_history=None, stage_cb=None):
                 {
                     'role': 'user',
                     'content': (
-                        'Skill outputs below. If you need to run more skills (e.g. fs_patch, verify), '
-                        'emit them now. Otherwise produce your final answer.\n\n'
+                        'Skill outputs below.\n'
+                        'IMPORTANT: If the original request was a code/file change and you now have '
+                        'enough information, emit SKILL fs_patch NOW to apply it. '
+                        'The <<<OLD>>> text MUST be copied EXACTLY character-for-character from the '
+                        'skill output above — including all lines in the block (whitespace, background, etc). '
+                        'Do NOT reconstruct or abbreviate the OLD text — copy it verbatim from the output. '
+                        'Only produce a text final answer if no file change is needed.\n\n'
                         + skill_results
                     ),
                 },
@@ -183,33 +219,48 @@ def chat(message, conversation_history=None, stage_cb=None):
             second_answer = second.choices[0].message.content
             tokens += second.usage.total_tokens if second.usage else 0
 
-            # Pass 3: execute any follow-up skills (e.g. fs_patch after read, verify after patch)
-            second_cmds = _extract_skill_lines(second_answer)
-            if second_cmds:
-                _emit_stage('running follow-up skills')
-                second_results = _run_skill_lines(second_cmds)
+            # Passes 3-5: keep executing skill chains until no more skills or max passes
+            all_results = skill_results
+            current_messages = followup_messages
+            current_answer = second_answer
+            current_tokens = tokens
 
-                third_messages = followup_messages + [
-                    {'role': 'assistant', 'content': second_answer},
+            for _pass in range(3):  # up to 3 more passes (total 5)
+                next_cmds = _extract_skill_lines(current_answer)
+                if not next_cmds:
+                    break
+                _emit_stage('running follow-up skills')
+                next_results = _run_skill_lines(next_cmds)
+                all_results += '\n\n' + next_results
+
+                next_messages = current_messages + [
+                    {'role': 'assistant', 'content': current_answer},
                     {
                         'role': 'user',
                         'content': (
-                            'Follow-up skill outputs below. Produce your final answer now — '
-                            'do not emit further SKILL commands.\n\n'
-                            + second_results
+                            'Skill outputs below.\n'
+                            'IMPORTANT: If the original request was a code/file change and you now have '
+                            'enough information, emit SKILL fs_patch NOW to apply it. '
+                            'The <<<OLD>>> text MUST be copied EXACTLY from the skill output — every line, '
+                            'including background, border, and any other properties in the block. '
+                            'If you just applied a patch, confirm with SKILL fs_readonly lines. '
+                            'Only produce a final text answer when all changes are done and verified.\n\n'
+                            + next_results
                         ),
                     },
                 ]
                 _emit_stage('synthesizing final answer')
-                third = client.chat.completions.create(
+                next_resp = client.chat.completions.create(
                     model=model,
-                    messages=third_messages,
+                    messages=next_messages,
                     max_tokens=4096,
                 )
-                answer = third.choices[0].message.content + '\n\n---\nSkill outputs:\n' + skill_results + '\n\n' + second_results
-                tokens += third.usage.total_tokens if third.usage else 0
-            else:
-                answer = second_answer + '\n\n---\nExecuted skill output:\n' + skill_results
+                current_answer = next_resp.choices[0].message.content
+                current_tokens += next_resp.usage.total_tokens if next_resp.usage else 0
+                current_messages = next_messages
+
+            tokens = current_tokens
+            answer = current_answer + '\n\n---\nSkill outputs:\n' + all_results
 
         _emit_stage('persisting response memory')
         try:

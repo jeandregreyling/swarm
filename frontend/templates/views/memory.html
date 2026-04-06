@@ -8,18 +8,7 @@
         <input type="text" id="memory-search" placeholder="Search all memories..." style="flex:1;padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
         <span id="memory-count" style="font-size:10px;color:var(--text-dim);white-space:nowrap;"></span>
       </div>
-      <div id="memory-agent-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
-        <button class="mem-tab active" data-agent="" onclick="_memTab(this,'')">All</button>
-        <button class="mem-tab" data-agent="gemma"     onclick="_memTab(this,'gemma')">1 · Gemma3</button>
-        <button class="mem-tab" data-agent="llama"     onclick="_memTab(this,'llama')">2 · LlaMA</button>
-        <button class="mem-tab" data-agent="qwen"      onclick="_memTab(this,'qwen')">4 · Qwen</button>
-        <button class="mem-tab" data-agent="librarian" onclick="_memTab(this,'librarian')">5 · Librarian</button>
-        <button class="mem-tab" data-agent="eight"     onclick="_memTab(this,'eight')">8 · Eight</button>
-        <button class="mem-tab" data-agent="nine"      onclick="_memTab(this,'nine')">9 · Groq</button>
-        <button class="mem-tab" data-agent="ten"       onclick="_memTab(this,'ten')">10 · Ten</button>
-        <button class="mem-tab" data-agent="eleven"    onclick="_memTab(this,'eleven')">11 · Grok</button>
-        <button class="mem-tab" data-agent="twelve"    onclick="_memTab(this,'twelve')">12 · Claude</button>
-      </div>
+      <div id="memory-agent-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;"></div>
       <div id="memory-source-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
         <button class="mem-tab active" data-source="all" onclick="_memSourceTab(this,'all')">All Sources</button>
         <button class="mem-tab" data-source="db" onclick="_memSourceTab(this,'db')">DB Only</button>

@@ -18,7 +18,7 @@ Usage
         call_fn=_api_call,
         messages=messages,        # full list, may include system role
         emit_fn=_emit,
-        max_passes=3,
+        max_passes=5,
     )
 
 For Anthropic (Twelve), pass a `call_fn` that accepts a message list WITHOUT the
@@ -37,40 +37,61 @@ import logging
 
 logger = logging.getLogger('seven.skills_loop')
 
-_MAX_SKILL_CMDS_PER_PASS = 4
+_MAX_SKILL_CMDS_PER_PASS = 6
 _MAX_SKILL_OUTPUT_CHARS  = 8000
 
 
 def _extract_skill_cmds(text):
     """
-    Parse SKILL / /SKILL command lines from model output.
+    Parse SKILL / /SKILL commands from model output.
+    Handles multi-line skill blocks so that fs_patch with multi-line
+    <<<OLD>>>...<<<NEW>>>... delimiters is captured as a single command.
     Returns list of (skill_name, skill_args) tuples, capped at _MAX_SKILL_CMDS_PER_PASS.
-    Skips the meta 'list' command (just asks what skills exist).
     """
     try:
         from fridays.skills import parse_skill_command
     except Exception:
         return []
 
+    lines = str(text or '').splitlines()
     cmds = []
-    for raw_line in str(text or '').splitlines():
-        line = raw_line.strip()
-        if not line:
+    i = 0
+
+    while i < len(lines) and len(cmds) < _MAX_SKILL_CMDS_PER_PASS:
+        line = lines[i].strip()
+        is_skill = line.upper().startswith('SKILL ') or line.upper().startswith('/SKILL ')
+        if not is_skill:
+            i += 1
             continue
-        if line.upper().startswith('SKILL '):
-            parsed = parse_skill_command(line)
-        elif line.upper().startswith('/SKILL '):
-            parsed = parse_skill_command('SKILL ' + line[7:].strip())
-        else:
-            continue
+
+        # Collect continuation lines for multi-line skills (e.g. fs_patch blocks).
+        # For fs_patch: the format is <<<OLD>>>...content...<<<NEW>>>...new content...
+        # We must NOT stop as soon as <<<NEW>>> appears — the replacement text follows it.
+        # Let blank lines and next SKILL commands terminate the block naturally.
+        collected = [line]
+        i += 1
+        while i < len(lines):
+            nxt = lines[i].strip()
+            # Stop at blank line or next SKILL command
+            if not nxt:
+                break
+            if nxt.upper().startswith('SKILL ') or nxt.upper().startswith('/SKILL '):
+                break
+            collected.append(lines[i])
+            i += 1
+
+        full = '\n'.join(collected)
+        if full.strip().upper().startswith('/SKILL '):
+            full = 'SKILL ' + full.strip()[7:]
+
+        parsed = parse_skill_command(full.strip())
         if not parsed:
             continue
         skill_name, skill_args = parsed
         if skill_name == 'list':
             continue
         cmds.append((skill_name, skill_args))
-        if len(cmds) >= _MAX_SKILL_CMDS_PER_PASS:
-            break
+
     return cmds
 
 
@@ -106,7 +127,7 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn):
     return '\n\n'.join(parts)
 
 
-def run_skill_loop(agent_name, call_fn, messages, emit_fn, max_passes=3):
+def run_skill_loop(agent_name, call_fn, messages, emit_fn, max_passes=5):
     """
     Execute `call_fn(messages)` with SKILL command interception and re-prompting.
 
@@ -116,15 +137,12 @@ def run_skill_loop(agent_name, call_fn, messages, emit_fn, max_passes=3):
         Identifies which agent is calling (used for auth checks and logging).
     call_fn : callable
         Signature: (messages: list[dict]) -> (content: str, tokens: int).
-        For OpenAI-compat agents pass the full messages list including system.
-        For Anthropic (Twelve) pass a closure that handles `system=` internally.
     messages : list[dict]
-        Starting message list.  The loop works on a local copy; the caller's
-        original list is never mutated.
+        Starting message list. The loop works on a local copy.
     emit_fn : callable
-        Signature: (text: str) -> None.  Used to push stage labels to the UI.
+        Signature: (text: str) -> None. Pushes stage labels to the UI.
     max_passes : int
-        Maximum SKILL execution rounds before returning whatever the model said.
+        Maximum SKILL execution rounds before returning.
 
     Returns
     -------
@@ -142,6 +160,7 @@ def run_skill_loop(agent_name, call_fn, messages, emit_fn, max_passes=3):
 
     total_tokens += tokens
     answer = first_content
+    pass_num = 0
 
     for _pass in range(max_passes):
         skill_cmds = _extract_skill_cmds(answer)
@@ -150,32 +169,44 @@ def run_skill_loop(agent_name, call_fn, messages, emit_fn, max_passes=3):
 
         emit_fn('running requested skills')
         skill_results = _execute_skill_cmds(skill_cmds, agent_name, emit_fn)
+        pass_num += 1
 
         logger.debug(
-            f'[{agent_name}] pass {_pass + 1}: ran {len(skill_cmds)} skill(s); '
+            f'[{agent_name}] pass {pass_num}: ran {len(skill_cmds)} skill(s); '
             f'result preview: {skill_results[:120]}'
         )
 
-        # Append turn pair so the model sees its own skill requests + results
+        is_final_pass = (_pass == max_passes - 1)
+
+        if is_final_pass:
+            follow_up = (
+                'Final skill outputs below. Produce your final answer now.\n\n'
+                + skill_results
+            )
+        else:
+            follow_up = (
+                'Skill outputs below.\n'
+                'IMPORTANT: If the original request was a code/file change and you now have '
+                'enough information, emit SKILL fs_patch NOW to apply it. '
+                'The <<<OLD>>> text MUST be copied EXACTLY character-for-character from the '
+                'skill output — every line in the block including background, border, etc. '
+                'Do NOT abbreviate or reconstruct OLD text — copy it verbatim.\n'
+                'If you just applied a patch, confirm with SKILL fs_readonly lines.\n'
+                'Only produce a final text answer when all changes are done and verified.\n\n'
+                + skill_results
+            )
+
         working_messages = working_messages + [
             {'role': 'assistant', 'content': answer},
-            {
-                'role': 'user',
-                'content': (
-                    'Executed skill outputs are below. Use these concrete results to produce '
-                    'your final answer. Do not re-request the same skill commands.\n\n'
-                    + skill_results
-                ),
-            },
+            {'role': 'user', 'content': follow_up},
         ]
 
         emit_fn('synthesizing final answer')
         try:
             answer, tokens = call_fn(working_messages)
         except Exception as exc:
-            logger.error(f'[{agent_name}] skills_loop pass {_pass + 2} error: {exc}')
-            # Return whatever we have so far rather than crashing
-            answer = (answer or '') + f'\n\n[skills_loop error on pass {_pass + 2}: {exc}]'
+            logger.error(f'[{agent_name}] skills_loop pass {pass_num + 1} error: {exc}')
+            answer = (answer or '') + f'\n\n[skills_loop error on pass {pass_num + 1}: {exc}]'
             break
         total_tokens += tokens
 
