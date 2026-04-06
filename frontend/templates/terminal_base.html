@@ -385,18 +385,18 @@
         </div>
       </div>
       <button id="auth-user-pill" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Identity & proxy user">
-        <span>👤</span><span id="auth-user-pill-label">ghost</span>
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span id="auth-user-pill-label">ghost</span>
       </button>
-      <button id="troubleshoot-btn" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px;" title="Open diagnostics and error log">🧪 Troubleshoot</button>
+      <button id="troubleshoot-btn" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Open diagnostics and error log"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Trace</button>
       <button id="home-help-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Help">?</button>
-      <button id="home-settings-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings">⚙️</button>
+      <button id="home-settings-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.5 3.5l1 1M11.5 11.5l1 1M12.5 3.5l-1 1M4.5 11.5l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
     </div>
   </div>
 
   <div id="home-content">
     <!-- Quick Access Cards -->
     <div class="home-section">
-      <div class="home-section-title"><span>⚡</span> Quick Access</div>
+      <div class="home-section-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.4 1.4M10.6 10.6L12 12M4 12l1.4-1.4M10.6 5.4L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/></svg></span> Quick Access</div>
       <div class="card-grid" id="quick-cards">
         <div class="home-card" data-win-id="chat" data-win-title="💬 Chat" data-win-template="view-chat">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span><span>Chat</span></div>
@@ -455,7 +455,7 @@
 
     <!-- Needs Attention -->
     <div class="home-section">
-      <div class="home-section-title"><span>👁</span> Needs Attention</div>
+      <div class="home-section-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><ellipse cx="8" cy="8" rx="6" ry="3.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg></span> Needs Attention</div>
       <div id="attention-panel" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">
         <div class="stat-card" style="cursor:pointer;" data-win-id="tickets" data-win-title="🎫 Tickets" data-win-template="view-tickets" title="Open Tickets">
           <div class="stat-value" id="attn-open-tickets">—</div>
@@ -483,7 +483,7 @@
     <!-- System Status + Models (combined) -->
     <div class="home-section">
       <div class="home-section-title" style="display:flex;align-items:center;gap:6px;">
-        <span>🖥️</span> System Status
+        <span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M5 14h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 11v3" stroke="currentColor" stroke-width="1.3"/></svg></span> System Status
         <button onclick="loadOllamaPanel()" title="Refresh models" style="margin-left:auto;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;">↻</button>
       </div>
 
@@ -519,7 +519,7 @@
 
     <!-- Activity Log -->
     <div class="home-section">
-      <div class="home-section-title"><span>📋</span> System Activity</div>
+      <div class="home-section-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="2.5" y="3" width="11" height="2" rx="0.5" stroke="currentColor" stroke-width="1.3"/><rect x="2.5" y="7" width="11" height="2" rx="0.5" stroke="currentColor" stroke-width="1.3"/><rect x="2.5" y="11" width="7" height="2" rx="0.5" stroke="currentColor" stroke-width="1.3"/></svg></span> System Activity</div>
       <input type="text" id="activity-filter" class="search-filter" placeholder="Filter activity...">
       <div id="activity-log" style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0; max-height: 240px; overflow-y: auto; font-size: 11px; font-family: 'SF Mono', monospace;">
         <div style="padding: 12px; color: var(--text-dim); display: flex; flex-direction: column; gap: 8px;">
@@ -533,7 +533,7 @@
 
     <!-- Ticket Queue -->
     <div class="home-section">
-      <div class="home-section-title"><span>🎫</span> Ticket Queue</div>
+      <div class="home-section-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="2.5" y="4.5" width="11" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 4.5V3.5a1 1 0 011-1h3a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.3"/></svg></span> Ticket Queue</div>
       <input type="text" id="ticket-filter" class="search-filter" placeholder="Filter tickets...">
       <div id="ticket-queue" style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0; max-height: 240px; overflow-y: auto; font-size: 11px;">
         <div style="padding: 12px; color: var(--text-dim); display: flex; flex-direction: column; gap: 8px;">
