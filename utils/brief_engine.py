@@ -64,12 +64,18 @@ def gather_swarm_state():
         # ── Memory highlights (importance >= 7) ─────────────────────────────
         highlights = []
         pools = [
-            ('memory_nine',   'Nine',    True),
-            ('memory_grok',   'Grok',    True),
-            ('memory_twelve', 'Twelve',  False),   # no subject column
-            ('memory_gemma',  'Gemma',   True),
-            ('memory_llama',  'LLaMA',   True),
-            ('memory_eight',  'Eight',   True),
+            ('memory_nine',     'Nine',      True),
+            ('memory_grok',     'Eleven',    True),
+            ('memory_ten',      'Ten',       True),
+            ('memory_twelve',   'Twelve',    True),
+            ('memory_thirteen', 'Thirteen',  True),
+            ('memory_gemma',    'Gemma',     True),
+            ('memory_llama',    'LLaMA',     True),
+            ('memory_mistral',  'Mistral',   True),
+            ('memory_qwen',     'Qwen',      True),
+            ('memory_eight',    'Eight',     True),
+            ('memory_scholar',  'Scholar',   True),
+            ('memory_seeker',   'Seeker',    True),
         ]
         for tbl, name, has_subject in pools:
             try:
