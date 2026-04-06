@@ -13,7 +13,6 @@ let CHAT_AGENT_OPTIONS = [
   { value: 'gemma',    label: '1 · Gemma3',   number: 1,  tier: 'local', hasTemp: true  },
   { value: 'llama',    label: '2 · LlaMA',    number: 2,  tier: 'local', hasTemp: true  },
   { value: 'mistral',  label: '3 · Mistral',  number: 3,  tier: 'local', hasTemp: true  },
-  { value: 'qwen',     label: '4 · Qwen',     number: 4,  tier: 'local', hasTemp: true  },
   { value: 'librarian',label: '5 · Vortex',   number: 5,  tier: 'local', hasTemp: false },
   { value: 'duck',     label: '6 · Duck',     number: 6,  tier: 'local', hasTemp: true  },
   { value: 'sniffles', label: '7 · Sniffles', number: 7,  tier: 'local', hasTemp: true  },
@@ -1737,7 +1736,6 @@ const _CHAT_AGENT_META = {
   gemma:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '1 · Gemma3. Director — routes, synthesises, speaks last.',                   runtime: 'local', tier: 'local' },
   llama:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M5 13V9c0-2.5 6-2.5 6 0v4M5 13h6M8 6.5c0-1.1-.9-2-2-2s-2 .9-2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '2 · LlaMA. Correspondent — web search, fast first response.',                runtime: 'local', tier: 'local' },
   mistral:   { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2.5l5.5 9.5H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>', purpose: '3 · Mistral. Analyst — deep reasoning, debates, challenges Two.',            runtime: 'local', tier: 'local' },
-  qwen:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M3 8a5 5 0 1010 0A5 5 0 003 8zm5 0v-2m0 4h.01" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '4 · Qwen. Deep Analyst — specialist depth, multilingual reasoning.',         runtime: 'local', tier: 'local' },
   librarian: { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4.5 3.5v9M4.5 3.5h5a2 2 0 010 4h-5M4.5 7.5h5.5a2 2 0 010 4H4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '5 · Vortex. Gatekeeper + time machine checkpoints.',                         runtime: 'local', tier: 'local' },
   duck:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 9.5c0 2 1.8 3 4 3s4-1 4-3c0-1.5-1-2.5-3-2.5H8c1 0 2-1 2-2S9 3 8 3C6.5 3 5.5 4 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 7.5l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '6 · Duck. Sanity checker — YES/NO after every ticket.',                      runtime: 'local', tier: 'local' },
   sniffles:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '7 · Sniffles. Inspector — memory auditor, read only.',                       runtime: 'local', tier: 'local' },
@@ -2240,6 +2238,77 @@ function _relayQuestionKey(question) {
     .trim()
     .slice(0, 180);
 }
+
+// ── Paid-agent session continuation ────────────────────────────────────────
+function _detectUnfinishedAgentAction(text) {
+  if (!text) return { unfinished: false, tasks: [], prompt: '' };
+  const trimmed = text.trim();
+  // If response contains code blocks or strong completion signals → done
+  const doneSignals = [
+    /```[\s\S]{20,}/,
+    /\bHere (?:is|are) (?:the )?(?:fix|result|code|change|patch|update)/i,
+    /\bI(?:'ve| have) (?:made|fixed|updated|changed|added|removed|patched|corrected)\b/i,
+    /\b(?:The )?(?:fix|patch|change|correction)(?:es)? (?:is|are) applied\b/i,
+    /\bDone[.!]?\s*$/m,
+  ];
+  for (const sig of doneSignals) {
+    if (sig.test(trimmed)) return { unfinished: false, tasks: [], prompt: '' };
+  }
+  // Action patterns indicating the agent is starting work but hasn't delivered a result
+  const patterns = [
+    { re: /Reading\s+([\w/\\.]+(?:\.\w+)?)\s*\.\.\./, label: m => `Reading ${m[1]}` },
+    { re: /Checking\s+([\w\s/\\.]+?)\s*\.\.\./, label: m => `Checking ${m[1].trim()}` },
+    { re: /(?:I(?:'ll| will)|Let me)\s+(?:now\s+)?(?:read|check|review|analyze|fix|update|inspect|fetch|audit|look at|examine)\s+([\w\s/\\.'"-]+?)(?:[.,]|$)/i, label: m => `Working on ${m[1].trim()}` },
+    { re: /\bI(?:'ll| will)\s+need to\s+(.{8,60})(?:[.,]|$)/i, label: m => m[1].trim() },
+    { re: /(?:^|\n)\s*(?:Step \d+|Next:|Now:)\s+(.{10,80})\.\.\./im, label: m => m[1].trim() },
+    { re: /\.\.\.\s*$/, label: () => 'In progress' },
+  ];
+  const tasks = [];
+  const seen = new Set();
+  for (const { re, label } of patterns) {
+    const m = trimmed.match(re);
+    if (m) {
+      const t = label(m).slice(0, 80);
+      if (!seen.has(t)) { seen.add(t); tasks.push(t); }
+    }
+  }
+  if (!tasks.length) return { unfinished: false, tasks: [], prompt: '' };
+  const prompt = `Please continue and deliver the actual result now — show the code fix, findings, or changes directly. Do not describe what you plan to do; just do it. (Task: ${tasks[0]})`;
+  return { unfinished: true, tasks, prompt };
+}
+
+function _renderAgentSessionBar(agentKey, tasks, continuePrompt) {
+  const encoded = _relayEncode(continuePrompt);
+  const agentLabel = _chatAgentLabel(agentKey);
+  const taskItems = tasks.map(t => `<span class="chat-session-task">${_escapeHtml(t)}</span>`).join('');
+  return `<div class="chat-session-bar">
+    <div class="chat-session-header">
+      <span class="chat-session-pulse"></span>
+      <span class="chat-session-label">Session open · ${_escapeHtml(agentLabel)}</span>
+      <div class="chat-session-tasks">${taskItems}</div>
+    </div>
+    <div class="chat-session-footer">
+      <span style="font-size:9px;color:var(--text-dim);">Agent declared action but hasn't delivered result yet</span>
+      <button class="chat-action-btn chat-session-continue-btn" data-agent="${_escapeHtml(agentKey)}" data-prompt="${_escapeHtml(encoded)}" onclick="continueAgentSession(this.dataset.agent,this.dataset.prompt,this)">Continue →</button>
+    </div>
+  </div>`;
+}
+
+function continueAgentSession(agentKey, encodedPrompt, btn) {
+  const question = _relayDecode(encodedPrompt);
+  if (!question || !agentKey) return;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    btn.closest('.chat-session-bar')?.classList.add('active');
+  }
+  _applySingleAgentSelection(agentKey);
+  const input = document.getElementById('question-input');
+  if (!input) return;
+  input.value = question;
+  Promise.resolve(sendMessage('relay', { from: agentKey, target: agentKey, question, chainDepth: -1 }));
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function _extractAgentDirectedQuestions(text, fromAgent) {
   const raw = String(text || '');
@@ -2875,7 +2944,12 @@ function _appendInfoLogEntry(actor, text, relay = false) {
   if (!messages) return;
   const key = String(actor || 'system').toLowerCase().trim();
   const label = _chatAgentLabel(key);
-  const icon = key === 'duck' ? '🦆' : (key === 'librarian' ? '👁️' : 'ℹ️');
+  const _infoSvg = {
+    duck:      '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden="true"><path d="M4 9.5c0 2 1.8 3 4 3s4-1 4-3c0-1.5-1-2.5-3-2.5H8c1 0 2-1 2-2S9 3 8 3C6.5 3 5.5 4 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 7.5l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+    librarian: '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden="true"><path d="M4.5 3.5v9M4.5 3.5h5a2 2 0 010 4h-5M4.5 7.5h5.5a2 2 0 010 4H4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    default:   '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 7v4M8 5.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  };
+  const icon = _infoSvg[key] || _infoSvg.default;
   const ts = Date.now();
   const timeLabel = _chatLogTimeLabel(ts);
   const row = document.createElement('div');
@@ -3240,6 +3314,13 @@ function _appendChatBubble(sender, text, opts = {}) {
   const traceHtml = _traceItems
     ? `<details class="chat-bubble-trace"><summary>Trace &middot; ${_traceItems.length} step${_traceItems.length !== 1 ? 's' : ''}</summary><div class="chat-bubble-trace-body">${_traceItems.map((s, i) => `<div class="chat-bubble-trace-step"><span class="chat-bubble-trace-num">${i + 1}</span><span class="chat-bubble-trace-text">${_escapeHtml(String(s && s.text != null ? s.text : s))}</span></div>`).join('')}</div></details>`
     : '';
+
+  // ── Paid agent session tracker ──────────────────────────────────────────
+  const _PAID_AGENT_KEYS = new Set(['nine','ten','eleven','twelve','thirteen']);
+  const isPaidAgent = _PAID_AGENT_KEYS.has(senderKey);
+  const sessionState = (!isUser && isPaidAgent) ? _detectUnfinishedAgentAction(visibleText) : { unfinished: false };
+  const sessionBarHtml = sessionState.unfinished ? _renderAgentSessionBar(senderKey, sessionState.tasks, sessionState.prompt) : '';
+
   bubble.innerHTML = `
     <div class="chat-meta ${isUser ? '' : 'icon-meta'}" style="display:flex;align-items:center;gap:8px;">
       <span>${senderMetaHtml}</span>
@@ -3249,6 +3330,7 @@ function _appendChatBubble(sender, text, opts = {}) {
     <div class="chat-text">${bodyHtml}</div>
     ${attachmentsHtml}
     ${eventsHtml}
+    ${sessionBarHtml}
     ${relayButtonsHtml}
     ${traceHtml}
     ${actionRow}

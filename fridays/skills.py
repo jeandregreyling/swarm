@@ -142,6 +142,12 @@ REGISTRY = {
         'usage': 'SKILL fs_patch <path> <<<OLD>>>exact old text<<<NEW>>>replacement text',
         'example': 'SKILL fs_patch utils/config.py <<<OLD>>>TEN_MODEL = \'gpt-4.1\'<<<NEW>>>TEN_MODEL = \'gpt-4.1-mini\'',
     },
+    'knowledge_search': {
+        'description': 'Search the consultant knowledge library (SAP HCM, ABAP, emails, PDFs, SAP notes).',
+        'trust_level': 0,
+        'usage': 'SKILL knowledge_search <query>',
+        'example': 'SKILL knowledge_search ECP payroll integration schema',
+    },
 }
 
 
@@ -539,6 +545,29 @@ def _skill_fs_patch(args, agent, **_):
         return False, f'fs_patch failed: {e}'
 
 
+def _skill_knowledge_search(args, agent, **_):
+    query = (args or '').strip()
+    if not query:
+        return False, 'Usage: SKILL knowledge_search <query>'
+    try:
+        import sys
+        from pathlib import Path as _Path
+        _swarm = str(_Path(__file__).resolve().parents[1])
+        if _swarm not in sys.path:
+            sys.path.insert(0, _swarm)
+        from lib.knowledge.retrieval import search
+        results = search(query, top_k=5)
+        if not results:
+            return True, 'No matching knowledge found.'
+        lines = []
+        for r in results:
+            excerpt = r['chunk_text'][:400].replace('\n', ' ')
+            lines.append(f"[{r['title']} | score:{r['score']:.2f}]\n{excerpt}")
+        return True, '\n\n---\n'.join(lines)
+    except Exception as e:
+        return False, f'knowledge_search error: {e}'
+
+
 _HANDLERS = {
     'shell':          _skill_shell,
     'browse':         _skill_browse,
@@ -555,7 +584,8 @@ _HANDLERS = {
     'alm_create_proposal': _skill_alm_create_proposal,
     'fs_readonly':    _skill_fs_readonly,
     'fs_write':       _skill_fs_write,
-    'fs_patch':       _skill_fs_patch,
+    'fs_patch':        _skill_fs_patch,
+    'knowledge_search': _skill_knowledge_search,
 }
 
 

@@ -81,15 +81,23 @@ def chat(message, conversation_history=None, stage_cb=None):
     messages.append({'role': 'user', 'content': message})
 
     try:
-        _emit('sending model request')
         client = OpenAI(api_key=XAI_API_KEY, base_url='https://api.x.ai/v1')
-        response = client.chat.completions.create(
-            model=XAI_MODEL,
+
+        def _api_call(msgs):
+            resp = client.chat.completions.create(
+                model=XAI_MODEL,
+                messages=msgs,
+                max_tokens=4096,
+            )
+            return resp.choices[0].message.content, (resp.usage.total_tokens if resp.usage else 0)
+
+        from agents.skills_loop import run_skill_loop
+        answer, tokens = run_skill_loop(
+            agent_name=AGENT_NAME,
+            call_fn=_api_call,
             messages=messages,
-            max_tokens=4096,
+            emit_fn=_emit,
         )
-        answer = response.choices[0].message.content
-        tokens = response.usage.total_tokens if response.usage else 0
 
         _emit('persisting response memory')
         try:

@@ -13,13 +13,13 @@ SANDPIT_BASE = '/home/seven/swarm/sandpits'
 SHARED_DIR = os.path.join(SANDPIT_BASE, 'shared')
 PROPOSALS_DIR = os.path.join(SHARED_DIR, 'proposals')
 
-AGENTS = ['gemma', 'llama', 'qwen', 'eight', 'librarian', 'sniffles', 'nine', 'grok']
+AGENTS = ['gemma', 'llama', 'mistral', 'eight', 'librarian', 'sniffles', 'nine', 'grok']
 
 # Trust ladder
 _DEFAULT_TRUST = {
     'gemma': 2,
     'llama': 2,
-    'qwen': 2,
+    'mistral': 2,
     'eight': 2,
     'librarian': 1,
     'sniffles': 0,

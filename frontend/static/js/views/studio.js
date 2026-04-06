@@ -592,28 +592,31 @@ function openStudioSection(section) {
         let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 12px;">';
         
         agents.forEach(agent => {
-          const emoji = {
-            'gemma': '🟢',
-            'llama': '🦙',
-            'qwen': '📕',
-            'eight': '8️⃣',
-            'nine': '9️⃣',
-            'ten': '🔟',
-            'eleven': '1️⃣1️⃣',
-            'grok': '🧠',
-            'twelve': '⏰',
-            'librarian': '📚',
-            'duck': '🦆',
-            'sniffer': '🐕'
-          }[agent.name.toLowerCase()] || '🤖';
-          
-          const status = agent.status === 'online' ? '🟢' : '🔴';
+          const agentKey = agent.name.toLowerCase();
+          const _studioAgentSvg = {
+            'gemma':     '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+            'llama':     '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M5 13V9c0-2.5 6-2.5 6 0v4M5 13h6M8 6.5c0-1.1-.9-2-2-2s-2 .9-2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'mistral':   '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M8 2.5l5.5 9.5H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+            'eight':     '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M8 2C6.3 2 5 3.1 5 4.5S6.3 7 8 7s3 1.1 3 2.5S9.7 12 8 12s-3-1-3-2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 2v2M8 12v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+            'nine':      '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M8 2l1.5 4h4L10 8.5l1.5 4L8 10l-3.5 2.5 1.5-4-3.5-2.5h4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+            'ten':       '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M4 8h8M10 5l3 3-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 5l-3 3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'eleven':    '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M9 2L5 9h4l-2 5 6-8H9z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'twelve':    '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M8 3C5.5 3 4 5 4 7c0 1.5 1 2.5 2 3l-.5 3h5L10 10c1-.5 2-1.5 2-3 0-2-1.5-4-4-4z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 10.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+            'librarian': '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M4.5 3.5v9M4.5 3.5h5a2 2 0 010 4h-5M4.5 7.5h5.5a2 2 0 010 4H4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'duck':      '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M4 9.5c0 2 1.8 3 4 3s4-1 4-3c0-1.5-1-2.5-3-2.5H8c1 0 2-1 2-2S9 3 8 3C6.5 3 5.5 4 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 7.5l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+            'sniffles':  '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'sniffer':   '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+          };
+          const agentSvg = _studioAgentSvg[agentKey] || '<svg viewBox="0 0 16 16" width="22" height="22" fill="none"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+          const statusDot = agent.status === 'online'
+            ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#4caf50;"></span>'
+            : '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f44336;"></span>';
           
           html += `
-            <div style="background: var(--card); padding: 12px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s;" onclick="showAgentDetails('${agent.name}')">
-              <div style="font-size: 28px; margin-bottom: 4px; text-align: center;">${emoji}</div>
-              <div style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${agent.name}</div>
-              <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">${status} ${agent.status || 'unknown'}</div>
+            <div style="background: var(--card); padding: 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s;" onclick="showAgentDetails('${agent.name}')">
+              <div style="display:flex;align-items:center;justify-content:center;height:32px;color:var(--accent);">${agentSvg}</div>
+              <div style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top:4px;">${agent.name}</div>
+              <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px; display:flex; align-items:center; gap:4px;">${statusDot} ${agent.status || 'unknown'}</div>
               <div style="font-size: 9px; color: var(--text-dim); margin-top: 2px;">${agent.type || 'agent'}</div>
             </div>
           `;
