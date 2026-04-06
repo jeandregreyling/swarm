@@ -5,7 +5,7 @@ Discord front door for Fridays. Same trusted sender model as email + Telegram.
 
 Flow for trusted users:
     Message received → queue intake → read receipt
-    → Stage 1 (LLaMA fast) → Stage 2 (Qwen + Gemma full verdict)
+    → Stage 1 (LLaMA fast) → Stage 2 (Mistral + Gemma full verdict)
     → Librarian closes ticket → Duck check
 
 Unknown users: Ghost notified, reply TRUST/NOTIFY/IGNORE.
@@ -57,7 +57,7 @@ except Exception:
 
 logger = logging.getLogger('seven.discord')
 
-_DIRECT_AGENTS = {'gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles'}
+_DIRECT_AGENTS = {'gemma', 'llama', 'mistral', 'librarian', 'duck', 'sniffles'}
 
 
 def _parse_direct_agent_command(text: str):
@@ -314,7 +314,7 @@ async def _run_pipeline(message: discord.Message, question: str, is_urgent=False
         # Send full response
         if qwen_answer and not routing.get('is_sap'):
             qwen_chunks = [qwen_answer[i:i+1900] for i in range(0, len(qwen_answer), 1900)]
-            await message.channel.send(f'**[Qwen]**\n{qwen_chunks[0]}')
+            await message.channel.send(f'**[Mistral]**\n{qwen_chunks[0]}')
             for chunk in qwen_chunks[1:]:
                 await message.channel.send(chunk)
 

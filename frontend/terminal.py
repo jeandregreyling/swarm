@@ -46,6 +46,7 @@ from blueprints.system import system_bp
 from blueprints.tickets import tickets_bp
 from blueprints.time_wizard_bp import time_wizard_bp
 from blueprints.workspace import workspace_bp
+from blueprints.library import library_bp
 
 
 def create_app():
@@ -88,6 +89,7 @@ def create_app():
     app.register_blueprint(tickets_bp)
     app.register_blueprint(time_wizard_bp)
     app.register_blueprint(workspace_bp)
+    app.register_blueprint(library_bp)
 
     return app
 

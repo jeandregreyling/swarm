@@ -109,16 +109,26 @@ def chat(message, conversation_history=None, stage_cb=None):
     messages.append({'role': 'user', 'content': message})
 
     try:
-        _emit('sending model request')
         client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model=HAIKU_MODEL,
-            max_tokens=4096,
-            system=system,
-            messages=messages,
+
+        # Anthropic system= is a separate parameter; capture it via closure so
+        # the generic skills_loop can extend only the user/assistant turns.
+        def _api_call(msgs):
+            resp = client.messages.create(
+                model=HAIKU_MODEL,
+                max_tokens=4096,
+                system=system,
+                messages=msgs,
+            )
+            return resp.content[0].text, resp.usage.input_tokens + resp.usage.output_tokens
+
+        from agents.skills_loop import run_skill_loop
+        answer, tokens = run_skill_loop(
+            agent_name=AGENT_NAME,
+            call_fn=_api_call,
+            messages=messages,              # no system entry — Anthropic takes it separately
+            emit_fn=_emit,
         )
-        answer = response.content[0].text
-        tokens = response.usage.input_tokens + response.usage.output_tokens
 
         _emit('persisting response memory')
         try:
