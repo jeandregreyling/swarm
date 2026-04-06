@@ -1464,7 +1464,7 @@ function _renderMentionMenu(input, ctx) {
   menu.style.display = 'block';
   menu.innerHTML = items.map((item, idx) => `
     <button class="chat-mention-item ${idx === active ? 'active' : ''}" data-mention-idx="${idx}" type="button">
-      <span>${_escapeHtml(item.icon)} ${_escapeHtml(item.label)}</span>
+      <span class="agent-icon-chip-sm">${item.icon}</span><span>${_escapeHtml(item.label)}</span>
       <span class="chat-mention-meta">${enabled[item.key] ? 'enabled' : item.tier}</span>
     </button>
   `).join('');
@@ -1734,19 +1734,19 @@ function _renderSkillEvents(events, sender) {
 
 const _CHAT_AGENT_META = {
   // Internal key → icon, purpose, runtime. Label comes from CHAT_AGENT_OPTIONS (DB-driven).
-  gemma:     { icon: '🧭', purpose: '1 · Gemma3. Director — routes, synthesises, speaks last.',                   runtime: 'local', tier: 'local' },
-  llama:     { icon: '🦙', purpose: '2 · LlaMA. Correspondent — web search, fast first response.',                runtime: 'local', tier: 'local' },
-  mistral:   { icon: '🔷', purpose: '3 · Mistral. Analyst — deep reasoning, debates, challenges Two.',            runtime: 'local', tier: 'local' },
-  qwen:      { icon: '🧠', purpose: '4 · Qwen. Deep Analyst — specialist depth, multilingual reasoning.',         runtime: 'local', tier: 'local' },
-  librarian: { icon: '📚', purpose: '5 · Vortex. Gatekeeper + time machine checkpoints.',                         runtime: 'local', tier: 'local' },
-  duck:      { icon: '🦆', purpose: '6 · Duck. Sanity checker — YES/NO after every ticket.',                      runtime: 'local', tier: 'local' },
-  sniffles:  { icon: '🧪', purpose: '7 · Sniffles. Inspector — memory auditor, read only.',                       runtime: 'local', tier: 'local' },
-  eight:     { icon: '8️⃣', purpose: '8 · Eight. SAP specialist — Functional/Technical/Devil three-voice debate.', runtime: 'local', tier: 'local' },
-  nine:      { icon: '🔶', purpose: '9 · Groq. LlaMA 3.3 70B via Groq — fast, high-capacity reasoning.',        runtime: 'paid',  tier: 'paid' },
-  ten:       { icon: '🛠️', purpose: '10 · Github. Engineering advisor — code quality, implementation clarity.',   runtime: 'paid',  tier: 'paid' },
-  eleven:    { icon: '⚡', purpose: '11 · Grok. Lateral thinking advisor — creative synthesis, alternatives.',     runtime: 'paid',  tier: 'paid' },
-  twelve:    { icon: '👻', purpose: '12 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals.',       runtime: 'paid',  tier: 'paid' },
-  you:       { icon: '👤', purpose: 'Human operator input.',                                                       runtime: 'human', tier: 'human' },
+  gemma:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '1 · Gemma3. Director — routes, synthesises, speaks last.',                   runtime: 'local', tier: 'local' },
+  llama:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M5 13V9c0-2.5 6-2.5 6 0v4M5 13h6M8 6.5c0-1.1-.9-2-2-2s-2 .9-2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '2 · LlaMA. Correspondent — web search, fast first response.',                runtime: 'local', tier: 'local' },
+  mistral:   { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2.5l5.5 9.5H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>', purpose: '3 · Mistral. Analyst — deep reasoning, debates, challenges Two.',            runtime: 'local', tier: 'local' },
+  qwen:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M3 8a5 5 0 1010 0A5 5 0 003 8zm5 0v-2m0 4h.01" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '4 · Qwen. Deep Analyst — specialist depth, multilingual reasoning.',         runtime: 'local', tier: 'local' },
+  librarian: { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4.5 3.5v9M4.5 3.5h5a2 2 0 010 4h-5M4.5 7.5h5.5a2 2 0 010 4H4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '5 · Vortex. Gatekeeper + time machine checkpoints.',                         runtime: 'local', tier: 'local' },
+  duck:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 9.5c0 2 1.8 3 4 3s4-1 4-3c0-1.5-1-2.5-3-2.5H8c1 0 2-1 2-2S9 3 8 3C6.5 3 5.5 4 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 7.5l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '6 · Duck. Sanity checker — YES/NO after every ticket.',                      runtime: 'local', tier: 'local' },
+  sniffles:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '7 · Sniffles. Inspector — memory auditor, read only.',                       runtime: 'local', tier: 'local' },
+  eight:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2C6.3 2 5 3.1 5 4.5S6.3 7 8 7s3 1.1 3 2.5S9.7 12 8 12s-3-1-3-2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 2v2M8 12v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '8 · Eight. SAP specialist — Functional/Technical/Devil three-voice debate.', runtime: 'local', tier: 'local' },
+  nine:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2l1.5 4h4L10 8.5l1.5 4L8 10l-3.5 2.5 1.5-4-3.5-2.5h4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>', purpose: '9 · Groq. LlaMA 3.3 70B via Groq — fast, high-capacity reasoning.',        runtime: 'paid',  tier: 'paid' },
+  ten:       { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 8h8M10 5l3 3-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 5l-3 3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '10 · Github. Engineering advisor — code quality, implementation clarity.',   runtime: 'paid',  tier: 'paid' },
+  eleven:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M9 2L5 9h4l-2 5 6-8H9z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '11 · Grok. Lateral thinking advisor — creative synthesis, alternatives.',     runtime: 'paid',  tier: 'paid' },
+  twelve:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 3C5.5 3 4 5 4 7c0 1.5 1 2.5 2 3l-.5 3h5L10 10c1-.5 2-1.5 2-3 0-2-1.5-4-4-4z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 10.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '12 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals.',       runtime: 'paid',  tier: 'paid' },
+  you:       { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: 'Human operator input.',                                                       runtime: 'human', tier: 'human' },
 };
 
 function _chatAgentLabel(sender) {
@@ -1764,7 +1764,7 @@ function _chatAgentIdentity(sender) {
   return {
     key: normalized,
     label: _chatAgentLabel(normalized),
-    icon: meta.icon || '🤖',
+    icon: meta.icon || '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
     meta,
   };
 }
@@ -1781,7 +1781,7 @@ function _chatAgentListText(agentKeys) {
   return (agentKeys || [])
     .map(key => {
       const identity = _chatAgentIdentity(key);
-      return `${identity.icon} ${identity.label}`;
+      return identity.label;
     })
     .join(', ');
 }
@@ -1806,7 +1806,7 @@ function _chatTargetAgentsFromRaw(rawTargets) {
 function _chatAgentMeta(sender) {
   const raw = String(sender || '').trim().toLowerCase();
   const normalized = raw.replace(/\[.*?\]/g, '').trim();
-  return _CHAT_AGENT_META[normalized] || { icon: '🤖', purpose: `Agent: ${normalized || 'unknown'}.`, runtime: 'unknown' };
+  return _CHAT_AGENT_META[normalized] || { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: `Agent: ${normalized || 'unknown'}.`, runtime: 'unknown' };
 }
 
 function _chatRelayConfig() {
