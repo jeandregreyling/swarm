@@ -24,10 +24,11 @@ _AGENT_TABLES = {
     'sniffles':  'memory',
 }
 
-# Tables that have a `subject` column (vs memory_twelve which doesn't)
+# Tables that have a `subject` column
 _SUBJECT_TABLES = {
     'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma',
     'memory_eight', 'memory_nine', 'memory_ten', 'memory_grok',
+    'memory_twelve', 'memory_thirteen',
 }
 
 # Full set of valid tables for write/delete operations — derived from _AGENT_TABLES
