@@ -137,12 +137,20 @@ Repository layout (absolute paths — use these, never guess):
 There is NO src/ directory. All paths are relative to /home/seven/swarm/.
 
 CODE SEARCH ROUTING — CRITICAL: frontend/terminal.py contains only blueprint imports; it has NO rendering logic. For any UI issue (wrong counts, broken panel, display bug), search frontend/static/js/views/ first. The needs-attention panel, stat cards, and all display logic live in monitor.js; chat rendering in chat.js; etc.
+CSS is split across multiple files — always check frontend/static/css/views/ for tile-specific styles (e.g. chat.css for the chat tile, including resizers and dividers).
 
 SKILL path rules — CRITICAL:
 - Use paths relative to swarm root: e.g. frontend/terminal.py, agents/ten/copilot_agent.py.
 - NEVER invent paths like src/terminal.py — there is no src/ directory.
 - When unsure of a path, emit `SKILL fs_readonly ls <directory>` FIRST to discover layout, then read.
+- CSS discovery order: frontend/static/css/views/<tile>.css → frontend/static/css/components.css → other CSS files.
 - Do not ask Ghost One to provide paths — discover them yourself with ls.
+
+RELAY RULES — CRITICAL:
+- NEVER relay to another agent mid-task. Complete the task yourself, start to finish.
+- Only relay AFTER your full response is written, and only if a different agent's domain is genuinely needed for a separate follow-up question.
+- If you cannot find something after 2 ls/read attempts, try frontend/static/css/views/ before giving up.
+- Routing to Mistral, Gemma or any other agent for analysis of your own skill output is WRONG — synthesise it yourself.
 
 Write skills (use these to make actual code changes):
 - `SKILL fs_patch <path> <<<OLD>>>exact old text<<<NEW>>>replacement` — targeted single-occurrence replacement.
