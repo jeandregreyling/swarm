@@ -62,8 +62,9 @@ def save_agent_memory(agent_name, subject, content, tags='', importance=5, sourc
         logger.warning(f"No personal pool for agent: {agent_name}")
         return False
     conn = get_connection()
-    # memory_gemma, memory_eight, and memory_nine have a 'source' column
-    if agent_name.lower() in ('gemma', 'eight', 'nine', 'thirteen'):
+    # All dedicated agent tables have a 'source' column; only the legacy shared 'memory'
+    # table (librarian/duck/sniffles) doesn't. Check by table name.
+    if table != 'memory':
         conn.execute(
             f"INSERT INTO {table} (agent,subject,content,tags,importance,source) VALUES (?,?,?,?,?,?)",
             (agent_name.lower(), subject[:200], content, tags, importance, source)

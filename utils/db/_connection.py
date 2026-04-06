@@ -17,7 +17,7 @@ AGENT_POOL_MAP = {
     'ten': 'memory_ten', 'twelve': 'memory_twelve',
     'eleven': 'memory_grok', 'grok': 'memory_grok',
     'thirteen': 'memory_thirteen',
-    'scholar': 'memory', 'seeker': 'memory'
+    'scholar': 'memory_scholar', 'seeker': 'memory_seeker',
 }
 
 def get_connection():
