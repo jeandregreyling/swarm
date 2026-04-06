@@ -7,6 +7,41 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
+## Version 2026-04-06 Session 8 — SVG Icons + UI Density + Trace Fix + Test Repairs
+
+### Changes by Copilot (Ghost One direction)
+
+**2026-04-06 UTC** Copilot: UI polish pass and test suite repairs.
+
+- **Type:** UI / Testing / Cleanup
+- **Status:** COMPLETE
+
+#### Scholar/Seeker removed from chat screen (`frontend/static/js/views/chat.js`)
+- Removed from `CHAT_AGENT_OPTIONS` selector and `_CHAT_AGENT_META` identity map
+
+#### SVG icon system applied throughout
+- `chat.js`: `_CHAT_AGENT_META` icon fields → SVG strings; `_chatAgentIdentityHtml()` renders SVG chips
+- `chat.js`: Mention menu uses SVG icons
+- `chat.css`: `.agent-icon-chip` updated for SVG + `color: var(--accent)`
+- `terminal_base.html`: Section title emojis → SVG; header buttons → SVG (👤, ⚙️, 🧪)
+
+#### Trace / Troubleshoot window fixed
+- `modals.css`: Compact default size (480×360px), positioned top-right under header
+- `terminal_base.html`: Title renamed "Trace"; resize grip added to SE corner
+- `toast.js`: SE resize grip wired in `_initTroubleshootDrag`
+
+#### Border padding cleanup
+- `chat.css`: Bubble border removed; topbar/input/messages padding reduced
+
+#### Test suite repairs
+- `test_chat_reply_routing.py`, `test_alm_gate_endpoints.py`, `test_manager_onboarding_api.py`: stale `frontend.terminal` imports fixed post-modular-refactor
+- UAT gate: all 5 suites green (21/21 e2e, 18/18 telegram_trust, 6/6 alm_gate)
+
+#### Root cleanup
+- Deleted stale root duplicates: `ARCHITECTURE.md`, `AGENT_TWELVE_MANUAL.md`, `REORGANIZATION_STATUS.md`
+
+---
+
 ## Version 2026-04-06 Session 7 — Identity Architecture + ALM Gate + Cross-Reference Overhaul
 
 ### Changes by Copilot (Ghost One direction) — PHASE 1–4 EXECUTION

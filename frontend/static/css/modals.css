@@ -179,9 +179,11 @@
 #troubleshoot-modal {
   position: fixed;
   right: 16px;
-  bottom: 16px;
-  width: min(980px, calc(100vw - 32px));
-  height: min(56vh, 520px);
+  top: 54px;
+  width: 480px;
+  height: 360px;
+  min-width: 280px;
+  min-height: 200px;
   z-index: 9600;
   display: none;
   pointer-events: none;
@@ -202,7 +204,21 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   overflow: hidden;
   pointer-events: auto;
+  position: relative;
 }
+
+#troubleshoot-resize-grip {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  z-index: 10;
+  opacity: 0.4;
+  background: linear-gradient(135deg, transparent 50%, var(--text-dim) 50%, var(--text-dim) 60%, transparent 60%, transparent 70%, var(--text-dim) 70%, var(--text-dim) 80%, transparent 80%);
+}
+#troubleshoot-resize-grip:hover { opacity: 0.8; }
 #settings-box {
   background: var(--card);
   border: 1px solid var(--border);
