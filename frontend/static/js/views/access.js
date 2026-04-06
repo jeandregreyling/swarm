@@ -440,7 +440,7 @@ function agentsShowDetail(agent) {
           style="background:var(--card);border:1px solid #72e6a666;color:#72e6a6;border-radius:5px;padding:7px 14px;cursor:pointer;font-size:11px;">
           Initialize
         </button>` : ''}
-        ${!['gemma','llama','mistral','qwen','eight','nine','ten','eleven','twelve','ghost','librarian','duck','sniffles'].includes(agent.name) && agent.enabled != 0 ? `
+        ${agent.name !== 'ghost' && agent.enabled != 0 ? `
         <button id="agent-reset-agent-btn"
           style="background:transparent;border:1px solid #60a5fa44;color:#60a5fa;border-radius:5px;padding:7px 14px;cursor:pointer;font-size:11px;">
           Reset

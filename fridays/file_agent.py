@@ -37,7 +37,7 @@ SANDPIT_ROOT  = Path('/home/seven/swarm/sandpits')
 SWARM_ROOT    = Path('/home/seven/swarm')
 
 AGENT_SANDPITS = [
-    'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles',
+    'gemma', 'llama', 'mistral', 'eight', 'librarian', 'duck', 'sniffles',
     'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'ghost', 'shared'
 ]
 

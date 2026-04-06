@@ -42,6 +42,7 @@
 <link rel="stylesheet" href="/static/css/taskbar.css">
 <link rel="stylesheet" href="/static/css/views/chat.css">
 <link rel="stylesheet" href="/static/css/modals.css">
+<link rel="stylesheet" href="/static/css/library.css">
 </head>
 <body>
 
@@ -449,6 +450,10 @@
         <div class="home-card" data-win-id="git" data-win-title="🌿 Git" data-win-template="view-git">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 4.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm6 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM5 7.5v2c0 .8.7 1.5 1.5 1.5H9.5M9.5 5H11v3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Git</span></div>
           <div class="card-desc">Changes, diffs, commit</div>
+        </div>
+        <div class="home-card" data-win-id="library" data-win-title="📚 Library" data-win-template="view-library">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Library</span></div>
+          <div class="card-desc">Consulting knowledge pool</div>
         </div>
       </div>
     </div>
@@ -1208,6 +1213,122 @@
   </div>
 </template>
 
+<template id="view-library">
+  <div class="content-view" id="library-view">
+    <!-- Header -->
+    <div id="library-header">
+      <div id="library-header-left">
+        <div id="library-title">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="none" aria-hidden="true"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Knowledge Library
+        </div>
+        <div id="library-subtitle">Semantic search over your consulting knowledge pool</div>
+      </div>
+      <div id="library-stats"></div>
+    </div>
+
+    <!-- Model not-ready banner -->
+    <div id="library-model-banner">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="flex-shrink:0;color:#f59e0b"><path d="M8 2.5L13 13H3L8 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7v3M8 11.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <div style="flex:1;">
+        <div style="font-weight:700;margin-bottom:2px;">nomic-embed-text not found</div>
+        <div style="opacity:0.8;">Semantic search requires this Ollama model. Pull it once — it's fully local, no API cost.</div>
+      </div>
+      <button id="library-pull-btn" onclick="libPullModel()">Pull model</button>
+    </div>
+
+    <!-- Search bar -->
+    <div id="library-search-bar">
+      <input id="library-search-input" type="text" placeholder="Search your knowledge pool… e.g. SAP HCM retro accounting, ABAP payroll exit">
+      <button id="library-search-btn" onclick="libSearch()">Search</button>
+    </div>
+
+    <!-- Main body -->
+    <div id="library-body">
+      <!-- Results -->
+      <div id="library-results-panel">
+        <div class="lib-empty-state">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none"><path d="M4 6h6v12H4zM10 6h6v12h-6zM17 6l4 12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div style="font-weight:700;font-size:13px;">Search your consulting knowledge</div>
+          <div style="opacity:0.6;max-width:280px;">Add emails, SAP notes, PDFs, and URLs. Then search across them with natural language.</div>
+        </div>
+      </div>
+
+      <!-- Sources panel -->
+      <div id="library-sources-panel">
+        <div id="library-sources-toolbar">
+          <span id="library-sources-title">Sources</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;" onclick="_loadSources()" title="Refresh">↻</button>
+            <button id="library-add-btn" onclick="libToggleAddDrawer()">
+              <svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              Add Source
+            </button>
+          </div>
+        </div>
+
+        <div id="library-sources-list">
+          <div style="padding:20px;text-align:center;font-size:11px;color:var(--text-dim);">Loading…</div>
+        </div>
+
+        <!-- Add drawer -->
+        <div id="library-add-drawer">
+          <div id="library-add-drawer-header">
+            <span id="library-add-drawer-title">Add to Library</span>
+            <button id="library-add-close" onclick="libCloseAddDrawer()">&#x2715;</button>
+          </div>
+
+          <!-- Type tabs -->
+          <div id="library-type-tabs">
+            <button class="lib-type-tab active" onclick="libSetType('text', this)">Paste Text</button>
+            <button class="lib-type-tab" onclick="libSetType('url', this)">URL</button>
+            <button class="lib-type-tab" onclick="libSetType('email', this)">Email</button>
+            <button class="lib-type-tab" onclick="libSetType('pdf', this)">PDF</button>
+          </div>
+
+          <div id="library-add-form">
+            <div>
+              <div class="lib-form-label">Title (optional)</div>
+              <input id="library-add-title" class="lib-form-input" type="text" placeholder="Auto-detected if left blank">
+            </div>
+
+            <div id="library-type-text">
+              <div class="lib-form-label">Paste content</div>
+              <textarea id="library-text-content" class="lib-form-textarea" placeholder="SAP note text, documentation, consulting artefacts…" rows="5"></textarea>
+            </div>
+
+            <div id="library-type-url" style="display:none;">
+              <div class="lib-form-label">URL to fetch</div>
+              <input id="library-url-input" class="lib-form-input" type="url" placeholder="https://help.sap.com/…">
+            </div>
+
+            <div id="library-type-email" style="display:none;">
+              <div class="lib-form-label">Paste raw email</div>
+              <textarea id="library-email-content" class="lib-form-textarea" placeholder="From: consultant@example.com&#10;Subject: SAP payroll schema change&#10;&#10;Body…" rows="5"></textarea>
+            </div>
+
+            <div id="library-type-pdf" style="display:none;">
+              <div class="lib-form-label">Upload PDF</div>
+              <div id="library-pdf-drop">
+                <svg viewBox="0 0 16 16" width="20" height="20" fill="none"><path d="M4 2h6l3 3v9H4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M10 2v3h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                <span>Drop PDF here or click to browse</span>
+              </div>
+              <input type="file" id="library-pdf-input" accept=".pdf,application/pdf" style="display:none;">
+            </div>
+
+            <div>
+              <div class="lib-form-label">Domain tags</div>
+              <div id="library-tag-grid"></div>
+            </div>
+
+            <button id="library-submit-btn" onclick="libSubmitSource()">Add to Library</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <!-- ════════════════════════════════════════════════════════════════════════
      JAVASCRIPT
      ════════════════════════════════════════════════════════════════════════ -->
@@ -1244,6 +1365,7 @@
 <script src="/static/js/views/ollama.js"></script>
 <script src="/static/js/views/time-wizard.js"></script>
 <script src="/static/js/views/access.js"></script>
+<script src="/static/js/views/library.js"></script>
 
 <!-- Init (must be last — depends on all above) -->
 <script src="/static/js/core/init.js"></script>

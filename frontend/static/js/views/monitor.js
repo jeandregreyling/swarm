@@ -297,7 +297,7 @@ function loadAttentionPanel() {
   fetch('/api/work-proposals')
     .then(r => r.json())
     .then(d => {
-      const active = (d.proposals || []).filter(p => !['executed','rejected'].includes(p.status));
+      const active = (d.proposals || []).filter(p => !['executed','rejected','done'].includes(p.status));
       const pending = active.filter(p => p.status === 'pending').length;
       const n = active.length;
       setVal('attn-proposals', n, pending > 0 ? 'health-warn' : n > 0 ? 'health-good' : '');

@@ -67,13 +67,13 @@ GIT_PROPOSAL_TIMEOUT_SECONDS = _env_int('GIT_PROPOSAL_TIMEOUT_SECONDS', 300, min
 GIT_EXECUTE_PER_AGENT_PER_HEARTBEAT = _env_int('GIT_EXECUTE_PER_AGENT_PER_HEARTBEAT', 3, min_value=1)
 
 # ── Local Ollama agents participating in shared workflows ─────────────────────
-LOCAL_AGENTS = ['gemma', 'qwen', 'llama', 'eight', 'duck', 'sniffles']
+LOCAL_AGENTS = ['gemma', 'mistral', 'llama', 'eight', 'duck', 'sniffles']
 
 # ── Ghost Layer agents (API-backed, reactive — not driven by heartbeat think) ──
 GHOST_LAYER_AGENTS = ['nine', 'ten', 'eleven', 'twelve', 'scholar', 'seeker']
 
 # ── Which local agents think proactively each heartbeat ───────────────────────
-THINKING_AGENTS = ['gemma', 'qwen', 'llama', 'eight']
+THINKING_AGENTS = ['gemma', 'mistral', 'llama', 'eight']
 
 # ── Agent dispatch routing ─────────────────────────────────────────────────────
 # Maps capability/tag patterns to agent names
@@ -81,8 +81,8 @@ DISPATCH_ROUTES = {
     'sap':        'eight',
     'hcm':        'eight',
     'payroll':    'eight',
-    'analysis':   'qwen',
-    'analyse':    'qwen',
+    'analysis':   'mistral',
+    'analyse':    'mistral',
     'research':   'llama',
     'search':     'llama',
     'route':      'gemma',

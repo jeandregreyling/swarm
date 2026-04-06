@@ -526,7 +526,7 @@ def api_agents_bootstrap():
 
     conn = get_connection()
     row = conn.execute(
-        "SELECT name, label, model, role, tier, system_prompt FROM agents WHERE name=?", (name,)
+        "SELECT name, label, model, role, tier, system_prompt, api_key_var FROM agents WHERE name=?", (name,)
     ).fetchone()
     conn.close()
     if not row:
@@ -537,6 +537,7 @@ def api_agents_bootstrap():
     model     = agent.get('model') or ''
     role      = agent.get('role') or ''
     tier      = agent.get('tier') or 'local'
+    api_key_var   = agent.get('api_key_var') or ''
     system_prompt = (agent.get('system_prompt') or '').strip()
     mem_table = f'memory_{name}'
 
@@ -1123,10 +1124,8 @@ def api_agents_reset(name):
     from flask import current_app
 
     name = name.strip().lower()
-    protected = {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'nine', 'ten',
-                 'eleven', 'twelve', 'scholar', 'seeker', 'ghost', 'librarian', 'duck', 'sniffles'}
-    if name in protected:
-        return jsonify({'ok': False, 'error': f'{name} is a core agent and cannot be reset'}), 403
+    if name == 'ghost':
+        return jsonify({'ok': False, 'error': 'ghost cannot be reset'}), 403
 
     conn = get_connection()
     row = conn.execute("SELECT name, tier FROM agents WHERE name=?", (name,)).fetchone()
@@ -1138,18 +1137,24 @@ def api_agents_reset(name):
     steps = []
     errors = []
     swarm_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    mem_table  = f'memory_{name}'
+    from utils.db._connection import AGENT_POOL_MAP
+    mem_table = AGENT_POOL_MAP.get(name, f'memory_{name}')
+    shared_table = mem_table == 'memory'  # shared table — scope by agent column
 
     # ── 1. Wipe memory rows ───────────────────────────────────────────────────
     try:
         conn = get_connection()
-        count = conn.execute(f"SELECT COUNT(*) FROM {mem_table}").fetchone()[0]
-        conn.execute(f"DELETE FROM {mem_table}")
+        if shared_table:
+            count = conn.execute("SELECT COUNT(*) FROM memory WHERE agent=?", (name,)).fetchone()[0]
+            conn.execute("DELETE FROM memory WHERE agent=?", (name,))
+        else:
+            count = conn.execute(f"SELECT COUNT(*) FROM {mem_table}").fetchone()[0]
+            conn.execute(f"DELETE FROM {mem_table}")
         conn.commit()
         conn.close()
         steps.append(f'memory cleared: {count} rows deleted from {mem_table}')
     except Exception as e:
-        steps.append(f'memory: table {mem_table} not found or empty — skipped')
+        steps.append(f'memory: {mem_table} not found or empty — skipped')
 
     # ── 2. Clear sandpit files (keep folder, regenerate WHO_AM_I.md) ─────────
     sandpit_path = os.path.join(swarm_root, 'sandpits', name)

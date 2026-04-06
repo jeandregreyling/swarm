@@ -6,7 +6,7 @@ Bot: @Seven_FridaysBot
 
 Flow for trusted users:
     Message received → queue intake → read receipt
-    → Stage 1 (LLaMA fast) → Stage 2 (Qwen + Gemma full verdict)
+    → Stage 1 (LLaMA fast) → Stage 2 (Mistral + Gemma full verdict)
     → Librarian closes ticket → Duck check
 
 Unknown users: Ghost notified, reply TRUST/NOTIFY/IGNORE.
@@ -42,7 +42,7 @@ from duck import on_queue_clear
 
 logger = logging.getLogger('seven.telegram')
 
-_DIRECT_AGENTS = {'gemma', 'llama', 'qwen', 'librarian', 'duck', 'sniffles'}
+_DIRECT_AGENTS = {'gemma', 'llama', 'mistral', 'librarian', 'duck', 'sniffles'}
 
 
 def _parse_direct_agent_command(text: str):
@@ -350,7 +350,7 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
         # Build full response
         parts = []
         if qwen_answer and not routing.get('is_sap'):
-            parts.append(f'[Qwen]\n{qwen_answer[:4000]}')
+            parts.append(f'[Mistral]\n{qwen_answer[:4000]}')
         if debate.get('fired'):
             parts.append('[Debate — challenge round fired]')
         parts.append(f'[Gemma — verdict] {ticket_ref}\n{gemma_answer[:4000]}')
