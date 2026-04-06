@@ -136,4 +136,24 @@ def librarian_close(ticket_number, question, final_answer, queue_id=None, sender
     print(f'[Librarian] Ticket {ticket_number} closed and queued.')
     log_action('ticket', f'closed:{ticket_number}', f'Ticket closed by Librarian', 'info')
     log_ticket_lifecycle(ticket_number, 'closed', 'Librarian', f'Final answer: {final_answer[:100]}')
+
+    # Vortex checkpoint + DECISION logging on every ticket close.
+    try:
+        sys.path.insert(0, '/home/seven/swarm/core')
+        from time_machine import time_wizard
+        decision_id = f'DECISION-{ticket_number}'
+        time_wizard.create_checkpoint(
+            checkpoint_name=f'ticket-closed-{ticket_number}',
+            agent='librarian',
+            description=f'Ticket {ticket_number} closed. Q: {question[:120]}',
+        )
+        time_wizard.log_decision_execution(
+            decision_id=decision_id,
+            agent='librarian',
+            status='closed',
+            details={'ticket': ticket_number, 'answer_preview': final_answer[:200]},
+        )
+    except Exception as _tm_err:
+        logger.debug(f'[Librarian] Vortex checkpoint skipped: {_tm_err}')
+
     batch_commit(f'Closed {ticket_number}')
