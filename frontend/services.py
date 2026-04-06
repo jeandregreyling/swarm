@@ -238,7 +238,7 @@ _AGENT_ROSTER = [
     {'name': 'Librarian', 'model': 'qwen:latest',                         'role': 'Archivist',                             'default_temp': 0.1},
     {'name': 'Duck',      'model': 'qwen:latest',                         'role': 'Checker',                               'default_temp': 0.1},
     {'name': 'Sniffles',  'model': 'deepseek-r1:7b',                      'role': 'Auditor',                               'default_temp': 0.1},
-    {'name': 'Eight',     'model': 'qwen2.5:latest',                      'role': 'SAP Specialist',                        'default_temp': 0.7},
+    {'name': 'Eight',     'model': 'gemma4:26b',                          'role': 'SAP Specialist',                        'default_temp': 0.5},
     {'name': 'Nine',      'model': 'llama-3.3-70b-versatile',             'role': 'System Architect · Developer Agent',    'default_temp': None, 'no_temp': True,  'developer_agent': True},
     {'name': 'Ten',       'model': 'gpt-4o',                              'role': 'Software Engineer · Developer Agent',   'default_temp': 0.4,                   'developer_agent': True},
     {'name': 'Eleven',    'model': 'grok-api',                            'role': 'Lateral Thinker · Developer Agent',     'default_temp': None, 'no_temp': True,   'developer_agent': True},
