@@ -216,6 +216,31 @@ function _initTroubleshootDrag() {
   const handle = document.getElementById('troubleshoot-drag-handle');
   if (!modal || !handle || handle.dataset.dragBound === '1') return;
   handle.dataset.dragBound = '1';
+
+  // SE resize grip
+  const grip = document.getElementById('troubleshoot-resize-grip');
+  if (grip) {
+    grip.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startW = modal.offsetWidth;
+      const startH = modal.offsetHeight;
+      const onMove = (ev) => {
+        const newW = Math.max(280, startW + ev.clientX - startX);
+        const newH = Math.max(200, startH + ev.clientY - startY);
+        modal.style.width = newW + 'px';
+        modal.style.height = newH + 'px';
+      };
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+  }
+
   handle.addEventListener('mousedown', (event) => {
     if (event.target.closest('button')) return;
     const rect = modal.getBoundingClientRect();
