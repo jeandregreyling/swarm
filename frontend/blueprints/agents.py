@@ -89,8 +89,9 @@ def api_agents_config_put(name):
             'gemma': 'memory_gemma', 'llama': 'memory_llama', 'mistral': 'memory_mistral', 'qwen': 'memory_qwen',
             'eight': 'memory_eight', 'nine': 'memory_nine', 'ten': 'memory_ten',
             'eleven': 'memory_grok', 'twelve': 'memory_twelve', 'thirteen': 'memory_thirteen',
+            'scholar': 'memory_scholar', 'seeker': 'memory_seeker',
         }
-        shared_table_agents = {'librarian', 'duck', 'sniffles', 'scholar', 'seeker'}
+        shared_table_agents = {'librarian', 'duck', 'sniffles'}
         agent_key = name.strip().lower()
         try:
             if agent_key in dedicated_tables:

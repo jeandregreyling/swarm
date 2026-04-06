@@ -17,18 +17,18 @@ _AGENT_TABLES = {
     'grok':      'memory_grok',
     'twelve':    'memory_twelve',
     'thirteen':  'memory_thirteen',
-    'scholar':   'memory',
-    'seeker':    'memory',
+    'scholar':   'memory_scholar',
+    'seeker':    'memory_seeker',
     'librarian': 'memory',
     'duck':      'memory',
     'sniffles':  'memory',
 }
 
-# Tables that have a `subject` column
+# Tables that have a `subject` column (all dedicated agent tables do; shared `memory` also does)
 _SUBJECT_TABLES = {
     'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma',
     'memory_eight', 'memory_nine', 'memory_ten', 'memory_grok',
-    'memory_twelve', 'memory_thirteen',
+    'memory_twelve', 'memory_thirteen', 'memory_scholar', 'memory_seeker',
 }
 
 # Full set of valid tables for write/delete operations — derived from _AGENT_TABLES
