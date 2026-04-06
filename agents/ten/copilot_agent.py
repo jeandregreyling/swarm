@@ -168,8 +168,8 @@ def chat(message, conversation_history=None, stage_cb=None):
                 {
                     'role': 'user',
                     'content': (
-                        'Executed skill outputs are below. Use these concrete results to produce '
-                        'your final answer. Do not ask to run the same commands again.\n\n'
+                        'Skill outputs below. If you need to run more skills (e.g. fs_patch, verify), '
+                        'emit them now. Otherwise produce your final answer.\n\n'
                         + skill_results
                     ),
                 },
@@ -180,8 +180,36 @@ def chat(message, conversation_history=None, stage_cb=None):
                 messages=followup_messages,
                 max_tokens=4096,
             )
-            answer = second.choices[0].message.content + '\n\n---\nExecuted skill output:\n' + skill_results
+            second_answer = second.choices[0].message.content
             tokens += second.usage.total_tokens if second.usage else 0
+
+            # Pass 3: execute any follow-up skills (e.g. fs_patch after read, verify after patch)
+            second_cmds = _extract_skill_lines(second_answer)
+            if second_cmds:
+                _emit_stage('running follow-up skills')
+                second_results = _run_skill_lines(second_cmds)
+
+                third_messages = followup_messages + [
+                    {'role': 'assistant', 'content': second_answer},
+                    {
+                        'role': 'user',
+                        'content': (
+                            'Follow-up skill outputs below. Produce your final answer now — '
+                            'do not emit further SKILL commands.\n\n'
+                            + second_results
+                        ),
+                    },
+                ]
+                _emit_stage('synthesizing final answer')
+                third = client.chat.completions.create(
+                    model=model,
+                    messages=third_messages,
+                    max_tokens=4096,
+                )
+                answer = third.choices[0].message.content + '\n\n---\nSkill outputs:\n' + skill_results + '\n\n' + second_results
+                tokens += third.usage.total_tokens if third.usage else 0
+            else:
+                answer = second_answer + '\n\n---\nExecuted skill output:\n' + skill_results
 
         _emit_stage('persisting response memory')
         try:

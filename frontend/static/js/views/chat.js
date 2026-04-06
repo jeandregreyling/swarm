@@ -2386,7 +2386,11 @@ function _extractAgentDirectedQuestions(text, fromAgent) {
       });
     });
     markers.sort((a, b) => a.matchStart - b.matchStart);
+    // Only honour relay directives in the last 300 chars of the response (terminal relay format).
+    // Mid-body mentions like "Mistral: Can you..." inside a narrative are NOT relays.
+    const relayZoneStart = Math.max(0, raw.length - 300);
     markers.forEach((marker, index) => {
+      if (marker.matchStart < relayZoneStart) return; // mid-body — ignore
       const nextStart = index + 1 < markers.length ? markers[index + 1].matchStart : raw.length;
       const body = String(raw.slice(marker.bodyStart, nextStart) || '').trim();
       if (!body || /^@?[A-Za-z][A-Za-z0-9_.\- ]{1,24}\s*[:,]/.test(body)) return;

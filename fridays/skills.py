@@ -148,6 +148,12 @@ REGISTRY = {
         'usage': 'SKILL knowledge_search <query>',
         'example': 'SKILL knowledge_search ECP payroll integration schema',
     },
+        'ui_css_edit_checklist': {
+            'description': 'Show the global checklist for correct UI/CSS edit workflow (selectors, patching, verification).',
+            'trust_level': 0,
+            'usage': 'SKILL ui_css_edit_checklist',
+            'example': 'SKILL ui_css_edit_checklist',
+        },
 }
 
 
@@ -192,6 +198,16 @@ def _log_as_internal_proposal(skill_name, agent, args_preview, result_preview):
 
 
 # ── Skill handlers ────────────────────────────────────────────────────────────
+
+def _skill_ui_css_edit_checklist(args, agent, **_):
+    """Return the global UI/CSS edit checklist for all agents."""
+    try:
+        path = '/memories/ui-css-edit-checklist.md'
+        with open(path, encoding='utf-8') as f:
+            content = f.read()
+        return True, content
+    except Exception as e:
+        return False, f'Could not read checklist: {e}'
 
 def _skill_shell(args, agent, **_):
     from fridays.shell_agent import run
@@ -586,6 +602,7 @@ _HANDLERS = {
     'fs_write':       _skill_fs_write,
     'fs_patch':        _skill_fs_patch,
     'knowledge_search': _skill_knowledge_search,
+    'ui_css_edit_checklist': _skill_ui_css_edit_checklist,
 }
 
 
