@@ -13,6 +13,7 @@ let CHAT_AGENT_OPTIONS = [
   { value: 'gemma',    label: '1 · Gemma3',   number: 1,  tier: 'local', hasTemp: true  },
   { value: 'llama',    label: '2 · LlaMA',    number: 2,  tier: 'local', hasTemp: true  },
   { value: 'mistral',  label: '3 · Mistral',  number: 3,  tier: 'local', hasTemp: true  },
+  { value: 'qwen',     label: '4 · Qwen',     number: 4,  tier: 'local', hasTemp: true  },
   { value: 'librarian',label: '5 · Vortex',   number: 5,  tier: 'local', hasTemp: false },
   { value: 'duck',     label: '6 · Duck',     number: 6,  tier: 'local', hasTemp: true  },
   { value: 'sniffles', label: '7 · Sniffles', number: 7,  tier: 'local', hasTemp: true  },
@@ -24,16 +25,19 @@ let CHAT_AGENT_OPTIONS = [
   { value: 'thirteen', label: '13 · HF', number: 13, tier: 'free', hasTemp: false },
 ];
 
-// Fetch agent registry from DB and update labels in CHAT_AGENT_OPTIONS.
-// Called once on load. On failure the hardcoded fallback labels above remain.
+// Fetch agent registry from DB and update CHAT_AGENT_OPTIONS to only include enabled agents.
 function _loadAgentRegistry() {
-  fetch('/api/agents')
+  fetch('/api/agents/config')
     .then(r => r.ok ? r.json() : null)
     .catch(() => null)
     .then(data => {
       if (!Array.isArray(data)) return;
+      // Only include agents with enabled: true
+      const enabledAgents = data.filter(a => a.enabled);
       const byValue = {};
-      data.forEach(a => { if (a.name) byValue[a.name.toLowerCase()] = a; });
+      enabledAgents.forEach(a => { if (a.name) byValue[a.name.toLowerCase()] = a; });
+      // Filter and update CHAT_AGENT_OPTIONS
+      CHAT_AGENT_OPTIONS = CHAT_AGENT_OPTIONS.filter(opt => byValue[opt.value.toLowerCase()]);
       let changed = false;
       CHAT_AGENT_OPTIONS.forEach(opt => {
         const reg = byValue[opt.value.toLowerCase()];
@@ -4885,6 +4889,7 @@ function sendMessage(source = 'user', relayMeta = null) {
       new_thread: !!window.__fridaysChatForceNewThread,
       history_mode: contextCfg.historyMode,
       history_limit: contextCfg.historyMode === 'recent' ? contextCfg.historyLimit : undefined,
+      auto_relay: !!window.__fridaysChatRelayAuto,
       ...(source === 'relay' && relayMeta?.from ? { relay_from: String(relayMeta.from).toLowerCase() } : {}),
       ..._authPayload(),
     })

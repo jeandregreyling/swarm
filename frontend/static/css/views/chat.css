@@ -43,7 +43,7 @@
     radial-gradient(900px 320px at 100% -40%, rgba(99, 170, 255, 0.12), transparent 58%);
 }
 .chat-dock-resizer {
-  width: 1px;
+  width: 2px;
   cursor: ew-resize;
   background: linear-gradient(180deg, color-mix(in srgb, var(--border) 36%, transparent 64%), color-mix(in srgb, var(--border) 14%, transparent 86%));
 }
@@ -178,7 +178,7 @@
   flex: 1;
 }
 .chat-thread-resizer {
-  width: 1px;
+  width: 2px;
   cursor: ew-resize;
   background: linear-gradient(180deg, color-mix(in srgb, var(--border) 36%, transparent 64%), color-mix(in srgb, var(--border) 14%, transparent 86%));
 }

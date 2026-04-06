@@ -469,6 +469,7 @@ def api_chat():
     requested_conv_id = data.get('conversation_id')
     force_new_thread = bool(data.get('new_thread'))
     relay_from = str(data.get('relay_from') or '').strip().lower() or None
+    auto_relay = bool(data.get('auto_relay', True))
     history_mode = str(data.get('history_mode') or 'full').strip().lower()
     history_limit_raw = data.get('history_limit')
 
@@ -743,6 +744,7 @@ def api_chat():
         executor = _CHAT_WORKER_EXECUTOR
         est_eta = _chat_eta_seconds(selected_agent)
         effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
+        effective_prompt = f'[Auto Relay: {"ENABLED" if auto_relay else "DISABLED"}]\n' + effective_prompt
         if _is_execution_confirmation(message):
             effective_prompt = (
                 effective_prompt

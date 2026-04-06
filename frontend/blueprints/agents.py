@@ -81,6 +81,26 @@ def api_agents_config_put(name):
 
     set_clause = ', '.join(f'{k}=?' for k in updates)
     conn.execute(f"UPDATE agents SET {set_clause} WHERE name=?", (*updates.values(), name))
+    # If disabling, erase memory rows for this agent
+    if 'enabled' in updates and not updates['enabled']:
+        # Agents with dedicated tables: delete all rows.
+        # Agents sharing the `memory` table: filter by agent name to avoid wiping others.
+        dedicated_tables = {
+            'gemma': 'memory_gemma', 'llama': 'memory_llama', 'mistral': 'memory_mistral', 'qwen': 'memory_qwen',
+            'eight': 'memory_eight', 'nine': 'memory_nine', 'ten': 'memory_ten',
+            'eleven': 'memory_grok', 'twelve': 'memory_twelve', 'thirteen': 'memory_thirteen',
+        }
+        shared_table_agents = {'librarian', 'duck', 'sniffles', 'scholar', 'seeker'}
+        agent_key = name.strip().lower()
+        try:
+            if agent_key in dedicated_tables:
+                conn.execute(f"DELETE FROM {dedicated_tables[agent_key]}")
+                conn.commit()
+            elif agent_key in shared_table_agents:
+                conn.execute("DELETE FROM memory WHERE agent=?", (agent_key,))
+                conn.commit()
+        except Exception as e:
+            print(f"[WARN] Could not erase memory for {name}: {e}")
     conn.commit()
     conn.close()
     return jsonify({'ok': True})
