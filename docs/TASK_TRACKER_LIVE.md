@@ -4,12 +4,28 @@
 <!-- markdownlint-disable -->
 
 **Last Updated:** 2026-04-06 UTC  
-**Session:** Session 7 — Identity Architecture + ALM Gate + Cross-Reference Overhaul  
+**Session:** Session 8 — SVG Icon Overhaul + UI Density + Trace Fix + Test Repairs  
 **Auditor:** Copilot (Ghost One direction)
 
 Canonical ledgers for this tracker:
 - Changes: `docs/changes/CHANGELOG_OPERATIONS.md`
 - Audit evidence: `docs/audits/AUDIT_TRAIL.md`
+
+## Session 8 Delta — UI Polish + Test Repairs
+
+**Update Time:** 2026-04-06 UTC
+
+| Item | Result | Notes |
+|------|--------|-------|
+| Scholar/Seeker removed from chat screen | ✅ DONE | `chat.js` |
+| SVG icons applied throughout | ✅ DONE | `chat.js`, `chat.css`, `terminal_base.html` |
+| Trace window: resize grip + compact size | ✅ DONE | `modals.css`, `toast.js`, `terminal_base.html` |
+| Chat padding/border density cleanup | ✅ DONE | `chat.css` |
+| Test suite stale imports fixed (3 files) | ✅ DONE | Post-modular-refactor paths |
+| UAT gate: all 5 suites green | ✅ DONE | 21/21 e2e, 18/18 telegram, 6/6 alm |
+| Root stale .md duplicates deleted | ✅ DONE | 3 files removed |
+
+---
 
 ## Session 7 Delta — Identity Architecture + Cross-Reference Overhaul
 
