@@ -53,14 +53,25 @@ function agentsShowDetail(name) {
       <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Env var: <code>${_escHtmlA(agent.api_key_var)}</code> · Status: ${agent.api_key_set ? '<span style="color:#4caf50;">✓ set</span>' : '<span style="color:#f44336;">✗ missing</span>'}</div>
     </div>` : '';
 
+  const _PROTECTED = ['gemma','llama','mistral','qwen','eight','nine','ten','eleven','twelve','ghost','librarian','duck','sniffles'];
+  const isProtected = _PROTECTED.includes(name);
+
   detailEl.innerHTML = `
     <div style="padding:20px;max-width:640px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
         <h3 style="margin:0;font-size:15px;">${_escHtmlA(agent.label || agent.name)}</h3>
-        ${isHuman ? '' : `<button onclick="agentsConfirmToggle('${name}', ${agent.enabled})"
-          style="padding:3px 14px;border-radius:4px;border:1px solid ${agent.enabled ? '#f4433655' : 'transparent'};
-                 background:${agent.enabled ? 'transparent' : 'var(--accent)'};color:${agent.enabled ? '#f44336' : '#000'};font-size:11px;">
-          ${agent.enabled ? 'Deactivate' : 'Reactivate'}</button>`}
+        ${isHuman ? '' : `<div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="agentsConfirmToggle('${name}', ${agent.enabled})"
+            style="padding:3px 12px;border-radius:4px;border:1px solid ${agent.enabled ? '#f4433655' : 'transparent'};
+                   background:${agent.enabled ? 'transparent' : 'var(--accent)'};color:${agent.enabled ? '#f44336' : '#000'};font-size:11px;">
+            ${agent.enabled ? 'Deactivate' : 'Reactivate'}</button>
+          <button onclick="agentsConfirmReset('${name}')"
+            style="padding:3px 12px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:11px;">
+            ↺ Reset</button>
+          ${!isProtected ? `<button onclick="agentsConfirmDelete('${name}')"
+            style="padding:3px 12px;border-radius:4px;border:1px solid #f4433655;background:transparent;color:#f44336;font-size:11px;">
+            ✕ Delete</button>` : ''}
+        </div>`}
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-bottom:16px;font-size:12px;">
@@ -99,6 +110,55 @@ async function agentsSaveKey(name, keyVar) {
     input.placeholder = d.error || 'Error saving key';
   }
 }
+
+window.agentsConfirmReset = function(name) {
+  _agentsModal({
+    title: `Reset ${name}?`,
+    body: `This will:<br>• Wipe all memory rows<br>• Clear sandpit files<br>• Re-run bootstrap to restore registries<br><br>Agent config (model, API key, system prompt) is preserved.`,
+    confirmLabel: 'Reset',
+    confirmDanger: false,
+    onConfirm: async () => {
+      const res = await fetch(`/api/agents/${name}/reset`, {method: 'POST', headers: {'Content-Type': 'application/json'}});
+      const d = await res.json().catch(() => ({}));
+      agentsRefresh();
+      if (window.memoryRefresh) window.memoryRefresh();
+      // Show result in detail panel
+      const detailEl = document.getElementById('agents-detail');
+      if (detailEl && d.steps) {
+        const steps = Array.isArray(d.steps) ? d.steps : [];
+        const errors = Array.isArray(d.errors) ? d.errors : [];
+        detailEl.innerHTML = `<div style="padding:20px;font-size:12px;">
+          <div style="font-weight:700;margin-bottom:10px;">Reset ${name}</div>
+          ${steps.map(s => `<div style="color:var(--text-dim);padding:2px 0;">✓ ${_escHtmlA(s)}</div>`).join('')}
+          ${errors.map(e => `<div style="color:#f44336;padding:2px 0;">✗ ${_escHtmlA(e)}</div>`).join('')}
+          <button onclick="agentsShowDetail('${name}')" style="margin-top:12px;${_agentsBtnStyle}background:var(--card);color:var(--text);">← Back</button>
+        </div>`;
+      }
+    }
+  });
+};
+
+window.agentsConfirmDelete = function(name) {
+  _agentsModal({
+    title: `Permanently delete ${name}?`,
+    body: `This will:<br>• Remove the agent from DB and all registries<br>• Drop its memory table<br>• Remove sandpit folder<br><br><b>This cannot be undone.</b>`,
+    confirmLabel: 'Delete',
+    confirmDanger: true,
+    onConfirm: async () => {
+      const res = await fetch(`/api/agents/${name}`, {method: 'DELETE'});
+      const d = await res.json().catch(() => ({}));
+      agentsRefresh();
+      if (window.memoryRefresh) window.memoryRefresh();
+      if (window.chatRefresh) window.chatRefresh();
+      const detailEl = document.getElementById('agents-detail');
+      if (detailEl) {
+        detailEl.innerHTML = d.ok
+          ? `<div style="padding:20px;color:var(--text-dim);font-size:12px;">${name} deleted.</div>`
+          : `<div style="padding:20px;color:#f44336;font-size:12px;">Error: ${_escHtmlA(d.error || 'Unknown error')}</div>`;
+      }
+    }
+  });
+};
 
 window.agentsConfirmToggle = function(name, enabled) {
   _agentsModal({
