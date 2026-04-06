@@ -552,11 +552,16 @@ def _skill_fs_patch(args, agent, **_):
         return False, f'File not found: {rel}'
     try:
         original = target.read_text(encoding='utf-8', errors='replace')
+        # Normalise newline mismatch: if old_text ends with \n but new_text doesn't,
+        # the next line would be merged onto the last replacement line. Add the \n back.
+        effective_new = new_text
+        if old_text.endswith('\n') and not new_text.endswith('\n'):
+            effective_new = new_text + '\n'
         if old_text not in original:
             return False, f'Old text not found in {rel}. No changes made.'
-        patched = original.replace(old_text, new_text, 1)
+        patched = original.replace(old_text, effective_new, 1)
         target.write_text(patched, encoding='utf-8')
-        return True, f'Patched {rel}: replaced {len(old_text)} chars with {len(new_text)} chars'
+        return True, f'Patched {rel}: replaced {len(old_text)} chars with {len(effective_new)} chars'
     except Exception as e:
         return False, f'fs_patch failed: {e}'
 

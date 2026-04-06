@@ -38,7 +38,7 @@ SWARM_ROOT    = Path('/home/seven/swarm')
 
 AGENT_SANDPITS = [
     'gemma', 'llama', 'mistral', 'eight', 'librarian', 'duck', 'sniffles',
-    'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'ghost', 'shared'
+    'nine', 'ten', 'eleven', 'twelve', 'qwen', 'thirteen', 'ghost', 'shared'
 ]
 
 

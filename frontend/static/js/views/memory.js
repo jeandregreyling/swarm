@@ -1,4 +1,22 @@
 // Memory view — browse, edit, attach, assign, delete
+function renderMemoryAgentTabs() {
+  const tabsEl = document.getElementById('memory-agent-tabs');
+  if (!tabsEl) return;
+  fetch('/api/agents/config')
+    .then(r => r.ok ? r.json() : null)
+    .catch(() => null)
+    .then(agents => {
+      if (!Array.isArray(agents)) return;
+      let html = `<button class=\"mem-tab active\" data-agent=\"\" onclick=\"_memTab(this,'')\">All</button>`;
+      agents.filter(a => a.enabled).forEach(a => {
+        html += `<button class=\"mem-tab\" data-agent=\"${a.name}\" onclick=\"_memTab(this,'${a.name}')\">${a.number != null ? a.number + ' · ' : ''}${a.label || a.name}</button>`;
+      });
+      tabsEl.innerHTML = html;
+    });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('memory-agent-tabs')) renderMemoryAgentTabs();
+});
 // Extracted from terminal_base.html
 
 function _memoryState() {
