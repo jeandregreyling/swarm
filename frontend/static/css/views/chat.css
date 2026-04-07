@@ -458,14 +458,11 @@
 @keyframes compose-send-glow {
   0%   { box-shadow: 0 0 0 0px color-mix(in srgb, var(--accent) 0%,   transparent); }
   20%  { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 55%,  transparent); }
-  60%  { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 20%,  transparent); }
+  60%  { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 18%,  transparent); }
   100% { box-shadow: 0 0 0 0px color-mix(in srgb, var(--accent) 0%,   transparent); }
 }
-.chat-compose-shell.compose-sending {
+#input-wrapper.compose-sending {
   animation: compose-send-glow 0.42s ease-out forwards;
-}
-#question-input {
-  transition: height 0.12s ease;
 }
 .chat-compose-main {
   display: flex;
@@ -575,11 +572,11 @@
 #question-input {
   width: 100%;
   min-height: 38px;
-  max-height: 120px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
+  max-height: 200px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 2px 4px;
   color: var(--text);
   caret-color: var(--accent);
   font-family: inherit;
@@ -589,6 +586,7 @@
   resize: none;
   line-height: 1.5;
   overflow-y: hidden;
+  box-sizing: border-box;
 }
 #question-input::placeholder {
   color: var(--text-dim);

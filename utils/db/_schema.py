@@ -305,7 +305,7 @@ CREATE TABLE IF NOT EXISTS approval_tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token TEXT UNIQUE NOT NULL,
     action TEXT NOT NULL,
-    target_email TEXT NOT NULL,
+    target_email TEXT NOT NULL DEFAULT '',
     created_by TEXT DEFAULT 'system',
     created_at TEXT DEFAULT (datetime('now')),
     used_at TEXT,
@@ -476,6 +476,20 @@ CREATE INDEX IF NOT EXISTS idx_work_proposals_agent ON work_proposals(agent);
 CREATE INDEX IF NOT EXISTS idx_work_proposals_status ON work_proposals(status);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_active ON user_profiles(is_active);
 CREATE INDEX IF NOT EXISTS idx_user_skill_permissions_user ON user_skill_permissions(username);
+CREATE TABLE IF NOT EXISTS skills (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS agent_skills (
+    agent_id INTEGER NOT NULL,
+    skill_id INTEGER NOT NULL,
+    PRIMARY KEY (agent_id, skill_id),
+    FOREIGN KEY (agent_id) REFERENCES agents(id),
+    FOREIGN KEY (skill_id) REFERENCES skills(id)
+);
+
+-- Future: profiles and profile_skills tables for grouping skills
 """
 
 
@@ -488,10 +502,64 @@ def initialise_database():
     _seed_agents()
     _seed_moderator()
     _seed_user_profiles()
+    _seed_skills()
+    _seed_agent_skills()
+
+
+def _seed_agent_skills():
+    """Backfill agent_skills for each agent using AGENT_ROLE_MAP from ops/seed_agent_permissions.py."""
+    import importlib.util
+    import os
+    perm_py = os.path.join(os.path.dirname(__file__), '../../ops/seed_agent_permissions.py')
+    spec = importlib.util.spec_from_file_location('ops.seed_agent_permissions', perm_py)
+    perm_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(perm_mod)
+    AGENT_ROLE_MAP = perm_mod.AGENT_ROLE_MAP
+    conn = get_connection()
+    # Build skill name to id map
+    skill_rows = conn.execute('SELECT id, name FROM skills').fetchall()
+    skill_name_to_id = {row['name']: row['id'] for row in skill_rows}
+    # Build agent name to id map
+    agent_rows = conn.execute('SELECT id, name FROM agents').fetchall()
+    agent_name_to_id = {row['name'].lower(): row['id'] for row in agent_rows}
+    for agent_name, (_role, skills) in AGENT_ROLE_MAP.items():
+        agent_id = agent_name_to_id.get(agent_name.lower())
+        if not agent_id:
+            continue
+        for skill in skills:
+            skill_id = skill_name_to_id.get(skill)
+            if not skill_id:
+                continue
+            try:
+                conn.execute('INSERT OR IGNORE INTO agent_skills (agent_id, skill_id) VALUES (?, ?)', (agent_id, skill_id))
+            except Exception as e:
+                print(f'[agent_skills seed] Failed to insert {agent_name}:{skill}: {e}')
+    conn.commit()
+    conn.close()
+
+
+def _seed_skills():
+    """Seed the skills table with all skills from fridays/skills.py REGISTRY."""
+    import importlib.util
+    import os
+    skills_py = os.path.join(os.path.dirname(__file__), '../../fridays/skills.py')
+    spec = importlib.util.spec_from_file_location('fridays.skills', skills_py)
+    skills_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(skills_mod)
+    skills = skills_mod.REGISTRY
+    conn = get_connection()
+    for name, meta in skills.items():
+        desc = meta.get('description', '')
+        try:
+            conn.execute('INSERT OR IGNORE INTO skills (name, description) VALUES (?, ?)', (name, desc))
+        except Exception as e:
+            print(f'[skills seed] Failed to insert {name}: {e}')
+    conn.commit()
+    conn.close()
 
 
 def _migrate_schema(conn=None):
-    """Add columns/tables to existing deployments that were added after initial deploy."""
+    # Add columns/tables to existing deployments that were added after initial deploy.
     _close = conn is None
     if _close:
         conn = get_connection()
@@ -514,35 +582,13 @@ def _migrate_schema(conn=None):
             conn.execute("ALTER TABLE trusted_domains ADD COLUMN channel TEXT DEFAULT 'email'")
             conn.commit()
     if 'trusted_domains' not in tables:
-        conn.execute("""CREATE TABLE IF NOT EXISTS trusted_domains (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            domain TEXT UNIQUE NOT NULL,
-            channel TEXT DEFAULT 'email',
-            added_by TEXT NOT NULL,
-            notes TEXT DEFAULT '',
-            added_at TEXT DEFAULT (datetime('now'))
-        )""")
+        conn.execute('CREATE TABLE IF NOT EXISTS trusted_domains (id INTEGER PRIMARY KEY AUTOINCREMENT, domain TEXT UNIQUE NOT NULL, channel TEXT DEFAULT "email", added_by TEXT NOT NULL, notes TEXT DEFAULT "", added_at TEXT DEFAULT (datetime("now")))')
         conn.commit()
     if 'snoozed_tickets' not in tables:
-        conn.execute("""CREATE TABLE IF NOT EXISTS snoozed_tickets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ticket_number TEXT NOT NULL,
-            sender_email TEXT NOT NULL,
-            wake_at TEXT NOT NULL,
-            note TEXT DEFAULT '',
-            created_at TEXT DEFAULT (datetime('now')),
-            fired INTEGER DEFAULT 0
-        )""")
+        conn.execute('CREATE TABLE IF NOT EXISTS snoozed_tickets (id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_number TEXT NOT NULL, sender_email TEXT NOT NULL, wake_at TEXT NOT NULL, note TEXT DEFAULT "", created_at TEXT DEFAULT (datetime("now")), fired INTEGER DEFAULT 0)')
         conn.commit()
     if 'project_docs' not in tables:
-        conn.execute("""CREATE TABLE IF NOT EXISTS project_docs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            doc_name TEXT NOT NULL,
-            content TEXT DEFAULT '',
-            tags TEXT DEFAULT 'all',
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now'))
-        )""")
+        conn.execute('CREATE TABLE IF NOT EXISTS project_docs (id INTEGER PRIMARY KEY AUTOINCREMENT, doc_name TEXT NOT NULL, content TEXT DEFAULT "", tags TEXT DEFAULT "all", created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))')
         conn.commit()
     else:
         # Add tags column to existing project_docs if missing
@@ -551,102 +597,26 @@ def _migrate_schema(conn=None):
             conn.execute("ALTER TABLE project_docs ADD COLUMN tags TEXT DEFAULT 'all'")
             conn.commit()
     if 'memory_nine' not in tables:
-        conn.execute("""CREATE TABLE IF NOT EXISTS memory_nine (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            agent TEXT DEFAULT 'nine',
-            subject TEXT DEFAULT '',
-            content TEXT NOT NULL,
-            tags TEXT DEFAULT '',
-            importance INTEGER DEFAULT 7,
-            source TEXT DEFAULT 'session',
-            ticket_ref TEXT DEFAULT '',
-            archived INTEGER DEFAULT 0,
-            created_at TEXT
-        )""")
+        conn.execute('CREATE TABLE IF NOT EXISTS memory_nine (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "nine", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT)')
         conn.commit()
     if 'memory_ten' not in tables:
-        conn.execute("""CREATE TABLE IF NOT EXISTS memory_ten (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            agent TEXT DEFAULT 'ten',
-            subject TEXT DEFAULT '',
-            content TEXT NOT NULL,
-            tags TEXT DEFAULT '',
-            importance INTEGER DEFAULT 7,
-            source TEXT DEFAULT 'session',
-            ticket_ref TEXT DEFAULT '',
-            archived INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now'))
-        )""")
+        conn.execute('CREATE TABLE IF NOT EXISTS memory_ten (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "ten", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))')
         conn.commit()
     if 'approval_tokens' not in tables:
-        conn.execute("""CREATE TABLE IF NOT EXISTS approval_tokens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            token TEXT UNIQUE NOT NULL,
-            action TEXT NOT NULL,
-            target_email TEXT NOT NULL DEFAULT '',
-            created_by TEXT DEFAULT 'system',
-            created_at TEXT DEFAULT (datetime('now')),
-            used_at TEXT,
-            status TEXT DEFAULT 'pending'
-        )""")
+        conn.execute('CREATE TABLE IF NOT EXISTS approval_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL, action TEXT NOT NULL, target_email TEXT NOT NULL DEFAULT "", created_by TEXT DEFAULT "system", created_at TEXT DEFAULT (datetime("now")), used_at TEXT, status TEXT DEFAULT "pending")')
         conn.commit()
     if 'debates' not in tables:
-        conn.execute("""CREATE TABLE IF NOT EXISTS debates (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            topic TEXT NOT NULL,
-            initiator TEXT DEFAULT 'nine',
-            status TEXT DEFAULT 'open',
-            rounds INTEGER DEFAULT 0,
-            consensus TEXT DEFAULT '',
-            proposal_id INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now')),
-            closed_at TEXT
-        )""")
-        conn.execute("""CREATE TABLE IF NOT EXISTS debate_turns (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            debate_id INTEGER NOT NULL,
-            agent TEXT NOT NULL,
-            position TEXT NOT NULL,
-            round INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT (datetime('now'))
-        )""")
+        conn.execute('CREATE TABLE IF NOT EXISTS debates (id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT NOT NULL, initiator TEXT DEFAULT "nine", status TEXT DEFAULT "open", rounds INTEGER DEFAULT 0, consensus TEXT DEFAULT "", proposal_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), closed_at TEXT)')
+        conn.execute('CREATE TABLE IF NOT EXISTS debate_turns (id INTEGER PRIMARY KEY AUTOINCREMENT, debate_id INTEGER NOT NULL, agent TEXT NOT NULL, position TEXT NOT NULL, round INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime("now")))')
         conn.commit()
     if 'file_writes' not in tables:
-        conn.execute("""CREATE TABLE IF NOT EXISTS file_writes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            path TEXT NOT NULL,
-            description TEXT DEFAULT '',
-            previous_content TEXT DEFAULT '',
-            new_content TEXT NOT NULL,
-            applied_by TEXT DEFAULT 'ghost',
-            created_at TEXT DEFAULT (datetime('now'))
-        )""")
+        conn.execute('CREATE TABLE IF NOT EXISTS file_writes (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL, description TEXT DEFAULT "", previous_content TEXT DEFAULT "", new_content TEXT NOT NULL, applied_by TEXT DEFAULT "ghost", created_at TEXT DEFAULT (datetime("now")))')
         conn.commit()
     if 'user_profiles' not in tables:
-        conn.execute("""CREATE TABLE IF NOT EXISTS user_profiles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            display_name TEXT DEFAULT '',
-            user_type TEXT DEFAULT 'human',
-            linked_agent TEXT DEFAULT '',
-            is_active INTEGER DEFAULT 1,
-            can_proxy INTEGER DEFAULT 0,
-            created_by TEXT DEFAULT 'system',
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now'))
-        )""")
+        conn.execute('CREATE TABLE IF NOT EXISTS user_profiles (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, display_name TEXT DEFAULT "", user_type TEXT DEFAULT "human", linked_agent TEXT DEFAULT "", is_active INTEGER DEFAULT 1, can_proxy INTEGER DEFAULT 0, created_by TEXT DEFAULT "system", created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))')
         conn.commit()
     if 'user_skill_permissions' not in tables:
-        conn.execute("""CREATE TABLE IF NOT EXISTS user_skill_permissions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
-            skill_name TEXT NOT NULL,
-            allowed INTEGER DEFAULT 1,
-            created_by TEXT DEFAULT 'ghost',
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now')),
-            UNIQUE(username, skill_name)
-        )""")
+        conn.execute('CREATE TABLE IF NOT EXISTS user_skill_permissions (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, skill_name TEXT NOT NULL, allowed INTEGER DEFAULT 1, created_by TEXT DEFAULT "ghost", created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")), UNIQUE(username, skill_name))')
         conn.commit()
     # memory_twelve: bootstrap test created it with a different schema; add missing columns
     if 'memory_twelve' in tables:
@@ -670,105 +640,19 @@ def _migrate_schema(conn=None):
         conn.commit()
     # Time Wizard tables (exist in live DB, now added to schema; migrate for safety)
     for tbl, ddl in [
-        ('memory_grok', """CREATE TABLE IF NOT EXISTS memory_grok (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'grok',
-            subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '',
-            importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session',
-            ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now')))"""),
-        ('memory_twelve', """CREATE TABLE IF NOT EXISTS memory_twelve (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'twelve',
-            subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '',
-            importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session',
-            ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now')))"""),
-        ('decisions', """CREATE TABLE IF NOT EXISTS decisions (
-            decision_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT DEFAULT (datetime('now')), agent TEXT NOT NULL,
-            component TEXT DEFAULT '', proposal_file TEXT DEFAULT '',
-            decision TEXT NOT NULL, reasoning TEXT DEFAULT '',
-            test_status TEXT DEFAULT 'PENDING', commit_hash TEXT DEFAULT '',
-            checkpoint_id INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now')), archived INTEGER DEFAULT 0)"""),
-        ('time_machine', """CREATE TABLE IF NOT EXISTS time_machine (
-            checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT DEFAULT (datetime('now')), agent TEXT NOT NULL,
-            file_path TEXT NOT NULL, before_code TEXT DEFAULT '',
-            after_code TEXT NOT NULL, before_hash TEXT DEFAULT '',
-            after_hash TEXT DEFAULT '', test_results TEXT DEFAULT '',
-            decision_id INTEGER DEFAULT 0, commit_hash TEXT DEFAULT '',
-            outcome TEXT DEFAULT 'success', is_rollback_point INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now')))"""),
-        ('time_events', """CREATE TABLE IF NOT EXISTS time_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT '',
-            event_type TEXT NOT NULL, agent TEXT NOT NULL,
-            action TEXT DEFAULT '', target TEXT DEFAULT '',
-            state_hash TEXT DEFAULT '', details TEXT DEFAULT '{}',
-            created_at TEXT DEFAULT (datetime('now')))"""),
-        ('time_journal', """CREATE TABLE IF NOT EXISTS time_journal (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL,
-            timestamp TEXT DEFAULT '', session_id TEXT DEFAULT '',
-            phase TEXT DEFAULT '', status TEXT DEFAULT 'active',
-            notes TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')))"""),
-        ('time_checkpoints', """CREATE TABLE IF NOT EXISTS time_checkpoints (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, checkpoint_name TEXT UNIQUE NOT NULL,
-            timestamp TEXT DEFAULT '', description TEXT DEFAULT '',
-            agent TEXT NOT NULL, full_state TEXT DEFAULT '{}',
-            created_at TEXT DEFAULT (datetime('now')))"""),
-        ('daily_checkpoint', """CREATE TABLE IF NOT EXISTS daily_checkpoint (
-            checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            codebase_hash TEXT, memory_state TEXT,
-            decisions_count INTEGER DEFAULT 0,
-            description TEXT, is_stable INTEGER DEFAULT 0)"""),
-        ('ghost_briefs', """CREATE TABLE IF NOT EXISTS ghost_briefs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            generated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            brief_type TEXT DEFAULT 'on_demand',
-            content TEXT NOT NULL, raw_data_snapshot TEXT,
-            tokens_used INTEGER DEFAULT 0,
-            triggered_by TEXT DEFAULT 'system')"""),
-        ('scheduled_tasks', """CREATE TABLE IF NOT EXISTS scheduled_tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL, schedule TEXT NOT NULL,
-            action_type TEXT NOT NULL, action_data TEXT NOT NULL,
-            last_run TEXT, next_run TEXT, enabled INTEGER DEFAULT 1,
-            created_by TEXT DEFAULT 'ghost', created_at TEXT)"""),
-        ('work_proposals', """CREATE TABLE IF NOT EXISTS work_proposals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            proposal_id TEXT UNIQUE NOT NULL, agent TEXT NOT NULL,
-            title TEXT NOT NULL, description TEXT DEFAULT '',
-            status TEXT DEFAULT 'pending', proposal_file TEXT DEFAULT '',
-            ticket_number TEXT DEFAULT '', queue_id INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now')))"""),
-        ('agent_capabilities', """CREATE TABLE IF NOT EXISTS agent_capabilities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            agent_name TEXT NOT NULL,
-            capability TEXT NOT NULL,
-            granted INTEGER DEFAULT 0,
-            trust_level INTEGER DEFAULT 0,
-            granted_by TEXT DEFAULT 'system',
-            proposal_id TEXT DEFAULT '',
-            notes TEXT DEFAULT '',
-            granted_at TEXT,
-            created_at TEXT DEFAULT (datetime('now')),
-            UNIQUE(agent_name, capability))"""),
-        ('chat_jobs', """CREATE TABLE IF NOT EXISTS chat_jobs (
-            job_id TEXT PRIMARY KEY,
-            conversation_id INTEGER DEFAULT 0,
-            agent TEXT DEFAULT '',
-            status TEXT DEFAULT 'running',
-            runtime_class TEXT DEFAULT '',
-            stage TEXT DEFAULT '',
-            eta_seconds INTEGER DEFAULT 60,
-            elapsed_ms INTEGER DEFAULT 0,
-            tokens INTEGER DEFAULT 0,
-            error TEXT DEFAULT '',
-            stage_trace_json TEXT DEFAULT '[]',
-            started_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now'))
-        )"""),
+        ('memory_grok', 'CREATE TABLE IF NOT EXISTS memory_grok (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "grok", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
+        ('memory_twelve', 'CREATE TABLE IF NOT EXISTS memory_twelve (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "twelve", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
+        ('decisions', 'CREATE TABLE IF NOT EXISTS decisions (decision_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT (datetime("now")), agent TEXT NOT NULL, component TEXT DEFAULT "", proposal_file TEXT DEFAULT "", decision TEXT NOT NULL, reasoning TEXT DEFAULT "", test_status TEXT DEFAULT "PENDING", commit_hash TEXT DEFAULT "", checkpoint_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), archived INTEGER DEFAULT 0)'),
+        ('time_machine', 'CREATE TABLE IF NOT EXISTS time_machine (checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT (datetime("now")), agent TEXT NOT NULL, file_path TEXT NOT NULL, before_code TEXT DEFAULT "", after_code TEXT NOT NULL, before_hash TEXT DEFAULT "", after_hash TEXT DEFAULT "", test_results TEXT DEFAULT "", decision_id INTEGER DEFAULT 0, commit_hash TEXT DEFAULT "", outcome TEXT DEFAULT "success", is_rollback_point INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
+        ('time_events', 'CREATE TABLE IF NOT EXISTS time_events (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT "", event_type TEXT NOT NULL, agent TEXT NOT NULL, action TEXT DEFAULT "", target TEXT DEFAULT "", state_hash TEXT DEFAULT "", details TEXT DEFAULT "{}", created_at TEXT DEFAULT (datetime("now")))'),
+        ('time_journal', 'CREATE TABLE IF NOT EXISTS time_journal (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL, timestamp TEXT DEFAULT "", session_id TEXT DEFAULT "", phase TEXT DEFAULT "", status TEXT DEFAULT "active", notes TEXT DEFAULT "", created_at TEXT DEFAULT (datetime("now")))'),
+        ('time_checkpoints', 'CREATE TABLE IF NOT EXISTS time_checkpoints (id INTEGER PRIMARY KEY AUTOINCREMENT, checkpoint_name TEXT UNIQUE NOT NULL, timestamp TEXT DEFAULT "", description TEXT DEFAULT "", agent TEXT NOT NULL, full_state TEXT DEFAULT "{}", created_at TEXT DEFAULT (datetime("now")))'),
+        ('daily_checkpoint', 'CREATE TABLE IF NOT EXISTS daily_checkpoint (checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, codebase_hash TEXT, memory_state TEXT, decisions_count INTEGER DEFAULT 0, description TEXT, is_stable INTEGER DEFAULT 0)'),
+        ('ghost_briefs', 'CREATE TABLE IF NOT EXISTS ghost_briefs (id INTEGER PRIMARY KEY AUTOINCREMENT, generated_at TEXT DEFAULT CURRENT_TIMESTAMP, brief_type TEXT DEFAULT "on_demand", content TEXT NOT NULL, raw_data_snapshot TEXT, tokens_used INTEGER DEFAULT 0, triggered_by TEXT DEFAULT "system")'),
+        ('scheduled_tasks', 'CREATE TABLE IF NOT EXISTS scheduled_tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, schedule TEXT NOT NULL, action_type TEXT NOT NULL, action_data TEXT NOT NULL, last_run TEXT, next_run TEXT, enabled INTEGER DEFAULT 1, created_by TEXT DEFAULT "ghost", created_at TEXT)'),
+        ('work_proposals', 'CREATE TABLE IF NOT EXISTS work_proposals (id INTEGER PRIMARY KEY AUTOINCREMENT, proposal_id TEXT UNIQUE NOT NULL, agent TEXT NOT NULL, title TEXT NOT NULL, description TEXT DEFAULT "", status TEXT DEFAULT "pending", proposal_file TEXT DEFAULT "", ticket_number TEXT DEFAULT "", queue_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
+        ('agent_capabilities', 'CREATE TABLE IF NOT EXISTS agent_capabilities (id INTEGER PRIMARY KEY AUTOINCREMENT, agent_name TEXT NOT NULL, capability TEXT NOT NULL, granted INTEGER DEFAULT 0, trust_level INTEGER DEFAULT 0, granted_by TEXT DEFAULT "system", proposal_id TEXT DEFAULT "", notes TEXT DEFAULT "", granted_at TEXT, created_at TEXT DEFAULT (datetime("now")), UNIQUE(agent_name, capability))'),
+        ('chat_jobs', 'CREATE TABLE IF NOT EXISTS chat_jobs (job_id TEXT PRIMARY KEY, conversation_id INTEGER DEFAULT 0, agent TEXT DEFAULT "", status TEXT DEFAULT "running", runtime_class TEXT DEFAULT "", stage TEXT DEFAULT "", eta_seconds INTEGER DEFAULT 60, elapsed_ms INTEGER DEFAULT 0, tokens INTEGER DEFAULT 0, error TEXT DEFAULT "", stage_trace_json TEXT DEFAULT "[]", started_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
     ]:
         if tbl not in tables:
             conn.execute(ddl)
@@ -788,31 +672,14 @@ def _migrate_schema(conn=None):
 
     # terminal_shortcuts table — all shortcuts (defaults + custom) stored in DB
     try:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS terminal_shortcuts (
-                id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                icon     TEXT    NOT NULL DEFAULT '⚡',
-                label    TEXT    NOT NULL,
-                cmd      TEXT    NOT NULL,
-                sort_order INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT DEFAULT (datetime('now'))
-            )
-        """)
+        conn.execute('CREATE TABLE IF NOT EXISTS terminal_shortcuts (id INTEGER PRIMARY KEY AUTOINCREMENT, icon TEXT NOT NULL DEFAULT "⚡", label TEXT NOT NULL, cmd TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))')
         conn.commit()
     except Exception:
         pass
 
     # Custom sudo whitelist entries for the Fridays terminal
     try:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS sudo_command_whitelist (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                command TEXT NOT NULL UNIQUE,
-                note TEXT DEFAULT '',
-                added_by TEXT DEFAULT 'ghost',
-                created_at TEXT DEFAULT (datetime('now'))
-            )
-        """)
+        conn.execute('CREATE TABLE IF NOT EXISTS sudo_command_whitelist (id INTEGER PRIMARY KEY AUTOINCREMENT, command TEXT NOT NULL UNIQUE, note TEXT DEFAULT "", added_by TEXT DEFAULT "ghost", created_at TEXT DEFAULT (datetime("now")))')
         conn.commit()
     except Exception:
         pass
@@ -895,11 +762,7 @@ def _migrate_schema(conn=None):
     try:
         for name, prompt, key_var, tier in _prompt_seed:
             conn.execute(
-                """UPDATE agents SET
-                     system_prompt = CASE WHEN ? != '' THEN ? ELSE system_prompt END,
-                     api_key_var   = CASE WHEN (api_key_var IS NULL OR api_key_var = '') THEN ? ELSE api_key_var END,
-                     tier          = CASE WHEN (tier        IS NULL OR tier        = '') THEN ? ELSE tier        END
-                   WHERE name = ?""",
+                'UPDATE agents SET system_prompt = CASE WHEN ? != "" THEN ? ELSE system_prompt END, api_key_var = CASE WHEN (api_key_var IS NULL OR api_key_var = "") THEN ? ELSE api_key_var END, tier = CASE WHEN (tier IS NULL OR tier = "") THEN ? ELSE tier END WHERE name = ?',
                 (prompt, prompt, key_var, tier, name)
             )
         conn.commit()
@@ -908,15 +771,7 @@ def _migrate_schema(conn=None):
 
     # swarm_globals table — shared rules and global parameters
     try:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS swarm_globals (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                key        TEXT NOT NULL UNIQUE,
-                value      TEXT NOT NULL DEFAULT '',
-                description TEXT DEFAULT '',
-                updated_at TEXT DEFAULT (datetime('now'))
-            )
-        """)
+        conn.execute('CREATE TABLE IF NOT EXISTS swarm_globals (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, value TEXT NOT NULL DEFAULT "", description TEXT DEFAULT "", updated_at TEXT DEFAULT (datetime("now")))')
         conn.commit()
     except Exception:
         pass
@@ -972,14 +827,7 @@ def _seed_agents():
     conn = get_connection()
     for number, name, label, model, temp, role in roster:
         conn.execute(
-            """INSERT INTO agents (number, name, label, model, temperature, role)
-               VALUES (?,?,?,?,?,?)
-               ON CONFLICT(name) DO UPDATE SET
-                   number=excluded.number,
-                   label=excluded.label,
-                   model=excluded.model,
-                   temperature=excluded.temperature,
-                   role=excluded.role""",
+            'INSERT INTO agents (number, name, label, model, temperature, role) VALUES (?,?,?,?,?,?) ON CONFLICT(name) DO UPDATE SET number=excluded.number, label=excluded.label, model=excluded.model, temperature=excluded.temperature, role=excluded.role',
             (number, name, label, model, temp, role)
         )
     # Retire agents that no longer exist as standalone entries
@@ -993,18 +841,7 @@ def _seed_agents():
 
     # ── proposal_attachments table (ALM file attachments) ─────────────────────
     try:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS proposal_attachments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                proposal_id TEXT NOT NULL,
-                filename TEXT NOT NULL,
-                original_name TEXT DEFAULT '',
-                mime_type TEXT DEFAULT 'application/octet-stream',
-                size_bytes INTEGER DEFAULT 0,
-                uploaded_by TEXT DEFAULT 'ghost',
-                created_at TEXT DEFAULT (datetime('now'))
-            )
-        """)
+        conn.execute('CREATE TABLE IF NOT EXISTS proposal_attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, proposal_id TEXT NOT NULL, filename TEXT NOT NULL, original_name TEXT DEFAULT "", mime_type TEXT DEFAULT "application/octet-stream", size_bytes INTEGER DEFAULT 0, uploaded_by TEXT DEFAULT "ghost", created_at TEXT DEFAULT (datetime("now")))')
         conn.commit()
     except Exception:
         pass
@@ -1036,13 +873,11 @@ def _seed_moderator():
 
 
 def _seed_user_profiles():
-    """Create default profiles for Ghost and all known agents."""
+    # Create default profiles for Ghost and all known agents.
     conn = get_connection()
     try:
         conn.execute(
-            """INSERT OR IGNORE INTO user_profiles
-               (username, display_name, user_type, linked_agent, is_active, can_proxy, created_by)
-               VALUES ('ghost', 'Ghost', 'human', '', 1, 1, 'system')"""
+            "INSERT OR IGNORE INTO user_profiles (username, display_name, user_type, linked_agent, is_active, can_proxy, created_by) VALUES ('ghost', 'Ghost', 'human', '', 1, 1, 'system')"
         )
 
         rows = conn.execute("SELECT name FROM agents").fetchall()
@@ -1051,9 +886,7 @@ def _seed_user_profiles():
             if not name:
                 continue
             conn.execute(
-                """INSERT OR IGNORE INTO user_profiles
-                   (username, display_name, user_type, linked_agent, is_active, can_proxy, created_by)
-                   VALUES (?, ?, 'agent', ?, 1, 0, 'system')""",
+                "INSERT OR IGNORE INTO user_profiles (username, display_name, user_type, linked_agent, is_active, can_proxy, created_by) VALUES (?, ?, 'agent', ?, 1, 0, 'system')",
                 (name, name.capitalize(), name)
             )
         conn.commit()

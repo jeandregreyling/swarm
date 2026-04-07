@@ -4811,17 +4811,19 @@ function initChatSpellHelper() {
 function autoGrowTextarea(el) {
   if (!el) return;
   el.style.height = 'auto';
-  const maxH = parseInt(getComputedStyle(el).maxHeight, 10) || 200;
-  el.style.height = Math.min(el.scrollHeight, maxH) + 'px';
+  const maxH = 200; // ~10 lines
+  const newH = Math.min(el.scrollHeight, maxH);
+  el.style.height = newH + 'px';
+  el.style.overflowY = newH >= maxH ? 'auto' : 'hidden';
 }
 
 function _triggerSendGlow() {
-  const shell = document.querySelector('.chat-compose-shell');
-  if (!shell) return;
-  shell.classList.remove('compose-sending');
-  void shell.offsetWidth; // reflow to restart animation
-  shell.classList.add('compose-sending');
-  shell.addEventListener('animationend', () => shell.classList.remove('compose-sending'), { once: true });
+  const wrapper = document.getElementById('input-wrapper');
+  if (!wrapper) return;
+  wrapper.classList.remove('compose-sending');
+  void wrapper.offsetWidth; // reflow to restart animation
+  wrapper.classList.add('compose-sending');
+  wrapper.addEventListener('animationend', () => wrapper.classList.remove('compose-sending'), { once: true });
 }
 
 function sendMessage(source = 'user', relayMeta = null) {
@@ -4928,7 +4930,8 @@ function sendMessage(source = 'user', relayMeta = null) {
   
   _triggerSendGlow();
   input.value = '';
-  input.style.height = '';  // reset auto-grow height
+  input.style.height = '';
+  input.style.overflowY = 'hidden';
   clearReplyTarget();
   clearChatAttachments();
   updateComposerMeta();

@@ -1477,3 +1477,60 @@ def api_agents_delete(name):
         'failed_checks': failed,
     })
 
+
+@agents_bp.route('/api/skills', methods=['GET'])
+def api_skills():
+    """List all skills in the system."""
+    conn = get_connection()
+    rows = conn.execute('SELECT id, name, description FROM skills ORDER BY name ASC').fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@agents_bp.route('/api/agents/<agent>/skills', methods=['GET'])
+def api_agent_skills(agent):
+    """List all skills assigned to a given agent."""
+    conn = get_connection()
+    agent_row = conn.execute('SELECT id FROM agents WHERE name=?', (agent.lower(),)).fetchone()
+    if not agent_row:
+        conn.close()
+        return jsonify({'error': f'Agent {agent} not found'}), 404
+    agent_id = agent_row['id']
+    rows = conn.execute('''
+        SELECT s.id, s.name, s.description
+        FROM agent_skills AS a
+        JOIN skills AS s ON a.skill_id = s.id
+        WHERE a.agent_id = ?
+        ORDER BY s.name ASC
+    ''', (agent_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@agents_bp.route('/api/agents/<agent>/skills', methods=['POST'])
+def api_agent_skills_update(agent):
+    """Update skills for a given agent (replace all). Payload: {skills: [skill_name, ...]}"""
+    data = request.get_json() or {}
+    skills = data.get('skills', [])
+    if not isinstance(skills, list):
+        return jsonify({'error': 'skills must be a list'}), 400
+    conn = get_connection()
+    agent_row = conn.execute('SELECT id FROM agents WHERE name=?', (agent.lower(),)).fetchone()
+    if not agent_row:
+        conn.close()
+        return jsonify({'error': f'Agent {agent} not found'}), 404
+    agent_id = agent_row['id']
+    # Get skill ids for provided names
+    skill_rows = conn.execute('SELECT id, name FROM skills WHERE name IN (%s)' % (','.join(['?']*len(skills))), skills).fetchall() if skills else []
+    skill_name_to_id = {r['name']: r['id'] for r in skill_rows}
+    # Remove all current skills
+    conn.execute('DELETE FROM agent_skills WHERE agent_id=?', (agent_id,))
+    # Insert new skills
+    for name in skills:
+        skill_id = skill_name_to_id.get(name)
+        if skill_id:
+            conn.execute('INSERT OR IGNORE INTO agent_skills (agent_id, skill_id) VALUES (?, ?)', (agent_id, skill_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'skills': skills})
+
