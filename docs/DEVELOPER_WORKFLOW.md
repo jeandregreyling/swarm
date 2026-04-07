@@ -1,3 +1,12 @@
+## Flask/Backend Edit Safety Rule
+
+Any time you edit a Flask route, blueprint, or backend API file (e.g., anything in frontend/blueprints/ or frontend/services.py), you MUST:
+
+- Run `python3 frontend/terminal.py` locally after your change to check for syntax or indentation errors before committing or deploying.
+- If you see an error, fix it immediately—otherwise the web server will not start and the UI will be down for all users.
+- If you add or change a route, cross-reference any related files (e.g., frontend/services.py, frontend/terminal.py, utils/db/_schema.py) and update their `LINKED TO:` blocks if needed.
+
+**Summary:** Backend errors can take down the whole web UI. Always test startup after backend edits!
 # Developer Workflow: Using Agent Twelve's Vortex
 
 **Effective Date**: 2026-03-29  

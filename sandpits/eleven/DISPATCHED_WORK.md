@@ -1157,3 +1157,20 @@ Args: frontend/static/css/views/fridays.css
      color: white;
      disp
 **Status**: dispatched
+
+## [15:12] INTERNAL-ELEVEN-0504
+**Title**: [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+#input-wrapper:focus-within {
+  bor
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/css/views/chat.css
+<<<OLD>>>
+#input-wrapper:focus-within {
+  border-color: color-mix(in oklab, var(--accent) 60%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 20%, transparent);
+}
+<<<NEW>>>
+#input-wrapper:focu
+**Status**: dispatched

@@ -11,13 +11,16 @@ async function agentsRefresh() {
   const res = await fetch('/api/agents/config');
   const agents = await res.json();
   window._agentsConfig = agents;
-  listEl.innerHTML = agents.map(a => `
-    <div class="agent-list-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;"
-         onclick="agentsShowDetail('${a.name}')">
-      <span style="flex:1;font-size:12px;">${a.number != null ? '<span style=\'color:var(--text-dim);font-size:10px;\'>' + a.number + '</span> ' : ''}${_escHtmlA(a.label || a.name)}</span>
-      <span style="color:var(--text-dim);font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtmlA(a.model)}</span>
-      ${a.tier === 'human' ? '' : `<button onclick="event.stopPropagation();agentsConfirmToggle('${a.name}', ${a.enabled})" style="padding:2px 8px;border-radius:4px;border:1px solid ${a.enabled ? '#f4433655' : 'transparent'};background:${a.enabled ? 'transparent' : 'var(--accent)'};color:${a.enabled ? '#f44336' : '#000'};font-size:10px;">${a.enabled ? 'Off' : 'On'}</button>`}
-    </div>`).join('');
+  listEl.innerHTML = agents.map(a => {
+    // Online/offline indicator: green if enabled, red if not
+    const statusDot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle;background:${a.enabled ? '#4caf50' : '#f44336'};box-shadow:0 0 0 1.5px var(--window-header);"></span>`;
+    return `
+      <div class="agent-list-item" style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.18s;" onclick="agentsShowDetail('${a.name}')">
+        ${statusDot}
+        <span style="flex:1;font-size:13px;font-weight:600;letter-spacing:0.1px;">${_escHtmlA(a.label || a.name)}</span>
+        <span style="color:var(--text-dim);font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtmlA(a.model)}</span>
+      </div>`;
+  }).join('');
 }
 
 function _escHtmlA(s) {
@@ -56,39 +59,249 @@ function agentsShowDetail(name) {
   const _PROTECTED = ['gemma','llama','mistral','qwen','eight','nine','ten','eleven','twelve','ghost','librarian','duck','sniffles'];
   const isProtected = _PROTECTED.includes(name);
 
+  // Responsive, modern layout
+  // Example role lists (to be replaced with backend-driven list)
+  const SAP_ROLES = [
+    'SAP HCM Specialist', 'SAP Payroll Expert', 'SAP ABAP Developer', 'SAP Time Management', 'SAP EC/ECP Consultant',
+    'SAP Schema Designer', 'SAP PCR Author', 'SAP Integration Lead', 'SAP Security Analyst', 'SAP Data Migration'
+  ];
+  const SYSTEM_ROLES = [
+    'Program Manager', 'System Architect', 'AI Researcher', 'AI Developer', 'Memory Auditor',
+    'Sanity Checker', 'Orchestrator', 'Researcher', 'Analyst', 'Generalist'
+  ];
+  // Merge and deduplicate
+  let allRoles = Array.from(new Set([...SAP_ROLES, ...SYSTEM_ROLES]));
+  if (window._customRoles) allRoles = Array.from(new Set([...allRoles, ...window._customRoles]));
+
+  // Roles as chips/tags, multi-select
+  let agentRoles = Array.isArray(agent.roles) ? agent.roles : (agent.role ? [agent.role] : []);
+  // Fallback: if roles not array, try splitting by comma
+  if (!Array.isArray(agentRoles)) agentRoles = String(agentRoles || '').split(',').map(r => r.trim()).filter(Boolean);
+  // Example role lists (to be replaced with backend-driven list)
+  const SAP_ROLES = [
+    'SAP HCM Specialist', 'SAP Payroll Expert', 'SAP ABAP Developer', 'SAP Time Management', 'SAP EC/ECP Consultant',
+    'SAP Schema Designer', 'SAP PCR Author', 'SAP Integration Lead', 'SAP Security Analyst', 'SAP Data Migration'
+  ];
+  const SYSTEM_ROLES = [
+    'Program Manager', 'System Architect', 'AI Researcher', 'AI Developer', 'Memory Auditor',
+    'Sanity Checker', 'Orchestrator', 'Researcher', 'Analyst', 'Generalist'
+  ];
+  let allRoles = Array.from(new Set([...SAP_ROLES, ...SYSTEM_ROLES]));
+  if (window._customRoles) allRoles = Array.from(new Set([...allRoles, ...window._customRoles]));
+
+  // Example role-skill mapping (to be replaced with backend-driven mapping)
+  const ROLE_SKILLS = {
+    'SAP HCM Specialist': ['Payroll', 'HCM', 'SAP Core'],
+    'SAP Payroll Expert': ['Payroll', 'Wage Types'],
+    'SAP ABAP Developer': ['ABAP', 'Coding'],
+    'SAP Time Management': ['Time Eval', 'Absence Mgmt'],
+    'SAP EC/ECP Consultant': ['EC/ECP', 'Integration'],
+    'SAP Schema Designer': ['Schema', 'PCR'],
+    'SAP PCR Author': ['PCR'],
+    'SAP Integration Lead': ['Integration'],
+    'SAP Security Analyst': ['Security'],
+    'SAP Data Migration': ['Data Migration'],
+    'Program Manager': ['Project Mgmt'],
+    'System Architect': ['Architecture'],
+    'AI Researcher': ['AI', 'Research'],
+    'AI Developer': ['AI', 'Coding'],
+    'Memory Auditor': ['Memory Audit'],
+    'Sanity Checker': ['Sanity Check'],
+    'Orchestrator': ['Orchestration'],
+    'Researcher': ['Research'],
+    'Analyst': ['Analysis'],
+    'Generalist': ['General'],
+  };
+  // Default/basic skills
+  const DEFAULT_SKILLS = ['Basic Agent'];
+  // Compute agent skills from roles
+  let agentSkills = new Set(DEFAULT_SKILLS);
+  agentRoles.forEach(role => {
+    (ROLE_SKILLS[role] || []).forEach(skill => agentSkills.add(skill));
+  });
+
   detailEl.innerHTML = `
-    <div style="padding:20px;max-width:640px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
-        <h3 style="margin:0;font-size:15px;">${_escHtmlA(agent.label || agent.name)}</h3>
-        ${isHuman ? '' : `<div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button onclick="agentsConfirmToggle('${name}', ${agent.enabled})"
-            style="padding:3px 12px;border-radius:4px;border:1px solid ${agent.enabled ? '#f4433655' : 'transparent'};
-                   background:${agent.enabled ? 'transparent' : 'var(--accent)'};color:${agent.enabled ? '#f44336' : '#000'};font-size:11px;">
-            ${agent.enabled ? 'Deactivate' : 'Reactivate'}</button>
-          <button onclick="agentsConfirmReset('${name}')"
-            style="padding:3px 12px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:11px;">
-            ↺ Reset</button>
-          ${!isProtected ? `<button onclick="agentsConfirmDelete('${name}')"
-            style="padding:3px 12px;border-radius:4px;border:1px solid #f4433655;background:transparent;color:#f44336;font-size:11px;">
-            ✕ Delete</button>` : ''}
+    <div style="padding:32px 5vw 32px 5vw;max-width:900px;margin:auto;display:flex;flex-direction:column;gap:24px;min-height:60vh;">
+      <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${agent.enabled ? '#4caf50' : '#f44336'};box-shadow:0 0 0 2px var(--window-header);"></span>
+          <input id="agent-name-input-${name}" value="${_escHtmlA(agent.name)}" style="${_agentsInputStyle}width:120px;font-weight:700;font-size:1.1em;background:var(--card-dim);color:var(--text-dim);" placeholder="Name" readonly>
+          <input id="agent-label-input-${name}" value="${_escHtmlA(agent.label || '')}" style="${_agentsInputStyle}width:180px;font-size:1.1em;" placeholder="Label">
+        </div>
+        ${isHuman ? '' : `<div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button onclick="agentsConfirmToggle('${name}', ${agent.enabled})" style="padding:7px 22px;border-radius:6px;border:1.5px solid ${agent.enabled ? '#f4433655' : 'var(--border)'};background:${agent.enabled ? 'transparent' : 'var(--accent)'};color:${agent.enabled ? '#f44336' : '#000'};font-size:13px;font-weight:600;">${agent.enabled ? 'Deactivate' : 'Reactivate'}</button>
+          <button onclick="agentsConfirmReset('${name}')" style="padding:7px 22px;border-radius:6px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:13px;font-weight:600;">↺ Reset</button>
+          ${!isProtected ? `<button onclick="agentsConfirmDelete('${name}')" style="padding:7px 22px;border-radius:6px;border:1.5px solid #f4433655;background:transparent;color:#f44336;font-size:13px;font-weight:600;">✕ Delete</button>` : ''}
+          <div style="display:flex;align-items:center;gap:6px;margin-left:18px;">
+            <input id="agent-temp-input-${name}" type="number" min="0" max="2" step="0.01" value="${agent.temperature != null ? agent.temperature : ''}" style="${_agentsInputStyle}width:70px;max-width:90px;display:inline-block;">
+            <button onclick="agentsSaveTemp('${name}')" style="${_agentsBtnStyle}background:var(--accent);color:#000;border-color:transparent;font-size:13px;padding:7px 18px;">Save</button>
+          </div>
         </div>`}
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-bottom:16px;font-size:12px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px 32px;font-size:14px;align-items:start;">
         <div><span style="color:var(--text-dim);">Model</span><br><b>${_escHtmlA(agent.model)}</b></div>
-        <div><span style="color:var(--text-dim);">Role</span><br><b>${_escHtmlA(agent.role || '—')}</b></div>
-        <div><span style="color:var(--text-dim);">Temperature</span><br><b>${agent.temperature != null ? agent.temperature : '—'}</b></div>
+        <div>
+          <span style="color:var(--text-dim);">Roles</span><br>
+          <div id="agent-roles-chips-${name}" style="display:flex;flex-wrap:wrap;gap:6px 8px;margin-bottom:6px;">
+            ${agentRoles.map(role => `<span class="role-chip" style="display:inline-flex;align-items:center;background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:3px 12px 3px 10px;font-size:13px;font-weight:500;gap:6px;">${_escHtmlA(role)}<button onclick="agentsRemoveRole('${name}','${_escHtmlA(role)}')" style="background:none;border:none;color:#f44336;font-size:15px;line-height:1;padding:0 0 0 3px;cursor:pointer;">×</button></span>`).join('')}
+          </div>
+          <select id="agent-role-add-input-${name}" style="${_agentsInputStyle}width:180px;max-width:220px;display:inline-block;">
+            <option value="">+ Add role…</option>
+            ${allRoles.filter(r => !agentRoles.includes(r)).map(r => `<option value="${_escHtmlA(r)}">${_escHtmlA(r)}</option>`).join('')}
+          </select>
+        </div>
         <div><span style="color:var(--text-dim);">Tier</span><br><b>${_escHtmlA(agent.tier || '—')}</b></div>
+      </div>
+
+      <div style="margin:18px 0 0 0;">
+        <span style="color:var(--text-dim);font-size:12px;font-weight:700;">Skills</span><br>
+        <div id="agent-skills-chips-${name}" style="display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:4px;">
+          ${Array.from(agentSkills).map(skill => `<span style="display:inline-flex;align-items:center;background:var(--main-bg);border:1.5px solid var(--border);border-radius:14px;padding:2px 10px;font-size:12px;font-weight:500;">${_escHtmlA(skill)}</span>`).join('')}
+        </div>
       </div>
 
       ${apiKeySection}
 
-      ${agent.system_prompt ? `
+      ${(agent.name === 'duck' || agent.name === 'sniffles' || agent.system_prompt) ? `
       <div>
-        <div style="font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">System Prompt</div>
-        <pre style="background:var(--card);padding:10px;border-radius:4px;font-size:11px;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto;">${_escHtmlA(agent.system_prompt)}</pre>
+        <div style="font-size:12px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">System Prompt</div>
+        <textarea id="agent-prompt-input-${name}" style="${_agentsInputStyle}min-height:120px;max-height:320px;resize:vertical;font-size:13px;">${_escHtmlA(agent.system_prompt || (agent.name === 'duck' ? 'Sanity checker logic — no editable prompt.' : agent.name === 'sniffles' ? 'Memory auditor logic — no editable prompt.' : ''))}</textarea>
+        <button onclick="agentsSavePrompt('${name}')" style="${_agentsBtnStyle}background:var(--accent);color:#000;border-color:transparent;margin-top:8px;">Save Prompt</button>
       </div>` : ''}
     </div>`;
+
+  // Add role (dropdown)
+  const addRoleInput = document.getElementById(`agent-role-add-input-${name}`);
+  if (addRoleInput) {
+    addRoleInput.addEventListener('change', async function() {
+      const newRole = this.value;
+      if (!newRole) return;
+      // Update roles array
+      const updatedRoles = [...agentRoles, newRole];
+      await fetch(`/api/agents/config/${name}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({roles: updatedRoles})
+      });
+      agentsRefresh();
+      agentsShowDetail(name);
+    });
+  }
+  // Remove role
+  window.agentsRemoveRole = async function(name, role) {
+    const updatedRoles = agentRoles.filter(r => r !== role);
+    await fetch(`/api/agents/config/${name}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({roles: updatedRoles})
+    });
+    agentsRefresh();
+    agentsShowDetail(name);
+  };
+
+  // Save Label handler
+  const labelInput = document.getElementById(`agent-label-input-${name}`);
+  if (labelInput) labelInput.addEventListener('change', async () => {
+    await fetch(`/api/agents/config/${name}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({label: labelInput.value.trim()})
+    });
+    agentsRefresh();
+    agentsShowDetail(name);
+  });
+
+  // Add role manager UI (add/remove roles)
+  window.agentsAddRolePrompt = function(name) {
+    const role = prompt('Enter new role name:');
+    if (!role) return;
+    window._customRoles = window._customRoles || [];
+    if (!window._customRoles.includes(role)) window._customRoles.push(role);
+    agentsShowDetail(name);
+  };
+
+  // Save Name, Label, Role handlers
+  const nameInput = document.getElementById(`agent-name-input-${name}`);
+  const labelInput = document.getElementById(`agent-label-input-${name}`);
+  const roleInput = document.getElementById(`agent-role-input-${name}`);
+  [nameInput, labelInput, roleInput].forEach(input => {
+    if (input) input.addEventListener('change', async () => {
+      await fetch(`/api/agents/config/${name}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          name: nameInput.value.trim(),
+          label: labelInput.value.trim(),
+          role: roleInput.value.trim()
+        })
+      });
+      agentsRefresh();
+      agentsShowDetail(nameInput.value.trim());
+    });
+  });
+
+  // Add save handler for temperature
+  window.agentsSaveTemp = async function(name) {
+    const input = document.getElementById(`agent-temp-input-${name}`);
+    if (!input) return;
+    const temp = parseFloat(input.value);
+    if (isNaN(temp) || temp < 0 || temp > 2) {
+      input.style.borderColor = '#f44336';
+      input.value = '';
+      input.placeholder = '0.0 - 2.0';
+      return;
+    }
+    input.style.borderColor = '';
+    await fetch(`/api/agents/config/${name}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({temperature: temp})
+    });
+    agentsRefresh();
+    agentsShowDetail(name);
+  };
+
+  // Add save handler for prompt (if editable)
+  window.agentsSavePrompt = async function(name) {
+    const input = document.getElementById(`agent-prompt-input-${name}`);
+    if (!input || input.disabled) return;
+    const prompt = input.value.trim();
+    if (!prompt) {
+      input.style.borderColor = '#f44336';
+      input.placeholder = 'Prompt cannot be empty';
+      return;
+    }
+    input.style.borderColor = '';
+    await fetch(`/api/agents/config/${name}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({system_prompt: prompt})
+    });
+    agentsRefresh();
+    agentsShowDetail(name);
+  };
+
+  // Add save handler for temperature
+  window.agentsSaveTemp = async function(name) {
+    const input = document.getElementById(`agent-temp-input-${name}`);
+    if (!input) return;
+    const temp = parseFloat(input.value);
+    if (isNaN(temp) || temp < 0 || temp > 2) {
+      input.style.borderColor = '#f44336';
+      input.value = '';
+      input.placeholder = '0.0 - 2.0';
+      return;
+    }
+    input.style.borderColor = '';
+    await fetch(`/api/agents/config/${name}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({temperature: temp})
+    });
+    agentsRefresh();
+    agentsShowDetail(name);
+  };
 }
 
 async function agentsSaveKey(name, keyVar) {
@@ -255,28 +468,6 @@ async function _agentsSubmitAdd() {
   agentsRefresh();
 }
 
-function agentsToggleGlobals() {
-  const body = document.getElementById('agents-globals-body');
-  const chevron = document.getElementById('agents-globals-chevron');
-  if (!body) return;
-  const open = body.style.display !== 'none';
-  body.style.display = open ? 'none' : 'block';
-  if (chevron) chevron.textContent = open ? '▸' : '▾';
-  if (!open && !body.innerHTML.trim()) _agentsLoadGlobals(body);
-}
-
-async function _agentsLoadGlobals(body) {
-  body.innerHTML = '<div style="padding:4px 0;color:var(--text-dim);font-size:11px;">Loading...</div>';
-  const res = await fetch('/api/agents/config').catch(() => null);
-  if (!res || !res.ok) { body.innerHTML = '<div style="color:#f44336;font-size:11px;">Could not load config.</div>'; return; }
-  const agents = await res.json();
-  const locals = agents.filter(a => a.tier === 'local' && a.temperature != null);
-  body.innerHTML = locals.map(a => `
-    <div style="display:flex;align-items:center;gap:10px;padding:5px 0;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04);">
-      <span style="min-width:90px;color:var(--text-dim);">${_escHtmlA(a.label || a.name)}</span>
-      <span style="min-width:60px;">Temp: <b>${a.temperature}</b></span>
-    </div>`).join('') || '<div style="color:var(--text-dim);font-size:11px;">No local agents with temperature config.</div>';
-}
 
 // Generic confirm modal — no native confirm() calls
 function _agentsModal({title, body, confirmLabel='OK', confirmDanger=false, onConfirm}) {

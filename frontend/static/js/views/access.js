@@ -1,3 +1,82 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ROLES–SKILLS MAPPING (META MANAGEMENT)
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadRolesSkillsGrid() {
+  const panel = document.getElementById('roles-skills-admin-panel');
+  if (!panel) return;
+  panel.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Loading roles & skills…</div>';
+  try {
+    // Fetch all skills
+    if (!_skillListCache) {
+      const r = await fetch('/api/skills');
+      const d = await r.json();
+      _skillListCache = (d.skills || d || []).map(s => ({
+        name: (s.name || '').toLowerCase(),
+        label: s.name || '',
+        description: s.description || ''
+      }));
+    }
+    // Fetch all roles (from agents and mapping)
+    const agentsRes = await fetch('/api/agents/config');
+    const agents = await agentsRes.json();
+    let allRoles = [];
+    (agents || []).forEach(a => {
+      (Array.isArray(a.roles) ? a.roles : []).forEach(r => allRoles.push(r));
+    });
+    // Fetch mapping
+    const mapRes = await fetch('/api/roles-skills');
+    const mapData = await mapRes.json();
+    let mapping = (mapData && mapData.mapping) || {};
+    // Merge in any roles from mapping not in agents
+    Object.keys(mapping).forEach(r => { if (!allRoles.includes(r)) allRoles.push(r); });
+    allRoles = Array.from(new Set(allRoles)).sort();
+    // Render grid
+    panel.innerHTML = `<table style="border-collapse:collapse;width:100%;font-size:12px;">
+      <thead><tr><th style="text-align:left;padding:6px 8px;">Role</th>${_skillListCache.map(s => `<th style='padding:6px 4px;text-align:center;'>${_esc(s.label)}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${allRoles.map(role => `<tr>
+          <td style='padding:6px 8px;font-weight:600;'>${_esc(role)}</td>
+          ${_skillListCache.map(skill => {
+            const checked = (mapping[role]||[]).includes(skill.name) ? 'checked' : '';
+            return `<td style='text-align:center;'><input type='checkbox' data-role='${_esc(role)}' data-skill='${_esc(skill.name)}' ${checked}></td>`;
+          }).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <button id='roles-skills-save-btn' style='margin-top:12px;padding:7px 18px;background:var(--accent);color:#000;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;'>Save Mapping</button>`;
+    // Save handler
+    document.getElementById('roles-skills-save-btn').onclick = async function() {
+      // Build new mapping from checkboxes
+      const newMap = {};
+      panel.querySelectorAll('input[type=checkbox][data-role][data-skill]').forEach(cb => {
+        const role = cb.getAttribute('data-role');
+        const skill = cb.getAttribute('data-skill');
+        if (!newMap[role]) newMap[role] = [];
+        if (cb.checked) newMap[role].push(skill);
+      });
+      const res = await fetch('/api/roles-skills', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({mapping: newMap})
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('Roles–skills mapping saved', 'success');
+      } else {
+        showToast('Failed to save: ' + (data.error || 'unknown error'), 'error');
+      }
+    };
+  } catch (e) {
+    panel.innerHTML = `<div style='color:#f77;font-size:12px;'>Failed: ${_esc(e.message)}</div>`;
+  }
+}
+
+// Auto-load grid when Access tile opens
+if (window.addEventListener) {
+  window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(loadRolesSkillsGrid, 500);
+  });
+}
 // Access control + agents config views
 // Extracted from terminal_base.html
 

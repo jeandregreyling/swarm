@@ -331,11 +331,44 @@ function _openProposalDetailRender(p) {
       ${updated && updated !== created ? `<tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Updated</td><td>${_escHtml(updated)}</td></tr>` : ''}
     </table>
 
-    ${p.description ? `
-    <div style="margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Description</div>
-      <div style="background:var(--card);padding:12px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:280px;overflow-y:auto;font-family:monospace;line-height:1.5;">${safeDescription}</div>
-    </div>` : ''}
+    <div style="margin-bottom:14px;" id="pdet-edit-block">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;">Description</div>
+        <button onclick="_pdetToggleEdit(${pidJs})" id="pdet-edit-btn"
+          style="padding:2px 10px;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;">Edit</button>
+      </div>
+      <div id="pdet-desc-view" style="background:var(--card);padding:12px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:180px;overflow-y:auto;font-family:monospace;line-height:1.5;">${safeDescription || '<span style="color:var(--text-dim);font-style:italic;">No description</span>'}</div>
+      <div id="pdet-edit-form" style="display:none;">
+        <div style="font-size:11px;color:var(--text-dim);margin:6px 0 2px;">Title</div>
+        <input id="pdet-edit-title" value="${_escAttr(p.title||'')}"
+          style="width:100%;box-sizing:border-box;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px;margin-bottom:8px;">
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:2px;">Description</div>
+        <textarea id="pdet-edit-desc" rows="5"
+          style="width:100%;box-sizing:border-box;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-family:monospace;resize:vertical;">${_escHtml(p.description||'')}</textarea>
+        <div style="font-size:11px;color:var(--text-dim);margin:8px 0 2px;">Notes</div>
+        <textarea id="pdet-edit-notes" rows="3"
+          style="width:100%;box-sizing:border-box;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-family:monospace;resize:vertical;">${_escHtml(p.notes||'')}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button onclick="_pdetSaveEdit(${pidJs})"
+            style="padding:6px 14px;background:#4caf5020;border:1px solid #4caf5060;border-radius:4px;color:#4caf50;font-size:12px;cursor:pointer;">Save</button>
+          <button onclick="_pdetToggleEdit(${pidJs})"
+            style="padding:6px 14px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:12px;cursor:pointer;">Cancel</button>
+        </div>
+      </div>
+      ${p.notes ? `<div style="margin-top:8px;"><div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px;">Notes</div><div style="background:var(--card);padding:10px;border-radius:4px;font-size:12px;white-space:pre-wrap;font-family:monospace;line-height:1.5;" id="pdet-notes-view">${_escHtml(p.notes)}</div></div>` : `<div id="pdet-notes-view"></div>`}
+    </div>
+
+    <div style="margin-bottom:14px;" id="pdet-attachments-block">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;">Attachments</div>
+        <label style="padding:2px 10px;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;">
+          + Upload<input type="file" id="pdet-att-input" style="display:none" onchange="_pdetUploadAttachment(${pidJs}, this)">
+        </label>
+      </div>
+      <div id="pdet-att-list" style="display:flex;flex-direction:column;gap:4px;min-height:20px;">
+        <span style="font-size:11px;color:var(--text-dim);font-style:italic;">Loading...</span>
+      </div>
+    </div>
 
     <div style="margin-bottom:14px;">
       <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Documentation</div>
@@ -377,6 +410,104 @@ function _openProposalDetailRender(p) {
     </div>`;
 
   modal.classList.add('open');
+  // Load attachments asynchronously
+  _pdetLoadAttachments(p.proposal_id);
+}
+
+function _escAttr(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function _pdetToggleEdit(pid) {
+  const form = document.getElementById('pdet-edit-form');
+  const view = document.getElementById('pdet-desc-view');
+  const btn  = document.getElementById('pdet-edit-btn');
+  if (!form) return;
+  const editing = form.style.display === 'none' || form.style.display === '';
+  form.style.display = editing ? 'block' : 'none';
+  view.style.display = editing ? 'none' : 'block';
+  btn.textContent    = editing ? 'Cancel' : 'Edit';
+}
+
+async function _pdetSaveEdit(pid) {
+  const title = document.getElementById('pdet-edit-title')?.value?.trim() || '';
+  const desc  = document.getElementById('pdet-edit-desc')?.value || '';
+  const notes = document.getElementById('pdet-edit-notes')?.value || '';
+  const resp = await fetch(`/api/work-proposals/${encodeURIComponent(pid)}/edit`, {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({title, description: desc, notes})
+  });
+  const data = await resp.json();
+  if (!data.ok) { showToast('Save failed: ' + (data.error || '?'), 'error'); return; }
+  showToast('Proposal saved', 'success');
+  // Update cached entry
+  const cached = (window._proposals || []).find(x => x.proposal_id === pid);
+  if (cached) { cached.title = title; cached.description = desc; cached.notes = notes; }
+  // Re-render
+  const p = data.proposal;
+  document.getElementById('pdet-title').textContent = p.title || pid;
+  document.getElementById('pdet-desc-view').innerHTML = _escHtml(p.description || '') || '<span style="color:var(--text-dim);font-style:italic;">No description</span>';
+  const notesView = document.getElementById('pdet-notes-view');
+  if (notesView) notesView.innerHTML = p.notes ? _escHtml(p.notes) : '';
+  _pdetToggleEdit(pid);
+}
+
+async function _pdetLoadAttachments(pid) {
+  const list = document.getElementById('pdet-att-list');
+  if (!list) return;
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(pid)}/attachments`);
+    const data = await resp.json();
+    const atts = data.attachments || [];
+    if (!atts.length) {
+      list.innerHTML = '<span style="font-size:11px;color:var(--text-dim);font-style:italic;">No attachments</span>';
+      return;
+    }
+    list.innerHTML = atts.map(a => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--card);border-radius:4px;border:1px solid var(--border);">
+        <span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(a.original_name)}</span>
+        <span style="font-size:10px;color:var(--text-dim);">${_fmtBytes(a.size_bytes)}</span>
+        <a href="/api/work-proposals/${encodeURIComponent(pid)}/attachments/${a.id}" download="${_escAttr(a.original_name)}"
+           style="font-size:11px;color:#2196f3;text-decoration:none;">↓</a>
+        <button onclick="_pdetDeleteAttachment(${_jsStr(pid)}, ${a.id})"
+          style="background:none;border:none;color:#f44336;cursor:pointer;font-size:14px;line-height:1;padding:0;">×</button>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = '<span style="font-size:11px;color:#f44336;">Failed to load</span>';
+  }
+}
+
+function _fmtBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+async function _pdetUploadAttachment(pid, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('uploaded_by', 'ghost');
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(pid)}/attachments`, {method:'POST', body:fd});
+    const data = await resp.json();
+    if (!data.ok) { showToast('Upload failed: ' + (data.error || '?'), 'error'); return; }
+    showToast('Attached: ' + file.name, 'success');
+    _pdetLoadAttachments(pid);
+  } catch(e) {
+    showToast('Upload error', 'error');
+  }
+  input.value = '';
+}
+
+async function _pdetDeleteAttachment(pid, attId) {
+  if (!confirm('Remove this attachment?')) return;
+  const resp = await fetch(`/api/work-proposals/${encodeURIComponent(pid)}/attachments/${attId}`, {method:'DELETE'});
+  const data = await resp.json();
+  if (!data.ok) { showToast('Delete failed', 'error'); return; }
+  _pdetLoadAttachments(pid);
 }
 
 function openDocDetail(filename, title) {
@@ -505,6 +636,8 @@ function openTicketDetail(ticketNumber) {
         </div>` : ''}
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+          <button onclick="sendTicketToChat(${tnJs}, ${questionHintJs})"
+            style="padding:6px 14px;background:#2196f31a;border:1px solid #2196f344;border-radius:4px;color:#2196f3;font-size:12px;cursor:pointer;font-weight:600;">💬 Send to Chat</button>
           ${t.status !== 'closed'
             ? `<button onclick="closeTicketFromModal(${tnJs})" style="padding:6px 14px;background:#f443361a;border:1px solid #f4433644;border-radius:4px;color:#f44336;font-size:12px;cursor:pointer;">Close Ticket</button>`
             : `<button onclick="reopenTicketFromModal(${tnJs})" style="padding:6px 14px;background:#4caf501a;border:1px solid #4caf5044;border-radius:4px;color:#4caf50;font-size:12px;cursor:pointer;">Reopen</button>`}
@@ -818,3 +951,30 @@ function closeTopWindow() {
   return true;
 }
 
+
+function sendTicketToChat(ticketNumber, questionHint) {
+  // Close ticket modal
+  const modal = document.getElementById('ticket-detail-modal');
+  if (modal) modal.classList.remove('open');
+
+  // Open or focus the Chat window
+  if (typeof openWindow === 'function') {
+    openWindow('chat', '💬 Chat', 'view-chat');
+  }
+
+  // Populate chat input with ticket context
+  const populate = () => {
+    const input = document.getElementById('question-input');
+    if (!input) return;
+    const prefix = `[Ticket ${ticketNumber}] `;
+    const hint = String(questionHint || '').trim();
+    input.value = hint ? prefix + hint : prefix;
+    input.focus();
+    input.dispatchEvent(new Event('input'));
+    // Scroll input into view
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  // Small delay to let the chat window finish rendering
+  setTimeout(populate, 300);
+}

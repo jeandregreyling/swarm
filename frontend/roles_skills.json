@@ -1,0 +1,5 @@
+# roles_skills.json — persistent mapping of roles to skills for Access/Agents meta management
+# This file is managed by the Access tile and backend API.
+# Format: { "Role Name": ["skill1", "skill2", ...], ... }
+{
+}
