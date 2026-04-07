@@ -181,6 +181,50 @@ def _parse_chat_skill_command(text):
     skill_args = parts[1].strip() if len(parts) > 1 else ''
     return skill_name, skill_args
 
+import re as _re
+
+# Patterns that indicate an agent is trying to route to another agent
+_RELAY_ROUTE_PATTERNS = _re.compile(
+    r'(?:'
+    r'(?:route|send|forward|hand(?:\s*off)?|pass|relay|escalate|ask|check\s+with|consult)\s+(?:this\s+)?(?:to\s+)?(?:agent\s+)?(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker)\b'
+    r'|(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker):\s+can\s+you'
+    r'|→\s*(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker)\b'
+    r'|(?:\d+\s*[·•]\s*)?(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)\s+to\s+(?:\d+\s*[·•]\s*)?(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)'
+    r')',
+    _re.IGNORECASE
+)
+
+# Lines that are purely routing/handoff instructions with no content value
+_RELAY_LINE_PATTERNS = _re.compile(
+    r'^\s*(?:'
+    r'(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker):\s+can\s+you\b.*'
+    r'|(?:\d+\s*[·•]\s*)?(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)\s+to\s+\S.*'
+    r'|route\s+to\s+\S.*'
+    r'|→\s*(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker)\b.*'
+    r'|\d+\s*[·•]\s*(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude|github|groq).*?:\s+.*'
+    r')\s*$',
+    _re.IGNORECASE
+)
+
+def _strip_relay_routing(text: str) -> str:
+    """Remove agent-routing language from a response when auto_relay is OFF.
+
+    Removes:
+    - Lines that are just routing directives ("Ten: can you...", "→ Eight", "Route to X")
+    - Agent-to-agent question lines injected at the end of responses
+    """
+    if not text:
+        return text
+    lines = text.splitlines()
+    cleaned = []
+    for line in lines:
+        if _RELAY_LINE_PATTERNS.match(line):
+            continue  # drop pure routing lines
+        cleaned.append(line)
+    result = '\n'.join(cleaned).strip()
+    return result or text  # never return empty if we had content
+
+
 def _is_execution_confirmation(text):
     raw = str(text or '').strip().lower()
     if not raw:
@@ -744,7 +788,17 @@ def api_chat():
         executor = _CHAT_WORKER_EXECUTOR
         est_eta = _chat_eta_seconds(selected_agent)
         effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
-        effective_prompt = f'[Auto Relay: {"ENABLED" if auto_relay else "DISABLED"}]\n' + effective_prompt
+        if not auto_relay:
+            effective_prompt = (
+                '=== RELAY DISABLED — HARD RULE ===\n'
+                'Auto Relay is OFF. You MUST NOT route, forward, ask, or mention any other agent '
+                'in your response. Do not write "Route to X", "Ask Ten", "→ Eight", or any similar '
+                'phrasing. Handle the entire task yourself. If you are uncertain, write a note in '
+                'your sandpit and continue alone. Violating this rule breaks the interface.\n'
+                '=================================\n\n'
+            ) + effective_prompt
+        else:
+            effective_prompt = '[Auto Relay: ENABLED]\n' + effective_prompt
         if _is_execution_confirmation(message):
             effective_prompt = (
                 effective_prompt
@@ -869,6 +923,13 @@ def api_chat():
                 )
         if response_text is None:
             response_text = f'[{selected_agent}] no response'
+
+        # ── Auto-relay enforcement ─────────────────────────────────────────────
+        # When auto_relay is OFF, strip any agent-routing language the model
+        # produced anyway. This is the hard gate — prompt hints alone are not
+        # reliable enough with API models.
+        if not auto_relay:
+            response_text = _strip_relay_routing(response_text)
 
         elapsed_ms = int((time.time() - started_at) * 1000)
         return response_text, tokens_used, elapsed_ms
