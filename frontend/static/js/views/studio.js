@@ -92,6 +92,11 @@ function _proposalCard(p) {
     ? `<span style="padding:2px 6px;border-radius:8px;background:#2196f320;color:#2196f3;font-size:10px;border:1px solid #2196f340;cursor:pointer;" onclick='event.stopPropagation();openTicketDetail(${_jsStr(p.ticket_number)})'>🎫 ${_escHtml(p.ticket_number)}</span>`
     : '';
 
+  // Stage label
+  const stage = p.stage || 3;
+  const stageLabel = stage === 1 ? 'PROD' : stage === 2 ? 'UAT' : 'DEV';
+  const stageColor = stage === 1 ? '#d32f2f' : stage === 2 ? '#fbc02d' : '#388e3c';
+
   // Pipeline mini-bar (only for non-rejected)
   const pipelineHtml = status !== 'rejected' ? `
     <div style="display:flex;gap:3px;margin-top:10px;align-items:center;">
@@ -105,12 +110,16 @@ function _proposalCard(p) {
       }).join('<div style="color:var(--text-dim);font-size:9px;">›</div>')}
     </div>` : '';
 
+  // Promote button for DEV and UAT
+  const promoteBtn = stage > 1 ? `<button onclick='event.stopPropagation();promoteProposal(${pidJs})' style="flex:1;padding:6px;background:#1976d2;border:1px solid #1976d2;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">Promote to ${stage === 3 ? 'UAT' : 'PROD'}</button>` : '';
+
   const actionBtns = status === 'pending' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"approved")'
         style="flex:1;padding:6px;background:#4caf5020;border:1px solid #4caf5060;border-radius:4px;color:#4caf50;font-size:11px;font-weight:600;cursor:pointer;">✓ Approve</button>
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"rejected")'
         style="flex:1;padding:6px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;font-weight:600;cursor:pointer;">✗ Reject</button>
+      ${promoteBtn}
     </div>` :
   status === 'approved' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
@@ -118,6 +127,7 @@ function _proposalCard(p) {
         style="flex:1;padding:6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:11px;font-weight:600;cursor:pointer;">▶ Start</button>
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"rejected")'
         style="flex:1;padding:6px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;font-weight:600;cursor:pointer;">✗ Reject</button>
+      ${promoteBtn}
     </div>` :
   status === 'in_progress' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
@@ -125,6 +135,7 @@ function _proposalCard(p) {
         style="flex:1;padding:6px;background:#ab47bc20;border:1px solid #ab47bc60;border-radius:4px;color:#ab47bc;font-size:11px;font-weight:600;cursor:pointer;">✓ Mark Done</button>
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"rejected")'
         style="flex:1;padding:6px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;font-weight:600;cursor:pointer;">✗ Reject</button>
+      ${promoteBtn}
     </div>` :
   status === 'done' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
@@ -132,6 +143,7 @@ function _proposalCard(p) {
         style="flex:1;padding:6px;background:#2196f320;border:1px solid #2196f360;border-radius:4px;color:#2196f3;font-size:11px;font-weight:600;cursor:pointer;">✓ Verify &amp; Close</button>
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"in_progress")'
         style="flex:1;padding:6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:11px;font-weight:600;cursor:pointer;">↩ Reopen</button>
+      ${promoteBtn}
     </div>` : '';
   const deleteBtn = `
     <button onclick='event.stopPropagation();deleteProposalSafe(${pidJs})'
@@ -149,6 +161,7 @@ function _proposalCard(p) {
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex:0 0 auto;">
+        <span style="padding:2px 8px;border-radius:10px;background:${stageColor};color:#fff;font-size:10px;font-weight:700;white-space:nowrap;border:1px solid ${stageColor};">${stageLabel}</span>
         <span style="padding:2px 8px;border-radius:10px;background:${m.bg};color:${m.color};font-size:10px;font-weight:700;white-space:nowrap;border:1px solid ${m.border};">${m.label}</span>
         ${deleteBtn}
       </div>
@@ -157,6 +170,26 @@ function _proposalCard(p) {
     ${pipelineHtml}
     ${actionBtns}
   </div>`;
+}
+
+function promoteProposal(proposalId) {
+  if (!proposalId) return;
+  // Find the proposal object
+  const p = (window._proposals || []).find(x => (x.proposal_id || '') === proposalId);
+  if (!p) { showToast('Proposal not found', 'error'); return; }
+  if (!confirm('Promote this proposal to the next stage?')) return;
+  fetch('/api/proposals/promote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: p.filename })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) { showToast(data.error || 'Promotion failed', 'error'); return; }
+      showToast('Proposal promoted to next stage', 'success');
+    })
+    .catch(e => showToast('Promotion error: ' + e.message, 'error'));
+}
 }
 
 function moveProposal(proposalId, newStatus) {

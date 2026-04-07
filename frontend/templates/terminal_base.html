@@ -42,7 +42,12 @@
 <link rel="stylesheet" href="/static/css/taskbar.css">
 <link rel="stylesheet" href="/static/css/views/chat.css">
 <link rel="stylesheet" href="/static/css/modals.css">
-<link rel="stylesheet" href="/static/css/library.css">
+</link rel="stylesheet" href="/static/css/library.css">
+<script>
+  // Pass ENV_STAGE from Flask to JS for the banner
+  window.ENV_STAGE = "{{ ENV_STAGE }}";
+</script>
+<script src="/static/js/env-banner.js"></script>
 </head>
 <body>
 

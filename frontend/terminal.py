@@ -49,8 +49,14 @@ from blueprints.workspace import workspace_bp
 from blueprints.library import library_bp
 
 
+
 def create_app():
     app = Flask(__name__)
+
+    # Inject ENV_STAGE into all templates for environment banner
+    @app.context_processor
+    def inject_env_stage():
+        return {'ENV_STAGE': os.environ.get('STAGE', 'unknown')}
 
     # Ensure schema/migrations are present before serving APIs.
     try:
@@ -109,14 +115,15 @@ if __name__ == '__main__':
     class _ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
         daemon_threads = True
 
+    port = int(os.environ.get('PORT', 5050))
     try:
-        server = make_server('::', 5050, app, server_class=_ThreadingWSGIServer)
+        server = make_server('::', port, app, server_class=_ThreadingWSGIServer)
         addr_family = 'IPv6+IPv4'
     except OSError:
-        server = make_server('0.0.0.0', 5050, app, server_class=_ThreadingWSGIServer)
+        server = make_server('0.0.0.0', port, app, server_class=_ThreadingWSGIServer)
         addr_family = 'IPv4'
 
-    print(f'[Terminal] Serving on port 5050 ({addr_family})')
+    print(f'[Terminal] Serving on port {port} ({addr_family})')
     try:
         server.serve_forever()
     except KeyboardInterrupt:
