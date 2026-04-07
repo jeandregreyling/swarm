@@ -1,5 +1,11 @@
 # ── Roles–Skills Mapping Endpoints ─────────────────────────────────────────
+
+import os
 import json as _json
+from flask import Blueprint, request, Response, jsonify, send_file
+from services import *
+
+agents_bp = Blueprint('agents', __name__)
 ROLES_SKILLS_PATH = os.path.join(os.path.dirname(__file__), '..', 'roles_skills.json')
 
 @agents_bp.route('/api/roles-skills', methods=['GET'])
@@ -26,8 +32,6 @@ def api_roles_skills_post():
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
-import os
-import os
 """agents.py — Agents Config routes
 
 WARNING: This file is critical for Flask API routes. Indentation or syntax errors will prevent the web server from starting.
@@ -40,13 +44,6 @@ ALSO: This file is cross-linked with:
     - frontend/static/js/views/skills.js (Skills/capabilities logic)
 If you change anything about roles, skills, or their mapping, you MUST update and test all three views and their APIs. Always ensure all endpoints return valid JSON, even on error, to prevent frontend breakage.
 """
-
-import os
-import os
-from flask import Blueprint, request, Response, jsonify, send_file
-from services import *
-
-agents_bp = Blueprint('agents', __name__)
 
 @agents_bp.route('/api/agents')
 def api_agents():
