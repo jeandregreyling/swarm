@@ -1339,7 +1339,7 @@ function initChatSections() {
     main: true,
     threads: true,
     meta: false,
-    agents: false,
+    agents: true,   // auto-expand agents panel when chat tile opens
     attachments: false,
   };
   Object.entries(defaults).forEach(([key, expanded]) => {
@@ -1409,6 +1409,9 @@ function _enableMentionedAgents(agentKeys) {
     if (!key || !Object.prototype.hasOwnProperty.call(window.__fridaysChatEnabledAgents || {}, key)) return;
     if (!window.__fridaysChatEnabledAgents[key]) {
       window.__fridaysChatEnabledAgents[key] = true;
+      // Mark as auto-selected (green pulse) unless already manually or relay-selected
+      const cur = _getAgentSelectionState(key);
+      if (!cur || cur === 'auto') _setAgentSelectionState(key, 'auto');
       changed = true;
     }
   });
@@ -1748,6 +1751,7 @@ const _CHAT_AGENT_META = {
   ten:       { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 8h8M10 5l3 3-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 5l-3 3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '10 · Github. Engineering advisor — code quality, implementation clarity.',   runtime: 'paid',  tier: 'paid' },
   eleven:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M9 2L5 9h4l-2 5 6-8H9z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '11 · Grok. Lateral thinking advisor — creative synthesis, alternatives.',     runtime: 'paid',  tier: 'paid' },
   twelve:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 3C5.5 3 4 5 4 7c0 1.5 1 2.5 2 3l-.5 3h5L10 10c1-.5 2-1.5 2-3 0-2-1.5-4-4-4z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 10.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '12 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals.',       runtime: 'paid',  tier: 'paid' },
+  thirteen:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M3 5h10M3 8h10M3 11h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="11" r="2" stroke="currentColor" stroke-width="1.3"/></svg>', purpose: '13 · HF. Hugging Face inference — open-source models, free tier.',              runtime: 'free',  tier: 'free' },
   you:       { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: 'Human operator input.',                                                       runtime: 'human', tier: 'human' },
 };
 
@@ -2910,6 +2914,11 @@ async function _processRelayQueue() {
     _renderChatRelayControls();
     return;
   }
+  // Mark relay-activated agent as 'relay' state (red indicator)
+  Object.keys(window.__fridaysChatAgentSelectionState || {}).forEach(k => {
+    if (window.__fridaysChatAgentSelectionState[k] === 'relay') window.__fridaysChatAgentSelectionState[k] = null;
+  });
+  _setAgentSelectionState(next.target, 'relay');
   _applySingleAgentSelection(next.target);
   input.value = _relayPromptText(next);
   if (next.auto) {
@@ -3284,7 +3293,8 @@ function _appendChatBubble(sender, text, opts = {}) {
   const attachmentsHtml = _renderBubbleAttachments(bubbleAttachments);
   const eventsHtml = isUser ? '' : _renderSkillEvents(parsedSkill.events, sender);
   const relayCandidates = isUser ? [] : _extractAgentDirectedQuestions(visibleText, senderIdentity.key);
-  const relayButtonsHtml = relayCandidates.length
+  // When Auto Relay is disabled, suppress relay buttons — agents should not route mid-task
+  const relayButtonsHtml = (relayCandidates.length && window.__fridaysChatRelayAuto)
     ? `<div class="chat-handoff-actions">${relayCandidates.map(c => `<span class="chat-handoff-btn" role="button" tabindex="0" data-relay-from="${_escapeHtml(senderIdentity.key)}" data-relay-target="${_escapeHtml(c.target)}" data-relay-question="${_escapeHtml(_relayEncode(c.question))}" onclick="queueRelayHandoffFromButton(this)">Route to ${_escapeHtml(_chatAgentLabel(c.target))}</span>`).join('')}</div>`
     : '';
   const replayText = _escapeHtml(String(visibleText || '').replace(/\s+/g, ' ').trim().slice(0, 1800));
@@ -4124,52 +4134,79 @@ function getEnabledChatAgents() {
   return enabled;
 }
 
+// Selection state tracking: 'auto' | 'manual' | 'relay' | null (off)
+window.__fridaysChatAgentSelectionState = window.__fridaysChatAgentSelectionState || {};
+
+function _setAgentSelectionState(agentKey, state) {
+  // state: 'auto' | 'manual' | 'relay' | null
+  window.__fridaysChatAgentSelectionState[agentKey] = state || null;
+}
+
+function _getAgentSelectionState(agentKey) {
+  return window.__fridaysChatAgentSelectionState[agentKey] || null;
+}
+
 function renderChatAgentToggles() {
   const hosts = Array.from(document.querySelectorAll('.chat-agent-toggles'));
   if (!hosts.length) return;
   const userColor = _getActorBubbleColor('you') || '#42a5f5';
-  const userCard = `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--border);border-radius:8px;background:var(--card);min-width:66px;">
-    <div style="display:inline-flex;align-items:center;gap:4px;font-size:10px;line-height:1;white-space:nowrap;" title="Your bubble color">
-      <span class="agent-tier-dot" style="width:5px;height:5px;flex-shrink:0;background:${_escapeHtml(userColor)};"></span>
-      <span style="font-weight:500;">You</span>
-      <input class="agent-bubble-color" type="color" value="${_escapeHtml(userColor)}" title="Choose your bubble color" oninput="setActorBubbleColor('you', this.value)">
-    </div>
-    <div style="height:2px;"></div>
-  </div>`;
 
-  const agentCards = CHAT_AGENT_OPTIONS.map(agent => {
+  // You row — no checkbox, just identity
+  const youMeta = _chatAgentMeta('you');
+  const userRow = `
+    <div class="agent-sel-row agent-sel-row--you">
+      <span class="agent-sel-main" style="cursor:default;">
+        <span class="agent-sel-pip agent-sel-pip--you"></span>
+        <span class="agent-sel-icon">${youMeta.icon}</span>
+        <span class="agent-sel-name">You</span>
+      </span>
+      <input class="agent-sel-swatch" type="color" value="${_escapeHtml(userColor)}"
+        title="Your bubble color" oninput="setActorBubbleColor('you', this.value)">
+    </div>`;
+
+  const agentRows = CHAT_AGENT_OPTIONS.map(agent => {
     const isOn = !!window.__fridaysChatEnabledAgents[agent.value];
     const checked = isOn ? 'checked' : '';
-    const tierDotClass = agent.tier === 'paid' ? 'agent-tier-paid-dot' : 'agent-tier-local-dot';
-    const tierLabel = agent.tier === 'paid' ? 'Paid' : 'Local';
+    const tierLabel = agent.tier === 'local' ? 'Local' : 'Online';
     const temp = agent.hasTemp ? (window.__agentTemps[agent.value] ?? 0.7).toFixed(2) : null;
     const bubbleColor = _getActorBubbleColor(agent.value) || (agent.tier === 'paid' ? '#ff7043' : '#4caf50');
     const vid = 'atv-' + agent.value;
-    const sliderRow = temp !== null ? `
-      <div data-temp-row="${agent.value}" style="display:flex;align-items:center;gap:3px;padding:0 1px;opacity:${isOn ? '1' : '0.3'};pointer-events:${isOn ? 'auto' : 'none'};transition:opacity 0.15s;">
+    const selState = _getAgentSelectionState(agent.value);
+    const agentIcon = _chatAgentMeta(agent.value).icon;
+
+    // Row state drives the pip glow via CSS class
+    let rowState = '';
+    if (isOn) {
+      if (selState === 'relay')      rowState = ' agent-sel-row--relay';
+      else if (selState === 'auto')  rowState = ' agent-sel-row--auto';
+      else                           rowState = ' agent-sel-row--on';
+    }
+
+    const tempPart = temp !== null ? `
+      <div class="agent-sel-temp${isOn ? '' : ' agent-sel-temp--off'}">
         <input type="range" min="0" max="1" step="0.05" value="${temp}"
-          style="flex:1;height:2px;accent-color:var(--accent);cursor:pointer;"
+          class="agent-sel-slider" data-temp-row="${agent.value}"
           onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"
           oninput="document.getElementById('${vid}').textContent=parseFloat(this.value).toFixed(2);_setAgentTemp('${agent.value}',this.value)">
-        <span id="${vid}" style="font-size:8px;color:var(--text-dim);width:20px;text-align:right;font-variant-numeric:tabular-nums;">${temp}</span>
-      </div>` : `<div style="height:2px;"></div>`;
-    return `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--border);border-radius:8px;background:var(--card);min-width:66px;cursor:default;">
-      <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;line-height:1;white-space:nowrap;" title="${agent.label} · ${tierLabel}">
-        <input class="chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked} onchange="onChatAgentToggleChange(this)" style="width:10px;height:10px;margin:0;accent-color:var(--accent);">
-        <span class="agent-tier-dot ${tierDotClass}" style="width:5px;height:5px;flex-shrink:0;background:${_escapeHtml(bubbleColor)};"></span>
-        <span style="font-weight:500;">${agent.label}</span>
-        <input class="agent-bubble-color" type="color" value="${_escapeHtml(bubbleColor)}" title="Choose ${agent.label} bubble color" oninput="setActorBubbleColor('${agent.value}', this.value)">
-      </label>
-      ${sliderRow}
-    </div>`;
+        <span id="${vid}" class="agent-sel-tval">${temp}</span>
+      </div>` : `<div class="agent-sel-temp agent-sel-temp--placeholder"></div>`;
+
+    return `
+      <div class="agent-sel-row${rowState}" title="${_escapeHtml(agent.label)} · ${tierLabel}">
+        <label class="agent-sel-main">
+          <input class="agent-sel-check chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked}
+            onchange="onChatAgentToggleChange(this);_setAgentSelectionState('${agent.value}',this.checked?'manual':null);renderChatAgentToggles();">
+          <span class="agent-sel-pip"></span>
+          <span class="agent-sel-icon">${agentIcon}</span>
+          <span class="agent-sel-name">${_escapeHtml(agent.label)}</span>
+        </label>
+        ${tempPart}
+        <input class="agent-sel-swatch" type="color" value="${_escapeHtml(bubbleColor)}"
+          title="${_escapeHtml(agent.label)} bubble color" oninput="setActorBubbleColor('${agent.value}',this.value)">
+      </div>`;
   }).join('');
 
-  const contentHtml = userCard + agentCards;
-  hosts.forEach(host => {
-    host.innerHTML = contentHtml;
-  });
-
-  // Render relay monitor (Librarian)
+  hosts.forEach(host => { host.innerHTML = userRow + agentRows; });
   renderRelayMonitorCard();
 }
 
@@ -4771,6 +4808,22 @@ function initChatSpellHelper() {
   updateChatStatusPills();
 }
 
+function autoGrowTextarea(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  const maxH = parseInt(getComputedStyle(el).maxHeight, 10) || 200;
+  el.style.height = Math.min(el.scrollHeight, maxH) + 'px';
+}
+
+function _triggerSendGlow() {
+  const shell = document.querySelector('.chat-compose-shell');
+  if (!shell) return;
+  shell.classList.remove('compose-sending');
+  void shell.offsetWidth; // reflow to restart animation
+  shell.classList.add('compose-sending');
+  shell.addEventListener('animationend', () => shell.classList.remove('compose-sending'), { once: true });
+}
+
 function sendMessage(source = 'user', relayMeta = null) {
   const input = document.getElementById('question-input');
   const messages = _chatMessagesEl();
@@ -4873,7 +4926,9 @@ function sendMessage(source = 'user', relayMeta = null) {
 
   persistThreadAgentSelection(convId);
   
+  _triggerSendGlow();
   input.value = '';
+  input.style.height = '';  // reset auto-grow height
   clearReplyTarget();
   clearChatAttachments();
   updateComposerMeta();

@@ -1,4 +1,48 @@
-"""agents.py — Agents Config routes"""
+# ── Roles–Skills Mapping Endpoints ─────────────────────────────────────────
+import json as _json
+ROLES_SKILLS_PATH = os.path.join(os.path.dirname(__file__), '..', 'roles_skills.json')
+
+@agents_bp.route('/api/roles-skills', methods=['GET'])
+def api_roles_skills_get():
+    """Get the mapping of roles to skills (meta, for Access tile)."""
+    try:
+        with open(ROLES_SKILLS_PATH, 'r') as f:
+            mapping = _json.load(f)
+    except Exception:
+        mapping = {}
+    return jsonify({'ok': True, 'mapping': mapping})
+
+@agents_bp.route('/api/roles-skills', methods=['POST'])
+def api_roles_skills_post():
+    """Set the mapping of roles to skills (meta, for Access tile)."""
+    data = request.get_json() or {}
+    mapping = data.get('mapping')
+    if not isinstance(mapping, dict):
+        return jsonify({'ok': False, 'error': 'mapping must be a dict'}), 400
+    try:
+        with open(ROLES_SKILLS_PATH, 'w') as f:
+            _json.dump(mapping, f, indent=2)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+import os
+import os
+"""agents.py — Agents Config routes
+
+WARNING: This file is critical for Flask API routes. Indentation or syntax errors will prevent the web server from starting.
+After editing, ALWAYS run: python3 frontend/terminal.py
+to check for errors before committing or deploying.
+
+ALSO: This file is cross-linked with:
+    - frontend/static/js/views/access.js (Access tile logic)
+    - frontend/static/js/views/agents-config.js (Agents tile logic)
+    - frontend/static/js/views/skills.js (Skills/capabilities logic)
+If you change anything about roles, skills, or their mapping, you MUST update and test all three views and their APIs. Always ensure all endpoints return valid JSON, even on error, to prevent frontend breakage.
+"""
+
+import os
+import os
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
 
@@ -31,35 +75,53 @@ def api_agents():
 
 
 @agents_bp.route('/api/agents/config')
+# WARNING: Indentation or syntax errors here will break the web server. Always test with:
+#   python3 frontend/terminal.py
 def api_agents_config_get():
     """Full agent config for the Agents tile — includes system_prompt, api_key_var, tier."""
-    conn = get_connection()
-    rows = conn.execute(
-        """SELECT number, name, label, model, role, temperature,
-                  system_prompt, api_key_var, tier, enabled
-           FROM agents WHERE number >= 0 ORDER BY number ASC"""
-    ).fetchall()
-    conn.close()
-    result = []
-    for r in rows:
-        d = dict(r)
-        # Never send the actual key — send presence flag only
-        key_var = d.get('api_key_var') or ''
-        if key_var:
-            import os
-            raw = os.environ.get(key_var, '')
-            if not raw:
+    try:
+        conn = get_connection()
+        rows = conn.execute(
+             """SELECT number, name, label, model, role, roles, temperature,
+                    system_prompt, api_key_var, tier, enabled
+                FROM agents WHERE number >= 0 ORDER BY number ASC"""
+            ).fetchall()
+        conn.close()
+        result = []
+        import json
+        for r in rows:
+            d = dict(r)
+            # Parse roles as array, fallback to single role if needed
+            roles_val = d.get('roles')
+            if roles_val:
                 try:
-                    from config import _load_env_key
-                    raw = _load_env_key(key_var)
+                    d['roles'] = json.loads(roles_val)
                 except Exception:
-                    raw = ''
-            d['api_key_set'] = bool(raw)
-        else:
-            d['api_key_set'] = None  # not applicable
-        d['status'] = _agent_reachability_status(d['name'])
-        result.append(d)
-    return jsonify(result)
+                    d['roles'] = []
+            elif d.get('role'):
+                d['roles'] = [d['role']]
+            else:
+                d['roles'] = []
+            # Never send the actual key — send presence flag only
+            key_var = d.get('api_key_var') or ''
+            if key_var:
+                import os
+                raw = os.environ.get(key_var, '')
+                if not raw:
+                    try:
+                        from config import _load_env_key
+                        raw = _load_env_key(key_var)
+                    except Exception:
+                        raw = ''
+                d['api_key_set'] = bool(raw)
+            else:
+                d['api_key_set'] = None  # not applicable
+            d['status'] = _agent_reachability_status(d['name'])
+            result.append(d)
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 
 
@@ -73,8 +135,18 @@ def api_agents_config_put(name):
         conn.close()
         return jsonify({'error': f'Agent {name} not found'}), 404
 
-    allowed = ['label', 'model', 'role', 'temperature', 'system_prompt', 'tier', 'enabled', 'api_key_var']
+    import json
+    allowed = ['label', 'model', 'role', 'roles', 'temperature', 'system_prompt', 'tier', 'enabled', 'api_key_var']
     updates = {k: v for k, v in data.items() if k in allowed}
+    # If roles is present and is a list, store as JSON
+    if 'roles' in updates and isinstance(updates['roles'], list):
+        updates['roles'] = json.dumps(updates['roles'])
+        # Optionally, update 'role' to first role for legacy compatibility
+        if updates['roles'] and not data.get('role'):
+            try:
+                updates['role'] = updates['roles'][0]
+            except Exception:
+                pass
     if not updates:
         conn.close()
         return jsonify({'error': 'No valid fields to update'}), 400
