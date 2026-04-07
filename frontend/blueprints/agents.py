@@ -1,6 +1,5 @@
 # ── Roles–Skills Mapping Endpoints ─────────────────────────────────────────
 
-import os
 import json as _json
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
