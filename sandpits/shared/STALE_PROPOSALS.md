@@ -10392,3 +10392,163 @@
 <<<OLD>>>
 .chat-dock-resizer {
   w
+- [09:50] INTERNAL-NINE-0486 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [09:50] INTERNAL-NINE-0487 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [09:50] INTERNAL-NINE-0485 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [09:50] INTERNAL-NINE-0484 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [09:50] INTERNAL-THIRTEEN-0483 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [09:50] INTERNAL-THIRTEEN-0482 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [09:50] INTERNAL-THIRTEEN-0480 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [09:50] INTERNAL-THIRTEEN-0481 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [09:50] INTERNAL-THIRTEEN-0479 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [09:50] INTERNAL-THIRTEEN-0478 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [09:55] INTERNAL-NINE-0486 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [09:55] INTERNAL-NINE-0487 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [09:55] INTERNAL-NINE-0485 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [09:55] INTERNAL-NINE-0484 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [09:55] INTERNAL-THIRTEEN-0483 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [09:55] INTERNAL-THIRTEEN-0482 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [09:55] INTERNAL-THIRTEEN-0480 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [09:55] INTERNAL-THIRTEEN-0481 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [09:55] INTERNAL-THIRTEEN-0479 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [09:55] INTERNAL-THIRTEEN-0478 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [10:00] INTERNAL-NINE-0486 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [10:00] INTERNAL-NINE-0487 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [10:00] INTERNAL-NINE-0485 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [10:00] INTERNAL-NINE-0484 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [10:00] INTERNAL-THIRTEEN-0483 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [10:00] INTERNAL-THIRTEEN-0482 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [10:00] INTERNAL-THIRTEEN-0480 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [10:00] INTERNAL-THIRTEEN-0481 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [10:00] INTERNAL-THIRTEEN-0479 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [10:00] INTERNAL-THIRTEEN-0478 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [10:05] INTERNAL-NINE-0486 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [10:05] INTERNAL-NINE-0487 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [10:05] INTERNAL-NINE-0485 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [10:05] INTERNAL-NINE-0484 (nine): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [10:05] INTERNAL-THIRTEEN-0483 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [10:05] INTERNAL-THIRTEEN-0482 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [10:05] INTERNAL-THIRTEEN-0480 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
+- [10:05] INTERNAL-THIRTEEN-0481 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [10:05] INTERNAL-THIRTEEN-0479 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-thread-resizer {
+ 
+- [10:05] INTERNAL-THIRTEEN-0478 (thirteen): [fs_patch] frontend/static/css/views/chat.css
+<<<OLD>>>
+.chat-dock-resizer {
+  w
