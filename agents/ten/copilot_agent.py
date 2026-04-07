@@ -87,7 +87,8 @@ def chat(message, conversation_history=None, stage_cb=None):
 
     messages = [{'role': 'system', 'content': system}]
     if conversation_history:
-        messages.extend(conversation_history[-10:])
+        # gpt-4.1 has an 8000-token limit — keep history lean
+        messages.extend(conversation_history[-4:])
     messages.append({'role': 'user', 'content': message})
 
     # ── API call wrapper for skills_loop ───────────────────────────────────────
@@ -125,6 +126,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             messages=messages,
             emit_fn=_emit,
             max_passes=5,
+            max_skill_chars=2500,  # gpt-4.1 hard limit: 8000 tokens total
         )
     except Exception as e:
         msg = str(e)

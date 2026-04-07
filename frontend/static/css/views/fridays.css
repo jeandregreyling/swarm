@@ -1,0 +1,18 @@
+<<<CONTENT>>>
+    .fridays-banner {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      height: 32px;
+      font-size: 12px;
+      background: linear-gradient(90deg, #3a6186 60%, #89253e 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1100;
+      animation: pulse 3s infinite ease-in-out;
+      border-bottom: 2px solid #89253e;
+      box-shadow: 0 2px 8px rgba(58,97,134,0.4);
+      transition: height 0.3s, font-size 0.3s;
+    }
