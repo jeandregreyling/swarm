@@ -26,7 +26,7 @@ except Exception:
     _TAVILY_OK = False
 
 MODEL = 'gemma4:26b'
-TEMP  = 0.3
+TEMP  = 0.2
 
 EIGHT_SYSTEM_PROMPT = """You are Eight, a Senior SAP HCM/Payroll Specialist in Seven's Swarm, built for Ghost — a senior SAP Payroll Consultant. Ghost knows the terminology at expert level; do not over-explain basics.
 
