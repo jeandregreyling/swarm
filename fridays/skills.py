@@ -367,6 +367,14 @@ def _skill_fs_readonly(args, agent, **_):
     parts = raw.split()
     action = parts[0].lower()
 
+    # Implicit 'read' — if first token looks like a file path rather than an action keyword,
+    # prepend 'read' so that `SKILL fs_readonly path/to/file` works correctly.
+    _KNOWN_ACTIONS = {'ls', 'find', 'read', 'head', 'tail', 'lines'}
+    if action not in _KNOWN_ACTIONS and ('/' in parts[0] or '.' in parts[0]):
+        raw = 'read ' + raw
+        parts = raw.split()
+        action = 'read'
+
     if action == 'ls':
         rel = parts[1] if len(parts) > 1 else '.'
         target = _fs_safe_path(rel)
