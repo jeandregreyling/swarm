@@ -37,8 +37,18 @@ import logging
 
 logger = logging.getLogger('seven.skills_loop')
 
-_MAX_SKILL_CMDS_PER_PASS = 6
-_MAX_SKILL_OUTPUT_CHARS  = 8000
+_MAX_SKILL_CMDS_PER_PASS  = 6
+_MAX_SKILL_OUTPUT_CHARS   = 8000  # default; override via max_skill_chars arg
+_SKILL_NUDGE = (
+    'Your response did not contain any SKILL commands.\n'
+    'If this request requires reading or modifying files, emit the SKILL commands now.\n'
+    'Start with SKILL fs_readonly ls or SKILL fs_readonly read <path> to discover the files.\n'
+    'Do NOT describe what you plan to do — emit the SKILL line directly.\n'
+    'Example:\n'
+    '  SKILL fs_readonly ls frontend/static/css/views\n'
+    '  SKILL fs_readonly read frontend/static/js/views/fridays.js\n'
+    'If this request needed no file access, respond with your final answer and ignore this message.'
+)
 
 
 def _extract_skill_cmds(text):
@@ -95,8 +105,9 @@ def _extract_skill_cmds(text):
     return cmds
 
 
-def _execute_skill_cmds(cmds, agent_name, emit_fn):
+def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None):
     """Execute a list of (skill_name, skill_args) pairs. Returns joined output string."""
+    char_limit = max_chars or _MAX_SKILL_OUTPUT_CHARS
     try:
         from fridays.skills import call as skill_call
     except Exception as e:
@@ -121,13 +132,21 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn):
             parts.append(f'[skill:{skill_name}] ERROR\n{exc}')
             continue
 
-        preview = str(out or '')[:_MAX_SKILL_OUTPUT_CHARS]
+        preview = str(out or '')[:char_limit]
         parts.append(f"[skill:{skill_name}] {'OK' if ok else 'FAILED'}\n{preview}")
 
     return '\n\n'.join(parts)
 
 
-def run_skill_loop(agent_name, call_fn, messages, emit_fn, max_passes=5):
+def run_skill_loop(
+    agent_name,
+    call_fn,
+    messages,
+    emit_fn,
+    max_passes=5,
+    max_skill_chars=None,
+    nudge_if_no_skills=False,
+):
     """
     Execute `call_fn(messages)` with SKILL command interception and re-prompting.
 
@@ -143,11 +162,21 @@ def run_skill_loop(agent_name, call_fn, messages, emit_fn, max_passes=5):
         Signature: (text: str) -> None. Pushes stage labels to the UI.
     max_passes : int
         Maximum SKILL execution rounds before returning.
+    max_skill_chars : int or None
+        Cap on skill output per result. Defaults to _MAX_SKILL_OUTPUT_CHARS.
+        Set lower (e.g. 2500) for APIs with tight token limits (gpt-4.1).
+    nudge_if_no_skills : bool
+        If True and the first response contains no SKILL commands, send one
+        follow-up nudge asking the model to emit them. Useful for models
+        (e.g. Grok) that default to prose descriptions instead of commands.
 
     Returns
     -------
     (answer: str, tokens: int)
     """
+    skill_char_limit = max_skill_chars or _MAX_SKILL_OUTPUT_CHARS
+    # Track the baseline message count so we can trim accumulated turns later.
+    baseline_len = len(messages)
     working_messages = list(messages)
     total_tokens = 0
 
@@ -160,6 +189,35 @@ def run_skill_loop(agent_name, call_fn, messages, emit_fn, max_passes=5):
 
     total_tokens += tokens
     answer = first_content
+
+    # Diagnostic: log whether the first response contains SKILL commands
+    has_skill = 'SKILL ' in str(first_content or '').upper()
+    logger.info(
+        f'[{agent_name}] pass 0 response: has_skill={has_skill} '
+        f'len={len(str(first_content or ""))} '
+        f'preview={str(first_content or "")[:200].replace(chr(10), " ")}'
+    )
+
+    # Nudge pass — one extra call if no skills and the caller requested it.
+    if nudge_if_no_skills and not has_skill:
+        emit_fn('nudging for skill commands')
+        nudge_messages = working_messages + [
+            {'role': 'assistant', 'content': answer},
+            {'role': 'user', 'content': _SKILL_NUDGE},
+        ]
+        try:
+            nudge_content, nudge_tokens = call_fn(nudge_messages)
+            total_tokens += nudge_tokens
+            # Only use the nudge response if it actually produced skills.
+            if 'SKILL ' in str(nudge_content or '').upper():
+                answer = nudge_content
+                working_messages = nudge_messages
+                logger.info(f'[{agent_name}] nudge produced SKILL commands')
+            else:
+                logger.info(f'[{agent_name}] nudge produced no skills — keeping original')
+        except Exception as exc:
+            logger.warning(f'[{agent_name}] nudge call failed: {exc}')
+
     pass_num = 0
 
     for _pass in range(max_passes):
@@ -168,7 +226,7 @@ def run_skill_loop(agent_name, call_fn, messages, emit_fn, max_passes=5):
             break  # model is done — no skills requested
 
         emit_fn('running requested skills')
-        skill_results = _execute_skill_cmds(skill_cmds, agent_name, emit_fn)
+        skill_results = _execute_skill_cmds(skill_cmds, agent_name, emit_fn, skill_char_limit)
         pass_num += 1
 
         logger.debug(
@@ -196,10 +254,15 @@ def run_skill_loop(agent_name, call_fn, messages, emit_fn, max_passes=5):
                 + skill_results
             )
 
-        working_messages = working_messages + [
-            {'role': 'assistant', 'content': answer},
-            {'role': 'user', 'content': follow_up},
-        ]
+        # Keep context lean: baseline messages + last assistant turn + new follow_up.
+        # This prevents unbounded growth that blows token limits on tight APIs.
+        working_messages = (
+            list(messages[:baseline_len])
+            + [
+                {'role': 'assistant', 'content': answer},
+                {'role': 'user', 'content': follow_up},
+            ]
+        )
 
         emit_fn('synthesizing final answer')
         try:

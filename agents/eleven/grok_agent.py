@@ -97,6 +97,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             call_fn=_api_call,
             messages=messages,
             emit_fn=_emit,
+            nudge_if_no_skills=True,  # Grok defaults to prose — nudge it to emit SKILL commands
         )
 
         _emit('persisting response memory')

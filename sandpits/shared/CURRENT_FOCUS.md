@@ -1,14 +1,14 @@
 # SWARM CURRENT FOCUS
-Updated: 2026-04-07 10:05
+Updated: 2026-04-07 11:02
 
 ## Heartbeat Stats
-- Pending proposals processed: 10
+- Pending proposals processed: 20
 - Think-cycle proposals created: 0
 - Stale proposals escalated: 10
 - Git proposals auto-executed: 0
 - Git proposal execution failures: 0
 - Git proposals deferred by per-agent cap: 0
-- Agents active this cycle: nine, thirteen
+- Agents active this cycle: eleven, ten, nine, thirteen
 
 ## Next Heartbeat
 ~5 minutes
