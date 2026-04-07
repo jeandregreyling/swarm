@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS agents (
     model TEXT NOT NULL,
     temperature REAL DEFAULT 0.3,
     role TEXT,
+    roles TEXT, -- JSON array of roles for multi-role support
     created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS conversations (
@@ -989,6 +990,36 @@ def _seed_agents():
             "UPDATE agents SET number=-1, label='Retired', role=? WHERE name=?",
             (retired_note, retired_name)
         )
+
+    # ── proposal_attachments table (ALM file attachments) ─────────────────────
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS proposal_attachments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                proposal_id TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                original_name TEXT DEFAULT '',
+                mime_type TEXT DEFAULT 'application/octet-stream',
+                size_bytes INTEGER DEFAULT 0,
+                uploaded_by TEXT DEFAULT 'ghost',
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.commit()
+    except Exception:
+        pass
+
+    # ── work_proposals editable fields ────────────────────────────────────────
+    for col_ddl in [
+        "ALTER TABLE work_proposals ADD COLUMN ticket_id INTEGER DEFAULT 0",
+        "ALTER TABLE work_proposals ADD COLUMN notes TEXT DEFAULT ''",
+    ]:
+        try:
+            conn.execute(col_ddl)
+            conn.commit()
+        except Exception:
+            pass
+
     conn.commit()
     conn.close()
 

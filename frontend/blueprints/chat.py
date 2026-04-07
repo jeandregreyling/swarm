@@ -777,7 +777,7 @@ def api_chat():
                 pass
 
         try:
-            if selected_agent in {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
+            if selected_agent in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
                 _model_name = orchestrator.AGENTS.get(selected_agent, selected_agent)
                 _stage(f'reading memory · {_model_name}', est_eta)
                 if selected_agent in {'duck', 'sniffles'}:
@@ -790,6 +790,13 @@ def api_chat():
                 tokens_used = orchestrator._LAST_EVAL_COUNT.get(selected_agent, 0)
                 _stage('writing to memory', 0)
                 _persist_local_agent_memory(selected_agent, message, response_text)
+            elif selected_agent == 'mistral':
+                _stage('dispatching to local ollama · mistral', est_eta)
+                from agents.mistral import mistral_agent
+                future = executor.submit(mistral_agent.chat, effective_prompt, history, stage_cb)
+                answer, tokens = future.result(timeout=900 if persistent_mode else 120)
+                response_text = answer or '[mistral] No response — check server logs.'
+                tokens_used = tokens or 0
             elif selected_agent == 'nine':
                 _stage('dispatching to Groq', est_eta)
                 from agents.nine import nine_agent
@@ -853,7 +860,7 @@ def api_chat():
                 raise RuntimeError(f'{selected_agent} timed out after {local_timeout}s')
             if selected_agent == 'duck':
                 response_text = _duck_fast_check(message)
-            elif selected_agent in {'gemma', 'llama', 'mistral', 'qwen', 'librarian'}:
+            elif selected_agent in {'gemma', 'llama', 'qwen', 'librarian'}:
                 raise
             else:
                 response_text = (

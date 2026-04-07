@@ -73,7 +73,8 @@
               <button class="chat-attach-btn" onclick="pickChatAttachments()" title="Attach up to 6 files. Text and image files are supported.">📎</button>
               <span id="chat-attach-inline-state" class="chat-attach-inline-state" aria-live="polite"></span>
               <textarea id="question-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
-                onkeydown="handleQuestionInputKeydown(event)"></textarea>
+                onkeydown="handleQuestionInputKeydown(event)"
+                oninput="autoGrowTextarea(this)"></textarea>
               <button id="send-btn" onclick="sendMessage()">Send</button>
             </div>
             <div id="chat-mention-menu" class="chat-mention-menu" role="listbox" aria-label="Agent mentions"></div>
@@ -126,10 +127,10 @@
                     <div class="chat-agent-row-title">Agents In This Thread</div>
                     <div class="chat-agent-legend">
                       <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-local-dot"></span><span>Local</span></span>
-                      <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-paid-dot"></span><span>Paid API</span></span>
+                      <span class="chat-agent-legend-item"><span class="agent-tier-dot agent-tier-paid-dot"></span><span>Online</span></span>
                     </div>
                   </div>
-                  <div class="chat-agent-toggles" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+                  <div class="chat-agent-toggles"></div>
                 </div>
                 <div style="padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">
                   <div class="chat-agent-row-head" style="margin-bottom:8px;">

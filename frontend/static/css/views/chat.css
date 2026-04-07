@@ -450,9 +450,22 @@
 }
 .chat-compose-shell {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
   flex-wrap: nowrap;
+  border-radius: 10px;
+}
+@keyframes compose-send-glow {
+  0%   { box-shadow: 0 0 0 0px color-mix(in srgb, var(--accent) 0%,   transparent); }
+  20%  { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 55%,  transparent); }
+  60%  { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 20%,  transparent); }
+  100% { box-shadow: 0 0 0 0px color-mix(in srgb, var(--accent) 0%,   transparent); }
+}
+.chat-compose-shell.compose-sending {
+  animation: compose-send-glow 0.42s ease-out forwards;
+}
+#question-input {
+  transition: height 0.12s ease;
 }
 .chat-compose-main {
   display: flex;
@@ -572,10 +585,10 @@
   font-family: inherit;
   font-size: 13px;
   outline: none;
-  transition: none;
+  transition: height 0.1s ease;
   resize: none;
   line-height: 1.5;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 #question-input::placeholder {
   color: var(--text-dim);
@@ -1880,3 +1893,169 @@
 .ticket-item:last-child {
   border-bottom: none;
 }
+
+/* ─── Agent selector sidebar — one clean row per agent ─────────────────────── */
+/* ─── Agent selector panel ───────────────────────────────────────────────── */
+.chat-agent-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 2px 0 4px;
+}
+
+.agent-sel-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+.agent-sel-row:hover { background: var(--card-hover, rgba(255,255,255,0.04)); }
+.agent-sel-row--on,
+.agent-sel-row--auto,
+.agent-sel-row--relay { background: rgba(255,255,255,0.025); }
+.agent-sel-row--you   { opacity: 0.72; }
+
+/* Label (pip + dot + name) */
+.agent-sel-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+/* Hidden native checkbox — still functional */
+.agent-sel-check {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ── Status pip — the actual glowing indicator ── */
+.agent-sel-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+/* You */
+.agent-sel-pip--you {
+  background: #42a5f5;
+  border-color: #42a5f5;
+  box-shadow: 0 0 5px 1px rgba(66,165,245,0.45);
+}
+/* Manual — solid blue */
+.agent-sel-row--on .agent-sel-pip {
+  background: #2196f3;
+  border-color: #2196f3;
+  box-shadow: 0 0 5px 1px rgba(33,150,243,0.4);
+}
+/* Auto — green breathing glow */
+.agent-sel-row--auto .agent-sel-pip {
+  background: #43a047;
+  border-color: #43a047;
+  animation: asel-auto-glow 1.8s ease-in-out infinite;
+}
+@keyframes asel-auto-glow {
+  0%, 100% { box-shadow: 0 0 3px 1px rgba(67,160,71,0.45); }
+  50%       { box-shadow: 0 0 10px 4px rgba(67,160,71,0.7); }
+}
+/* Relay — red fast pulse */
+.agent-sel-row--relay .agent-sel-pip {
+  background: #e53935;
+  border-color: #e53935;
+  animation: asel-relay-glow 0.75s ease-in-out infinite;
+}
+@keyframes asel-relay-glow {
+  0%, 100% { box-shadow: 0 0 3px 1px rgba(229,57,53,0.5); }
+  50%       { box-shadow: 0 0 11px 4px rgba(229,57,53,0.75); }
+}
+
+/* Agent icon (SVG) */
+.agent-sel-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-dim, #888);
+  transition: color 0.15s;
+  line-height: 0;
+}
+.agent-sel-row--on    .agent-sel-icon,
+.agent-sel-row--auto  .agent-sel-icon,
+.agent-sel-row--relay .agent-sel-icon,
+.agent-sel-row--you   .agent-sel-icon { color: var(--text, #eee); }
+
+/* Agent name */
+.agent-sel-name {
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  color: var(--text-dim, #888);
+  transition: color 0.15s, font-weight 0.15s;
+}
+.agent-sel-row--on    .agent-sel-name,
+.agent-sel-row--auto  .agent-sel-name,
+.agent-sel-row--relay .agent-sel-name,
+.agent-sel-row--you   .agent-sel-name {
+  color: var(--text, #eee);
+  font-weight: 500;
+}
+
+/* Temp slider section — flexes with panel width */
+.agent-sel-temp {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 1 56px;
+  min-width: 28px;
+  transition: opacity 0.2s;
+}
+.agent-sel-temp--off {
+  opacity: 0.18;
+  pointer-events: none;
+}
+.agent-sel-temp--placeholder {
+  flex: 0 1 56px;
+  min-width: 28px;
+  pointer-events: none;
+}
+.agent-sel-slider {
+  flex: 1;
+  min-width: 20px;
+  height: 2px;
+  accent-color: var(--accent, #7c4dff);
+  cursor: pointer;
+}
+.agent-sel-tval {
+  font-size: 8px;
+  color: var(--text-dim, #888);
+  width: 20px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* Color swatch picker (replaces agent-bubble-color in new rows) */
+.agent-sel-swatch {
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--border, #333);
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.agent-sel-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+.agent-sel-swatch::-webkit-color-swatch { border: none; border-radius: 50%; }

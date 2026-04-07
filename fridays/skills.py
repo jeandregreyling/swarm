@@ -124,6 +124,24 @@ REGISTRY = {
         'usage': 'SKILL alm_create_proposal "<title>" "<description>"',
         'example': 'SKILL alm_create_proposal "Per-window theme propagation" "Ensure windows inherit app theme at creation and support local overrides."',
     },
+    'alm_self_approve': {
+        'description': 'Self-approve your own proposal and set it to in_progress. Creates a Vortex checkpoint. No Ghost approval needed.',
+        'trust_level': 1,
+        'usage': 'SKILL alm_self_approve <proposal_id> [vortex_label]',
+        'example': 'SKILL alm_self_approve WP-0042 before-banner-patch',
+    },
+    'alm_complete': {
+        'description': 'Mark your own in_progress proposal as done (awaiting Ghost confirmation to close).',
+        'trust_level': 1,
+        'usage': 'SKILL alm_complete <proposal_id>',
+        'example': 'SKILL alm_complete WP-0042',
+    },
+    'alm_vortex': {
+        'description': 'Create a named Vortex (time machine) checkpoint. Call before making any file changes.',
+        'trust_level': 1,
+        'usage': 'SKILL alm_vortex <label>',
+        'example': 'SKILL alm_vortex before-banner-redesign',
+    },
     'fs_readonly': {
         'description': 'Read-only filesystem helper for workspace discovery (ls/find/read/head/tail/lines).',
         'trust_level': 0,
@@ -523,6 +541,73 @@ def _skill_alm_create_proposal(args, agent, **_):
         return False, f'alm_create_proposal failed: {e}'
 
 
+def _skill_alm_self_approve(args, agent, **_):
+    """Advance own proposal: pending/approved → in_progress with Vortex checkpoint."""
+    parts = (args or '').strip().split(None, 1)
+    if not parts or not parts[0]:
+        return False, 'Usage: SKILL alm_self_approve <proposal_id> [vortex_label]'
+    proposal_id = parts[0].strip()
+    vortex_label = parts[1].strip() if len(parts) > 1 else ''
+    try:
+        import requests as _req
+        resp = _req.post(
+            f'http://127.0.0.1:5050/api/work-proposals/{proposal_id}/agent-advance',
+            json={'agent': agent, 'action': 'start', 'vortex_label': vortex_label},
+            timeout=10,
+        )
+        data = resp.json()
+        if data.get('ok'):
+            vchk = data.get('vortex_checkpoint', '')
+            return True, (
+                f'Proposal {proposal_id} is now IN PROGRESS.\n'
+                f'Vortex checkpoint: {vchk}\n'
+                'Proceed with SKILL fs_patch/fs_write changes. '
+                'When done, run SKILL alm_complete to mark it done for Ghost review.'
+            )
+        return False, f'agent-advance failed: {data.get("error", resp.text[:200])}'
+    except Exception as e:
+        return False, f'alm_self_approve error: {e}'
+
+
+def _skill_alm_complete(args, agent, **_):
+    """Mark own in_progress proposal as done — awaiting Ghost confirmation."""
+    proposal_id = (args or '').strip()
+    if not proposal_id:
+        return False, 'Usage: SKILL alm_complete <proposal_id>'
+    try:
+        import requests as _req
+        resp = _req.post(
+            f'http://127.0.0.1:5050/api/work-proposals/{proposal_id}/agent-advance',
+            json={'agent': agent, 'action': 'complete'},
+            timeout=10,
+        )
+        data = resp.json()
+        if data.get('ok'):
+            return True, (
+                f'Proposal {proposal_id} marked DONE.\n'
+                'Ghost will review and confirm close. Your work is complete.'
+            )
+        return False, f'alm_complete failed: {data.get("error", resp.text[:200])}'
+    except Exception as e:
+        return False, f'alm_complete error: {e}'
+
+
+def _skill_alm_vortex(args, agent, **_):
+    """Create a named Vortex checkpoint (time machine save point)."""
+    label = (args or '').strip()
+    if not label:
+        return False, 'Usage: SKILL alm_vortex <label>'
+    try:
+        import sys
+        sys.path.insert(0, '/home/seven/swarm')
+        from core.time_machine import time_wizard
+        result = time_wizard.create_workflow_checkpoint(label=label, agent=agent,
+                                                         description=f'Agent checkpoint: {label}')
+        return True, f'Vortex checkpoint created: {label} (result={result})'
+    except Exception as e:
+        return False, f'alm_vortex error: {e}'
+
+
 def _skill_fs_write(args, agent, **_):
     """Write (overwrite) any file within the swarm repo."""
     raw = (args or '').strip()
@@ -611,9 +696,12 @@ _HANDLERS = {
     'memory_search':  _skill_memory_search,
     'ticket_create':  _skill_ticket_create,
     'alm_create_proposal': _skill_alm_create_proposal,
-    'fs_readonly':    _skill_fs_readonly,
-    'fs_write':       _skill_fs_write,
-    'fs_patch':        _skill_fs_patch,
+    'alm_self_approve':    _skill_alm_self_approve,
+    'alm_complete':        _skill_alm_complete,
+    'alm_vortex':          _skill_alm_vortex,
+    'fs_readonly':         _skill_fs_readonly,
+    'fs_write':            _skill_fs_write,
+    'fs_patch':            _skill_fs_patch,
     'knowledge_search': _skill_knowledge_search,
     'ui_css_edit_checklist': _skill_ui_css_edit_checklist,
 }
