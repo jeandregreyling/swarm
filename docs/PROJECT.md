@@ -858,7 +858,7 @@ AND created_at > datetime('now', '-1 hour')
 
 ### Session 6 — 2026-03-24
 - **RL-012 COMPLETE** — Swarm Terminal live. Flask port 5050. SSE streaming. Kill switches. Memory/Tickets/Agents views.
-- **RL-016 COMPLETE** — Debate wired into Stage 2. Qwen reads LLaMA before responding. Disagreement detection fires challenge round. Gemma judges with full debate context. Debate transcript streamed to terminal UI with ⚔ panels.
+- **RL-016 COMPLETE** — Debate wired into Stage 2. Qwen reads LLaMA before responding. Disagreement detection + challenge round. Gemma judges with full debate context. Debate transcript streamed to terminal UI with ⚔ panels.
 - **RL-013 COMPLETE** — Eight live. Three-voice pipeline: Functional/Technical/Devil's Advocate → Gemma synthesis. IS_SAP routing in FL-001 (Gemma + keyword fallback). LLaMA skipped when Eight handles. Status callbacks stream voice progress to terminal.
 - **RL-014 COMPLETE** — eight_memory.py built. Seed/teach/correct/list modes. 5 foundational SAP knowledge entries seeded: processing classes, T510/T511/T512W, retro accounting, XDIVID factoring, EC/ECP architecture. memory_eight table live in DB.
 - Terminal pipeline branching: IS_SAP → Eight path (4 model calls), standard → LLaMA+Qwen+Gemma path (3-5 calls)

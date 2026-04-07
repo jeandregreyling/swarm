@@ -43,6 +43,13 @@ function agentsShowDetail(name) {
   const detailEl = document.getElementById('agents-detail');
   if (!agent || !detailEl) return;
 
+  // Fetch real skills for this agent
+  const [allSkills, agentSkills] = await Promise.all([
+    fetchAllSkills(),
+    fetchAgentSkills(name)
+  ]);
+  const agentSkillNames = new Set((agentSkills || []).map(s => s.name));
+
   const isHuman = agent.tier === 'human';
   const apiKeySection = agent.api_key_var ? `
     <div style="margin-bottom:12px;">
@@ -157,7 +164,12 @@ function agentsShowDetail(name) {
       <div style="margin:18px 0 0 0;">
         <span style="color:var(--text-dim);font-size:12px;font-weight:700;">Skills</span><br>
         <div id="agent-skills-chips-${name}" style="display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:4px;">
-          ${Array.from(agentSkills).map(skill => `<span style="display:inline-flex;align-items:center;background:var(--main-bg);border:1.5px solid var(--border);border-radius:14px;padding:2px 10px;font-size:12px;font-weight:500;">${_escHtmlA(skill)}</span>`).join('')}
+          ${allSkills.map(skill => `
+            <span class="skill-chip" style="display:inline-flex;align-items:center;background:${agentSkillNames.has(skill.name) ? 'var(--main-bg)' : 'var(--card)'};border:1.5px solid var(--border);border-radius:14px;padding:2px 10px;font-size:12px;font-weight:500;cursor:pointer;${agentSkillNames.has(skill.name) ? 'box-shadow:0 0 0 2px var(--accent);' : ''}"
+              onclick="toggleAgentSkill('${name}','${skill.name}')">
+              ${_escHtmlA(skill.name)}
+              ${agentSkillNames.has(skill.name) ? '<button style="background:none;border:none;color:#f44336;font-size:15px;line-height:1;padding:0 0 0 3px;cursor:pointer;" onclick="removeAgentSkill(event,\'' + name + '\',\'' + skill.name + '\')">×</button>' : ''}
+            </span>`).join('')}
         </div>
       </div>
 
@@ -495,3 +507,24 @@ function _agentsModal({title, body, confirmLabel='OK', confirmDanger=false, onCo
 document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('agents-list')) agentsRefresh();
 });
+
+// Fetch all available skills for the system
+async function fetchAllSkills() {
+  const res = await fetch('/api/skills');
+  return await res.json();
+}
+
+// Fetch skills for a specific agent
+async function fetchAgentSkills(agentName) {
+  const res = await fetch(`/api/agents/${agentName}/skills`);
+  return await res.json();
+}
+
+// Update skills for a specific agent
+async function updateAgentSkills(agentName, skills) {
+  await fetch(`/api/agents/${agentName}/skills`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({skills})
+  });
+}
