@@ -9,15 +9,37 @@ os.makedirs(_ATTACHMENTS_DIR, exist_ok=True)
 proposals_bp = Blueprint('proposals', __name__)
 
 @proposals_bp.route('/api/proposals')
+
 def api_proposals_list():
-    """List all pending agent proposals with preview."""
-    from sandpits import list_proposals, read_proposal
+    """List all pending agent proposals with preview and stage."""
+    from sandpits.shared.proposals import list_proposals, read_proposal
     proposals = list_proposals()
     result = []
     for p in proposals:
-        content = read_proposal(p['filename']) or ''
-        result.append({**p, 'preview': content[:600]})
+        content = p.get('description', '') or ''
+        stage = p.get('stage', 3)
+        result.append({**p, 'preview': content[:600], 'stage': stage})
     return jsonify({'proposals': result})
+# Add endpoint to promote proposal to next stage
+@proposals_bp.route('/api/proposals/promote', methods=['POST'])
+def api_proposals_promote():
+    """
+    Promote a proposal to the next stage (DEV → UAT → PROD) by copying its file.
+    """
+    from sandpits.shared.proposals import promote_proposal, read_proposal
+    data     = request.get_json() or {}
+    filename = (data.get('filename') or '').strip()
+    if not filename:
+        return jsonify({'error': 'filename required'}), 400
+    proposal = read_proposal(filename)
+    if proposal is None:
+        return jsonify({'error': 'proposal not found'}), 404
+    ok = promote_proposal(filename)
+    if not ok:
+        return jsonify({'error': 'promotion failed'}), 500
+    from database import log_activity
+    log_activity('terminal', f'proposal_promoted', filename)
+    return jsonify({'ok': True})
 
 
 
