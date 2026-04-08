@@ -41,9 +41,12 @@ TIMEOUT_SEC = 30
 
 WHITELIST = [
     # System info — Level 0
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^df(\s+-[hHkm])*(\s+\S+)?$',                    0, 'disk usage'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^free(\s+-[hHmg])?$',                            0, 'memory usage'),
     (r'^uptime$',                                        0, 'uptime'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^uname(\s+-[a-z]+)?$',                            0, 'kernel info'),
     (r'^date$',                                          0, 'current date/time'),
     (r'^pwd$',                                           0, 'working directory'),
@@ -55,32 +58,47 @@ WHITELIST = [
     (r'^top\s+-b\s+-n\s+1$',                             0, 'cpu snapshot'),
     (r'^cat\s+/proc/cpuinfo$',                           0, 'cpu info'),
     (r'^cat\s+/proc/meminfo$',                           0, 'memory info'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^lsblk(\s+-[a-z]+)?$',                            0, 'block devices'),
-    (r'^lsof\s+-i(\s+:\d+)?$',                           0, 'open ports'),
+    (r'^(sudo\s+)?lsof\s+-i(\s+:\d+)?(\s+-sTCP:LISTEN)?$', 0, 'open ports'),
     (r'^netstat\s+-tlnp$',                               0, 'network ports'),
     (r'^ss\s+-tlnp$',                                    0, 'socket stats'),
     (r'^ip\s+(addr|link|route)$',                        0, 'network info'),
     (r'^ping\s+-c\s+\d+\s+\S+$',                         0, 'ping'),
 
     # File reads — Level 0 (swarm dir only)
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^ls(\s+-[lahrt]+)?(\s+\.?/?[\w\-\./]+)?$',      0, 'list files'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^find\s+/home/seven/swarm\S*\s+-maxdepth\s+\d+\s+-type\s+[fd](\s+-name\s+\S+)?$', 0, 'find files (bounded)'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^cat\s+(\.?/?[\w\-\./]+|/home/seven/swarm/\S+)$', 0, 'read file'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^wc\s+-[lw]\s+(\.?/?[\w\-\./]+|/home/seven/swarm/\S+)$', 0, 'word/line count'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^tail(\s+-n\s+\d+)?\s+(\.?/?[\w\-\./]+|/home/seven/swarm/\S+)$', 0, 'tail file'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^head(\s+-n\s+\d+)?\s+(\.?/?[\w\-\./]+|/home/seven/swarm/\S+)$', 0, 'head file'),
     # grep: explicit flags only (-i, -n, -c, -l), no -r recursive
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^grep\s+(-[incl]\s+)*.+\s+/home/seven/swarm/\S+$', 0, 'grep swarm file'),
 
     # Service status — Level 2
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^systemctl\s+status\s+([\w\-\.]+\s+)*[\w\-\.]+$',  2, 'service status'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^systemctl\s+is-active\s+[\w\-\.]+$',              2, 'service active check'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^journalctl\s+-u\s+[\w\-\.]+\s+-n\s+\d+\s*$',      2, 'service logs'),
     
     # Service restart/stop/start — Level 4 (elevated, Ghost notified)
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^sudo\s+systemctl\s+restart\s+([\w\-\.]+\s+)*[\w\-\.]+$',  4, 'service restart'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^sudo\s+systemctl\s+stop\s+([\w\-\.]+\s+)*[\w\-\.]+$',     4, 'service stop'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^sudo\s+systemctl\s+start\s+([\w\-\.]+\s+)*[\w\-\.]+$',    4, 'service start'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     (r'^sudo\s+journalctl\s+-u\s+[\w\-\.]+\s+-n\s+\d+\s+(--no-pager)?$', 4, 'service logs (elevated)'),
 
     # Ollama — Level 2
@@ -96,6 +114,10 @@ WHITELIST = [
 
     # Git — Level 4 (read only, but may expose history)
     (r'^git\s+(status|log|diff|show)(\s+.*)?$',          4, 'git read'),
+
+    # Process Management — Level 4
+    (r'^sudo\s+fuser\s+-k\s+\d+/tcp$',                   4, 'kill process on port'),
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
 ]
 
 
@@ -113,14 +135,17 @@ def _load_custom_sudo_whitelist():
             "SELECT command FROM sudo_command_whitelist ORDER BY created_at ASC, id ASC"
         ).fetchall()
         conn.close()
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         commands = []
         for row in rows:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
             value = row['command'] if isinstance(row, sqlite3.Row) else row[0]
             clean = str(value or '').strip()
             if clean:
                 commands.append(clean)
         return commands
     except Exception:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         return []
 
 
@@ -128,6 +153,7 @@ def get_effective_whitelist():
     """
     Return the effective whitelist as UI-friendly metadata.
     """
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     items = []
     for pattern, level, desc in WHITELIST:
         items.append({
@@ -179,12 +205,14 @@ def _log_ghost_circle(agent, command, output_summary, trust_level, allowed):
             """INSERT INTO ghost_circle (entry_type, source, content, severity)
                VALUES ('shell_action', ?, ?, ?)""",
             (agent,
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
              f'[{status}] L{trust_level} | {command[:200]} | {output_summary[:200]}',
              'info' if allowed else 'warning')
         )
         conn.commit()
         conn.close()
     except Exception as e:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         logger.warning(f'[Shell] ghost_circle write failed: {e}')
 
 
@@ -195,11 +223,13 @@ def _log_sandpit(agent, command, output, trust_level):
         conn.execute(
             """INSERT INTO sandpit_log (agent, operation, path, size_bytes, status, reason, created_at)
                VALUES (?, 'shell_exec', ?, ?, 'ok', ?, datetime('now'))""",
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
             (agent, command[:500], len(output), f'trust_level={trust_level}')
         )
         conn.commit()
         conn.close()
     except Exception as e:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         logger.warning(f'[Shell] sandpit_log write failed: {e}')
 
 
@@ -213,10 +243,12 @@ def _request_sudo_approval(agent, command, desc):
         from database import create_approval_token, log_activity
         token = create_approval_token(
             action='shell_exec',
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
             target_email=command[:200],
             created_by=agent,
         )
         log_activity('shell', 'sudo_requested',
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
                      f'{agent} requested: {command[:200]} | token={token[:12]}...')
 
         # Notify Ghost via Telegram
@@ -224,22 +256,27 @@ def _request_sudo_approval(agent, command, desc):
             from config import nine_notify
             nine_notify(
                 f'🔐 SUDO request from {agent}\n'
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
                 f'Command: {command[:150]}\n'
                 f'Approve at: /api/shell/approve/{token}'
             )
         except Exception:
             pass
 
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         _log_ghost_circle(agent, command, f'SUDO_PENDING token={token[:12]}',
                          trust_level=4, allowed=False)
         return False, (
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
             f'[Shell] Level 4 command requires Ghost approval.\n'
             f'Command: {command}\n'
             f'Approval token: {token}\n'
             f'Ghost has been notified. Waiting for approval at /api/shell/approve/{token}'
         )
     except Exception as e:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         logger.error(f'[Shell] sudo approval request failed: {e}')
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         return False, f'[Shell] Could not request sudo approval: {e}'
 
 
@@ -261,13 +298,16 @@ def run(command, agent='shell', notify_ghost=True):
     match = _match_whitelist(command)
 
     if match is None:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         reason = f'Command not on whitelist: {command[:100]}'
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         logger.warning(f'[Shell] BLOCKED by {agent}: {command[:100]}')
         # Always log blocked attempts regardless of notify_ghost
         _log_ghost_circle(agent, command, reason, trust_level=99, allowed=False)
         return False, reason
 
     trust_level, desc = match
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     logger.info(f'[Shell] {agent} running (L{trust_level} — {desc}): {command[:100]}')
 
     # Level 4 gate: non-Ghost agents must get approval first
@@ -283,16 +323,20 @@ def run(command, agent='shell', notify_ghost=True):
             timeout=TIMEOUT_SEC,
             cwd='/home/seven/swarm',
         )
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         output = result.stdout + (('\n[stderr]\n' + result.stderr) if result.stderr.strip() else '')
         if len(output) > MAX_OUTPUT:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
             output = output[:MAX_OUTPUT] + '\n\n[... output truncated ...]'
         success = result.returncode == 0
 
     except subprocess.TimeoutExpired:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         output = f'[Shell] Command timed out after {TIMEOUT_SEC}s: {command}'
         success = False
 
     except Exception as e:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         output = f'[Shell] Execution error: {e}'
         success = False
 
@@ -300,8 +344,10 @@ def run(command, agent='shell', notify_ghost=True):
 
     # Ghost circle: always log Level 4. Log lower levels only if notify_ghost=True.
     if trust_level >= 4 or notify_ghost:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         _log_ghost_circle(agent, command, output[:200], trust_level, allowed=True)
 
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     print(f'[Shell] {"✓" if success else "✗"} L{trust_level} | {command[:80]}')
     return success, output
 
@@ -313,12 +359,15 @@ def run_safe(command, agent='shell'):
     """
     command = command.strip()
     match = _match_whitelist(command)
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     if match is None or match[0] > 0:
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         return False, f'run_safe() only allows Level 0 commands: {command[:100]}'
     return run(command, agent=agent, notify_ghost=False)
 
 
 def test():
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     print('\n[Shell Agent] Tests...')
     tests = [
         ('df -h',                                        True),
@@ -333,11 +382,13 @@ def test():
         ('ls /home/seven/swarm',                         True),
         ('grep foo /home/seven/swarm/config.py',         True),
         ('grep -r foo /home/seven/swarm/config.py',      False),  # -r blocked
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
     ]
     passed = 0
     for cmd, should_pass in tests:
         ok, out = run(cmd, agent='test')
         result = '✓' if ok == should_pass else '✗ UNEXPECTED'
+    (r'^sudos+fusers+-ks+d+/tcp$',                   4, 'kill process on port'),
         print(f'  {result}  {cmd!r}: {out[:60].strip()}')
         if ok == should_pass:
             passed += 1

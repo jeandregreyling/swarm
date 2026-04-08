@@ -27,30 +27,27 @@ import os, json
 PROPOSALS_DIR = os.path.join(os.path.dirname(__file__), 'proposals')
 os.makedirs(PROPOSALS_DIR, exist_ok=True)
 
+def _get_stage_dir():
+    stage = int(os.environ.get('STAGE', 3))
+    base = os.path.dirname(os.path.dirname(__file__))
+    return os.path.join(base, f'sandpits_stage{stage}', 'proposals')
+
 def list_proposals():
     """List all proposals with metadata (including stage if present)."""
+    dir_path = _get_stage_dir()
+    os.makedirs(dir_path, exist_ok=True)
     proposals = []
-    for fname in os.listdir(PROPOSALS_DIR):
-            try:
-    def _get_stage_dir():
-        stage = int(os.environ.get('STAGE', 3))
-        base = os.path.dirname(os.path.dirname(__file__))
-        return os.path.join(base, f'sandpits_stage{stage}', 'proposals')
+    for fname in os.listdir(dir_path):
+        if not fname.endswith('.json'):
+            continue
+        fpath = os.path.join(dir_path, fname)
+        try:
+            with open(fpath, 'r') as f:
                 data = json.load(f)
-                proposals.append(data)
-        """List all proposals with metadata (including stage if present)."""
-        dir_path = _get_stage_dir()
-        os.makedirs(dir_path, exist_ok=True)
-        proposals = []
-        for fname in os.listdir(dir_path):
-            if not fname.endswith('.json'): continue
-            with open(os.path.join(dir_path, fname), 'r') as f:
-                try:
-                    data = json.load(f)
-                    proposals.append(data)
-                except Exception:
-                    continue
-        return proposals
+            proposals.append(data)
+        except Exception:
+            continue
+    return proposals
 def update_proposal_stage(filename, stage):
     """Update the stage of a proposal (by filename)."""
         """Read a proposal by filename (JSON)."""

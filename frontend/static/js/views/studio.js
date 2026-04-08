@@ -190,7 +190,6 @@ function promoteProposal(proposalId) {
     })
     .catch(e => showToast('Promotion error: ' + e.message, 'error'));
 }
-}
 
 function moveProposal(proposalId, newStatus) {
   fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
