@@ -1,0 +1,12 @@
+{
+  "title": "Test Temperature Gauge",
+  "author": "eleven",
+  "created": "2026-04-08",
+  "description": "Add a simple temperature display to the system status banner in Fridays UI.",
+  "actions": [
+    {"action": "created", "date": "2026-04-08", "by": "eleven"},
+    {"action": "visible_in_studio_ui", "status": true}
+  ],
+  "footnotes": [],
+  "stage": 3
+}

@@ -443,6 +443,7 @@ CREATE TABLE IF NOT EXISTS work_proposals (
     proposal_file TEXT DEFAULT '',
     ticket_number TEXT DEFAULT '',
     queue_id INTEGER DEFAULT 0,
+    current_stage TEXT DEFAULT 'FRIDAYS',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
