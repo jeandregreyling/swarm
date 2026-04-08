@@ -71,6 +71,21 @@ def create_app():
         print(f'[Terminal] chat job orphan cleanup warning: {exc}')
 
     # Register blueprints
+
+
+    # Add root health/status route
+    @app.route("/", methods=["GET"])
+    def root_status():
+        from flask import jsonify
+        return jsonify({"status": "ok", "message": "Fridays/Swarm API is running. See /api/proposals for proposals."})
+
+
+    # Fridays UI route (serves main HTML interface)
+    @app.route("/ui", methods=["GET"])
+    def fridays_ui():
+        from flask import render_template
+        # theme_css is injected as empty for now; can be extended for dynamic theming
+        return render_template("terminal_base.html", theme_css="")
     app.register_blueprint(vs_bp)
     app.register_blueprint(agent_api_bp)
     app.register_blueprint(agents_bp)
@@ -116,14 +131,9 @@ if __name__ == '__main__':
         daemon_threads = True
 
     port = int(os.environ.get('PORT', 5050))
-    try:
-        server = make_server('::', port, app, server_class=_ThreadingWSGIServer)
-        addr_family = 'IPv6+IPv4'
-    except OSError:
-        server = make_server('0.0.0.0', port, app, server_class=_ThreadingWSGIServer)
-        addr_family = 'IPv4'
-
-    print(f'[Terminal] Serving on port {port} ({addr_family})')
+    # Always bind to 0.0.0.0 (IPv4) to avoid socket.gaierror and port reuse issues
+    server = make_server('0.0.0.0', port, app, server_class=_ThreadingWSGIServer)
+    print(f'[Terminal] Serving on port {port} (IPv4)')
     try:
         server.serve_forever()
     except KeyboardInterrupt:

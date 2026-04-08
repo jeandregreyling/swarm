@@ -1,17 +1,27 @@
-// Simple environment banner for UI
+// env-banner.js — Fixed version
 (function() {
-  const stage = window.ENV_STAGE || 'unknown';
-  const banner = document.createElement('div');
-  banner.style.position = 'fixed';
-  banner.style.top = '0';
-  banner.style.left = '0';
-  banner.style.width = '100%';
-  banner.style.background = stage === '1' ? '#d32f2f' : (stage === '2' ? '#fbc02d' : '#388e3c');
-  banner.style.color = '#fff';
-  banner.style.textAlign = 'center';
-  banner.style.zIndex = '9999';
-  banner.style.fontWeight = 'bold';
-  banner.style.padding = '4px 0';
-  banner.innerText = stage === '1' ? 'PRODUCTION' : (stage === '2' ? 'UAT / PRE-PROD' : (stage === '3' ? 'DEV / SANDBOX' : 'UNKNOWN ENVIRONMENT'));
-  document.body.appendChild(banner);
+  // Wait for DOM + possible ENV_STAGE injection from Flask
+  function createBanner() {
+    const stage = (window.ENV_STAGE || document.body?.dataset?.stage || 'unknown').toUpperCase();
+    
+    const banner = document.createElement('div');
+    banner.id = 'env-banner';
+    banner.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; z-index: 99999;
+      padding: 4px 0; text-align: center; font-weight: 700; font-size: 11px;
+      color: white; letter-spacing: 0.5px;
+      background: ${stage === 'PROD' ? '#d32f2f' : stage === 'UAT' ? '#f57c00' : '#388e3c'};
+    `;
+    banner.textContent = stage === 'PROD' ? 'PRODUCTION' : 
+                         stage === 'UAT' ? 'UAT / WEDNESDAY' : 
+                         stage === 'DEV' ? 'DEV / MONDAY' : `ENV: ${stage}`;
+    
+    document.body.prepend(banner);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', createBanner);
+  } else {
+    createBanner();
+  }
 })();
