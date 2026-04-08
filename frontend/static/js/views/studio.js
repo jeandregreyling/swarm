@@ -47,16 +47,21 @@ function studioSetTab(tab) {
 
 function loadProposals(container, tab) {
   const mode = tab || window._studioTab || 'pending';
+  // Accept both 'pending' and 'proposed' as pending in UI
   const url = mode === 'all'
     ? '/api/work-proposals?status=done&status=executed&status=rejected&limit=400'
     : mode === 'in_progress'
       ? '/api/work-proposals?status=in_progress&status=approved&limit=200'
-      : '/api/work-proposals?status=pending&limit=200';
+      : '/api/work-proposals?status=pending&status=proposed&limit=200';
 
   fetch(url)
     .then(r => r.json())
     .then(data => {
-      const proposals = data.proposals || [];
+      let proposals = data.proposals || [];
+      // Merge 'proposed' into 'pending' for UI
+      if (mode === 'pending') {
+        proposals = proposals.filter(p => (p.status === 'pending' || p.status === 'proposed'));
+      }
       window._proposals = proposals;
       if (!proposals.length) {
         container.innerHTML = `
@@ -113,14 +118,38 @@ function _proposalCard(p) {
   // Promote button for DEV and UAT
   const promoteBtn = stage > 1 ? `<button onclick='event.stopPropagation();promoteProposal(${pidJs})' style="flex:1;padding:6px;background:#1976d2;border:1px solid #1976d2;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">Promote to ${stage === 3 ? 'UAT' : 'PROD'}</button>` : '';
 
+  // Developer agent fast-path: show Self-Approve+Start if owner
+  let devAutoBtn = '';
+  if (status === 'pending' && window._effectiveUser && agent.toLowerCase() === window._effectiveUser.toLowerCase() && window._ghostAgentNames && window._ghostAgentNames.includes(window._effectiveUser)) {
+    devAutoBtn = `<button onclick='event.stopPropagation();selfApproveAndStart(${pidJs}, "${agent}")' style="flex:1;padding:6px;background:#1976d2;border:1px solid #1976d2;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">Self-Approve + Start</button>`;
+  }
   const actionBtns = status === 'pending' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"approved")'
         style="flex:1;padding:6px;background:#4caf5020;border:1px solid #4caf5060;border-radius:4px;color:#4caf50;font-size:11px;font-weight:600;cursor:pointer;">✓ Approve</button>
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"rejected")'
         style="flex:1;padding:6px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;font-weight:600;cursor:pointer;">✗ Reject</button>
+      ${devAutoBtn}
       ${promoteBtn}
     </div>` :
+  // Self-Approve + Start handler for developer agents (uses agent-advance API)
+  async function selfApproveAndStart(proposalId, agent) {
+    if (!proposalId || !agent) return;
+    try {
+      const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/agent-advance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ..._authPayload(), agent: agent, action: 'start' })
+      });
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || 'failed');
+      showToast('Proposal self-approved and started', 'success');
+      const container = document.getElementById('studio-content');
+      if (container) loadProposals(container, window._studioTab || 'pending');
+    } catch (e) {
+      showToast('Self-approve failed: ' + (e.message || e), 'error');
+    }
+  }
   status === 'approved' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"in_progress")'

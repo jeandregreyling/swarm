@@ -307,11 +307,14 @@ async function gitLoadProposals() {
       const statusColor = status === 'approved' ? '#4caf50' : status === 'executed' ? '#29b6f6' : status === 'rejected' ? '#f44336' : 'var(--text-dim)';
       const isExecutable = status === 'approved';
       const canModerate = status === 'pending' || status === 'approved' || status === 'in_progress' || status === 'done';
+      // Show Proposal-linked badge if created by git action
+      const isGitLinked = /git (stage|unstage|commit)/i.test(p.title || '') || /via Git panel/i.test(p.description || '');
       return `
         <div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:4px;padding:8px;margin-bottom:6px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;">
             <div style="font-size:10px;font-weight:600;flex:1;word-break:break-word;">${title}</div>
             <span style="font-size:9px;color:${statusColor};white-space:nowrap;">${statusH}</span>
+            ${isGitLinked ? '<span style="font-size:9px;background:#2196f320;color:#2196f3;border-radius:8px;padding:2px 8px;margin-left:6px;">Proposal-linked</span>' : ''}
           </div>
           <div style="font-size:9px;color:var(--text-dim);margin-bottom:6px;">${createdH}</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">

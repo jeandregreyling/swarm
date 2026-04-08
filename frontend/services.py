@@ -644,7 +644,14 @@ def _alm_gate_or_response(data, action_name):
             'required_status': ['approved', 'executed']
         }), 428
 
+    # Ownership bypass for developer agents
+    identity, _ = _resolve_identity_or_response(data)
     conn = get_connection()
+    prop = conn.execute("SELECT agent FROM work_proposals WHERE proposal_id=?", (proposal_id,)).fetchone()
+    if prop and prop['agent'].lower() == identity['effective_user'].lower() and identity['effective_user'] in _get_ghost_agent_names():
+        conn.close()
+        return None  # bypass
+
     row = conn.execute(
         "SELECT proposal_id, status, agent, title FROM work_proposals WHERE proposal_id=?",
         (proposal_id,)
