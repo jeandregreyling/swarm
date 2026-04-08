@@ -557,6 +557,13 @@ def _skill_alm_self_approve(args, agent, **_):
         )
         data = resp.json()
         if data.get('ok'):
+            # Immediately create Vortex checkpoint before any file change
+            from frontend.services import _safe_workflow_checkpoint
+            _safe_workflow_checkpoint(
+                label=f'{proposal_id}-start',
+                agent=agent,
+                description=f'Self-approve + start {proposal_id}'
+            )
             vchk = data.get('vortex_checkpoint', '')
             return True, (
                 f'Proposal {proposal_id} is now IN PROGRESS.\n'
