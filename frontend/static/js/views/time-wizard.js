@@ -1,3 +1,17 @@
+// --- Vortex History Section ---
+function renderVortexHistory() {
+  const container = document.getElementById('tw-vortex-history');
+  if (!container) return;
+  container.innerHTML = '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">Vortex History</div>' +
+    (_twCheckpoints.length ? _twCheckpoints.map(c => `<div style="font-size:11px;padding:6px 0;border-bottom:1px solid var(--border);"><b>${_escHtml(c.checkpoint_name || c.name || 'checkpoint')}</b> <span style="color:var(--text-dim);">@ ${_escHtml(c.timestamp || c.created_at || '')}</span></div>`).join('') : '<div style="color:var(--text-dim);font-size:11px;">No checkpoints yet.</div>');
+}
+
+// Patch into loadTimeWizardData
+const _origLoadTimeWizardData = loadTimeWizardData;
+loadTimeWizardData = async function() {
+  await _origLoadTimeWizardData.apply(this, arguments);
+  renderVortexHistory();
+};
 // Time Wizard / Vortex view
 // Extracted from terminal_base.html
 

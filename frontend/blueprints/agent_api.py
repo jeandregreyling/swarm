@@ -281,6 +281,13 @@ def api_agent_git_execute_proposal(proposal_id):
     if gate:
         return gate
 
+    # Create checkpoint BEFORE git changes
+    _safe_workflow_checkpoint(
+        label=f'{proposal_id}-execute',
+        agent=agent_id,
+        description=f'Git execute for proposal {proposal_id}'
+    )
+
     operation = _parse_git_operation_from_proposal(row['title'], row['description'])
     if not operation:
         return jsonify({'ok': False, 'error': 'unable to parse git operation from proposal'}), 400
