@@ -556,6 +556,19 @@ def run_heartbeat():
         if target_agent not in stats['active_agents']:
             stats['active_agents'].append(target_agent)
         logger.info(f'[Fridays] Dispatched {proposal["proposal_id"]} → {target_agent}')
+        
+        # Full lifecycle routing fix:
+        # - When Approved → move to In Progress and trigger UAT auto-apply (Wednesday)
+        # - When In Progress → sandbox mode is enabled for agents
+        if proposal.get('status') == 'approved':
+            # Trigger git execution for UAT (Wednesday environment)
+            git_result, git_err = agent_git_execute_when_approved(target_agent, proposal.get('proposal_id'))
+            if git_err:
+                logger.warning(f'[Fridays] UAT auto-apply failed for {proposal["proposal_id"]}: {git_err}')
+            else:
+                logger.info(f'[Fridays] UAT auto-apply succeeded for {proposal["proposal_id"]}')
+                # Also update proposal status to In Progress so Studio reflects it
+                update_proposal_status(proposal.get('proposal_id'), 'in_progress')
     
     # 3. Think cycles for capable agents
     for agent_name in THINKING_AGENTS:

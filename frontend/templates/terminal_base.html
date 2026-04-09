@@ -51,80 +51,40 @@
 </head>
 <body>
 
-<!-- Cross-environment navigation buttons -->
-<div style="width:100vw;display:flex;justify-content:center;align-items:center;gap:16px;margin-top:{% if ENV_STAGE in ['DEV','UAT'] %}56px{% else %}0{% endif %};padding:12px 0 4px 0;background:rgba(255,255,255,0.85);z-index:9998;position:relative;box-shadow:0 2px 8px #0001;">
-  <a href="http://localhost:5050/ui" style="
-    padding:8px 18px;border-radius:8px;border:none;font-weight:700;font-size:1.05rem;text-decoration:none;
-    {% if ENV_STAGE not in ['DEV','UAT'] %}background:#2f6bff;color:#fff;box-shadow:0 2px 8px #2f6bff33;cursor:default;{% else %}background:#f4f8ff;color:#2f6bff;{% endif %}">
-    Fridays (PROD)
-  </a>
-  <a href="http://localhost:5051/ui" style="
-    padding:8px 18px;border-radius:8px;border:none;font-weight:700;font-size:1.05rem;text-decoration:none;
-    {% if ENV_STAGE == 'DEV' %}background:#00f2fe;color:#fff;box-shadow:0 2px 8px #00f2fe33;cursor:default;{% else %}background:#f4f8ff;color:#00b2c6;{% endif %}">
-    Mondays (DEV)
-  </a>
-  <a href="http://localhost:5053/ui" style="
-    padding:8px 18px;border-radius:8px;border:none;font-weight:700;font-size:1.05rem;text-decoration:none;
-    {% if ENV_STAGE == 'UAT' %}background:#ff6a00;color:#fff;box-shadow:0 2px 8px #ff6a0033;cursor:default;{% else %}background:#f4f8ff;color:#ff6a00;{% endif %}">
-    Wednesdays (UAT)
-  </a>
-</div>
 
+{# Glowing banners for DEV/UAT at the very top, nothing in PROD #}
 {% if ENV_STAGE == 'DEV' %}
-<div style="
-  width: 100vw;
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 9999;
-  background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
-  color: #fff;
-  text-align: center;
-  font-size: 1.25rem;
-  font-weight: bold;
-  letter-spacing: 0.08em;
-  padding: 18px 0 14px 0;
-  box-shadow: 0 0 32px 8px #4facfe99, 0 2px 8px #00f2fe55;
-  text-shadow: 0 0 8px #fff, 0 0 18px #4facfe;
-  animation: envGlow 2.2s infinite alternate;
-">
-  MONDAY ENVIRONMENT
-</div>
-<style>
-@keyframes envGlow {
-  0% { box-shadow: 0 0 32px 8px #4facfe99, 0 2px 8px #00f2fe55; }
-  100% { box-shadow: 0 0 48px 16px #00f2fecc, 0 2px 16px #4facfe99; }
-}
-</style>
-<div style="height: 56px;"></div>
+  <div style="width:100vw;position:fixed;top:0;left:0;z-index:10001;background:linear-gradient(90deg,#00f2fe 0%,#4facfe 100%);color:#fff;text-align:center;font-size:1.25rem;font-weight:bold;letter-spacing:0.08em;padding:18px 0 14px 0;box-shadow:0 0 32px 8px #4facfe99,0 2px 8px #00f2fe55;text-shadow:0 0 8px #fff,0 0 18px #4facfe;animation:envGlow 2.2s infinite alternate;">
+    MONDAY ENVIRONMENT — DEV (5051)
+  </div>
+  <style>
+    @keyframes envGlow {
+      0% { box-shadow: 0 0 32px 8px #4facfe99, 0 2px 8px #00f2fe55; }
+      100% { box-shadow: 0 0 48px 16px #00f2fecc, 0 2px 16px #4facfe99; }
+    }
+  </style>
+  <div style="height:56px;"></div>
 {% elif ENV_STAGE == 'UAT' %}
-<div style="
-  width: 100vw;
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 9999;
-  background: linear-gradient(90deg, #ffb347 0%, #ff6a00 100%);
-  color: #fff;
-  text-align: center;
-  font-size: 1.25rem;
-  font-weight: bold;
-  letter-spacing: 0.08em;
-  padding: 18px 0 14px 0;
-  box-shadow: 0 0 32px 8px #ffb34799, 0 2px 8px #ff6a0055;
-  text-shadow: 0 0 8px #fff, 0 0 18px #ffb347;
-  animation: envGlowOrange 2.2s infinite alternate;
-">
-  WEDNESDAYS ENVIRONMENT
-</div>
-<style>
-@keyframes envGlowOrange {
-  0% { box-shadow: 0 0 32px 8px #ffb34799, 0 2px 8px #ff6a0055; }
-  100% { box-shadow: 0 0 48px 16px #ff6a00cc, 0 2px 16px #ffb34799; }
-}
-</style>
-<div style="height: 56px;"></div>
+  <div style="width:100vw;position:fixed;top:0;left:0;z-index:10001;background:linear-gradient(90deg,#ffb347 0%,#ff6a00 100%);color:#fff;text-align:center;font-size:1.25rem;font-weight:bold;letter-spacing:0.08em;padding:18px 0 14px 0;box-shadow:0 0 32px 8px #ffb34799,0 2px 8px #ff6a0055;text-shadow:0 0 8px #fff,0 0 18px #ffb347;animation:envGlowOrange 2.2s infinite alternate;">
+    WEDNESDAY ENVIRONMENT — UAT (5053)
+  </div>
+  <style>
+    @keyframes envGlowOrange {
+      0% { box-shadow: 0 0 32px 8px #ffb34799, 0 2px 8px #ff6a0055; }
+      100% { box-shadow: 0 0 48px 16px #ff6a00cc, 0 2px 16px #ffb34799; }
+    }
+  </style>
+  <div style="height:56px;"></div>
+{% elif ENV_STAGE == 'PROD' %}
+  <div style="width:100vw;display:flex;align-items:center;justify-content:center;gap:18px;padding:7px 0 3px 0;background:linear-gradient(90deg,#f7faff 0%,#eaf1ff 100%);box-shadow:0 1px 8px #2f6bff11;z-index:10000;position:relative;min-height:38px;">
+    <span style="font-weight:500;color:#2f6bff;font-size:1.01rem;opacity:0.82;letter-spacing:0.03em;margin-right:10px;">Fridays</span>
+    <a href="http://localhost:5051/ui" style="padding:5px 14px;border-radius:7px;background:#00f2fe;color:#fff;text-decoration:none;font-weight:600;font-size:0.98rem;box-shadow:0 1px 6px #00f2fe22;transition:background 0.18s,box-shadow 0.18s;line-height:1.2;margin:0 2px;">Mondays (DEV)</a>
+    <a href="http://localhost:5053/ui" style="padding:5px 14px;border-radius:7px;background:#ff6a00;color:#fff;text-decoration:none;font-weight:600;font-size:0.98rem;box-shadow:0 1px 6px #ff6a0022;transition:background 0.18s,box-shadow 0.18s;line-height:1.2;margin:0 2px;">Wednesdays (UAT)</a>
+  </div>
+  <div style="height:30px;"></div>
 {% endif %}
+
+<!-- ...existing code... -->
 
 <!-- ════════════════════════════════════════════════════════════════════════
      COMMAND PALETTE OVERLAY
