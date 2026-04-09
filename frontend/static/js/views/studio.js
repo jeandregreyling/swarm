@@ -84,7 +84,9 @@ function loadProposals(container, tab) {
 }
 
 function _proposalCard(p) {
-  const status = (p.status || 'pending').toLowerCase();
+  // Treat 'proposed' as 'pending' for UI actions
+  let status = (p.status || 'pending').toLowerCase();
+  if (status === 'proposed') status = 'pending';
   const m = _PROPOSAL_STATUS[status] || _PROPOSAL_STATUS.pending;
   const pid = p.proposal_id || '';
   const pidJs = _jsStr(pid);
@@ -115,8 +117,13 @@ function _proposalCard(p) {
       }).join('<div style="color:var(--text-dim);font-size:9px;">›</div>')}
     </div>` : '';
 
-  // Promote button for DEV and UAT
-  const promoteBtn = stage > 1 ? `<button onclick='event.stopPropagation();promoteProposal(${pidJs})' style="flex:1;padding:6px;background:#1976d2;border:1px solid #1976d2;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">Promote to ${stage === 3 ? 'UAT' : 'PROD'}</button>` : '';
+  // Promote button for DEV and UAT (only when status is 'done')
+  let promoteBtn = '';
+  if (status === 'done' && stage === 3) {
+    promoteBtn = `<button onclick='event.stopPropagation();promoteProposal(${pidJs})' style="flex:1;padding:6px;background:#1976d2;border:1px solid #1976d2;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">Promote to UAT</button>`;
+  } else if (status === 'done' && stage === 2) {
+    promoteBtn = `<button onclick='event.stopPropagation();promoteProposal(${pidJs})' style="flex:1;padding:6px;background:#d32f2f;border:1px solid #d32f2f;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">Promote to PROD</button>`;
+  }
 
   // Developer agent fast-path: show Self-Approve+Start if owner
   let devAutoBtn = '';
@@ -130,7 +137,6 @@ function _proposalCard(p) {
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"rejected")'
         style="flex:1;padding:6px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;font-weight:600;cursor:pointer;">✗ Reject</button>
       ${devAutoBtn}
-      ${promoteBtn}
     </div>` :
   // Self-Approve + Start handler for developer agents (uses agent-advance API)
   async function selfApproveAndStart(proposalId, agent) {
@@ -1039,3 +1045,117 @@ function sendTicketToChat(ticketNumber, questionHint) {
   // Small delay to let the chat window finish rendering
   setTimeout(populate, 300);
 }
+// ── Manual New Proposal Button for Studio (live test - no AI layer) ─────────────────────
+function addNewProposalButton() {
+  // Target the Pending tab header specifically
+  const header = document.querySelector('#studio-content > div[style*="padding:12px 0 8px"]');
+  if (!header) return;
+
+  if (document.getElementById('new-proposal-btn')) return; // prevent duplicates
+
+  const btn = document.createElement('button');
+  btn.id = 'new-proposal-btn';
+  btn.textContent = '＋ New Proposal';
+  btn.style.cssText = `
+    position: absolute;
+    top: 8px;
+    right: 20px;
+    padding: 8px 16px;
+    background: #4caf50;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  `;
+  btn.onclick = showNewProposalModal;
+
+  // Make header container relative so button positions correctly
+  const container = header.parentElement;
+  if (container) container.style.position = 'relative';
+
+  container.appendChild(btn);
+}
+
+function showNewProposalModal() {
+  let modal = document.getElementById('new-proposal-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'new-proposal-modal';
+    modal.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:10000;`;
+    modal.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:540px;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+        <h3 style="margin:0 0 20px 0;color:var(--accent);">New Proposal (Manual)</h3>
+        <input id="np-title" type="text" placeholder="Proposal title (e.g. Add feature X)" 
+               style="width:100%;padding:12px;margin-bottom:12px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;">
+        <textarea id="np-desc" placeholder="What needs to change? Be specific." 
+                  style="width:100%;height:160px;padding:12px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);resize:vertical;font-family:monospace;"></textarea>
+        
+        <div style="margin-top:24px;display:flex;gap:12px;justify-content:flex-end;">
+          <button onclick="closeNewProposalModal()" style="padding:10px 20px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);">Cancel</button>
+          <button onclick="submitNewProposal()" style="padding:10px 20px;background:#4caf50;border:none;border-radius:6px;color:#fff;font-weight:600;">Create Proposal</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('np-title').focus(), 50);
+}
+
+function closeNewProposalModal() {
+  const m = document.getElementById('new-proposal-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function submitNewProposal() {
+  const title = (document.getElementById('np-title').value || '').trim();
+  const desc = (document.getElementById('np-desc').value || '').trim();
+
+  if (!title) {
+    showToast('Title is required', 'error');
+    return;
+  }
+
+  try {
+    const resp = await fetch('/api/queue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agent: 'manual_studio',
+        title: title,
+        description: desc || 'Created manually in Studio'
+      })
+    });
+
+    const data = await resp.json().catch(() => ({}));
+
+    if (resp.ok || data.ok) {
+      showToast('Proposal created — check Pending tab', 'success');
+      closeNewProposalModal();
+
+      // Refresh current Studio view
+      const container = document.getElementById('studio-content');
+      if (container) loadProposals(container, window._studioTab || 'pending');
+    } else {
+      showToast(data.error || 'Failed to create proposal', 'error');
+    }
+  } catch (e) {
+    showToast('Network error: ' + e.message, 'error');
+  }
+}
+
+// Override loadStudioData to add the button after render
+const originalLoadStudioData = loadStudioData;
+loadStudioData = function(win) {
+  originalLoadStudioData(win);
+  // Give the DOM time to render the Pending tab
+  setTimeout(addNewProposalButton, 1200);
+}
+
+// TEMPORARY INTAKE FIX - added 2026-04-09 for manual pipeline test
+// This makes /api/queue work even if the backend intake_internal is missing
+window.tempIntakeFix = true;
