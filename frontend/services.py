@@ -300,6 +300,12 @@ def update_proposal_status(proposal_id, status, ticket_number=''):
             (status, ticket_number, proposal_id)
         )
         conn.commit()
+
+        # ALM routing fix — ensure every status change is Vortex-logged for Studio visibility
+        try:
+            _safe_time_event('terminal_ui', 'proposal_status_updated_via_skill', 'proposal', f'{proposal_id}:{status}')
+        except Exception:
+            pass
     finally:
         conn.close()
 
