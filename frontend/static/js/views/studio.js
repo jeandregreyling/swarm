@@ -2,23 +2,75 @@
 // Extracted from terminal_base.html
 
 function loadStudioData(win) {
-  // Load proposals into the studio content area
   const content = win.el.querySelector('#studio-content');
-  const gov = win.el.querySelector('#studio-governance');
   if (!content) return;
-  if (gov) {
-    gov.textContent = 'ALM status: loading...';
-    fetch('/api/alm/status')
-      .then(r => r.json())
-      .then(alm => {
-        gov.innerHTML = `ALM: <strong>${alm.status === 'enforced' ? 'enforced' : 'warn'}</strong> · ` +
-          `Sniffles: <strong>${alm.sniffles_enabled ? 'enabled' : 'disabled'}</strong> · ` +
-          `Pending: <strong>${alm.work_proposals?.pending || 0}</strong>`;
-      })
-      .catch(() => { gov.textContent = 'ALM status: unavailable'; });
-  }
+
+  // Clean header with + New Proposal right next to Pending tab
+  const headerHTML = `
+    <div style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+      <div style="display:flex;gap:12px;align-items:center;">
+        <h3 style="margin:0;font-size:13px;">Studio — Proposals</h3>
+        
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button id="studio-tab-pending"
+            onclick="studioSetTab('pending')"
+            style="padding:4px 10px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#000;font-size:9px;font-weight:600;cursor:pointer;">Pending</button>
+          <button id="studio-tab-in_progress"
+            onclick="studioSetTab('in_progress')"
+            style="padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:9px;font-weight:600;cursor:pointer;">In Progress</button>
+          <button id="studio-tab-all"
+            onclick="studioSetTab('all')"
+            style="padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:9px;font-weight:600;cursor:pointer;">History</button>
+        </div>
+
+        <!-- New Proposal button placed directly next to tabs -->
+        <button onclick="createNewProposalFromStudio()" 
+          style="padding:5px 14px;background:var(--accent);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">
+          + New Proposal
+        </button>
+      </div>
+      
+      <button onclick="studioSetTab(window._studioTab || 'pending')" 
+        style="padding:4px 8px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:9px;cursor:pointer;">↻</button>
+    </div>`;
+
+  // Replace the old header + content area
+  content.parentElement.innerHTML = headerHTML + content.outerHTML;
+
+  // Ensure the function exists and is not overwritten
+  window.createNewProposalFromStudio = createNewProposalFromStudio;
+
   window._studioTab = window._studioTab || 'pending';
   studioSetTab(window._studioTab);
+// Handler for New Proposal button in Studio header
+function createNewProposalFromStudio() {
+  const title = prompt('New proposal title:');
+  if (!title || !title.trim()) return;
+  
+  const description = prompt('Description (optional):', '');
+  
+  fetch('/api/queue', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: title.trim(),
+      description: (description || '').trim(),
+      agent: 'ghost',
+      source_type: 'studio'
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      showToast('Proposal created — check Pending tab', 'success');
+      const container = document.getElementById('studio-content');
+      if (container) loadProposals(container, window._studioTab || 'pending');
+    } else {
+      showToast(data.error || 'Failed to create proposal', 'error');
+    }
+  })
+  .catch(e => showToast('Error: ' + e.message, 'error'));
+}
 }
 
 // ── Studio status palette (shared) ──────────────────────────────────────────
@@ -47,36 +99,48 @@ function studioSetTab(tab) {
 
 function loadProposals(container, tab) {
   const mode = tab || window._studioTab || 'pending';
-  // Accept both 'pending' and 'proposed' as pending in UI
-  const url = mode === 'all'
-    ? '/api/work-proposals?status=done&status=executed&status=rejected&limit=400'
-    : mode === 'in_progress'
-      ? '/api/work-proposals?status=in_progress&status=approved&limit=200'
-      : '/api/work-proposals?status=pending&status=proposed&limit=200';
+  let url;
+
+  if (mode === 'all') {
+    url = '/api/work-proposals?limit=400';  // history gets everything
+  } else if (mode === 'in_progress') {
+    url = '/api/work-proposals?status=in_progress&status=approved&limit=200';
+  } else {
+    url = '/api/work-proposals?status=pending&status=proposed&limit=200';
+  }
 
   fetch(url)
     .then(r => r.json())
     .then(data => {
       let proposals = data.proposals || [];
-      // Merge 'proposed' into 'pending' for UI
+
+      // Strict client-side filtering so tabs stay clean
       if (mode === 'pending') {
-        proposals = proposals.filter(p => (p.status === 'pending' || p.status === 'proposed'));
+        proposals = proposals.filter(p => ['pending', 'proposed'].includes((p.status || '').toLowerCase()));
+      } else if (mode === 'in_progress') {
+        proposals = proposals.filter(p => ['in_progress', 'approved'].includes((p.status || '').toLowerCase()));
+      } else if (mode === 'all') {
+        // History can include done/executed/rejected
+        proposals = proposals.filter(p => !['pending', 'proposed'].includes((p.status || '').toLowerCase()));
       }
+
       window._proposals = proposals;
+
       if (!proposals.length) {
-        container.innerHTML = `
-          <div style="text-align:center;padding:40px 20px;color:var(--text-dim);">
-            <div style="font-size:32px;margin-bottom:12px;">${mode==='all'?'📋':'📭'}</div>
-            <div style="font-size:14px;font-weight:600;">${mode==='all'?'No completed or rejected proposals yet':mode==='in_progress'?'No approved or in-progress proposals':'No pending proposals'}</div>
-          </div>`;
+        container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-dim);">
+          <div style="font-size:32px;margin-bottom:12px;">${mode==='all'?'📋':'📭'}</div>
+          <div style="font-size:14px;font-weight:600;">No ${mode} proposals</div>
+        </div>`;
         return;
       }
-      const labels = { pending:'Pending Review', in_progress:'In Progress & Approved', all:'History' };
+
+      const labels = { pending: 'Pending Review', in_progress: 'In Progress & Approved', all: 'History' };
       container.innerHTML = `
         <div style="padding:12px 0 8px;font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
-          ${proposals.length} Proposal${proposals.length!==1?'s':''} — ${labels[mode]||mode}
+          ${proposals.length} Proposal${proposals.length !== 1 ? 's' : ''} — ${labels[mode] || mode}
         </div>
-        ${proposals.map(p => _proposalCard(p)).join('')}`;
+        ${proposals.map(p => _proposalCard(p)).join('')}
+      `;
     })
     .catch(e => {
       container.innerHTML = `<div style="color:#f77;padding:20px;font-size:12px;">Error: ${e.message}</div>`;
@@ -181,12 +245,12 @@ function _proposalCard(p) {
       ${promoteBtn}
     </div>` : '';
   const deleteBtn = `
-    <button onclick='event.stopPropagation();deleteProposalSafe(${pidJs})'
-      title="Delete proposal"
-      aria-label="Delete proposal"
-      style="margin-left:6px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:13px;font-weight:700;cursor:pointer;flex:0 0 auto;">🗑</button>`;
+    <button data-proposal-id="${pid}"
+            class="delete-btn"
+            onclick="event.stopPropagation();deleteProposalSafe('${pid}')"
+            style="margin-left:6px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:13px;font-weight:700;cursor:pointer;flex:0 0 auto;">🗑</button>`;
 
-  return `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:6px;padding:14px;margin-bottom:10px;opacity:${status==='rejected'?'0.6':'1'};cursor:pointer;" onclick='openProposalDetail(${pidJs})'>
+  return `<div data-proposal-id="${pid}" style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:6px;padding:14px;margin-bottom:10px;opacity:${status==='rejected'?'0.6':'1'};cursor:pointer;" onclick='openProposalDetail(${pidJs})'>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
       <div style="flex:1;">
         <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${title}</div>
@@ -275,15 +339,41 @@ async function deleteProposalSafe(proposalId, closeModal = false) {
     showToast('No proposal ID', 'error');
     return;
   }
-  const confirmed = confirm(`Delete proposal ${proposalId}? This cannot be undone.`);
-  if (!confirmed) return;
+
+  const card = document.querySelector(`[data-proposal-id="${proposalId}"]`);
+  if (!card) return;
+
+  const deleteBtn = card.querySelector('.delete-btn');
+  if (!deleteBtn) return;
+
+  if (deleteBtn.textContent === '🗑') {
+    // First click → turn into Confirm
+    deleteBtn.textContent = 'Confirm';
+    deleteBtn.style.background = '#f4433622';
+    deleteBtn.style.borderColor = '#f44336';
+    deleteBtn.style.color = '#f44336';
+    setTimeout(() => {
+      if (deleteBtn.textContent === 'Confirm') {
+        deleteBtn.textContent = '🗑';
+        deleteBtn.style.background = '';
+        deleteBtn.style.borderColor = '';
+        deleteBtn.style.color = '';
+      }
+    }, 4000); // revert after 4 seconds
+    return;
+  }
+
+  // Second click → actually delete
   try {
     const result = await deleteProposal(proposalId, closeModal);
-    console.log('Delete succeeded:', result);
+    if (result.ok) {
+      showToast('Proposal deleted', 'success');
+      // Refresh current tab
+      const container = document.getElementById('studio-content');
+      if (container) loadProposals(container, window._studioTab || 'pending');
+    }
   } catch (e) {
-    const msg = e.message || String(e);
-    console.error('Delete failed:', msg);
-    showToast('Delete failed: ' + msg, 'error');
+    showToast('Delete failed: ' + (e.message || e), 'error');
   }
 }
 
@@ -1057,57 +1147,6 @@ function addNewProposalButton() {
   btn.id = 'new-proposal-btn';
   btn.textContent = '＋ New Proposal';
   btn.style.cssText = `
-    position: absolute;
-    top: 8px;
-    right: 20px;
-    padding: 8px 16px;
-    background: #4caf50;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-    z-index: 20;
-    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-  `;
-  btn.onclick = showNewProposalModal;
-
-  // Make header container relative so button positions correctly
-  const container = header.parentElement;
-  if (container) container.style.position = 'relative';
-
-  container.appendChild(btn);
-}
-
-function showNewProposalModal() {
-  let modal = document.getElementById('new-proposal-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'new-proposal-modal';
-    modal.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:10000;`;
-    modal.innerHTML = `
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:540px;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-        <h3 style="margin:0 0 20px 0;color:var(--accent);">New Proposal (Manual)</h3>
-        <input id="np-title" type="text" placeholder="Proposal title (e.g. Add feature X)" 
-               style="width:100%;padding:12px;margin-bottom:12px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;">
-        <textarea id="np-desc" placeholder="What needs to change? Be specific." 
-                  style="width:100%;height:160px;padding:12px;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);resize:vertical;font-family:monospace;"></textarea>
-        
-        <div style="margin-top:24px;display:flex;gap:12px;justify-content:flex-end;">
-          <button onclick="closeNewProposalModal()" style="padding:10px 20px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);">Cancel</button>
-          <button onclick="submitNewProposal()" style="padding:10px 20px;background:#4caf50;border:none;border-radius:6px;color:#fff;font-weight:600;">Create Proposal</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-  }
-  modal.style.display = 'flex';
-  setTimeout(() => document.getElementById('np-title').focus(), 50);
-}
-
-function closeNewProposalModal() {
-  const m = document.getElementById('new-proposal-modal');
   if (m) m.style.display = 'none';
 }
 
