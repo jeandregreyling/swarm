@@ -37,6 +37,25 @@ def intake():
         return jsonify({"ok": False, "error": str(e)})
 
 print("[Proposals] Blueprint loaded with simple working routes")
+@proposals_bp.route("/api/work-proposals/<proposal_id>", methods=["DELETE"])
+def delete_proposal(proposal_id):
+    try:
+        conn = sqlite3.connect("swarm.db")
+        c = conn.cursor()
+        c.execute("DELETE FROM work_proposals WHERE proposal_id = ?", (proposal_id,))
+        deleted = c.rowcount
+        conn.commit()
+        conn.close()
+        
+        if deleted == 0:
+            return jsonify({"ok": False, "error": "proposal not found"}), 404
+            
+        # Optional: also clean any linked queue entry if you want
+        # c.execute("DELETE FROM queue WHERE proposal_id = ?", (proposal_id,))
+        
+        return jsonify({"ok": True, "deleted": deleted})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @proposals_bp.route("/api/work-proposals/<proposal_id>", methods=["PATCH"])
