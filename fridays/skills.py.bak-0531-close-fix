@@ -1,130 +1,28 @@
-import sys
-from pathlib import Path
-import fnmatch
-import re
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/lib/system')
-sys.path.insert(0, '/home/seven/swarm/lib/email')
-sys.path.insert(0, '/home/seven/swarm/core/pipeline')
-sys.path.insert(0, '/home/seven/swarm/agents/specialists')
-
-
-# ── Registry ──────────────────────────────────────────────────────────────────
-REGISTRY = {
-    'shell': {'description': 'Run a whitelisted shell command.', 'trust_level': 0},
-    'browse': {'description': 'Fetch a URL with headless Chromium.', 'trust_level': 0},
-    'file_read': {'description': 'Read a file from a sandpit.', 'trust_level': 0},
-    'file_write': {'description': 'Write content to your sandpit.', 'trust_level': 1},
-    'search': {'description': 'DuckDuckGo web search.', 'trust_level': 0},
-    'remind': {'description': 'Send Ghost an immediate reminder.', 'trust_level': 0},
-    'schedule': {'description': 'Create a scheduled task.', 'trust_level': 0},
-    'list': {'description': 'List all available skills.', 'trust_level': 0},
-    'housekeeping': {'description': 'Run Librarian housekeeping.', 'trust_level': 0},
-    'proposals': {'description': 'Check proposals.', 'trust_level': 0},
-    'memory_search': {'description': 'Search swarm memory.', 'trust_level': 0},
-    'ticket_create': {'description': 'Create internal ticket.', 'trust_level': 1},
-    'alm_create_proposal': {'description': 'Create ALM work proposal.', 'trust_level': 1},
-    'alm_self_approve': {'description': 'Self-approve proposal and set to in_progress.', 'trust_level': 1},
-    'alm_complete': {'description': 'Mark proposal as done.', 'trust_level': 1},
-    'alm_vortex': {'description': 'Create Vortex checkpoint.', 'trust_level': 1},
-    'fs_readonly': {'description': 'Read-only filesystem helper.', 'trust_level': 0},
-    'fs_write': {'description': 'Write any file in swarm repo.', 'trust_level': 2},
-    'fs_patch': {'description': 'Replace exact string in a file (robust version).', 'trust_level': 2},
-    'knowledge_search': {'description': 'Search knowledge library.', 'trust_level': 0},
-    'ui_css_edit_checklist': {'description': 'Show UI/CSS edit checklist.', 'trust_level': 0},
-}
-
-# ── ALM Helper (critical for Eleven) ─────────────────────────────────────────
-def _normalize_proposal_id(raw_id):
-    """Strip INTERNAL-ELEVEN- prefixes so Eleven's IDs work cleanly."""
-    if isinstance(raw_id, str):
-        raw_id = raw_id.replace("INTERNAL-ELEVEN-", "").replace("INTERNAL-", "")
-    return str(raw_id).strip()
-
-# ── Core Skill Handlers (hardened versions) ─────────────────────────────────
-def _skill_alm_self_approve(args, agent, **_):
-    raw = (args or '').strip()
-    proposal_id = _normalize_proposal_id(raw)
-    vortex_label = ''
-    if ' ' in raw:
-        vortex_label = raw.split(None, 1)[1].strip()
-
-    try:
-        import requests as _req
-        resp = _req.post(
-            f'http://127.0.0.1:5050/api/work-proposals/{proposal_id}/agent-advance',
-            json={'agent': agent, 'action': 'start', 'vortex_label': vortex_label},
-            timeout=10,
-        )
-        data = resp.json()
-        if data.get('ok'):
-            from frontend.services import _safe_workflow_checkpoint
-            _safe_workflow_checkpoint(label=f'{proposal_id}-start', agent=agent, description=f'Self-approve {proposal_id}')
-            return True, f'Proposal {proposal_id} is now IN PROGRESS.'
-        return False, f'agent-advance failed: {data.get("error", resp.text[:200])}'
-    except Exception as e:
-        return False, f'alm_self_approve error: {e}'
-
-def _skill_alm_complete(args, agent, **_):
-    raw = (args or '').strip()
-    proposal_id = _normalize_proposal_id(raw)
-
-    try:
-        import requests as _req
-        resp = _req.post(
-            f'http://127.0.0.1:5050/api/work-proposals/{proposal_id}/agent-advance',
-            json={'agent': agent, 'action': 'complete'},
-            timeout=10,
-        )
-        data = resp.json()
-        if data.get('ok'):
-            try:
-                from core.time_machine import time_wizard
-                time_wizard.create_workflow_checkpoint(label=f'{proposal_id}-complete', agent=agent, description=f'ALM complete {proposal_id}')
-            except:
-                pass
-            return True, f'Proposal {proposal_id} marked DONE.'
-        return False, f'alm_complete failed: {data.get("error", resp.text[:200])}'
-    except Exception as e:
-        return False, f'alm_complete error: {e}'
-
-def _skill_fs_patch(args, agent, **_):
-    raw = (args or '').strip()
-    if '<<<OLD>>>' not in raw or '<<<NEW>>>' not in raw:
-        return False, 'Usage: SKILL fs_patch <path> <<<OLD>>>old text<<<NEW>>>new text'
-    path_and_rest, new_text = raw.split('<<<NEW>>>', 1)
-    if '<<<OLD>>>' not in path_and_rest:
-        return False, 'Missing <<<OLD>>> marker'
-    path_part, old_text = path_and_rest.split('<<<OLD>>>', 1)
-    rel = path_part.strip()
-
-    target = _fs_safe_path(rel)
-    if not target or not target.exists() or not target.is_file():
-        return False, f'File not found: {rel}'
-
-    try:
-        # Robust live read to prevent mismatch
-        ok, live_content = _skill_fs_readonly(f"read {rel}", agent=agent)
-        original = live_content if ok else target.read_text(encoding='utf-8', errors='replace')
-
-        if old_text not in original:
-            return False, f'Old text not found in {rel}.'
-        patched = original.replace(old_text, new_text, 1)
-        target.write_text(patched, encoding='utf-8')
-        return True, f'Patched {rel} successfully.'
-    except Exception as e:
-        return False, f'fs_patch failed: {e}'
-
-# --- Other handlers (stubbed for completeness - keep your original implementations) ---
-def _skill_fs_readonly(args, agent, **_):
-    # Keep your original _skill_fs_readonly implementation here
-    return False, "fs_readonly stub - replace with your full version if needed"
-
-
-
 """
-fridays/skills.py — Seven's Swarm
-Hardened ALM cycle for reliable proposal → self_approve → fs_patch → complete flow.
+fridays/skills.py — Seven's Swarm (RL-021)
+═══════════════════════════════════════════════════════════════════════════════
+Skills framework. Central registry and dispatcher for all Fridays action-layer
+capabilities. Agents and Ghost invoke skills by name.
+
+Available skills:
+  shell      — run a whitelisted shell command (via shell_agent)
+  browse     — fetch a URL with Playwright headless browser (via browser_agent)
+  file_read  — read a file from a sandpit (via file_agent)
+  file_write — write a file to an agent's sandpit (via file_agent)
+  search     — run a DuckDuckGo web search and return snippets
+  remind     — send Ghost a plain reminder email immediately
+  schedule   — create a scheduled task (delegates to scheduler)
+
+Ghost can invoke skills by email or Telegram:
+  SKILL shell df -h
+  SKILL browse https://news.ycombinator.com
+  SKILL file_read gemma/notes.txt
+  SKILL search latest Python 3.13 features
+  SKILL remind Check lease renewal
+  SKILL schedule daily 09:00 QUESTION What is today's news?
+
+Every skill call is logged to ghost_circle.
+═══════════════════════════════════════════════════════════════════════════════
 """
 
 import sys
@@ -135,137 +33,186 @@ from pathlib import Path
 from datetime import datetime
 
 sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/lib/system')
+sys.path.insert(0, '/home/seven/swarm/lib/email')
+sys.path.insert(0, '/home/seven/swarm/core/pipeline')
+sys.path.insert(0, '/home/seven/swarm/agents/specialists')
 
 logger = logging.getLogger('seven.skills')
 
 # ── Registry ──────────────────────────────────────────────────────────────────
+# Each entry: name → {description, trust_level, usage}
+# trust_level: 0=read-only, 1=write-own-sandpit, 2=write-shared, 4=system
+
 REGISTRY = {
-    'alm_create_proposal': {'description': 'Create ALM work proposal.', 'trust_level': 1},
-    'alm_self_approve': {'description': 'Self-approve proposal.', 'trust_level': 1},
-    'alm_complete': {'description': 'Mark proposal as done.', 'trust_level': 1},
-    'alm_vortex': {'description': 'Create Vortex checkpoint.', 'trust_level': 1},
-    'fs_readonly': {'description': 'Read-only filesystem helper.', 'trust_level': 0},
-    'fs_write': {'description': 'Write any file.', 'trust_level': 2},
-    'fs_patch': {'description': 'Replace exact string (robust).', 'trust_level': 2},
-    # Add your other skills here if needed (shell, browse, etc.)
+    'shell': {
+        'description': 'Run a whitelisted shell command. Output returned and emailed to Ghost.',
+        'trust_level': 0,
+        'usage': 'SKILL shell <command>',
+        'example': 'SKILL shell df -h',
+    },
+    'browse': {
+        'description': 'Fetch a URL with headless Chromium. Returns page text. Needs a full URL — use search for questions.',
+        'trust_level': 0,
+        'usage': 'SKILL browse <https://...>',
+        'example': 'SKILL browse https://news.ycombinator.com',
+    },
+    'file_read': {
+        'description': 'Read a file from a sandpit. Format: agent/filename.txt',
+        'trust_level': 0,
+        'usage': 'SKILL file_read <agent/filename>',
+        'example': 'SKILL file_read gemma/notes.txt',
+    },
+    'file_write': {
+        'description': 'Write content to your sandpit.',
+        'trust_level': 1,
+        'usage': 'SKILL file_write <agent/filename> <content>',
+        'example': 'SKILL file_write gemma/notes.txt Hello world',
+    },
+    'search': {
+        'description': 'DuckDuckGo web search. Returns top snippets.',
+        'trust_level': 0,
+        'usage': 'SKILL search <query>',
+        'example': 'SKILL search Python 3.13 new features',
+    },
+    'remind': {
+        'description': 'Send Ghost an immediate plain-text reminder email.',
+        'trust_level': 0,
+        'usage': 'SKILL remind <message>',
+        'example': 'SKILL remind Check the lease renewal deadline',
+    },
+    'schedule': {
+        'description': 'Create a scheduled task. Same syntax as SCHEDULE command.',
+        'trust_level': 0,
+        'usage': 'SKILL schedule <schedule> <action> <data>',
+        'example': 'SKILL schedule daily 09:00 QUESTION What is today\'s news?',
+    },
+    'list': {
+        'description': 'List all available skills.',
+        'trust_level': 0,
+        'usage': 'SKILL list',
+        'example': 'SKILL list',
+    },
+    'housekeeping': {
+        'description': 'Run the Librarian housekeeping cycle: archive old memories, remove duplicates, trigger agent play time.',
+        'trust_level': 0,
+        'usage': 'SKILL housekeeping',
+        'example': 'SKILL housekeeping',
+    },
+    'proposals': {
+        'description': 'Check sandpits/shared/proposals/ for new agent proposals and notify Ghost.',
+        'trust_level': 0,
+        'usage': 'SKILL proposals',
+        'example': 'SKILL proposals',
+    },
+    'memory_search': {
+        'description': 'Search the swarm memory pools. Returns top matches.',
+        'trust_level': 0,
+        'usage': 'SKILL memory_search <query>',
+        'example': 'SKILL memory_search SAP retro accounting',
+    },
+    'ticket_create': {
+        'description': 'Create an internal ticket/proposal. Format: <title> || <description>',
+        'trust_level': 1,
+        'usage': 'SKILL ticket_create <title> || <description>',
+        'example': 'SKILL ticket_create Validate queue edge-case || Run sandbox test for duplicate queue ids and report findings',
+    },
+    'alm_create_proposal': {
+        'description': 'Create an ALM work proposal/ticket. Accepts quoted title+description or <title> || <description>.',
+        'trust_level': 1,
+        'usage': 'SKILL alm_create_proposal "<title>" "<description>"',
+        'example': 'SKILL alm_create_proposal "Per-window theme propagation" "Ensure windows inherit app theme at creation and support local overrides."',
+    },
+    'alm_self_approve': {
+        'description': 'Self-approve your own proposal and set it to in_progress. Creates a Vortex checkpoint. No Ghost approval needed.',
+        'trust_level': 1,
+        'usage': 'SKILL alm_self_approve <proposal_id> [vortex_label]',
+        'example': 'SKILL alm_self_approve WP-0042 before-banner-patch',
+    },
+    'alm_complete': {
+        'description': 'Mark your own in_progress proposal as done (awaiting Ghost confirmation to close).',
+        'trust_level': 1,
+        'usage': 'SKILL alm_complete <proposal_id>',
+        'example': 'SKILL alm_complete WP-0042',
+    },
+    'alm_vortex': {
+        'description': 'Create a named Vortex (time machine) checkpoint. Call before making any file changes.',
+        'trust_level': 1,
+        'usage': 'SKILL alm_vortex <label>',
+        'example': 'SKILL alm_vortex before-banner-redesign',
+    },
+    'fs_readonly': {
+        'description': 'Read-only filesystem helper for workspace discovery (ls/find/read/head/tail/lines).',
+        'trust_level': 0,
+        'usage': 'SKILL fs_readonly <ls|find|read|head|tail|lines> <path> [args]',
+        'example': 'SKILL fs_readonly lines frontend/terminal.py 5310 5360',
+    },
+    'fs_write': {
+        'description': 'Write (overwrite) any file within the swarm repo. Creates parent dirs as needed.',
+        'trust_level': 2,
+        'usage': 'SKILL fs_write <path> <content>',
+        'example': 'SKILL fs_write sandpits/ten/draft.py print("hello")',
+    },
+    'fs_patch': {
+        'description': 'Replace an exact string in a file (first occurrence). Safe targeted edit without full rewrite.',
+        'trust_level': 2,
+        'usage': 'SKILL fs_patch <path> <<<OLD>>>exact old text<<<NEW>>>replacement text',
+        'example': 'SKILL fs_patch utils/config.py <<<OLD>>>TEN_MODEL = \'gpt-4.1\'<<<NEW>>>TEN_MODEL = \'gpt-4.1-mini\'',
+    },
+    'knowledge_search': {
+        'description': 'Search the consultant knowledge library (SAP HCM, ABAP, emails, PDFs, SAP notes).',
+        'trust_level': 0,
+        'usage': 'SKILL knowledge_search <query>',
+        'example': 'SKILL knowledge_search ECP payroll integration schema',
+    },
+        'ui_css_edit_checklist': {
+            'description': 'Show the global checklist for correct UI/CSS edit workflow (selectors, patching, verification).',
+            'trust_level': 0,
+            'usage': 'SKILL ui_css_edit_checklist',
+            'example': 'SKILL ui_css_edit_checklist',
+        },
 }
 
-# ── ALM Helper ───────────────────────────────────────────────────────────────
-def _normalize_proposal_id(raw_id):
-    if isinstance(raw_id, str):
-        raw_id = raw_id.replace("INTERNAL-ELEVEN-", "").replace("INTERNAL-", "")
-    return str(raw_id).strip()
 
-# ── Hardened ALM & Patch Handlers ────────────────────────────────────────────
-def _skill_alm_self_approve(args, agent, **_):
-    raw = (args or '').strip()
-    proposal_id = _normalize_proposal_id(raw)
-    vortex_label = raw.split(None, 1)[1].strip() if ' ' in raw else ''
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+# Skills that should create a work_proposal entry when they succeed
+_PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule', 'fs_write', 'fs_patch'}
+
+
+def _log(skill_name, agent, args_preview, result_preview, success):
     try:
-        import requests as _req
-        resp = _req.post(
-            f'http://127.0.0.1:5050/api/work-proposals/{proposal_id}/agent-advance',
-            json={'agent': agent, 'action': 'start', 'vortex_label': vortex_label},
-            timeout=10
+        from database import get_connection
+        conn = get_connection()
+        status = 'ok' if success else 'FAILED'
+        conn.execute(
+            """INSERT INTO ghost_circle (entry_type, source, content, severity)
+               VALUES ('skill_call', ?, ?, ?)""",
+            (agent,
+             f'[{status}] {skill_name}({args_preview[:120]}) → {result_preview[:200]}',
+             'info' if success else 'warning')
         )
-        data = resp.json()
-        if data.get('ok'):
-            from frontend.services import _safe_workflow_checkpoint
-            _safe_workflow_checkpoint(label=f'{proposal_id}-start', agent=agent, description=f'Self-approve {proposal_id}')
-            return True, f'Proposal {proposal_id} is now IN PROGRESS.'
-        return False, f'agent-advance failed: {data.get("error", resp.text[:200])}'
+        conn.commit()
+        conn.close()
     except Exception as e:
-        return False, f'alm_self_approve error: {e}'
+        logger.warning(f'[Skills] ghost_circle log failed: {e}')
 
-def _skill_alm_complete(args, agent, **_):
-    raw = (args or '').strip()
-    proposal_id = _normalize_proposal_id(raw)
+
+def _log_as_internal_proposal(skill_name, agent, args_preview, result_preview):
+    """
+    Log a successful write-type skill call as an internal work_proposal and queue entry.
+    Called automatically after file_write, shell, and schedule succeed.
+    This ensures every Fridays-executed change is a first-class citizen in the queue
+    and visible to all agents.
+    """
     try:
-        import requests as _req
-        resp = _req.post(
-            f'http://127.0.0.1:5050/api/work-proposals/{proposal_id}/agent-advance',
-            json={'agent': agent, 'action': 'complete'},
-            timeout=10
-        )
-        data = resp.json()
-        if data.get('ok'):
-            try:
-                from core.time_machine import time_wizard
-                time_wizard.create_workflow_checkpoint(label=f'{proposal_id}-complete', agent=agent, description=f'Complete {proposal_id}')
-            except:
-                pass
-            return True, f'Proposal {proposal_id} marked DONE.'
-        return False, f'alm_complete failed: {data.get("error", resp.text[:200])}'
+        from queue_manager import intake_internal
+        title = f'[{skill_name}] {args_preview[:80]}'
+        description = f'Agent {agent} executed skill `{skill_name}`.\nArgs: {args_preview[:300]}\nResult: {result_preview[:300]}'
+        intake_internal(agent, title, description, priority=5)
     except Exception as e:
-        return False, f'alm_complete error: {e}'
-
-def _skill_fs_patch(args, agent, **_):
-    raw = (args or '').strip()
-    if '<<<OLD>>>' not in raw or '<<<NEW>>>' not in raw:
-        return False, 'Usage: SKILL fs_patch <path> <<<OLD>>>old<<<NEW>>>new'
-    path_and_rest, new_text = raw.split('<<<NEW>>>', 1)
-    if '<<<OLD>>>' not in path_and_rest:
-        return False, 'Missing <<<OLD>>> marker'
-    path_part, old_text = path_and_rest.split('<<<OLD>>>', 1)
-    rel = path_part.strip()
-
-    target = _fs_safe_path(rel)   # assume _fs_safe_path exists from your original
-    if not target or not target.exists() or not target.is_file():
-        return False, f'File not found: {rel}'
-
-    try:
-        ok, live = _skill_fs_readonly(f"read {rel}", agent=agent)
-        original = live if ok else target.read_text(encoding='utf-8', errors='replace')
-        if old_text not in original:
-            return False, f'Old text not found in {rel}'
-        patched = original.replace(old_text, new_text, 1)
-        target.write_text(patched, encoding='utf-8')
-        return True, f'Patched {rel} successfully.'
-    except Exception as e:
-        return False, f'fs_patch failed: {e}'
-
-# Stub for fs_readonly and _fs_safe_path (replace with your full original if needed)
-def _skill_fs_readonly(args, agent, **_):
-    return False, "fs_readonly stub - implement full version if needed"
-
-def _fs_safe_path(rel):
-    return Path('/home/seven/swarm') / rel   # simple safe path for now
-
-# ── Dispatch Table ───────────────────────────────────────────────────────────
-_HANDLERS = {
-    'alm_self_approve': _skill_alm_self_approve,
-    'alm_complete': _skill_alm_complete,
-    'fs_patch': _skill_fs_patch,
-    'fs_readonly': _skill_fs_readonly,
-    # Add any other skills you need here from your original file
-}
-
-def call(skill_name, args='', agent='ghost'):
-    skill_name = skill_name.strip().lower()
-    if skill_name not in _HANDLERS:
-        return False, f'Unknown skill: {skill_name}'
-    try:
-        success, output = _HANDLERS[skill_name](args=args, agent=agent)
-        return success, output
-    except Exception as e:
-        return False, f'Skill {skill_name} error: {e}'
-
-# Keep any other functions (parse_skill_command, list_skills, test(), etc.) from your original file
-
-# Move _HANDLERS and REGISTRY assignments to after all function definitions
-
-# ── Central dispatch ──────────────────────────────────────────────────────────
-def call(skill_name, args='', agent='ghost'):
-    skill_name = skill_name.strip().lower()
-    if skill_name not in _HANDLERS:
-        return False, f'Unknown skill: {skill_name}'
-    try:
-        success, output = _HANDLERS[skill_name](args=args, agent=agent)
-        return success, output
-    except Exception as e:
-        return False, f'Skill error: {e}'
-
-
+        logger.warning(f'[Skills] work_proposal log failed: {e}')
 
 
 # ── Skill handlers ────────────────────────────────────────────────────────────
@@ -308,61 +255,77 @@ def _skill_file_read(args, agent, **_):
     return ok, content
 
 
-def _skill_alm_self_approve(args, agent, **_):
-    """Advance own proposal: pending/approved -> in_progress with Vortex checkpoint."""
-    raw = (args or '').strip()
-    proposal_id = _normalize_proposal_id(raw)
-    vortex_label = ''
-    if ' ' in raw:
-        vortex_label = raw.split(None, 1)[1].strip()
-    try:
-        import requests as _req
-        resp = _req.post(
-            f'http://127.0.0.1:5050/api/work-proposals/{proposal_id}/agent-advance',
-            json={'agent': agent, 'action': 'start', 'vortex_label': vortex_label},
-            timeout=10,
-        )
-        data = resp.json()
-        if data.get('ok'):
-            from frontend.services import _safe_workflow_checkpoint
-            _safe_workflow_checkpoint(
-                label=f'{proposal_id}-start',
-                agent=agent,
-                description=f'Self-approve + start {proposal_id}'
-            )
-            return True, f'Proposal {proposal_id} is now IN PROGRESS.'
-        return False, f'agent-advance failed: {data.get("error", resp.text[:200])}'
-    except Exception as e:
-        return False, f'alm_self_approve error: {e}'
+def _skill_file_write(args, agent, **_):
+    from fridays.file_agent import write_sandpit
+    parts = args.strip().split(None, 1)
+    if len(parts) < 2:
+        return False, 'Usage: SKILL file_write <agent/filename> <content>'
+    path_part, content = parts[0], parts[1]
+    path_parts = path_part.split('/', 1)
+    if len(path_parts) == 2:
+        sandpit_agent, filename = path_parts
+    else:
+        sandpit_agent, filename = agent, path_part
+    return write_sandpit(sandpit_agent, filename, content)
 
 
-def _skill_alm_complete(args, agent, **_):
-    """Mark own in_progress proposal as done."""
-    raw = (args or '').strip()
-    proposal_id = _normalize_proposal_id(raw)
+def _skill_search(args, agent, **_):
+    query = args.strip()
+    if not query:
+        return False, 'No query provided. Usage: SKILL search <query>'
     try:
-        import requests as _req
-        resp = _req.post(
-            f'http://127.0.0.1:5050/api/work-proposals/{proposal_id}/agent-advance',
-            json={'agent': agent, 'action': 'complete'},
-            timeout=10,
-        )
-        data = resp.json()
-        if data.get('ok'):
-            # Vortex on complete
-            try:
-                from core.time_machine import time_wizard
-                time_wizard.create_workflow_checkpoint(
-                    label=f'{proposal_id}-complete',
-                    agent=agent,
-                    description=f'ALM complete for {proposal_id}'
-                )
-            except:
-                pass
-            return True, f'Proposal {proposal_id} marked DONE.'
-        return False, f'alm_complete failed: {data.get("error", resp.text[:200])}'
+        from internet import search_web
+        output = search_web(query, max_results=5)
+        return True, output or 'No results found.'
     except Exception as e:
-        return False, f'alm_complete error: {e}'
+        return False, f'Search failed: {e}'
+
+
+def _skill_remind(args, agent, **_):
+    from config import GHOST_EMAIL
+    from email_handler import send_reply
+    message = args.strip()
+    if not message:
+        return False, 'No message provided. Usage: SKILL remind <message>'
+    send_reply(
+        to_address=GHOST_EMAIL,
+        subject='[Swarm] Reminder',
+        body=f'[Skills — remind]\n\n{message}\n'
+    )
+    return True, f'Reminder sent: {message[:80]}'
+
+
+def _skill_schedule(args, agent, **_):
+    from fridays.scheduler import parse_schedule_command, add_task
+    cmd = f'SCHEDULE {args.strip()}'
+    parsed = parse_schedule_command(cmd)
+    if not parsed:
+        return False, (
+            'Could not parse schedule. Format: SKILL schedule <schedule> <action> <data>\n'
+            'Example: SKILL schedule daily 09:00 QUESTION What is today\'s news?'
+        )
+    name, schedule, action_type, action_data = parsed
+    task_id = add_task(name, schedule, action_type, action_data, created_by=agent)
+    return True, f'Task #{task_id} scheduled: {name} | {schedule} | next run computed.'
+
+
+def _skill_list(args, agent, **_):
+    lines = ['Available skills:\n']
+    for name, meta in REGISTRY.items():
+        lines.append(f'  {name:12s} — {meta["description"]}')
+        lines.append(f'               Usage:   {meta["usage"]}')
+        lines.append(f'               Example: {meta["example"]}\n')
+    return True, '\n'.join(lines)
+
+
+def _skill_housekeeping(args, agent, **_):
+    try:
+        from housekeeping import run_housekeeping
+        run_housekeeping()
+        return True, 'Housekeeping complete — archives cleaned, duplicates removed, play time triggered.'
+    except Exception as e:
+        return False, f'Housekeeping error: {e}'
+
 
 def _skill_proposals(args, agent, **_):
     try:
@@ -372,7 +335,7 @@ def _skill_proposals(args, agent, **_):
         ps = list_proposals()
         if not ps:
             return True, 'No pending proposals found.'
-        lines = [f'{p["filename"]} ({p["agent"]}) - {p["preview"][:80]}' for p in ps]
+        lines = [f'{p["filename"]} ({p["agent"]}) — {p["preview"][:80]}' for p in ps]
         return True, f'{len(ps)} proposal(s):\n' + '\n'.join(lines)
     except Exception as e:
         return False, f'Proposals check error: {e}'
@@ -399,7 +362,6 @@ def _skill_memory_search(args, agent, **_):
         return False, f'Memory search error: {e}'
 
 
-
 _FS_ROOT = Path('/home/seven/swarm').resolve()
 
 
@@ -423,7 +385,7 @@ def _skill_fs_readonly(args, agent, **_):
     parts = raw.split()
     action = parts[0].lower()
 
-    # Implicit 'read' - if first token looks like a file path rather than an action keyword,
+    # Implicit 'read' — if first token looks like a file path rather than an action keyword,
     # prepend 'read' so that `SKILL fs_readonly path/to/file` works correctly.
     _KNOWN_ACTIONS = {'ls', 'find', 'read', 'head', 'tail', 'lines'}
     if action not in _KNOWN_ACTIONS and ('/' in parts[0] or '.' in parts[0]):
@@ -579,8 +541,13 @@ def _skill_alm_create_proposal(args, agent, **_):
         return False, f'alm_create_proposal failed: {e}'
 
 
+# Helper to normalize proposal IDs (INTERNAL-ELEVEN- etc.)
+def _normalize_proposal_id(raw_id):
+    if isinstance(raw_id, str):
+        raw_id = raw_id.replace("INTERNAL-ELEVEN-", "").replace("INTERNAL-", "")
+    return str(raw_id).strip()
 def _skill_alm_self_approve(args, agent, **_):
-    """Advance own proposal: pending/approved -> in_progress with Vortex checkpoint."""
+    """Advance own proposal: pending/approved → in_progress with Vortex checkpoint."""
     # Normalize ID to handle INTERNAL-ELEVEN- prefixes from agents
     raw = (args or '').strip()
     if raw.startswith('INTERNAL-ELEVEN-') or raw.startswith('INTERNAL-'):
@@ -589,6 +556,7 @@ def _skill_alm_self_approve(args, agent, **_):
         proposal_id = raw.split(None, 1)[0].strip()
     parts = raw.split(None, 1)
     vortex_label = parts[1].strip() if len(parts) > 1 else ''
+<<<>
     try:
         import requests as _req
         resp = _req.post(
@@ -618,7 +586,7 @@ def _skill_alm_self_approve(args, agent, **_):
 
 
 def _skill_alm_complete(args, agent, **_):
-    """Mark own in_progress proposal as done - awaiting Ghost confirmation. Now with Vortex."""
+    """Mark own in_progress proposal as done — awaiting Ghost confirmation. Now with Vortex."""
     # Normalize ID
     raw = (args or '').strip()
     if raw.startswith('INTERNAL-ELEVEN-') or raw.startswith('INTERNAL-'):
@@ -632,6 +600,7 @@ def _skill_alm_complete(args, agent, **_):
             description=f'ALM complete for banner change')
     except:
         pass
+<<<>
     try:
         import requests as _req
         resp = _req.post(
@@ -684,6 +653,15 @@ def _skill_fs_write(args, agent, **_):
         return True, f'Written {len(content)} chars to {rel}'
     except Exception as e:
         return False, f'fs_write failed: {e}'
+
+' not in raw:
+        return False, 'Usage: SKILL fs_patch <path> <<<OLD>>>old text<<<NEW>>>new text'
+    path_and_rest, new_text = raw.split('<<<NEW>>>', 1)
+    if '<<<OLD>>>' not in path_and_rest:
+        return False, 'Missing <<<OLD>>> marker'
+    path_part, old_text = path_and_rest.split('<<<OLD>>>', 1)
+    rel = path_part.strip()
+<<<NEW>>>
 def _skill_fs_patch(args, agent, **_):
     """Replace first occurrence of an exact string in a file. Now with live read for robustness."""
     raw = (args or '').strip()
@@ -703,6 +681,13 @@ def _skill_fs_patch(args, agent, **_):
         original = current
     except:
         original = open(_fs_safe_path(rel), encoding='utf-8', errors='replace').read()
+<<<><<<NEW>>>' not in raw:
+        return False, 'Usage: SKILL fs_patch <path> <<<OLD>>>old text<<<NEW>>>new text'
+    path_and_rest, new_text = raw.split('<<<NEW>>>', 1)
+    if '<<<OLD>>>' not in path_and_rest:
+        return False, 'Missing <<<OLD>>> marker'
+    path_part, old_text = path_and_rest.split('<<<OLD>>>', 1)
+    rel = path_part.strip()
     target = _fs_safe_path(rel)
     if not target:
         return False, f'Path outside swarm root or invalid: {rel}'
@@ -724,36 +709,52 @@ def _skill_fs_patch(args, agent, **_):
         return False, f'fs_patch failed: {e}'
 
 
-def _skill_fs_patch(args, agent, **_):
-    """Replace first occurrence of exact string. Uses live read to avoid mismatch."""
-    raw = (args or '').strip()
-    if '<<<OLD>>>' not in raw or '<<<NEW>>>' not in raw:
-        return False, 'Usage: SKILL fs_patch <path> <<<OLD>>>old text<<<NEW>>>new text'
-
-    path_and_rest, new_text = raw.split('<<<NEW>>>', 1)
-    if '<<<OLD>>>' not in path_and_rest:
-        return False, 'Missing <<<OLD>>> marker'
-
-    path_part, old_text = path_and_rest.split('<<<OLD>>>', 1)
-    rel = path_part.strip()
-
-    target = _fs_safe_path(rel)
-    if not target or not target.exists() or not target.is_file():
-        return False, f'File not found: {rel}'
-
+def _skill_knowledge_search(args, agent, **_):
+    query = (args or '').strip()
+    if not query:
+        return False, 'Usage: SKILL knowledge_search <query>'
     try:
-        # Robust live read to prevent old-text mismatch
-        ok, live_content = _skill_fs_readonly(f"read {rel}", agent=agent)
-        original = live_content if ok else target.read_text(encoding='utf-8', errors='replace')
-
-        if old_text not in original:
-            return False, f'Old text not found in {rel}.'
-
-        patched = original.replace(old_text, new_text, 1)
-        target.write_text(patched, encoding='utf-8')
-        return True, f'Patched {rel} successfully.'
+        import sys
+        from pathlib import Path as _Path
+        _swarm = str(_Path(__file__).resolve().parents[1])
+        if _swarm not in sys.path:
+            sys.path.insert(0, _swarm)
+        from lib.knowledge.retrieval import search
+        results = search(query, top_k=5)
+        if not results:
+            return True, 'No matching knowledge found.'
+        lines = []
+        for r in results:
+            excerpt = r['chunk_text'][:400].replace('\n', ' ')
+            lines.append(f"[{r['title']} | score:{r['score']:.2f}]\n{excerpt}")
+        return True, '\n\n---\n'.join(lines)
     except Exception as e:
-        return False, f'fs_patch failed: {e}'
+        return False, f'knowledge_search error: {e}'
+
+
+_HANDLERS = {
+    'shell':          _skill_shell,
+    'browse':         _skill_browse,
+    'file_read':      _skill_file_read,
+    'file_write':     _skill_file_write,
+    'search':         _skill_search,
+    'remind':         _skill_remind,
+    'schedule':       _skill_schedule,
+    'list':           _skill_list,
+    'housekeeping':   _skill_housekeeping,
+    'proposals':      _skill_proposals,
+    'memory_search':  _skill_memory_search,
+    'ticket_create':  _skill_ticket_create,
+    'alm_create_proposal': _skill_alm_create_proposal,
+    'alm_self_approve':    _skill_alm_self_approve,
+    'alm_complete':        _skill_alm_complete,
+    'alm_vortex':          _skill_alm_vortex,
+    'fs_readonly':         _skill_fs_readonly,
+    'fs_write':            _skill_fs_write,
+    'fs_patch':            _skill_fs_patch,
+    'knowledge_search': _skill_knowledge_search,
+    'ui_css_edit_checklist': _skill_ui_css_edit_checklist,
+}
 
 
 # ── Central dispatch ──────────────────────────────────────────────────────────
@@ -762,9 +763,9 @@ def call(skill_name, args='', agent='ghost'):
     """
     Invoke a skill by name. Returns (success: bool, output: str).
 
-    skill_name - one of REGISTRY keys
-    args       - remaining arguments string
-    agent      - calling agent name (for logging)
+    skill_name — one of REGISTRY keys
+    args       — remaining arguments string
+    agent      — calling agent name (for logging)
     """
     skill_name = skill_name.strip().lower()
 
@@ -772,7 +773,7 @@ def call(skill_name, args='', agent='ghost'):
         known = ', '.join(sorted(_HANDLERS.keys()))
         return False, f'Unknown skill: {skill_name!r}. Known skills: {known}'
 
-    logger.info(f'[Skills] {agent} -> {skill_name}({args[:80]})')
+    logger.info(f'[Skills] {agent} → {skill_name}({args[:80]})')
 
     try:
         success, output = _HANDLERS[skill_name](args=args, agent=agent)
@@ -784,7 +785,7 @@ def call(skill_name, args='', agent='ghost'):
     _log(skill_name, agent, args, output, success)
     if success and skill_name in _PROPOSAL_SKILLS:
         _log_as_internal_proposal(skill_name, agent, args, output)
-    print(f'[Skills] {"✓" if success else "✗"} {agent} -> {skill_name} | {output[:60]}')
+    print(f'[Skills] {"✓" if success else "✗"} {agent} → {skill_name} | {output[:60]}')
     return success, output
 
 
@@ -830,7 +831,7 @@ def test():
     for text, expected in cases:
         result = parse_skill_command(text)
         ok = result == expected
-        print(f'  {"✓" if ok else "✗"}  {text!r} -> {result}')
+        print(f'  {"✓" if ok else "✗"}  {text!r} → {result}')
 
     # list skill
     ok, output = call('list', agent='test')
@@ -845,5 +846,3 @@ def test():
 
 if __name__ == '__main__':
     test()
-
-

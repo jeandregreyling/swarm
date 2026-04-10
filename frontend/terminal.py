@@ -7,11 +7,23 @@ Shared state and helpers live in services.py.
 python3 terminal.py
 ═══════════════════════════════════════════════════════════════════════════════
 """
+
 import sys
 import os
 from pathlib import Path
 from socketserver import ThreadingMixIn
 from wsgiref.simple_server import WSGIServer, make_server
+
+# Multi-environment port logic
+ENV = os.environ.get('SWARM_ENV', 'prod').lower()
+PORT_MAP = {
+    'prod': 5050,
+    'dev':  5051,
+    'uat':  5053,
+}
+PORT = int(os.environ.get('PORT') or PORT_MAP.get(ENV, 5050))
+
+print(f"[Swarm Terminal] Starting in {ENV.upper()} mode on port {PORT}")
 
 # Ensure services module is importable (same directory)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -126,16 +138,4 @@ if __name__ == '__main__':
         print(f'[Time Wizard] Bootstrap warning: {e}')
 
     app = create_app()
-
-    class _ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
-        daemon_threads = True
-
-    port = int(os.environ.get('PORT', 5050))
-    # Always bind to 0.0.0.0 (IPv4) to avoid socket.gaierror and port reuse issues
-    server = make_server('0.0.0.0', port, app, server_class=_ThreadingWSGIServer)
-    print(f'[Terminal] Serving on port {port} (IPv4)')
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print('\n[Terminal] Shutting down.')
-        server.shutdown()
+    app.run(host='0.0.0.0', port=PORT, debug=False)
