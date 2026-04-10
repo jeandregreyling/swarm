@@ -46,8 +46,6 @@ LOADED=0
 SKIPPED=0
 FAILED=0
 
-data = json.load(sys.stdin)
-sys.exit(0 if any('$MODEL' in n for n in models) else 1)
 for MODEL in "${MODELS[@]}"; do
   # Check if this model is installed locally (use /api/ps instead of /api/tags)
   if ! curl -sf --max-time 5 "$OLLAMA_URL/api/ps" | python3 -c "

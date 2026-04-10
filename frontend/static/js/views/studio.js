@@ -1135,65 +1135,6 @@ function sendTicketToChat(ticketNumber, questionHint) {
   // Small delay to let the chat window finish rendering
   setTimeout(populate, 300);
 }
-// ── Manual New Proposal Button for Studio (live test - no AI layer) ─────────────────────
-function addNewProposalButton() {
-  // Target the Pending tab header specifically
-  const header = document.querySelector('#studio-content > div[style*="padding:12px 0 8px"]');
-  if (!header) return;
-
-  if (document.getElementById('new-proposal-btn')) return; // prevent duplicates
-
-  const btn = document.createElement('button');
-  btn.id = 'new-proposal-btn';
-  btn.textContent = '＋ New Proposal';
-  btn.style.cssText = `
-  if (m) m.style.display = 'none';
-}
-
-async function submitNewProposal() {
-  const title = (document.getElementById('np-title').value || '').trim();
-  const desc = (document.getElementById('np-desc').value || '').trim();
-
-  if (!title) {
-    showToast('Title is required', 'error');
-    return;
-  }
-
-  try {
-    const resp = await fetch('/api/queue', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        agent: 'manual_studio',
-        title: title,
-        description: desc || 'Created manually in Studio'
-      })
-    });
-
-    const data = await resp.json().catch(() => ({}));
-
-    if (resp.ok || data.ok) {
-      showToast('Proposal created — check Pending tab', 'success');
-      closeNewProposalModal();
-
-      // Refresh current Studio view
-      const container = document.getElementById('studio-content');
-      if (container) loadProposals(container, window._studioTab || 'pending');
-    } else {
-      showToast(data.error || 'Failed to create proposal', 'error');
-    }
-  } catch (e) {
-    showToast('Network error: ' + e.message, 'error');
-  }
-}
-
-// Override loadStudioData to add the button after render
-const originalLoadStudioData = loadStudioData;
-loadStudioData = function(win) {
-  originalLoadStudioData(win);
-  // Give the DOM time to render the Pending tab
-  setTimeout(addNewProposalButton, 1200);
-}
 
 // TEMPORARY INTAKE FIX - added 2026-04-09 for manual pipeline test
 // This makes /api/queue work even if the backend intake_internal is missing
