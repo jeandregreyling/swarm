@@ -1,0 +1,4 @@
+Intended patches for ALM workflow hardening:
+1. Add a helper function to normalize proposal IDs in proposals.py.
+2. Update alm_self_approve in skills.py to use normalized IDs.
+3. Ensure future patches are robust by auto-reading file content before patching.

@@ -1,3 +1,6 @@
+# DEPRECATED: This file is no longer maintained or used.
+# The active skills registry and logic is in fridays/skills.py.
+# Do not edit or use this file. All new skill code must go in fridays/skills.py.
 """
 skills.py — Seven's Swarm Skills Framework
 Expanded for useful build phase.
