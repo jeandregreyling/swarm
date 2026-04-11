@@ -851,6 +851,13 @@ def _seed_agents():
     for col_ddl in [
         "ALTER TABLE work_proposals ADD COLUMN ticket_id INTEGER DEFAULT 0",
         "ALTER TABLE work_proposals ADD COLUMN notes TEXT DEFAULT ''",
+        # source_conv_id: the chat conversation_id this proposal was raised from
+        # used to post approval/rejection notifications back to the originating thread
+        "ALTER TABLE work_proposals ADD COLUMN source_conv_id INTEGER DEFAULT NULL",
+        # duck_verdict: Duck's last approval decision ('approved' / 'rejected' / '')
+        "ALTER TABLE work_proposals ADD COLUMN duck_verdict TEXT DEFAULT ''",
+        # duck_note: Duck's review comment
+        "ALTER TABLE work_proposals ADD COLUMN duck_note TEXT DEFAULT ''",
     ]:
         try:
             conn.execute(col_ddl)

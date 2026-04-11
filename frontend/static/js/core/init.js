@@ -259,7 +259,7 @@ function updateTicketQueue() {
           const st    = t.status || 'unknown';
           const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : '#888';
           const stBg    = st === 'open' ? 'rgba(76,175,80,0.15)' : st === 'in_progress' ? 'rgba(255,165,0,0.15)' : 'rgba(136,136,136,0.15)';
-          return `<div class="ticket-item" style="display:flex;justify-content:space-between;align-items:center;" onclick="openTicketDetail(${JSON.stringify(num)})">
+          return `<div class="ticket-item" style="display:flex;justify-content:space-between;align-items:center;" onclick='openTicketDetail(${JSON.stringify(num)})'>
             <span style="flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">#${_escHtml(num)} — ${_escHtml(title)}</span>
             <span style="font-size:9px;padding:3px 8px;border-radius:3px;background:${stBg};color:${stColor};white-space:nowrap;margin-left:8px;font-weight:600;">${_escHtml(st)}</span>
           </div>`;

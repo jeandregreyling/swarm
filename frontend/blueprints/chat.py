@@ -550,6 +550,11 @@ def api_chat():
     if err:
         return err
 
+    # Per-request dedup flag: prevents multiple agents in a single multi-agent
+    # chat turn from each auto-creating their own proposal.  Only the first agent
+    # whose response matches proposal structure gets to create one; the rest skip.
+    _proposal_created_this_request = [False]
+
     def _execute_agent_skill_lines(selected_agent, response_text, request_data):
         from fridays.skills import call as skill_call, REGISTRY as SKILL_REGISTRY
 
@@ -570,6 +575,9 @@ def api_chat():
             # Their responses are execution narration, not proposal drafts.
             if is_developer_agent:
                 return ''
+            # Dedup: only one auto-derived proposal per chat request across all agents
+            if _proposal_created_this_request[0]:
+                return ''
             derived = _derive_proposal_from_text(selected_agent, response_text, message)
             if not derived:
                 return ''
@@ -577,7 +585,9 @@ def api_chat():
             safe_title = str(title).replace('"', "'")
             safe_desc = str(desc).replace('"', "'")
             synthetic_args = f'"{safe_title}" "{safe_desc}"'
-            ok, out = skill_call('alm_create_proposal', args=synthetic_args, agent=selected_agent)
+            ok, out = skill_call('alm_create_proposal', args=synthetic_args, agent=selected_agent, source_conv_id=conv_id)
+            if ok:
+                _proposal_created_this_request[0] = True
             preview = str(out or '')[:3000]
             return f"[skill:alm_create_proposal] {'OK' if ok else 'FAILED'}\\n{preview}"
 
@@ -605,7 +615,15 @@ def api_chat():
                     lines.append(f'[skill:{skill_name}] FAILED\\nALM gate blocked execution (approval required).')
                     continue
 
-            ok, out = skill_call(skill_name, args=skill_args, agent=selected_agent)
+            # Dedup: if another agent already created a proposal this request, skip
+            if skill_name == 'alm_create_proposal' and _proposal_created_this_request[0]:
+                lines.append(f'[skill:{skill_name}] SKIPPED\\nProposal already created this turn.')
+                continue
+
+            ok, out = skill_call(skill_name, args=skill_args, agent=selected_agent,
+                                source_conv_id=conv_id if skill_name == 'alm_create_proposal' else None)
+            if ok and skill_name == 'alm_create_proposal':
+                _proposal_created_this_request[0] = True
             preview = str(out or '')[:3000]
             lines.append(f"[skill:{skill_name}] {'OK' if ok else 'FAILED'}\\n{preview}")
 
