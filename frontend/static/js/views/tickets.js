@@ -17,7 +17,7 @@ function loadTicketsData(win) {
           const st    = t.status || 'unknown';
           const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : '#888';
           const stBg    = st === 'open' ? 'rgba(76,175,80,0.15)' : st === 'in_progress' ? 'rgba(255,165,0,0.15)' : 'rgba(136,136,136,0.15)';
-          return `<div class="ticket-row" style="background:var(--card);padding:12px;border-radius:4px;margin-bottom:8px;border-left:3px solid ${stColor};cursor:pointer;" onclick="openTicketDetail(${JSON.stringify(num)})">
+          return `<div class="ticket-row" style="background:var(--card);padding:12px;border-radius:4px;margin-bottom:8px;border-left:3px solid ${stColor};cursor:pointer;" onclick='openTicketDetail(${JSON.stringify(num)})'>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
               <strong style="font-size:12px;font-family:monospace;">${_escHtml(num)}</strong>
               <span style="font-size:10px;padding:2px 7px;border-radius:3px;background:${stBg};color:${stColor};font-weight:600;">${_escHtml(st)}</span>

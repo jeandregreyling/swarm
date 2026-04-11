@@ -3303,11 +3303,11 @@ function _appendChatBubble(sender, text, opts = {}) {
   const selectedAgentsCsv = _escapeHtml(selectedAgentsRaw.map(a => String(a || '').toLowerCase().trim()).filter(Boolean).join(','));
   const userActionRow = isUser
     ? `<div class="chat-actions">
-      <button class="chat-action-btn" onclick="resendUserMessage('${localText}', '${selectedAgentsCsv}')">Resend</button>
+      <button class="chat-action-btn" data-resend-text="${localText}" data-resend-agents="${selectedAgentsCsv}" onclick="resendUserMessage(this.dataset.resendText, this.dataset.resendAgents)">Resend</button>
       ${opts.editable && opts.messageId && opts.conversationId
         ? `<button class="chat-action-btn" onclick="editOwnPrompt(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Change</button>
            <button class="chat-action-btn" onclick="deleteOwnPrompt(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Delete</button>`
-        : `<button class="chat-action-btn" onclick="revisePromptDraft('${localText}')">Change Text</button>`}
+        : `<button class="chat-action-btn" data-revise-text="${localText}" onclick="revisePromptDraft(this.dataset.reviseText)">Change Text</button>`}
     </div>`
     : '';
   const actionRow = isUser ? userActionRow : `

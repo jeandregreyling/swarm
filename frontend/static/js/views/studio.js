@@ -470,6 +470,9 @@ function _openProposalDetailRender(p) {
   const updated = (p.updated_at || '').slice(0, 16);
   const title = p.title || p.proposal_id || 'Untitled Proposal';
   const artifacts = proposalTestArtifacts(p);
+  const duckVerdict = p.duck_verdict || '';
+  const duckNote    = p.duck_note    || '';
+  const srcConvId   = p.source_conv_id;
 
   document.getElementById('pdet-title').textContent = title;
   document.getElementById('pdet-body').innerHTML = `
@@ -480,7 +483,15 @@ function _openProposalDetailRender(p) {
       ${p.agent ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Agent: ${safeAgent}</span>` : ''}
       ${p.ticket_number ? `<span onclick='openTicketDetail(${ticketJs})' style="padding:3px 10px;border-radius:12px;background:#2196f320;color:#2196f3;font-size:11px;cursor:pointer;border:1px solid #2196f340;">Ticket: ${safeTicketNumber}</span>` : ''}
       ${p.queue_id ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Queue: ${_escHtml(String(p.queue_id))}</span>` : ''}
+      ${srcConvId ? `<span onclick='openConversation(${Number(srcConvId)})' style="padding:3px 10px;border-radius:12px;background:#4caf5020;color:#4caf50;font-size:11px;cursor:pointer;border:1px solid #4caf5040;">💬 View in Chat</span>` : ''}
     </div>
+
+    ${duckVerdict ? `<div style="margin-bottom:14px;padding:10px 14px;border-radius:6px;background:${duckVerdict==='approved'?'#4caf5015':'#f4433615'};border:1px solid ${duckVerdict==='approved'?'#4caf5040':'#f4433640'};">
+      <div style="font-size:11px;font-weight:700;color:${duckVerdict==='approved'?'#4caf50':'#f44336'};text-transform:uppercase;margin-bottom:4px;">
+        ${duckVerdict==='approved'?'✅':'❌'} Duck Review — ${duckVerdict.toUpperCase()}
+      </div>
+      ${duckNote ? `<div style="font-size:12px;color:var(--text);line-height:1.5;">${_escHtml(duckNote)}</div>` : ''}
+    </div>` : ''}
 
     <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px;">
       <tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;width:130px;">Proposal ID</td><td style="font-family:monospace;font-size:11px;">${safeProposalId}</td></tr>
@@ -513,6 +524,17 @@ function _openProposalDetailRender(p) {
         </div>
       </div>
       ${p.notes ? `<div style="margin-top:8px;"><div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px;">Notes</div><div style="background:var(--card);padding:10px;border-radius:4px;font-size:12px;white-space:pre-wrap;font-family:monospace;line-height:1.5;" id="pdet-notes-view">${_escHtml(p.notes)}</div></div>` : `<div id="pdet-notes-view"></div>`}
+    </div>
+
+    <div style="margin-bottom:14px;" id="pdet-agent-notes-block">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;">Agent Notes</div>
+        <button onclick="_pdetAddAgentNote(${pidJs})"
+          style="padding:2px 10px;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;">+ Add Note</button>
+      </div>
+      <div id="pdet-agent-notes-list" style="display:flex;flex-direction:column;gap:4px;min-height:20px;">
+        <span style="font-size:11px;color:var(--text-dim);font-style:italic;">Loading...</span>
+      </div>
     </div>
 
     <div style="margin-bottom:14px;" id="pdet-attachments-block">
@@ -567,8 +589,9 @@ function _openProposalDetailRender(p) {
     </div>`;
 
   modal.classList.add('open');
-  // Load attachments asynchronously
+  // Load attachments and agent notes asynchronously
   _pdetLoadAttachments(p.proposal_id);
+  _pdetLoadAgentNotes(p.proposal_id);
 }
 
 function _escAttr(s) {
@@ -665,6 +688,43 @@ async function _pdetDeleteAttachment(pid, attId) {
   const data = await resp.json();
   if (!data.ok) { showToast('Delete failed', 'error'); return; }
   _pdetLoadAttachments(pid);
+}
+
+async function _pdetLoadAgentNotes(pid) {
+  const list = document.getElementById('pdet-agent-notes-list');
+  if (!list) return;
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(pid)}/notes`);
+    const data = await resp.json();
+    const notes = data.notes || [];
+    if (!notes.length) {
+      list.innerHTML = '<span style="font-size:11px;color:var(--text-dim);font-style:italic;">No agent notes yet</span>';
+      return;
+    }
+    list.innerHTML = notes.map(n => `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:8px 10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+          <span style="font-size:10px;font-weight:700;color:var(--text-dim);">${_escHtml(n.author || 'agent')}</span>
+          <span style="font-size:10px;color:var(--text-dim);">${_escHtml((n.created_at || '').slice(0,16))}</span>
+        </div>
+        <div style="font-size:12px;white-space:pre-wrap;line-height:1.4;">${_escHtml(n.content || '')}</div>
+      </div>`).join('');
+  } catch (e) {
+    list.innerHTML = `<span style="font-size:11px;color:#f44;font-style:italic;">Error loading notes</span>`;
+  }
+}
+
+async function _pdetAddAgentNote(pid) {
+  const content = prompt('Add a note to this proposal:');
+  if (!content || !content.trim()) return;
+  const resp = await fetch(`/api/work-proposals/${encodeURIComponent(pid)}/notes`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({content: content.trim(), author: 'ghost'})
+  });
+  const data = await resp.json();
+  if (!data.ok) { showToast(data.error || 'Failed to add note', 'error'); return; }
+  _pdetLoadAgentNotes(pid);
 }
 
 function openDocDetail(filename, title) {
@@ -1134,6 +1194,30 @@ function sendTicketToChat(ticketNumber, questionHint) {
 
   // Small delay to let the chat window finish rendering
   setTimeout(populate, 300);
+}
+
+// Open the Chat window and navigate to a specific conversation thread
+function openConversation(convId) {
+  if (!convId) return;
+  // Close proposal modal so chat is visible
+  const propModal = document.getElementById('proposal-detail-modal');
+  if (propModal) propModal.classList.remove('open');
+
+  if (typeof openWindow === 'function') {
+    openWindow('chat', '💬 Chat', 'view-chat');
+  }
+
+  // Give the window time to render before switching the active thread
+  setTimeout(() => {
+    if (typeof _setActiveThreadId === 'function') {
+      _setActiveThreadId(convId);
+    } else {
+      window.__fridaysChatConversationId = convId;
+    }
+    if (typeof loadConversationMessages === 'function') {
+      loadConversationMessages(convId);
+    }
+  }, 300);
 }
 
 // TEMPORARY INTAKE FIX - added 2026-04-09 for manual pipeline test

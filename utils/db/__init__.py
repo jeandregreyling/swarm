@@ -14,3 +14,6 @@ from .agents     import *       # noqa: F401,F403
 from .auth       import *       # noqa: F401,F403
 from .approvals  import *       # noqa: F401,F403
 from .audit      import *       # noqa: F401,F403
+
+# Explicitly export private schema helpers needed by listener.py and other callers
+from ._schema import _migrate_schema  # noqa: F401

@@ -37,6 +37,11 @@ except ImportError:
     DISCORD_TOKEN    = ''
     DISCORD_BOT_NAME = 'Fridays'
 
+try:
+    from config import DISCORD_CHANNEL_ID
+except ImportError:
+    DISCORD_CHANNEL_ID = ''
+
 from database import log_activity
 from database import (get_all_email_lists, add_trusted_sender,
                       add_notification_sender, new_conversation,
@@ -825,8 +830,10 @@ async def on_message(message: discord.Message):
     if message.author == bot.user:
         return
 
-    # Only handle DMs (privacy — don't process public channel messages unless configured)
-    if message.channel.type != discord.ChannelType.private:
+    # Handle DMs, or messages in the configured DISCORD_CHANNEL_ID if set
+    is_dm = message.channel.type == discord.ChannelType.private
+    is_configured_channel = DISCORD_CHANNEL_ID and str(message.channel.id) == DISCORD_CHANNEL_ID
+    if not is_dm and not is_configured_channel:
         return
 
     user_id  = message.author.id
@@ -836,7 +843,9 @@ async def on_message(message: discord.Message):
     if not text:
         return
 
-    logger.info(f'[Discord] DM from {user_id} (@{username}): {text[:80]}')
+    src = 'DM' if is_dm else f'channel:{message.channel.id}'
+    logger.info(f'[Discord] Message ({src}) from {user_id} (@{username}): {text[:80]}')
+    log_activity('discord', 'message_received', f'@{username} ({src}) | {text[:80]}')
 
     classification = _classify(user_id)
 
