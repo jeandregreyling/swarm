@@ -339,13 +339,31 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
         else:
             log_message(conv_id, 'LLaMA', llama_answer, to_agent='Gemma', message_type='chat')
             trace = _llama_action_trace(question, routing)
-            await update.message.reply_text(f'[LLaMA]\n{trace}\n\n{llama_answer[:3600]}')
-            await update.effective_chat.send_action(ChatAction.TYPING)
+            # Send stage1 result immediately — before stage2 starts — to keep Telegram happy
+            try:
+                await update.message.reply_text(f'[LLaMA]\n{trace}\n\n{llama_answer[:3600]}')
+                await update.effective_chat.send_action(ChatAction.TYPING)
+            except Exception as send_err:
+                logger.warning(f'[Telegram] Could not send stage1 result: {send_err}')
 
         # Stage 2 — augmented question keeps context alive through full pipeline
-        qwen_answer, gemma_answer, debate = consult_stage2(
-            augmented_question, web_results, llama_answer, shared_context, conv_id, routing
-        )
+        try:
+            qwen_answer, gemma_answer, debate = consult_stage2(
+                augmented_question, web_results, llama_answer, shared_context, conv_id, routing
+            )
+        except Exception as s2_err:
+            # Stage 2 failed (often a timeout). Stage 1 result already sent — close ticket with that.
+            mark_failed(queue_id, reason=f'stage2: {s2_err}')
+            log_activity('telegram', 'pipeline_failed', f'{ticket_number} | stage2: {s2_err}')
+            try:
+                await update.message.reply_text(
+                    f'⚠️ Stage 2 could not complete ({s2_err}). LLaMA stage 1 result above is the best answer available right now.'
+                )
+            except Exception:
+                pass
+            librarian_close(ticket_number, question, llama_answer,
+                            queue_id=queue_id, sender_email=sender)
+            return
 
         # Build full response
         parts = []
@@ -356,7 +374,10 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
         parts.append(f'[Gemma — verdict] {ticket_ref}\n{gemma_answer[:4000]}')
 
         for part in parts:
-            await update.message.reply_text(part)
+            try:
+                await update.message.reply_text(part)
+            except Exception as send_err:
+                logger.warning(f'[Telegram] Could not send reply part: {send_err}')
         log_activity('telegram', 'stage2_done', f'{ticket_number} | reply sent to @{username}')
 
         # Close ticket

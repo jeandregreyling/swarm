@@ -1383,6 +1383,13 @@ def run_forever(interval=60):
         except ImportError as e:
             print(f'[Listener] Gmail Push unavailable ({e}), falling back to IMAP poll.')
             use_push = False
+        except Exception as push_init_err:
+            # Covers expired/revoked OAuth tokens and any other startup failure
+            err_str = str(push_init_err)
+            print(f'[Listener] Gmail Push init failed ({err_str[:120]}), falling back to IMAP poll.')
+            if 'invalid_grant' in err_str or 'expired' in err_str.lower() or 'revoked' in err_str.lower():
+                log_activity('listener', 'push_fallback', f'OAuth error at startup: {err_str[:200]}')
+            use_push = False
 
     if not use_push:
         print(f"\n=== Seven's Swarm Email Listener (IMAP Poll) ===")

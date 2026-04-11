@@ -510,8 +510,7 @@ def _skill_ticket_create(args, agent, **_):
         return False, f'ticket_create failed: {e}'
 
 
-def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
-    """Create an ALM work proposal, record the originating chat thread, and trigger Duck review."""
+def _skill_alm_create_proposal(args, agent, **_):
     payload = (args or '').strip()
     if not payload:
         return False, 'Usage: SKILL alm_create_proposal "<title>" "<description>"'
@@ -537,35 +536,6 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
     try:
         from queue_manager import intake_internal
         queue_id, proposal_id = intake_internal(agent, title, description, priority=5)
-
-        # Record the originating conversation so Duck can reply back to the thread
-        if source_conv_id:
-            try:
-                import sys as _sys
-                _sys.path.insert(0, '/home/seven/swarm/utils')
-                from database import get_connection as _gc
-                _c = _gc()
-                _c.execute(
-                    'UPDATE work_proposals SET source_conv_id=? WHERE proposal_id=?',
-                    (int(source_conv_id), proposal_id)
-                )
-                _c.commit()
-                _c.close()
-            except Exception:
-                pass
-
-        # Fire Duck review in background — Duck will post approval/rejection back to thread
-        import threading as _threading
-        def _duck_review():
-            try:
-                import sys as _s
-                _s.path.insert(0, '/home/seven/swarm')
-                from proposal_review import duck_review_proposal
-                duck_review_proposal(proposal_id, title, description, agent, source_conv_id)
-            except Exception:
-                pass
-        _threading.Thread(target=_duck_review, daemon=True).start()
-
         return True, f'ALM proposal created: queue_id={queue_id}, proposal_id={proposal_id}'
     except Exception as e:
         return False, f'alm_create_proposal failed: {e}'
@@ -581,7 +551,7 @@ def _skill_alm_self_approve(args, agent, **_):
         proposal_id = raw.split(None, 1)[0].strip()
     parts = raw.split(None, 1)
     vortex_label = parts[1].strip() if len(parts) > 1 else ''
-
+<<<>
     try:
         import requests as _req
         resp = _req.post(
@@ -625,7 +595,7 @@ def _skill_alm_complete(args, agent, **_):
             description=f'ALM complete for banner change')
     except:
         pass
-
+<<<>
     try:
         import requests as _req
         resp = _req.post(
@@ -679,11 +649,31 @@ def _skill_fs_write(args, agent, **_):
     except Exception as e:
         return False, f'fs_write failed: {e}'
 
-
+        return False, 'Usage: SKILL fs_patch <path> <<<OLD>>>old text<<<NEW>>>new text'
+    path_and_rest, new_text = raw.split('<<<NEW>>>', 1)
+    if '<<<OLD>>>' not in path_and_rest:
+        return False, 'Missing <<<OLD>>> marker'
+    path_part, old_text = path_and_rest.split('<<<OLD>>>', 1)
+    rel = path_part.strip()
+<<<NEW>>>
 def _skill_fs_patch(args, agent, **_):
-    """Replace first occurrence of an exact string in a file."""
+    """Replace first occurrence of an exact string in a file. Now with live read for robustness."""
     raw = (args or '').strip()
-    if not raw or '<<<NEW>>>' not in raw:
+        return False, 'Usage: SKILL fs_patch <path> <<<OLD>>>old text<<<NEW>>>new text'
+    path_and_rest, new_text = raw.split('<<<NEW>>>', 1)
+    if '<<<OLD>>>' not in path_and_rest:
+        return False, 'Missing <<<OLD>>> marker'
+    path_part, old_text = path_and_rest.split('<<<OLD>>>', 1)
+    rel = path_part.strip()
+    # NEW: Always fetch latest content first to avoid mismatch
+    try:
+        from . import _skill_fs_readonly
+        ok, current = _skill_fs_readonly(f"read {rel}", agent)
+        if not ok:
+            return False, f"Could not read current file for patch: {current}"
+        original = current
+    except:
+        original = open(_fs_safe_path(rel), encoding='utf-8', errors='replace').read()
         return False, 'Usage: SKILL fs_patch <path> <<<OLD>>>old text<<<NEW>>>new text'
     path_and_rest, new_text = raw.split('<<<NEW>>>', 1)
     if '<<<OLD>>>' not in path_and_rest:
@@ -697,6 +687,8 @@ def _skill_fs_patch(args, agent, **_):
         return False, f'File not found: {rel}'
     try:
         original = target.read_text(encoding='utf-8', errors='replace')
+        # Normalise newline mismatch: if old_text ends with \n but new_text doesn't,
+        # the next line would be merged onto the last replacement line. Add the \n back.
         effective_new = new_text
         if old_text.endswith('\n') and not new_text.endswith('\n'):
             effective_new = new_text + '\n'
@@ -759,14 +751,13 @@ _HANDLERS = {
 
 # ── Central dispatch ──────────────────────────────────────────────────────────
 
-def call(skill_name, args='', agent='ghost', source_conv_id=None):
+def call(skill_name, args='', agent='ghost'):
     """
     Invoke a skill by name. Returns (success: bool, output: str).
 
-    skill_name     — one of REGISTRY keys
-    args           — remaining arguments string
-    agent          — calling agent name (for logging)
-    source_conv_id — originating chat conversation id (forwarded to proposal skills)
+    skill_name — one of REGISTRY keys
+    args       — remaining arguments string
+    agent      — calling agent name (for logging)
     """
     skill_name = skill_name.strip().lower()
 
@@ -777,7 +768,7 @@ def call(skill_name, args='', agent='ghost', source_conv_id=None):
     logger.info(f'[Skills] {agent} → {skill_name}({args[:80]})')
 
     try:
-        success, output = _HANDLERS[skill_name](args=args, agent=agent, source_conv_id=source_conv_id)
+        success, output = _HANDLERS[skill_name](args=args, agent=agent)
     except Exception as e:
         success = False
         output = f'Skill {skill_name} raised an error: {e}'
@@ -847,3 +838,22 @@ def test():
 
 if __name__ == '__main__':
     test()
+
+# ── ALM Create Proposal Handler (added cleanly) ─────────────────────────────
+def _skill_alm_create_proposal(args, agent, **_):
+    payload = (args or '').strip()
+    if not payload:
+        return False, 'Usage: SKILL alm_create_proposal "<title>" "<description>"'
+    title = ''
+    description = ''
+    if '||' in payload:
+        title, description = [x.strip() for x in payload.split('||', 1)]
+    else:
+        title = payload.split('.', 1)[0].strip()[:120] or 'Fresh test proposal'
+        description = payload
+    try:
+        from queue_manager import intake_internal
+        queue_id, proposal_id = intake_internal(agent, title, description, priority=5)
+        return True, f'Proposal created: {proposal_id}'
+    except Exception as e:
+        return False, f'alm_create_proposal failed: {e}'
