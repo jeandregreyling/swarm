@@ -273,21 +273,8 @@ function _proposalCard(p) {
 
 function promoteProposal(proposalId) {
   if (!proposalId) return;
-  // Find the proposal object
-  const p = (window._proposals || []).find(x => (x.proposal_id || '') === proposalId);
-  if (!p) { showToast('Proposal not found', 'error'); return; }
-  if (!confirm('Promote this proposal to the next stage?')) return;
-  fetch('/api/proposals/promote', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename: p.filename })
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.ok) { showToast(data.error || 'Promotion failed', 'error'); return; }
-      showToast('Proposal promoted to next stage', 'success');
-    })
-    .catch(e => showToast('Promotion error: ' + e.message, 'error'));
+  if (!confirm('Mark this proposal as executed (promoted)?')) return;
+  moveProposal(proposalId, 'executed');
 }
 
 function moveProposal(proposalId, newStatus) {
