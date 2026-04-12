@@ -77,7 +77,7 @@ def api_services_status():
     """Return status for all swarm-* systemd services."""
     import subprocess as _sp
     services = [
-        {'id': 'swarm-terminal',    'label': 'Terminal'},
+        {'id': 'swarm-terminal-prod', 'label': 'Terminal'},
         {'id': 'swarm-listener',    'label': 'Listener'},
         {'id': 'swarm-telegram',    'label': 'Telegram'},
         {'id': 'swarm-discord',     'label': 'Discord'},
