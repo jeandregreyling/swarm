@@ -169,6 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: 'Skills', onclick: 'openWindow("skills", "Skills", "view-skills")' },
       { label: 'Tickets', onclick: 'openWindow("tickets", "Tickets", "view-tickets")' },
       { label: 'Studio', onclick: 'openWindow("studio", "Studio", "view-studio")' },
+      { label: 'Email', onclick: 'openWindow("email", "📧 Email", "view-email")' },
       { label: 'Vortex', onclick: 'openWindow("time-wizard", "🌀 Vortex", "view-time-wizard")' },
       { label: 'Ghost Brief', onclick: 'openWindow("ghost-brief", "📋 Ghost Brief", "view-ghost-brief")' },
     ];

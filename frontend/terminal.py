@@ -52,6 +52,7 @@ from blueprints.legacy import legacy_bp
 from blueprints.memory import memory_bp
 from blueprints.nine import nine_bp
 from blueprints.ollama import ollama_bp
+from blueprints.email_bp import email_bp
 from blueprints.proposals import proposals_bp
 from blueprints.shell import shell_bp
 from blueprints.system import system_bp
@@ -116,6 +117,7 @@ def create_app():
     app.register_blueprint(memory_bp)
     app.register_blueprint(nine_bp)
     app.register_blueprint(ollama_bp)
+    app.register_blueprint(email_bp)
     app.register_blueprint(proposals_bp)
     app.register_blueprint(shell_bp)
     app.register_blueprint(system_bp)
