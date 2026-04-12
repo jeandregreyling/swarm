@@ -321,7 +321,8 @@ async def _run_pipeline(update: Update, question: str, is_urgent: bool = False):
     conv_id       = new_conversation(question, source='telegram', sender=sender)
     ticket_number = f'TG-{conv_id}'
     ticket_ref    = f'[Swarm #{conv_id}]'
-    ticket_create(ticket_number, sender, question, tags=tags, queue_id=queue_id)
+    ticket_create(ticket_number, sender, question, tags=tags, queue_id=queue_id,
+                  conv_id=conv_id, channel='telegram')
     log_message(conv_id, 'Ghost', question, to_agent='Gemma', message_type='chat')
     mark_processing(queue_id)
 

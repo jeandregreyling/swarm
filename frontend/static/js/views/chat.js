@@ -334,10 +334,10 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
 
   const canStop = running.length > 0 || loadingAgents.length > 0 || hasPendingJobs;
   const headline = running.length
-    ? ('Live jobs: ' + running.length + ' running')
+    ? (running.length === 1 ? '1 agent running' : running.length + ' agents running')
     : (loadingAgents.length || hasPendingJobs
-      ? 'Awaiting agent acknowledgement...'
-      : (failed.length ? ('Last run had ' + failed.length + ' failure(s)') : (cooldownActive ? 'Last round complete' : (list.length ? 'No active jobs on this thread' : 'No runtime jobs for this thread'))));
+      ? 'Dispatching' + (loadingAgents.length ? ' · ' + loadingAgents.map(a => a).join(', ') : '') + '…'
+      : (failed.length ? ('Last run: ' + failed.length + ' failure' + (failed.length > 1 ? 's' : '')) : (cooldownActive ? 'Round complete' : (list.length ? 'Idle' : 'No jobs'))));
 
   // Bar is always visible — no open/close toggling needed.
   // (Previously: const shouldShow = true; host.classList.toggle('open', shouldShow))
@@ -364,7 +364,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
     const key = String(agent || '').toLowerCase();
     if (!key || seen.has(key)) return;
     seen.add(key);
-    chips.push(_renderThreadRuntimeChip(agent, 'Initializing...', 'initializing', 'awaiting'));
+    chips.push(_renderThreadRuntimeChip(agent, 'queued', 'initializing', ''));
   });
 
   const panelHtml = `
@@ -4315,6 +4315,56 @@ function _renderWelcome() {
   window.__fridaysChatTimeline = [];
   renderChatRelayTimeline();
   messages.innerHTML = '';
+  _renderTicketBanner(null, null);
+}
+
+function _renderTicketBanner(ticket, conv) {
+  // Show or clear the linked ticket banner above the chat messages
+  let banner = document.getElementById('chat-ticket-banner');
+  const messages = _chatMessagesEl();
+  if (!messages) return;
+
+  if (!ticket) {
+    if (banner) banner.remove();
+    return;
+  }
+
+  const ch = ticket.channel || ticket.source_type || 'email';
+  const chIcon = ch === 'telegram' ? '📱' : ch === 'discord' ? '💬' : '📧';
+  const chLabel = ch.charAt(0).toUpperCase() + ch.slice(1);
+  const status = ticket.status || 'open';
+  const statusColor = status === 'closed' ? '#4caf50' : status === 'failed' ? '#f44336' : '#ffa726';
+  const tn = _escapeHtml(ticket.ticket_number || '');
+  const sender = _escapeHtml(ticket.sender_email || '');
+  const subject = _escapeHtml(ticket.subject || ticket.question || '');
+
+  const html = `
+    <div id="chat-ticket-banner" style="
+      display:flex;align-items:center;gap:8px;padding:6px 12px;
+      background:color-mix(in srgb,var(--card) 85%,var(--accent) 15%);
+      border-bottom:1px solid var(--border);font-size:11px;flex-shrink:0;
+      position:sticky;top:0;z-index:10;
+    ">
+      <span style="font-size:15px;line-height:1;">${chIcon}</span>
+      <span style="font-weight:700;color:var(--accent);">${tn}</span>
+      <span style="color:var(--text-dim);">·</span>
+      <span style="color:var(--text-dim);">${chLabel}</span>
+      <span style="color:var(--text-dim);">·</span>
+      <span style="color:var(--text);">${sender}</span>
+      ${subject ? `<span style="color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;max-width:300px;">${subject.slice(0,80)}</span>` : ''}
+      <span style="margin-left:auto;background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;">${status.toUpperCase()}</span>
+      <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;">✕</button>
+    </div>`;
+
+  if (banner) {
+    banner.outerHTML = html;
+  } else {
+    // Insert before messages container
+    const parent = messages.parentElement;
+    if (parent) {
+      parent.insertAdjacentHTML('afterbegin', html);
+    }
+  }
 }
 
 function renderChatThreadRail() {
@@ -4337,10 +4387,15 @@ function renderChatThreadRail() {
     const active = Number(window.__fridaysChatConversationId) === Number(conv.id) ? ' active' : '';
     const ts = (conv.timestamp || conv.created_at || '').slice(0, 16);
     const title = _escapeHtml(conv.title || '(untitled)');
+    const src = String(conv.source || '').toLowerCase();
+    const srcIcon = src === 'telegram' ? '<span title="Telegram" style="font-size:11px;opacity:0.75;">📱</span>'
+                  : src === 'discord'  ? '<span title="Discord" style="font-size:11px;opacity:0.75;">🎮</span>'
+                  : src === 'email'    ? '<span title="Email" style="font-size:11px;opacity:0.55;">📧</span>'
+                  : '';
     return `
       <div class="thread-item${active}" onclick="switchChatThread('${conv.id}')" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="min-width:0;flex:1;">
-          <div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+          <div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;">${srcIcon}<span>${title}</span></div>
           <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">#${conv.id}${ts ? ' · ' + ts : ''}</div>
         </div>
         <div style="display:flex;gap:4px;">
@@ -4499,6 +4554,8 @@ function loadConversationMessages(convId, options = {}) {
       }
       window.__fridaysChatLastRenderSig = nextSig;
       renderChatMessages(rows);
+      // Render linked ticket banner if present
+      _renderTicketBanner(data.ticket, data.conv);
       return true;
     })
     .catch(e => {
