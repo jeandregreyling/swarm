@@ -93,7 +93,7 @@ def api_monitor_stats():
         'swarm-telegram':  'Telegram',
         'swarm-discord':   'Discord',
         'swarm-scheduler': 'Scheduler',
-        'swarm-terminal':  'Terminal',
+        'swarm-terminal-prod':  'Terminal',
         'swarm-skills':    'Skills',
     }
     health = {}
@@ -452,7 +452,7 @@ def api_swarm_status():
 
     # Service health via systemctl
     svcs = {}
-    for svc in ('swarm-listener', 'swarm-telegram', 'swarm-discord', 'swarm-terminal'):
+    for svc in ('swarm-listener', 'swarm-telegram', 'swarm-discord', 'swarm-terminal-prod'):
         try:
             r = subprocess.run(['systemctl', 'is-active', svc], capture_output=True, text=True, timeout=2)
             svcs[svc] = r.stdout.strip()
