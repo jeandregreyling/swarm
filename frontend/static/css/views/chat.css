@@ -967,6 +967,35 @@
 /* ── Thinking / pending bubble ────────────────────────────────────────────── */
 @keyframes think-blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
 @keyframes think-dot-bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-3px)} }
+@keyframes runtime-light-pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+/* ── Runtime chip status light dot ──────────────────────────────────────── */
+.chat-thread-runtime-light {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-dim);
+}
+.chat-thread-runtime-light.initializing,
+.chat-thread-runtime-light.awaiting {
+  background: #4a7aff;
+  box-shadow: 0 0 4px rgba(74,122,255,0.6);
+  animation: runtime-light-pulse 1.2s ease-in-out infinite;
+}
+.chat-thread-runtime-light.compiling {
+  background: #ffb800;
+  box-shadow: 0 0 4px rgba(255,184,0,0.6);
+  animation: runtime-light-pulse 0.9s ease-in-out infinite;
+}
+.chat-thread-runtime-light.running {
+  background: #4caf50;
+  box-shadow: 0 0 4px rgba(76,175,80,0.6);
+  animation: runtime-light-pulse 1s ease-in-out infinite;
+}
+.chat-thread-runtime-light.completed { background: #4caf50; animation: none; }
+.chat-thread-runtime-light.failed    { background: #f44336; animation: none; }
+
 .think-status-dot {
   width: 7px;
   height: 7px;

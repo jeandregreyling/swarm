@@ -289,7 +289,8 @@ async def _run_pipeline(message: discord.Message, question: str, is_urgent=False
     # Ticket
     conv_id = new_conversation(question, source='discord', sender=sender)
     ticket_number = f'DC-{conv_id}'
-    ticket_create(ticket_number, sender, question, tags=tags, queue_id=queue_id)
+    ticket_create(ticket_number, sender, question, tags=tags, queue_id=queue_id,
+                  conv_id=conv_id, channel='discord')
     _vortex_event('discord', f'ticket_created:{ticket_number}', target=sender,
                   details={'queue_id': queue_id, 'tags': tags, 'username': username})
     log_message(conv_id, 'Ghost', question, to_agent='Gemma', message_type='chat')

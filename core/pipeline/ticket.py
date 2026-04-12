@@ -32,12 +32,15 @@ def _get_duck_on_ticket_closed():
         return hook
 
 
-def create(ticket_number, sender_email, question, tags='', queue_id=None, email_message_id=''):
+def create(ticket_number, sender_email, question, tags='', queue_id=None, email_message_id='',
+           conv_id=None, channel='email'):
     """
     Create a ticket and log its queue linkage.
     Called after Librarian intake — ticket is open from this point.
     email_message_id: the Message-ID of the original incoming email, used for
                       thread matching when the sender replies to Seven's response.
+    conv_id: the chat conversation_id this ticket is linked to (if any).
+    channel: 'email', 'telegram', or 'discord'.
     """
     from database import get_connection
 
@@ -45,9 +48,11 @@ def create(ticket_number, sender_email, question, tags='', queue_id=None, email_
     try:
         conn.execute(
             """INSERT OR IGNORE INTO tickets
-               (ticket_number, queue_id, sender_email, question, tags, status, email_message_id)
-               VALUES (?, ?, ?, ?, ?, 'open', ?)""",
-            (ticket_number, queue_id, sender_email, question[:500], tags, email_message_id or '')
+               (ticket_number, queue_id, sender_email, question, tags, status, email_message_id,
+                conv_id, channel)
+               VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?)""",
+            (ticket_number, queue_id, sender_email, question[:500], tags, email_message_id or '',
+             conv_id, channel)
         )
         conn.commit()
 

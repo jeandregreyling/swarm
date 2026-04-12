@@ -39,10 +39,39 @@ def api_conversation_messages(conv_id):
            FROM messages WHERE conversation_id=? ORDER BY id ASC""",
         (conv_id,)
     ).fetchall()
+    # Look up any linked ticket for this conversation
+    ticket_info = None
+    try:
+        t = conn.execute(
+            """SELECT t.ticket_number, t.sender_email, t.status, t.channel,
+                      t.question, t.final_answer, t.created_at,
+                      q.subject, q.source_type
+               FROM tickets t
+               LEFT JOIN queue q ON t.queue_id = q.id
+               WHERE t.conv_id = ?
+               LIMIT 1""",
+            (conv_id,)
+        ).fetchone()
+        if t:
+            ticket_info = dict(t)
+        else:
+            # Fallback: derive ticket from conversation source pattern (TG-N, DC-N)
+            src = conv['source'] or ''
+            if src in ('telegram', 'discord'):
+                prefix = 'TG' if src == 'telegram' else 'DC'
+                t2 = conn.execute(
+                    "SELECT ticket_number, sender_email, status, channel, question, final_answer, created_at FROM tickets WHERE ticket_number=? LIMIT 1",
+                    (f'{prefix}-{conv_id}',)
+                ).fetchone()
+                if t2:
+                    ticket_info = dict(t2)
+    except Exception:
+        pass
     conn.close()
     return jsonify({
         'conv': dict(conv),
-        'messages': [dict(r) for r in rows]
+        'messages': [dict(r) for r in rows],
+        'ticket': ticket_info,
     })
 
 

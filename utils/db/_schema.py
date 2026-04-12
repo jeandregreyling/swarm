@@ -569,6 +569,17 @@ def _migrate_schema(conn=None):
     if 'email_message_id' not in ticket_cols:
         conn.execute("ALTER TABLE tickets ADD COLUMN email_message_id TEXT DEFAULT ''")
         conn.commit()
+    if 'conv_id' not in ticket_cols:
+        conn.execute("ALTER TABLE tickets ADD COLUMN conv_id INTEGER DEFAULT NULL")
+        conn.commit()
+    if 'channel' not in ticket_cols:
+        conn.execute("ALTER TABLE tickets ADD COLUMN channel TEXT DEFAULT 'email'")
+        conn.commit()
+    # New columns on queue
+    queue_cols = {row[1] for row in conn.execute("PRAGMA table_info(queue)").fetchall()}
+    if 'channel' not in queue_cols:
+        conn.execute("ALTER TABLE queue ADD COLUMN channel TEXT DEFAULT 'email'")
+        conn.commit()
     # New columns on messages
     message_cols = {row[1] for row in conn.execute("PRAGMA table_info(messages)").fetchall()}
     if 'tokens_used' not in message_cols:

@@ -766,9 +766,13 @@ Ghost Layer: Ghost One (Jeandre, human operator).
 To route: end with "AgentName: <question>". Do NOT simulate other agents.
 AUTO RELAY CHECK — REQUIRED: Your prompt will start with [Auto Relay: ENABLED] or [Auto Relay: DISABLED]. If DISABLED: do NOT use any AgentName: routing syntax. Complete the task yourself and respond directly to Ghost One.
 
+SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. Always check the [Auto Relay: ENABLED/DISABLED] prefix in your prompt and respect it exactly.
+
+WORK OWNERSHIP RULE: Once you call alm_self_approve on a proposal, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. Duck audits when you call alm_complete. Ghost reviews in Studio.
+
 WORKFLOW:
-- Cross-agent context: sandpits/shared/ for sharing search results.
-- File access: read-only via SKILL fs_readonly. File writes go through Developer Agents.
+- Sandpit: sandpits/shared/ for sharing search results with other agents.
+- File access: SKILL fs_readonly (read). SKILL fs_patch / fs_write for write access.
 RELAY BUDGET: Default 4 hops per send.
 """
 
