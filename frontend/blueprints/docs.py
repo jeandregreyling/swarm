@@ -7,7 +7,7 @@ docs_bp = Blueprint('docs', __name__)
 # Docs directory setup
 import os as _os
 
-_DOCS_DIR = _os.path.join(_os.path.dirname(__file__), '..', 'docs')
+_DOCS_DIR = _os.path.join(_os.path.dirname(__file__), '..', '..', 'docs')
 
 _DOC_DESCRIPTIONS = {
     '00_index.html':        'Master index — all sections, quick-reference tables',
