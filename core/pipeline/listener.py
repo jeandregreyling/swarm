@@ -288,7 +288,7 @@ def handle_moderator_command(body, from_addr, subject=''):
                         debate_section = (
                             '[Debate — Challenge round]\r\n'
                             'LLaMA: ' + debate['llama_r2'] + '\r\n'
-                            'Qwen: ' + debate['qwen_r2'] + '\r\n\r\n'
+                            'Qwen: ' + debate['mistral_r2'] + '\r\n\r\n'
                         )
                     email2 = (
                         'The swarm has finished deliberating.\r\n\r\n'
@@ -867,7 +867,7 @@ def handle_followup_email(e, clean_from, subject, body, thread_cc, ticket):
             debate_section = (
                 '[Debate — Challenge round]\r\n'
                 'LLaMA: ' + debate['llama_r2'] + '\r\n'
-                'Qwen: ' + debate['qwen_r2'] + '\r\n\r\n'
+                'Qwen: ' + debate['mistral_r2'] + '\r\n\r\n'
             )
         qwen_section = ('[Qwen]:\r\n' + qwen_answer + '\r\n\r\n') if qwen_answer else ''
         email2 = (
@@ -1206,7 +1206,7 @@ def process_emails(emails=None):
                 debate_section = (
                     '[Debate — Challenge round]\r\n'
                     'LLaMA: ' + debate['llama_r2'] + '\r\n'
-                    'Qwen: ' + debate['qwen_r2'] + '\r\n\r\n'
+                    'Qwen: ' + debate['mistral_r2'] + '\r\n\r\n'
                 )
             qwen_section = ('[Qwen]:\r\n' + qwen_answer + '\r\n\r\n') if qwen_answer else ''
             email2 = (
