@@ -181,9 +181,15 @@ def get_email_thread(ticket_number):
         "SELECT agent, note_type, content, created_at FROM ticket_notes WHERE ticket_id=? ORDER BY id ASC",
         (ticket['id'],)
     ).fetchall()
-    debates = conn.execute(
-        "SELECT * FROM debates WHERE ticket_id=? ORDER BY id ASC", (ticket['id'],)
-    ).fetchall()
+    # debates table links via proposal_id, not ticket_id — skip if column absent
+    debates = []
+    try:
+        debates = conn.execute(
+            "SELECT * FROM debates WHERE proposal_id=? ORDER BY id ASC",
+            (ticket_number,)
+        ).fetchall()
+    except Exception:
+        pass
     activity = conn.execute(
         "SELECT * FROM activity_log WHERE detail LIKE ? ORDER BY id ASC LIMIT 30",
         (f'%{ticket_number}%',)
