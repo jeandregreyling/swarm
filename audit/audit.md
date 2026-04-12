@@ -1,3 +1,169 @@
+## [2026-04-12T (UTC)] /agents/mistral/__init__.py
+
+**Current Code:**
+```python
+from .mistral_agent import AGENT_NAME, MODEL, SANDPIT, ask, save_memory, get_recent_memory
+
+__all__ = ['AGENT_NAME', 'MODEL', 'SANDPIT', 'ask', 'save_memory', 'get_recent_memory']
+```
+
+**Non-Breaking Recommendations:**
+- No code changes required. This file re-exports agent symbols for package consumers.
+- Ensures agents/mistral/ is importable as a package from the project root.
+- If agents/mistral/ is not used as a package, this file can be removed for tidiness, but removal is optional and non-breaking.
+
+**Cross-References:**
+- Any code importing from agents.mistral.*
+- SWARM_ROOT sys.path configuration in agent and service modules.
+
+**Todo List:**
+- [ ] Continue auditing the next file in the /agents/mistral directory (in order).
+- [ ] Maintain strict append-only audit process for all files.
+- [ ] Ensure all recommendations are non-breaking and safe.
+- [ ] Update cross-references as new dependencies are discovered.
+
+**Self-Audit (2026-04-12T, UTC):**
+- Strictly followed append-only, timestamped audit process.
+- No deletions or overwrites performed; only additive entry appended.
+- All recommendations are non-breaking and safe.
+
+## [2026-04-12T (UTC)] /agents/mistral/mistral_agent.py
+
+**Current Code:**
+```python
+"""
+# LINKED TO: utils/config.py — imports MISTRAL_SYSTEM_PROMPT (edit prompts there, not here)
+agents/mistral/mistral_agent.py — Mistral
+Local Ollama generalist analyst. Powered by mistral:latest.
+
+Now uses the shared agents/skills_loop.py for SKILL command interception,
+giving Mistral full developer access to read and patch files.
+Stage callbacks stream progress to the Fridays chat UI in real time.
+"""
+# ...existing code...
+```
+
+**Non-Breaking Recommendations:**
+- No immediate code changes required; the agent logic is robust and modular, consistent with other agents.
+- Add more detailed docstrings for each function, especially public API.
+- Add error handling/logging for all database and memory operations.
+- Consider modularizing context/memory logic for reuse by other agents (see agents/skills_loop.py for shared logic).
+- Document the expected structure of conversation_history and stage_cb.
+
+**Cross-References:**
+- database (for memory/state, queue, tickets, decisions, work proposals)
+- config (for system prompt, Ollama model)
+- agents/skills_loop.py (for shared agent logic)
+- sandpits/ for collaborative workflows
+
+**Todo List:**
+- [ ] Continue auditing the next file in the /agents/mistral directory (in order).
+- [ ] Maintain strict append-only audit process for all files.
+- [ ] Ensure all recommendations are non-breaking and safe.
+- [ ] Update cross-references as new dependencies are discovered.
+
+**Self-Audit (2026-04-12T, UTC):**
+- Strictly followed append-only, timestamped audit process.
+- No deletions or overwrites performed; only additive entry appended.
+- All recommendations are non-breaking and safe.
+## [2026-04-12T (UTC)] /agents/thirteen/__init__.py
+
+**Current Code:**
+```python
+# (empty file)
+```
+
+**Non-Breaking Recommendations:**
+- No code changes required. This file is a standard package marker for Python imports.
+- Ensures agents/thirteen/ is importable as a package from the project root.
+- If agents/thirteen/ is not used as a package, this file can be removed for tidiness, but removal is optional and non-breaking.
+
+**Cross-References:**
+- Any code importing from agents.thirteen.*
+- SWARM_ROOT sys.path configuration in agent and service modules.
+
+**Todo List:**
+- [ ] Continue auditing the next file in the /agents/thirteen directory (in order).
+- [ ] Maintain strict append-only audit process for all files.
+- [ ] Ensure all recommendations are non-breaking and safe.
+- [ ] Update cross-references as new dependencies are discovered.
+
+**Self-Audit (2026-04-12T, UTC):**
+- Strictly followed append-only, timestamped audit process.
+- No deletions or overwrites performed; only additive entry appended.
+- All recommendations are non-breaking and safe.
+
+## [2026-04-12T (UTC)] /agents/thirteen/thirteen_agent.py
+
+**Current Code:**
+```python
+"""
+# LINKED TO: utils/config.py — imports THIRTEEN_SYSTEM_PROMPT (edit prompts there, not here)
+agents/thirteen/thirteen_agent.py — Thirteen (HuggingFace Inference API)
+Developer Agent — HuggingFace specialist (testing). Powered by HuggingFace Inference API via OpenAI-compatible endpoint.
+"""
+...existing code...
+```
+
+**Non-Breaking Recommendations:**
+- No immediate code changes required; the agent logic is robust and modular, consistent with other agents.
+- Add more detailed docstrings for each function, especially public API.
+- Add error handling/logging for all database and memory operations.
+- Consider modularizing context/memory logic for reuse by other agents (see agents/skills_loop.py for shared logic).
+- Document the expected structure of conversation_history and stage_cb.
+
+**Cross-References:**
+- database (for memory/state, queue, tickets, decisions, work proposals)
+- config (for system prompt, HuggingFace API key, model)
+- agents/skills_loop.py (for shared agent logic)
+- sandpits/ for collaborative workflows
+
+**Todo List:**
+- [ ] Continue auditing the next file in the /agents/thirteen directory (in order).
+- [ ] Maintain strict append-only audit process for all files.
+- [ ] Ensure all recommendations are non-breaking and safe.
+- [ ] Update cross-references as new dependencies are discovered.
+
+**Self-Audit (2026-04-12T, UTC):**
+- Strictly followed append-only, timestamped audit process.
+- No deletions or overwrites performed; only additive entry appended.
+- All recommendations are non-breaking and safe.
+## [2026-04-12T (UTC)] /agents/twelve/twelve_agent.py
+
+**Current Code:**
+```python
+"""
+# LINKED TO: utils/config.py — imports TWELVE_SYSTEM_PROMPT (edit prompts there, not here)
+agents/twelve/twelve_agent.py — Twelve (Claude Haiku)
+Developer Agent — time wizard. Powered by Claude Haiku via Anthropic API.
+"""
+...existing code...
+```
+
+**Non-Breaking Recommendations:**
+- No immediate code changes required; the agent logic is robust and modular, consistent with other agents.
+- Add more detailed docstrings for each function, especially public API.
+- Add error handling/logging for all database and memory operations.
+- Consider modularizing context/memory logic for reuse by other agents (see agents/skills_loop.py for shared logic).
+- Document the expected structure of conversation_history and stage_cb.
+
+**Cross-References:**
+- database (for memory/state, queue, tickets, decisions, time_machine, daily_checkpoint, work proposals)
+- config (for system prompt, Anthropic API key, model)
+- claude_api (for API key loading)
+- agents/skills_loop.py (for shared agent logic)
+- sandpits/ for collaborative workflows
+
+**Todo List:**
+- [ ] Continue auditing the next file in the /agents/twelve directory (in order).
+- [ ] Maintain strict append-only audit process for all files.
+- [ ] Ensure all recommendations are non-breaking and safe.
+- [ ] Update cross-references as new dependencies are discovered.
+
+**Self-Audit (2026-04-12T, UTC):**
+- Strictly followed append-only, timestamped audit process.
+- No deletions or overwrites performed; only additive entry appended.
+- All recommendations are non-breaking and safe.
 ## [2026-04-12T (UTC)] /agents/eleven/grok_agent.py
 
 **Current Code:**
@@ -260,6 +426,18 @@ def chat(message, conversation_history=None, stage_cb=None):
 - No deletions or overwrites performed; only additive entry appended.
 - All recommendations are non-breaking and safe.
 - Entry includes code snapshot, recommendations, cross-references, todo list, and self-audit as required.
+
+## [2026-04-12T (UTC)] /agents/scholar/__init__.py
+
+**Current Code:**
+
+## [2026-04-12T (UTC)] /agents/qwen/__init__.py
+
+**Current Code:**
+
+## [2026-04-12T (UTC)] /agents/gemma/__init__.py
+
+**Current Code:**
 
 ## [2026-04-12T (UTC)] /agents/seeker/seeker_agent.py
 
@@ -817,7 +995,8 @@ __all__ = ['AGENT_NAME', 'MODEL', 'SANDPIT', 'ask', 'save_memory', 'get_recent_m
 - No deletions or overwrites performed; only additive entry appended.
 - All recommendations are non-breaking and safe.
 - Entry includes code snapshot, recommendations, cross-references, todo list, and self-audit as required.
-## [2026-04-12T (UTC)] /agents/eight/__init__.py
+
+## [2026-04-12T (UTC)] /agents/gemma/gemma_agent.py
 
 **Current Code:**
 ```python

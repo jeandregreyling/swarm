@@ -666,6 +666,72 @@ Tiles are reviewed and extracted one at a time. Each tile is only moved when it 
 
 ---
 
+---
+
+## ALM Workflow — Interlayered Audit System (2026-04-12)
+
+### Proposal Lifecycle
+```
+Chat message (Ghost/agent)
+  → SKILL alm_create_proposal
+    → DB: work_proposals (source_conv_id recorded)
+    → Duck auto-review (background, ~1s)
+      → DB: status=approved/rejected, duck_verdict, duck_note
+      → Chat thread: Duck posts verdict to originating conversation
+  → Studio tile: Ghost sees proposal with Duck banner
+  → Ghost: approves → DEV (port 5051) → UAT (5053) → PROD (5050)
+  → Agent: SKILL alm_self_approve → in_progress
+  → Agent: SKILL fs_patch / fs_write (the actual change)
+  → Agent: SKILL alm_complete → done
+  → Ghost: confirms, sets executed
+  → Chat thread: status change notification at every stage
+```
+
+### Cross-Entity Links
+- `work_proposals.source_conv_id` → `conversations.id` (chat thread)
+- `work_proposals.ticket_number` → `tickets.ticket_number`
+- `work_proposals.queue_id` → `queue.id`
+- `proposal_attachments.proposal_id` → `work_proposals.proposal_id`
+- `work_proposal_notes.proposal_id` → `work_proposals.proposal_id`
+- Ticket → Chat: "Send to Chat" button opens chat with `[Ticket XX]` pre-filled
+- Proposal → Chat: "View in Chat" opens the originating thread
+
+### ID Normalization
+The `agent-advance` endpoint and `_alm_api_post` helper both try multiple ID
+formats (`INTERNAL-ELEVEN-0558`, `0558`, `INTERNAL-0558`) so agents can use
+any format without breaking.
+
+### Port-Agnostic API
+`_alm_api_post()` in `skills.py` tries ports 5050 → 5053 → 5052 → 5051 in
+order. Any running server handles the request — agents don't need to know
+which environment they're in.
+
+---
+
+## Email Tile (2026-04-12)
+
+### Accounts
+- `sevenpotato9@gmail.com` — primary swarm address
+- `ninepotato7@gmail.com` — Nine's dedicated address
+
+### Backend API (`blueprints/email_bp.py`)
+| Endpoint | Description |
+|---|---|
+| `GET /api/email/inbox` | Emails from queue DB with ticket/agent enrichment |
+| `GET /api/email/live` | Live IMAP fetch from Gmail (on demand) |
+| `GET /api/email/stats` | Count by status, recent listener activity |
+| `GET /api/email/thread/<ticket>` | Full agent audit trail for one email |
+
+### UI (`views/email.js`)
+- Two-column layout: email list (left) + agent handling thread (right)
+- Account tabs: All / sevenpotato9 / ninepotato7
+- "⟳ Live" button fetches direct from Gmail IMAP
+- Audit timeline shows: Listener → LLaMA → Gemma → Duck → Librarian
+- "Open in Chat" links directly to the conversation
+- "Full Ticket" opens the ticket detail modal
+
+---
+
 *The Ghost speaks. The swarm thinks. The Librarian remembers.*
 *The Duck checks. Sniffles watches. Claude advises when asked.*
 *You can only do what you can do when you can do it.*
