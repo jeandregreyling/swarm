@@ -1,92 +1,179 @@
-# ALM Cookbook - Queue and Approval Workflow
+# ALM Cookbook — Proposal & Approval Workflow
 
 <!-- markdownlint-disable -->
 
-Date: 2026-03-30
+Updated: 2026-04-12
 
-## Quick Flow
+## Overview
 
-1. Create proposal in queue
-2. Approve proposal
-3. Execute mutation with `proposal_id`
-4. Log results in docs
+The ALM (Application Lifecycle Management) system provides an auditable
+change-control pipeline. Every agent-initiated change goes through:
 
-## API Steps
+```
+Chat (proposal raised) → Duck sanity check → Ghost review → DEV → UAT → PROD
+```
 
-### 1) Create internal proposal
+Each stage is linked: proposals carry `source_conv_id` so Duck can post
+approval/rejection back to the originating chat thread. Status changes at every
+stage also notify the same thread automatically.
 
-Request:
+---
 
-POST `/api/queue`
+## Skill-Based Flow (agents in Chat)
 
-Body:
-{
-  "agent": "nine",
-  "title": "Short change title",
-  "description": "What and why",
-  "priority": 5
-}
+Agents use skills. Ghost sees the result in the same chat thread.
 
-Response:
-- `queue_id`
-- `proposal_id` (example: `INTERNAL-NINE-0102`)
+### 1. Create a proposal
 
-### 2) Approve proposal
+```
+SKILL alm_create_proposal "<title>" "<description>"
+```
 
-Request:
+- Creates `INTERNAL-<AGENT>-<NNNN>` proposal in DB
+- Duck reviews it immediately (background) and posts verdict to the chat thread
+- Dedup: if the same title exists in this conversation within 5 minutes, returns
+  the existing proposal ID instead of creating a duplicate
 
-PATCH `/api/work-proposals/<proposal_id>`
+### 2. Self-approve and start work (developer agents only)
 
-Body:
-{
-  "status": "approved"
-}
+```
+SKILL alm_self_approve INTERNAL-ELEVEN-0558 [optional-vortex-label]
+```
 
-### 3) Execute with proposal gate
+- Advances the proposal from `approved` → `in_progress`
+- Creates a Vortex (time machine) checkpoint for rollback
+- Works with any ID format: full `INTERNAL-ELEVEN-0558`, numeric `0558`, etc.
 
-Any mutating endpoint must include `proposal_id` in JSON body.
+### 3. Make the change
 
-Examples:
+```
+SKILL fs_patch <path> <<<OLD>>>old text<<<NEW>>>new text
+SKILL fs_write <path>
+content here
+---END---
+```
 
-POST `/api/shell/execute`
-{
-  "command": "sudo systemctl status swarm-terminal",
-  "proposal_id": "INTERNAL-NINE-0102"
-}
+### 4. Mark complete
 
-POST `/api/exec/write`
-{
-  "path": "/home/seven/swarm/docs/example.md",
-  "content": "example",
-  "description": "example write",
-  "proposal_id": "INTERNAL-NINE-0102"
-}
+```
+SKILL alm_complete INTERNAL-ELEVEN-0558
+```
 
-### 4) Mark executed
+- Advances `in_progress` → `done`
+- Ghost reviews and promotes to `executed` or reopens
 
-PATCH `/api/work-proposals/<proposal_id>`
-{
-  "status": "executed"
-}
+---
+
+## API Flow (direct / programmatic)
+
+### Create proposal
+
+```http
+POST /api/queue
+{"agent": "nine", "title": "...", "description": "...", "priority": 5}
+```
+
+Response: `{"ok": true, "proposal_id": "INTERNAL-NINE-0102"}`
+
+### Advance status (Ghost)
+
+```http
+PATCH /api/work-proposals/<proposal_id>
+{"status": "approved", "actor": "ghost", "note": "optional context"}
+```
+
+Valid statuses: `pending → approved → in_progress → done → executed`
+
+Also supports direct rejection: `{"status": "rejected"}`
+
+### Agent self-advance (skills / direct)
+
+```http
+POST /api/work-proposals/<proposal_id>/agent-advance
+{"agent": "eleven", "action": "start"}   # pending/approved → in_progress
+{"agent": "eleven", "action": "complete"} # in_progress → done
+```
+
+The endpoint tries the exact ID and multiple normalized variants
+(`INTERNAL-ELEVEN-XXXX`, `INTERNAL-XXXX`, numeric) so any format works.
+
+### Edit proposal content
+
+```http
+PATCH /api/work-proposals/<proposal_id>/edit
+{"title": "...", "description": "...", "notes": "..."}
+```
+
+### Attachments
+
+```http
+GET    /api/work-proposals/<id>/attachments
+POST   /api/work-proposals/<id>/attachments          # multipart/form-data file=
+GET    /api/work-proposals/<id>/attachments/<att_id> # download
+DELETE /api/work-proposals/<id>/attachments/<att_id>
+```
+
+### Agent notes
+
+```http
+GET  /api/work-proposals/<id>/notes
+POST /api/work-proposals/<id>/notes
+{"content": "observation text", "author": "duck"}
+```
+
+---
+
+## Duck Auto-Review
+
+Every proposal created via `SKILL alm_create_proposal` is reviewed by Duck
+within ~1 second (background thread):
+
+- **Approved**: description ≥ 20 chars, title ≥ 5 chars, no destructive keywords
+- **Rejected**: too short, or contains `delete all`, `drop table`, `rm -rf`, etc.
+
+Duck posts the verdict back to `source_conv_id` (the originating chat thread).
+
+---
+
+## Studio UI (Ghost)
+
+Open **Studio** tile → proposals are shown with:
+- Colour-coded pipeline progress bar
+- Duck review banner (green/red)
+- "💬 View in Chat" link back to the originating thread
+- Agent notes section (Duck and agents can add notes)
+- Attachment upload/download
+- Status action buttons appropriate to current stage
+
+---
+
+## Environment Ports
+
+| Environment | Port | Purpose |
+|---|---|---|
+| PROD (Fridays) | 5050 | Live system |
+| DEV (Mondays) | 5051 | Development work |
+| UAT (Wednesdays) | 5053 | User acceptance testing |
+
+The ALM skill helper `_alm_api_post` tries all three ports in order so agents
+don't need to know which server they're running against.
+
+---
 
 ## Failure Modes
 
-- 428: proposal_id missing
-- 404: proposal not found
-- 403: proposal status not approved/executed
+| Code | Meaning |
+|---|---|
+| 404 | Proposal not found (check ID format — all variants tried) |
+| 400 | Invalid action (must be `start` or `complete`) |
+| 428 | `proposal_id` missing from mutating request |
+
+---
 
 ## Daily Self-Audit Checklist
 
-1. Dry-run script passes
-2. Key API connections pass
-3. Pending proposal count reviewed
-4. Sniffles enabled state verified
-5. Changelog + tracker updated
-
-## Minimal Evidence Block Template
-
-- Dry run: pass/fail + command
-- Connection sweep: pass count
-- Proposal queue: executed/pending
-- Sniffles: enabled true/false
-- Commits: hash list
+1. `python3 -m py_compile fridays/skills.py` — no syntax errors
+2. Pending proposal count in Studio — clear or actioned
+3. Sniffles enabled state verified (`/api/alm/status`)
+4. Changelog + tracker updated
+5. Vortex checkpoint created before any destructive change

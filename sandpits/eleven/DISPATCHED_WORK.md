@@ -2910,4 +2910,34 @@ Args: frontend/static/css/views/chat.css
 **Title**: "Single test proposal - do not create more"
 **From**: eleven
 **Description**: "Single test proposal - do not create more"
+
+---
+
+## ALM System Fix — 2026-04-12
+
+**Root cause of duplicate proposals and "Proposal not found" errors has been resolved.**
+
+### What was broken
+1. `alm_self_approve` and `alm_complete` only called port 5050 (PROD), but PROD
+   had old code without the normalized ID lookup.
+2. ID stripping (`INTERNAL-ELEVEN-0558 vortex-label` → `0558 vortex-label`) passed
+   `0558 vortex-label` as the ID, which never matched the DB.
+3. Separate HTTP requests (retry storms from Grok) each created new proposals since
+   the per-request dedup flag resets between requests.
+
+### What was fixed
+1. `_alm_api_post()` now tries all ports (5050, 5053, 5052, 5051) in order.
+2. `alm_self_approve` and `alm_complete` split args cleanly: `proposal_id` = first
+   token, `vortex_label` = remainder.
+3. `agent-advance` endpoint tries exact match, then normalized ID, then prefix variants.
+4. `alm_create_proposal` checks for same-title proposals in the same conversation
+   within 5 minutes and returns the existing ID instead of creating a duplicate.
+
+### Current state of proposals
+- INTERNAL-ELEVEN-0555: approved (test)
+- INTERNAL-ELEVEN-0556: approved (test)
+- INTERNAL-ELEVEN-0558: approved (test — was reset after smoke test)
+- INTERNAL-ELEVEN-0557, 0554: deleted (malformed titles)
+
+These test proposals can be rejected and deleted via Studio.
 **Status**: dispatched
