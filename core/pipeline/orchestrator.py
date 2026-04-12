@@ -869,9 +869,9 @@ def consult_stage2(question, web_results, llama_answer, shared_context, conv_id,
         gemma_prompt = (
             shared_context + gemma_own + web_context +
             'LLaMA R1: ' + llama_answer + '\n\n'
-            'Qwen R1: ' + qwen_answer + '\n\n'
+            'Mistral R1: ' + mistral_answer + '\n\n'
             'LLaMA challenge: ' + llama_r2 + '\n\n'
-            'Qwen challenge: ' + qwen_r2 + '\n\n'
+            'Mistral challenge: ' + mistral_r2 + '\n\n'
             '=== The Ghost asks ===\n' + question + '\n\n'
             'You are the judge. Review the debate and decide who made the stronger case, '
             'or where both were right or wrong. Deliver one clear final verdict. '
@@ -881,7 +881,7 @@ def consult_stage2(question, web_results, llama_answer, shared_context, conv_id,
         gemma_prompt = (
             shared_context + gemma_own + web_context +
             ('LLaMA said: ' + llama_answer + '\n\n' if llama_answer else '') +
-            ('Qwen said: ' + qwen_answer + '\n\n' if qwen_answer else '') +
+            ('Mistral said: ' + mistral_answer + '\n\n' if mistral_answer else '') +
             '=== The Ghost asks ===\n' + question + '\n\n'
             'Synthesise. Call out disagreements. Be direct. No preamble.'
         )
