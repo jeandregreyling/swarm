@@ -15,6 +15,7 @@ def _tickets(limit=100, status=None):
     rows = conn.execute(
         f"""SELECT t.ticket_number, t.status, t.duck_result, t.gemma_routing,
                   t.created_at, t.closed_at, t.sender_email, t.question,
+                  t.channel, t.conv_id,
                   COALESCE(q.priority, 5) AS priority,
                   COUNT(DISTINCT tn.id) AS note_count,
                   COUNT(DISTINCT CASE WHEN s.fired=0 THEN s.id END) AS snooze_count
@@ -46,7 +47,8 @@ def api_ticket_detail(ticket_number):
     ticket = conn.execute(
         """SELECT ticket_number, status, duck_result, gemma_routing, question,
                   tags, sender_email, created_at, closed_at, final_answer,
-                  sniffles_result, sniffles_checked, duck_visited
+                  sniffles_result, sniffles_checked, duck_visited,
+                  channel, conv_id, email_message_id
            FROM tickets WHERE ticket_number=?""",
         (ticket_number,)
     ).fetchone()
@@ -54,16 +56,22 @@ def api_ticket_detail(ticket_number):
         conn.close()
         return jsonify({'error': 'not found'}), 404
 
-    # Pull messages via conversation id (TICKET-N → N)
+    # Pull messages via conv_id stored on ticket, or derive from ticket_number
     messages = []
     try:
-        conv_id = int(ticket_number.split('-')[-1])
-        rows = conn.execute(
-            """SELECT from_agent AS sender, content, to_agent, message_type, created_at
-               FROM messages WHERE conversation_id=? ORDER BY id ASC""",
-            (conv_id,)
-        ).fetchall()
-        messages = [dict(r) for r in rows]
+        conv_id = ticket['conv_id']
+        if not conv_id:
+            # Fallback: derive from TG-N / DC-N / TICKET-N patterns
+            parts = ticket_number.split('-')
+            if len(parts) == 2 and parts[1].isdigit():
+                conv_id = int(parts[1])
+        if conv_id:
+            rows = conn.execute(
+                """SELECT from_agent AS sender, content, to_agent, message_type, created_at
+                   FROM messages WHERE conversation_id=? ORDER BY id ASC""",
+                (conv_id,)
+            ).fetchall()
+            messages = [dict(r) for r in rows]
     except Exception:
         pass
 
