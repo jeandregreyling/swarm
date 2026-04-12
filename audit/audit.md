@@ -1,3 +1,971 @@
+127.0.0.1 - - [08/Apr/2026 14:58:30] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:58:30] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [08/Apr/2026 14:58:31] "GET /api/monitor HTTP/1.1" 200 1071
+127.0.0.1 - - [08/Apr/2026 14:58:33] "GET /api/activity HTTP/1.1" 200 14263
+127.0.0.1 - - [08/Apr/2026 14:58:34] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:58:38] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:58:38] "GET /api/activity HTTP/1.1" 200 14263
+127.0.0.1 - - [08/Apr/2026 14:58:39] "GET /api/monitor HTTP/1.1" 200 1071
+127.0.0.1 - - [08/Apr/2026 14:58:39] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:58:40] "GET /api/monitor HTTP/1.1" 200 1071
+127.0.0.1 - - [08/Apr/2026 14:58:43] "GET /api/activity HTTP/1.1" 200 14263
+127.0.0.1 - - [08/Apr/2026 14:58:44] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:58:49] "GET /api/activity HTTP/1.1" 200 14263
+127.0.0.1 - - [08/Apr/2026 14:58:49] "GET /api/monitor HTTP/1.1" 200 1071
+127.0.0.1 - - [08/Apr/2026 14:58:49] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:58:54] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:58:54] "GET /api/activity HTTP/1.1" 200 14263
+127.0.0.1 - - [08/Apr/2026 14:58:55] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:58:55] "GET /api/monitor HTTP/1.1" 200 1071
+127.0.0.1 - - [08/Apr/2026 14:58:59] "GET /api/activity HTTP/1.1" 200 14263
+127.0.0.1 - - [08/Apr/2026 14:58:59] "GET /api/monitor HTTP/1.1" 200 1071
+127.0.0.1 - - [08/Apr/2026 14:58:59] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:59:01] "GET /api/work-proposals HTTP/1.1" 200 48264
+127.0.0.1 - - [08/Apr/2026 14:59:01] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:59:01] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:59:01] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [08/Apr/2026 14:59:02] "GET /api/monitor HTTP/1.1" 200 1071
+127.0.0.1 - - [08/Apr/2026 14:59:04] "GET /api/activity HTTP/1.1" 200 14263
+127.0.0.1 - - [08/Apr/2026 14:59:05] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:59:09] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:59:09] "GET /api/activity HTTP/1.1" 200 14135
+127.0.0.1 - - [08/Apr/2026 14:59:09] "GET /api/monitor HTTP/1.1" 200 1069
+127.0.0.1 - - [08/Apr/2026 14:59:09] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:59:10] "GET /api/monitor HTTP/1.1" 200 1069
+127.0.0.1 - - [08/Apr/2026 14:59:14] "GET /api/activity HTTP/1.1" 200 14135
+127.0.0.1 - - [08/Apr/2026 14:59:15] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:59:19] "GET /api/activity HTTP/1.1" 200 14135
+127.0.0.1 - - [08/Apr/2026 14:59:19] "GET /api/monitor HTTP/1.1" 200 1069
+127.0.0.1 - - [08/Apr/2026 14:59:19] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:59:24] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:59:24] "GET /api/activity HTTP/1.1" 200 14135
+127.0.0.1 - - [08/Apr/2026 14:59:25] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:59:25] "GET /api/monitor HTTP/1.1" 200 1069
+127.0.0.1 - - [08/Apr/2026 14:59:29] "GET /api/activity HTTP/1.1" 200 14135
+127.0.0.1 - - [08/Apr/2026 14:59:29] "GET /api/monitor HTTP/1.1" 200 1069
+127.0.0.1 - - [08/Apr/2026 14:59:29] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:59:31] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:59:31] "GET /api/work-proposals HTTP/1.1" 200 48264
+127.0.0.1 - - [08/Apr/2026 14:59:31] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:59:31] "GET /api/services HTTP/1.1" 200 611
+127.0.0.1 - - [08/Apr/2026 14:57:29] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:57:29] "GET /api/work-proposals HTTP/1.1" 200 48264
+127.0.0.1 - - [08/Apr/2026 14:57:29] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:57:29] "GET /api/services HTTP/1.1" 200 611
+127.0.0.1 - - [08/Apr/2026 14:57:30] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:32] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:33] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:37] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:37] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:57:37] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:37] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:57:38] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:42] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:43] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:47] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:47] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:47] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:57:52] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:57:52] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:53] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:54] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:58] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:58] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:58] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:58:00] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:58:00] "GET /api/work-proposals HTTP/1.1" 200 48264
+127.0.0.1 - - [08/Apr/2026 14:58:00] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:58:00] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [08/Apr/2026 14:58:01] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:58:03] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:58:04] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:58:08] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:58:08] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:58:08] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:58:08] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:58:09] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:58:13] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:58:14] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:58:18] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:58:18] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:58:18] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:58:23] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:58:23] "GET /api/activity HTTP/1.1" 200 14263
+127.0.0.1 - - [08/Apr/2026 14:58:24] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:58:24] "GET /api/monitor HTTP/1.1" 200 1155
+127.0.0.1 - - [08/Apr/2026 14:58:28] "GET /api/activity HTTP/1.1" 200 14263
+127.0.0.1 - - [08/Apr/2026 14:58:28] "GET /api/monitor HTTP/1.1" 200 929
+127.0.0.1 - - [08/Apr/2026 14:58:28] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:58:30] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:58:30] "GET /api/work-proposals HTTP/1.1" 200 48264
+---
+File: stage2.log
+nohup: ignoring input
+Stage 2 (UAT/Pre-prod) server started on port 5053
+127.0.0.1 - - [08/Apr/2026 14:56:27] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:27] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:27] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:56:31] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:56:32] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:56:32] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:32] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:37] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:37] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:37] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:56:42] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:56:42] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:46] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:56:47] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:47] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:49] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:49] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:56:52] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:56:52] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:55] "GET /api/work-proposals HTTP/1.1" 200 48264
+127.0.0.1 - - [08/Apr/2026 14:56:55] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:56:55] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:56:56] "GET /api/services HTTP/1.1" 200 611
+127.0.0.1 - - [08/Apr/2026 14:56:57] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:58] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:58] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:58] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:57:02] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:57:03] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:03] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:03] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:08] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:08] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:08] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:57:13] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:13] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:17] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:57:18] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:18] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:19] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:19] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:57:23] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:23] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:26] "GET /api/work-proposals HTTP/1.1" 200 48264
+127.0.0.1 - - [08/Apr/2026 14:57:26] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:57:26] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:57:26] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [08/Apr/2026 14:57:27] "GET /api/monitor HTTP/1.1" 200 1157
+---
+File: stage1.log
+nohup: ignoring input
+127.0.0.1 - - [08/Apr/2026 09:31:05] "GET /api/agents/config HTTP/1.1" 200 71059
+127.0.0.1 - - [08/Apr/2026 09:31:08] "GET / HTTP/1.1" 200 92
+127.0.0.1 - - [08/Apr/2026 09:31:19] "GET /proposals HTTP/1.1" 200 114
+127.0.0.1 - - [08/Apr/2026 09:31:19] "GET /favicon.ico HTTP/1.1" 404 207
+127.0.0.1 - - [08/Apr/2026 09:31:28] "GET / HTTP/1.1" 200 92
+127.0.0.1 - - [08/Apr/2026 09:31:31] "GET /api/agents/config HTTP/1.1" 200 71059
+127.0.0.1 - - [08/Apr/2026 09:31:45] "GET / HTTP/1.1" 200 92
+127.0.0.1 - - [08/Apr/2026 09:31:45] "GET /favicon.ico HTTP/1.1" 404 207
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/proposals?status=pending&limit=100 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:34:32] "GET / HTTP/1.1" 200 92
+127.0.0.1 - - [08/Apr/2026 09:34:32] "GET /favicon.ico HTTP/1.1" 404 207
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/proposals?status=pending&limit=100 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+---
+File: 5053_error.log
+[Time Wizard] Session started: session_20260409_080106_bc31824c
+Traceback (most recent call last):
+    File "/home/seven/swarm/frontend/terminal.py", line 135, in <module>
+        server = make_server('0.0.0.0', port, app, server_class=_ThreadingWSGIServer)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 154, in make_server
+        server = server_class((host, port), handler_class)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/socketserver.py", line 457, in __init__
+        self.server_bind()
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 50, in server_bind
+        HTTPServer.server_bind(self)
+    File "/usr/lib/python3.12/http/server.py", line 136, in server_bind
+        socketserver.TCPServer.server_bind(self)
+    File "/usr/lib/python3.12/socketserver.py", line 473, in server_bind
+        self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
+
+---
+File: 5051_full_error2.log
+127.0.0.1 - - [09/Apr/2026 18:13:07] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:08] "GET /api/work-proposals HTTP/1.1" 200 47914
+127.0.0.1 - - [09/Apr/2026 18:13:08] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [09/Apr/2026 18:13:08] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [09/Apr/2026 18:13:08] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [09/Apr/2026 18:13:10] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:12] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:13:13] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:13] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:13] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:13:18] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:20] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [09/Apr/2026 18:13:21] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:22] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:13:23] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:23] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:23] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:13:28] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:32] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:13:33] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:33] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:33] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:13:35] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [09/Apr/2026 18:13:36] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:38] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:39] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [09/Apr/2026 18:13:39] "GET /api/work-proposals HTTP/1.1" 200 47914
+127.0.0.1 - - [09/Apr/2026 18:13:39] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [09/Apr/2026 18:13:39] "GET /api/services HTTP/1.1" 200 611
+127.0.0.1 - - [09/Apr/2026 18:13:40] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:42] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:13:43] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:43] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:43] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:13:48] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:50] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [09/Apr/2026 18:13:51] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:52] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:13:53] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:53] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:53] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:13:58] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:14:02] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:14:04] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:14:04] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:14:04] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:14:06] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [09/Apr/2026 18:14:07] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:14:09] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:14:10] "GET /api/work-proposals HTTP/1.1" 200 47914
+
+---
+File: 5051_full_error.log
+[Time Wizard] Session started: session_20260409_080705_9d9f7dcc
+Traceback (most recent call last):
+    File "/home/seven/swarm/frontend/terminal.py", line 135, in <module>
+        server = make_server('0.0.0.0', port, app, server_class=_ThreadingWSGIServer)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 154, in make_server
+        server = server_class((host, port), handler_class)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/socketserver.py", line 457, in __init__
+        self.server_bind()
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 50, in server_bind
+        HTTPServer.server_bind(self)
+    File "/usr/lib/python3.12/http/server.py", line 136, in server_bind
+        socketserver.TCPServer.server_bind(self)
+    File "/usr/lib/python3.12/socketserver.py", line 473, in server_bind
+        self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
+
+---
+File: 5051_error.log
+[Time Wizard] Session started: session_20260409_080101_cae35275
+Traceback (most recent call last):
+    File "/home/seven/swarm/frontend/terminal.py", line 135, in <module>
+        server = make_server('0.0.0.0', port, app, server_class=_ThreadingWSGIServer)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 154, in make_server
+        server = server_class((host, port), handler_class)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/socketserver.py", line 457, in __init__
+        self.server_bind()
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 50, in server_bind
+        HTTPServer.server_bind(self)
+    File "/usr/lib/python3.12/http/server.py", line 136, in server_bind
+        socketserver.TCPServer.server_bind(self)
+    File "/usr/lib/python3.12/socketserver.py", line 473, in server_bind
+        self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
+
+127.0.0.1 - - [07/Apr/2026 17:21:38] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [07/Apr/2026 17:21:39] "GET /api/monitor HTTP/1.1" 200 1258
+127.0.0.1 - - [07/Apr/2026 17:21:39] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/monitor HTTP/1.1" 200 1258
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET / HTTP/1.1" 200 148203
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/css/core.css HTTP/1.1" 200 3812
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/css/themes.css HTTP/1.1" 200 6744
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/css/windows.css HTTP/1.1" 200 4043
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/css/components.css HTTP/1.1" 200 27664
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/css/taskbar.css HTTP/1.1" 200 1878
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/css/library.css HTTP/1.1" 200 12970
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/css/modals.css HTTP/1.1" 200 14325
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/core/window-manager.js HTTP/1.1" 200 19023
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/core/icons.js HTTP/1.1" 200 792
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/core/theme.js HTTP/1.1" 200 59030
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/css/views/chat.css HTTP/1.1" 200 48357
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/core/app.js HTTP/1.1" 200 10663
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/core/toast.js HTTP/1.1" 200 10873
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/conversations.js HTTP/1.1" 200 6775
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/terminal-commands.js HTTP/1.1" 200 12959
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/terminal.js HTTP/1.1" 200 34885
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/git.js HTTP/1.1" 200 22671
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/monitor.js HTTP/1.1" 200 18811
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/files.js HTTP/1.1" 200 37820
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/memory.js HTTP/1.1" 200 29549
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/skills.js HTTP/1.1" 200 22952
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/docs.js HTTP/1.1" 200 29054
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/tickets.js HTTP/1.1" 200 2648
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/services.js HTTP/1.1" 200 4766
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/studio.js HTTP/1.1" 200 56945
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/ollama.js HTTP/1.1" 200 4247
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/time-wizard.js HTTP/1.1" 200 31193
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/library.js HTTP/1.1" 200 16778
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/agents-config.js HTTP/1.1" 200 26877
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/access.js HTTP/1.1" 200 70878
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/core/init.js HTTP/1.1" 200 12450
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /static/js/views/chat.js HTTP/1.1" 200 221042
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /favicon.ico HTTP/1.1" 404 207
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/agents/config HTTP/1.1" 500 281
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/work-proposals HTTP/1.1" 200 48702
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/activity HTTP/1.1" 200 14104
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/auth/profiles?include_inactive=1 HTTP/1.1" 200 3788
+127.0.0.1 - - [07/Apr/2026 17:21:40] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [07/Apr/2026 17:21:41] "GET /api/monitor HTTP/1.1" 200 1260
+127.0.0.1 - - [07/Apr/2026 17:21:41] "GET /api/monitor HTTP/1.1" 200 1260
+---
+File: swarm_memory.db-wal
+(Binary file: 1.1 MB, not displayed in full. Header bytes: 7f 06 82 00 2d e2 18 00 00 10 00 00 00 00 00 21)
+
+---
+File: swarm_memory.db-shm
+(Binary file: 32 KB, not displayed in full. Header bytes: e2 2d 00 00 00 00 00 4e 00 00 00 01 00 00 10 0c)
+
+---
+File: swarm_memory.db
+(Binary file: not displayed in full. Likely SQLite or similar database.)
+
+---
+File: swarm.db.empty.backup.20260409-2114
+(The file `/home/seven/swarm/swarm.db.empty.backup.20260409-2114` exists, but is empty)
+
+---
+File: swarm.db.backup.20260409-2346
+(The file `/home/seven/swarm/swarm.db.backup.20260409-2346` exists, but is empty)
+
+---
+File: swarm.db
+(Binary file: SQLite format 3, 16 KB, not displayed in full. Header bytes: 51 4c 69 74 65 20 66 6f 72 6d 61 74 20 33)
+
+---
+File: studio_proposals.db
+(Binary file: SQLite format 3, 12 KB, not displayed in full. Header bytes: 51 4c 69 74 65 20 66 6f 72 6d 61 74 20 33)
+
+---
+File: test_blueprint.log
+ * Serving Flask app 'test_blueprint_app'
+ * Debug mode: on
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5051
+Press CTRL+C to quit
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 593-932-781
+
+---
+File: terminal.log
+nohup: ignoring input
+127.0.0.1 - - [07/Apr/2026 17:18:18] "GET /api/agent/proposals?status=pending&limit=100 HTTP/1.1" 503 69
+127.0.0.1 - - [07/Apr/2026 17:18:18] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [07/Apr/2026 17:18:18] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [07/Apr/2026 17:18:18] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [07/Apr/2026 17:18:18] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [07/Apr/2026 17:18:18] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [07/Apr/2026 17:18:18] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [07/Apr/2026 17:18:18] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET / HTTP/1.1" 200 148203
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/css/views/chat.css HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/css/core.css HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/css/components.css HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/css/windows.css HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/css/taskbar.css HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/css/themes.css HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/css/modals.css HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/css/library.css HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/core/theme.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/core/window-manager.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/core/icons.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/core/app.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/conversations.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/core/toast.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/terminal.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/git.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/docs.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/files.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/monitor.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/terminal-commands.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/memory.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/chat.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/services.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/skills.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/studio.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/tickets.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/ollama.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/time-wizard.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/core/init.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/agents-config.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/library.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:37] "GET /static/js/views/access.js HTTP/1.1" 304 0
+127.0.0.1 - - [07/Apr/2026 17:21:38] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [07/Apr/2026 17:21:38] "GET /api/agents/config HTTP/1.1" 500 281
+127.0.0.1 - - [07/Apr/2026 17:21:38] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [07/Apr/2026 17:21:38] "GET /api/work-proposals HTTP/1.1" 200 48702
+127.0.0.1 - - [07/Apr/2026 17:21:38] "GET /api/activity HTTP/1.1" 200 14104
+127.0.0.1 - - [07/Apr/2026 17:21:38] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [07/Apr/2026 17:21:38] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [07/Apr/2026 17:21:38] "GET /api/auth/profiles?include_inactive=1 HTTP/1.1" 200 3788
+127.0.0.1 - - [07/Apr/2026 17:21:38] "GET /api/ollama/models HTTP/1.1" 200 1042
+
+---
+File: stage3.log
+nohup: ignoring input
+Stage 3 (DEV) server started on port 5051
+127.0.0.1 - - [08/Apr/2026 14:56:28] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:56:28] "GET /api/work-proposals HTTP/1.1" 200 48264
+127.0.0.1 - - [08/Apr/2026 14:56:28] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:56:28] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [08/Apr/2026 14:56:29] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:29] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:32] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:56:34] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:35] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:56:36] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:37] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:37] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:56:39] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:42] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:56:44] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:46] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:46] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:56:49] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:51] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:56:52] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:56:53] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:55] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:57] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:57] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:56:59] "GET /api/work-proposals HTTP/1.1" 200 48264
+127.0.0.1 - - [08/Apr/2026 14:56:59] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:56:59] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:56:59] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [08/Apr/2026 14:57:00] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:02] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:03] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:07] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:57:07] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:07] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:07] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:57:08] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:12] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:13] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:17] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:17] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:17] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:57:22] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:57:22] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:23] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:23] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:27] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:27] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:27] "GET /api/alm/status HTTP/1.1" 200 206
+
+---
+File: nohup.out
+(The file `/home/seven/swarm/nohup.out` exists, but is empty)
+
+---
+File: patch_debug.log
+127.0.0.1 - - [08/Apr/2026 23:39:15] "GET /api/activity HTTP/1.1" 200 14612
+127.0.0.1 - - [08/Apr/2026 23:39:16] "GET /api/activity HTTP/1.1" 200 14612
+127.0.0.1 - - [08/Apr/2026 23:39:16] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 23:39:17] "GET /api/monitor HTTP/1.1" 200 1262
+127.0.0.1 - - [08/Apr/2026 23:39:17] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 23:39:20] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 23:39:20] "GET /api/activity HTTP/1.1" 200 14612
+127.0.0.1 - - [08/Apr/2026 23:39:21] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 23:39:21] "GET /api/activity HTTP/1.1" 200 14612
+127.0.0.1 - - [08/Apr/2026 23:39:21] "GET /api/monitor HTTP/1.1" 200 1262
+127.0.0.1 - - [08/Apr/2026 23:39:21] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 23:39:22] "GET /api/monitor HTTP/1.1" 200 1264
+127.0.0.1 - - [08/Apr/2026 23:39:23] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 23:39:24] "GET /api/monitor HTTP/1.1" 200 1262
+127.0.0.1 - - [08/Apr/2026 23:39:25] "GET /api/activity HTTP/1.1" 200 14612
+127.0.0.1 - - [08/Apr/2026 23:39:26] "GET /api/activity HTTP/1.1" 200 14612
+127.0.0.1 - - [08/Apr/2026 23:39:26] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 23:39:27] "GET /api/monitor HTTP/1.1" 200 1262
+127.0.0.1 - - [08/Apr/2026 23:39:27] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 23:39:30] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 23:39:30] "PATCH /api/work-proposals/INTERNAL-ELEVEN-0510 HTTP/1.1" 200 501
+127.0.0.1 - - [08/Apr/2026 23:39:30] "GET /api/activity HTTP/1.1" 200 14694
+127.0.0.1 - - [08/Apr/2026 23:39:31] "GET /api/activity HTTP/1.1" 200 14694
+127.0.0.1 - - [08/Apr/2026 23:39:31] "GET /api/monitor HTTP/1.1" 200 1262
+127.0.0.1 - - [08/Apr/2026 23:39:31] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 23:39:35] "GET /api/activity HTTP/1.1" 200 14694
+127.0.0.1 - - [08/Apr/2026 23:39:36] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 23:39:36] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 23:39:36] "GET /api/work-proposals HTTP/1.1" 200 47923
+127.0.0.1 - - [08/Apr/2026 23:39:36] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 23:39:36] "GET /api/activity HTTP/1.1" 200 14694
+127.0.0.1 - - [08/Apr/2026 23:39:36] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 23:39:36] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [08/Apr/2026 23:39:37] "GET /api/monitor HTTP/1.1" 200 1262
+127.0.0.1 - - [08/Apr/2026 23:39:37] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 23:39:38] "GET /api/monitor HTTP/1.1" 200 1262
+127.0.0.1 - - [08/Apr/2026 23:39:38] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 23:39:38] "GET /api/work-proposals HTTP/1.1" 200 47923
+127.0.0.1 - - [08/Apr/2026 23:39:38] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 23:39:38] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [08/Apr/2026 23:39:38] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 23:39:39] "GET /api/monitor HTTP/1.1" 200 1262
+127.0.0.1 - - [08/Apr/2026 23:39:39] "GET /api/monitor HTTP/1.1" 200 1262
+127.0.0.1 - - [08/Apr/2026 23:39:40] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 23:39:40] "GET /api/activity HTTP/1.1" 200 14694
+127.0.0.1 - - [08/Apr/2026 23:39:40] "GET /api/monitor HTTP/1.1" 200 1264
+127.0.0.1 - - [08/Apr/2026 23:39:41] "GET /api/activity HTTP/1.1" 200 14694
+127.0.0.1 - - [08/Apr/2026 23:39:41] "GET /api/monitor HTTP/1.1" 200 1262
+127.0.0.1 - - [08/Apr/2026 23:39:41] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 23:39:44] "GET /api/work-proposals/INTERNAL-ELEVEN-0510 HTTP/1.1" 200 431
+
+---
+File: stage1.log
+nohup: ignoring input
+127.0.0.1 - - [08/Apr/2026 09:31:05] "GET /api/agents/config HTTP/1.1" 200 71059
+127.0.0.1 - - [08/Apr/2026 09:31:08] "GET / HTTP/1.1" 200 92
+127.0.0.1 - - [08/Apr/2026 09:31:19] "GET /proposals HTTP/1.1" 200 114
+127.0.0.1 - - [08/Apr/2026 09:31:19] "GET /favicon.ico HTTP/1.1" 404 207
+127.0.0.1 - - [08/Apr/2026 09:31:28] "GET / HTTP/1.1" 200 92
+127.0.0.1 - - [08/Apr/2026 09:31:31] "GET /api/agents/config HTTP/1.1" 200 71059
+127.0.0.1 - - [08/Apr/2026 09:31:45] "GET / HTTP/1.1" 200 92
+127.0.0.1 - - [08/Apr/2026 09:31:45] "GET /favicon.ico HTTP/1.1" 404 207
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/proposals?status=pending&limit=100 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:31:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:34:32] "GET / HTTP/1.1" 200 92
+127.0.0.1 - - [08/Apr/2026 09:34:32] "GET /favicon.ico HTTP/1.1" 404 207
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/proposals?status=pending&limit=100 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+127.0.0.1 - - [08/Apr/2026 09:36:56] "GET /api/agent/git/proposals?status=approved&limit=50 HTTP/1.1" 503 69
+
+---
+File: stage2.log
+nohup: ignoring input
+Stage 2 (UAT/Pre-prod) server started on port 5053
+127.0.0.1 - - [08/Apr/2026 14:56:27] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:27] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:27] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:56:31] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:56:32] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:56:32] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:32] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:37] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:37] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:37] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:56:42] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:56:42] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:46] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:56:47] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:47] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:49] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:49] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:56:52] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:56:52] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:55] "GET /api/work-proposals HTTP/1.1" 200 48264
+127.0.0.1 - - [08/Apr/2026 14:56:55] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:56:55] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:56:56] "GET /api/services HTTP/1.1" 200 611
+127.0.0.1 - - [08/Apr/2026 14:56:57] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:58] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:56:58] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:56:58] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:57:02] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:57:03] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:03] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:03] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:08] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:08] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:08] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:57:13] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:13] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:17] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [08/Apr/2026 14:57:18] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:18] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:19] "GET /api/monitor HTTP/1.1" 200 1157
+127.0.0.1 - - [08/Apr/2026 14:57:19] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [08/Apr/2026 14:57:23] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [08/Apr/2026 14:57:23] "GET /api/activity HTTP/1.1" 200 14271
+127.0.0.1 - - [08/Apr/2026 14:57:26] "GET /api/work-proposals HTTP/1.1" 200 48264
+127.0.0.1 - - [08/Apr/2026 14:57:26] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [08/Apr/2026 14:57:26] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [08/Apr/2026 14:57:26] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [08/Apr/2026 14:57:27] "GET /api/monitor HTTP/1.1" 200 1157
+
+---
+File: 5051_error.log
+[Time Wizard] Session started: session_20260409_080101_cae35275
+Traceback (most recent call last):
+    File "/home/seven/swarm/frontend/terminal.py", line 135, in <module>
+        server = make_server('0.0.0.0', port, app, server_class=_ThreadingWSGIServer)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 154, in make_server
+        server = server_class((host, port), handler_class)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/socketserver.py", line 457, in __init__
+        self.server_bind()
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 50, in server_bind
+        HTTPServer.server_bind(self)
+    File "/usr/lib/python3.12/http/server.py", line 136, in server_bind
+        socketserver.TCPServer.server_bind(self)
+    File "/usr/lib/python3.12/socketserver.py", line 473, in server_bind
+        self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
+
+---
+File: 5051_full_error.log
+[Time Wizard] Session started: session_20260409_080705_9d9f7dcc
+Traceback (most recent call last):
+    File "/home/seven/swarm/frontend/terminal.py", line 135, in <module>
+        server = make_server('0.0.0.0', port, app, server_class=_ThreadingWSGIServer)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 154, in make_server
+        server = server_class((host, port), handler_class)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/socketserver.py", line 457, in __init__
+        self.server_bind()
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 50, in server_bind
+        HTTPServer.server_bind(self)
+    File "/usr/lib/python3.12/http/server.py", line 136, in server_bind
+        socketserver.TCPServer.server_bind(self)
+    File "/usr/lib/python3.12/socketserver.py", line 473, in server_bind
+        self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
+
+---
+File: 5051_full_error2.log
+127.0.0.1 - - [09/Apr/2026 18:13:07] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:08] "GET /api/work-proposals HTTP/1.1" 200 47914
+127.0.0.1 - - [09/Apr/2026 18:13:08] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [09/Apr/2026 18:13:08] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [09/Apr/2026 18:13:08] "GET /api/services HTTP/1.1" 200 616
+127.0.0.1 - - [09/Apr/2026 18:13:10] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:12] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:13:13] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:13] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:13] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:13:18] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:20] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [09/Apr/2026 18:13:21] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:22] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:13:23] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:23] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:23] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:13:28] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:32] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:13:33] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:33] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:33] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:13:35] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [09/Apr/2026 18:13:36] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:38] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:39] "GET /api/deferred HTTP/1.1" 200 23
+127.0.0.1 - - [09/Apr/2026 18:13:39] "GET /api/work-proposals HTTP/1.1" 200 47914
+127.0.0.1 - - [09/Apr/2026 18:13:39] "GET /api/brief HTTP/1.1" 200 7203
+127.0.0.1 - - [09/Apr/2026 18:13:39] "GET /api/services HTTP/1.1" 200 611
+127.0.0.1 - - [09/Apr/2026 18:13:40] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:42] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:13:43] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:43] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:43] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:13:48] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:50] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [09/Apr/2026 18:13:51] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:52] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:13:53] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:13:53] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:13:53] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:13:58] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:14:02] "GET /api/tickets?status=open HTTP/1.1" 200 3799
+127.0.0.1 - - [09/Apr/2026 18:14:04] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:14:04] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:14:04] "GET /api/alm/status HTTP/1.1" 200 206
+127.0.0.1 - - [09/Apr/2026 18:14:06] "GET /api/ollama/models HTTP/1.1" 200 1042
+127.0.0.1 - - [09/Apr/2026 18:14:07] "GET /api/monitor HTTP/1.1" 200 1074
+127.0.0.1 - - [09/Apr/2026 18:14:09] "GET /api/activity HTTP/1.1" 200 15020
+127.0.0.1 - - [09/Apr/2026 18:14:10] "GET /api/work-proposals HTTP/1.1" 200 47914
+
+---
+File: 5053_error.log
+[Time Wizard] Session started: session_20260409_080106_bc31824c
+Traceback (most recent call last):
+    File "/home/seven/swarm/frontend/terminal.py", line 135, in <module>
+        server = make_server('0.0.0.0', port, app, server_class=_ThreadingWSGIServer)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 154, in make_server
+        server = server_class((host, port), handler_class)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/lib/python3.12/socketserver.py", line 457, in __init__
+        self.server_bind()
+    File "/usr/lib/python3.12/wsgiref/simple_server.py", line 50, in server_bind
+        HTTPServer.server_bind(self)
+    File "/usr/lib/python3.12/http/server.py", line 136, in server_bind
+        socketserver.TCPServer.server_bind(self)
+    File "/usr/lib/python3.12/socketserver.py", line 473, in server_bind
+        self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
+
+---
+File: .gitignore
+# Credentials & Secrets (NEVER commit these)
+config.py
+.env
+.env.local
+*_credentials.json
+*_token.json
+*_password.txt
+
+# Runtime databases (regenerated)
+*.db
+*.db-shm
+*.db-wal
+swarm_memory.db
+swarm.db
+
+# Generated/compiled
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.history/
+
+# Test artifacts
+tests/artifacts/
+
+# Archive dumps (large, tracked separately)
+archive/
+
+# Backups (already backed up separately)
+*.backup
+*.bak
+
+# Temp/Build
+/build/
+/dist/
+.claude/
+
+# Logs (ephemeral — regenerated each run)
+*.log
+
+# OS
+.DS_Store
+
+---
+File: .instructions.md
+# Seven's Swarm — Copilot Instructions
+
+## Quick Access to Copilot
+
+**Easiest ways to reach me:**
+
+1. **Keyboard Shortcut:** Press `Ctrl+Shift+I` (or `Cmd+Shift+I` on Mac) to open Copilot Chat panel
+2. **Command Palette:** Press `Ctrl+Shift+P` → type "Copilot Chat" → Enter
+3. **Activity Bar Icon:** Look for the Copilot icon in the left sidebar (if enabled)
+
+## What I Can Do in This Swarm
+
+- **Code Changes:** I can read/edit files directly in your workspace
+- **Git Operations:** I can view git log, create commits, track changes
+- **File Navigation:** I can search files, read code, understand architecture
+- **Task Execution:** I can run terminal commands, test code, deploy changes
+- **Planning:** I can create detailed plans before implementation
+
+## Current Integration
+
+All 6 core agent files now log to a unified bridge:
+- **listener.py** — Email intake flow logged
+- **orchestrator.py** — Agent load/responses logged  
+- **ticket.py** — Ticket lifecycle logged
+- **duck.py** — Sanity checks logged
+- **eight.py** — SAP deliberation logged
+- **sniffer.py** — Audit results logged
+
+All logs go to: `database.activity_log` table (queryable) + Git commits (audit trail) + Fridays dashboard (real-time)
+
+## Keyboard Tips
+
+- **@mention me:** Type `@Copilot` in chat to reference me explicitly
+- **Inline chat:** Select code and press `Ctrl+I` for quick inline suggestions
+- **Voice dictation:** Supported in Copilot Chat if you enable it
+
+## If You're Ever Stuck
+
+Just describe what you want and I'll:
+1. Ask clarifying questions if needed
+2. Explore the codebase to understand context
+3. Make the changes
+4. Commit with clear messages  
+5. Report what's done
+
+Start with: "I need to..." or "Can you..."
+
+---
+File: .markdownlint.json
+{
+    "default": true,
+    "MD007": false,
+    "MD010": false,
+    "MD012": false,
+    "MD013": false,
+    "MD022": false,
+    "MD029": false,
+    "MD031": false,
+    "MD032": false,
+    "MD034": false
+}
+
+---
+File: .markdownlintignore
+.history/**
+Archives/**
+archive/**
+__pycache__/**
+
+---
+File: requirements.txt
+Flask
+requests
+python-telegram-bot
+discord.py
+ollama
+psutil
+pytest
+pylint
+black
+
+# Core integrations — required for full swarm functionality
+anthropic
+duckduckgo-search
+openai
+google-genai
+tavily-python
+
+# Optional integrations — install as needed
+# google-api-python-client
+# google-auth-oauthlib
+# pdfplumber
+# python-docx
+# beautifulsoup4
+# lxml
+# pytz
+# playwright
+# pywebview
+
+---
+File: seven.sh
+#!/bin/bash
+# seven.sh — launcher for the Seven app
+# Used by the .desktop file so it can run with a terminal for startup output.
+
+cd /home/seven/swarm
+exec python3 /home/seven/swarm/app_launcher.py
+
+---
+File: startswarm.sh
+#!/bin/bash
+# Seven's Swarm Start Script
+# Brings all services back up
+
+echo "=== Starting Seven's Swarm ==="
+sudo systemctl start swarm-listener
+sudo systemctl start swarm-monitor
+echo "Core services started."
+echo "Sniffles (sniffer) must be started manually:"
+echo "  sudo systemctl start swarm-sniffer"
+echo ""
+echo "Status:"
+sudo systemctl status swarm-listener --no-pager | grep Active
+sudo systemctl status swarm-monitor --no-pager | grep Active
+echo ""
+echo "[Swarm] PORT/BANNER MAPPING IS FIXED:"
+echo "  5050 → Fridays (PROD)"
+echo "  5051 → Mondays (DEV)"
+echo "  5053 → Wednesdays (UAT)"
+echo "If you change a port, update all banners and scripts."
+
+---
+File: start_stage1_prod.sh
+#!/bin/bash
+# Start Stage 1 (Production) Flask server on port 5050
+export FLASK_ENV=production
+export STAGE=1
+python3 frontend/terminal.py --port=5050 &
+echo "Stage 1 (Production) server started on port 5050"
+
+---
+File: start_stage2_uat.sh
+#!/bin/bash
+# Start Stage 2 (UAT/Pre-prod) Flask server on port from $PORT
+export FLASK_ENV=uat
+export STAGE=UAT
+export PORT=${PORT:-5053}
+python3 frontend/terminal.py &
+echo "Stage 2 (UAT/Pre-prod) server started on port $PORT"
+
+---
+File: start_stage3_dev.sh
+#!/bin/bash
+# Start Stage 3 (DEV) Flask server on port from $PORT
+export FLASK_ENV=development
+export STAGE=DEV
+export PORT=${PORT:-5051}
+python3 frontend/terminal.py &
+echo "Stage 3 (DEV) server started on port $PORT"
+
+---
+File: killswitch.sh
+#!/bin/bash
+# Seven's Swarm Kill Switch
+# Stops all swarm services instantly
+
+echo "=== Killing Seven's Swarm ==="
+sudo systemctl stop swarm-listener
+sudo systemctl stop swarm-monitor
+sudo systemctl stop swarm-sniffer
+sudo killall python3 2>/dev/null
+echo "All swarm services stopped."
+echo "Run ~/swarm/startswarm.sh to restart."
+
 ---
 ## Audit Entry: utils/swarm_tasks.py
 **Timestamp:** 2026-04-12
@@ -1703,14 +2671,8 @@ def chat(message, conversation_history=None, stage_cb=None):
 **Self-Audit (2026-04-12T, UTC):**
 - Strictly followed append-only, timestamped audit process.
 - No deletions or overwrites performed; only additive entry appended.
-```
 - All recommendations are non-breaking and safe.
 - Entry includes code snapshot, recommendations, cross-references, todo list, and self-audit as required.
-
-## Audit Entry: utils/db/_connection.py
-**Timestamp:** 2026-04-12
-
-### Code Snapshot
 
 ## [2026-04-12T (UTC)] /agents/gemma/__init__.py
 
@@ -1799,7 +2761,6 @@ def chat(message, conversation_history=None, stage_cb=None):
         - [ ] Ensure all recommendations are non-breaking and safe.
         - [ ] Update cross-references as new dependencies are discovered.
             )
-        ```
         **Self-Audit (2026-04-12T, UTC):**
         - Strictly followed append-only, timestamped audit process.
         - No deletions or overwrites performed; only additive entry appended.
@@ -1999,7 +2960,7 @@ def agent_email_ghost(agent, subject, body, ticket_number=None, proposal_filenam
     dashboard_link = ''
     if proposal_filename:
         ## [2026-04-12T (UTC)] /agents/specialists/eight_memory.py
-        
+
         **Current Code:**
         ```python
         """
