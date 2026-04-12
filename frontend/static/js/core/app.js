@@ -108,6 +108,7 @@ function openWindow(id, title, templateId) {
             else if (id === 'tickets') loadTicketsData && loadTicketsData(win);
             else if (id === 'studio') loadStudioData(win);
             else if (id === 'email') loadEmailData && loadEmailData(win);
+            else if (id === 'library') libInit && libInit();
             else if (id === 'time-wizard') initTimeWizard && initTimeWizard();
             else if (id === 'ghost-brief') initGhostBrief && initGhostBrief();
             else if (id === 'access') loadAccessData && loadAccessData(win);
