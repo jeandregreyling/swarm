@@ -172,7 +172,8 @@ def api_sandpits():
 def api_ghost_circle():
     from database import get_ghost_circle_entries
     limit = int(request.args.get('limit', 50))
-    return jsonify(get_ghost_circle_entries(limit=limit))
+    rows = get_ghost_circle_entries(limit=limit)
+    return jsonify([dict(r) for r in rows])
 
 
 
