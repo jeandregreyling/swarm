@@ -49,6 +49,15 @@ import json
 import queue
 import threading
 import os
+
+# Load .env.agents into environment so AGENT_API_KEY is available to agent auth middleware
+_ENV_AGENTS = Path(__file__).resolve().parents[1] / '.env.agents'
+if _ENV_AGENTS.exists() and not os.environ.get('AGENT_API_KEY'):
+    for _line in _ENV_AGENTS.read_text().splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith('#') and '=' in _line:
+            _k, _, _v = _line.partition('=')
+            os.environ.setdefault(_k.strip(), _v.strip())
 import time
 import uuid
 import re
