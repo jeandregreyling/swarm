@@ -456,9 +456,12 @@ XAI_MODEL              = 'grok-3'
 GROQ_API_KEY           = _load_env_key('GROQ_API_KEY')
 NINE_MODEL             = 'llama-3.3-70b-versatile'
 
+
 # Credentials loaded from .env.agents / environment (never hardcoded)
 GEMINI_API_KEY         = _load_env_key('GEMINI_API_KEY')
 GMAIL_PASSWORD         = _load_env_key('GMAIL_PASSWORD')
+GMAIL_API_KEY          = _load_env_key('GMAIL_API_KEY')
+GMAIL_TOKEN            = _load_env_key('GMAIL_TOKEN')
 NINE_PASSWORD          = _load_env_key('NINE_PASSWORD')
 SERPER_API_KEY         = _load_env_key('SERPER_API_KEY')
 SERPER_API_KEY_GENERIC = _load_env_key('SERPER_API_KEY_GENERIC')
