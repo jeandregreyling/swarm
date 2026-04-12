@@ -571,77 +571,96 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
         return False, f'alm_create_proposal failed: {e}'
 
 
+def _alm_api_post(path, payload, timeout=10):
+    """
+    Call the local swarm API, trying all running server ports.
+    Returns (data_dict, error_str).  error_str is None on success.
+    """
+    import requests as _req
+    _PORTS = [5050, 5053, 5052, 5051]
+    last_err = 'no server responded'
+    for port in _PORTS:
+        try:
+            url = f'http://127.0.0.1:{port}{path}'
+            resp = _req.post(url, json=payload, timeout=timeout)
+            data = resp.json()
+            if data.get('ok'):
+                return data, None
+            # Got a response but not ok — keep trying other ports if "not found"
+            if 'not found' in str(data.get('error', '')).lower():
+                last_err = f'port {port}: {data.get("error")}'
+                continue
+            return data, data.get('error', resp.text[:200])
+        except Exception as e:
+            last_err = f'port {port}: {e}'
+    return {}, last_err
+
+
 def _skill_alm_self_approve(args, agent, **_):
     """Advance own proposal: pending/approved → in_progress with Vortex checkpoint."""
-    # Normalize ID to handle INTERNAL-ELEVEN- prefixes from agents
     raw = (args or '').strip()
-    if raw.startswith('INTERNAL-ELEVEN-') or raw.startswith('INTERNAL-'):
-        proposal_id = raw.split('-', 2)[-1].strip()
-    else:
-        proposal_id = raw.split(None, 1)[0].strip()
+    # Split args into proposal_id and optional vortex_label cleanly
     parts = raw.split(None, 1)
+    proposal_id  = parts[0].strip() if parts else ''
     vortex_label = parts[1].strip() if len(parts) > 1 else ''
+    if not proposal_id:
+        return False, 'Usage: SKILL alm_self_approve <proposal_id> [vortex_label]'
+
+    data, err = _alm_api_post(
+        f'/api/work-proposals/{proposal_id}/agent-advance',
+        {'agent': agent, 'action': 'start', 'vortex_label': vortex_label},
+    )
+    if err:
+        return False, f'agent-advance failed: {err}'
 
     try:
-        import requests as _req
-        resp = _req.post(
-            f'http://127.0.0.1:5050/api/work-proposals/{proposal_id}/agent-advance',
-            json={'agent': agent, 'action': 'start', 'vortex_label': vortex_label},
-            timeout=10,
+        from frontend.services import _safe_workflow_checkpoint
+        _safe_workflow_checkpoint(
+            label=f'{proposal_id}-start',
+            agent=agent,
+            description=f'Self-approve + start {proposal_id}'
         )
-        data = resp.json()
-        if data.get('ok'):
-            # Immediately create Vortex checkpoint before any file change
-            from frontend.services import _safe_workflow_checkpoint
-            _safe_workflow_checkpoint(
-                label=f'{proposal_id}-start',
-                agent=agent,
-                description=f'Self-approve + start {proposal_id}'
-            )
-            vchk = data.get('vortex_checkpoint', '')
-            return True, (
-                f'Proposal {proposal_id} is now IN PROGRESS.\n'
-                f'Vortex checkpoint: {vchk}\n'
-                'Proceed with SKILL fs_patch/fs_write changes. '
-                'When done, run SKILL alm_complete to mark it done for Ghost review.'
-            )
-        return False, f'agent-advance failed: {data.get("error", resp.text[:200])}'
-    except Exception as e:
-        return False, f'alm_self_approve error: {e}'
+    except Exception:
+        pass
+
+    vchk = data.get('vortex_checkpoint', '')
+    return True, (
+        f'Proposal {proposal_id} is now IN PROGRESS.\n'
+        f'Vortex checkpoint: {vchk or "created"}\n'
+        'Proceed with SKILL fs_patch/fs_write changes. '
+        'When done, run SKILL alm_complete to mark it done for Ghost review.'
+    )
 
 
 def _skill_alm_complete(args, agent, **_):
-    """Mark own in_progress proposal as done — awaiting Ghost confirmation. Now with Vortex."""
-    # Normalize ID
+    """Mark own in_progress proposal as done — awaiting Ghost confirmation."""
     raw = (args or '').strip()
-    if raw.startswith('INTERNAL-ELEVEN-') or raw.startswith('INTERNAL-'):
-        proposal_id = raw.split('-', 2)[-1].strip()
-    else:
-        proposal_id = raw.strip()
-    # Create Vortex checkpoint before marking complete
-    try:
-        from core.time_machine import time_wizard
-        time_wizard.create_workflow_checkpoint(label=f'{proposal_id}-complete', agent=agent,
-            description=f'ALM complete for banner change')
-    except:
-        pass
+    parts = raw.split(None, 1)
+    proposal_id = parts[0].strip() if parts else ''
+    if not proposal_id:
+        return False, 'Usage: SKILL alm_complete <proposal_id>'
 
     try:
-        import requests as _req
-        resp = _req.post(
-            f'http://127.0.0.1:5050/api/work-proposals/{proposal_id}/agent-advance',
-            json={'agent': agent, 'action': 'complete'},
-            timeout=10,
+        from core.time_machine import time_wizard
+        time_wizard.create_workflow_checkpoint(
+            label=f'{proposal_id}-complete',
+            agent=agent,
+            description=f'ALM complete: {proposal_id}'
         )
-        data = resp.json()
-        if data.get('ok'):
-            return True, (
-                f'Proposal {proposal_id} marked DONE.\n'
-                'Ghost will review and confirm close. Your work is complete.'
-            )
-        return False, f'alm_complete failed: {data.get("error", resp.text[:200])}'
-    except Exception as e:
-        return False, f'alm_complete error: {e}'
+    except Exception:
+        pass
+
+    data, err = _alm_api_post(
+        f'/api/work-proposals/{proposal_id}/agent-advance',
+        {'agent': agent, 'action': 'complete'},
+    )
+    if err:
+        return False, f'alm_complete failed: {err}'
+
+    return True, (
+        f'Proposal {proposal_id} marked DONE.\n'
+        'Ghost will review and confirm close. Your work is complete.'
+    )
 
 
 def _skill_alm_vortex(args, agent, **_):

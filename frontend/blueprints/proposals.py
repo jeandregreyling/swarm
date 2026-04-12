@@ -153,24 +153,39 @@ def agent_advance(proposal_id):
 
         if action == "start":
             new_status = "in_progress"
-            msg = f"Proposal {norm_id} advanced to IN_PROGRESS by {agent}"
+            msg = f"Proposal {proposal_id} advanced to IN_PROGRESS by {agent}"
         elif action == "complete":
             new_status = "done"
-            msg = f"Proposal {norm_id} marked DONE by {agent}"
+            msg = f"Proposal {proposal_id} marked DONE by {agent}"
         else:
+            conn.close()
             return jsonify({"ok": False, "error": "Invalid action"}), 400
 
-        # Use the original proposal_id for DB update
-        c.execute("""UPDATE work_proposals 
-                     SET status = ?, updated_at = CURRENT_TIMESTAMP 
-                     WHERE proposal_id = ?""", (new_status, proposal_id))
+        # Try exact match first, then normalized, then prefix variants
+        candidates = list(dict.fromkeys([
+            proposal_id,
+            norm_id,
+            f"INTERNAL-ELEVEN-{norm_id}",
+            f"INTERNAL-{norm_id}",
+        ]))
+        updated = 0
+        matched_id = proposal_id
+        for cid in candidates:
+            c.execute("""UPDATE work_proposals
+                         SET status = ?, updated_at = CURRENT_TIMESTAMP
+                         WHERE proposal_id = ?""", (new_status, cid))
+            if c.rowcount:
+                updated = c.rowcount
+                matched_id = cid
+                break
 
-        updated = c.rowcount
         conn.commit()
         conn.close()
 
         if updated == 0:
             return jsonify({"ok": False, "error": "Proposal not found"}), 404
+
+        msg = msg.replace(proposal_id, matched_id)
 
         # Extra logging for troubleshooting
         print(f"[Agent Advance] {norm_id} -> {new_status} by {agent}")
