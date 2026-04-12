@@ -1292,6 +1292,8 @@ def api_chat():
                             existing = _pj.get('stage_trace') or []
                             # Merge pre-timeout trace entries at the front.
                             _pj['stage_trace'] = [e for e in _agent_stage_trace if e not in existing] + existing
+                            # Show the last known stage rather than the default 'loading local memory'
+                            _pj['stage'] = _agent_stage_trace[-1]['text']
                 pending = True
                 eta_seconds = _chat_eta_seconds(selected_agent)
                 response_text, tokens_used = (
