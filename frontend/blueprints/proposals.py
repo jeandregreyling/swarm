@@ -384,3 +384,73 @@ def add_proposal_note(proposal_id):
     conn.commit()
     conn.close()
     return jsonify({"ok": True, "note_id": note_id}), 201
+
+
+
+# ── Deferred / Pinboard ──────────────────────────────────────────────────────
+
+@proposals_bp.route('/api/deferred', methods=['GET'])
+def api_deferred_list():
+    """List deferred / pinned items (Ghost pinboard in Docs tile)."""
+    include_resolved = request.args.get('resolved', '0') == '1'
+    where = '' if include_resolved else 'WHERE resolved=0'
+    conn = get_connection()
+    rows = conn.execute(
+        f'SELECT id, content, source, source_id, pinned_by, resolved, created_at, resolved_at '
+        f'FROM deferred_items {where} ORDER BY created_at DESC LIMIT 200'
+    ).fetchall()
+    conn.close()
+    return jsonify({'ok': True, 'items': [dict(r) for r in rows]})
+
+
+@proposals_bp.route('/api/deferred', methods=['POST'])
+def api_deferred_create():
+    """Pin a new deferred item."""
+    data = request.get_json() or {}
+    content = (data.get('content') or '').strip()
+    if not content:
+        return jsonify({'ok': False, 'error': 'content required'}), 400
+    source    = (data.get('source') or 'manual').strip()
+    source_id = (data.get('source_id') or '').strip()
+    pinned_by = (data.get('pinned_by') or 'ghost').strip()
+    conn = get_connection()
+    cur = conn.execute(
+        'INSERT INTO deferred_items (content, source, source_id, pinned_by) VALUES (?,?,?,?)',
+        (content, source, source_id, pinned_by)
+    )
+    item_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'id': item_id})
+
+
+@proposals_bp.route('/api/deferred/<int:item_id>', methods=['PATCH'])
+def api_deferred_patch(item_id):
+    """Resolve or edit a deferred item."""
+    data = request.get_json() or {}
+    conn = get_connection()
+    row = conn.execute('SELECT id FROM deferred_items WHERE id=?', (item_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'not found'}), 404
+    if 'resolved' in data:
+        resolved = 1 if data['resolved'] else 0
+        resolved_at = 'datetime("now")' if resolved else 'NULL'
+        conn.execute(f'UPDATE deferred_items SET resolved=?, resolved_at={resolved_at} WHERE id=?',
+                     (resolved, item_id))
+    if 'content' in data:
+        conn.execute('UPDATE deferred_items SET content=? WHERE id=?',
+                     ((data['content'] or '').strip(), item_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
+@proposals_bp.route('/api/deferred/<int:item_id>', methods=['DELETE'])
+def api_deferred_delete(item_id):
+    """Hard-delete a deferred item."""
+    conn = get_connection()
+    conn.execute('DELETE FROM deferred_items WHERE id=?', (item_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
