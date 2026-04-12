@@ -1799,6 +1799,7 @@ def chat(message, conversation_history=None, stage_cb=None):
         - [ ] Ensure all recommendations are non-breaking and safe.
         - [ ] Update cross-references as new dependencies are discovered.
             )
+        ```
         **Self-Audit (2026-04-12T, UTC):**
         - Strictly followed append-only, timestamped audit process.
         - No deletions or overwrites performed; only additive entry appended.
