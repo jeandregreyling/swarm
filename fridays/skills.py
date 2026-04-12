@@ -534,6 +534,31 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
     if not title:
         return False, 'alm_create_proposal requires a non-empty title.'
 
+    # Conversation-level dedup: if a proposal with the same title already exists in
+    # this conversation (within the last 5 minutes), return the existing one rather
+    # than creating a duplicate. Prevents Grok-style retry storms.
+    if source_conv_id:
+        try:
+            import sys as _sys2
+            _sys2.path.insert(0, '/home/seven/swarm/utils')
+            from database import get_connection as _gc2
+            _c2 = _gc2()
+            existing = _c2.execute(
+                """SELECT proposal_id FROM work_proposals
+                   WHERE source_conv_id=? AND title=?
+                     AND created_at >= datetime('now','-5 minutes')
+                   LIMIT 1""",
+                (int(source_conv_id), title)
+            ).fetchone()
+            _c2.close()
+            if existing:
+                return True, (
+                    f'Proposal already exists for this conversation: {existing["proposal_id"]}. '
+                    'Use SKILL alm_self_approve to advance it.'
+                )
+        except Exception:
+            pass
+
     try:
         from queue_manager import intake_internal
         queue_id, proposal_id = intake_internal(agent, title, description, priority=5)
