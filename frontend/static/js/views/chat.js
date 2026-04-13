@@ -2759,6 +2759,34 @@ function _relaySignature(handoff) {
   ].join('|');
 }
 
+function sendProposalToDuck(proposalId, conversationId) {
+  if (!proposalId) return;
+  const convId = conversationId || window.__fridaysChatConvId;
+  const msg = `Check proposal ${proposalId} — review and approve or reject.`;
+  // Send directly to Duck in the current conversation
+  const payload = {
+    message: msg,
+    agents: ['duck'],
+    conversation_id: convId || undefined,
+    relay_from: 'user',
+    auto_relay: false,
+  };
+  fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...(typeof _authPayload === 'function' ? _authPayload() : {}), ...payload }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        showToast(`Sent ${proposalId} to Duck`, 'success');
+      } else {
+        showToast('Send to Duck failed: ' + (data.error || data.response || 'unknown'), 'error');
+      }
+    })
+    .catch(e => showToast('Send to Duck error: ' + e.message, 'error'));
+}
+
 function queueRelayHandoffFromButton(btn) {
   if (!btn) return;
   const handoff = {
@@ -3297,6 +3325,14 @@ function _appendChatBubble(sender, text, opts = {}) {
   const relayButtonsHtml = (relayCandidates.length && window.__fridaysChatRelayAuto)
     ? `<div class="chat-handoff-actions">${relayCandidates.map(c => `<span class="chat-handoff-btn" role="button" tabindex="0" data-relay-from="${_escapeHtml(senderIdentity.key)}" data-relay-target="${_escapeHtml(c.target)}" data-relay-question="${_escapeHtml(_relayEncode(c.question))}" onclick="queueRelayHandoffFromButton(this)">Route to ${_escapeHtml(_chatAgentLabel(c.target))}</span>`).join('')}</div>`
     : '';
+  // "Send to Duck" button — shown whenever an agent response mentions a proposal ID.
+  // Works regardless of relay state so Ghost can always trigger Duck review manually.
+  const _proposalIdMatch = !isUser && visibleText.match(/\b(INTERNAL-[A-Z]+-\d+)\b/);
+  const duckRelayBtnHtml = (_proposalIdMatch && senderIdentity.key !== 'duck')
+    ? `<div class="chat-handoff-actions"><span class="chat-handoff-btn" role="button" tabindex="0"
+        onclick="sendProposalToDuck('${_escapeHtml(_proposalIdMatch[1])}', '${_escapeHtml(opts.conversationId || '')}')">
+        🦆 Send ${_escapeHtml(_proposalIdMatch[1])} to Duck</span></div>`
+    : '';
   const replayText = _escapeHtml(String(visibleText || '').replace(/\s+/g, ' ').trim().slice(0, 1800));
   const localText = _escapeHtml(String(opts.localPromptText || visibleText || '').slice(0, 4000));
   const selectedAgentsRaw = Array.isArray(opts.selectedAgents) ? opts.selectedAgents : [];
@@ -3350,6 +3386,7 @@ function _appendChatBubble(sender, text, opts = {}) {
     ${eventsHtml}
     ${sessionBarHtml}
     ${relayButtonsHtml}
+    ${duckRelayBtnHtml}
     ${traceHtml}
     ${actionRow}
   `;

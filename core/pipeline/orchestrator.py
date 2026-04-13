@@ -115,10 +115,10 @@ EIGHT_CHAT_SYSTEM_PROMPT = (
     "  3. SKILL alm_self_approve <id>        \u2190 IN PROGRESS \u2014 you own this\n"
     "  4. SKILL fs_patch / fs_write          \u2190 make all changes\n"
     "  5. SKILL fs_readonly lines ... verify \u2190 confirm each patch\n"
-    "  6. SKILL alm_complete <id>            \u2190 DONE \u2014 Duck audits, Ghost reviews in Studio\n"
+    "  6. SKILL alm_complete <id>            \u2190 DONE \u2014 Duck auto-QA checks and posts result to this chat thread\n"
     "Never skip steps 1\u20133. Run autonomously.\n\n"
-    "WORK OWNERSHIP RULE: Once you alm_self_approve, you own it end-to-end. Complete all changes in this thread. "
-    "Duck audits on completion. Ghost reviews in Studio. Never hand off mid-task.\n\n"
+    "PIPELINE: alm_create_proposal \u2192 Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread \u2192 alm_self_approve \u2192 build \u2192 alm_complete \u2192 Duck auto-QA posts result here \u2192 Ghost reviews UAT in Studio \u2192 executed.\n"
+    "Always tell Ghost the proposal ID when you create one.\n\n"
     "SANDPIT: sandpits/eight/ for SAP config drafts and proposals. All changes tracked by Git and Vortex."
 )
 
@@ -149,9 +149,9 @@ DUCK_SYSTEM_PROMPT = (
     "  3. SKILL alm_self_approve <id>        \u2190 IN PROGRESS \u2014 you own this\n"
     "  4. SKILL fs_patch / fs_write          \u2190 make changes\n"
     "  5. SKILL fs_readonly lines ... verify \u2190 confirm each patch\n"
-    "  6. SKILL alm_complete <id>            \u2190 DONE \u2014 you auto-audit, Ghost reviews in Studio\n\n"
-    "WORK OWNERSHIP RULE: Once you alm_self_approve, you own it end-to-end. Complete in this thread. "
-    "Never hand off mid-task.\n\n"
+    "  6. SKILL alm_complete <id>            \u2190 DONE \u2014 you auto-QA check and post result to this chat thread\n\n"
+    "PIPELINE (know this): alm_create_proposal \u2192 you auto-review and POST APPROVED/REJECTED back to originating thread \u2192 agent does alm_self_approve \u2192 builds \u2192 alm_complete \u2192 you auto-QA and post result \u2192 status \u2192 UAT \u2192 Ghost reviews \u2192 executed.\n"
+    "When Ghost asks you to 'check the proposal', look up the latest pending proposal in work_proposals via SKILL fs_readonly, then give your verdict.\n\n"
     "SANDPIT: sandpits/duck/ for audit notes and drafts. All changes tracked by Git and Vortex."
 )
 
@@ -180,8 +180,8 @@ SNIFFLES_SYSTEM_PROMPT = (
     "  3. SKILL alm_self_approve <id>        \u2190 IN PROGRESS \u2014 you own this\n"
     "  4. SKILL fs_patch / fs_write\n"
     "  5. SKILL fs_readonly lines ... verify\n"
-    "  6. SKILL alm_complete <id>            \u2190 DONE \u2014 Duck audits, Ghost reviews in Studio\n\n"
-    "WORK OWNERSHIP RULE: Once you alm_self_approve, you own it end-to-end. Complete in this thread. Never hand off mid-task.\n\n"
+    "  6. SKILL alm_complete <id>            \u2190 DONE \u2014 Duck auto-QA checks and posts result to this chat thread\n\n"
+    "PIPELINE: alm_create_proposal \u2192 Duck auto-reviews and POSTS APPROVED/REJECTED back to originating thread \u2192 agent alm_self_approve \u2192 builds \u2192 alm_complete \u2192 Duck auto-QA posts result \u2192 UAT \u2192 Ghost reviews \u2192 executed.\n\n"
     "SANDPIT: sandpits/sniffles/ for audit reports and drafts. All changes tracked by Git and Vortex."
 )
 
