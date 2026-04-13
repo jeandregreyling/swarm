@@ -362,3 +362,79 @@ _Maintained by Nine (Ghost Layer). Last updated: 2026-04-01 08:10:00 (Session 11
 - **Cause:** Mixed runtime paths are individually implemented, but no single governed UAT cycle has validated all channels against the same ALM/Vortex evidence criteria.
 - **Fix:** Added `tests/test_notification_reliability.py` to validate unknown-sender notification semantics across email, Telegram, and Discord, including send failure logging behavior. Combined with existing `test_channel_smoke.py`, `test_telegram_trust.py`, `test_direct_agent_commands.py`, live SMTP sends, and UAT/E2E runs, this creates a governed cross-channel validation pass.
 - **Testing:** `python3 tests/test_notification_reliability.py` => 3 PASS; `python3 tests/test_channel_smoke.py` => 8 PASS; daily gate remained fully green.
+
+---
+
+## BUG-035: Chat job stage displayed "loading local memory" after dispatch timeout
+
+- **Status:** fixed
+- **Found:** 2026-04-13
+- **Fixed:** 2026-04-13
+- **Service:** `frontend/blueprints/chat.py`
+- **Error:** Chat jobs that were waiting on the 10-second dispatch timeout showed "loading local memory" as the stage label instead of the actual last-known pipeline stage (e.g. "Routing to agent…").
+- **Cause:** After the timeout, the job's `stage` key in `_CHAT_JOBS` was assigned a time-based default label from the monitor rather than the last entry in `_agent_stage_trace`. The time-based label happened to always resolve to "loading local memory" for jobs in the early stage window.
+- **Fix:** After merging trace entries, explicitly set `_pj['stage'] = _agent_stage_trace[-1]['text']` so the last known real stage is displayed.
+
+---
+
+## BUG-036: Debate R2 used Qwen after Qwen→Mistral rename
+
+- **Status:** fixed
+- **Found:** 2026-04-13
+- **Fixed:** 2026-04-13
+- **Service:** `core/pipeline/orchestrator.py` — `_run_debate_r2()`
+- **Error:** Debate round 2 responses were attributed to Qwen and called `ask_agent('Qwen', ...)` even after Qwen was renamed to Mistral across the system.
+- **Cause:** The `_run_debate_r2()` function was not updated during the Qwen→Mistral rename — it still used `qwen_r2`, `ask_agent('Qwen', ...)`, and `log_message(conv_id, 'Qwen', ...)`.
+- **Fix:** Updated all references in `_run_debate_r2()` to use `mistral_r2`, `ask_agent('Mistral', ...)`, `log_message(conv_id, 'Mistral', ...)`.
+
+---
+
+## BUG-037: Service monitor showed Terminal as always-inactive
+
+- **Status:** fixed
+- **Found:** 2026-04-13
+- **Fixed:** 2026-04-13
+- **Service:** `frontend/blueprints/exec_bp.py`, `frontend/blueprints/system.py`
+- **Error:** The Terminal service in the monitor panel always appeared inactive/offline even when the server was running.
+- **Cause:** Both files referenced the systemd unit as `swarm-terminal` but the actual running service is `swarm-terminal-prod`.
+- **Fix:** Corrected the service name from `swarm-terminal` → `swarm-terminal-prod` in both `exec_bp.py` (service list) and `system.py` (status check loop and label map).
+
+---
+
+## BUG-038: Approve button notified chat with no actionable instructions for agent
+
+- **Status:** fixed
+- **Found:** 2026-04-13
+- **Fixed:** 2026-04-13
+- **Service:** `utils/proposal_review.py` — `notify_proposal_status_change()`
+- **Error:** Clicking Approve in Studio moved the proposal status but the chat notification just said "status changed to approved" with no instruction to the agent on what to do next. The agent had no signal to start building.
+- **Cause:** `notify_proposal_status_change()` sent generic status-change messages for all statuses. There was no per-status actionable content.
+- **Fix:** Rewrote `notify_proposal_status_change()` with per-status messages. `approved` now includes `SKILL alm_self_approve <id>` instruction; `in_progress` includes `SKILL alm_complete <id>` instruction; `uat` tells Ghost to review or ask Duck; `executed` confirms shipment.
+
+---
+
+## BUG-039: ALM pipeline skipped Duck QA — `done` went straight to `executed`
+
+- **Status:** fixed
+- **Found:** 2026-04-13
+- **Fixed:** 2026-04-13
+- **Service:** `utils/proposal_review.py`, `frontend/blueprints/proposals.py`, `frontend/static/js/views/studio.js`
+- **Error:** When an agent marked a proposal as done, it could immediately be marked as executed by Ghost with no automated quality check and no UAT stage.
+- **Cause:** The pipeline only had 5 statuses: `pending → approved → in_progress → done → executed`. There was no intermediate UAT stage and no automated Duck quality gate.
+- **Fix:** Added full 6-stage pipeline: `pending → approved → in_progress → done → uat → executed`.
+  - `duck_check_done()` is auto-triggered when a proposal hits `done`. It runs a quality gate and either advances to `uat` or bounces back to `in_progress` with feedback, notifying the originating chat thread.
+  - `duck_execute_proposal()` allows Duck (on Ghost's instruction) to ship `uat → executed`.
+  - Studio UI updated: `uat` status badge (amber), 6-step pipeline bar, UAT card/modal action buttons (Mark Executed / Ask Duck / Reopen).
+  - `POST /api/work-proposals/<id>/duck-execute` endpoint added.
+
+---
+
+## BUG-040: `/library`, `/studio`, `/chat`, `/monitor` routes returned 404
+
+- **Status:** fixed
+- **Found:** 2026-04-13
+- **Fixed:** 2026-04-13
+- **Service:** `frontend/terminal.py`
+- **Error:** Navigating directly to `/library`, `/studio`, `/chat`, or `/monitor` returned a 404 — no Flask route existed for these paths.
+- **Cause:** The UI is a single-page app served at `/ui`. These convenience paths were never registered as Flask routes.
+- **Fix:** Added a single `ui_redirect()` view registered on all four paths that redirects to `/ui`.

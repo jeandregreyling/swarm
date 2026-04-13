@@ -7,6 +7,66 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
+## Version 2026-04-13 Session 13 — ALM Pipeline Redesign + Bug Fixes
+
+### Changes by Copilot (Ghost One direction)
+
+**2026-04-13 UTC** Copilot: Full ALM pipeline redesign — 6-stage lifecycle with Duck as automated reviewer and QA gate. Service monitor fixes, debate R2 agent fix, convenience URL redirects.
+
+- **Type:** Feature / Architecture / Bug Fix
+- **Status:** COMPLETE
+
+#### ALM Pipeline Redesign — 6-Stage Lifecycle (`utils/proposal_review.py`)
+
+Proposal lifecycle is now fully automated with Duck as reviewer and QA gate:
+
+`pending → approved → in_progress → done → uat → executed`
+
+- **`duck_review_proposal()`** — runs after `alm_create_proposal`. Sanity-checks title/description for red flags and minimum length. Posts actionable result back to the originating chat thread: approved proposals get `SKILL alm_self_approve <id>` + `SKILL alm_complete <id>` instructions; rejected proposals get revision guidance.
+- **`duck_check_done()`** — NEW. Auto-triggered (background thread) when any proposal transitions to `done`. Runs a quality gate (`_duck_quality_check`): passes → status → `uat`, notifies chat. Fails → status → `in_progress`, notifies chat with feedback. Agent must fix and re-run `SKILL alm_complete`.
+- **`duck_execute_proposal()`** — NEW. Ghost can tell Duck to ship a UAT proposal to production (`status → executed`). Called from chat ("Duck, execute <id>") or Studio UI. Posts 🚀 notification to originating chat thread.
+- **`notify_proposal_status_change()`** — Rewritten. Now generates actionable per-status messages instead of a generic "status changed" notification:
+  - `approved` → "run `SKILL alm_self_approve <id>` to begin"
+  - `in_progress` → "make changes, run `SKILL alm_complete <id>` when done"
+  - `uat` → "Ghost, review in Studio UAT tab, mark executed or tell Duck"
+  - `executed` → "shipped to production, proposal closed"
+  - `done` → triggers `duck_check_done()` in background thread
+
+#### `uat` Status — New Pipeline Stage (`frontend/blueprints/proposals.py`)
+
+- Added `uat` to allowed status values in PATCH endpoint
+- Added `POST /api/work-proposals/<proposal_id>/duck-execute` endpoint — Ghost tells Duck to ship a UAT proposal
+- Fixed duplicate `except Exception` clause (syntax bug introduced by earlier edit)
+
+#### Studio UI — UAT Pipeline (`frontend/static/js/views/studio.js`)
+
+- `_PROPOSAL_STATUS` dict: added `uat` (amber `#fbc02d`, step 4); `executed` shifted to step 5
+- `loadProposals()`: In Progress tab now fetches/shows `uat` proposals (`?status=uat` added to URL and client-side filter); tab label updated to "In Progress, Approved & UAT"
+- Pipeline mini-bar on cards: now 6 steps — Proposed → Approved → In Progress → Done → **UAT** → Executed
+- `_proposalPipelineBar()` (detail modal): same 6-step bar with UAT between Done and Executed
+- UAT card action buttons: **Mark Executed** / **🦆 Ask Duck** / **↩ Reopen**
+- UAT detail modal actions: same three buttons
+- `done` card/modal: "Verify & Close" removed — that step now happens at UAT after Duck's quality check
+- Added `duckExecuteProposal()` JS function — calls `/duck-execute` endpoint
+
+#### Service Monitor Fix (`frontend/blueprints/exec_bp.py`, `frontend/blueprints/system.py`)
+
+- Corrected service name from `swarm-terminal` → `swarm-terminal-prod` in both files. The monitor was showing the Terminal service as always-inactive because it was watching for the wrong systemd unit name.
+
+#### Debate R2 Agent Fix (`core/pipeline/orchestrator.py`)
+
+- `_run_debate_r2()` was still calling `ask_agent('Qwen', ...)` after the Qwen→Mistral rename. Fixed all references: `mistral_r2 = ask_agent('Mistral', ...)`, `log_message(conv_id, 'Mistral', ...)`. Debate R2 now correctly uses Mistral.
+
+#### Convenience URL Redirects (`frontend/terminal.py`)
+
+- Added `/library`, `/studio`, `/chat`, `/monitor` routes that redirect to `/ui` — these were all returning 404. Agents and users can now navigate directly to any of these paths.
+
+#### Chat Job Stage Display Fix (`frontend/blueprints/chat.py`)
+
+- Chat jobs pending after the 10s dispatch timeout were showing a time-based "loading local memory" label instead of the actual last-known pipeline stage. Fixed by writing `_pj['stage'] = _agent_stage_trace[-1]['text']` after merging trace entries.
+
+---
+
 ## Version 2026-04-06 Session 8 — SVG Icons + UI Density + Trace Fix + Test Repairs
 
 ### Changes by Copilot (Ghost One direction)

@@ -79,7 +79,8 @@ const _PROPOSAL_STATUS = {
   approved:    { color: '#4caf50', bg: '#4caf5020', border: '#4caf5060', label: 'Approved',    step: 1 },
   in_progress: { color: '#29b6f6', bg: '#29b6f620', border: '#29b6f660', label: 'In Progress', step: 2 },
   done:        { color: '#ab47bc', bg: '#ab47bc20', border: '#ab47bc60', label: 'Done',        step: 3 },
-  executed:    { color: '#2196f3', bg: '#2196f320', border: '#2196f360', label: 'Executed',    step: 4 },
+  uat:         { color: '#fbc02d', bg: '#fbc02d20', border: '#fbc02d60', label: 'UAT',         step: 4 },
+  executed:    { color: '#2196f3', bg: '#2196f320', border: '#2196f360', label: 'Executed',    step: 5 },
   rejected:    { color: '#f44336', bg: '#f4433620', border: '#f4433660', label: 'Rejected',    step: -1 },
 };
 
@@ -104,7 +105,7 @@ function loadProposals(container, tab) {
   if (mode === 'all') {
     url = '/api/work-proposals?limit=400';  // history gets everything
   } else if (mode === 'in_progress') {
-    url = '/api/work-proposals?status=in_progress&status=approved&limit=200';
+    url = '/api/work-proposals?status=in_progress&status=approved&status=uat&limit=200';
   } else {
     url = '/api/work-proposals?status=pending&status=proposed&limit=200';
   }
@@ -118,7 +119,7 @@ function loadProposals(container, tab) {
       if (mode === 'pending') {
         proposals = proposals.filter(p => ['pending', 'proposed'].includes((p.status || '').toLowerCase()));
       } else if (mode === 'in_progress') {
-        proposals = proposals.filter(p => ['in_progress', 'approved'].includes((p.status || '').toLowerCase()));
+        proposals = proposals.filter(p => ['in_progress', 'approved', 'uat'].includes((p.status || '').toLowerCase()));
       } else if (mode === 'all') {
         // History can include done/executed/rejected
         proposals = proposals.filter(p => !['pending', 'proposed'].includes((p.status || '').toLowerCase()));
@@ -134,7 +135,7 @@ function loadProposals(container, tab) {
         return;
       }
 
-      const labels = { pending: 'Pending Review', in_progress: 'In Progress & Approved', all: 'History' };
+      const labels = { pending: 'Pending Review', in_progress: 'In Progress, Approved & UAT', all: 'History' };
       container.innerHTML = `
         <div style="padding:12px 0 8px;font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
           ${proposals.length} Proposal${proposals.length !== 1 ? 's' : ''} — ${labels[mode] || mode}
@@ -171,7 +172,7 @@ function _proposalCard(p) {
   // Pipeline mini-bar (only for non-rejected)
   const pipelineHtml = status !== 'rejected' ? `
     <div style="display:flex;gap:3px;margin-top:10px;align-items:center;">
-      ${['Proposed','Approved','In Progress','Done','Executed'].map((label, i) => {
+      ${['Proposed','Approved','In Progress','Done','UAT','Executed'].map((label, i) => {
         const active = m.step === i;
         const done   = m.step > i;
         return `<div style="flex:1;text-align:center;font-size:9px;padding:3px 0;border-radius:3px;
@@ -238,11 +239,17 @@ function _proposalCard(p) {
     </div>` :
   status === 'done' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
-      <button onclick='event.stopPropagation();moveProposal(${pidJs},"executed")'
-        style="flex:1;padding:6px;background:#2196f320;border:1px solid #2196f360;border-radius:4px;color:#2196f3;font-size:11px;font-weight:600;cursor:pointer;">✓ Verify &amp; Close</button>
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"in_progress")'
         style="flex:1;padding:6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:11px;font-weight:600;cursor:pointer;">↩ Reopen</button>
-      ${promoteBtn}
+    </div>` :
+  status === 'uat' ? `
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button onclick='event.stopPropagation();moveProposal(${pidJs},"executed")'
+        style="flex:1;padding:6px;background:#2196f320;border:1px solid #2196f360;border-radius:4px;color:#2196f3;font-size:11px;font-weight:600;cursor:pointer;">✓ Mark Executed</button>
+      <button onclick='event.stopPropagation();duckExecuteProposal(${pidJs})'
+        style="flex:1;padding:6px;background:#fbc02d20;border:1px solid #fbc02d60;border-radius:4px;color:#fbc02d;font-size:11px;font-weight:600;cursor:pointer;">🦆 Ask Duck</button>
+      <button onclick='event.stopPropagation();moveProposal(${pidJs},"in_progress")'
+        style="flex:1;padding:6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:11px;font-weight:600;cursor:pointer;">↩ Reopen</button>
     </div>` : '';
   const deleteBtn = `
     <button data-proposal-id="${pid}"
@@ -295,6 +302,25 @@ function moveProposal(proposalId, newStatus) {
       if (container) loadProposals(container, window._studioTab || 'pending');
     })
     .catch(e => showToast('Error: ' + e.message, 'error'));
+}
+
+async function duckExecuteProposal(proposalId) {
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/duck-execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ..._authPayload(), actor: 'duck' })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.message || 'failed');
+    showToast('Duck executed the proposal', 'success');
+    const dm = document.getElementById('proposal-detail-modal');
+    if (dm?.classList.contains('open')) dm.classList.remove('open');
+    const container = document.getElementById('studio-content');
+    if (container) loadProposals(container, window._studioTab || 'pending');
+  } catch (e) {
+    showToast('Duck execute failed: ' + (e.message || e), 'error');
+  }
 }
 
 async function deleteProposal(proposalId, closeModal = false) {
@@ -389,6 +415,7 @@ function _proposalPipelineBar(status) {
     { key: 'approved',    label: 'Approved' },
     { key: 'in_progress', label: 'In Progress' },
     { key: 'done',        label: 'Done' },
+    { key: 'uat',         label: 'UAT' },
     { key: 'executed',    label: 'Executed' },
   ];
   const currentStep = (_PROPOSAL_STATUS[status] || {}).step ?? -1;
@@ -562,8 +589,13 @@ function _openProposalDetailRender(p) {
           <button onclick='moveProposal(${pidJs},"rejected")'
             style="padding:8px 16px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:12px;font-weight:600;cursor:pointer;">&#10007; Reject</button>` : ''}
         ${status==='done' ? `
+          <button onclick='moveProposal(${pidJs},"in_progress")'
+            style="padding:8px 16px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:12px;font-weight:600;cursor:pointer;">&#x21A9; Reopen</button>` : ''}
+        ${status==='uat' ? `
           <button onclick='moveProposal(${pidJs},"executed")'
-            style="padding:8px 16px;background:#2196f320;border:1px solid #2196f360;border-radius:4px;color:#2196f3;font-size:12px;font-weight:600;cursor:pointer;">&#10003; Verify &amp; Close</button>
+            style="padding:8px 16px;background:#2196f320;border:1px solid #2196f360;border-radius:4px;color:#2196f3;font-size:12px;font-weight:600;cursor:pointer;">&#10003; Mark Executed</button>
+          <button onclick='duckExecuteProposal(${pidJs})'
+            style="padding:8px 16px;background:#fbc02d20;border:1px solid #fbc02d60;border-radius:4px;color:#fbc02d;font-size:12px;font-weight:600;cursor:pointer;">🦆 Ask Duck to Execute</button>
           <button onclick='moveProposal(${pidJs},"in_progress")'
             style="padding:8px 16px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:12px;font-weight:600;cursor:pointer;">&#x21A9; Reopen</button>` : ''}
         <button onclick='deleteProposalSafe(${pidJs}, true)'

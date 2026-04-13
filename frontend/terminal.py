@@ -99,6 +99,15 @@ def create_app():
         from flask import render_template
         # theme_css is injected as empty for now; can be extended for dynamic theming
         return render_template("terminal_base.html", theme_css="")
+
+    # Convenience redirects — deep-link views directly
+    @app.route("/library", methods=["GET"])
+    @app.route("/studio", methods=["GET"])
+    @app.route("/chat", methods=["GET"])
+    @app.route("/monitor", methods=["GET"])
+    def ui_redirect():
+        from flask import redirect
+        return redirect("/ui")
     app.register_blueprint(vs_bp)
     app.register_blueprint(agent_api_bp)
     app.register_blueprint(agents_bp)

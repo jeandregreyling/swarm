@@ -349,3 +349,111 @@ _No active dispatched work._
 **From**: ten
 **Description**: Verify the full proposals flow works
 **Status**: dispatched
+
+## [11:25] MANUAL-20260413-085809
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:25] MANUAL-20260413-085753
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:30] MANUAL-20260413-085809
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:30] MANUAL-20260413-085753
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:35] MANUAL-20260413-085809
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:35] MANUAL-20260413-085753
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:40] MANUAL-20260413-085809
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:40] MANUAL-20260413-085753
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:45] MANUAL-20260413-085809
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:45] MANUAL-20260413-085753
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:50] MANUAL-20260413-085809
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:50] MANUAL-20260413-085753
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:55] MANUAL-20260413-085809
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:55] MANUAL-20260413-085753
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [12:00] MANUAL-20260413-085809
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [12:00] MANUAL-20260413-085753
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [12:05] MANUAL-20260413-085809
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [12:05] MANUAL-20260413-085753
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched

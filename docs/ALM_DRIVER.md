@@ -116,20 +116,35 @@ Every execution cycle must produce:
 
 ## Duck + Sniffles Review Path
 
-Proposal review path for Swarm-facing governance:
+Full 6-stage automated lifecycle (as of 2026-04-13):
 
-1. Proposal enters `work_proposals` queue.
-2. Duck performs the first logic/sanity pass.
-3. If Duck flags ambiguity, contradiction, or risk, Sniffles performs deeper audit.
-4. Approved proposals may move to execution.
+```text
+pending → approved → in_progress → done → uat → executed
+```
+
+1. **Proposal submitted** — enters `work_proposals` with status `pending`.
+2. **Duck review** (`duck_review_proposal()`) — sanity-checks title/description. Posts result to originating chat thread.
+   - Approved: agent receives `SKILL alm_self_approve <id>` + `SKILL alm_complete <id>` instructions.
+   - Rejected: agent receives revision guidance. Status → `rejected`.
+3. **Agent builds** — agent runs `SKILL alm_self_approve <id>` → status `in_progress`. Makes changes, then runs `SKILL alm_complete <id>` → status `done`.
+4. **Duck QA check** (`duck_check_done()`) — auto-triggered on `done`. Runs quality gate.
+   - Pass: status → `uat`. Chat notified: "Ghost, review in UAT tab."
+   - Fail: status → `in_progress`. Agent receives feedback, must fix and re-complete.
+5. **UAT** — Ghost reviews the work in Studio → UAT tab. Options:
+   - Mark Executed manually → status `executed`.
+   - "Ask Duck to Execute" → calls `duck_execute_proposal()` → status `executed`, chat notified.
+   - Reopen → status `in_progress` for further work.
+6. **Executed** — shipped to production. Proposal closed.
+
+If Sniffles flags ambiguity or risk at any stage, it escalates for deeper audit.
 
 Current state:
 
 - Proposal queue visibility and ALM execution gate are implemented.
-- `PATCH /api/work-proposals/<proposal_id>` now runs Duck review before `pending -> approved`.
-- `executed` is only reachable through the API after a proposal is already `approved`.
+- `PATCH /api/work-proposals/<proposal_id>` triggers `notify_proposal_status_change()` for all status transitions, posting actionable messages to the originating chat thread.
+- `POST /api/work-proposals/<proposal_id>/duck-execute` — Ghost tells Duck to ship a UAT proposal.
+- `uat` is a required intermediate stage between `done` and `executed` — Duck quality check must pass first.
 - Duck/Sniffles are the documented review authorities for this workflow.
-- Historical filenames/endpoints may still use `time_wizard` during transition, but active operating language is `Vortex`.
 
 ## Sniffles Requirement
 

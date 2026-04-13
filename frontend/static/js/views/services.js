@@ -66,7 +66,7 @@ function loadServicesPanel() {
 
 function serviceRestart(serviceId, label, btn) {
   if (btn) { btn.textContent = '…'; btn.style.pointerEvents = 'none'; btn.style.color = '#ffb366'; }
-  const isSelf = serviceId === 'swarm-terminal';
+  const isSelf = serviceId === 'swarm-terminal-prod';
 
   fetch(`/api/services/${encodeURIComponent(serviceId)}/restart`, { method: 'POST' })
     .then(r => r.json())
