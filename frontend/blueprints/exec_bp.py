@@ -7,7 +7,7 @@ exec_bp = Blueprint('exec_bp', __name__)
 # Ghost Layer exec
 import re as _re
 _SUDO_ALLOWED = _re.compile(
-    r'^sudo\s+systemctl\s+(restart|start|stop|status)\s+swarm-\w+$'
+    r'^sudo\s+systemctl\s+(restart|start|stop|status)\s+swarm-[\w-]+$'
 )
 
 import os as _os

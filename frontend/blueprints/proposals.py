@@ -118,7 +118,7 @@ def update_proposal_status(proposal_id):
         conn.commit()
         conn.close()
 
-        # Notify originating chat thread of the status change
+        # Notify chat thread + trigger Duck quality check when done
         try:
             import sys as _sys
             _sys.path.insert(0, '/home/seven/swarm/utils')
@@ -133,8 +133,25 @@ def update_proposal_status(proposal_id):
             pass
 
         return jsonify({"ok": True})
+
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
+
+
+@proposals_bp.route("/api/work-proposals/<proposal_id>/duck-execute", methods=["POST"])
+def duck_execute_route(proposal_id):
+    """Ghost tells Duck to ship a UAT proposal to production."""
+    try:
+        data = request.get_json(silent=True) or {}
+        actor = data.get("actor", "duck")
+        import sys as _sys
+        _sys.path.insert(0, '/home/seven/swarm/utils')
+        from proposal_review import duck_execute_proposal
+        ok, msg = duck_execute_proposal(proposal_id, actor=actor)
+        return jsonify({"ok": ok, "message": msg})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 
 @proposals_bp.route("/api/work-proposals/<proposal_id>/agent-advance", methods=["POST"])
 def agent_advance(proposal_id):
