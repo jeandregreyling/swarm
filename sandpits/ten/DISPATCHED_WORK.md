@@ -301,3 +301,15 @@ _No active dispatched work._
 **From**: ten
 **Description**: Verify the full proposals flow works
 **Status**: dispatched
+
+## [11:05] MANUAL-20260413-085809
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
+
+## [11:05] MANUAL-20260413-085753
+**Title**: Test proposal pipeline
+**From**: ten
+**Description**: Verify the full proposals flow works
+**Status**: dispatched
