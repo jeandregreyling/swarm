@@ -11363,3 +11363,5 @@
 - [11:10] MANUAL-20260413-085753 (ten): Test proposal pipeline
 - [11:15] MANUAL-20260413-085809 (ten): Test proposal pipeline
 - [11:15] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [11:20] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [11:20] MANUAL-20260413-085753 (ten): Test proposal pipeline
