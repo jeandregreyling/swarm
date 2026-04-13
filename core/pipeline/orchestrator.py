@@ -393,31 +393,31 @@ def _detect_disagreement(text):
     return any(sig in t for sig in _DISAGREEMENT_SIGNALS)
 
 
-def _run_debate_r2(question, web_context, llama_r1, qwen_r1, conv_id):
-    """Challenge round: each agent reacts to the other's R1. Returns (llama_r2, qwen_r2)."""
+def _run_debate_r2(question, web_context, llama_r1, mistral_r1, conv_id):
+    """Challenge round: each agent reacts to the other's R1. Returns (llama_r2, mistral_r2)."""
     print('\n[Debate] Round 2 — challenge...')
     llama_challenge_prompt = (
         web_context +
         'You are LLaMA in a live debate.\n\n'
         'You said: ' + llama_r1 + '\n\n'
-        'Qwen said: ' + qwen_r1 + '\n\n'
-        'Do you agree or disagree with Qwen? If you disagree, state exactly what is wrong and why. '
-        'If you agree, add something Qwen missed. Be direct. 2-3 sentences only.'
+        'Mistral said: ' + mistral_r1 + '\n\n'
+        'Do you agree or disagree with Mistral? If you disagree, state exactly what is wrong and why. '
+        'If you agree, add something Mistral missed. Be direct. 2-3 sentences only.'
     )
     llama_r2 = ask_agent('LLaMA', llama_challenge_prompt)
     log_message(conv_id, 'LLaMA', llama_r2, message_type='debate_r2')
 
-    qwen_challenge_prompt = (
+    mistral_challenge_prompt = (
         web_context +
-        'You are Qwen in a live debate.\n\n'
-        'You said: ' + qwen_r1 + '\n\n'
+        'You are Mistral in a live debate.\n\n'
+        'You said: ' + mistral_r1 + '\n\n'
         'LLaMA said: ' + llama_r1 + '\n\n'
         'Do you agree or disagree with LLaMA? If you disagree, state exactly what is wrong and why. '
         'If you agree, add something LLaMA missed. Be direct. 2-3 sentences only.'
     )
-    qwen_r2 = ask_agent('Qwen', qwen_challenge_prompt)
-    log_message(conv_id, 'Qwen', qwen_r2, message_type='debate_r2')
-    return llama_r2, qwen_r2
+    mistral_r2 = ask_agent('Mistral', mistral_challenge_prompt)
+    log_message(conv_id, 'Mistral', mistral_r2, message_type='debate_r2')
+    return llama_r2, mistral_r2
 
 
 def tag_content(content):

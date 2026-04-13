@@ -11331,3 +11331,29 @@
 - [09:24] INTERNAL-ELEVEN-0554 (eleven): "Single test proposal - do not create more"
 - [09:29] INTERNAL-ELEVEN-0554 (eleven): "Single test proposal - do not create more"
 - [09:34] INTERNAL-ELEVEN-0554 (eleven): "Single test proposal - do not create more"
+- [10:00] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:00] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:05] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:05] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:10] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:10] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:15] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:15] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:20] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:20] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:25] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:25] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:30] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:30] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:35] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:35] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:40] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:40] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:45] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:45] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:50] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:50] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [10:55] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [10:55] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [11:00] MANUAL-20260413-085809 (ten): Test proposal pipeline
+- [11:00] MANUAL-20260413-085753 (ten): Test proposal pipeline
