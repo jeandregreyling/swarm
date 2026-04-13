@@ -8,6 +8,7 @@
 
   function _fetchAndRenderTemp() {
     const el = document.getElementById('fridays-system-temp');
+    const gaugeFill = document.getElementById('gauge-fill');
     if (!el) return;
     fetch('/api/monitor/stats', { signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined })
       .then(r => r.ok ? r.json() : null)
@@ -17,17 +18,23 @@
         const temp = data.cpu_temp != null ? data.cpu_temp : null;
         let label = '';
         let cls = '';
+        let percentage = 0;
         if (temp != null) {
           label = temp.toFixed(0) + '°C';
           cls = temp >= 75 ? 'fridays-temp--hot' : temp >= 55 ? 'fridays-temp--warm' : 'fridays-temp--cool';
+          percentage = (temp / 100) * 100;
         } else if (cpu != null) {
           label = 'CPU ' + cpu.toFixed(0) + '%';
           cls = cpu >= 85 ? 'fridays-temp--hot' : cpu >= 60 ? 'fridays-temp--warm' : 'fridays-temp--cool';
+          percentage = cpu;
         } else {
           label = '—';
         }
         el.textContent = label;
         el.className = 'fridays-temp ' + cls;
+        if (gaugeFill) {
+          gaugeFill.style.transform = `rotate(${percentage / 200}turn)`;
+        }
         el._lastData = data;
       })
       .catch(() => {});
@@ -143,6 +150,12 @@
     banner.id = 'fridays-banner';
     banner.innerHTML = `
       <span class="fridays-temp" id="fridays-system-temp">—</span>
+      <div class="gauge">
+        <div class="gauge-body">
+          <div class="gauge-fill" id="gauge-fill"></div>
+          <div class="gauge-cover"></div>
+        </div>
+      </div>
       <span class="fridays-banner-spacer"></span>
       <button class="fridays-banner-btn" id="fridays-btn-status" title="System status: CPU, RAM, disk, uptime">Status</button>
       <button class="fridays-banner-btn" id="fridays-btn-agents" title="Active agents and their tiers">Agents</button>

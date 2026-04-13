@@ -20,6 +20,50 @@
   overflow: hidden;
 }
 
+/* Temperature Gauge */
+.gauge {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 0 5px;
+}
+
+.gauge-body {
+  width: 100%;
+  height: 0;
+  padding-bottom: 50%;
+  background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.gauge-fill {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: inherit;
+  height: 0;
+  background: #fff;
+  transform-origin: center top;
+  transform: rotate(0turn);
+  transition: transform 0.5s ease-out;
+}
+
+.gauge-cover {
+  width: 80%;
+  height: 160%;
+  background: #2a4a6e;
+  border-radius: 50%;
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .fridays-banner:hover {
   height: 32px;
   background: linear-gradient(90deg, #1e3a56 0%, #2e5170 55%, #7a1a32 100%);

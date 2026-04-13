@@ -724,6 +724,26 @@ def _skill_fs_write(args, agent, **_):
         return False, f'fs_write failed: {e}'
 
 
+_FS_PATCH_LINENO_RE = re.compile(r'^[ ]{0,4}\d{1,5}  ')
+
+
+def _strip_fs_readonly_line_numbers(text):
+    """Strip line-number prefixes produced by 'SKILL fs_readonly lines'.
+
+    fs_readonly lines formats output as '{lineno:5d}  {content}'.
+    Agents sometimes copy that output directly into <<<OLD>>>/<<<<NEW>>> blocks.
+    Strip the prefix only when ALL non-empty lines match the pattern so we
+    don't corrupt content that legitimately starts with a number.
+    """
+    lines = text.split('\n')
+    non_empty = [l for l in lines if l.strip()]
+    if not non_empty:
+        return text
+    if all(_FS_PATCH_LINENO_RE.match(l) for l in non_empty):
+        return '\n'.join(_FS_PATCH_LINENO_RE.sub('', l) for l in lines)
+    return text
+
+
 def _skill_fs_patch(args, agent, **_):
     """Replace first occurrence of an exact string in a file."""
     raw = (args or '').strip()
@@ -741,6 +761,9 @@ def _skill_fs_patch(args, agent, **_):
         return False, f'File not found: {rel}'
     try:
         original = target.read_text(encoding='utf-8', errors='replace')
+        # Strip line-number prefixes if agent copied fs_readonly lines output verbatim
+        old_text = _strip_fs_readonly_line_numbers(old_text)
+        new_text = _strip_fs_readonly_line_numbers(new_text)
         effective_new = new_text
         if old_text.endswith('\n') and not new_text.endswith('\n'):
             effective_new = new_text + '\n'
