@@ -75,24 +75,43 @@ def _extract_skill_cmds(text):
             continue
 
         # Collect continuation lines for multi-line skills (e.g. fs_patch blocks).
-        # Key rule: once inside a <<<OLD>>> or <<<NEW>>> patch block, blank lines
-        # are part of the content and must NOT terminate collection. Only the next
-        # SKILL command terminates the block unconditionally.
+        # Rules:
+        # - Inside <<<OLD>>> content: blank lines are legitimate code and must NOT
+        #   terminate collection.
+        # - Inside <<<NEW>>> content: same for blank lines, BUT stop if we hit an
+        #   unindented line that starts with an uppercase letter followed by a space
+        #   — that pattern is prose commentary the model writes between skill calls,
+        #   never valid code at column 0 (JS is always indented; CSS selectors start
+        #   with '.', '#', '@', or lowercase).
+        # - The next SKILL command always terminates unconditionally.
         collected = [line]
         i += 1
         in_patch_block = False  # True once we've seen <<<OLD>>> or <<<NEW>>>
+        in_new_block = False    # True once we've seen <<<NEW>>> (enables prose guard)
 
         while i < len(lines):
             nxt = lines[i]
             nxt_stripped = nxt.strip()
 
-            # Detect entry into a patch block delimiter
+            # Detect entry into patch block delimiters
             nxt_up = nxt_stripped.upper()
-            if '<<<OLD>>>' in nxt_up or '<<<NEW>>>' in nxt_up:
+            if '<<<OLD>>>' in nxt_up:
                 in_patch_block = True
+            if '<<<NEW>>>' in nxt_up:
+                in_patch_block = True
+                in_new_block = True
 
             # A following SKILL command always ends the current block
             if nxt_up.startswith('SKILL ') or nxt_up.startswith('/SKILL '):
+                break
+
+            # After <<<NEW>>>: stop on unindented prose commentary.
+            # Prose from the model always starts at column 0 with an uppercase letter
+            # followed by a space (e.g. "Now, I'll update the CSS...").
+            # Valid code never appears like that: JS is indented, CSS selectors start
+            # with '.', '#', '@', or lowercase element names.
+            if (in_new_block and nxt and not nxt[0].isspace()
+                    and nxt[0].isupper() and ' ' in nxt):
                 break
 
             # Blank lines end the block only when we're NOT inside a patch block
