@@ -872,28 +872,28 @@ def api_chat():
             elif selected_agent == 'nine':
                 _stage('dispatching to Groq', est_eta)
                 from agents.nine import nine_agent
-                future = executor.submit(nine_agent.chat, effective_prompt, history, stage_cb)
+                future = executor.submit(nine_agent.chat, effective_prompt, history, stage_cb, conv_id)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[nine unavailable]'
                 tokens_used = tokens or 0
             elif selected_agent == 'ten':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.ten import copilot_agent
-                future = executor.submit(copilot_agent.chat, effective_prompt, history, stage_cb)
+                future = executor.submit(copilot_agent.chat, effective_prompt, history, stage_cb, conv_id)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[ten] No response — check server logs.'
                 tokens_used = tokens or 0
             elif selected_agent == 'eleven':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.eleven import grok_agent
-                future = executor.submit(grok_agent.chat, effective_prompt, history, stage_cb)
+                future = executor.submit(grok_agent.chat, effective_prompt, history, stage_cb, conv_id)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[eleven unavailable]'
                 tokens_used = tokens or 0
             elif selected_agent == 'twelve':
                 _stage('dispatching to ghost datacenter', est_eta)
                 from agents.twelve import twelve_agent
-                future = executor.submit(twelve_agent.chat, effective_prompt, history, stage_cb)
+                future = executor.submit(twelve_agent.chat, effective_prompt, history, stage_cb, conv_id)
                 answer, tokens = future.result(timeout=240 if persistent_mode else 20)
                 response_text = answer or '[twelve unavailable]'
                 tokens_used = tokens or 0

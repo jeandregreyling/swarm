@@ -216,3 +216,678 @@ let _libActiveType = 'text';
 let _libSelTags    = new Set();
 let _libModelReady = null;   // null = u
 **Status**: dispatched
+
+## [13:40] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [13:45] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [13:50] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [13:55] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:00] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:05] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:10] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:15] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:20] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:25] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:30] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:35] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:40] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:45] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:50] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [14:55] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:00] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:05] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:10] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:15] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:20] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:25] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:30] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:35] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:40] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:45] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:50] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [15:55] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:00] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:05] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:10] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:15] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:20] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:25] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:30] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:35] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:40] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:45] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:50] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [16:55] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [17:00] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [17:05] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [17:10] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [17:15] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched
+
+## [17:20] INTERNAL-ELEVEN-0585
+**Title**: [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ──────────────────────
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch`.
+Args: frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _libSources    = [];
+let _libActiveType = 'text';
+let _libSelTags    = new Set();
+let _libModelReady = null;   // null = u
+**Status**: dispatched

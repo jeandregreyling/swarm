@@ -75,19 +75,31 @@ def _extract_skill_cmds(text):
             continue
 
         # Collect continuation lines for multi-line skills (e.g. fs_patch blocks).
-        # For fs_patch: the format is <<<OLD>>>...content...<<<NEW>>>...new content...
-        # We must NOT stop as soon as <<<NEW>>> appears — the replacement text follows it.
-        # Let blank lines and next SKILL commands terminate the block naturally.
+        # Key rule: once inside a <<<OLD>>> or <<<NEW>>> patch block, blank lines
+        # are part of the content and must NOT terminate collection. Only the next
+        # SKILL command terminates the block unconditionally.
         collected = [line]
         i += 1
+        in_patch_block = False  # True once we've seen <<<OLD>>> or <<<NEW>>>
+
         while i < len(lines):
-            nxt = lines[i].strip()
-            # Stop at blank line or next SKILL command
-            if not nxt:
+            nxt = lines[i]
+            nxt_stripped = nxt.strip()
+
+            # Detect entry into a patch block delimiter
+            nxt_up = nxt_stripped.upper()
+            if '<<<OLD>>>' in nxt_up or '<<<NEW>>>' in nxt_up:
+                in_patch_block = True
+
+            # A following SKILL command always ends the current block
+            if nxt_up.startswith('SKILL ') or nxt_up.startswith('/SKILL '):
                 break
-            if nxt.upper().startswith('SKILL ') or nxt.upper().startswith('/SKILL '):
+
+            # Blank lines end the block only when we're NOT inside a patch block
+            if not in_patch_block and not nxt_stripped:
                 break
-            collected.append(lines[i])
+
+            collected.append(nxt)
             i += 1
 
         full = '\n'.join(collected)
@@ -105,7 +117,7 @@ def _extract_skill_cmds(text):
     return cmds
 
 
-def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None):
+def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_id=None):
     """Execute a list of (skill_name, skill_args) pairs. Returns joined output string."""
     char_limit = max_chars or _MAX_SKILL_OUTPUT_CHARS
     try:
@@ -127,7 +139,9 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None):
             pass
 
         try:
-            ok, out = skill_call(skill_name, args=skill_args, agent=agent_name)
+            # Pass source_conv_id for proposal skills so Duck can notify the chat thread
+            _conv_id = source_conv_id if skill_name == 'alm_create_proposal' else None
+            ok, out = skill_call(skill_name, args=skill_args, agent=agent_name, source_conv_id=_conv_id)
         except Exception as exc:
             parts.append(f'[skill:{skill_name}] ERROR\n{exc}')
             continue
@@ -146,6 +160,7 @@ def run_skill_loop(
     max_passes=5,
     max_skill_chars=None,
     nudge_if_no_skills=False,
+    source_conv_id=None,
 ):
     """
     Execute `call_fn(messages)` with SKILL command interception and re-prompting.
@@ -226,7 +241,7 @@ def run_skill_loop(
             break  # model is done — no skills requested
 
         emit_fn('running requested skills')
-        skill_results = _execute_skill_cmds(skill_cmds, agent_name, emit_fn, skill_char_limit)
+        skill_results = _execute_skill_cmds(skill_cmds, agent_name, emit_fn, skill_char_limit, source_conv_id=source_conv_id)
         pass_num += 1
 
         logger.debug(

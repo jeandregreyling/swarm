@@ -11383,3 +11383,108 @@
 - [12:00] MANUAL-20260413-085753 (ten): Test proposal pipeline
 - [12:05] MANUAL-20260413-085809 (ten): Test proposal pipeline
 - [12:05] MANUAL-20260413-085753 (ten): Test proposal pipeline
+- [14:30] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [14:35] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [14:40] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [14:45] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [14:50] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [14:55] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:00] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:05] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:10] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:15] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:20] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:25] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:30] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:35] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:40] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:45] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:50] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [15:55] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:00] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:05] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:10] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:15] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:20] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:25] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:30] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:35] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:40] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:45] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:50] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [16:55] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [17:00] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [17:05] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [17:10] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [17:15] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
+- [17:20] INTERNAL-ELEVEN-0585 (eleven): [fs_patch] frontend/static/js/views/library.js
+<<<OLD>>>
+// ── State ───────────
