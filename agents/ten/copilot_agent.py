@@ -54,12 +54,13 @@ def _build_context(message):
     return '\n'.join(lines)
 
 
-def chat(message, conversation_history=None, stage_cb=None):
+def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     """
     Send a message to Ten (GPT via GitHub Models API).
 
     Uses the shared run_skill_loop for SKILL command interception.
     stage_cb(text, eta_seconds) — called throughout to push progress to the UI.
+    conv_id: originating conversation ID — forwarded to alm_create_proposal so Duck can notify the thread.
 
     Returns (answer, tokens_used).
     """
@@ -127,6 +128,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             emit_fn=_emit,
             max_passes=5,
             max_skill_chars=2500,  # gpt-4.1 hard limit: 8000 tokens total
+            source_conv_id=conv_id,
         )
     except Exception as e:
         msg = str(e)

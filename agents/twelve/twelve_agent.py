@@ -73,11 +73,12 @@ def _build_context(message):
     return '\n'.join(lines)
 
 
-def chat(message, conversation_history=None, stage_cb=None):
+def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     """
     Send a message to Twelve (Claude Haiku 4.5). Returns (answer, tokens_used).
     conversation_history: list of {role, content} dicts for multi-turn context.
     stage_cb(text, eta): called throughout for live progress in Fridays UI.
+    conv_id: originating conversation ID — forwarded to alm_create_proposal so Duck can notify the thread.
     """
     def _emit(text):
         if callable(stage_cb):
@@ -128,6 +129,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             call_fn=_api_call,
             messages=messages,              # no system entry — Anthropic takes it separately
             emit_fn=_emit,
+            source_conv_id=conv_id,
         )
 
         _emit('persisting response memory')

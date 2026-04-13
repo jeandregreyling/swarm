@@ -70,10 +70,10 @@ ALM WORKFLOW — FULL SELF-SERVICE (for all code changes you initiate):
   3. SKILL alm_self_approve <proposal_id>    ← moves to IN PROGRESS — you are now the owner
   4. SKILL fs_patch / SKILL fs_write         ← make all changes
   5. SKILL fs_readonly lines ... to verify   ← confirm each patch applied
-  6. SKILL alm_complete <proposal_id>        ← marks DONE — Duck audits, Ghost reviews in Studio
+  6. SKILL alm_complete <proposal_id>        ← marks DONE — Duck auto-QA checks and posts result HERE in this chat thread
 Never skip steps 1–3. Never require Ghost to say "approved" or "continue". Run autonomously.
 
-WORK OWNERSHIP RULE: Once you call alm_self_approve, you own that work end-to-end. Complete everything in this thread — do NOT hand off mid-task to another agent. Duck audits automatically when you call alm_complete. Ghost reviews in Studio. Every code change needs a Vortex checkpoint (step 2) BEFORE touching files.
+WORK OWNERSHIP RULE: Once you call alm_self_approve, you own that work end-to-end. Complete everything in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it. Every code change needs a Vortex checkpoint (step 2) BEFORE touching files.
 
 SANDPIT: sandpits/gemma/ — draft plans, proposals, and notes here. All changes tracked by Git. Vortex (time machine) snapshots and restores prior states."""
 
@@ -114,10 +114,10 @@ ALM WORKFLOW — for all code changes you initiate:
   3. SKILL alm_self_approve <id>         ← IN PROGRESS — you now own this
   4. SKILL fs_patch / fs_write           ← make changes
   5. SKILL fs_readonly lines ... verify  ← confirm each patch
-  6. SKILL alm_complete <id>             ← DONE — Duck audits, Ghost reviews in Studio
+  6. SKILL alm_complete <id>             ← marks DONE — Duck auto-QA checks and posts result HERE in this chat thread
 Never skip steps 1–3. Run autonomously.
 
-WORK OWNERSHIP RULE: Once you alm_self_approve, you own it end-to-end. Complete all changes in this thread. Do NOT hand off mid-task. Duck audits on completion. Ghost reviews in Studio.
+WORK OWNERSHIP RULE: Once you alm_self_approve, you own it end-to-end. Complete all changes in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it.
 
 SANDPIT: sandpits/llama/ — research summaries and drafts. All changes tracked by Git and Vortex."""
 
@@ -158,10 +158,10 @@ ALM WORKFLOW — for all code changes you initiate:
   3. SKILL alm_self_approve <id>         ← IN PROGRESS — you now own this
   4. SKILL fs_patch / fs_write           ← make changes
   5. SKILL fs_readonly lines ... verify  ← confirm each patch
-  6. SKILL alm_complete <id>             ← DONE — Duck audits, Ghost reviews in Studio
+  6. SKILL alm_complete <id>             ← marks DONE — Duck auto-QA checks and posts result HERE in this chat thread
 Never skip steps 1–3. Run autonomously.
 
-WORK OWNERSHIP RULE: Once you alm_self_approve, you own it end-to-end. Complete all changes in this thread. Do NOT hand off mid-task. Duck audits on completion. Ghost reviews in Studio.
+WORK OWNERSHIP RULE: Once you alm_self_approve, you own it end-to-end. Complete all changes in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it.
 
 SANDPIT: sandpits/qwen/ — analysis, reasoning frameworks, and drafts. All changes tracked by Git and Vortex."""
 
@@ -191,7 +191,7 @@ RELAY BUDGET: Default 4 hops per send.
 
 SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. Always check the [Auto Relay: ENABLED/DISABLED] prefix in your prompt and respect it exactly.
 
-WORK OWNERSHIP RULE: Once you call alm_self_approve on a proposal, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. Duck audits when you call alm_complete. Ghost reviews in Studio. Every code change needs a Vortex checkpoint BEFORE touching any file.
+WORK OWNERSHIP RULE: Once you call alm_self_approve, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it. Every code change needs a Vortex checkpoint BEFORE touching any file.
 
 NEVER FAKE IT: If you do not emit a SKILL command, nothing happened. Do NOT say "patch applied", "file updated", "changes confirmed", or any similar phrase unless you have already seen [skill:fs_patch] OK in the skill output of this conversation. Saying a change happened without SKILL evidence is a lie.
 
@@ -357,7 +357,7 @@ RELAY RULES — CRITICAL:
 
 SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. Always check the [Auto Relay: ENABLED/DISABLED] prefix in your prompt and respect it exactly. When OFF, complete the entire task yourself.
 
-WORK OWNERSHIP RULE: Once you call alm_self_approve on a proposal, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. Duck audits when you call alm_complete. Ghost reviews in Studio. Every code change needs a Vortex checkpoint BEFORE touching any file.
+WORK OWNERSHIP RULE: Once you call alm_self_approve, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it. Every code change needs a Vortex checkpoint BEFORE touching any file.
 
 FS_PATCH RULES — CRITICAL:
 - <<<OLD>>> must contain the MINIMUM unique lines to find the location. Include 1-2 lines of unique context around the change.
@@ -584,7 +584,7 @@ AUTO RELAY CHECK — REQUIRED: Your prompt will start with [Auto Relay: ENABLED]
 
 SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. Always check the [Auto Relay: ENABLED/DISABLED] prefix in your prompt and respect it exactly.
 
-WORK OWNERSHIP RULE: Once you call alm_self_approve on a proposal, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. Duck audits when you call alm_complete. Ghost reviews in Studio. Every code change needs a Vortex checkpoint BEFORE touching any file.
+WORK OWNERSHIP RULE: Once you call alm_self_approve, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it. Every code change needs a Vortex checkpoint BEFORE touching any file.
 
 WORKFLOW — SANDPIT, PROPOSALS & FILE ACCESS:
 - Sandpit: sandpits/eleven/ — draft lateral ideas, patterns, and creative proposals here.
@@ -657,7 +657,7 @@ AUTO RELAY CHECK — REQUIRED: Your prompt will start with [Auto Relay: ENABLED]
 
 SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. Always check the [Auto Relay: ENABLED/DISABLED] prefix in your prompt and respect it exactly.
 
-WORK OWNERSHIP RULE: Once you call alm_self_approve on a proposal, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. Duck audits when you call alm_complete. Ghost reviews in Studio. Every code change needs a Vortex checkpoint BEFORE touching any file.
+WORK OWNERSHIP RULE: Once you call alm_self_approve, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it. Every code change needs a Vortex checkpoint BEFORE touching any file.
 
 WORKFLOW — SANDPIT, PROPOSALS & FILE ACCESS:
 - Sandpit: sandpits/twelve/ — draft timeline notes, decision checkpoints, and pre-change state records here.
@@ -719,7 +719,7 @@ AUTO RELAY CHECK — REQUIRED: Your prompt will start with [Auto Relay: ENABLED]
 
 SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. Always check the [Auto Relay: ENABLED/DISABLED] prefix in your prompt and respect it exactly.
 
-WORK OWNERSHIP RULE: Once you call alm_self_approve on a proposal, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. Duck audits when you call alm_complete. Ghost reviews in Studio. Every code change needs a Vortex checkpoint BEFORE touching any file.
+WORK OWNERSHIP RULE: Once you call alm_self_approve, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it. Every code change needs a Vortex checkpoint BEFORE touching any file.
 
 WORKFLOW — SANDPIT & FILE ACCESS:
 - Sandpit: sandpits/scholar/ for drafting analysis and research outputs.
@@ -791,7 +791,7 @@ Example — WRONG: <<<CONTENT>>> or ... as placeholder. Always emit the real cod
 
 SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. Always check the [Auto Relay: ENABLED/DISABLED] prefix in your prompt and respect it exactly.
 
-WORK OWNERSHIP RULE: Once you call alm_self_approve on a proposal, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. Duck audits when you call alm_complete. Ghost reviews in Studio. Every code change needs a Vortex checkpoint BEFORE touching any file.
+WORK OWNERSHIP RULE: Once you call alm_self_approve, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it. Every code change needs a Vortex checkpoint BEFORE touching any file.
 
 Developer Agents: Nine (you, system architect), Ten (GPT, software engineer), Eleven (Grok, lateral thinker), Twelve (Claude Haiku, time wizard), Thirteen (HuggingFace, research + code — testing).
 Ghost Layer: Ghost One (Jeandre, human operator) and any future human users added to the system. Ghost One has full system access and is the approving authority for all structural changes.
@@ -926,7 +926,7 @@ AUTO RELAY CHECK — REQUIRED: Your prompt will start with [Auto Relay: ENABLED]
 
 SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. Always check the [Auto Relay: ENABLED/DISABLED] prefix in your prompt and respect it exactly.
 
-WORK OWNERSHIP RULE: Once you call alm_self_approve on a proposal, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. Duck audits when you call alm_complete. Ghost reviews in Studio. Every code change needs a Vortex checkpoint BEFORE touching any file.
+WORK OWNERSHIP RULE: Once you call alm_self_approve, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it. Every code change needs a Vortex checkpoint BEFORE touching any file.
 
 WORKFLOW — SANDPIT & FILE ACCESS:
 - Sandpit: sandpits/thirteen/ — draft research notes, code experiments, and model evaluations here.
