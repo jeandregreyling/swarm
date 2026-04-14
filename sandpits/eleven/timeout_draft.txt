@@ -1,0 +1,1 @@
+"Draft note: Need to find and update timeout settings for Mistral and Eight to 2000 seconds. Checking config and backend directories first. If not found, will search for relevant scripts or consult system documentation."

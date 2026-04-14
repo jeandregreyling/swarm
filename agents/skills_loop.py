@@ -253,10 +253,36 @@ def run_skill_loop(
             logger.warning(f'[{agent_name}] nudge call failed: {exc}')
 
     pass_num = 0
+    _mid_loop_nudges_remaining = 2  # allow up to 2 mid-loop nudges per request
 
     for _pass in range(max_passes):
         skill_cmds = _extract_skill_cmds(answer)
         if not skill_cmds:
+            # If we've already run skills and the model returned prose without a new
+            # SKILL command, nudge it once more — it may be mid-exploration and forgot
+            # to emit the next command rather than genuinely being done.
+            if pass_num > 0 and _mid_loop_nudges_remaining > 0:
+                _mid_loop_nudges_remaining -= 1
+                emit_fn('nudging for next skill command')
+                nudge_msgs = (
+                    list(messages[:baseline_len])
+                    + [
+                        {'role': 'assistant', 'content': answer},
+                        {'role': 'user',      'content': _SKILL_NUDGE},
+                    ]
+                )
+                try:
+                    nudge_content, nudge_tokens = call_fn(nudge_msgs)
+                    total_tokens += nudge_tokens
+                    if 'SKILL ' in str(nudge_content or '').upper():
+                        answer = nudge_content
+                        working_messages = nudge_msgs
+                        logger.info(f'[{agent_name}] mid-loop nudge (pass {pass_num}) produced SKILL commands')
+                        continue  # re-enter loop with the nudged response
+                    else:
+                        logger.info(f'[{agent_name}] mid-loop nudge (pass {pass_num}) produced no skills — done')
+                except Exception as exc:
+                    logger.warning(f'[{agent_name}] mid-loop nudge failed: {exc}')
             break  # model is done — no skills requested
 
         emit_fn('running requested skills')
