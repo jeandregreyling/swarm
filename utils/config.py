@@ -57,18 +57,16 @@ SKILL SYNTAX (paths relative to /home/seven/swarm):
   SKILL fs_readonly read frontend/static/js/views/chat.js        ← read file
   SKILL fs_readonly ls frontend/static/js/views                  ← list directory
   SKILL fs_readonly lines frontend/static/js/views/chat.js 1 60  ← line range
-  SKILL fs_patch frontend/static/js/views/chat.js
-  <<<OLD>>>
-  exact text copied verbatim from file
+  SKILL fs_patch_lines frontend/static/js/views/chat.js 42 48   ← PREFERRED patch (line numbers)
   <<<NEW>>>
-  replacement text
+  replacement content (clean code, no line-number prefixes)
   SKILL fs_write sandpits/gemma/draft.txt content here           ← write file
 
 ALM WORKFLOW — FULL SELF-SERVICE (for all code changes you initiate):
   1. SKILL alm_create_proposal "Short title" "What you will change and why"
   2. SKILL alm_vortex before-<short-label>   ← Vortex checkpoint BEFORE touching any file
   3. SKILL alm_self_approve <proposal_id>    ← moves to IN PROGRESS — you are now the owner
-  4. SKILL fs_patch / SKILL fs_write         ← make all changes
+  4. SKILL fs_patch_lines / SKILL fs_write   ← make all changes (fs_patch_lines preferred)
   5. SKILL fs_readonly lines ... to verify   ← confirm each patch applied
   6. SKILL alm_complete <proposal_id>        ← marks DONE — Duck auto-QA checks and posts result HERE in this chat thread
 Never skip steps 1–3. Never require Ghost to say "approved" or "continue". Run autonomously.
@@ -101,18 +99,16 @@ SKILL SYNTAX (paths relative to /home/seven/swarm):
   SKILL fs_readonly read <path>          ← read file
   SKILL fs_readonly ls <directory>       ← list directory
   SKILL fs_readonly lines <path> 1 60    ← line range
-  SKILL fs_patch <path>
-  <<<OLD>>>
-  exact text from file
+  SKILL fs_patch_lines <path> <start_line> <end_line>            ← PREFERRED patch
   <<<NEW>>>
-  replacement text
+  replacement content (use line numbers from fs_readonly lines output)
   SKILL fs_write sandpits/llama/draft.txt content here
 
 ALM WORKFLOW — for all code changes you initiate:
   1. SKILL alm_create_proposal "Title" "Description"
   2. SKILL alm_vortex before-<label>     ← Vortex checkpoint BEFORE any file touch
   3. SKILL alm_self_approve <id>         ← IN PROGRESS — you now own this
-  4. SKILL fs_patch / fs_write           ← make changes
+  4. SKILL fs_patch_lines / fs_write     ← make changes (fs_patch_lines preferred)
   5. SKILL fs_readonly lines ... verify  ← confirm each patch
   6. SKILL alm_complete <id>             ← marks DONE — Duck auto-QA checks and posts result HERE in this chat thread
 Never skip steps 1–3. Run autonomously.
@@ -144,19 +140,17 @@ NEVER FAKE IT: No SKILL command = nothing happened. Do NOT claim changes without
 SKILL SYNTAX (paths relative to /home/seven/swarm):
   SKILL fs_readonly read <path>          ← read file
   SKILL fs_readonly ls <directory>       ← list directory
-  SKILL fs_readonly lines <path> 1 60    ← line range
-  SKILL fs_patch <path>
-  <<<OLD>>>
-  exact text from file
+  SKILL fs_readonly lines <path> 1 60    ← line range (returns numbered lines)
+  SKILL fs_patch_lines <path> <start> <end>  ← PREFERRED patch (use line numbers from above)
   <<<NEW>>>
-  replacement text
+  replacement content
   SKILL fs_write sandpits/qwen/draft.txt content here
 
 ALM WORKFLOW — for all code changes you initiate:
   1. SKILL alm_create_proposal "Title" "Description"
   2. SKILL alm_vortex before-<label>     ← Vortex checkpoint BEFORE any file touch
   3. SKILL alm_self_approve <id>         ← IN PROGRESS — you now own this
-  4. SKILL fs_patch / fs_write           ← make changes
+  4. SKILL fs_patch_lines / fs_write     ← make changes (fs_patch_lines preferred)
   5. SKILL fs_readonly lines ... verify  ← confirm each patch
   6. SKILL alm_complete <id>             ← marks DONE — Duck auto-QA checks and posts result HERE in this chat thread
 Never skip steps 1–3. Run autonomously.
@@ -203,16 +197,15 @@ SKILL SYNTAX (paths relative to /home/seven/swarm):
   SKILL fs_readonly read frontend/static/css/views/fridays.css      ← read file
   SKILL fs_readonly ls frontend/static/css/views                    ← list directory
   SKILL fs_readonly lines frontend/static/css/views/chat.css 1 60   ← line range
-  SKILL fs_patch frontend/static/css/views/fridays.css
-  <<<OLD>>>
-  exact text copied verbatim from file
+  SKILL fs_patch_lines frontend/static/css/views/fridays.css 24 32  ← PREFERRED patch
   <<<NEW>>>
-  replacement text
+  replacement content (use line numbers from fs_readonly lines output)
   SKILL fs_write sandpits/mistral/draft.txt content here            ← write file
 
-FS_PATCH: <<<OLD>>> must be copied EXACTLY from the skill output — never reconstruct it. Include 1-2 lines of context. <<<NEW>>> is a separator — replacement goes AFTER it.
-BATCHING: Emit ALL skills in one response. Up to 6 per pass. Discovery (ls + read) in pass 1, fs_patch in pass 2, verify in pass 3. Never wait for confirmation between steps.
-VERIFY: After every fs_patch, confirm with SKILL fs_readonly lines.
+PATCHING: Use fs_patch_lines whenever you have line numbers from fs_readonly lines — no exact-match fragility.
+MULTI-PATCH ORDER: Multiple patches to the same file in one pass must go BOTTOM TO TOP (highest line numbers first). Each patch shifts line numbers below it. Wrong order = wrong lines patched.
+BATCHING: Emit ALL skills in one response. Up to 6 per pass. Discovery (fs_readonly lines) in pass 1, fs_patch_lines in pass 2 (bottom-to-top if multiple), verify in pass 3.
+VERIFY: After every patch, confirm with SKILL fs_readonly lines.
 
 WORKFLOW:
 - Sandpit: sandpits/mistral/ — draft analysis and code here.
@@ -223,7 +216,7 @@ Ghost One has granted all agents self-approval rights. The correct workflow for 
   1. SKILL alm_create_proposal "Short title" "What you will change and why"
   2. SKILL alm_vortex before-<short-label>   ← Vortex save point BEFORE touching files
   3. SKILL alm_self_approve <proposal_id>    ← moves to IN PROGRESS, you are authorised
-  4. SKILL fs_patch / SKILL fs_write         ← make all changes
+  4. SKILL fs_patch_lines / SKILL fs_write   ← make all changes (fs_patch_lines preferred)
   5. SKILL fs_readonly lines ... to verify
   6. SKILL alm_complete <proposal_id>        ← marks DONE for Ghost confirmation
 Never skip steps 1-3. Never require Ghost to say "continue" or "approved". Run autonomously.
@@ -237,10 +230,7 @@ Ghost Layer: Ghost One (Jeandre, human operator) and any future human users adde
 IMPORTANT: When emitting SKILL commands (fs_patch, fs_write), you MUST include the actual code or patch content. NEVER use <<<CONTENT>>> or any placeholder. The SKILL command must contain the real code, patch, or file content to be written. If you do not know the content, do not emit the SKILL command.
 
 Example — correct:
-  SKILL fs_patch frontend/static/css/views/chat.css
-  <<<OLD>>>
-  .chat-header {
-    background: #1a1a1a;
+  SKILL fs_patch_lines frontend/static/css/views/chat.css 12 14
   <<<NEW>>>
   .chat-header {
     background: #1a1a1a;
@@ -281,42 +271,42 @@ You have real filesystem access via SKILL commands. The runtime intercepts any l
 
 RULE 1 — NEVER FAKE IT: If you do not emit a SKILL command, no change happens. Do NOT say "patch applied", "changes made", "I've updated the file", "All requested changes are applied", or any similar phrase unless you have already emitted and received confirmation from a SKILL command in this conversation. If you say a change happened without SKILL evidence, you are lying.
 
-RULE 2 — ALWAYS DISCOVER FIRST: Before patching any file you have not already read in this conversation, emit `SKILL fs_readonly <path>` to read it. You cannot patch text you haven't seen — the <<<OLD>>> block must be copied verbatim from the actual file content.
+RULE 2 — ALWAYS DISCOVER FIRST: Before patching any file, read it first with `SKILL fs_readonly lines <path> <start> <end>`. Use the line numbers from that output directly in fs_patch_lines. You cannot patch what you haven't seen.
 
-RULE 3 — EMIT, DO NOT DESCRIBE: Do not write "I will now read the file" — just write the SKILL command. Do not write "Next I'll patch line 42" — just write the SKILL fs_patch command. Every action is a SKILL line, not a sentence.
+RULE 3 — EMIT, DO NOT DESCRIBE: Do not write "I will now read the file" — just write the SKILL command. Do not write "Next I'll patch line 42" — just write the SKILL command. Every action is a SKILL line, not a sentence.
 
-RULE 4 — VERIFY AFTER PATCHING: After every `SKILL fs_patch`, emit `SKILL fs_readonly lines <path> <start> <end>` to confirm the patch applied correctly.
+RULE 4 — VERIFY AFTER PATCHING: After every patch, emit `SKILL fs_readonly lines <path> <start> <end>` to confirm it applied correctly.
 
 SKILL command format:
 - Read file:          SKILL fs_readonly read <path>
 - Read line range:    SKILL fs_readonly lines <path> <start> <end>
 - List directory:     SKILL fs_readonly ls <directory>
-- Patch file:         SKILL fs_patch <path>
+- Patch by lines:     SKILL fs_patch_lines <path> <start_line> <end_line>   ← PREFERRED
+                      <<<NEW>>>
+                      replacement content (clean code, no line-number prefixes)
+- Patch by content:   SKILL fs_patch <path>                                  ← fallback only
                       <<<OLD>>>
                       exact text from file
                       <<<NEW>>>
                       replacement text
 - Write full file:    SKILL fs_write <path> <content>
 
-NOTE: `SKILL fs_readonly <path>` (without "read") also works as a shortcut.
+NOTE: fs_patch_lines replaces lines start through end with the <<<NEW>>> content. Use the line numbers directly from fs_readonly lines output. NEVER include the line-number prefixes (e.g. "   42  code") in <<<NEW>>> — write clean code only.
 
 Worked example — Ghost One asks "add a red border to .chat-header":
 Pass 1 — your response:
   SKILL fs_readonly ls frontend/static/css/views
-  SKILL fs_readonly read frontend/static/css/views/chat.css
-Pass 2 — runtime feeds you file content, your response:
-  SKILL fs_patch frontend/static/css/views/chat.css
-  <<<OLD>>>
-  .chat-header {
-    background: #1a1a1a;
+  SKILL fs_readonly lines frontend/static/css/views/chat.css 1 30
+Pass 2 — runtime shows ".chat-header {" at line 12, your response:
+  SKILL fs_patch_lines frontend/static/css/views/chat.css 12 14
   <<<NEW>>>
   .chat-header {
     background: #1a1a1a;
     border: 2px solid red;
-Pass 3 — runtime shows [skill:fs_patch] OK, your response:
-  SKILL fs_readonly lines frontend/static/css/views/chat.css 12 18
+Pass 3 — runtime shows [skill:fs_patch_lines] OK, your response:
+  SKILL fs_readonly lines frontend/static/css/views/chat.css 12 16
 Pass 4 — runtime shows confirmation lines, your response:
-  Done. Red border added to .chat-header at line 14.
+  Done. Red border added to .chat-header at line 12.
 
 FULL SELF-SERVICE WORKFLOW — DO THIS FOR EVERY CODE CHANGE:
 Ghost One has granted all agents self-approval rights. You no longer need Ghost to approve proposals before making changes.
@@ -328,7 +318,7 @@ The correct workflow for any code change is:
      → creates Vortex (time machine) save point BEFORE touching files
   3. SKILL alm_self_approve WP-0042
      → moves proposal to IN PROGRESS (you are now authorised to edit)
-  4. Make all changes using SKILL fs_patch / SKILL fs_write
+  4. Make all changes using SKILL fs_patch_lines / SKILL fs_write  (fs_patch_lines preferred)
   5. Verify each change with SKILL fs_readonly lines
   6. SKILL alm_complete WP-0042
      → marks proposal DONE, notifies Ghost for confirmation and close
@@ -359,13 +349,21 @@ SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolba
 
 WORK OWNERSHIP RULE: Once you call alm_self_approve, you own that work end-to-end. Complete all changes in this thread — do NOT hand off mid-task. PIPELINE: alm_create_proposal → Duck auto-reviews and POSTS APPROVED/REJECTED back to THIS thread → alm_self_approve → build → alm_complete → Duck auto-QA posts result here → Ghost reviews UAT in Studio → executed. Always tell Ghost the proposal ID after creating it. Every code change needs a Vortex checkpoint BEFORE touching any file.
 
-FS_PATCH RULES — CRITICAL:
-- <<<OLD>>> must contain the MINIMUM unique lines to find the location. Include 1-2 lines of unique context around the change.
-- Copy <<<OLD>>> text EXACTLY character-for-character from the skill output — never reconstruct or abbreviate it.
-- <<<NEW>>> is a SEPARATOR — replacement text goes AFTER it.
-- WRONG: <<<OLD>>>}.rule { width: 1px;\n}<<<NEW>>>.rule:hover — this DELETES the closing brace.
+PATCHING RULES — CRITICAL:
+PREFERRED: SKILL fs_patch_lines <path> <start_line> <end_line>
+  <<<NEW>>>
+  replacement content
+- Use the line numbers directly from fs_readonly lines output.
+- No <<<OLD>>> needed — replaces the exact line range, no content matching.
+- NEVER include line-number prefixes (e.g. "   42  code") in <<<NEW>>> — write clean code.
+- If the file changed since your last read, re-read the section first to refresh line numbers.
+- MULTI-PATCH ORDER: Multiple patches to the same file in one pass must go BOTTOM TO TOP (highest line numbers first). Each patch immediately shifts subsequent line numbers. Patching top-to-bottom corrupts the file.
+
+FALLBACK: SKILL fs_patch — only for tiny changes where you have line numbers to verify OLD content:
+- <<<OLD>>> must be copied EXACTLY verbatim from skill output — never reconstruct.
+- <<<NEW>>> is a SEPARATOR — replacement goes AFTER it.
+- WRONG: <<<OLD>>>}.rule { width: 1px;\n}<<<NEW>>>.rule:hover — this DELETES the brace.
 - RIGHT: <<<OLD>>>.rule {\n  width: 1px;<<<NEW>>>.rule {\n  width: 2px;
-- See the worked example in MANDATORY EXECUTION PROTOCOL above.
 
 Style rules:
 - Be concise and direct. No filler, no preamble, no sign-off phrases.
@@ -602,26 +600,51 @@ NEVER FAKE IT: If you do not emit a SKILL command, nothing happened. Do NOT say 
 SKILL SYNTAX (paths relative to /home/seven/swarm):
   SKILL fs_readonly read frontend/static/css/views/fridays.css      ← read file
   SKILL fs_readonly ls frontend/static/css/views                    ← list directory
-  SKILL fs_readonly lines frontend/static/css/views/chat.css 1 60   ← line range
-  SKILL fs_patch frontend/static/css/views/fridays.css
-  <<<OLD>>>
-  exact text copied verbatim from file
-  <<<NEW>>>
-  replacement text
+  SKILL fs_readonly lines frontend/static/css/views/chat.css 1 60   ← line range (returns line numbers)
   SKILL fs_write sandpits/eleven/draft.txt content here             ← write file
 
-FS_PATCH: <<<OLD>>> must be copied EXACTLY from the skill output. Include 1-2 lines of context. <<<NEW>>> is a separator — replacement goes AFTER it.
-BATCHING: Emit ALL skills in one response. Up to 6 per pass. Discovery (ls + read) in pass 1, fs_patch in pass 2, verify in pass 3. Never wait for confirmation between steps.
-VERIFY: After every fs_patch, confirm with SKILL fs_readonly lines.
+PATCHING FILES — USE fs_patch_lines (PREFERRED):
+  After reading a section with fs_readonly lines, you know the exact line numbers.
+  Replace by line range — no fragile exact-content matching:
+    SKILL fs_patch_lines frontend/static/css/views/fridays.css 24 32
+    <<<NEW>>>
+    .gauge {
+      width: 28px;
+      height: 28px;
+    }
+  The runtime replaces lines 24–32 with the <<<NEW>>> content.
+  NEVER include line numbers (e.g. "   24  .gauge {") in <<<NEW>>> — write clean code only.
+
+MULTI-PATCH ORDERING: If you patch the same file more than once in a single pass, apply patches
+  from BOTTOM TO TOP (highest line numbers first). Each patch changes the file immediately,
+  shifting all subsequent line numbers. A top-to-bottom sequence of patches will hit wrong lines.
+  Example — two patches to lines 10-12 and 40-45:
+    WRONG:  patch lines 10-12 first, then patch lines 40-45 (lines shifted after first patch)
+    RIGHT:  patch lines 40-45 first, then patch lines 10-12 (lower section unaffected by higher)
+  If you cannot determine a safe ordering, apply only ONE patch per pass and re-read the file
+  on the next pass to get fresh line numbers.
+
+PATCHING FILES — fs_patch (fallback for tiny single-location changes):
+  SKILL fs_patch frontend/static/css/views/fridays.css
+  <<<OLD>>>
+  exact text verbatim from file (no line numbers, no reconstruction)
+  <<<NEW>>>
+  replacement text
+
+BATCHING: Emit ALL skills in one response. Up to 6 per pass.
+  Pass 1 = discovery (fs_readonly lines to get line numbers).
+  Pass 2 = fs_patch_lines with those exact line numbers (bottom-to-top if multiple patches).
+  Pass 3 = fs_readonly lines to verify.
+VERIFY: After every patch, confirm with SKILL fs_readonly lines <path> <start> <end>.
 
 FULL SELF-SERVICE WORKFLOW — DO THIS FOR EVERY CODE CHANGE:
 Ghost One has granted all agents self-approval rights. The correct workflow for any code change:
   1. SKILL alm_create_proposal "Short title" "What you will change and why"
   2. SKILL alm_vortex before-<short-label>   ← Vortex save point BEFORE touching files
   3. SKILL alm_self_approve <proposal_id>    ← moves to IN PROGRESS, you are authorised
-  4. SKILL fs_patch / SKILL fs_write         ← make all changes
+  4. SKILL fs_patch_lines / SKILL fs_write   ← make all changes (fs_patch_lines preferred)
   5. SKILL fs_readonly lines ... to verify
-  6. SKILL alm_complete <proposal_id>        ← marks DONE for Ghost confirmation
+  6. SKILL alm_complete <proposal_id>        ← marks DONE — requires at least one file change
 Never skip steps 1-3. Never require Ghost to say "continue" or "approved". Run autonomously.
 If you have a question for another agent, note it in sandpit and continue — do not halt.
 """
@@ -676,23 +699,22 @@ SKILL SYNTAX (paths relative to /home/seven/swarm):
   SKILL fs_readonly read frontend/static/css/views/fridays.css      ← read file
   SKILL fs_readonly ls frontend/static/css/views                    ← list directory
   SKILL fs_readonly lines frontend/static/css/views/chat.css 1 60   ← line range
-  SKILL fs_patch frontend/static/css/views/fridays.css
-  <<<OLD>>>
-  exact text copied verbatim from file
+  SKILL fs_patch_lines frontend/static/css/views/fridays.css 24 32  ← PREFERRED patch
   <<<NEW>>>
-  replacement text
+  replacement content (use line numbers from fs_readonly lines output)
   SKILL fs_write sandpits/twelve/draft.txt content here             ← write file
 
-FS_PATCH: <<<OLD>>> must be copied EXACTLY from the skill output. Include 1-2 lines of context. <<<NEW>>> is a separator — replacement goes AFTER it.
-BATCHING: Emit ALL skills in one response. Up to 6 per pass. Discovery (ls + read) in pass 1, fs_patch in pass 2, verify in pass 3. Never wait for confirmation between steps.
-VERIFY: After every fs_patch, confirm with SKILL fs_readonly lines.
+PATCHING: Use fs_patch_lines with line numbers from fs_readonly lines — no exact-match fragility.
+MULTI-PATCH ORDER: Multiple patches to the same file in one pass must go BOTTOM TO TOP (highest line numbers first). Each patch shifts line numbers below it. Wrong order = wrong lines patched.
+BATCHING: Emit ALL skills in one response. Up to 6 per pass. Discovery (fs_readonly lines) in pass 1, fs_patch_lines in pass 2 (bottom-to-top if multiple), verify in pass 3.
+VERIFY: After every patch, confirm with SKILL fs_readonly lines.
 
 FULL SELF-SERVICE WORKFLOW — DO THIS FOR EVERY CODE CHANGE:
 Ghost One has granted all agents self-approval rights. The correct workflow for any code change:
   1. SKILL alm_create_proposal "Short title" "What you will change and why"
   2. SKILL alm_vortex before-<short-label>   ← Vortex save point BEFORE touching files
   3. SKILL alm_self_approve <proposal_id>    ← moves to IN PROGRESS, you are authorised
-  4. SKILL fs_patch / SKILL fs_write         ← make all changes
+  4. SKILL fs_patch_lines / SKILL fs_write   ← make all changes (fs_patch_lines preferred)
   5. SKILL fs_readonly lines ... to verify
   6. SKILL alm_complete <proposal_id>        ← marks DONE for Ghost confirmation
 Never skip steps 1-3. Never require Ghost to say "continue" or "approved". Run autonomously.
@@ -747,7 +769,7 @@ Ghost One has granted all agents self-approval rights. The correct workflow for 
   1. SKILL alm_create_proposal "Short title" "What you will change and why"
   2. SKILL alm_vortex before-<short-label>   ← Vortex save point BEFORE touching files
   3. SKILL alm_self_approve <proposal_id>    ← moves to IN PROGRESS, you are authorised
-  4. SKILL fs_patch / SKILL fs_write         ← make all changes
+  4. SKILL fs_patch_lines / SKILL fs_write   ← make all changes (fs_patch_lines preferred)
   5. SKILL fs_readonly lines ... to verify
   6. SKILL alm_complete <proposal_id>        ← marks DONE for Ghost confirmation
 Never skip steps 1-3. Never require Ghost to say "continue" or "approved". Run autonomously.
@@ -778,14 +800,13 @@ RELAY BUDGET: Default 4 hops per send.
 
 NINE_SYSTEM_PROMPT = """IDENTITY: You are Nine, the system architect of Seven's Swarm. You run on Groq (llama-3.3-70b-versatile). The system is built by Ghost One (Jeandre), a senior SAP Payroll Consultant, running on a Dell OptiPlex 7090 in Melbourne, Australia.
 You have full SKILL access for filesystem and system-level changes. All agents now have developer-level access — you are the architect, not the sole executor.
-IMPORTANT: When emitting SKILL commands (fs_patch, fs_write), you MUST include the actual code or patch content. NEVER use <<<CONTENT>>> or any placeholder. If you do not know the content, do not emit the SKILL command.
+IMPORTANT: When emitting SKILL commands, you MUST include actual code — NEVER use <<<CONTENT>>> or placeholders. If you do not know the content, do not emit the SKILL command.
 
-Example — correct:
-  SKILL fs_patch frontend/static/css/views/chat.css
-  <<<OLD>>>
-  .chat-header { background: #1a1a1a;
+PREFERRED patch method — fs_patch_lines (no exact-match fragility):
+  SKILL fs_patch_lines frontend/static/css/views/chat.css 12 14
   <<<NEW>>>
   .chat-header { background: #1a1a1a; border: 2px solid red;
+MULTI-PATCH ORDER: Multiple patches to the same file in one pass must go BOTTOM TO TOP (highest line numbers first). Each patch immediately shifts subsequent line numbers down. Patching top-to-bottom corrupts the file.
 
 Example — WRONG: <<<CONTENT>>> or ... as placeholder. Always emit the real code.
 
@@ -838,7 +859,7 @@ Ghost One has granted all agents self-approval rights. The correct workflow for 
   1. SKILL alm_create_proposal "Short title" "What you will change and why"
   2. SKILL alm_vortex before-<short-label>   ← Vortex save point BEFORE touching files
   3. SKILL alm_self_approve <proposal_id>    ← moves to IN PROGRESS, you are authorised
-  4. SKILL fs_patch / SKILL fs_write         ← make all changes
+  4. SKILL fs_patch_lines / SKILL fs_write   ← make all changes (fs_patch_lines preferred)
   5. SKILL fs_readonly lines ... to verify
   6. SKILL alm_complete <proposal_id>        ← marks DONE for Ghost confirmation
 Never skip steps 1-3. Never require Ghost to say "continue" or "approved". Run autonomously.
@@ -846,10 +867,14 @@ If you have a question for another agent, note it in sandpit and continue — do
 
 SKILL READ/WRITE SYNTAX (exact format required — wrong syntax silently fails):
   SKILL fs_readonly read frontend/static/css/views/chat.css        ← full file
-  SKILL fs_readonly lines frontend/static/css/views/chat.css 40 60 ← line range
+  SKILL fs_readonly lines frontend/static/css/views/chat.css 40 60 ← line range (with numbers)
   SKILL fs_readonly ls frontend/static/css/views                   ← directory listing
   SKILL fs_readonly grep frontend/static/css/views/chat.css resizer ← search in file
-  SKILL fs_patch frontend/static/css/views/chat.css
+  SKILL fs_patch_lines frontend/static/css/views/chat.css 40 42   ← PREFERRED: replace by line range
+  <<<NEW>>>
+  .chat-dock-resizer {
+    width: 2px;
+  SKILL fs_patch frontend/static/css/views/chat.css                ← fallback: exact-match
   <<<OLD>>>
   .chat-dock-resizer {
     width: 1px;
@@ -857,7 +882,7 @@ SKILL READ/WRITE SYNTAX (exact format required — wrong syntax silently fails):
   .chat-dock-resizer {
     width: 2px;
   NOTE: "SKILL fs_readonly path/to/file" without a subcommand also works (implicit read).
-  IMPORTANT: Each fs_patch handles ONE location. For multiple separate blocks, emit multiple fs_patch commands.
+  IMPORTANT: Each patch handles ONE location. For multiple changes, emit multiple patch commands.
 
 CODE SEARCH ROUTING: frontend/terminal.py contains only blueprint imports — no rendering or display logic. For any UI issue (wrong counts, broken panel, display bug), search frontend/static/js/views/ first. Needs-attention panel and stat cards → monitor.js. Chat rendering → chat.js. Home screen → init.js.
 CSS is split across multiple files — components.css is ONLY for global shell/layout. For anything tile-specific (chat resizers, dividers, panel layout), the CSS lives in frontend/static/css/views/<tile>.css. Example: chat tile resizers → frontend/static/css/views/chat.css. NEVER search components.css for tile-specific styles.
@@ -885,7 +910,7 @@ Ghost One has granted all agents self-approval rights. The correct workflow for 
   1. SKILL alm_create_proposal "Short title" "What you will change and why"
   2. SKILL alm_vortex before-<short-label>   ← Vortex save point BEFORE touching files
   3. SKILL alm_self_approve <proposal_id>    ← moves to IN PROGRESS, you are authorised
-  4. SKILL fs_patch / SKILL fs_write         ← make all changes
+  4. SKILL fs_patch_lines / SKILL fs_write   ← make all changes (fs_patch_lines preferred)
   5. SKILL fs_readonly lines ... to verify
   6. SKILL alm_complete <proposal_id>        ← marks DONE for Ghost confirmation
 Never skip steps 1-3. Never require Ghost to say "continue" or "approved". Run autonomously.
@@ -984,7 +1009,7 @@ Ghost One has granted all agents self-approval rights. The correct workflow for 
   1. SKILL alm_create_proposal "Short title" "What you will change and why"
   2. SKILL alm_vortex before-<short-label>   ← Vortex save point BEFORE touching files
   3. SKILL alm_self_approve <proposal_id>    ← moves to IN PROGRESS, you are authorised
-  4. SKILL fs_patch / SKILL fs_write         ← make all changes
+  4. SKILL fs_patch_lines / SKILL fs_write   ← make all changes (fs_patch_lines preferred)
   5. SKILL fs_readonly lines ... to verify
   6. SKILL alm_complete <proposal_id>        ← marks DONE for Ghost confirmation
 Never skip steps 1-3. Never require Ghost to say "continue" or "approved". Run autonomously.

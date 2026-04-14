@@ -46,7 +46,45 @@ function loadMonitorData(win) {
     const ramColor  = data.ram_percent > 80 ? '#f44' : data.ram_percent > 60 ? '#ffa500' : '#4caf50';
     const tempColor = data.cpu_temp_c  > 75 ? '#f44' : data.cpu_temp_c > 60 ? '#ffa500' : '#4caf50';
     const swapColor = (data.swap_percent || 0) > 10 ? '#f44' : (data.swap_percent || 0) > 3 ? '#ffa500' : '#4caf50';
+    // Color definitions already set above
+    // No duplicates needed
+      
+        // Add temperature gauge to system status panel
+        const tempEl = win.el.querySelector('#monitor-system-temp');
+        const gaugeFill = win.el.querySelector('#temp-gauge-fill');
+        if (tempEl && data.cpu_temp_c != null) {
+          tempEl.textContent = data.cpu_temp_c.toFixed(0) + '°C';
+          if (gaugeFill) {
+            const percentage = Math.min((data.cpu_temp_c / 100) * 100, 100);
+            gaugeFill.style.transform = `rotate(${percentage / 200}turn)`;
+          }
+        }
+        } else if (tempEl && data.cpu_percent != null) {
+          tempEl.textContent = 'CPU ' + data.cpu_percent.toFixed(0) + '%';
+          if (gaugeFill) {
+            gaugeFill.style.transform = `rotate(${data.cpu_percent / 200}turn)`;
+          }
+        }
+        
+        // Update CPU and RAM gauges if elements exist
+        const cpuEl = win.el.querySelector('#cpu-value');
+        const ramEl = win.el.querySelector('#ram-value');
+        const cpuGaugeFill = win.el.querySelector('#cpu-gauge-fill');
+        const ramGaugeFill = win.el.querySelector('#ram-gauge-fill');
+        if (cpuEl && data.cpu_percent != null) {
+          cpuEl.textContent = data.cpu_percent.toFixed(0) + '%';
+          if (cpuGaugeFill) {
+            cpuGaugeFill.style.transform = `rotate(${data.cpu_percent / 200}turn)`;
+          }
+        }
+        if (ramEl && data.ram_percent != null) {
+          ramEl.textContent = data.ram_percent.toFixed(0) + '%';
+          if (ramGaugeFill) {
+            ramGaugeFill.style.transform = `rotate(${data.ram_percent / 200}turn)`;
+          }
+        }
 
+      const disks = (data.disks || []).map(d =>
     const disks = (data.disks || []).map(d =>
       `<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;">
         <span>${H(d.label || d.mountpoint)}</span>

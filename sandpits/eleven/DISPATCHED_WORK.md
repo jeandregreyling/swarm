@@ -3921,3 +3921,33 @@ let _libActiveType = 'text';
 let _libSelTags    = new Set();
 let _libModelReady = null;   // null = u
 **Status**: dispatched
+
+## [10:16] INTERNAL-ELEVEN-0605
+**Title**: [fs_patch_lines] frontend/static/js/views/fridays.js 61 61
+<<<NEW>>>
+    function _showPanel(btn,
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch_lines`.
+Args: frontend/static/js/views/fridays.js 61 61
+<<<NEW>>>
+    function _showPanel(btn, title, contentFn) {
+      if (_openBtn === btn) { _closePanel(); return; }
+      _closePanel();
+      _openBtn = btn;
+      btn.classList.add('fridays-banner-btn--acti
+**Status**: dispatched
+
+## [10:21] INTERNAL-ELEVEN-0605
+**Title**: [fs_patch_lines] frontend/static/js/views/fridays.js 61 61
+<<<NEW>>>
+    function _showPanel(btn,
+**From**: eleven
+**Description**: Agent eleven executed skill `fs_patch_lines`.
+Args: frontend/static/js/views/fridays.js 61 61
+<<<NEW>>>
+    function _showPanel(btn, title, contentFn) {
+      if (_openBtn === btn) { _closePanel(); return; }
+      _closePanel();
+      _openBtn = btn;
+      btn.classList.add('fridays-banner-btn--acti
+**Status**: dispatched
