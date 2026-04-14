@@ -17,13 +17,54 @@ function loadTicketsData(win) {
           const st    = t.status || 'unknown';
           const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : '#888';
           const stBg    = st === 'open' ? 'rgba(76,175,80,0.15)' : st === 'in_progress' ? 'rgba(255,165,0,0.15)' : 'rgba(136,136,136,0.15)';
-          return `<div class="ticket-row" style="background:var(--card);padding:12px;border-radius:4px;margin-bottom:8px;border-left:3px solid ${stColor};cursor:pointer;" onclick='openTicketDetail(${JSON.stringify(num)})'>
+              return `<div class="ticket-row" style="background:var(--card);padding:12px;border-radius:4px;margin-bottom:8px;border-left:3px solid ${stColor};cursor:pointer;" onclick='openTicketDetail(${JSON.stringify(num)})'>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                  <strong style="font-size:12px;font-family:monospace;">${_escHtml(num)}</strong>
+                  <span style="font-size:10px;padding:2px 7px;border-radius:3px;background:${stBg};color:${stColor};font-weight:600;">${_escHtml(st)}</span>
+                </div>
+                <div style="margin-top:5px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(title)}</div>
+                <div style="margin-top:3px;font-size:10px;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;">
+                  <span>${_escHtml(ts.slice(0,16))}</span>
+          }).join('');
+          
+          // Add event listeners for delete buttons
+          content.querySelectorAll('.delete-ticket').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation(); // Prevent triggering the ticket detail open
+              const ticketId = e.target.getAttribute('data-id');
+              if (confirm(`Are you sure you want to delete ticket ${ticketId}?`)) {
+                deleteTicket(ticketId);
+              }
+            });
+          });
+                </div>
+              </div>`;
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
               <strong style="font-size:12px;font-family:monospace;">${_escHtml(num)}</strong>
               <span style="font-size:10px;padding:2px 7px;border-radius:3px;background:${stBg};color:${stColor};font-weight:600;">${_escHtml(st)}</span>
             </div>
             <div style="margin-top:5px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(title)}</div>
-            <div style="margin-top:3px;font-size:10px;color:var(--text-dim);">${_escHtml(ts.slice(0,16))}</div>
+function deleteTicket(ticketId) {
+  fetch(`/api/tickets/${ticketId}`, {
+    method: 'DELETE'
+  })
+  .then(response => {
+    if (response.ok) {
+      alert(`Ticket ${ticketId} deleted successfully.`);
+      // Reload the tickets list
+      const win = window.activeWindows.find(w => w.id === 'tickets');
+      if (win) {
+        loadTicketsData(win);
+      }
+    } else {
+      alert(`Failed to delete ticket ${ticketId}.`);
+    }
+  })
+  .catch(error => {
+    console.error('Error deleting ticket:', error);
+    alert(`Error deleting ticket ${ticketId}: ${error.message}`);
+  });
+}
           </div>`;
         }).join('');
       } else {

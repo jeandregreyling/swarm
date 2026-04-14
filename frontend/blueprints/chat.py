@@ -834,7 +834,7 @@ def api_chat():
             local_timeout = 18
         if persistent_mode:
             if selected_agent in {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
-                local_timeout = 900
+                local_timeout = 2000
             else:
                 local_timeout = 240
 
@@ -866,7 +866,7 @@ def api_chat():
                 _stage('dispatching to local ollama · mistral', est_eta)
                 from agents.mistral import mistral_agent
                 future = executor.submit(mistral_agent.chat, effective_prompt, history, stage_cb)
-                answer, tokens = future.result(timeout=900 if persistent_mode else 120)
+                answer, tokens = future.result(timeout=2000 if persistent_mode else 120)
                 response_text = answer or '[mistral] No response — check server logs.'
                 tokens_used = tokens or 0
             elif selected_agent == 'nine':

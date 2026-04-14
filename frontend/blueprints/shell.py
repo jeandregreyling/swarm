@@ -179,6 +179,30 @@ def api_terminal_stream_stop():
 
 
 
+@shell_bp.route('/api/shell/agent-commands', methods=['GET'])
+def api_shell_agent_commands():
+    """Return running and recently-finished agent shell commands for the terminal tile."""
+    from fridays.shell_agent import get_running_commands
+    cmds = get_running_commands()
+    # Strip internal _proc reference before serialising
+    safe = []
+    for c in cmds:
+        safe.append({k: v for k, v in c.items() if not k.startswith('_')})
+    return jsonify({'ok': True, 'commands': safe})
+
+
+@shell_bp.route('/api/shell/agent-kill', methods=['POST'])
+def api_shell_agent_kill():
+    """Kill a running agent shell command by cmd_id."""
+    from fridays.shell_agent import kill_command
+    data = request.get_json() or {}
+    cmd_id = str(data.get('cmd_id') or '').strip()
+    if not cmd_id:
+        return jsonify({'ok': False, 'error': 'cmd_id required'}), 400
+    killed = kill_command(cmd_id)
+    return jsonify({'ok': True, 'killed': killed, 'cmd_id': cmd_id})
+
+
 @shell_bp.route('/api/hands/run', methods=['POST'])
 def api_hands_run():
     """Alias for /api/shell/execute - named for Ghost/terminal metaphor."""
@@ -292,9 +316,7 @@ def api_terminal_sudo_whitelist_post():
 
     if not command:
         return jsonify({'ok': False, 'error': 'command required'}), 400
-    if not command.lower().startswith('sudo '):
-        return jsonify({'ok': False, 'error': 'Only sudo commands can be added here'}), 400
-    if any(token in command for token in ['&&', '||', '|', ';', '`', '$(']):
+    if any(token in command for token in ['&&', '||', ';', '`', '$(']):
         return jsonify({'ok': False, 'error': 'Command chaining and shell substitution are not allowed'}), 400
 
     conn = get_connection()

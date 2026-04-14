@@ -113,13 +113,27 @@ def _extract_skill_cmds(text):
                 break
 
             # After <<<NEW>>>: stop on unindented prose commentary.
-            # Prose from the model always starts at column 0 with an uppercase letter
-            # followed by a space (e.g. "Now, I'll update the CSS...").
-            # Valid code never appears like that: JS is indented, CSS selectors start
-            # with '.', '#', '@', or lowercase element names.
-            if (in_new_block and nxt and not nxt[0].isspace()
-                    and nxt[0].isupper() and ' ' in nxt):
-                break
+            # Rules — break if the line at column 0 looks like prose, not code:
+            #   • Uppercase letter + space  ("Now I'll update...")
+            #   • Numbered list item        ("2. **Verifying the Patch**:")
+            #   • Bold markdown             ("**Note:**")
+            #   • Markdown header           ("### Summary")
+            # Valid code is never unindented prose: Python/JS is always indented;
+            # CSS selectors start with '.', '#', '@', or lowercase.
+            if in_new_block and nxt and not nxt[0].isspace():
+                c = nxt[0]
+                # Uppercase start + space
+                if c.isupper() and len(nxt) > 1 and nxt[1] == ' ':
+                    break
+                # Numbered list: "1. " / "2. " etc.
+                if c.isdigit() and len(nxt) > 2 and nxt[1] == '.' and nxt[2] == ' ':
+                    break
+                # Bold / italic markdown: "**" or "*word"
+                if nxt.startswith('**') or (c == '*' and len(nxt) > 1 and nxt[1] != ' '):
+                    break
+                # Markdown header: "# " / "## "
+                if c == '#' and len(nxt) > 1 and nxt[1] in ('# ', ' '):
+                    break
 
             # Blank lines end the block only when we're NOT inside a patch block
             if not in_patch_block and not nxt_stripped:
