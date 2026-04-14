@@ -1,8 +1,99 @@
 import os
 import uuid
 import mimetypes
+import subprocess
+import threading
+import time
 from flask import Blueprint, jsonify, request, send_file
 from database import get_connection   # <-- this is the key import (used everywhere else)
+
+# ── Environment roots ─────────────────────────────────────────────────────────
+# PROD is always /home/seven/swarm (master branch, never touched by agents).
+# UAT  is /home/seven/swarm-uat (uat branch git worktree).
+# DEV  is /home/seven/swarm-dev (proposal/<id> branch git worktree).
+# These must match the WorkingDirectory in the systemd service files.
+_SWARM_PROD_ROOT = '/home/seven/swarm'
+_SWARM_UAT_ROOT  = '/home/seven/swarm-uat'
+_SWARM_DEV_ROOT  = '/home/seven/swarm-dev'
+
+# True once both worktrees exist on disk
+def _worktrees_ready():
+    return os.path.isdir(_SWARM_UAT_ROOT) and os.path.isdir(_SWARM_DEV_ROOT)
+
+
+def _git(args, cwd=None):
+    """Run a git command. Returns (stdout, returncode)."""
+    try:
+        result = subprocess.run(
+            ['git'] + args,
+            capture_output=True, text=True, timeout=30,
+            cwd=cwd or _SWARM_PROD_ROOT,
+        )
+        return (result.stdout + result.stderr).strip(), result.returncode
+    except Exception as e:
+        return str(e), 1
+
+
+def _restart_service_async(service_name, delay_secs=2):
+    """Restart a swarm systemd service in a background thread after a brief delay.
+    The delay lets the current HTTP response return before the process is killed."""
+    def _do():
+        time.sleep(delay_secs)
+        subprocess.run(['sudo', 'systemctl', 'restart', service_name], timeout=30)
+    threading.Thread(target=_do, daemon=True).start()
+
+
+def _run_dev_tests(norm_id, title):
+    """Run health check + syntax checks in the DEV worktree. Returns result string."""
+    lines = [f'=== DEV Test Run — {norm_id} ===']
+    dev = _SWARM_DEV_ROOT if _worktrees_ready() else _SWARM_PROD_ROOT
+
+    # 1. Syntax check all modified Python files in this commit
+    mod_out, _ = _git(['diff', '--name-only', 'HEAD~1', 'HEAD'], cwd=dev)
+    py_files = [f for f in (mod_out or '').splitlines() if f.endswith('.py')]
+    if py_files:
+        lines.append(f'\nSyntax check ({len(py_files)} Python file(s) changed):')
+        for f in py_files:
+            full = os.path.join(dev, f)
+            if not os.path.exists(full):
+                lines.append(f'  SKIP  {f} (deleted)')
+                continue
+            out = subprocess.run(
+                ['python3', '-m', 'py_compile', full],
+                capture_output=True, text=True, timeout=10,
+            )
+            status = 'PASS' if out.returncode == 0 else 'FAIL'
+            lines.append(f'  {status}  {f}')
+            if out.returncode != 0:
+                lines.append(f'       {(out.stdout + out.stderr).strip()[:200]}')
+    else:
+        lines.append('\nNo Python files changed in this commit.')
+
+    # 2. Health check against DEV server (port 5051)
+    lines.append('\nHealth check → http://localhost:5051/')
+    try:
+        import urllib.request
+        resp = urllib.request.urlopen('http://localhost:5051/', timeout=5)
+        lines.append(f'  PASS  DEV server responding (HTTP {resp.status})')
+    except Exception as e:
+        lines.append(f'  FAIL  DEV server not responding: {e}')
+
+    # 3. Quick health_check.py smoke test (if it exists)
+    hc_path = os.path.join(dev, 'scripts', 'health_check.py')
+    if os.path.exists(hc_path):
+        lines.append('\nSmoke test → scripts/health_check.py --port 5051:')
+        hc = subprocess.run(
+            ['python3', hc_path, '--port', '5051'],
+            capture_output=True, text=True, timeout=30,
+            cwd=dev,
+        )
+        hc_out = (hc.stdout + hc.stderr).strip()
+        status = 'PASS' if hc.returncode == 0 else 'FAIL'
+        lines.append(f'  {status}')
+        lines.append('  ' + '\n  '.join(hc_out[-800:].splitlines()))
+
+    lines.append(f'\n=== End test run ===')
+    return '\n'.join(lines)
 
 # Attachment storage directory (sibling to swarm.db)
 _ATTACHMENTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'attachments', 'proposals')
@@ -23,7 +114,8 @@ def get_work_proposals():
         rows = c.execute("""
             SELECT id, proposal_id, title, description, agent, status,
                    notes, source_conv_id, duck_verdict, duck_note,
-                   ticket_number, queue_id, created_at, updated_at
+                   ticket_number, queue_id, git_branch, git_commit, test_results,
+                   created_at, updated_at
             FROM work_proposals
             ORDER BY id DESC
         """).fetchall()
@@ -155,42 +247,133 @@ def duck_execute_route(proposal_id):
 
 @proposals_bp.route("/api/work-proposals/<proposal_id>/agent-advance", methods=["POST"])
 def agent_advance(proposal_id):
-    """ALM self-approve / complete endpoint called by skills.py"""
+    """ALM self-approve / complete endpoint called by skills.py.
+
+    action='start':
+        - Creates proposal/<id> branch in the PROD git repo
+        - Switches DEV worktree to that branch
+        - Restarts DEV server so it serves the proposal branch
+        - Agents then work in the DEV environment only — PROD/UAT untouched
+
+    action='complete':
+        - Commits all DEV worktree changes with agent attribution
+        - Runs syntax checks + DEV health check
+        - Stores test results in the proposal record for Ghost review
+    """
     try:
         data = request.get_json(silent=True) or {}
         agent = data.get("agent", "unknown")
         action = data.get("action", "start")
         vortex_label = data.get("vortex_label", "")
 
-
         norm_id = _normalize_proposal_id(proposal_id)
+        worktrees_up = _worktrees_ready()
+        # The worktree where agent work happens (DEV if available, PROD fallback)
+        dev = _SWARM_DEV_ROOT if worktrees_up else _SWARM_PROD_ROOT
 
         conn = get_connection()
         c = conn.cursor()
 
-        if action == "start":
-            new_status = "in_progress"
-            msg = f"Proposal {proposal_id} advanced to IN_PROGRESS by {agent}"
-        elif action == "complete":
-            new_status = "done"
-            msg = f"Proposal {proposal_id} marked DONE by {agent}"
-        else:
+        if action not in ("start", "complete"):
             conn.close()
             return jsonify({"ok": False, "error": "Invalid action"}), 400
 
-        # Try exact match first, then normalized, then prefix variants
+        new_status = "in_progress" if action == "start" else "done"
+        msg = (
+            f"Proposal {norm_id} advanced to IN_PROGRESS by {agent}"
+            if action == "start"
+            else f"Proposal {norm_id} marked DONE by {agent}"
+        )
+
+        # ── Git operations ────────────────────────────────────────────────────
+        git_branch = ''
+        git_commit = ''
+        test_results = ''
+
+        if action == "start":
+            branch_name = f'proposal/{norm_id}'
+            # Create branch from master in the PROD repo (the git origin for all worktrees)
+            out, rc = _git(['checkout', '-b', branch_name], cwd=_SWARM_PROD_ROOT)
+            if rc != 0:
+                # Branch already exists — switch master back and re-use it
+                _git(['checkout', 'master'], cwd=_SWARM_PROD_ROOT)
+                print(f'[proposals] branch already exists: {branch_name} — {out}')
+
+            git_branch = branch_name
+
+            if worktrees_up:
+                # Switch DEV worktree to the proposal branch
+                out2, rc2 = _git(['checkout', branch_name], cwd=dev)
+                if rc2 != 0:
+                    print(f'[proposals] DEV worktree checkout warn: {out2}')
+                # Restart DEV server async so its Python picks up the branch change
+                _restart_service_async('swarm-terminal-dev', delay_secs=1)
+                msg += f'\nDEV worktree switching to {branch_name}. DEV server restarting in ~1s.'
+            else:
+                msg += (
+                    f'\nGit branch {branch_name} created. '
+                    'WARNING: worktrees not set up — run setup_worktrees.sh for true isolation. '
+                    'Changes will affect the live filesystem until worktrees are configured.'
+                )
+
+        elif action == "complete":
+            prop_row = c.execute(
+                'SELECT title, git_branch FROM work_proposals WHERE proposal_id=?',
+                (norm_id,)
+            ).fetchone()
+            prop_title = (prop_row['title'] if prop_row else norm_id)[:100]
+            stored_branch = (prop_row['git_branch'] if prop_row else '') or ''
+
+            # Stage and commit all changes in the DEV (or PROD fallback) worktree
+            _git(['add', '-A'], cwd=dev)
+            commit_msg = (
+                f'[{norm_id}] {prop_title}\n\n'
+                f'Agent: {agent}\n'
+                f'Branch: {stored_branch or "unknown"}\n'
+                f'Status: done — awaiting Ghost review'
+            )
+            out, rc = _git(['commit', '-m', commit_msg], cwd=dev)
+            if rc == 0:
+                commit_hash, hrc = _git(['rev-parse', 'HEAD'], cwd=dev)
+                if hrc == 0:
+                    git_commit = commit_hash[:12]
+                print(f'[proposals] committed {norm_id}: {git_commit}')
+            else:
+                # Nothing staged — record but don't block
+                print(f'[proposals] git commit (nothing to commit): {out}')
+
+            # Run DEV tests and record results
+            test_results = _run_dev_tests(norm_id, prop_title)
+
+            if worktrees_up:
+                msg += f'\nCommit: {git_commit or "nothing to commit"}. DEV server remains on proposal branch for Ghost review.'
+            else:
+                msg += f'\nCommit: {git_commit or "nothing to commit"}.'
+
+        # ── Update DB ─────────────────────────────────────────────────────────
         candidates = list(dict.fromkeys([
-            proposal_id,
-            norm_id,
-            f"INTERNAL-ELEVEN-{norm_id}",
-            f"INTERNAL-{norm_id}",
+            proposal_id, norm_id,
+            f"INTERNAL-ELEVEN-{norm_id}", f"INTERNAL-{norm_id}",
         ]))
         updated = 0
         matched_id = proposal_id
         for cid in candidates:
-            c.execute("""UPDATE work_proposals
-                         SET status = ?, updated_at = CURRENT_TIMESTAMP
-                         WHERE proposal_id = ?""", (new_status, cid))
+            fields = ['status = ?', 'updated_at = CURRENT_TIMESTAMP']
+            vals = [new_status]
+            if git_branch:
+                fields.append('git_branch = ?')
+                vals.append(git_branch)
+            if git_commit:
+                fields.append('git_commit = ?')
+                vals.append(git_commit)
+            if test_results:
+                fields.append('test_results = ?')
+                vals.append(test_results)
+            vals.append(cid)
+            c.execute(
+                f"UPDATE work_proposals SET {', '.join(fields)} WHERE proposal_id = ?",
+                vals
+            )
             if c.rowcount:
                 updated = c.rowcount
                 matched_id = cid
@@ -202,10 +385,7 @@ def agent_advance(proposal_id):
         if updated == 0:
             return jsonify({"ok": False, "error": "Proposal not found"}), 404
 
-        msg = msg.replace(proposal_id, matched_id)
-
-        # Extra logging for troubleshooting
-        print(f"[Agent Advance] {norm_id} -> {new_status} by {agent}")
+        print(f"[Agent Advance] {norm_id} -> {new_status} by {agent} | worktrees={'yes' if worktrees_up else 'no'}")
 
         try:
             from core.time_machine import time_wizard
@@ -214,26 +394,303 @@ def agent_advance(proposal_id):
                 agent=agent,
                 description=msg
             )
-        except:
+        except Exception:
             pass
 
-        # Notify originating chat thread
         try:
-            import sys as _sys, threading as _t
+            import sys as _sys
             _sys.path.insert(0, '/home/seven/swarm/utils')
             from proposal_review import notify_proposal_status_change
-            _t.Thread(
+            threading.Thread(
                 target=notify_proposal_status_change,
-                args=(norm_id, new_status, agent, ''),
+                args=(matched_id, new_status, agent, ''),
                 daemon=True
             ).start()
         except Exception:
             pass
 
-        return jsonify({"ok": True, "status": new_status, "message": msg, "vortex_checkpoint": vortex_label or "none"})
+        return jsonify({
+            "ok": True,
+            "status": new_status,
+            "message": msg,
+            "vortex_checkpoint": vortex_label or "none",
+            "git_branch": git_branch,
+            "git_commit": git_commit,
+            "worktrees_active": worktrees_up,
+        })
 
     except Exception as e:
         print(f"[Agent Advance ERROR] {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── Proposal Git Operations ───────────────────────────────────────────────────
+
+@proposals_bp.route("/api/work-proposals/<proposal_id>/diff", methods=["GET"])
+def proposal_diff(proposal_id):
+    """Return git diff and test results for Studio review."""
+    try:
+        norm_id = _normalize_proposal_id(proposal_id)
+        conn = get_connection()
+        row = conn.execute(
+            "SELECT git_branch, git_commit, test_results FROM work_proposals WHERE proposal_id=?",
+            (norm_id,)
+        ).fetchone()
+        conn.close()
+
+        if not row:
+            return jsonify({"ok": False, "error": "Proposal not found"}), 404
+
+        git_branch   = (row['git_branch']   or '').strip()
+        git_commit   = (row['git_commit']   or '').strip()
+        test_results = (row['test_results'] or '').strip()
+
+        dev = _SWARM_DEV_ROOT if _worktrees_ready() else _SWARM_PROD_ROOT
+
+        if git_commit:
+            diff_out, _ = _git(['show', '--stat', '--patch', git_commit], cwd=dev)
+        elif git_branch:
+            diff_out, _ = _git(['diff', f'master...{git_branch}'], cwd=dev)
+            if not diff_out:
+                diff_out = '(Branch exists but no diff from master — no file changes recorded.)'
+        else:
+            diff_out = '(No git branch recorded — changes were applied directly to the filesystem.)'
+
+        return jsonify({
+            "ok": True,
+            "diff": diff_out,
+            "test_results": test_results,
+            "git_branch": git_branch,
+            "git_commit": git_commit,
+            "worktrees_active": _worktrees_ready(),
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@proposals_bp.route("/api/work-proposals/<proposal_id>/approve-to-uat", methods=["POST"])
+def approve_to_uat(proposal_id):
+    """Ghost approves: merge proposal branch into UAT worktree and restart UAT.
+
+    DEV stays on the proposal branch (frozen) until Ghost also promotes to PROD.
+    UAT now has the changes for Ghost to manually test on port 5053.
+    """
+    try:
+        norm_id = _normalize_proposal_id(proposal_id)
+        data = request.get_json(silent=True) or {}
+        actor = data.get("actor", "ghost")
+        worktrees_up = _worktrees_ready()
+
+        conn = get_connection()
+        row = conn.execute(
+            "SELECT git_branch, git_commit, title FROM work_proposals WHERE proposal_id=?",
+            (norm_id,)
+        ).fetchone()
+        conn.close()
+
+        if not row:
+            return jsonify({"ok": False, "error": "Proposal not found"}), 404
+
+        git_branch = (row['git_branch'] or '').strip()
+        git_commit = (row['git_commit'] or '').strip()
+        title = (row['title'] or norm_id)[:80]
+
+        if not worktrees_up:
+            # No worktrees — simulate the approve step (just update status)
+            conn = get_connection()
+            conn.execute(
+                "UPDATE work_proposals SET status='uat', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
+                (norm_id,)
+            )
+            conn.commit()
+            conn.close()
+            return jsonify({
+                "ok": True,
+                "message": (
+                    f"Proposal {norm_id} marked UAT. "
+                    "WARNING: worktrees not set up — run setup_worktrees.sh for real isolation. "
+                    "Changes are already live on all ports."
+                ),
+            })
+
+        if not git_branch:
+            return jsonify({"ok": False, "error": "No git branch recorded — cannot merge to UAT."}), 400
+
+        # Merge proposal branch into the UAT worktree
+        merge_msg = f'UAT: {norm_id} — {title} (approved by {actor})'
+        out, rc = _git(['merge', '--no-ff', git_branch, '-m', merge_msg], cwd=_SWARM_UAT_ROOT)
+        if rc != 0:
+            return jsonify({"ok": False, "error": f"Merge to UAT failed: {out}"}), 500
+
+        # Restart UAT server to pick up the merge
+        _restart_service_async('swarm-terminal-uat', delay_secs=1)
+
+        # Update proposal status to 'uat'
+        conn = get_connection()
+        conn.execute(
+            "UPDATE work_proposals SET status='uat', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
+            (norm_id,)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "message": (
+                f"Proposal {norm_id} merged to UAT. UAT server restarting. "
+                f"Test on port 5053, then use Promote to PROD when satisfied."
+            ),
+            "detail": out,
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@proposals_bp.route("/api/work-proposals/<proposal_id>/promote-to-prod", methods=["POST"])
+def promote_to_prod(proposal_id):
+    """Ghost manually promotes: merge UAT branch into master and restart PROD.
+
+    This is the FINAL step — changes go live on port 5050.
+    """
+    try:
+        norm_id = _normalize_proposal_id(proposal_id)
+        data = request.get_json(silent=True) or {}
+        actor = data.get("actor", "ghost")
+        worktrees_up = _worktrees_ready()
+
+        conn = get_connection()
+        row = conn.execute(
+            "SELECT git_branch, title FROM work_proposals WHERE proposal_id=?",
+            (norm_id,)
+        ).fetchone()
+        conn.close()
+
+        if not row:
+            return jsonify({"ok": False, "error": "Proposal not found"}), 404
+
+        git_branch = (row['git_branch'] or '').strip()
+        title = (row['title'] or norm_id)[:80]
+
+        if not worktrees_up:
+            # No worktrees — mark closed, everything's already live anyway
+            conn = get_connection()
+            conn.execute(
+                "UPDATE work_proposals SET status='closed', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
+                (norm_id,)
+            )
+            conn.commit()
+            conn.close()
+            return jsonify({
+                "ok": True,
+                "message": f"Proposal {norm_id} closed. (Worktrees not active — no merge step needed.)",
+            })
+
+        if not git_branch:
+            return jsonify({"ok": False, "error": "No git branch — cannot promote."}), 400
+
+        # Merge proposal branch into master (PROD repo)
+        out1, rc1 = _git(['checkout', 'master'], cwd=_SWARM_PROD_ROOT)
+        if rc1 != 0:
+            return jsonify({"ok": False, "error": f"Could not switch to master: {out1}"}), 500
+
+        merge_msg = f'PROD: {norm_id} — {title} (promoted by {actor})'
+        out2, rc2 = _git(['merge', '--no-ff', git_branch, '-m', merge_msg], cwd=_SWARM_PROD_ROOT)
+        if rc2 != 0:
+            return jsonify({"ok": False, "error": f"Merge to PROD failed: {out2}"}), 500
+
+        # Restart PROD server
+        _restart_service_async('swarm-terminal-prod', delay_secs=2)
+
+        # Return DEV worktree to dev branch (ready for next proposal)
+        _git(['checkout', 'dev'], cwd=_SWARM_DEV_ROOT)
+        _restart_service_async('swarm-terminal-dev', delay_secs=3)
+
+        # Mark closed
+        conn = get_connection()
+        conn.execute(
+            "UPDATE work_proposals SET status='closed', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
+            (norm_id,)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "message": (
+                f"Proposal {norm_id} promoted to PROD. "
+                "PROD server restarting in ~2s. DEV reset to dev branch."
+            ),
+            "detail": out2,
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@proposals_bp.route("/api/work-proposals/<proposal_id>/revert", methods=["POST"])
+def revert_proposal(proposal_id):
+    """Ghost rejects: revert the DEV commit and discard the proposal branch."""
+    try:
+        norm_id = _normalize_proposal_id(proposal_id)
+        data = request.get_json(silent=True) or {}
+        actor = data.get("actor", "ghost")
+        worktrees_up = _worktrees_ready()
+
+        conn = get_connection()
+        row = conn.execute(
+            "SELECT git_branch, git_commit FROM work_proposals WHERE proposal_id=?",
+            (norm_id,)
+        ).fetchone()
+        conn.close()
+
+        if not row:
+            return jsonify({"ok": False, "error": "Proposal not found"}), 404
+
+        git_commit = (row['git_commit'] or '').strip()
+        git_branch = (row['git_branch'] or '').strip()
+
+        detail = ''
+        dev = _SWARM_DEV_ROOT if worktrees_up else _SWARM_PROD_ROOT
+
+        if git_commit and worktrees_up:
+            # Revert the commit in DEV (undoes agent file changes)
+            out, rc = _git(['revert', '--no-commit', git_commit], cwd=dev)
+            if rc == 0:
+                revert_msg = f'Revert {norm_id} — rejected by {actor}'
+                _git(['commit', '-m', revert_msg], cwd=dev)
+                detail = f'Commit {git_commit} reverted in DEV. '
+            else:
+                # Hard reset DEV to dev branch instead
+                _git(['reset', '--hard', 'HEAD~1'], cwd=dev)
+                detail = f'DEV reset to HEAD~1 (revert failed: {out[:200]}). '
+            # Switch DEV back to dev branch
+            _git(['checkout', 'dev'], cwd=dev)
+            _restart_service_async('swarm-terminal-dev', delay_secs=1)
+            detail += 'DEV reset to dev branch.'
+        elif git_commit:
+            # No worktrees — revert in PROD (dangerous but best we can do)
+            out, rc = _git(['revert', '--no-commit', git_commit], cwd=_SWARM_PROD_ROOT)
+            if rc == 0:
+                _git(['commit', '-m', f'Revert {norm_id} — rejected by {actor}'], cwd=_SWARM_PROD_ROOT)
+                detail = f'Commit {git_commit} reverted on master.'
+            else:
+                detail = f'Revert note: {out[:300]}'
+        else:
+            detail = 'No commit recorded — proposal rejected without revert (no file changes to undo).'
+
+        conn = get_connection()
+        conn.execute(
+            "UPDATE work_proposals SET status='rejected', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
+            (norm_id,)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({"ok": True, "message": f"Proposal {norm_id} rejected.", "detail": detail})
+
+    except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

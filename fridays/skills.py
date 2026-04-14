@@ -25,6 +25,7 @@ Every skill call is logged to ghost_circle.
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+import os
 import sys
 import logging
 import fnmatch
@@ -456,7 +457,10 @@ def _skill_memory_search(args, agent, **_):
         return False, f'Memory search error: {e}'
 
 
-_FS_ROOT = Path('/home/seven/swarm').resolve()
+# SWARM_ROOT env var lets DEV/UAT servers redirect file operations to their
+# own worktree directory instead of the PROD filesystem.
+# Default: /home/seven/swarm (the canonical PROD location).
+_FS_ROOT = Path(os.environ.get('SWARM_ROOT', '/home/seven/swarm')).resolve()
 
 
 def _fs_safe_path(path_text):

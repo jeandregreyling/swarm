@@ -1,11 +1,16 @@
 """
 db._connection — Shared database primitives.
+
+DB_PATH resolves via SWARM_DB_PATH env var so DEV/UAT worktrees can point
+to the shared production database rather than creating isolated copies.
+Default is /home/seven/swarm/swarm_memory.db (the canonical location).
 """
+import os
 import sqlite3
 import logging
 
 logger = logging.getLogger('seven.database')
-DB_PATH = '/home/seven/swarm/swarm_memory.db'
+DB_PATH = os.environ.get('SWARM_DB_PATH', '/home/seven/swarm/swarm_memory.db')
 
 # Global mapping to ensure consistency across the swarm
 AGENT_POOL_MAP = {

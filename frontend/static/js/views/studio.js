@@ -238,16 +238,29 @@ function _proposalCard(p) {
       ${promoteBtn}
     </div>` :
   status === 'done' ? `
-    <div style="display:flex;gap:8px;margin-top:12px;">
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <button onclick='event.stopPropagation();viewProposalDiff(${pidJs})'
+        style="flex:1;min-width:80px;padding:6px;background:#1565c020;border:1px solid #1565c060;border-radius:4px;color:#42a5f5;font-size:11px;font-weight:600;cursor:pointer;">🔍 Review Diff</button>
+      ${p.git_branch ? `
+        <button onclick='event.stopPropagation();approveToUat(${pidJs})'
+          style="flex:1;min-width:80px;padding:6px;background:#f57f1720;border:1px solid #f57f1760;border-radius:4px;color:#ffa726;font-size:11px;font-weight:600;cursor:pointer;">→ Approve to UAT</button>
+        <button onclick='event.stopPropagation();revertProposal(${pidJs})'
+          style="flex:1;min-width:80px;padding:6px;background:#c62828;border:1px solid #c62828;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">✗ Revert</button>
+      ` : `
+        <button onclick='event.stopPropagation();moveProposal(${pidJs},"closed")'
+          style="flex:1;padding:6px;background:#4caf5020;border:1px solid #4caf5060;border-radius:4px;color:#4caf50;font-size:11px;font-weight:600;cursor:pointer;">✓ Close</button>
+        <button onclick='event.stopPropagation();moveProposal(${pidJs},"rejected")'
+          style="flex:1;padding:6px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;font-weight:600;cursor:pointer;">✗ Reject</button>
+      `}
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"in_progress")'
         style="flex:1;padding:6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:11px;font-weight:600;cursor:pointer;">↩ Reopen</button>
     </div>` :
   status === 'uat' ? `
-    <div style="display:flex;gap:8px;margin-top:12px;">
-      <button onclick='event.stopPropagation();moveProposal(${pidJs},"executed")'
-        style="flex:1;padding:6px;background:#2196f320;border:1px solid #2196f360;border-radius:4px;color:#2196f3;font-size:11px;font-weight:600;cursor:pointer;">✓ Mark Executed</button>
-      <button onclick='event.stopPropagation();duckExecuteProposal(${pidJs})'
-        style="flex:1;padding:6px;background:#fbc02d20;border:1px solid #fbc02d60;border-radius:4px;color:#fbc02d;font-size:11px;font-weight:600;cursor:pointer;">🦆 Ask Duck</button>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <button onclick='event.stopPropagation();promoteToProd(${pidJs})'
+        style="flex:1;min-width:80px;padding:6px;background:#2e7d32;border:1px solid #388e3c;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">🚀 Promote to PROD</button>
+      <button onclick='event.stopPropagation();revertProposal(${pidJs})'
+        style="flex:1;min-width:80px;padding:6px;background:#c62828;border:1px solid #c62828;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">✗ Revert</button>
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"in_progress")'
         style="flex:1;padding:6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:11px;font-weight:600;cursor:pointer;">↩ Reopen</button>
     </div>` : '';
@@ -282,6 +295,141 @@ function promoteProposal(proposalId) {
   if (!proposalId) return;
   if (!confirm('Mark this proposal as executed (promoted)?')) return;
   moveProposal(proposalId, 'executed');
+}
+
+async function viewProposalDiff(proposalId) {
+  if (!proposalId) return;
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/diff`);
+    const data = await resp.json();
+    if (!data.ok) { showToast(data.error || 'Could not fetch diff', 'error'); return; }
+
+    let overlay = document.getElementById('proposal-diff-overlay');
+    if (overlay) overlay.remove();
+    overlay = document.createElement('div');
+    overlay.id = 'proposal-diff-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;';
+    document.body.appendChild(overlay);
+
+    const branch = data.git_branch ? `Branch: <code style="font-size:10px;">${data.git_branch}</code>` : '';
+    const commit = data.git_commit ? `Commit: <code style="font-size:10px;">${data.git_commit}</code>` : '';
+    const envBadge = data.worktrees_active
+      ? '<span style="background:#2e7d32;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">✓ Isolated — DEV only</span>'
+      : '<span style="background:#c62828;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">⚠ No worktrees — changes are live</span>';
+
+    const testHtml = data.test_results
+      ? `<div style="border-top:1px solid var(--border);padding:12px 16px;">
+           <div style="font-size:11px;font-weight:700;margin-bottom:6px;color:var(--text-dim);">DEV Test Results</div>
+           <pre style="font-size:10px;line-height:1.4;margin:0;white-space:pre-wrap;word-break:break-all;color:var(--text);max-height:180px;overflow:auto;">${_escapeHtml(data.test_results)}</pre>
+         </div>`
+      : '';
+
+    overlay.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;max-width:960px;width:95%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div style="font-weight:700;font-size:14px;">Review — ${_escapeHtml(proposalId)}</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            ${envBadge}
+            <span style="font-size:11px;color:var(--text-dim);">${branch}${branch&&commit?' · ':''}${commit}</span>
+            <button onclick="document.getElementById('proposal-diff-overlay').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;padding:0 4px;">✕</button>
+          </div>
+        </div>
+        <pre style="flex:1;overflow:auto;padding:16px;font-size:11px;line-height:1.5;margin:0;white-space:pre-wrap;word-break:break-all;color:var(--text);background:var(--bg);min-height:200px;">${_escapeHtml(data.diff || '(empty — no file changes recorded)')}</pre>
+        ${testHtml}
+        <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+          ${data.git_branch ? `<button onclick="approveToUat('${proposalId}')" style="padding:8px 18px;background:#e65100;border:1px solid #e65100;border-radius:6px;color:#fff;font-weight:600;cursor:pointer;">→ Approve to UAT</button>` : ''}
+          <button onclick="revertProposal('${proposalId}')" style="padding:8px 18px;background:#c62828;border:1px solid #c62828;border-radius:6px;color:#fff;font-weight:600;cursor:pointer;">✗ Revert</button>
+          <button onclick="document.getElementById('proposal-diff-overlay').remove()" style="padding:8px 18px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;">Close</button>
+        </div>
+      </div>`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  } catch (e) {
+    showToast('Diff error: ' + e.message, 'error');
+  }
+}
+
+async function approveToUat(proposalId) {
+  if (!proposalId) return;
+  if (!confirm(`Approve "${proposalId}" to UAT? Changes will appear on port 5053 for testing. PROD (5050) stays unchanged.`)) return;
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/approve-to-uat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ..._authPayload(), actor: 'ghost' })
+    });
+    const data = await resp.json();
+    if (!data.ok) { showToast('Approve to UAT failed: ' + (data.error || 'unknown'), 'error'); return; }
+    showToast(`Approved to UAT — test on port 5053`, 'success');
+    document.getElementById('proposal-diff-overlay')?.remove();
+    const container = document.getElementById('studio-content');
+    if (container) loadProposals(container, 'active');
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+async function promoteToProd(proposalId) {
+  if (!proposalId) return;
+  if (!confirm(`🚀 Promote "${proposalId}" to PROD? This merges to master and restarts the live server (port 5050). Are you sure?`)) return;
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/promote-to-prod`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ..._authPayload(), actor: 'ghost' })
+    });
+    const data = await resp.json();
+    if (!data.ok) { showToast('Promote failed: ' + (data.error || 'unknown'), 'error'); return; }
+    showToast(`Promoted to PROD — server restarting`, 'success');
+    document.getElementById('proposal-diff-overlay')?.remove();
+    const container = document.getElementById('studio-content');
+    if (container) loadProposals(container, window._studioTab || 'pending');
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+function _escapeHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function mergeProposal(proposalId) {
+  if (!proposalId) return;
+  if (!confirm(`Approve and merge "${proposalId}" into main? This cannot be undone without a revert.`)) return;
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/merge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ..._authPayload(), actor: 'ghost' })
+    });
+    const data = await resp.json();
+    if (!data.ok) { showToast('Merge failed: ' + (data.error || 'unknown'), 'error'); return; }
+    showToast(`Merged and closed: ${proposalId}`, 'success');
+    document.getElementById('proposal-diff-overlay')?.remove();
+    const container = document.getElementById('studio-content');
+    if (container) loadProposals(container, window._studioTab || 'pending');
+  } catch (e) {
+    showToast('Merge error: ' + e.message, 'error');
+  }
+}
+
+async function revertProposal(proposalId) {
+  if (!proposalId) return;
+  if (!confirm(`Revert and reject "${proposalId}"? Agent's file changes will be undone.`)) return;
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/revert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ..._authPayload(), actor: 'ghost' })
+    });
+    const data = await resp.json();
+    if (!data.ok) { showToast('Revert failed: ' + (data.error || 'unknown'), 'error'); return; }
+    showToast(`Reverted and rejected: ${proposalId}`, 'success');
+    document.getElementById('proposal-diff-overlay')?.remove();
+    const container = document.getElementById('studio-content');
+    if (container) loadProposals(container, window._studioTab || 'pending');
+  } catch (e) {
+    showToast('Revert error: ' + e.message, 'error');
+  }
 }
 
 function moveProposal(proposalId, newStatus) {
