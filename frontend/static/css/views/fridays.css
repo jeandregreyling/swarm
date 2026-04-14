@@ -22,13 +22,14 @@
 
 /* Temperature Gauge */
 .gauge {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  margin: 0 5px;
+  margin: 0 8px;
+  z-index: 2;
 }
 
 .gauge-body {
