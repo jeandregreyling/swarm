@@ -113,6 +113,7 @@ function openWindow(id, title, templateId) {
             else if (id === 'ghost-brief') initGhostBrief && initGhostBrief();
             else if (id === 'access') loadAccessData && loadAccessData(win);
             else if (id === 'agents-config') loadAgentsConfigData && loadAgentsConfigData(win);
+            else if (id === 'localai') initializeLocalAiPanel && initializeLocalAiPanel();
             
             _troubleshootLog && _troubleshootLog('info', 'Window opened', `id=${windowKey} base=${id}`);
         } catch (err) {

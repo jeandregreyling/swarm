@@ -48,12 +48,12 @@
             </div>
           </div>
           <div id="chat-controls">
+            <button id="chat-parallel-mode-btn" onclick="onChatParallelModeToggle()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;" title="Sequential: agents run one at a time — click to enable parallel">Sequential</button>
             <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 180px; max-width: 300px; font-size:12px;">
               <option value="">New Thread</option>
             </select>
             <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
             <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
-            <button id="chat-parallel-mode-btn" onclick="onChatParallelModeToggle()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;" title="Sequential: agents run one at a time — click to enable parallel">Sequential</button>
           </div>
         </div>
         <div id="chat-section-main" class="chat-section chat-main-shell">

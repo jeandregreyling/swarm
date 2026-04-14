@@ -392,25 +392,7 @@ function _escapeHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-async function mergeProposal(proposalId) {
-  if (!proposalId) return;
-  if (!confirm(`Approve and merge "${proposalId}" into main? This cannot be undone without a revert.`)) return;
-  try {
-    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/merge`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ..._authPayload(), actor: 'ghost' })
-    });
-    const data = await resp.json();
-    if (!data.ok) { showToast('Merge failed: ' + (data.error || 'unknown'), 'error'); return; }
-    showToast(`Merged and closed: ${proposalId}`, 'success');
-    document.getElementById('proposal-diff-overlay')?.remove();
-    const container = document.getElementById('studio-content');
-    if (container) loadProposals(container, window._studioTab || 'pending');
-  } catch (e) {
-    showToast('Merge error: ' + e.message, 'error');
-  }
-}
+// mergeProposal removed — replaced by approveToUat() → promoteToProd() two-step flow
 
 async function revertProposal(proposalId) {
   if (!proposalId) return;

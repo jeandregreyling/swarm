@@ -52,37 +52,7 @@
 <body>
 
 
-{# Glowing banners for DEV/UAT at the very top, nothing in PROD #}
-{% if ENV_STAGE == 'DEV' %}
-  <div style="width:100vw;position:fixed;top:0;left:0;z-index:10001;background:linear-gradient(90deg,#00f2fe 0%,#4facfe 100%);color:#fff;text-align:center;font-size:1.25rem;font-weight:bold;letter-spacing:0.08em;padding:18px 0 14px 0;box-shadow:0 0 32px 8px #4facfe99,0 2px 8px #00f2fe55;text-shadow:0 0 8px #fff,0 0 18px #4facfe;animation:envGlow 2.2s infinite alternate;">
-    MONDAY ENVIRONMENT — DEV (5051)
-  </div>
-  <style>
-    @keyframes envGlow {
-      0% { box-shadow: 0 0 32px 8px #4facfe99, 0 2px 8px #00f2fe55; }
-      100% { box-shadow: 0 0 48px 16px #00f2fecc, 0 2px 16px #4facfe99; }
-    }
-  </style>
-  <div style="height:56px;"></div>
-{% elif ENV_STAGE == 'UAT' %}
-  <div style="width:100vw;position:fixed;top:0;left:0;z-index:10001;background:linear-gradient(90deg,#ffb347 0%,#ff6a00 100%);color:#fff;text-align:center;font-size:1.25rem;font-weight:bold;letter-spacing:0.08em;padding:18px 0 14px 0;box-shadow:0 0 32px 8px #ffb34799,0 2px 8px #ff6a0055;text-shadow:0 0 8px #fff,0 0 18px #ffb347;animation:envGlowOrange 2.2s infinite alternate;">
-    WEDNESDAY ENVIRONMENT — UAT (5053)
-  </div>
-  <style>
-    @keyframes envGlowOrange {
-      0% { box-shadow: 0 0 32px 8px #ffb34799, 0 2px 8px #ff6a0055; }
-      100% { box-shadow: 0 0 48px 16px #ff6a00cc, 0 2px 16px #ffb34799; }
-    }
-  </style>
-  <div style="height:56px;"></div>
-{% elif ENV_STAGE == 'PROD' %}
-  <div style="width:100vw;display:flex;align-items:center;justify-content:center;gap:18px;padding:7px 0 3px 0;background:linear-gradient(90deg,#f7faff 0%,#eaf1ff 100%);box-shadow:0 1px 8px #2f6bff11;z-index:10000;position:relative;min-height:38px;">
-    <span style="font-weight:500;color:#2f6bff;font-size:1.01rem;opacity:0.82;letter-spacing:0.03em;margin-right:10px;">Fridays</span>
-    <a href="http://localhost:5051/ui" style="padding:5px 14px;border-radius:7px;background:#00f2fe;color:#fff;text-decoration:none;font-weight:600;font-size:0.98rem;box-shadow:0 1px 6px #00f2fe22;transition:background 0.18s,box-shadow 0.18s;line-height:1.2;margin:0 2px;">Mondays (DEV)</a>
-    <a href="http://localhost:5053/ui" style="padding:5px 14px;border-radius:7px;background:#ff6a00;color:#fff;text-decoration:none;font-weight:600;font-size:0.98rem;box-shadow:0 1px 6px #ff6a0022;transition:background 0.18s,box-shadow 0.18s;line-height:1.2;margin:0 2px;">Wednesdays (UAT)</a>
-  </div>
-  <div style="height:30px;"></div>
-{% endif %}
+{# env-banner.js handles DEV/UAT strips — nothing needed here #}
 
 <!-- ...existing code... -->
 
@@ -405,6 +375,24 @@
     <div id="world-clocks"></div>
     <div id="time-display"></div>
     <div id="home-controls">
+      <!-- Env switcher -->
+      <div style="display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:3px;">
+        {% if ENV_STAGE == 'PROD' %}
+          <span style="padding:4px 12px;border-radius:6px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;letter-spacing:0.03em;">Fridays</span>
+        {% else %}
+          <a href="http://localhost:5050/ui" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;transition:background 0.15s;">Fridays</a>
+        {% endif %}
+        {% if ENV_STAGE == 'DEV' %}
+          <span style="padding:4px 12px;border-radius:6px;background:#4facfe;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.03em;box-shadow:0 0 8px #4facfe88;">Mondays</span>
+        {% else %}
+          <a href="http://localhost:5051/ui" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;transition:background 0.15s;">Mondays</a>
+        {% endif %}
+        {% if ENV_STAGE == 'UAT' %}
+          <span style="padding:4px 12px;border-radius:6px;background:#ff6a00;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.03em;box-shadow:0 0 8px #ff6a0088;">Wednesdays</span>
+        {% else %}
+          <a href="http://localhost:5053/ui" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;transition:background 0.15s;">Wednesdays</a>
+        {% endif %}
+      </div>
       <!-- Services dropdown -->
       <div id="services-dropdown-wrap" style="position:relative;">
         <button id="services-dropdown-btn" onclick="toggleServicesDropdown()"
@@ -498,6 +486,10 @@
         <div class="home-card" data-win-id="library" data-win-title="📚 Library" data-win-template="view-library">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Library</span></div>
           <div class="card-desc">Consulting knowledge pool</div>
+        </div>
+        <div class="home-card" data-win-id="localai" data-win-title="⚡ Local AI" data-win-template="view-localai">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Local AI</span></div>
+          <div class="card-desc">Ollama · LM Studio · Picoclaw</div>
         </div>
       </div>
     </div>
@@ -608,6 +600,23 @@
 <div id="taskbar">
   <button id="home-btn" onclick="goHome()">🏠 Home</button>
   <div id="spacer"></div>
+  <div style="display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:2px;margin-right:8px;">
+    {% if ENV_STAGE == 'PROD' %}
+      <span style="padding:3px 10px;border-radius:5px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;">Fridays</span>
+    {% else %}
+      <a href="http://localhost:5050/ui" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;">Fridays</a>
+    {% endif %}
+    {% if ENV_STAGE == 'DEV' %}
+      <span style="padding:3px 10px;border-radius:5px;background:#4facfe;color:#fff;font-size:11px;font-weight:700;box-shadow:0 0 8px #4facfe88;">Mondays</span>
+    {% else %}
+      <a href="http://localhost:5051/ui" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;">Mondays</a>
+    {% endif %}
+    {% if ENV_STAGE == 'UAT' %}
+      <span style="padding:3px 10px;border-radius:5px;background:#ff6a00;color:#fff;font-size:11px;font-weight:700;box-shadow:0 0 8px #ff6a0088;">Wednesdays</span>
+    {% else %}
+      <a href="http://localhost:5053/ui" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;">Wednesdays</a>
+    {% endif %}
+  </div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════
@@ -688,7 +697,9 @@
               <button class="chat-attach-btn" onclick="pickChatAttachments()" title="Attach up to 6 files. Text and image files are supported.">📎</button>
               <span id="chat-attach-inline-state" class="chat-attach-inline-state" aria-live="polite"></span>
               <textarea id="question-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
-                onkeydown="handleQuestionInputKeydown(event)"></textarea>
+                onkeydown="handleQuestionInputKeydown(event)"
+                oninput="this.style.height='1px';this.style.height=Math.min(this.scrollHeight,200)+'px';this.style.overflowY=this.scrollHeight>=200?'auto':'hidden'"></textarea>
+              <button id="chat-parallel-mode-btn" onclick="onChatParallelModeToggle()" style="flex-shrink:0;background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px;white-space:nowrap;" title="Sequential: agents run one at a time">Seq</button>
               <button id="send-btn" onclick="sendMessage()">Send</button>
             </div>
             <div id="chat-mention-menu" class="chat-mention-menu" role="listbox" aria-label="Agent mentions"></div>
@@ -1383,6 +1394,88 @@
   </div>
 </template>
 
+<template id="view-localai">
+  <div class="content-view" id="localai-view">
+    <div style="padding:20px 24px 0;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+        <span style="font-size:18px;font-weight:700;color:var(--text);">Local AI</span>
+        <span id="localai-overall-status" style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--card);border:1px solid var(--border);color:var(--text-dim);">checking...</span>
+        <button onclick="localaiRefresh()" style="margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;">Refresh</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">Offline inference — Ollama · LM Studio · Picoclaw</div>
+    </div>
+
+    <div style="padding:0 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
+
+      <!-- Ollama Panel -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:600;font-size:13px;">Ollama</span>
+          <span id="ollama-status-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
+          <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:11434</span>
+        </div>
+        <div id="ollama-models-list" style="padding:10px 16px;min-height:60px;font-size:12px;color:var(--text-dim);">Loading...</div>
+        <div style="padding:10px 16px;border-top:1px solid var(--border);">
+          <select id="ollama-model-select" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 8px;font-size:12px;width:100%;margin-bottom:8px;"></select>
+          <div style="display:flex;gap:6px;">
+            <input id="ollama-quick-prompt" type="text" placeholder="Quick prompt..." style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 8px;font-size:12px;" onkeydown="if(event.key==='Enter')localaiOllamaChat()">
+            <button onclick="localaiOllamaChat()" style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:12px;">Ask</button>
+          </div>
+          <div id="ollama-quick-result" style="margin-top:8px;font-size:12px;color:var(--text);display:none;max-height:120px;overflow-y:auto;white-space:pre-wrap;border:1px solid var(--border);border-radius:5px;padding:8px;background:var(--bg);"></div>
+        </div>
+      </div>
+
+      <!-- LM Studio Panel -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:600;font-size:13px;">LM Studio</span>
+          <span id="lmstudio-status-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
+          <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:1234</span>
+        </div>
+        <div id="lmstudio-model-info" style="padding:10px 16px;font-size:12px;color:var(--text-dim);">Loading...</div>
+        <div style="padding:10px 16px;border-top:1px solid var(--border);">
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Chat with loaded model — or use <strong>lmstudio</strong> agent in Chat</div>
+          <div style="display:flex;gap:6px;">
+            <input id="lmstudio-quick-prompt" type="text" placeholder="Quick prompt..." style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 8px;font-size:12px;" onkeydown="if(event.key==='Enter')localaiLMStudioChat()">
+            <button onclick="localaiLMStudioChat()" style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:12px;">Ask</button>
+          </div>
+          <div id="lmstudio-quick-result" style="margin-top:8px;font-size:12px;color:var(--text);display:none;max-height:120px;overflow-y:auto;white-space:pre-wrap;border:1px solid var(--border);border-radius:5px;padding:8px;background:var(--bg);"></div>
+        </div>
+      </div>
+
+      <!-- Picoclaw Panel -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:600;font-size:13px;">Picoclaw</span>
+          <span id="picoclaw-status-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
+          <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:18800</span>
+        </div>
+        <div style="padding:10px 16px;font-size:12px;color:var(--text-dim);">
+          <div style="margin-bottom:8px;">Multi-provider AI launcher with 28+ model configs including cloud and local inference. Channels: Telegram, Discord, WhatsApp, Slack (all configurable).</div>
+          <div style="font-size:11px;color:var(--text-dim);">Tools: web search (DuckDuckGo), exec, file ops, cron, sub-agents, ClaHub skills</div>
+        </div>
+        <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px;">
+          <button onclick="window.open('http://localhost:18800','_blank')" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:5px;padding:6px 12px;cursor:pointer;font-size:12px;">Open Picoclaw UI</button>
+          <button onclick="localaiTogglePicoEmbed()" id="pico-embed-btn" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 12px;cursor:pointer;font-size:12px;">Embed</button>
+        </div>
+        <div id="pico-embed-container" style="display:none;border-top:1px solid var(--border);">
+          <iframe id="pico-embed-frame" src="http://localhost:18800" style="width:100%;height:480px;border:none;" title="Picoclaw"></iframe>
+        </div>
+      </div>
+
+      <!-- Agent Roster — local models -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;grid-column:1/-1;">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+          <span style="font-weight:600;font-size:13px;">Local Agents in Chat</span>
+          <span style="font-size:11px;color:var(--text-dim);margin-left:8px;">Select these in the Chat view</span>
+        </div>
+        <div style="padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;" id="localai-agent-roster"></div>
+      </div>
+
+    </div>
+  </div>
+</template>
+
 <!-- ════════════════════════════════════════════════════════════════════════
      JAVASCRIPT
      ════════════════════════════════════════════════════════════════════════ -->
@@ -1422,6 +1515,7 @@
 <script src="/static/js/views/access.js"></script>
 <script src="/static/js/views/library.js"></script>
 <script src="/static/js/views/agents-config.js"></script>
+<script src="/static/js/views/localai.js"></script>
 
 <!-- Init (must be last — depends on all above) -->
 <script src="/static/js/core/init.js"></script>

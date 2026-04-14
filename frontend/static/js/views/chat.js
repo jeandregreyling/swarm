@@ -2144,12 +2144,13 @@ function _updateParallelModeBtn() {
   const btn = document.getElementById('chat-parallel-mode-btn');
   if (!btn) return;
   const on = !!window.__fridaysChatParallelMode;
-  btn.textContent = on ? 'Parallel' : 'Sequential';
+  btn.textContent = on ? 'Par' : 'Seq';
   btn.title = on
-    ? 'Parallel: all selected agents run simultaneously — click to switch to sequential'
-    : 'Sequential: agents run one at a time — click to enable parallel';
+    ? 'Parallel: all selected agents run simultaneously — click for sequential'
+    : 'Sequential: agents run one at a time — click for parallel';
   btn.style.background = on ? 'var(--accent)' : 'var(--card)';
-  btn.style.color = on ? '#fff' : 'var(--text)';
+  btn.style.color = on ? '#fff' : 'var(--text-dim)';
+  btn.style.borderColor = on ? 'var(--accent)' : 'var(--border)';
 }
 
 function onChatRelayMaxChange() {
