@@ -42,11 +42,18 @@ _MAX_SKILL_OUTPUT_CHARS   = 8000  # default; override via max_skill_chars arg
 _SKILL_NUDGE = (
     'Your response did not contain any SKILL commands.\n'
     'If this request requires reading or modifying files, emit the SKILL commands now.\n'
-    'Start with SKILL fs_readonly ls or SKILL fs_readonly read <path> to discover the files.\n'
+    'Start with SKILL fs_readonly grep to find values by pattern — do NOT read files line by line from the top.\n'
     'Do NOT describe what you plan to do — emit the SKILL line directly.\n'
-    'Example:\n'
-    '  SKILL fs_readonly ls frontend/static/css/views\n'
-    '  SKILL fs_readonly read frontend/static/js/views/fridays.js\n'
+    'Key directories (in order of relevance for backend/config tasks):\n'
+    '  frontend/blueprints/   ← backend Python: agent dispatch, timeouts, routes\n'
+    '  agents/                ← agent implementations\n'
+    '  utils/                 ← config and system prompts\n'
+    '  frontend/static/js/views/ ← frontend JS\n'
+    'Example workflow:\n'
+    '  SKILL fs_readonly grep frontend/blueprints/chat.py 900        ← find 900 instantly\n'
+    '  SKILL fs_readonly lines frontend/blueprints/chat.py 825 875   ← read context\n'
+    'Never read a whole file from line 1 when you can grep for the value.\n'
+    'Never guess paths that do not appear in ls output (backend/, config/, src/ do not exist).\n'
     'If this request needed no file access, respond with your final answer and ignore this message.'
 )
 
@@ -259,8 +266,11 @@ def run_skill_loop(
         skill_cmds = _extract_skill_cmds(answer)
         if not skill_cmds:
             # If we've already run skills and the model returned prose without a new
-            # SKILL command, nudge it once more — it may be mid-exploration and forgot
+            # SKILL command, nudge it inline — it may be mid-exploration and forgot
             # to emit the next command rather than genuinely being done.
+            # NOTE: do NOT use `continue` here — at max_passes-1 that would exhaust
+            # the loop and the nudge's skills would never run. Instead, execute the
+            # nudge-recovered skills directly and update `answer` in-place.
             if pass_num > 0 and _mid_loop_nudges_remaining > 0:
                 _mid_loop_nudges_remaining -= 1
                 emit_fn('nudging for next skill command')
@@ -274,11 +284,31 @@ def run_skill_loop(
                 try:
                     nudge_content, nudge_tokens = call_fn(nudge_msgs)
                     total_tokens += nudge_tokens
-                    if 'SKILL ' in str(nudge_content or '').upper():
-                        answer = nudge_content
-                        working_messages = nudge_msgs
-                        logger.info(f'[{agent_name}] mid-loop nudge (pass {pass_num}) produced SKILL commands')
-                        continue  # re-enter loop with the nudged response
+                    nudge_cmds = _extract_skill_cmds(nudge_content)
+                    if nudge_cmds:
+                        logger.info(f'[{agent_name}] mid-loop nudge (pass {pass_num}) produced {len(nudge_cmds)} SKILL command(s) — executing inline')
+                        emit_fn('running nudged skills')
+                        nudge_results = _execute_skill_cmds(nudge_cmds, agent_name, emit_fn, skill_char_limit, source_conv_id=source_conv_id)
+                        pass_num += 1
+                        follow_up = (
+                            'Skill outputs below.\n'
+                            'If the original request was a code/file change and you now have enough information, '
+                            'emit SKILL fs_patch_lines NOW. '
+                            'Only produce a final text answer when all changes are done and verified.\n\n'
+                            + nudge_results
+                        )
+                        working_messages = (
+                            list(messages[:baseline_len])
+                            + [
+                                {'role': 'assistant', 'content': nudge_content},
+                                {'role': 'user',      'content': follow_up},
+                            ]
+                        )
+                        emit_fn('synthesizing final answer')
+                        answer, tokens = call_fn(working_messages)
+                        total_tokens += tokens
+                        # Now loop back to check if the new answer has more SKILL commands
+                        continue
                     else:
                         logger.info(f'[{agent_name}] mid-loop nudge (pass {pass_num}) produced no skills — done')
                 except Exception as exc:

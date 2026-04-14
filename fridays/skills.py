@@ -143,10 +143,10 @@ REGISTRY = {
         'example': 'SKILL alm_vortex before-banner-redesign',
     },
     'fs_readonly': {
-        'description': 'Read-only filesystem helper for workspace discovery (ls/find/read/head/tail/lines).',
+        'description': 'Read-only filesystem helper for workspace discovery (ls/find/read/head/tail/lines/grep). Use grep to search file contents by pattern — much faster than reading line by line.',
         'trust_level': 0,
-        'usage': 'SKILL fs_readonly <ls|find|read|head|tail|lines> <path> [args]',
-        'example': 'SKILL fs_readonly lines frontend/terminal.py 5310 5360',
+        'usage': 'SKILL fs_readonly <ls|find|read|head|tail|lines|grep> <path> [args]',
+        'example': 'SKILL fs_readonly grep frontend/blueprints/chat.py 900',
     },
     'fs_write': {
         'description': 'Write (overwrite) any file within the swarm repo. Creates parent dirs as needed.',
@@ -397,7 +397,7 @@ def _skill_fs_readonly(args, agent, **_):
 
     # Implicit 'read' — if first token looks like a file path rather than an action keyword,
     # prepend 'read' so that `SKILL fs_readonly path/to/file` works correctly.
-    _KNOWN_ACTIONS = {'ls', 'find', 'read', 'head', 'tail', 'lines'}
+    _KNOWN_ACTIONS = {'ls', 'find', 'read', 'head', 'tail', 'lines', 'grep'}
     if action not in _KNOWN_ACTIONS and ('/' in parts[0] or '.' in parts[0]):
         raw = 'read ' + raw
         parts = raw.split()
@@ -442,6 +442,43 @@ def _skill_fs_readonly(args, agent, **_):
                 rel_path = str(p)
             matches.append(rel_path + ('/' if p.is_dir() else ''))
         return True, '\n'.join(matches) if matches else '(no matches)'
+
+    if action == 'grep':
+        # SKILL fs_readonly grep <path> <pattern> [context_lines]
+        # Searches file content for pattern, returns matching lines with line numbers.
+        # context_lines (default 2) shows surrounding lines for context.
+        if len(parts) < 3:
+            return False, 'Usage: SKILL fs_readonly grep <path> <pattern> [context_lines]'
+        rel = parts[1]
+        pattern = parts[2]
+        try:
+            ctx = max(0, min(int(parts[3]) if len(parts) > 3 else 2, 10))
+        except Exception:
+            ctx = 2
+        target = _fs_safe_path(rel)
+        if not target or not target.exists() or not target.is_file():
+            return False, f'Invalid file: {rel}'
+        try:
+            file_lines = target.read_text(encoding='utf-8', errors='replace').splitlines()
+        except Exception as e:
+            return False, f'Could not read {rel}: {e}'
+        import re as _re
+        try:
+            pat = _re.compile(pattern, _re.IGNORECASE)
+        except _re.error:
+            pat = _re.compile(_re.escape(pattern), _re.IGNORECASE)
+        hits = [i for i, l in enumerate(file_lines) if pat.search(l)]
+        if not hits:
+            return True, f'No matches for "{pattern}" in {rel}'
+        shown = set()
+        result_lines = []
+        for i in hits:
+            for j in range(max(0, i - ctx), min(len(file_lines), i + ctx + 1)):
+                if j not in shown:
+                    shown.add(j)
+                    marker = '>>>' if j == i else '   '
+                    result_lines.append(f'{j + 1:5d} {marker} {file_lines[j]}')
+        return True, f'grep "{pattern}" in {rel} — {len(hits)} match(es):\n' + '\n'.join(result_lines[:200])
 
     if action in {'read', 'head', 'tail', 'lines'}:
         if len(parts) < 2:
