@@ -89,17 +89,42 @@ def chat(message, conversation_history=None, stage_cb=None):
     messages.append({'role': 'user', 'content': message})
 
     def _api_call(msgs):
-        resp = _ollama.chat(
-            model=MODEL,
-            messages=msgs,
-            options={'temperature': 0.6},
-            keep_alive=-1,
-        )
-        content = resp['message']['content']
+        chunks = []
+        tokens = 0
+        token_count = 0
         try:
-            tokens = int(getattr(resp, 'eval_count', None) or resp.get('eval_count') or 0)
-        except Exception:
-            tokens = 0
+            stream = _ollama.chat(
+                model=MODEL,
+                messages=msgs,
+                options={'temperature': 0.6},
+                keep_alive=-1,
+                stream=True,
+            )
+            for chunk in stream:
+                part = (chunk.get('message') or {}).get('content') or ''
+                if part:
+                    chunks.append(part)
+                    token_count += 1
+                    # Push partial text to WIP box every 15 tokens so Ghost sees it typing
+                    if token_count % 15 == 0:
+                        partial = ''.join(chunks)[-300:]  # last 300 chars fits stage label
+                        _emit(f'generating · {partial}')
+                if chunk.get('done'):
+                    tokens = int(chunk.get('eval_count') or 0)
+        except Exception as exc:
+            logger.warning(f'[Mistral] stream error, falling back to blocking call: {exc}')
+            resp = _ollama.chat(
+                model=MODEL,
+                messages=msgs,
+                options={'temperature': 0.6},
+                keep_alive=-1,
+            )
+            chunks = [resp['message']['content']]
+            try:
+                tokens = int(getattr(resp, 'eval_count', None) or resp.get('eval_count') or 0)
+            except Exception:
+                tokens = 0
+        content = ''.join(chunks)
         return content, tokens
 
     try:

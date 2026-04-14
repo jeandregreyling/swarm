@@ -71,17 +71,23 @@ function openConversationDetail(convId) {
       titleNode.textContent = `💬 ${convTitle}`;
 
       toolbar.innerHTML = `
-        <button onclick="renameConversation(${conv.id})" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">✎ Edit Title</button>
-        <button onclick="deleteConversation(${conv.id})" style="padding:6px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;cursor:pointer;">🗑 Delete Conversation</button>
+        <button id="chat-det-tab-msgs" onclick="openConversationDetail.showTab('messages',${conv.id})"
+          style="padding:6px 10px;background:var(--accent);border:1px solid var(--accent);border-radius:4px;color:#fff;font-size:11px;cursor:pointer;">Messages</button>
+        <button id="chat-det-tab-tl" onclick="openConversationDetail.showTab('timeline',${conv.id})"
+          style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">Timeline</button>
+        <button onclick="renameConversation(${conv.id})" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">Edit Title</button>
+        <button onclick="deleteConversation(${conv.id})" style="padding:6px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;cursor:pointer;">Delete</button>
         <span style="margin-left:auto;color:var(--text-dim);font-size:11px;">${(conv.created_at || '').slice(0,16)} · ${(conv.source || 'unknown')}</span>
       `;
 
       if (!rows.length) {
         body.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:24px;">No messages in this conversation.</div>';
+        openConversationDetail._msgsHtml = '';
+        openConversationDetail._convId = conv.id;
         return;
       }
 
-      body.innerHTML = rows.map(m => {
+      const msgsHtml = rows.map(m => {
         const sender = _escHtml(m.sender || 'agent');
         const to = _escHtml(m.to_agent || '—');
         const ts = _escHtml((m.created_at || '').slice(0,16));
@@ -100,9 +106,81 @@ function openConversationDetail(convId) {
           ${contentHtml}
         </div>`;
       }).join('');
+
+      openConversationDetail._msgsHtml = msgsHtml;
+      openConversationDetail._convId = conv.id;
+      body.innerHTML = msgsHtml;
     })
     .catch(e => {
       body.innerHTML = `<div style="color:#f77;padding:20px;">Error loading conversation: ${_escHtml(e.message)}</div>`;
+    });
+}
+
+// Tab switcher — attached to openConversationDetail so it shares scope
+openConversationDetail.showTab = function(tab, convId) {
+  const body = document.getElementById('chat-det-body');
+  const btnMsgs = document.getElementById('chat-det-tab-msgs');
+  const btnTl = document.getElementById('chat-det-tab-tl');
+  if (!body) return;
+
+  const activeStyle = 'padding:6px 10px;background:var(--accent);border:1px solid var(--accent);border-radius:4px;color:#fff;font-size:11px;cursor:pointer;';
+  const inactiveStyle = 'padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;';
+
+  if (tab === 'messages') {
+    if (btnMsgs) btnMsgs.style.cssText = activeStyle;
+    if (btnTl)   btnTl.style.cssText   = inactiveStyle;
+    body.innerHTML = openConversationDetail._msgsHtml || '<div style="color:var(--text-dim);text-align:center;padding:24px;">No messages.</div>';
+  } else {
+    if (btnMsgs) btnMsgs.style.cssText = inactiveStyle;
+    if (btnTl)   btnTl.style.cssText   = activeStyle;
+    body.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:24px;">Loading timeline…</div>';
+    loadConversationTimeline(convId || openConversationDetail._convId);
+  }
+};
+
+function loadConversationTimeline(convId) {
+  const body = document.getElementById('chat-det-body');
+  if (!body) return;
+
+  fetch(`/api/conversations/${convId}/timeline`)
+    .then(r => r.json())
+    .then(data => {
+      const events = data.events || [];
+      if (!events.length) {
+        body.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:24px;">No timeline events yet for this conversation.<br><span style="font-size:11px;">Events are written as the agent works — check back once a task is running.</span></div>';
+        return;
+      }
+
+      const _TYPE_STYLE = {
+        stage:        'background:#1a3a5c;color:#7dc0ff;',
+        skill_call:   'background:#1a3a1a;color:#7dca7d;',
+        skill_result: 'background:#2a2a1a;color:#c0b060;',
+        response:     'background:#2a1a3a;color:#c07dff;',
+        final:        'background:#1a2a3a;color:#7dffca;',
+        proposal:     'background:#3a1a2a;color:#ff7dca;',
+        health:       'background:#2a3a1a;color:#c0ff7d;',
+      };
+
+      body.innerHTML = `
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">${events.length} event(s) — oldest first</div>
+        ${events.map(ev => {
+          const typeStyle = _TYPE_STYLE[ev.event_type] || 'background:var(--card);color:var(--text);';
+          const ts = String(ev.created_at || '').slice(11, 19); // HH:MM:SS
+          const agentBadge = `<span style="font-weight:600;color:var(--text);">${_escHtml(ev.agent || '')}</span>`;
+          const typeBadge = `<span style="padding:1px 5px;border-radius:3px;font-size:10px;${typeStyle}">${_escHtml(ev.event_type || '')}</span>`;
+          const payload = _escHtml(ev.payload || '');
+          return `<div style="margin-bottom:6px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:5px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+              <span style="font-size:10px;color:var(--text-dim);font-family:monospace;">${ts}</span>
+              ${agentBadge}
+              ${typeBadge}
+            </div>
+            <div style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.5;color:var(--text);">${payload}</div>
+          </div>`;
+        }).join('')}`;
+    })
+    .catch(e => {
+      if (body) body.innerHTML = `<div style="color:#f77;padding:20px;">Timeline load error: ${_escHtml(e.message)}</div>`;
     });
 }
 
