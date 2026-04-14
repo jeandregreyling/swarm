@@ -155,10 +155,16 @@ REGISTRY = {
         'example': 'SKILL fs_write sandpits/ten/draft.py print("hello")',
     },
     'fs_patch': {
-        'description': 'Replace an exact string in a file (first occurrence). Safe targeted edit without full rewrite.',
+        'description': 'Replace an exact string in a file (first occurrence). Use fs_patch_lines instead when you have line numbers.',
         'trust_level': 2,
         'usage': 'SKILL fs_patch <path> <<<OLD>>>exact old text<<<NEW>>>replacement text',
         'example': 'SKILL fs_patch utils/config.py <<<OLD>>>TEN_MODEL = \'gpt-4.1\'<<<NEW>>>TEN_MODEL = \'gpt-4.1-mini\'',
+    },
+    'fs_patch_lines': {
+        'description': 'Replace a line range in a file by line numbers. PREFERRED over fs_patch — no exact-match fragility. Read with fs_readonly lines first to get line numbers, then replace that range.',
+        'trust_level': 2,
+        'usage': 'SKILL fs_patch_lines <path> <start_line> <end_line>\n<<<NEW>>>\nreplacement content',
+        'example': 'SKILL fs_patch_lines frontend/static/js/views/fridays.js 9 41\n<<<NEW>>>\n  function _fetchAndRenderTemp() {\n    // new body\n  }',
     },
     'knowledge_search': {
         'description': 'Search the consultant knowledge library (SAP HCM, ABAP, emails, PDFs, SAP notes).',
@@ -178,7 +184,7 @@ REGISTRY = {
 # ── Logging ───────────────────────────────────────────────────────────────────
 
 # Skills that should create a work_proposal entry when they succeed
-_PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule', 'fs_write', 'fs_patch'}
+_PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule', 'fs_write', 'fs_patch', 'fs_patch_lines'}
 
 
 def _log(skill_name, agent, args_preview, result_preview, success):
@@ -205,12 +211,16 @@ def _log_as_internal_proposal(skill_name, agent, args_preview, result_preview):
     Called automatically after file_write, shell, and schedule succeed.
     This ensures every Fridays-executed change is a first-class citizen in the queue
     and visible to all agents.
+
+    Marked executed immediately so it does not appear as an actionable pending item —
+    it is a change-log record only, used by the alm_complete guard.
     """
     try:
-        from queue_manager import intake_internal
+        from queue_manager import intake_internal, update_proposal_status
         title = f'[{skill_name}] {args_preview[:80]}'
         description = f'Agent {agent} executed skill `{skill_name}`.\nArgs: {args_preview[:300]}\nResult: {result_preview[:300]}'
-        intake_internal(agent, title, description, priority=5)
+        _, proposal_id = intake_internal(agent, title, description, priority=5)
+        update_proposal_status(proposal_id, 'executed')
     except Exception as e:
         logger.warning(f'[Skills] work_proposal log failed: {e}')
 
@@ -665,6 +675,38 @@ def _skill_alm_complete(args, agent, **_):
     if not proposal_id:
         return False, 'Usage: SKILL alm_complete <proposal_id>'
 
+    # Guard: require at least one file change (fs_patch or fs_write) since
+    # alm_self_approve was called. Proposals created by _log_as_internal_proposal
+    # have titles like '[fs_patch] ...' or '[fs_write] ...'.
+    # Completing without file changes means the work was not actually done.
+    try:
+        from database import get_connection as _gc
+        _conn = _gc()
+        _prop = _conn.execute(
+            'SELECT updated_at FROM work_proposals WHERE proposal_id = ?',
+            [proposal_id]
+        ).fetchone()
+        if _prop:
+            _since = _prop['updated_at']
+            _n = _conn.execute(
+                "SELECT COUNT(*) FROM work_proposals "
+                "WHERE (title LIKE '[fs_patch]%' OR title LIKE '[fs_write]%' OR title LIKE '[fs_patch_lines]%') "
+                "AND agent = ? AND created_at >= ?",
+                [agent, _since]
+            ).fetchone()[0]
+            if _n == 0:
+                _conn.close()
+                return False, (
+                    f'BLOCKED: No file changes detected for {proposal_id}. '
+                    'You must make actual changes with SKILL fs_patch_lines, SKILL fs_patch, or SKILL fs_write '
+                    'before calling alm_complete. '
+                    'Use SKILL fs_readonly to read the current file state, apply your '
+                    'changes, then call alm_complete again.'
+                )
+        _conn.close()
+    except Exception:
+        pass  # Do not block on guard failure — proceed to completion
+
     try:
         from core.time_machine import time_wizard
         time_wizard.create_workflow_checkpoint(
@@ -776,6 +818,77 @@ def _skill_fs_patch(args, agent, **_):
         return False, f'fs_patch failed: {e}'
 
 
+def _skill_fs_patch_lines(args, agent, **_):
+    """Replace a line range in a file by line numbers.
+
+    More reliable than fs_patch because it never needs exact content matching.
+    Workflow: read a section with fs_readonly lines to get line numbers, then
+    call fs_patch_lines with those same line numbers and the replacement content.
+
+    Usage:
+        SKILL fs_patch_lines <path> <start_line> <end_line>
+        <<<NEW>>>
+        replacement content here
+    """
+    raw = (args or '').strip()
+    # Split on <<<NEW>>> (case-insensitive)
+    split = re.split(r'<<<NEW>>>', raw, maxsplit=1, flags=re.IGNORECASE)
+    if len(split) != 2:
+        return False, (
+            'Usage: SKILL fs_patch_lines <path> <start_line> <end_line>\n'
+            '<<<NEW>>>\nreplacement content'
+        )
+    head, new_text = split
+    parts = head.strip().split()
+    if len(parts) < 3:
+        return False, 'Expected: SKILL fs_patch_lines <path> <start_line> <end_line>'
+    rel = parts[0]
+    try:
+        start = int(parts[1])
+        end = int(parts[2])
+    except ValueError:
+        return False, f'start_line and end_line must be integers, got: {parts[1]!r} {parts[2]!r}'
+    if start < 1 or end < start:
+        return False, f'Invalid range: start={start} end={end} (must be start >= 1 and end >= start)'
+
+    target = _fs_safe_path(rel)
+    if not target:
+        return False, f'Path outside swarm root or invalid: {rel}'
+    if not target.exists() or not target.is_file():
+        return False, f'File not found: {rel}'
+    try:
+        original = target.read_text(encoding='utf-8', errors='replace')
+        file_lines = original.splitlines(keepends=True)
+        total = len(file_lines)
+        if start > total:
+            return False, f'start_line {start} beyond end of file ({total} lines)'
+        end = min(end, total)
+
+        # Strip line-number prefixes if agent copied fs_readonly lines output into <<<NEW>>>
+        new_text = _strip_fs_readonly_line_numbers(new_text)
+
+        # Strip the leading newline that follows <<<NEW>>> on the same or next line
+        new_text = new_text.lstrip('\n')
+
+        # Ensure replacement ends with newline (preserves file structure)
+        if new_text and not new_text.endswith('\n'):
+            new_text += '\n'
+
+        before = ''.join(file_lines[:start - 1])
+        after  = ''.join(file_lines[end:])
+        patched = before + new_text + after
+
+        target.write_text(patched, encoding='utf-8')
+        old_count = end - start + 1
+        new_count = len(new_text.splitlines())
+        return True, (
+            f'Patched {rel}: replaced lines {start}–{end} '
+            f'({old_count} lines → {new_count} lines)'
+        )
+    except Exception as e:
+        return False, f'fs_patch_lines failed: {e}'
+
+
 def _skill_knowledge_search(args, agent, **_):
     query = (args or '').strip()
     if not query:
@@ -819,6 +932,7 @@ _HANDLERS = {
     'fs_readonly':         _skill_fs_readonly,
     'fs_write':            _skill_fs_write,
     'fs_patch':            _skill_fs_patch,
+    'fs_patch_lines':      _skill_fs_patch_lines,
     'knowledge_search': _skill_knowledge_search,
     'ui_css_edit_checklist': _skill_ui_css_edit_checklist,
 }

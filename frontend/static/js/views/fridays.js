@@ -6,39 +6,9 @@
   // ── Temperature polling ───────────────────────────────────────────────────
   let _tempInterval = null;
 
-  function _fetchAndRenderTemp() {
-    const el = document.getElementById('fridays-system-temp');
-    const gaugeFill = document.getElementById('gauge-fill');
-    if (!el) return;
-    fetch('/api/monitor/stats', { signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) return;
-        const cpu = data.cpu_percent != null ? data.cpu_percent : null;
-        const temp = data.cpu_temp != null ? data.cpu_temp : null;
-        let label = '';
-        let cls = '';
-        let percentage = 0;
-        if (temp != null) {
-          label = temp.toFixed(0) + '°C';
-          cls = temp >= 75 ? 'fridays-temp--hot' : temp >= 55 ? 'fridays-temp--warm' : 'fridays-temp--cool';
-          percentage = (temp / 100) * 100;
-        } else if (cpu != null) {
-          label = 'CPU ' + cpu.toFixed(0) + '%';
-          cls = cpu >= 85 ? 'fridays-temp--hot' : cpu >= 60 ? 'fridays-temp--warm' : 'fridays-temp--cool';
-          percentage = cpu;
-        } else {
-          label = '—';
-        }
-        el.textContent = label;
-        el.className = 'fridays-temp ' + cls;
-        if (gaugeFill) {
-          gaugeFill.style.transform = `rotate(${percentage / 200}turn)`;
-        }
-        el._lastData = data;
-      })
-      .catch(() => {});
-  }
+    function _fetchAndRenderTemp() {
+      // Temperature gauge moved to System Status panel in monitor.js
+    }
 
   // ── Detail panel ─────────────────────────────────────────────────────────
   let _openPanel = null;
