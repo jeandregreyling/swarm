@@ -544,9 +544,10 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
     if not title:
         return False, 'alm_create_proposal requires a non-empty title.'
 
-    # Conversation-level dedup: if a proposal with the same title already exists in
-    # this conversation (within the last 5 minutes), return the existing one rather
-    # than creating a duplicate. Prevents Grok-style retry storms.
+    # Conversation-level dedup: if any active (pending or in_progress) proposal
+    # already exists for this conversation, return it rather than creating another.
+    # This prevents Grok-style retry storms where a new proposal is created each
+    # time the user nudges or the topic shifts slightly mid-task.
     if source_conv_id:
         try:
             import sys as _sys2
@@ -554,17 +555,20 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
             from database import get_connection as _gc2
             _c2 = _gc2()
             existing = _c2.execute(
-                """SELECT proposal_id FROM work_proposals
-                   WHERE source_conv_id=? AND title=?
-                     AND created_at >= datetime('now','-5 minutes')
+                """SELECT proposal_id, title FROM work_proposals
+                   WHERE source_conv_id=?
+                     AND status IN ('pending', 'approved', 'in_progress')
+                   ORDER BY created_at ASC
                    LIMIT 1""",
-                (int(source_conv_id), title)
+                (int(source_conv_id),)
             ).fetchone()
             _c2.close()
             if existing:
                 return True, (
-                    f'Proposal already exists for this conversation: {existing["proposal_id"]}. '
-                    'Use SKILL alm_self_approve to advance it.'
+                    f'Active proposal already exists for this conversation: {existing["proposal_id"]} — "{existing["title"]}".\n'
+                    'Do NOT create another proposal. Use SKILL alm_self_approve to start it, '
+                    'or SKILL alm_complete to finish it if changes are already done.\n'
+                    'Only create a new proposal if the previous one is fully completed or rejected.'
                 )
         except Exception:
             pass
