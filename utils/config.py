@@ -589,6 +589,25 @@ WORKFLOW — SANDPIT, PROPOSALS & FILE ACCESS:
 - All changes tracked by Git. Vortex (time machine) can snapshot or restore any prior state.
 RELAY BUDGET: Default 4 hops per send.
 
+CODEBASE MAP — WHERE THINGS LIVE (always explore here first, never guess):
+  frontend/blueprints/     ← ALL backend Python routes and agent dispatch logic
+    chat.py                  agent relay timeouts, chat streaming, background job limits
+    proposals.py             ALM proposal routes
+    monitor.py               system stats API
+  agents/<name>/           ← individual agent implementations (mistral/, eight/, nine/, etc.)
+  fridays/skills.py        ← skill registry and all SKILL handlers
+  agents/skills_loop.py    ← skill execution loop, nudge logic, pass limits
+  utils/config.py          ← ALL agent system prompts and model config
+  frontend/static/js/views/ ← frontend JS (monitor.js, chat.js, fridays.js, etc.)
+  frontend/templates/      ← HTML templates
+  core/pipeline/           ← queue_manager, orchestrator
+DISCOVERY RULE: When searching for a setting, ALWAYS start with:
+  SKILL fs_readonly ls frontend/blueprints
+  SKILL fs_readonly ls agents
+  SKILL fs_readonly ls utils
+Never guess paths like backend/, config/, src/ — they do not exist.
+Error messages like "timed out after 900s" or "background run failed" come from frontend/blueprints/chat.py, not from JS files.
+
 CODE SEARCH ROUTING: frontend/terminal.py contains only blueprint imports — no rendering or display logic. For any UI issue (wrong counts, broken panel, display bug), search frontend/static/js/views/ first. Needs-attention panel and stat cards → monitor.js. Chat rendering → chat.js.
 CSS is split across multiple files — components.css is ONLY for global shell/layout. Tile-specific CSS lives in frontend/static/css/views/<tile>.css. Never search components.css for tile UI issues.
 
@@ -598,10 +617,20 @@ You have real filesystem access via SKILL commands. The runtime intercepts lines
 NEVER FAKE IT: If you do not emit a SKILL command, nothing happened. Do NOT say "patch applied", "file created", "changes confirmed", or any similar phrase unless you have already seen [skill:fs_patch] OK in this conversation's skill output. Saying a change happened without SKILL evidence is a lie.
 
 SKILL SYNTAX (paths relative to /home/seven/swarm):
-  SKILL fs_readonly read frontend/static/css/views/fridays.css      ← read file
-  SKILL fs_readonly ls frontend/static/css/views                    ← list directory
-  SKILL fs_readonly lines frontend/static/css/views/chat.css 1 60   ← line range (returns line numbers)
+  SKILL fs_readonly ls frontend/blueprints                          ← list directory
+  SKILL fs_readonly grep frontend/blueprints/chat.py 900            ← search file for pattern (FAST — use this first)
+  SKILL fs_readonly lines frontend/blueprints/chat.py 820 860       ← read specific line range
+  SKILL fs_readonly read frontend/static/css/views/fridays.css      ← read whole file
   SKILL fs_write sandpits/eleven/draft.txt content here             ← write file
+
+SEARCH-FIRST RULE: Never read a large file sequentially from line 1 looking for a value.
+  Instead: SKILL fs_readonly grep <file> <pattern>  — get exact line numbers instantly.
+  Then:    SKILL fs_readonly lines <file> <start> <end>  — read only the relevant section.
+  Example: find where timeout=900 lives →
+    SKILL fs_readonly grep frontend/blueprints/chat.py 900
+    → shows line 837: local_timeout = 900  (and line 869: timeout=900 if persistent_mode)
+    SKILL fs_readonly lines frontend/blueprints/chat.py 825 875
+    → read the full context around those lines
 
 PATCHING FILES — USE fs_patch_lines (PREFERRED):
   After reading a section with fs_readonly lines, you know the exact line numbers.
