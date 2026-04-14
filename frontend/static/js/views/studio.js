@@ -573,11 +573,21 @@ function _openProposalDetailRender(p) {
     <div style="padding-top:12px;border-top:1px solid var(--border);">
       <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Actions</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${status==='pending' ? `
+        ${status==='pending' ? (() => {
+          // Detect sudo approval requests — extract token from description
+          const isSudo = (p.title || '').startsWith('[sudo]');
+          const tokenMatch = isSudo && (p.description || '').match(/Approval token:\s*`?([a-f0-9]{32,})`?/i);
+          const sudoToken = tokenMatch ? tokenMatch[1] : null;
+          const sudoBtn = (isSudo && sudoToken)
+            ? `<button onclick='sudoApproveRun("${sudoToken}", ${pidJs})'
+                style="padding:8px 16px;background:#ff980020;border:1px solid #ff980060;border-radius:4px;color:#ff9800;font-size:12px;font-weight:700;cursor:pointer;">&#9654; Approve &amp; Run</button>`
+            : '';
+          return `${sudoBtn}
           <button onclick='moveProposal(${pidJs},"approved")'
             style="padding:8px 16px;background:#4caf5020;border:1px solid #4caf5060;border-radius:4px;color:#4caf50;font-size:12px;font-weight:600;cursor:pointer;">&#10003; Approve</button>
           <button onclick='moveProposal(${pidJs},"rejected")'
-            style="padding:8px 16px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:12px;font-weight:600;cursor:pointer;">&#10007; Reject</button>` : ''}
+            style="padding:8px 16px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:12px;font-weight:600;cursor:pointer;">&#10007; Reject</button>`;
+        })() : ''}
         ${status==='approved' ? `
           <button onclick='moveProposal(${pidJs},"in_progress")'
             style="padding:8px 16px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:12px;font-weight:600;cursor:pointer;">&#9654; Start Work</button>
@@ -611,6 +621,31 @@ function _openProposalDetailRender(p) {
   // Load attachments and agent notes asynchronously
   _pdetLoadAttachments(p.proposal_id);
   _pdetLoadAgentNotes(p.proposal_id);
+}
+
+async function sudoApproveRun(token, proposalId) {
+  if (!confirm('Run this shell command now? It will execute immediately on the server.')) return;
+  try {
+    const r = await fetch(`/api/shell/approve/${token}`, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('Command executed successfully', 'success');
+      // Mark the proposal as executed
+      await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'executed' }),
+      });
+      const dm = document.getElementById('proposal-detail-modal');
+      if (dm?.classList.contains('open')) dm.classList.remove('open');
+      const container = document.getElementById('studio-content');
+      if (container) loadProposals(container, window._studioTab || 'pending');
+    } else {
+      showToast('Command failed: ' + (d.error || d.output || 'unknown error'), 'error');
+    }
+  } catch (e) {
+    showToast('Approve & Run failed: ' + e.message, 'error');
+  }
 }
 
 function _escAttr(s) {

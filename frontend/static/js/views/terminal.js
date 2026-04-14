@@ -18,6 +18,18 @@ function loadTerminalData(win) {
   _terminalSyncControls();
   _terminalSyncHistoryUi();
   _loadDbShortcuts(); // load custom shortcuts from DB (async, refreshes buttons when done)
+
+  // Inject agent-commands panel below output if not present
+  const existingAgentPanel = win.el.querySelector('#terminal-agent-cmds-wrap');
+  if (!existingAgentPanel && output) {
+    const wrap = document.createElement('div');
+    wrap.id = 'terminal-agent-cmds-wrap';
+    wrap.style.cssText = 'margin-top:10px;padding:8px 10px;border-top:1px solid var(--border);';
+    wrap.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-dim);letter-spacing:0.05em;margin-bottom:6px;">Agent Shell Commands</div>
+      <div id="terminal-agent-cmds" style="font-size:11px;"><div style="color:var(--text-dim);font-size:11px;">Loading…</div></div>`;
+    output.parentElement.appendChild(wrap);
+  }
+  startAgentCmdPolling();
 }
 
 function _terminalWindow() {
@@ -804,6 +816,93 @@ async function _terminalSaveToShortcuts(cmd, btnEl) {
     showToast('Saved to shortcuts', 'success');
   } catch (e) {
     showToast('Save failed: ' + e.message, 'error');
+  }
+}
+
+// ── Agent shell command panel ─────────────────────────────────────────────────
+// Shows commands that Developer Agents (Grok, GPT, etc.) ran via SKILL shell.
+// Polls /api/shell/agent-commands every 3s when the terminal tile is open.
+
+let _agentCmdPollTimer = null;
+
+function _agentCmdPanelEl() {
+  const win = _terminalWindow();
+  return win && win.el ? win.el.querySelector('#terminal-agent-cmds') : null;
+}
+
+function _agentCmdStatusStyle(status) {
+  if (status === 'running')  return 'color:#ffa500;font-weight:700;';
+  if (status === 'done')     return 'color:#4caf50;';
+  if (status === 'timeout')  return 'color:#f44;';
+  if (status === 'killed')   return 'color:#f44;';
+  if (status === 'failed')   return 'color:#ff7043;';
+  if (status === 'error')    return 'color:#f44;';
+  return 'color:var(--text-dim);';
+}
+
+function _renderAgentCmds(cmds) {
+  const el = _agentCmdPanelEl();
+  if (!el) return;
+  if (!cmds || !cmds.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:4px 0;">No recent agent shell commands.</div>';
+    return;
+  }
+  const H = _escHtml;
+  el.innerHTML = cmds.map(c => {
+    const age = c.finished_at
+      ? Math.round(Date.now() / 1000 - c.finished_at) + 's ago'
+      : Math.round(Date.now() / 1000 - c.started_at) + 's running';
+    const killBtn = c.status === 'running'
+      ? `<button onclick="agentCmdKill('${H(c.cmd_id)}')"
+           title="Kill this command"
+           style="padding:2px 7px;font-size:10px;background:#f4433620;border:1px solid #f4433660;color:#f44;border-radius:4px;cursor:pointer;">✕ kill</button>`
+      : '';
+    const preview = c.output
+      ? `<div style="font-size:10px;color:var(--text-dim);margin-top:3px;white-space:pre-wrap;max-height:60px;overflow:hidden;">${H(c.output.slice(0, 300))}</div>`
+      : '';
+    return `<div style="padding:6px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div style="font-size:10px;font-weight:700;${_agentCmdStatusStyle(c.status)}">${H(c.status.toUpperCase())}</div>
+        <div style="font-size:10px;color:var(--text-dim);">${H(c.agent)} · ${age}</div>
+        ${killBtn}
+      </div>
+      <code style="font-size:11px;color:var(--text);display:block;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${H(c.command)}</code>
+      ${preview}
+    </div>`;
+  }).join('');
+}
+
+function _pollAgentCmds() {
+  fetch('/api/shell/agent-commands')
+    .then(r => r.json())
+    .then(d => _renderAgentCmds(d.commands || []))
+    .catch(() => {});
+}
+
+function agentCmdKill(cmdId) {
+  fetch('/api/shell/agent-kill', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cmd_id: cmdId }),
+  })
+    .then(r => r.json())
+    .then(d => {
+      showToast(d.killed ? 'Command killed' : 'Not found or already finished', d.killed ? 'success' : 'warning');
+      _pollAgentCmds();
+    })
+    .catch(e => showToast('Kill failed: ' + e.message, 'error'));
+}
+
+function startAgentCmdPolling() {
+  if (_agentCmdPollTimer) return;
+  _pollAgentCmds();
+  _agentCmdPollTimer = setInterval(_pollAgentCmds, 3000);
+}
+
+function stopAgentCmdPolling() {
+  if (_agentCmdPollTimer) {
+    clearInterval(_agentCmdPollTimer);
+    _agentCmdPollTimer = null;
   }
 }
 

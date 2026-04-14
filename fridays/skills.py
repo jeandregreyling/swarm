@@ -178,6 +178,12 @@ REGISTRY = {
             'usage': 'SKILL ui_css_edit_checklist',
             'example': 'SKILL ui_css_edit_checklist',
         },
+    'fs_verify': {
+        'description': 'Syntax-check a Python or JavaScript file after patching. ALWAYS run this after every fs_patch or fs_patch_lines call.',
+        'trust_level': 0,
+        'usage': 'SKILL fs_verify <path>',
+        'example': 'SKILL fs_verify frontend/blueprints/chat.py',
+    },
 }
 
 
@@ -205,7 +211,77 @@ def _log(skill_name, agent, args_preview, result_preview, success):
         logger.warning(f'[Skills] ghost_circle log failed: {e}')
 
 
-def _log_as_internal_proposal(skill_name, agent, args_preview, result_preview):
+def _capture_file_diff(rel_path):
+    """Run git diff on a single file. Returns diff string or empty string on failure."""
+    import subprocess as _sp
+    try:
+        result = _sp.run(
+            ['git', 'diff', 'HEAD', '--', rel_path],
+            capture_output=True, text=True, timeout=10,
+            cwd='/home/seven/swarm',
+        )
+        diff = result.stdout.strip()
+        if not diff:
+            # File may be untracked — try git diff without HEAD
+            result2 = _sp.run(
+                ['git', 'diff', '--', rel_path],
+                capture_output=True, text=True, timeout=10,
+                cwd='/home/seven/swarm',
+            )
+            diff = result2.stdout.strip()
+        return diff[:4000] if diff else ''
+    except Exception as e:
+        logger.debug(f'[Skills] git diff failed for {rel_path}: {e}')
+        return ''
+
+
+def _extract_changed_path(skill_name, args):
+    """Extract the file path from a write-type skill's args string."""
+    try:
+        raw = (args or '').strip()
+        if skill_name in ('fs_patch', 'fs_patch_lines', 'fs_write'):
+            # Path is always the first token before any space or <<<
+            first = re.split(r'[\s<]', raw)[0].strip()
+            return first if first else None
+        if skill_name in ('file_write',):
+            # path is first token (may include agent/ prefix)
+            return raw.split()[0] if raw else None
+    except Exception:
+        pass
+    return None
+
+
+def _attach_diff_to_active_proposal(agent, rel_path, diff):
+    """Find the agent's current in_progress proposal and append the diff to its description."""
+    if not diff:
+        return
+    try:
+        from database import get_connection
+        conn = get_connection()
+        row = conn.execute(
+            """SELECT proposal_id, description FROM work_proposals
+               WHERE agent=? AND status='in_progress'
+               ORDER BY created_at DESC LIMIT 1""",
+            (agent,)
+        ).fetchone()
+        if row:
+            pid = row['proposal_id'] if isinstance(row, dict) else row[0]
+            existing = row['description'] if isinstance(row, dict) else row[1]
+            tracer_block = (
+                f'\n\n---\n**Tracer — {rel_path}**\n'
+                f'```diff\n{diff}\n```'
+            )
+            conn.execute(
+                "UPDATE work_proposals SET description=? WHERE proposal_id=?",
+                ((existing or '') + tracer_block, pid)
+            )
+            conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.debug(f'[Skills] tracer proposal update failed: {e}')
+
+
+def _log_as_internal_proposal(skill_name, agent, args_preview, result_preview, diff=''):
     """
     Log a successful write-type skill call as an internal work_proposal and queue entry.
     Called automatically after file_write, shell, and schedule succeed.
@@ -214,11 +290,19 @@ def _log_as_internal_proposal(skill_name, agent, args_preview, result_preview):
 
     Marked executed immediately so it does not appear as an actionable pending item —
     it is a change-log record only, used by the alm_complete guard.
+
+    If `diff` is provided, it is embedded in the description as a fenced diff block.
     """
     try:
         from queue_manager import intake_internal, update_proposal_status
         title = f'[{skill_name}] {args_preview[:80]}'
-        description = f'Agent {agent} executed skill `{skill_name}`.\nArgs: {args_preview[:300]}\nResult: {result_preview[:300]}'
+        description = (
+            f'Agent {agent} executed skill `{skill_name}`.\n'
+            f'Args: {args_preview[:300]}\n'
+            f'Result: {result_preview[:300]}'
+        )
+        if diff:
+            description += f'\n\n---\n**Tracer diff:**\n```diff\n{diff}\n```'
         _, proposal_id = intake_internal(agent, title, description, priority=5)
         update_proposal_status(proposal_id, 'executed')
     except Exception as e:
@@ -758,6 +842,40 @@ def _skill_alm_complete(args, agent, **_):
     except Exception:
         pass
 
+    # Health check — run quick smoke test before marking done
+    health_summary = ''
+    try:
+        import subprocess as _sp
+        hc = _sp.run(
+            ['python3', 'scripts/health_check.py'],
+            capture_output=True, text=True, timeout=30,
+            cwd='/home/seven/swarm',
+        )
+        hc_out = (hc.stdout + hc.stderr).strip()
+        passed = hc.returncode == 0
+        health_summary = f'\n\nHealth check: {"PASS" if passed else "FAIL"}\n{hc_out[-1200:]}'
+        if not passed:
+            # Append failures to proposal description
+            try:
+                from database import get_connection as _gc2
+                _c3 = _gc2()
+                _row = _c3.execute(
+                    'SELECT description FROM work_proposals WHERE proposal_id=?',
+                    [proposal_id]
+                ).fetchone()
+                if _row:
+                    existing_desc = _row['description'] if isinstance(_row, dict) else _row[0]
+                    _c3.execute(
+                        'UPDATE work_proposals SET description=? WHERE proposal_id=?',
+                        [(existing_desc or '') + health_summary, proposal_id]
+                    )
+                    _c3.commit()
+                _c3.close()
+            except Exception:
+                pass
+    except Exception as _hce:
+        health_summary = f'\n\n[Health check skipped: {_hce}]'
+
     data, err = _alm_api_post(
         f'/api/work-proposals/{proposal_id}/agent-advance',
         {'agent': agent, 'action': 'complete'},
@@ -768,6 +886,7 @@ def _skill_alm_complete(args, agent, **_):
     return True, (
         f'Proposal {proposal_id} marked DONE.\n'
         'Ghost will review and confirm close. Your work is complete.'
+        + health_summary
     )
 
 
@@ -785,6 +904,46 @@ def _skill_alm_vortex(args, agent, **_):
         return True, f'Vortex checkpoint created: {label} (result={result})'
     except Exception as e:
         return False, f'alm_vortex error: {e}'
+
+
+def _skill_fs_verify(args, agent, **_):
+    """Syntax-check a Python or JavaScript file. Returns OK or the exact error."""
+    import subprocess as _sp
+    rel = (args or '').strip().split()[0] if args else ''
+    if not rel:
+        return False, 'Usage: SKILL fs_verify <path>'
+    target = _fs_safe_path(rel)
+    if not target:
+        return False, f'Path not allowed or outside workspace: {rel}'
+    if not target.exists():
+        return False, f'File not found: {rel}'
+    suffix = target.suffix.lower()
+    if suffix == '.py':
+        try:
+            import ast
+            with open(target, encoding='utf-8') as f:
+                source = f.read()
+            ast.parse(source)
+            return True, f'OK — {rel} has no Python syntax errors.'
+        except SyntaxError as e:
+            return False, f'SyntaxError in {rel} at line {e.lineno}: {e.msg}\n  {e.text}'
+        except IndentationError as e:
+            return False, f'IndentationError in {rel} at line {e.lineno}: {e.msg}\n  {e.text}'
+    elif suffix == '.js':
+        try:
+            result = _sp.run(
+                ['node', '--check', str(target)],
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.returncode == 0:
+                return True, f'OK — {rel} has no JavaScript syntax errors.'
+            return False, f'Syntax error in {rel}:\n{(result.stderr or result.stdout)[:600]}'
+        except FileNotFoundError:
+            return False, 'node not found — cannot check JS syntax. Verify the patch manually.'
+        except Exception as e:
+            return False, f'JS check failed: {e}'
+    else:
+        return False, f'No syntax checker for {suffix} files (supported: .py, .js)'
 
 
 def _skill_fs_write(args, agent, **_):
@@ -974,6 +1133,7 @@ _HANDLERS = {
     'fs_write':            _skill_fs_write,
     'fs_patch':            _skill_fs_patch,
     'fs_patch_lines':      _skill_fs_patch_lines,
+    'fs_verify':           _skill_fs_verify,
     'knowledge_search': _skill_knowledge_search,
     'ui_css_edit_checklist': _skill_ui_css_edit_checklist,
 }
@@ -1006,8 +1166,20 @@ def call(skill_name, args='', agent='ghost', source_conv_id=None):
         logger.error(f'[Skills] {skill_name} error: {e}')
 
     _log(skill_name, agent, args, output, success)
+
     if success and skill_name in _PROPOSAL_SKILLS:
-        _log_as_internal_proposal(skill_name, agent, args, output)
+        # Tracer: capture git diff for file-changing skills
+        diff = ''
+        _PATCH_SKILLS = {'fs_patch', 'fs_patch_lines', 'fs_write', 'file_write'}
+        if skill_name in _PATCH_SKILLS:
+            rel = _extract_changed_path(skill_name, args)
+            if rel:
+                diff = _capture_file_diff(rel)
+                if diff:
+                    # Also attach diff to the agent's active in_progress proposal
+                    _attach_diff_to_active_proposal(agent, rel, diff)
+        _log_as_internal_proposal(skill_name, agent, args, output, diff=diff)
+
     print(f'[Skills] {"✓" if success else "✗"} {agent} → {skill_name} | {output[:60]}')
     return success, output
 
