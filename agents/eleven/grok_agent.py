@@ -98,6 +98,7 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
             call_fn=_api_call,
             messages=messages,
             emit_fn=_emit,
+            max_passes=10,            # multi-file exploration needs more passes than default 5
             nudge_if_no_skills=True,  # Grok defaults to prose — nudge it to emit SKILL commands
             source_conv_id=conv_id,
         )
