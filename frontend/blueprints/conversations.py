@@ -179,4 +179,16 @@ def api_conversation_delete(conv_id):
     return jsonify({'ok': True, 'deleted': conv_id})
 
 
+@conversations_bp.route('/api/conversations/<int:conv_id>/timeline')
+def api_conversation_timeline(conv_id):
+    """Return the agent action timeline for a conversation."""
+    try:
+        from database import timeline_get
+        limit = min(int(request.args.get('limit', 200)), 500)
+        rows = timeline_get(conv_id, limit=limit)
+        return jsonify({'conv_id': conv_id, 'events': rows})
+    except Exception as e:
+        return jsonify({'conv_id': conv_id, 'events': [], 'error': str(e)})
+
+
 
