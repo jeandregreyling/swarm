@@ -200,9 +200,9 @@ import re as _re
 # Patterns that indicate an agent is trying to route to another agent
 _RELAY_ROUTE_PATTERNS = _re.compile(
     r'(?:'
-    r'(?:route|send|forward|hand(?:\s*off)?|pass|relay|escalate|ask|check\s+with|consult)\s+(?:this\s+)?(?:to\s+)?(?:agent\s+)?(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker)\b'
-    r'|(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker):\s+can\s+you'
-    r'|→\s*(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker)\b'
+    r'(?:route|send|forward|hand(?:\s*off)?|pass|relay|escalate|ask|check\s+with|consult)\s+(?:this\s+)?(?:to\s+)?(?:agent\s+)?(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local)\b'
+    r'|(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local):\s+can\s+you'
+    r'|→\s*(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local)\b'
     r'|(?:\d+\s*[·•]\s*)?(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)\s+to\s+(?:\d+\s*[·•]\s*)?(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)'
     r')',
     _re.IGNORECASE
@@ -211,10 +211,10 @@ _RELAY_ROUTE_PATTERNS = _re.compile(
 # Lines that are purely routing/handoff instructions with no content value
 _RELAY_LINE_PATTERNS = _re.compile(
     r'^\s*(?:'
-    r'(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker):\s+can\s+you\b.*'
+    r'(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local):\s+can\s+you\b.*'
     r'|(?:\d+\s*[·•]\s*)?(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)\s+to\s+\S.*'
     r'|route\s+to\s+\S.*'
-    r'|→\s*(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker)\b.*'
+    r'|→\s*(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local)\b.*'
     r'|\d+\s*[·•]\s*(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude|github|groq).*?:\s+.*'
     r')\s*$',
     _re.IGNORECASE
@@ -896,53 +896,125 @@ def api_chat():
                 _persist_local_agent_memory(selected_agent, message, response_text)
             elif selected_agent == 'mistral':
                 _stage('dispatching to local ollama · mistral', est_eta)
-                from agents.mistral import mistral_agent
-                future = executor.submit(mistral_agent.chat, effective_prompt, history, stage_cb)
-                answer, tokens = future.result(timeout=2000)
-                response_text = answer or '[mistral] No response — check server logs.'
-                tokens_used = tokens or 0
+                try:
+                    from agents.mistral import mistral_agent
+                except Exception as _imp_err:
+                    response_text = f'[mistral] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(mistral_agent.chat, effective_prompt, history, stage_cb)
+                    answer, tokens = future.result(timeout=2000)
+                    response_text = answer or '[mistral] No response — check server logs.'
+                    tokens_used = tokens or 0
             elif selected_agent == 'nine':
                 _stage('dispatching to Groq', est_eta)
-                from agents.nine import nine_agent
-                future = executor.submit(nine_agent.chat, effective_prompt, history, stage_cb, conv_id)
-                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
-                response_text = answer or '[nine unavailable]'
-                tokens_used = tokens or 0
+                try:
+                    from agents.nine import nine_agent
+                except Exception as _imp_err:
+                    response_text = f'[nine] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(nine_agent.chat, effective_prompt, history, stage_cb, conv_id)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    response_text = answer or '[nine unavailable]'
+                    tokens_used = tokens or 0
             elif selected_agent == 'ten':
                 _stage('dispatching to ghost datacenter', est_eta)
-                from agents.ten import copilot_agent
-                future = executor.submit(copilot_agent.chat, effective_prompt, history, stage_cb, conv_id)
-                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
-                response_text = answer or '[ten] No response — check server logs.'
-                tokens_used = tokens or 0
+                try:
+                    from agents.ten import copilot_agent
+                except Exception as _imp_err:
+                    response_text = f'[ten] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(copilot_agent.chat, effective_prompt, history, stage_cb, conv_id)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    response_text = answer or '[ten] No response — check server logs.'
+                    tokens_used = tokens or 0
             elif selected_agent == 'eleven':
                 _stage('dispatching to ghost datacenter', est_eta)
-                from agents.eleven import grok_agent
-                future = executor.submit(grok_agent.chat, effective_prompt, history, stage_cb, conv_id)
-                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
-                response_text = answer or '[eleven unavailable]'
-                tokens_used = tokens or 0
+                try:
+                    from agents.eleven import grok_agent
+                except Exception as _imp_err:
+                    response_text = f'[eleven] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(grok_agent.chat, effective_prompt, history, stage_cb, conv_id)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    response_text = answer or '[eleven unavailable]'
+                    tokens_used = tokens or 0
             elif selected_agent == 'twelve':
                 _stage('dispatching to ghost datacenter', est_eta)
-                from agents.twelve import twelve_agent
-                future = executor.submit(twelve_agent.chat, effective_prompt, history, stage_cb, conv_id)
-                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
-                response_text = answer or '[twelve unavailable]'
-                tokens_used = tokens or 0
+                try:
+                    from agents.twelve import twelve_agent
+                except Exception as _imp_err:
+                    response_text = f'[twelve] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(twelve_agent.chat, effective_prompt, history, stage_cb, conv_id)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    response_text = answer or '[twelve unavailable]'
+                    tokens_used = tokens or 0
             elif selected_agent == 'scholar':
                 _stage('dispatching to ghost datacenter', est_eta)
-                from agents.scholar import scholar_agent
-                future = executor.submit(scholar_agent.chat, effective_prompt, history, stage_cb)
-                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
-                response_text = answer or '[scholar unavailable]'
-                tokens_used = tokens or 0
+                try:
+                    from agents.scholar import scholar_agent
+                except Exception as _imp_err:
+                    response_text = f'[scholar] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(scholar_agent.chat, effective_prompt, history, stage_cb)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    response_text = answer or '[scholar unavailable]'
+                    tokens_used = tokens or 0
             elif selected_agent == 'seeker':
                 _stage('dispatching to ghost datacenter', est_eta)
-                from agents.seeker import seeker_agent
-                future = executor.submit(seeker_agent.chat, effective_prompt, history, stage_cb)
-                answer, tokens = future.result(timeout=240 if persistent_mode else 20)
-                response_text = answer or '[seeker unavailable]'
-                tokens_used = tokens or 0
+                try:
+                    from agents.seeker import seeker_agent
+                except Exception as _imp_err:
+                    response_text = f'[seeker] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(seeker_agent.chat, effective_prompt, history, stage_cb)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    response_text = answer or '[seeker unavailable]'
+                    tokens_used = tokens or 0
+            elif selected_agent in ('llama', 'llama3'):
+                _stage('dispatching to llama3.2 (local)', est_eta)
+                try:
+                    from agents.llama import llama_agent
+                except Exception as _imp_err:
+                    response_text = f'[llama] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(llama_agent.chat, effective_prompt, history, stage_cb)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 90)
+                    response_text = answer or '[llama unavailable]'
+                    tokens_used = tokens or 0
+            elif selected_agent == 'phi3':
+                _stage('dispatching to phi3:mini (local)', est_eta)
+                try:
+                    from agents.phi3 import phi3_agent
+                except Exception as _imp_err:
+                    response_text = f'[phi3] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(phi3_agent.chat, effective_prompt, history, stage_cb)
+                    answer, tokens = future.result(timeout=120 if persistent_mode else 60)
+                    response_text = answer or '[phi3 unavailable]'
+                    tokens_used = tokens or 0
+            elif selected_agent in ('deepseek_local', 'deepseek-local'):
+                _stage('dispatching to deepseek-r1:7b (local)', est_eta)
+                try:
+                    from agents.deepseek_local import deepseek_local_agent
+                except Exception as _imp_err:
+                    response_text = f'[deepseek-local] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(deepseek_local_agent.chat, effective_prompt, history, stage_cb)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 120)
+                    response_text = answer or '[deepseek-local unavailable]'
+                    tokens_used = tokens or 0
+            elif selected_agent == 'lmstudio':
+                _stage('dispatching to LM Studio (local)', est_eta)
+                try:
+                    from agents.lmstudio import lmstudio_agent
+                except Exception as _imp_err:
+                    response_text = f'[lmstudio] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(lmstudio_agent.chat, effective_prompt, history, stage_cb)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 120)
+                    response_text = answer or '[lmstudio unavailable — is LM Studio running?]'
+                    tokens_used = tokens or 0
             else:
                 # Dynamic dispatch — any agent with agents/<name>/<name>_agent.py auto-routes here
                 import importlib

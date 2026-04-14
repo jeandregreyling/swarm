@@ -104,6 +104,23 @@ def _normalize_proposal_id(raw_id):
         raw_id = raw_id.replace("INTERNAL-ELEVEN-", "").replace("INTERNAL-", "")
     return str(raw_id).strip()
 
+
+def _find_proposal(conn, proposal_id, fields='*'):
+    """Lookup a proposal by ID, trying the original value first before normalizing.
+
+    _normalize_proposal_id over-strips INTERNAL-MISTRAL-NNN → MISTRAL-NNN which
+    doesn't exist in the DB.  This helper tries the most-specific form first so
+    IDs like INTERNAL-MISTRAL-0655 are found correctly.
+    """
+    norm = _normalize_proposal_id(proposal_id)
+    for cid in dict.fromkeys([proposal_id, norm, f'INTERNAL-{norm}', f'INTERNAL-ELEVEN-{norm}']):
+        row = conn.execute(
+            f'SELECT {fields} FROM work_proposals WHERE proposal_id=?', (cid,)
+        ).fetchone()
+        if row:
+            return row, cid
+    return None, None
+
 proposals_bp = Blueprint('proposals', __name__)
 
 @proposals_bp.route("/api/work-proposals", methods=["GET"])
@@ -430,12 +447,8 @@ def agent_advance(proposal_id):
 def proposal_diff(proposal_id):
     """Return git diff and test results for Studio review."""
     try:
-        norm_id = _normalize_proposal_id(proposal_id)
         conn = get_connection()
-        row = conn.execute(
-            "SELECT git_branch, git_commit, test_results FROM work_proposals WHERE proposal_id=?",
-            (norm_id,)
-        ).fetchone()
+        row, norm_id = _find_proposal(conn, proposal_id, 'git_branch, git_commit, test_results')
         conn.close()
 
         if not row:
@@ -477,16 +490,12 @@ def approve_to_uat(proposal_id):
     UAT now has the changes for Ghost to manually test on port 5053.
     """
     try:
-        norm_id = _normalize_proposal_id(proposal_id)
         data = request.get_json(silent=True) or {}
         actor = data.get("actor", "ghost")
         worktrees_up = _worktrees_ready()
 
         conn = get_connection()
-        row = conn.execute(
-            "SELECT git_branch, git_commit, title FROM work_proposals WHERE proposal_id=?",
-            (norm_id,)
-        ).fetchone()
+        row, norm_id = _find_proposal(conn, proposal_id, 'git_branch, git_commit, title')
         conn.close()
 
         if not row:
@@ -555,16 +564,12 @@ def promote_to_prod(proposal_id):
     This is the FINAL step — changes go live on port 5050.
     """
     try:
-        norm_id = _normalize_proposal_id(proposal_id)
         data = request.get_json(silent=True) or {}
         actor = data.get("actor", "ghost")
         worktrees_up = _worktrees_ready()
 
         conn = get_connection()
-        row = conn.execute(
-            "SELECT git_branch, title FROM work_proposals WHERE proposal_id=?",
-            (norm_id,)
-        ).fetchone()
+        row, norm_id = _find_proposal(conn, proposal_id, 'git_branch, title')
         conn.close()
 
         if not row:
@@ -633,16 +638,12 @@ def promote_to_prod(proposal_id):
 def revert_proposal(proposal_id):
     """Ghost rejects: revert the DEV commit and discard the proposal branch."""
     try:
-        norm_id = _normalize_proposal_id(proposal_id)
         data = request.get_json(silent=True) or {}
         actor = data.get("actor", "ghost")
         worktrees_up = _worktrees_ready()
 
         conn = get_connection()
-        row = conn.execute(
-            "SELECT git_branch, git_commit FROM work_proposals WHERE proposal_id=?",
-            (norm_id,)
-        ).fetchone()
+        row, norm_id = _find_proposal(conn, proposal_id, 'git_branch, git_commit')
         conn.close()
 
         if not row:
