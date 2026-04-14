@@ -1247,7 +1247,8 @@ def api_chat():
             return _get_agent_labels().get(key, key.capitalize() or 'Agent')
 
         def _build_debate_prompt(selected_agent):
-            if len(runnable_agents) <= 1:
+            if len(runnable_agents) <= 1 or not parallel_mode:
+                # Single-agent or sequential: no debate context, no peer pressure
                 return threaded_prompt
 
             active_labels = [_agent_label(a) for a in runnable_agents]
@@ -1363,6 +1364,8 @@ def api_chat():
                             # Show the last known stage rather than the default 'loading local memory'
                             _pj['stage'] = _agent_stage_trace[-1]['text']
                 pending = True
+                if not parallel_mode:
+                    _sequential_stalled = True  # stop dispatching further agents this turn
                 eta_seconds = _chat_eta_seconds(selected_agent)
                 response_text, tokens_used = (
                     f'[{selected_agent}] acknowledged. Running now. ETA ~{eta_seconds}s; monitor shows live stage.',

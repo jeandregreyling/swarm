@@ -73,6 +73,7 @@ const CHAT_RELAY_AUTO_KEY = 'fridays-chat-relay-auto-v1';
 const CHAT_RELAY_MAX_KEY = 'fridays-chat-relay-max-v1';
 const CHAT_RELAY_FORCE_FULL_KEY = 'fridays-chat-relay-force-full-v1';
 const CHAT_RELAY_RULES_KEY = 'fridays-chat-relay-rules-v1';
+const CHAT_PARALLEL_MODE_KEY = 'fridays-chat-parallel-mode-v1';
 const CHAT_ATTACH_MAX_FILES = 6;
 const CHAT_ATTACH_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const CHAT_ATTACH_MAX_TEXT_CHARS_PER_FILE = 8000;
@@ -117,6 +118,7 @@ window.__fridaysChatUiScale = Number(window.__fridaysChatUiScale || localStorage
 window.__fridaysChatRuntimeHidden = false;
 window.__fridaysChatRuntimePinned = true;
 window.__fridaysChatRelayAuto = window.__fridaysChatRelayAuto ?? (localStorage.getItem(CHAT_RELAY_AUTO_KEY) !== '0');
+window.__fridaysChatParallelMode = window.__fridaysChatParallelMode ?? (localStorage.getItem(CHAT_PARALLEL_MODE_KEY) === '1');
 window.__fridaysChatRelayInfinite = window.__fridaysChatRelayInfinite ?? (localStorage.getItem(CHAT_RELAY_MAX_KEY) === 'inf');
 window.__fridaysChatRelayMaxPerTurn = Number(window.__fridaysChatRelayMaxPerTurn || localStorage.getItem(CHAT_RELAY_MAX_KEY) || 4);
 window.__fridaysChatRelayForceFull = window.__fridaysChatRelayForceFull ?? (localStorage.getItem(CHAT_RELAY_FORCE_FULL_KEY) !== '0');
@@ -2130,6 +2132,24 @@ function onChatRelayAutoToggle() {
     el.checked = val;
   });
   _renderChatRelayControls();
+}
+
+function onChatParallelModeToggle() {
+  window.__fridaysChatParallelMode = !window.__fridaysChatParallelMode;
+  localStorage.setItem(CHAT_PARALLEL_MODE_KEY, window.__fridaysChatParallelMode ? '1' : '0');
+  _updateParallelModeBtn();
+}
+
+function _updateParallelModeBtn() {
+  const btn = document.getElementById('chat-parallel-mode-btn');
+  if (!btn) return;
+  const on = !!window.__fridaysChatParallelMode;
+  btn.textContent = on ? 'Parallel' : 'Sequential';
+  btn.title = on
+    ? 'Parallel: all selected agents run simultaneously — click to switch to sequential'
+    : 'Sequential: agents run one at a time — click to enable parallel';
+  btn.style.background = on ? 'var(--accent)' : 'var(--card)';
+  btn.style.color = on ? '#fff' : 'var(--text)';
 }
 
 function onChatRelayMaxChange() {
@@ -4847,6 +4867,7 @@ function initializeChatPanel() {
   initChatSpellHelper();
   _renderChatRelayControls();
   renderChatRelayTimeline();
+  _updateParallelModeBtn();
   updateComposerMeta();
   updateNotificationControls();
   updateChatStatusPills();
@@ -5042,6 +5063,7 @@ function sendMessage(source = 'user', relayMeta = null) {
       history_mode: contextCfg.historyMode,
       history_limit: contextCfg.historyMode === 'recent' ? contextCfg.historyLimit : undefined,
       auto_relay: !!window.__fridaysChatRelayAuto,
+      parallel_mode: !!window.__fridaysChatParallelMode,
       ...(source === 'relay' && relayMeta?.from ? { relay_from: String(relayMeta.from).toLowerCase() } : {}),
       ..._authPayload(),
     })

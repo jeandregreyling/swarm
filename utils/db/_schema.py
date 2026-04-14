@@ -887,6 +887,12 @@ def _seed_agents():
         "ALTER TABLE work_proposals ADD COLUMN duck_verdict TEXT DEFAULT ''",
         # duck_note: Duck's review comment
         "ALTER TABLE work_proposals ADD COLUMN duck_note TEXT DEFAULT ''",
+        # git_branch: proposal/<id> branch created at alm_self_approve
+        "ALTER TABLE work_proposals ADD COLUMN git_branch TEXT DEFAULT ''",
+        # git_commit: commit hash recorded at alm_complete for Ghost diff review
+        "ALTER TABLE work_proposals ADD COLUMN git_commit TEXT DEFAULT ''",
+        # test_results: output of DEV health check + syntax checks run at alm_complete
+        "ALTER TABLE work_proposals ADD COLUMN test_results TEXT DEFAULT ''",
     ]:
         try:
             conn.execute(col_ddl)
