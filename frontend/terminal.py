@@ -67,9 +67,10 @@ def create_app():
     app = Flask(__name__)
 
     # Inject ENV_STAGE into all templates for environment banner
-      @app.context_processor
-      def inject_env_stage():
-          stage = os.environ.get('STAGE', os.environ.get('SWARM_ENV', 'PROD' if PORT == 5050 else 'unknown').upper())
+    @app.context_processor
+    def inject_env_stage():
+        stage = os.environ.get('STAGE', os.environ.get('SWARM_ENV', 'PROD' if PORT == 5050 else 'unknown')).upper()
+        return dict(ENV_STAGE=stage)
 
     # Ensure schema/migrations are present before serving APIs.
     try:

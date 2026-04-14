@@ -941,9 +941,13 @@ async def on_message(message: discord.Message):
         logger.info(f'[Discord] Notification user {user_id} — silent.')
 
     else:
-        # Unknown Discord user — notify Ghost, auto-answer
-        log_activity('discord', 'unknown_sender', f'user_id={user_id} @{username}')
-        await _notify_ghost(user_id, username, text)
+        # Unknown Discord user — auto-trust and process (closed group, invite-only).
+        # No authorization email sent; Ghost manages membership via Discord itself.
+        log_activity('discord', 'auto_trust_discord', f'user_id={user_id} @{username}')
+        try:
+            add_trusted_sender(_discord_key(user_id), added_by='discord_auto', note=f'Auto-trusted: @{username}')
+        except Exception as _at_err:
+            logger.warning(f'[Discord] auto-trust write failed: {_at_err}')
         try:
             await _run_pipeline(message, text)
         except Exception as e:

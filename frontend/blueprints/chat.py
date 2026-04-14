@@ -156,6 +156,20 @@ def _resolve_chat_reply_target(selected_agent, response_text, reply_context):
     return fallback or 'user'
 
 
+def _gate_relay_target(target, allowed_agents):
+    """Restrict relay targets to agents that were explicitly selected for this conversation.
+
+    Agents are only allowed to relay to agents in allowed_agents (the initial
+    normalized_agents selection). Any out-of-scope target is redirected to 'user'
+    so the response surfaces to Ghost rather than spawning an unexpected chain.
+    """
+    if not target or target in ('user', 'ghost', 'fridays'):
+        return target or 'user'
+    if target in allowed_agents:
+        return target
+    return 'user'
+
+
 
 def _parse_chat_skill_command(text):
     raw = (text or '').strip()
@@ -514,6 +528,7 @@ def api_chat():
     force_new_thread = bool(data.get('new_thread'))
     relay_from = str(data.get('relay_from') or '').strip().lower() or None
     auto_relay = bool(data.get('auto_relay', True))
+    parallel_mode = bool(data.get('parallel_mode', False))
     history_mode = str(data.get('history_mode') or 'full').strip().lower()
     history_limit_raw = data.get('history_limit')
 
@@ -848,6 +863,23 @@ def api_chat():
             except Exception:
                 pass
 
+        # ── Resource gate — one Ollama model at a time, Eight exclusive ──────────
+        _LOCAL_OLLAMA_AGENTS = {'gemma', 'llama', 'qwen', 'eight', 'mistral'}
+        if selected_agent in _LOCAL_OLLAMA_AGENTS:
+            try:
+                from utils.resource_gate import acquire, release as rg_release
+                _stage(f'waiting for model slot · {selected_agent}', est_eta)
+                _rg_ok, _rg_reason = acquire(selected_agent, wait=True)
+                if not _rg_ok:
+                    raise RuntimeError(_rg_reason)
+                _rg_acquired = True
+            except ImportError:
+                _rg_acquired = False
+                rg_release = None
+        else:
+            _rg_acquired = False
+            rg_release = None
+
         try:
             if selected_agent in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
                 _model_name = orchestrator.AGENTS.get(selected_agent, selected_agent)
@@ -866,7 +898,7 @@ def api_chat():
                 _stage('dispatching to local ollama · mistral', est_eta)
                 from agents.mistral import mistral_agent
                 future = executor.submit(mistral_agent.chat, effective_prompt, history, stage_cb)
-                answer, tokens = future.result(timeout=2000 if persistent_mode else 120)
+                answer, tokens = future.result(timeout=2000)
                 response_text = answer or '[mistral] No response — check server logs.'
                 tokens_used = tokens or 0
             elif selected_agent == 'nine':
@@ -939,6 +971,13 @@ def api_chat():
                     f'[{selected_agent}] is taking longer than expected. '
                     'Try again in a moment or switch to another agent.'
                 )
+        finally:
+            # Always release the resource gate slot, even on error or timeout
+            if _rg_acquired and rg_release:
+                try:
+                    rg_release(selected_agent)
+                except Exception:
+                    pass
         if response_text is None:
             response_text = f'[{selected_agent}] no response'
 
@@ -1128,7 +1167,10 @@ def api_chat():
                         cancelled = bool(existing and existing.get('status') == 'cancelled')
                     if cancelled:
                         return
-                    response_target = _resolve_chat_reply_target(selected_agent, response_text, reply_context)
+                    response_target = _gate_relay_target(
+                        _resolve_chat_reply_target(selected_agent, response_text, reply_context),
+                        set(normalized_agents),
+                    )
                     log_message(
                         conv_id,
                         selected_agent,
@@ -1165,7 +1207,10 @@ def api_chat():
                         return
                     fail_msg = f'[{selected_agent}] background run failed: {err_text}'
                     try:
-                        response_target = _resolve_chat_reply_target(selected_agent, fail_msg, reply_context)
+                        response_target = _gate_relay_target(
+                            _resolve_chat_reply_target(selected_agent, fail_msg, reply_context),
+                            set(normalized_agents),
+                        )
                         log_message(
                             conv_id,
                             selected_agent,
@@ -1230,7 +1275,30 @@ def api_chat():
                 + turn_lines
             )
 
+        # In sequential mode, once any agent goes pending we stop dispatching
+        # further agents so they don't pile in simultaneously.
+        _sequential_stalled = False
+
         for selected_agent in runnable_agents:
+            if _sequential_stalled:
+                # Mark remaining agents as queued — not dispatched this turn.
+                responses_map[selected_agent] = {
+                    'agent': selected_agent,
+                    'response': (
+                        f'[{selected_agent}] queued — waiting for previous agent to complete '
+                        '(sequential mode). Re-send your message to continue.'
+                    ),
+                    'tokens': 0,
+                    'elapsed_ms': 0,
+                    'runtime_class': _chat_runtime_class(selected_agent),
+                    'eta_seconds': _chat_eta_seconds(selected_agent),
+                    'pending': False,
+                    'sequential_queued': True,
+                    'job_id': None,
+                }
+                debate_turn.append({'agent': selected_agent, 'response': ''})
+                continue
+
             selected_agent_key = str(selected_agent or '').strip().lower()
             if selected_agent_key in _CHAT_SINGLE_TASK_LOCAL_AGENTS:
                 with _CHAT_JOB_LOCK:
@@ -1346,9 +1414,12 @@ def api_chat():
         responses = [responses_map[a] for a in normalized_agents if a in responses_map]
         total_tokens = sum(int(r.get('tokens') or 0) for r in responses)
         for entry in responses:
-            if entry.get('pending'):
+            if entry.get('pending') or entry.get('sequential_queued'):
                 continue
-            response_target = _resolve_chat_reply_target(entry['agent'], entry['response'], reply_contexts[entry['agent']])
+            response_target = _gate_relay_target(
+                _resolve_chat_reply_target(entry['agent'], entry['response'], reply_contexts[entry['agent']]),
+                set(normalized_agents),
+            )
             log_message(
                 conv_id,
                 entry['agent'],

@@ -37,6 +37,17 @@ import logging
 
 logger = logging.getLogger('seven.skills_loop')
 
+
+def _tl(conv_id, agent, event_type, payload):
+    """Write a timeline event — silent on failure."""
+    if not conv_id:
+        return
+    try:
+        from database import timeline_append
+        timeline_append(conv_id, agent, event_type, payload)
+    except Exception:
+        pass
+
 _MAX_SKILL_CMDS_PER_PASS  = 6
 _MAX_SKILL_OUTPUT_CHARS   = 8000  # default; override via max_skill_chars arg
 _SKILL_NUDGE = (
@@ -169,11 +180,16 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
     for skill_name, skill_args in cmds:
         emit_fn(f'executing skill: {skill_name}')
 
+        # Log the skill invocation to the timeline
+        args_preview = str(skill_args or '')[:300]
+        _tl(source_conv_id, agent_name, 'skill_call', f'{skill_name} {args_preview}'.strip())
+
         # Optional per-agent permission check (non-fatal if missing)
         try:
             from database import can_user_invoke_skill
             if not can_user_invoke_skill(agent_name, skill_name, default_allow=True):
                 parts.append(f'[skill:{skill_name}] FAILED\nNot authorized for agent {agent_name}')
+                _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] FAILED — not authorized')
                 continue
         except Exception:
             pass
@@ -184,10 +200,15 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
             ok, out = skill_call(skill_name, args=skill_args, agent=agent_name, source_conv_id=_conv_id)
         except Exception as exc:
             parts.append(f'[skill:{skill_name}] ERROR\n{exc}')
+            _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] ERROR: {exc}')
             continue
 
         preview = str(out or '')[:char_limit]
-        parts.append(f"[skill:{skill_name}] {'OK' if ok else 'FAILED'}\n{preview}")
+        status = 'OK' if ok else 'FAILED'
+        parts.append(f"[skill:{skill_name}] {status}\n{preview}")
+        # Log first 800 chars of result to keep timeline readable
+        _tl(source_conv_id, agent_name, 'skill_result',
+            f'[{skill_name}] {status}\n{str(out or "")[:800]}')
 
     return '\n\n'.join(parts)
 
@@ -235,6 +256,12 @@ def run_skill_loop(
     working_messages = list(messages)
     total_tokens = 0
 
+    # Wrap emit_fn so every stage label is also written to the conversation timeline.
+    _raw_emit = emit_fn
+    def emit_fn(text):  # noqa: F811
+        _raw_emit(text)
+        _tl(source_conv_id, agent_name, 'stage', text)
+
     emit_fn('sending model request')
     try:
         first_content, tokens = call_fn(working_messages)
@@ -244,6 +271,9 @@ def run_skill_loop(
 
     total_tokens += tokens
     answer = first_content
+
+    # Log the first model response to the timeline
+    _tl(source_conv_id, agent_name, 'response', str(first_content or '')[:1200])
 
     # Diagnostic: log whether the first response contains SKILL commands
     has_skill = 'SKILL ' in str(first_content or '').upper()
@@ -377,4 +407,5 @@ def run_skill_loop(
             break
         total_tokens += tokens
 
+    _tl(source_conv_id, agent_name, 'final', str(answer or '')[:1200])
     return answer, total_tokens

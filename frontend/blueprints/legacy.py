@@ -93,7 +93,7 @@ def stream(ticket_number):
             return
         while True:
             try:
-                event = q.get(timeout=900)
+                event = q.get(timeout=2000)
             except queue.Empty:
                 yield f"data: {json.dumps({'type': 'error', 'text': 'timeout'})}\n\n"
                 break
