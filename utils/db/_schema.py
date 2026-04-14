@@ -491,6 +491,24 @@ CREATE TABLE IF NOT EXISTS agent_skills (
 );
 
 -- Future: profiles and profile_skills tables for grouping skills
+
+CREATE TABLE IF NOT EXISTS conv_timeline (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    conv_id     INTEGER NOT NULL,
+    agent       TEXT NOT NULL DEFAULT '',
+    event_type  TEXT NOT NULL,
+    -- event_type values:
+    --   stage       — emit_fn stage label (e.g. "running requested skills")
+    --   skill_call  — SKILL command sent (name + args preview)
+    --   skill_result— SKILL output (ok/fail + preview)
+    --   response    — intermediate LLM text with SKILL commands (reasoning visible)
+    --   final       — final answer text
+    --   proposal    — proposal state change (pending→approved→in_progress→done)
+    --   health      — health_check result at alm_complete time
+    payload     TEXT NOT NULL DEFAULT '',
+    created_at  TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_conv_timeline_conv ON conv_timeline (conv_id, id);
 """
 
 
