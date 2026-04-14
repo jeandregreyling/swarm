@@ -10,6 +10,8 @@ python3 terminal.py
 
 import sys
 import os
+import importlib
+import traceback
 from pathlib import Path
 from socketserver import ThreadingMixIn
 from wsgiref.simple_server import WSGIServer, make_server
@@ -33,34 +35,59 @@ from services import (
     SWARM_ROOT, time_wizard, orchestrator,
 )
 
-# ── Blueprint imports ────────────────────────────────────────────────────────
-from vs_tools import vs_bp
-from blueprints.agent_api import agent_api_bp
-from blueprints.agents import agents_bp
-from blueprints.auth import auth_bp
-from blueprints.brief import brief_bp
-from blueprints.chat import chat_bp
-from blueprints.conversations import conversations_bp
-from blueprints.debates import debates_bp
-from blueprints.decisions import decisions_bp
-from blueprints.docs import docs_bp
-from blueprints.exec_bp import exec_bp
-from blueprints.git import git_bp
-from blueprints.kb import kb_bp
-from blueprints.killswitch import killswitch_bp
-from blueprints.legacy import legacy_bp
-from blueprints.memory import memory_bp
-from blueprints.nine import nine_bp
-from blueprints.ollama import ollama_bp
-from blueprints.email_bp import email_bp
-from blueprints.proposals import proposals_bp
-from blueprints.shell import shell_bp
-from blueprints.system import system_bp
-from blueprints.tickets import tickets_bp
-from blueprints.time_wizard_bp import time_wizard_bp
-from blueprints.workspace import workspace_bp
-from blueprints.library import library_bp
+# ── Safe blueprint loader ────────────────────────────────────────────────────
+# Each entry: (import_path, attribute_name)
+# If a blueprint fails to import, the server still starts — just without that
+# blueprint's routes. The failure is logged and exposed on GET /_health.
+_BLUEPRINT_REGISTRY = [
+    ('vs_tools',                  'vs_bp'),
+    ('blueprints.agent_api',      'agent_api_bp'),
+    ('blueprints.agents',         'agents_bp'),
+    ('blueprints.auth',           'auth_bp'),
+    ('blueprints.brief',          'brief_bp'),
+    ('blueprints.chat',           'chat_bp'),
+    ('blueprints.conversations',  'conversations_bp'),
+    ('blueprints.debates',        'debates_bp'),
+    ('blueprints.decisions',      'decisions_bp'),
+    ('blueprints.docs',           'docs_bp'),
+    ('blueprints.exec_bp',        'exec_bp'),
+    ('blueprints.git',            'git_bp'),
+    ('blueprints.kb',             'kb_bp'),
+    ('blueprints.killswitch',     'killswitch_bp'),
+    ('blueprints.legacy',         'legacy_bp'),
+    ('blueprints.memory',         'memory_bp'),
+    ('blueprints.nine',           'nine_bp'),
+    ('blueprints.ollama',         'ollama_bp'),
+    ('blueprints.email_bp',       'email_bp'),
+    ('blueprints.proposals',      'proposals_bp'),
+    ('blueprints.shell',          'shell_bp'),
+    ('blueprints.system',         'system_bp'),
+    ('blueprints.tickets',        'tickets_bp'),
+    ('blueprints.time_wizard_bp', 'time_wizard_bp'),
+    ('blueprints.workspace',      'workspace_bp'),
+    ('blueprints.library',        'library_bp'),
+    ('blueprints.localai',        'localai_bp'),
+]
 
+_loaded_blueprints   = []   # (attr_name, blueprint_object)
+_failed_blueprints   = []   # (attr_name, error_string)
+
+for _mod_path, _attr in _BLUEPRINT_REGISTRY:
+    try:
+        _mod = importlib.import_module(_mod_path)
+        _bp  = getattr(_mod, _attr)
+        _loaded_blueprints.append((_attr, _bp))
+    except Exception as _bp_err:
+        _short = f"{type(_bp_err).__name__}: {_bp_err}"
+        print(f"[Terminal] BLUEPRINT LOAD FAILED — {_attr} ({_mod_path}): {_short}")
+        traceback.print_exc()
+        _failed_blueprints.append((_attr, _short))
+
+if _failed_blueprints:
+    print(f"[Terminal] WARNING: {len(_failed_blueprints)} blueprint(s) failed — "
+          f"those routes are unavailable. See GET /_health for details.")
+else:
+    print(f"[Terminal] All {len(_loaded_blueprints)} blueprints loaded OK.")
 
 
 def create_app():
@@ -84,21 +111,28 @@ def create_app():
     except Exception as exc:
         print(f'[Terminal] chat job orphan cleanup warning: {exc}')
 
-    # Register blueprints
+    # ── Routes ────────────────────────────────────────────────────────────────
 
-
-    # Add root health/status route
     @app.route("/", methods=["GET"])
     def root_status():
         from flask import jsonify
-        return jsonify({"status": "ok", "message": "Fridays/Swarm API is running. See /api/proposals for proposals."})
+        return jsonify({"status": "ok", "message": "Fridays/Swarm API is running."})
 
+    @app.route("/_health", methods=["GET"])
+    def health_status():
+        from flask import jsonify
+        return jsonify({
+            "status": "ok" if not _failed_blueprints else "degraded",
+            "port": PORT,
+            "env": ENV.upper(),
+            "blueprints_loaded": [a for a, _ in _loaded_blueprints],
+            "blueprints_failed": {a: e for a, e in _failed_blueprints},
+        })
 
     # Fridays UI route (serves main HTML interface)
     @app.route("/ui", methods=["GET"])
     def fridays_ui():
         from flask import render_template
-        # theme_css is injected as empty for now; can be extended for dynamic theming
         return render_template("terminal_base.html", theme_css="")
 
     # Convenience redirects — deep-link views directly
@@ -109,37 +143,25 @@ def create_app():
     def ui_redirect():
         from flask import redirect
         return redirect("/ui")
-    app.register_blueprint(vs_bp)
-    app.register_blueprint(agent_api_bp)
-    app.register_blueprint(agents_bp)
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(brief_bp)
-    app.register_blueprint(chat_bp)
-    app.register_blueprint(conversations_bp)
-    app.register_blueprint(debates_bp)
-    app.register_blueprint(decisions_bp)
-    app.register_blueprint(docs_bp)
-    app.register_blueprint(exec_bp)
-    app.register_blueprint(git_bp)
-    app.register_blueprint(kb_bp)
-    app.register_blueprint(killswitch_bp)
-    app.register_blueprint(legacy_bp)
-    app.register_blueprint(memory_bp)
-    app.register_blueprint(nine_bp)
-    app.register_blueprint(ollama_bp)
-    app.register_blueprint(email_bp)
-    app.register_blueprint(proposals_bp)
-    app.register_blueprint(shell_bp)
-    app.register_blueprint(system_bp)
-    app.register_blueprint(tickets_bp)
-    app.register_blueprint(time_wizard_bp)
-    app.register_blueprint(workspace_bp)
-    app.register_blueprint(library_bp)
+
+    # ── Register blueprints (only those that loaded) ──────────────────────────
+    for _attr, _bp in _loaded_blueprints:
+        try:
+            app.register_blueprint(_bp)
+        except Exception as _reg_err:
+            print(f"[Terminal] Blueprint register failed — {_attr}: {_reg_err}")
 
     return app
 
 
 # ── Server startup ───────────────────────────────────────────────────────────
+class _ReuseAddrServer(ThreadingMixIn, WSGIServer):
+    """Threaded WSGI server that sets SO_REUSEADDR so restarts don't hit
+    'Address already in use' when the old process is in TIME_WAIT."""
+    allow_reuse_address = True
+    daemon_threads = True
+
+
 if __name__ == '__main__':
     # Bootstrap Time Wizard session
     try:
@@ -150,4 +172,12 @@ if __name__ == '__main__':
         print(f'[Time Wizard] Bootstrap warning: {e}')
 
     app = create_app()
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+
+    # Use our hardened server class instead of Flask's dev runner so that
+    # SO_REUSEADDR is set and concurrent requests are handled in threads.
+    with make_server('0.0.0.0', PORT, app, server_class=_ReuseAddrServer) as httpd:
+        print(f'[Swarm Terminal] Listening on port {PORT}')
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print('[Swarm Terminal] Shutting down.')
