@@ -793,16 +793,416 @@ trackable, testable, and reusable.
 
 ---
 
-## Future Phases (Context Only — Not Planned in Detail Yet)
+## Phase D — Multi-Node Hardening & Desktop Readiness
 
-**Phase D — Multi-Node & Desktop Readiness (after C)**
-Full node discovery and cross-node proposal sharing. Federated agent roster and
-skill registry. Desktop packaging (Tauri) with each major tile as self-contained
-module.
+Harden the multi-node foundation built in A.5, add cross-node event propagation,
+federated skill routing, config management, and desktop packaging preparation.
+The goal: any two machines running the swarm can discover, sync proposals, share
+skills, and propagate events — with a path to desktop packaging via Tauri.
 
-**Phase E — Polish & Scale (ongoing)**
-Security hardening, performance tuning, community installers, swarm-to-swarm
-federation at scale.
+**What exists today (inherited from A + B + C):**
+- Node discovery + heartbeat daemon (60s interval, REST-based)
+- 8 node API endpoints including 2 federation aggregators
+- Node auth framework (X-Node-ID / X-Node-API-Key headers)
+- SQLite-backed swarm_bus (local-only, designed for Redis/NATS swap)
+- 31 modular Flask blueprints (safe-failure model)
+- swarm_nodes table with registration, roles, capabilities
+
+**What Phase D adds:**
+- Cross-node proposal sync with source_node tracking
+- Federated skill registry with remote capability advertisement
+- Bus event propagation across nodes via REST relay
+- Node-level config management and environment templating
+- Desktop packaging preparation (Tauri config, launcher, static assets)
+
+---
+
+### D.1 — Cross-Node Proposal Sync (Week 16)
+
+- Add source_node tracking to proposals
+- Fix federation auth forwarding bug
+- Delta sync for proposal state changes
+
+**Detailed sub-tasks:**
+
+- [ ] **D.1.1 — Source Node Tracking**
+  - Add `source_node` TEXT column to work_proposals table (schema + migration)
+  - Default: local node_id. Set on create. Preserved on sync.
+  - Update `create_proposal()` in governance.py to set source_node
+
+- [ ] **D.1.2 — Fix Federation Auth Forwarding**
+  - Fix `_fetch_remote_json()` in node.py to forward X-Node-ID / X-Node-API-Key
+  - Use registered node credentials from swarm_nodes table
+  - Add timeout and retry logic (3s timeout, 1 retry)
+
+- [ ] **D.1.3 — Proposal Delta Sync**
+  - New endpoint: `POST /api/node/sync/proposals` — accepts batch of proposals
+  - Sync logic: if proposal_id exists locally, update if remote updated_at > local
+  - Conflict resolution: last-writer-wins with source_node preserved
+  - Bus event: `proposal.synced` on successful sync
+
+**Test Phase D.1:**
+- [ ] Unit: source_node set on create
+- [ ] Unit: federation auth headers forwarded
+- [ ] Unit: sync endpoint merges proposals correctly
+- [ ] Unit: conflict resolution uses last-writer-wins
+
+---
+
+### D.2 — Federated Skill Registry (Week 16–17)
+
+- Skills advertise their availability per-node
+- Remote skill routing for cross-node execution
+
+**Detailed sub-tasks:**
+
+- [ ] **D.2.1 — Skill Capability Table**
+  - New table: `node_skills` (node_id, skill_name, trust_level, available, last_seen)
+  - Populated from local REGISTRY on startup
+  - Refreshed on heartbeat response from remote nodes
+
+- [ ] **D.2.2 — Skill Advertisement Endpoint**
+  - `GET /api/node/skills` — returns this node's available skills
+  - Included in heartbeat response payload
+  - Heartbeat handler stores remote skills in node_skills table
+
+- [ ] **D.2.3 — Remote Skill Lookup**
+  - `find_skill_node(skill_name)` — checks local first, then node_skills
+  - Returns (node_id, url) or None
+  - Used by skills_loop when local skill unavailable
+
+**Test Phase D.2:**
+- [ ] Unit: node_skills populated on startup
+- [ ] Unit: skill advertisement endpoint returns correct data
+- [ ] Unit: remote skill lookup finds skills on other nodes
+- [ ] Unit: heartbeat updates remote skill table
+
+---
+
+### D.3 — Bus Event Propagation (Week 17)
+
+- Cross-node event relay via REST
+- Topic-based filtering for efficient propagation
+
+**Detailed sub-tasks:**
+
+- [ ] **D.3.1 — Event Relay Endpoint**
+  - `POST /api/node/events` — receives events from remote nodes
+  - Auth: @require_node_api_key
+  - Inserts into local swarm_bus with source_service=remote:{node_id}
+  - Dedup: skip if event already exists (by topic+payload hash+timestamp window)
+
+- [ ] **D.3.2 — Outbound Event Relay**
+  - `relay_events(topics)` function in node_discovery.py
+  - Called after heartbeat: POST unconsumed events to each reachable node
+  - Topic filter: only relay proposal.*, knowledge.new, tool.registered
+  - Mark relayed events with consumed_at to prevent re-relay
+
+- [ ] **D.3.3 — Relay Configuration**
+  - RELAY_TOPICS list (configurable via env var SWARM_RELAY_TOPICS)
+  - RELAY_BATCH_SIZE = 50 (max events per relay call)
+  - RELAY_MAX_AGE = 3600 (ignore events older than 1 hour)
+
+**Test Phase D.3:**
+- [ ] Unit: event relay endpoint inserts remote events
+- [ ] Unit: dedup prevents duplicate events
+- [ ] Unit: outbound relay sends to reachable nodes
+- [ ] Unit: topic filtering works correctly
+
+---
+
+### D.4 — Config & Environment Management (Week 17–18)
+
+- Node-level config overrides
+- Environment validation and templating
+
+**Detailed sub-tasks:**
+
+- [ ] **D.4.1 — Config Validation**
+  - New file: `utils/config_validator.py`
+  - `validate_config()` — checks required env vars, DB connectivity,
+    agent registry, API keys present
+  - Returns (ok, errors[]) for preflight checks
+  - Wired into startup sequence and `/_health` endpoint
+
+- [ ] **D.4.2 — Node Config Override**
+  - New table: `node_config` (key, value, node_id, updated_at)
+  - `get_config(key, default)` — checks node_config first, then env, then default
+  - `set_config(key, value)` — writes to node_config table
+  - Startup loads node_config overrides into process env
+
+- [ ] **D.4.3 — Environment Template**
+  - New file: `scripts/generate_env.py`
+  - Generates `.env.template` from required env vars
+  - Documents each var with description and default value
+  - Validates existing .env against template (missing/extra vars)
+
+**Test Phase D.4:**
+- [ ] Unit: config validation catches missing required vars
+- [ ] Unit: node config overrides env vars correctly
+- [ ] Unit: env template generation works
+
+---
+
+### D.5 — Desktop Packaging Prep (Week 18)
+
+- Tauri configuration scaffolding
+- Static asset bundling
+- Launcher script for desktop mode
+
+**Detailed sub-tasks:**
+
+- [ ] **D.5.1 — Tauri Config Scaffold**
+  - Create `desktop/` directory structure
+  - `desktop/tauri.conf.json` — window config, app name, CSP headers
+  - `desktop/src-tauri/Cargo.toml` — Rust scaffold
+  - `desktop/README.md` — build instructions
+
+- [ ] **D.5.2 — Desktop Launcher**
+  - New file: `scripts/desktop_launcher.py`
+  - Starts Flask backend on localhost:5050
+  - Opens default browser or Tauri window
+  - Handles graceful shutdown on window close
+  - Supports --headless flag for server-only mode
+
+- [ ] **D.5.3 — Static Asset Audit**
+  - Verify all frontend routes return valid HTML/JSON
+  - Ensure no hardcoded external URLs in frontend code
+  - Create `frontend/static/manifest.json` listing all served assets
+
+**Test Phase D.5:**
+- [ ] Unit: launcher starts Flask and binds port
+- [ ] Unit: Tauri config is valid JSON
+- [ ] Unit: manifest.json lists all assets
+
+---
+
+### D.6 — Testing & Stability (Week 18)
+
+- Full integration test suite for multi-node features
+- Regression across all A + B + C + D tests
+
+**Detailed sub-tasks:**
+
+- [ ] **D.6.1 — Multi-Node Integration Tests**
+  - Proposal sync: create → sync → verify on both sides
+  - Skill federation: advertise → lookup → find remote
+  - Event relay: publish → relay → receive on remote
+  - Config: validate → override → verify
+  - Federation auth: verify headers forwarded correctly
+
+- [ ] **D.6.2 — Full Regression**
+  - All A.x + B.x + C.x + D.x tests pass
+  - No regressions in governance, research, tools, or node flows
+
+**Test Phase D.6:**
+- [ ] Full suite: all tests green
+- [ ] Compile check: all new/modified files clean
+
+---
+
+## Phase E — Polish, Security & Final Analysis
+
+Security hardening, performance tuning, observability, documentation
+consolidation, and community readiness. Ends with a comprehensive
+project analysis report.
+
+**What Phase E delivers:**
+- Input validation audit and rate limiting
+- Concurrent heartbeat and DB query optimization
+- Structured logging and metrics endpoint
+- Consolidated API documentation and architecture diagram
+- Community installer and onboarding guide
+- Final project analysis with metrics, test coverage, and architecture review
+
+---
+
+### E.1 — Security Hardening (Week 19)
+
+- Systematic input validation across all API endpoints
+- Rate limiting for public endpoints
+- CORS and auth strengthening
+
+**Detailed sub-tasks:**
+
+- [ ] **E.1.1 — Input Validation Audit**
+  - Audit all POST/PUT endpoints for missing validation
+  - Add request body size limits (1MB default)
+  - Sanitize user inputs in proposal titles/descriptions
+  - Validate all ID parameters (integer bounds, string length)
+
+- [ ] **E.1.2 — Rate Limiting**
+  - New middleware: `utils/rate_limiter.py`
+  - Token bucket per IP, configurable via SWARM_RATE_LIMIT env var
+  - Default: 60 requests/minute for API, 10/minute for auth endpoints
+  - 429 response with Retry-After header
+
+- [ ] **E.1.3 — Auth & CORS Hardening**
+  - CORS: restrict to configured origins (default: localhost only)
+  - Node API: strengthen hash comparison (constant-time via hmac.compare_digest)
+  - Add X-Content-Type-Options, X-Frame-Options, X-XSS-Protection headers
+  - Audit for any SQL injection vectors (parameterized queries check)
+
+**Test Phase E.1:**
+- [ ] Unit: oversized request bodies rejected
+- [ ] Unit: rate limiter triggers at threshold
+- [ ] Unit: CORS headers set correctly
+- [ ] Unit: security headers present on all responses
+
+---
+
+### E.2 — Performance Tuning (Week 19–20)
+
+- Concurrent heartbeat pings
+- DB connection pooling
+- Query optimization for hot paths
+
+**Detailed sub-tasks:**
+
+- [ ] **E.2.1 — Concurrent Heartbeat**
+  - Replace sequential pings with ThreadPoolExecutor (max 5 workers)
+  - Add exponential backoff for failed nodes (2s, 4s, 8s, max 60s)
+  - Stale node cleanup: remove nodes not seen for 24 hours
+
+- [ ] **E.2.2 — DB Query Optimization**
+  - Add missing indexes on hot query paths
+  - Index: work_proposals(status, agent)
+  - Index: swarm_bus(consumed_at, topic)
+  - Index: research_sessions(status)
+  - EXPLAIN ANALYZE top 10 slowest queries
+
+- [ ] **E.2.3 — Response Caching**
+  - Cache federation/roster and federation/proposals (30s TTL)
+  - Cache landscape.json (5min TTL, invalidate on knowledge write)
+  - ETag support for GET endpoints
+
+**Test Phase E.2:**
+- [ ] Unit: concurrent heartbeat faster than sequential
+- [ ] Unit: new indexes exist after migration
+- [ ] Unit: cached responses return correct ETag
+
+---
+
+### E.3 — Observability (Week 20)
+
+- Structured logging format
+- Metrics endpoint for monitoring
+- Health dashboard data
+
+**Detailed sub-tasks:**
+
+- [ ] **E.3.1 — Structured Logging**
+  - New file: `utils/structured_logger.py`
+  - JSON log format: timestamp, level, service, message, metadata
+  - Correlation ID per request (X-Request-ID header)
+  - Log rotation: 10MB max, 5 backups
+
+- [ ] **E.3.2 — Metrics Endpoint**
+  - `GET /api/metrics` — returns counters and gauges
+  - Metrics: active_agents, proposals_by_status, bus_events_24h,
+    research_sessions_active, tool_builds_by_status, node_count
+  - Response time percentiles (p50, p95, p99) via middleware
+
+- [ ] **E.3.3 — Health Dashboard Data**
+  - Enhance `/_health` with detailed component status
+  - Check: DB writable, heartbeat running, bus consuming, agents responding
+  - Return degraded/healthy/unhealthy status per component
+
+**Test Phase E.3:**
+- [ ] Unit: structured logger outputs valid JSON
+- [ ] Unit: metrics endpoint returns expected keys
+- [ ] Unit: health check detects DB failure
+
+---
+
+### E.4 — Documentation Consolidation (Week 20–21)
+
+- Unified API reference
+- Architecture diagram
+- Deployment guide
+
+**Detailed sub-tasks:**
+
+- [ ] **E.4.1 — API Reference**
+  - Consolidate all docs/api/*.json into single reference
+  - New file: `docs/API_REFERENCE.md` — human-readable with examples
+  - Cover all 200+ routes grouped by domain
+
+- [ ] **E.4.2 — Architecture Diagram**
+  - Mermaid diagram in `docs/ARCHITECTURE_DIAGRAM.md`
+  - Shows: agents → skills → governance → bus → federation → nodes
+  - Layer diagram: frontend → blueprints → services → DB
+
+- [ ] **E.4.3 — Deployment Guide**
+  - New file: `docs/DEPLOYMENT_GUIDE.md`
+  - Single-node setup (systemd services, env vars, DB init)
+  - Multi-node setup (node registration, federation config)
+  - Desktop mode (Tauri build, launcher)
+
+**Test Phase E.4:**
+- [ ] All API contracts valid JSON
+- [ ] Mermaid diagram renders correctly
+- [ ] Deployment guide covers all systemd services
+
+---
+
+### E.5 — Community Readiness (Week 21)
+
+- Installer script
+- README overhaul
+- Example configurations
+
+**Detailed sub-tasks:**
+
+- [ ] **E.5.1 — Installer Script**
+  - New file: `scripts/install.sh`
+  - Checks Python 3.12+, creates venv, installs requirements
+  - Runs setup_node.py, generates .env template
+  - Creates systemd service files
+  - Validates installation with health check
+
+- [ ] **E.5.2 — README Overhaul**
+  - Rewrite `docs/README.md` for external audience
+  - Quick start guide (5 commands to running swarm)
+  - Feature overview with screenshots/diagrams
+  - Architecture overview (brief, links to full docs)
+  - Contributing guide
+
+- [ ] **E.5.3 — Example Configs**
+  - `examples/single-node.env` — minimal single-node config
+  - `examples/multi-node-primary.env` — primary node with federation
+  - `examples/multi-node-secondary.env` — secondary node joining swarm
+
+**Test Phase E.5:**
+- [ ] Installer runs without errors on clean system
+- [ ] README renders correctly (markdown lint)
+- [ ] Example configs pass validation
+
+---
+
+### E.6 — Final Testing & Project Analysis (Week 21)
+
+- Complete regression across all phases
+- Comprehensive project analysis report
+
+**Detailed sub-tasks:**
+
+- [ ] **E.6.1 — Final Regression**
+  - All A.x + B.x + C.x + D.x + E.x tests pass
+  - Performance: test suite completes in < 120 seconds
+  - Zero compile errors across all Python files
+
+- [ ] **E.6.2 — Project Analysis Report**
+  - New file: `docs/PROJECT_ANALYSIS.md`
+  - Metrics: test count, code line count, file count, endpoint count
+  - Architecture review: strengths, weaknesses, tech debt
+  - Phase-by-phase summary with deliverables
+  - Recommendations for future development
+  - Risk assessment and mitigation strategies
+
+**Test Phase E.6:**
+- [ ] All tests green
+- [ ] Project analysis complete and accurate
 
 ---
 

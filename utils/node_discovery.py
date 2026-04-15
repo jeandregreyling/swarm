@@ -1,13 +1,16 @@
 """
-utils/node_discovery.py — Node discovery + heartbeat daemon (A.5.1)
-═══════════════════════════════════════════════════════════════════
+utils/node_discovery.py — Node discovery + heartbeat + event relay (A.5.1, D.2, D.3)
+═══════════════════════════════════════════════════════════════════════════════════════
 - REST-based: pings each registered node's GET /api/node/info
 - Updates last_seen on success, marks stale after threshold
+- Fetches remote skills and updates node_skills table (D.2)
+- Relays unconsumed bus events to reachable nodes (D.3)
 - Runs as a daemon thread (started from terminal.py)
 """
 
 import json
 import logging
+import os
 import threading
 import time
 import urllib.request
@@ -21,6 +24,13 @@ logger = logging.getLogger(__name__)
 HEARTBEAT_INTERVAL = 60
 # Node considered stale if no response for this many seconds
 STALE_THRESHOLD = 300
+
+# D.3: Event relay configuration
+RELAY_TOPICS = os.environ.get('SWARM_RELAY_TOPICS',
+    'proposal.created,proposal.status_changed,knowledge.new,tool.registered'
+).split(',')
+RELAY_BATCH_SIZE = 50
+RELAY_MAX_AGE = 3600  # Ignore events older than 1 hour
 
 _heartbeat_thread = None
 _stop_event = threading.Event()
@@ -62,9 +72,23 @@ def run_heartbeat_once():
             touch_node(nid)
             results[nid] = True
             logger.debug(f'[Discovery] node {nid} ({node["name"]}) alive')
+            # D.2: Fetch and store remote skills
+            _sync_remote_skills(url, nid)
         else:
             results[nid] = False
             logger.info(f'[Discovery] node {nid} ({node["name"]}) unreachable')
+            # D.2: Mark skills stale for unreachable node
+            try:
+                from utils.db.node_skills import mark_stale
+                mark_stale(nid)
+            except Exception:
+                pass
+
+    # D.3: Relay events to all reachable nodes
+    reachable = [n for n in nodes if results.get(n['node_id']) and n['node_id'] != local_id]
+    if reachable:
+        _relay_events(reachable)
+
     return results
 
 
@@ -111,3 +135,94 @@ def discover_node(url, api_key, *, name=None):
         role='contributor', agents=agents,
     )
     return {'node_id': node_id, 'name': remote_name, 'agents': agents}
+
+
+# ── D.2: Remote Skill Sync ───────────────────────────────────────────────────
+
+def _sync_remote_skills(url, node_id):
+    """Fetch skills from a remote node and update local node_skills table."""
+    target = url.rstrip('/') + '/api/node/skills'
+    try:
+        req = urllib.request.Request(target, method='GET')
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+        skills = data.get('skills', [])
+        if skills:
+            from utils.db.node_skills import upsert_node_skills
+            upsert_node_skills(node_id, skills)
+            logger.debug(f'[Discovery] synced {len(skills)} skills from {node_id}')
+    except Exception as exc:
+        logger.debug(f'[Discovery] skill sync failed for {node_id}: {exc}')
+
+
+# ── D.3: Outbound Event Relay ────────────────────────────────────────────────
+
+def _relay_events(reachable_nodes):
+    """Relay unconsumed bus events to all reachable remote nodes."""
+    try:
+        from utils.db._connection import get_connection
+        from datetime import datetime, timedelta
+
+        conn = get_connection()
+        try:
+            # Get unconsumed events matching relay topics, within max age
+            cutoff = (datetime.now() - timedelta(seconds=RELAY_MAX_AGE)).strftime('%Y-%m-%d %H:%M:%S')
+            placeholders = ','.join('?' * len(RELAY_TOPICS))
+            rows = conn.execute(
+                f"SELECT id, topic, payload_json, source_service, created_at "
+                f"FROM swarm_bus "
+                f"WHERE consumed_at IS NULL AND topic IN ({placeholders}) "
+                f"AND created_at > ? AND source_service NOT LIKE 'remote:%' "
+                f"ORDER BY created_at ASC LIMIT ?",
+                (*RELAY_TOPICS, cutoff, RELAY_BATCH_SIZE)
+            ).fetchall()
+
+            if not rows:
+                return
+
+            events = []
+            event_ids = []
+            for r in rows:
+                events.append({
+                    'topic': r[1] if isinstance(r, tuple) else r['topic'],
+                    'payload': json.loads(r[2] if isinstance(r, tuple) else r['payload_json']),
+                    'created_at': r[4] if isinstance(r, tuple) else r['created_at'],
+                })
+                event_ids.append(r[0] if isinstance(r, tuple) else r['id'])
+
+            local_id = get_local_node_id()
+            payload = json.dumps({
+                'source_node': local_id,
+                'events': events,
+            }).encode('utf-8')
+
+            # POST to each reachable node
+            for node in reachable_nodes:
+                nurl = node.get('url', '')
+                if not nurl:
+                    continue
+                target = nurl.rstrip('/') + '/api/node/events'
+                try:
+                    req = urllib.request.Request(target, data=payload, method='POST')
+                    req.add_header('Content-Type', 'application/json')
+                    req.add_header('X-Node-ID', local_id)
+                    # Note: api_key not available in node dict from list_nodes
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        resp.read()
+                except Exception as exc:
+                    logger.debug(f'[Relay] event relay to {node["node_id"]} failed: {exc}')
+
+            # Mark relayed events as consumed
+            if event_ids:
+                id_placeholders = ','.join('?' * len(event_ids))
+                conn.execute(
+                    f"UPDATE swarm_bus SET consumed_at = datetime('now') "
+                    f"WHERE id IN ({id_placeholders})",
+                    event_ids
+                )
+                conn.commit()
+                logger.debug(f'[Relay] relayed {len(events)} events to {len(reachable_nodes)} nodes')
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.debug(f'[Relay] event relay failed: {exc}')
