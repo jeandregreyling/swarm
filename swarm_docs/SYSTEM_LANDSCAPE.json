@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 01:58",
+  "generated_at": "2026-04-16 02:28",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -35,6 +35,11 @@
       "path": "utils/config.py",
       "group": "Utils",
       "description": ""
+    },
+    {
+      "path": "utils/config_validator.py",
+      "group": "Utils",
+      "description": "utils/config_validator.py \u2014 Configuration validation & node config (D.4)"
     },
     {
       "path": "utils/convert_docs.py",
@@ -102,6 +107,11 @@
       "description": "db.memory \u2014 Shared memory, agent-specific memory, project docs."
     },
     {
+      "path": "utils/db/node_skills.py",
+      "group": "Utils",
+      "description": "utils.db.node_skills \u2014 Federated skill registry CRUD (D.2)"
+    },
+    {
       "path": "utils/db/nodes.py",
       "group": "Utils",
       "description": "utils/db/nodes.py \u2014 Node registration CRUD (A.4.5)"
@@ -149,7 +159,7 @@
     {
       "path": "utils/node_discovery.py",
       "group": "Utils",
-      "description": "utils/node_discovery.py \u2014 Node discovery + heartbeat daemon (A.5.1)"
+      "description": "utils/node_discovery.py \u2014 Node discovery + heartbeat + event relay (A.5.1, D.2, D.3)"
     },
     {
       "path": "utils/proposal_review.py",
@@ -1510,9 +1520,27 @@
           "methods": [
             "GET"
           ]
+        },
+        {
+          "path": "/api/node/sync/proposals",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/node/skills",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/node/events",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 8
+      "route_count": 11
     },
     {
       "name": "ollama",
@@ -2290,7 +2318,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 18100
+      "rows": 18164
     },
     {
       "name": "agent_capabilities",
@@ -2306,7 +2334,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 40
+      "rows": 43
     },
     {
       "name": "chat_jobs",
@@ -2318,11 +2346,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 6
+      "rows": 7
     },
     {
       "name": "conversations",
-      "rows": 4
+      "rows": 5
     },
     {
       "name": "daily_checkpoint",
@@ -2342,7 +2370,7 @@
     },
     {
       "name": "decisions",
-      "rows": 877
+      "rows": 897
     },
     {
       "name": "deferred_items",
@@ -2350,7 +2378,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 385
+      "rows": 387
     },
     {
       "name": "file_versions",
@@ -2366,7 +2394,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1886
+      "rows": 1888
     },
     {
       "name": "governance_log",
@@ -2438,11 +2466,19 @@
     },
     {
       "name": "messages",
-      "rows": 8
+      "rows": 10
     },
     {
       "name": "moderators",
       "rows": 2
+    },
+    {
+      "name": "node_config",
+      "rows": 0
+    },
+    {
+      "name": "node_skills",
+      "rows": 0
     },
     {
       "name": "notification_senders",
@@ -2466,7 +2502,7 @@
     },
     {
       "name": "queue",
-      "rows": 673
+      "rows": 677
     },
     {
       "name": "research_evidence",
@@ -2534,7 +2570,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5652
+      "rows": 5658
     },
     {
       "name": "terminal_shortcuts",
@@ -2542,27 +2578,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 139
+      "rows": 141
     },
     {
       "name": "tickets",
-      "rows": 147
+      "rows": 149
     },
     {
       "name": "time_checkpoints",
-      "rows": 808
+      "rows": 824
     },
     {
       "name": "time_events",
-      "rows": 47371
+      "rows": 47507
     },
     {
       "name": "time_journal",
-      "rows": 45393
+      "rows": 45513
     },
     {
       "name": "time_machine",
-      "rows": 4334
+      "rows": 4350
     },
     {
       "name": "tool_builds",

@@ -411,7 +411,7 @@ A.1 (proposal governance + ALM gate).
 
 **Test Phase B.1:**
 - [ ] Unit: create session, add evidence, retrieve by session
-- [ ] Unit: evidence deduplication rejects same source+snippet
+- [x] Unit: evidence deduplication rejects same source+snippet
 - [ ] Compile check: all new files pass `py_compile`
 
 ---
@@ -825,27 +825,27 @@ skills, and propagate events — with a path to desktop packaging via Tauri.
 
 **Detailed sub-tasks:**
 
-- [ ] **D.1.1 — Source Node Tracking**
+- [x] **D.1.1 — Source Node Tracking**
   - Add `source_node` TEXT column to work_proposals table (schema + migration)
   - Default: local node_id. Set on create. Preserved on sync.
   - Update `create_proposal()` in governance.py to set source_node
 
-- [ ] **D.1.2 — Fix Federation Auth Forwarding**
+- [x] **D.1.2 — Fix Federation Auth Forwarding**
   - Fix `_fetch_remote_json()` in node.py to forward X-Node-ID / X-Node-API-Key
   - Use registered node credentials from swarm_nodes table
   - Add timeout and retry logic (3s timeout, 1 retry)
 
-- [ ] **D.1.3 — Proposal Delta Sync**
+- [x] **D.1.3 — Proposal Delta Sync**
   - New endpoint: `POST /api/node/sync/proposals` — accepts batch of proposals
   - Sync logic: if proposal_id exists locally, update if remote updated_at > local
   - Conflict resolution: last-writer-wins with source_node preserved
   - Bus event: `proposal.synced` on successful sync
 
 **Test Phase D.1:**
-- [ ] Unit: source_node set on create
-- [ ] Unit: federation auth headers forwarded
-- [ ] Unit: sync endpoint merges proposals correctly
-- [ ] Unit: conflict resolution uses last-writer-wins
+- [x] Unit: source_node set on create
+- [x] Unit: federation auth headers forwarded
+- [x] Unit: sync endpoint merges proposals correctly
+- [x] Unit: conflict resolution uses last-writer-wins
 
 ---
 
@@ -856,26 +856,26 @@ skills, and propagate events — with a path to desktop packaging via Tauri.
 
 **Detailed sub-tasks:**
 
-- [ ] **D.2.1 — Skill Capability Table**
+- [x] **D.2.1 — Skill Capability Table**
   - New table: `node_skills` (node_id, skill_name, trust_level, available, last_seen)
   - Populated from local REGISTRY on startup
   - Refreshed on heartbeat response from remote nodes
 
-- [ ] **D.2.2 — Skill Advertisement Endpoint**
+- [x] **D.2.2 — Skill Advertisement Endpoint**
   - `GET /api/node/skills` — returns this node's available skills
   - Included in heartbeat response payload
   - Heartbeat handler stores remote skills in node_skills table
 
-- [ ] **D.2.3 — Remote Skill Lookup**
+- [x] **D.2.3 — Remote Skill Lookup**
   - `find_skill_node(skill_name)` — checks local first, then node_skills
   - Returns (node_id, url) or None
   - Used by skills_loop when local skill unavailable
 
 **Test Phase D.2:**
-- [ ] Unit: node_skills populated on startup
-- [ ] Unit: skill advertisement endpoint returns correct data
-- [ ] Unit: remote skill lookup finds skills on other nodes
-- [ ] Unit: heartbeat updates remote skill table
+- [x] Unit: node_skills populated on startup
+- [x] Unit: skill advertisement endpoint returns correct data
+- [x] Unit: remote skill lookup finds skills on other nodes
+- [x] Unit: heartbeat updates remote skill table
 
 ---
 
@@ -886,28 +886,28 @@ skills, and propagate events — with a path to desktop packaging via Tauri.
 
 **Detailed sub-tasks:**
 
-- [ ] **D.3.1 — Event Relay Endpoint**
+- [x] **D.3.1 — Event Relay Endpoint**
   - `POST /api/node/events` — receives events from remote nodes
   - Auth: @require_node_api_key
   - Inserts into local swarm_bus with source_service=remote:{node_id}
   - Dedup: skip if event already exists (by topic+payload hash+timestamp window)
 
-- [ ] **D.3.2 — Outbound Event Relay**
+- [x] **D.3.2 — Outbound Event Relay**
   - `relay_events(topics)` function in node_discovery.py
   - Called after heartbeat: POST unconsumed events to each reachable node
   - Topic filter: only relay proposal.*, knowledge.new, tool.registered
   - Mark relayed events with consumed_at to prevent re-relay
 
-- [ ] **D.3.3 — Relay Configuration**
+- [x] **D.3.3 — Relay Configuration**
   - RELAY_TOPICS list (configurable via env var SWARM_RELAY_TOPICS)
   - RELAY_BATCH_SIZE = 50 (max events per relay call)
   - RELAY_MAX_AGE = 3600 (ignore events older than 1 hour)
 
 **Test Phase D.3:**
-- [ ] Unit: event relay endpoint inserts remote events
-- [ ] Unit: dedup prevents duplicate events
-- [ ] Unit: outbound relay sends to reachable nodes
-- [ ] Unit: topic filtering works correctly
+- [x] Unit: event relay endpoint inserts remote events
+- [x] Unit: dedup prevents duplicate events
+- [x] Unit: outbound relay sends to reachable nodes
+- [x] Unit: topic filtering works correctly
 
 ---
 
@@ -918,29 +918,29 @@ skills, and propagate events — with a path to desktop packaging via Tauri.
 
 **Detailed sub-tasks:**
 
-- [ ] **D.4.1 — Config Validation**
+- [x] **D.4.1 — Config Validation**
   - New file: `utils/config_validator.py`
   - `validate_config()` — checks required env vars, DB connectivity,
     agent registry, API keys present
   - Returns (ok, errors[]) for preflight checks
   - Wired into startup sequence and `/_health` endpoint
 
-- [ ] **D.4.2 — Node Config Override**
+- [x] **D.4.2 — Node Config Override**
   - New table: `node_config` (key, value, node_id, updated_at)
   - `get_config(key, default)` — checks node_config first, then env, then default
   - `set_config(key, value)` — writes to node_config table
   - Startup loads node_config overrides into process env
 
-- [ ] **D.4.3 — Environment Template**
+- [x] **D.4.3 — Environment Template**
   - New file: `scripts/generate_env.py`
   - Generates `.env.template` from required env vars
   - Documents each var with description and default value
   - Validates existing .env against template (missing/extra vars)
 
 **Test Phase D.4:**
-- [ ] Unit: config validation catches missing required vars
-- [ ] Unit: node config overrides env vars correctly
-- [ ] Unit: env template generation works
+- [x] Unit: config validation catches missing required vars
+- [x] Unit: node config overrides env vars correctly
+- [x] Unit: env template generation works
 
 ---
 
@@ -952,28 +952,28 @@ skills, and propagate events — with a path to desktop packaging via Tauri.
 
 **Detailed sub-tasks:**
 
-- [ ] **D.5.1 — Tauri Config Scaffold**
+- [x] **D.5.1 — Tauri Config Scaffold**
   - Create `desktop/` directory structure
   - `desktop/tauri.conf.json` — window config, app name, CSP headers
   - `desktop/src-tauri/Cargo.toml` — Rust scaffold
   - `desktop/README.md` — build instructions
 
-- [ ] **D.5.2 — Desktop Launcher**
+- [x] **D.5.2 — Desktop Launcher**
   - New file: `scripts/desktop_launcher.py`
   - Starts Flask backend on localhost:5050
   - Opens default browser or Tauri window
   - Handles graceful shutdown on window close
   - Supports --headless flag for server-only mode
 
-- [ ] **D.5.3 — Static Asset Audit**
+- [x] **D.5.3 — Static Asset Audit**
   - Verify all frontend routes return valid HTML/JSON
   - Ensure no hardcoded external URLs in frontend code
   - Create `frontend/static/manifest.json` listing all served assets
 
 **Test Phase D.5:**
-- [ ] Unit: launcher starts Flask and binds port
-- [ ] Unit: Tauri config is valid JSON
-- [ ] Unit: manifest.json lists all assets
+- [x] Unit: launcher starts Flask and binds port
+- [x] Unit: Tauri config is valid JSON
+- [x] Unit: manifest.json lists all assets
 
 ---
 
@@ -984,14 +984,14 @@ skills, and propagate events — with a path to desktop packaging via Tauri.
 
 **Detailed sub-tasks:**
 
-- [ ] **D.6.1 — Multi-Node Integration Tests**
+- [x] **D.6.1 — Multi-Node Integration Tests**
   - Proposal sync: create → sync → verify on both sides
   - Skill federation: advertise → lookup → find remote
   - Event relay: publish → relay → receive on remote
   - Config: validate → override → verify
   - Federation auth: verify headers forwarded correctly
 
-- [ ] **D.6.2 — Full Regression**
+- [x] **D.6.2 — Full Regression**
   - All A.x + B.x + C.x + D.x tests pass
   - No regressions in governance, research, tools, or node flows
 
