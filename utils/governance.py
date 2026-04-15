@@ -196,6 +196,10 @@ def transition_proposal(proposal_id, new_status, agent, *,
         # ── Broadcast via swarm_bus (A.4.2) ──────────────────────────────
         _bus_broadcast(proposal_id, old_status, new_status, row['agent'], conn)
 
+        # Commit post-transition side effects (knowledge + bus)
+        if own_conn:
+            conn.commit()
+
         return result
 
     except GovernanceError:
