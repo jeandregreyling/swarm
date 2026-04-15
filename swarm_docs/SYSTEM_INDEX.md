@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-15 23:56*
+*Auto-generated: 2026-04-16 00:00*
 
 
 ## Python Modules
@@ -188,7 +188,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 17820 |
+| `activity_log` | 17831 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
@@ -201,7 +201,7 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 606 |
+| `decisions` | 633 |
 | `deferred_items` | 0 |
 | `duck_log` | 377 |
 | `file_versions` | 4 |
@@ -247,14 +247,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5628 |
+| `system_stats` | 5629 |
 | `terminal_shortcuts` | 10 |
 | `ticket_notes` | 131 |
 | `tickets` | 139 |
-| `time_checkpoints` | 721 |
-| `time_events` | 46644 |
-| `time_journal` | 44753 |
-| `time_machine` | 4274 |
+| `time_checkpoints` | 728 |
+| `time_events` | 46672 |
+| `time_journal` | 44774 |
+| `time_machine` | 4278 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
