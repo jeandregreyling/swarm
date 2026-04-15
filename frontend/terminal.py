@@ -70,6 +70,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.localai',        'localai_bp'),
     ('blueprints.node',           'node_bp'),
     ('blueprints.research',       'research_bp'),
+    ('blueprints.tools',          'tools_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
