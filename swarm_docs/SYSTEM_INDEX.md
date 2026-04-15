@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-15 20:52*
+*Auto-generated: 2026-04-15 23:18*
 
 
 ## Python Modules
@@ -10,6 +10,7 @@
 
 | File | Description |
 |------|-------------|
+| `utils/agent_coordination.py` | utils/agent_coordination.py — Agent self-coordination (A.2.3) |
 | `utils/app_launcher.py` | app_launcher.py — Seven |
 | `utils/brief_engine.py` | brief_engine.py — Seven's Swarm |
 | `utils/change_logger.py` | change_logger.py — Seven's Swarm Time Wizard integration |
@@ -27,11 +28,13 @@
 | `utils/db/audit.py` | db.audit — Ghost circle and activity log. |
 | `utils/db/auth.py` | db.auth — User profiles, skill permissions, trusted senders / domains, |
 | `utils/db/chat.py` | db.chat — Conversations, messages, and chat job tracking. |
+| `utils/db/knowledge.py` | utils/db/knowledge.py — Shared swarm knowledge base CRUD + event broadcasts (A.3) |
 | `utils/db/memory.py` | db.memory — Shared memory, agent-specific memory, project docs. |
 | `utils/db/registry.py` | db.registry — Cached Agent Registry: single source of truth for all agent metadata. |
 | `utils/db/tickets.py` | db.tickets — Ticket CRUD, snooze, overdue, digest stats. |
 | `utils/db/timeline.py` | utils/db/timeline.py — Conversation timeline writer. |
 | `utils/git_commit_logger.py` | git_commit_logger.py — Seven's Swarm Time Wizard git hook |
+| `utils/governance.py` | utils/governance.py — Central proposal governance engine. |
 | `utils/load_project_docs.py` | load_project_docs.py — Seven's Swarm |
 | `utils/proposal_review.py` | proposal_review.py — Duck's proposal sanity-check + chat-thread notification. |
 | `utils/resource_gate.py` | utils/resource_gate.py — Ollama model resource gate |
@@ -123,8 +126,8 @@
 
 | Blueprint | Routes | Description |
 |-----------|--------|-------------|
-| `agent_api` | 9 | agent_api.py — Agent Self-Service API routes |
-| `agents` | 26 | — |
+| `agent_api` | 10 | agent_api.py — Agent Self-Service API routes |
+| `agents` | 27 | — |
 | `auth` | 12 | auth.py — Auth & Senders routes |
 | `brief` | 3 | brief.py — Ghost Brief routes |
 | `chat` | 4 | chat.py — Chat Engine routes |
@@ -157,7 +160,7 @@
 | `access.js` | 69.2 KB |
 | `agents-config.js` | 9.1 KB |
 | `chat.js` | 226.6 KB |
-| `conversations.js` | 11.0 KB |
+| `conversations.js` | 11.5 KB |
 | `docs.js` | 28.4 KB |
 | `email.js` | 16.1 KB |
 | `files.js` | 36.9 KB |
@@ -170,7 +173,7 @@
 | `ollama.js` | 4.1 KB |
 | `services.js` | 4.7 KB |
 | `skills.js` | 22.4 KB |
-| `studio.js` | 78.6 KB |
+| `studio.js` | 79.5 KB |
 | `terminal-commands.js` | 12.7 KB |
 | `terminal.js` | 38.2 KB |
 | `tickets.js` | 4.2 KB |
@@ -181,7 +184,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 17633 |
+| `activity_log` | 17764 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
@@ -194,13 +197,14 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 440 |
+| `decisions` | 496 |
 | `deferred_items` | 0 |
 | `duck_log` | 377 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1879 |
+| `ghost_circle` | 1880 |
+| `governance_log` | 0 |
 | `knowledge_chunks` | 353 |
 | `knowledge_sources` | 12 |
 | `memory` | 0 |
@@ -227,21 +231,24 @@
 | `queue` | 657 |
 | `sandpit_log` | 162 |
 | `scheduled_tasks` | 2 |
-| `skills` | 24 |
+| `skills` | 29 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 56 |
 | `sudo_command_whitelist` | 4 |
+| `swarm_event_acks` | 0 |
+| `swarm_events` | 0 |
 | `swarm_globals` | 3 |
-| `system_stats` | 5591 |
+| `swarm_knowledge` | 0 |
+| `system_stats` | 5620 |
 | `terminal_shortcuts` | 10 |
 | `ticket_notes` | 131 |
 | `tickets` | 139 |
-| `time_checkpoints` | 678 |
-| `time_events` | 45577 |
-| `time_journal` | 43729 |
-| `time_machine` | 4153 |
+| `time_checkpoints` | 693 |
+| `time_events` | 46403 |
+| `time_journal` | 44540 |
+| `time_machine` | 4234 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
@@ -276,6 +283,7 @@
 
 | Skill | Description |
 |-------|-------------|
+| `agent_status` | Check operational status of agents (idle/busy/down/disabled). No args = all agents. With agent name = single agent. |
 | `alm_complete` | Mark your own in_progress proposal as done (awaiting Ghost confirmation to close). |
 | `alm_create_proposal` | Create an ALM work proposal/ticket. Accepts quoted title+description or <title> || <description>. |
 | `alm_self_approve` | Self-approve your own proposal and set it to in_progress. Creates a Vortex checkpoint. No Ghost approval needed. |
@@ -290,13 +298,17 @@
 | `fs_write` | Write (overwrite) any file within the swarm repo. Creates parent dirs as needed. |
 | `housekeeping` | Run the Librarian housekeeping cycle: archive old memories, remove duplicates, trigger agent play time. |
 | `knowledge_search` | Search the consultant knowledge library (SAP HCM, ABAP, emails, PDFs, SAP notes). |
+| `knowledge_write` | Write a new entry to the shared swarm knowledge base. Governed: only from completed proposal context or ghost. |
 | `list` | List all available skills. |
 | `memory_search` | Search the swarm memory pools. Returns top matches. |
 | `proposals` | Check sandpits/shared/proposals/ for new agent proposals and notify Ghost. |
 | `remind` | Send Ghost an immediate plain-text reminder email. |
 | `schedule` | Create a scheduled task. Same syntax as SCHEDULE command. |
 | `search` | DuckDuckGo web search. Returns top snippets. |
+| `search_landscape` | Search the living system landscape JSON index (files, blueprints, tables, agents, skills). |
 | `shell` | Run a whitelisted shell command. Output returned and emailed to Ghost. |
+| `swarm_knowledge_search` | Search the shared swarm knowledge base (lessons, decisions, facts, patterns, warnings). |
 | `system_index` | Generate or query the system index (modules, blueprints, tables, agents, skills). No args = regenerate. With args = search the index. |
 | `ticket_create` | Create an internal ticket/proposal. Format: <title> || <description> |
 | `ui_css_edit_checklist` | Show the global checklist for correct UI/CSS edit workflow (selectors, patching, verification). |
+| `update_landscape` | Regenerate the system landscape index (MD + JSON). Governed: requires trust_level 2. |

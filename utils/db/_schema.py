@@ -509,6 +509,40 @@ CREATE TABLE IF NOT EXISTS conv_timeline (
     created_at  TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_conv_timeline_conv ON conv_timeline (conv_id, id);
+
+-- Shared swarm knowledge base (A.3.1)
+CREATE TABLE IF NOT EXISTS swarm_knowledge (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    key             TEXT NOT NULL,
+    content         TEXT NOT NULL,
+    source_agent    TEXT NOT NULL DEFAULT '',
+    source_proposal_id TEXT DEFAULT '',
+    category        TEXT NOT NULL DEFAULT 'fact',
+    importance      INTEGER DEFAULT 5,
+    created_at      TEXT DEFAULT (datetime('now')),
+    updated_at      TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_swarm_knowledge_cat ON swarm_knowledge (category);
+CREATE INDEX IF NOT EXISTS idx_swarm_knowledge_agent ON swarm_knowledge (source_agent);
+
+-- Swarm event broadcast table (A.3.4)
+CREATE TABLE IF NOT EXISTS swarm_events (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type  TEXT NOT NULL,
+    payload     TEXT NOT NULL DEFAULT '',
+    source_agent TEXT NOT NULL DEFAULT '',
+    created_at  TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_swarm_events_type ON swarm_events (event_type, created_at);
+
+-- Tracks which agents have consumed each event (A.3.4)
+CREATE TABLE IF NOT EXISTS swarm_event_acks (
+    event_id    INTEGER NOT NULL,
+    agent       TEXT NOT NULL,
+    acked_at    TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (event_id, agent),
+    FOREIGN KEY (event_id) REFERENCES swarm_events(id)
+);
 """
 
 
@@ -897,6 +931,46 @@ def _migrate_schema(conn=None):
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_gov_log_proposal
         ON governance_log (proposal_id)
+    """)
+    conn.commit()
+
+    # swarm_knowledge: shared knowledge base (A.3.1) — migration for existing DBs
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS swarm_knowledge (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            key             TEXT NOT NULL,
+            content         TEXT NOT NULL,
+            source_agent    TEXT NOT NULL DEFAULT '',
+            source_proposal_id TEXT DEFAULT '',
+            category        TEXT NOT NULL DEFAULT 'fact',
+            importance      INTEGER DEFAULT 5,
+            created_at      TEXT DEFAULT (datetime('now')),
+            updated_at      TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_swarm_knowledge_cat ON swarm_knowledge (category)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_swarm_knowledge_agent ON swarm_knowledge (source_agent)")
+    conn.commit()
+
+    # swarm_events + acks: event broadcast (A.3.4) — migration for existing DBs
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS swarm_events (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type  TEXT NOT NULL,
+            payload     TEXT NOT NULL DEFAULT '',
+            source_agent TEXT NOT NULL DEFAULT '',
+            created_at  TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_swarm_events_type ON swarm_events (event_type, created_at)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS swarm_event_acks (
+            event_id    INTEGER NOT NULL,
+            agent       TEXT NOT NULL,
+            acked_at    TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (event_id, agent),
+            FOREIGN KEY (event_id) REFERENCES swarm_events(id)
+        )
     """)
     conn.commit()
 
