@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 07:51*
+*Auto-generated: 2026-04-16 08:54*
 
 
 ## Python Modules
@@ -164,6 +164,7 @@
 | `nine` | 4 | nine.py — Agent Nine routes |
 | `node` | 11 | frontend/blueprints/node.py — Node registration + federation endpoints (A.4.5 + A.5) |
 | `ollama` | 4 | ollama.py — Ollama Models routes |
+| `onboarding` | 2 | frontend/blueprints/onboarding.py — Onboarding wizard API |
 | `proposals` | 22 | — |
 | `research` | 5 | frontend/blueprints/research.py — Research API (B.4.1) |
 | `shell` | 17 | shell.py — Shell & Terminal routes |
@@ -192,6 +193,7 @@
 | `memory.js` | 28.9 KB |
 | `monitor.js` | 18.7 KB |
 | `ollama.js` | 4.1 KB |
+| `onboarding.js` | 13.6 KB |
 | `services.js` | 4.7 KB |
 | `skills.js` | 22.4 KB |
 | `studio.js` | 79.5 KB |
@@ -205,26 +207,26 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 18538 |
+| `activity_log` | 18645 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 49 |
+| `approval_tokens` | 52 |
 | `chat_jobs` | 224 |
 | `claude_log` | 1 |
-| `conv_timeline` | 9 |
-| `conversations` | 8 |
+| `conv_timeline` | 10 |
+| `conversations` | 10 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 942 |
+| `decisions` | 964 |
 | `deferred_items` | 0 |
-| `duck_log` | 392 |
+| `duck_log` | 394 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1892 |
+| `ghost_circle` | 1895 |
 | `governance_log` | 0 |
 | `knowledge_chunks` | 353 |
 | `knowledge_sources` | 12 |
@@ -242,7 +244,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 18 |
+| `messages` | 21 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -251,7 +253,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 61 |
 | `proposal_attachments` | 0 |
-| `queue` | 686 |
+| `queue` | 691 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 162 |
@@ -268,14 +270,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5722 |
+| `system_stats` | 5735 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 146 |
-| `tickets` | 154 |
-| `time_checkpoints` | 859 |
-| `time_events` | 49342 |
-| `time_journal` | 47310 |
-| `time_machine` | 4398 |
+| `ticket_notes` | 149 |
+| `tickets` | 157 |
+| `time_checkpoints` | 877 |
+| `time_events` | 49710 |
+| `time_journal` | 47658 |
+| `time_machine` | 4411 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
