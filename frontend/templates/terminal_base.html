@@ -375,24 +375,6 @@
     <div id="world-clocks"></div>
     <div id="time-display"></div>
     <div id="home-controls">
-      <!-- Env switcher -->
-      <div style="display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:3px;">
-        {% if ENV_STAGE == 'PROD' %}
-          <span style="padding:4px 12px;border-radius:6px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;letter-spacing:0.03em;">Fridays</span>
-        {% else %}
-          <a href="http://localhost:5050/ui" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;transition:background 0.15s;">Fridays</a>
-        {% endif %}
-        {% if ENV_STAGE == 'DEV' %}
-          <span style="padding:4px 12px;border-radius:6px;background:#4facfe;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.03em;box-shadow:0 0 8px #4facfe88;">Mondays</span>
-        {% else %}
-          <a href="http://localhost:5051/ui" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;transition:background 0.15s;">Mondays</a>
-        {% endif %}
-        {% if ENV_STAGE == 'UAT' %}
-          <span style="padding:4px 12px;border-radius:6px;background:#ff6a00;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.03em;box-shadow:0 0 8px #ff6a0088;">Wednesdays</span>
-        {% else %}
-          <a href="http://localhost:5053/ui" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;transition:background 0.15s;">Wednesdays</a>
-        {% endif %}
-      </div>
       <!-- Services dropdown -->
       <div id="services-dropdown-wrap" style="position:relative;">
         <button id="services-dropdown-btn" onclick="toggleServicesDropdown()"
@@ -600,23 +582,6 @@
 <div id="taskbar">
   <button id="home-btn" onclick="goHome()">🏠 Home</button>
   <div id="spacer"></div>
-  <div style="display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:2px;margin-right:8px;">
-    {% if ENV_STAGE == 'PROD' %}
-      <span style="padding:3px 10px;border-radius:5px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;">Fridays</span>
-    {% else %}
-      <a href="http://localhost:5050/ui" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;">Fridays</a>
-    {% endif %}
-    {% if ENV_STAGE == 'DEV' %}
-      <span style="padding:3px 10px;border-radius:5px;background:#4facfe;color:#fff;font-size:11px;font-weight:700;box-shadow:0 0 8px #4facfe88;">Mondays</span>
-    {% else %}
-      <a href="http://localhost:5051/ui" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;">Mondays</a>
-    {% endif %}
-    {% if ENV_STAGE == 'UAT' %}
-      <span style="padding:3px 10px;border-radius:5px;background:#ff6a00;color:#fff;font-size:11px;font-weight:700;box-shadow:0 0 8px #ff6a0088;">Wednesdays</span>
-    {% else %}
-      <a href="http://localhost:5053/ui" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;color:var(--text-dim);text-decoration:none;">Wednesdays</a>
-    {% endif %}
-  </div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════
