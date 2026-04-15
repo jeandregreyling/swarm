@@ -448,47 +448,86 @@ class TestSkillTrust:
 
     def test_local_blocked_from_trust2(self, integ_db):
         """Local agent cannot call a trust_level=2 skill."""
-        gate = self._get_trust_gate()
-        result = gate('gemma', 'local', 'fs_write', 2)
-        assert result is False or (isinstance(result, dict) and result.get('blocked'))
+        from fridays.skills import _trust_gate, REGISTRY, _tier_cache
+        # Inject a fake skill with trust_level=2
+        REGISTRY['_test_trust2'] = {'trust_level': 2}
+        _tier_cache['gemma'] = 'local'
+        try:
+            blocked, reason = _trust_gate('_test_trust2', 'gemma')
+            assert blocked is True
+            assert 'Trust denied' in reason
+        finally:
+            REGISTRY.pop('_test_trust2', None)
+            _tier_cache.pop('gemma', None)
 
     def test_local_allowed_trust0(self, integ_db):
-        """Local agent can call trust_level=0 skill."""
-        gate = self._get_trust_gate()
-        result = gate('gemma', 'local', 'search', 0)
-        assert result is True or result is None or (isinstance(result, dict) and not result.get('blocked'))
+        """Local agent can call trust_level=0 skill (read-only always allowed)."""
+        from fridays.skills import _trust_gate, REGISTRY, _tier_cache
+        REGISTRY['_test_trust0'] = {'trust_level': 0}
+        _tier_cache['gemma'] = 'local'
+        try:
+            blocked, reason = _trust_gate('_test_trust0', 'gemma')
+            assert blocked is False
+        finally:
+            REGISTRY.pop('_test_trust0', None)
+            _tier_cache.pop('gemma', None)
 
     def test_local_allowed_trust1(self, integ_db):
         """Local agent can call trust_level=1 skill."""
-        gate = self._get_trust_gate()
-        result = gate('gemma', 'local', 'file_write', 1)
-        assert result is True or result is None or (isinstance(result, dict) and not result.get('blocked'))
+        from fridays.skills import _trust_gate, REGISTRY, _tier_cache
+        REGISTRY['_test_trust1'] = {'trust_level': 1}
+        _tier_cache['gemma'] = 'local'
+        try:
+            blocked, reason = _trust_gate('_test_trust1', 'gemma')
+            assert blocked is False
+        finally:
+            REGISTRY.pop('_test_trust1', None)
+            _tier_cache.pop('gemma', None)
 
     def test_paid_allowed_trust2(self, integ_db):
         """Paid agent can call trust_level=2 skill."""
-        gate = self._get_trust_gate()
-        result = gate('eleven', 'paid', 'fs_write', 2)
-        assert result is True or result is None or (isinstance(result, dict) and not result.get('blocked'))
+        from fridays.skills import _trust_gate, REGISTRY, _tier_cache
+        REGISTRY['_test_trust2'] = {'trust_level': 2}
+        _tier_cache['eleven'] = 'paid'
+        try:
+            blocked, reason = _trust_gate('_test_trust2', 'eleven')
+            assert blocked is False
+        finally:
+            REGISTRY.pop('_test_trust2', None)
+            _tier_cache.pop('eleven', None)
 
     def test_human_allowed_trust4(self, integ_db):
         """Human/ghost agent can call trust_level=4 skill."""
-        gate = self._get_trust_gate()
-        result = gate('ghost', 'human', 'admin_action', 4)
-        assert result is True or result is None or (isinstance(result, dict) and not result.get('blocked'))
+        from fridays.skills import _trust_gate, REGISTRY, _tier_cache
+        REGISTRY['_test_trust4'] = {'trust_level': 4}
+        _tier_cache['ghost'] = 'human'
+        try:
+            blocked, reason = _trust_gate('_test_trust4', 'ghost')
+            assert blocked is False
+        finally:
+            REGISTRY.pop('_test_trust4', None)
+            _tier_cache.pop('ghost', None)
 
     def test_override_local_gets_trust2(self, integ_db):
         """user_skill_permissions override allows local agent to use trust2 skill."""
-        conn, _, _ = integ_db
-        conn.execute(
-            "INSERT INTO user_skill_permissions (agent, skill, allowed) VALUES (?, ?, ?)",
-            ('gemma', 'fs_write', 1)
-        )
-        conn.commit()
+        from fridays.skills import _trust_gate, REGISTRY, _tier_cache
+        from unittest.mock import patch
 
-        gate = self._get_trust_gate()
-        result = gate('gemma', 'local', 'fs_write', 2)
-        # With override, should be allowed
-        assert result is True or result is None or (isinstance(result, dict) and not result.get('blocked'))
+        REGISTRY['_test_trust2_override'] = {'trust_level': 2}
+        _tier_cache['gemma'] = 'local'
+        try:
+            # Mock the permission check to return True
+            with patch('fridays.skills.can_user_invoke_skill',
+                       side_effect=ImportError):
+                blocked, _ = _trust_gate('_test_trust2_override', 'gemma')
+                assert blocked is True  # Without override, blocked
+
+            with patch('utils.db.auth.can_user_invoke_skill', return_value=True):
+                blocked, _ = _trust_gate('_test_trust2_override', 'gemma')
+                assert blocked is False  # With override, allowed
+        finally:
+            REGISTRY.pop('_test_trust2_override', None)
+            _tier_cache.pop('gemma', None)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
