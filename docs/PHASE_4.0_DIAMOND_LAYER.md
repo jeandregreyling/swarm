@@ -1025,29 +1025,29 @@ project analysis report.
 
 **Detailed sub-tasks:**
 
-- [ ] **E.1.1 — Input Validation Audit**
+- [x] **E.1.1 — Input Validation Audit**
   - Audit all POST/PUT endpoints for missing validation
   - Add request body size limits (1MB default)
   - Sanitize user inputs in proposal titles/descriptions
   - Validate all ID parameters (integer bounds, string length)
 
-- [ ] **E.1.2 — Rate Limiting**
+- [x] **E.1.2 — Rate Limiting**
   - New middleware: `utils/rate_limiter.py`
   - Token bucket per IP, configurable via SWARM_RATE_LIMIT env var
   - Default: 60 requests/minute for API, 10/minute for auth endpoints
   - 429 response with Retry-After header
 
-- [ ] **E.1.3 — Auth & CORS Hardening**
+- [x] **E.1.3 — Auth & CORS Hardening**
   - CORS: restrict to configured origins (default: localhost only)
   - Node API: strengthen hash comparison (constant-time via hmac.compare_digest)
   - Add X-Content-Type-Options, X-Frame-Options, X-XSS-Protection headers
   - Audit for any SQL injection vectors (parameterized queries check)
 
 **Test Phase E.1:**
-- [ ] Unit: oversized request bodies rejected
-- [ ] Unit: rate limiter triggers at threshold
-- [ ] Unit: CORS headers set correctly
-- [ ] Unit: security headers present on all responses
+- [x] Unit: oversized request bodies rejected
+- [x] Unit: rate limiter triggers at threshold
+- [x] Unit: CORS headers set correctly
+- [x] Unit: security headers present on all responses
 
 ---
 
@@ -1059,27 +1059,27 @@ project analysis report.
 
 **Detailed sub-tasks:**
 
-- [ ] **E.2.1 — Concurrent Heartbeat**
+- [x] **E.2.1 — Concurrent Heartbeat**
   - Replace sequential pings with ThreadPoolExecutor (max 5 workers)
   - Add exponential backoff for failed nodes (2s, 4s, 8s, max 60s)
   - Stale node cleanup: remove nodes not seen for 24 hours
 
-- [ ] **E.2.2 — DB Query Optimization**
+- [x] **E.2.2 — DB Query Optimization**
   - Add missing indexes on hot query paths
   - Index: work_proposals(status, agent)
   - Index: swarm_bus(consumed_at, topic)
   - Index: research_sessions(status)
   - EXPLAIN ANALYZE top 10 slowest queries
 
-- [ ] **E.2.3 — Response Caching**
+- [x] **E.2.3 — Response Caching**
   - Cache federation/roster and federation/proposals (30s TTL)
   - Cache landscape.json (5min TTL, invalidate on knowledge write)
   - ETag support for GET endpoints
 
 **Test Phase E.2:**
-- [ ] Unit: concurrent heartbeat faster than sequential
-- [ ] Unit: new indexes exist after migration
-- [ ] Unit: cached responses return correct ETag
+- [x] Unit: concurrent heartbeat faster than sequential
+- [x] Unit: new indexes exist after migration
+- [x] Unit: cached responses return correct ETag
 
 ---
 
@@ -1091,27 +1091,27 @@ project analysis report.
 
 **Detailed sub-tasks:**
 
-- [ ] **E.3.1 — Structured Logging**
+- [x] **E.3.1 — Structured Logging**
   - New file: `utils/structured_logger.py`
   - JSON log format: timestamp, level, service, message, metadata
   - Correlation ID per request (X-Request-ID header)
   - Log rotation: 10MB max, 5 backups
 
-- [ ] **E.3.2 — Metrics Endpoint**
+- [x] **E.3.2 — Metrics Endpoint**
   - `GET /api/metrics` — returns counters and gauges
   - Metrics: active_agents, proposals_by_status, bus_events_24h,
     research_sessions_active, tool_builds_by_status, node_count
   - Response time percentiles (p50, p95, p99) via middleware
 
-- [ ] **E.3.3 — Health Dashboard Data**
+- [x] **E.3.3 — Health Dashboard Data**
   - Enhance `/_health` with detailed component status
   - Check: DB writable, heartbeat running, bus consuming, agents responding
   - Return degraded/healthy/unhealthy status per component
 
 **Test Phase E.3:**
-- [ ] Unit: structured logger outputs valid JSON
-- [ ] Unit: metrics endpoint returns expected keys
-- [ ] Unit: health check detects DB failure
+- [x] Unit: structured logger outputs valid JSON
+- [x] Unit: metrics endpoint returns expected keys
+- [x] Unit: health check detects DB failure
 
 ---
 
@@ -1123,26 +1123,26 @@ project analysis report.
 
 **Detailed sub-tasks:**
 
-- [ ] **E.4.1 — API Reference**
+- [x] **E.4.1 — API Reference**
   - Consolidate all docs/api/*.json into single reference
   - New file: `docs/API_REFERENCE.md` — human-readable with examples
   - Cover all 200+ routes grouped by domain
 
-- [ ] **E.4.2 — Architecture Diagram**
+- [x] **E.4.2 — Architecture Diagram**
   - Mermaid diagram in `docs/ARCHITECTURE_DIAGRAM.md`
   - Shows: agents → skills → governance → bus → federation → nodes
   - Layer diagram: frontend → blueprints → services → DB
 
-- [ ] **E.4.3 — Deployment Guide**
+- [x] **E.4.3 — Deployment Guide**
   - New file: `docs/DEPLOYMENT_GUIDE.md`
   - Single-node setup (systemd services, env vars, DB init)
   - Multi-node setup (node registration, federation config)
   - Desktop mode (Tauri build, launcher)
 
 **Test Phase E.4:**
-- [ ] All API contracts valid JSON
-- [ ] Mermaid diagram renders correctly
-- [ ] Deployment guide covers all systemd services
+- [x] All API contracts valid JSON
+- [x] Mermaid diagram renders correctly
+- [x] Deployment guide covers all systemd services
 
 ---
 
@@ -1154,29 +1154,29 @@ project analysis report.
 
 **Detailed sub-tasks:**
 
-- [ ] **E.5.1 — Installer Script**
+- [x] **E.5.1 — Installer Script**
   - New file: `scripts/install.sh`
   - Checks Python 3.12+, creates venv, installs requirements
   - Runs setup_node.py, generates .env template
   - Creates systemd service files
   - Validates installation with health check
 
-- [ ] **E.5.2 — README Overhaul**
+- [x] **E.5.2 — README Overhaul**
   - Rewrite `docs/README.md` for external audience
   - Quick start guide (5 commands to running swarm)
   - Feature overview with screenshots/diagrams
   - Architecture overview (brief, links to full docs)
   - Contributing guide
 
-- [ ] **E.5.3 — Example Configs**
+- [x] **E.5.3 — Example Configs**
   - `examples/single-node.env` — minimal single-node config
   - `examples/multi-node-primary.env` — primary node with federation
   - `examples/multi-node-secondary.env` — secondary node joining swarm
 
 **Test Phase E.5:**
-- [ ] Installer runs without errors on clean system
-- [ ] README renders correctly (markdown lint)
-- [ ] Example configs pass validation
+- [x] Installer runs without errors on clean system
+- [x] README renders correctly (markdown lint)
+- [x] Example configs pass validation
 
 ---
 
@@ -1187,12 +1187,12 @@ project analysis report.
 
 **Detailed sub-tasks:**
 
-- [ ] **E.6.1 — Final Regression**
+- [x] **E.6.1 — Final Regression**
   - All A.x + B.x + C.x + D.x + E.x tests pass
   - Performance: test suite completes in < 120 seconds
   - Zero compile errors across all Python files
 
-- [ ] **E.6.2 — Project Analysis Report**
+- [x] **E.6.2 — Project Analysis Report**
   - New file: `docs/PROJECT_ANALYSIS.md`
   - Metrics: test count, code line count, file count, endpoint count
   - Architecture review: strengths, weaknesses, tech debt
@@ -1201,8 +1201,8 @@ project analysis report.
   - Risk assessment and mitigation strategies
 
 **Test Phase E.6:**
-- [ ] All tests green
-- [ ] Project analysis complete and accurate
+- [x] All tests green
+- [x] Project analysis complete and accurate
 
 ---
 
