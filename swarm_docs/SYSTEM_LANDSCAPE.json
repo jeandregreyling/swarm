@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 00:36",
+  "generated_at": "2026-04-16 01:23",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -110,6 +110,11 @@
       "path": "utils/db/registry.py",
       "group": "Utils",
       "description": "db.registry \u2014 Cached Agent Registry: single source of truth for all agent metadata."
+    },
+    {
+      "path": "utils/db/research.py",
+      "group": "Utils",
+      "description": "utils.db.research \u2014 Research session & evidence CRUD (B.1.2)"
     },
     {
       "path": "utils/db/tickets.py",
@@ -330,6 +335,11 @@
       "path": "fridays/orchestrator.py",
       "group": "Fridays / Skills",
       "description": "fridays/orchestrator.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "fridays/research_workflow.py",
+      "group": "Fridays / Skills",
+      "description": "fridays/research_workflow.py \u2014 Multi-stage research orchestrator (B.2)"
     },
     {
       "path": "fridays/scheduler.py",
@@ -1665,6 +1675,43 @@
       "route_count": 22
     },
     {
+      "name": "research",
+      "description": "frontend/blueprints/research.py \u2014 Research API (B.4.1)",
+      "routes": [
+        {
+          "path": "/api/research/start",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/research/sessions",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/research/<int:session_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/research/<int:session_id>/resume",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/research/<int:session_id>/evidence",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 5
+    },
+    {
       "name": "shell",
       "description": "shell.py \u2014 Shell & Terminal routes",
       "routes": [
@@ -2184,7 +2231,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 17947
+      "rows": 18030
     },
     {
       "name": "agent_capabilities",
@@ -2200,7 +2247,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 34
+      "rows": 37
     },
     {
       "name": "chat_jobs",
@@ -2212,11 +2259,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 4
+      "rows": 5
     },
     {
       "name": "conversations",
-      "rows": 2
+      "rows": 3
     },
     {
       "name": "daily_checkpoint",
@@ -2236,7 +2283,7 @@
     },
     {
       "name": "decisions",
-      "rows": 765
+      "rows": 821
     },
     {
       "name": "deferred_items",
@@ -2244,7 +2291,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 381
+      "rows": 383
     },
     {
       "name": "file_versions",
@@ -2260,7 +2307,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1882
+      "rows": 1884
     },
     {
       "name": "governance_log",
@@ -2332,7 +2379,7 @@
     },
     {
       "name": "messages",
-      "rows": 4
+      "rows": 6
     },
     {
       "name": "moderators",
@@ -2360,7 +2407,15 @@
     },
     {
       "name": "queue",
-      "rows": 665
+      "rows": 669
+    },
+    {
+      "name": "research_evidence",
+      "rows": 0
+    },
+    {
+      "name": "research_sessions",
+      "rows": 0
     },
     {
       "name": "sandpit_log",
@@ -2372,7 +2427,7 @@
     },
     {
       "name": "skills",
-      "rows": 29
+      "rows": 33
     },
     {
       "name": "sniffer_log",
@@ -2420,7 +2475,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5636
+      "rows": 5645
     },
     {
       "name": "terminal_shortcuts",
@@ -2428,27 +2483,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 135
+      "rows": 137
     },
     {
       "name": "tickets",
-      "rows": 143
+      "rows": 145
     },
     {
       "name": "time_checkpoints",
-      "rows": 771
+      "rows": 790
     },
     {
       "name": "time_events",
-      "rows": 46879
+      "rows": 47161
     },
     {
       "name": "time_journal",
-      "rows": 44938
+      "rows": 45201
     },
     {
       "name": "time_machine",
-      "rows": 4305
+      "rows": 4320
     },
     {
       "name": "trusted_domains",
@@ -2635,6 +2690,11 @@
       "trust_level": 0
     },
     {
+      "name": "deep_dive",
+      "description": "Start a deep research investigation. 5+ sources, cross-validation, gap analysis.",
+      "trust_level": 1
+    },
+    {
       "name": "file_read",
       "description": "Read a file from a sandpit. Format: agent/filename.txt",
       "trust_level": 0
@@ -2702,6 +2762,21 @@
     {
       "name": "remind",
       "description": "Send Ghost an immediate plain-text reminder email.",
+      "trust_level": 0
+    },
+    {
+      "name": "research",
+      "description": "Start a research session on a topic. Searches, analyses, and archives findings. Default depth: standard.",
+      "trust_level": 1
+    },
+    {
+      "name": "research_resume",
+      "description": "Resume a paused research session.",
+      "trust_level": 1
+    },
+    {
+      "name": "research_status",
+      "description": "Check the status and summary of a research session.",
       "trust_level": 0
     },
     {

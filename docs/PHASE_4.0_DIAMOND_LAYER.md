@@ -569,21 +569,23 @@ A.1 (proposal governance + ALM gate).
 
 **Detailed sub-tasks:**
 
-- [ ] **B.6.1 — Research Integration Tests**
+- [x] **B.6.1 — Research Integration Tests**
   - End-to-end: start session → search → analyse → synthesise → archive → verify knowledge
   - Pause/resume test: pause mid-search, resume, verify completion
   - Depth test: quick vs standard vs deep produce different evidence counts
   - Fallback test: Seeker down → DuckDuckGo fallback works
+  - Learning cycle: lesson extraction, pattern detection, knowledge broadcast
+  - 31 tests: 13 CRUD + 6 workflow + 7 skills + 5 learning cycle
 
-- [ ] **B.6.2 — Full Regression**
+- [x] **B.6.2 — Full Regression**
   - All A.x tests + all B.x tests pass
   - No cross-contamination between research sessions
   - Knowledge writes don't break existing governance flows
 
 **Test Phase B.6:**
-- [ ] Full suite: all tests green
-- [ ] Compile check: all new/modified files clean
-- [ ] Service restart: no crash
+- [x] Full suite: 230 passed, 1 skipped, 0 failed
+- [x] Compile check: all new/modified files clean
+- [x] Service restart: no crash
 
 ---
 
@@ -682,6 +684,12 @@ DATE       | TASK                  | STATUS     | NOTES
 2026-04-16 | A.6.2 Setup Wizard    | Completed  | scripts/setup_node.py — interactive/auto mode, DB init, agent seeding, config gen.
 2026-04-16 | A.6.3 Hardcoded Paths | Completed  | utils/swarm_root.py + 12 infrastructure files updated. SWARM_ROOT env var + auto-detect.
 2026-04-16 | A.6 Tests             | Completed  | Full regression: 198 passed, 1 skipped, 0 failed.
+2026-04-16 | B.1 Evidence Model    | Completed  | research_sessions + research_evidence tables. utils/db/research.py CRUD + dedup.
+2026-04-16 | B.2 Workflow Engine   | Completed  | fridays/research_workflow.py: 5-stage orchestrator. Tavily→DDG fallback. Scholar→structured fallback.
+2026-04-16 | B.3 Research Skills   | Completed  | 4 skills: research, deep_dive, research_status, research_resume. Handlers in skills.py.
+2026-04-16 | B.4 Research API      | Completed  | 5 endpoints in frontend/blueprints/research.py. Async for standard/deep. API contract.
+2026-04-16 | B.5 Learning Cycle    | Completed  | Lesson extraction (Qwen+fallback), pattern detection, knowledge broadcast enhancement.
+2026-04-16 | B.6 Tests + Commit    | Completed  | 31 research tests + full regression: 230 passed, 1 skipped, 0 failed.
            |                       |            |
 ```
 
@@ -754,6 +762,15 @@ frontend/blueprints/workspace.py          | Modified | A.6.3  | 2026-04-16
 frontend/blueprints/shell.py             | Modified | A.6.3  | 2026-04-16
 fridays/shell_agent.py                    | Modified | A.6.3  | 2026-04-16
 lib/system/logging_bridge.py              | Modified | A.6.3  | 2026-04-16
+utils/db/_schema.py                       | Modified | B.1.1  | 2026-04-16
+utils/db/research.py                      | Created  | B.1.2  | 2026-04-16
+fridays/research_workflow.py               | Created  | B.2+5  | 2026-04-16
+fridays/skills.py                         | Modified | B.3    | 2026-04-16
+frontend/blueprints/research.py           | Created  | B.4    | 2026-04-16
+frontend/terminal.py                      | Modified | B.4    | 2026-04-16
+docs/api/research.json                    | Created  | B.4    | 2026-04-16
+frontend/blueprints/chat.py               | Modified | B.5    | 2026-04-16
+tests/test_research.py                    | Created  | B.6    | 2026-04-16
                                           |          |        |
 ```
 
