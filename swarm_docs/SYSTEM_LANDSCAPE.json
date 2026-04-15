@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 01:23",
+  "generated_at": "2026-04-16 01:58",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -125,6 +125,11 @@
       "path": "utils/db/timeline.py",
       "group": "Utils",
       "description": "utils/db/timeline.py \u2014 Conversation timeline writer."
+    },
+    {
+      "path": "utils/db/tools.py",
+      "group": "Utils",
+      "description": "utils.db.tools \u2014 Tool build registry CRUD (C.1.2)"
     },
     {
       "path": "utils/git_commit_logger.py",
@@ -360,6 +365,11 @@
       "path": "fridays/telegram_bot.py",
       "group": "Fridays / Skills",
       "description": "fridays/telegram_bot.py \u2014 Seven's Swarm (RL-022)"
+    },
+    {
+      "path": "fridays/tool_builder.py",
+      "group": "Fridays / Skills",
+      "description": "fridays/tool_builder.py \u2014 Tool build pipeline orchestrator (C.2)"
     },
     {
       "path": "lib/__init__.py",
@@ -2071,6 +2081,55 @@
       "route_count": 10
     },
     {
+      "name": "tools",
+      "description": "frontend/blueprints/tools.py \u2014 Tool Build API (C.4.1)",
+      "routes": [
+        {
+          "path": "/api/tools/builds",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/tools/builds/<int:build_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/tools/builds",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tools/builds/<int:build_id>/validate",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tools/builds/<int:build_id>/test",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tools/builds/<int:build_id>/register",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tools/templates",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 7
+    },
+    {
       "name": "workspace",
       "description": "workspace.py \u2014 Workspace & Code Ops routes",
       "routes": [
@@ -2231,7 +2290,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 18030
+      "rows": 18100
     },
     {
       "name": "agent_capabilities",
@@ -2247,7 +2306,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 37
+      "rows": 40
     },
     {
       "name": "chat_jobs",
@@ -2259,11 +2318,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 5
+      "rows": 6
     },
     {
       "name": "conversations",
-      "rows": 3
+      "rows": 4
     },
     {
       "name": "daily_checkpoint",
@@ -2283,7 +2342,7 @@
     },
     {
       "name": "decisions",
-      "rows": 821
+      "rows": 877
     },
     {
       "name": "deferred_items",
@@ -2291,7 +2350,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 383
+      "rows": 385
     },
     {
       "name": "file_versions",
@@ -2307,7 +2366,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1884
+      "rows": 1886
     },
     {
       "name": "governance_log",
@@ -2379,7 +2438,7 @@
     },
     {
       "name": "messages",
-      "rows": 6
+      "rows": 8
     },
     {
       "name": "moderators",
@@ -2407,7 +2466,7 @@
     },
     {
       "name": "queue",
-      "rows": 669
+      "rows": 673
     },
     {
       "name": "research_evidence",
@@ -2427,7 +2486,7 @@
     },
     {
       "name": "skills",
-      "rows": 33
+      "rows": 38
     },
     {
       "name": "sniffer_log",
@@ -2475,7 +2534,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5645
+      "rows": 5652
     },
     {
       "name": "terminal_shortcuts",
@@ -2483,27 +2542,31 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 137
+      "rows": 139
     },
     {
       "name": "tickets",
-      "rows": 145
+      "rows": 147
     },
     {
       "name": "time_checkpoints",
-      "rows": 790
+      "rows": 808
     },
     {
       "name": "time_events",
-      "rows": 47161
+      "rows": 47371
     },
     {
       "name": "time_journal",
-      "rows": 45201
+      "rows": 45393
     },
     {
       "name": "time_machine",
-      "rows": 4320
+      "rows": 4334
+    },
+    {
+      "name": "tool_builds",
+      "rows": 0
     },
     {
       "name": "trusted_domains",
@@ -2690,6 +2753,11 @@
       "trust_level": 0
     },
     {
+      "name": "build_tool",
+      "description": "Scaffold a new tool from template. Types: script, skill, widget, cron, shell. Creates files + DB record.",
+      "trust_level": 1
+    },
+    {
       "name": "deep_dive",
       "description": "Start a deep research investigation. 5+ sources, cross-validation, gap analysis.",
       "trust_level": 1
@@ -2813,6 +2881,26 @@
       "name": "ticket_create",
       "description": "Create an internal ticket/proposal. Format: <title> || <description>",
       "trust_level": 1
+    },
+    {
+      "name": "tool_list",
+      "description": "List tool builds. Optionally filter by agent name.",
+      "trust_level": 0
+    },
+    {
+      "name": "tool_status",
+      "description": "Check the status of a tool build (scaffolded/building/testing/passed/failed/registered).",
+      "trust_level": 0
+    },
+    {
+      "name": "tool_test",
+      "description": "Run tests for a tool build. Discovers pytest test file or runs --dry-run.",
+      "trust_level": 1
+    },
+    {
+      "name": "tool_validate",
+      "description": "Run syntax validation on a tool build (Python AST, node --check, bash -n).",
+      "trust_level": 0
     },
     {
       "name": "ui_css_edit_checklist",
