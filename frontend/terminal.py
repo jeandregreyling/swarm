@@ -128,6 +128,13 @@ def create_app():
     _sweep_t = _th.Thread(target=_stuck_job_sweeper, daemon=True, name='stuck-job-sweep')
     _sweep_t.start()
 
+    # Node heartbeat daemon (A.5.1) — pings registered remote nodes
+    try:
+        from utils.node_discovery import start_heartbeat
+        start_heartbeat()
+    except Exception as _hb_err:
+        print(f'[Terminal] node heartbeat start warning: {_hb_err}')
+
     # ── Routes ────────────────────────────────────────────────────────────────
 
     @app.route("/", methods=["GET"])
