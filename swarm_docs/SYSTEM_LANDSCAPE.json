@@ -1,0 +1,3832 @@
+{
+  "generated_at": "2026-04-15 23:18",
+  "python_modules": [
+    {
+      "path": "utils/agent_coordination.py",
+      "group": "Utils",
+      "description": "utils/agent_coordination.py \u2014 Agent self-coordination (A.2.3)"
+    },
+    {
+      "path": "utils/app_launcher.py",
+      "group": "Utils",
+      "description": "app_launcher.py \u2014 Seven"
+    },
+    {
+      "path": "utils/brief_engine.py",
+      "group": "Utils",
+      "description": "brief_engine.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "utils/change_logger.py",
+      "group": "Utils",
+      "description": "change_logger.py \u2014 Seven's Swarm Time Wizard integration"
+    },
+    {
+      "path": "utils/circuit_breaker.py",
+      "group": "Utils",
+      "description": "utils/circuit_breaker.py \u2014 Per-agent circuit breaker + health probe"
+    },
+    {
+      "path": "utils/claude_api.py",
+      "group": "Utils",
+      "description": "claude_api.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "utils/config.py",
+      "group": "Utils",
+      "description": ""
+    },
+    {
+      "path": "utils/convert_docs.py",
+      "group": "Utils",
+      "description": "convert_docs.py \u2014 Seven's Swarm (RL-022 docs)"
+    },
+    {
+      "path": "utils/create_docs.py",
+      "group": "Utils",
+      "description": "create_docs.py \u2014 generate swarm_docs/*.docx with real content."
+    },
+    {
+      "path": "utils/database.py",
+      "group": "Utils",
+      "description": "database.py \u2014 Seven's Swarm  (backward-compatible shim)"
+    },
+    {
+      "path": "utils/db/__init__.py",
+      "group": "Utils",
+      "description": "db \u2014 Seven's Swarm database layer."
+    },
+    {
+      "path": "utils/db/_connection.py",
+      "group": "Utils",
+      "description": "db._connection \u2014 Shared database primitives."
+    },
+    {
+      "path": "utils/db/_schema.py",
+      "group": "Utils",
+      "description": "db._schema \u2014 Schema definition, initialisation, migrations, and seeding."
+    },
+    {
+      "path": "utils/db/agents.py",
+      "group": "Utils",
+      "description": "db.agents \u2014 Agent registry and capability management."
+    },
+    {
+      "path": "utils/db/approvals.py",
+      "group": "Utils",
+      "description": "db.approvals \u2014 Pending emails and approval tokens."
+    },
+    {
+      "path": "utils/db/audit.py",
+      "group": "Utils",
+      "description": "db.audit \u2014 Ghost circle and activity log."
+    },
+    {
+      "path": "utils/db/auth.py",
+      "group": "Utils",
+      "description": "db.auth \u2014 User profiles, skill permissions, trusted senders / domains,"
+    },
+    {
+      "path": "utils/db/chat.py",
+      "group": "Utils",
+      "description": "db.chat \u2014 Conversations, messages, and chat job tracking."
+    },
+    {
+      "path": "utils/db/knowledge.py",
+      "group": "Utils",
+      "description": "utils/db/knowledge.py \u2014 Shared swarm knowledge base CRUD + event broadcasts (A.3)"
+    },
+    {
+      "path": "utils/db/memory.py",
+      "group": "Utils",
+      "description": "db.memory \u2014 Shared memory, agent-specific memory, project docs."
+    },
+    {
+      "path": "utils/db/registry.py",
+      "group": "Utils",
+      "description": "db.registry \u2014 Cached Agent Registry: single source of truth for all agent metadata."
+    },
+    {
+      "path": "utils/db/tickets.py",
+      "group": "Utils",
+      "description": "db.tickets \u2014 Ticket CRUD, snooze, overdue, digest stats."
+    },
+    {
+      "path": "utils/db/timeline.py",
+      "group": "Utils",
+      "description": "utils/db/timeline.py \u2014 Conversation timeline writer."
+    },
+    {
+      "path": "utils/git_commit_logger.py",
+      "group": "Utils",
+      "description": "git_commit_logger.py \u2014 Seven's Swarm Time Wizard git hook"
+    },
+    {
+      "path": "utils/governance.py",
+      "group": "Utils",
+      "description": "utils/governance.py \u2014 Central proposal governance engine."
+    },
+    {
+      "path": "utils/load_project_docs.py",
+      "group": "Utils",
+      "description": "load_project_docs.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "utils/proposal_review.py",
+      "group": "Utils",
+      "description": "proposal_review.py \u2014 Duck's proposal sanity-check + chat-thread notification."
+    },
+    {
+      "path": "utils/resource_gate.py",
+      "group": "Utils",
+      "description": "utils/resource_gate.py \u2014 Ollama model resource gate"
+    },
+    {
+      "path": "utils/sandpits.py",
+      "group": "Utils",
+      "description": "sandpits.py \u2014 Fridays / Seven's Swarm"
+    },
+    {
+      "path": "utils/scheduler.py",
+      "group": "Utils",
+      "description": "scheduler.py \u2014 Seven's Swarm Scheduler"
+    },
+    {
+      "path": "utils/seven_fridays.py",
+      "group": "Utils",
+      "description": "seven_fridays.py \u2014 Developer Agent REPL (Agent 11 interface)"
+    },
+    {
+      "path": "utils/simulate.py",
+      "group": "Utils",
+      "description": "simulate.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "utils/skills.py",
+      "group": "Utils",
+      "description": "skills.py \u2014 Seven's Swarm Skills Framework"
+    },
+    {
+      "path": "utils/swarm_tasks.py",
+      "group": "Utils",
+      "description": "swarm_tasks.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "utils/vs_tools.py",
+      "group": "Utils",
+      "description": "vs_tools.py \u2014 VS tab file read/memory tools for Nine"
+    },
+    {
+      "path": "core/kill_switch.py",
+      "group": "Core",
+      "description": "KILL SWITCHES \u2014 Emergency control agents via Telegram/Discord"
+    },
+    {
+      "path": "core/pipeline/debate.py",
+      "group": "Core",
+      "description": ""
+    },
+    {
+      "path": "core/pipeline/listener.py",
+      "group": "Core",
+      "description": "listener.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "core/pipeline/orchestrator.py",
+      "group": "Core",
+      "description": ""
+    },
+    {
+      "path": "core/pipeline/queue_manager.py",
+      "group": "Core",
+      "description": "queue_manager.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "core/pipeline/ticket.py",
+      "group": "Core",
+      "description": "ticket.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "core/time_machine.py",
+      "group": "Core",
+      "description": "TIME MACHINE \u2014 Agent Twelve's Core Capability"
+    },
+    {
+      "path": "agents/deepseek_local/deepseek_local_agent.py",
+      "group": "Agent Modules",
+      "description": "agents/deepseek_local/deepseek_local_agent.py \u2014 DeepSeek R1 (local Ollama)"
+    },
+    {
+      "path": "agents/eight/eight_agent.py",
+      "group": "Agent Modules",
+      "description": ""
+    },
+    {
+      "path": "agents/eleven/grok_agent.py",
+      "group": "Agent Modules",
+      "description": "# LINKED TO: utils/config.py \u2014 imports ELEVEN_SYSTEM_PROMPT (edit prompts there, not here)"
+    },
+    {
+      "path": "agents/gemma/gemma_agent.py",
+      "group": "Agent Modules",
+      "description": "agents/gemma/gemma_agent.py \u2014 Gemma (local Ollama)"
+    },
+    {
+      "path": "agents/llama/llama_agent.py",
+      "group": "Agent Modules",
+      "description": "agents/llama/llama_agent.py \u2014 LLaMA (local Ollama)"
+    },
+    {
+      "path": "agents/lmstudio/lmstudio_agent.py",
+      "group": "Agent Modules",
+      "description": "agents/lmstudio/lmstudio_agent.py \u2014 LM Studio (local OpenAI-compatible)"
+    },
+    {
+      "path": "agents/mistral/mistral_agent.py",
+      "group": "Agent Modules",
+      "description": "# LINKED TO: utils/config.py \u2014 imports MISTRAL_SYSTEM_PROMPT (edit prompts there, not here)"
+    },
+    {
+      "path": "agents/nine/nine_agent.py",
+      "group": "Agent Modules",
+      "description": "# LINKED TO: utils/config.py \u2014 imports NINE_SYSTEM_PROMPT (edit prompts there, not here)"
+    },
+    {
+      "path": "agents/phi3/phi3_agent.py",
+      "group": "Agent Modules",
+      "description": "agents/phi3/phi3_agent.py \u2014 Phi-3 Mini (local Ollama)"
+    },
+    {
+      "path": "agents/qwen/qwen_agent.py",
+      "group": "Agent Modules",
+      "description": "agents/qwen/qwen_agent.py \u2014 Qwen (local Ollama)"
+    },
+    {
+      "path": "agents/scholar/scholar_agent.py",
+      "group": "Agent Modules",
+      "description": "# LINKED TO: utils/config.py \u2014 imports SCHOLAR_SYSTEM_PROMPT (edit prompts there, not here)"
+    },
+    {
+      "path": "agents/seeker/seeker_agent.py",
+      "group": "Agent Modules",
+      "description": "# LINKED TO: utils/config.py \u2014 imports SEEKER_SYSTEM_PROMPT (edit prompts there, not here)"
+    },
+    {
+      "path": "agents/ten/copilot_agent.py",
+      "group": "Agent Modules",
+      "description": "# LINKED TO: utils/config.py \u2014 imports TEN_SYSTEM_PROMPT (edit prompts there, not here)"
+    },
+    {
+      "path": "agents/thirteen/thirteen_agent.py",
+      "group": "Agent Modules",
+      "description": "# LINKED TO: utils/config.py \u2014 imports THIRTEEN_SYSTEM_PROMPT (edit prompts there, not here)"
+    },
+    {
+      "path": "agents/twelve/twelve_agent.py",
+      "group": "Agent Modules",
+      "description": "# LINKED TO: utils/config.py \u2014 imports TWELVE_SYSTEM_PROMPT (edit prompts there, not here)"
+    },
+    {
+      "path": "fridays/__init__.py",
+      "group": "Fridays / Skills",
+      "description": ""
+    },
+    {
+      "path": "fridays/browser_agent.py",
+      "group": "Fridays / Skills",
+      "description": "fridays/browser_agent.py \u2014 Seven's Swarm (RL-018)"
+    },
+    {
+      "path": "fridays/discord_bot.py",
+      "group": "Fridays / Skills",
+      "description": "fridays/discord_bot.py \u2014 Seven's Swarm (RL-023)"
+    },
+    {
+      "path": "fridays/file_agent.py",
+      "group": "Fridays / Skills",
+      "description": "fridays/file_agent.py \u2014 Seven's Swarm (RL-018)"
+    },
+    {
+      "path": "fridays/orchestrator.py",
+      "group": "Fridays / Skills",
+      "description": "fridays/orchestrator.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "fridays/scheduler.py",
+      "group": "Fridays / Skills",
+      "description": "scheduler.py \u2014 Seven's Swarm Scheduler"
+    },
+    {
+      "path": "fridays/shell_agent.py",
+      "group": "Fridays / Skills",
+      "description": "fridays/shell_agent.py \u2014 Seven's Swarm (RL-019)"
+    },
+    {
+      "path": "fridays/skills.py",
+      "group": "Fridays / Skills",
+      "description": "fridays/skills.py \u2014 Seven's Swarm (RL-021)"
+    },
+    {
+      "path": "fridays/telegram_bot.py",
+      "group": "Fridays / Skills",
+      "description": "fridays/telegram_bot.py \u2014 Seven's Swarm (RL-022)"
+    },
+    {
+      "path": "lib/__init__.py",
+      "group": "Lib",
+      "description": ""
+    },
+    {
+      "path": "lib/email/email_cleaner.py",
+      "group": "Lib",
+      "description": ""
+    },
+    {
+      "path": "lib/email/email_handler.py",
+      "group": "Lib",
+      "description": ""
+    },
+    {
+      "path": "lib/email/gmail_auth.py",
+      "group": "Lib",
+      "description": "gmail_auth.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "lib/email/gmail_push.py",
+      "group": "Lib",
+      "description": "gmail_push.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "lib/knowledge/__init__.py",
+      "group": "Lib",
+      "description": ""
+    },
+    {
+      "path": "lib/knowledge/ingest.py",
+      "group": "Lib",
+      "description": "lib/knowledge/ingest.py \u2014 Text chunking and Ollama embedding pipeline."
+    },
+    {
+      "path": "lib/knowledge/retrieval.py",
+      "group": "Lib",
+      "description": "lib/knowledge/retrieval.py \u2014 Semantic search over embedded knowledge chunks."
+    },
+    {
+      "path": "lib/knowledge/sources/__init__.py",
+      "group": "Lib",
+      "description": ""
+    },
+    {
+      "path": "lib/knowledge/sources/email_parser.py",
+      "group": "Lib",
+      "description": "lib/knowledge/sources/email_parser.py \u2014 Extract structured text from emails."
+    },
+    {
+      "path": "lib/knowledge/sources/pdf_parser.py",
+      "group": "Lib",
+      "description": "lib/knowledge/sources/pdf_parser.py \u2014 Extract text from PDF files."
+    },
+    {
+      "path": "lib/knowledge/sources/text_parser.py",
+      "group": "Lib",
+      "description": "lib/knowledge/sources/text_parser.py \u2014 Normalise pasted plain text."
+    },
+    {
+      "path": "lib/knowledge/sources/url_fetcher.py",
+      "group": "Lib",
+      "description": "lib/knowledge/sources/url_fetcher.py \u2014 Fetch a URL and extract plain text."
+    },
+    {
+      "path": "lib/knowledge/store.py",
+      "group": "Lib",
+      "description": "lib/knowledge/store.py \u2014 SQLite persistence for the Knowledge Library."
+    },
+    {
+      "path": "lib/search/internet.py",
+      "group": "Lib",
+      "description": ""
+    },
+    {
+      "path": "lib/search/internet_serper.py",
+      "group": "Lib",
+      "description": "internet_serper.py \u2014 Gemma's search engine / Seven's Swarm"
+    },
+    {
+      "path": "lib/search/internet_tavily.py",
+      "group": "Lib",
+      "description": "internet_tavily.py \u2014 Qwen and Eight's search engine / Seven's Swarm"
+    },
+    {
+      "path": "lib/system/contradiction_check.py",
+      "group": "Lib",
+      "description": ""
+    },
+    {
+      "path": "lib/system/discord_notify.py",
+      "group": "Lib",
+      "description": "discord_notify.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "lib/system/file_versioning.py",
+      "group": "Lib",
+      "description": "file_versioning.py \u2014 Seven's Swarm File Versioning & Change Tracking"
+    },
+    {
+      "path": "lib/system/housekeeping.py",
+      "group": "Lib",
+      "description": ""
+    },
+    {
+      "path": "lib/system/logging_bridge.py",
+      "group": "Lib",
+      "description": "logging_bridge.py \u2014 Seven's Swarm Unified Logging"
+    },
+    {
+      "path": "lib/system/monitor.py",
+      "group": "Lib",
+      "description": "monitor.py \u2014 Seven's Swarm system monitor"
+    },
+    {
+      "path": "lib/system/system_clock.py",
+      "group": "Lib",
+      "description": "system_clock.py \u2014 Seven's Swarm Unified Time Source"
+    },
+    {
+      "path": "lib/system/time_machine.py",
+      "group": "Lib",
+      "description": "time_machine.py \u2014 Seven's Swarm Time Machine - Point-in-Time Restore System"
+    }
+  ],
+  "blueprints": [
+    {
+      "name": "agent_api",
+      "description": "agent_api.py \u2014 Agent Self-Service API routes",
+      "routes": [
+        {
+          "path": "/api/agent/tickets",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agent/tickets",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agent/proposals",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agent/git/proposals",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agent/git/proposals",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agent/git/proposals/<proposal_id>/execute",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agent/capabilities",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agent/think",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agent/identity",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agent/claim",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 10
+    },
+    {
+      "name": "agents",
+      "description": "",
+      "routes": [
+        {
+          "path": "/api/roles-skills",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/roles-skills",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/config",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/config/<name>",
+          "methods": [
+            "PUT"
+          ]
+        },
+        {
+          "path": "/api/agents/config",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/key/<name>",
+          "methods": [
+            "PUT"
+          ]
+        },
+        {
+          "path": "/api/agents/capability-matrix",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/capabilities",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/<name>/toggle",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/<name>/temperature",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/<agent>/memory",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/<agent>/memory/write",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/memories/query",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/bootstrap",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/<name>/decommission",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/<name>/reactivate",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/<name>/reset",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/<name>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/skills",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/<agent>/skills",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/<agent>/skills",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/hot-swap",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/agents/<name>/export",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/export-all",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/import",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 27
+    },
+    {
+      "name": "auth",
+      "description": "auth.py \u2014 Auth & Senders routes",
+      "routes": [
+        {
+          "path": "/api/senders",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/senders",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/senders",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/access/manager/onboard",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/skills",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/auth/profiles",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/auth/context",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/auth/profiles",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/profiles/<username>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/skills/permissions",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/skills/permissions",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/skills/run",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 12
+    },
+    {
+      "name": "brief",
+      "description": "brief.py \u2014 Ghost Brief routes",
+      "routes": [
+        {
+          "path": "/api/brief",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/brief/generate",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/brief/history",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 3
+    },
+    {
+      "name": "chat",
+      "description": "chat.py \u2014 Chat Engine routes",
+      "routes": [
+        {
+          "path": "/api/chat",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/chat/jobs/status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/chat/jobs/cancel",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/chat/librarian/review",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 4
+    },
+    {
+      "name": "conversations",
+      "description": "conversations.py \u2014 Conversations routes",
+      "routes": [
+        {
+          "path": "/api/conversations",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/conversations/<int:conv_id>/messages",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/conversations/<int:conv_id>/messages/<int:msg_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/conversations/<int:conv_id>/messages/<int:msg_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/conversations/<int:conv_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/conversations/<int:conv_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/conversations/<int:conv_id>/timeline",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/trace/<job_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/trace/conversation/<int:conv_id>",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 9
+    },
+    {
+      "name": "debates",
+      "description": "debates.py \u2014 Debates routes",
+      "routes": [
+        {
+          "path": "/api/debates",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/debates",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/debates/<int:debate_id>/turns",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/debates/<int:debate_id>/run",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/debates/quick",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 5
+    },
+    {
+      "name": "decisions",
+      "description": "decisions.py \u2014 Decisions & Timeline routes",
+      "routes": [
+        {
+          "path": "/api/decisions",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/decisions/<decision_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/timeline",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 3
+    },
+    {
+      "name": "docs",
+      "description": "docs.py \u2014 Docs & Project Files routes",
+      "routes": [
+        {
+          "path": "/api/docs",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/docs/text/<path:filename>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/docs/html/<filename>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/docs/download/<filename>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/project-md",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/project-md",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/kb/seed-swarm-docs",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/project-md/raw",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/testing-md",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/bugs-md",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/testing/run-simulation",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 11
+    },
+    {
+      "name": "email_bp",
+      "description": "blueprints/email_bp.py \u2014 Email tile API",
+      "routes": [
+        {
+          "path": "/api/email/inbox",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/email/live",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/email/stats",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/email/thread/<ticket_number>",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 4
+    },
+    {
+      "name": "exec_bp",
+      "description": "exec_bp.py \u2014 Ghost Exec routes",
+      "routes": [
+        {
+          "path": "/api/exec",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/services/<service_id>/restart",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/services",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/exec/write",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 4
+    },
+    {
+      "name": "git",
+      "description": "git.py \u2014 Git Operations routes",
+      "routes": [
+        {
+          "path": "/api/git/status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/git/diff",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/git/stage",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/git/unstage",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/git/commit",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 5
+    },
+    {
+      "name": "kb",
+      "description": "kb.py \u2014 Knowledge Base routes",
+      "routes": [
+        {
+          "path": "/api/kb",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/kb/<int:doc_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/kb/<int:doc_id>/versions",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/kb/<int:doc_id>/restore",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/kb",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/kb/<int:doc_id>",
+          "methods": [
+            "PUT"
+          ]
+        },
+        {
+          "path": "/api/kb/<int:doc_id>",
+          "methods": [
+            "DELETE"
+          ]
+        }
+      ],
+      "route_count": 7
+    },
+    {
+      "name": "killswitch",
+      "description": "killswitch.py \u2014 Kill Switches routes",
+      "routes": [
+        {
+          "path": "/api/killswitch/buttons",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/killswitch/emergency",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/killswitch/pause",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/killswitch/resume",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/killswitch/restart",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/killswitch/agent/<agent_name>/reset",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 6
+    },
+    {
+      "name": "legacy",
+      "description": "legacy.py \u2014 Legacy Pipeline & Approval routes",
+      "routes": [
+        {
+          "path": "/chat",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/stream/<ticket_number>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/approve/<action>/<token>",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 3
+    },
+    {
+      "name": "library",
+      "description": "frontend/blueprints/library.py \u2014 Knowledge Library API routes.",
+      "routes": [
+        {
+          "path": "/api/library/sources",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/library/sources/<int:source_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/library/sources/<int:source_id>/reprocess",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/library/ingest",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/library/ingest-pdf",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/library/search",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/library/pull-model",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/library/model-status",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 8
+    },
+    {
+      "name": "localai",
+      "description": "blueprints/localai.py \u2014 Local AI status and proxy API",
+      "routes": [
+        {
+          "path": "/api/localai/status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/localai/available-models",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/localai/ollama/models",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/localai/ollama/chat",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/localai/lmstudio/chat",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 5
+    },
+    {
+      "name": "memory",
+      "description": "memory.py \u2014 Memory routes",
+      "routes": [
+        {
+          "path": "/api/memory",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/studio",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/memory/bulk",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/memory/bulk",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/memory/<int:row_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/memory/<int:row_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/memory/<int:row_id>/attach",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/memory/<int:row_id>/assign",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 8
+    },
+    {
+      "name": "nine",
+      "description": "nine.py \u2014 Agent Nine routes",
+      "routes": [
+        {
+          "path": "/api/nine/history",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/nine/actions",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/nine",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/nine/stream",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 4
+    },
+    {
+      "name": "ollama",
+      "description": "ollama.py \u2014 Ollama Models routes",
+      "routes": [
+        {
+          "path": "/api/ollama/models",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/ollama/load",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/ollama/unload",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/ollama/ps",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 4
+    },
+    {
+      "name": "proposals",
+      "description": "",
+      "routes": [
+        {
+          "path": "/api/work-proposals",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/queue",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/edit",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/duck-execute",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/agent-advance",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/diff",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/approve-to-uat",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/promote-to-prod",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/revert",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/attachments",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/attachments",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/attachments/<int:att_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/attachments/<int:att_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/notes",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/notes",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/deferred",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/deferred",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/deferred/<int:item_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/deferred/<int:item_id>",
+          "methods": [
+            "DELETE"
+          ]
+        }
+      ],
+      "route_count": 22
+    },
+    {
+      "name": "shell",
+      "description": "shell.py \u2014 Shell & Terminal routes",
+      "routes": [
+        {
+          "path": "/api/shell/execute",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/shell/stream",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/terminal/run",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/terminal/stream",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/shell/stream/stop",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/terminal/stream/stop",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/shell/agent-commands",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/shell/agent-kill",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/hands/run",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/terminal/shortcuts",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/terminal/shortcuts",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/terminal/shortcuts/<int:shortcut_id>",
+          "methods": [
+            "PUT"
+          ]
+        },
+        {
+          "path": "/api/terminal/shortcuts/<int:shortcut_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/terminal/sudo-whitelist",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/terminal/sudo-whitelist",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/terminal/sudo-whitelist/<int:item_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/shell/approve/<token>",
+          "methods": [
+            "GET",
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 17
+    },
+    {
+      "name": "system",
+      "description": "system.py \u2014 System & Monitoring routes",
+      "routes": [
+        {
+          "path": "/api/health",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/circuit-breaker",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/circuit-breaker/<agent>/reset",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/system/time",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/system",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/monitor/stats",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/tailscale",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/sandpits",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/ghost_circle",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/monitor",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/alm/status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/activity",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/activity/stream",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/swarm/globals",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/swarm/globals",
+          "methods": [
+            "PUT"
+          ]
+        },
+        {
+          "path": "/api/swarm/status",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 17
+    },
+    {
+      "name": "tickets",
+      "description": "tickets.py \u2014 Tickets routes",
+      "routes": [
+        {
+          "path": "/api/tickets",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/tickets/<ticket_number>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/tickets/<ticket_number>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/tickets/<ticket_number>/notes",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tickets/<ticket_number>/notes/<int:note_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/tickets/<ticket_number>/snooze",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tickets/<ticket_number>/resend",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tickets/<ticket_number>/assign",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tickets/<ticket_number>/close",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tickets/<ticket_number>/reopen",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tickets/<ticket_number>",
+          "methods": [
+            "DELETE"
+          ]
+        }
+      ],
+      "route_count": 11
+    },
+    {
+      "name": "time_wizard_bp",
+      "description": "time_wizard_bp.py \u2014 Time Wizard routes",
+      "routes": [
+        {
+          "path": "/api/time/timeline",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/time/sessions",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/time/checkpoint/<name>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/time/checkpoints",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/time/checkpoints",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/time/restore",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/time/stats/<agent>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/time/bootstrap",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/time/log-decision",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/time/decision-history/<decision_id>",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 10
+    },
+    {
+      "name": "workspace",
+      "description": "workspace.py \u2014 Workspace & Code Ops routes",
+      "routes": [
+        {
+          "path": "/api/workspace/dir",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/workspace/file",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/workspace/file",
+          "methods": [
+            "PUT"
+          ]
+        },
+        {
+          "path": "/api/workspace/search",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/workspace/replace/preview",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/workspace/replace/apply",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/code-ops/pytest",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/code-ops/pylint",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/code-ops/format",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/code-ops/commit",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 10
+    }
+  ],
+  "js_views": [
+    {
+      "name": "access.js",
+      "size_kb": 69.2
+    },
+    {
+      "name": "agents-config.js",
+      "size_kb": 9.1
+    },
+    {
+      "name": "chat.js",
+      "size_kb": 226.6
+    },
+    {
+      "name": "conversations.js",
+      "size_kb": 11.5
+    },
+    {
+      "name": "docs.js",
+      "size_kb": 28.4
+    },
+    {
+      "name": "email.js",
+      "size_kb": 16.1
+    },
+    {
+      "name": "files.js",
+      "size_kb": 36.9
+    },
+    {
+      "name": "fridays.js",
+      "size_kb": 7.0
+    },
+    {
+      "name": "git.js",
+      "size_kb": 22.5
+    },
+    {
+      "name": "library.js",
+      "size_kb": 16.4
+    },
+    {
+      "name": "localai.js",
+      "size_kb": 8.5
+    },
+    {
+      "name": "memory.js",
+      "size_kb": 28.9
+    },
+    {
+      "name": "monitor.js",
+      "size_kb": 18.7
+    },
+    {
+      "name": "ollama.js",
+      "size_kb": 4.1
+    },
+    {
+      "name": "services.js",
+      "size_kb": 4.7
+    },
+    {
+      "name": "skills.js",
+      "size_kb": 22.4
+    },
+    {
+      "name": "studio.js",
+      "size_kb": 79.5
+    },
+    {
+      "name": "terminal-commands.js",
+      "size_kb": 12.7
+    },
+    {
+      "name": "terminal.js",
+      "size_kb": 38.2
+    },
+    {
+      "name": "tickets.js",
+      "size_kb": 4.2
+    },
+    {
+      "name": "time-wizard.js",
+      "size_kb": 32.3
+    },
+    {
+      "name": "trace.js",
+      "size_kb": 16.9
+    }
+  ],
+  "db_tables": [
+    {
+      "name": "activity_log",
+      "rows": 17764
+    },
+    {
+      "name": "agent_capabilities",
+      "rows": 168
+    },
+    {
+      "name": "agent_skills",
+      "rows": 9
+    },
+    {
+      "name": "agents",
+      "rows": 18
+    },
+    {
+      "name": "approval_tokens",
+      "rows": 31
+    },
+    {
+      "name": "chat_jobs",
+      "rows": 224
+    },
+    {
+      "name": "claude_log",
+      "rows": 1
+    },
+    {
+      "name": "conv_timeline",
+      "rows": 3
+    },
+    {
+      "name": "conversations",
+      "rows": 1
+    },
+    {
+      "name": "daily_checkpoint",
+      "rows": 0
+    },
+    {
+      "name": "daily_checkpoints",
+      "rows": 0
+    },
+    {
+      "name": "debate_turns",
+      "rows": 0
+    },
+    {
+      "name": "debates",
+      "rows": 0
+    },
+    {
+      "name": "decisions",
+      "rows": 496
+    },
+    {
+      "name": "deferred_items",
+      "rows": 0
+    },
+    {
+      "name": "duck_log",
+      "rows": 377
+    },
+    {
+      "name": "file_versions",
+      "rows": 4
+    },
+    {
+      "name": "file_writes",
+      "rows": 4
+    },
+    {
+      "name": "ghost_briefs",
+      "rows": 101
+    },
+    {
+      "name": "ghost_circle",
+      "rows": 1880
+    },
+    {
+      "name": "governance_log",
+      "rows": 0
+    },
+    {
+      "name": "knowledge_chunks",
+      "rows": 353
+    },
+    {
+      "name": "knowledge_sources",
+      "rows": 12
+    },
+    {
+      "name": "memory",
+      "rows": 0
+    },
+    {
+      "name": "memory_eight",
+      "rows": 0
+    },
+    {
+      "name": "memory_gemma",
+      "rows": 0
+    },
+    {
+      "name": "memory_grok",
+      "rows": 0
+    },
+    {
+      "name": "memory_llama",
+      "rows": 0
+    },
+    {
+      "name": "memory_mistral",
+      "rows": 0
+    },
+    {
+      "name": "memory_nine",
+      "rows": 0
+    },
+    {
+      "name": "memory_qwen",
+      "rows": 0
+    },
+    {
+      "name": "memory_scholar",
+      "rows": 0
+    },
+    {
+      "name": "memory_seeker",
+      "rows": 0
+    },
+    {
+      "name": "memory_sonic",
+      "rows": 0
+    },
+    {
+      "name": "memory_ten",
+      "rows": 1
+    },
+    {
+      "name": "memory_thirteen",
+      "rows": 0
+    },
+    {
+      "name": "memory_twelve",
+      "rows": 0
+    },
+    {
+      "name": "messages",
+      "rows": 2
+    },
+    {
+      "name": "moderators",
+      "rows": 2
+    },
+    {
+      "name": "notification_senders",
+      "rows": 8
+    },
+    {
+      "name": "pending_emails",
+      "rows": 8
+    },
+    {
+      "name": "project_doc_versions",
+      "rows": 56
+    },
+    {
+      "name": "project_docs",
+      "rows": 61
+    },
+    {
+      "name": "proposal_attachments",
+      "rows": 0
+    },
+    {
+      "name": "queue",
+      "rows": 657
+    },
+    {
+      "name": "sandpit_log",
+      "rows": 162
+    },
+    {
+      "name": "scheduled_tasks",
+      "rows": 2
+    },
+    {
+      "name": "skills",
+      "rows": 29
+    },
+    {
+      "name": "sniffer_log",
+      "rows": 232
+    },
+    {
+      "name": "sniffer_memory",
+      "rows": 0
+    },
+    {
+      "name": "snoozed_tickets",
+      "rows": 0
+    },
+    {
+      "name": "sqlite_sequence",
+      "rows": 56
+    },
+    {
+      "name": "sudo_command_whitelist",
+      "rows": 4
+    },
+    {
+      "name": "swarm_event_acks",
+      "rows": 0
+    },
+    {
+      "name": "swarm_events",
+      "rows": 0
+    },
+    {
+      "name": "swarm_globals",
+      "rows": 3
+    },
+    {
+      "name": "swarm_knowledge",
+      "rows": 0
+    },
+    {
+      "name": "system_stats",
+      "rows": 5620
+    },
+    {
+      "name": "terminal_shortcuts",
+      "rows": 10
+    },
+    {
+      "name": "ticket_notes",
+      "rows": 131
+    },
+    {
+      "name": "tickets",
+      "rows": 139
+    },
+    {
+      "name": "time_checkpoints",
+      "rows": 693
+    },
+    {
+      "name": "time_events",
+      "rows": 46403
+    },
+    {
+      "name": "time_journal",
+      "rows": 44540
+    },
+    {
+      "name": "time_machine",
+      "rows": 4234
+    },
+    {
+      "name": "trusted_domains",
+      "rows": 0
+    },
+    {
+      "name": "trusted_senders",
+      "rows": 10
+    },
+    {
+      "name": "user_profiles",
+      "rows": 18
+    },
+    {
+      "name": "user_skill_permissions",
+      "rows": 3
+    },
+    {
+      "name": "work_proposal_notes",
+      "rows": 5
+    },
+    {
+      "name": "work_proposals",
+      "rows": 0
+    }
+  ],
+  "agents": [
+    {
+      "name": "grok",
+      "model": "grok-api",
+      "role": "RETIRED 2026-04-04 \u2014 alias consolidated into eleven (Agent 11)",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "ghost",
+      "model": "external",
+      "role": "Human operator. Builds, approves, decides. Full system authority.",
+      "tier": "human",
+      "enabled": 1
+    },
+    {
+      "name": "gemma",
+      "model": "gemma3:latest",
+      "role": "Director \u2014 routes, synthesises, speaks last",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "llama",
+      "model": "llama3.2:latest",
+      "role": "Correspondent \u2014 web search, fast first response",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "mistral",
+      "model": "mistral:latest",
+      "role": "Analyst \u2014 deep reasoning, debates, challenges Two",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "qwen",
+      "model": "qwen2.5:latest",
+      "role": "Deep Analyst \u2014 specialist depth, multilingual reasoning",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "librarian",
+      "model": "qwen:1.5b",
+      "role": "Gatekeeper + Vortex \u2014 tags, queues, closes, checkpoints",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "duck",
+      "model": "qwen:1.5b",
+      "role": "Sanity checker \u2014 YES/NO after every ticket",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "sniffles",
+      "model": "deepseek-r1:7b",
+      "role": "Inspector \u2014 memory auditor, read only, chain-of-thought",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "eight",
+      "model": "gemma4:26b",
+      "role": "SAP specialist \u2014 three-voice debate (Functional/Technical/Devil)",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "nine",
+      "model": "llama-3.3-70b-versatile",
+      "role": "Developer Agent \u2014 system architect, proposals, Ghost One-directed execution",
+      "tier": "paid",
+      "enabled": 1
+    },
+    {
+      "name": "ten",
+      "model": "gpt-4o",
+      "role": "Developer Agent \u2014 software engineer, code quality, implementation",
+      "tier": "paid",
+      "enabled": 1
+    },
+    {
+      "name": "eleven",
+      "model": "grok-api",
+      "role": "Developer Agent \u2014 lateral thinker, creative synthesis, alternatives",
+      "tier": "paid",
+      "enabled": 1
+    },
+    {
+      "name": "twelve",
+      "model": "claude-haiku-4-5",
+      "role": "Developer Agent \u2014 time wizard, session continuity, Vortex",
+      "tier": "paid",
+      "enabled": 1
+    },
+    {
+      "name": "thirteen",
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "role": "Developer Agent \u2014 HuggingFace specialist (testing)",
+      "tier": "free",
+      "enabled": 1
+    },
+    {
+      "name": "scholar",
+      "model": "gemini-2.0-flash",
+      "role": "Research \u00b7 Gemini",
+      "tier": "service",
+      "enabled": 1
+    },
+    {
+      "name": "seeker",
+      "model": "tavily",
+      "role": "Internet Search \u00b7 Tavily",
+      "tier": "service",
+      "enabled": 1
+    },
+    {
+      "name": "duck_ddg",
+      "model": "duckduckgo",
+      "role": "Web Search \u00b7 DuckDuckGo (no key)",
+      "tier": "service",
+      "enabled": 1
+    }
+  ],
+  "skills": [
+    {
+      "name": "agent_status",
+      "description": "Check operational status of agents (idle/busy/down/disabled). No args = all agents. With agent name = single agent.",
+      "trust_level": 0
+    },
+    {
+      "name": "alm_complete",
+      "description": "Mark your own in_progress proposal as done (awaiting Ghost confirmation to close).",
+      "trust_level": 1
+    },
+    {
+      "name": "alm_create_proposal",
+      "description": "Create an ALM work proposal/ticket. Accepts quoted title+description or <title> || <description>.",
+      "trust_level": 1
+    },
+    {
+      "name": "alm_self_approve",
+      "description": "Self-approve your own proposal and set it to in_progress. Creates a Vortex checkpoint. No Ghost approval needed.",
+      "trust_level": 1
+    },
+    {
+      "name": "alm_vortex",
+      "description": "Create a named Vortex (time machine) checkpoint. Call before making any file changes.",
+      "trust_level": 1
+    },
+    {
+      "name": "browse",
+      "description": "Fetch a URL with headless Chromium. Returns page text. Needs a full URL \u2014 use search for questions.",
+      "trust_level": 0
+    },
+    {
+      "name": "file_read",
+      "description": "Read a file from a sandpit. Format: agent/filename.txt",
+      "trust_level": 0
+    },
+    {
+      "name": "file_write",
+      "description": "Write content to your sandpit.",
+      "trust_level": 1
+    },
+    {
+      "name": "fs_patch",
+      "description": "Replace an exact string in a file (first occurrence). Safe targeted edit without full rewrite.",
+      "trust_level": 2
+    },
+    {
+      "name": "fs_patch_lines",
+      "description": "Replace a line range in a file by line numbers. PREFERRED over fs_patch \u2014 no exact-match fragility. Read with fs_readonly lines first to get line numbers, then replace that range.",
+      "trust_level": 2
+    },
+    {
+      "name": "fs_readonly",
+      "description": "Read-only filesystem helper for workspace discovery (ls/find/read/head/tail/lines).",
+      "trust_level": 0
+    },
+    {
+      "name": "fs_verify",
+      "description": "Syntax-check a Python or JavaScript file after patching. ALWAYS run this after every fs_patch or fs_patch_lines call.",
+      "trust_level": 0
+    },
+    {
+      "name": "fs_write",
+      "description": "Write (overwrite) any file within the swarm repo. Creates parent dirs as needed.",
+      "trust_level": 2
+    },
+    {
+      "name": "housekeeping",
+      "description": "Run the Librarian housekeeping cycle: archive old memories, remove duplicates, trigger agent play time.",
+      "trust_level": 0
+    },
+    {
+      "name": "knowledge_search",
+      "description": "Search the consultant knowledge library (SAP HCM, ABAP, emails, PDFs, SAP notes).",
+      "trust_level": 0
+    },
+    {
+      "name": "knowledge_write",
+      "description": "Write a new entry to the shared swarm knowledge base. Governed: only from completed proposal context or ghost.",
+      "trust_level": 2
+    },
+    {
+      "name": "list",
+      "description": "List all available skills.",
+      "trust_level": 0
+    },
+    {
+      "name": "memory_search",
+      "description": "Search the swarm memory pools. Returns top matches.",
+      "trust_level": 0
+    },
+    {
+      "name": "proposals",
+      "description": "Check sandpits/shared/proposals/ for new agent proposals and notify Ghost.",
+      "trust_level": 0
+    },
+    {
+      "name": "remind",
+      "description": "Send Ghost an immediate plain-text reminder email.",
+      "trust_level": 0
+    },
+    {
+      "name": "schedule",
+      "description": "Create a scheduled task. Same syntax as SCHEDULE command.",
+      "trust_level": 0
+    },
+    {
+      "name": "search",
+      "description": "DuckDuckGo web search. Returns top snippets.",
+      "trust_level": 0
+    },
+    {
+      "name": "search_landscape",
+      "description": "Search the living system landscape JSON index (files, blueprints, tables, agents, skills).",
+      "trust_level": 0
+    },
+    {
+      "name": "shell",
+      "description": "Run a whitelisted shell command. Output returned and emailed to Ghost.",
+      "trust_level": 0
+    },
+    {
+      "name": "swarm_knowledge_search",
+      "description": "Search the shared swarm knowledge base (lessons, decisions, facts, patterns, warnings).",
+      "trust_level": 0
+    },
+    {
+      "name": "system_index",
+      "description": "Generate or query the system index (modules, blueprints, tables, agents, skills). No args = regenerate. With args = search the index.",
+      "trust_level": 0
+    },
+    {
+      "name": "ticket_create",
+      "description": "Create an internal ticket/proposal. Format: <title> || <description>",
+      "trust_level": 1
+    },
+    {
+      "name": "ui_css_edit_checklist",
+      "description": "Show the global checklist for correct UI/CSS edit workflow (selectors, patching, verification).",
+      "trust_level": 0
+    },
+    {
+      "name": "update_landscape",
+      "description": "Regenerate the system landscape index (MD + JSON). Governed: requires trust_level 2.",
+      "trust_level": 2
+    }
+  ],
+  "ui_elements": [
+    {
+      "id": "atmosphere-auto-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "atmosphere-manual-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "scene-off-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "scene-beach-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "scene-forest-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "scene-rain-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "foundation-auto-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "foundation-light-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "foundation-dark-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "reset-window-layout-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "close-settings",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "troubleshoot-close-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "troubleshoot-toggle-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "troubleshoot-clear-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "troubleshoot-copy-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "agent-init-close-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "agent-init-dismiss-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "agent-delete-close-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "agent-delete-dismiss-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "services-dropdown-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "auth-user-pill",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "troubleshoot-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "home-help-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "home-settings-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "home-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "chat-new-thread-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "chat-notify-toggle-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "chat-parallel-mode-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "send-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "chat-dock-restore-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "chat-thread-restore-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "terminal-shortcuts-main-toggle",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "terminal-history-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "terminal-autoscroll-toggle",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "terminal-stop-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "terminal-shortcuts-add",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "terminal-shortcuts-toggle",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "terminal-shortcuts-restore",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "files-btn-test",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "files-btn-lint",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "files-btn-format",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "files-btn-commit",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "docs-tab-kb",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "docs-tab-workspace",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "docs-tab-brief",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "docs-tab-pinboard",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "docs-tab-history",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "studio-tab-pending",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "studio-tab-in_progress",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "studio-tab-all",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "library-pull-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "library-search-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "library-add-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "library-add-close",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "library-submit-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "pico-embed-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "chat-dock-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "chat-attach-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "chat-section-header",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "chat-action-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "mem-tab active",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "mem-tab",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "lib-type-tab",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "chat-exec-mode-btn",
+      "file": "frontend/templates/views/chat.html"
+    },
+    {
+      "id": "memory-select-visible-btn",
+      "file": "frontend/templates/views/memory.html"
+    },
+    {
+      "id": "memory-clear-selection-btn",
+      "file": "frontend/templates/views/memory.html"
+    },
+    {
+      "id": "memory-bulk-edit-btn",
+      "file": "frontend/templates/views/memory.html"
+    },
+    {
+      "id": "memory-bulk-delete-btn",
+      "file": "frontend/templates/views/memory.html"
+    },
+    {
+      "id": "add-source-btn",
+      "file": "frontend/templates/views/library.html"
+    },
+    {
+      "id": "memory-agent-tabs",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-det-action-area",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-detail",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-bulk-subject",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-bulk-append",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-bulk-tags",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-bulk-importance",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-edit-subject",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-edit-content",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "memory-detail-modal",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-append-content",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-attach-label",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-attach-value",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-share-targets",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "mem-share-note",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "memory-bulk-selection-bar",
+      "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "docs-content",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "kb-search",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "pin-list",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "pin-new-input",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "pin-show-resolved",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "kb-doc-list",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "kb-doc-name",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "kb-doc-tags",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "kb-doc-content",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "kb-versions",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "kb-status",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "docs-search",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "docs-kind-filter",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "docs-catalogue",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "docs-last-change",
+      "file": "frontend/static/js/views/docs.js"
+    },
+    {
+      "id": "tw-vortex-history",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-search",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-filter",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-slider",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-auto-refresh",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-timeline",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-summary",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-slider-label",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-restore-preview",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-history-list",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "gb-body",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "gb-meta",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "gb-regen-btn",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "gb-history-panel",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "gb-hist-btn",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "gb-history-list",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "services-dropdown-menu",
+      "file": "frontend/static/js/views/services.js"
+    },
+    {
+      "id": "services-dropdown-wrap",
+      "file": "frontend/static/js/views/services.js"
+    },
+    {
+      "id": "services-panel",
+      "file": "frontend/static/js/views/services.js"
+    },
+    {
+      "id": "services-dropdown-dot",
+      "file": "frontend/static/js/views/services.js"
+    },
+    {
+      "id": "stat-cpu",
+      "file": "frontend/static/js/views/monitor.js"
+    },
+    {
+      "id": "stat-mem",
+      "file": "frontend/static/js/views/monitor.js"
+    },
+    {
+      "id": "stat-disk",
+      "file": "frontend/static/js/views/monitor.js"
+    },
+    {
+      "id": "stat-agents",
+      "file": "frontend/static/js/views/monitor.js"
+    },
+    {
+      "id": "stat-vram",
+      "file": "frontend/static/js/views/monitor.js"
+    },
+    {
+      "id": "stat-alm",
+      "file": "frontend/static/js/views/monitor.js"
+    },
+    {
+      "id": "studio-governance",
+      "file": "frontend/static/js/views/monitor.js"
+    },
+    {
+      "id": "email-list-inner",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
+      "id": "email-thread-panel",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
+      "id": "localai-overall-status",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-status-badge",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-models-list",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-model-select",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "lmstudio-status-badge",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "lmstudio-model-info",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "picoclaw-status-badge",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "localai-agent-roster",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-quick-prompt",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-quick-result",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "lmstudio-quick-prompt",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "lmstudio-quick-result",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "pico-embed-container",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "files-op-status",
+      "file": "frontend/static/js/views/files.js"
+    },
+    {
+      "id": "files-op-status-text",
+      "file": "frontend/static/js/views/files.js"
+    },
+    {
+      "id": "files-diff-modal",
+      "file": "frontend/static/js/views/files.js"
+    },
+    {
+      "id": "studio-content",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "proposal-diff-overlay",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "proposal-detail-modal",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-title",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-body",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-edit-form",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-desc-view",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-edit-btn",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-edit-title",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-edit-desc",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-edit-notes",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-notes-view",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-att-list",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "pdet-agent-notes-list",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "doc-detail-modal",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "doc-det-title",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "doc-det-body",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "ticket-detail-modal",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "tdet-title",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "tdet-body",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "quick-cards",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "window-help-modal",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "win-help-title",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "win-help-body",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "question-input",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "skills-capability-matrix",
+      "file": "frontend/static/js/views/skills.js"
+    },
+    {
+      "id": "auth-user-pill-label",
+      "file": "frontend/static/js/views/skills.js"
+    },
+    {
+      "id": "skills-new-user",
+      "file": "frontend/static/js/views/skills.js"
+    },
+    {
+      "id": "skills-new-display",
+      "file": "frontend/static/js/views/skills.js"
+    },
+    {
+      "id": "skills-new-type",
+      "file": "frontend/static/js/views/skills.js"
+    },
+    {
+      "id": "skills-permissions-content",
+      "file": "frontend/static/js/views/skills.js"
+    },
+    {
+      "id": "skills-user-select",
+      "file": "frontend/static/js/views/skills.js"
+    },
+    {
+      "id": "chat-detail-modal",
+      "file": "frontend/static/js/views/conversations.js"
+    },
+    {
+      "id": "chat-det-body",
+      "file": "frontend/static/js/views/conversations.js"
+    },
+    {
+      "id": "chat-det-title",
+      "file": "frontend/static/js/views/conversations.js"
+    },
+    {
+      "id": "chat-det-toolbar",
+      "file": "frontend/static/js/views/conversations.js"
+    },
+    {
+      "id": "chat-det-tab-msgs",
+      "file": "frontend/static/js/views/conversations.js"
+    },
+    {
+      "id": "chat-det-tab-tl",
+      "file": "frontend/static/js/views/conversations.js"
+    },
+    {
+      "id": "library-search-input",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-pdf-drop",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-pdf-input",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-model-banner",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-stats",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-sources-list",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-results-panel",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-add-drawer",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-add-title",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-tag-grid",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-text-content",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-url-input",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-email-content",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "roles-skills-admin-panel",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "roles-skills-save-btn",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-workflow-panel",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "workflow-files-read",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "workflow-files-modified",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "workflow-task",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "workflow-status",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-list",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-detail",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-save-status",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-label",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-model",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-tier",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-key-var",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-role",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-prompt",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-enabled",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-key-value",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-init-modal",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-init-body",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-init-status-pill",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-init-subtitle",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-init-footer",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-init-footer-msg",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-init-drag-handle",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-bootstrap-btn",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-delete-modal",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-delete-body",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-delete-status-pill",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-delete-subtitle",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-delete-footer",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-delete-footer-msg",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-delete-drag-handle",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-reactivate-btn",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-add-modal",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "new-agent-name",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-globals-body",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-globals-chevron",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "ollama-swarm-list",
+      "file": "frontend/static/js/views/ollama.js"
+    },
+    {
+      "id": "ollama-status-msg",
+      "file": "frontend/static/js/views/ollama.js"
+    },
+    {
+      "id": "fridays-banner",
+      "file": "frontend/static/js/views/fridays.js"
+    },
+    {
+      "id": "fridays-btn-status",
+      "file": "frontend/static/js/views/fridays.js"
+    },
+    {
+      "id": "fridays-btn-agents",
+      "file": "frontend/static/js/views/fridays.js"
+    },
+    {
+      "id": "fridays-btn-skills",
+      "file": "frontend/static/js/views/fridays.js"
+    },
+    {
+      "id": "trace-conv-id",
+      "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "trace-jobs-panel",
+      "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "trace-detail-panel",
+      "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "trace-job-id",
+      "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "chat-attachment-input",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-attach-inline-state",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-attachments",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "input-wrapper",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-spell-helper",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "theme-font-size-select",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-right-dock",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-thread-rail",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-composer-left",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-composer-right",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-mention-menu",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-history-mode",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-history-limit",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-history-limit-wrap",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-messages",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-relay-auto",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-relay-turns-slider",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-relay-turns-value",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-relay-infinite",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-relay-force-full",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-relay-status",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "relay-rule-target",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-relay-rules-list",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "relay-rule-pattern",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "relay-rule-template",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-relay-timeline",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-reply-banner",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "ask-another-picker",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "${vid}",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-ticket-banner",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-thread-list",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-thread-search",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-thread-select",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-more-menu",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-bubble-",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "terminal-shortcut-modal",
+      "file": "frontend/static/js/views/terminal.js"
+    },
+    {
+      "id": "sc-modal-list",
+      "file": "frontend/static/js/views/terminal.js"
+    },
+    {
+      "id": "sudo-modal-list",
+      "file": "frontend/static/js/views/terminal.js"
+    },
+    {
+      "id": "sc-new-icon",
+      "file": "frontend/static/js/views/terminal.js"
+    },
+    {
+      "id": "sc-new-label",
+      "file": "frontend/static/js/views/terminal.js"
+    },
+    {
+      "id": "sc-new-cmd",
+      "file": "frontend/static/js/views/terminal.js"
+    },
+    {
+      "id": "sudo-new-command",
+      "file": "frontend/static/js/views/terminal.js"
+    },
+    {
+      "id": "sudo-new-note",
+      "file": "frontend/static/js/views/terminal.js"
+    },
+    {
+      "id": "terminal-agent-cmds-wrap",
+      "file": "frontend/static/js/views/terminal.js"
+    },
+    {
+      "id": "git-proposals-list",
+      "file": "frontend/static/js/views/git.js"
+    },
+    {
+      "id": "tickets-content",
+      "file": "frontend/static/js/views/tickets.js"
+    }
+  ]
+}

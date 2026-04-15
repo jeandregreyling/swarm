@@ -350,10 +350,39 @@ def _build_local_memory_block(selected_agent, latest_message):
         + 'Use this for continuity and hand-off. Do not quote it verbatim unless asked.'
     )
 
+def _build_knowledge_broadcast_block(agent_name):
+    """Inject recent unacked swarm knowledge events into agent context (A.3.4)."""
+    try:
+        from utils.db.knowledge import get_unacked_events, ack_all_events
+        events = get_unacked_events(agent_name, event_type='knowledge.new', limit=5)
+        if not events:
+            return ''
+        lines = []
+        ids = []
+        for ev in events:
+            try:
+                import json as _json
+                payload = _json.loads(ev['payload'])
+                lines.append(f'- [{payload.get("category", "?")}] {payload.get("key", "?")} (by {payload.get("source_agent", "?")})')
+            except Exception:
+                lines.append(f'- {str(ev.get("payload", ""))[:100]}')
+            ids.append(ev['id'])
+        # Ack so agent doesn't see them again
+        if ids:
+            ack_all_events(agent_name, ids)
+        return (
+            '\n\n=== New swarm knowledge ===\n'
+            + '\n'.join(lines)
+            + '\n=== End knowledge broadcast ===\n'
+        )
+    except Exception:
+        return ''
+
 def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, reply_context):
     memory_block = _build_local_memory_block(selected_agent, latest_message)
+    knowledge_block = _build_knowledge_broadcast_block(selected_agent)
     handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
-    base_prompt = handoff_block + threaded_prompt + memory_block
+    base_prompt = handoff_block + threaded_prompt + memory_block + knowledge_block
     if selected_agent in {'duck', 'sniffles'}:
         return (
             '=== Audit mode ===\n'

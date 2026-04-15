@@ -199,6 +199,31 @@ REGISTRY = {
         'usage': 'SKILL agent_status [agent_name]',
         'example': 'SKILL agent_status gemma',
     },
+    # ── A.3 — Shared Memory + Living Landscape skills ─────────────────────
+    'knowledge_write': {
+        'description': 'Write a new entry to the shared swarm knowledge base. Governed: only from completed proposal context or ghost.',
+        'trust_level': 2,
+        'usage': 'SKILL knowledge_write <category> <key> || <content>',
+        'example': 'SKILL knowledge_write lesson circuit-breaker-tuning || Open threshold of 5 is too aggressive for slow agents; use 8.',
+    },
+    'swarm_knowledge_search': {
+        'description': 'Search the shared swarm knowledge base (lessons, decisions, facts, patterns, warnings).',
+        'trust_level': 0,
+        'usage': 'SKILL swarm_knowledge_search <query>',
+        'example': 'SKILL swarm_knowledge_search circuit breaker threshold',
+    },
+    'search_landscape': {
+        'description': 'Search the living system landscape JSON index (files, blueprints, tables, agents, skills).',
+        'trust_level': 0,
+        'usage': 'SKILL search_landscape <query>',
+        'example': 'SKILL search_landscape proposals blueprint',
+    },
+    'update_landscape': {
+        'description': 'Regenerate the system landscape index (MD + JSON). Governed: requires trust_level 2.',
+        'trust_level': 2,
+        'usage': 'SKILL update_landscape',
+        'example': 'SKILL update_landscape',
+    },
 }
 
 
@@ -1210,6 +1235,96 @@ def _skill_agent_status(args, agent, **_):
         return False, f'agent_status error: {e}'
 
 
+# ── A.3 handlers: Shared Knowledge + Living Landscape ─────────────────────────
+
+def _skill_knowledge_write(args, agent, **_):
+    """SKILL knowledge_write <category> <key> || <content>"""
+    try:
+        from utils.db.knowledge import write_knowledge
+        if not args or '||' not in args:
+            return False, 'Usage: SKILL knowledge_write <category> <key> || <content>'
+        head, content = args.split('||', 1)
+        parts = head.strip().split(None, 1)
+        if len(parts) < 2:
+            return False, 'Usage: SKILL knowledge_write <category> <key> || <content>'
+        category = parts[0].strip().lower()
+        key = parts[1].strip()
+        content = content.strip()
+        if not content:
+            return False, 'Content cannot be empty.'
+        row_id = write_knowledge(key, content, agent,
+                                 category=category, importance=5)
+        return True, f'Knowledge #{row_id} written: [{category}] {key}'
+    except Exception as e:
+        return False, f'knowledge_write error: {e}'
+
+
+def _skill_swarm_knowledge_search(args, agent, **_):
+    """SKILL swarm_knowledge_search <query>"""
+    try:
+        from utils.db.knowledge import search_knowledge
+        query = (args or '').strip()
+        if not query:
+            return False, 'Usage: SKILL swarm_knowledge_search <query>'
+        rows = search_knowledge(query, limit=8)
+        if not rows:
+            return True, f'No knowledge found for: {query}'
+        lines = []
+        for r in rows:
+            lines.append(
+                f'[{r["category"]}] {r["key"]} (by {r["source_agent"]}, '
+                f'importance={r["importance"]})\n  {r["content"][:200]}'
+            )
+        return True, '\n---\n'.join(lines)
+    except Exception as e:
+        return False, f'swarm_knowledge_search error: {e}'
+
+
+def _skill_search_landscape(args, agent, **_):
+    """SKILL search_landscape <query> — grep the JSON landscape index."""
+    try:
+        import json as _json
+        landscape_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'swarm_docs', 'SYSTEM_LANDSCAPE.json'
+        )
+        if not os.path.exists(landscape_path):
+            return False, 'Landscape index not found. Run SKILL update_landscape first.'
+        with open(landscape_path, 'r') as f:
+            data = _json.load(f)
+        query = (args or '').strip().lower()
+        if not query:
+            return False, 'Usage: SKILL search_landscape <query>'
+        matches = []
+        for section_key, section_items in data.items():
+            if isinstance(section_items, list):
+                for item in section_items:
+                    blob = _json.dumps(item).lower()
+                    if query in blob:
+                        matches.append(f'[{section_key}] {_json.dumps(item)}')
+            elif isinstance(section_items, dict):
+                blob = _json.dumps(section_items).lower()
+                if query in blob:
+                    matches.append(f'[{section_key}] {_json.dumps(section_items)}')
+        if not matches:
+            return True, f'No landscape matches for: {query}'
+        return True, '\n'.join(matches[:15])
+    except Exception as e:
+        return False, f'search_landscape error: {e}'
+
+
+def _skill_update_landscape(args, agent, **_):
+    """SKILL update_landscape — regenerate MD + JSON landscape index."""
+    try:
+        from scripts.generate_system_index import generate as _gen_md
+        from scripts.generate_landscape_json import generate as _gen_json
+        md_path, md_lines = _gen_md()
+        json_path, json_count = _gen_json()
+        return True, f'Landscape updated: {md_path} ({md_lines} lines), {json_path} ({json_count} entries)'
+    except Exception as e:
+        return False, f'update_landscape error: {e}'
+
+
 _HANDLERS = {
     'shell':          _skill_shell,
     'browse':         _skill_browse,
@@ -1236,6 +1351,11 @@ _HANDLERS = {
     'ui_css_edit_checklist': _skill_ui_css_edit_checklist,
     'system_index':    _skill_system_index,
     'agent_status':    _skill_agent_status,
+    # A.3 — Shared Knowledge + Living Landscape
+    'knowledge_write':         _skill_knowledge_write,
+    'swarm_knowledge_search':  _skill_swarm_knowledge_search,
+    'search_landscape':        _skill_search_landscape,
+    'update_landscape':        _skill_update_landscape,
 }
 
 
