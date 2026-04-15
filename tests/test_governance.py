@@ -84,7 +84,7 @@ def test_db(tmp_path, monkeypatch):
     monkeypatch.setattr(database, 'get_connection', mock_get_connection)
 
     # Insert a couple of test proposals
-    now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
     conn.execute(
         "INSERT INTO work_proposals (proposal_id, agent, title, status, updated_at) VALUES (?,?,?,?,?)",
         ('PROP-001', 'eleven', 'Test Proposal 1', 'pending', now)

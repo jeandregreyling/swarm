@@ -93,3 +93,81 @@ def get_metrics():
     except Exception as exc:
         logger.error(f'metrics endpoint failed: {exc}')
         return jsonify({'error': str(exc)}), 500
+
+
+@metrics_bp.route('/api/metrics/prometheus', methods=['GET'])
+def get_metrics_prometheus():
+    """Return metrics in Prometheus text exposition format."""
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            lines = []
+
+            # Agent counts
+            row = conn.execute(
+                "SELECT COUNT(*) as total, "
+                "SUM(CASE WHEN enabled=1 THEN 1 ELSE 0 END) as active "
+                "FROM agents"
+            ).fetchone()
+            lines.append(f'# HELP swarm_agents_total Total number of agents')
+            lines.append(f'# TYPE swarm_agents_total gauge')
+            lines.append(f'swarm_agents_total {row[0]}')
+            lines.append(f'# HELP swarm_agents_active Number of enabled agents')
+            lines.append(f'# TYPE swarm_agents_active gauge')
+            lines.append(f'swarm_agents_active {row[1]}')
+
+            # Proposals by status
+            rows = conn.execute(
+                "SELECT status, COUNT(*) as cnt FROM work_proposals GROUP BY status"
+            ).fetchall()
+            lines.append(f'# HELP swarm_proposals Proposals by status')
+            lines.append(f'# TYPE swarm_proposals gauge')
+            for r in rows:
+                lines.append(f'swarm_proposals{{status="{r[0]}"}} {r[1]}')
+
+            # Bus events 24h
+            row = conn.execute(
+                "SELECT COUNT(*) FROM swarm_bus "
+                "WHERE created_at > datetime('now', '-1 day')"
+            ).fetchone()
+            lines.append(f'# HELP swarm_bus_events_24h Bus events in last 24 hours')
+            lines.append(f'# TYPE swarm_bus_events_24h gauge')
+            lines.append(f'swarm_bus_events_24h {row[0]}')
+
+            # Bus unconsumed
+            row = conn.execute(
+                "SELECT COUNT(*) FROM swarm_bus WHERE consumed_at IS NULL"
+            ).fetchone()
+            lines.append(f'# HELP swarm_bus_unconsumed Unconsumed bus messages')
+            lines.append(f'# TYPE swarm_bus_unconsumed gauge')
+            lines.append(f'swarm_bus_unconsumed {row[0]}')
+
+            # Node count
+            row = conn.execute("SELECT COUNT(*) FROM swarm_nodes").fetchone()
+            lines.append(f'# HELP swarm_nodes_total Registered federation nodes')
+            lines.append(f'# TYPE swarm_nodes_total gauge')
+            lines.append(f'swarm_nodes_total {row[0]}')
+
+            # Tickets by status
+            try:
+                rows = conn.execute(
+                    "SELECT status, COUNT(*) as cnt FROM tickets GROUP BY status"
+                ).fetchall()
+                lines.append(f'# HELP swarm_tickets Tickets by status')
+                lines.append(f'# TYPE swarm_tickets gauge')
+                for r in rows:
+                    lines.append(f'swarm_tickets{{status="{r[0]}"}} {r[1]}')
+            except Exception:
+                pass
+
+            from flask import Response
+            return Response(
+                '\n'.join(lines) + '\n',
+                mimetype='text/plain; version=0.0.4; charset=utf-8',
+            )
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.error(f'prometheus metrics failed: {exc}')
+        return Response(f'# error: {exc}\n', mimetype='text/plain', status=500)
