@@ -843,6 +843,21 @@ def api_chat():
                     'Check that the service is running and try again.'
                 ), 0, int((time.time() - started_at) * 1000)
 
+        # ── A.2.3: Auto-reroute if target agent is busy/down ────────────────
+        if auto_relay:
+            try:
+                from utils.agent_coordination import check_and_reroute
+                _coord_agent, _coord_rerouted, _coord_reason = check_and_reroute(
+                    selected_agent, exclude={'ghost', 'user'}
+                )
+                if _coord_rerouted and _coord_agent:
+                    _trace(conv_id, selected_agent, 'reroute',
+                           f'{selected_agent}→{_coord_agent}: {_coord_reason}')
+                    selected_agent = _coord_agent
+                    est_eta = _chat_eta_seconds(selected_agent)
+            except Exception:
+                pass  # coordination unavailable — proceed with original target
+
         effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
         if not auto_relay:
             effective_prompt = (

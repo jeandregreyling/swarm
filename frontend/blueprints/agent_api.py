@@ -420,4 +420,25 @@ def api_agent_identity():
     })
 
 
+# ── A.2.3: Proposal claim endpoint ────────────────────────────────────────
+@agent_api_bp.route('/api/agent/claim', methods=['POST'])
+def api_agent_claim_proposal():
+    """Idle agent claims the oldest matching pending proposal.
+
+    Requires headers: X-Agent-Key, X-Agent-Id.
+    Returns: {ok, proposal_id} or {ok: false, error}.
+    """
+    agent_id, error_response = _validate_agent_request()
+    if error_response:
+        return error_response
+
+    try:
+        from utils.agent_coordination import claim_pending_proposal
+        proposal_id = claim_pending_proposal(agent_id)
+        if proposal_id:
+            log_activity('terminal', 'agent_claim_proposal', f'agent={agent_id} proposal_id={proposal_id}')
+            return jsonify({'ok': True, 'proposal_id': proposal_id})
+        return jsonify({'ok': False, 'error': 'no pending proposals available'}), 404
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
