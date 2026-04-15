@@ -93,27 +93,27 @@ so the system is ready for distribution without a painful rewrite later.
 
 **Detailed sub-tasks:**
 
-- [ ] **A.1.1 — Proposal Singleton Enforcement**
+- [x] **A.1.1 — Proposal Singleton Enforcement**
   - Max 1 `in_progress` proposal per agent at any time
   - `transition_proposal(proposal_id, new_status, agent)` — central state machine
   - Validates: current → new status is legal, agent owns it, no collision
   - Optimistic locking: check-and-set with row version or timestamp
   - Location: new file `utils/governance.py`
 
-- [ ] **A.1.2 — Mandatory ALM Gate**
+- [x] **A.1.2 — Mandatory ALM Gate**
   - Remove the conditional check around `_alm_gate_or_response()` in services.py
   - ALM gate always enforced regardless of Time Wizard state
   - Duck sanity check called before any execution begins
   - If Duck is unavailable, proposal blocks (does not silently proceed)
 
-- [ ] **A.1.3 — Vortex Real Git Integration**
+- [x] **A.1.3 — Vortex Real Git Integration**
   - `create_checkpoint()` → `git add -A && git commit -m "..." && git tag vortex-{id}`
   - `restore_checkpoint()` → `git revert --no-commit {tag}..HEAD && git commit`
   - Auto-checkpoint on proposal status → `in_progress` and → `done`
   - Checkpoint metadata stored in `time_checkpoints` table (already exists)
   - Handle dirty working tree gracefully (stash/warn)
 
-- [ ] **A.1.4 — Auto-Trace on Proposal Lifecycle**
+- [x] **A.1.4 — Auto-Trace on Proposal Lifecycle**
   - Every proposal state change writes to `conv_timeline`
   - Trace ID = proposal_id (reuse existing trace infrastructure from P3b)
   - Every skill call within a proposal context gets a timeline entry
@@ -433,6 +433,11 @@ Update this section as work proceeds.
 DATE       | TASK                  | STATUS     | NOTES
 -----------|-----------------------|------------|------
 2026-04-15 | Plan v1.1 created     | Completed  | Multi-node vision incorporated
+2026-04-15 | A.1.1 Singleton       | Completed  | utils/governance.py: transition_proposal() + state machine + optimistic lock + audit log. 10 call sites wired.
+2026-04-15 | A.1.2 ALM Gate        | Completed  | Removed _is_time_wizard_active() bypass. Gate always enforced. Accepts approved+in_progress.
+2026-04-15 | A.1.3 Vortex Git      | Completed  | create_workflow_checkpoint now does git add+commit+tag. restore uses git revert (fallback to reset). Auto-checkpoint on →in_progress and →done.
+2026-04-15 | A.1.4 Auto-Trace      | Completed  | Every transition writes to conv_timeline via timeline_append. job_id=gov-{proposal_id}.
+2026-04-15 | A.1 Tests             | Completed  | 12/12 pytest pass. All 11 files py_compile clean.
            |                       |            |
 ```
 
@@ -446,6 +451,15 @@ Track every file touched for audit and rollback.
 FILE                                      | ACTION   | TASK   | DATE
 ------------------------------------------|----------|--------|-----
 docs/PHASE_4.0_DIAMOND_LAYER.md           | Created  | Plan   | 2026-04-15
+utils/governance.py                       | Created  | A.1.1  | 2026-04-15
+utils/db/_schema.py                       | Modified | A.1.1  | 2026-04-15
+frontend/blueprints/proposals.py          | Modified | A.1.1  | 2026-04-15
+frontend/services.py                      | Modified | A.1.1+2| 2026-04-15
+utils/proposal_review.py                  | Modified | A.1.1  | 2026-04-15
+core/pipeline/queue_manager.py            | Modified | A.1.1  | 2026-04-15
+utils/change_logger.py                    | Modified | A.1.1  | 2026-04-15
+core/time_machine.py                      | Modified | A.1.1+3| 2026-04-15
+tests/test_governance.py                  | Created  | A.1.1  | 2026-04-15
                                           |          |        |
 ```
 
