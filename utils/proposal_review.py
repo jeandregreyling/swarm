@@ -4,7 +4,7 @@ proposal_review.py — Duck's proposal sanity-check + chat-thread notification.
 Pipeline:
   alm_create_proposal → duck_review_proposal()  → approved → agent gets start signal
   agent builds        → alm_complete → status=done → duck_check_done() → uat
-  ghost reviews UAT   → mark executed (or tells duck to)
+  ghost reviews UAT   → mark closed (legacy: executed)
 """
 
 import sys
@@ -12,6 +12,8 @@ import time
 
 sys.path.insert(0, '/home/seven/swarm')
 sys.path.insert(0, '/home/seven/swarm/utils')
+
+from proposal_status import STATUS_CLOSED, normalize_proposal_status
 
 
 # ── Duck sanity check (rule-based, fast) ──────────────────────────────────────
@@ -189,7 +191,7 @@ def _duck_quality_check(title: str, description: str) -> tuple[str, str]:
 
     return 'pass', (
         'Duck quality check passed. Work looks complete and reasonable. '
-        'Proposal is now in UAT — Ghost can review and mark as executed to go live, '
+        'Proposal is now in UAT — Ghost can review and mark it closed to go live, '
         'or ask Duck to do it.'
     )
 
@@ -201,7 +203,7 @@ def _notify_done_check(conv_id: int, proposal_id: str, title: str,
         msg = (
             f'🦆 **Duck QA Check — {proposal_id} PASSED**\n\n'
             f'{feedback}\n\n'
-            f'**Ghost:** review in Studio → UAT tab, then mark as Executed to ship to production. '
+            f'**Ghost:** review in Studio → UAT tab, then mark as Closed to ship to production. '
             f'Or tell Duck: _"Duck, execute {proposal_id}"_ to do it automatically.'
         )
     else:
@@ -220,7 +222,7 @@ def _notify_done_check(conv_id: int, proposal_id: str, title: str,
 def duck_execute_proposal(proposal_id: str, actor: str = 'duck'):
     """
     Called when Ghost tells Duck to execute (ship) a UAT proposal.
-    Sets status to executed and notifies the thread.
+    Sets status to closed and notifies the thread.
     """
     try:
         from database import get_connection
@@ -245,8 +247,8 @@ def duck_execute_proposal(proposal_id: str, actor: str = 'duck'):
         from database import get_connection
         conn = get_connection()
         conn.execute(
-            "UPDATE work_proposals SET status='executed', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
-            (proposal_id,)
+            "UPDATE work_proposals SET status=?, updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
+            (STATUS_CLOSED, proposal_id)
         )
         conn.commit()
         conn.close()
@@ -256,14 +258,14 @@ def duck_execute_proposal(proposal_id: str, actor: str = 'duck'):
     conv_id = row['source_conv_id']
     if conv_id:
         msg = (
-            f'🚀 **{proposal_id} — EXECUTED by {actor}**\n\n'
+            f'🚀 **{proposal_id} — CLOSED by {actor}**\n\n'
             f'"{row["title"]}" is now live in production. '
             'Proposal closed. 🦆'
         )
         _post_to_thread(int(conv_id), msg, 'proposal_update')
 
-    print(f'[Duck] {proposal_id} executed by {actor}')
-    return True, f'Proposal {proposal_id} executed and closed.'
+    print(f'[Duck] {proposal_id} closed by {actor}')
+    return True, f'Proposal {proposal_id} shipped and closed.'
 
 
 # ── Status-change notification (manual moves via Studio UI) ──────────────────
@@ -291,13 +293,15 @@ def notify_proposal_status_change(proposal_id: str, new_status: str,
     title   = (row['title'] or proposal_id) if row else proposal_id
     creator = (row['agent'] or 'agent') if row else 'agent'
 
+    new_status = normalize_proposal_status(new_status)
+
     status_icons = {
         'approved':    '✅',
         'rejected':    '❌',
         'in_progress': '🔧',
         'done':        '🎉',
         'uat':         '🧪',
-        'executed':    '🚀',
+        'closed':      '🚀',
     }
     icon = status_icons.get(new_status, '📋')
 
@@ -317,11 +321,11 @@ def notify_proposal_status_change(proposal_id: str, new_status: str,
     elif new_status == 'uat':
         msg = (
             f'🧪 **Proposal in UAT — {title}**\n\n'
-            f'Moved to UAT by {actor}. Ghost will review and mark as executed to go live.'
+            f'Moved to UAT by {actor}. Ghost will review and mark it closed to go live.'
         )
-    elif new_status == 'executed':
+    elif new_status == 'closed':
         msg = (
-            f'🚀 **Proposal executed — {title}**\n\n'
+            f'🚀 **Proposal closed — {title}**\n\n'
             f'Shipped to production by {actor}. Proposal closed.'
         )
     elif new_status == 'rejected':

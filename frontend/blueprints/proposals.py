@@ -6,6 +6,7 @@ import threading
 import time
 from flask import Blueprint, jsonify, request, send_file
 from database import get_connection   # <-- this is the key import (used everywhere else)
+from proposal_status import ALL_PROPOSAL_STATUSES, normalize_proposal_status
 
 # ── Environment roots ─────────────────────────────────────────────────────────
 # PROD is always /home/seven/swarm (master branch, never touched by agents).
@@ -212,11 +213,13 @@ def delete_proposal(proposal_id):
 def update_proposal_status(proposal_id):
     try:
         data = request.get_json() or {}
-        new_status = data.get("status")
+        new_status = normalize_proposal_status(data.get("status"))
         actor = data.get("actor", "ghost")
         note  = data.get("note", "")
         if not new_status:
             return jsonify({"ok": False, "error": "status required"})
+        if new_status not in ALL_PROPOSAL_STATUSES:
+            return jsonify({"ok": False, "error": f"invalid status: {new_status}"})
         conn = get_connection()
         c = conn.cursor()
         normalized_id = _normalize_proposal_id(proposal_id)

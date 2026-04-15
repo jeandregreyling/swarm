@@ -4,11 +4,13 @@ utils/resource_gate.py — Ollama model resource gate
 Enforces a one-model-at-a-time policy for local Ollama inference.
 
 Rules:
-  • Eight (gemma4:26b, 17GB) runs exclusively — no other model may start
-    while Eight is loading or active, and Eight will not start if any
-    other Ollama model is currently running.
-  • All other local models (Mistral, LLaMA, Qwen, Gemma3) queue if a
-    model is already running, waiting up to QUEUE_WAIT_SECS.
+  • Eight (gemma4:26b, 17GB) runs exclusively — no other local agent may start
+    while Eight is actively running, and Eight will not start while another
+    local agent is actively running.
+  • All other local models (Mistral, LLaMA, Qwen, Gemma3) queue if another
+    local model is actively running, waiting up to QUEUE_WAIT_SECS.
+  • Resident warm models reported by Ollama ps() are NOT treated as active
+    work by default; keep_alive/prewarm should not block the queue forever.
   • Cloud agents (Nine/Groq, Ten/GPT, Eleven/Grok, Twelve/Claude,
     Scholar, Seeker) are never gated — they do not use local RAM.
 
@@ -24,6 +26,7 @@ Usage:
         release('mistral')
 """
 
+import os
 import threading
 import time
 import logging
@@ -100,24 +103,19 @@ def _check_ollama_conflicts(requesting_agent):
     outside of this gate, e.g. direct CLI runs).
     Returns (conflict: bool, loaded_model_names: list).
     """
+    # Warm resident models are expected because prewarm/keep_alive leave them
+    # loaded. They should not be mistaken for active work.
+    #
+    # If you need the legacy "anything shown by ps() blocks the queue" behavior
+    # for debugging or a different machine profile, set:
+    #   SWARM_STRICT_OLLAMA_PS_CONFLICTS=1
+    if os.environ.get('SWARM_STRICT_OLLAMA_PS_CONFLICTS', '0') != '1':
+        return False, _ollama_running_models()
+
     running = _ollama_running_models()
     if not running:
         return False, []
-
-    exclusive_model = _AGENT_MODEL_MAP.get('eight', 'gemma4')
-    is_eight_running = any(exclusive_model in m for m in running)
-    is_requesting_eight = requesting_agent in _EXCLUSIVE_AGENTS
-
-    if is_eight_running or (is_requesting_eight and running):
-        return True, running
-
-    # Non-exclusive conflict: a DIFFERENT model is loaded (same model warm = fine)
-    requesting_model = _AGENT_MODEL_MAP.get(requesting_agent, '')
-    other_models = [m for m in running if requesting_model not in m]
-    if other_models and requesting_agent not in _EXCLUSIVE_AGENTS:
-        return True, other_models
-
-    return False, running
+    return True, running
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
@@ -150,9 +148,10 @@ def acquire(agent, wait=True):
     while True:
         attempt += 1
         with _lock:
-            # Eight exclusive: block if anything else is running
-            if agent in _EXCLUSIVE_AGENTS and (_any_local_active() or _ollama_running_models()):
-                reason = f'Eight exclusive: waiting for active models to finish — {list(_active_agents) or _ollama_running_models()}'
+            # Eight exclusive: block if another local agent is actively running.
+            # Do not treat warm resident models as active work.
+            if agent in _EXCLUSIVE_AGENTS and _any_local_active():
+                reason = f'Eight exclusive: waiting for active models to finish — {list(_active_agents)}'
             # Non-Eight: block if Eight is active or running
             elif _any_exclusive_active():
                 reason = 'Eight is active — no other models may run during an Eight session'
