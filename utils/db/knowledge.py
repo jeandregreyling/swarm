@@ -27,7 +27,7 @@ def write_knowledge(key, content, source_agent, *,
     if own:
         conn = get_connection()
     try:
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         cur = conn.execute(
             """INSERT INTO swarm_knowledge
                (key, content, source_agent, source_proposal_id, category, importance, created_at, updated_at)

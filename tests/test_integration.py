@@ -253,7 +253,7 @@ class TestProposalLifecycle:
         conv_id = conn.execute(
             "INSERT INTO conversations (title, source) VALUES ('Test conv', 'terminal')"
         ).lastrowid
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals (proposal_id, agent, title, description, status, "
             "source_conv_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -333,7 +333,7 @@ class TestProposalLifecycle:
         conn, _, _ = integ_db
         from governance import transition_proposal
 
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals (proposal_id, agent, title, status, updated_at) "
             "VALUES (?, ?, ?, ?, ?)",
@@ -360,7 +360,7 @@ class TestProposalLifecycle:
         conn, _, _ = integ_db
         from governance import transition_proposal
 
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals (proposal_id, agent, title, status, updated_at) "
             "VALUES (?, ?, ?, ?, ?)",
@@ -377,7 +377,7 @@ class TestProposalLifecycle:
         conn, _, _ = integ_db
         from governance import transition_proposal
 
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals (proposal_id, agent, title, status, updated_at) "
             "VALUES (?, ?, ?, ?, ?)",
@@ -400,7 +400,7 @@ class TestProposalLifecycle:
         conn, _, _ = integ_db
         from governance import transition_proposal, SingletonViolationError
 
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals (proposal_id, agent, title, status, updated_at) "
             "VALUES (?, ?, ?, ?, ?)",
@@ -544,7 +544,7 @@ class TestCrossReferences:
             "INSERT INTO tickets (ticket_number, question, status) "
             "VALUES ('TKT-100', 'How to fix the widget?', 'open')"
         )
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals "
             "(proposal_id, agent, title, status, ticket_number, updated_at) "
@@ -569,7 +569,7 @@ class TestCrossReferences:
         conv_id = conn.execute(
             "INSERT INTO conversations (title, source) VALUES ('Widget discussion', 'terminal')"
         ).lastrowid
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals "
             "(proposal_id, agent, title, status, source_conv_id, updated_at) "
@@ -594,7 +594,7 @@ class TestCrossReferences:
         conv_id = conn.execute(
             "INSERT INTO conversations (title) VALUES ('Traced conversation')"
         ).lastrowid
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals "
             "(proposal_id, agent, title, status, source_conv_id, updated_at) "
@@ -629,7 +629,7 @@ class TestCrossReferences:
             "INSERT INTO tickets (ticket_number, question) "
             "VALUES ('TKT-200', 'Implement feature X')"
         )
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals "
             "(proposal_id, agent, title, status, ticket_number, source_conv_id, updated_at) "
@@ -726,7 +726,7 @@ class TestAgentCoordination:
         except ImportError:
             pytest.skip('agent_coordination not importable')
 
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals "
             "(proposal_id, agent, title, status, updated_at) "
@@ -775,7 +775,7 @@ class TestBusKnowledgeIntegration:
         conn, _, _ = integ_db
         from governance import transition_proposal
 
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "INSERT INTO work_proposals "
             "(proposal_id, agent, title, description, status, updated_at) "

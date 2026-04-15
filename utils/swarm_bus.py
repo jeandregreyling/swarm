@@ -55,7 +55,7 @@ def publish(topic, payload, source_service='local', *, conn=None):
         conn = get_connection()
     try:
         payload_str = json.dumps(payload) if isinstance(payload, dict) else str(payload)
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         cur = conn.execute(
             """INSERT INTO swarm_bus
                (topic, payload_json, source_service, created_at)
@@ -112,7 +112,7 @@ def mark_consumed(msg_id, *, conn=None):
     if own:
         conn = get_connection()
     try:
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             "UPDATE swarm_bus SET consumed_at = ? WHERE id = ?",
             (now, msg_id)
@@ -132,7 +132,7 @@ def mark_consumed_batch(msg_ids, *, conn=None):
     if own:
         conn = get_connection()
     try:
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         placeholders = ','.join('?' for _ in msg_ids)
         conn.execute(
             f"UPDATE swarm_bus SET consumed_at = ? WHERE id IN ({placeholders})",
