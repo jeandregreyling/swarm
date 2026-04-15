@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Studio (Agents + System) Service API Contract",
+  "description": "Agent management, system health, monitoring, global config. Domain: Studio.",
+  "version": "1.0.0",
+  "auth": "session cookie",
+  "endpoint_groups": {
+    "agents": {
+      "base_path": "/api/agents",
+      "endpoints": [
+        {"method": "GET", "path": "/api/agents", "description": "List all agents with status."},
+        {"method": "GET", "path": "/api/agents/status", "description": "Per-agent operational status (idle/busy/down/disabled)."},
+        {"method": "GET", "path": "/api/agents/config", "description": "Get agent configurations."},
+        {"method": "PUT", "path": "/api/agents/config/{name}", "description": "Update agent config."},
+        {"method": "POST", "path": "/api/agents/config", "description": "Create new agent."},
+        {"method": "PUT", "path": "/api/agents/key/{name}", "description": "Update agent API key."},
+        {"method": "GET", "path": "/api/agents/capability-matrix", "description": "Agent capability matrix."},
+        {"method": "POST", "path": "/api/agents/capabilities", "description": "Grant/revoke capabilities."},
+        {"method": "POST", "path": "/api/agents/{name}/toggle", "description": "Enable/disable agent."},
+        {"method": "POST", "path": "/api/agents/{name}/temperature", "description": "Set agent temperature."},
+        {"method": "GET", "path": "/api/agents/{agent}/memory", "description": "Get agent memory."},
+        {"method": "POST", "path": "/api/agents/{agent}/memory/write", "description": "Write to agent memory."},
+        {"method": "GET", "path": "/api/agents/memories/query", "description": "Cross-agent memory search."},
+        {"method": "POST", "path": "/api/agents/bootstrap", "description": "Bootstrap agent system."},
+        {"method": "POST", "path": "/api/agents/{name}/decommission", "description": "Decommission an agent."},
+        {"method": "POST", "path": "/api/agents/{name}/reactivate", "description": "Reactivate an agent."},
+        {"method": "POST", "path": "/api/agents/{name}/reset", "description": "Reset agent to defaults."},
+        {"method": "DELETE", "path": "/api/agents/{name}", "description": "Delete an agent."},
+        {"method": "GET", "path": "/api/skills", "description": "List all skills."},
+        {"method": "GET", "path": "/api/agents/{agent}/skills", "description": "Agent skill assignments."},
+        {"method": "POST", "path": "/api/agents/{agent}/skills", "description": "Assign skills to agent."},
+        {"method": "POST", "path": "/api/agents/hot-swap", "description": "Hot-swap agent model."},
+        {"method": "GET", "path": "/api/agents/{name}/export", "description": "Export agent config."},
+        {"method": "GET", "path": "/api/agents/export-all", "description": "Export all agents."},
+        {"method": "POST", "path": "/api/agents/import", "description": "Import agents from JSON."}
+      ]
+    },
+    "system": {
+      "base_path": "/api/system",
+      "endpoints": [
+        {"method": "GET", "path": "/api/health", "description": "Health check."},
+        {"method": "GET", "path": "/api/circuit-breaker", "description": "Circuit breaker states."},
+        {"method": "POST", "path": "/api/circuit-breaker/{agent}/reset", "description": "Reset circuit breaker."},
+        {"method": "GET", "path": "/api/system/time", "description": "Server time."},
+        {"method": "GET", "path": "/api/system", "description": "System overview."},
+        {"method": "GET", "path": "/api/monitor/stats", "description": "System stats (RAM, CPU, etc)."},
+        {"method": "GET", "path": "/api/alm/status", "description": "ALM pipeline status."},
+        {"method": "GET", "path": "/api/activity", "description": "Recent activity log."},
+        {"method": "GET", "path": "/api/swarm/globals", "description": "Swarm global settings."},
+        {"method": "PUT", "path": "/api/swarm/globals", "description": "Update global settings."},
+        {"method": "GET", "path": "/api/swarm/status", "description": "Full swarm status overview."}
+      ]
+    }
+  }
+}

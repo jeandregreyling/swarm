@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Proposals Service API Contract",
+  "description": "Work proposals lifecycle: CRUD, status transitions, attachments, notes, deferred items. Domain: Proposals.",
+  "version": "1.0.0",
+  "base_path": "/api/work-proposals",
+  "auth": "session cookie",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/work-proposals",
+      "description": "List all work proposals with optional status filter.",
+      "query_params": {"status": {"type": "string", "description": "Filter by status"}},
+      "response": {"type": "array", "items": {"$ref": "#/definitions/Proposal"}}
+    },
+    {
+      "method": "GET",
+      "path": "/api/work-proposals/{proposal_id}",
+      "description": "Get single proposal with traces and cross-refs."
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue",
+      "description": "Create a new work proposal.",
+      "request": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "agent": {"type": "string"}
+        },
+        "required": ["title", "agent"]
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/work-proposals/{proposal_id}",
+      "description": "Transition proposal status. All transitions go through governance engine.",
+      "request": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string", "enum": ["pending", "approved", "in_progress", "done", "uat", "closed", "rejected"]},
+          "note": {"type": "string"}
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/work-proposals/{proposal_id}/edit",
+      "description": "Edit proposal title/description (while pending or approved only)."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/work-proposals/{proposal_id}",
+      "description": "Delete a proposal (pending only)."
+    },
+    {
+      "method": "POST",
+      "path": "/api/work-proposals/{proposal_id}/duck-execute",
+      "description": "Execute proposal via Duck sanity check gate."
+    },
+    {
+      "method": "POST",
+      "path": "/api/work-proposals/{proposal_id}/agent-advance",
+      "description": "Agent autonomously advances proposal through stages."
+    },
+    {
+      "method": "GET",
+      "path": "/api/work-proposals/{proposal_id}/diff",
+      "description": "Get git diff for a proposal's checkpoint range."
+    },
+    {
+      "method": "POST",
+      "path": "/api/work-proposals/{proposal_id}/approve-to-uat",
+      "description": "Promote completed proposal to UAT environment."
+    },
+    {
+      "method": "POST",
+      "path": "/api/work-proposals/{proposal_id}/promote-to-prod",
+      "description": "Promote UAT-verified proposal to production."
+    },
+    {
+      "method": "POST",
+      "path": "/api/work-proposals/{proposal_id}/revert",
+      "description": "Revert a proposal's changes."
+    },
+    {
+      "method": "GET",
+      "path": "/api/work-proposals/{proposal_id}/attachments",
+      "description": "List proposal attachments."
+    },
+    {
+      "method": "POST",
+      "path": "/api/work-proposals/{proposal_id}/attachments",
+      "description": "Upload attachment to proposal."
+    },
+    {
+      "method": "GET",
+      "path": "/api/work-proposals/{proposal_id}/notes",
+      "description": "List proposal notes/comments."
+    },
+    {
+      "method": "POST",
+      "path": "/api/work-proposals/{proposal_id}/notes",
+      "description": "Add a note to a proposal."
+    },
+    {
+      "method": "GET",
+      "path": "/api/deferred",
+      "description": "List deferred work items."
+    },
+    {
+      "method": "POST",
+      "path": "/api/deferred",
+      "description": "Create deferred work item."
+    }
+  ],
+  "definitions": {
+    "Proposal": {
+      "type": "object",
+      "properties": {
+        "proposal_id": {"type": "string"},
+        "agent": {"type": "string"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "status": {"type": "string", "enum": ["pending", "approved", "in_progress", "done", "uat", "closed", "rejected"]},
+        "ticket_number": {"type": "string"},
+        "current_stage": {"type": "string"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

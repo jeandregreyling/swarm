@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Governance Service API Contract",
+  "description": "Core governance engine: proposal state transitions, audit, knowledge publishing. Domain: Governance.",
+  "version": "1.0.0",
+  "note": "Governance is a pure Python module (no Flask). Called internally by Proposals and Chat services.",
+  "module": "utils/governance.py",
+  "functions": [
+    {
+      "name": "transition_proposal",
+      "description": "Central state machine for all proposal status changes. ALL status transitions MUST go through this function.",
+      "parameters": {
+        "proposal_id": {"type": "string", "required": true},
+        "new_status": {"type": "string", "required": true, "enum": ["pending", "approved", "in_progress", "done", "uat", "closed", "rejected"]},
+        "agent": {"type": "string", "required": true},
+        "actor": {"type": "string", "default": "agent"},
+        "note": {"type": "string", "default": ""},
+        "conn": {"type": "sqlite3.Connection", "description": "Optional; caller manages commit if provided"}
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "proposal_id": {"type": "string"},
+          "old_status": {"type": "string"},
+          "new_status": {"type": "string"},
+          "agent": {"type": "string"},
+          "actor": {"type": "string"},
+          "timestamp": {"type": "string"}
+        }
+      },
+      "raises": ["ProposalNotFoundError", "IllegalTransitionError", "SingletonViolationError", "StaleProposalError"]
+    },
+    {
+      "name": "get_agent_active_proposal",
+      "description": "Get the in_progress proposal for an agent (if any)."
+    }
+  ],
+  "legal_transitions": {
+    "pending": ["approved", "rejected", "closed"],
+    "approved": ["in_progress", "rejected", "closed"],
+    "in_progress": ["done", "rejected"],
+    "done": ["uat", "in_progress", "closed"],
+    "uat": ["closed", "in_progress"],
+    "rejected": ["pending"],
+    "closed": []
+  },
+  "side_effects": {
+    "auto_trace": "Every transition writes to conv_timeline (A.1.4)",
+    "auto_checkpoint": "in_progress and done transitions create git checkpoints (A.1.3)",
+    "auto_publish": "done transitions publish summary to swarm_knowledge (A.3.2)",
+    "audit_log": "Every transition logged to governance_log table"
+  }
+}
