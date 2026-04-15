@@ -23,6 +23,10 @@ import os
 import signal
 import subprocess
 import threading
+from pathlib import Path as _Path
+
+_SWARM_ROOT = os.environ.get('SWARM_ROOT',
+              str(_Path(__file__).resolve().parent.parent))
 import time
 import uuid
 import shlex
@@ -380,7 +384,7 @@ def run(command, agent='shell', notify_ghost=True):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            cwd='/home/seven/swarm',
+            cwd=_SWARM_ROOT,
             preexec_fn=os.setsid,
         )
         entry['_proc'] = proc

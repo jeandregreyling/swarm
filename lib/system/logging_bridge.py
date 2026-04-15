@@ -10,9 +10,14 @@ Every agent action → logged here → tracked forever
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+import os as _os
 import sys
 import subprocess
 from datetime import datetime
+from pathlib import Path as _Path
+
+_SWARM_ROOT = _os.environ.get('SWARM_ROOT',
+              str(_Path(__file__).resolve().parent.parent.parent))
 from system_clock import get_timestamp
 
 sys.path.insert(0, '/home/seven/swarm')
@@ -90,7 +95,7 @@ def batch_commit(message):
         # Stage all changes
         subprocess.run(
             ['git', 'add', '-A'],
-            cwd='/home/seven/swarm',
+            cwd=_SWARM_ROOT,
             capture_output=True,
             timeout=10
         )
@@ -98,7 +103,7 @@ def batch_commit(message):
         # Check if there's anything to commit
         status = subprocess.run(
             ['git', 'status', '--porcelain'],
-            cwd='/home/seven/swarm',
+            cwd=_SWARM_ROOT,
             capture_output=True,
             text=True,
             timeout=10
@@ -107,7 +112,7 @@ def batch_commit(message):
         if status.stdout.strip():
             subprocess.run(
                 ['git', 'commit', '-m', full_msg],
-                cwd='/home/seven/swarm',
+                cwd=_SWARM_ROOT,
                 capture_output=True,
                 timeout=10
             )

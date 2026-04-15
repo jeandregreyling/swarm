@@ -20,7 +20,8 @@ import sys
 import hashlib
 import os
 
-SWARM_ROOT = '/home/seven/swarm'
+SWARM_ROOT = os.environ.get('SWARM_ROOT',
+             os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, SWARM_ROOT)
 sys.path.insert(0, os.path.join(SWARM_ROOT, 'utils'))
 
