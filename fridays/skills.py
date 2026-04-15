@@ -193,6 +193,12 @@ REGISTRY = {
         'usage': 'SKILL system_index [search query]',
         'example': 'SKILL system_index circuit breaker',
     },
+    'agent_status': {
+        'description': 'Check operational status of agents (idle/busy/down/disabled). No args = all agents. With agent name = single agent.',
+        'trust_level': 0,
+        'usage': 'SKILL agent_status [agent_name]',
+        'example': 'SKILL agent_status gemma',
+    },
 }
 
 
@@ -1145,6 +1151,65 @@ def _skill_system_index(args, agent, **_):
         return False, f'system_index error: {e}'
 
 
+def _skill_agent_status(args, agent, **_):
+    """Query agent operational status (A.2.2)."""
+    try:
+        from database import get_connection
+        target = (args or '').strip().lower()
+
+        conn = get_connection()
+        try:
+            if target:
+                rows = conn.execute(
+                    "SELECT name, tier, enabled FROM agents WHERE name=? AND number >= 0", (target,)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT name, tier, enabled FROM agents WHERE number >= 0 ORDER BY number ASC"
+                ).fetchall()
+            running_rows = conn.execute(
+                "SELECT agent, COUNT(*) as cnt FROM chat_jobs WHERE status='running' GROUP BY agent"
+            ).fetchall()
+        finally:
+            conn.close()
+
+        if target and not rows:
+            return False, f'Agent {target!r} not found in registry.'
+
+        running_map = {r['agent'].lower(): r['cnt'] for r in running_rows}
+
+        try:
+            from utils.circuit_breaker import status_for as _cb_sf
+            _cb_ok = True
+        except ImportError:
+            _cb_ok = False
+
+        lines = []
+        for r in rows:
+            name = r['name'].lower()
+            enabled = bool(r['enabled']) if r['enabled'] is not None else True
+            active = running_map.get(name, 0)
+            cb = 'closed'
+            if _cb_ok:
+                try:
+                    cb = _cb_sf(name).get('state', 'closed')
+                except Exception:
+                    pass
+            if not enabled:
+                st = 'disabled'
+            elif cb == 'open':
+                st = 'down'
+            elif active > 0:
+                st = 'busy'
+            else:
+                st = 'idle'
+            lines.append(f'{name:12s} tier={r["tier"] or "local":7s} status={st:8s} jobs={active} cb={cb}')
+
+        return True, '\n'.join(lines) if lines else 'No agents found.'
+    except Exception as e:
+        return False, f'agent_status error: {e}'
+
+
 _HANDLERS = {
     'shell':          _skill_shell,
     'browse':         _skill_browse,
@@ -1170,7 +1235,84 @@ _HANDLERS = {
     'knowledge_search': _skill_knowledge_search,
     'ui_css_edit_checklist': _skill_ui_css_edit_checklist,
     'system_index':    _skill_system_index,
+    'agent_status':    _skill_agent_status,
 }
+
+
+# ── Trust enforcement (A.2.1) ─────────────────────────────────────────────────
+# Tier → maximum trust_level the agent is allowed to invoke.
+# trust_level: 0=read-only, 1=write-own, 2=write-shared, 4=system
+
+TIER_MAX_TRUST = {
+    'local':   1,
+    'paid':    2,
+    'service': 2,
+    'human':   4,
+    'ghost':   4,   # alias — Ghost is always human-tier
+}
+
+_tier_cache = {}   # agent_name → tier (populated lazily, cleared on restart)
+
+def _get_agent_tier(agent_name):
+    """Look up an agent's tier from the DB registry. Cached per-process."""
+    name = (agent_name or '').strip().lower()
+    if not name:
+        return 'local'
+    if name in ('ghost', 'user'):
+        return 'human'
+    cached = _tier_cache.get(name)
+    if cached is not None:
+        return cached
+    try:
+        from database import get_connection
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                'SELECT tier FROM agents WHERE name=?', (name,)
+            ).fetchone()
+        finally:
+            conn.close()
+        tier = (row['tier'] if row else 'local') or 'local'
+    except Exception:
+        tier = 'local'
+    _tier_cache[name] = tier
+    return tier
+
+
+def _trust_gate(skill_name, agent_name):
+    """Check if agent's tier allows this skill's trust_level.
+
+    Returns (blocked: bool, reason: str).
+    blocked=False means proceed; blocked=True means deny with reason.
+
+    Override path: user_skill_permissions table can explicitly grant access.
+    """
+    meta = REGISTRY.get(skill_name)
+    if not meta:
+        return False, ''   # unknown skill — let call() handle it
+    required = int(meta.get('trust_level', 0) or 0)
+    if required == 0:
+        return False, ''   # read-only skills are always allowed
+
+    tier = _get_agent_tier(agent_name)
+    max_trust = TIER_MAX_TRUST.get(tier, 1)
+
+    if max_trust >= required:
+        return False, ''
+
+    # Check user_skill_permissions override (agent name used as "username")
+    try:
+        from utils.db.auth import can_user_invoke_skill
+        if can_user_invoke_skill(agent_name, skill_name, default_allow=False):
+            return False, ''
+    except Exception:
+        pass  # permissions table unavailable — no override
+
+    return True, (
+        f'Trust denied: {agent_name} (tier={tier}, max_trust={max_trust}) '
+        f'cannot invoke {skill_name} (requires trust_level={required}). '
+        f'Grant override via user_skill_permissions or upgrade agent tier.'
+    )
 
 
 # ── Central dispatch ──────────────────────────────────────────────────────────
@@ -1189,6 +1331,13 @@ def call(skill_name, args='', agent='ghost', source_conv_id=None):
     if skill_name not in _HANDLERS:
         known = ', '.join(sorted(_HANDLERS.keys()))
         return False, f'Unknown skill: {skill_name!r}. Known skills: {known}'
+
+    # ── A.2.1: Trust level enforcement ─────────────────────────────────────
+    blocked, reason = _trust_gate(skill_name, agent)
+    if blocked:
+        _log(skill_name, agent, args, reason, False)
+        logger.warning(f'[Skills] BLOCKED {agent} → {skill_name}: {reason}')
+        return False, reason
 
     logger.info(f'[Skills] {agent} → {skill_name}({args[:80]})')
 
