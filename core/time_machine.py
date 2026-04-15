@@ -15,9 +15,9 @@ import subprocess
 DB_PATH = Path(__file__).parent.parent / 'swarm_memory.db'
 
 # ── Git / worktree roots ──────────────────────────────────────────────────
-_SWARM_PROD_ROOT = '/home/seven/swarm'
-_SWARM_UAT_ROOT  = '/home/seven/swarm-uat'
-_SWARM_DEV_ROOT  = '/home/seven/swarm-dev'
+_SWARM_PROD_ROOT = os.environ.get('SWARM_ROOT', str(Path(__file__).parent.parent))
+_SWARM_UAT_ROOT  = os.environ.get('SWARM_UAT_ROOT', _SWARM_PROD_ROOT + '-uat')
+_SWARM_DEV_ROOT  = os.environ.get('SWARM_DEV_ROOT', _SWARM_PROD_ROOT + '-dev')
 
 def _git_cmd(args, cwd=None):
     """Run a git command. Returns (stdout+stderr, returncode)."""

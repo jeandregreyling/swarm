@@ -33,8 +33,8 @@ sys.path.insert(0, '/home/seven/swarm')
 
 logger = logging.getLogger('seven.file_agent')
 
-SANDPIT_ROOT  = Path('/home/seven/swarm/sandpits')
-SWARM_ROOT    = Path('/home/seven/swarm')
+SWARM_ROOT    = Path(os.environ.get('SWARM_ROOT', str(Path(__file__).parent.parent)))
+SANDPIT_ROOT  = SWARM_ROOT / 'sandpits'
 
 AGENT_SANDPITS = [
     'gemma', 'llama', 'mistral', 'eight', 'librarian', 'duck', 'sniffles',
