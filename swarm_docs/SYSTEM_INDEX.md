@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 02:28*
+*Auto-generated: 2026-04-16 02:47*
 
 
 ## Python Modules
@@ -43,12 +43,16 @@
 | `utils/load_project_docs.py` | load_project_docs.py — Seven's Swarm |
 | `utils/node_discovery.py` | utils/node_discovery.py — Node discovery + heartbeat + event relay (A.5.1, D.2, D.3) |
 | `utils/proposal_review.py` | proposal_review.py — Duck's proposal sanity-check + chat-thread notification. |
+| `utils/rate_limiter.py` | utils/rate_limiter.py — Token-bucket rate limiter middleware (E.1.2) |
 | `utils/resource_gate.py` | utils/resource_gate.py — Ollama model resource gate |
+| `utils/response_cache.py` | utils/response_cache.py — Simple TTL cache for Flask JSON responses (E.2.3) |
 | `utils/sandpits.py` | sandpits.py — Fridays / Seven's Swarm |
 | `utils/scheduler.py` | scheduler.py — Seven's Swarm Scheduler |
+| `utils/security_headers.py` | utils/security_headers.py — Security headers + input validation middleware (E.1) |
 | `utils/seven_fridays.py` | seven_fridays.py — Developer Agent REPL (Agent 11 interface) |
 | `utils/simulate.py` | simulate.py — Seven's Swarm |
 | `utils/skills.py` | skills.py — Seven's Swarm Skills Framework |
+| `utils/structured_logger.py` | utils/structured_logger.py — JSON structured logging (E.3.1) |
 | `utils/swarm_bus.py` | utils/swarm_bus.py — Lightweight internal message bus (A.4.2) |
 | `utils/swarm_root.py` | utils/swarm_root.py — Central SWARM_ROOT resolution (A.6.3) |
 | `utils/swarm_tasks.py` | swarm_tasks.py — Seven's Swarm |
@@ -154,6 +158,7 @@
 | `library` | 8 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
 | `memory` | 8 | memory.py — Memory routes |
+| `metrics` | 1 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
 | `nine` | 4 | nine.py — Agent Nine routes |
 | `node` | 11 | frontend/blueprints/node.py — Node registration + federation endpoints (A.4.5 + A.5) |
 | `ollama` | 4 | ollama.py — Ollama Models routes |
@@ -197,26 +202,26 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 18164 |
+| `activity_log` | 18220 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 43 |
+| `approval_tokens` | 46 |
 | `chat_jobs` | 224 |
 | `claude_log` | 1 |
-| `conv_timeline` | 7 |
-| `conversations` | 5 |
+| `conv_timeline` | 8 |
+| `conversations` | 6 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 897 |
+| `decisions` | 917 |
 | `deferred_items` | 0 |
-| `duck_log` | 387 |
+| `duck_log` | 389 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1888 |
+| `ghost_circle` | 1890 |
 | `governance_log` | 0 |
 | `knowledge_chunks` | 353 |
 | `knowledge_sources` | 12 |
@@ -234,7 +239,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 10 |
+| `messages` | 12 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -243,7 +248,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 61 |
 | `proposal_attachments` | 0 |
-| `queue` | 677 |
+| `queue` | 681 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 162 |
@@ -260,14 +265,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5658 |
+| `system_stats` | 5662 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 141 |
-| `tickets` | 149 |
-| `time_checkpoints` | 824 |
-| `time_events` | 47507 |
-| `time_journal` | 45513 |
-| `time_machine` | 4350 |
+| `ticket_notes` | 143 |
+| `tickets` | 151 |
+| `time_checkpoints` | 840 |
+| `time_events` | 47629 |
+| `time_journal` | 45619 |
+| `time_machine` | 4370 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
