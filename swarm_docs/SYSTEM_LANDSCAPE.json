@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-15 23:43",
+  "generated_at": "2026-04-15 23:53",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -135,6 +135,11 @@
       "path": "utils/load_project_docs.py",
       "group": "Utils",
       "description": "load_project_docs.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "utils/node_discovery.py",
+      "group": "Utils",
+      "description": "utils/node_discovery.py \u2014 Node discovery + heartbeat daemon (A.5.1)"
     },
     {
       "path": "utils/proposal_review.py",
@@ -1431,7 +1436,7 @@
     },
     {
       "name": "node",
-      "description": "frontend/blueprints/node.py \u2014 Node registration endpoints (A.4.5)",
+      "description": "frontend/blueprints/node.py \u2014 Node registration + federation endpoints (A.4.5 + A.5)",
       "routes": [
         {
           "path": "/api/node/info",
@@ -1450,9 +1455,39 @@
           "methods": [
             "GET"
           ]
+        },
+        {
+          "path": "/api/node/discover",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/node/heartbeat",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/node/proposals",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/federation/proposals",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/federation/roster",
+          "methods": [
+            "GET"
+          ]
         }
       ],
-      "route_count": 3
+      "route_count": 8
     },
     {
       "name": "ollama",
@@ -2144,7 +2179,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 17798
+      "rows": 17813
     },
     {
       "name": "agent_capabilities",
@@ -2196,7 +2231,7 @@
     },
     {
       "name": "decisions",
-      "rows": 551
+      "rows": 579
     },
     {
       "name": "deferred_items",
@@ -2380,7 +2415,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5625
+      "rows": 5627
     },
     {
       "name": "terminal_shortcuts",
@@ -2396,19 +2431,19 @@
     },
     {
       "name": "time_checkpoints",
-      "rows": 707
+      "rows": 714
     },
     {
       "name": "time_events",
-      "rows": 46558
+      "rows": 46620
     },
     {
       "name": "time_journal",
-      "rows": 44681
+      "rows": 44736
     },
     {
       "name": "time_machine",
-      "rows": 4264
+      "rows": 4272
     },
     {
       "name": "trusted_domains",
