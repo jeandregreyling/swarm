@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 00:00",
+  "generated_at": "2026-04-16 00:36",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -180,6 +180,11 @@
       "path": "utils/swarm_bus.py",
       "group": "Utils",
       "description": "utils/swarm_bus.py \u2014 Lightweight internal message bus (A.4.2)"
+    },
+    {
+      "path": "utils/swarm_root.py",
+      "group": "Utils",
+      "description": "utils/swarm_root.py \u2014 Central SWARM_ROOT resolution (A.6.3)"
     },
     {
       "path": "utils/swarm_tasks.py",
@@ -2179,7 +2184,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 17831
+      "rows": 17947
     },
     {
       "name": "agent_capabilities",
@@ -2195,7 +2200,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 31
+      "rows": 34
     },
     {
       "name": "chat_jobs",
@@ -2207,11 +2212,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 3
+      "rows": 4
     },
     {
       "name": "conversations",
-      "rows": 1
+      "rows": 2
     },
     {
       "name": "daily_checkpoint",
@@ -2231,7 +2236,7 @@
     },
     {
       "name": "decisions",
-      "rows": 633
+      "rows": 765
     },
     {
       "name": "deferred_items",
@@ -2239,7 +2244,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 377
+      "rows": 381
     },
     {
       "name": "file_versions",
@@ -2255,7 +2260,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1880
+      "rows": 1882
     },
     {
       "name": "governance_log",
@@ -2327,7 +2332,7 @@
     },
     {
       "name": "messages",
-      "rows": 2
+      "rows": 4
     },
     {
       "name": "moderators",
@@ -2355,7 +2360,7 @@
     },
     {
       "name": "queue",
-      "rows": 657
+      "rows": 665
     },
     {
       "name": "sandpit_log",
@@ -2415,7 +2420,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5629
+      "rows": 5636
     },
     {
       "name": "terminal_shortcuts",
@@ -2423,27 +2428,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 131
+      "rows": 135
     },
     {
       "name": "tickets",
-      "rows": 139
+      "rows": 143
     },
     {
       "name": "time_checkpoints",
-      "rows": 728
+      "rows": 771
     },
     {
       "name": "time_events",
-      "rows": 46672
+      "rows": 46879
     },
     {
       "name": "time_journal",
-      "rows": 44774
+      "rows": 44938
     },
     {
       "name": "time_machine",
-      "rows": 4278
+      "rows": 4305
     },
     {
       "name": "trusted_domains",

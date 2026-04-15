@@ -327,25 +327,28 @@ This is the key step for the distributed future.
 
 **Detailed sub-tasks:**
 
-- [ ] **A.6.1 — Integration Test Suite**
+- [x] **A.6.1 — Integration Test Suite**
   - End-to-end test: proposal creation → governance gate → execution → trace → done
   - Skill trust test: all trust levels validated against all tiers
   - Cross-ref test: ticket → proposal → conversation links verified
+  - **23 tests across 5 classes (TestProposalLifecycle, TestSkillTrust, TestCrossReferences, TestAgentCoordination, TestBusKnowledgeIntegration)**
+  - **BUG FIX: governance.py post-commit side effects (knowledge+bus) were never committed — data silently lost on conn.close()**
 
-- [ ] **A.6.2 — Install Script / Setup Wizard**
+- [x] **A.6.2 — Install Script / Setup Wizard**
   - `scripts/setup_node.py` — interactive setup for a new swarm node
   - Prompts: node name, API key, DB path, agents to enable
   - Generates config file, initialises DB, seeds default agents
 
-- [ ] **A.6.3 — Remove Hardcoded Paths**
+- [x] **A.6.3 — Remove Hardcoded Paths**
   - Audit all Python files for `/home/seven/swarm` hardcodes
   - Replace with config-driven `SWARM_ROOT` environment variable
   - Default: auto-detect from script location
+  - **Central module: utils/swarm_root.py + 12 infrastructure files updated**
 
 **Test Phase A.6:**
-- [ ] Full test suite passes
-- [ ] Setup wizard creates a working node from scratch
-- [ ] System runs with custom SWARM_ROOT (not default path)
+- [x] Full test suite passes — **198 passed, 1 skipped, 0 failed**
+- [x] Setup wizard creates a working node from scratch
+- [x] System runs with custom SWARM_ROOT (not default path)
 - [ ] All tiles functional after fresh install
 
 ---
@@ -458,6 +461,10 @@ DATE       | TASK                  | STATUS     | NOTES
 2026-04-16 | A.5.3 Federated Roster| Completed  | GET /api/federation/roster — aggregates local + remote agent lists.
 2026-04-16 | A.5.4 Node Auth       | Completed  | require_node_api_key decorator. X-Node-ID + X-Node-API-Key header validation.
 2026-04-16 | A.5 Tests             | Completed  | 16/16 A.5 tests. Full regression: 112 passed, 1 skipped, 0 failed.
+2026-04-16 | A.6.1 Integration     | Completed  | 23 tests across 5 classes. BUG FIX: governance post-commit side effects lost. 
+2026-04-16 | A.6.2 Setup Wizard    | Completed  | scripts/setup_node.py — interactive/auto mode, DB init, agent seeding, config gen.
+2026-04-16 | A.6.3 Hardcoded Paths | Completed  | utils/swarm_root.py + 12 infrastructure files updated. SWARM_ROOT env var + auto-detect.
+2026-04-16 | A.6 Tests             | Completed  | Full regression: 198 passed, 1 skipped, 0 failed.
            |                       |            |
 ```
 
@@ -513,6 +520,23 @@ utils/node_discovery.py                   | Created  | A.5.1  | 2026-04-16
 frontend/blueprints/node.py               | Modified | A.5.2-4| 2026-04-16
 frontend/terminal.py                      | Modified | A.5.1  | 2026-04-16
 tests/test_multi_node.py                  | Created  | A.5    | 2026-04-16
+tests/test_integration.py                 | Created  | A.6.1  | 2026-04-16
+utils/governance.py                       | Modified | A.6.1  | 2026-04-16
+scripts/setup_node.py                     | Created  | A.6.2  | 2026-04-16
+utils/swarm_root.py                       | Created  | A.6.3  | 2026-04-16
+utils/db/_connection.py                   | Modified | A.6.3  | 2026-04-16
+core/time_machine.py                      | Modified | A.6.3  | 2026-04-16
+utils/git_commit_logger.py                | Modified | A.6.3  | 2026-04-16
+frontend/blueprints/git.py               | Modified | A.6.3  | 2026-04-16
+utils/vs_tools.py                         | Modified | A.6.3  | 2026-04-16
+frontend/blueprints/exec_bp.py           | Modified | A.6.3  | 2026-04-16
+frontend/blueprints/proposals.py          | Modified | A.6.3  | 2026-04-16
+fridays/file_agent.py                     | Modified | A.6.3  | 2026-04-16
+fridays/skills.py                         | Modified | A.6.3  | 2026-04-16
+frontend/blueprints/workspace.py          | Modified | A.6.3  | 2026-04-16
+frontend/blueprints/shell.py             | Modified | A.6.3  | 2026-04-16
+fridays/shell_agent.py                    | Modified | A.6.3  | 2026-04-16
+lib/system/logging_bridge.py              | Modified | A.6.3  | 2026-04-16
                                           |          |        |
 ```
 
