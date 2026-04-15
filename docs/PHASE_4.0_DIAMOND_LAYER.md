@@ -141,34 +141,34 @@ so the system is ready for distribution without a painful rewrite later.
 
 **Detailed sub-tasks:**
 
-- [ ] **A.2.1 — Trust Level Enforcement**
+- [x] **A.2.1 — Trust Level Enforcement**
   - In `skills.call()`: look up agent's tier/role from registry
   - Compare against skill's `trust_level` in REGISTRY
   - Block and log if agent tier < required trust_level
   - Mapping: tier `local` → max trust 1, tier `paid` → max trust 2, `ghost` → trust 4
   - Configurable override via `user_skill_permissions` table
 
-- [ ] **A.2.2 — Agent Status API**
+- [x] **A.2.2 — Agent Status API**
   - `GET /api/agents/status` → per-agent: name, status (idle/busy/down/disabled),
     active_jobs, circuit_breaker_state, last_seen
   - Status derived from: chat_jobs (running = busy), circuit breaker (open = down),
     registry (enabled = disabled)
   - `SKILL agent_status [agent_name]` — agents can query this themselves
 
-- [ ] **A.2.3 — Agent Self-Coordination**
+- [x] **A.2.3 — Agent Self-Coordination**
   - On relay handoff: agent checks target availability via agent_status before dispatch
   - If target busy/down: auto-reroute to next-best agent by role match from registry
   - Idle agents can claim queued proposals that match their role/capabilities
   - Claim mechanism: atomic UPDATE with WHERE status='pending' AND agent IS NULL
 
 **Test Phase A.2:**
-- [ ] Unit: local agent blocked from trust_level 2+ skill
-- [ ] Unit: ghost can call any skill
-- [ ] Unit: user_skill_permissions override grants access
-- [ ] Integration: /api/agents/status returns correct busy/idle for running jobs
-- [ ] Integration: relay to down agent auto-reroutes to alternative
-- [ ] Integration: idle agent claims pending proposal
-- [ ] Compile check + service restart
+- [x] Unit: local agent blocked from trust_level 2+ skill
+- [x] Unit: ghost can call any skill
+- [x] Unit: user_skill_permissions override grants access
+- [x] Integration: /api/agents/status returns correct busy/idle for running jobs
+- [x] Integration: relay to down agent auto-reroutes to alternative
+- [x] Integration: idle agent claims pending proposal
+- [x] Compile check + service restart
 
 ---
 
@@ -438,6 +438,10 @@ DATE       | TASK                  | STATUS     | NOTES
 2026-04-15 | A.1.3 Vortex Git      | Completed  | create_workflow_checkpoint now does git add+commit+tag. restore uses git revert (fallback to reset). Auto-checkpoint on →in_progress and →done.
 2026-04-15 | A.1.4 Auto-Trace      | Completed  | Every transition writes to conv_timeline via timeline_append. job_id=gov-{proposal_id}.
 2026-04-15 | A.1 Tests             | Completed  | 12/12 pytest pass. All 11 files py_compile clean.
+2026-04-15 | A.2.1 Trust Gate      | Completed  | _trust_gate() in skills.call(). TIER_MAX_TRUST map. Override via user_skill_permissions.
+2026-04-15 | A.2.2 Agent Status    | Completed  | GET /api/agents/status endpoint. SKILL agent_status handler. Derives from chat_jobs+CB+registry.
+2026-04-15 | A.2.3 Self-Coord      | Completed  | utils/agent_coordination.py: check_and_reroute, claim_pending_proposal. Wired into chat.py dispatch.
+2026-04-15 | A.2 Tests             | Completed  | 20/20 pytest pass. 6 files py_compile clean. Regression: 32/32 total.
            |                       |            |
 ```
 
@@ -460,6 +464,12 @@ core/pipeline/queue_manager.py            | Modified | A.1.1  | 2026-04-15
 utils/change_logger.py                    | Modified | A.1.1  | 2026-04-15
 core/time_machine.py                      | Modified | A.1.1+3| 2026-04-15
 tests/test_governance.py                  | Created  | A.1.1  | 2026-04-15
+utils/agent_coordination.py               | Created  | A.2.3  | 2026-04-15
+fridays/skills.py                         | Modified | A.2.1+2| 2026-04-15
+frontend/blueprints/agents.py             | Modified | A.2.2  | 2026-04-15
+frontend/blueprints/agent_api.py          | Modified | A.2.3  | 2026-04-15
+frontend/blueprints/chat.py               | Modified | A.2.3  | 2026-04-15
+tests/test_skill_trust.py                 | Created  | A.2    | 2026-04-15
                                           |          |        |
 ```
 
