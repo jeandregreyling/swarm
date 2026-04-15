@@ -1,10 +1,15 @@
 {
-  "generated_at": "2026-04-16 02:47",
+  "generated_at": "2026-04-16 07:51",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
       "group": "Utils",
       "description": "utils/agent_coordination.py \u2014 Agent self-coordination (A.2.3)"
+    },
+    {
+      "path": "utils/api_versioning.py",
+      "group": "Utils",
+      "description": "utils/api_versioning.py \u2014 API version prefix support (R.5)"
     },
     {
       "path": "utils/app_launcher.py",
@@ -195,6 +200,11 @@
       "path": "utils/security_headers.py",
       "group": "Utils",
       "description": "utils/security_headers.py \u2014 Security headers + input validation middleware (E.1)"
+    },
+    {
+      "path": "utils/session_auth.py",
+      "group": "Utils",
+      "description": "utils/session_auth.py \u2014 Session-based UI authentication (R.1)"
     },
     {
       "path": "utils/seven_fridays.py",
@@ -1467,9 +1477,15 @@
           "methods": [
             "GET"
           ]
+        },
+        {
+          "path": "/api/metrics/prometheus",
+          "methods": [
+            "GET"
+          ]
         }
       ],
-      "route_count": 1
+      "route_count": 2
     },
     {
       "name": "nine",
@@ -1891,6 +1907,19 @@
         }
       ],
       "route_count": 17
+    },
+    {
+      "name": "sse",
+      "description": "frontend/blueprints/sse.py \u2014 Server-Sent Events stream (R.2)",
+      "routes": [
+        {
+          "path": "/api/events",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 1
     },
     {
       "name": "system",
@@ -2351,7 +2380,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 18220
+      "rows": 18538
     },
     {
       "name": "agent_capabilities",
@@ -2367,7 +2396,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 46
+      "rows": 49
     },
     {
       "name": "chat_jobs",
@@ -2379,11 +2408,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 8
+      "rows": 9
     },
     {
       "name": "conversations",
-      "rows": 6
+      "rows": 8
     },
     {
       "name": "daily_checkpoint",
@@ -2403,7 +2432,7 @@
     },
     {
       "name": "decisions",
-      "rows": 917
+      "rows": 942
     },
     {
       "name": "deferred_items",
@@ -2411,7 +2440,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 389
+      "rows": 392
     },
     {
       "name": "file_versions",
@@ -2427,7 +2456,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1890
+      "rows": 1892
     },
     {
       "name": "governance_log",
@@ -2443,7 +2472,7 @@
     },
     {
       "name": "memory",
-      "rows": 0
+      "rows": 2
     },
     {
       "name": "memory_eight",
@@ -2451,7 +2480,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "memory_grok",
@@ -2459,11 +2488,11 @@
     },
     {
       "name": "memory_llama",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "memory_mistral",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "memory_nine",
@@ -2499,7 +2528,7 @@
     },
     {
       "name": "messages",
-      "rows": 12
+      "rows": 18
     },
     {
       "name": "moderators",
@@ -2535,7 +2564,7 @@
     },
     {
       "name": "queue",
-      "rows": 681
+      "rows": 686
     },
     {
       "name": "research_evidence",
@@ -2603,7 +2632,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5662
+      "rows": 5722
     },
     {
       "name": "terminal_shortcuts",
@@ -2611,27 +2640,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 143
+      "rows": 146
     },
     {
       "name": "tickets",
-      "rows": 151
+      "rows": 154
     },
     {
       "name": "time_checkpoints",
-      "rows": 840
+      "rows": 859
     },
     {
       "name": "time_events",
-      "rows": 47629
+      "rows": 49342
     },
     {
       "name": "time_journal",
-      "rows": 45619
+      "rows": 47310
     },
     {
       "name": "time_machine",
-      "rows": 4370
+      "rows": 4398
     },
     {
       "name": "tool_builds",
