@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-15 23:43*
+*Auto-generated: 2026-04-15 23:53*
 
 
 ## Python Modules
@@ -37,6 +37,7 @@
 | `utils/git_commit_logger.py` | git_commit_logger.py — Seven's Swarm Time Wizard git hook |
 | `utils/governance.py` | utils/governance.py — Central proposal governance engine. |
 | `utils/load_project_docs.py` | load_project_docs.py — Seven's Swarm |
+| `utils/node_discovery.py` | utils/node_discovery.py — Node discovery + heartbeat daemon (A.5.1) |
 | `utils/proposal_review.py` | proposal_review.py — Duck's proposal sanity-check + chat-thread notification. |
 | `utils/resource_gate.py` | utils/resource_gate.py — Ollama model resource gate |
 | `utils/sandpits.py` | sandpits.py — Fridays / Seven's Swarm |
@@ -147,7 +148,7 @@
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
 | `memory` | 8 | memory.py — Memory routes |
 | `nine` | 4 | nine.py — Agent Nine routes |
-| `node` | 3 | frontend/blueprints/node.py — Node registration endpoints (A.4.5) |
+| `node` | 8 | frontend/blueprints/node.py — Node registration + federation endpoints (A.4.5 + A.5) |
 | `ollama` | 4 | ollama.py — Ollama Models routes |
 | `proposals` | 22 | — |
 | `shell` | 17 | shell.py — Shell & Terminal routes |
@@ -187,7 +188,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 17798 |
+| `activity_log` | 17813 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
@@ -200,7 +201,7 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 551 |
+| `decisions` | 579 |
 | `deferred_items` | 0 |
 | `duck_log` | 377 |
 | `file_versions` | 4 |
@@ -246,14 +247,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5625 |
+| `system_stats` | 5627 |
 | `terminal_shortcuts` | 10 |
 | `ticket_notes` | 131 |
 | `tickets` | 139 |
-| `time_checkpoints` | 707 |
-| `time_events` | 46558 |
-| `time_journal` | 44681 |
-| `time_machine` | 4264 |
+| `time_checkpoints` | 714 |
+| `time_events` | 46620 |
+| `time_journal` | 44736 |
+| `time_machine` | 4272 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
