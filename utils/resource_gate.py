@@ -34,11 +34,13 @@ logger = logging.getLogger('seven.resource_gate')
 
 # Ollama model names mapped to swarm agent names
 _AGENT_MODEL_MAP = {
-    'gemma':    'gemma3:latest',
-    'llama':    'llama3.2:latest',
-    'qwen':     'qwen2.5:latest',
-    'mistral':  'mistral:latest',
-    'eight':    'gemma4:26b',
+    'gemma':          'gemma3:latest',
+    'llama':          'llama3.2:latest',
+    'qwen':           'qwen2.5:latest',
+    'mistral':        'mistral:latest',
+    'eight':          'gemma4:26b',
+    'phi3':           'phi3:mini',
+    'deepseek_local': 'deepseek-r1:7b',
 }
 
 # Eight must run exclusively — nothing else while it is active
@@ -109,9 +111,11 @@ def _check_ollama_conflicts(requesting_agent):
     if is_eight_running or (is_requesting_eight and running):
         return True, running
 
-    # Non-exclusive conflict: another model is loaded
-    if running and requesting_agent not in _EXCLUSIVE_AGENTS:
-        return True, running
+    # Non-exclusive conflict: a DIFFERENT model is loaded (same model warm = fine)
+    requesting_model = _AGENT_MODEL_MAP.get(requesting_agent, '')
+    other_models = [m for m in running if requesting_model not in m]
+    if other_models and requesting_agent not in _EXCLUSIVE_AGENTS:
+        return True, other_models
 
     return False, running
 

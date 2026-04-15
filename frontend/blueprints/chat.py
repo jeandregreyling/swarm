@@ -864,7 +864,7 @@ def api_chat():
                 pass
 
         # ── Resource gate — one Ollama model at a time, Eight exclusive ──────────
-        _LOCAL_OLLAMA_AGENTS = {'gemma', 'llama', 'qwen', 'eight', 'mistral'}
+        _LOCAL_OLLAMA_AGENTS = {'gemma', 'llama', 'qwen', 'eight', 'mistral', 'phi3', 'deepseek_local'}
         if selected_agent in _LOCAL_OLLAMA_AGENTS:
             try:
                 from utils.resource_gate import acquire, release as rg_release
@@ -902,7 +902,7 @@ def api_chat():
                     response_text = f'[mistral] module failed to load: {_imp_err}'
                 else:
                     future = executor.submit(mistral_agent.chat, effective_prompt, history, stage_cb)
-                    answer, tokens = future.result(timeout=2000)
+                    answer, tokens = future.result(timeout=5000)
                     response_text = answer or '[mistral] No response — check server logs.'
                     tokens_used = tokens or 0
             elif selected_agent == 'nine':
