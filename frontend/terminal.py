@@ -73,6 +73,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.tools',          'tools_bp'),
     ('blueprints.metrics',        'metrics_bp'),
     ('blueprints.sse',            'sse_bp'),
+    ('blueprints.onboarding',     'onboarding_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
