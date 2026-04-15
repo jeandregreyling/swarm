@@ -742,6 +742,12 @@ def _migrate_schema(conn=None):
         "ALTER TABLE agents ADD COLUMN api_key_var   TEXT DEFAULT ''",
         "ALTER TABLE agents ADD COLUMN tier          TEXT DEFAULT 'local'",
         "ALTER TABLE agents ADD COLUMN enabled       INTEGER DEFAULT 1",
+        # Phase 2 — Agent Registry columns
+        "ALTER TABLE agents ADD COLUMN memory_table   TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN display_label  TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN aliases        TEXT DEFAULT '[]'",
+        "ALTER TABLE agents ADD COLUMN eta_seconds    INTEGER DEFAULT 60",
+        "ALTER TABLE agents ADD COLUMN keep_alive     INTEGER DEFAULT NULL",
     ]:
         try:
             conn.execute(col_ddl)
@@ -799,6 +805,43 @@ def _migrate_schema(conn=None):
     except Exception:
         pass
 
+    # Phase 2 — Seed registry metadata (memory_table, display_label, aliases, eta, keep_alive)
+    # fmt: (name, memory_table, display_label, aliases_json, eta_seconds, keep_alive)
+    _registry_seed = [
+        ('ghost',     '',                'GHOST (OPERATOR)',                  '[]',                                   None, None),
+        ('gemma',     'memory_gemma',    'GEMMA',                             '[]',                                   85,   -1),
+        ('llama',     'memory_llama',    'LLAMA',                             '[]',                                   70,   -1),
+        ('mistral',   'memory_mistral',  'MISTRAL',                           '[]',                                   90,   -1),
+        ('qwen',      'memory_qwen',     'QWEN',                              '[]',                                   120,  -1),
+        ('librarian', 'memory',          'LIBRARIAN',                         '[]',                                   50,   -1),
+        ('duck',      'memory',          'DUCK',                              '[]',                                   35,   -1),
+        ('sniffles',  'memory',          'SNIFFLES',                          '[]',                                   160,  -1),
+        ('eight',     'memory_eight',    'EIGHT',                             '[]',                                   120,  -1),
+        ('nine',      'memory_nine',     'NINE (GROQ LLAMA 3.3 70B)',        '["claude"]',                           8,    None),
+        ('ten',       'memory_ten',      'TEN (GPT-5.3-CODEX)',              '["copilot","gpt"]',                    8,    None),
+        ('eleven',    'memory_grok',     'ELEVEN (GROK API)',                 '["grok"]',                             10,   None),
+        ('twelve',    'memory_twelve',   'TWELVE (CLAUDE HAIKU)',            '["timewizard","timewizardagent","haiku"]', 10, None),
+        ('thirteen',  'memory_thirteen', 'THIRTEEN (HF)',                    '["huggingface"]',                      12,   None),
+        ('scholar',   'memory_scholar',  'SCHOLAR (GEMINI)',                 '["gemini"]',                           12,   None),
+        ('seeker',    'memory_seeker',   'SEEKER (TAVILY)',                  '["tavily"]',                           8,    None),
+    ]
+    try:
+        for name, mem_tbl, disp, aliases, eta, ka in _registry_seed:
+            # Always overwrite registry fields — these are managed by seed, not user edits
+            conn.execute(
+                """UPDATE agents SET
+                     memory_table  = ?,
+                     display_label = ?,
+                     aliases       = ?,
+                     eta_seconds   = ?,
+                     keep_alive    = ?
+                   WHERE name = ?""",
+                (mem_tbl, disp, aliases, eta, ka, name)
+            )
+        conn.commit()
+    except Exception:
+        pass
+
     # swarm_globals table — shared rules and global parameters
     try:
         conn.execute('CREATE TABLE IF NOT EXISTS swarm_globals (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, value TEXT NOT NULL DEFAULT "", description TEXT DEFAULT "", updated_at TEXT DEFAULT (datetime("now")))')
@@ -827,6 +870,35 @@ def _migrate_schema(conn=None):
         conn.commit()
     except Exception:
         pass
+
+    # conv_timeline: add job_id column for per-message tracing
+    tl_cols = {row[1] for row in conn.execute("PRAGMA table_info(conv_timeline)").fetchall()}
+    if 'job_id' not in tl_cols:
+        conn.execute("ALTER TABLE conv_timeline ADD COLUMN job_id TEXT DEFAULT ''")
+        try:
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_conv_timeline_job ON conv_timeline (job_id)")
+        except Exception:
+            pass
+        conn.commit()
+
+    # governance_log: audit trail for proposal state transitions (A.1.1)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS governance_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            proposal_id TEXT NOT NULL,
+            old_status  TEXT NOT NULL,
+            new_status  TEXT NOT NULL,
+            agent       TEXT NOT NULL DEFAULT '',
+            actor       TEXT NOT NULL DEFAULT '',
+            note        TEXT NOT NULL DEFAULT '',
+            created_at  TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_gov_log_proposal
+        ON governance_log (proposal_id)
+    """)
+    conn.commit()
 
     if _close:
         conn.close()

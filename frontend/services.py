@@ -78,7 +78,8 @@ from database import (get_connection, new_conversation, log_message,
                        grant_agent_capability, revoke_agent_capability,
                        get_agent_capabilities, AGENT_CAPABILITY_REGISTRY,
                        persist_chat_job, update_chat_job_db,
-                       get_chat_jobs_by_ids, mark_orphaned_chat_jobs)
+                       get_chat_jobs_by_ids, mark_orphaned_chat_jobs,
+                       sweep_stuck_jobs)
 from ticket import create as ticket_create, librarian_close
 import queue_manager as _queue_manager
 
@@ -130,43 +131,20 @@ _CHAT_JOB_TTL_SECONDS = 2 * 60 * 60
 _CHAT_DISPATCH_EXECUTOR = ThreadPoolExecutor(max_workers=12, thread_name_prefix='chat-dispatch')
 _CHAT_WORKER_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix='chat-worker')
 
-_CHAT_AGENT_ETA_SECONDS = {
-    'gemma': 85,
-    'llama': 70,
-    'mistral': 90,
-    'qwen': 120,
-    'eight': 120,
-    'librarian': 50,
-    'duck': 35,
-    'sniffles': 160,
-    'nine': 8,
-    'ten': 8,
-    'eleven': 10,
-    'twelve': 10,
-    'thirteen': 12,
-    'scholar': 12,
-    'seeker': 8,
-}
+# ── Agent metadata — read from DB registry (single source of truth) ───────────
+from utils.db.registry import (
+    get_agent_roster      as _reg_roster,
+    get_agent_aliases     as _reg_aliases,
+    get_agent_tables      as _reg_tables,
+    get_agent_etas        as _reg_etas,
+    get_agent_runtime_classes as _reg_runtime,
+    get_single_task_locals as _reg_single_task,
+    get_display_labels    as _reg_display,
+    get_api_key_map       as _reg_api_keys,
+    get_agent_models      as _reg_models,
+)
 
-_CHAT_AGENT_RUNTIME_CLASS = {
-    'gemma': 'local',
-    'llama': 'local',
-    'mistral': 'local',
-    'qwen': 'local',
-    'eight': 'local',
-    'librarian': 'local',
-    'duck': 'local',
-    'sniffles': 'local',
-    'nine': 'paid',
-    'ten': 'paid',
-    'eleven': 'paid',
-    'twelve': 'paid',
-    'thirteen': 'paid',
-    'scholar': 'service',
-    'seeker': 'service',
-}
-
-_CHAT_SINGLE_TASK_LOCAL_AGENTS = {'gemma', 'llama', 'mistral', 'qwen', 'eight'}
+# Legacy names removed — use _reg_etas(), _reg_runtime(), _reg_single_task() directly
 
 
 def _chat_now_iso():
@@ -174,89 +152,23 @@ def _chat_now_iso():
 
 
 def _chat_eta_seconds(agent):
-    return int(_CHAT_AGENT_ETA_SECONDS.get((agent or '').lower(), 60))
+    return int(_reg_etas().get((agent or '').lower(), 60))
 
 
 def _chat_runtime_class(agent):
-    return _CHAT_AGENT_RUNTIME_CLASS.get((agent or '').lower(), 'unknown')
-
-
-_CHAT_PARTICIPANT_ALIASES = {
-    'user': 'user',
-    'ghost': 'user',
-    'gemma': 'gemma',
-    'llama': 'llama',
-    'mistral': 'mistral',
-    'qwen': 'qwen',
-    'eight': 'eight',
-    'librarian': 'librarian',
-    'duck': 'duck',
-    'sniffles': 'sniffles',
-    'nine': 'nine',
-    'claude': 'nine',
-    'ten': 'ten',
-    'copilot': 'ten',
-    'gpt': 'ten',
-    'eleven': 'eleven',
-    'grok': 'eleven',
-    'twelve': 'twelve',
-    'timewizard': 'twelve',
-    'timewizardagent': 'twelve',
-    'haiku': 'twelve',
-    'scholar': 'scholar',
-    'gemini': 'scholar',
-    'seeker': 'seeker',
-    'tavily': 'seeker',
-    'thirteen': 'thirteen',
-    'huggingface': 'thirteen',
-    'fridays': 'fridays',
-}
+    return _reg_runtime().get((agent or '').lower(), 'unknown')
 
 
 def _normalize_chat_participant(name):
     raw = str(name or '').strip().lower()
     if not raw:
         return ''
+    aliases = _reg_aliases()
     squashed = re.sub(r'[^a-z0-9]+', '', raw)
-    return _CHAT_PARTICIPANT_ALIASES.get(squashed, _CHAT_PARTICIPANT_ALIASES.get(raw, raw))
+    return aliases.get(squashed, aliases.get(raw, raw))
 
 
-_AGENT_TABLES = {
-    'llama':    'memory_llama',
-    'mistral':  'memory_mistral',
-    'qwen':     'memory_qwen',
-    'gemma':    'memory_gemma',
-    'eight':    'memory_eight',
-    'nine':     'memory_nine',
-    'ten':      'memory_ten',
-    'eleven':   'memory_grok',
-    'grok':     'memory_grok',
-    'twelve':   'memory_twelve',
-    'scholar':  'memory',
-    'seeker':   'memory',
-    'librarian':'memory',
-    'duck':     'memory',
-    'sniffles': 'memory',
-}
-
-_AGENT_ROSTER = [
-    {'name': 'Gemma',     'model': 'gemma3:latest',                       'role': 'Director',                              'default_temp': 0.3},
-    {'name': 'LLaMA',     'model': 'llama3.2:latest',                     'role': 'Researcher',                            'default_temp': 0.6},
-    {'name': 'Mistral',   'model': 'mistral:latest',                      'role': 'Analyst',                               'default_temp': 0.6},
-    {'name': 'Qwen',      'model': 'qwen2.5:latest',                      'role': 'Analyst',                               'default_temp': 0.7},
-    {'name': 'Librarian', 'model': 'qwen:latest',                         'role': 'Archivist',                             'default_temp': 0.1},
-    {'name': 'Duck',      'model': 'qwen:latest',                         'role': 'Checker',                               'default_temp': 0.1},
-    {'name': 'Sniffles',  'model': 'deepseek-r1:7b',                      'role': 'Auditor',                               'default_temp': 0.1},
-    {'name': 'Eight',     'model': 'gemma4:26b',                          'role': 'SAP Specialist',                        'default_temp': 0.5},
-    {'name': 'Nine',      'model': 'llama-3.3-70b-versatile',             'role': 'System Architect · Developer Agent',    'default_temp': None, 'no_temp': True,  'developer_agent': True},
-    {'name': 'Ten',       'model': 'gpt-4o',                              'role': 'Software Engineer · Developer Agent',   'default_temp': 0.4,                   'developer_agent': True},
-    {'name': 'Eleven',    'model': 'grok-api',                            'role': 'Lateral Thinker · Developer Agent',     'default_temp': None, 'no_temp': True,   'developer_agent': True},
-    {'name': 'Twelve',    'model': 'claude-haiku-4-5',                    'role': 'Time Wizard · Developer Agent',         'default_temp': 0.3,                   'developer_agent': True},
-    {'name': 'Thirteen',  'model': 'meta-llama/Llama-3.3-70B-Instruct',  'role': 'HuggingFace Specialist · Dev (Testing)','default_temp': 0.5,                   'developer_agent': True},
-    {'name': 'Scholar',   'model': 'gemini-2.0-flash',                    'role': 'Vision & Reasoning (service)',          'default_temp': 0.4},
-    {'name': 'Seeker',    'model': 'tavily-search',                       'role': 'Real-Time Intelligence (service)',       'default_temp': 0.5},
-    {'name': 'Ghost',     'model': '(human operator)',                    'role': 'Operator · Ghost Layer',                'default_temp': None, 'no_temp': True,  'ghost_layer': True, 'no_toggle': True},
-]
+# Legacy names removed — use _reg_tables(), _reg_roster() directly
 
 
 def intake_internal(agent, title, description, priority=5):
@@ -301,13 +213,28 @@ def update_proposal_status(proposal_id, status, ticket_number=''):
     if callable(fn):
         return fn(proposal_id, status, ticket_number=ticket_number)
 
+    # Fallback: route through governance
+    from utils.governance import transition_proposal, GovernanceError
     conn = get_connection()
     try:
-        conn.execute(
-            """UPDATE work_proposals SET status=?, ticket_number=?, updated_at=datetime('now')
-               WHERE proposal_id=?""",
-            (status, ticket_number, proposal_id)
-        )
+        row = conn.execute(
+            'SELECT agent FROM work_proposals WHERE proposal_id=?', (proposal_id,)
+        ).fetchone()
+        agent = (row['agent'] if row else 'unknown')
+
+        try:
+            transition_proposal(proposal_id, status, agent,
+                                actor='services', note='services.update_proposal_status',
+                                conn=conn)
+        except GovernanceError as exc:
+            log_activity('terminal', 'governance_blocked', f'{proposal_id}:{status} — {exc}')
+            return
+
+        if ticket_number:
+            conn.execute(
+                "UPDATE work_proposals SET ticket_number=? WHERE proposal_id=?",
+                (ticket_number, proposal_id)
+            )
         conn.commit()
 
         # ALM routing fix — ensure every status change is Vortex-logged for Studio visibility
@@ -351,49 +278,10 @@ def _patched_ask_agent(agent_name, prompt):
     return _original_ask_agent(agent_name, prompt)
 
 
-def _chat_now_iso():
-    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-
-
-
-def _chat_eta_seconds(agent):
-    return int(_CHAT_AGENT_ETA_SECONDS.get((agent or '').lower(), 60))
-
-
-
-def _chat_runtime_class(agent):
-    return _CHAT_AGENT_RUNTIME_CLASS.get((agent or '').lower(), 'unknown')
-
-
-
-def _normalize_chat_participant(name):
-    raw = str(name or '').strip().lower()
-    if not raw:
-        return ''
-    squashed = re.sub(r'[^a-z0-9]+', '', raw)
-    return _CHAT_PARTICIPANT_ALIASES.get(squashed, _CHAT_PARTICIPANT_ALIASES.get(raw, raw))
-
-
 
 def _display_chat_participant(name):
     canonical = _normalize_chat_participant(name)
-    labels = {
-        'user': 'USER',
-        'gemma': 'GEMMA',
-        'llama': 'LLAMA',
-        'mistral': 'MISTRAL',
-        'qwen': 'QWEN',
-        'eight': 'EIGHT',
-        'librarian': 'LIBRARIAN',
-        'duck': 'DUCK',
-        'sniffles': 'SNIFFLES',
-        'nine': 'NINE (GROQ LLAMA 3.3 70B)',
-        'ten': 'TEN (GPT-5.3-CODEX)',
-        'eleven': 'ELEVEN (GROK API)',
-        'twelve': 'TWELVE (CLAUDE HAIKU)',
-        'thirteen': 'THIRTEEN (HF)',
-        'fridays': 'FRIDAYS',
-    }
+    labels = _reg_display()
     if canonical in labels:
         return labels[canonical]
     return str(name or 'AGENT').strip().upper() or 'AGENT'
@@ -492,7 +380,7 @@ def _chat_try_hard_kill_local_agent(agent_name):
 
     model = None
     try:
-        model = orchestrator.AGENTS.get(name)
+        model = _reg_models().get(name)
     except Exception:
         model = None
 
@@ -680,28 +568,27 @@ def _is_time_wizard_active():
 
 def _alm_gate_or_response(data, action_name):
     """
-    Enforce proposal approval for mutating actions while Time Wizard is active.
+    Enforce proposal approval for mutating actions — ALWAYS enforced.
     Returns a Flask response tuple on failure, else None.
+    
+    A.1.2: Gate is now mandatory. No bypass for Time Wizard inactive state.
     """
-    if not _is_time_wizard_active():
-        return None
-
     proposal_id = (data.get('proposal_id') or '').strip()
     if not proposal_id:
         return jsonify({
             'ok': False,
-            'error': 'proposal_id required while Time Wizard is active',
+            'error': 'proposal_id required — all mutating actions need an approved proposal',
             'action': action_name,
-            'required_status': ['approved', 'executed']
+            'required_status': ['approved', 'in_progress']
         }), 428
 
-    # Ownership bypass for developer agents
+    # Ownership bypass for Ghost (human operator)
     identity, _ = _resolve_identity_or_response(data)
     conn = get_connection()
     prop = conn.execute("SELECT agent FROM work_proposals WHERE proposal_id=?", (proposal_id,)).fetchone()
     if prop and prop['agent'].lower() == identity['effective_user'].lower() and identity['effective_user'] in _get_ghost_agent_names():
         conn.close()
-        return None  # bypass
+        return None  # Ghost bypass
 
     row = conn.execute(
         "SELECT proposal_id, status, agent, title FROM work_proposals WHERE proposal_id=?",
@@ -716,13 +603,13 @@ def _alm_gate_or_response(data, action_name):
             'action': action_name
         }), 404
 
-    if row['status'] not in ('approved', 'executed'):
+    if row['status'] not in ('approved', 'in_progress', 'executed'):
         return jsonify({
             'ok': False,
             'error': f'proposal status not permitted: {row["status"]}',
             'action': action_name,
             'proposal_id': proposal_id,
-            'required_status': ['approved', 'executed']
+            'required_status': ['approved', 'in_progress']
         }), 403
 
     log_activity('terminal', 'alm_gate_pass', f'{action_name}:{proposal_id}')
@@ -790,7 +677,7 @@ def _validate_agent_request():
         return None, (jsonify({'ok': False, 'error': 'invalid agent API key'}), 403)
     
     # Valid agent_id should match known local agents
-    valid_agents = {a['name'].lower() for a in _AGENT_ROSTER}
+    valid_agents = {a['name'].lower() for a in _reg_roster()}
     if agent_id.lower() not in valid_agents:
         log_activity('terminal', 'agent_auth_unknown', f'unknown agent_id: {agent_id}')
         # Still allow it; agents can register themselves
@@ -818,33 +705,19 @@ def _agent_reachability_status(agent_name):
     name = (agent_name or '').strip().lower()
     if name in DISABLED_AGENTS:
         return 'offline'
+    # Determine tier from registry
+    rt = _reg_runtime()
+    tier = rt.get(name, '')
     # Local Ollama agents — assume online if not disabled
-    if name in {'gemma', 'llama', 'mistral', 'qwen', 'librarian', 'duck', 'sniffles', 'eight'}:
+    if tier == 'local' or name == 'ghost':
         return 'online'
-    # Ghost operator — always online
-    if name == 'ghost':
-        return 'online'
-    # Developer Agents (API-backed) — check key presence
-    try:
-        from config import (
-            GITHUB_TOKEN, XAI_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY,
-            GROQ_API_KEY,
-        )
-        from claude_api import ANTHROPIC_API_KEY
-    except Exception:
-        return 'unknown'
-    key_map = {
-        'nine':    GROQ_API_KEY,
-        'twelve':  ANTHROPIC_API_KEY,
-        'ten':     GITHUB_TOKEN,
-        'eleven':  XAI_API_KEY,
-        'scholar': GEMINI_API_KEY,
-        'seeker':  TAVILY_API_KEY,
-    }
-    key = key_map.get(name)
-    if key is None:
-        return 'online'  # unknown agent, assume online
-    return 'online' if key else 'offline'
+    # API-backed agents — check key presence via env var from registry
+    import os
+    api_keys = _reg_api_keys()
+    env_var = api_keys.get(name) or ''
+    if not env_var:
+        return 'online'  # unknown agent or no key configured
+    return 'online' if os.environ.get(env_var, '') else 'offline'
 
 
 
@@ -861,16 +734,12 @@ __all__ = [
     'SWARM_ROOT',
     'THEME_SYNC_REMINDER',
     'ThreadPoolExecutor',
-    '_AGENT_ROSTER',
-    '_AGENT_TABLES',
-    '_CHAT_AGENT_ETA_SECONDS',
-    '_CHAT_AGENT_RUNTIME_CLASS',
+    '_reg_roster', '_reg_aliases', '_reg_tables', '_reg_etas', '_reg_runtime',
+    '_reg_single_task', '_reg_display', '_reg_api_keys', '_reg_models',
     '_CHAT_DISPATCH_EXECUTOR',
     '_CHAT_JOBS',
     '_CHAT_JOB_LOCK',
     '_CHAT_JOB_TTL_SECONDS',
-    '_CHAT_PARTICIPANT_ALIASES',
-    '_CHAT_SINGLE_TASK_LOCAL_AGENTS',
     '_CHAT_WORKER_EXECUTOR',
     '_SHELL_STREAM_LOCK',
     '_SHELL_STREAM_PROCS',
@@ -938,6 +807,7 @@ __all__ = [
     'orchestrator',
     'os',
     'persist_chat_job',
+    'sweep_stuck_jobs',
     'queue',
     'queue_intake',
     're',

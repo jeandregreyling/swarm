@@ -11,12 +11,29 @@ AGENTS = {
     'Gemma':     'gemma3:latest',
     'LLaMA':     'llama3.2:latest',
     'Mistral':   'mistral:latest',
-    'Qwen':      'qwen2.5:latest',   # virtual RAM layer — on-demand only
-    'Librarian': 'qwen:latest',
+    'Qwen':      'qwen2.5:latest',
+    'Librarian': 'qwen:1.5b',
 }
 
+# Try to pull live models from registry
+try:
+    from utils.db.registry import get_agent_models as _reg_debate_models
+    def _get_debate_agents():
+        live = _reg_debate_models(local_only=True)
+        if live:
+            return {k.capitalize() if k != 'llama' else 'LLaMA': v
+                    for k, v in live.items()
+                    if k in ('gemma', 'llama', 'mistral', 'qwen', 'librarian')}
+        return AGENTS
+except Exception:
+    def _get_debate_agents():
+        return AGENTS
+
 def ask_agent(agent_name, prompt):
-    model = AGENTS[agent_name]
+    agents = _get_debate_agents()
+    model = agents.get(agent_name) or AGENTS.get(agent_name)
+    if not model:
+        raise KeyError(f'Unknown debate agent: {agent_name}')
     print(f'\n[{agent_name}] thinking...')
     response = ollama.chat(
         model=model,

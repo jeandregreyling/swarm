@@ -1,11 +1,21 @@
-<!-- tickets.html — extracted from terminal_base.html -->
-<!-- Original: <template id="view-tickets"> -->
+<!-- tickets.html — Phase 1 rewrite — 15 April 2026 -->
   <div class="content-view" style="display: flex; flex-direction: column;">
     <div style="padding: 8px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;">
-      <h3 style="margin-bottom: 8px;font-size:12px;">🎫 Tickets</h3>
-      <input type="text" id="ticket-search" placeholder="Search tickets..." style="width: 100%; padding: 6px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); outline: none; font-size:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;font-size:12px;">🎫 Tickets</h3>
+        <span id="tickets-count" style="font-size:10px;color:var(--text-dim);"></span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="ticket-search" placeholder="Search tickets..." style="flex:1; padding: 6px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); outline: none; font-size:10px;">
+        <select id="ticket-status-filter" onchange="filterTicketsByStatus(this.value)" style="padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;">
+          <option value="">All</option>
+          <option value="open">Open</option>
+          <option value="in_progress">In Progress</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
     </div>
-    <div id="tickets-content" style="flex: 1; overflow-y: auto; padding: 0;">
-      <p style="color: var(--text-dim); font-size: 10px;">Loading tickets...</p>
+    <div id="tickets-content" style="flex: 1; overflow-y: auto; padding: 6px;">
+      <div style="padding:20px;color:var(--text-dim);text-align:center;font-size:11px;">Loading tickets…</div>
     </div>
   </div>

@@ -984,9 +984,10 @@ function openTicketDetail(ticketNumber) {
   fetch(`/api/tickets/${ticketNumber}`)
     .then(r => r.json())
     .then(data => {
-      // API returns {ticket: {...}, notes: [...], messages: [...], snoozes: [...]}
+      // API returns {ticket: {...}, notes: [...], messages: [...], snoozes: [...], proposals: [...]}
       const t = data.ticket || data;
       const notes = data.notes || t.notes || [];
+      const linkedProposals = data.proposals || [];
       const stColor = t.status === 'open' ? '#4caf50' : t.status === 'in_progress' ? '#ffa500' : '#888';
       const noteRows = notes.map(n =>
         `<div style="padding:8px 10px;background:var(--bg);border-radius:4px;border-left:2px solid var(--accent);margin-bottom:6px;font-size:12px;">
@@ -1012,6 +1013,18 @@ function openTicketDetail(ticketNumber) {
           ${t.closed_at ? `<tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Closed</td><td>${_escHtml(t.closed_at.slice(0,16))}</td></tr>` : ''}
           ${t.gemma_routing ? `<tr><td style="color:var(--text-dim);padding:4px 8px 4px 0;">Routing</td><td style="font-size:10px;color:var(--text-dim);">${_escHtml(t.gemma_routing)}</td></tr>` : ''}
         </table>
+
+        ${linkedProposals.length ? `
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Linked Proposals (${linkedProposals.length})</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${linkedProposals.map(p => {
+              const pc = p.status === 'approved' || p.status === 'done' ? '#4caf50' : p.status === 'pending' ? '#ffa500' : '#888';
+              const pJs = JSON.stringify(p.proposal_id);
+              return `<span onclick='openProposalDetail(${pJs})' style="padding:3px 10px;border-radius:12px;background:${pc}20;color:${pc};font-size:11px;cursor:pointer;border:1px solid ${pc}40;">${_escHtml(p.proposal_id)} · ${_escHtml(p.status||'')} · ${_escHtml(p.agent||'')}</span>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
 
         <div style="margin-bottom:14px;">
           <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Question</div>

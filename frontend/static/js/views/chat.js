@@ -75,6 +75,7 @@ const CHAT_RELAY_FORCE_FULL_KEY = 'fridays-chat-relay-force-full-v1';
 const CHAT_RELAY_RULES_KEY = 'fridays-chat-relay-rules-v1';
 const CHAT_FLOW_MODE_KEY = 'fridays-chat-flow-mode-v1';
 const CHAT_LEGACY_PARALLEL_MODE_KEY = 'fridays-chat-parallel-mode-v1';
+const CHAT_EXEC_MODE_KEY = 'fridays-chat-exec-mode-v1';   // 'sequential' | 'parallel'
 const CHAT_ATTACH_MAX_FILES = 6;
 const CHAT_ATTACH_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const CHAT_ATTACH_MAX_TEXT_CHARS_PER_FILE = 8000;
@@ -129,8 +130,9 @@ window.__fridaysChatRuntimeHidden = false;
 window.__fridaysChatRuntimePinned = true;
 window.__fridaysChatRelayAuto = window.__fridaysChatRelayAuto ?? (localStorage.getItem(CHAT_RELAY_AUTO_KEY) !== '0');
 window.__fridaysChatFlowMode = window.__fridaysChatFlowMode || _loadInitialChatFlowMode();
+window.__fridaysChatExecMode = window.__fridaysChatExecMode || (localStorage.getItem(CHAT_EXEC_MODE_KEY) || 'sequential');
 window.__fridaysChatRelayInfinite = window.__fridaysChatRelayInfinite ?? (localStorage.getItem(CHAT_RELAY_MAX_KEY) === 'inf');
-window.__fridaysChatRelayMaxPerTurn = Number(window.__fridaysChatRelayMaxPerTurn || localStorage.getItem(CHAT_RELAY_MAX_KEY) || 4);
+window.__fridaysChatRelayMaxPerTurn = Number(window.__fridaysChatRelayMaxPerTurn || localStorage.getItem(CHAT_RELAY_MAX_KEY) || 2);
 window.__fridaysChatRelayForceFull = window.__fridaysChatRelayForceFull ?? (localStorage.getItem(CHAT_RELAY_FORCE_FULL_KEY) !== '0');
 window.__fridaysChatRelayBudget = Number(window.__fridaysChatRelayBudget || 0);
 window.__fridaysChatRelayQueue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
@@ -1830,7 +1832,7 @@ function _chatAgentMeta(sender) {
 }
 
 function _chatRelayConfig() {
-  const max = Math.max(1, Math.min(12, Number(window.__fridaysChatRelayMaxPerTurn || 4)));
+  const max = Math.max(1, Math.min(12, Number(window.__fridaysChatRelayMaxPerTurn || 2)));
   return {
     auto: !!window.__fridaysChatRelayAuto,
     infinite: !!window.__fridaysChatRelayInfinite,
@@ -2119,7 +2121,7 @@ function _renderChatRelayControls() {
   const forceFullEl = document.getElementById('chat-relay-force-full');
   const statusEl = document.getElementById('chat-relay-status');
   if (autoEl) autoEl.checked = !!window.__fridaysChatRelayAuto;
-  const sliderVal = String(Math.max(1, Math.min(12, Number(window.__fridaysChatRelayMaxPerTurn || 4))));
+  const sliderVal = String(Math.max(1, Math.min(12, Number(window.__fridaysChatRelayMaxPerTurn || 2))));
   if (maxEl) maxEl.value = sliderVal;
   if (infEl) infEl.checked = !!window.__fridaysChatRelayInfinite;
   if (forceFullEl) forceFullEl.checked = !!window.__fridaysChatRelayForceFull;
@@ -2221,6 +2223,40 @@ function _updateParallelModeBtn() {
   }
 }
 
+// ── Execution mode: sequential (one at a time, relay queue) vs parallel (all at once) ──
+function onChatExecModeToggle() {
+  const current = String(window.__fridaysChatExecMode || 'sequential');
+  const next = current === 'sequential' ? 'parallel' : 'sequential';
+  window.__fridaysChatExecMode = next;
+  localStorage.setItem(CHAT_EXEC_MODE_KEY, next);
+  _updateExecModeBtn();
+  _renderChatRelayControls();
+  updateComposerMeta();
+}
+
+function _updateExecModeBtn() {
+  const btn = document.getElementById('chat-exec-mode-btn');
+  if (!btn) return;
+  const mode = String(window.__fridaysChatExecMode || 'sequential');
+  if (mode === 'parallel') {
+    btn.textContent = '⚡ Parallel';
+    btn.title = 'Parallel: all selected agents answer at once (talking queue OFF). Click to switch to sequential.';
+    btn.style.background = 'color-mix(in oklab, #f59e0b 18%, var(--card))';
+    btn.style.color = 'var(--text)';
+    btn.style.borderColor = '#f59e0b';
+  } else {
+    btn.textContent = '🔗 Sequential';
+    btn.title = 'Sequential: one agent speaks at a time via relay queue. Click to switch to parallel.';
+    btn.style.background = 'color-mix(in oklab, var(--accent) 14%, var(--card))';
+    btn.style.color = 'var(--text)';
+    btn.style.borderColor = 'var(--accent)';
+  }
+}
+
+function _isSequentialExecMode() {
+  return String(window.__fridaysChatExecMode || 'sequential') === 'sequential';
+}
+
 function onChatRelayMaxChange() {
   onChatRelayTurnsSliderChange();
 }
@@ -2228,7 +2264,7 @@ function onChatRelayMaxChange() {
 function onChatRelayTurnsSliderChange() {
   const sliders = document.querySelectorAll('.chat-relay-turns-slider');
   const maxEl = sliders.length > 0 ? sliders[0] : null;
-  const next = Math.max(1, Math.min(12, Number(maxEl && maxEl.value || 4)));
+  const next = Math.max(1, Math.min(12, Number(maxEl && maxEl.value || 2)));
   window.__fridaysChatRelayMaxPerTurn = next;
   if (!window.__fridaysChatRelayInfinite) {
     localStorage.setItem(CHAT_RELAY_MAX_KEY, String(next));
@@ -2250,7 +2286,7 @@ function onChatRelayInfiniteToggle() {
   if (window.__fridaysChatRelayInfinite) {
     localStorage.setItem(CHAT_RELAY_MAX_KEY, 'inf');
   } else {
-    localStorage.setItem(CHAT_RELAY_MAX_KEY, String(Math.max(1, Math.min(12, Number(window.__fridaysChatRelayMaxPerTurn || 4)))));
+    localStorage.setItem(CHAT_RELAY_MAX_KEY, String(Math.max(1, Math.min(12, Number(window.__fridaysChatRelayMaxPerTurn || 2)))));
   }
   // Sync all checkboxes
   infEls.forEach(el => {
@@ -2953,6 +2989,14 @@ function queueRelayHandoff(handoff, autoMode = false) {
 
 async function _processRelayQueue() {
   if (window.__fridaysChatRelayProcessing) return;
+  // In parallel exec mode, relay queue is disabled — all agents answer at once
+  if (!_isSequentialExecMode()) {
+    window.__fridaysChatRelayQueue = [];
+    window.__fridaysChatRelayActive = false;
+    window.__fridaysChatRelayHoldReason = '';
+    _renderChatRelayControls();
+    return;
+  }
   window.__fridaysChatRelayProcessing = true;
   try {
   const queue = Array.isArray(window.__fridaysChatRelayQueue) ? window.__fridaysChatRelayQueue : [];
@@ -3496,7 +3540,7 @@ function _appendChatBubble(sender, text, opts = {}) {
     const _parentDepth = Number.isFinite(Number(opts.chainDepth)) ? Number(opts.chainDepth) : -1;
     const _outDepth = _parentDepth >= 0
       ? Math.max(0, _parentDepth - 1)
-      : Math.min(3, Math.max(1, Number(window.__fridaysChatRelayMaxPerTurn || 4)));
+      : Math.min(3, Math.max(1, Number(window.__fridaysChatRelayMaxPerTurn || 2)));
     relayCandidates.forEach(c => {
       if (!_isAutoRelayTargetEnabled(c.target)) return;
       queueRelayHandoff({ from: senderIdentity.key, target: c.target, question: c.question, chainDepth: _outDepth }, true);
@@ -4936,6 +4980,7 @@ function initializeChatPanel() {
   _renderChatRelayControls();
   renderChatRelayTimeline();
   _updateParallelModeBtn();
+  _updateExecModeBtn();
   updateComposerMeta();
   updateNotificationControls();
   updateChatStatusPills();
@@ -5134,7 +5179,8 @@ function sendMessage(source = 'user', relayMeta = null) {
       history_mode: contextCfg.historyMode,
       history_limit: contextCfg.historyMode === 'recent' ? contextCfg.historyLimit : undefined,
       auto_relay: !!window.__fridaysChatRelayAuto,
-      parallel_mode: String(window.__fridaysChatFlowMode || 'both_seq') === 'online_only',
+      parallel_mode: !_isSequentialExecMode(),
+      exec_mode: String(window.__fridaysChatExecMode || 'sequential'),
       flow_mode: String(window.__fridaysChatFlowMode || 'both_seq'),
       ...(source === 'relay' && relayMeta?.from ? { relay_from: String(relayMeta.from).toLowerCase() } : {}),
       ..._authPayload(),
