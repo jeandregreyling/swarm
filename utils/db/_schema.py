@@ -444,6 +444,7 @@ CREATE TABLE IF NOT EXISTS work_proposals (
     ticket_number TEXT DEFAULT '',
     queue_id INTEGER DEFAULT 0,
     current_stage TEXT DEFAULT 'FRIDAYS',
+    source_node TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -567,6 +568,27 @@ CREATE TABLE IF NOT EXISTS swarm_nodes (
     capabilities    TEXT NOT NULL DEFAULT '[]',
     registered_at   TEXT DEFAULT (datetime('now')),
     last_seen       TEXT DEFAULT (datetime('now'))
+);
+
+-- Federated skill registry (D.2.1)
+CREATE TABLE IF NOT EXISTS node_skills (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_id         TEXT NOT NULL,
+    skill_name      TEXT NOT NULL,
+    trust_level     INTEGER DEFAULT 0,
+    description     TEXT DEFAULT '',
+    available       INTEGER DEFAULT 1,
+    last_seen       TEXT DEFAULT (datetime('now')),
+    UNIQUE(node_id, skill_name)
+);
+CREATE INDEX IF NOT EXISTS idx_node_skills_name ON node_skills(skill_name);
+
+-- Node config overrides (D.4.2)
+CREATE TABLE IF NOT EXISTS node_config (
+    key         TEXT PRIMARY KEY,
+    value       TEXT DEFAULT '',
+    node_id     TEXT DEFAULT '',
+    updated_at  TEXT DEFAULT (datetime('now'))
 );
 
 -- Research sessions (B.1.1)
@@ -1134,6 +1156,33 @@ def _migrate_schema(conn=None):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_tool_builds_agent_status ON tool_builds (building_agent, status)")
     conn.commit()
 
+    # node_skills (D.2.1) — migration for existing DBs
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS node_skills (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            node_id         TEXT NOT NULL,
+            skill_name      TEXT NOT NULL,
+            trust_level     INTEGER DEFAULT 0,
+            description     TEXT DEFAULT '',
+            available       INTEGER DEFAULT 1,
+            last_seen       TEXT DEFAULT (datetime('now')),
+            UNIQUE(node_id, skill_name)
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_node_skills_name ON node_skills(skill_name)")
+    conn.commit()
+
+    # node_config (D.4.2) — migration for existing DBs
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS node_config (
+            key         TEXT PRIMARY KEY,
+            value       TEXT DEFAULT '',
+            node_id     TEXT DEFAULT '',
+            updated_at  TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.commit()
+
     if _close:
         conn.close()
 
@@ -1199,6 +1248,8 @@ def _seed_agents():
         "ALTER TABLE work_proposals ADD COLUMN git_commit TEXT DEFAULT ''",
         # test_results: output of DEV health check + syntax checks run at alm_complete
         "ALTER TABLE work_proposals ADD COLUMN test_results TEXT DEFAULT ''",
+        # D.1.1: source_node tracks which node created this proposal
+        "ALTER TABLE work_proposals ADD COLUMN source_node TEXT DEFAULT ''",
     ]:
         try:
             conn.execute(col_ddl)
