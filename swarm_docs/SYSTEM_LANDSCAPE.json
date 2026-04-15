@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-15 23:18",
+  "generated_at": "2026-04-15 23:43",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -102,6 +102,11 @@
       "description": "db.memory \u2014 Shared memory, agent-specific memory, project docs."
     },
     {
+      "path": "utils/db/nodes.py",
+      "group": "Utils",
+      "description": "utils/db/nodes.py \u2014 Node registration CRUD (A.4.5)"
+    },
+    {
       "path": "utils/db/registry.py",
       "group": "Utils",
       "description": "db.registry \u2014 Cached Agent Registry: single source of truth for all agent metadata."
@@ -165,6 +170,11 @@
       "path": "utils/skills.py",
       "group": "Utils",
       "description": "skills.py \u2014 Seven's Swarm Skills Framework"
+    },
+    {
+      "path": "utils/swarm_bus.py",
+      "group": "Utils",
+      "description": "utils/swarm_bus.py \u2014 Lightweight internal message bus (A.4.2)"
     },
     {
       "path": "utils/swarm_tasks.py",
@@ -1420,6 +1430,31 @@
       "route_count": 4
     },
     {
+      "name": "node",
+      "description": "frontend/blueprints/node.py \u2014 Node registration endpoints (A.4.5)",
+      "routes": [
+        {
+          "path": "/api/node/info",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/node/register",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/node/list",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 3
+    },
+    {
       "name": "ollama",
       "description": "ollama.py \u2014 Ollama Models routes",
       "routes": [
@@ -2109,7 +2144,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 17771
+      "rows": 17798
     },
     {
       "name": "agent_capabilities",
@@ -2161,7 +2196,7 @@
     },
     {
       "name": "decisions",
-      "rows": 523
+      "rows": 551
     },
     {
       "name": "deferred_items",
@@ -2320,6 +2355,10 @@
       "rows": 4
     },
     {
+      "name": "swarm_bus",
+      "rows": 0
+    },
+    {
       "name": "swarm_event_acks",
       "rows": 0
     },
@@ -2336,8 +2375,12 @@
       "rows": 0
     },
     {
+      "name": "swarm_nodes",
+      "rows": 0
+    },
+    {
       "name": "system_stats",
-      "rows": 5620
+      "rows": 5625
     },
     {
       "name": "terminal_shortcuts",
@@ -2353,19 +2396,19 @@
     },
     {
       "name": "time_checkpoints",
-      "rows": 700
+      "rows": 707
     },
     {
       "name": "time_events",
-      "rows": 46411
+      "rows": 46558
     },
     {
       "name": "time_journal",
-      "rows": 44541
+      "rows": 44681
     },
     {
       "name": "time_machine",
-      "rows": 4245
+      "rows": 4264
     },
     {
       "name": "trusted_domains",
