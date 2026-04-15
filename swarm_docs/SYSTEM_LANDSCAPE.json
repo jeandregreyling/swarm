@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 02:28",
+  "generated_at": "2026-04-16 02:47",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -167,9 +167,19 @@
       "description": "proposal_review.py \u2014 Duck's proposal sanity-check + chat-thread notification."
     },
     {
+      "path": "utils/rate_limiter.py",
+      "group": "Utils",
+      "description": "utils/rate_limiter.py \u2014 Token-bucket rate limiter middleware (E.1.2)"
+    },
+    {
       "path": "utils/resource_gate.py",
       "group": "Utils",
       "description": "utils/resource_gate.py \u2014 Ollama model resource gate"
+    },
+    {
+      "path": "utils/response_cache.py",
+      "group": "Utils",
+      "description": "utils/response_cache.py \u2014 Simple TTL cache for Flask JSON responses (E.2.3)"
     },
     {
       "path": "utils/sandpits.py",
@@ -180,6 +190,11 @@
       "path": "utils/scheduler.py",
       "group": "Utils",
       "description": "scheduler.py \u2014 Seven's Swarm Scheduler"
+    },
+    {
+      "path": "utils/security_headers.py",
+      "group": "Utils",
+      "description": "utils/security_headers.py \u2014 Security headers + input validation middleware (E.1)"
     },
     {
       "path": "utils/seven_fridays.py",
@@ -195,6 +210,11 @@
       "path": "utils/skills.py",
       "group": "Utils",
       "description": "skills.py \u2014 Seven's Swarm Skills Framework"
+    },
+    {
+      "path": "utils/structured_logger.py",
+      "group": "Utils",
+      "description": "utils/structured_logger.py \u2014 JSON structured logging (E.3.1)"
     },
     {
       "path": "utils/swarm_bus.py",
@@ -1439,6 +1459,19 @@
       "route_count": 8
     },
     {
+      "name": "metrics",
+      "description": "frontend/blueprints/metrics.py \u2014 Observability metrics endpoint (E.3.2)",
+      "routes": [
+        {
+          "path": "/api/metrics",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 1
+    },
+    {
       "name": "nine",
       "description": "nine.py \u2014 Agent Nine routes",
       "routes": [
@@ -2318,7 +2351,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 18164
+      "rows": 18220
     },
     {
       "name": "agent_capabilities",
@@ -2334,7 +2367,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 43
+      "rows": 46
     },
     {
       "name": "chat_jobs",
@@ -2346,11 +2379,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 7
+      "rows": 8
     },
     {
       "name": "conversations",
-      "rows": 5
+      "rows": 6
     },
     {
       "name": "daily_checkpoint",
@@ -2370,7 +2403,7 @@
     },
     {
       "name": "decisions",
-      "rows": 897
+      "rows": 917
     },
     {
       "name": "deferred_items",
@@ -2378,7 +2411,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 387
+      "rows": 389
     },
     {
       "name": "file_versions",
@@ -2394,7 +2427,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1888
+      "rows": 1890
     },
     {
       "name": "governance_log",
@@ -2466,7 +2499,7 @@
     },
     {
       "name": "messages",
-      "rows": 10
+      "rows": 12
     },
     {
       "name": "moderators",
@@ -2502,7 +2535,7 @@
     },
     {
       "name": "queue",
-      "rows": 677
+      "rows": 681
     },
     {
       "name": "research_evidence",
@@ -2570,7 +2603,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5658
+      "rows": 5662
     },
     {
       "name": "terminal_shortcuts",
@@ -2578,27 +2611,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 141
+      "rows": 143
     },
     {
       "name": "tickets",
-      "rows": 149
+      "rows": 151
     },
     {
       "name": "time_checkpoints",
-      "rows": 824
+      "rows": 840
     },
     {
       "name": "time_events",
-      "rows": 47507
+      "rows": 47629
     },
     {
       "name": "time_journal",
-      "rows": 45513
+      "rows": 45619
     },
     {
       "name": "time_machine",
-      "rows": 4350
+      "rows": 4370
     },
     {
       "name": "tool_builds",
