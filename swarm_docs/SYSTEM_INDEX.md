@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-15 23:18*
+*Auto-generated: 2026-04-15 23:43*
 
 
 ## Python Modules
@@ -30,6 +30,7 @@
 | `utils/db/chat.py` | db.chat — Conversations, messages, and chat job tracking. |
 | `utils/db/knowledge.py` | utils/db/knowledge.py — Shared swarm knowledge base CRUD + event broadcasts (A.3) |
 | `utils/db/memory.py` | db.memory — Shared memory, agent-specific memory, project docs. |
+| `utils/db/nodes.py` | utils/db/nodes.py — Node registration CRUD (A.4.5) |
 | `utils/db/registry.py` | db.registry — Cached Agent Registry: single source of truth for all agent metadata. |
 | `utils/db/tickets.py` | db.tickets — Ticket CRUD, snooze, overdue, digest stats. |
 | `utils/db/timeline.py` | utils/db/timeline.py — Conversation timeline writer. |
@@ -43,6 +44,7 @@
 | `utils/seven_fridays.py` | seven_fridays.py — Developer Agent REPL (Agent 11 interface) |
 | `utils/simulate.py` | simulate.py — Seven's Swarm |
 | `utils/skills.py` | skills.py — Seven's Swarm Skills Framework |
+| `utils/swarm_bus.py` | utils/swarm_bus.py — Lightweight internal message bus (A.4.2) |
 | `utils/swarm_tasks.py` | swarm_tasks.py — Seven's Swarm |
 | `utils/vs_tools.py` | vs_tools.py — VS tab file read/memory tools for Nine |
 
@@ -145,6 +147,7 @@
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
 | `memory` | 8 | memory.py — Memory routes |
 | `nine` | 4 | nine.py — Agent Nine routes |
+| `node` | 3 | frontend/blueprints/node.py — Node registration endpoints (A.4.5) |
 | `ollama` | 4 | ollama.py — Ollama Models routes |
 | `proposals` | 22 | — |
 | `shell` | 17 | shell.py — Shell & Terminal routes |
@@ -184,7 +187,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 17771 |
+| `activity_log` | 17798 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
@@ -197,7 +200,7 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 523 |
+| `decisions` | 551 |
 | `deferred_items` | 0 |
 | `duck_log` | 377 |
 | `file_versions` | 4 |
@@ -237,18 +240,20 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 56 |
 | `sudo_command_whitelist` | 4 |
+| `swarm_bus` | 0 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
-| `system_stats` | 5620 |
+| `swarm_nodes` | 0 |
+| `system_stats` | 5625 |
 | `terminal_shortcuts` | 10 |
 | `ticket_notes` | 131 |
 | `tickets` | 139 |
-| `time_checkpoints` | 700 |
-| `time_events` | 46411 |
-| `time_journal` | 44541 |
-| `time_machine` | 4245 |
+| `time_checkpoints` | 707 |
+| `time_events` | 46558 |
+| `time_journal` | 44681 |
+| `time_machine` | 4264 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
