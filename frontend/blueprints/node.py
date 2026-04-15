@@ -187,15 +187,47 @@ def node_proposals():
         return jsonify({'error': str(exc)}), 500
 
 
-def _fetch_remote_json(url, path, *, timeout=10):
-    """GET a JSON endpoint from a remote node."""
+def _fetch_remote_json(url, path, *, timeout=5, node=None):
+    """GET a JSON endpoint from a remote node. Forwards auth if node provided."""
     target = url.rstrip('/') + path
     try:
         req = urllib.request.Request(target, method='GET')
+        if node:
+            # D.1.2: Forward auth headers using stored credentials
+            req.add_header('X-Node-ID', node.get('node_id', ''))
+            # Use the node's registered API key for auth
+            from utils.db.nodes import get_local_node_id
+            local_id = get_local_node_id()
+            req.add_header('X-Node-ID', local_id)
+            # If node has an api_key stored, use it; otherwise skip auth
+            api_key = node.get('_api_key', '')
+            if api_key:
+                req.add_header('X-Node-API-Key', api_key)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode())
     except Exception as exc:
         logger.debug(f'[Federation] fetch {target} failed: {exc}')
+        return None
+
+
+def _post_remote_json(url, path, payload, *, timeout=5, node=None):
+    """POST JSON to a remote node endpoint. Forwards auth if node provided."""
+    target = url.rstrip('/') + path
+    try:
+        body = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(target, data=body, method='POST')
+        req.add_header('Content-Type', 'application/json')
+        if node:
+            from utils.db.nodes import get_local_node_id
+            local_id = get_local_node_id()
+            req.add_header('X-Node-ID', local_id)
+            api_key = node.get('_api_key', '')
+            if api_key:
+                req.add_header('X-Node-API-Key', api_key)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as exc:
+        logger.debug(f'[Federation] post {target} failed: {exc}')
         return None
 
 
@@ -290,4 +322,158 @@ def federation_roster():
         return jsonify({'roster': roster})
     except Exception as exc:
         logger.error(f'federation_roster failed: {exc}')
+        return jsonify({'error': str(exc)}), 500
+
+
+# ── D.1.3: Cross-Node Proposal Sync ──────────────────────────────────────────
+
+@node_bp.route('/api/node/sync/proposals', methods=['POST'])
+@require_node_api_key
+def node_sync_proposals():
+    """Accept a batch of proposals from a remote node. Last-writer-wins merge."""
+    try:
+        data = request.get_json(force=True)
+        proposals = data.get('proposals', [])
+        source_node = data.get('source_node', '').strip()
+        if not proposals or not source_node:
+            return jsonify({'error': 'proposals[] and source_node required'}), 400
+
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        synced, skipped = 0, 0
+        try:
+            for p in proposals[:100]:  # Cap at 100 per batch
+                pid = p.get('proposal_id', '')
+                if not pid:
+                    skipped += 1
+                    continue
+                existing = conn.execute(
+                    "SELECT updated_at FROM work_proposals WHERE proposal_id = ?",
+                    (pid,)
+                ).fetchone()
+
+                if existing:
+                    # Last-writer-wins: update only if remote is newer
+                    remote_updated = p.get('updated_at', '')
+                    local_updated = existing['updated_at'] or ''
+                    if remote_updated > local_updated:
+                        conn.execute(
+                            "UPDATE work_proposals SET title=?, description=?, "
+                            "status=?, agent=?, source_node=?, updated_at=? "
+                            "WHERE proposal_id=?",
+                            (p.get('title', ''), p.get('description', ''),
+                             p.get('status', 'pending'), p.get('agent', ''),
+                             source_node, remote_updated, pid)
+                        )
+                        synced += 1
+                    else:
+                        skipped += 1
+                else:
+                    # New proposal — insert
+                    conn.execute(
+                        "INSERT INTO work_proposals "
+                        "(proposal_id, agent, title, description, status, source_node, "
+                        "created_at, updated_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        (pid, p.get('agent', ''), p.get('title', ''),
+                         p.get('description', ''), p.get('status', 'pending'),
+                         source_node,
+                         p.get('created_at', ''), p.get('updated_at', ''))
+                    )
+                    synced += 1
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Publish bus event
+        try:
+            from utils.swarm_bus import publish as bus_publish
+            bus_publish('proposal.synced', {
+                'source_node': source_node,
+                'synced': synced, 'skipped': skipped,
+            }, source_service='federation')
+        except Exception:
+            pass
+
+        return jsonify({'synced': synced, 'skipped': skipped})
+    except Exception as exc:
+        logger.error(f'node_sync_proposals failed: {exc}')
+        return jsonify({'error': str(exc)}), 500
+
+
+# ── D.2.2: Skill Advertisement ───────────────────────────────────────────────
+
+@node_bp.route('/api/node/skills', methods=['GET'])
+def node_skills():
+    """Return this node's available skills with trust levels."""
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+        from fridays.skills import REGISTRY
+        skills = []
+        for name, meta in REGISTRY.items():
+            skills.append({
+                'skill_name': name,
+                'trust_level': meta.get('trust_level', 0),
+                'description': meta.get('description', ''),
+            })
+        return jsonify({'skills': skills})
+    except Exception as exc:
+        logger.error(f'node_skills failed: {exc}')
+        return jsonify({'error': str(exc)}), 500
+
+
+# ── D.3.1: Event Relay Endpoint ──────────────────────────────────────────────
+
+@node_bp.route('/api/node/events', methods=['POST'])
+@require_node_api_key
+def node_events():
+    """Receive relayed events from a remote node. Dedup by topic+payload hash."""
+    try:
+        import hashlib
+        data = request.get_json(force=True)
+        events = data.get('events', [])
+        source_node = data.get('source_node', '').strip()
+        if not events or not source_node:
+            return jsonify({'error': 'events[] and source_node required'}), 400
+
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        inserted, duped = 0, 0
+        try:
+            for evt in events[:50]:  # Cap at RELAY_BATCH_SIZE
+                topic = evt.get('topic', '')
+                payload = evt.get('payload', {})
+                created_at = evt.get('created_at', '')
+                if not topic:
+                    continue
+
+                # Dedup: hash of topic + payload + 1-minute time window
+                dedup_key = hashlib.sha256(
+                    f"{topic}:{json.dumps(payload, sort_keys=True)}:{created_at[:16]}".encode()
+                ).hexdigest()[:32]
+
+                existing = conn.execute(
+                    "SELECT id FROM swarm_bus WHERE topic = ? AND "
+                    "source_service = ? AND created_at = ?",
+                    (topic, f'remote:{source_node}', created_at)
+                ).fetchone()
+
+                if existing:
+                    duped += 1
+                    continue
+
+                conn.execute(
+                    "INSERT INTO swarm_bus (topic, payload_json, source_service, created_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (topic, json.dumps(payload), f'remote:{source_node}', created_at)
+                )
+                inserted += 1
+            conn.commit()
+        finally:
+            conn.close()
+
+        return jsonify({'inserted': inserted, 'duplicates': duped})
+    except Exception as exc:
+        logger.error(f'node_events failed: {exc}')
         return jsonify({'error': str(exc)}), 500

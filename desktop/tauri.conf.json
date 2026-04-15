@@ -1,0 +1,44 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/v1.4.7/tauri_app/src-tauri/tauri.conf.json",
+  "productName": "Seven's Swarm",
+  "version": "4.0.0",
+  "identifier": "com.seven.swarm",
+  "build": {
+    "beforeDevCommand": "",
+    "devUrl": "http://localhost:5050",
+    "beforeBuildCommand": "",
+    "frontendDist": "../frontend"
+  },
+  "app": {
+    "title": "Seven's Swarm",
+    "windows": [
+      {
+        "title": "Seven's Swarm",
+        "width": 1400,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:5050 ws://localhost:5050; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "appimage", "msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico"
+    ],
+    "resources": [],
+    "copyright": "Seven 2026",
+    "category": "DeveloperTool",
+    "shortDescription": "Local-first AI swarm with governance",
+    "longDescription": "Seven's Swarm — A local-first, governance-first AI agent swarm with multi-node federation, tool building, and research capabilities."
+  }
+}

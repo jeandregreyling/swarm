@@ -1,0 +1,66 @@
+{
+  "name": "Seven's Swarm",
+  "short_name": "Swarm",
+  "version": "4.0.0",
+  "description": "Multi-agent swarm orchestration platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#0f3460",
+  "icons": [],
+  "assets": {
+    "css": [
+      "css/core.css",
+      "css/components.css",
+      "css/modals.css",
+      "css/taskbar.css",
+      "css/themes.css",
+      "css/windows.css",
+      "css/library.css",
+      "css/views/chat.css",
+      "css/views/database_schema.css",
+      "css/views/fridays.css",
+      "css/views/library.css"
+    ],
+    "js_core": [
+      "js/core/init.js",
+      "js/core/app.js",
+      "js/core/icons.js",
+      "js/core/theme.js",
+      "js/core/toast.js",
+      "js/core/window-manager.js",
+      "js/env-banner.js"
+    ],
+    "js_views": [
+      "js/views/access.js",
+      "js/views/agents-config.js",
+      "js/views/chat.js",
+      "js/views/conversations.js",
+      "js/views/docs.js",
+      "js/views/email.js",
+      "js/views/files.js",
+      "js/views/fridays.js",
+      "js/views/git.js",
+      "js/views/library.js",
+      "js/views/localai.js",
+      "js/views/memory.js",
+      "js/views/monitor.js",
+      "js/views/ollama.js",
+      "js/views/services.js",
+      "js/views/skills.js",
+      "js/views/studio.js",
+      "js/views/terminal-commands.js",
+      "js/views/terminal.js",
+      "js/views/tickets.js",
+      "js/views/time-wizard.js",
+      "js/views/trace.js"
+    ],
+    "external_cdn": [
+      {
+        "url": "https://cdn.jsdelivr.net/npm/marked/marked.min.js",
+        "purpose": "Markdown rendering",
+        "offline_note": "Bundle locally for desktop/offline mode"
+      }
+    ]
+  }
+}
