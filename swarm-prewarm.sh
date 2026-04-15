@@ -47,8 +47,9 @@ SKIPPED=0
 FAILED=0
 
 for MODEL in "${MODELS[@]}"; do
-  # Check if this model is installed locally (use /api/ps instead of /api/tags)
-  if ! curl -sf --max-time 5 "$OLLAMA_URL/api/ps" | python3 -c "
+  # Check if this model is installed locally.
+  # /api/tags lists installed models; /api/ps only lists currently loaded ones.
+  if ! curl -sf --max-time 5 "$OLLAMA_URL/api/tags" | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 models = [m.get('name','') for m in data.get('models', [])]
@@ -65,7 +66,7 @@ sys.exit(0 if any('$MODEL' in n for n in models) else 1)
     --max-time "$TVAL" \
     -X POST "$OLLAMA_URL/api/generate" \
     -H "Content-Type: application/json" \
-    -d "{\"model\":\"$MODEL\",\"prompt\":\" \"}" 2>/dev/null || echo "000")
+    -d "{\"model\":\"$MODEL\",\"prompt\":\" \",\"keep_alive\":-1}" 2>/dev/null || echo "000")
 
   if [[ "$HTTP_CODE" == "200" ]]; then
     log "OK    $MODEL"

@@ -73,7 +73,8 @@ const CHAT_RELAY_AUTO_KEY = 'fridays-chat-relay-auto-v1';
 const CHAT_RELAY_MAX_KEY = 'fridays-chat-relay-max-v1';
 const CHAT_RELAY_FORCE_FULL_KEY = 'fridays-chat-relay-force-full-v1';
 const CHAT_RELAY_RULES_KEY = 'fridays-chat-relay-rules-v1';
-const CHAT_PARALLEL_MODE_KEY = 'fridays-chat-parallel-mode-v1';
+const CHAT_FLOW_MODE_KEY = 'fridays-chat-flow-mode-v1';
+const CHAT_LEGACY_PARALLEL_MODE_KEY = 'fridays-chat-parallel-mode-v1';
 const CHAT_ATTACH_MAX_FILES = 6;
 const CHAT_ATTACH_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const CHAT_ATTACH_MAX_TEXT_CHARS_PER_FILE = 8000;
@@ -98,6 +99,15 @@ const CHAT_TYPO_SUGGESTIONS = {
   promts: 'prompts',
 };
 
+function _loadInitialChatFlowMode() {
+  const stored = String(localStorage.getItem(CHAT_FLOW_MODE_KEY) || '').trim().toLowerCase();
+  if (stored === 'both_seq' || stored === 'local_only' || stored === 'online_only') {
+    return stored;
+  }
+  const legacyParallel = localStorage.getItem(CHAT_LEGACY_PARALLEL_MODE_KEY) === '1';
+  return legacyParallel ? 'online_only' : 'both_seq';
+}
+
 window.__fridaysChatConversationId = window.__fridaysChatConversationId || null;
 window.__fridaysChatEnabledAgents = window.__fridaysChatEnabledAgents || { gemma: true };
 window.__fridaysReplyTargets = Array.isArray(window.__fridaysReplyTargets) ? window.__fridaysReplyTargets : [];
@@ -118,7 +128,7 @@ window.__fridaysChatUiScale = Number(window.__fridaysChatUiScale || localStorage
 window.__fridaysChatRuntimeHidden = false;
 window.__fridaysChatRuntimePinned = true;
 window.__fridaysChatRelayAuto = window.__fridaysChatRelayAuto ?? (localStorage.getItem(CHAT_RELAY_AUTO_KEY) !== '0');
-window.__fridaysChatParallelMode = window.__fridaysChatParallelMode ?? (localStorage.getItem(CHAT_PARALLEL_MODE_KEY) === '1');
+window.__fridaysChatFlowMode = window.__fridaysChatFlowMode || _loadInitialChatFlowMode();
 window.__fridaysChatRelayInfinite = window.__fridaysChatRelayInfinite ?? (localStorage.getItem(CHAT_RELAY_MAX_KEY) === 'inf');
 window.__fridaysChatRelayMaxPerTurn = Number(window.__fridaysChatRelayMaxPerTurn || localStorage.getItem(CHAT_RELAY_MAX_KEY) || 4);
 window.__fridaysChatRelayForceFull = window.__fridaysChatRelayForceFull ?? (localStorage.getItem(CHAT_RELAY_FORCE_FULL_KEY) !== '0');
@@ -132,6 +142,7 @@ window.__fridaysChatRelayHoldReason = String(window.__fridaysChatRelayHoldReason
 window.__fridaysChatRelayHoldStamp = Number(window.__fridaysChatRelayHoldStamp || 0);
 window.__fridaysChatRelayLastHoldKey = String(window.__fridaysChatRelayLastHoldKey || '');
 window.__fridaysChatRelayResource = window.__fridaysChatRelayResource || { cpuPercent: null, ramPercent: null, sampledAt: 0, source: 'init' };
+window.__fridaysChatRelayAllowedAgents = Array.isArray(window.__fridaysChatRelayAllowedAgents) ? window.__fridaysChatRelayAllowedAgents : [];
 window.__fridaysChatRelaySeen = window.__fridaysChatRelaySeen || {};
 window.__fridaysChatTimeline = Array.isArray(window.__fridaysChatTimeline) ? window.__fridaysChatTimeline : [];
 window.__fridaysChatTimelineFilter = String(window.__fridaysChatTimelineFilter || 'all').toLowerCase();
@@ -1366,8 +1377,9 @@ function updateComposerMeta() {
   const mode = String(window.__fridaysChatHistoryMode || 'full');
   const limit = Number(window.__fridaysChatHistoryLimit || 8);
   const modeLabel = mode === 'none' ? 'this message only' : (mode === 'recent' ? `last ${limit}` : 'full thread');
+  const flowLabel = _chatFlowModeLabel(window.__fridaysChatFlowMode, true);
   left.textContent = `${chars} chars · ${words} words`;
-  right.textContent = `${enabled} agent${enabled === 1 ? '' : 's'} on · ${attached} file${attached === 1 ? '' : 's'} · ${modeLabel}`;
+  right.textContent = `${enabled} agent${enabled === 1 ? '' : 's'} on · ${flowLabel} · ${attached} file${attached === 1 ? '' : 's'} · ${modeLabel}`;
 }
 
 function _normalizeMentionKey(raw) {
@@ -1830,7 +1842,7 @@ function _chatRelayConfig() {
 const CHAT_RELAY_RESOURCE_LIMITS = {
   queueCap: 20,
   monitorTtlMs: 4500,
-  maxRunningJobs: 3,
+  maxRunningJobs: 1,
   softCpuPercent: 82,
   softRamPercent: 96,   // raised from 86 — NVMe-swap system keeps RAM at 87-95% normally
   retryMsNormal: 1300,
@@ -1955,6 +1967,7 @@ async function _librarianReviewResponse(text, fromAgent, convId) {
       const target = String(c.target || '').toLowerCase().trim();
       const question = String(c.question || '').trim();
       if (!target || !question) continue;
+      if (!_isAutoRelayTargetEnabled(target)) continue;
       if (queuedTargets.has(target)) continue;      // already queued by regex relay
       if (recentTargets.has(target)) continue;      // already fired recently (any from)
       if (target === String(fromAgent || '').toLowerCase()) continue; // don't re-route to sender
@@ -2116,9 +2129,10 @@ function _renderChatRelayControls() {
     const rawBudget = Number(window.__fridaysChatRelayBudget || 0);
     const budget = rawBudget < 0 ? 'inf' : String(Math.max(0, rawBudget));
     const hold = String(window.__fridaysChatRelayHoldReason || '').trim();
+    const flowLabel = _chatFlowModeLabel(window.__fridaysChatFlowMode, true);
     statusEl.textContent = queued
-      ? `Relay queue: ${queued} · budget ${budget}${hold ? ` · hold ${hold}` : ''}`
-      : `Relay ${window.__fridaysChatRelayAuto ? 'auto-on' : 'manual-only'} · budget ${budget}${hold ? ` · ${hold}` : ''}`;
+      ? `Relay queue: ${queued} · ${flowLabel} · budget ${budget}${hold ? ` · hold ${hold}` : ''}`
+      : `Relay ${window.__fridaysChatRelayAuto ? 'auto-on' : 'manual-only'} · ${flowLabel} · budget ${budget}${hold ? ` · ${hold}` : ''}`;
   }
 }
 
@@ -2134,23 +2148,77 @@ function onChatRelayAutoToggle() {
   _renderChatRelayControls();
 }
 
+function _chatAgentOption(agentKey) {
+  const key = String(agentKey || '').toLowerCase().trim();
+  return CHAT_AGENT_OPTIONS.find(opt => opt.value === key) || null;
+}
+
+function _chatAgentTier(agentKey) {
+  const option = _chatAgentOption(agentKey);
+  if (!option) return 'unknown';
+  return option.tier === 'local' ? 'local' : 'online';
+}
+
+function _chatFlowModeLabel(mode, compact = false) {
+  const key = String(mode || 'both_seq').toLowerCase();
+  if (key === 'local_only') return compact ? 'local only' : 'Local Only';
+  if (key === 'online_only') return compact ? 'online only' : 'Online Only';
+  return compact ? 'both seq' : 'Both Seq';
+}
+
+function _chatFlowModeTitle(mode) {
+  const key = String(mode || 'both_seq').toLowerCase();
+  if (key === 'local_only') {
+    return 'Local Only: keep the chat on local agents and ignore online handoffs. Click to switch to online only.';
+  }
+  if (key === 'online_only') {
+    return 'Online Only: keep the chat on online agents and ignore local handoffs. Click to switch to both sequential.';
+  }
+  return 'Both Seq: selected local and online agents can participate, but relay runs one speaker at a time. Click to switch to local only.';
+}
+
+function _chatFlowModeAllowsAgent(agentKey, mode = window.__fridaysChatFlowMode) {
+  const tier = _chatAgentTier(agentKey);
+  const flow = String(mode || 'both_seq').toLowerCase();
+  if (flow === 'local_only') return tier === 'local';
+  if (flow === 'online_only') return tier === 'online';
+  return tier === 'local' || tier === 'online';
+}
+
+function _chatFlowModeNext(mode = window.__fridaysChatFlowMode) {
+  const current = String(mode || 'both_seq').toLowerCase();
+  if (current === 'both_seq') return 'local_only';
+  if (current === 'local_only') return 'online_only';
+  return 'both_seq';
+}
+
 function onChatParallelModeToggle() {
-  window.__fridaysChatParallelMode = !window.__fridaysChatParallelMode;
-  localStorage.setItem(CHAT_PARALLEL_MODE_KEY, window.__fridaysChatParallelMode ? '1' : '0');
+  window.__fridaysChatFlowMode = _chatFlowModeNext(window.__fridaysChatFlowMode);
+  localStorage.setItem(CHAT_FLOW_MODE_KEY, window.__fridaysChatFlowMode);
   _updateParallelModeBtn();
+  _renderChatRelayControls();
+  updateComposerMeta();
 }
 
 function _updateParallelModeBtn() {
   const btn = document.getElementById('chat-parallel-mode-btn');
   if (!btn) return;
-  const on = !!window.__fridaysChatParallelMode;
-  btn.textContent = on ? 'Par' : 'Seq';
-  btn.title = on
-    ? 'Parallel: all selected agents run simultaneously — click for sequential'
-    : 'Sequential: agents run one at a time — click for parallel';
-  btn.style.background = on ? 'var(--accent)' : 'var(--card)';
-  btn.style.color = on ? '#fff' : 'var(--text-dim)';
-  btn.style.borderColor = on ? 'var(--accent)' : 'var(--border)';
+  const mode = String(window.__fridaysChatFlowMode || 'both_seq').toLowerCase();
+  btn.textContent = _chatFlowModeLabel(mode);
+  btn.title = _chatFlowModeTitle(mode);
+  if (mode === 'local_only') {
+    btn.style.background = 'color-mix(in oklab, #2563eb 18%, var(--card))';
+    btn.style.color = 'var(--text)';
+    btn.style.borderColor = '#3b82f6';
+  } else if (mode === 'online_only') {
+    btn.style.background = 'color-mix(in oklab, #f97316 18%, var(--card))';
+    btn.style.color = 'var(--text)';
+    btn.style.borderColor = '#f97316';
+  } else {
+    btn.style.background = 'color-mix(in oklab, var(--accent) 14%, var(--card))';
+    btn.style.color = 'var(--text)';
+    btn.style.borderColor = 'var(--accent)';
+  }
 }
 
 function onChatRelayMaxChange() {
@@ -2211,6 +2279,9 @@ function _isKnownChatAgent(agentKey) {
 function _isAutoRelayTargetEnabled(agentKey) {
   const key = String(agentKey || '').toLowerCase().trim();
   if (!key) return false;
+  if (!_chatFlowModeAllowsAgent(key)) return false;
+  const allowed = Array.isArray(window.__fridaysChatRelayAllowedAgents) ? window.__fridaysChatRelayAllowedAgents : [];
+  if (allowed.length > 0) return allowed.includes(key);
   return !!(window.__fridaysChatEnabledAgents && window.__fridaysChatEnabledAgents[key]);
 }
 
@@ -2823,6 +2894,7 @@ function queueRelayHandoff(handoff, autoMode = false) {
   const target = String(handoff && handoff.target || '').toLowerCase().trim();
   const question = String(handoff && handoff.question || '').trim();
   if (!target || !question || !_isKnownChatAgent(target)) return;
+  if (autoMode && !_isAutoRelayTargetEnabled(target)) return;
 
   const item = {
     from: String(handoff.from || 'agent').toLowerCase().trim(),
@@ -2968,7 +3040,6 @@ async function _processRelayQueue() {
     if (window.__fridaysChatAgentSelectionState[k] === 'relay') window.__fridaysChatAgentSelectionState[k] = null;
   });
   _setAgentSelectionState(next.target, 'relay');
-  _applySingleAgentSelection(next.target);
   input.value = _relayPromptText(next);
   if (next.auto) {
     const _dispatchChainTag = Number(next.chainDepth ?? -1) >= 0 ? ` ⛓${next.chainDepth} remaining.` : '';
@@ -2984,8 +3055,6 @@ async function _processRelayQueue() {
       pollActiveThreadRuntime(true);
       setTimeout(() => _processRelayQueue(), 0);
     });
-  // Immediately try next item — don't wait for this relay to finish.
-  setTimeout(() => _processRelayQueue(), 0);
   } finally {
     window.__fridaysChatRelayProcessing = false;
   }
@@ -3429,9 +3498,7 @@ function _appendChatBubble(sender, text, opts = {}) {
       ? Math.max(0, _parentDepth - 1)
       : Math.min(3, Math.max(1, Number(window.__fridaysChatRelayMaxPerTurn || 4)));
     relayCandidates.forEach(c => {
-      // Do not gate on _isAutoRelayTargetEnabled here — the relay target is temporarily
-      // enabled by _processRelayQueue when the item is dispatched. Blocking here prevents
-      // the item from ever reaching the queue even though Route-to buttons are shown.
+      if (!_isAutoRelayTargetEnabled(c.target)) return;
       queueRelayHandoff({ from: senderIdentity.key, target: c.target, question: c.question, chainDepth: _outDepth }, true);
     });
   }
@@ -4187,7 +4254,7 @@ function getEnabledChatAgents() {
   const toggles = document.querySelectorAll('.chat-agent-toggle');
   const enabled = [];
   toggles.forEach(toggle => {
-    if (toggle.checked) enabled.push(toggle.value);
+    if (toggle.checked && _chatFlowModeAllowsAgent(toggle.value)) enabled.push(toggle.value);
   });
   return enabled;
 }
@@ -4947,7 +5014,9 @@ function sendMessage(source = 'user', relayMeta = null) {
   const messages = _chatMessagesEl();
   if (!input || !messages) return Promise.resolve(false);
   const msg = input.value.trim();
-  let selectedAgents = getEnabledChatAgents();
+  let selectedAgents = (source === 'relay' && relayMeta?.target)
+    ? [String(relayMeta.target).toLowerCase()]
+    : getEnabledChatAgents();
   let convId = window.__fridaysChatConversationId || null;
   if (!convId && !window.__fridaysChatForceNewThread) {
     const first = (window._chatConversations || [])[0];
@@ -4986,6 +5055,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   }
   if (source === 'user') {
     const relayCfg = _chatRelayConfig();
+    window.__fridaysChatRelayAllowedAgents = selectedAgents.slice();
     window.__fridaysChatRelayBudget = relayCfg.infinite ? -1 : relayCfg.maxPerTurn;
     window.__fridaysChatRelayQueue = [];
     window.__fridaysChatRelayBusy = false;
@@ -5064,7 +5134,8 @@ function sendMessage(source = 'user', relayMeta = null) {
       history_mode: contextCfg.historyMode,
       history_limit: contextCfg.historyMode === 'recent' ? contextCfg.historyLimit : undefined,
       auto_relay: !!window.__fridaysChatRelayAuto,
-      parallel_mode: !!window.__fridaysChatParallelMode,
+      parallel_mode: String(window.__fridaysChatFlowMode || 'both_seq') === 'online_only',
+      flow_mode: String(window.__fridaysChatFlowMode || 'both_seq'),
       ...(source === 'relay' && relayMeta?.from ? { relay_from: String(relayMeta.from).toLowerCase() } : {}),
       ..._authPayload(),
     })

@@ -40,6 +40,8 @@ sys.path.insert(0, '/home/seven/swarm/lib/email')
 sys.path.insert(0, '/home/seven/swarm/core/pipeline')
 sys.path.insert(0, '/home/seven/swarm/agents/specialists')
 
+from proposal_status import ACTIVE_PROPOSAL_STATUSES, STATUS_CLOSED
+
 logger = logging.getLogger('seven.skills')
 
 # ── Registry ──────────────────────────────────────────────────────────────────
@@ -289,7 +291,7 @@ def _log_as_internal_proposal(skill_name, agent, args_preview, result_preview, d
     This ensures every Fridays-executed change is a first-class citizen in the queue
     and visible to all agents.
 
-    Marked executed immediately so it does not appear as an actionable pending item —
+    Marked closed immediately so it does not appear as an actionable pending item —
     it is a change-log record only, used by the alm_complete guard.
 
     If `diff` is provided, it is embedded in the description as a fenced diff block.
@@ -305,7 +307,7 @@ def _log_as_internal_proposal(skill_name, agent, args_preview, result_preview, d
         if diff:
             description += f'\n\n---\n**Tracer diff:**\n```diff\n{diff}\n```'
         _, proposal_id = intake_internal(agent, title, description, priority=5)
-        update_proposal_status(proposal_id, 'executed')
+        update_proposal_status(proposal_id, STATUS_CLOSED)
     except Exception as e:
         logger.warning(f'[Skills] work_proposal log failed: {e}')
 
@@ -669,8 +671,8 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
     if not title:
         return False, 'alm_create_proposal requires a non-empty title.'
 
-    # Conversation-level dedup: if any active (pending or in_progress) proposal
-    # already exists for this conversation, return it rather than creating another.
+    # Conversation-level dedup: if any active proposal already exists for this
+    # conversation, return it rather than creating another.
     # This prevents Grok-style retry storms where a new proposal is created each
     # time the user nudges or the topic shifts slightly mid-task.
     if source_conv_id:
@@ -679,13 +681,14 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
             _sys2.path.insert(0, '/home/seven/swarm/utils')
             from database import get_connection as _gc2
             _c2 = _gc2()
+            _active_placeholders = ','.join('?' for _ in ACTIVE_PROPOSAL_STATUSES)
             existing = _c2.execute(
-                """SELECT proposal_id, title FROM work_proposals
-                   WHERE source_conv_id=?
-                     AND status IN ('pending', 'approved', 'in_progress')
-                   ORDER BY created_at ASC
-                   LIMIT 1""",
-                (int(source_conv_id),)
+                f"""SELECT proposal_id, title FROM work_proposals
+                    WHERE source_conv_id=?
+                      AND status IN ({_active_placeholders})
+                    ORDER BY created_at ASC
+                    LIMIT 1""",
+                (int(source_conv_id), *ACTIVE_PROPOSAL_STATUSES)
             ).fetchone()
             _c2.close()
             if existing:

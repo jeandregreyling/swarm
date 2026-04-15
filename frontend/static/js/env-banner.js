@@ -1,43 +1,64 @@
-// env-banner.js — DEV/UAT glowing strip + env switcher pill (all envs)
+// env-banner.js — compact DEV/UAT glow badge + env switcher pill (all envs)
 (function () {
   const stage = (window.ENV_STAGE || '').toUpperCase();
   if (!stage) return;   // no ENV_STAGE at all — do nothing
 
-  // ── 1. Glowing strip — DEV and UAT only ──────────────────────────────────
+  // ── 1. Compact glow badge — DEV and UAT only ─────────────────────────────
   if (stage !== 'PROD') {
     const isDev = stage === 'DEV';
     const cfg = isDev
-      ? { label: 'MONDAYS — DEV', gradient: 'linear-gradient(90deg,#00c6fb,#4facfe)', glow: '#4facfe' }
-      : { label: 'WEDNESDAYS — UAT', gradient: 'linear-gradient(90deg,#ffb347,#ff6a00)', glow: '#ff9500' };
+      ? {
+          label: 'MONDAYS · DEVELOPMENT',
+          gradient: 'linear-gradient(135deg,#0d4fff,#4facfe 62%,#9edbff 100%)',
+          glow: 'rgba(79,172,254,0.65)',
+          border: 'rgba(173,224,255,0.68)',
+        }
+      : {
+          label: 'WEDNESDAYS · TESTING / UAT',
+          gradient: 'linear-gradient(135deg,#ff8d2b,#ff6a00 58%,#ffc27a 100%)',
+          glow: 'rgba(255,106,0,0.58)',
+          border: 'rgba(255,205,150,0.7)',
+        };
 
     const style = document.createElement('style');
-    style.textContent = `@keyframes envStripGlow{0%{box-shadow:0 0 14px 3px ${cfg.glow}77}100%{box-shadow:0 0 28px 8px ${cfg.glow}cc}}`;
+    style.textContent = `
+      @keyframes envBadgeGlow{
+        0%{ box-shadow:0 10px 24px ${cfg.glow}, 0 0 0 0 rgba(255,255,255,0.06); transform:translateX(-50%) translateY(0); }
+        100%{ box-shadow:0 14px 34px ${cfg.glow}, 0 0 22px ${cfg.glow}; transform:translateX(-50%) translateY(1px); }
+      }
+      @media (max-width: 720px){
+        #env-banner{
+          top:8px !important;
+          padding:7px 12px !important;
+          font-size:10px !important;
+          max-width:calc(100vw - 24px) !important;
+        }
+      }
+    `;
     document.head.appendChild(style);
 
-    const strip = document.createElement('div');
-    strip.id = 'env-banner';
-    strip.textContent = cfg.label;
-    strip.style.cssText = [
-      'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:10002',
-      'height:26px', 'line-height:26px',
-      'text-align:center', 'font-size:11px', 'font-weight:700', 'letter-spacing:0.08em',
-      `background:${cfg.gradient}`, 'color:#fff',
-      `animation:envStripGlow 2.2s infinite alternate`,
-    ].join(';');
-    document.body.prepend(strip);
-
-    // #home-page is position:absolute top:0 — push it below the strip
-    function _offsetHomePage() {
-      const hp = document.getElementById('home-page');
-      if (hp) {
-        hp.style.top = '26px';
-        hp.style.height = 'calc(100% - 26px)';
-      }
+    function _appendBadge() {
+      if (document.getElementById('env-banner')) return;
+      const badge = document.createElement('div');
+      badge.id = 'env-banner';
+      badge.textContent = cfg.label;
+      badge.style.cssText = [
+        'position:fixed', 'top:10px', 'left:50%', 'transform:translateX(-50%)',
+        'z-index:10002', 'display:inline-flex', 'align-items:center', 'justify-content:center',
+        'padding:8px 16px', 'max-width:min(460px,calc(100vw - 36px))',
+        'border-radius:999px', `background:${cfg.gradient}`, 'color:#fff',
+        'font-size:11px', 'font-weight:800', 'letter-spacing:0.11em', 'text-align:center',
+        'border:1px solid ' + cfg.border,
+        'backdrop-filter:blur(10px)',
+        'text-shadow:0 1px 1px rgba(0,0,0,0.25)',
+        'animation:envBadgeGlow 2.4s ease-in-out infinite alternate',
+      ].join(';');
+      document.body.appendChild(badge);
     }
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', _offsetHomePage);
+      document.addEventListener('DOMContentLoaded', _appendBadge);
     } else {
-      _offsetHomePage();
+      _appendBadge();
     }
   }
 

@@ -437,12 +437,12 @@ def _build_ticket_snapshot_block(limit=8):
         prop_pending = int(proposal_counts.get('pending', 0))
         prop_approved = int(proposal_counts.get('approved', 0))
         prop_in_progress = int(proposal_counts.get('in_progress', 0))
-        prop_executed = int(proposal_counts.get('executed', 0) + proposal_counts.get('done', 0))
+        prop_closed = int(proposal_counts.get('closed', 0) + proposal_counts.get('executed', 0) + proposal_counts.get('done', 0))
 
         return (
             "\n\n=== Live Ticket Snapshot ===\n"
             f"Queue: total={queue_total}, open={queue_open}, done={queue_done}, failed={queue_failed}\n"
-            f"Proposals: pending={prop_pending}, approved={prop_approved}, in_progress={prop_in_progress}, executed={prop_executed}\n"
+            f"Proposals: pending={prop_pending}, approved={prop_approved}, in_progress={prop_in_progress}, closed={prop_closed}\n"
             "Open proposal samples (newest first):\n"
             + ("\n".join(lines) if lines else "- none")
             + "\nUse this snapshot directly as ground truth for this turn."
@@ -1701,6 +1701,5 @@ def api_chat_librarian_review():
     except Exception as e:
         log_activity('terminal', 'librarian_relay_review_error', str(e)[:200])
         return jsonify({'ok': True, 'candidates': [], 'error': str(e)[:120]})
-
 
 
