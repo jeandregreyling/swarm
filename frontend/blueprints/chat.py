@@ -351,7 +351,7 @@ def _build_local_memory_block(selected_agent, latest_message):
     )
 
 def _build_knowledge_broadcast_block(agent_name):
-    """Inject recent unacked swarm knowledge events into agent context (A.3.4)."""
+    """Inject recent unacked swarm knowledge + research events into agent context (A.3.4, B.5.3)."""
     try:
         from utils.db.knowledge import get_unacked_events, ack_all_events
         events = get_unacked_events(agent_name, event_type='knowledge.new', limit=5)
@@ -363,7 +363,12 @@ def _build_knowledge_broadcast_block(agent_name):
             try:
                 import json as _json
                 payload = _json.loads(ev['payload'])
-                lines.append(f'- [{payload.get("category", "?")}] {payload.get("key", "?")} (by {payload.get("source_agent", "?")})')
+                cat = payload.get("category", "?")
+                key = payload.get("key", "?")
+                src = payload.get("source_agent", "?")
+                # Mark research-origin entries
+                prefix = '[Research] ' if str(key).startswith('research:') else ''
+                lines.append(f'- {prefix}[{cat}] {key} (by {src})')
             except Exception:
                 lines.append(f'- {str(ev.get("payload", ""))[:100]}')
             ids.append(ev['id'])

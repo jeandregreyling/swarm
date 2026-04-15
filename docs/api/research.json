@@ -1,0 +1,85 @@
+{
+  "service": "research",
+  "version": "1.0.0",
+  "description": "Research session management — start, track, resume, and retrieve research investigations.",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/research/start",
+      "description": "Start a new research session",
+      "request": {
+        "content_type": "application/json",
+        "body": {
+          "topic": "string (required) — research question or topic",
+          "depth": "string (optional) — quick|standard|deep, default: standard",
+          "agent": "string (optional) — requesting agent name, default: user"
+        }
+      },
+      "response": {
+        "ok": "boolean",
+        "session_id": "integer",
+        "status": "string — 'started' for async, absent for quick sync",
+        "summary": "string — only present for quick depth (sync response)"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/research/sessions",
+      "description": "List research sessions",
+      "request": {
+        "query_params": {
+          "status": "string (optional) — filter by status",
+          "limit": "integer (optional) — max results, default 50, max 200"
+        }
+      },
+      "response": {
+        "ok": "boolean",
+        "sessions": "array of session objects"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/research/<session_id>",
+      "description": "Get session detail + evidence count",
+      "response": {
+        "ok": "boolean",
+        "session": {
+          "id": "integer",
+          "topic": "string",
+          "depth": "string",
+          "status": "string — planning|searching|analysing|synthesising|done|paused",
+          "phases_json": "string (JSON array of sub-questions)",
+          "summary": "string",
+          "evidence_count": "integer",
+          "created_at": "string (ISO datetime)",
+          "updated_at": "string (ISO datetime)"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/research/<session_id>/resume",
+      "description": "Resume a paused research session",
+      "response": {
+        "ok": "boolean",
+        "session_id": "integer",
+        "status": "string — 'resuming'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/research/<session_id>/evidence",
+      "description": "Get evidence for a session",
+      "request": {
+        "query_params": {
+          "limit": "integer (optional) — max results, default 100, max 500"
+        }
+      },
+      "response": {
+        "ok": "boolean",
+        "session_id": "integer",
+        "evidence": "array of evidence objects with source_url, title, snippet, confidence, collecting_agent, created_at"
+      }
+    }
+  ]
+}

@@ -568,6 +568,37 @@ CREATE TABLE IF NOT EXISTS swarm_nodes (
     registered_at   TEXT DEFAULT (datetime('now')),
     last_seen       TEXT DEFAULT (datetime('now'))
 );
+
+-- Research sessions (B.1.1)
+CREATE TABLE IF NOT EXISTS research_sessions (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic               TEXT NOT NULL,
+    depth               TEXT NOT NULL DEFAULT 'standard',
+    status              TEXT NOT NULL DEFAULT 'planning',
+    phases_json         TEXT NOT NULL DEFAULT '[]',
+    linked_proposal_id  TEXT DEFAULT '',
+    requesting_agent    TEXT NOT NULL DEFAULT 'user',
+    summary             TEXT DEFAULT '',
+    created_at          TEXT DEFAULT (datetime('now')),
+    updated_at          TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_research_sessions_status ON research_sessions (status);
+
+-- Research evidence (B.1.1)
+CREATE TABLE IF NOT EXISTS research_evidence (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id          INTEGER NOT NULL REFERENCES research_sessions(id),
+    source_url          TEXT NOT NULL DEFAULT '',
+    source_type         TEXT NOT NULL DEFAULT 'web',
+    title               TEXT NOT NULL DEFAULT '',
+    snippet             TEXT NOT NULL DEFAULT '',
+    confidence          REAL DEFAULT 0.5,
+    collecting_agent    TEXT NOT NULL DEFAULT '',
+    snippet_hash        TEXT NOT NULL DEFAULT '',
+    created_at          TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_research_evidence_session ON research_evidence (session_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_research_evidence_dedup ON research_evidence (session_id, source_url, snippet_hash);
 """
 
 
@@ -1028,6 +1059,40 @@ def _migrate_schema(conn=None):
             last_seen       TEXT DEFAULT (datetime('now'))
         )
     """)
+    conn.commit()
+
+    # research_sessions + research_evidence (B.1.1) — migration for existing DBs
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS research_sessions (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic               TEXT NOT NULL,
+            depth               TEXT NOT NULL DEFAULT 'standard',
+            status              TEXT NOT NULL DEFAULT 'planning',
+            phases_json         TEXT NOT NULL DEFAULT '[]',
+            linked_proposal_id  TEXT DEFAULT '',
+            requesting_agent    TEXT NOT NULL DEFAULT 'user',
+            summary             TEXT DEFAULT '',
+            created_at          TEXT DEFAULT (datetime('now')),
+            updated_at          TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_research_sessions_status ON research_sessions (status)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS research_evidence (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id          INTEGER NOT NULL REFERENCES research_sessions(id),
+            source_url          TEXT NOT NULL DEFAULT '',
+            source_type         TEXT NOT NULL DEFAULT 'web',
+            title               TEXT NOT NULL DEFAULT '',
+            snippet             TEXT NOT NULL DEFAULT '',
+            confidence          REAL DEFAULT 0.5,
+            collecting_agent    TEXT NOT NULL DEFAULT '',
+            snippet_hash        TEXT NOT NULL DEFAULT '',
+            created_at          TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_research_evidence_session ON research_evidence (session_id)")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_research_evidence_dedup ON research_evidence (session_id, source_url, snippet_hash)")
     conn.commit()
 
     if _close:
