@@ -182,7 +182,7 @@ so the system is ready for distribution without a painful rewrite later.
 
 **Detailed sub-tasks:**
 
-- [ ] **A.3.1 — Shared Knowledge Table**
+- [x] **A.3.1 — Shared Knowledge Table**
   - New table: `swarm_knowledge` (id, key, content, source_agent, source_proposal_id,
     category, importance, created_at, updated_at)
   - Categories: `lesson`, `decision`, `fact`, `pattern`, `warning`
@@ -190,33 +190,33 @@ so the system is ready for distribution without a painful rewrite later.
   - `SKILL knowledge_write <category> <content>` — governed
   - `SKILL knowledge_search <query>` — open (extends existing memory_search)
 
-- [ ] **A.3.2 — Auto-Publish from Proposals**
+- [x] **A.3.2 — Auto-Publish from Proposals**
   - When proposal status → `done`: extract key learnings from the proposal's trace
   - Agent that completed the proposal writes a summary to swarm_knowledge
   - Summary includes: what changed, why, what was learned, what to avoid
   - Triggered automatically in the proposal transition function (A.1.1)
 
-- [ ] **A.3.3 — Living Landscape**
+- [x] **A.3.3 — Living Landscape**
   - Extend system index generator to track: buttons, fields, workflows, SAP mappings
   - JSON version alongside MD (machine-queryable)
   - `SKILL search_landscape <query>` — fast grep over the JSON index
   - `SKILL update_landscape <path> <description>` — governed update
   - Housekeeping agents (Llama, Gemma3) scheduled to refresh quarterly
 
-- [ ] **A.3.4 — Memory Broadcast**
+- [x] **A.3.4 — Memory Broadcast**
   - When swarm_knowledge gets a new entry: emit a lightweight event
   - Other agents see "new knowledge available" in their next prompt context
   - Implementation: `swarm_events` table (event_type, payload, created_at, consumed_by)
   - No real-time push needed yet — poll on next agent invocation
 
 **Test Phase A.3:**
-- [ ] Unit: agent can read swarm_knowledge, write blocked outside proposal context
-- [ ] Unit: ghost can write directly
-- [ ] Integration: complete a proposal → swarm_knowledge entry auto-created
-- [ ] Integration: SKILL search_landscape finds known file/button/field
-- [ ] Integration: new knowledge entry creates event, another agent sees it
-- [ ] Manual: run landscape generator, verify JSON matches MD
-- [ ] Compile check + service restart
+- [x] Unit: agent can read swarm_knowledge, write blocked outside proposal context
+- [x] Unit: ghost can write directly
+- [x] Integration: complete a proposal → swarm_knowledge entry auto-created
+- [x] Integration: SKILL search_landscape finds known file/button/field
+- [x] Integration: new knowledge entry creates event, another agent sees it
+- [x] Manual: run landscape generator, verify JSON matches MD
+- [x] Compile check + service restart
 
 ---
 
@@ -442,6 +442,11 @@ DATE       | TASK                  | STATUS     | NOTES
 2026-04-15 | A.2.2 Agent Status    | Completed  | GET /api/agents/status endpoint. SKILL agent_status handler. Derives from chat_jobs+CB+registry.
 2026-04-15 | A.2.3 Self-Coord      | Completed  | utils/agent_coordination.py: check_and_reroute, claim_pending_proposal. Wired into chat.py dispatch.
 2026-04-15 | A.2 Tests             | Completed  | 20/20 pytest pass. 6 files py_compile clean. Regression: 32/32 total.
+2026-04-15 | A.3.1 Knowledge Table | Completed  | swarm_knowledge + swarm_events tables. utils/db/knowledge.py CRUD + events. 4 new skills.
+2026-04-15 | A.3.2 Auto-Publish    | Completed  | _auto_publish_knowledge() in governance.py. Fires on →done. Uses caller conn (no lock).
+2026-04-15 | A.3.3 Living Landscape| Completed  | scripts/generate_landscape_json.py. JSON index (547 entries). Housekeeping refresh wired.
+2026-04-15 | A.3.4 Memory Broadcast| Completed  | Events emitted on knowledge write. _build_knowledge_broadcast_block() in chat.py prompts.
+2026-04-15 | A.3 Tests             | Completed  | 17/17 pytest pass. 9 files py_compile clean. Regression: 49/49 total.
            |                       |            |
 ```
 
@@ -470,6 +475,14 @@ frontend/blueprints/agents.py             | Modified | A.2.2  | 2026-04-15
 frontend/blueprints/agent_api.py          | Modified | A.2.3  | 2026-04-15
 frontend/blueprints/chat.py               | Modified | A.2.3  | 2026-04-15
 tests/test_skill_trust.py                 | Created  | A.2    | 2026-04-15
+utils/db/_schema.py                       | Modified | A.3.1  | 2026-04-15
+utils/db/knowledge.py                     | Created  | A.3.1  | 2026-04-15
+fridays/skills.py                         | Modified | A.3.1  | 2026-04-15
+utils/governance.py                       | Modified | A.3.2  | 2026-04-15
+scripts/generate_landscape_json.py        | Created  | A.3.3  | 2026-04-15
+lib/system/housekeeping.py                | Modified | A.3.3  | 2026-04-15
+frontend/blueprints/chat.py               | Modified | A.3.4  | 2026-04-15
+tests/test_shared_knowledge.py            | Created  | A.3    | 2026-04-15
                                           |          |        |
 ```
 

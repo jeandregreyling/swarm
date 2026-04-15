@@ -2109,7 +2109,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 17764
+      "rows": 17771
     },
     {
       "name": "agent_capabilities",
@@ -2161,7 +2161,7 @@
     },
     {
       "name": "decisions",
-      "rows": 496
+      "rows": 523
     },
     {
       "name": "deferred_items",
@@ -2353,19 +2353,19 @@
     },
     {
       "name": "time_checkpoints",
-      "rows": 693
+      "rows": 700
     },
     {
       "name": "time_events",
-      "rows": 46403
+      "rows": 46411
     },
     {
       "name": "time_journal",
-      "rows": 44540
+      "rows": 44541
     },
     {
       "name": "time_machine",
-      "rows": 4234
+      "rows": 4245
     },
     {
       "name": "trusted_domains",
