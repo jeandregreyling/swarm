@@ -71,6 +71,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.node',           'node_bp'),
     ('blueprints.research',       'research_bp'),
     ('blueprints.tools',          'tools_bp'),
+    ('blueprints.metrics',        'metrics_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
@@ -96,6 +97,13 @@ else:
 
 def create_app():
     app = Flask(__name__)
+
+    # E.1: Security headers + request size limits
+    try:
+        from utils.security_headers import init_security
+        init_security(app)
+    except Exception as _sec_err:
+        print(f'[Terminal] security middleware warning: {_sec_err}')
 
     # Inject ENV_STAGE into all templates for environment banner
     @app.context_processor
@@ -147,10 +155,50 @@ def create_app():
     @app.route("/_health", methods=["GET"])
     def health_status():
         from flask import jsonify
+        components = {}
+
+        # DB writable check
+        try:
+            from utils.db._connection import get_connection
+            c = get_connection()
+            c.execute("SELECT 1")
+            c.close()
+            components['database'] = 'healthy'
+        except Exception as e:
+            components['database'] = f'unhealthy: {e}'
+
+        # Heartbeat thread check
+        try:
+            from utils.node_discovery import _heartbeat_thread
+            if _heartbeat_thread and _heartbeat_thread.is_alive():
+                components['heartbeat'] = 'healthy'
+            else:
+                components['heartbeat'] = 'not_running'
+        except Exception:
+            components['heartbeat'] = 'unknown'
+
+        # Agent count
+        try:
+            from utils.db._connection import get_connection
+            c = get_connection()
+            cnt = c.execute(
+                "SELECT COUNT(*) FROM agents WHERE enabled=1"
+            ).fetchone()[0]
+            c.close()
+            components['agents'] = f'healthy ({cnt} active)'
+        except Exception:
+            components['agents'] = 'unknown'
+
+        any_unhealthy = any('unhealthy' in v for v in components.values())
+        overall = 'unhealthy' if any_unhealthy else (
+            'degraded' if _failed_blueprints else 'healthy'
+        )
+
         return jsonify({
-            "status": "ok" if not _failed_blueprints else "degraded",
+            "status": overall,
             "port": PORT,
             "env": ENV.upper(),
+            "components": components,
             "blueprints_loaded": [a for a, _ in _loaded_blueprints],
             "blueprints_failed": {a: e for a, e in _failed_blueprints},
         })

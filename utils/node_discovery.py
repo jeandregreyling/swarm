@@ -15,6 +15,7 @@ import threading
 import time
 import urllib.request
 import urllib.error
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from utils.db.nodes import list_nodes, touch_node, get_local_node_id
 
@@ -50,39 +51,56 @@ def ping_node(url, *, timeout=10):
 
 
 def run_heartbeat_once():
-    """Ping all registered nodes once. Updates last_seen for live ones.
+    """Ping all registered nodes concurrently. Updates last_seen for live ones.
     Returns dict of {node_id: True/False} for reachable/unreachable.
+    Uses ThreadPoolExecutor for parallel pings (E.2.1).
     """
     local_id = get_local_node_id()
     nodes = list_nodes()
     results = {}
+
+    # Handle local node immediately
+    remote_nodes = []
     for node in nodes:
         nid = node['node_id']
         if nid == local_id:
-            # Don't ping ourselves
             touch_node(nid)
             results[nid] = True
-            continue
+        else:
+            remote_nodes.append(node)
+
+    # Ping remote nodes concurrently
+    def _ping_one(node):
+        nid = node['node_id']
         url = node.get('url', '')
         if not url:
-            results[nid] = False
-            continue
+            return nid, False, url
         info = ping_node(url)
-        if info:
-            touch_node(nid)
-            results[nid] = True
-            logger.debug(f'[Discovery] node {nid} ({node["name"]}) alive')
-            # D.2: Fetch and store remote skills
-            _sync_remote_skills(url, nid)
-        else:
-            results[nid] = False
-            logger.info(f'[Discovery] node {nid} ({node["name"]}) unreachable')
-            # D.2: Mark skills stale for unreachable node
-            try:
-                from utils.db.node_skills import mark_stale
-                mark_stale(nid)
-            except Exception:
-                pass
+        return nid, bool(info), url
+
+    if remote_nodes:
+        max_workers = min(5, len(remote_nodes))
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(_ping_one, n): n for n in remote_nodes}
+            for future in as_completed(futures):
+                node = futures[future]
+                nid = node['node_id']
+                try:
+                    _, alive, url = future.result(timeout=15)
+                except Exception:
+                    alive, url = False, node.get('url', '')
+                results[nid] = alive
+                if alive:
+                    touch_node(nid)
+                    logger.debug(f'[Discovery] node {nid} ({node["name"]}) alive')
+                    _sync_remote_skills(url, nid)
+                else:
+                    logger.info(f'[Discovery] node {nid} ({node["name"]}) unreachable')
+                    try:
+                        from utils.db.node_skills import mark_stale
+                        mark_stale(nid)
+                    except Exception:
+                        pass
 
     # D.3: Relay events to all reachable nodes
     reachable = [n for n in nodes if results.get(n['node_id']) and n['node_id'] != local_id]
