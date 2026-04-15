@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 02:47*
+*Auto-generated: 2026-04-16 07:51*
 
 
 ## Python Modules
@@ -11,6 +11,7 @@
 | File | Description |
 |------|-------------|
 | `utils/agent_coordination.py` | utils/agent_coordination.py — Agent self-coordination (A.2.3) |
+| `utils/api_versioning.py` | utils/api_versioning.py — API version prefix support (R.5) |
 | `utils/app_launcher.py` | app_launcher.py — Seven |
 | `utils/brief_engine.py` | brief_engine.py — Seven's Swarm |
 | `utils/change_logger.py` | change_logger.py — Seven's Swarm Time Wizard integration |
@@ -49,6 +50,7 @@
 | `utils/sandpits.py` | sandpits.py — Fridays / Seven's Swarm |
 | `utils/scheduler.py` | scheduler.py — Seven's Swarm Scheduler |
 | `utils/security_headers.py` | utils/security_headers.py — Security headers + input validation middleware (E.1) |
+| `utils/session_auth.py` | utils/session_auth.py — Session-based UI authentication (R.1) |
 | `utils/seven_fridays.py` | seven_fridays.py — Developer Agent REPL (Agent 11 interface) |
 | `utils/simulate.py` | simulate.py — Seven's Swarm |
 | `utils/skills.py` | skills.py — Seven's Swarm Skills Framework |
@@ -158,13 +160,14 @@
 | `library` | 8 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
 | `memory` | 8 | memory.py — Memory routes |
-| `metrics` | 1 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
+| `metrics` | 2 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
 | `nine` | 4 | nine.py — Agent Nine routes |
 | `node` | 11 | frontend/blueprints/node.py — Node registration + federation endpoints (A.4.5 + A.5) |
 | `ollama` | 4 | ollama.py — Ollama Models routes |
 | `proposals` | 22 | — |
 | `research` | 5 | frontend/blueprints/research.py — Research API (B.4.1) |
 | `shell` | 17 | shell.py — Shell & Terminal routes |
+| `sse` | 1 | frontend/blueprints/sse.py — Server-Sent Events stream (R.2) |
 | `system` | 17 | system.py — System & Monitoring routes |
 | `tickets` | 11 | tickets.py — Tickets routes |
 | `time_wizard_bp` | 10 | time_wizard_bp.py — Time Wizard routes |
@@ -202,35 +205,35 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 18220 |
+| `activity_log` | 18538 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 46 |
+| `approval_tokens` | 49 |
 | `chat_jobs` | 224 |
 | `claude_log` | 1 |
-| `conv_timeline` | 8 |
-| `conversations` | 6 |
+| `conv_timeline` | 9 |
+| `conversations` | 8 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 917 |
+| `decisions` | 942 |
 | `deferred_items` | 0 |
-| `duck_log` | 389 |
+| `duck_log` | 392 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1890 |
+| `ghost_circle` | 1892 |
 | `governance_log` | 0 |
 | `knowledge_chunks` | 353 |
 | `knowledge_sources` | 12 |
-| `memory` | 0 |
+| `memory` | 2 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 0 |
+| `memory_gemma` | 1 |
 | `memory_grok` | 0 |
-| `memory_llama` | 0 |
-| `memory_mistral` | 0 |
+| `memory_llama` | 1 |
+| `memory_mistral` | 1 |
 | `memory_nine` | 0 |
 | `memory_qwen` | 0 |
 | `memory_scholar` | 0 |
@@ -239,7 +242,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 12 |
+| `messages` | 18 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -248,7 +251,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 61 |
 | `proposal_attachments` | 0 |
-| `queue` | 681 |
+| `queue` | 686 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 162 |
@@ -265,14 +268,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5662 |
+| `system_stats` | 5722 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 143 |
-| `tickets` | 151 |
-| `time_checkpoints` | 840 |
-| `time_events` | 47629 |
-| `time_journal` | 45619 |
-| `time_machine` | 4370 |
+| `ticket_notes` | 146 |
+| `tickets` | 154 |
+| `time_checkpoints` | 859 |
+| `time_events` | 49342 |
+| `time_journal` | 47310 |
+| `time_machine` | 4398 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
