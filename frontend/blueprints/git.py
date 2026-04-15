@@ -5,7 +5,7 @@ from services import *
 git_bp = Blueprint('git', __name__)
 
 def _git_repo_root() -> Path:
-    return Path('/home/seven/swarm')
+    return Path(os.environ.get('SWARM_ROOT', str(Path(__file__).parent.parent.parent)))
 
 
 

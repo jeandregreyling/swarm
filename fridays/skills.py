@@ -33,11 +33,12 @@ import re
 from pathlib import Path
 from datetime import datetime
 
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/lib/system')
-sys.path.insert(0, '/home/seven/swarm/lib/email')
-sys.path.insert(0, '/home/seven/swarm/core/pipeline')
+_SWARM_ROOT_STR = str(Path(__file__).parent.parent)
+sys.path.insert(0, _SWARM_ROOT_STR)
+sys.path.insert(0, os.path.join(_SWARM_ROOT_STR, 'utils'))
+sys.path.insert(0, os.path.join(_SWARM_ROOT_STR, 'lib/system'))
+sys.path.insert(0, os.path.join(_SWARM_ROOT_STR, 'lib/email'))
+sys.path.insert(0, os.path.join(_SWARM_ROOT_STR, 'core/pipeline'))
 sys.path.insert(0, '/home/seven/swarm/agents/specialists')
 
 from proposal_status import ACTIVE_PROPOSAL_STATUSES, STATUS_CLOSED
@@ -258,7 +259,7 @@ def _capture_file_diff(rel_path):
         result = _sp.run(
             ['git', 'diff', 'HEAD', '--', rel_path],
             capture_output=True, text=True, timeout=10,
-            cwd='/home/seven/swarm',
+            cwd=str(_FS_ROOT),
         )
         diff = result.stdout.strip()
         if not diff:
@@ -266,7 +267,7 @@ def _capture_file_diff(rel_path):
             result2 = _sp.run(
                 ['git', 'diff', '--', rel_path],
                 capture_output=True, text=True, timeout=10,
-                cwd='/home/seven/swarm',
+                cwd=str(_FS_ROOT),
             )
             diff = result2.stdout.strip()
         return diff[:4000] if diff else ''
@@ -498,8 +499,9 @@ def _skill_memory_search(args, agent, **_):
 
 # SWARM_ROOT env var lets DEV/UAT servers redirect file operations to their
 # own worktree directory instead of the PROD filesystem.
-# Default: /home/seven/swarm (the canonical PROD location).
-_FS_ROOT = Path(os.environ.get('SWARM_ROOT', '/home/seven/swarm')).resolve()
+# Default: auto-detect from this file's location.
+_FS_ROOT = Path(os.environ.get('SWARM_ROOT',
+                str(Path(__file__).parent.parent))).resolve()
 
 
 def _fs_safe_path(path_text):
@@ -763,7 +765,7 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
         def _duck_review():
             try:
                 import sys as _s
-                _s.path.insert(0, '/home/seven/swarm')
+                _s.path.insert(0, _SWARM_ROOT_STR)
                 from proposal_review import duck_review_proposal
                 duck_review_proposal(proposal_id, title, description, agent, source_conv_id)
             except Exception:
@@ -893,7 +895,7 @@ def _skill_alm_complete(args, agent, **_):
         hc = _sp.run(
             ['python3', 'scripts/health_check.py'],
             capture_output=True, text=True, timeout=30,
-            cwd='/home/seven/swarm',
+            cwd=str(_FS_ROOT),
         )
         hc_out = (hc.stdout + hc.stderr).strip()
         passed = hc.returncode == 0
@@ -941,7 +943,7 @@ def _skill_alm_vortex(args, agent, **_):
         return False, 'Usage: SKILL alm_vortex <label>'
     try:
         import sys
-        sys.path.insert(0, '/home/seven/swarm')
+        sys.path.insert(0, _SWARM_ROOT_STR)
         from core.time_machine import time_wizard
         result = time_wizard.create_workflow_checkpoint(label=label, agent=agent,
                                                          description=f'Agent checkpoint: {label}')

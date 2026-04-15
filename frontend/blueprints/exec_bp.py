@@ -12,7 +12,8 @@ _SUDO_ALLOWED = _re.compile(
 
 import os as _os
 
-_SWARM_ROOT = '/home/seven/swarm'
+_SWARM_ROOT = _os.environ.get('SWARM_ROOT',
+              _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
 
 
 

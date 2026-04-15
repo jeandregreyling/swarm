@@ -22,7 +22,8 @@ from file_versioning import track_file_change
 
 vs_bp = Blueprint('vs', __name__)
 
-_SWARM_ROOT = '/home/seven/swarm'
+_SWARM_ROOT = os.environ.get('SWARM_ROOT',
+              os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _MAX_READ   = 200_000   # chars — large enough for any single file
 
 

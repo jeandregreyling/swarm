@@ -1,6 +1,9 @@
 """workspace.py — Workspace & Code Ops routes"""
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
+import os as _os
+_SWARM_ROOT = _os.environ.get('SWARM_ROOT',
+              str(Path(__file__).parent.parent.parent))
 
 workspace_bp = Blueprint('workspace', __name__)
 
@@ -16,7 +19,7 @@ def api_workspace_dir():
     """
     import stat as _stat
     
-    base_path = request.args.get('path', '/home/seven/swarm').strip() or '/home/seven/swarm'
+    base_path = request.args.get('path', _SWARM_ROOT).strip() or _SWARM_ROOT
     try:
         depth = int(request.args.get('depth', 1) or 1)
     except ValueError:
@@ -25,7 +28,7 @@ def api_workspace_dir():
     
     # Security: only allow paths within SWARM_ROOT
     try:
-        swarm_root = Path('/home/seven/swarm')
+        swarm_root = Path(_SWARM_ROOT)
         requested = Path(base_path).resolve()
         if not str(requested).startswith(str(swarm_root)):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
@@ -108,7 +111,7 @@ def api_workspace_file():
     max_bytes = max(1024, min(max_bytes, 500000))  # 1KB min, 500KB max
     
     try:
-        swarm_root = Path('/home/seven/swarm')
+        swarm_root = Path(_SWARM_ROOT)
         full_path = (swarm_root / file_path).resolve()
         
         # Security check
@@ -173,7 +176,7 @@ def api_workspace_file_save():
         return jsonify({'ok': False, 'error': 'content too large (max 1MB)'}), 413
 
     try:
-        swarm_root = Path('/home/seven/swarm')
+        swarm_root = Path(_SWARM_ROOT)
         full_path = (swarm_root / file_path).resolve()
         if not str(full_path).startswith(str(swarm_root)):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
@@ -225,7 +228,7 @@ def api_workspace_search():
         max_results = 50
     max_results = max(1, min(max_results, 500))
     
-    swarm_root = Path('/home/seven/swarm')
+    swarm_root = Path(_SWARM_ROOT)
     matches = []
     
     try:
@@ -269,7 +272,7 @@ def api_workspace_search():
 
 def _workspace_replace_candidates(scope_path, pattern, max_files=300):
     """Return candidate files inside workspace for find/replace operations."""
-    swarm_root = Path('/home/seven/swarm')
+    swarm_root = Path(_SWARM_ROOT)
     rel_scope = str(scope_path or '').strip().lstrip('/')
     scope = (swarm_root / rel_scope).resolve() if rel_scope else swarm_root
     if not str(scope).startswith(str(swarm_root)):
@@ -440,7 +443,7 @@ def api_code_ops_pytest():
         return jsonify({'ok': False, 'error': 'file_path required'}), 400
 
     try:
-        swarm_root = Path('/home/seven/swarm')
+        swarm_root = Path(_SWARM_ROOT)
         full_path = (swarm_root / file_path).resolve()
         if not str(full_path).startswith(str(swarm_root)):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
@@ -486,7 +489,7 @@ def api_code_ops_pylint():
         return jsonify({'ok': False, 'error': 'only .py files supported'}), 400
 
     try:
-        swarm_root = Path('/home/seven/swarm')
+        swarm_root = Path(_SWARM_ROOT)
         full_path = (swarm_root / file_path).resolve()
         if not str(full_path).startswith(str(swarm_root)):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
@@ -533,7 +536,7 @@ def api_code_ops_format():
         return jsonify({'ok': False, 'error': 'only .py files supported'}), 400
 
     try:
-        swarm_root = Path('/home/seven/swarm')
+        swarm_root = Path(_SWARM_ROOT)
         full_path = (swarm_root / file_path).resolve()
         if not str(full_path).startswith(str(swarm_root)):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
@@ -574,7 +577,7 @@ def api_code_ops_commit():
 
     import subprocess
     try:
-        swarm_root = '/home/seven/swarm'
+        swarm_root = _SWARM_ROOT
         subprocess.run(['git', '-C', swarm_root, 'add', '-A'], capture_output=True, text=True, timeout=20)
         status = subprocess.run(['git', '-C', swarm_root, 'status', '--porcelain'], capture_output=True, text=True, timeout=20)
         status_lines = [ln for ln in (status.stdout or '').splitlines() if ln.strip()]

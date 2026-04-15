@@ -13,9 +13,11 @@ from proposal_status import ALL_PROPOSAL_STATUSES, normalize_proposal_status
 # UAT  is /home/seven/swarm-uat (uat branch git worktree).
 # DEV  is /home/seven/swarm-dev (proposal/<id> branch git worktree).
 # These must match the WorkingDirectory in the systemd service files.
-_SWARM_PROD_ROOT = '/home/seven/swarm'
-_SWARM_UAT_ROOT  = '/home/seven/swarm-uat'
-_SWARM_DEV_ROOT  = '/home/seven/swarm-dev'
+import os as _os
+_SWARM_PROD_ROOT = _os.environ.get('SWARM_ROOT',
+                   _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+_SWARM_UAT_ROOT  = _os.environ.get('SWARM_UAT_ROOT', _SWARM_PROD_ROOT + '-uat')
+_SWARM_DEV_ROOT  = _os.environ.get('SWARM_DEV_ROOT', _SWARM_PROD_ROOT + '-dev')
 
 # True once both worktrees exist on disk
 def _worktrees_ready():

@@ -1,6 +1,11 @@
 """shell.py — Shell & Terminal routes"""
+import os as _os
+from pathlib import Path as _Path
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
+
+_SWARM_ROOT = _os.environ.get('SWARM_ROOT',
+              str(_Path(__file__).resolve().parent.parent.parent))
 
 shell_bp = Blueprint('shell', __name__)
 
@@ -71,7 +76,7 @@ def api_shell_stream():
             proc = subprocess.Popen(
                 command,
                 shell=True,
-                cwd='/home/seven/swarm',
+                cwd=_SWARM_ROOT,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
