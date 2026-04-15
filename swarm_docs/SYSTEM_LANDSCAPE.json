@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-15 23:56",
+  "generated_at": "2026-04-16 00:00",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2179,7 +2179,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 17820
+      "rows": 17831
     },
     {
       "name": "agent_capabilities",
@@ -2231,7 +2231,7 @@
     },
     {
       "name": "decisions",
-      "rows": 606
+      "rows": 633
     },
     {
       "name": "deferred_items",
@@ -2415,7 +2415,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5628
+      "rows": 5629
     },
     {
       "name": "terminal_shortcuts",
@@ -2431,19 +2431,19 @@
     },
     {
       "name": "time_checkpoints",
-      "rows": 721
+      "rows": 728
     },
     {
       "name": "time_events",
-      "rows": 46644
+      "rows": 46672
     },
     {
       "name": "time_journal",
-      "rows": 44753
+      "rows": 44774
     },
     {
       "name": "time_machine",
-      "rows": 4274
+      "rows": 4278
     },
     {
       "name": "trusted_domains",
