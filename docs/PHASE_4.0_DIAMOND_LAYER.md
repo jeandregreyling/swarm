@@ -365,12 +365,229 @@ For the "friends on local network" scenario, we start with **REST API**:
 
 ---
 
-## Future Phases (Context Only — Not Planned in Detail Yet)
+## Phase B — Research Assistant / Learning Lab (Weeks 8–12)
 
-**Phase B — Research Assistant / Learning Lab (after A)**
-Shared memory active across the swarm. Agents + humans collaborate on proposals.
-System learns from every completed project (auto-publish to swarm_knowledge).
-Research mode: human asks question → swarm maps, researches, proposes, builds.
+**Goal:** Give the swarm a structured research capability — human asks a question,
+the swarm decomposes it, searches multiple sources, tracks evidence with citations,
+synthesises findings, and archives lessons to shared knowledge. Multi-step
+investigations can be paused and resumed.
+
+**Builds on:** A.3 (swarm_knowledge + events), A.2 (agent coordination + trust),
+A.1 (proposal governance + ALM gate).
+
+**Existing assets:**
+- Seeker agent (Tavily search, live web) — direct API, no skills_loop
+- Scholar agent (Gemini 2.0, vision + reasoning) — uses skills_loop
+- `SKILL search` (DuckDuckGo), `SKILL browse` (Playwright headless)
+- `swarm_knowledge` table + event system (A.3)
+- Orchestrator heartbeat with keyword-based dispatch routing
+- Relay system with 4-hop budget for multi-agent chains
+
+---
+
+### B.1 — Research Session & Evidence Model (Week 8)
+
+- New tables: `research_sessions`, `research_evidence`
+- Session tracks: topic, depth, status, phases completed, linked proposal
+- Evidence tracks: source URL, content snippet, confidence, agent, timestamp
+- CRUD module: `utils/db/research.py`
+
+**Detailed sub-tasks:**
+
+- [ ] **B.1.1 — Research Tables**
+  - `research_sessions` (id, topic, depth, status, phases_json, linked_proposal_id,
+    requesting_agent, created_at, updated_at, summary)
+  - `research_evidence` (id, session_id FK, source_url, source_type, title,
+    snippet, confidence, collecting_agent, created_at)
+  - Status values: `planning`, `searching`, `analysing`, `synthesising`, `done`, `paused`
+  - Depth values: `quick` (1 source, 1 pass), `standard` (3 sources, 2 passes),
+    `deep` (5+ sources, 3+ passes with cross-validation)
+
+- [ ] **B.1.2 — Research DB Module**
+  - `utils/db/research.py`: create_session, get_session, update_session,
+    add_evidence, get_evidence_for_session, list_sessions
+  - Reuses `get_connection()` from `utils/db/_connection.py`
+  - Evidence deduplication by (session_id, source_url, snippet hash)
+
+**Test Phase B.1:**
+- [ ] Unit: create session, add evidence, retrieve by session
+- [ ] Unit: evidence deduplication rejects same source+snippet
+- [ ] Compile check: all new files pass `py_compile`
+
+---
+
+### B.2 — Research Workflow Engine (Weeks 8–9)
+
+- Central orchestrator for multi-stage research
+- Entry point: `run_research(topic, depth, requesting_agent)`
+- Stages: decompose → search → fetch/browse → analyse → synthesise → archive
+- Each stage updates session status and writes evidence
+
+**Detailed sub-tasks:**
+
+- [ ] **B.2.1 — Workflow Core**
+  - New file: `fridays/research_workflow.py`
+  - `run_research(topic, depth='standard', requesting_agent='user', conn=None)`
+  - Creates research_session, runs stages sequentially
+  - Each stage is a function: `_decompose()`, `_search()`, `_analyse()`, `_synthesise()`
+  - Returns session_id + final summary
+
+- [ ] **B.2.2 — Decompose Stage**
+  - Break topic into 2–5 sub-questions depending on depth
+  - Uses local agent (LLaMA or Qwen) for decomposition via chat dispatch
+  - Stores sub-questions in session phases_json
+
+- [ ] **B.2.3 — Search & Browse Stage**
+  - For each sub-question: call Seeker (Tavily) for web results
+  - Optionally: `SKILL browse` on top-N URLs for full content
+  - Each result → `add_evidence()` with source_url, confidence, snippet
+  - Depth controls parallelism: quick=1 query, standard=3, deep=5+
+
+- [ ] **B.2.4 — Analyse & Synthesise Stage**
+  - Feed collected evidence to Scholar (Gemini) for synthesis
+  - Scholar produces: summary, key findings, confidence assessment, gaps
+  - Cross-validate: if depth=deep, check contradictions across sources
+  - Final synthesis stored in session.summary
+
+- [ ] **B.2.5 — Archive Stage**
+  - Auto-write findings to `swarm_knowledge` (category=`fact` or `lesson`)
+  - Each knowledge entry linked to session via source_proposal_id
+  - Emit `knowledge.new` bus event for other agents to consume
+
+**Test Phase B.2:**
+- [ ] Unit: decompose returns sub-questions
+- [ ] Unit: search collects evidence records
+- [ ] Integration: full workflow quick-depth completes end-to-end
+- [ ] Integration: archive writes to swarm_knowledge
+
+---
+
+### B.3 — Research Skills & Agent Wiring (Week 9–10)
+
+- New SKILL commands for agents to trigger and consume research
+- Wire into skills.py REGISTRY with appropriate trust levels
+- Agents can initiate, resume, and query research sessions
+
+**Detailed sub-tasks:**
+
+- [ ] **B.3.1 — Research Skills**
+  - `SKILL research <topic>` — starts standard-depth research, returns session_id + summary
+  - `SKILL deep_dive <topic>` — starts deep-depth research
+  - `SKILL research_status <session_id>` — check progress of running session
+  - `SKILL research_resume <session_id>` — resume a paused session
+  - All registered in REGISTRY with trust_level=1 (any agent can research)
+
+- [ ] **B.3.2 — Seeker Integration**
+  - Wire Seeker into research workflow as the search provider
+  - Seeker results auto-tagged with evidence metadata (URL, confidence, timestamp)
+  - If Seeker unavailable: fallback to `SKILL search` (DuckDuckGo)
+
+- [ ] **B.3.3 — Scholar Integration**
+  - Scholar is the default analyser/synthesiser in the workflow
+  - Receives evidence bundle → produces structured synthesis
+  - If Scholar unavailable: fallback to local agent (Qwen/Mistral)
+
+**Test Phase B.3:**
+- [ ] Unit: SKILL research triggers workflow and returns summary
+- [ ] Unit: SKILL deep_dive uses deep depth
+- [ ] Unit: trust gate allows local agents to call research skills
+- [ ] Integration: agent chat triggers research via SKILL command
+
+---
+
+### B.4 — Research API & Frontend (Week 10–11)
+
+- REST endpoints for the frontend to display research sessions
+- Research tile in Studio or dedicated panel
+- Evidence viewer with source links and confidence indicators
+
+**Detailed sub-tasks:**
+
+- [ ] **B.4.1 — Research API Blueprint**
+  - New file: `frontend/blueprints/research.py`
+  - `POST /api/research/start` — {topic, depth} → starts session, returns session_id
+  - `GET /api/research/sessions` — list all sessions (paginated)
+  - `GET /api/research/<session_id>` — full session detail + evidence
+  - `POST /api/research/<session_id>/resume` — resume paused session
+  - `GET /api/research/<session_id>/evidence` — evidence list with filters
+
+- [ ] **B.4.2 — Blueprint Registration**
+  - Register research_bp in terminal.py
+  - Protect behind ALM gate where appropriate
+  - Add to API contract: `docs/api/research.json`
+
+- [ ] **B.4.3 — Frontend Panel** (if Flutter/HTML frontend exists)
+  - Research Sessions list view (topic, status, evidence count, date)
+  - Session detail: summary, evidence cards with source links
+  - Start Research form: topic input + depth selector
+  - Evidence confidence colour coding (high=green, medium=amber, low=red)
+
+**Test Phase B.4:**
+- [ ] Unit: API returns correct session data
+- [ ] Integration: POST /start creates session and begins workflow
+- [ ] Integration: GET /sessions returns paginated list
+
+---
+
+### B.5 — Learning Cycle Closure (Week 11–12)
+
+- Completed research auto-generates lessons learned
+- Pattern detection across multiple research sessions
+- Knowledge grows over time — agents get smarter
+
+**Detailed sub-tasks:**
+
+- [ ] **B.5.1 — Auto-Lessons from Research**
+  - On research session → `done`: extract patterns and lessons
+  - Write to swarm_knowledge with category=`lesson` and link to session
+  - Include: what was searched, what was found, what was surprising, what gaps remain
+
+- [ ] **B.5.2 — Cross-Session Pattern Detection**
+  - When a new research session completes, compare findings with existing knowledge
+  - If similar topic exists: update existing entry, note evolution
+  - If contradicts existing knowledge: flag with category=`warning`
+  - Simple similarity: keyword overlap + same category match
+
+- [ ] **B.5.3 — Knowledge Feed for Agents**
+  - Agents' system prompts get recent relevant knowledge injected
+  - On chat dispatch: `_build_knowledge_broadcast_block()` (already exists from A.3.4)
+  - Extend to include research findings relevant to the current conversation topic
+  - Max 3 knowledge snippets injected per prompt (avoid bloat)
+
+**Test Phase B.5:**
+- [ ] Unit: completed research writes lessons to swarm_knowledge
+- [ ] Unit: contradicting findings generate warning entries
+- [ ] Integration: knowledge broadcast includes research findings
+
+---
+
+### B.6 — Testing & Stability (Week 12)
+
+- Full integration test suite for research flows
+- Regression across all A + B tests
+- Stress test: concurrent research sessions
+
+**Detailed sub-tasks:**
+
+- [ ] **B.6.1 — Research Integration Tests**
+  - End-to-end: start session → search → analyse → synthesise → archive → verify knowledge
+  - Pause/resume test: pause mid-search, resume, verify completion
+  - Depth test: quick vs standard vs deep produce different evidence counts
+  - Fallback test: Seeker down → DuckDuckGo fallback works
+
+- [ ] **B.6.2 — Full Regression**
+  - All A.x tests + all B.x tests pass
+  - No cross-contamination between research sessions
+  - Knowledge writes don't break existing governance flows
+
+**Test Phase B.6:**
+- [ ] Full suite: all tests green
+- [ ] Compile check: all new/modified files clean
+- [ ] Service restart: no crash
+
+---
+
+## Future Phases (Context Only — Not Planned in Detail Yet)
 
 **Phase C — Tool Builder Mode (after B)**
 Agents take ideas and build real tools, widgets, dashboards, or scripts through
