@@ -476,6 +476,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
 CREATE INDEX IF NOT EXISTS idx_memory_importance ON memory(importance);
 CREATE INDEX IF NOT EXISTS idx_work_proposals_agent ON work_proposals(agent);
 CREATE INDEX IF NOT EXISTS idx_work_proposals_status ON work_proposals(status);
+CREATE INDEX IF NOT EXISTS idx_work_proposals_status_agent ON work_proposals(status, agent);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_active ON user_profiles(is_active);
 CREATE INDEX IF NOT EXISTS idx_user_skill_permissions_user ON user_skill_permissions(username);
 CREATE TABLE IF NOT EXISTS skills (
@@ -1181,6 +1182,16 @@ def _migrate_schema(conn=None):
             updated_at  TEXT DEFAULT (datetime('now'))
         )
     """)
+
+    # E.2.2: Additional performance indexes for hot query paths
+    for idx_ddl in [
+        "CREATE INDEX IF NOT EXISTS idx_work_proposals_status_agent ON work_proposals(status, agent)",
+    ]:
+        try:
+            conn.execute(idx_ddl)
+        except Exception:
+            pass
+
     conn.commit()
 
     if _close:

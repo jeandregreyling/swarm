@@ -6,6 +6,7 @@ Tables: swarm_nodes
 
 import json
 import hashlib
+import hmac
 import logging
 import datetime
 import uuid
@@ -121,7 +122,7 @@ def verify_api_key(node_id, api_key, *, conn=None):
         ).fetchone()
         if not row:
             return False
-        return row['api_key_hash'] == _hash_key(api_key)
+        return hmac.compare_digest(row['api_key_hash'], _hash_key(api_key))
     finally:
         if own:
             conn.close()

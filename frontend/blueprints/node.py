@@ -18,6 +18,8 @@ import urllib.request
 import urllib.error
 import functools
 
+from utils.response_cache import cached_json
+
 node_bp = Blueprint('node', __name__)
 logger = logging.getLogger(__name__)
 
@@ -232,6 +234,7 @@ def _post_remote_json(url, path, payload, *, timeout=5, node=None):
 
 
 @node_bp.route('/api/federation/proposals', methods=['GET'])
+@cached_json(ttl_seconds=30)
 def federation_proposals():
     """Aggregate proposals from this node + all connected remote nodes."""
     try:
@@ -280,6 +283,7 @@ def federation_proposals():
 # ── A.5.3: Federated Agent Roster + Skill Registry ───────────────────────────
 
 @node_bp.route('/api/federation/roster', methods=['GET'])
+@cached_json(ttl_seconds=30)
 def federation_roster():
     """Aggregate agent roster from this node + all connected remote nodes."""
     try:
