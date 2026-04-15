@@ -184,7 +184,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 17764 |
+| `activity_log` | 17771 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
@@ -197,7 +197,7 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 496 |
+| `decisions` | 523 |
 | `deferred_items` | 0 |
 | `duck_log` | 377 |
 | `file_versions` | 4 |
@@ -245,10 +245,10 @@
 | `terminal_shortcuts` | 10 |
 | `ticket_notes` | 131 |
 | `tickets` | 139 |
-| `time_checkpoints` | 693 |
-| `time_events` | 46403 |
-| `time_journal` | 44540 |
-| `time_machine` | 4234 |
+| `time_checkpoints` | 700 |
+| `time_events` | 46411 |
+| `time_journal` | 44541 |
+| `time_machine` | 4245 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
