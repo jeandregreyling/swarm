@@ -1,0 +1,101 @@
+{
+  "service": "tools",
+  "description": "Tool build registry and pipeline API (Phase C)",
+  "base_path": "/api/tools",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/tools/builds",
+      "description": "List tool builds with optional filters",
+      "query_params": {
+        "status": "scaffolded|building|validating|testing|passed|failed|registered",
+        "agent": "filter by building agent",
+        "limit": "int, max 200, default 50"
+      },
+      "response": {
+        "builds": [
+          {
+            "id": "int",
+            "proposal_id": "str",
+            "tool_type": "script|skill|widget|cron|shell",
+            "tool_name": "str",
+            "description": "str",
+            "entry_path": "str",
+            "test_path": "str",
+            "status": "str",
+            "test_output": "str",
+            "building_agent": "str",
+            "language": "python|javascript|shell|html",
+            "created_at": "ISO datetime",
+            "updated_at": "ISO datetime"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/tools/builds/<build_id>",
+      "description": "Get detail for a single build",
+      "response": "Single build object (same fields as list)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/builds",
+      "description": "Start a new tool build (scaffold from template)",
+      "body": {
+        "type": "script|skill|widget|cron|shell",
+        "name": "str (required)",
+        "description": "str",
+        "agent": "str, default 'user'"
+      },
+      "response": {
+        "build_id": "int",
+        "entry_path": "str",
+        "status": "scaffolded"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/builds/<build_id>/validate",
+      "description": "Trigger syntax validation",
+      "response": {
+        "ok": "bool",
+        "message": "str"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/builds/<build_id>/test",
+      "description": "Trigger test run",
+      "response": {
+        "ok": "bool",
+        "output": "str"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/builds/<build_id>/register",
+      "description": "Register a passing build",
+      "response": {
+        "ok": "bool",
+        "message": "str"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/tools/templates",
+      "description": "List available scaffold templates",
+      "response": {
+        "templates": [
+          {
+            "type": "str",
+            "language": "str",
+            "extension": "str",
+            "has_test_template": "bool",
+            "template_file": "str"
+          }
+        ]
+      }
+    }
+  ]
+}
