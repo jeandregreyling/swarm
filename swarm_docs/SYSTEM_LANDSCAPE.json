@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 07:51",
+  "generated_at": "2026-04-16 08:54",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -1623,6 +1623,25 @@
       "route_count": 4
     },
     {
+      "name": "onboarding",
+      "description": "frontend/blueprints/onboarding.py \u2014 Onboarding wizard API",
+      "routes": [
+        {
+          "path": "/api/onboarding/status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/onboarding/test-key",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 2
+    },
+    {
       "name": "proposals",
       "description": "",
       "routes": [
@@ -2345,6 +2364,10 @@
       "size_kb": 4.1
     },
     {
+      "name": "onboarding.js",
+      "size_kb": 13.6
+    },
+    {
       "name": "services.js",
       "size_kb": 4.7
     },
@@ -2380,7 +2403,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 18538
+      "rows": 18645
     },
     {
       "name": "agent_capabilities",
@@ -2396,7 +2419,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 49
+      "rows": 52
     },
     {
       "name": "chat_jobs",
@@ -2408,11 +2431,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 9
+      "rows": 10
     },
     {
       "name": "conversations",
-      "rows": 8
+      "rows": 10
     },
     {
       "name": "daily_checkpoint",
@@ -2432,7 +2455,7 @@
     },
     {
       "name": "decisions",
-      "rows": 942
+      "rows": 964
     },
     {
       "name": "deferred_items",
@@ -2440,7 +2463,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 392
+      "rows": 394
     },
     {
       "name": "file_versions",
@@ -2456,7 +2479,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1892
+      "rows": 1895
     },
     {
       "name": "governance_log",
@@ -2528,7 +2551,7 @@
     },
     {
       "name": "messages",
-      "rows": 18
+      "rows": 21
     },
     {
       "name": "moderators",
@@ -2564,7 +2587,7 @@
     },
     {
       "name": "queue",
-      "rows": 686
+      "rows": 691
     },
     {
       "name": "research_evidence",
@@ -2632,7 +2655,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5722
+      "rows": 5735
     },
     {
       "name": "terminal_shortcuts",
@@ -2640,27 +2663,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 146
+      "rows": 149
     },
     {
       "name": "tickets",
-      "rows": 154
+      "rows": 157
     },
     {
       "name": "time_checkpoints",
-      "rows": 859
+      "rows": 877
     },
     {
       "name": "time_events",
-      "rows": 49342
+      "rows": 49710
     },
     {
       "name": "time_journal",
-      "rows": 47310
+      "rows": 47658
     },
     {
       "name": "time_machine",
-      "rows": 4398
+      "rows": 4411
     },
     {
       "name": "tool_builds",
@@ -3283,6 +3306,26 @@
     {
       "id": "memory-bulk-delete-btn",
       "file": "frontend/templates/views/memory.html"
+    },
+    {
+      "id": "ob-node-discover-btn",
+      "file": "frontend/templates/views/onboarding.html"
+    },
+    {
+      "id": "ob-btn-back",
+      "file": "frontend/templates/views/onboarding.html"
+    },
+    {
+      "id": "ob-btn-next",
+      "file": "frontend/templates/views/onboarding.html"
+    },
+    {
+      "class": "ob-btn-secondary",
+      "file": "frontend/templates/views/onboarding.html"
+    },
+    {
+      "class": "ob-btn-primary",
+      "file": "frontend/templates/views/onboarding.html"
     },
     {
       "id": "add-source-btn",
@@ -3947,6 +3990,46 @@
     {
       "id": "agents-globals-chevron",
       "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "ob-ollama-icon",
+      "file": "frontend/static/js/views/onboarding.js"
+    },
+    {
+      "id": "ob-ollama-detail",
+      "file": "frontend/static/js/views/onboarding.js"
+    },
+    {
+      "id": "ob-lmstudio-icon",
+      "file": "frontend/static/js/views/onboarding.js"
+    },
+    {
+      "id": "ob-lmstudio-detail",
+      "file": "frontend/static/js/views/onboarding.js"
+    },
+    {
+      "id": "ob-local-help",
+      "file": "frontend/static/js/views/onboarding.js"
+    },
+    {
+      "id": "ob-keys-list",
+      "file": "frontend/static/js/views/onboarding.js"
+    },
+    {
+      "id": "ob-nodes-existing",
+      "file": "frontend/static/js/views/onboarding.js"
+    },
+    {
+      "id": "ob-node-url",
+      "file": "frontend/static/js/views/onboarding.js"
+    },
+    {
+      "id": "ob-node-result",
+      "file": "frontend/static/js/views/onboarding.js"
+    },
+    {
+      "id": "ob-summary",
+      "file": "frontend/static/js/views/onboarding.js"
     },
     {
       "id": "ollama-swarm-list",
