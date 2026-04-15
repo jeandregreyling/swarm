@@ -115,6 +115,7 @@ function openWindow(id, title, templateId) {
             else if (id === 'agents-config') loadAgentsConfigData && loadAgentsConfigData(win);
             else if (id === 'localai') initializeLocalAiPanel && initializeLocalAiPanel();
             else if (id === 'trace') initTraceView && initTraceView(win);
+            else if (id === 'onboarding') _initOnboarding && _initOnboarding();
             
             _troubleshootLog && _troubleshootLog('info', 'Window opened', `id=${windowKey} base=${id}`);
         } catch (err) {
