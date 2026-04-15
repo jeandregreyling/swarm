@@ -621,19 +621,19 @@ trackable, testable, and reusable.
 
 **Detailed sub-tasks:**
 
-- [ ] **C.1.1 — tool_builds Table**
+- [x] **C.1.1 — tool_builds Table**
   - Add to `utils/db/_schema.py` (SCHEMA + migration)
   - Columns: id, proposal_id, tool_type, tool_name, description, entry_path,
     test_path, status (scaffolded/building/testing/passed/failed/registered),
     test_output, building_agent, language, created_at, updated_at
   - Index on (building_agent, status)
 
-- [ ] **C.1.2 — tool_builds CRUD Module**
+- [x] **C.1.2 — tool_builds CRUD Module**
   - New file: `utils/db/tools.py`
   - create_build, get_build, update_build, list_builds,
     list_builds_by_agent, get_build_by_proposal
 
-- [ ] **C.1.3 — Scaffold Templates**
+- [x] **C.1.3 — Scaffold Templates**
   - New directory: `skills/templates/`
   - Templates: `python_script.py.tpl`, `python_skill.py.tpl`,
     `js_widget.js.tpl`, `shell_script.sh.tpl`, `cron_job.py.tpl`
@@ -641,9 +641,9 @@ trackable, testable, and reusable.
   - Matching test templates: `test_python_script.py.tpl`, etc.
 
 **Test Phase C.1:**
-- [ ] Unit: CRUD create/get/update/list on tool_builds
-- [ ] Unit: scaffold templates parse without error
-- [ ] Unit: status transitions validated
+- [x] Unit: CRUD create/get/update/list on tool_builds
+- [x] Unit: scaffold templates parse without error
+- [x] Unit: status transitions validated
 
 ---
 
@@ -654,7 +654,7 @@ trackable, testable, and reusable.
 
 **Detailed sub-tasks:**
 
-- [ ] **C.2.1 — Pipeline Orchestrator**
+- [x] **C.2.1 — Pipeline Orchestrator**
   - New file: `fridays/tool_builder.py`
   - `build_tool(tool_type, name, description, agent, *, spec=None, conn=None)`
     → creates proposal, scaffolds, creates build record, returns (build_id, entry_path)
@@ -662,28 +662,28 @@ trackable, testable, and reusable.
   - `test_tool(build_id, *, conn=None)` → discovers + runs test file, returns (ok, output)
   - `register_tool(build_id, *, conn=None)` → marks passed, publishes to knowledge+bus
 
-- [ ] **C.2.2 — Scaffold Stage**
+- [x] **C.2.2 — Scaffold Stage**
   - Read template, substitute placeholders, write to agent's sandpit
   - Create matching test file from test template
   - Record entry_path + test_path in tool_builds
 
-- [ ] **C.2.3 — Validate Stage**
+- [x] **C.2.3 — Validate Stage**
   - Python: AST parse (same as fs_verify)
   - JavaScript: node --check
   - Shell: bash -n
   - Records validation result in tool_builds.test_output
 
-- [ ] **C.2.4 — Test Stage**
+- [x] **C.2.4 — Test Stage**
   - Python: `python3 -m pytest <test_path> --tb=short -q`
   - Shell: source file + run with `--help` or `--dry-run` flag
   - Timeout: 30 seconds, captures stdout+stderr
   - Updates build status to passed/failed
 
 **Test Phase C.2:**
-- [ ] Unit: scaffold writes correct files from template
-- [ ] Unit: validate catches syntax errors
-- [ ] Unit: test stage runs pytest and captures output
-- [ ] Integration: full pipeline scaffold → validate → test → register
+- [x] Unit: scaffold writes correct files from template
+- [x] Unit: validate catches syntax errors
+- [x] Unit: test stage runs pytest and captures output
+- [x] Integration: full pipeline scaffold → validate → test → register
 
 ---
 
@@ -694,26 +694,26 @@ trackable, testable, and reusable.
 
 **Detailed sub-tasks:**
 
-- [ ] **C.3.1 — Build Skill**
+- [x] **C.3.1 — Build Skill**
   - `SKILL build_tool <type> <name> <description>` — scaffold + ALM proposal
   - Types: script, skill, widget, cron, shell
   - Returns build_id and scaffolded file path
 
-- [ ] **C.3.2 — Tool Management Skills**
+- [x] **C.3.2 — Tool Management Skills**
   - `SKILL tool_validate <build_id>` — run syntax validation
   - `SKILL tool_test <build_id>` — run tests
   - `SKILL tool_status <build_id>` — check build progress
   - `SKILL tool_list [agent]` — list builds (own or by agent)
 
-- [ ] **C.3.3 — Registry Entries**
+- [x] **C.3.3 — Registry Entries**
   - All 5 skills added to REGISTRY with trust_level=1
   - Handlers in `_HANDLERS` dict
 
 **Test Phase C.3:**
-- [ ] Unit: SKILL build_tool creates scaffold + DB record
-- [ ] Unit: SKILL tool_validate returns syntax check result
-- [ ] Unit: SKILL tool_test runs tests and records output
-- [ ] Unit: SKILL tool_list returns agent's builds
+- [x] Unit: SKILL build_tool creates scaffold + DB record
+- [x] Unit: SKILL tool_validate returns syntax check result
+- [x] Unit: SKILL tool_test runs tests and records output
+- [x] Unit: SKILL tool_list returns agent's builds
 
 ---
 
@@ -724,7 +724,7 @@ trackable, testable, and reusable.
 
 **Detailed sub-tasks:**
 
-- [ ] **C.4.1 — Tool Build API Blueprint**
+- [x] **C.4.1 — Tool Build API Blueprint**
   - New file: `frontend/blueprints/tools.py`
   - `GET /api/tools/builds` — list builds with status/agent filter
   - `GET /api/tools/builds/<id>` — detail with test output
@@ -733,14 +733,14 @@ trackable, testable, and reusable.
   - `POST /api/tools/builds/<id>/test` — trigger test run
   - `GET /api/tools/templates` — list available templates
 
-- [ ] **C.4.2 — Blueprint Registration**
+- [x] **C.4.2 — Blueprint Registration**
   - Register tools_bp in terminal.py _BLUEPRINT_REGISTRY
   - API contract: `docs/api/tools.json`
 
 **Test Phase C.4:**
-- [ ] Unit: API returns correct build data
-- [ ] Integration: POST /builds triggers pipeline
-- [ ] Integration: POST /<id>/test runs and returns results
+- [x] Unit: API returns correct build data
+- [x] Integration: POST /builds triggers pipeline
+- [x] Integration: POST /<id>/test runs and returns results
 
 ---
 
@@ -751,21 +751,21 @@ trackable, testable, and reusable.
 
 **Detailed sub-tasks:**
 
-- [ ] **C.5.1 — ALM Completion Gate**
+- [x] **C.5.1 — ALM Completion Gate**
   - Enhance alm_complete in skills.py: if proposal has linked tool_build,
     run validate + test before allowing done transition
   - Failed validation → reject with clear error message
   - Passed → attach test output to proposal notes
 
-- [ ] **C.5.2 — Knowledge Archival**
+- [x] **C.5.2 — Knowledge Archival**
   - On tool registered: write to swarm_knowledge category=`tool`
   - Key: `tool:{type}:{name}`, content = description + entry_path + test status
   - Bus event: `tool.registered` with build_id + tool_name
 
 **Test Phase C.5:**
-- [ ] Unit: alm_complete blocks when linked tool fails tests
-- [ ] Unit: alm_complete proceeds when linked tool passes
-- [ ] Integration: tool registration writes knowledge + bus event
+- [x] Unit: alm_complete blocks when linked tool fails tests
+- [x] Unit: alm_complete proceeds when linked tool passes
+- [x] Integration: tool registration writes knowledge + bus event
 
 ---
 
@@ -776,20 +776,20 @@ trackable, testable, and reusable.
 
 **Detailed sub-tasks:**
 
-- [ ] **C.6.1 — Tool Builder Integration Tests**
+- [x] **C.6.1 — Tool Builder Integration Tests**
   - CRUD: create/get/update/list builds
   - Pipeline: scaffold → validate → test → register
   - Skills: all 5 tool skills work correctly
   - Quality gate: alm_complete respects tool build status
   - Templates: each template scaffolds and validates
 
-- [ ] **C.6.2 — Full Regression**
+- [x] **C.6.2 — Full Regression**
   - All A.x tests + B.x tests + C.x tests pass
   - No regressions in governance, research, or knowledge flows
 
 **Test Phase C.6:**
-- [ ] Full suite: all tests green
-- [ ] Compile check: all new/modified files clean
+- [x] Full suite: all tests green (266 passed, 1 skipped)
+- [x] Compile check: all new/modified files clean
 
 ---
 
@@ -890,6 +890,12 @@ DATE       | TASK                  | STATUS     | NOTES
 2026-04-16 | B.4 Research API      | Completed  | 5 endpoints in frontend/blueprints/research.py. Async for standard/deep. API contract.
 2026-04-16 | B.5 Learning Cycle    | Completed  | Lesson extraction (Qwen+fallback), pattern detection, knowledge broadcast enhancement.
 2026-04-16 | B.6 Tests + Commit    | Completed  | 31 research tests + full regression: 230 passed, 1 skipped, 0 failed.
+2026-04-16 | C.1 Tool Registry     | Completed  | tool_builds table + CRUD (utils/db/tools.py) + 7 scaffold templates.
+2026-04-16 | C.2 Build Pipeline    | Completed  | fridays/tool_builder.py: scaffold→validate→test→register. AST/node/bash validators.
+2026-04-16 | C.3 Tool Skills       | Completed  | 5 skills: build_tool, tool_validate, tool_test, tool_status, tool_list.
+2026-04-16 | C.4 Tool API          | Completed  | 7 endpoints in frontend/blueprints/tools.py. Blueprint registered. API contract.
+2026-04-16 | C.5 Quality Gate      | Completed  | alm_complete: linked tool_build validate+test gate. BLOCKED on failure.
+2026-04-16 | C.6 Tests + Commit    | Completed  | 35 tool tests + full regression: 266 passed, 1 skipped, 0 failed.
            |                       |            |
 ```
 
@@ -971,6 +977,22 @@ frontend/terminal.py                      | Modified | B.4    | 2026-04-16
 docs/api/research.json                    | Created  | B.4    | 2026-04-16
 frontend/blueprints/chat.py               | Modified | B.5    | 2026-04-16
 tests/test_research.py                    | Created  | B.6    | 2026-04-16
+utils/db/_schema.py                       | Modified | C.1.1  | 2026-04-16
+utils/db/tools.py                         | Created  | C.1.2  | 2026-04-16
+skills/templates/python_script.py.tpl     | Created  | C.1.3  | 2026-04-16
+skills/templates/test_python_script.py.tpl| Created  | C.1.3  | 2026-04-16
+skills/templates/python_skill.py.tpl      | Created  | C.1.3  | 2026-04-16
+skills/templates/test_python_skill.py.tpl | Created  | C.1.3  | 2026-04-16
+skills/templates/js_widget.js.tpl         | Created  | C.1.3  | 2026-04-16
+skills/templates/shell_script.sh.tpl      | Created  | C.1.3  | 2026-04-16
+skills/templates/cron_job.py.tpl          | Created  | C.1.3  | 2026-04-16
+skills/templates/test_cron_job.py.tpl     | Created  | C.1.3  | 2026-04-16
+fridays/tool_builder.py                   | Created  | C.2    | 2026-04-16
+fridays/skills.py                         | Modified | C.3+5  | 2026-04-16
+frontend/blueprints/tools.py              | Created  | C.4.1  | 2026-04-16
+frontend/terminal.py                      | Modified | C.4.2  | 2026-04-16
+docs/api/tools.json                       | Created  | C.4.2  | 2026-04-16
+tests/test_tools.py                       | Created  | C.6    | 2026-04-16
                                           |          |        |
 ```
 

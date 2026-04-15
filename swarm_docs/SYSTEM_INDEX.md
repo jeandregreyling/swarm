@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 01:23*
+*Auto-generated: 2026-04-16 01:58*
 
 
 ## Python Modules
@@ -35,6 +35,7 @@
 | `utils/db/research.py` | utils.db.research — Research session & evidence CRUD (B.1.2) |
 | `utils/db/tickets.py` | db.tickets — Ticket CRUD, snooze, overdue, digest stats. |
 | `utils/db/timeline.py` | utils/db/timeline.py — Conversation timeline writer. |
+| `utils/db/tools.py` | utils.db.tools — Tool build registry CRUD (C.1.2) |
 | `utils/git_commit_logger.py` | git_commit_logger.py — Seven's Swarm Time Wizard git hook |
 | `utils/governance.py` | utils/governance.py — Central proposal governance engine. |
 | `utils/load_project_docs.py` | load_project_docs.py — Seven's Swarm |
@@ -97,6 +98,7 @@
 | `fridays/shell_agent.py` | fridays/shell_agent.py — Seven's Swarm (RL-019) |
 | `fridays/skills.py` | fridays/skills.py — Seven's Swarm (RL-021) |
 | `fridays/telegram_bot.py` | fridays/telegram_bot.py — Seven's Swarm (RL-022) |
+| `fridays/tool_builder.py` | fridays/tool_builder.py — Tool build pipeline orchestrator (C.2) |
 
 ### Lib
 
@@ -159,6 +161,7 @@
 | `system` | 17 | system.py — System & Monitoring routes |
 | `tickets` | 11 | tickets.py — Tickets routes |
 | `time_wizard_bp` | 10 | time_wizard_bp.py — Time Wizard routes |
+| `tools` | 7 | frontend/blueprints/tools.py — Tool Build API (C.4.1) |
 | `workspace` | 10 | workspace.py — Workspace & Code Ops routes |
 
 ## JS View Modules
@@ -192,26 +195,26 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 18030 |
+| `activity_log` | 18100 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 37 |
+| `approval_tokens` | 40 |
 | `chat_jobs` | 224 |
 | `claude_log` | 1 |
-| `conv_timeline` | 5 |
-| `conversations` | 3 |
+| `conv_timeline` | 6 |
+| `conversations` | 4 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 821 |
+| `decisions` | 877 |
 | `deferred_items` | 0 |
-| `duck_log` | 383 |
+| `duck_log` | 385 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1884 |
+| `ghost_circle` | 1886 |
 | `governance_log` | 0 |
 | `knowledge_chunks` | 353 |
 | `knowledge_sources` | 12 |
@@ -229,19 +232,19 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 6 |
+| `messages` | 8 |
 | `moderators` | 2 |
 | `notification_senders` | 8 |
 | `pending_emails` | 8 |
 | `project_doc_versions` | 56 |
 | `project_docs` | 61 |
 | `proposal_attachments` | 0 |
-| `queue` | 669 |
+| `queue` | 673 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 162 |
 | `scheduled_tasks` | 2 |
-| `skills` | 33 |
+| `skills` | 38 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
@@ -253,14 +256,15 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5645 |
+| `system_stats` | 5652 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 137 |
-| `tickets` | 145 |
-| `time_checkpoints` | 790 |
-| `time_events` | 47162 |
-| `time_journal` | 45202 |
-| `time_machine` | 4320 |
+| `ticket_notes` | 139 |
+| `tickets` | 147 |
+| `time_checkpoints` | 808 |
+| `time_events` | 47371 |
+| `time_journal` | 45393 |
+| `time_machine` | 4334 |
+| `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
@@ -301,6 +305,7 @@
 | `alm_self_approve` | Self-approve your own proposal and set it to in_progress. Creates a Vortex checkpoint. No Ghost approval needed. |
 | `alm_vortex` | Create a named Vortex (time machine) checkpoint. Call before making any file changes. |
 | `browse` | Fetch a URL with headless Chromium. Returns page text. Needs a full URL — use search for questions. |
+| `build_tool` | Scaffold a new tool from template. Types: script, skill, widget, cron, shell. Creates files + DB record. |
 | `deep_dive` | Start a deep research investigation. 5+ sources, cross-validation, gap analysis. |
 | `file_read` | Read a file from a sandpit. Format: agent/filename.txt |
 | `file_write` | Write content to your sandpit. |
@@ -326,5 +331,9 @@
 | `swarm_knowledge_search` | Search the shared swarm knowledge base (lessons, decisions, facts, patterns, warnings). |
 | `system_index` | Generate or query the system index (modules, blueprints, tables, agents, skills). No args = regenerate. With args = search the index. |
 | `ticket_create` | Create an internal ticket/proposal. Format: <title> || <description> |
+| `tool_list` | List tool builds. Optionally filter by agent name. |
+| `tool_status` | Check the status of a tool build (scaffolded/building/testing/passed/failed/registered). |
+| `tool_test` | Run tests for a tool build. Discovers pytest test file or runs --dry-run. |
+| `tool_validate` | Run syntax validation on a tool build (Python AST, node --check, bash -n). |
 | `ui_css_edit_checklist` | Show the global checklist for correct UI/CSS edit workflow (selectors, patching, verification). |
 | `update_landscape` | Regenerate the system landscape index (MD + JSON). Governed: requires trust_level 2. |
