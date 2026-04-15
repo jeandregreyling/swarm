@@ -599,6 +599,24 @@ CREATE TABLE IF NOT EXISTS research_evidence (
 );
 CREATE INDEX IF NOT EXISTS idx_research_evidence_session ON research_evidence (session_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_research_evidence_dedup ON research_evidence (session_id, source_url, snippet_hash);
+
+-- Tool builds (C.1.1)
+CREATE TABLE IF NOT EXISTS tool_builds (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    proposal_id         TEXT DEFAULT '',
+    tool_type           TEXT NOT NULL DEFAULT 'script',
+    tool_name           TEXT NOT NULL,
+    description         TEXT NOT NULL DEFAULT '',
+    entry_path          TEXT DEFAULT '',
+    test_path           TEXT DEFAULT '',
+    status              TEXT NOT NULL DEFAULT 'scaffolded',
+    test_output         TEXT DEFAULT '',
+    building_agent      TEXT NOT NULL DEFAULT '',
+    language            TEXT NOT NULL DEFAULT 'python',
+    created_at          TEXT DEFAULT (datetime('now')),
+    updated_at          TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_tool_builds_agent_status ON tool_builds (building_agent, status);
 """
 
 
@@ -1093,6 +1111,27 @@ def _migrate_schema(conn=None):
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_research_evidence_session ON research_evidence (session_id)")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_research_evidence_dedup ON research_evidence (session_id, source_url, snippet_hash)")
+    conn.commit()
+
+    # tool_builds (C.1.1) — migration for existing DBs
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS tool_builds (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            proposal_id         TEXT DEFAULT '',
+            tool_type           TEXT NOT NULL DEFAULT 'script',
+            tool_name           TEXT NOT NULL,
+            description         TEXT NOT NULL DEFAULT '',
+            entry_path          TEXT DEFAULT '',
+            test_path           TEXT DEFAULT '',
+            status              TEXT NOT NULL DEFAULT 'scaffolded',
+            test_output         TEXT DEFAULT '',
+            building_agent      TEXT NOT NULL DEFAULT '',
+            language            TEXT NOT NULL DEFAULT 'python',
+            created_at          TEXT DEFAULT (datetime('now')),
+            updated_at          TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_tool_builds_agent_status ON tool_builds (building_agent, status)")
     conn.commit()
 
     if _close:

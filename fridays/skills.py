@@ -249,6 +249,37 @@ REGISTRY = {
         'usage': 'SKILL research_resume <session_id>',
         'example': 'SKILL research_resume 42',
     },
+    # ── C.3 — Tool Builder skills ─────────────────────────────────────────
+    'build_tool': {
+        'description': 'Scaffold a new tool from template. Types: script, skill, widget, cron, shell. Creates files + DB record.',
+        'trust_level': 1,
+        'usage': 'SKILL build_tool <type> <name> <description>',
+        'example': 'SKILL build_tool script log_analyser Parse and summarise swarm log files',
+    },
+    'tool_validate': {
+        'description': 'Run syntax validation on a tool build (Python AST, node --check, bash -n).',
+        'trust_level': 0,
+        'usage': 'SKILL tool_validate <build_id>',
+        'example': 'SKILL tool_validate 7',
+    },
+    'tool_test': {
+        'description': 'Run tests for a tool build. Discovers pytest test file or runs --dry-run.',
+        'trust_level': 1,
+        'usage': 'SKILL tool_test <build_id>',
+        'example': 'SKILL tool_test 7',
+    },
+    'tool_status': {
+        'description': 'Check the status of a tool build (scaffolded/building/testing/passed/failed/registered).',
+        'trust_level': 0,
+        'usage': 'SKILL tool_status <build_id>',
+        'example': 'SKILL tool_status 7',
+    },
+    'tool_list': {
+        'description': 'List tool builds. Optionally filter by agent name.',
+        'trust_level': 0,
+        'usage': 'SKILL tool_list [agent]',
+        'example': 'SKILL tool_list gemma',
+    },
 }
 
 
@@ -946,6 +977,34 @@ def _skill_alm_complete(args, agent, **_):
     except Exception as _hce:
         health_summary = f'\n\n[Health check skipped: {_hce}]'
 
+    # C.5.1 — Tool build quality gate
+    # If this proposal has a linked tool_build, validate + test before completing
+    tool_gate_summary = ''
+    try:
+        from utils.db.tools import get_build_by_proposal
+        linked_build = get_build_by_proposal(proposal_id)
+        if linked_build and linked_build['status'] not in ('passed', 'registered'):
+            from fridays.tool_builder import validate_tool, test_tool
+            v_ok, v_msg = validate_tool(linked_build['id'])
+            if not v_ok:
+                return False, (
+                    f'BLOCKED: Tool build #{linked_build["id"]} failed validation.\n'
+                    f'{v_msg}\n'
+                    f'Fix the tool and try SKILL alm_complete again.'
+                )
+            t_ok, t_out = test_tool(linked_build['id'])
+            if not t_ok:
+                return False, (
+                    f'BLOCKED: Tool build #{linked_build["id"]} failed tests.\n'
+                    f'{t_out[:800]}\n'
+                    f'Fix the tool and try SKILL alm_complete again.'
+                )
+            tool_gate_summary = f'\nTool build #{linked_build["id"]}: PASSED'
+    except ImportError:
+        pass  # tools module not available
+    except Exception as _tge:
+        tool_gate_summary = f'\n[Tool gate skipped: {_tge}]'
+
     data, err = _alm_api_post(
         f'/api/work-proposals/{proposal_id}/agent-advance',
         {'agent': agent, 'action': 'complete'},
@@ -957,6 +1016,7 @@ def _skill_alm_complete(args, agent, **_):
         f'Proposal {proposal_id} marked DONE.\n'
         'Ghost will review and confirm close. Your work is complete.'
         + health_summary
+        + tool_gate_summary
     )
 
 
@@ -1419,6 +1479,93 @@ def _skill_research_resume(args, agent, **_):
         return False, f'research_resume error: {e}'
 
 
+# ── C.3 — Tool Builder skills ────────────────────────────────────────────
+
+def _skill_build_tool(args, agent, **_):
+    """SKILL build_tool <type> <name> <description>"""
+    parts = (args or '').strip().split(None, 2)
+    if len(parts) < 2:
+        return False, 'Usage: SKILL build_tool <type> <name> [description]'
+    tool_type = parts[0]
+    name = parts[1]
+    description = parts[2] if len(parts) > 2 else name
+    try:
+        from fridays.tool_builder import build_tool
+        bid, path = build_tool(tool_type, name, description, agent)
+        return True, f'Tool scaffolded — build #{bid}\nPath: {path}\nUse SKILL tool_validate {bid} then SKILL tool_test {bid}'
+    except Exception as e:
+        return False, f'build_tool error: {e}'
+
+
+def _skill_tool_validate(args, agent, **_):
+    """SKILL tool_validate <build_id>"""
+    bid_str = (args or '').strip()
+    if not bid_str:
+        return False, 'Usage: SKILL tool_validate <build_id>'
+    try:
+        from fridays.tool_builder import validate_tool
+        ok, msg = validate_tool(int(bid_str))
+        return ok, msg
+    except Exception as e:
+        return False, f'tool_validate error: {e}'
+
+
+def _skill_tool_test(args, agent, **_):
+    """SKILL tool_test <build_id>"""
+    bid_str = (args or '').strip()
+    if not bid_str:
+        return False, 'Usage: SKILL tool_test <build_id>'
+    try:
+        from fridays.tool_builder import test_tool
+        ok, output = test_tool(int(bid_str))
+        return ok, output
+    except Exception as e:
+        return False, f'tool_test error: {e}'
+
+
+def _skill_tool_status(args, agent, **_):
+    """SKILL tool_status <build_id>"""
+    bid_str = (args or '').strip()
+    if not bid_str:
+        return False, 'Usage: SKILL tool_status <build_id>'
+    try:
+        from utils.db.tools import get_build
+        build = get_build(int(bid_str))
+        if build is None:
+            return False, f'Build #{bid_str} not found.'
+        lines = [
+            f'Build #{build["id"]}: {build["tool_name"]}',
+            f'Type: {build["tool_type"]} | Language: {build["language"]}',
+            f'Status: {build["status"]} | Agent: {build["building_agent"]}',
+            f'Path: {build["entry_path"]}',
+            f'Created: {build["created_at"]}',
+        ]
+        if build.get('test_output'):
+            lines.append(f'\nTest output:\n{build["test_output"][:500]}')
+        return True, '\n'.join(lines)
+    except Exception as e:
+        return False, f'tool_status error: {e}'
+
+
+def _skill_tool_list(args, agent, **_):
+    """SKILL tool_list [agent]"""
+    filter_agent = (args or '').strip() or None
+    try:
+        from utils.db.tools import list_builds
+        builds = list_builds(building_agent=filter_agent, limit=20)
+        if not builds:
+            return True, 'No tool builds found.'
+        lines = [f'Tool builds ({len(builds)}):']
+        for b in builds:
+            lines.append(
+                f'  #{b["id"]} {b["tool_name"]} [{b["tool_type"]}] '
+                f'status={b["status"]} agent={b["building_agent"]}'
+            )
+        return True, '\n'.join(lines)
+    except Exception as e:
+        return False, f'tool_list error: {e}'
+
+
 _HANDLERS = {
     'shell':          _skill_shell,
     'browse':         _skill_browse,
@@ -1455,6 +1602,12 @@ _HANDLERS = {
     'deep_dive':               _skill_deep_dive,
     'research_status':         _skill_research_status,
     'research_resume':         _skill_research_resume,
+    # C.3 — Tool Builder
+    'build_tool':              _skill_build_tool,
+    'tool_validate':           _skill_tool_validate,
+    'tool_test':               _skill_tool_test,
+    'tool_status':             _skill_tool_status,
+    'tool_list':               _skill_tool_list,
 }
 
 

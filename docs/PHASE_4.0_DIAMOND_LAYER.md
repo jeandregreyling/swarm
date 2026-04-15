@@ -589,11 +589,211 @@ A.1 (proposal governance + ALM gate).
 
 ---
 
-## Future Phases (Context Only — Not Planned in Detail Yet)
+## Phase C — Tool Builder Mode
 
-**Phase C — Tool Builder Mode (after B)**
 Agents take ideas and build real tools, widgets, dashboards, or scripts through
-the full governed ALM flow.
+the full governed ALM flow. Phase C adds structured scaffolding, a build
+pipeline, auto-testing, and a tool registry so agent work products are
+trackable, testable, and reusable.
+
+**What exists today (inherited from A + B):**
+- fs_write, fs_patch, fs_patch_lines (trust-gated file ops)
+- fs_verify (Python AST / Node --check)
+- alm_create_proposal → alm_self_approve → alm_complete (governed flow)
+- Vortex checkpoints on in_progress & done transitions
+- skills_loop (multi-pass agent execution with up to 6 SKILL calls per turn)
+- Shell agent with whitelisting and sudo approval gate
+
+**What Phase C adds:**
+- `tool_builds` table — registry of everything agents have built
+- Scaffold templates for common tool types (script, skill, widget, cron)
+- Build pipeline engine — scaffold → generate → validate → test → register
+- 5 new SKILL commands for agent-driven tool building
+- Auto-test runner (discovers and runs tests for built tools)
+- API + frontend visibility into all builds
+
+---
+
+### C.1 — Tool Registry & Scaffold Templates (Week 13)
+
+- New table to track every tool an agent builds
+- Template library for common tool types
+
+**Detailed sub-tasks:**
+
+- [ ] **C.1.1 — tool_builds Table**
+  - Add to `utils/db/_schema.py` (SCHEMA + migration)
+  - Columns: id, proposal_id, tool_type, tool_name, description, entry_path,
+    test_path, status (scaffolded/building/testing/passed/failed/registered),
+    test_output, building_agent, language, created_at, updated_at
+  - Index on (building_agent, status)
+
+- [ ] **C.1.2 — tool_builds CRUD Module**
+  - New file: `utils/db/tools.py`
+  - create_build, get_build, update_build, list_builds,
+    list_builds_by_agent, get_build_by_proposal
+
+- [ ] **C.1.3 — Scaffold Templates**
+  - New directory: `skills/templates/`
+  - Templates: `python_script.py.tpl`, `python_skill.py.tpl`,
+    `js_widget.js.tpl`, `shell_script.sh.tpl`, `cron_job.py.tpl`
+  - Each template has {{PLACEHOLDERS}} for name, description, author, date
+  - Matching test templates: `test_python_script.py.tpl`, etc.
+
+**Test Phase C.1:**
+- [ ] Unit: CRUD create/get/update/list on tool_builds
+- [ ] Unit: scaffold templates parse without error
+- [ ] Unit: status transitions validated
+
+---
+
+### C.2 — Build Pipeline Engine (Week 13–14)
+
+- Multi-stage orchestrator: scaffold → generate → validate → test → register
+- Integrates with ALM: creates proposal, builds tool, marks done
+
+**Detailed sub-tasks:**
+
+- [ ] **C.2.1 — Pipeline Orchestrator**
+  - New file: `fridays/tool_builder.py`
+  - `build_tool(tool_type, name, description, agent, *, spec=None, conn=None)`
+    → creates proposal, scaffolds, creates build record, returns (build_id, entry_path)
+  - `validate_tool(build_id, *, conn=None)` → runs fs_verify, returns (ok, errors)
+  - `test_tool(build_id, *, conn=None)` → discovers + runs test file, returns (ok, output)
+  - `register_tool(build_id, *, conn=None)` → marks passed, publishes to knowledge+bus
+
+- [ ] **C.2.2 — Scaffold Stage**
+  - Read template, substitute placeholders, write to agent's sandpit
+  - Create matching test file from test template
+  - Record entry_path + test_path in tool_builds
+
+- [ ] **C.2.3 — Validate Stage**
+  - Python: AST parse (same as fs_verify)
+  - JavaScript: node --check
+  - Shell: bash -n
+  - Records validation result in tool_builds.test_output
+
+- [ ] **C.2.4 — Test Stage**
+  - Python: `python3 -m pytest <test_path> --tb=short -q`
+  - Shell: source file + run with `--help` or `--dry-run` flag
+  - Timeout: 30 seconds, captures stdout+stderr
+  - Updates build status to passed/failed
+
+**Test Phase C.2:**
+- [ ] Unit: scaffold writes correct files from template
+- [ ] Unit: validate catches syntax errors
+- [ ] Unit: test stage runs pytest and captures output
+- [ ] Integration: full pipeline scaffold → validate → test → register
+
+---
+
+### C.3 — Tool Builder Skills (Week 14)
+
+- 5 new SKILL commands for agents to build tools
+- Wired into skills.py with handlers
+
+**Detailed sub-tasks:**
+
+- [ ] **C.3.1 — Build Skill**
+  - `SKILL build_tool <type> <name> <description>` — scaffold + ALM proposal
+  - Types: script, skill, widget, cron, shell
+  - Returns build_id and scaffolded file path
+
+- [ ] **C.3.2 — Tool Management Skills**
+  - `SKILL tool_validate <build_id>` — run syntax validation
+  - `SKILL tool_test <build_id>` — run tests
+  - `SKILL tool_status <build_id>` — check build progress
+  - `SKILL tool_list [agent]` — list builds (own or by agent)
+
+- [ ] **C.3.3 — Registry Entries**
+  - All 5 skills added to REGISTRY with trust_level=1
+  - Handlers in `_HANDLERS` dict
+
+**Test Phase C.3:**
+- [ ] Unit: SKILL build_tool creates scaffold + DB record
+- [ ] Unit: SKILL tool_validate returns syntax check result
+- [ ] Unit: SKILL tool_test runs tests and records output
+- [ ] Unit: SKILL tool_list returns agent's builds
+
+---
+
+### C.4 — Tool Build API & Frontend (Week 14–15)
+
+- API endpoints for Studio to display tool builds
+- Frontend can trigger builds and view test results
+
+**Detailed sub-tasks:**
+
+- [ ] **C.4.1 — Tool Build API Blueprint**
+  - New file: `frontend/blueprints/tools.py`
+  - `GET /api/tools/builds` — list builds with status/agent filter
+  - `GET /api/tools/builds/<id>` — detail with test output
+  - `POST /api/tools/builds` — start a build (type, name, description)
+  - `POST /api/tools/builds/<id>/validate` — trigger validation
+  - `POST /api/tools/builds/<id>/test` — trigger test run
+  - `GET /api/tools/templates` — list available templates
+
+- [ ] **C.4.2 — Blueprint Registration**
+  - Register tools_bp in terminal.py _BLUEPRINT_REGISTRY
+  - API contract: `docs/api/tools.json`
+
+**Test Phase C.4:**
+- [ ] Unit: API returns correct build data
+- [ ] Integration: POST /builds triggers pipeline
+- [ ] Integration: POST /<id>/test runs and returns results
+
+---
+
+### C.5 — Quality Gate Enhancement (Week 15)
+
+- alm_complete validates tool builds before marking done
+- Auto-test discovery for proposals with linked tool_builds
+
+**Detailed sub-tasks:**
+
+- [ ] **C.5.1 — ALM Completion Gate**
+  - Enhance alm_complete in skills.py: if proposal has linked tool_build,
+    run validate + test before allowing done transition
+  - Failed validation → reject with clear error message
+  - Passed → attach test output to proposal notes
+
+- [ ] **C.5.2 — Knowledge Archival**
+  - On tool registered: write to swarm_knowledge category=`tool`
+  - Key: `tool:{type}:{name}`, content = description + entry_path + test status
+  - Bus event: `tool.registered` with build_id + tool_name
+
+**Test Phase C.5:**
+- [ ] Unit: alm_complete blocks when linked tool fails tests
+- [ ] Unit: alm_complete proceeds when linked tool passes
+- [ ] Integration: tool registration writes knowledge + bus event
+
+---
+
+### C.6 — Testing & Stability (Week 15)
+
+- Full integration test suite for tool builder
+- Regression across all A + B + C tests
+
+**Detailed sub-tasks:**
+
+- [ ] **C.6.1 — Tool Builder Integration Tests**
+  - CRUD: create/get/update/list builds
+  - Pipeline: scaffold → validate → test → register
+  - Skills: all 5 tool skills work correctly
+  - Quality gate: alm_complete respects tool build status
+  - Templates: each template scaffolds and validates
+
+- [ ] **C.6.2 — Full Regression**
+  - All A.x tests + B.x tests + C.x tests pass
+  - No regressions in governance, research, or knowledge flows
+
+**Test Phase C.6:**
+- [ ] Full suite: all tests green
+- [ ] Compile check: all new/modified files clean
+
+---
+
+## Future Phases (Context Only — Not Planned in Detail Yet)
 
 **Phase D — Multi-Node & Desktop Readiness (after C)**
 Full node discovery and cross-node proposal sharing. Federated agent roster and
