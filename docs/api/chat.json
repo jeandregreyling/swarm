@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Chat Service API Contract",
+  "description": "Endpoints for chat dispatch, job management, and relay. Domain: Chat.",
+  "version": "1.0.0",
+  "base_path": "/api/chat",
+  "auth": "session cookie or X-Agent-Key header for agent-to-agent calls",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/chat",
+      "description": "Submit a chat message for agent processing. Supports single-agent and relay modes.",
+      "request": {
+        "type": "object",
+        "properties": {
+          "message": {"type": "string", "description": "User message text"},
+          "agent": {"type": "string", "description": "Target agent name"},
+          "mode": {"type": "string", "enum": ["single", "parallel", "sequential"], "default": "single"},
+          "conv_id": {"type": "integer", "description": "Conversation ID (optional, creates new if omitted)"},
+          "auto_relay": {"type": "boolean", "default": false}
+        },
+        "required": ["message", "agent"]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string"},
+          "job_id": {"type": "string"},
+          "conv_id": {"type": "integer"},
+          "response": {"type": "string"}
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/jobs/status",
+      "description": "Get status of all active and recent chat jobs.",
+      "response": {
+        "type": "object",
+        "properties": {
+          "active": {"type": "array", "items": {"$ref": "#/definitions/ChatJob"}},
+          "recent": {"type": "array", "items": {"$ref": "#/definitions/ChatJob"}}
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/jobs/cancel",
+      "description": "Cancel a running chat job.",
+      "request": {
+        "type": "object",
+        "properties": {
+          "job_id": {"type": "string"}
+        },
+        "required": ["job_id"]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/librarian/review",
+      "description": "Trigger Librarian review on a conversation."
+    }
+  ],
+  "definitions": {
+    "ChatJob": {
+      "type": "object",
+      "properties": {
+        "job_id": {"type": "string"},
+        "agent": {"type": "string"},
+        "status": {"type": "string", "enum": ["queued", "running", "done", "failed", "cancelled"]},
+        "conv_id": {"type": "integer"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "completed_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    }
+  }
+}

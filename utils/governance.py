@@ -193,6 +193,9 @@ def transition_proposal(proposal_id, new_status, agent, *,
         if new_status == STATUS_DONE:
             _auto_publish_knowledge(proposal_id, row['agent'], conn)
 
+        # ── Broadcast via swarm_bus (A.4.2) ──────────────────────────────
+        _bus_broadcast(proposal_id, old_status, new_status, row['agent'], conn)
+
         return result
 
     except GovernanceError:
@@ -284,6 +287,23 @@ def _auto_publish_knowledge(proposal_id, agent, conn):
         logger.info(f'[Governance] auto-published knowledge for {proposal_id}')
     except Exception as exc:
         logger.warning(f'[Governance] auto-publish knowledge failed: {exc}')
+
+
+# ── Bus broadcast (A.4.2) ────────────────────────────────────────────────────
+
+def _bus_broadcast(proposal_id, old_status, new_status, agent, conn):
+    """Publish proposal lifecycle events to swarm_bus for decoupled subscribers."""
+    try:
+        from utils.swarm_bus import publish
+        topic = 'proposal.created' if old_status == STATUS_PENDING and new_status == STATUS_APPROVED else 'proposal.status_changed'
+        publish(topic, {
+            'proposal_id': proposal_id,
+            'old_status': old_status,
+            'new_status': new_status,
+            'agent': agent,
+        }, source_service='governance', conn=conn)
+    except Exception as exc:
+        logger.warning(f'[Governance] bus broadcast failed: {exc}')
 
 
 # ── Audit log ─────────────────────────────────────────────────────────────────

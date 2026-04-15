@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vortex (Time Machine) Service API Contract",
+  "description": "Checkpoint/restore, timeline, sessions, decision history. Domain: Vortex.",
+  "version": "1.0.0",
+  "base_path": "/api/time",
+  "auth": "session cookie",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/time/timeline",
+      "description": "Get time events timeline.",
+      "query_params": {"limit": {"type": "integer", "default": 50}}
+    },
+    {
+      "method": "GET",
+      "path": "/api/time/sessions",
+      "description": "List time wizard sessions."
+    },
+    {
+      "method": "GET",
+      "path": "/api/time/checkpoint/{name}",
+      "description": "Get a specific checkpoint by name."
+    },
+    {
+      "method": "GET",
+      "path": "/api/time/checkpoints",
+      "description": "List all checkpoints."
+    },
+    {
+      "method": "POST",
+      "path": "/api/time/checkpoints",
+      "description": "Create a new checkpoint.",
+      "request": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "agent": {"type": "string"},
+          "description": {"type": "string"}
+        },
+        "required": ["name", "agent"]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/time/restore",
+      "description": "Restore to a checkpoint. Uses git revert.",
+      "request": {
+        "type": "object",
+        "properties": {
+          "checkpoint_name": {"type": "string"}
+        },
+        "required": ["checkpoint_name"]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/time/stats/{agent}",
+      "description": "Get time machine stats for an agent."
+    },
+    {
+      "method": "POST",
+      "path": "/api/time/bootstrap",
+      "description": "Bootstrap time machine tables."
+    },
+    {
+      "method": "POST",
+      "path": "/api/time/log-decision",
+      "description": "Log a decision to the time machine."
+    },
+    {
+      "method": "GET",
+      "path": "/api/time/decision-history/{decision_id}",
+      "description": "Get decision history chain."
+    }
+  ]
+}

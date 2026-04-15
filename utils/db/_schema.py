@@ -543,6 +543,31 @@ CREATE TABLE IF NOT EXISTS swarm_event_acks (
     PRIMARY KEY (event_id, agent),
     FOREIGN KEY (event_id) REFERENCES swarm_events(id)
 );
+
+-- Internal message bus (A.4.2)
+CREATE TABLE IF NOT EXISTS swarm_bus (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic           TEXT NOT NULL,
+    payload_json    TEXT NOT NULL DEFAULT '{}',
+    source_service  TEXT NOT NULL DEFAULT 'local',
+    created_at      TEXT DEFAULT (datetime('now')),
+    consumed_at     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_swarm_bus_topic ON swarm_bus (topic, created_at);
+CREATE INDEX IF NOT EXISTS idx_swarm_bus_unconsumed ON swarm_bus (consumed_at) WHERE consumed_at IS NULL;
+
+-- Node registry (A.4.5)
+CREATE TABLE IF NOT EXISTS swarm_nodes (
+    node_id         TEXT PRIMARY KEY,
+    name            TEXT NOT NULL DEFAULT '',
+    url             TEXT NOT NULL DEFAULT '',
+    api_key_hash    TEXT NOT NULL DEFAULT '',
+    role            TEXT NOT NULL DEFAULT 'contributor',
+    agents_json     TEXT NOT NULL DEFAULT '[]',
+    capabilities    TEXT NOT NULL DEFAULT '[]',
+    registered_at   TEXT DEFAULT (datetime('now')),
+    last_seen       TEXT DEFAULT (datetime('now'))
+);
 """
 
 
@@ -970,6 +995,37 @@ def _migrate_schema(conn=None):
             acked_at    TEXT DEFAULT (datetime('now')),
             PRIMARY KEY (event_id, agent),
             FOREIGN KEY (event_id) REFERENCES swarm_events(id)
+        )
+    """)
+    conn.commit()
+
+    # swarm_bus: internal message bus (A.4.2) — migration for existing DBs
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS swarm_bus (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic           TEXT NOT NULL,
+            payload_json    TEXT NOT NULL DEFAULT '{}',
+            source_service  TEXT NOT NULL DEFAULT 'local',
+            created_at      TEXT DEFAULT (datetime('now')),
+            consumed_at     TEXT
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_swarm_bus_topic ON swarm_bus (topic, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_swarm_bus_unconsumed ON swarm_bus (consumed_at) WHERE consumed_at IS NULL")
+    conn.commit()
+
+    # swarm_nodes: node registry (A.4.5) — migration for existing DBs
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS swarm_nodes (
+            node_id         TEXT PRIMARY KEY,
+            name            TEXT NOT NULL DEFAULT '',
+            url             TEXT NOT NULL DEFAULT '',
+            api_key_hash    TEXT NOT NULL DEFAULT '',
+            role            TEXT NOT NULL DEFAULT 'contributor',
+            agents_json     TEXT NOT NULL DEFAULT '[]',
+            capabilities    TEXT NOT NULL DEFAULT '[]',
+            registered_at   TEXT DEFAULT (datetime('now')),
+            last_seen       TEXT DEFAULT (datetime('now'))
         )
     """)
     conn.commit()
