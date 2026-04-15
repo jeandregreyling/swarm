@@ -225,6 +225,30 @@ REGISTRY = {
         'usage': 'SKILL update_landscape',
         'example': 'SKILL update_landscape',
     },
+    'research': {
+        'description': 'Start a research session on a topic. Searches, analyses, and archives findings. Default depth: standard.',
+        'trust_level': 1,
+        'usage': 'SKILL research <topic>',
+        'example': 'SKILL research Python 3.13 new features',
+    },
+    'deep_dive': {
+        'description': 'Start a deep research investigation. 5+ sources, cross-validation, gap analysis.',
+        'trust_level': 1,
+        'usage': 'SKILL deep_dive <topic>',
+        'example': 'SKILL deep_dive SQLite WAL mode performance characteristics',
+    },
+    'research_status': {
+        'description': 'Check the status and summary of a research session.',
+        'trust_level': 0,
+        'usage': 'SKILL research_status <session_id>',
+        'example': 'SKILL research_status 42',
+    },
+    'research_resume': {
+        'description': 'Resume a paused research session.',
+        'trust_level': 1,
+        'usage': 'SKILL research_resume <session_id>',
+        'example': 'SKILL research_resume 42',
+    },
 }
 
 
@@ -1327,6 +1351,74 @@ def _skill_update_landscape(args, agent, **_):
         return False, f'update_landscape error: {e}'
 
 
+# ── B.3 — Research skills ────────────────────────────────────────────────
+
+def _skill_research(args, agent, **_):
+    """SKILL research <topic> — start a standard-depth research session."""
+    topic = (args or '').strip()
+    if not topic:
+        return False, 'Usage: SKILL research <topic>'
+    try:
+        from fridays.research_workflow import run_research
+        sid, summary = run_research(topic, depth='standard', requesting_agent=agent)
+        return True, f'Research session #{sid} complete.\n\n{summary}'
+    except Exception as e:
+        return False, f'Research failed: {e}'
+
+
+def _skill_deep_dive(args, agent, **_):
+    """SKILL deep_dive <topic> — start a deep research session."""
+    topic = (args or '').strip()
+    if not topic:
+        return False, 'Usage: SKILL deep_dive <topic>'
+    try:
+        from fridays.research_workflow import run_research
+        sid, summary = run_research(topic, depth='deep', requesting_agent=agent)
+        return True, f'Deep-dive session #{sid} complete.\n\n{summary}'
+    except Exception as e:
+        return False, f'Deep dive failed: {e}'
+
+
+def _skill_research_status(args, agent, **_):
+    """SKILL research_status <session_id> — check status of a research session."""
+    sid_str = (args or '').strip()
+    if not sid_str:
+        return False, 'Usage: SKILL research_status <session_id>'
+    try:
+        from utils.db.research import get_session, count_evidence
+        sid = int(sid_str)
+        sess = get_session(sid)
+        if sess is None:
+            return False, f'Session #{sid} not found.'
+        ev_count = count_evidence(sid)
+        lines = [
+            f'Session #{sid}: {sess["topic"]}',
+            f'Status: {sess["status"]} | Depth: {sess["depth"]}',
+            f'Evidence: {ev_count} items | Agent: {sess["requesting_agent"]}',
+            f'Created: {sess["created_at"]}',
+        ]
+        if sess.get('summary'):
+            lines.append(f'\nSummary:\n{sess["summary"][:500]}')
+        return True, '\n'.join(lines)
+    except Exception as e:
+        return False, f'research_status error: {e}'
+
+
+def _skill_research_resume(args, agent, **_):
+    """SKILL research_resume <session_id> — resume a paused session."""
+    sid_str = (args or '').strip()
+    if not sid_str:
+        return False, 'Usage: SKILL research_resume <session_id>'
+    try:
+        from fridays.research_workflow import resume_research
+        sid, summary = resume_research(int(sid_str))
+        if sid is None:
+            return False, summary
+        return True, f'Session #{sid} resumed and completed.\n\n{summary}'
+    except Exception as e:
+        return False, f'research_resume error: {e}'
+
+
 _HANDLERS = {
     'shell':          _skill_shell,
     'browse':         _skill_browse,
@@ -1358,6 +1450,11 @@ _HANDLERS = {
     'swarm_knowledge_search':  _skill_swarm_knowledge_search,
     'search_landscape':        _skill_search_landscape,
     'update_landscape':        _skill_update_landscape,
+    # B.3 — Research
+    'research':                _skill_research,
+    'deep_dive':               _skill_deep_dive,
+    'research_status':         _skill_research_status,
+    'research_resume':         _skill_research_resume,
 }
 
 
