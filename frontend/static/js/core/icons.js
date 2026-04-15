@@ -17,5 +17,6 @@ const windowIcons = {
   'tickets': '🎫',
   'studio': '🎬',
   'access': '🔑',
+  'onboarding': '🧭',
 };
 
