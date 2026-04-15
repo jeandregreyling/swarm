@@ -90,6 +90,8 @@ def db_conn(tmp_path, monkeypatch):
 
     monkeypatch.setattr('utils.db._connection.get_connection', _get_conn)
     monkeypatch.setattr('utils.db._connection.DB_PATH', db_path)
+    # Also patch modules that copied the reference via `from ._connection import get_connection`
+    monkeypatch.setattr('utils.db.nodes.get_connection', _get_conn)
 
     yield conn
     conn.close()
