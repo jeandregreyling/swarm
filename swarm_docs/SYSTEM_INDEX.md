@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 00:00*
+*Auto-generated: 2026-04-16 00:36*
 
 
 ## Python Modules
@@ -46,6 +46,7 @@
 | `utils/simulate.py` | simulate.py — Seven's Swarm |
 | `utils/skills.py` | skills.py — Seven's Swarm Skills Framework |
 | `utils/swarm_bus.py` | utils/swarm_bus.py — Lightweight internal message bus (A.4.2) |
+| `utils/swarm_root.py` | utils/swarm_root.py — Central SWARM_ROOT resolution (A.6.3) |
 | `utils/swarm_tasks.py` | swarm_tasks.py — Seven's Swarm |
 | `utils/vs_tools.py` | vs_tools.py — VS tab file read/memory tools for Nine |
 
@@ -188,26 +189,26 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 17831 |
+| `activity_log` | 17947 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 31 |
+| `approval_tokens` | 34 |
 | `chat_jobs` | 224 |
 | `claude_log` | 1 |
-| `conv_timeline` | 3 |
-| `conversations` | 1 |
+| `conv_timeline` | 4 |
+| `conversations` | 2 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 633 |
+| `decisions` | 765 |
 | `deferred_items` | 0 |
-| `duck_log` | 377 |
+| `duck_log` | 381 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1880 |
+| `ghost_circle` | 1882 |
 | `governance_log` | 0 |
 | `knowledge_chunks` | 353 |
 | `knowledge_sources` | 12 |
@@ -225,14 +226,14 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 2 |
+| `messages` | 4 |
 | `moderators` | 2 |
 | `notification_senders` | 8 |
 | `pending_emails` | 8 |
 | `project_doc_versions` | 56 |
 | `project_docs` | 61 |
 | `proposal_attachments` | 0 |
-| `queue` | 657 |
+| `queue` | 665 |
 | `sandpit_log` | 162 |
 | `scheduled_tasks` | 2 |
 | `skills` | 29 |
@@ -247,14 +248,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5629 |
+| `system_stats` | 5636 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 131 |
-| `tickets` | 139 |
-| `time_checkpoints` | 728 |
-| `time_events` | 46672 |
-| `time_journal` | 44774 |
-| `time_machine` | 4278 |
+| `ticket_notes` | 135 |
+| `tickets` | 143 |
+| `time_checkpoints` | 771 |
+| `time_events` | 46879 |
+| `time_journal` | 44938 |
+| `time_machine` | 4305 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
