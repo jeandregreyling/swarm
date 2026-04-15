@@ -14,6 +14,13 @@ LINKED TO:
 """
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
+from utils.db.registry import get_agent_roster as _reg_roster, get_single_task_locals as _reg_stl
+from utils.db.timeline import timeline_append as _trace
+try:
+    from utils.circuit_breaker import check as _cb_check, record_success as _cb_ok, record_failure as _cb_fail, health_probe as _cb_probe
+    _CB_AVAILABLE = True
+except ImportError:
+    _CB_AVAILABLE = False
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -544,7 +551,7 @@ def api_chat():
         history_limit = 8
     history_limit = max(1, min(30, history_limit))
 
-    allowed_agents = {a['name'].lower() for a in _AGENT_ROSTER if a['name'].lower() != 'ghost'}
+    allowed_agents = {a['name'].lower() for a in _reg_roster() if a['name'].lower() != 'ghost'}
 
     if isinstance(requested_agents, list) and requested_agents:
         normalized_agents = []
@@ -820,6 +827,22 @@ def api_chat():
         started_at = time.time()
         executor = _CHAT_WORKER_EXECUTOR
         est_eta = _chat_eta_seconds(selected_agent)
+
+        # ── Circuit breaker: fast-fail if agent is tripped ───────────────────
+        if _CB_AVAILABLE:
+            _cb_ok_disp, _cb_reason = _cb_check(selected_agent)
+            if not _cb_ok_disp:
+                _trace(conv_id, selected_agent, 'error', f'circuit_open: {_cb_reason}')
+                return _cb_reason, 0, int((time.time() - started_at) * 1000)
+            _hp_ok, _hp_detail = _cb_probe(selected_agent)
+            if not _hp_ok:
+                _cb_fail(selected_agent, _hp_detail)
+                _trace(conv_id, selected_agent, 'error', f'health_probe_fail: {_hp_detail}')
+                return (
+                    f'[{selected_agent}] is unreachable ({_hp_detail}). '
+                    'Check that the service is running and try again.'
+                ), 0, int((time.time() - started_at) * 1000)
+
         effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
         if not auto_relay:
             effective_prompt = (
@@ -881,9 +904,23 @@ def api_chat():
             rg_release = None
 
         try:
-            if selected_agent in {'gemma', 'llama', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
+            _trace(conv_id, selected_agent, 'dispatch', f'route={selected_agent} prompt_len={len(effective_prompt)}')
+            if selected_agent in {'gemma', 'qwen', 'eight'}:
+                # Route through agent .chat() directly — enables skills_loop
+                _stage(f'dispatching to local ollama · {selected_agent}', est_eta)
+                try:
+                    import importlib
+                    _mod = importlib.import_module(f'agents.{selected_agent}.{selected_agent}_agent')
+                except Exception as _imp_err:
+                    response_text = f'[{selected_agent}] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(_mod.chat, effective_prompt, history, stage_cb)
+                    answer, tokens = future.result(timeout=local_timeout)
+                    response_text = answer or f'[{selected_agent} unavailable]'
+                    tokens_used = tokens or 0
+            elif selected_agent in {'librarian', 'duck', 'sniffles'}:
+                # Utility agents — no .chat() module; use orchestrator
                 _model_name = orchestrator.AGENTS.get(selected_agent, selected_agent)
-                _stage(f'reading memory · {_model_name}', est_eta)
                 if selected_agent in {'duck', 'sniffles'}:
                     _stage(f'building audit context · {_model_name}', est_eta)
                 else:
@@ -1031,13 +1068,14 @@ def api_chat():
                     response_text = f'[{selected_agent}] error: {_dyn_err}'
             _stage('finalizing answer', 0)
         except FuturesTimeoutError:
+            _trace(conv_id, selected_agent, 'error', f'timeout after {local_timeout}s persistent={persistent_mode}')
             _stage('timed out waiting for completion', 0)
+            if _CB_AVAILABLE:
+                _cb_fail(selected_agent, f'timeout after {local_timeout}s')
             if persistent_mode:
                 raise RuntimeError(f'{selected_agent} timed out after {local_timeout}s')
             if selected_agent == 'duck':
                 response_text = _duck_fast_check(message)
-            elif selected_agent in {'gemma', 'llama', 'qwen', 'librarian'}:
-                raise
             else:
                 response_text = (
                     f'[{selected_agent}] is taking longer than expected. '
@@ -1061,6 +1099,9 @@ def api_chat():
             response_text = _strip_relay_routing(response_text)
 
         elapsed_ms = int((time.time() - started_at) * 1000)
+        if _CB_AVAILABLE:
+            _cb_ok(selected_agent)
+        _trace(conv_id, selected_agent, 'complete', f'tokens={tokens_used} elapsed={elapsed_ms}ms len={len(response_text or "")}')
         return response_text, tokens_used, elapsed_ms
 
     try:
@@ -1373,7 +1414,7 @@ def api_chat():
                 continue
 
             selected_agent_key = str(selected_agent or '').strip().lower()
-            if selected_agent_key in _CHAT_SINGLE_TASK_LOCAL_AGENTS:
+            if selected_agent_key in _reg_stl():
                 with _CHAT_JOB_LOCK:
                     _cleanup_chat_jobs_locked()
                     running_job = _chat_find_running_job_for_agent_locked(selected_agent_key)

@@ -66,27 +66,55 @@ def _get_eight_module():
         import eight as eight_module
         return eight_module
 
-AGENTS = {
-    'gemma':     'gemma3:latest',
-    'llama':     'llama3.2:latest',
-    'mistral':   'mistral:latest',
-    'qwen':      'qwen2.5:latest',
-    'eight':     'gemma4:26b',
-    'librarian': 'qwen:latest',
-    'duck':      'llama3.2:latest',
-    'sniffles':  'deepseek-r1:7b',
+# ── Agent models/temps — DB registry is source of truth, inline dict is fallback ──
+try:
+    from utils.db.registry import (
+        get_agent_models  as _reg_models_orch,
+        get_agent_temps   as _reg_temps_orch,
+        get_agent_prompts as _reg_prompts_orch,
+        get_keep_alive_map as _reg_keep_alive_orch,
+    )
+    _REGISTRY_AVAILABLE = True
+except Exception:
+    _REGISTRY_AVAILABLE = False
+
+_AGENTS_FALLBACK = {
+    'gemma': 'gemma3:latest', 'llama': 'llama3.2:latest', 'mistral': 'mistral:latest',
+    'qwen': 'qwen2.5:latest', 'eight': 'gemma4:26b', 'librarian': 'qwen:1.5b',
+    'duck': 'qwen:1.5b', 'sniffles': 'deepseek-r1:7b',
+}
+_TEMPERATURES_FALLBACK = {
+    'gemma': 0.3, 'llama': 0.6, 'mistral': 0.7, 'qwen': 0.7,
+    'eight': 0.5, 'librarian': 0.1, 'duck': 0.1, 'sniffles': 0.2,
 }
 
-TEMPERATURES = {
-    'gemma':     0.3,
-    'llama':     0.6,
-    'mistral':   0.6,
-    'qwen':      0.7,
-    'eight':     0.5,
-    'librarian': 0.1,
-    'duck':      0.1,
-    'sniffles':  0.2,
-}
+
+def _get_agents():
+    if _REGISTRY_AVAILABLE:
+        try:
+            d = _reg_models_orch(local_only=True)
+            if d:
+                return d
+        except Exception:
+            pass
+    return _AGENTS_FALLBACK
+
+
+def _get_temps():
+    if _REGISTRY_AVAILABLE:
+        try:
+            d = _reg_temps_orch(local_only=True)
+            if d:
+                return d
+        except Exception:
+            pass
+    return _TEMPERATURES_FALLBACK
+
+
+# Module-level dicts kept for backward compat — consumers that do `orchestrator.AGENTS[x]`
+# These are static snapshots; prefer calling _get_agents() / _get_temps() for live data.
+AGENTS = dict(_AGENTS_FALLBACK)
+TEMPERATURES = dict(_TEMPERATURES_FALLBACK)
 
 EIGHT_CHAT_SYSTEM_PROMPT = (
     "You are Eight, the SAP HCM/Payroll Specialist of Seven's Swarm. "
@@ -185,7 +213,7 @@ SNIFFLES_SYSTEM_PROMPT = (
     "SANDPIT: sandpits/sniffles/ for audit reports and drafts. All changes tracked by Git and Vortex."
 )
 
-SYSTEM_PROMPTS = {
+_SYSTEM_PROMPTS_INLINE = {
     'gemma':     GEMMA_SYSTEM_PROMPT,
     'llama':     LLAMA_SYSTEM_PROMPT,
     'mistral':   MISTRAL_SYSTEM_PROMPT,
@@ -194,8 +222,26 @@ SYSTEM_PROMPTS = {
     'librarian': LIBRARIAN_SYSTEM_PROMPT,
     'duck':      DUCK_SYSTEM_PROMPT,
     'sniffles':  SNIFFLES_SYSTEM_PROMPT,
-    'Ten':       'You are Ten, a Developer Agent (software engineer) in Seven\'s Swarm. Your role is to provide code quality, clarity, and architectural insights. Ghost One (Jeandre, senior SAP Payroll Consultant) is the human operator. Execute Ghost One-directed requests immediately.',
+    'ten':       'You are Ten, a Developer Agent (software engineer) in Seven\'s Swarm. Your role is to provide code quality, clarity, and architectural insights. Ghost One (Jeandre, senior SAP Payroll Consultant) is the human operator. Execute Ghost One-directed requests immediately.',
 }
+
+
+def _get_system_prompts():
+    """Return system prompts dict — DB registry first, fallback to inline."""
+    if _REGISTRY_AVAILABLE:
+        try:
+            d = _reg_prompts_orch()
+            if d:
+                # Merge: DB wins, inline fills gaps
+                merged = dict(_SYSTEM_PROMPTS_INLINE)
+                merged.update(d)
+                return merged
+        except Exception:
+            pass
+    return _SYSTEM_PROMPTS_INLINE
+
+
+SYSTEM_PROMPTS = dict(_SYSTEM_PROMPTS_INLINE)  # static snapshot for backward compat
 
 # All models stay resident indefinitely — the 127 GB NVMe swap handles memory
 # pressure by paging idle models out and back in at ~2-3 GB/s.
@@ -204,7 +250,19 @@ SYSTEM_PROMPTS = {
 # Active agents — prewarmed and kept resident in RAM/NVMe swap.
 # qwen is on the virtual RAM layer: present in AGENTS but NOT prewarmed.
 # Load qwen manually via /api/ollama/load when a second analyst voice is needed.
-MODEL_KEEP_ALIVE = {agent: -1 for agent in ('gemma', 'llama', 'mistral', 'librarian', 'duck', 'sniffles', 'eight')}
+_MODEL_KEEP_ALIVE_FALLBACK = {agent: -1 for agent in ('gemma', 'llama', 'mistral', 'qwen', 'librarian', 'duck', 'sniffles', 'eight')}
+
+def _get_keep_alive():
+    if _REGISTRY_AVAILABLE:
+        try:
+            d = _reg_keep_alive_orch()
+            if d:
+                return d
+        except Exception:
+            pass
+    return _MODEL_KEEP_ALIVE_FALLBACK
+
+MODEL_KEEP_ALIVE = dict(_MODEL_KEEP_ALIVE_FALLBACK)
 
 # Per-agent token counts from last successful ask_agent() call.
 # Keyed by lowercase agent name. Written by ask_agent(); read by terminal._run_single_agent().
@@ -243,13 +301,19 @@ def _apply_local_memory_policy(routing):
 def _select_keep_alive(agent_name):
     """All agents keep_alive=-1: models stay resident in RAM or NVMe swap
     indefinitely. The OS pages idle models to the 127 GB NVMe swap as needed."""
-    return MODEL_KEEP_ALIVE.get(agent_name, -1)
+    ka = _get_keep_alive()
+    return ka.get(agent_name, -1)
 
 def ask_agent(agent_name, prompt, retries=2):
     agent_name = agent_name.lower()  # normalize — AGENTS dict uses lowercase keys
-    model = AGENTS[agent_name]
-    system = SYSTEM_PROMPTS.get(agent_name, '')
-    temp = TEMPERATURES.get(agent_name, 0.5)
+    agents_live = _get_agents()
+    model = agents_live.get(agent_name) or AGENTS.get(agent_name)
+    if not model:
+        raise KeyError(f'Unknown agent: {agent_name}')
+    prompts_live = _get_system_prompts()
+    system = prompts_live.get(agent_name, '')
+    temps_live = _get_temps()
+    temp = temps_live.get(agent_name, 0.5)
     
     print(f'\n[{get_system_clock().timestamp_compact()}] [{agent_name}] thinking...')
     log_action('orchestrator', f'agent_load:{agent_name}', f'Loading {agent_name}', 'info')

@@ -4,35 +4,21 @@ from services import *
 
 memory_bp = Blueprint('memory', __name__)
 
-# Agent memory table mapping — add new agents here only; _memory_search is fully dynamic
-_AGENT_TABLES = {
-    'llama':     'memory_llama',
-    'mistral':   'memory_mistral',
-    'qwen':      'memory_qwen',
-    'gemma':     'memory_gemma',
-    'eight':     'memory_eight',
-    'nine':      'memory_nine',
-    'ten':       'memory_ten',
-    'eleven':    'memory_grok',
-    'grok':      'memory_grok',
-    'twelve':    'memory_twelve',
-    'thirteen':  'memory_thirteen',
-    'scholar':   'memory_scholar',
-    'seeker':    'memory_seeker',
-    'librarian': 'memory',
-    'duck':      'memory',
-    'sniffles':  'memory',
-}
+# Agent memory table mapping — now from DB registry (single source of truth)
+from utils.db.registry import get_agent_tables as _reg_mem_tables
+_AGENT_TABLES = _reg_mem_tables()  # snapshot at import; refreshed by registry cache
 
-# Tables that have a `subject` column (all dedicated agent tables do; shared `memory` also does)
-_SUBJECT_TABLES = {
-    'memory_llama', 'memory_mistral', 'memory_qwen', 'memory_gemma',
-    'memory_eight', 'memory_nine', 'memory_ten', 'memory_grok',
-    'memory_twelve', 'memory_thirteen', 'memory_scholar', 'memory_seeker',
-}
+def _get_agent_tables():
+    """Live read from registry."""
+    return _reg_mem_tables()
 
-# Full set of valid tables for write/delete operations — derived from _AGENT_TABLES
-_ALL_MEMORY_TABLES = {'memory'} | set(_AGENT_TABLES.values())
+# Tables that have a `subject` column — derived dynamically
+def _get_subject_tables():
+    return {v for v in _get_agent_tables().values() if v != 'memory'}
+
+# Full set of valid tables for write/delete operations
+def _get_all_memory_tables():
+    return {'memory'} | set(_get_agent_tables().values())
 
 
 
@@ -115,9 +101,11 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
     agent_key = agent.lower() if agent else ''
 
     # ── Single agent query ────────────────────────────────────────────────────
-    if agent_key and agent_key in _AGENT_TABLES:
-        tbl = _AGENT_TABLES[agent_key]
-        if tbl in _SUBJECT_TABLES:
+    _atbl = _get_agent_tables()
+    _stbl = _get_subject_tables()
+    if agent_key and agent_key in _atbl:
+        tbl = _atbl[agent_key]
+        if tbl in _stbl:
             sql = f"""SELECT id, '{tbl}' AS source_table, agent, subject, content, tags, importance, created_at
                       FROM {tbl}
                       WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
@@ -163,11 +151,11 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
     params.extend([like, like, like, min_importance])
     seen_tables.add('memory')
 
-    for tbl in set(_AGENT_TABLES.values()):
+    for tbl in set(_atbl.values()):
         if tbl in seen_tables or tbl == 'memory':
             continue
         seen_tables.add(tbl)
-        if tbl in _SUBJECT_TABLES:
+        if tbl in _stbl:
             union_parts.append(
                 f"""SELECT id, '{tbl}' AS source_table, agent, subject, content, tags, importance, created_at
                    FROM {tbl}
@@ -260,7 +248,7 @@ def bulk_update_memory():
             if not row_id:
                 skipped.append({'entry': item, 'reason': 'missing id'})
                 continue
-            if table not in _ALL_MEMORY_TABLES:
+            if table not in _get_all_memory_tables():
                 skipped.append({'id': row_id, 'table': table, 'reason': 'invalid table'})
                 continue
 
@@ -345,7 +333,7 @@ def bulk_delete_memory():
             if not row_id:
                 skipped.append({'entry': item, 'reason': 'missing id'})
                 continue
-            if table not in _ALL_MEMORY_TABLES:
+            if table not in _get_all_memory_tables():
                 skipped.append({'id': row_id, 'table': table, 'reason': 'invalid table'})
                 continue
 
@@ -365,7 +353,7 @@ def bulk_delete_memory():
 @memory_bp.route('/api/memory/<int:row_id>', methods=['DELETE'])
 def delete_memory(row_id):
     table = request.args.get('table', 'memory')
-    if table not in _ALL_MEMORY_TABLES:
+    if table not in _get_all_memory_tables():
         return jsonify({'error': 'invalid table'}), 400
     conn = get_connection()
     try:
@@ -381,7 +369,7 @@ def delete_memory(row_id):
 def update_memory(row_id):
     data = request.get_json(silent=True) or {}
     table = (data.get('table') or request.args.get('table') or 'memory').strip()
-    if table not in _ALL_MEMORY_TABLES:
+    if table not in _get_all_memory_tables():
         return jsonify({'error': 'invalid table'}), 400
 
     conn = get_connection()
@@ -447,7 +435,7 @@ def attach_memory(row_id):
     label = (data.get('label') or '').strip()
     value = (data.get('value') or '').strip()
     table = (data.get('table') or request.args.get('table') or 'memory').strip()
-    if table not in _ALL_MEMORY_TABLES:
+    if table not in _get_all_memory_tables():
         return jsonify({'error': 'invalid table'}), 400
     if not label or not value:
         return jsonify({'error': 'label and value required'}), 400
@@ -485,7 +473,7 @@ def assign_memory(row_id):
     if not targets:
         return jsonify({'error': 'targets required'}), 400
 
-    if from_table not in _ALL_MEMORY_TABLES:
+    if from_table not in _get_all_memory_tables():
         return jsonify({'error': 'invalid source table'}), 400
 
     conn = get_connection()
@@ -497,8 +485,8 @@ def assign_memory(row_id):
         assigned = []
         skipped = []
         for agent_name in targets:
-            tgt_table = _AGENT_TABLES.get(agent_name)
-            if not tgt_table or tgt_table not in _ALL_MEMORY_TABLES:
+            tgt_table = _get_agent_tables().get(agent_name)
+            if not tgt_table or tgt_table not in _get_all_memory_tables():
                 skipped.append({'agent': agent_name, 'reason': 'unknown target'})
                 continue
 

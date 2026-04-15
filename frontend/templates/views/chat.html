@@ -48,7 +48,8 @@
             </div>
           </div>
           <div id="chat-controls">
-            <button id="chat-parallel-mode-btn" onclick="onChatParallelModeToggle()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size:12px; font-weight:600; min-width:108px;" title="Both Seq: selected local and online agents can participate, but relay runs one speaker at a time.">Both Seq</button>
+            <button id="chat-exec-mode-btn" onclick="onChatExecModeToggle()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size:11px; font-weight:600; min-width:100px;" title="Sequential: one agent speaks at a time via relay queue.">🔗 Sequential</button>
+            <button id="chat-parallel-mode-btn" onclick="onChatParallelModeToggle()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size:11px; font-weight:600; min-width:100px;" title="Both Seq: selected local and online agents can participate, but relay runs one speaker at a time.">Both Seq</button>
             <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 180px; max-width: 300px; font-size:12px;">
               <option value="">New Thread</option>
             </select>
@@ -179,8 +180,8 @@
                 </div>
                 <div class="chat-relay-slider-row">
                   <span style="font-size:10px;color:var(--text-dim);">Agent-to-agent turns</span>
-                  <input id="chat-relay-turns-slider" class="chat-relay-turns-slider" type="range" min="1" max="12" step="1" value="4" oninput="onChatRelayTurnsSliderChange()" title="Maximum automatic relay turns per user send">
-                  <span id="chat-relay-turns-value" class="chat-relay-turns-value">4</span>
+                  <input id="chat-relay-turns-slider" class="chat-relay-turns-slider" type="range" min="1" max="12" step="1" value="2" oninput="onChatRelayTurnsSliderChange()" title="Maximum automatic relay turns per user send">
+                  <span id="chat-relay-turns-value" class="chat-relay-turns-value">2</span>
                   <label class="chat-relay-toggle" style="padding:2px 8px;" title="Unlimited relay turns for the current send chain.">
                     <input id="chat-relay-infinite" class="chat-relay-infinite" type="checkbox" onchange="onChatRelayInfiniteToggle()">
                     <span>Infinite</span>

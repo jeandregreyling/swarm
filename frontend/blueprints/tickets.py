@@ -1,6 +1,7 @@
 """tickets.py — Tickets routes"""
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
+from utils.db.registry import get_agent_roster as _reg_roster_tix
 
 tickets_bp = Blueprint('tickets', __name__)
 
@@ -105,6 +106,18 @@ def api_ticket_detail(ticket_number):
     except Exception:
         snoozes = []
 
+    # Linked proposals for this ticket
+    proposals = []
+    try:
+        proposals = [dict(r) for r in conn.execute(
+            """SELECT proposal_id, title, status, agent, created_at
+               FROM work_proposals WHERE ticket_number=?
+               ORDER BY id DESC""",
+            (ticket_number,)
+        ).fetchall()]
+    except Exception:
+        pass
+
     conn.close()
     return jsonify({
         'ticket':   dict(ticket),
@@ -112,6 +125,7 @@ def api_ticket_detail(ticket_number):
         'duck':     dict(duck) if duck else None,
         'notes':    notes,
         'snoozes':  snoozes,
+        'proposals': proposals,
     })
 
 
@@ -299,7 +313,7 @@ def resend_ticket(ticket_number):
 @tickets_bp.route('/api/tickets/<ticket_number>/assign', methods=['POST'])
 def assign_ticket(ticket_number):
     """Manually assign a ticket to a specific agent."""
-    _valid_agents = {a['name'].lower() for a in _AGENT_ROSTER if a['name'].lower() != 'ghost'}
+    _valid_agents = {a['name'].lower() for a in _reg_roster_tix() if a['name'].lower() != 'ghost'}
     data  = request.get_json() or {}
     agent = (data.get('agent') or '').strip()
     if agent not in _valid_agents:

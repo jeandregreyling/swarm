@@ -187,6 +187,12 @@ REGISTRY = {
         'usage': 'SKILL fs_verify <path>',
         'example': 'SKILL fs_verify frontend/blueprints/chat.py',
     },
+    'system_index': {
+        'description': 'Generate or query the system index (modules, blueprints, tables, agents, skills). No args = regenerate. With args = search the index.',
+        'trust_level': 0,
+        'usage': 'SKILL system_index [search query]',
+        'example': 'SKILL system_index circuit breaker',
+    },
 }
 
 
@@ -1119,6 +1125,26 @@ def _skill_knowledge_search(args, agent, **_):
         return False, f'knowledge_search error: {e}'
 
 
+def _skill_system_index(args, agent, **_):
+    """Generate or search the system index."""
+    try:
+        from scripts.generate_system_index import generate, OUT_PATH
+        # Always regenerate first
+        generate()
+        query = (args or '').strip()
+        if not query:
+            return True, f'System index regenerated → {OUT_PATH}'
+        # Search the index for matching lines
+        with open(OUT_PATH, 'r') as f:
+            all_lines = f.readlines()
+        matches = [l.rstrip() for l in all_lines if query.lower() in l.lower()]
+        if not matches:
+            return True, f'System index regenerated. No matches for {query!r}.'
+        return True, f'Matches for {query!r} ({len(matches)}):\n' + '\n'.join(matches[:40])
+    except Exception as e:
+        return False, f'system_index error: {e}'
+
+
 _HANDLERS = {
     'shell':          _skill_shell,
     'browse':         _skill_browse,
@@ -1143,6 +1169,7 @@ _HANDLERS = {
     'fs_verify':           _skill_fs_verify,
     'knowledge_search': _skill_knowledge_search,
     'ui_css_edit_checklist': _skill_ui_css_edit_checklist,
+    'system_index':    _skill_system_index,
 }
 
 

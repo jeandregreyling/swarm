@@ -150,6 +150,18 @@ function renderTwPreview(result) {
   const decsText  = decs.length  ? decs.slice(0, 6).map(d => `Decision ${d.decision_id}: ${d.current_status || 'missing'} -> ${d.checkpoint_status || 'missing'}`).join('\n') : 'No decision drift.';
   const queueText = queue.length ? queue.slice(0, 6).map(q => `Queue ${q.queue_id}: ${q.current_status || 'missing'} -> ${q.checkpoint_status || 'missing'}`).join('\n') : 'No queue drift.';
 
+  // Git snapshot info
+  const gitInfo = result.checkpoint_git || {};
+  const gitTags = result.checkpoint_git_tags || {};
+  const hasGit = Object.keys(gitInfo).length > 0 || Object.keys(gitTags).length > 0;
+  const gitHtml = hasGit ? `
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;">
+      <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Git Snapshot</div>
+      <div style="font-size:11px;line-height:1.6;color:var(--text);">
+        ${Object.entries(gitInfo).map(([wt, info]) => `<div><strong>${H(wt)}</strong>: ${H(info.branch || '?')} @ <code style="font-size:10px;">${H(info.commit || '?')}</code>${gitTags[wt] ? ` · tag: <code style="font-size:10px;color:#4caf50;">${H(gitTags[wt])}</code>` : ''}</div>`).join('')}
+      </div>
+    </div>` : '';
+
   preview.innerHTML = `
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px;">
       <div style="font-size:12px;font-weight:700;color:var(--text);">Dry Run — ${H(result.checkpoint_name || '')}</div>
@@ -160,6 +172,7 @@ function renderTwPreview(result) {
       <span style="padding:3px 8px;border-radius:12px;background:var(--bg);border:1px solid var(--border);color:var(--text);">Decision drift: ${Number(summary.decision_changes || 0)}</span>
       <span style="padding:3px 8px;border-radius:12px;background:var(--bg);border:1px solid var(--border);color:var(--text);">Queue drift: ${Number(summary.queue_changes || 0)}</span>
       <span style="padding:3px 8px;border-radius:12px;background:${summary.restorable ? '#4caf5022' : '#8882'};border:1px solid ${summary.restorable ? '#4caf5055' : 'var(--border)'};color:${summary.restorable ? '#4caf50' : 'var(--text-dim)'};">${summary.restorable ? 'Restorable' : 'No drift'}</span>
+      ${summary.has_git_tags ? '<span style="padding:3px 8px;border-radius:12px;background:#2563eb22;border:1px solid #2563eb55;color:#2563eb;">Git tags ✓</span>' : ''}
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;">
@@ -174,6 +187,7 @@ function renderTwPreview(result) {
         <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Queue</div>
         <div style="white-space:pre-wrap;line-height:1.5;color:var(--text);">${H(queueText)}</div>
       </div>
+      ${gitHtml}
     </div>`;
 }
 

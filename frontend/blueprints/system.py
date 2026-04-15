@@ -10,6 +10,27 @@ def api_health():
     return jsonify({'ok': True, 'status': 'up', 'service': 'swarm-terminal'})
 
 
+@system_bp.route('/api/circuit-breaker')
+def api_circuit_breaker():
+    """Return circuit breaker state for all agents."""
+    try:
+        from utils.circuit_breaker import status as cb_status
+        return jsonify(cb_status())
+    except ImportError:
+        return jsonify({'error': 'circuit_breaker module not available'}), 501
+
+
+@system_bp.route('/api/circuit-breaker/<agent>/reset', methods=['POST'])
+def api_circuit_breaker_reset(agent):
+    """Manually reset an agent's circuit breaker."""
+    try:
+        from utils.circuit_breaker import reset as cb_reset
+        cb_reset(agent)
+        return jsonify({'ok': True, 'agent': agent, 'state': 'closed'})
+    except ImportError:
+        return jsonify({'error': 'circuit_breaker module not available'}), 501
+
+
 
 @system_bp.route('/')
 def index():

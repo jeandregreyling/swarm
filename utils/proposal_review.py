@@ -62,13 +62,23 @@ def duck_review_proposal(proposal_id: str, title: str, description: str,
 
     try:
         from database import get_connection
+        from governance import transition_proposal, GovernanceError
         conn = get_connection()
         new_status = 'approved' if verdict == 'approved' else 'rejected'
+        # Route through governance state machine
+        try:
+            transition_proposal(proposal_id, new_status, agent,
+                                actor='duck', note=note, conn=conn)
+        except GovernanceError as exc:
+            print(f'[ProposalReview] governance blocked: {exc}')
+            conn.close()
+            return
+        # Write Duck-specific fields (verdict + note)
         conn.execute(
             """UPDATE work_proposals
-               SET status=?, duck_verdict=?, duck_note=?, updated_at=CURRENT_TIMESTAMP
+               SET duck_verdict=?, duck_note=?
                WHERE proposal_id=?""",
-            (new_status, verdict, note, proposal_id)
+            (verdict, note, proposal_id)
         )
         conn.commit()
         conn.close()
@@ -155,14 +165,22 @@ def duck_check_done(proposal_id: str):
 
     try:
         from database import get_connection
+        from governance import transition_proposal, GovernanceError
         conn = get_connection()
         new_status = 'uat' if verdict == 'pass' else 'in_progress'
         duck_note = feedback
+        try:
+            transition_proposal(proposal_id, new_status, agent,
+                                actor='duck', note=duck_note, conn=conn)
+        except GovernanceError as exc:
+            print(f'[Duck] check_done governance blocked: {exc}')
+            conn.close()
+            return
         conn.execute(
             """UPDATE work_proposals
-               SET status=?, duck_note=?, updated_at=CURRENT_TIMESTAMP
+               SET duck_note=?
                WHERE proposal_id=?""",
-            (new_status, duck_note, proposal_id)
+            (duck_note, proposal_id)
         )
         conn.commit()
         conn.close()
@@ -245,13 +263,12 @@ def duck_execute_proposal(proposal_id: str, actor: str = 'duck'):
 
     try:
         from database import get_connection
-        conn = get_connection()
-        conn.execute(
-            "UPDATE work_proposals SET status=?, updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
-            (STATUS_CLOSED, proposal_id)
-        )
-        conn.commit()
-        conn.close()
+        from governance import transition_proposal, GovernanceError
+        try:
+            transition_proposal(proposal_id, STATUS_CLOSED, row['agent'] or 'unknown',
+                                actor=actor, note='duck_execute_proposal')
+        except GovernanceError as exc:
+            return False, f'Governance blocked: {exc}'
     except Exception as exc:
         return False, f'DB update failed: {exc}'
 
