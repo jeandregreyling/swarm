@@ -70,6 +70,78 @@ def api_agents():
     return jsonify(result)
 
 
+# ── A.2.2: Agent Status API ────────────────────────────────────────────────
+@agents_bp.route('/api/agents/status')
+def api_agents_status():
+    """Per-agent operational status derived from chat_jobs + circuit breaker + registry.
+
+    Returns JSON list of {name, tier, status, active_jobs, circuit_breaker, last_seen}.
+    status: idle | busy | down | disabled
+    """
+    try:
+        conn = get_connection()
+        try:
+            # All registered agents
+            agents_rows = conn.execute(
+                "SELECT name, tier, enabled FROM agents WHERE number >= 0 ORDER BY number ASC"
+            ).fetchall()
+            # Running chat_jobs grouped by agent
+            running_rows = conn.execute(
+                "SELECT agent, COUNT(*) as cnt FROM chat_jobs WHERE status='running' GROUP BY agent"
+            ).fetchall()
+            # Last activity per agent
+            last_seen_rows = conn.execute(
+                "SELECT agent, MAX(updated_at) as last_seen FROM chat_jobs GROUP BY agent"
+            ).fetchall()
+        finally:
+            conn.close()
+
+        running_map = {r['agent'].lower(): r['cnt'] for r in running_rows}
+        last_seen_map = {r['agent'].lower(): r['last_seen'] for r in last_seen_rows}
+
+        # Circuit breaker state
+        try:
+            from utils.circuit_breaker import status_for as _cb_status_for
+            _cb_available = True
+        except ImportError:
+            _cb_available = False
+
+        result = []
+        for row in agents_rows:
+            name = row['name'].lower()
+            enabled = bool(row['enabled']) if row['enabled'] is not None else True
+            active = running_map.get(name, 0)
+
+            cb_state = 'closed'
+            if _cb_available:
+                try:
+                    cb_info = _cb_status_for(name)
+                    cb_state = cb_info.get('state', 'closed')
+                except Exception:
+                    pass
+
+            # Derive status: disabled > down > busy > idle
+            if not enabled or name in DISABLED_AGENTS:
+                status = 'disabled'
+            elif cb_state == 'open':
+                status = 'down'
+            elif active > 0:
+                status = 'busy'
+            else:
+                status = 'idle'
+
+            result.append({
+                'name': name,
+                'tier': row['tier'] or 'local',
+                'status': status,
+                'active_jobs': active,
+                'circuit_breaker': cb_state,
+                'last_seen': last_seen_map.get(name),
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @agents_bp.route('/api/agents/config')
 # WARNING: Indentation or syntax errors here will break the web server. Always test with:
