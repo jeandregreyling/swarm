@@ -516,12 +516,11 @@ class TestSkillTrust:
         REGISTRY['_test_trust2_override'] = {'trust_level': 2}
         _tier_cache['gemma'] = 'local'
         try:
-            # Mock the permission check to return True
-            with patch('fridays.skills.can_user_invoke_skill',
-                       side_effect=ImportError):
-                blocked, _ = _trust_gate('_test_trust2_override', 'gemma')
-                assert blocked is True  # Without override, blocked
+            # Without override: blocked
+            blocked, reason = _trust_gate('_test_trust2_override', 'gemma')
+            assert blocked is True
 
+            # With override: patch the lazy import target in utils.db.auth
             with patch('utils.db.auth.can_user_invoke_skill', return_value=True):
                 blocked, _ = _trust_gate('_test_trust2_override', 'gemma')
                 assert blocked is False  # With override, allowed
@@ -837,12 +836,12 @@ class TestBusKnowledgeIntegration:
         publish('test.topic', {'data': 42}, 'test_service', conn=conn)
         conn.commit()
 
-        unconsumed = get_unconsumed('test.topic', conn=conn)
+        unconsumed = get_unconsumed(topic='test.topic', conn=conn)
         assert len(unconsumed) >= 1
         msg_id = unconsumed[0]['id']
 
         mark_consumed(msg_id, conn=conn)
         conn.commit()
 
-        remaining = get_unconsumed('test.topic', conn=conn)
+        remaining = get_unconsumed(topic='test.topic', conn=conn)
         assert all(r['id'] != msg_id for r in remaining)
