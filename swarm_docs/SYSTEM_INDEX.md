@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 00:36*
+*Auto-generated: 2026-04-16 01:23*
 
 
 ## Python Modules
@@ -32,6 +32,7 @@
 | `utils/db/memory.py` | db.memory — Shared memory, agent-specific memory, project docs. |
 | `utils/db/nodes.py` | utils/db/nodes.py — Node registration CRUD (A.4.5) |
 | `utils/db/registry.py` | db.registry — Cached Agent Registry: single source of truth for all agent metadata. |
+| `utils/db/research.py` | utils.db.research — Research session & evidence CRUD (B.1.2) |
 | `utils/db/tickets.py` | db.tickets — Ticket CRUD, snooze, overdue, digest stats. |
 | `utils/db/timeline.py` | utils/db/timeline.py — Conversation timeline writer. |
 | `utils/git_commit_logger.py` | git_commit_logger.py — Seven's Swarm Time Wizard git hook |
@@ -91,6 +92,7 @@
 | `fridays/discord_bot.py` | fridays/discord_bot.py — Seven's Swarm (RL-023) |
 | `fridays/file_agent.py` | fridays/file_agent.py — Seven's Swarm (RL-018) |
 | `fridays/orchestrator.py` | fridays/orchestrator.py — Seven's Swarm |
+| `fridays/research_workflow.py` | fridays/research_workflow.py — Multi-stage research orchestrator (B.2) |
 | `fridays/scheduler.py` | scheduler.py — Seven's Swarm Scheduler |
 | `fridays/shell_agent.py` | fridays/shell_agent.py — Seven's Swarm (RL-019) |
 | `fridays/skills.py` | fridays/skills.py — Seven's Swarm (RL-021) |
@@ -152,6 +154,7 @@
 | `node` | 8 | frontend/blueprints/node.py — Node registration + federation endpoints (A.4.5 + A.5) |
 | `ollama` | 4 | ollama.py — Ollama Models routes |
 | `proposals` | 22 | — |
+| `research` | 5 | frontend/blueprints/research.py — Research API (B.4.1) |
 | `shell` | 17 | shell.py — Shell & Terminal routes |
 | `system` | 17 | system.py — System & Monitoring routes |
 | `tickets` | 11 | tickets.py — Tickets routes |
@@ -189,26 +192,26 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 17947 |
+| `activity_log` | 18030 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 34 |
+| `approval_tokens` | 37 |
 | `chat_jobs` | 224 |
 | `claude_log` | 1 |
-| `conv_timeline` | 4 |
-| `conversations` | 2 |
+| `conv_timeline` | 5 |
+| `conversations` | 3 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 765 |
+| `decisions` | 821 |
 | `deferred_items` | 0 |
-| `duck_log` | 381 |
+| `duck_log` | 383 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1882 |
+| `ghost_circle` | 1884 |
 | `governance_log` | 0 |
 | `knowledge_chunks` | 353 |
 | `knowledge_sources` | 12 |
@@ -226,17 +229,19 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 4 |
+| `messages` | 6 |
 | `moderators` | 2 |
 | `notification_senders` | 8 |
 | `pending_emails` | 8 |
 | `project_doc_versions` | 56 |
 | `project_docs` | 61 |
 | `proposal_attachments` | 0 |
-| `queue` | 665 |
+| `queue` | 669 |
+| `research_evidence` | 0 |
+| `research_sessions` | 0 |
 | `sandpit_log` | 162 |
 | `scheduled_tasks` | 2 |
-| `skills` | 29 |
+| `skills` | 33 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
@@ -248,14 +253,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5636 |
+| `system_stats` | 5645 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 135 |
-| `tickets` | 143 |
-| `time_checkpoints` | 771 |
-| `time_events` | 46879 |
-| `time_journal` | 44938 |
-| `time_machine` | 4305 |
+| `ticket_notes` | 137 |
+| `tickets` | 145 |
+| `time_checkpoints` | 790 |
+| `time_events` | 47162 |
+| `time_journal` | 45202 |
+| `time_machine` | 4320 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
@@ -296,6 +301,7 @@
 | `alm_self_approve` | Self-approve your own proposal and set it to in_progress. Creates a Vortex checkpoint. No Ghost approval needed. |
 | `alm_vortex` | Create a named Vortex (time machine) checkpoint. Call before making any file changes. |
 | `browse` | Fetch a URL with headless Chromium. Returns page text. Needs a full URL — use search for questions. |
+| `deep_dive` | Start a deep research investigation. 5+ sources, cross-validation, gap analysis. |
 | `file_read` | Read a file from a sandpit. Format: agent/filename.txt |
 | `file_write` | Write content to your sandpit. |
 | `fs_patch` | Replace an exact string in a file (first occurrence). Safe targeted edit without full rewrite. |
@@ -310,6 +316,9 @@
 | `memory_search` | Search the swarm memory pools. Returns top matches. |
 | `proposals` | Check sandpits/shared/proposals/ for new agent proposals and notify Ghost. |
 | `remind` | Send Ghost an immediate plain-text reminder email. |
+| `research` | Start a research session on a topic. Searches, analyses, and archives findings. Default depth: standard. |
+| `research_resume` | Resume a paused research session. |
+| `research_status` | Check the status and summary of a research session. |
 | `schedule` | Create a scheduled task. Same syntax as SCHEDULE command. |
 | `search` | DuckDuckGo web search. Returns top snippets. |
 | `search_landscape` | Search the living system landscape JSON index (files, blueprints, tables, agents, skills). |
