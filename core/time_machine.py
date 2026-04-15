@@ -7,7 +7,7 @@ Provides replay, rewind, and temporal analysis functionality.
 import json
 import os
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 import hashlib
 import re
@@ -175,7 +175,7 @@ class TimeMachine:
             state = {}
 
         normalized = {
-            'captured_at': state.get('captured_at') or datetime.utcnow().isoformat() + 'Z',
+            'captured_at': state.get('captured_at') or datetime.now(UTC).isoformat() + 'Z',
             'counts': state.get('counts') if isinstance(state.get('counts'), dict) else {},
             'work_proposals': state.get('work_proposals') if isinstance(state.get('work_proposals'), list) else [],
             'decisions': state.get('decisions') if isinstance(state.get('decisions'), list) else [],
@@ -222,7 +222,7 @@ class TimeMachine:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        timestamp = datetime.utcnow().isoformat() + 'Z'
+        timestamp = datetime.now(UTC).isoformat() + 'Z'
         
         cursor.execute("""
             INSERT INTO time_events (timestamp, event_type, agent, action, target, state_hash, details)
@@ -247,7 +247,7 @@ class TimeMachine:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        timestamp = datetime.utcnow().isoformat() + 'Z'
+        timestamp = datetime.now(UTC).isoformat() + 'Z'
         
         try:
             cursor.execute("""
@@ -269,7 +269,7 @@ class TimeMachine:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        timestamp = datetime.utcnow().isoformat() + 'Z'
+        timestamp = datetime.now(UTC).isoformat() + 'Z'
         
         cursor.execute("""
             INSERT INTO time_journal (agent, timestamp, session_id, phase, status)
@@ -441,7 +441,7 @@ class TimeMachine:
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
 
         state = {
-            'captured_at': datetime.utcnow().isoformat() + 'Z',
+            'captured_at': datetime.now(UTC).isoformat() + 'Z',
             'counts': {},
             'work_proposals': [],
             'decisions': [],
@@ -492,7 +492,7 @@ class TimeMachine:
 
     def create_workflow_checkpoint(self, label: str, agent: str = 'twelve', description: str = '') -> dict:
         safe_label = re.sub(r'[^a-z0-9]+', '-', (label or 'checkpoint').lower()).strip('-')[:48] or 'checkpoint'
-        timestamp = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
+        timestamp = datetime.now(UTC).strftime('%Y%m%d-%H%M%S')
         checkpoint_name = f'vortex-{timestamp}-{safe_label}'
         full_state = self.capture_workflow_state()
 
@@ -864,7 +864,7 @@ class TimeMachine:
         Returns: session_id
         """
         import uuid
-        session_id = f"session_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+        session_id = f"session_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
         
         try:
             self.start_session(agent='twelve', session_id=session_id, phase='startup')
@@ -873,7 +873,7 @@ class TimeMachine:
                 action='bootstrap_session',
                 event_type='system',
                 target='scheduler',
-                details={'session_id': session_id, 'timestamp': datetime.utcnow().isoformat() + 'Z'}
+                details={'session_id': session_id, 'timestamp': datetime.now(UTC).isoformat() + 'Z'}
             )
             return session_id
         except Exception as e:

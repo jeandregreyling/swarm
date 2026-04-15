@@ -9,7 +9,7 @@ Allows Ghost to trigger immediate actions:
 
 import requests
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 import subprocess
 import signal
@@ -160,7 +160,7 @@ class KillSwitch:
                 agent=agent,
                 action=action,
                 event_type='kill_switch',
-                details={'reason': reason, 'timestamp': datetime.utcnow().isoformat()}
+                details={'reason': reason, 'timestamp': datetime.now(UTC).isoformat()}
             )
             return True
         except Exception as e:

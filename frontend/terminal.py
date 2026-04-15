@@ -72,6 +72,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.research',       'research_bp'),
     ('blueprints.tools',          'tools_bp'),
     ('blueprints.metrics',        'metrics_bp'),
+    ('blueprints.sse',            'sse_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
@@ -97,6 +98,13 @@ else:
 
 def create_app():
     app = Flask(__name__)
+
+    # R.1: Session-based UI authentication
+    try:
+        from utils.session_auth import init_session_auth
+        init_session_auth(app)
+    except Exception as _auth_err:
+        print(f'[Terminal] session auth warning: {_auth_err}')
 
     # E.1: Security headers + request size limits
     try:
@@ -224,6 +232,13 @@ def create_app():
             app.register_blueprint(_bp)
         except Exception as _reg_err:
             print(f"[Terminal] Blueprint register failed — {_attr}: {_reg_err}")
+
+    # R.5: Register /api/v1/* versioned aliases
+    try:
+        from utils.api_versioning import register_versioned_routes
+        register_versioned_routes(app, version='v1')
+    except Exception as _ver_err:
+        print(f'[Terminal] API versioning warning: {_ver_err}')
 
     return app
 

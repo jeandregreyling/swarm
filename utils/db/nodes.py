@@ -39,7 +39,7 @@ def register_node(name, url, api_key, *, role='contributor',
         if role not in VALID_ROLES:
             raise ValueError(f'Invalid role {role!r}. Must be one of {VALID_ROLES}')
         node_id = hashlib.sha256(f'{name}:{url}'.encode()).hexdigest()[:16]
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         agents_json = json.dumps(agents or [])
         caps_json = json.dumps(capabilities or [])
         key_hash = _hash_key(api_key)
@@ -99,7 +99,7 @@ def touch_node(node_id, *, conn=None):
     if own:
         conn = get_connection()
     try:
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         conn.execute(
             'UPDATE swarm_nodes SET last_seen=? WHERE node_id=?',
             (now, node_id)

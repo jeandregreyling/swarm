@@ -147,7 +147,7 @@ def transition_proposal(proposal_id, new_status, agent, *,
                 )
 
         # ── Optimistic lock: ensure row hasn't changed since our read ─────
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')
         cursor = conn.execute(
             """UPDATE work_proposals
                SET status=?, updated_at=?
