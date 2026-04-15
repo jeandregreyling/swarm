@@ -189,6 +189,10 @@ def transition_proposal(proposal_id, new_status, agent, *,
         if new_status in (STATUS_IN_PROGRESS, STATUS_DONE):
             _auto_checkpoint(proposal_id, new_status, row['agent'])
 
+        # ── Auto-publish knowledge on completion (A.3.2) ──────────────────
+        if new_status == STATUS_DONE:
+            _auto_publish_knowledge(proposal_id, row['agent'], conn)
+
         return result
 
     except GovernanceError:
@@ -249,6 +253,37 @@ def _auto_checkpoint(proposal_id, new_status, agent):
         logger.info(f'[Governance] auto-checkpoint created: {label}')
     except Exception as exc:
         logger.warning(f'[Governance] auto-checkpoint failed: {exc}')
+
+
+# ── Auto-publish knowledge on completion (A.3.2) ─────────────────────────────
+
+def _auto_publish_knowledge(proposal_id, agent, conn):
+    """Extract key information from a completed proposal and write to swarm_knowledge."""
+    try:
+        row = conn.execute(
+            'SELECT proposal_id, title, description, agent FROM work_proposals WHERE proposal_id=?',
+            (proposal_id,)
+        ).fetchone()
+        if not row:
+            return
+
+        title = row['title'] or ''
+        desc = row['description'] or ''
+        summary = f'Completed: {title}. {desc}'.strip()[:2000]
+
+        from utils.db.knowledge import write_knowledge
+        write_knowledge(
+            key=f'proposal-{proposal_id}',
+            content=summary,
+            source_agent=agent or 'governance',
+            source_proposal_id=proposal_id,
+            category='decision',
+            importance=6,
+            conn=conn,
+        )
+        logger.info(f'[Governance] auto-published knowledge for {proposal_id}')
+    except Exception as exc:
+        logger.warning(f'[Governance] auto-publish knowledge failed: {exc}')
 
 
 # ── Audit log ─────────────────────────────────────────────────────────────────

@@ -187,5 +187,15 @@ def run_housekeeping():
     except Exception as e:
         print(f'[Librarian] Play time skipped: {e}')
 
+    # Refresh living landscape index (A.3.3)
+    try:
+        from scripts.generate_system_index import generate as gen_md
+        from scripts.generate_landscape_json import generate as gen_json
+        gen_md()
+        _, count = gen_json()
+        print(f'[Librarian] Landscape refreshed ({count} entries)')
+    except Exception as e:
+        print(f'[Librarian] Landscape refresh skipped: {e}')
+
 if __name__ == '__main__':
     run_housekeeping()
