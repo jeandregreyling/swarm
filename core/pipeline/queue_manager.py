@@ -191,16 +191,37 @@ def intake_internal(agent, title, description, priority=5):
 
 
 def update_proposal_status(proposal_id, status, ticket_number=''):
-    """Update a work_proposal status (pending/approved/rejected/executed)."""
+    """Update a work_proposal status via governance state machine."""
     from database import get_connection
+    import sys
+    sys.path.insert(0, '/home/seven/swarm')
+    sys.path.insert(0, '/home/seven/swarm/utils')
+    from governance import transition_proposal, GovernanceError
+
+    # Look up owning agent
     conn = get_connection()
-    conn.execute(
-        """UPDATE work_proposals SET status=?, ticket_number=?, updated_at=datetime('now')
-           WHERE proposal_id=?""",
-        (status, ticket_number, proposal_id)
-    )
-    conn.commit()
+    row = conn.execute(
+        'SELECT agent FROM work_proposals WHERE proposal_id=?', (proposal_id,)
+    ).fetchone()
+    agent = (row['agent'] if row else 'unknown')
     conn.close()
+
+    try:
+        transition_proposal(proposal_id, status, agent,
+                            actor='queue_manager', note='queue_manager.update_proposal_status')
+    except GovernanceError as exc:
+        logger.warning(f'[Queue] governance blocked status update for {proposal_id}: {exc}')
+        return
+
+    # Update ticket_number separately if provided
+    if ticket_number:
+        conn = get_connection()
+        conn.execute(
+            "UPDATE work_proposals SET ticket_number=? WHERE proposal_id=?",
+            (ticket_number, proposal_id)
+        )
+        conn.commit()
+        conn.close()
 
 
 def get_queue_entries(source_type=None, status=None, limit=50):

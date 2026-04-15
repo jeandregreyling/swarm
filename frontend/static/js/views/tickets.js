@@ -1,88 +1,86 @@
-// Tickets view — ticket list, detail
-// Extracted from terminal_base.html
+// Tickets view — ticket list, detail, cross-referencing
+// Phase 1 rewrite — 15 April 2026
 
 function loadTicketsData(win) {
   const content = win.el.querySelector('#tickets-content');
   if (!content) return;
-  
+
+  content.innerHTML = '<div style="padding:20px;color:var(--text-dim);text-align:center;font-size:11px;">Loading tickets…</div>';
+
   fetch('/api/tickets')
-    .then(r => r.json())
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(data => {
       const tickets = Array.isArray(data) ? data : (data.tickets || []);
-      if (tickets.length > 0) {
-        content.innerHTML = tickets.slice(0, 30).map(t => {
-          const num   = t.number || t.ticket_number || '?';
-          const title = (t.title || t.question || 'Untitled').slice(0, 100);
-          const ts    = t.timestamp || t.created_at || '';
-          const st    = t.status || 'unknown';
-          const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : '#888';
-          const stBg    = st === 'open' ? 'rgba(76,175,80,0.15)' : st === 'in_progress' ? 'rgba(255,165,0,0.15)' : 'rgba(136,136,136,0.15)';
-              return `<div class="ticket-row" style="background:var(--card);padding:12px;border-radius:4px;margin-bottom:8px;border-left:3px solid ${stColor};cursor:pointer;" onclick='openTicketDetail(${JSON.stringify(num)})'>
-                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                  <strong style="font-size:12px;font-family:monospace;">${_escHtml(num)}</strong>
-                  <span style="font-size:10px;padding:2px 7px;border-radius:3px;background:${stBg};color:${stColor};font-weight:600;">${_escHtml(st)}</span>
-                </div>
-                <div style="margin-top:5px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(title)}</div>
-                <div style="margin-top:3px;font-size:10px;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;">
-                  <span>${_escHtml(ts.slice(0,16))}</span>
-          }).join('');
-          
-          // Add event listeners for delete buttons
-          content.querySelectorAll('.delete-ticket').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-              e.stopPropagation(); // Prevent triggering the ticket detail open
-              const ticketId = e.target.getAttribute('data-id');
-              if (confirm(`Are you sure you want to delete ticket ${ticketId}?`)) {
-                deleteTicket(ticketId);
-              }
-            });
-          });
-                </div>
-              </div>`;
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-              <strong style="font-size:12px;font-family:monospace;">${_escHtml(num)}</strong>
-              <span style="font-size:10px;padding:2px 7px;border-radius:3px;background:${stBg};color:${stColor};font-weight:600;">${_escHtml(st)}</span>
-            </div>
-            <div style="margin-top:5px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(title)}</div>
-function deleteTicket(ticketId) {
-  fetch(`/api/tickets/${ticketId}`, {
-    method: 'DELETE'
-  })
-  .then(response => {
-    if (response.ok) {
-      alert(`Ticket ${ticketId} deleted successfully.`);
-      // Reload the tickets list
-      const win = window.activeWindows.find(w => w.id === 'tickets');
-      if (win) {
-        loadTicketsData(win);
-      }
-    } else {
-      alert(`Failed to delete ticket ${ticketId}.`);
-    }
-  })
-  .catch(error => {
-    console.error('Error deleting ticket:', error);
-    alert(`Error deleting ticket ${ticketId}: ${error.message}`);
-  });
-}
-          </div>`;
-        }).join('');
-      } else {
+      if (!tickets.length) {
         content.innerHTML = '<div style="padding:20px;color:var(--text-dim);text-align:center;font-size:12px;">No tickets found.</div>';
+        return;
       }
 
-      // Wire search input after content is rendered (guard against double-registration)
+      content.innerHTML = tickets.slice(0, 50).map(t => {
+        const num   = t.ticket_number || t.number || '?';
+        const title = (t.question || t.title || 'Untitled').slice(0, 100);
+        const ts    = t.created_at || t.timestamp || '';
+        const st    = t.status || 'unknown';
+        const ch    = t.channel || '';
+        const convId = t.conv_id || '';
+        const notes = t.note_count || 0;
+        const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : st === 'closed' ? '#888' : '#666';
+        const stBg    = stColor + '22';
+        const chBadge = ch ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--bg);color:var(--text-dim);margin-left:4px;">${_escHtml(ch.toUpperCase())}</span>` : '';
+        const notesBadge = notes > 0 ? `<span style="font-size:9px;color:var(--text-dim);">📝${notes}</span>` : '';
+        const numJs = JSON.stringify(num);
+        return `<div class="ticket-row" data-ticket="${_escHtml(num)}" data-conv="${_escHtml(String(convId))}" style="background:var(--card);padding:12px;border-radius:4px;margin-bottom:6px;border-left:3px solid ${stColor};cursor:pointer;" onclick='openTicketDetail(${numJs})'>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+            <strong style="font-size:11px;font-family:monospace;">${_escHtml(num)}</strong>
+            <div style="display:flex;align-items:center;gap:4px;">
+              ${notesBadge}
+              ${chBadge}
+              <span style="font-size:10px;padding:2px 7px;border-radius:3px;background:${stBg};color:${stColor};font-weight:600;">${_escHtml(st)}</span>
+            </div>
+          </div>
+          <div style="margin-top:5px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(title)}</div>
+          <div style="margin-top:3px;font-size:10px;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;">
+            <span>${_escHtml((ts || '').slice(0, 16))}</span>
+            ${convId ? `<span style="font-size:9px;opacity:0.6;">conv:${_escHtml(String(convId))}</span>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+
+      // Wire search input (guard against double-registration)
       const searchInput = win.el.querySelector('#ticket-search');
       if (searchInput && !searchInput.dataset.bound) {
         searchInput.dataset.bound = '1';
-        searchInput.addEventListener('input', (e) => {
+        searchInput.addEventListener('input', e => {
           const q = e.target.value.toLowerCase();
           content.querySelectorAll('.ticket-row').forEach(el => {
-            el.style.display = el.textContent.toLowerCase().includes(q) ? 'block' : 'none';
+            el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
           });
         });
       }
     })
-    .catch(e => { content.innerHTML = `<div style="padding:20px;color:#f77;font-size:12px;">Error loading tickets: ${e.message}</div>`; });
+    .catch(e => {
+      content.innerHTML = `<div style="padding:20px;color:#f77;font-size:12px;">Error loading tickets: ${_escHtml(e.message)}</div>`;
+    });
+}
+
+function deleteTicket(ticketId) {
+  fetch('/api/tickets/' + encodeURIComponent(ticketId), { method: 'DELETE' })
+    .then(r => {
+      if (r.ok) {
+        const win = (window._fridaysWindows || []).find(w => w.id === 'tickets');
+        if (win) loadTicketsData(win);
+      }
+    })
+    .catch(e => console.error('Error deleting ticket:', e));
+}
+
+function filterTicketsByStatus(status) {
+  const content = document.getElementById('tickets-content');
+  if (!content) return;
+  content.querySelectorAll('.ticket-row').forEach(el => {
+    if (!status) { el.style.display = ''; return; }
+    const text = el.textContent.toLowerCase();
+    el.style.display = text.includes(status) ? '' : 'none';
+  });
 }
 

@@ -67,8 +67,14 @@ function openConversationDetail(convId) {
       if (data.error) throw new Error(data.error);
       const conv = data.conv || {};
       const rows = data.messages || [];
+      const linkedProposals = data.proposals || [];
       const convTitle = conv.title || '(untitled)';
       titleNode.textContent = `💬 ${convTitle}`;
+
+      const proposalBadges = linkedProposals.map(p => {
+        const pc = p.status === 'approved' || p.status === 'done' ? '#4caf50' : p.status === 'pending' ? '#ffa500' : '#888';
+        return `<span onclick="openProposalDetail(${JSON.stringify(p.proposal_id).replace(/'/g,'&#39;')})" style="padding:3px 10px;border-radius:12px;background:${pc}20;color:${pc};font-size:11px;cursor:pointer;border:1px solid ${pc}40;">${_escHtml(p.proposal_id)}</span>`;
+      }).join('');
 
       toolbar.innerHTML = `
         <button id="chat-det-tab-msgs" onclick="openConversationDetail.showTab('messages',${conv.id})"
@@ -77,6 +83,7 @@ function openConversationDetail(convId) {
           style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">Timeline</button>
         <button onclick="renameConversation(${conv.id})" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">Edit Title</button>
         <button onclick="deleteConversation(${conv.id})" style="padding:6px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;cursor:pointer;">Delete</button>
+        ${proposalBadges}
         <span style="margin-left:auto;color:var(--text-dim);font-size:11px;">${(conv.created_at || '').slice(0,16)} · ${(conv.source || 'unknown')}</span>
       `;
 

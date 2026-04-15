@@ -32,6 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from services import (
     Flask, initialise_database, mark_orphaned_chat_jobs,
+    sweep_stuck_jobs,
     SWARM_ROOT, time_wizard, orchestrator,
 )
 
@@ -110,6 +111,21 @@ def create_app():
         mark_orphaned_chat_jobs()
     except Exception as exc:
         print(f'[Terminal] chat job orphan cleanup warning: {exc}')
+
+    # Background sweep for stuck jobs (every 10 minutes).
+    import threading as _th
+    def _stuck_job_sweeper():
+        import time as _time
+        while True:
+            _time.sleep(600)
+            try:
+                n = sweep_stuck_jobs(max_age_minutes=120)
+                if n:
+                    print(f'[Terminal] swept {n} stuck job(s)')
+            except Exception:
+                pass
+    _sweep_t = _th.Thread(target=_stuck_job_sweeper, daemon=True, name='stuck-job-sweep')
+    _sweep_t.start()
 
     # ── Routes ────────────────────────────────────────────────────────────────
 

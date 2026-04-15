@@ -144,6 +144,56 @@ def get_work_proposals():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
+
+@proposals_bp.route("/api/work-proposals/<proposal_id>", methods=["GET"])
+def get_proposal_detail(proposal_id):
+    """Single proposal with cross-referenced ticket + conversation."""
+    try:
+        conn = get_connection()
+        row = conn.execute(
+            """SELECT id, proposal_id, title, description, agent, status,
+                      notes, source_conv_id, duck_verdict, duck_note,
+                      ticket_number, queue_id, git_branch, git_commit, test_results,
+                      created_at, updated_at
+               FROM work_proposals WHERE proposal_id=?""",
+            (proposal_id,)
+        ).fetchone()
+        if not row:
+            conn.close()
+            return jsonify({"ok": False, "error": "not found"}), 404
+        proposal = dict(row)
+
+        # Linked ticket
+        ticket = None
+        tn = proposal.get('ticket_number')
+        if tn:
+            t = conn.execute(
+                """SELECT ticket_number, status, question, channel, created_at, conv_id
+                   FROM tickets WHERE ticket_number=?""", (tn,)
+            ).fetchone()
+            if t:
+                ticket = dict(t)
+
+        # Linked conversation
+        conversation = None
+        cid = proposal.get('source_conv_id')
+        if cid:
+            c = conn.execute(
+                "SELECT id, title, source, created_at FROM conversations WHERE id=?", (cid,)
+            ).fetchone()
+            if c:
+                conversation = dict(c)
+
+        conn.close()
+        return jsonify({
+            "ok": True,
+            "proposal": proposal,
+            "ticket": ticket,
+            "conversation": conversation,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @proposals_bp.route("/api/queue", methods=["POST"])
 def intake():
     data = request.get_json() or {}
@@ -220,15 +270,29 @@ def update_proposal_status(proposal_id):
             return jsonify({"ok": False, "error": "status required"})
         if new_status not in ALL_PROPOSAL_STATUSES:
             return jsonify({"ok": False, "error": f"invalid status: {new_status}"})
-        conn = get_connection()
-        c = conn.cursor()
+
         normalized_id = _normalize_proposal_id(proposal_id)
-        c.execute("""UPDATE work_proposals
-                     SET status = ?, updated_at = CURRENT_TIMESTAMP
-                     WHERE proposal_id = ?""",
-                  (new_status, normalized_id))
-        conn.commit()
+
+        # Look up owning agent for the governance gate
+        conn = get_connection()
+        row = conn.execute(
+            'SELECT agent FROM work_proposals WHERE proposal_id=?',
+            (normalized_id,)
+        ).fetchone()
         conn.close()
+        if not row:
+            return jsonify({"ok": False, "error": "proposal not found"}), 404
+        agent = row['agent'] or 'unknown'
+
+        # Route through governance state machine
+        from utils.governance import transition_proposal, GovernanceError
+        try:
+            result = transition_proposal(
+                normalized_id, new_status, agent,
+                actor=actor, note=note,
+            )
+        except GovernanceError as ge:
+            return jsonify({"ok": False, "error": str(ge)}), 409
 
         # Notify chat thread + trigger Duck quality check when done
         try:
@@ -244,7 +308,7 @@ def update_proposal_status(proposal_id):
         except Exception:
             pass
 
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "transition": result})
 
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
@@ -291,14 +355,31 @@ def agent_advance(proposal_id):
         # The worktree where agent work happens (DEV if available, PROD fallback)
         dev = _SWARM_DEV_ROOT if worktrees_up else _SWARM_PROD_ROOT
 
-        conn = get_connection()
-        c = conn.cursor()
-
         if action not in ("start", "complete"):
-            conn.close()
             return jsonify({"ok": False, "error": "Invalid action"}), 400
 
         new_status = "in_progress" if action == "start" else "done"
+
+        # ── Governance gate (singleton + state machine) ───────────────────
+        # Validate the transition BEFORE doing any git work.
+        from utils.governance import transition_proposal, GovernanceError
+        try:
+            # Find the real proposal_id in the DB (handles INTERNAL- prefix variants)
+            conn = get_connection()
+            _row, matched_id = _find_proposal(conn, norm_id, 'proposal_id, agent')
+            conn.close()
+            if not _row:
+                return jsonify({"ok": False, "error": "Proposal not found"}), 404
+            matched_id = _row['proposal_id']
+            prop_agent = _row['agent'] or agent
+
+            gov_result = transition_proposal(
+                matched_id, new_status, prop_agent,
+                actor=agent, note=f'agent_advance action={action}',
+            )
+        except GovernanceError as ge:
+            return jsonify({"ok": False, "error": str(ge)}), 409
+
         msg = (
             f"Proposal {norm_id} advanced to IN_PROGRESS by {agent}"
             if action == "start"
@@ -337,10 +418,12 @@ def agent_advance(proposal_id):
                 )
 
         elif action == "complete":
-            prop_row = c.execute(
+            _conn2 = get_connection()
+            prop_row = _conn2.execute(
                 'SELECT title, git_branch FROM work_proposals WHERE proposal_id=?',
-                (norm_id,)
+                (matched_id,)
             ).fetchone()
+            _conn2.close()
             prop_title = (prop_row['title'] if prop_row else norm_id)[:100]
             stored_branch = (prop_row['git_branch'] if prop_row else '') or ''
 
@@ -370,16 +453,11 @@ def agent_advance(proposal_id):
             else:
                 msg += f'\nCommit: {git_commit or "nothing to commit"}.'
 
-        # ── Update DB ─────────────────────────────────────────────────────────
-        candidates = list(dict.fromkeys([
-            proposal_id, norm_id,
-            f"INTERNAL-ELEVEN-{norm_id}", f"INTERNAL-{norm_id}",
-        ]))
-        updated = 0
-        matched_id = proposal_id
-        for cid in candidates:
-            fields = ['status = ?', 'updated_at = CURRENT_TIMESTAMP']
-            vals = [new_status]
+        # ── Update DB (git metadata only — status already set by governance) ──
+        conn = get_connection()
+        c = conn.cursor()
+        if git_branch or git_commit or test_results:
+            fields, vals = [], []
             if git_branch:
                 fields.append('git_branch = ?')
                 vals.append(git_branch)
@@ -389,21 +467,14 @@ def agent_advance(proposal_id):
             if test_results:
                 fields.append('test_results = ?')
                 vals.append(test_results)
-            vals.append(cid)
-            c.execute(
-                f"UPDATE work_proposals SET {', '.join(fields)} WHERE proposal_id = ?",
-                vals
-            )
-            if c.rowcount:
-                updated = c.rowcount
-                matched_id = cid
-                break
-
+            if fields:
+                vals.append(matched_id)
+                c.execute(
+                    f"UPDATE work_proposals SET {', '.join(fields)} WHERE proposal_id = ?",
+                    vals
+                )
         conn.commit()
         conn.close()
-
-        if updated == 0:
-            return jsonify({"ok": False, "error": "Proposal not found"}), 404
 
         print(f"[Agent Advance] {norm_id} -> {new_status} by {agent} | worktrees={'yes' if worktrees_up else 'no'}")
 
@@ -508,15 +579,20 @@ def approve_to_uat(proposal_id):
         git_commit = (row['git_commit'] or '').strip()
         title = (row['title'] or norm_id)[:80]
 
+        # Look up agent for governance gate
+        conn = get_connection()
+        _ar = conn.execute('SELECT agent FROM work_proposals WHERE proposal_id=?', (norm_id,)).fetchone()
+        conn.close()
+        _prop_agent = (_ar['agent'] if _ar else 'unknown')
+
         if not worktrees_up:
-            # No worktrees — simulate the approve step (just update status)
-            conn = get_connection()
-            conn.execute(
-                "UPDATE work_proposals SET status='uat', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
-                (norm_id,)
-            )
-            conn.commit()
-            conn.close()
+            # No worktrees — simulate the approve step via governance
+            from utils.governance import transition_proposal, GovernanceError
+            try:
+                transition_proposal(norm_id, 'uat', _prop_agent, actor=actor,
+                                    note='approve_to_uat (no worktrees)')
+            except GovernanceError as ge:
+                return jsonify({"ok": False, "error": str(ge)}), 409
             return jsonify({
                 "ok": True,
                 "message": (
@@ -538,14 +614,13 @@ def approve_to_uat(proposal_id):
         # Restart UAT server to pick up the merge
         _restart_service_async('swarm-terminal-uat', delay_secs=1)
 
-        # Update proposal status to 'uat'
-        conn = get_connection()
-        conn.execute(
-            "UPDATE work_proposals SET status='uat', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
-            (norm_id,)
-        )
-        conn.commit()
-        conn.close()
+        # Update proposal status via governance
+        from utils.governance import transition_proposal, GovernanceError
+        try:
+            transition_proposal(norm_id, 'uat', _prop_agent, actor=actor,
+                                note='approve_to_uat (merged to UAT worktree)')
+        except GovernanceError as ge:
+            return jsonify({"ok": False, "error": str(ge)}), 409
 
         return jsonify({
             "ok": True,
@@ -581,15 +656,20 @@ def promote_to_prod(proposal_id):
         git_branch = (row['git_branch'] or '').strip()
         title = (row['title'] or norm_id)[:80]
 
+        # Look up agent for governance gate
+        conn = get_connection()
+        _ar2 = conn.execute('SELECT agent FROM work_proposals WHERE proposal_id=?', (norm_id,)).fetchone()
+        conn.close()
+        _prop_agent2 = (_ar2['agent'] if _ar2 else 'unknown')
+
         if not worktrees_up:
-            # No worktrees — mark closed, everything's already live anyway
-            conn = get_connection()
-            conn.execute(
-                "UPDATE work_proposals SET status='closed', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
-                (norm_id,)
-            )
-            conn.commit()
-            conn.close()
+            # No worktrees — mark closed via governance
+            from utils.governance import transition_proposal, GovernanceError
+            try:
+                transition_proposal(norm_id, 'closed', _prop_agent2, actor=actor,
+                                    note='promote_to_prod (no worktrees)')
+            except GovernanceError as ge:
+                return jsonify({"ok": False, "error": str(ge)}), 409
             return jsonify({
                 "ok": True,
                 "message": f"Proposal {norm_id} closed. (Worktrees not active — no merge step needed.)",
@@ -615,14 +695,13 @@ def promote_to_prod(proposal_id):
         _git(['checkout', 'dev'], cwd=_SWARM_DEV_ROOT)
         _restart_service_async('swarm-terminal-dev', delay_secs=3)
 
-        # Mark closed
-        conn = get_connection()
-        conn.execute(
-            "UPDATE work_proposals SET status='closed', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
-            (norm_id,)
-        )
-        conn.commit()
-        conn.close()
+        # Mark closed via governance
+        from utils.governance import transition_proposal, GovernanceError
+        try:
+            transition_proposal(norm_id, 'closed', _prop_agent2, actor=actor,
+                                note='promote_to_prod (merged to PROD)')
+        except GovernanceError as ge:
+            return jsonify({"ok": False, "error": str(ge)}), 409
 
         return jsonify({
             "ok": True,
@@ -684,13 +763,18 @@ def revert_proposal(proposal_id):
         else:
             detail = 'No commit recorded — proposal rejected without revert (no file changes to undo).'
 
+        # Look up agent for governance gate
         conn = get_connection()
-        conn.execute(
-            "UPDATE work_proposals SET status='rejected', updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?",
-            (norm_id,)
-        )
-        conn.commit()
+        _ar3 = conn.execute('SELECT agent FROM work_proposals WHERE proposal_id=?', (norm_id,)).fetchone()
         conn.close()
+        _prop_agent3 = (_ar3['agent'] if _ar3 else 'unknown')
+
+        from utils.governance import transition_proposal, GovernanceError
+        try:
+            transition_proposal(norm_id, 'rejected', _prop_agent3, actor=actor,
+                                note=f'revert_proposal (git revert)')
+        except GovernanceError as ge:
+            return jsonify({"ok": False, "error": str(ge)}), 409
 
         return jsonify({"ok": True, "message": f"Proposal {norm_id} rejected.", "detail": detail})
 

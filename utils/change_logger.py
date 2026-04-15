@@ -114,7 +114,7 @@ def record_file_change(decision_id, agent, file_path, before_content, after_cont
 def mark_executed(decision_id, commit_hash='', test_status='PASS'):
     """
     Mark a decisions entry as executed (PASS or FAIL).
-    Also marks linked work_proposals as 'executed'.
+    Also marks linked work_proposals as 'closed' via governance.
 
     Call after all changes are made and tested.
     """
@@ -125,18 +125,30 @@ def mark_executed(decision_id, commit_hash='', test_status='PASS'):
             "UPDATE decisions SET test_status=?, commit_hash=? WHERE decision_id=?",
             (test_status, commit_hash, decision_id)
         )
-        # Mark the work_proposal linked via proposal_file matching the decision's proposal_file
-        # (The broken original query used a subquery that matched ALL pending proposals)
-        conn.execute(
-            """UPDATE work_proposals SET status='executed', updated_at=datetime('now')
+        # Find linked proposals to transition through governance
+        rows = conn.execute(
+            """SELECT proposal_id, agent FROM work_proposals
                WHERE status='pending' AND proposal_file = (
                    SELECT proposal_file FROM decisions WHERE decision_id=?
                ) AND proposal_file != ''""",
             (decision_id,)
-        )
+        ).fetchall()
         conn.commit()
     finally:
         conn.close()
+
+    # Route each through governance (skip singleton since this is a system op)
+    for row in rows:
+        try:
+            from governance import transition_proposal
+            transition_proposal(
+                row['proposal_id'], 'closed', row['agent'] or 'unknown',
+                actor='change_logger', note=f'mark_executed decision={decision_id}',
+                _skip_singleton=True,
+            )
+        except Exception as exc:
+            logger.warning(f'[ChangeLogger] governance transition failed for {row["proposal_id"]}: {exc}')
+
     logger.info(f'[ChangeLogger] decision_id={decision_id} marked {test_status} commit={commit_hash}')
 
 

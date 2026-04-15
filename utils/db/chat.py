@@ -127,3 +127,36 @@ def mark_orphaned_chat_jobs():
             conn.close()
     except Exception:
         pass
+
+
+def sweep_stuck_jobs(max_age_minutes=120):
+    """Fail jobs stuck in running/dispatched/processing state beyond max_age_minutes.
+
+    Designed to be called periodically (e.g. every 10 minutes) from a
+    background thread. Returns the number of jobs swept.
+    """
+    try:
+        conn = get_connection()
+        try:
+            cutoff = f'-{max_age_minutes} minutes'
+            cur = conn.execute(
+                """UPDATE chat_jobs
+                   SET status='failed', stage='failed',
+                       error=printf('stuck job swept (>%d min in state: %s)',
+                                    ?, status),
+                       updated_at=datetime('now')
+                   WHERE status IN ('running', 'dispatched', 'processing')
+                     AND started_at < datetime('now', ?)
+                   RETURNING job_id, agent, status""",
+                (max_age_minutes, cutoff),
+            )
+            swept = cur.fetchall()
+            if swept:
+                conn.commit()
+            conn.close()
+            return len(swept)
+        except Exception:
+            conn.close()
+            return 0
+    except Exception:
+        return 0

@@ -76,6 +76,53 @@ def localai_status():
     })
 
 
+@localai_bp.route('/api/localai/available-models', methods=['GET'])
+def localai_available_models():
+    """Discover all models from Ollama + LM Studio, flag which are already registered."""
+    from utils.db.registry import get_agent_models, get_agent_roster
+    registered_models = get_agent_models()       # {agent_name: model_name}
+    registered_set = {v.lower() for v in registered_models.values() if v}
+    roster = get_agent_roster()
+    registered_names = {a['name'] for a in roster}
+
+    available = []
+
+    # Ollama models
+    ollama = _ollama_status()
+    if ollama['running']:
+        for m in ollama['models']:
+            name = m['name']
+            available.append({
+                'model':      name,
+                'source':     'ollama',
+                'size_gb':    m.get('size_gb', 0),
+                'family':     m.get('family', ''),
+                'params':     m.get('params', ''),
+                'quant':      m.get('quant', ''),
+                'registered': name.lower() in registered_set,
+            })
+
+    # LM Studio models
+    lms = _lmstudio_status()
+    if lms['running']:
+        for name in lms.get('models', []):
+            available.append({
+                'model':      name,
+                'source':     'lmstudio',
+                'size_gb':    0,
+                'family':     '',
+                'params':     '',
+                'quant':      '',
+                'registered': name.lower() in registered_set,
+            })
+
+    return jsonify({
+        'ok': True,
+        'models': available,
+        'registered_agents': list(registered_names),
+    })
+
+
 @localai_bp.route('/api/localai/ollama/models', methods=['GET'])
 def ollama_models():
     status = _ollama_status()

@@ -67,11 +67,25 @@ def api_conversation_messages(conv_id):
                     ticket_info = dict(t2)
     except Exception:
         pass
+
+    # Linked proposals referencing this conversation
+    linked_proposals = []
+    try:
+        linked_proposals = [dict(r) for r in conn.execute(
+            """SELECT proposal_id, title, status, agent, created_at
+               FROM work_proposals WHERE source_conv_id=?
+               ORDER BY id DESC""",
+            (conv_id,)
+        ).fetchall()]
+    except Exception:
+        pass
+
     conn.close()
     return jsonify({
         'conv': dict(conv),
         'messages': [dict(r) for r in rows],
         'ticket': ticket_info,
+        'proposals': linked_proposals,
     })
 
 
@@ -189,6 +203,123 @@ def api_conversation_timeline(conv_id):
         return jsonify({'conv_id': conv_id, 'events': rows})
     except Exception as e:
         return jsonify({'conv_id': conv_id, 'events': [], 'error': str(e)})
+
+
+@conversations_bp.route('/api/trace/<job_id>')
+def api_trace_job(job_id):
+    """Full end-to-end trace for a single chat job.
+
+    Assembles chat_job metadata, conv_timeline events, and the response
+    message into a single unified trace view.
+    """
+    conn = get_connection()
+    try:
+        job = conn.execute(
+            """SELECT job_id, conversation_id, agent, status, runtime_class,
+                      stage, eta_seconds, elapsed_ms, tokens, error,
+                      stage_trace_json, started_at, updated_at
+               FROM chat_jobs WHERE job_id=?""", (job_id,)
+        ).fetchone()
+        if not job:
+            conn.close()
+            return jsonify({'error': f'job {job_id} not found'}), 404
+        job_dict = dict(job)
+        conv_id = job_dict.get('conversation_id')
+
+        # Timeline events linked to this job
+        from utils.db.timeline import timeline_get_job
+        timeline = timeline_get_job(job_id)
+
+        # Also get conv_timeline events by conv_id + agent + time window as fallback
+        if not timeline and conv_id:
+            started = job_dict.get('started_at') or ''
+            rows = conn.execute(
+                """SELECT id, conv_id, agent, event_type, payload, created_at
+                   FROM conv_timeline
+                   WHERE conv_id=? AND agent=? AND created_at >= ?
+                   ORDER BY id ASC LIMIT 100""",
+                (conv_id, job_dict.get('agent', ''), started),
+            ).fetchall()
+            timeline = [dict(r) for r in rows]
+
+        # Response message (if stored)
+        response_msg = None
+        if conv_id:
+            row = conn.execute(
+                """SELECT content, tokens_used, created_at
+                   FROM messages
+                   WHERE conversation_id=? AND from_agent=?
+                   ORDER BY id DESC LIMIT 1""",
+                (conv_id, job_dict.get('agent', '')),
+            ).fetchone()
+            if row:
+                response_msg = dict(row)
+
+        conn.close()
+
+        import json as _j
+        stage_trace = []
+        try:
+            stage_trace = _j.loads(job_dict.get('stage_trace_json') or '[]')
+        except Exception:
+            pass
+
+        return jsonify({
+            'job': job_dict,
+            'stage_trace': stage_trace,
+            'timeline': timeline,
+            'response': response_msg,
+        })
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
+@conversations_bp.route('/api/trace/conversation/<int:conv_id>')
+def api_trace_conversation(conv_id):
+    """Full trace for all jobs in a conversation, ordered chronologically."""
+    conn = get_connection()
+    try:
+        jobs = conn.execute(
+            """SELECT job_id, agent, status, runtime_class, elapsed_ms,
+                      tokens, error, stage_trace_json, started_at, updated_at
+               FROM chat_jobs WHERE conversation_id=?
+               ORDER BY started_at ASC""", (conv_id,)
+        ).fetchall()
+
+        timeline = conn.execute(
+            """SELECT id, agent, event_type, payload, created_at, job_id
+               FROM conv_timeline WHERE conv_id=?
+               ORDER BY id ASC LIMIT 500""", (conv_id,)
+        ).fetchall()
+
+        messages = conn.execute(
+            """SELECT id, from_agent, to_agent, content, message_type,
+                      tokens_used, created_at
+               FROM messages WHERE conversation_id=?
+               ORDER BY id ASC""", (conv_id,)
+        ).fetchall()
+        conn.close()
+
+        import json as _j
+        job_list = []
+        for j in jobs:
+            jd = dict(j)
+            try:
+                jd['stage_trace'] = _j.loads(jd.pop('stage_trace_json', '[]') or '[]')
+            except Exception:
+                jd['stage_trace'] = []
+            job_list.append(jd)
+
+        return jsonify({
+            'conversation_id': conv_id,
+            'jobs': job_list,
+            'timeline': [dict(r) for r in timeline],
+            'messages': [dict(r) for r in messages],
+        })
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': str(e)}), 500
 
 
 

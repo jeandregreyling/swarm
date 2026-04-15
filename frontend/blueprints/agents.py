@@ -3,6 +3,7 @@
 import json as _json
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
+from utils.db.registry import get_agent_roster as _reg_roster_bp, invalidate_cache as _invalidate_reg_cache
 
 agents_bp = Blueprint('agents', __name__)
 ROLES_SKILLS_PATH = os.path.join(os.path.dirname(__file__), '..', 'roles_skills.json')
@@ -56,7 +57,7 @@ def api_agents():
         pass  # registry unavailable — fall back gracefully, UI gets empty number/label
 
     result = []
-    for a in _AGENT_ROSTER:
+    for a in _reg_roster_bp():
         entry = dict(a)
         entry['enabled']     = a['name'] not in DISABLED_AGENTS
         entry['temperature'] = orchestrator.TEMPERATURES.get(a['name'], a['default_temp'])
@@ -255,7 +256,7 @@ def api_agents_capability_matrix():
     try:
         from database import get_agent_capabilities, AGENT_CAPABILITY_REGISTRY
 
-        roster_agents = sorted({str(a.get('name', '')).strip().lower() for a in _AGENT_ROSTER if a.get('name')})
+        roster_agents = sorted({str(a.get('name', '')).strip().lower() for a in _reg_roster_bp() if a.get('name')})
         if include_inactive:
             extras = {'fridays', 'ghost'}
             roster_agents = sorted(set(roster_agents) | extras)
@@ -304,7 +305,7 @@ def api_agents_capabilities_update():
     if not target_agent:
         return jsonify({'ok': False, 'error': 'agent required'}), 400
 
-    known_agents = {str(a.get('name') or '').strip().lower() for a in _AGENT_ROSTER if a.get('name')}
+    known_agents = {str(a.get('name') or '').strip().lower() for a in _reg_roster_bp() if a.get('name')}
     if target_agent not in known_agents:
         return jsonify({'ok': False, 'error': f'unknown agent: {target_agent}'}), 404
 
@@ -851,27 +852,20 @@ def chat(message, conversation_history=None, stage_cb=None):
 
     is_service = tier == 'service'
 
-    # ── 4. services.py — _AGENT_ROSTER (skip for services) ───────────────────
+    # ── 4. DB registry — roster metadata (replaces old services.py file patching) ──
     services_path = os.path.join(frontend_dir, 'services.py')
-    if is_service:
-        steps.append('services._AGENT_ROSTER: skipped (service tier — not a chat agent)')
-        steps.append('services._display_chat_participant: skipped (service tier)')
-    else:
-        is_ghost_layer = tier in ('paid', 'free', 'human')
-        ghost_flag = ", 'ghost_layer': True" if is_ghost_layer else ''
-        roster_entry = f"    {{'name': '{name.capitalize()}', 'model': '{model}', 'role': '{role}', 'default_temp': 0.5{ghost_flag}}},\n"
-        _patch_file(services_path, 'services._AGENT_ROSTER',
-                    f"'name': '{name.capitalize()}'",
-                    "    {'name': 'Ghost',",
-                    roster_entry + "    {'name': 'Ghost',")
-
-    # ── 5. services.py — _display_chat_participant labels ────────────────────
-        _patch_file(services_path, 'services._display_chat_participant',
-                    f"'{name}':",
-                    "        'fridays': 'FRIDAYS',",
-                    f"        '{name}': '{name.upper()} ({label.upper()})',\n        'fridays': 'FRIDAYS',")
-
-    # ── 6-9. Memory registries (skip entirely for services) ──────────────────
+    try:
+        conn = get_connection()
+        conn.execute("""
+            UPDATE agents SET memory_table=?, display_label=?, eta_seconds=COALESCE(eta_seconds, 60)
+            WHERE name=?
+        """, (mem_table, f'{name.upper()} ({label.upper()})', name))
+        conn.commit()
+        conn.close()
+        _invalidate_reg_cache()
+        steps.append('DB registry: roster metadata updated')
+    except Exception as e:
+        errors.append(f'DB registry update: {e}')
     agents_bp_path = os.path.abspath(__file__)
     memory_bp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'memory.py')
     if is_service:
@@ -994,9 +988,11 @@ def chat(message, conversation_history=None, stage_cb=None):
     checks['who_am_i_exists']     = os.path.isfile(who_am_i_path)
 
     try:
-        with open(services_path) as f: svc = f.read()
-        checks['in_agent_roster']    = f"'name': '{name.capitalize()}'" in svc
-        checks['in_display_labels']  = f"'{name}':" in svc
+        conn = get_connection()
+        db_agent = conn.execute("SELECT name, display_label FROM agents WHERE name=?", (name,)).fetchone()
+        conn.close()
+        checks['in_agent_roster']    = bool(db_agent)
+        checks['in_display_labels']  = bool(db_agent and db_agent['display_label'])
     except Exception:
         checks['in_agent_roster'] = checks['in_display_labels'] = False
 
@@ -1130,10 +1126,11 @@ def api_agents_decommission(name):
         except Exception as e:
             errors.append(f'{label_}: {e}')
 
-    # Strip from all runtime registries (same as delete, minus DB/table/files)
-    _strip(services_path,   'services._AGENT_ROSTER',      rf"'name':\s*'{re.escape(name.capitalize())}'")
-    _strip(services_path,   'services._AGENT_TABLES',       rf"'{re.escape(name)}':\s*'memory_{re.escape(name)}'")
-    _strip(services_path,   'services._CHAT_PARTICIPANT',   rf"'{re.escape(name)}':")
+    # Registry cache invalidation (roster now lives in DB; enabled=0 already set above)
+    _invalidate_reg_cache()
+    steps.append('DB registry: cache invalidated (agent disabled)')
+
+    # Strip from non-DB registries (files that still hold hardcoded entries)
     _strip(agents_bp_path,  'agents.py memory_tables',      rf"'{re.escape(name)}':\s*'{re.escape(mem_table)}'")
     _strip(memory_bp_path,  'memory._AGENT_TABLES',         rf"'{re.escape(name)}':\s*'{re.escape(mem_table)}'")
     _strip(memory_bp_path,  'memory._SUBJECT_TABLES',       rf"'{re.escape(mem_table)}',")
@@ -1376,12 +1373,9 @@ def api_agents_delete(name):
     else:
         steps.append('sandpit: not found — skipped')
 
-    # ── 4. services.py — _AGENT_ROSTER + display labels ──────────────────────
-    services_path = os.path.join(frontend_dir, 'services.py')
-    _strip_line(services_path, 'services._AGENT_ROSTER',
-                rf"'name':\s*'{re.escape(name.capitalize())}'")
-    _strip_line(services_path, 'services._display_chat_participant',
-                rf"'{re.escape(name)}':\s*'")
+    # ── 4. DB registry: cache invalidated (agent row already deleted above) ──
+    _invalidate_reg_cache()
+    steps.append('DB registry: cache invalidated (agent deleted)')
 
     # ── 5. agents.py — memory_tables (3 dicts) ────────────────────────────────
     agents_bp_path = os.path.abspath(__file__)
@@ -1454,7 +1448,7 @@ def api_agents_delete(name):
         except Exception:
             return False
 
-    checks['roster_clean']       = _absent(services_path,   f"'name': '{name.capitalize()}'")
+    checks['roster_clean']       = True  # roster now DB-driven; row already deleted above
     checks['memory_tables_clean'] = _absent(agents_bp_path,  f"'{name}': '{mem_table}'")
     checks['memory_py_clean']    = _absent(memory_bp_path,   f"'{name}':")
     checks['chat_js_clean']      = _absent(chat_js_path,     f"value: '{name}'")
@@ -1533,4 +1527,209 @@ def api_agent_skills_update(agent):
     conn.commit()
     conn.close()
     return jsonify({'ok': True, 'skills': skills})
+
+
+# ── 5.2 Hot-Swap ────────────────────────────────────────────────────────────
+
+@agents_bp.route('/api/agents/hot-swap', methods=['POST'])
+def api_agents_hot_swap():
+    """Disable agent A, reassign its role + in-flight proposals to agent B.
+
+    Payload: {from_agent: "gemma", to_agent: "qwen"}
+    Proposals are re-assigned but remain tied to their original ticket/request.
+    """
+    data = request.get_json() or {}
+    from_name = (data.get('from_agent') or '').strip().lower()
+    to_name   = (data.get('to_agent') or '').strip().lower()
+    if not from_name or not to_name:
+        return jsonify({'error': 'from_agent and to_agent required'}), 400
+    if from_name == to_name:
+        return jsonify({'error': 'Cannot swap an agent with itself'}), 400
+
+    conn = get_connection()
+    src = conn.execute('SELECT id, role, roles FROM agents WHERE name=?', (from_name,)).fetchone()
+    dst = conn.execute('SELECT id FROM agents WHERE name=?', (to_name,)).fetchone()
+    if not src:
+        conn.close()
+        return jsonify({'error': f'Agent {from_name} not found'}), 404
+    if not dst:
+        conn.close()
+        return jsonify({'error': f'Agent {to_name} not found'}), 404
+
+    swapped = {'proposals': 0, 'queue': 0}
+
+    # Reassign open proposals
+    cur = conn.execute(
+        """UPDATE work_proposals SET agent=?, updated_at=datetime('now')
+           WHERE agent=? AND status IN ('pending', 'in_progress', 'review')""",
+        (to_name, from_name)
+    )
+    swapped['proposals'] = cur.rowcount
+
+    # Reassign queued items
+    cur2 = conn.execute(
+        """UPDATE queue SET agent=?
+           WHERE agent=? AND status IN ('queued', 'processing')""",
+        (to_name, from_name)
+    )
+    swapped['queue'] = cur2.rowcount
+
+    # Disable source agent
+    conn.execute("UPDATE agents SET enabled=0 WHERE name=?", (from_name,))
+
+    # Copy role to target if it has none
+    dst_row = conn.execute('SELECT role FROM agents WHERE name=?', (to_name,)).fetchone()
+    if not (dst_row and dst_row['role']):
+        conn.execute('UPDATE agents SET role=? WHERE name=?', (src['role'] or '', to_name))
+
+    conn.commit()
+    conn.close()
+    _invalidate_reg_cache()
+    return jsonify({'ok': True, 'from': from_name, 'to': to_name, 'swapped': swapped})
+
+
+# ── 5.3 Import / Export ─────────────────────────────────────────────────────
+
+@agents_bp.route('/api/agents/<name>/export', methods=['GET'])
+def api_agent_export(name):
+    """Export a single agent as JSON (config, capabilities, skills)."""
+    name = name.strip().lower()
+    conn = get_connection()
+    row = conn.execute(
+        """SELECT name, model, label, role, roles, temperature,
+                  system_prompt, api_key_var, tier, enabled,
+                  memory_table, display_label, aliases, eta_seconds, keep_alive
+           FROM agents WHERE name=?""", (name,)
+    ).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': f'Agent {name} not found'}), 404
+    agent = dict(row)
+
+    # Capabilities
+    caps = [dict(r) for r in conn.execute(
+        "SELECT capability, granted, trust_level FROM agent_capabilities WHERE agent_name=?", (name,)
+    ).fetchall()]
+
+    # Skills
+    skills = [r[0] for r in conn.execute(
+        """SELECT s.name FROM skills s
+           JOIN agent_skills a ON a.skill_id = s.id
+           JOIN agents ag ON ag.id = a.agent_id
+           WHERE ag.name=?""", (name,)
+    ).fetchall()]
+
+    conn.close()
+    return jsonify({
+        'ok': True,
+        'export_version': 1,
+        'agent': agent,
+        'capabilities': caps,
+        'skills': skills,
+    })
+
+
+@agents_bp.route('/api/agents/export-all', methods=['GET'])
+def api_agents_export_all():
+    """Export the full agent registry as JSON (all agents + capabilities + skills)."""
+    conn = get_connection()
+    agents = [dict(r) for r in conn.execute(
+        """SELECT name, model, label, role, roles, temperature,
+                  system_prompt, api_key_var, tier, enabled,
+                  memory_table, display_label, aliases, eta_seconds, keep_alive
+           FROM agents ORDER BY number ASC"""
+    ).fetchall()]
+    caps = [dict(r) for r in conn.execute(
+        "SELECT agent_name, capability, granted, trust_level FROM agent_capabilities"
+    ).fetchall()]
+    skills = [{'agent': r[0], 'skill': r[1]} for r in conn.execute(
+        """SELECT ag.name, s.name FROM skills s
+           JOIN agent_skills a ON a.skill_id = s.id
+           JOIN agents ag ON ag.id = a.agent_id"""
+    ).fetchall()]
+    conn.close()
+    return jsonify({
+        'ok': True,
+        'export_version': 1,
+        'agents': agents,
+        'capabilities': caps,
+        'skills': skills,
+    })
+
+
+@agents_bp.route('/api/agents/import', methods=['POST'])
+def api_agents_import():
+    """Import one or more agents from exported JSON.
+
+    Accepts either a single-agent export ({agent: {...}}) or
+    a multi-agent export ({agents: [...]}).
+    Existing agents are updated, new ones created.
+    """
+    data = request.get_json() or {}
+    if 'agent' in data:
+        agent_list = [data['agent']]
+        caps_list = data.get('capabilities', [])
+        skills_list = data.get('skills', [])
+    elif 'agents' in data:
+        agent_list = data['agents']
+        caps_list = data.get('capabilities', [])
+        skills_list = data.get('skills', [])
+    else:
+        return jsonify({'error': 'Expected agent or agents in payload'}), 400
+
+    conn = get_connection()
+    imported = []
+    for ag in agent_list:
+        name = (ag.get('name') or '').strip().lower()
+        model = (ag.get('model') or '').strip()
+        if not name or not model:
+            continue
+        existing = conn.execute('SELECT id FROM agents WHERE name=?', (name,)).fetchone()
+        if existing:
+            # Update
+            conn.execute(
+                """UPDATE agents SET model=?, label=?, role=?, roles=?, temperature=?,
+                          system_prompt=?, api_key_var=?, tier=?, enabled=?,
+                          memory_table=?, display_label=?, aliases=?, eta_seconds=?, keep_alive=?
+                   WHERE name=?""",
+                (model, ag.get('label', name), ag.get('role', ''), ag.get('roles', ''),
+                 float(ag.get('temperature', 0.5) or 0.5),
+                 ag.get('system_prompt', ''), ag.get('api_key_var', ''),
+                 ag.get('tier', 'local'), 1 if ag.get('enabled', True) else 0,
+                 ag.get('memory_table', ''), ag.get('display_label', ''),
+                 ag.get('aliases', ''), int(ag.get('eta_seconds', 0) or 0),
+                 int(ag.get('keep_alive', -1) if ag.get('keep_alive') is not None else -1),
+                 name)
+            )
+        else:
+            # Insert
+            max_num = conn.execute("SELECT MAX(number) FROM agents WHERE number >= 0").fetchone()[0] or 0
+            conn.execute(
+                """INSERT INTO agents (name, model, label, role, roles, temperature,
+                       system_prompt, api_key_var, tier, enabled, number,
+                       memory_table, display_label, aliases, eta_seconds, keep_alive)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (name, model, ag.get('label', name), ag.get('role', ''), ag.get('roles', ''),
+                 float(ag.get('temperature', 0.5) or 0.5),
+                 ag.get('system_prompt', ''), ag.get('api_key_var', ''),
+                 ag.get('tier', 'local'), 1 if ag.get('enabled', True) else 0, max_num + 1,
+                 ag.get('memory_table', ''), ag.get('display_label', ''),
+                 ag.get('aliases', ''), int(ag.get('eta_seconds', 0) or 0),
+                 int(ag.get('keep_alive', -1) if ag.get('keep_alive') is not None else -1))
+            )
+        imported.append(name)
+
+        # Import capabilities
+        for c in caps_list:
+            if isinstance(c, dict) and c.get('agent_name', name) == name:
+                conn.execute(
+                    """INSERT OR REPLACE INTO agent_capabilities (agent_name, capability, granted, trust_level)
+                       VALUES (?, ?, ?, ?)""",
+                    (name, c['capability'], c.get('granted', 1), c.get('trust_level', 'standard'))
+                )
+
+    conn.commit()
+    conn.close()
+    _invalidate_reg_cache()
+    return jsonify({'ok': True, 'imported': imported})
 

@@ -11,6 +11,7 @@ from .chat       import *       # noqa: F401,F403
 from .memory     import *       # noqa: F401,F403
 from .tickets    import *       # noqa: F401,F403
 from .agents     import *       # noqa: F401,F403
+from .registry   import *       # noqa: F401,F403
 from .auth       import *       # noqa: F401,F403
 from .approvals  import *       # noqa: F401,F403
 from .audit      import *       # noqa: F401,F403
