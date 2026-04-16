@@ -127,8 +127,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => { hints.style.display = 'none'; }, 300);
   }, 5000);
   
-  // Command palette + ESC handling (capture phase for consistency)
+  // Command palette + ESC + global shortcuts (capture phase for consistency)
   document.addEventListener('keydown', (e) => {
+    // Skip shortcuts when typing in an input/textarea
+    const tag = (e.target.tagName || '').toLowerCase();
+    const isInput = tag === 'input' || tag === 'textarea' || e.target.isContentEditable;
+
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
       const palette = document.getElementById('command-palette');
@@ -136,6 +140,27 @@ document.addEventListener('DOMContentLoaded', () => {
       if (palette.classList.contains('open')) {
         document.getElementById('command-palette-input').focus();
       }
+      return;
+    }
+
+    // Ctrl+T — Open Tickets
+    if ((e.ctrlKey || e.metaKey) && e.key === 't' && !isInput) {
+      e.preventDefault();
+      if (typeof openWindow === 'function') openWindow('tickets', '🎫 Tickets', 'view-tickets');
+      return;
+    }
+
+    // Ctrl+P — Open Studio (proposals)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p' && !isInput) {
+      e.preventDefault();
+      if (typeof openWindow === 'function') openWindow('studio', '🎨 Studio', 'view-studio');
+      return;
+    }
+
+    // Ctrl+H — Go Home
+    if ((e.ctrlKey || e.metaKey) && e.key === 'h' && !isInput) {
+      e.preventDefault();
+      if (typeof goHome === 'function') goHome();
       return;
     }
     
@@ -159,25 +184,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const results = document.getElementById('command-palette-results');
     
     const commands = [
-      { label: 'Chat', onclick: 'openWindow("chat", "Chat", "view-chat")' },
-      { label: 'Terminal', onclick: 'openWindow("terminal", "Terminal", "view-terminal")' },
-        { label: 'Files', onclick: 'openWindow("files", "Files", "view-files")' },
-      { label: 'Git', onclick: 'openWindow("git", "Git", "view-git")' },
-      { label: 'Memory', onclick: 'openWindow("memory", "Memory", "view-memory")' },
-      { label: 'Monitor', onclick: 'openWindow("monitor", "Monitor", "view-monitor")' },
-      { label: 'Documents', onclick: 'openWindow("docs", "Documents", "view-docs")' },
-      { label: 'Skills', onclick: 'openWindow("skills", "Skills", "view-skills")' },
-      { label: 'Tickets', onclick: 'openWindow("tickets", "Tickets", "view-tickets")' },
-      { label: 'Studio', onclick: 'openWindow("studio", "Studio", "view-studio")' },
-      { label: 'Email', onclick: 'openWindow("email", "📧 Email", "view-email")' },
-      { label: 'Vortex', onclick: 'openWindow("time-wizard", "🌀 Vortex", "view-time-wizard")' },
-      { label: 'Ghost Brief', onclick: 'openWindow("ghost-brief", "📋 Ghost Brief", "view-ghost-brief")' },
+      { label: 'Chat', onclick: 'openWindow("chat", "Chat", "view-chat")', hint: '' },
+      { label: 'Terminal', onclick: 'openWindow("terminal", "Terminal", "view-terminal")', hint: '' },
+        { label: 'Files', onclick: 'openWindow("files", "Files", "view-files")', hint: '' },
+      { label: 'Git', onclick: 'openWindow("git", "Git", "view-git")', hint: '' },
+      { label: 'Memory', onclick: 'openWindow("memory", "Memory", "view-memory")', hint: '' },
+      { label: 'Monitor', onclick: 'openWindow("monitor", "Monitor", "view-monitor")', hint: '' },
+      { label: 'Documents', onclick: 'openWindow("docs", "Documents", "view-docs")', hint: '' },
+      { label: 'Skills', onclick: 'openWindow("skills", "Skills", "view-skills")', hint: '' },
+      { label: 'Tickets', onclick: 'openWindow("tickets", "Tickets", "view-tickets")', hint: 'Ctrl+T' },
+      { label: 'Studio', onclick: 'openWindow("studio", "Studio", "view-studio")', hint: 'Ctrl+P' },
+      { label: 'Email', onclick: 'openWindow("email", "📧 Email", "view-email")', hint: '' },
+      { label: 'Vortex', onclick: 'openWindow("time-wizard", "🌀 Vortex", "view-time-wizard")', hint: '' },
+      { label: 'Ghost Brief', onclick: 'openWindow("ghost-brief", "📋 Ghost Brief", "view-ghost-brief")', hint: '' },
+      { label: 'Feeds', onclick: 'openWindow("feeds", "📡 Feeds", "view-feeds")', hint: '' },
+      { label: 'Home', onclick: 'goHome()', hint: 'Ctrl+H' },
     ];
     
     const filtered = commands.filter(c => c.label.toLowerCase().includes(query));
     results.innerHTML = filtered.map(c => `
       <div class="palette-item" onclick="${c.onclick}; document.getElementById('command-palette').classList.remove('open');">
-        ${c.label}
+        <span>${c.label}</span>${c.hint ? `<span style="font-size:10px;color:var(--text-dim);margin-left:auto;opacity:0.7;">${c.hint}</span>` : ''}
       </div>
     `).join('');
   });
