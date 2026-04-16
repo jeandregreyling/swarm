@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 18:38*
+*Auto-generated: 2026-04-16 18:47*
 
 
 ## Python Modules
@@ -211,30 +211,30 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 19416 |
+| `activity_log` | 19464 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 70 |
+| `approval_tokens` | 73 |
 | `chat_jobs` | 224 |
 | `claude_log` | 1 |
-| `conv_timeline` | 16 |
-| `conversations` | 16 |
+| `conv_timeline` | 17 |
+| `conversations` | 17 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1082 |
+| `decisions` | 1103 |
 | `deferred_items` | 0 |
-| `duck_log` | 410 |
+| `duck_log` | 412 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1907 |
+| `ghost_circle` | 1909 |
 | `governance_log` | 2 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
-| `memory` | 4 |
+| `memory` | 2 |
 | `memory_eight` | 0 |
 | `memory_gemma` | 2 |
 | `memory_grok` | 0 |
@@ -248,7 +248,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 36 |
+| `messages` | 38 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -257,7 +257,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 61 |
 | `proposal_attachments` | 0 |
-| `queue` | 718 |
+| `queue` | 722 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 162 |
@@ -274,14 +274,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5851 |
+| `system_stats` | 5853 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 164 |
-| `tickets` | 172 |
-| `time_checkpoints` | 983 |
-| `time_events` | 53073 |
-| `time_journal` | 50904 |
-| `time_machine` | 4458 |
+| `ticket_notes` | 166 |
+| `tickets` | 174 |
+| `time_checkpoints` | 999 |
+| `time_events` | 53140 |
+| `time_journal` | 50955 |
+| `time_machine` | 4460 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
