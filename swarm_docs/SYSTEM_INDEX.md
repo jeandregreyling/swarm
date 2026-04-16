@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 23:56*
+*Auto-generated: 2026-04-17 00:05*
 
 
 ## Python Modules
@@ -211,7 +211,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 20148 |
+| `activity_log` | 20171 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
@@ -224,13 +224,13 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1283 |
+| `decisions` | 1284 |
 | `deferred_items` | 0 |
-| `duck_log` | 431 |
+| `duck_log` | 433 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1967 |
+| `ghost_circle` | 1976 |
 | `governance_log` | 10 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
@@ -238,7 +238,7 @@
 | `memory_eight` | 0 |
 | `memory_gemma` | 3 |
 | `memory_grok` | 0 |
-| `memory_llama` | 1 |
+| `memory_llama` | 0 |
 | `memory_mistral` | 3 |
 | `memory_nine` | 0 |
 | `memory_qwen` | 0 |
@@ -248,7 +248,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 78 |
+| `messages` | 88 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -257,10 +257,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 767 |
+| `queue` | 771 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 170 |
+| `sandpit_log` | 171 |
 | `scheduled_tasks` | 2 |
 | `skills` | 38 |
 | `sniffer_log` | 232 |
@@ -276,12 +276,12 @@
 | `swarm_nodes` | 0 |
 | `system_stats` | 5913 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 185 |
-| `tickets` | 193 |
-| `time_checkpoints` | 1164 |
-| `time_events` | 55124 |
-| `time_journal` | 52738 |
-| `time_machine` | 4579 |
+| `ticket_notes` | 187 |
+| `tickets` | 195 |
+| `time_checkpoints` | 1166 |
+| `time_events` | 55164 |
+| `time_journal` | 52776 |
+| `time_machine` | 4584 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
