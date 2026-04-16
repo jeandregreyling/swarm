@@ -203,24 +203,6 @@ function _proposalCard(p) {
         style="flex:1;padding:6px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;font-weight:600;cursor:pointer;">✗ Reject</button>
       ${devAutoBtn}
     </div>` :
-  // Self-Approve + Start handler for developer agents (uses agent-advance API)
-  async function selfApproveAndStart(proposalId, agent) {
-    if (!proposalId || !agent) return;
-    try {
-      const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/agent-advance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ..._authPayload(), agent: agent, action: 'start' })
-      });
-      const data = await resp.json();
-      if (!data.ok) throw new Error(data.error || 'failed');
-      showToast('Proposal self-approved and started', 'success');
-      const container = document.getElementById('studio-content');
-      if (container) loadProposals(container, window._studioTab || 'pending');
-    } catch (e) {
-      showToast('Self-approve failed: ' + (e.message || e), 'error');
-    }
-  }
   status === 'approved' ? `
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"in_progress")'
@@ -295,6 +277,25 @@ function promoteProposal(proposalId) {
   if (!proposalId) return;
   if (!confirm('Mark this proposal as executed (promoted)?')) return;
   moveProposal(proposalId, 'executed');
+}
+
+// Self-Approve + Start handler for developer agents (uses agent-advance API)
+async function selfApproveAndStart(proposalId, agent) {
+  if (!proposalId || !agent) return;
+  try {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/agent-advance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ..._authPayload(), agent: agent, action: 'start' })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'failed');
+    showToast('Proposal self-approved and started', 'success');
+    const container = document.getElementById('studio-content');
+    if (container) loadProposals(container, window._studioTab || 'pending');
+  } catch (e) {
+    showToast('Self-approve failed: ' + (e.message || e), 'error');
+  }
 }
 
 async function viewProposalDiff(proposalId) {
@@ -1059,6 +1060,8 @@ function openTicketDetail(ticketNumber) {
             style="padding:6px 14px;background:#4caf501a;border:1px solid #4caf5044;border-radius:4px;color:#4caf50;font-size:12px;cursor:pointer;">+ Proposal</button>
           <button onclick="pinItemToDeferred(${tnJs}, ${questionHintJs}, 'ticket')"
             style="padding:6px 14px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:12px;cursor:pointer;">&#128204; Pin</button>
+          <button onclick="deleteTicketWithConfirm(${tnJs}, this)"
+            style="padding:6px 14px;background:#f443361a;border:1px solid #f4433644;border-radius:4px;color:#f44336;font-size:12px;cursor:pointer;">🗑 Delete</button>
           <button onclick="document.getElementById('ticket-detail-modal').classList.remove('open')"
                   style="padding:6px 14px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;cursor:pointer;">Close</button>
         </div>`;

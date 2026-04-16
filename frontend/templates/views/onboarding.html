@@ -39,6 +39,12 @@
           </div>
         </div>
       </div>
+      <div style="background:color-mix(in srgb, var(--accent) 6%, var(--card));border:1px solid var(--border);border-radius:10px;padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;">🦆 Free out-of-the-box</div>
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
+          <strong>DuckDuckGo search</strong> works without any API key — Duck (the swarm's librarian) uses it for web searches instantly. Tavily adds deeper research if you configure it.
+        </div>
+      </div>
     </div>
 
     <!-- ═══ STEP 1: Local AI ═══ -->
@@ -80,10 +86,19 @@
     <!-- ═══ STEP 2: Cloud API Keys ═══ -->
     <div class="ob-step" data-step="2" style="display:none;">
       <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);">🔑 Cloud API Keys</h2>
-      <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">
+      <p style="color:var(--text-dim);font-size:13px;margin:0 0 10px;line-height:1.5;">
         Cloud agents need API keys to connect to external providers. Paste each key below — we'll validate it before saving.
         <strong>All keys are optional</strong>; set whichever services you use.
       </p>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;font-size:11px;line-height:1.7;color:var(--text-dim);">
+        <div style="font-weight:700;color:var(--text);margin-bottom:4px;">Where to get keys:</div>
+        <div>• <strong>Groq</strong> — <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent);">console.groq.com/keys</a> (free tier available)</div>
+        <div>• <strong>GitHub</strong> — <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--accent);">github.com/settings/tokens</a> → Fine-grained token</div>
+        <div>• <strong>xAI / Grok</strong> — <a href="https://console.x.ai/" target="_blank" style="color:var(--accent);">console.x.ai</a></div>
+        <div>• <strong>Anthropic</strong> — <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--accent);">console.anthropic.com</a></div>
+        <div>• <strong>Gemini</strong> — <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent);">aistudio.google.com/apikey</a> (free tier available)</div>
+        <div>• <strong>Tavily</strong> — <a href="https://app.tavily.com/home" target="_blank" style="color:var(--accent);">app.tavily.com</a> (deep research, free tier)</div>
+      </div>
       <div id="ob-keys-list" style="display:flex;flex-direction:column;gap:12px;">
         <!-- Rendered by JS -->
       </div>
