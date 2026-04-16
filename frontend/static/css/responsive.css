@@ -1,0 +1,158 @@
+/* responsive.css — Mobile & tablet layout (Tier 5.4)
+   ─────────────────────────────────────────────────────────────────────────
+   Breakpoints:
+     <768px  — mobile  (single column, stacked windows)
+     <1024px — tablet  (narrower grid, smaller windows)
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Tablet ──────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px;
+  }
+  .floating-window {
+    min-width: 260px;
+    min-height: 180px;
+  }
+  .section-label { font-size: 11px; }
+  .card-title   { font-size: 10px; }
+  .card-desc    { font-size: 9px; }
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Home card grid → single column */
+  .card-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  /* Home cards: compact horizontal strip */
+  .home-card {
+    padding: 10px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .home-card .card-title { margin-bottom: 0; font-size: 11px; }
+  .home-card .card-desc  { display: none; }
+
+  /* Floating windows → full width, stacked at bottom */
+  .floating-window {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 70vh !important;
+    min-width: 0;
+    border-radius: 12px 12px 0 0;
+    animation: window-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .floating-window.minimized {
+    height: 40px !important;
+  }
+
+  /* Window header: smaller */
+  .window-header {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .window-header .window-btn { width: 20px; height: 20px; font-size: 10px; }
+
+  /* Taskbar → fixed bottom, horizontal scroll */
+  #taskbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 8px;
+  }
+  #taskbar .taskbar-item {
+    display: inline-flex;
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  /* Monitor tiles: 2-column on mobile */
+  .monitor-grid,
+  .status-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Command palette: full width */
+  .cmd-palette-dialog,
+  .command-palette {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    left: 2vw !important;
+    right: 2vw !important;
+  }
+}
+
+/* ── Small phones ────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .floating-window {
+    height: 85vh !important;
+    border-radius: 8px 8px 0 0;
+  }
+  .monitor-grid,
+  .status-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Slide-up animation for mobile windows ───────────────────────────── */
+@keyframes window-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── World Clocks: compact digital fallback (Tier 5.5) ───────────────── */
+@media (max-width: 768px) {
+  /* Hide analog clock face on mobile */
+  .world-clock-item > div:first-child {
+    display: none !important;
+  }
+  /* Compact horizontal layout */
+  .world-clock-item {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 6px 10px !important;
+    min-width: 0 !important;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+  }
+  .world-clock-item .zone {
+    font-size: 10px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+  }
+  /* Clocks container → horizontal scroll strip */
+  #world-clocks {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+}
+@media (max-width: 480px) {
+  .world-clock-item .zone {
+    max-width: 60px;
+  }
+}

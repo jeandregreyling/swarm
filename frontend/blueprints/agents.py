@@ -1805,3 +1805,60 @@ def api_agents_import():
     _invalidate_reg_cache()
     return jsonify({'ok': True, 'imported': imported})
 
+
+@agents_bp.route('/api/agents/<name>/self', methods=['GET'])
+def api_agent_self(name):
+    """Agent awareness endpoint — full self-description for an agent (Tier 4.6).
+    Returns config, capabilities, recent activity, personality excerpt, queue status."""
+    from pathlib import Path
+    safe_name = str(name or '').strip().lower()
+    if not safe_name:
+        return jsonify({'ok': False, 'error': 'agent name required'}), 400
+
+    conn = get_connection()
+    # Agent config
+    agent = conn.execute("SELECT * FROM agents WHERE name=?", (safe_name,)).fetchone()
+    if not agent:
+        conn.close()
+        return jsonify({'ok': False, 'error': f'agent {safe_name} not found'}), 404
+    agent_dict = dict(agent)
+
+    # Capabilities
+    caps = conn.execute(
+        "SELECT capability, granted, trust_level FROM agent_capabilities WHERE agent_name=? AND granted=1",
+        (safe_name,)
+    ).fetchall()
+
+    # Recent activity
+    activity = conn.execute(
+        "SELECT service, event, detail, created_at FROM activity_log WHERE detail LIKE ? ORDER BY id DESC LIMIT 10",
+        (f'%{safe_name}%',)
+    ).fetchall()
+
+    # Pending work
+    try:
+        pending = conn.execute(
+            "SELECT COUNT(*) FROM work_proposals WHERE agent=? AND status='pending'",
+            (safe_name,)
+        ).fetchone()[0]
+    except Exception:
+        pending = 0
+
+    conn.close()
+
+    # Personality excerpt
+    personality_path = Path(f'/home/seven/swarm/agents/{safe_name}/personality.md')
+    personality = ''
+    if personality_path.is_file():
+        personality = personality_path.read_text(encoding='utf-8', errors='replace')[:500]
+
+    return jsonify({
+        'ok': True,
+        'agent': safe_name,
+        'config': {k: agent_dict[k] for k in agent_dict if k != 'api_key'},
+        'capabilities': [dict(c) for c in caps],
+        'recent_activity': [dict(a) for a in activity],
+        'pending_proposals': pending,
+        'personality_excerpt': personality,
+    })
+

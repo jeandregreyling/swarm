@@ -76,6 +76,11 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.onboarding',     'onboarding_bp'),
     ('blueprints.diamond',        'diamond_bp'),
     ('blueprints.weather_bp',     'weather_bp'),
+    ('blueprints.vpn_bp',         'vpn_bp'),
+    ('blueprints.auto_audit',     'audit_bp'),
+    ('blueprints.patterns_bp',    'patterns_bp'),
+    ('blueprints.personality_bp', 'personality_bp'),
+    ('blueprints.idle_mgmt_bp',   'idle_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
