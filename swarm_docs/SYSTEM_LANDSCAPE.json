@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 17:18",
+  "generated_at": "2026-04-16 17:20",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2460,7 +2460,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 19148
+      "rows": 19189
     },
     {
       "name": "agent_capabilities",
@@ -2476,7 +2476,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 58
+      "rows": 61
     },
     {
       "name": "chat_jobs",
@@ -2488,11 +2488,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 12
+      "rows": 13
     },
     {
       "name": "conversations",
-      "rows": 12
+      "rows": 13
     },
     {
       "name": "daily_checkpoint",
@@ -2512,7 +2512,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1006
+      "rows": 1025
     },
     {
       "name": "deferred_items",
@@ -2520,7 +2520,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 399
+      "rows": 401
     },
     {
       "name": "file_versions",
@@ -2536,7 +2536,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1899
+      "rows": 1901
     },
     {
       "name": "governance_log",
@@ -2608,7 +2608,7 @@
     },
     {
       "name": "messages",
-      "rows": 28
+      "rows": 30
     },
     {
       "name": "moderators",
@@ -2644,7 +2644,7 @@
     },
     {
       "name": "queue",
-      "rows": 699
+      "rows": 703
     },
     {
       "name": "research_evidence",
@@ -2712,7 +2712,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5835
+      "rows": 5836
     },
     {
       "name": "terminal_shortcuts",
@@ -2720,27 +2720,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 153
+      "rows": 155
     },
     {
       "name": "tickets",
-      "rows": 161
+      "rows": 163
     },
     {
       "name": "time_checkpoints",
-      "rows": 913
+      "rows": 930
     },
     {
       "name": "time_events",
-      "rows": 52550
+      "rows": 52577
     },
     {
       "name": "time_journal",
-      "rows": 50461
+      "rows": 50471
     },
     {
       "name": "time_machine",
-      "rows": 4439
+      "rows": 4443
     },
     {
       "name": "tool_builds",
