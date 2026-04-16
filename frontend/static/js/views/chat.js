@@ -5328,3 +5328,33 @@ function sendMessage(source = 'user', relayMeta = null) {
     _processRelayQueue();
   });
 }
+
+// ── SSE real-time chat updates ──────────────────────────────────────────────
+// When an async job status changes via SSE, trigger an immediate poll so the
+// UI updates without waiting for the next 2s tick.
+document.addEventListener('sse:chat', function(e) {
+  try {
+    const d = e.detail || {};
+    const convId = window.__fridaysChatPendingConversationId;
+    if (!convId) return;
+    // Only react if this event is for the active conversation
+    if (d.conversation_id && String(d.conversation_id) !== String(convId)) return;
+    const pendingIds = window.__fridaysChatPendingJobIds || [];
+    if (!pendingIds.length) return;
+    // If we have a job_id, check it's one we're tracking
+    if (d.job_id && !pendingIds.includes(d.job_id)) return;
+    // Trigger an immediate status fetch (reuses the existing poll endpoint)
+    const q = encodeURIComponent(pendingIds.join(','));
+    fetch('/api/chat/jobs/status?conversation_id=' + encodeURIComponent(convId) + '&job_ids=' + q)
+      .then(r => r.json())
+      .then(data => {
+        const jobs = (data && Array.isArray(data.jobs)) ? data.jobs : [];
+        (window.__fridaysChatPendingLoadCtls || []).forEach(ctl => {
+          try { ctl.updateJobs(jobs); } catch (_) {}
+        });
+        _renderThreadRuntimePanel(jobs, 'live');
+        _syncThinkingBubbles(jobs);
+      })
+      .catch(() => {});
+  } catch (_) {}
+});
