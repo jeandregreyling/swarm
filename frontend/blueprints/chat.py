@@ -17,14 +17,19 @@ from services import *
 from utils.db.registry import get_agent_roster as _reg_roster, get_single_task_locals as _reg_stl
 from utils.db.timeline import timeline_append as _trace
 try:
-    from frontend.blueprints.sse import publish_chat_update as _sse_chat
-except ImportError:
-    def _sse_chat(*a, **kw): pass
-try:
     from utils.circuit_breaker import check as _cb_check, record_success as _cb_ok, record_failure as _cb_fail, health_probe as _cb_probe
     _CB_AVAILABLE = True
 except ImportError:
     _CB_AVAILABLE = False
+
+
+def _sse_chat(conversation_id, agent, status, **extra):
+    """Lazy SSE publish to avoid cross-blueprint import at module load."""
+    try:
+        from frontend.blueprints.sse import publish_chat_update
+        publish_chat_update(conversation_id, agent, status, **extra)
+    except Exception:
+        pass
 
 chat_bp = Blueprint('chat', __name__)
 
