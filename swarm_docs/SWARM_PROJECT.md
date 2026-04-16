@@ -16,18 +16,19 @@
 
 | Field | Value |
 |-------|-------|
-| **Active Phase** | Phase 4.0 — Diamond Layer (Sub-task A, not yet started) |
-| **Last Session** | 16 April 2026 — Sundial fix, SVG icons, V-RAM/GPU metrics, project memory creation |
-| **Next Action** | "Fridays as a vibe" concept → then Diamond Layer A.1 |
+| **Active Phase** | Phase 6.0 — Standalone App Build (Tier 1 features next) |
+| **Last Session** | 16 April 2026 (evening) — Housekeeping, API smoke tests, registry bug fix |
+| **Next Action** | Tier 1 builds: Library constellation, Memory landscape, Vortex timeline |
 | **Test Baseline** | 398 passed, 1 skipped |
 | **Environments** | PROD (master), UAT, DEV — all synced as of 16 April 2026 |
 | **Blockers** | None |
 
 ### What's Hot Right Now
-- Sundial rendering on home screen: **working** (was cache issue)
-- SVG icons: **all converted** from emoji to themed stroke icons
-- Metrics: CPU, RAM, V-RAM (128GB SSD swap), GPU (N/A until hardware), Temp, Disk, Members, Gov
-- Project tracking: **this document** — replaces loose doc sprawl
+- **Registry name/label bug FIXED** — chat send was broken for all agents (name=label swap in `get_agent_roster()`)
+- Housekeeping: 17 docs archived, 9 HTML pages archived, 6 stale backups deleted
+- API smoke tests: 25+ endpoints all healthy
+- Moving towards **standalone app on all systems** — packaging model for future expansion
+- Project tracking: **this document** — single source of truth (also in Library)
 
 ---
 
@@ -52,34 +53,57 @@
 
 | Phase | Name | Status | Target |
 |-------|------|--------|--------|
-| **4.0-A** | Diamond Layer — Governance Core | NOT STARTED | Weeks 1–7 |
+| **6.0** | Standalone App Build | IN PROGRESS | Ongoing — iterative self-improvement |
 
-Sub-tasks (see `docs/PHASE_4.0_DIAMOND_LAYER.md` for full spec):
+#### Phase 6.0 — Build Plan
 
-| Sub-task | Description | Status |
-|----------|-------------|--------|
-| A.1 | Proposal engine + governance core (singleton, ALM gate, Vortex git, auto-trace) | 🔲 |
-| A.2 | Skill trust enforcement + agent status/awareness API | 🔲 |
-| A.3 | Shared swarm_knowledge table + living landscape | 🔲 |
-| A.4 | Service boundary prep (message bus, DB abstraction, node registration) | 🔲 |
-| A.5 | Multi-node foundation (discovery, federated roster, auth) | 🔲 |
-| A.6 | Testing, install wizard, remove hardcoded paths | 🔲 |
+**Goal:** Move towards standalone app on all systems. Packaging model for future expansion. Iteratively keeps building itself into self-improvements.
+
+**Tier 1 — Visual Transformation** (Next up)
+
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| 1.1 | Library constellation | Merge Files+Docs+Library into unified view; gold glow for system docs; auto-classification | 🔲 |
+| 1.2 | Memory landscape | Force-directed graph of agent memory relationships | 🔲 |
+| 1.3 | Vortex time machine | Horizontal timeline with diff compare, branching visualisation | 🔲 |
+
+**Tier 2 — Interaction Polish**
+
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| 2.1 | Chat fluidity | Smoother message flow, streaming responses, better compose UX | 🔲 |
+| 2.2 | Skills drag-drop | Visual skill assignment with drag-drop interface | 🔲 |
+| 2.3 | Agents overhaul | Redesigned agent config/management UI | 🔲 |
+
+**Tier 3 — System Integration**
+
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| 3.1 | Email compose | Full email client in-app (not just inbox viewer) | 🔲 |
+| 3.2 | Git per-environment | Separate git UI panels for DEV/UAT/PROD | 🔲 |
+| 3.3 | Tailscale/VPN | VPN status + remote access integration | 🔲 |
+
+**Tier 4 — Self-Improvement (Iterative)**
+
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| 4.1 | Auto-audit | Agents periodically self-audit code quality and test coverage | 🔲 |
+| 4.2 | Pattern learning | Capture recurring fixes as reusable patterns | 🔲 |
+| 4.3 | Build pipeline | Automated packaging for distribution on new systems | 🔲 |
+
+#### Diamond Layer (Background — paused for Phase 6)
+
+| Phase | Name | Status | Target |
+|-------|------|--------|--------|
+| 4.0-A | Diamond Layer — Governance Core | PAUSED | Resume after Tier 1 |
 
 ### Future Phases
 
 | Phase | Name | Depends On |
 |-------|------|------------|
-| 4.0-B | Research Assistant / Learning Lab | A complete |
+| 4.0-B | Research Assistant / Learning Lab | Diamond A complete |
 | 4.0-C | Tool Builder | B stable |
 | 4.0-D | Distribution (multi-node activation) | A prepared, C stable |
-
-### Feature Tiers (Vibe Coding Wishlist)
-
-| Tier | Features | Status |
-|------|----------|--------|
-| **Tier 1** | Library transformation (merge Files+Docs, constellation view, gold glow system docs, auto-classification), Memory landscape (force-directed graph), Vortex timeline | 🔲 Not started |
-| **Tier 2** | Chat fluidity improvements, Skills drag-drop, Agents overhaul UI | 🔲 Not started |
-| **Tier 3** | Email client in-app, Git per-environment UI, Tailscale/VPN integration | 🔲 Not started |
 
 ---
 
@@ -125,6 +149,9 @@ Architectural and design decisions that affect future work. Newest first.
 
 | Date | Decision | Rationale | Ref |
 |------|----------|-----------|-----|
+| 16 Apr (eve) | Phase 6.0 — Standalone App Build replaces Diamond Layer as active phase | User wants to "move towards standalone app on all systems"; packaging model for future expansion | SWARM_PROJECT.md |
+| 16 Apr (eve) | Registry `name` = DB `name` column (lowercase key), `label` = display name | Was returning label as name, breaking chat validation for all agents | registry.py line 99 |
+| 16 Apr (eve) | Tier 4 (Self-Improvement) added — iterative auto-audit, pattern learning, build pipeline | User wants system to "iteratively keep building itself into self improvements" | Phase 6 plan |
 | 16 Apr | All icons must be SVG stroke/currentColor — no emoji | Consistency with theme system; emoji don't change colour with themes | Sundial rewrite |
 | 16 Apr | V-RAM (swap) and GPU VRAM added as sundial metrics | 128GB SSD is used for model swap; GPU placeholder for future hardware | diamond.js |
 | 16 Apr | Project tracking via single SWARM_PROJECT.md | Stop doc sprawl; agents read one file; sessions start with status check | This file |
@@ -144,6 +171,29 @@ Architectural and design decisions that affect future work. Newest first.
 
 Each session is logged here with date, what was done, and key outcomes.  
 **Newest first** — most recent session is always at the top.
+
+---
+
+### Session 17 — 16 April 2026 (Evening)
+**Focus:** Housekeeping, API pipe testing, registry bug fix, Phase 6 roadmap
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Archive 17 historical docs | ✅ Done | Moved to `Archives/docs_historical/` |
+| 2 | Archive 9 legacy HTML pages | ✅ Done | Moved to `Archives/html_legacy/docs_html/` |
+| 3 | Delete 6 stale backup files | ✅ Done | Removed `.backup`, `.bak-*`, `.monolith` files |
+| 4 | API smoke tests (25+ endpoints) | ✅ Done | All healthy except chat (found bug) and git diff (needs path param) |
+| 5 | Fix registry name/label swap bug | ✅ Done | `get_agent_roster()` was returning label as name; chat send broken for all agents |
+| 6 | Service restart (port 5050 stuck) | ✅ Done | Stale process held port; killed + restarted |
+| 7 | Verify chat for all agents | ✅ Done | gemma, llama, mistral, qwen, duck — all OK |
+| 8 | Update SWARM_PROJECT.md Phase 6 | ✅ Done | Tier 1/2/3/4 build plan; standalone app direction |
+| 9 | Sync to dev/uat | ✅ Done | Both worktrees merged from master |
+| 10 | "Fridays as a vibe" concept | 🔲 Pending | Carry forward |
+
+**Bug Fixed:** `utils/db/registry.py` line 98 — `get_agent_roster()` returned `r.get('label')` as `name` instead of `r['name']`. Frontend sends `gemma` but roster had `Gemma3`→`gemma3`. Fixed: `name` = DB key, `label` = display.  
+**Commits:** `f979146` (housekeeping), registry fix (auto-committed by Vortex)  
+**Tests:** 398 passed, 1 skipped (unchanged)  
+**Envs synced:** Yes (master, dev, uat)
 
 ---
 
@@ -306,6 +356,7 @@ Things that have bitten us before. Check this section when debugging.
 
 | Pattern | Detail |
 |---------|--------|
+| **Agent registry `name` vs `label`** | `name` = DB key (lowercase, e.g. `gemma`). `label` = display (e.g. `Gemma3`). Never use label for routing/matching. |
 | **Browser cache** | Static files (.js, .css) get cached aggressively. Hard refresh or service restart needed after frontend changes. |
 | **`python3` not `python`** | System has Python 3.12.3. The `python` command doesn't exist. |
 | **Terminal DOM cloning** | `terminal_base.html` is a full SPA shell. Views are `<template>` elements cloned by window manager. Don't add `<script>` inside templates. |
@@ -319,4 +370,4 @@ Things that have bitten us before. Check this section when debugging.
 
 ---
 
-*End of SWARM_PROJECT.md — updated 16 April 2026*
+*End of SWARM_PROJECT.md — updated 16 April 2026 (evening session)*
