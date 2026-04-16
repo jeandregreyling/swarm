@@ -1323,6 +1323,7 @@ function openWindowHelp(windowId) {
 function closeTopModal() {
   const modalOrder = [
     'command-palette',
+    'shortcuts-help-modal',
     'window-help-modal',
     'chat-detail-modal',
     'proposal-detail-modal',
