@@ -173,14 +173,13 @@ function monitorManualRefresh() {
 }
 
 function loadHomeStats() {
+  // Slim version: just feeds chat mini-stats and resource cache.
+  // System Pulse (diamond.js) now handles the home dashboard vitals/graph.
   fetch('/api/monitor')
     .then(r => r.json())
     .then(data => {
-      // Parse stat values for color coding
-      const parseStat = (val) => val ? parseFloat(val.toString().match(/\d+\.?\d*/)?.[0] || 0) : 0;
-      const cpu = data.cpu_percent != null ? data.cpu_percent : parseStat(data.system_load);
-      const mem = data.ram_percent  != null ? data.ram_percent  : parseStat(data.memory_usage);
-      const agents = parseStat(data.open_tickets || data.agents_online);
+      const cpu = data.cpu_percent != null ? data.cpu_percent : 0;
+      const mem = data.ram_percent  != null ? data.ram_percent  : 0;
       updateChatMiniSystemStats(cpu, mem);
       window.__fridaysChatRelayResource = {
         cpuPercent: Number.isFinite(Number(cpu)) ? Number(cpu) : null,
@@ -188,86 +187,6 @@ function loadHomeStats() {
         sampledAt: Date.now(),
         source: 'home',
       };
-
-      const activeModels = Array.isArray(data.active_models) ? data.active_models : [];
-      const vramGb = activeModels.reduce((sum, model) => {
-        const val = Number(model && model.size_vram ? model.size_vram : 0);
-        return sum + (Number.isFinite(val) ? val : 0);
-      }, 0) / (1024 * 1024 * 1024);
-      const residencyGb = activeModels.reduce((sum, model) => {
-        const val = Number(model && model.size ? model.size : 0);
-        return sum + (Number.isFinite(val) ? val : 0);
-      }, 0) / (1024 * 1024 * 1024);
-
-      // Deterministic trend based on previous sample.
-      const prev = window.__fridaysHomePrevStats || {};
-      const trendFor = (key, current) => {
-        if (typeof prev[key] !== 'number') return '→';
-        if (current > prev[key] + 0.5) return '↑';
-        if (current < prev[key] - 0.5) return '↓';
-        return '→';
-      };
-      window.__fridaysHomePrevStats = {
-        cpu,
-        mem,
-        disk: data.disks && data.disks.length ? Number(data.disks[0].percent || 0) : 0,
-        vramGb,
-      };
-      
-      // Determine health colors
-      const getCpuHealth = (val) => val > 70 ? 'health-crit' : val > 50 ? 'health-warn' : 'health-good';
-      const getMemHealth = (val) => val > 80 ? 'health-crit' : val > 60 ? 'health-warn' : 'health-good';
-      const getAgentHealth = (val) => val > 0 ? 'health-good' : 'health-warn';
-      const getVramHealth = (val) => val > 0 ? 'health-good' : 'health-warn';
-      
-      const diskPct = data.disks && data.disks.length ? data.disks[0].percent : null;
-      document.getElementById('stat-cpu').innerHTML = `${cpu.toFixed(0)}% <span class="stat-trend">${trendFor('cpu', cpu)}</span>`;
-      document.getElementById('stat-mem').innerHTML = `${mem.toFixed(0)}% <span class="stat-trend">${trendFor('mem', mem)}</span>`;
-      document.getElementById('stat-disk').innerHTML = diskPct != null ? `${diskPct}% <span class="stat-trend">→</span>` : '—';
-      document.getElementById('stat-agents').innerHTML = `${data.queue_depth || 0} <span class="status-dot"></span>`;
-      const vramNode = document.getElementById('stat-vram');
-      if (vramNode) {
-        if (vramGb > 0) {
-          vramNode.innerHTML = `${vramGb.toFixed(2)}GB <span class="stat-trend">${trendFor('vramGb', vramGb)}</span>`;
-          vramNode.title = `Resident models: ${residencyGb.toFixed(2)} GB`;
-        } else {
-          vramNode.innerHTML = `CPU-only <span class="stat-trend">→</span>`;
-          vramNode.title = `VRAM unavailable; model residency in RAM: ${residencyGb.toFixed(2)} GB`;
-        }
-      }
-      const almNode = document.getElementById('stat-alm');
-      if (almNode) almNode.innerHTML = '...';
-      
-      // Apply color classes to stat cards
-      document.querySelector('[id="stat-cpu"]').closest('.stat-card').className = `stat-card ${getCpuHealth(cpu)}`;
-      document.querySelector('[id="stat-mem"]').closest('.stat-card').className = `stat-card ${getMemHealth(mem)}`;
-      document.querySelector('[id="stat-disk"]').closest('.stat-card').className = `stat-card health-good`;
-      document.querySelector('[id="stat-agents"]').closest('.stat-card').className = `stat-card ${getAgentHealth(agents)}`;
-      if (vramNode) {
-        vramNode.closest('.stat-card').className = `stat-card ${getVramHealth(vramGb)}`;
-      }
-
-      fetch('/api/alm/status')
-        .then(r => r.json())
-        .then(alm => {
-          const almNode = document.getElementById('stat-alm');
-          if (!almNode) return;
-          almNode.textContent = alm.status === 'enforced' ? 'ON' : 'WARN';
-          const cls = alm.status === 'enforced' ? 'health-good' : 'health-warn';
-          const card = almNode.closest('.stat-card');
-          if (card) card.className = `stat-card ${cls}`;
-
-          const studioGov = document.getElementById('studio-governance');
-          if (studioGov) {
-            studioGov.innerHTML = `ALM: <strong>${alm.status === 'enforced' ? 'enforced' : 'warn'}</strong> · ` +
-              `Sniffles: <strong>${alm.sniffles_enabled ? 'enabled' : 'disabled'}</strong> · ` +
-              `Pending: <strong>${alm.work_proposals?.pending || 0}</strong>`;
-          }
-        })
-        .catch(() => {
-          const almNode = document.getElementById('stat-alm');
-          if (almNode) almNode.textContent = 'ERR';
-        });
     })
     .catch(e => {
       updateChatMiniSystemStats(null, null);
@@ -277,56 +196,8 @@ function loadHomeStats() {
 
 
 function loadAttentionPanel() {
-  const setVal = (id, text, cls) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = text;
-    const card = el.closest('.stat-card');
-    if (card && cls) card.className = 'stat-card ' + cls;
-  };
-
-  // /api/monitor has open tickets + duck flags
-  fetch('/api/monitor')
-    .then(r => r.json())
-    .then(d => {
-      const openT  = d.open_tickets ?? 0;
-      const duckNo = d.duck_flags_today ?? 0;
-      setVal('attn-open-tickets', openT, openT > 5 ? 'health-crit' : openT > 0 ? 'health-warn' : 'health-good');
-      setVal('attn-duck', duckNo, duckNo > 0 ? 'health-crit' : 'health-good');
-    }).catch(() => { setVal('attn-open-tickets','?',''); setVal('attn-duck','?',''); });
-
-  // Active proposals
-  fetch('/api/work-proposals')
-    .then(r => r.json())
-    .then(d => {
-      const active = (d.proposals || []).filter(p => !['executed','rejected','done'].includes(p.status));
-      const pending = active.filter(p => p.status === 'pending').length;
-      const n = active.length;
-      setVal('attn-proposals', n, pending > 0 ? 'health-warn' : n > 0 ? 'health-good' : '');
-    }).catch(() => setVal('attn-proposals', '?', ''));
-
-  // Pinned unresolved items
-  fetch('/api/deferred')
-    .then(r => r.json())
-    .then(d => {
-      const n = (d.items || []).length;
-      setVal('attn-pinned', n, n > 0 ? 'health-warn' : 'health-good');
-    }).catch(() => setVal('attn-pinned', '?', ''));
-
-  // Ghost Brief freshness
-  fetch('/api/brief')
-    .then(r => r.json())
-    .then(d => {
-      if (!d.brief) { setVal('attn-brief', 'None', 'health-crit'); return; }
-      const gen = new Date(d.brief.generated_at);
-      const ageH = (Date.now() - gen.getTime()) / 3600000;
-      let label, cls;
-      if      (ageH < 1)  { label = '<1h ago';               cls = 'health-good'; }
-      else if (ageH < 6)  { label = `${Math.floor(ageH)}h ago`; cls = 'health-good'; }
-      else if (ageH < 24) { label = `${Math.floor(ageH)}h ago`; cls = 'health-warn'; }
-      else                { label = `${Math.floor(ageH/24)}d ago`; cls = 'health-crit'; }
-      setVal('attn-brief', label, cls);
-    }).catch(() => setVal('attn-brief', '?', ''));
+  // Replaced by System Pulse — delegate to diamond.js
+  if (typeof loadSystemPulse === 'function') loadSystemPulse();
 }
 
 
