@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 22:43*
+*Auto-generated: 2026-04-16 23:25*
 
 
 ## Python Modules
@@ -182,56 +182,56 @@
 
 | Module | Size |
 |--------|------|
-| `access.js` | 69.2 KB |
+| `access.js` | 69.9 KB |
 | `agents-config.js` | 9.1 KB |
-| `chat.js` | 226.6 KB |
-| `conversations.js` | 11.5 KB |
-| `diamond.js` | 19.2 KB |
-| `docs.js` | 28.4 KB |
-| `email.js` | 16.1 KB |
-| `files.js` | 36.9 KB |
+| `chat.js` | 232.0 KB |
+| `conversations.js` | 12.0 KB |
+| `diamond.js` | 19.7 KB |
+| `docs.js` | 30.2 KB |
+| `email.js` | 17.7 KB |
+| `files.js` | 40.7 KB |
 | `fridays.js` | 7.0 KB |
-| `git.js` | 22.5 KB |
-| `library.js` | 21.8 KB |
+| `git.js` | 23.0 KB |
+| `library.js` | 22.0 KB |
 | `localai.js` | 8.5 KB |
-| `memory.js` | 28.9 KB |
+| `memory.js` | 30.0 KB |
 | `monitor.js` | 12.3 KB |
 | `ollama.js` | 4.1 KB |
-| `onboarding.js` | 13.6 KB |
+| `onboarding.js` | 16.2 KB |
 | `services.js` | 4.7 KB |
 | `skills.js` | 22.4 KB |
-| `studio.js` | 79.7 KB |
-| `terminal-commands.js` | 12.7 KB |
-| `terminal.js` | 38.2 KB |
-| `tickets.js` | 5.9 KB |
-| `time-wizard.js` | 32.3 KB |
-| `trace.js` | 16.9 KB |
+| `studio.js` | 84.3 KB |
+| `terminal-commands.js` | 13.0 KB |
+| `terminal.js` | 40.8 KB |
+| `tickets.js` | 6.7 KB |
+| `time-wizard.js` | 32.6 KB |
+| `trace.js` | 17.5 KB |
 
 ## Database Tables
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 19960 |
+| `activity_log` | 20049 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 91 |
-| `chat_jobs` | 229 |
+| `approval_tokens` | 94 |
+| `chat_jobs` | 230 |
 | `claude_log` | 1 |
-| `conv_timeline` | 27 |
-| `conversations` | 2 |
+| `conv_timeline` | 30 |
+| `conversations` | 3 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1224 |
+| `decisions` | 1245 |
 | `deferred_items` | 0 |
-| `duck_log` | 424 |
+| `duck_log` | 428 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1931 |
-| `governance_log` | 4 |
+| `ghost_circle` | 1943 |
+| `governance_log` | 6 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
 | `memory` | 2 |
@@ -239,7 +239,7 @@
 | `memory_gemma` | 3 |
 | `memory_grok` | 0 |
 | `memory_llama` | 1 |
-| `memory_mistral` | 2 |
+| `memory_mistral` | 3 |
 | `memory_nine` | 0 |
 | `memory_qwen` | 0 |
 | `memory_scholar` | 0 |
@@ -248,7 +248,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 27 |
+| `messages` | 45 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -257,10 +257,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 748 |
+| `queue` | 756 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 164 |
+| `sandpit_log` | 166 |
 | `scheduled_tasks` | 2 |
 | `skills` | 38 |
 | `sniffer_log` | 232 |
@@ -268,27 +268,27 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 58 |
 | `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 4 |
+| `swarm_bus` | 6 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5899 |
+| `system_stats` | 5907 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 178 |
-| `tickets` | 186 |
-| `time_checkpoints` | 1104 |
-| `time_events` | 54500 |
-| `time_journal` | 52175 |
-| `time_machine` | 4546 |
+| `ticket_notes` | 182 |
+| `tickets` | 190 |
+| `time_checkpoints` | 1126 |
+| `time_events` | 54819 |
+| `time_journal` | 52471 |
+| `time_machine` | 4570 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 3 |
+| `work_proposals` | 5 |
 
 ## Agents
 
