@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-17 00:06",
+  "generated_at": "2026-04-17 00:27",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2414,7 +2414,7 @@
     },
     {
       "name": "monitor.js",
-      "size_kb": 12.3
+      "size_kb": 15.4
     },
     {
       "name": "ollama.js",
@@ -2450,7 +2450,7 @@
     },
     {
       "name": "time-wizard.js",
-      "size_kb": 32.6
+      "size_kb": 36.1
     },
     {
       "name": "trace.js",
@@ -2460,7 +2460,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 20190
+      "rows": 20232
     },
     {
       "name": "agent_capabilities",
@@ -2476,11 +2476,11 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 103
+      "rows": 106
     },
     {
       "name": "chat_jobs",
-      "rows": 233
+      "rows": 234
     },
     {
       "name": "claude_log",
@@ -2488,11 +2488,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 34
+      "rows": 37
     },
     {
       "name": "conversations",
-      "rows": 6
+      "rows": 7
     },
     {
       "name": "daily_checkpoint",
@@ -2512,7 +2512,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1302
+      "rows": 1323
     },
     {
       "name": "deferred_items",
@@ -2520,7 +2520,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 433
+      "rows": 435
     },
     {
       "name": "file_versions",
@@ -2536,11 +2536,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1980
+      "rows": 1994
     },
     {
       "name": "governance_log",
-      "rows": 12
+      "rows": 14
     },
     {
       "name": "knowledge_chunks",
@@ -2560,7 +2560,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 3
+      "rows": 4
     },
     {
       "name": "memory_grok",
@@ -2608,7 +2608,7 @@
     },
     {
       "name": "messages",
-      "rows": 95
+      "rows": 113
     },
     {
       "name": "moderators",
@@ -2644,7 +2644,7 @@
     },
     {
       "name": "queue",
-      "rows": 773
+      "rows": 779
     },
     {
       "name": "research_evidence",
@@ -2656,7 +2656,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 172
+      "rows": 174
     },
     {
       "name": "scheduled_tasks",
@@ -2688,7 +2688,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 12
+      "rows": 14
     },
     {
       "name": "swarm_event_acks",
@@ -2720,27 +2720,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 187
+      "rows": 189
     },
     {
       "name": "tickets",
-      "rows": 195
+      "rows": 197
     },
     {
       "name": "time_checkpoints",
-      "rows": 1182
+      "rows": 1200
     },
     {
       "name": "time_events",
-      "rows": 55185
+      "rows": 55299
     },
     {
       "name": "time_journal",
-      "rows": 52781
+      "rows": 52877
     },
     {
       "name": "time_machine",
-      "rows": 4586
+      "rows": 4592
     },
     {
       "name": "tool_builds",
@@ -2768,7 +2768,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 11
+      "rows": 13
     }
   ],
   "agents": [
@@ -3554,6 +3554,10 @@
     },
     {
       "id": "tw-history-list",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-visual-timeline",
       "file": "frontend/static/js/views/time-wizard.js"
     },
     {
