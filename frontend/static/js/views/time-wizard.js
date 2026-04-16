@@ -92,6 +92,7 @@ async function loadTimeWizardData() {
     renderTwSliderLabel();
     renderTwTimeline(_twDecisions);
     renderTwHistoryPanel();
+    renderTwVisualTimeline();
     restoreTwSelection();
     if (_twCheckpoints.length) {
       await previewTwCheckpoint(false);
@@ -145,10 +146,22 @@ function renderTwPreview(result) {
   const queue = (result.changes && result.changes.queue) || [];
   const H = _escHtml;
 
-  // Drift rows are plain-text lines — build as text then escape the whole block
-  const propText  = prop.length  ? prop.slice(0, 6).map(p => `${p.proposal_id}: ${p.current_status || 'missing'} -> ${p.checkpoint_status || 'missing'}`).join('\n') : 'No proposal drift.';
-  const decsText  = decs.length  ? decs.slice(0, 6).map(d => `Decision ${d.decision_id}: ${d.current_status || 'missing'} -> ${d.checkpoint_status || 'missing'}`).join('\n') : 'No decision drift.';
-  const queueText = queue.length ? queue.slice(0, 6).map(q => `Queue ${q.queue_id}: ${q.current_status || 'missing'} -> ${q.checkpoint_status || 'missing'}`).join('\n') : 'No queue drift.';
+  // Drift rows — color-coded diff style
+  const propText  = prop.length  ? prop.slice(0, 8).map(p => {
+    const cur = p.current_status || 'missing';
+    const snap = p.checkpoint_status || 'missing';
+    return `<div style="display:flex;gap:6px;align-items:baseline;padding:1px 0;"><span style="font-family:monospace;font-size:10px;color:var(--text-dim);">${H(String(p.proposal_id))}</span><span style="color:#f77;text-decoration:line-through;font-size:10px;">${H(cur)}</span><span style="color:var(--text-dim);font-size:9px;">&rarr;</span><span style="color:#4caf50;font-size:10px;">${H(snap)}</span></div>`;
+  }).join('') : '<div style="color:var(--text-dim);">No proposal drift.</div>';
+  const decsText  = decs.length  ? decs.slice(0, 8).map(d => {
+    const cur = d.current_status || 'missing';
+    const snap = d.checkpoint_status || 'missing';
+    return `<div style="display:flex;gap:6px;align-items:baseline;padding:1px 0;"><span style="font-family:monospace;font-size:10px;color:var(--text-dim);">D${H(String(d.decision_id))}</span><span style="color:#f77;text-decoration:line-through;font-size:10px;">${H(cur)}</span><span style="color:var(--text-dim);font-size:9px;">&rarr;</span><span style="color:#4caf50;font-size:10px;">${H(snap)}</span></div>`;
+  }).join('') : '<div style="color:var(--text-dim);">No decision drift.</div>';
+  const queueText = queue.length ? queue.slice(0, 8).map(q => {
+    const cur = q.current_status || 'missing';
+    const snap = q.checkpoint_status || 'missing';
+    return `<div style="display:flex;gap:6px;align-items:baseline;padding:1px 0;"><span style="font-family:monospace;font-size:10px;color:var(--text-dim);">Q${H(String(q.queue_id))}</span><span style="color:#f77;text-decoration:line-through;font-size:10px;">${H(cur)}</span><span style="color:var(--text-dim);font-size:9px;">&rarr;</span><span style="color:#4caf50;font-size:10px;">${H(snap)}</span></div>`;
+  }).join('') : '<div style="color:var(--text-dim);">No queue drift.</div>';
 
   // Git snapshot info
   const gitInfo = result.checkpoint_git || {};
@@ -177,15 +190,15 @@ function renderTwPreview(result) {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;">
         <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Work Proposals</div>
-        <div style="white-space:pre-wrap;line-height:1.5;color:var(--text);">${H(propText)}</div>
+        <div style="line-height:1.5;color:var(--text);">${propText}</div>
       </div>
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;">
         <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Decisions</div>
-        <div style="white-space:pre-wrap;line-height:1.5;color:var(--text);">${H(decsText)}</div>
+        <div style="line-height:1.5;color:var(--text);">${decsText}</div>
       </div>
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;">
         <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Queue</div>
-        <div style="white-space:pre-wrap;line-height:1.5;color:var(--text);">${H(queueText)}</div>
+        <div style="line-height:1.5;color:var(--text);">${queueText}</div>
       </div>
       ${gitHtml}
     </div>`;
@@ -427,6 +440,7 @@ function selectTwHistoryItem(kind, id, silent = false) {
   }
 
   renderTwHistoryPanel();
+  renderTwVisualTimeline();
 }
 
 function findTwCheckpointForEventTimestamp(ts) {
@@ -444,6 +458,41 @@ function findTwCheckpointForEventTimestamp(ts) {
     }
   }
   return best || null;
+}
+
+function renderTwVisualTimeline() {
+  const container = document.getElementById('tw-visual-timeline');
+  if (!container) return;
+  const items = getTwHistoryItems().slice().reverse(); // oldest first for left-to-right
+  if (!items.length) {
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:10px;padding:8px 12px;">No checkpoints or events yet.</div>';
+    return;
+  }
+
+  const H = _escHtml;
+  const nodes = items.map((item, idx) => {
+    const isCheckpoint = item.kind === 'checkpoint';
+    const isActive = _twSelected && _twSelected.kind === item.kind && String(_twSelected.id) === String(item.id);
+    const color = isCheckpoint ? '#00d084' : '#6cb6ff';
+    const size = isCheckpoint ? 12 : 7;
+    const border = isActive ? '2px solid var(--accent)' : `2px solid ${color}`;
+    const bg = isActive ? 'var(--accent)' : (isCheckpoint ? color : 'transparent');
+    const shape = isCheckpoint ? `border-radius:2px;transform:rotate(45deg);` : `border-radius:50%;`;
+    const timeStr = (item.ts || '').slice(11, 16) || '';
+    const dateStr = (item.ts || '').slice(5, 10) || '';
+    const label = isCheckpoint ? (item.checkpoint_name || item.title || '').slice(0, 18) : '';
+    // Connector line (not for the first node)
+    const connector = idx > 0 ? `<div style="width:20px;height:2px;background:var(--border);flex-shrink:0;"></div>` : '';
+    return `${connector}<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;flex-shrink:0;min-width:${isCheckpoint ? 48 : 16}px;" onclick="selectTwHistoryItem(${JSON.stringify(item.kind)},${JSON.stringify(String(item.id))})" title="${H((item.title || '').slice(0, 80))}\n${H(item.ts || '')}">
+      <div style="width:${size}px;height:${size}px;${shape}border:${border};background:${bg};flex-shrink:0;"></div>
+      ${label ? `<div style="font-size:8px;color:var(--text-dim);margin-top:3px;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${H(label)}</div>` : ''}
+      ${timeStr ? `<div style="font-size:7px;color:var(--text-dim);opacity:0.7;">${H(dateStr)} ${H(timeStr)}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  container.innerHTML = nodes;
+  // Auto-scroll to end (latest) on initial render
+  container.scrollLeft = container.scrollWidth;
 }
 
 function setTwAutoRefresh(enabled) {
