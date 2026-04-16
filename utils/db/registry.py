@@ -91,11 +91,13 @@ def get_all_agents_raw():
 
 def get_agent_roster():
     """Replaces _AGENT_ROSTER in services.py.
-    Returns list of dicts with keys matching the old format."""
+    Returns list of dicts with keys matching the old format.
+    `name` is the canonical DB key (lowercase); `label` is the display name."""
     out = []
     for r in _load_rows():
         entry = {
-            'name': r.get('label') or r['name'].capitalize(),
+            'name': r['name'],
+            'label': r.get('label') or r['name'].capitalize(),
             'model': r['model'],
             'role': r['role'] or '',
             'default_temp': r['temperature'],
