@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 20:40",
+  "generated_at": "2026-04-16 22:06",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2460,7 +2460,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 19678
+      "rows": 19787
     },
     {
       "name": "agent_capabilities",
@@ -2476,7 +2476,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 82
+      "rows": 85
     },
     {
       "name": "chat_jobs",
@@ -2488,11 +2488,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 20
+      "rows": 21
     },
     {
       "name": "conversations",
-      "rows": 20
+      "rows": 21
     },
     {
       "name": "daily_checkpoint",
@@ -2512,7 +2512,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1163
+      "rows": 1184
     },
     {
       "name": "deferred_items",
@@ -2520,7 +2520,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 418
+      "rows": 420
     },
     {
       "name": "file_versions",
@@ -2536,7 +2536,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1915
+      "rows": 1917
     },
     {
       "name": "governance_log",
@@ -2608,7 +2608,7 @@
     },
     {
       "name": "messages",
-      "rows": 42
+      "rows": 44
     },
     {
       "name": "moderators",
@@ -2644,7 +2644,7 @@
     },
     {
       "name": "queue",
-      "rows": 734
+      "rows": 738
     },
     {
       "name": "research_evidence",
@@ -2712,7 +2712,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5874
+      "rows": 5891
     },
     {
       "name": "terminal_shortcuts",
@@ -2720,27 +2720,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 172
+      "rows": 174
     },
     {
       "name": "tickets",
-      "rows": 180
+      "rows": 182
     },
     {
       "name": "time_checkpoints",
-      "rows": 1050
+      "rows": 1067
     },
     {
       "name": "time_events",
-      "rows": 53738
+      "rows": 54215
     },
     {
       "name": "time_journal",
-      "rows": 51502
+      "rows": 51962
     },
     {
       "name": "time_machine",
-      "rows": 4481
+      "rows": 4485
     },
     {
       "name": "tool_builds",
