@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(loadServicesPanel, 30000); // Refresh every 30 seconds
   loadOllamaPanel(); // Load Ollama model panel
   setInterval(loadOllamaPanel, 15000); // Refresh every 15 seconds
-  loadAttentionPanel(); // Needs-attention summary
+  loadAttentionPanel(); // Needs-attention summary → delegates to System Pulse
   setInterval(loadAttentionPanel, 30000); // Refresh every 30 seconds
   updateActivityLog();
   setInterval(updateActivityLog, 5000);

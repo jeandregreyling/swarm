@@ -1,0 +1,233 @@
+/* ──────────────────────────────────────────────────────────────────────────────
+   diamond.css — System Pulse + Attention Dots + Add-New tile styles
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Pulse Section ────────────────────────────────────────────────────────── */
+
+#system-pulse-section {
+  margin-bottom: 16px;
+}
+
+/* Vitals row */
+.pulse-vitals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.pulse-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  min-width: 72px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.pulse-badge-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.pulse-badge-val {
+  font-weight: 600;
+  color: var(--text);
+  min-width: 26px;
+}
+
+.pulse-badge-label {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+/* Health states */
+.pulse-ok {
+  border-color: rgba(76, 175, 80, 0.35);
+}
+.pulse-ok .pulse-badge-val {
+  color: #4caf50;
+}
+
+.pulse-warn {
+  border-color: rgba(255, 183, 77, 0.5);
+  box-shadow: 0 0 6px rgba(255, 183, 77, 0.15);
+}
+.pulse-warn .pulse-badge-val {
+  color: #ffb74d;
+}
+
+.pulse-crit {
+  border-color: rgba(239, 83, 80, 0.5);
+  box-shadow: 0 0 8px rgba(239, 83, 80, 0.2);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+.pulse-crit .pulse-badge-val {
+  color: #ef5350;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(239, 83, 80, 0.15); }
+  50%      { box-shadow: 0 0 14px rgba(239, 83, 80, 0.35); }
+}
+
+/* ── Processing Graph ─────────────────────────────────────────────────────── */
+
+.pulse-graph-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px 8px;
+}
+
+.pulse-graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.pulse-graph-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pulse-graph-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.pulse-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pulse-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+#pulse-chart {
+  display: block;
+  border-radius: 4px;
+}
+
+.pulse-summary {
+  display: flex;
+  gap: 16px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.pulse-summary span::before {
+  content: '•';
+  margin-right: 4px;
+  opacity: 0.4;
+}
+
+/* ── Attention Dots ───────────────────────────────────────────────────────── */
+
+.attn-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  padding: 0 4px;
+  color: #fff;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.attn-dot:empty {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.attn-dot-info {
+  background: #42a5f5;
+}
+
+.attn-dot-warn {
+  background: #ff9800;
+}
+
+.attn-dot-crit {
+  background: #ef5350;
+  animation: attn-throb 2s ease-in-out infinite;
+}
+
+@keyframes attn-throb {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.15); }
+}
+
+/* ── + Add New Tile ───────────────────────────────────────────────────────── */
+
+.home-card-add {
+  border-style: dashed !important;
+  border-width: 2px !important;
+  border-color: var(--border) !important;
+  background: transparent !important;
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 0.2s, border-color 0.2s, background 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-card-add:hover {
+  opacity: 1;
+  border-color: var(--accent) !important;
+  background: rgba(var(--accent-rgb, 96, 165, 250), 0.06) !important;
+}
+
+.home-card-add .card-title {
+  color: var(--text-dim);
+}
+
+.home-card-add:hover .card-title {
+  color: var(--accent);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .pulse-vitals {
+    gap: 4px;
+  }
+  .pulse-badge {
+    min-width: 60px;
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+  .pulse-graph-legend {
+    display: none;
+  }
+  .pulse-summary {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
