@@ -67,28 +67,21 @@ function bindHomeLaunchClicks() {
 function openWindow(id, title, templateId) {
     _troubleshootLog && _troubleshootLog('info', 'openWindow requested', `id=${id} title=${title} template=${templateId}`);
     
-    const cleanTitle = title.replace(/^[^\w\s]+ /, '').trim();
-    const icon = windowIcons && windowIcons[id] ? windowIcons[id] : '📦';
-    const titleWithIcon = `${icon} ${cleanTitle}`;
-    
-    let windowKey = id;
-    let windowTitle = titleWithIcon;
+    const cleanTitle = title.replace(/^[^\w\s]+ /, '').replace(/<[^>]+>/g, '').trim();
     
     const existing = winManager && winManager.windows ? winManager.windows.get(id) : null;
     
-    if (existing && !existing.minimized) {
-        winManager.minimize(id);
+    if (existing && existing.minimized) {
+        winManager.minimize(id); // restore minimized window
         return;
     }
     
-    if (existing && existing.minimized) {
-        let n = 2;
-        while (winManager.windows.has(`${id}__${n}`)) n += 1;
-        windowKey = `${id}__${n}`;
-        windowTitle = `${titleWithIcon} ${n}`;
+    if (existing && !existing.minimized) {
+        winManager.focus(id);
+        return;
     }
     
-    const win = winManager.create(windowKey, windowTitle, templateId, { baseId: id });
+    const win = winManager.create(id, cleanTitle, templateId, { baseId: id });
     if (!win) {
         _troubleshootLog && _troubleshootLog('error', 'winManager.create returned no window', `id=${id}`);
         return;
