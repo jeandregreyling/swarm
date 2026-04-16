@@ -9,6 +9,7 @@ The SQLite connection reuses the swarm's existing db module so all operations
 land in the same database file and benefit from the same connection pool.
 """
 
+import hashlib
 import json
 import logging
 import sys
@@ -21,17 +22,20 @@ logger = logging.getLogger('seven.knowledge.store')
 _SCHEMA = [
     """
     CREATE TABLE IF NOT EXISTS knowledge_sources (
-        source_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-        title       TEXT    NOT NULL,
-        source_type TEXT    NOT NULL DEFAULT 'text',
-        source_ref  TEXT,
-        raw_text    TEXT,
-        domain_tags TEXT    NOT NULL DEFAULT '[]',
-        status      TEXT    NOT NULL DEFAULT 'active',
-        added_by    TEXT    NOT NULL DEFAULT 'ghost',
-        chunk_count INTEGER NOT NULL DEFAULT 0,
-        created_at  DATETIME DEFAULT (datetime('now')),
-        updated_at  DATETIME DEFAULT (datetime('now'))
+        source_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+        title        TEXT    NOT NULL,
+        source_type  TEXT    NOT NULL DEFAULT 'text',
+        source_ref   TEXT,
+        raw_text     TEXT,
+        domain_tags  TEXT    NOT NULL DEFAULT '[]',
+        category     TEXT    NOT NULL DEFAULT 'general',
+        subcategory  TEXT,
+        content_hash TEXT,
+        status       TEXT    NOT NULL DEFAULT 'active',
+        added_by     TEXT    NOT NULL DEFAULT 'ghost',
+        chunk_count  INTEGER NOT NULL DEFAULT 0,
+        created_at   DATETIME DEFAULT (datetime('now')),
+        updated_at   DATETIME DEFAULT (datetime('now'))
     )
     """,
     """
@@ -46,6 +50,15 @@ _SCHEMA = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_kchunks_source ON knowledge_chunks(source_id)",
+    "CREATE INDEX IF NOT EXISTS idx_ksources_category ON knowledge_sources(category)",
+    "CREATE INDEX IF NOT EXISTS idx_ksources_hash ON knowledge_sources(content_hash)",
+]
+
+# Columns added after initial release — ALTER TABLE is idempotent (errors ignored)
+_MIGRATIONS = [
+    "ALTER TABLE knowledge_sources ADD COLUMN category TEXT NOT NULL DEFAULT 'general'",
+    "ALTER TABLE knowledge_sources ADD COLUMN subcategory TEXT",
+    "ALTER TABLE knowledge_sources ADD COLUMN content_hash TEXT",
 ]
 
 
@@ -54,27 +67,64 @@ def _conn():
     return get_connection()
 
 
+def _hash_content(text):
+    """SHA-256 of normalised text for dedup."""
+    normalised = ' '.join((text or '').split()).strip().lower()
+    return hashlib.sha256(normalised.encode('utf-8')).hexdigest()
+
+
 def ensure_schema():
     conn = _conn()
     try:
+        # 1. Create tables (skip indexes — columns may not exist yet on old DBs)
         for stmt in _SCHEMA:
+            if 'CREATE INDEX' in stmt:
+                continue
             conn.execute(stmt)
+        # 2. Migrations: add columns that may be missing from pre-overhaul DBs
+        for mig in _MIGRATIONS:
+            try:
+                conn.execute(mig)
+            except Exception:
+                pass  # column already exists
+        # 3. Now create indexes (columns guaranteed present)
+        for stmt in _SCHEMA:
+            if 'CREATE INDEX' in stmt:
+                conn.execute(stmt)
         conn.commit()
     finally:
         conn.close()
 
 
+def check_duplicate(raw_text):
+    """Return existing source_id if content already exists, else None."""
+    h = _hash_content(raw_text)
+    conn = _conn()
+    try:
+        row = conn.execute(
+            "SELECT source_id FROM knowledge_sources WHERE content_hash=? AND status='active'",
+            (h,),
+        ).fetchone()
+        return row['source_id'] if row else None
+    finally:
+        conn.close()
+
+
 def add_source(title, source_type, raw_text, source_ref=None,
-               domain_tags=None, added_by='ghost'):
+               domain_tags=None, added_by='ghost',
+               category='general', subcategory=None):
     ensure_schema()
+    content_hash = _hash_content(raw_text)
     conn = _conn()
     try:
         tags_json = json.dumps(domain_tags or [])
         cur = conn.execute(
             """INSERT INTO knowledge_sources
-               (title, source_type, source_ref, raw_text, domain_tags, added_by)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (title, source_type, source_ref, raw_text, tags_json, added_by),
+               (title, source_type, source_ref, raw_text, domain_tags,
+                added_by, category, subcategory, content_hash)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (title, source_type, source_ref, raw_text, tags_json,
+             added_by, category or 'general', subcategory, content_hash),
         )
         source_id = cur.lastrowid
         conn.commit()
@@ -110,17 +160,24 @@ def save_chunks(source_id, chunks_with_embeddings):
         conn.close()
 
 
-def list_sources(status='active'):
+def list_sources(status='active', category=None, subcategory=None):
     ensure_schema()
     conn = _conn()
     try:
-        rows = conn.execute(
-            """SELECT source_id, title, source_type, source_ref, domain_tags,
-                      status, added_by, chunk_count, created_at
-               FROM knowledge_sources
-               WHERE status=? ORDER BY created_at DESC""",
-            (status,),
-        ).fetchall()
+        sql = """SELECT source_id, title, source_type, source_ref, domain_tags,
+                        status, added_by, chunk_count, created_at,
+                        category, subcategory
+                 FROM knowledge_sources
+                 WHERE status=?"""
+        params = [status]
+        if category:
+            sql += " AND category=?"
+            params.append(category)
+        if subcategory:
+            sql += " AND subcategory=?"
+            params.append(subcategory)
+        sql += " ORDER BY created_at DESC"
+        rows = conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
     finally:
         conn.close()
@@ -146,25 +203,33 @@ def delete_source(source_id):
         conn.close()
 
 
-def get_all_chunks():
+def get_all_chunks(category=None):
     """Return all chunks (with embeddings) from active sources for search."""
     conn = _conn()
     try:
-        rows = conn.execute(
-            """SELECT kc.chunk_id, kc.source_id, kc.chunk_index,
-                      kc.chunk_text, kc.embedding,
-                      ks.title, ks.source_type, ks.domain_tags
-               FROM knowledge_chunks kc
-               JOIN knowledge_sources ks ON ks.source_id = kc.source_id
-               WHERE ks.status = 'active' AND kc.embedding IS NOT NULL"""
-        ).fetchall()
+        sql = """SELECT kc.chunk_id, kc.source_id, kc.chunk_index,
+                        kc.chunk_text, kc.embedding,
+                        ks.title, ks.source_type, ks.domain_tags,
+                        ks.category, ks.subcategory
+                 FROM knowledge_chunks kc
+                 JOIN knowledge_sources ks ON ks.source_id = kc.source_id
+                 WHERE ks.status = 'active' AND kc.embedding IS NOT NULL"""
+        params = []
+        if category:
+            from lib.knowledge.categories import all_ids_for
+            ids = all_ids_for(category)
+            if ids:
+                placeholders = ','.join('?' for _ in ids)
+                sql += f" AND (ks.category IN ({placeholders}) OR ks.subcategory IN ({placeholders}))"
+                params.extend(list(ids) * 2)
+        rows = conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
     finally:
         conn.close()
 
 
 def source_stats():
-    """Return {total_sources, total_chunks, sources_by_type} for UI."""
+    """Return {total_sources, total_chunks, sources_by_type, by_category} for UI."""
     ensure_schema()
     conn = _conn()
     try:
@@ -172,7 +237,7 @@ def source_stats():
             "SELECT COUNT(*) FROM knowledge_sources WHERE status='active'"
         ).fetchone()[0]
         total_c = conn.execute(
-            """SELECT SUM(kc.chunk_id) FROM knowledge_chunks kc
+            """SELECT COUNT(*) FROM knowledge_chunks kc
                JOIN knowledge_sources ks ON ks.source_id=kc.source_id
                WHERE ks.status='active'"""
         ).fetchone()[0] or 0
@@ -182,6 +247,17 @@ def source_stats():
                WHERE status='active' GROUP BY source_type"""
         ).fetchall():
             by_type[row['source_type']] = row['n']
-        return {'total_sources': total_s, 'total_chunks': total_c, 'by_type': by_type}
+        by_category = {}
+        for row in conn.execute(
+            """SELECT category, COUNT(*) as n FROM knowledge_sources
+               WHERE status='active' GROUP BY category"""
+        ).fetchall():
+            by_category[row['category']] = row['n']
+        return {
+            'total_sources': total_s,
+            'total_chunks': total_c,
+            'by_type': by_type,
+            'by_category': by_category,
+        }
     finally:
         conn.close()
