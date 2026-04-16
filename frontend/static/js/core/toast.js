@@ -107,15 +107,16 @@ function _troubleshootLog(level, message, details) {
 function _renderTroubleshootBadge() {
   const btn = document.getElementById('troubleshoot-btn');
   if (!btn) return;
+  const _tIcon = '<svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const state = _troubleshootState();
   if (!state.panelOpen) {
-    btn.textContent = state.enabled ? '🧪 Trace: ON' : '🧪 Trace';
+    btn.innerHTML = state.enabled ? `${_tIcon} Trace: ON` : `${_tIcon} Trace`;
     btn.style.color = state.enabled ? '#72e6a6' : 'var(--text-dim)';
     btn.style.borderColor = state.enabled ? '#22c55e66' : 'var(--border)';
     return;
   }
   if (!state.enabled) {
-    btn.textContent = '🧪 Trace: OFF';
+    btn.innerHTML = `${_tIcon} Trace: OFF`;
     btn.style.color = 'var(--text-dim)';
     btn.style.borderColor = 'var(--border)';
     return;
@@ -123,15 +124,15 @@ function _renderTroubleshootBadge() {
   const errors = state.logs.filter(item => item.level === 'error').length;
   const warns = state.logs.filter(item => item.level === 'warn').length;
   if (errors > 0) {
-    btn.textContent = `🧪 Trace: ON (${errors})`;
+    btn.innerHTML = `${_tIcon} Trace: ON (${errors})`;
     btn.style.color = '#f77';
     btn.style.borderColor = '#f4433666';
   } else if (warns > 0) {
-    btn.textContent = `🧪 Trace: ON (${warns})`;
+    btn.innerHTML = `${_tIcon} Trace: ON (${warns})`;
     btn.style.color = '#ffb366';
     btn.style.borderColor = '#f59e0b66';
   } else {
-    btn.textContent = '🧪 Trace: ON';
+    btn.innerHTML = `${_tIcon} Trace: ON`;
     btn.style.color = '#72e6a6';
     btn.style.borderColor = '#22c55e66';
   }

@@ -29,18 +29,18 @@
         <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">What we'll set up:</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-dim);">
-            <span style="font-size:16px;">🖥️</span> <strong style="color:var(--text);">Local AI</strong> — Check Ollama / LM Studio connectivity
+            <span style="font-size:16px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 12v1.5M11 12v1.5M4 13.5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span> <strong style="color:var(--text);">Local AI</strong> — Check Ollama / LM Studio connectivity
           </div>
           <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-dim);">
-            <span style="font-size:16px;">🔑</span> <strong style="color:var(--text);">Cloud API Keys</strong> — Groq, Anthropic, xAI, Gemini, Tavily, GitHub
+            <span style="font-size:16px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span> <strong style="color:var(--text);">Cloud API Keys</strong> — Groq, Anthropic, xAI, Gemini, Tavily, GitHub
           </div>
           <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-dim);">
-            <span style="font-size:16px;">🌐</span> <strong style="color:var(--text);">Remote Nodes</strong> — Connect other Swarm instances for federation
+            <span style="font-size:16px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 8h10M8 3a7 7 0 0 0 0 10M8 3a7 7 0 0 1 0 10" stroke="currentColor" stroke-width="1.1"/></svg></span> <strong style="color:var(--text);">Remote Nodes</strong> — Connect other Swarm instances for federation
           </div>
         </div>
       </div>
       <div style="background:color-mix(in srgb, var(--accent) 6%, var(--card));border:1px solid var(--border);border-radius:10px;padding:14px;">
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;">🦆 Free out-of-the-box</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M4 8.5C3 7.5 3 5.5 5 4.5s4 0 4 2c0 1.5-1 2-1 3M8 12h0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Free out-of-the-box</div>
         <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
           <strong>DuckDuckGo search</strong> works without any API key — Duck (the swarm's librarian) uses it for web searches instantly. Tavily adds deeper research if you configure it.
         </div>
@@ -49,21 +49,21 @@
 
     <!-- ═══ STEP 1: Local AI ═══ -->
     <div class="ob-step" data-step="1" style="display:none;">
-      <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);">🖥️ Local AI</h2>
+      <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" style="vertical-align:-2px"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 12v1.5M11 12v1.5M4 13.5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg> Local AI</h2>
       <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">
         Fridays uses <strong>Ollama</strong> to run local models (Gemma, LLaMA, Mistral, Qwen). The Swarm's local agents depend on it.
       </p>
 
       <div id="ob-local-status" style="display:flex;flex-direction:column;gap:10px;">
         <div class="ob-check-row" id="ob-ollama-row">
-          <span class="ob-check-icon" id="ob-ollama-icon">⏳</span>
+          <span class="ob-check-icon" id="ob-ollama-icon">...</span>
           <div>
             <div style="font-size:13px;font-weight:600;color:var(--text);">Ollama</div>
             <div style="font-size:11px;color:var(--text-dim);" id="ob-ollama-detail">Checking...</div>
           </div>
         </div>
         <div class="ob-check-row" id="ob-lmstudio-row">
-          <span class="ob-check-icon" id="ob-lmstudio-icon">⏳</span>
+          <span class="ob-check-icon" id="ob-lmstudio-icon">...</span>
           <div>
             <div style="font-size:13px;font-weight:600;color:var(--text);">LM Studio</div>
             <div style="font-size:11px;color:var(--text-dim);" id="ob-lmstudio-detail">Checking...</div>
@@ -85,7 +85,7 @@
 
     <!-- ═══ STEP 2: Cloud API Keys ═══ -->
     <div class="ob-step" data-step="2" style="display:none;">
-      <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);">🔑 Cloud API Keys</h2>
+      <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" style="vertical-align:-2px"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Cloud API Keys</h2>
       <p style="color:var(--text-dim);font-size:13px;margin:0 0 10px;line-height:1.5;">
         Cloud agents need API keys to connect to external providers. Paste each key below — we'll validate it before saving.
         <strong>All keys are optional</strong>; set whichever services you use.
@@ -106,7 +106,7 @@
 
     <!-- ═══ STEP 3: Remote Nodes ═══ -->
     <div class="ob-step" data-step="3" style="display:none;">
-      <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);">🌐 Remote Nodes</h2>
+      <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" style="vertical-align:-2px"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 8h10M8 3a7 7 0 0 0 0 10M8 3a7 7 0 0 1 0 10" stroke="currentColor" stroke-width="1.1"/></svg> Remote Nodes</h2>
       <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">
         Swarm supports <strong>federation</strong> — connecting multiple Swarm instances to share agents and proposals.
         If you have another Swarm running on your network, you can link it here. <strong>This step is optional.</strong>
@@ -127,7 +127,7 @@
 
     <!-- ═══ STEP 4: Ready ═══ -->
     <div class="ob-step" data-step="4" style="display:none;">
-      <h2 style="font-size:22px;font-weight:800;margin:0 0 6px;color:var(--text);">✅ You're all set</h2>
+      <h2 style="font-size:22px;font-weight:800;margin:0 0 6px;color:var(--text);"><svg viewBox="0 0 16 16" width="18" height="18" fill="none" style="vertical-align:-3px"><circle cx="8" cy="8" r="5.5" stroke="#4caf50" stroke-width="1.3"/><path d="M5.5 8l2 2 3.5-4" stroke="#4caf50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> You're all set</h2>
       <p style="color:var(--text-dim);font-size:13px;margin:0 0 20px;line-height:1.6;">
         Here's a summary of your setup. You can always change these later in the <strong>Agents</strong> tile or re-run this wizard.
       </p>
@@ -137,7 +137,7 @@
       </div>
 
       <button onclick="obFinish()" class="ob-btn-primary" style="width:100%;padding:12px;font-size:14px;font-weight:700;">
-        🚀 Start using Fridays
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px"><path d="M3 13l3-1 7-7-2-2-7 7zm8-8l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Start using Fridays
       </button>
     </div>
 
