@@ -74,6 +74,50 @@ function deleteTicket(ticketId) {
     .catch(e => console.error('Error deleting ticket:', e));
 }
 
+function deleteTicketWithConfirm(ticketNumber, btnEl) {
+  if (btnEl.dataset.confirming === '1') {
+    // Second click — actually delete
+    btnEl.disabled = true;
+    btnEl.textContent = 'Deleting…';
+    fetch('/api/tickets/' + encodeURIComponent(ticketNumber), { method: 'DELETE' })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        // Close modal, refresh list, toast
+        const modal = document.getElementById('ticket-detail-modal');
+        if (modal) modal.classList.remove('open');
+        const win = (window._fridaysWindows || []).find(w => w.id === 'tickets');
+        if (win) loadTicketsData(win);
+        if (typeof showToast === 'function') showToast(ticketNumber + ' deleted', 'success');
+      })
+      .catch(e => {
+        if (typeof showToast === 'function') showToast('Delete failed: ' + e.message, 'error');
+        btnEl.disabled = false;
+        btnEl.dataset.confirming = '';
+        btnEl.innerHTML = '🗑 Delete';
+        btnEl.style.background = '#f443361a';
+        btnEl.style.borderColor = '#f4433644';
+        btnEl.style.color = '#f44336';
+      });
+  } else {
+    // First click — switch to confirm state
+    btnEl.dataset.confirming = '1';
+    btnEl.innerHTML = 'Confirm Delete?';
+    btnEl.style.background = '#f44336';
+    btnEl.style.borderColor = '#f44336';
+    btnEl.style.color = '#fff';
+    // Auto-revert after 3s
+    setTimeout(() => {
+      if (btnEl.dataset.confirming === '1') {
+        btnEl.dataset.confirming = '';
+        btnEl.innerHTML = '🗑 Delete';
+        btnEl.style.background = '#f443361a';
+        btnEl.style.borderColor = '#f4433644';
+        btnEl.style.color = '#f44336';
+      }
+    }, 3000);
+  }
+}
+
 function filterTicketsByStatus(status) {
   const content = document.getElementById('tickets-content');
   if (!content) return;
