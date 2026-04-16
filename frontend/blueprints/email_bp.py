@@ -3,9 +3,12 @@ blueprints/email_bp.py — Email tile API
 Exposes inbox data from swarm DB + live IMAP fetch for both Gmail accounts.
 """
 import imaplib
+import smtplib
 import email as _email_lib
 import email.header
 import email.utils
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
 
@@ -203,3 +206,44 @@ def get_email_thread(ticket_number):
         'debates': [dict(d) for d in debates],
         'activity': [dict(a) for a in activity],
     })
+
+
+@email_bp.route('/api/email/send', methods=['POST'])
+def send_email():
+    """Send an email via Gmail SMTP from one of the swarm accounts."""
+    body = request.get_json(force=True, silent=True) or {}
+    to_addr = str(body.get('to', '')).strip()
+    subject = str(body.get('subject', '')).strip()
+    message = str(body.get('body', '')).strip()
+    from_account = str(body.get('from_account', '')).strip()
+
+    if not to_addr or not subject:
+        return jsonify({'ok': False, 'error': 'to and subject are required'}), 400
+
+    try:
+        from config import GMAIL_ADDRESS, GMAIL_PASSWORD, NINE_EMAIL, NINE_PASSWORD
+    except ImportError:
+        return jsonify({'ok': False, 'error': 'Email credentials not configured'}), 503
+
+    accounts = {GMAIL_ADDRESS: GMAIL_PASSWORD, NINE_EMAIL: NINE_PASSWORD}
+    sender = from_account if from_account in accounts else GMAIL_ADDRESS
+    password = accounts.get(sender)
+    if not password:
+        return jsonify({'ok': False, 'error': 'No password for selected account'}), 503
+
+    msg = MIMEMultipart()
+    msg['From'] = sender
+    msg['To'] = to_addr
+    msg['Subject'] = subject
+    msg.attach(MIMEText(message, 'plain', 'utf-8'))
+
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15) as smtp:
+            smtp.login(sender, password)
+            smtp.send_message(msg)
+    except Exception as exc:
+        log_activity('email', 'send_error', f'to={to_addr} err={exc}')
+        return jsonify({'ok': False, 'error': f'SMTP error: {exc}'}), 502
+
+    log_activity('email', 'send', f'from={sender} to={to_addr} subj={subject[:60]}')
+    return jsonify({'ok': True, 'message': 'Email sent'})

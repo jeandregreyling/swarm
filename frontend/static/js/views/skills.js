@@ -116,6 +116,10 @@ function loadCapabilityMatrix(host) {
           <button id="capability-high-disable" style="padding:5px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:11px;cursor:pointer;font-weight:700;">Disable High Access</button>
           <span style="font-size:10px;color:var(--text-dim);">Bundle: git_execute, propose_work, coordinate, shared_write, memory_read_all, skill_shell, skill_schedule</span>
         </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);">
+          <label style="font-size:11px;color:var(--text-dim);margin-right:4px;">Drag to assign:</label>
+          ${_ALL_CAPS.map(c => `<span draggable="true" data-cap-drag="${c}" style="padding:2px 7px;border-radius:999px;background:var(--accent);color:#000;border:1px solid var(--accent);font-size:10px;cursor:grab;font-weight:600;">${c}</span>`).join(' ')}
+        </div>
         <div id="capability-matrix-list"></div>
       `;
 
@@ -161,6 +165,14 @@ function loadCapabilityMatrix(host) {
       }
 
       renderCapabilityMatrixList(host);
+
+      // Bind drag on the palette pills
+      host.querySelectorAll('[data-cap-drag]').forEach(pill => {
+        pill.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', pill.dataset.capDrag);
+          e.dataTransfer.effectAllowed = 'copy';
+        });
+      });
     })
     .catch(e => {
       host.innerHTML = `<p style="color:#f77;font-size:12px;">Failed to load capability matrix: ${_escHtml(e.message || String(e))}</p>`;
@@ -210,11 +222,11 @@ function renderCapabilityMatrixList(host) {
       ? caps.map(cap => {
           const cname = _escHtml(String(cap.capability || '?'));
           const trust = Number(cap.trust_level || 0);
-          return `<span title="trust ${trust}" style="padding:2px 7px;border-radius:999px;background:var(--card);border:1px solid var(--border);font-size:10px;color:var(--text-dim);">${cname} · t${trust}</span>`;
+          return `<span draggable="true" data-cap-drag="${_escHtml(cap.capability || '')}" title="trust ${trust} — drag to assign" style="padding:2px 7px;border-radius:999px;background:var(--card);border:1px solid var(--border);font-size:10px;color:var(--text-dim);cursor:grab;">${cname} · t${trust}</span>`;
         }).join(' ')
       : '<span style="font-size:11px;color:var(--text-dim);">no capabilities at current trust filter</span>';
 
-    return `<div style="margin-bottom:10px;padding:10px;background:var(--card);border-radius:6px;border:1px solid var(--border);">
+    return `<div class="cap-agent-row" data-cap-agent="${_escHtml(agent)}" style="margin-bottom:10px;padding:10px;background:var(--card);border-radius:6px;border:1px solid var(--border);transition:border-color 0.15s,box-shadow 0.15s;">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
         <strong>${name}</strong>
         <span style="font-size:10px;color:var(--text-dim);">${Number(item.granted_count || 0)} granted</span>
@@ -225,6 +237,9 @@ function renderCapabilityMatrixList(host) {
       </div>
     </div>`;
   }).join('');
+
+  // Bind drag-drop for capability assignment (Tier 2.2)
+  _bindCapDragDrop(listEl);
 }
 
 function applyCapabilityPreset(host, preset) {
@@ -517,5 +532,52 @@ function setSkillPermissionToggle(username, skillName, allowed) {
       showToast(`Permission update failed: ${e.message}`, 'error');
       loadSkillPermissionEditor();
     });
+}
+
+// ── Capability drag-drop (Tier 2.2) ──────────────────────────────────────────
+const _ALL_CAPS = [
+  'ticket_create','ticket_close','sandpit_read','sandpit_write',
+  'memory_write_own','memory_read_all','shared_read','shared_write',
+  'skill_shell','skill_schedule','git_propose','git_execute',
+  'propose_work','coordinate','file_read',
+];
+
+function _bindCapDragDrop(listEl) {
+  // Drag start on capability pills
+  listEl.querySelectorAll('[data-cap-drag]').forEach(pill => {
+    pill.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', pill.dataset.capDrag);
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+  });
+
+  // Drop on agent rows
+  listEl.querySelectorAll('.cap-agent-row').forEach(row => {
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      row.style.borderColor = 'var(--accent)';
+      row.style.boxShadow = '0 0 8px var(--accent)';
+    });
+    row.addEventListener('dragleave', () => {
+      row.style.borderColor = 'var(--border)';
+      row.style.boxShadow = 'none';
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      row.style.borderColor = 'var(--border)';
+      row.style.boxShadow = 'none';
+      const cap = e.dataTransfer.getData('text/plain');
+      const agent = row.dataset.capAgent;
+      if (cap && agent) {
+        toggleSingleAgentCapability(agent, cap, true);
+      }
+    });
+  });
+}
+
+function _escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
