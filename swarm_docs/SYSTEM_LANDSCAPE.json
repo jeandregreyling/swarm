@@ -2460,7 +2460,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 20042
+      "rows": 20049
     },
     {
       "name": "agent_capabilities",
@@ -2512,7 +2512,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1244
+      "rows": 1245
     },
     {
       "name": "deferred_items",
@@ -2520,7 +2520,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 427
+      "rows": 428
     },
     {
       "name": "file_versions",
@@ -2644,7 +2644,7 @@
     },
     {
       "name": "queue",
-      "rows": 755
+      "rows": 756
     },
     {
       "name": "research_evidence",
@@ -2720,27 +2720,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 181
+      "rows": 182
     },
     {
       "name": "tickets",
-      "rows": 189
+      "rows": 190
     },
     {
       "name": "time_checkpoints",
-      "rows": 1125
+      "rows": 1126
     },
     {
       "name": "time_events",
-      "rows": 54817
+      "rows": 54819
     },
     {
       "name": "time_journal",
-      "rows": 52470
+      "rows": 52471
     },
     {
       "name": "time_machine",
-      "rows": 4569
+      "rows": 4570
     },
     {
       "name": "tool_builds",
