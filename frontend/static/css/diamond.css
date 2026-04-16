@@ -186,16 +186,23 @@
 
 .home-card-add {
   border-style: dashed !important;
-  border-width: 2px !important;
+  border-width: 1.5px !important;
   border-color: var(--border) !important;
   background: transparent !important;
-  opacity: 0.6;
+  opacity: 0.45;
   cursor: pointer;
   transition: opacity 0.2s, border-color 0.2s, background 0.2s;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  padding: 6px 12px !important;
+  min-height: 0 !important;
+  grid-column: 1 / -1;
+  max-width: 160px;
+  margin: 0 auto;
+  border-radius: 20px !important;
 }
 
 .home-card-add:hover {
@@ -210,6 +217,22 @@
 
 .home-card-add:hover .card-title {
   color: var(--accent);
+}
+
+.home-card-add .card-desc {
+  display: none;
+}
+
+.home-card-add .card-title {
+  font-size: 11px;
+  gap: 4px;
+}
+
+/* ── Mood Ring ────────────────────────────────────────────────────────────── */
+
+#ambient-scene {
+  pointer-events: none;
+  transition: background 2s ease, opacity 1.5s ease;
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
