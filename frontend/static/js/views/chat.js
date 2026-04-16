@@ -608,7 +608,7 @@ function renderChatAttachments() {
   }
   host.style.display = 'flex';
   host.innerHTML = attachments.map(att => {
-    const icon = att.isText ? '📄' : '📦';
+    const icon = att.isText ? '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;"><path d="M4.5 1.5h4.59L12.5 5v9.5h-8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 1.5v4h3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;"><path d="M2.5 4.5h11v8h-11z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5.5 4.5V2.5h5v2" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
     const label = `${icon} ${att.name} (${_humanBytes(att.size)})${att.truncated ? ' • clipped' : ''}`;
     const thumb = att.isImage && att.previewUrl
       ? `<img class="chat-attachment-thumb" src="${_escapeHtml(att.previewUrl)}" alt="${_escapeHtml(att.name)}">`
@@ -699,7 +699,7 @@ function _renderBubbleAttachments(attachments) {
       isText: att?.isText !== false,
       source: String(att?.source || 'composer'),
     };
-    const icon = normalized.isImage ? '🖼️' : (normalized.isText ? '📄' : '📦');
+    const icon = normalized.isImage ? '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;"><rect x="2" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="5.5" cy="6" r="1.5" stroke="currentColor" stroke-width="1.1"/><path d="M2 10.5l3-3 2.5 2L10 7l4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>' : (normalized.isText ? '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;"><path d="M4.5 1.5h4.59L12.5 5v9.5h-8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 1.5v4h3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;"><path d="M2.5 4.5h11v8h-11z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5.5 4.5V2.5h5v2" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>');
     const sizeText = normalized.sizeLabel || _humanBytes(normalized.size);
     const meta = `${normalized.type || 'unknown'} · ${sizeText}${normalized.truncated ? ' · clipped' : ''}`;
     const attachmentId = _rememberBubbleAttachment(normalized);
@@ -1470,7 +1470,7 @@ function _renderMentionMenu(input, ctx) {
       key: String(opt.value || '').toLowerCase(),
       label: String(opt.label || opt.value || ''),
       tier: String(opt.tier || 'local'),
-      icon: _chatAgentMeta(opt.value).icon || '🤖',
+      icon: _chatAgentMeta(opt.value).icon || '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
     }))
     .filter(item => !query || _normalizeMentionKey(item.key).includes(query) || _normalizeMentionKey(item.label).includes(query))
     .slice(0, 12);
@@ -2239,13 +2239,13 @@ function _updateExecModeBtn() {
   if (!btn) return;
   const mode = String(window.__fridaysChatExecMode || 'sequential');
   if (mode === 'parallel') {
-    btn.textContent = '⚡ Parallel';
+    btn.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;margin-right:3px;"><path d="M9 2L5 9h4l-2 5 6-8H9z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Parallel';
     btn.title = 'Parallel: all selected agents answer at once (talking queue OFF). Click to switch to sequential.';
     btn.style.background = 'color-mix(in oklab, #f59e0b 18%, var(--card))';
     btn.style.color = 'var(--text)';
     btn.style.borderColor = '#f59e0b';
   } else {
-    btn.textContent = '🔗 Sequential';
+    btn.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;margin-right:3px;"><path d="M4 8h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="4" cy="8" r="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="8" r="1.5" stroke="currentColor" stroke-width="1.3"/></svg>Sequential';
     btn.title = 'Sequential: one agent speaks at a time via relay queue. Click to switch to parallel.';
     btn.style.background = 'color-mix(in oklab, var(--accent) 14%, var(--card))';
     btn.style.color = 'var(--text)';
@@ -3465,7 +3465,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   const duckRelayBtnHtml = (_proposalIdMatch && senderIdentity.key !== 'duck')
     ? `<div class="chat-handoff-actions"><span class="chat-handoff-btn" role="button" tabindex="0"
         onclick="sendProposalToDuck('${_escapeHtml(_proposalIdMatch[1])}', '${_escapeHtml(opts.conversationId || '')}')">
-        🦆 Send ${_escapeHtml(_proposalIdMatch[1])} to Duck</span></div>`
+        <svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M4 9.5c0 2 1.8 3 4 3s4-1 4-3c0-1.5-1-2.5-3-2.5H8c1 0 2-1 2-2S9 3 8 3C6.5 3 5.5 4 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 7.5l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Send ${_escapeHtml(_proposalIdMatch[1])} to Duck</span></div>`
     : '';
   const replayText = _escapeHtml(String(visibleText || '').replace(/\s+/g, ' ').trim().slice(0, 1800));
   const localText = _escapeHtml(String(opts.localPromptText || visibleText || '').slice(0, 4000));
@@ -4435,7 +4435,7 @@ function renderRelayManagerCard() {
     <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;line-height:1;white-space:nowrap;" title="${duckAgent.label} · Relay Manager">
       <input class="chat-agent-toggle" type="checkbox" value="${duckAgent.value}" ${checked} onchange="onChatAgentToggleChange(this)" style="width:10px;height:10px;margin:0;accent-color:var(--accent);">
       <span class="agent-tier-dot" style="width:5px;height:5px;flex-shrink:0;background:${_escapeHtml(bubbleColor)};"></span>
-      <span style="font-weight:600;color:var(--accent);">🚔 Duck</span>
+      <span style="font-weight:600;color:var(--accent);"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:1px;"><path d="M4 9.5c0 2 1.8 3 4 3s4-1 4-3c0-1.5-1-2.5-3-2.5H8c1 0 2-1 2-2S9 3 8 3C6.5 3 5.5 4 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 7.5l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Duck</span>
       <input class="agent-bubble-color" type="color" value="${_escapeHtml(bubbleColor)}" title="Choose ${duckAgent.label} bubble color" oninput="setActorBubbleColor('${duckAgent.value}', this.value)">
     </label>
     ${sliderRow}
@@ -4464,7 +4464,7 @@ function renderRelayMonitorCard() {
   const monitorCard = `<div style="display:flex;flex-direction:column;gap:3px;padding:4px 8px 5px;border:1px solid var(--border);border-radius:8px;background:color-mix(in oklab, var(--card) 92%, transparent);min-width:100px;opacity:0.85;">
     <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;line-height:1;white-space:nowrap;" title="${librarianConfig.label} · Relay Monitor (read-only)">
       <span class="agent-tier-dot" style="width:5px;height:5px;flex-shrink:0;background:${_escapeHtml(bubbleColor)};"></span>
-      <span style="font-weight:600;color:var(--text-dim);">👁️ Librarian</span>
+      <span style="font-weight:600;color:var(--text-dim);"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:1px;"><path d="M4.5 3.5v9M4.5 3.5h5a2 2 0 010 4h-5M4.5 7.5h5.5a2 2 0 010 4H4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Librarian</span>
     </label>
     <div style="font-size:8px;color:var(--text-dim);padding:0 4px;font-style:italic;">${monitorStatus}</div>
     <div style="display:flex;justify-content:flex-end;padding:0 2px;">
@@ -4499,7 +4499,9 @@ function _renderTicketBanner(ticket, conv) {
   }
 
   const ch = ticket.channel || ticket.source_type || 'email';
-  const chIcon = ch === 'telegram' ? '📱' : ch === 'discord' ? '💬' : '📧';
+  const chIcon = ch === 'telegram' ? '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-2px;"><path d="M2 8l12-5-3 12-4-3.5L2 8zm5 3.5V14l1.5-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : ch === 'discord' ? '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-2px;"><path d="M5.5 3C4 3.5 3 4.5 2.5 6c1.5 5 4 7 5.5 7.5C9.5 13 12 11 13.5 6 13 4.5 12 3.5 10.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="6" cy="8" r="1" fill="currentColor"/><circle cx="10" cy="8" r="1" fill="currentColor"/></svg>'
+    : '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-2px;"><rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5l6 4 6-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const chLabel = ch.charAt(0).toUpperCase() + ch.slice(1);
   const status = ticket.status || 'open';
   const statusColor = status === 'closed' ? '#4caf50' : status === 'failed' ? '#f44336' : '#ffa726';
@@ -4557,9 +4559,9 @@ function renderChatThreadRail() {
     const ts = (conv.timestamp || conv.created_at || '').slice(0, 16);
     const title = _escapeHtml(conv.title || '(untitled)');
     const src = String(conv.source || '').toLowerCase();
-    const srcIcon = src === 'telegram' ? '<span title="Telegram" style="font-size:11px;opacity:0.75;">📱</span>'
-                  : src === 'discord'  ? '<span title="Discord" style="font-size:11px;opacity:0.75;">🎮</span>'
-                  : src === 'email'    ? '<span title="Email" style="font-size:11px;opacity:0.55;">📧</span>'
+    const srcIcon = src === 'telegram' ? '<span title="Telegram" style="opacity:0.75;line-height:1;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><path d="M2 8l12-5-3 12-4-3.5L2 8zm5 3.5V14l1.5-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
+                  : src === 'discord'  ? '<span title="Discord" style="opacity:0.75;line-height:1;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><path d="M5.5 3C4 3.5 3 4.5 2.5 6c1.5 5 4 7 5.5 7.5C9.5 13 12 11 13.5 6 13 4.5 12 3.5 10.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="6" cy="8" r="1" fill="currentColor"/><circle cx="10" cy="8" r="1" fill="currentColor"/></svg></span>'
+                  : src === 'email'    ? '<span title="Email" style="opacity:0.55;line-height:1;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5l6 4 6-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
                   : '';
     return `
       <div class="thread-item${active}" onclick="switchChatThread('${conv.id}')" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
@@ -4568,8 +4570,8 @@ function renderChatThreadRail() {
           <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">#${conv.id}${ts ? ' · ' + ts : ''}</div>
         </div>
         <div style="display:flex;gap:4px;">
-          <button class="chat-action-btn" onclick="threadActionRename(event, ${Number(conv.id)});" title="Rename thread">✏️</button>
-          <button class="chat-action-btn" onclick="threadActionDelete(event, ${Number(conv.id)});" title="Delete thread">🗑️</button>
+          <button class="chat-action-btn" onclick="threadActionRename(event, ${Number(conv.id)});" title="Rename thread"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><path d="M11.5 2.5l2 2M5 9l-1 3 3-1 7-7-2-2-7 7z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="chat-action-btn" onclick="threadActionDelete(event, ${Number(conv.id)});" title="Delete thread"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><path d="M3 4.5h10M6.5 4.5V3a1 1 0 011-1h1a1 1 0 011 1v1.5M5 4.5l.5 8a1 1 0 001 1h3a1 1 0 001-1l.5-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
       </div>
     `;

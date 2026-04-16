@@ -129,7 +129,7 @@ function loadProposals(container, tab) {
 
       if (!proposals.length) {
         container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-dim);">
-          <div style="font-size:32px;margin-bottom:12px;">${mode==='all'?'📋':'📭'}</div>
+          <div style="font-size:32px;margin-bottom:12px;">${mode==='all'?'<svg viewBox="0 0 16 16" width="32" height="32" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>':'<svg viewBox="0 0 16 16" width="32" height="32" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M6 8h4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>'}</div>
           <div style="font-size:14px;font-weight:600;">No ${mode} proposals</div>
         </div>`;
         return;
@@ -161,7 +161,7 @@ function _proposalCard(p) {
   const description = p.description || '';
   const descriptionPreview = _escHtml(description.slice(0,300));
   const ticketLink = p.ticket_number
-    ? `<span style="padding:2px 6px;border-radius:8px;background:#2196f320;color:#2196f3;font-size:10px;border:1px solid #2196f340;cursor:pointer;" onclick='event.stopPropagation();openTicketDetail(${_jsStr(p.ticket_number)})'>🎫 ${_escHtml(p.ticket_number)}</span>`
+    ? `<span style="padding:2px 6px;border-radius:8px;background:#2196f320;color:#2196f3;font-size:10px;border:1px solid #2196f340;cursor:pointer;" onclick='event.stopPropagation();openTicketDetail(${_jsStr(p.ticket_number)})'><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 7h12" stroke="currentColor" stroke-width="1.3"/></svg> ${_escHtml(p.ticket_number)}</span>`
     : '';
 
   // Stage label
@@ -222,7 +222,7 @@ function _proposalCard(p) {
   status === 'done' ? `
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
       <button onclick='event.stopPropagation();viewProposalDiff(${pidJs})'
-        style="flex:1;min-width:80px;padding:6px;background:#1565c020;border:1px solid #1565c060;border-radius:4px;color:#42a5f5;font-size:11px;font-weight:600;cursor:pointer;">🔍 Review Diff</button>
+        style="flex:1;min-width:80px;padding:6px;background:#1565c020;border:1px solid #1565c060;border-radius:4px;color:#42a5f5;font-size:11px;font-weight:600;cursor:pointer;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.3"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Review Diff</button>
       ${p.git_branch ? `
         <button onclick='event.stopPropagation();approveToUat(${pidJs})'
           style="flex:1;min-width:80px;padding:6px;background:#f57f1720;border:1px solid #f57f1760;border-radius:4px;color:#ffa726;font-size:11px;font-weight:600;cursor:pointer;">→ Approve to UAT</button>
@@ -240,7 +240,7 @@ function _proposalCard(p) {
   status === 'uat' ? `
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
       <button onclick='event.stopPropagation();promoteToProd(${pidJs})'
-        style="flex:1;min-width:80px;padding:6px;background:#2e7d32;border:1px solid #388e3c;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">🚀 Promote to PROD</button>
+        style="flex:1;min-width:80px;padding:6px;background:#2e7d32;border:1px solid #388e3c;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M8 13V3m0 0l3.5 3.5M8 3L4.5 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Promote to PROD</button>
       <button onclick='event.stopPropagation();revertProposal(${pidJs})'
         style="flex:1;min-width:80px;padding:6px;background:#c62828;border:1px solid #c62828;border-radius:4px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;">✗ Revert</button>
       <button onclick='event.stopPropagation();moveProposal(${pidJs},"in_progress")'
@@ -250,7 +250,7 @@ function _proposalCard(p) {
     <button data-proposal-id="${pid}"
             class="delete-btn"
             onclick="event.stopPropagation();deleteProposalSafe('${pid}')"
-            style="margin-left:6px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:13px;font-weight:700;cursor:pointer;flex:0 0 auto;">🗑</button>`;
+            style="margin-left:6px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:13px;font-weight:700;cursor:pointer;flex:0 0 auto;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4l.5 9a1 1 0 001 1h4a1 1 0 001-1l.5-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
 
   return `<div data-proposal-id="${pid}" style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:6px;padding:14px;margin-bottom:10px;opacity:${status==='rejected'?'0.6':'1'};cursor:pointer;" onclick='openProposalDetail(${pidJs})'>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
@@ -371,7 +371,7 @@ async function approveToUat(proposalId) {
 
 async function promoteToProd(proposalId) {
   if (!proposalId) return;
-  if (!confirm(`🚀 Promote "${proposalId}" to PROD? This merges to master and restarts the live server (port 5050). Are you sure?`)) return;
+  if (!confirm(`Promote "${proposalId}" to PROD? This merges to master and restarts the live server (port 5050). Are you sure?`)) return;
   try {
     const resp = await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}/promote-to-prod`, {
       method: 'POST',
@@ -490,15 +490,17 @@ async function deleteProposalSafe(proposalId, closeModal = false) {
   const deleteBtn = card.querySelector('.delete-btn');
   if (!deleteBtn) return;
 
-  if (deleteBtn.textContent === '🗑') {
+  if (deleteBtn.dataset.state !== 'confirm') {
     // First click → turn into Confirm
     deleteBtn.textContent = 'Confirm';
+    deleteBtn.dataset.state = 'confirm';
     deleteBtn.style.background = '#f4433622';
     deleteBtn.style.borderColor = '#f44336';
     deleteBtn.style.color = '#f44336';
     setTimeout(() => {
-      if (deleteBtn.textContent === 'Confirm') {
-        deleteBtn.textContent = '🗑';
+      if (deleteBtn.dataset.state === 'confirm') {
+        deleteBtn.innerHTML = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4l.5 9a1 1 0 001 1h4a1 1 0 001-1l.5-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        delete deleteBtn.dataset.state;
         deleteBtn.style.background = '';
         deleteBtn.style.borderColor = '';
         deleteBtn.style.color = '';
@@ -628,12 +630,12 @@ function _openProposalDetailRender(p) {
       ${p.agent ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Agent: ${safeAgent}</span>` : ''}
       ${p.ticket_number ? `<span onclick='openTicketDetail(${ticketJs})' style="padding:3px 10px;border-radius:12px;background:#2196f320;color:#2196f3;font-size:11px;cursor:pointer;border:1px solid #2196f340;">Ticket: ${safeTicketNumber}</span>` : ''}
       ${p.queue_id ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Queue: ${_escHtml(String(p.queue_id))}</span>` : ''}
-      ${srcConvId ? `<span onclick='openConversation(${Number(srcConvId)})' style="padding:3px 10px;border-radius:12px;background:#4caf5020;color:#4caf50;font-size:11px;cursor:pointer;border:1px solid #4caf5040;">💬 View in Chat</span>` : ''}
+      ${srcConvId ? `<span onclick='openConversation(${Number(srcConvId)})' style="padding:3px 10px;border-radius:12px;background:#4caf5020;color:#4caf50;font-size:11px;cursor:pointer;border:1px solid #4caf5040;"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><path d="M2.5 3h11a1 1 0 011 1v6a1 1 0 01-1 1h-3l-3 2.5V11h-5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> View in Chat</span>` : ''}
     </div>
 
     ${duckVerdict ? `<div style="margin-bottom:14px;padding:10px 14px;border-radius:6px;background:${duckVerdict==='approved'?'#4caf5015':'#f4433615'};border:1px solid ${duckVerdict==='approved'?'#4caf5040':'#f4433640'};">
       <div style="font-size:11px;font-weight:700;color:${duckVerdict==='approved'?'#4caf50':'#f44336'};text-transform:uppercase;margin-bottom:4px;">
-        ${duckVerdict==='approved'?'✅':'❌'} Duck Review — ${duckVerdict.toUpperCase()}
+        ${duckVerdict==='approved'?'<svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;"><path d="M3.5 8.5l3 3 6-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>':'<svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'} Duck Review — ${duckVerdict.toUpperCase()}
       </div>
       ${duckNote ? `<div style="font-size:12px;color:var(--text);line-height:1.5;">${_escHtml(duckNote)}</div>` : ''}
     </div>` : ''}
@@ -736,7 +738,7 @@ function _openProposalDetailRender(p) {
           <button onclick='moveProposal(${pidJs},"executed")'
             style="padding:8px 16px;background:#2196f320;border:1px solid #2196f360;border-radius:4px;color:#2196f3;font-size:12px;font-weight:600;cursor:pointer;">&#10003; Mark Executed</button>
           <button onclick='duckExecuteProposal(${pidJs})'
-            style="padding:8px 16px;background:#fbc02d20;border:1px solid #fbc02d60;border-radius:4px;color:#fbc02d;font-size:12px;font-weight:600;cursor:pointer;">🦆 Ask Duck to Execute</button>
+            style="padding:8px 16px;background:#fbc02d20;border:1px solid #fbc02d60;border-radius:4px;color:#fbc02d;font-size:12px;font-weight:600;cursor:pointer;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px;"><path d="M4 9.5c0 2 1.8 3 4 3s4-1 4-3c0-1.5-1-2.5-3-2.5H8c1 0 2-1 2-2S9 3 8 3C6.5 3 5.5 4 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 7.5l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Ask Duck to Execute</button>
           <button onclick='moveProposal(${pidJs},"in_progress")'
             style="padding:8px 16px;background:#29b6f620;border:1px solid #29b6f660;border-radius:4px;color:#29b6f6;font-size:12px;font-weight:600;cursor:pointer;">&#x21A9; Reopen</button>` : ''}
         <button onclick='deleteProposalSafe(${pidJs}, true)'
@@ -921,7 +923,7 @@ function openDocDetail(filename, title) {
     modal.innerHTML = `
       <div class="modal-content" style="width:92%;max-width:900px;max-height:88vh;display:flex;flex-direction:column;">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
-          <h3 id="doc-det-title" style="margin:0;font-size:14px;">📄</h3>
+          <h3 id="doc-det-title" style="margin:0;font-size:14px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M4 2h5l4 4v8H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 2v4h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></h3>
           <button onclick="document.getElementById('doc-detail-modal').classList.remove('open')"
                   style="background:none;border:none;color:var(--text);font-size:18px;cursor:pointer;">✕</button>
         </div>
@@ -929,7 +931,7 @@ function openDocDetail(filename, title) {
       </div>`;
     document.body.appendChild(modal);
   }
-  document.getElementById('doc-det-title').textContent = '📄 ' + (title || filename);
+  document.getElementById('doc-det-title').innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M4 2h5l4 4v8H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 2v4h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> ' + _escHtml(title || filename);
   document.getElementById('doc-det-body').innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:30px;">Loading…</div>';
   modal.classList.add('open');
 
@@ -978,7 +980,7 @@ function openTicketDetail(ticketNumber) {
     document.body.appendChild(modal);
   }
 
-  document.getElementById('tdet-title').textContent = '🎫 ' + ticketNumber;
+  document.getElementById('tdet-title').innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 7h12" stroke="currentColor" stroke-width="1.3"/></svg> ' + _escHtml(ticketNumber);
   document.getElementById('tdet-body').innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center;">Loading…</div>';
   modal.classList.add('open');
 
@@ -1005,7 +1007,7 @@ function openTicketDetail(ticketNumber) {
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
           <span style="padding:3px 10px;border-radius:12px;background:${stColor}22;color:${stColor};font-size:11px;font-weight:700;border:1px solid ${stColor}44;">${_escHtml(t.status||'unknown')}</span>
           <span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Priority: ${_escHtml(String(t.priority||5))}</span>
-          ${t.snooze_count ? `<span style="padding:3px 10px;border-radius:12px;background:#ff980022;color:#ff9800;font-size:11px;">💤 ${_escHtml(String(t.snooze_count))} snooze</span>` : ''}
+          ${t.snooze_count ? `<span style="padding:3px 10px;border-radius:12px;background:#ff980022;color:#ff9800;font-size:11px;"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><path d="M4 5h6L4 11h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> ${_escHtml(String(t.snooze_count))} snooze</span>` : ''}
         </div>
 
         <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px;">
@@ -1052,7 +1054,7 @@ function openTicketDetail(ticketNumber) {
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
           <button onclick="sendTicketToChat(${tnJs}, ${questionHintJs})"
-            style="padding:6px 14px;background:#2196f31a;border:1px solid #2196f344;border-radius:4px;color:#2196f3;font-size:12px;cursor:pointer;font-weight:600;">💬 Send to Chat</button>
+            style="padding:6px 14px;background:#2196f31a;border:1px solid #2196f344;border-radius:4px;color:#2196f3;font-size:12px;cursor:pointer;font-weight:600;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M2.5 3h11a1 1 0 011 1v6a1 1 0 01-1 1h-3l-3 2.5V11h-5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Send to Chat</button>
           ${t.status !== 'closed'
             ? `<button onclick="closeTicketFromModal(${tnJs})" style="padding:6px 14px;background:#f443361a;border:1px solid #f4433644;border-radius:4px;color:#f44336;font-size:12px;cursor:pointer;">Close Ticket</button>`
             : `<button onclick="reopenTicketFromModal(${tnJs})" style="padding:6px 14px;background:#4caf501a;border:1px solid #4caf5044;border-radius:4px;color:#4caf50;font-size:12px;cursor:pointer;">Reopen</button>`}
@@ -1061,7 +1063,7 @@ function openTicketDetail(ticketNumber) {
           <button onclick="pinItemToDeferred(${tnJs}, ${questionHintJs}, 'ticket')"
             style="padding:6px 14px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:12px;cursor:pointer;">&#128204; Pin</button>
           <button onclick="deleteTicketWithConfirm(${tnJs}, this)"
-            style="padding:6px 14px;background:#f443361a;border:1px solid #f4433644;border-radius:4px;color:#f44336;font-size:12px;cursor:pointer;">🗑 Delete</button>
+            style="padding:6px 14px;background:#f443361a;border:1px solid #f4433644;border-radius:4px;color:#f44336;font-size:12px;cursor:pointer;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4l.5 9a1 1 0 001 1h4a1 1 0 001-1l.5-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete</button>
           <button onclick="document.getElementById('ticket-detail-modal').classList.remove('open')"
                   style="padding:6px 14px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;cursor:pointer;">Close</button>
         </div>`;
@@ -1216,7 +1218,7 @@ function addCustomCard() {
   const card = document.createElement('div');
   card.className = 'home-card';
   card.innerHTML = `
-    <div class="card-icon">${emoji || '📌'}</div>
+    <div class="card-icon">${emoji || '<svg viewBox="0 0 16 16" width="16" height="16" fill="none"><path d="M9.5 2.5l4 4-6 6H4v-3.5l6-6z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 10v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>'}</div>
     <div class="card-title">${name}</div>
     <div class="card-desc">${desc || 'Custom card'}</div>
   `;
@@ -1312,7 +1314,7 @@ function openWindowHelp(windowId) {
   document.getElementById('win-help-body').innerHTML = `
     <div style="margin-bottom:12px;color:var(--text);">${_escHtml(data.body)}</div>
     <div style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;color:var(--text-dim);">
-      Header controls: ? Help · ⬚ Maximize · _ Minimize · 📌 Pin · ⛶ Fullscreen · ✕ Close
+      Header controls: ? Help · ⬚ Maximize · _ Minimize · Pin · ⛶ Fullscreen · ✕ Close
     </div>
     ${relayTipsHtml}`;
   modal.classList.add('open');
@@ -1376,7 +1378,7 @@ function sendTicketToChat(ticketNumber, questionHint) {
 
   // Open or focus the Chat window
   if (typeof openWindow === 'function') {
-    openWindow('chat', '💬 Chat', 'view-chat');
+    openWindow('chat', 'Chat', 'view-chat');
   }
 
   // Populate chat input with ticket context
@@ -1404,7 +1406,7 @@ function openConversation(convId) {
   if (propModal) propModal.classList.remove('open');
 
   if (typeof openWindow === 'function') {
-    openWindow('chat', '💬 Chat', 'view-chat');
+    openWindow('chat', 'Chat', 'view-chat');
   }
 
   // Give the window time to render before switching the active thread

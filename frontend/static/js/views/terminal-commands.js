@@ -89,7 +89,7 @@ async function _renderTerminalResultCard(cmd, output, statusEl, startTime) {
         <span>${lines} line${lines === 1 ? '' : 's'}${truncated ? ' · truncated' : ''}</span>
         <span style="flex:1;"></span>
         <button onclick="terminalRerunCommand('${rerunId}')" style="${btnStyle}">↩ Rerun</button>
-        <button onclick="terminalPinCommand('${pinId}')" style="${btnStyle}">📌 Pin</button>
+        <button onclick="terminalPinCommand('${pinId}')" style="${btnStyle}"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><path d="M9.5 2.5l4 4-6 6H4v-3.5l6-6z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 10v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Pin</button>
         <button onclick="terminalCopyResult('${copyId}')" style="${btnStyle}">Copy</button>
         <span>${ts}</span>
       </div>

@@ -43,7 +43,7 @@ function openConversationDetail(convId) {
     modal.innerHTML = `
       <div class="modal-content" style="width:92%;max-width:980px;max-height:88vh;display:flex;flex-direction:column;">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
-          <h3 id="chat-det-title" style="margin:0;font-size:14px;">💬 Conversation</h3>
+          <h3 id="chat-det-title" style="margin:0;font-size:14px;display:flex;align-items:center;gap:6px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2.5 3h11a1 1 0 011 1v6a1 1 0 01-1 1h-3l-3 2.5V11h-5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Conversation</h3>
           <button onclick="document.getElementById('chat-detail-modal').classList.remove('open')"
                   style="background:none;border:none;color:var(--text);font-size:18px;cursor:pointer;">✕</button>
         </div>
@@ -69,7 +69,7 @@ function openConversationDetail(convId) {
       const rows = data.messages || [];
       const linkedProposals = data.proposals || [];
       const convTitle = conv.title || '(untitled)';
-      titleNode.textContent = `💬 ${convTitle}`;
+      titleNode.innerHTML = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2.5 3h11a1 1 0 011 1v6a1 1 0 01-1 1h-3l-3 2.5V11h-5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> ${_escHtml(convTitle)}`;
 
       const proposalBadges = linkedProposals.map(p => {
         const pc = p.status === 'approved' || p.status === 'done' ? '#4caf50' : p.status === 'pending' ? '#ffa500' : '#888';

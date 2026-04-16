@@ -84,19 +84,19 @@
       const ol = _status.local_ai.ollama;
       const lm = _status.local_ai.lmstudio;
 
-      if (ollamaIcon) ollamaIcon.textContent = ol.running ? '✅' : '❌';
+      if (ollamaIcon) ollamaIcon.innerHTML = ol.running ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M3 8.5l3 3 7-7" stroke="#4caf50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M4 4l8 8M12 4l-8 8" stroke="#f44336" stroke-width="1.5" stroke-linecap="round"/></svg>';
       if (ollamaDetail) ollamaDetail.textContent = ol.running
         ? `Running — ${ol.model_count} model${ol.model_count !== 1 ? 's' : ''} installed`
         : 'Not reachable on localhost:11434';
 
-      if (lmsIcon) lmsIcon.textContent = lm.running ? '✅' : '⚪';
+      if (lmsIcon) lmsIcon.innerHTML = lm.running ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M3 8.5l3 3 7-7" stroke="#4caf50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.3" opacity="0.4"/></svg>';
       if (lmsDetail) lmsDetail.textContent = lm.running
         ? `Running — ${lm.models} model${lm.models !== 1 ? 's' : ''} loaded`
         : 'Not running (optional)';
 
       if (helpEl) helpEl.style.display = (!ol.running && !lm.running) ? '' : 'none';
     } catch (e) {
-      if (ollamaIcon) ollamaIcon.textContent = '⚠️';
+      if (ollamaIcon) ollamaIcon.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M2.5 12L8 3l5.5 9z" stroke="#ff9800" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7.5v2M8 11v.5" stroke="#ff9800" stroke-width="1.3" stroke-linecap="round"/></svg>';
       if (ollamaDetail) ollamaDetail.textContent = 'Could not check — API error';
     }
   }
@@ -194,7 +194,7 @@
     if (_status.cloud_nodes > 0) {
       container.innerHTML = `
         <div class="ob-check-row">
-          <span class="ob-check-icon">🌐</span>
+          <span class="ob-check-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 7l2 2 4-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <div>
             <div style="font-size:13px;font-weight:600;color:var(--text);">${_status.cloud_nodes} remote node${_status.cloud_nodes !== 1 ? 's' : ''} connected</div>
             <div style="font-size:11px;color:var(--text-dim);">You can add more below or skip this step.</div>
@@ -260,17 +260,17 @@
 
     const rows = [
       {
-        icon: ol.running ? '✅' : (lm.running ? '✅' : '⚠️'),
+        icon: ol.running ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M3 8.5l3 3 7-7" stroke="#4caf50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : (lm.running ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M3 8.5l3 3 7-7" stroke="#4caf50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M2.5 12L8 3l5.5 9z" stroke="#ff9800" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7.5v2M8 11v.5" stroke="#ff9800" stroke-width="1.3" stroke-linecap="round"/></svg>'),
         text: ol.running
           ? `Ollama running with ${ol.model_count} model${ol.model_count !== 1 ? 's' : ''}`
           : (lm.running ? 'LM Studio running' : 'No local AI detected — local agents won\'t work until Ollama is started'),
       },
       {
-        icon: keysSet > 0 ? '✅' : '⚪',
+        icon: keysSet > 0 ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M3 8.5l3 3 7-7" stroke="#4caf50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.3" opacity="0.4"/></svg>',
         text: `${keysSet} of ${keysTotal} cloud API keys configured`,
       },
       {
-        icon: nodes > 0 ? '✅' : '⚪',
+        icon: nodes > 0 ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M3 8.5l3 3 7-7" stroke="#4caf50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.3" opacity="0.4"/></svg>',
         text: nodes > 0
           ? `${nodes} remote node${nodes !== 1 ? 's' : ''} connected`
           : 'No remote nodes (single-node mode)',
@@ -292,7 +292,7 @@
       winManager.close('onboarding');
     }
     if (typeof openWindow === 'function') {
-      openWindow('chat', '💬 Chat', 'view-chat');
+      openWindow('chat', 'Chat', 'view-chat');
     }
   }
 
@@ -325,7 +325,7 @@
     // Auto-open the wizard after a short delay to let the home page render
     setTimeout(() => {
       if (typeof openWindow === 'function') {
-        openWindow('onboarding', '🧭 Setup Wizard', 'view-onboarding');
+        openWindow('onboarding', 'Setup Wizard', 'view-onboarding');
       }
     }, 800);
   }

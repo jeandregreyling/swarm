@@ -30,7 +30,7 @@ function _renderEmailShell(win) {
         <button onclick="_emailRefreshLive()" title="Fetch live from Gmail"
           style="padding:8px 14px;font-size:11px;background:transparent;color:var(--text-dim);border:none;border-left:1px solid var(--border);cursor:pointer;">⟳ Live</button>
         <button onclick="_loadEmailStats()"
-          style="padding:8px 14px;font-size:11px;background:transparent;color:var(--text-dim);border:none;border-left:1px solid var(--border);cursor:pointer;">📊 Stats</button>
+          style="padding:8px 14px;font-size:11px;background:transparent;color:var(--text-dim);border:none;border-left:1px solid var(--border);cursor:pointer;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M3 3h10v10H3z" stroke="currentColor" stroke-width="1.3"/><path d="M6 8h4M8 3v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Stats</button>
       </div>
 
       <!-- Split: list + thread -->
@@ -151,9 +151,9 @@ async function _emailOpenThread(ticketNumber, queueId) {
         </div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
           <button onclick="sendTicketToChat(${tnJs}, ${JSON.stringify((t.question||'').slice(0,80))})"
-            style="padding:4px 12px;font-size:11px;background:#2196f31a;border:1px solid #2196f344;border-radius:4px;color:#2196f3;cursor:pointer;">💬 Open in Chat</button>
+            style="padding:4px 12px;font-size:11px;background:#2196f31a;border:1px solid #2196f344;border-radius:4px;color:#2196f3;cursor:pointer;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M2.5 3h11a1 1 0 011 1v6a1 1 0 01-1 1h-3l-3 2.5V11h-5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Open in Chat</button>
           <button onclick="openTicketDetail(${tnJs})"
-            style="padding:4px 12px;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;">🎫 Full Ticket</button>
+            style="padding:4px 12px;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 7h12" stroke="currentColor" stroke-width="1.3"/></svg> Full Ticket</button>
           ${t.status !== 'closed'
             ? `<button onclick="closeTicketFromModal(${tnJs})"
                 style="padding:4px 12px;font-size:11px;background:#f443361a;border:1px solid #f4433644;border-radius:4px;color:#f44336;cursor:pointer;">Close</button>`
@@ -245,7 +245,7 @@ async function _emailRefreshLive() {
           <div style="font-size:10px;color:var(--text-dim);">${_escHtml((m.from||'').slice(0,40))} · ${_escHtml(m.date||'')}</div>
           <div style="font-size:9px;color:#888;font-family:monospace;">${_escHtml(m.account)}</div>
         </div>`).join('') +
-      msgs.filter(m => m.error).map(m => `<div style="font-size:11px;color:#f44;padding:6px;">⚠️ ${_escHtml(m.account)}: ${_escHtml(m.error)}</div>`).join('');
+      msgs.filter(m => m.error).map(m => `<div style="font-size:11px;color:#f44;padding:6px;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M8 2l6.5 11H1.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7v2.5M8 11.5v0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> ${_escHtml(m.account)}: ${_escHtml(m.error)}</div>`).join('');
   } catch (e) {
     showToast('Live fetch error: ' + e.message, 'error');
     _loadEmailInbox(_emailActiveAccount);
@@ -264,7 +264,7 @@ async function _loadEmailStats() {
 
     panel.innerHTML = `
       <div style="padding:4px 0;">
-        <div style="font-size:13px;font-weight:700;margin-bottom:14px;">📊 Email Stats</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-2px;"><path d="M3 3h10v10H3z" stroke="currentColor" stroke-width="1.3"/><path d="M6 8h4M8 3v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Email Stats</div>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:16px;">
           <div style="background:var(--card);border-radius:6px;padding:12px;text-align:center;">
@@ -279,7 +279,7 @@ async function _loadEmailStats() {
         </div>
 
         <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Accounts</div>
-        ${(data.accounts||[]).map(a => `<div style="font-size:12px;padding:4px 0;font-family:monospace;">📧 ${_escHtml(a)}</div>`).join('')}
+        ${(data.accounts||[]).map(a => `<div style="font-size:12px;padding:4px 0;font-family:monospace;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5l6 4 6-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> ${_escHtml(a)}</div>`).join('')}
 
         ${activity.length ? `
         <div style="margin-top:16px;">

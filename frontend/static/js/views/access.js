@@ -305,7 +305,7 @@ function logWorkflowFile(filepath, action) {
     const readDiv = document.getElementById('workflow-files-read');
     if (readDiv) {
       readDiv.innerHTML = window._workflowState.filesRead
-        .map(f => `<div style="margin:2px 0;">📄 ${_esc(f)}</div>`)
+        .map(f => `<div style="margin:2px 0;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M4.5 1.5h4.59L12.5 5v9.5h-8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 1.5v4h3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> ${_esc(f)}</div>`)
         .join('');
     }
   } else if (action === 'modify' || action === 'modified') {
@@ -315,7 +315,7 @@ function logWorkflowFile(filepath, action) {
     const modDiv = document.getElementById('workflow-files-modified');
     if (modDiv) {
       modDiv.innerHTML = window._workflowState.filesModified
-        .map(f => `<div style="margin:2px 0;color:#ff9e4d;">✏️ ${_esc(f)}</div>`)
+        .map(f => `<div style="margin:2px 0;color:#ff9e4d;"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><path d="M11.5 2.5l2 2M5 9l-1 3 3-1 7-7-2-2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg> ${_esc(f)}</div>`)
         .join('');
     }
   }
@@ -1188,7 +1188,7 @@ function agentsShowAdd() {
     const keyValue = (modal.querySelector('#new-agent-key-value')?.value || '').trim();
     const statusEl = modal.querySelector('#new-agent-key-status');
     if (!keyVar || !keyValue) {
-      statusEl.textContent = '🔴';
+      statusEl.innerHTML = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f44336;"></span>';
       const errEl = modal.querySelector('#agents-add-err');
       if (errEl) { errEl.textContent = 'Both env var name and key value are required.'; errEl.style.color = '#ff6b6b'; }
       return;
@@ -1203,7 +1203,7 @@ function agentsShowAdd() {
       if (dl) { const opt = document.createElement('option'); opt.value = keyVar; dl.appendChild(opt); }
     }
     window.__pendingNewAgentKey = {keyVar, keyValue};
-    statusEl.textContent = '🟢';
+    statusEl.innerHTML = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#4caf50;"></span>';
     _setAddReady(true);
     const errEl = modal.querySelector('#agents-add-err');
     if (errEl) { errEl.textContent = ''; }
