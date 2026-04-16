@@ -26,8 +26,9 @@ except ImportError:
 def _sse_chat(conversation_id, agent, status, **extra):
     """Lazy SSE publish to avoid cross-blueprint import at module load."""
     try:
-        from frontend.blueprints.sse import publish_chat_update
-        publish_chat_update(conversation_id, agent, status, **extra)
+        import importlib
+        sse_mod = importlib.import_module('frontend.blueprints.sse')
+        sse_mod.publish_chat_update(conversation_id, agent, status, **extra)
     except Exception:
         pass
 
