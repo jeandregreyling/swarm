@@ -73,7 +73,9 @@
 |---|---------|-------------|--------|
 | 2.1 | Chat fluidity | Smoother message flow, streaming responses, better compose UX | 🔲 |
 | 2.2 | Skills drag-drop | Visual skill assignment with drag-drop interface | 🔲 |
-| 2.3 | Agents overhaul | Redesigned agent config/management UI | 🔲 |
+| 2.3 | Merge Setup + Agents tiles | Combine into single customisable panel — swap agents, install new ones, full config | 🔲 |
+| 2.4 | Thread icon + remaining emoji → SVG | Chat thread icon and any other emoji-based icons must be themed SVG | 🔲 |
+| 2.5 | Keyboard shortcuts overhaul | Expose shortcuts on all tiles (currently only tickets hover), add nav/action shortcuts | 🔲 |
 
 **Tier 3 — System Integration**
 
@@ -82,6 +84,7 @@
 | 3.1 | Email compose | Full email client in-app (not just inbox viewer) | 🔲 |
 | 3.2 | Git per-environment | Separate git UI panels for DEV/UAT/PROD | 🔲 |
 | 3.3 | Tailscale/VPN | VPN status + remote access integration | 🔲 |
+| 3.4 | Weather in world clocks | Live weather forecast per location, icon + temp display beside each clock | 🔲 |
 
 **Tier 4 — Self-Improvement (Iterative)**
 
@@ -90,6 +93,20 @@
 | 4.1 | Auto-audit | Agents periodically self-audit code quality and test coverage | 🔲 |
 | 4.2 | Pattern learning | Capture recurring fixes as reusable patterns | 🔲 |
 | 4.3 | Build pipeline | Automated packaging for distribution on new systems | 🔲 |
+| 4.4 | Agent personalities + diaries | Each agent gets personality.md + diary.md; self-reflect, think aloud, make suggestions | 🔲 |
+| 4.5 | Idle-time self-management | When system is idle, queue assigns each agent a ticket: update memory, clean sandbox, write diary, seek opinions | 🔲 |
+| 4.6 | Agent awareness API | Each agent can see "who they are" — skills, memory, prompt, capabilities, diary | 🔲 |
+
+**Tier 5 — Home Screen & Responsive Design**
+
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| 5.1 | Monitor tile expansion | Move System Activity into Monitor; expand sundial nodes (CPU, RAM, Swap, GPU, Temp, Disk, etc.) | 🔲 |
+| 5.2 | Remove Tickets tile from home | Already linked in chats/proposals/tickets window; use activity dots instead | 🔲 |
+| 5.3 | Remove Emails tile from home | Same as tickets — linked elsewhere with activity dots for "undead" items | 🔲 |
+| 5.4 | Responsive / mobile layout | Everything must fit on phone screen; clocks → digital when space is tight; all elements reflow | 🔲 |
+| 5.5 | Clocks responsive fallback | World clocks switch to compact digital format when screen width < threshold | 🔲 |
+| 5.6 | Window dedup / internal management | Prevent duplicate windows; only one instance per view; second click focuses existing | 🔲 |
 
 #### Diamond Layer (Background — paused for Phase 6)
 
