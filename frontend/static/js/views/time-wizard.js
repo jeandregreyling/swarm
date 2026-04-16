@@ -488,7 +488,7 @@ async function expandTwDecision(id) {
     const H = _escHtml;
     const detailHtml = `
       <div style="background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 16px; margin-top: 12px;">
-        <div style="font-size: 14px; font-weight: 700; margin-bottom: 12px;">📋 Decision Details</div>
+        <div style="font-size: 14px; font-weight: 700; margin-bottom: 12px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M3 2h7l3 3v8a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3"/><path d="M5 8h6M5 11h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Decision Details</div>
         <div style="font-size: 12px; line-height: 1.6;">
           <div style="margin-bottom: 12px;">
             <div style="font-weight: 600; color: var(--accent); font-size: 11px; text-transform: uppercase;">ID</div>

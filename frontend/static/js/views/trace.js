@@ -163,8 +163,8 @@ function _traceRenderJobList(data) {
       </div>
       <div style="margin-top:4px;display:flex;gap:8px;font-size:10px;color:var(--text-dim);">
         ${elapsed ? `<span>⏱ ${elapsed}</span>` : ''}
-        ${tokens ? `<span>🔤 ${tokens}</span>` : ''}
-        ${stages ? `<span>📊 ${stages} stages</span>` : ''}
+        ${tokens ? `<span><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><path d="M3 4h10M3 8h7M3 12h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> ${tokens}</span>` : ''}
+        ${stages ? `<span><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><rect x="2" y="9" width="3" height="4" rx="0.5" stroke="currentColor" stroke-width="1.2"/><rect x="6.5" y="5" width="3" height="8" rx="0.5" stroke="currentColor" stroke-width="1.2"/><rect x="11" y="2" width="3" height="11" rx="0.5" stroke="currentColor" stroke-width="1.2"/></svg> ${stages} stages</span>` : ''}
       </div>
       <div style="margin-top:2px;font-size:10px;color:var(--text-dim);">${_traceEsc(ts)}</div>
       <div style="margin-top:1px;font-size:9px;color:var(--text-dim);opacity:0.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_traceEsc(jid)}</div>

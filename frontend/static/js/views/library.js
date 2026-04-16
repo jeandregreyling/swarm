@@ -105,7 +105,7 @@ function _renderCategoryNav() {
   if (!nav) return;
   const total = Object.values(_libByCat).reduce((s, n) => s + n, 0);
   let html = `<button class="lib-cat-btn${_libActiveCat === '' ? ' active' : ''}" data-cat="" onclick="libSelectCategory('', this)">
-    <span class="lib-cat-icon">📚</span>
+    <span class="lib-cat-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2 3.5h3l1 1h7v8H2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span>
     <span class="lib-cat-label">All</span>
     ${total ? `<span class="lib-cat-count">${total}</span>` : ''}
   </button>`;
@@ -483,7 +483,7 @@ async function libSubmitSource() {
 // ── Seed knowledge ────────────────────────────────────────────────────────────
 async function libSeedKnowledge() {
   const btn = document.getElementById('library-seed-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '🌱 Seeding…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Seeding…'; }
   try {
     const r = await fetch('/api/library/seed', {
       method: 'POST',
@@ -501,7 +501,7 @@ async function libSeedKnowledge() {
   } catch (err) {
     alert('Seed error: ' + String(err));
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '🌱 Seed Knowledge'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Seed Knowledge'; }
   }
 }
 

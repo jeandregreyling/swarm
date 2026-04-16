@@ -446,11 +446,11 @@ function _memExpand(id, table) {
     ${isLocalFile ?
       `<div style="margin-top:10px;font-size:11px;color:var(--text-dim);">This entry is read-only and sourced from a local sandpit file.</div>` :
       `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
-        <button class="chat-action-btn" onclick="memoryEdit(${id},'${table}')">✏️ Edit</button>
-        <button class="chat-action-btn" onclick="memoryAppend(${id},'${table}')">➕ Append</button>
-        <button class="chat-action-btn" onclick="memoryAttach(${id},'${table}')">📎 Attach</button>
-        <button class="chat-action-btn" onclick="memoryAssign(${id},'${table}','${_escHtml(agent)}')">🔁 Share</button>
-        <button class="chat-action-btn" onclick="memoryDelete(${id},'${table}')" style="border-color:#f44336;color:#f44336;">🗑 Delete</button>
+        <button class="chat-action-btn" onclick="memoryEdit(${id},'${table}')"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M11.5 2.5l2 2-8 8H3.5v-2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg> Edit</button>
+        <button class="chat-action-btn" onclick="memoryAppend(${id},'${table}')"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Append</button>
+        <button class="chat-action-btn" onclick="memoryAttach(${id},'${table}')"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M7 13.5c-2-1-3.5-3-3.5-5V4.5l7-2.5v4c0 2.5-1.5 4.5-3.5 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Attach</button>
+        <button class="chat-action-btn" onclick="memoryAssign(${id},'${table}','${_escHtml(agent)}')"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M12 8H4M12 8l-3-3M12 8l-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Share</button>
+        <button class="chat-action-btn" onclick="memoryDelete(${id},'${table}')" style="border-color:#f44336;color:#f44336;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4v8.5h7V4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete</button>
       </div>
       <div id="mem-det-action-area" style="margin-top:10px;"></div>`
     }

@@ -88,7 +88,7 @@
         const enabled = agents.filter(a => a.enabled !== false);
         body.innerHTML = _buildRows(enabled.slice(0, 10).map(a => [
           a.label || a.name,
-          a.tier === 'paid' ? '🌐 Online' : a.tier === 'free' ? '🆓 Free' : '💻 Local'
+          a.tier === 'paid' ? 'Online' : a.tier === 'free' ? 'Free' : 'Local'
         ]));
       })
       .catch(() => { body.innerHTML = '<span style="color:#f44336;">Could not load</span>'; });
