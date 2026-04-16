@@ -13,7 +13,7 @@ that the home dashboard renders as a processing graph + attention dots.
 import logging
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from flask import Blueprint, jsonify
@@ -63,7 +63,7 @@ def api_diamond_pulse():
 
         return jsonify({
             'ok': True,
-            'ts': datetime.utcnow().isoformat() + 'Z',
+            'ts': datetime.now(timezone.utc).isoformat(),
             'system': system,
             'queue': queue,
             'tickets': tickets,
@@ -307,7 +307,7 @@ def _get_ticket_trend():
         conn.close()
 
         # Build 7-day array with 0-fill
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         day_map = {r['day']: r['n'] for r in rows}
         for i in range(6, -1, -1):
             d = (today - timedelta(days=i)).isoformat()
@@ -345,7 +345,7 @@ def _get_proposal_trend():
         """).fetchall()
         conn.close()
 
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         day_map = {r['day']: r['n'] for r in rows}
         for i in range(6, -1, -1):
             d = (today - timedelta(days=i)).isoformat()

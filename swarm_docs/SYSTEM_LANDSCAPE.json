@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 16:09",
+  "generated_at": "2026-04-16 17:18",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -1035,6 +1035,31 @@
         },
         {
           "path": "/api/timeline",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 3
+    },
+    {
+      "name": "diamond",
+      "description": "frontend/blueprints/diamond.py \u2014 Diamond Layer governance API.",
+      "routes": [
+        {
+          "path": "/api/diamond/pulse",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/diamond/attention",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/diamond/landscape",
           "methods": [
             "GET"
           ]
@@ -2352,6 +2377,10 @@
       "size_kb": 11.5
     },
     {
+      "name": "diamond.js",
+      "size_kb": 8.4
+    },
+    {
       "name": "docs.js",
       "size_kb": 28.4
     },
@@ -2385,7 +2414,7 @@
     },
     {
       "name": "monitor.js",
-      "size_kb": 18.7
+      "size_kb": 12.3
     },
     {
       "name": "ollama.js",
@@ -2431,7 +2460,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 19051
+      "rows": 19148
     },
     {
       "name": "agent_capabilities",
@@ -2447,7 +2476,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 55
+      "rows": 58
     },
     {
       "name": "chat_jobs",
@@ -2459,11 +2488,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 11
+      "rows": 12
     },
     {
       "name": "conversations",
-      "rows": 11
+      "rows": 12
     },
     {
       "name": "daily_checkpoint",
@@ -2483,7 +2512,7 @@
     },
     {
       "name": "decisions",
-      "rows": 986
+      "rows": 1006
     },
     {
       "name": "deferred_items",
@@ -2491,7 +2520,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 397
+      "rows": 399
     },
     {
       "name": "file_versions",
@@ -2507,7 +2536,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1897
+      "rows": 1899
     },
     {
       "name": "governance_log",
@@ -2579,7 +2608,7 @@
     },
     {
       "name": "messages",
-      "rows": 26
+      "rows": 28
     },
     {
       "name": "moderators",
@@ -2615,7 +2644,7 @@
     },
     {
       "name": "queue",
-      "rows": 695
+      "rows": 699
     },
     {
       "name": "research_evidence",
@@ -2683,7 +2712,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5822
+      "rows": 5835
     },
     {
       "name": "terminal_shortcuts",
@@ -2691,27 +2720,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 151
+      "rows": 153
     },
     {
       "name": "tickets",
-      "rows": 159
+      "rows": 161
     },
     {
       "name": "time_checkpoints",
-      "rows": 896
+      "rows": 913
     },
     {
       "name": "time_events",
-      "rows": 52152
+      "rows": 52550
     },
     {
       "name": "time_journal",
-      "rows": 50080
+      "rows": 50461
     },
     {
       "name": "time_machine",
-      "rows": 4426
+      "rows": 4439
     },
     {
       "name": "tool_builds",
@@ -3568,34 +3597,6 @@
       "file": "frontend/static/js/views/services.js"
     },
     {
-      "id": "stat-cpu",
-      "file": "frontend/static/js/views/monitor.js"
-    },
-    {
-      "id": "stat-mem",
-      "file": "frontend/static/js/views/monitor.js"
-    },
-    {
-      "id": "stat-disk",
-      "file": "frontend/static/js/views/monitor.js"
-    },
-    {
-      "id": "stat-agents",
-      "file": "frontend/static/js/views/monitor.js"
-    },
-    {
-      "id": "stat-vram",
-      "file": "frontend/static/js/views/monitor.js"
-    },
-    {
-      "id": "stat-alm",
-      "file": "frontend/static/js/views/monitor.js"
-    },
-    {
-      "id": "studio-governance",
-      "file": "frontend/static/js/views/monitor.js"
-    },
-    {
       "id": "email-list-inner",
       "file": "frontend/static/js/views/email.js"
     },
@@ -4298,6 +4299,26 @@
     {
       "id": "tickets-content",
       "file": "frontend/static/js/views/tickets.js"
+    },
+    {
+      "id": "pulse-chart",
+      "file": "frontend/static/js/views/diamond.js"
+    },
+    {
+      "id": "pulse-tickets-open",
+      "file": "frontend/static/js/views/diamond.js"
+    },
+    {
+      "id": "pulse-proposals-pending",
+      "file": "frontend/static/js/views/diamond.js"
+    },
+    {
+      "id": "pulse-consults",
+      "file": "frontend/static/js/views/diamond.js"
+    },
+    {
+      "id": "add-new-tile",
+      "file": "frontend/static/js/views/diamond.js"
     }
   ]
 }

@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 16:09*
+*Auto-generated: 2026-04-16 17:18*
 
 
 ## Python Modules
@@ -152,6 +152,7 @@
 | `conversations` | 9 | conversations.py — Conversations routes |
 | `debates` | 5 | debates.py — Debates routes |
 | `decisions` | 3 | decisions.py — Decisions & Timeline routes |
+| `diamond` | 3 | frontend/blueprints/diamond.py — Diamond Layer governance API. |
 | `docs` | 11 | docs.py — Docs & Project Files routes |
 | `email_bp` | 4 | blueprints/email_bp.py — Email tile API |
 | `exec_bp` | 4 | exec_bp.py — Ghost Exec routes |
@@ -185,6 +186,7 @@
 | `agents-config.js` | 9.1 KB |
 | `chat.js` | 226.6 KB |
 | `conversations.js` | 11.5 KB |
+| `diamond.js` | 8.4 KB |
 | `docs.js` | 28.4 KB |
 | `email.js` | 16.1 KB |
 | `files.js` | 36.9 KB |
@@ -193,7 +195,7 @@
 | `library.js` | 21.8 KB |
 | `localai.js` | 8.5 KB |
 | `memory.js` | 28.9 KB |
-| `monitor.js` | 18.7 KB |
+| `monitor.js` | 12.3 KB |
 | `ollama.js` | 4.1 KB |
 | `onboarding.js` | 13.6 KB |
 | `services.js` | 4.7 KB |
@@ -209,26 +211,26 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 19051 |
+| `activity_log` | 19148 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 55 |
+| `approval_tokens` | 58 |
 | `chat_jobs` | 224 |
 | `claude_log` | 1 |
-| `conv_timeline` | 11 |
-| `conversations` | 11 |
+| `conv_timeline` | 12 |
+| `conversations` | 12 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 986 |
+| `decisions` | 1006 |
 | `deferred_items` | 0 |
-| `duck_log` | 397 |
+| `duck_log` | 399 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1897 |
+| `ghost_circle` | 1899 |
 | `governance_log` | 0 |
 | `knowledge_chunks` | 353 |
 | `knowledge_sources` | 12 |
@@ -246,7 +248,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 26 |
+| `messages` | 28 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -255,7 +257,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 61 |
 | `proposal_attachments` | 0 |
-| `queue` | 695 |
+| `queue` | 699 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 162 |
@@ -272,14 +274,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5822 |
+| `system_stats` | 5835 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 151 |
-| `tickets` | 159 |
-| `time_checkpoints` | 896 |
-| `time_events` | 52152 |
-| `time_journal` | 50080 |
-| `time_machine` | 4426 |
+| `ticket_notes` | 153 |
+| `tickets` | 161 |
+| `time_checkpoints` | 913 |
+| `time_events` | 52550 |
+| `time_journal` | 50461 |
+| `time_machine` | 4439 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
