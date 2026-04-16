@@ -6,17 +6,30 @@
    gauge node grows / glows based on its metric.
    ────────────────────────────────────────────────────────────────────────── */
 
+/* ── Sundial SVG Icons (16×16, stroke currentColor — theme-aware) ─────────── */
+
+const SUNDIAL_ICONS = {
+  cpu:    '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4.5" y="4.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 4.5v-2m3 2v-2m-3 11v-2m3 2v-2M4.5 6.5h-2m2 3h-2m11-3h-2m2 3h-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  ram:    '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="5" width="12" height="6" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M5 5V3.5M8 5V3.5M11 5V3.5M4.5 7.5v1m3.5-1v1m3.5-1v1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  swap:   '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="4" width="10" height="3" rx=".8" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="9" width="10" height="3" rx=".8" stroke="currentColor" stroke-width="1.3"/><path d="M11.5 7l1 1-1 1M4.5 7l-1 1 1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  gpu:    '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="11" height="7" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M5 11v1.5m6-1.5v1.5M5.5 7h2m1 0h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="7.5" r=".6" fill="currentColor"/></svg>',
+  temp:   '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2.5v7.2a2.3 2.3 0 1 0 0 3.6V2.5a1.2 1.2 0 0 0-2.4 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10.2 4.5h1.5m-1.5 2h1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  disk:   '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="11" height="8" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 9h11" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="6.5" r=".6" fill="currentColor"/><circle cx="11" cy="10.5" r=".6" fill="currentColor"/></svg>',
+  agents: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  gov:    '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2.5l5 2.5v3c0 3-2.2 5-5 6-2.8-1-5-3-5-6v-3z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6.5 8l1 1 2.5-2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+
 /* ── Sundial Configuration ────────────────────────────────────────────────── */
 
 const SUNDIAL_METRICS = [
-  { key: 'cpu',    icon: '⚡', label: 'CPU',     tip: 'Processor load — how busy the CPU is right now' },
-  { key: 'ram',    icon: '🧠', label: 'RAM',     tip: 'Memory usage — allocated system memory' },
-  { key: 'swap',   icon: '💠', label: 'V-RAM',   tip: 'Virtual RAM — 128 GB SSD swap for bigger models' },
-  { key: 'gpu',    icon: '🎮', label: 'GPU',     tip: 'GPU VRAM — dedicated graphics memory for models' },
-  { key: 'temp',   icon: '🌡️', label: 'Temp',    tip: 'CPU temperature — thermal sensor reading' },
-  { key: 'disk',   icon: '💾', label: 'Disk',    tip: 'Primary disk utilisation — storage capacity' },
-  { key: 'agents', icon: '🤖', label: 'Members', tip: 'Active swarm members — enabled agents in roster' },
-  { key: 'gov',    icon: '🛡️', label: 'Gov',     tip: 'Governance — ALM pipeline enforcement via Vortex' },
+  { key: 'cpu',    label: 'CPU',     tip: 'Processor load — how busy the CPU is right now' },
+  { key: 'ram',    label: 'RAM',     tip: 'Memory usage — allocated system memory' },
+  { key: 'swap',   label: 'V-RAM',   tip: 'Virtual RAM — 128 GB SSD swap for bigger models' },
+  { key: 'gpu',    label: 'GPU',     tip: 'GPU VRAM — dedicated graphics memory for models' },
+  { key: 'temp',   label: 'Temp',    tip: 'CPU temperature — thermal sensor reading' },
+  { key: 'disk',   label: 'Disk',    tip: 'Primary disk utilisation — storage capacity' },
+  { key: 'agents', label: 'Members', tip: 'Active swarm members — enabled agents in roster' },
+  { key: 'gov',    label: 'Gov',     tip: 'Governance — ALM pipeline enforcement via Vortex' },
 ];
 
 /* ── Sundial Initialisation ───────────────────────────────────────────────── */
@@ -66,7 +79,7 @@ function _initSundial() {
     node.className = 'sundial-node';
     node.dataset.metric = m.key;
     node.dataset.health = 'ok';
-    node.innerHTML = '<span class="sundial-dot">' + m.icon + '</span><span class="sundial-val">\u2014</span>';
+    node.innerHTML = '<span class="sundial-dot">' + (SUNDIAL_ICONS[m.key] || '') + '</span><span class="sundial-val">\u2014</span>';
     node.style.left = nx + 'px';
     node.style.top  = ny + 'px';
     node.addEventListener('mouseenter', () => _showSundialTip(m, node));
@@ -98,12 +111,14 @@ function _showSundialTip(metric, node) {
   }
   const valEl  = node.querySelector('.sundial-val');
   const health = node.dataset.health;
-  const hLabel = health === 'crit' ? '🔴 Critical' : health === 'warn' ? '🟡 Warning' : '🟢 Normal';
+  const hLabel = health === 'crit' ? 'Critical' : health === 'warn' ? 'Warning' : 'Normal';
+  const hClass = 'stip-h-' + health;
+  const iconSvg = SUNDIAL_ICONS[metric.key] || '';
   tip.innerHTML =
-    '<div class="stip-header">' + metric.icon + ' ' + metric.label + '</div>' +
+    '<div class="stip-header"><span class="stip-icon">' + iconSvg + '</span> ' + metric.label + '</div>' +
     '<div class="stip-desc">' + metric.tip + '</div>' +
     '<div class="stip-val">' + (valEl ? valEl.textContent : '\u2014') + '</div>' +
-    '<div class="stip-health">' + hLabel + '</div>';
+    '<div class="stip-health ' + hClass + '"><span class="stip-dot"></span> ' + hLabel + '</div>';
   tip.style.display = 'block';
 
   const rect = node.getBoundingClientRect();
