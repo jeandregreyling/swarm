@@ -400,7 +400,7 @@ function terminalPinCommand(actionId) {
   const label = prompt('Shortcut label for this command:', suggested);
   if (label == null) return;
   const cleanLabel = String(label || '').trim() || suggested;
-  custom.push({ icon: '📌', label: cleanLabel, cmd });
+  custom.push({ icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M9.5 2.5l4 4-6 6H4v-3.5l6-6z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 10v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: cleanLabel, cmd });
   saveCustomTerminalShortcuts(custom);
 
   const terminalWin = winManager.windows.get('terminal');
@@ -479,13 +479,13 @@ function applyTerminalShortcutsState(win, collapsed) {
 }
 
 const DEFAULT_TERMINAL_SHORTCUTS = [
-  { icon: '🔁', label: 'Hard Boot Terminal', cmd: 'sudo systemctl restart swarm-terminal' },
-  { icon: '🎨', label: 'Theme Engine Check', cmd: 'head -n 80 /home/seven/swarm/themes/fridays.json' },
-  { icon: '📡', label: 'ALM Status', cmd: 'curl -s http://localhost:5050/api/alm/status' },
-  { icon: '💬', label: 'Restart Discord Bot', cmd: 'sudo systemctl restart swarm-discord' },
-  { icon: '📨', label: 'Restart Telegram Bot', cmd: 'sudo systemctl restart swarm-telegram' },
-  { icon: '✅', label: 'Terminal Service Status', cmd: 'systemctl status swarm-terminal' },
-  { icon: '🧠', label: 'System Memory', cmd: 'free -h' },
+  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2 4l4.5 4L2 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: 'Hard Boot Terminal', cmd: 'sudo systemctl restart swarm-terminal' },
+  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><circle cx="5" cy="11" r="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 8.5V3h6v2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: 'Theme Engine Check', cmd: 'head -n 80 /home/seven/swarm/themes/fridays.json' },
+  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M8 8v5M5 11h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: 'ALM Status', cmd: 'curl -s http://localhost:5050/api/alm/status' },
+  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2.5 3h11a1 1 0 011 1v6a1 1 0 01-1 1h-3l-3 2.5V11h-5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', label: 'Restart Discord Bot', cmd: 'sudo systemctl restart swarm-discord' },
+  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 3l5 5-5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 3v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: 'Restart Telegram Bot', cmd: 'sudo systemctl restart swarm-telegram' },
+  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3.5 8.5l3 3 6-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', label: 'Terminal Service Status', cmd: 'systemctl status swarm-terminal' },
+  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><rect x="2" y="5" width="12" height="7" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M4 8h3M9 8h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: 'System Memory', cmd: 'free -h' },
 ];
 
 // ── Terminal shortcuts (DB-backed) ───────────────────────────────────────────
@@ -648,7 +648,7 @@ function _scModalRenderList() {
     custom.forEach((item) => {
       sudoHtml += `
         <div style="${rowStyle}">
-          <span style="font-size:15px;min-width:24px;">🔐</span>
+          <span style="font-size:15px;min-width:24px;"> <svg viewBox="0 0 16 16" width="15" height="15" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M6 6h4M6 9h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="12" r="1" fill="currentColor"/></svg></span>
           <div style="flex:1;min-width:0;">
             <code style="display:block;color:var(--text);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(item.command || '')}</code>
             <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${_escHtml(item.note || 'custom sudo whitelist entry')}</div>
@@ -667,7 +667,7 @@ function _scModalRenderList() {
       .forEach((item) => {
         sudoHtml += `
           <div style="${rowStyle}">
-            <span style="font-size:15px;min-width:24px;">🧱</span>
+          <span style="font-size:15px;min-width:24px;"> <svg viewBox="0 0 16 16" width="15" height="15" fill="none"><rect x="2" y="2" width="5" height="5" rx="0.5" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="0.5" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="0.5" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="0.5" stroke="currentColor" stroke-width="1.3"/></svg></span>
             <div style="flex:1;min-width:0;">
               <code style="display:block;color:var(--text);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(item.command || '')}</code>
               <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${_escHtml(item.description || 'built-in rule')} · regex rule</div>

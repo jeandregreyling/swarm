@@ -219,7 +219,7 @@ function _initAddNewTile() {
   const tile = document.getElementById('add-new-tile');
   if (!tile) return;
   tile.addEventListener('click', () => {
-    if (typeof openWindow === 'function') openWindow('studio', '🎨 Studio', 'view-studio');
+    if (typeof openWindow === 'function') openWindow('studio', 'Studio', 'view-studio');
     setTimeout(() => {
       const btn = document.querySelector('#view-studio .proposal-new-btn, [onclick*="newProposal"]');
       if (btn) btn.click();
@@ -251,9 +251,9 @@ function _showTileContextMenu(e, card) {
   menu.id = 'tile-context-menu';
   menu.className = 'tile-ctx';
   menu.innerHTML =
-    '<div class="ctx-item" data-action="open" data-win-id="' + winId + '">📂 Open <strong>' + title + '</strong></div>' +
+    '<div class="ctx-item" data-action="open" data-win-id="' + winId + '"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;"><path d="M2 4.5h12M2 4.5v8a1 1 0 001 1h10a1 1 0 001-1v-8M6 2.5h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Open <strong>' + title + '</strong></div>' +
     '<div class="ctx-sep"></div>' +
-    '<div class="ctx-item ctx-danger" data-action="hide" data-win-id="' + winId + '">🙈 Hide tile</div>';
+    '<div class="ctx-item ctx-danger" data-action="hide" data-win-id="' + winId + '"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;"><path d="M2 8s2.5-4.5 6-4.5S14 8 14 8s-2.5 4.5-6 4.5S2 8 2 8z" stroke="currentColor" stroke-width="1.3"/><line x1="3" y1="13" x2="13" y2="3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Hide tile</div>';
 
   menu.style.left = e.clientX + 'px';
   menu.style.top  = e.clientY + 'px';

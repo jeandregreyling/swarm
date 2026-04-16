@@ -27,7 +27,7 @@ function loadTicketsData(win) {
         const stColor = st === 'open' ? '#4caf50' : st === 'in_progress' ? '#ffa500' : st === 'closed' ? '#888' : '#666';
         const stBg    = stColor + '22';
         const chBadge = ch ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--bg);color:var(--text-dim);margin-left:4px;">${_escHtml(ch.toUpperCase())}</span>` : '';
-        const notesBadge = notes > 0 ? `<span style="font-size:9px;color:var(--text-dim);">📝${notes}</span>` : '';
+        const notesBadge = notes > 0 ? `<span style="font-size:9px;color:var(--text-dim);"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" style="vertical-align:-1px;"><path d="M3 2h7l3 3v8a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3"/><path d="M5 8h6M5 11h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>${notes}</span>` : '';
         const numJs = JSON.stringify(num);
         return `<div class="ticket-row" data-ticket="${_escHtml(num)}" data-conv="${_escHtml(String(convId))}" style="background:var(--card);padding:12px;border-radius:4px;margin-bottom:6px;border-left:3px solid ${stColor};cursor:pointer;" onclick='openTicketDetail(${numJs})'>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
@@ -93,7 +93,7 @@ function deleteTicketWithConfirm(ticketNumber, btnEl) {
         if (typeof showToast === 'function') showToast('Delete failed: ' + e.message, 'error');
         btnEl.disabled = false;
         btnEl.dataset.confirming = '';
-        btnEl.innerHTML = '🗑 Delete';
+        btnEl.innerHTML = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4l.5 9a1 1 0 001 1h4a1 1 0 001-1l.5-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete';
         btnEl.style.background = '#f443361a';
         btnEl.style.borderColor = '#f4433644';
         btnEl.style.color = '#f44336';
@@ -109,7 +109,7 @@ function deleteTicketWithConfirm(ticketNumber, btnEl) {
     setTimeout(() => {
       if (btnEl.dataset.confirming === '1') {
         btnEl.dataset.confirming = '';
-        btnEl.innerHTML = '🗑 Delete';
+        btnEl.innerHTML = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4l.5 9a1 1 0 001 1h4a1 1 0 001-1l.5-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete';
         btnEl.style.background = '#f443361a';
         btnEl.style.borderColor = '#f4433644';
         btnEl.style.color = '#f44336';
