@@ -11,8 +11,9 @@
 const SUNDIAL_METRICS = [
   { key: 'cpu',    icon: '⚡', label: 'CPU',     tip: 'Processor load — how busy the CPU is right now' },
   { key: 'ram',    icon: '🧠', label: 'RAM',     tip: 'Memory usage — allocated system memory' },
+  { key: 'swap',   icon: '💠', label: 'V-RAM',   tip: 'Virtual RAM — 128 GB SSD swap for bigger models' },
+  { key: 'gpu',    icon: '🎮', label: 'GPU',     tip: 'GPU VRAM — dedicated graphics memory for models' },
   { key: 'temp',   icon: '🌡️', label: 'Temp',    tip: 'CPU temperature — thermal sensor reading' },
-  { key: 'queue',  icon: '📥', label: 'Queue',   tip: 'Task queue depth — pending items for members' },
   { key: 'disk',   icon: '💾', label: 'Disk',    tip: 'Primary disk utilisation — storage capacity' },
   { key: 'agents', icon: '🤖', label: 'Members', tip: 'Active swarm members — enabled agents in roster' },
   { key: 'gov',    icon: '🛡️', label: 'Gov',     tip: 'Governance — ALM pipeline enforcement via Vortex' },
@@ -140,8 +141,9 @@ function _updateSundial(d) {
   const metrics = {
     cpu:    { display: s.cpu_percent != null ? s.cpu_percent + '%' : '\u2014',      health: _healthLevel(s.cpu_percent, 60, 80) },
     ram:    { display: s.ram_percent != null ? s.ram_percent + '%' : '\u2014',      health: _healthLevel(s.ram_percent, 70, 85) },
+    swap:   { display: s.swap_percent != null ? s.swap_percent + '%' : '\u2014',    health: _healthLevel(s.swap_percent, 60, 85) },
+    gpu:    { display: s.gpu_vram_percent != null ? s.gpu_vram_percent + '%' : 'N/A', health: s.gpu_vram_percent != null ? _healthLevel(s.gpu_vram_percent, 70, 90) : 'ok' },
     temp:   { display: s.cpu_temp_c  != null ? s.cpu_temp_c + '°C' : '\u2014',     health: _healthLevel(s.cpu_temp_c, 65, 80) },
-    queue:  { display: q.depth       != null ? String(q.depth) : '\u2014',          health: q.depth > 10 ? 'crit' : q.depth > 3 ? 'warn' : 'ok' },
     disk:   { display: mainDisk.percent != null ? mainDisk.percent + '%' : '\u2014', health: _healthLevel(mainDisk.percent, 70, 90) },
     agents: { display: a.enabled     != null ? a.enabled + '/' + a.total : '\u2014', health: 'ok' },
     gov:    { display: g.alm_status || '\u2014',                                     health: g.alm_status === 'enforced' ? 'ok' : g.alm_status === 'standby' ? 'ok' : 'warn' },
