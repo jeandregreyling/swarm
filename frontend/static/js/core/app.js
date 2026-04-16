@@ -143,9 +143,137 @@ function initHomeCardReorder() {
     grid.dataset.reorderBound = '1';
     
     _restoreQuickCardOrder(grid);
-    
-    // Your full drag-and-drop logic can go here (kept minimal for stability)
-    console.log('[App] initHomeCardReorder ready');
+    _initDragAndDrop(grid);
+    console.log('[App] initHomeCardReorder ready — drag enabled');
+}
+
+function _initDragAndDrop(grid) {
+    let dragged = null;       // the card being moved
+    let placeholder = null;   // visual gap marker
+    let startX = 0, startY = 0;
+    let offsetX = 0, offsetY = 0;
+    let hasMoved = false;
+
+    // Mark all cards as draggable
+    grid.querySelectorAll('.home-card').forEach(c => {
+        if (!c.classList.contains('home-card-add')) c.classList.add('drag-ready');
+    });
+
+    grid.addEventListener('pointerdown', (e) => {
+        const card = e.target.closest('.home-card');
+        if (!card || card.classList.contains('home-card-add')) return;
+        if (e.button !== 0) return; // left click only
+
+        dragged = card;
+        hasMoved = false;
+        const rect = card.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+
+        // Delay activation until actual movement (so clicks still work)
+        const onMove = (ev) => {
+            const dx = Math.abs(ev.clientX - startX);
+            const dy = Math.abs(ev.clientY - startY);
+            if (dx < 5 && dy < 5) return; // dead zone for taps
+
+            if (!hasMoved) {
+                hasMoved = true;
+                _startDrag(card, rect);
+            }
+            _moveDrag(ev);
+        };
+
+        const onUp = () => {
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+            if (hasMoved) _endDrag();
+            dragged = null;
+        };
+
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+    });
+
+    function _startDrag(card, rect) {
+        card.classList.add('drag-active');
+        card.style.position = 'fixed';
+        card.style.zIndex = '9999';
+        card.style.width = rect.width + 'px';
+        card.style.height = rect.height + 'px';
+        card.style.left = rect.left + 'px';
+        card.style.top = rect.top + 'px';
+        card.style.pointerEvents = 'none';
+        card.style.transition = 'none';
+
+        // Create placeholder
+        placeholder = document.createElement('div');
+        placeholder.className = 'drag-placeholder';
+        placeholder.style.width = rect.width + 'px';
+        placeholder.style.height = rect.height + 'px';
+        card.parentNode.insertBefore(placeholder, card);
+    }
+
+    function _moveDrag(ev) {
+        if (!dragged) return;
+        dragged.style.left = (ev.clientX - offsetX) + 'px';
+        dragged.style.top  = (ev.clientY - offsetY) + 'px';
+
+        // Find which card we're hovering over
+        const cards = Array.from(grid.querySelectorAll('.home-card:not(.drag-active):not(.home-card-add)'));
+        let closest = null, closestDist = Infinity;
+        for (const c of cards) {
+            const r = c.getBoundingClientRect();
+            const cx = r.left + r.width / 2;
+            const cy = r.top + r.height / 2;
+            const dist = Math.hypot(ev.clientX - cx, ev.clientY - cy);
+            if (dist < closestDist) {
+                closestDist = dist;
+                closest = c;
+            }
+        }
+        if (closest && placeholder) {
+            const r = closest.getBoundingClientRect();
+            const after = ev.clientX > r.left + r.width / 2;
+            if (after) {
+                closest.parentNode.insertBefore(placeholder, closest.nextSibling);
+            } else {
+                closest.parentNode.insertBefore(placeholder, closest);
+            }
+        }
+    }
+
+    function _endDrag() {
+        if (!dragged) return;
+        dragged.classList.remove('drag-active');
+        dragged.style.position = '';
+        dragged.style.zIndex = '';
+        dragged.style.width = '';
+        dragged.style.height = '';
+        dragged.style.left = '';
+        dragged.style.top = '';
+        dragged.style.pointerEvents = '';
+        dragged.style.transition = '';
+
+        // Drop card at placeholder position
+        if (placeholder && placeholder.parentNode) {
+            placeholder.parentNode.insertBefore(dragged, placeholder);
+            placeholder.remove();
+        }
+        placeholder = null;
+
+        // Save new order
+        _saveCardOrder(grid);
+    }
+}
+
+function _saveCardOrder(grid) {
+    const order = Array.from(grid.querySelectorAll('.home-card[data-win-id]'))
+        .map(c => c.dataset.winId);
+    try {
+        localStorage.setItem(QUICK_CARD_ORDER_KEY, JSON.stringify(order));
+    } catch (_) {}
 }
 
 function _restoreQuickCardOrder(grid) {
