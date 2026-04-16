@@ -169,8 +169,8 @@ def api_manager_onboard():
 
 
 
-@auth_bp.route('/api/skills')
-def api_skills():
+@auth_bp.route('/api/skills/available')
+def api_skills_available():
     from fridays.skills import list_skills
     return jsonify(list_skills())
 
