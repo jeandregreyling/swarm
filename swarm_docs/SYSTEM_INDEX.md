@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 08:54*
+*Auto-generated: 2026-04-16 16:09*
 
 
 ## Python Modules
@@ -118,8 +118,10 @@
 | `lib/email/gmail_auth.py` | gmail_auth.py — Seven's Swarm |
 | `lib/email/gmail_push.py` | gmail_push.py — Seven's Swarm |
 | `lib/knowledge/__init__.py` | — |
+| `lib/knowledge/categories.py` | lib/knowledge/categories.py — Knowledge Library category tree. |
 | `lib/knowledge/ingest.py` | lib/knowledge/ingest.py — Text chunking and Ollama embedding pipeline. |
 | `lib/knowledge/retrieval.py` | lib/knowledge/retrieval.py — Semantic search over embedded knowledge chunks. |
+| `lib/knowledge/seed.py` | lib/knowledge/seed.py — Built-in knowledge documents for the Library. |
 | `lib/knowledge/sources/__init__.py` | — |
 | `lib/knowledge/sources/email_parser.py` | lib/knowledge/sources/email_parser.py — Extract structured text from emails. |
 | `lib/knowledge/sources/pdf_parser.py` | lib/knowledge/sources/pdf_parser.py — Extract text from PDF files. |
@@ -157,7 +159,7 @@
 | `kb` | 7 | kb.py — Knowledge Base routes |
 | `killswitch` | 6 | killswitch.py — Kill Switches routes |
 | `legacy` | 3 | legacy.py — Legacy Pipeline & Approval routes |
-| `library` | 8 | frontend/blueprints/library.py — Knowledge Library API routes. |
+| `library` | 11 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
 | `memory` | 8 | memory.py — Memory routes |
 | `metrics` | 2 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
@@ -188,7 +190,7 @@
 | `files.js` | 36.9 KB |
 | `fridays.js` | 7.0 KB |
 | `git.js` | 22.5 KB |
-| `library.js` | 16.4 KB |
+| `library.js` | 21.8 KB |
 | `localai.js` | 8.5 KB |
 | `memory.js` | 28.9 KB |
 | `monitor.js` | 18.7 KB |
@@ -207,35 +209,35 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 18645 |
+| `activity_log` | 19051 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 52 |
+| `approval_tokens` | 55 |
 | `chat_jobs` | 224 |
 | `claude_log` | 1 |
-| `conv_timeline` | 10 |
-| `conversations` | 10 |
+| `conv_timeline` | 11 |
+| `conversations` | 11 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 964 |
+| `decisions` | 986 |
 | `deferred_items` | 0 |
-| `duck_log` | 394 |
+| `duck_log` | 397 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1895 |
+| `ghost_circle` | 1897 |
 | `governance_log` | 0 |
 | `knowledge_chunks` | 353 |
 | `knowledge_sources` | 12 |
-| `memory` | 2 |
+| `memory` | 4 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 1 |
+| `memory_gemma` | 2 |
 | `memory_grok` | 0 |
 | `memory_llama` | 1 |
-| `memory_mistral` | 1 |
+| `memory_mistral` | 2 |
 | `memory_nine` | 0 |
 | `memory_qwen` | 0 |
 | `memory_scholar` | 0 |
@@ -244,7 +246,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 21 |
+| `messages` | 26 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -253,7 +255,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 61 |
 | `proposal_attachments` | 0 |
-| `queue` | 691 |
+| `queue` | 695 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 162 |
@@ -270,14 +272,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5735 |
+| `system_stats` | 5822 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 149 |
-| `tickets` | 157 |
-| `time_checkpoints` | 877 |
-| `time_events` | 49710 |
-| `time_journal` | 47658 |
-| `time_machine` | 4411 |
+| `ticket_notes` | 151 |
+| `tickets` | 159 |
+| `time_checkpoints` | 896 |
+| `time_events` | 52152 |
+| `time_journal` | 50080 |
+| `time_machine` | 4426 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
