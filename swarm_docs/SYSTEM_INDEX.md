@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 20:27*
+*Auto-generated: 2026-04-16 20:40*
 
 
 ## Python Modules
@@ -186,7 +186,7 @@
 | `agents-config.js` | 9.1 KB |
 | `chat.js` | 226.6 KB |
 | `conversations.js` | 11.5 KB |
-| `diamond.js` | 16.5 KB |
+| `diamond.js` | 19.2 KB |
 | `docs.js` | 28.4 KB |
 | `email.js` | 16.1 KB |
 | `files.js` | 36.9 KB |
@@ -211,26 +211,26 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 19625 |
+| `activity_log` | 19678 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 79 |
+| `approval_tokens` | 82 |
 | `chat_jobs` | 224 |
 | `claude_log` | 1 |
-| `conv_timeline` | 19 |
-| `conversations` | 19 |
+| `conv_timeline` | 20 |
+| `conversations` | 20 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1143 |
+| `decisions` | 1163 |
 | `deferred_items` | 0 |
-| `duck_log` | 416 |
+| `duck_log` | 418 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1913 |
+| `ghost_circle` | 1915 |
 | `governance_log` | 2 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
@@ -248,7 +248,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 40 |
+| `messages` | 42 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -257,7 +257,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 61 |
 | `proposal_attachments` | 0 |
-| `queue` | 730 |
+| `queue` | 734 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 162 |
@@ -274,14 +274,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5871 |
+| `system_stats` | 5874 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 170 |
-| `tickets` | 178 |
-| `time_checkpoints` | 1033 |
-| `time_events` | 53647 |
-| `time_journal` | 51428 |
-| `time_machine` | 4475 |
+| `ticket_notes` | 172 |
+| `tickets` | 180 |
+| `time_checkpoints` | 1050 |
+| `time_events` | 53738 |
+| `time_journal` | 51502 |
+| `time_machine` | 4481 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
