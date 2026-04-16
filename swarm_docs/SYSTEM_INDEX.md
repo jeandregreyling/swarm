@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-17 07:49*
+*Auto-generated: 2026-04-17 08:40*
 
 
 ## Python Modules
@@ -145,8 +145,9 @@
 | Blueprint | Routes | Description |
 |-----------|--------|-------------|
 | `agent_api` | 10 | agent_api.py — Agent Self-Service API routes |
-| `agents` | 27 | — |
+| `agents` | 28 | — |
 | `auth` | 12 | auth.py — Auth & Senders routes |
+| `auto_audit` | 2 | auto_audit.py — Periodic self-audit: pytest + basic lint checks. |
 | `brief` | 3 | brief.py — Ghost Brief routes |
 | `chat` | 4 | chat.py — Chat Engine routes |
 | `conversations` | 9 | conversations.py — Conversations routes |
@@ -154,9 +155,10 @@
 | `decisions` | 3 | decisions.py — Decisions & Timeline routes |
 | `diamond` | 3 | frontend/blueprints/diamond.py — Diamond Layer governance API. |
 | `docs` | 11 | docs.py — Docs & Project Files routes |
-| `email_bp` | 4 | blueprints/email_bp.py — Email tile API |
+| `email_bp` | 5 | blueprints/email_bp.py — Email tile API |
 | `exec_bp` | 4 | exec_bp.py — Ghost Exec routes |
-| `git` | 5 | git.py — Git Operations routes |
+| `git` | 6 | git.py — Git Operations routes |
+| `idle_mgmt_bp` | 3 | idle_mgmt_bp.py — Idle-time self-management (Tier 4.5). |
 | `kb` | 7 | kb.py — Knowledge Base routes |
 | `killswitch` | 6 | killswitch.py — Kill Switches routes |
 | `legacy` | 3 | legacy.py — Legacy Pipeline & Approval routes |
@@ -168,6 +170,8 @@
 | `node` | 11 | frontend/blueprints/node.py — Node registration + federation endpoints (A.4.5 + A.5) |
 | `ollama` | 4 | ollama.py — Ollama Models routes |
 | `onboarding` | 2 | frontend/blueprints/onboarding.py — Onboarding wizard API |
+| `patterns_bp` | 2 | patterns_bp.py — Pattern learning API (Tier 4.2). |
+| `personality_bp` | 4 | personality_bp.py — Agent personality + diary system (Tier 4.4). |
 | `proposals` | 22 | — |
 | `research` | 5 | frontend/blueprints/research.py — Research API (B.4.1) |
 | `shell` | 17 | shell.py — Shell & Terminal routes |
@@ -176,6 +180,7 @@
 | `tickets` | 11 | tickets.py — Tickets routes |
 | `time_wizard_bp` | 10 | time_wizard_bp.py — Time Wizard routes |
 | `tools` | 7 | frontend/blueprints/tools.py — Tool Build API (C.4.1) |
+| `vpn_bp` | 1 | vpn_bp.py — Tailscale / VPN status API for Fridays terminal. |
 | `weather_bp` | 1 | weather_bp.py — Lightweight weather proxy for world clocks. |
 | `workspace` | 10 | workspace.py — Workspace & Code Ops routes |
 
@@ -189,10 +194,11 @@
 | `conversations.js` | 12.0 KB |
 | `diamond.js` | 19.7 KB |
 | `docs.js` | 30.2 KB |
-| `email.js` | 17.7 KB |
+| `email.js` | 22.4 KB |
 | `files.js` | 40.7 KB |
 | `fridays.js` | 7.0 KB |
-| `git.js` | 23.0 KB |
+| `git.js` | 23.7 KB |
+| `knowledge.js` | 3.6 KB |
 | `library.js` | 22.0 KB |
 | `localai.js` | 8.5 KB |
 | `memory-landscape.js` | 9.6 KB |
@@ -201,44 +207,45 @@
 | `ollama.js` | 4.1 KB |
 | `onboarding.js` | 16.2 KB |
 | `services.js` | 4.7 KB |
-| `skills.js` | 22.4 KB |
+| `skills.js` | 25.2 KB |
 | `studio.js` | 84.3 KB |
 | `terminal-commands.js` | 13.0 KB |
 | `terminal.js` | 40.8 KB |
 | `tickets.js` | 6.7 KB |
 | `time-wizard.js` | 36.1 KB |
 | `trace.js` | 17.5 KB |
+| `vpn.js` | 4.2 KB |
 
 ## Database Tables
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 20566 |
+| `activity_log` | 20609 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 124 |
-| `chat_jobs` | 241 |
+| `approval_tokens` | 127 |
+| `chat_jobs` | 242 |
 | `claude_log` | 1 |
-| `conv_timeline` | 57 |
-| `conversations` | 15 |
+| `conv_timeline` | 60 |
+| `conversations` | 16 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1480 |
+| `decisions` | 1501 |
 | `deferred_items` | 0 |
-| `duck_log` | 451 |
+| `duck_log` | 453 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2107 |
-| `governance_log` | 31 |
+| `ghost_circle` | 2121 |
+| `governance_log` | 33 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
 | `memory` | 2 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 8 |
+| `memory_gemma` | 9 |
 | `memory_grok` | 0 |
 | `memory_llama` | 2 |
 | `memory_mistral` | 3 |
@@ -250,7 +257,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 252 |
+| `messages` | 270 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -259,10 +266,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 828 |
+| `queue` | 834 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 190 |
+| `sandpit_log` | 192 |
 | `scheduled_tasks` | 2 |
 | `skills` | 38 |
 | `sniffer_log` | 232 |
@@ -270,7 +277,7 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 58 |
 | `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 31 |
+| `swarm_bus` | 33 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
@@ -278,19 +285,19 @@
 | `swarm_nodes` | 0 |
 | `system_stats` | 5913 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 205 |
-| `tickets` | 213 |
-| `time_checkpoints` | 1342 |
-| `time_events` | 57820 |
-| `time_journal` | 55256 |
-| `time_machine` | 4622 |
+| `ticket_notes` | 207 |
+| `tickets` | 215 |
+| `time_checkpoints` | 1359 |
+| `time_events` | 58106 |
+| `time_journal` | 55525 |
+| `time_machine` | 4644 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 30 |
+| `work_proposals` | 32 |
 
 ## Agents
 

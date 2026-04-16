@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-17 07:49",
+  "generated_at": "2026-04-17 08:40",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -780,9 +780,15 @@
           "methods": [
             "POST"
           ]
+        },
+        {
+          "path": "/api/agents/<name>/self",
+          "methods": [
+            "GET"
+          ]
         }
       ],
-      "route_count": 27
+      "route_count": 28
     },
     {
       "name": "auth",
@@ -862,6 +868,25 @@
         }
       ],
       "route_count": 12
+    },
+    {
+      "name": "auto_audit",
+      "description": "auto_audit.py \u2014 Periodic self-audit: pytest + basic lint checks.",
+      "routes": [
+        {
+          "path": "/api/audit/latest",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/audit/run",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 2
     },
     {
       "name": "brief",
@@ -1167,9 +1192,15 @@
           "methods": [
             "GET"
           ]
+        },
+        {
+          "path": "/api/email/send",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 4
+      "route_count": 5
     },
     {
       "name": "exec_bp",
@@ -1207,6 +1238,12 @@
       "description": "git.py \u2014 Git Operations routes",
       "routes": [
         {
+          "path": "/api/git/environments",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
           "path": "/api/git/status",
           "methods": [
             "GET"
@@ -1237,7 +1274,32 @@
           ]
         }
       ],
-      "route_count": 5
+      "route_count": 6
+    },
+    {
+      "name": "idle_mgmt_bp",
+      "description": "idle_mgmt_bp.py \u2014 Idle-time self-management (Tier 4.5).",
+      "routes": [
+        {
+          "path": "/api/agents/idle",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/idle/claim",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/queue/depth",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 3
     },
     {
       "name": "kb",
@@ -1693,6 +1755,56 @@
         }
       ],
       "route_count": 2
+    },
+    {
+      "name": "patterns_bp",
+      "description": "patterns_bp.py \u2014 Pattern learning API (Tier 4.2).",
+      "routes": [
+        {
+          "path": "/api/patterns",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/patterns/summary",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 2
+    },
+    {
+      "name": "personality_bp",
+      "description": "personality_bp.py \u2014 Agent personality + diary system (Tier 4.4).",
+      "routes": [
+        {
+          "path": "/api/agents/<agent_name>/personality",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/<agent_name>/personality",
+          "methods": [
+            "PUT"
+          ]
+        },
+        {
+          "path": "/api/agents/<agent_name>/diary",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/agents/<agent_name>/diary",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 4
     },
     {
       "name": "proposals",
@@ -2292,6 +2404,19 @@
       "route_count": 7
     },
     {
+      "name": "vpn_bp",
+      "description": "vpn_bp.py \u2014 Tailscale / VPN status API for Fridays terminal.",
+      "routes": [
+        {
+          "path": "/api/vpn/status",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 1
+    },
+    {
       "name": "weather_bp",
       "description": "weather_bp.py \u2014 Lightweight weather proxy for world clocks.",
       "routes": [
@@ -2399,7 +2524,7 @@
     },
     {
       "name": "email.js",
-      "size_kb": 17.7
+      "size_kb": 22.4
     },
     {
       "name": "files.js",
@@ -2411,7 +2536,11 @@
     },
     {
       "name": "git.js",
-      "size_kb": 23.0
+      "size_kb": 23.7
+    },
+    {
+      "name": "knowledge.js",
+      "size_kb": 3.6
     },
     {
       "name": "library.js",
@@ -2447,7 +2576,7 @@
     },
     {
       "name": "skills.js",
-      "size_kb": 22.4
+      "size_kb": 25.2
     },
     {
       "name": "studio.js",
@@ -2472,12 +2601,16 @@
     {
       "name": "trace.js",
       "size_kb": 17.5
+    },
+    {
+      "name": "vpn.js",
+      "size_kb": 4.2
     }
   ],
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 20566
+      "rows": 20609
     },
     {
       "name": "agent_capabilities",
@@ -2493,11 +2626,11 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 124
+      "rows": 127
     },
     {
       "name": "chat_jobs",
-      "rows": 241
+      "rows": 242
     },
     {
       "name": "claude_log",
@@ -2505,11 +2638,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 57
+      "rows": 60
     },
     {
       "name": "conversations",
-      "rows": 15
+      "rows": 16
     },
     {
       "name": "daily_checkpoint",
@@ -2529,7 +2662,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1480
+      "rows": 1501
     },
     {
       "name": "deferred_items",
@@ -2537,7 +2670,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 451
+      "rows": 453
     },
     {
       "name": "file_versions",
@@ -2553,11 +2686,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2107
+      "rows": 2121
     },
     {
       "name": "governance_log",
-      "rows": 31
+      "rows": 33
     },
     {
       "name": "knowledge_chunks",
@@ -2577,7 +2710,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 8
+      "rows": 9
     },
     {
       "name": "memory_grok",
@@ -2625,7 +2758,7 @@
     },
     {
       "name": "messages",
-      "rows": 252
+      "rows": 270
     },
     {
       "name": "moderators",
@@ -2661,7 +2794,7 @@
     },
     {
       "name": "queue",
-      "rows": 828
+      "rows": 834
     },
     {
       "name": "research_evidence",
@@ -2673,7 +2806,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 190
+      "rows": 192
     },
     {
       "name": "scheduled_tasks",
@@ -2705,7 +2838,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 31
+      "rows": 33
     },
     {
       "name": "swarm_event_acks",
@@ -2737,27 +2870,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 205
+      "rows": 207
     },
     {
       "name": "tickets",
-      "rows": 213
+      "rows": 215
     },
     {
       "name": "time_checkpoints",
-      "rows": 1342
+      "rows": 1359
     },
     {
       "name": "time_events",
-      "rows": 57820
+      "rows": 58106
     },
     {
       "name": "time_journal",
-      "rows": 55256
+      "rows": 55525
     },
     {
       "name": "time_machine",
-      "rows": 4622
+      "rows": 4644
     },
     {
       "name": "tool_builds",
@@ -2785,7 +2918,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 30
+      "rows": 32
     }
   ],
   "agents": [
@@ -3478,6 +3611,30 @@
       "file": "frontend/static/js/views/memory.js"
     },
     {
+      "id": "kn-panel-files",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "view-files",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "kn-panel-docs",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "view-docs",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "kn-panel-library",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "view-library",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
       "id": "docs-content",
       "file": "frontend/static/js/views/docs.js"
     },
@@ -3627,6 +3784,30 @@
     },
     {
       "id": "email-thread-panel",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
+      "id": "email-compose-drawer",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
+      "id": "email-compose-from",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
+      "id": "email-compose-to",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
+      "id": "email-compose-subject",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
+      "id": "email-compose-body",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
+      "id": "email-compose-send-btn",
       "file": "frontend/static/js/views/email.js"
     },
     {
