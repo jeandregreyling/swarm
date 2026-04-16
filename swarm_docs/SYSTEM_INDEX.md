@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-16 23:26*
+*Auto-generated: 2026-04-16 23:56*
 
 
 ## Python Modules
@@ -211,27 +211,27 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 20077 |
+| `activity_log` | 20148 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 97 |
-| `chat_jobs` | 231 |
+| `approval_tokens` | 100 |
+| `chat_jobs` | 232 |
 | `claude_log` | 1 |
-| `conv_timeline` | 31 |
-| `conversations` | 4 |
+| `conv_timeline` | 33 |
+| `conversations` | 5 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1263 |
+| `decisions` | 1283 |
 | `deferred_items` | 0 |
-| `duck_log` | 428 |
+| `duck_log` | 431 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 1955 |
-| `governance_log` | 8 |
+| `ghost_circle` | 1967 |
+| `governance_log` | 10 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
 | `memory` | 2 |
@@ -248,7 +248,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 62 |
+| `messages` | 78 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -257,10 +257,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 760 |
+| `queue` | 767 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 168 |
+| `sandpit_log` | 170 |
 | `scheduled_tasks` | 2 |
 | `skills` | 38 |
 | `sniffer_log` | 232 |
@@ -268,27 +268,27 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 58 |
 | `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 8 |
+| `swarm_bus` | 10 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5907 |
+| `system_stats` | 5913 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 182 |
-| `tickets` | 190 |
-| `time_checkpoints` | 1144 |
-| `time_events` | 54846 |
-| `time_journal` | 52480 |
-| `time_machine` | 4572 |
+| `ticket_notes` | 185 |
+| `tickets` | 193 |
+| `time_checkpoints` | 1164 |
+| `time_events` | 55124 |
+| `time_journal` | 52738 |
+| `time_machine` | 4579 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 7 |
+| `work_proposals` | 9 |
 
 ## Agents
 

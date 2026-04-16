@@ -146,14 +146,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ctrl+T — Open Tickets
     if ((e.ctrlKey || e.metaKey) && e.key === 't' && !isInput) {
       e.preventDefault();
-      if (typeof openWindow === 'function') openWindow('tickets', '🎫 Tickets', 'view-tickets');
+      if (typeof openWindow === 'function') openWindow('tickets', 'Tickets', 'view-tickets');
       return;
     }
 
     // Ctrl+P — Open Studio (proposals)
     if ((e.ctrlKey || e.metaKey) && e.key === 'p' && !isInput) {
       e.preventDefault();
-      if (typeof openWindow === 'function') openWindow('studio', '🎨 Studio', 'view-studio');
+      if (typeof openWindow === 'function') openWindow('studio', 'Studio', 'view-studio');
       return;
     }
 
@@ -163,11 +163,53 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof goHome === 'function') goHome();
       return;
     }
-    
+
+    // Ctrl+J — Open Chat
+    if ((e.ctrlKey || e.metaKey) && e.key === 'j' && !isInput) {
+      e.preventDefault();
+      if (typeof openWindow === 'function') openWindow('chat', 'Chat', 'view-chat');
+      return;
+    }
+
+    // Ctrl+G — Open Git
+    if ((e.ctrlKey || e.metaKey) && e.key === 'g' && !isInput) {
+      e.preventDefault();
+      if (typeof openWindow === 'function') openWindow('git', 'Git', 'view-git');
+      return;
+    }
+
+    // Ctrl+E — Open Email
+    if ((e.ctrlKey || e.metaKey) && e.key === 'e' && !isInput) {
+      e.preventDefault();
+      if (typeof openWindow === 'function') openWindow('email', 'Email', 'view-email');
+      return;
+    }
+
+    // Ctrl+B — Open Library
+    if ((e.ctrlKey || e.metaKey) && e.key === 'b' && !isInput) {
+      e.preventDefault();
+      if (typeof openWindow === 'function') openWindow('library', 'Library', 'view-library');
+      return;
+    }
+
+    // ? — Show keyboard shortcuts help (only when not in input)
+    if (e.key === '?' && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      const modal = document.getElementById('shortcuts-help-modal');
+      if (modal) modal.classList.toggle('open');
+      return;
+    }
+
     // ESC invariant: close top overlay first, else close top window.
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
+      // Close shortcuts help modal first
+      const shortcutsModal = document.getElementById('shortcuts-help-modal');
+      if (shortcutsModal?.classList.contains('open')) {
+        shortcutsModal.classList.remove('open');
+        return;
+      }
       if (closeTopModal()) return;
       if (closeTopWindow()) return;
       const palette = document.getElementById('command-palette');
@@ -184,20 +226,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const results = document.getElementById('command-palette-results');
     
     const commands = [
-      { label: 'Chat', onclick: 'openWindow("chat", "Chat", "view-chat")', hint: '' },
+      { label: 'Chat', onclick: 'openWindow("chat", "Chat", "view-chat")', hint: 'Ctrl+J' },
       { label: 'Terminal', onclick: 'openWindow("terminal", "Terminal", "view-terminal")', hint: '' },
         { label: 'Files', onclick: 'openWindow("files", "Files", "view-files")', hint: '' },
-      { label: 'Git', onclick: 'openWindow("git", "Git", "view-git")', hint: '' },
+      { label: 'Git', onclick: 'openWindow("git", "Git", "view-git")', hint: 'Ctrl+G' },
       { label: 'Memory', onclick: 'openWindow("memory", "Memory", "view-memory")', hint: '' },
       { label: 'Monitor', onclick: 'openWindow("monitor", "Monitor", "view-monitor")', hint: '' },
       { label: 'Documents', onclick: 'openWindow("docs", "Documents", "view-docs")', hint: '' },
       { label: 'Skills', onclick: 'openWindow("skills", "Skills", "view-skills")', hint: '' },
       { label: 'Tickets', onclick: 'openWindow("tickets", "Tickets", "view-tickets")', hint: 'Ctrl+T' },
       { label: 'Studio', onclick: 'openWindow("studio", "Studio", "view-studio")', hint: 'Ctrl+P' },
-      { label: 'Email', onclick: 'openWindow("email", "📧 Email", "view-email")', hint: '' },
-      { label: 'Vortex', onclick: 'openWindow("time-wizard", "🌀 Vortex", "view-time-wizard")', hint: '' },
-      { label: 'Ghost Brief', onclick: 'openWindow("ghost-brief", "📋 Ghost Brief", "view-ghost-brief")', hint: '' },
-      { label: 'Feeds', onclick: 'openWindow("feeds", "📡 Feeds", "view-feeds")', hint: '' },
+      { label: 'Email', onclick: 'openWindow("email", "Email", "view-email")', hint: 'Ctrl+E' },
+      { label: 'Library', onclick: 'openWindow("library", "Library", "view-library")', hint: 'Ctrl+B' },
+      { label: 'Vortex', onclick: 'openWindow("time-wizard", "Vortex", "view-time-wizard")', hint: '' },
+      { label: 'Feeds', onclick: 'openWindow("feeds", "Feeds", "view-feeds")', hint: '' },
       { label: 'Home', onclick: 'goHome()', hint: 'Ctrl+H' },
     ];
     
