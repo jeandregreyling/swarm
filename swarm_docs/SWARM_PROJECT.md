@@ -8,7 +8,7 @@
 **Owner:** Seven  
 **Primary Builder:** Agent 12 (Claude / Copilot)  
 **Created:** 16 April 2026  
-**Last Updated:** 16 April 2026  
+**Last Updated:** 17 April 2026  
 
 ---
 
@@ -16,19 +16,23 @@
 
 | Field | Value |
 |-------|-------|
-| **Active Phase** | Phase 6.0 — Standalone App Build (Tier 1 features next) |
-| **Last Session** | 16 April 2026 (evening) — Housekeeping, API smoke tests, registry bug fix |
-| **Next Action** | Tier 1 builds: Library constellation, Memory landscape, Vortex timeline |
-| **Test Baseline** | 398 passed, 1 skipped |
-| **Environments** | PROD (master), UAT, DEV — all synced as of 16 April 2026 |
+| **Active Phase** | Phase 6.0 — Standalone App Build (Tier 2–4 features next) |
+| **Last Session** | 17 April 2026 — 6-hour autonomy build: 8 tiers completed, health sweep |
+| **Next Action** | Tier 1.1 Library constellation, Tier 2.2 Skills drag-drop, Tier 4.x self-improvement |
+| **Test Baseline** | 399 passed, 1 skipped |
+| **Environments** | PROD (master :5050), UAT, DEV (:5051) — all synced as of 17 April 2026 |
 | **Blockers** | None |
 
 ### What's Hot Right Now
-- **Registry name/label bug FIXED** — chat send was broken for all agents (name=label swap in `get_agent_roster()`)
-- Housekeeping: 17 docs archived, 9 HTML pages archived, 6 stale backups deleted
-- API smoke tests: 25+ endpoints all healthy
-- Moving towards **standalone app on all systems** — packaging model for future expansion
-- Project tracking: **this document** — single source of truth (also in Library)
+- **8 tiers completed** in Session 18 (6-hour autonomy build)
+- **Memory landscape** — canvas force-directed graph showing agent memory relationships
+- **Vortex timeline** — horizontal scrubber with diff compare and event detail
+- **Chat SSE streaming** — real-time push for chat messages, no more polling
+- **Weather in clocks** — live weather forecast per world clock location
+- **Setup+Agents merged** — single Agents tile with Setup Wizard button in header
+- **Monitor expanded** — System Activity absorbed, sundial metrics + recent events
+- **Full emoji sweep** — all UI emoji replaced with themed SVG icons
+- **Health check** — dead JS code removed, API route conflict fixed, all tests green
 
 ---
 
@@ -64,18 +68,18 @@
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
 | 1.1 | Library constellation | Merge Files+Docs+Library into unified view; gold glow for system docs; auto-classification | 🔲 |
-| 1.2 | Memory landscape | Force-directed graph of agent memory relationships | 🔲 |
-| 1.3 | Vortex time machine | Horizontal timeline with diff compare, branching visualisation | 🔲 |
+| 1.2 | Memory landscape | Force-directed graph of agent memory relationships | ✅ Done |
+| 1.3 | Vortex time machine | Horizontal timeline with diff compare, branching visualisation | ✅ Done |
 
 **Tier 2 — Interaction Polish**
 
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
-| 2.1 | Chat fluidity | Smoother message flow, streaming responses, better compose UX | 🔲 |
+| 2.1 | Chat fluidity | SSE real-time push, streaming responses, no-polling compose UX | ✅ Done |
 | 2.2 | Skills drag-drop | Visual skill assignment with drag-drop interface | 🔲 |
-| 2.3 | Merge Setup + Agents tiles | Combine into single customisable panel — swap agents, install new ones, full config | 🔲 |
-| 2.4 | Thread icon + remaining emoji → SVG | Chat thread icon and any other emoji-based icons must be themed SVG | 🔲 |
-| 2.5 | Keyboard shortcuts overhaul | Expose shortcuts on all tiles (currently only tickets hover), add nav/action shortcuts | 🔲 |
+| 2.3 | Merge Setup + Agents tiles | Combined into single Agents tile; Setup Wizard button in header | ✅ Done |
+| 2.4 | Thread icon + remaining emoji → SVG | Full emoji sweep: onboarding, feeds, toast, window-manager, all SVG | ✅ Done |
+| 2.5 | Keyboard shortcuts overhaul | Global shortcuts: Ctrl+1–9 tiles, Ctrl+/ help, Esc close, Ctrl+Enter send | ✅ Done |
 
 **Tier 3 — System Integration**
 
@@ -84,7 +88,7 @@
 | 3.1 | Email compose | Full email client in-app (not just inbox viewer) | 🔲 |
 | 3.2 | Git per-environment | Separate git UI panels for DEV/UAT/PROD | 🔲 |
 | 3.3 | Tailscale/VPN | VPN status + remote access integration | 🔲 |
-| 3.4 | Weather in world clocks | Live weather forecast per location, icon + temp display beside each clock | 🔲 |
+| 3.4 | Weather in world clocks | Live weather via Open-Meteo API, icon + temp beside each clock | ✅ Done |
 
 **Tier 4 — Self-Improvement (Iterative)**
 
@@ -101,12 +105,12 @@
 
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
-| 5.1 | Monitor tile expansion | Move System Activity into Monitor; expand sundial nodes (CPU, RAM, Swap, GPU, Temp, Disk, etc.) | 🔲 |
+| 5.1 | Monitor tile expansion | System Activity merged into Monitor; sundial + recent events in one tile | ✅ Done |
 | 5.2 | Remove Tickets tile from home | Already linked in chats/proposals/tickets window; use activity dots instead | 🔲 |
 | 5.3 | Remove Emails tile from home | Same as tickets — linked elsewhere with activity dots for "undead" items | 🔲 |
 | 5.4 | Responsive / mobile layout | Everything must fit on phone screen; clocks → digital when space is tight; all elements reflow | 🔲 |
 | 5.5 | Clocks responsive fallback | World clocks switch to compact digital format when screen width < threshold | 🔲 |
-| 5.6 | Window dedup / internal management | Prevent duplicate windows; only one instance per view; second click focuses existing | 🔲 |
+| 5.6 | Window dedup / internal management | Prevent duplicate windows; only one instance per view; second click focuses existing | ✅ Done |
 
 #### Diamond Layer (Background — paused for Phase 6)
 
@@ -166,6 +170,10 @@ Architectural and design decisions that affect future work. Newest first.
 
 | Date | Decision | Rationale | Ref |
 |------|----------|-----------|-----|
+| 17 Apr | SSE real-time push for chat (not polling) | Eliminates polling overhead; instant message display | chat_bp.py SSE endpoint |
+| 17 Apr | Memory landscape uses canvas force-directed graph | Interactive physics sim for agent-memory relationships; performant at scale | memory-landscape.js |
+| 17 Apr | Setup Wizard absorbed into Agents tile | Reduces home card count; wizard accessible via header button | terminal_base.html |
+| 17 Apr | auth.py /api/skills renamed to /api/skills/available | Route conflict with agents.py /api/skills (different data) | auth.py |
 | 16 Apr (eve) | Phase 6.0 — Standalone App Build replaces Diamond Layer as active phase | User wants to "move towards standalone app on all systems"; packaging model for future expansion | SWARM_PROJECT.md |
 | 16 Apr (eve) | Registry `name` = DB `name` column (lowercase key), `label` = display name | Was returning label as name, breaking chat validation for all agents | registry.py line 99 |
 | 16 Apr (eve) | Tier 4 (Self-Improvement) added — iterative auto-audit, pattern learning, build pipeline | User wants system to "iteratively keep building itself into self improvements" | Phase 6 plan |
@@ -188,6 +196,36 @@ Architectural and design decisions that affect future work. Newest first.
 
 Each session is logged here with date, what was done, and key outcomes.  
 **Newest first** — most recent session is always at the top.
+
+---
+
+### Session 19 — 17 April 2026
+**Focus:** 6-hour autonomy build — tiers, health sweep, emoji cleanup, sync
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Tier 5.1: Monitor tile expansion | ✅ Done | System Activity merged into Monitor; sundial + recent events |
+| 2 | Tier 1.3: Vortex timeline enhance | ✅ Done | Horizontal scrubber, event detail panel, diff compare |
+| 3 | Tier 2.1: Chat fluidity (SSE) | ✅ Done | Real-time push via SSE; no more polling for new messages |
+| 4 | Tier 3.4: Weather in world clocks | ✅ Done | Open-Meteo API, weather icons + temp beside each clock |
+| 5 | Tier 1.2: Memory landscape | ✅ Done | Canvas force-directed graph of agent memory relationships |
+| 6 | Tier 2.3: Merge Setup+Agents | ✅ Done | Single Agents tile; Setup Wizard button in header |
+| 7 | Health check: JS conflicts | ✅ Done | Removed dead agents-config.js (shadowed by access.js) |
+| 8 | Health check: API route clash | ✅ Done | auth.py /api/skills → /api/skills/available |
+| 9 | Emoji sweep (Tier 2.4) | ✅ Done | onboarding, feeds, toast, window-manager — all SVG |
+| 10 | Sync + restart services | ✅ Done | master→dev, master→uat, both services restarted |
+| 11 | Update SWARM_PROJECT.md | ✅ Done | All tiers marked, session logged |
+
+**Commits:** `5a99055` (Monitor), `54a7175` (Vortex), `44b882d` (Chat SSE), `3b027f5` (Weather), `b3369cf`+`e72e081` (Memory landscape), `ad5344b` (Setup+Agents merge), `e095ceb` (health fixes + emoji sweep)
+**Tests:** 399 passed, 1 skipped (+1 test from prior session)
+**Envs synced:** Yes (master, dev, uat) — services restarted
+
+---
+
+### Session 18 — 17 April 2026 (Early)
+**Focus:** Tier 5.6 window dedup, Tier 2.5 keyboard shortcuts
+
+(Completed in prior conversation — tiers 5.6 and 2.5 done)
 
 ---
 
