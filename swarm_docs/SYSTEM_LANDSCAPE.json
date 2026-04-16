@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 17:20",
+  "generated_at": "2026-04-16 18:15",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2434,7 +2434,7 @@
     },
     {
       "name": "studio.js",
-      "size_kb": 79.5
+      "size_kb": 79.7
     },
     {
       "name": "terminal-commands.js",
@@ -2446,7 +2446,7 @@
     },
     {
       "name": "tickets.js",
-      "size_kb": 4.2
+      "size_kb": 5.9
     },
     {
       "name": "time-wizard.js",
@@ -2460,7 +2460,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 19189
+      "rows": 19287
     },
     {
       "name": "agent_capabilities",
@@ -2476,7 +2476,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 61
+      "rows": 64
     },
     {
       "name": "chat_jobs",
@@ -2488,11 +2488,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 13
+      "rows": 14
     },
     {
       "name": "conversations",
-      "rows": 13
+      "rows": 14
     },
     {
       "name": "daily_checkpoint",
@@ -2512,7 +2512,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1025
+      "rows": 1045
     },
     {
       "name": "deferred_items",
@@ -2520,7 +2520,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 401
+      "rows": 403
     },
     {
       "name": "file_versions",
@@ -2536,19 +2536,19 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1901
+      "rows": 1903
     },
     {
       "name": "governance_log",
-      "rows": 0
+      "rows": 2
     },
     {
       "name": "knowledge_chunks",
-      "rows": 353
+      "rows": 371
     },
     {
       "name": "knowledge_sources",
-      "rows": 12
+      "rows": 29
     },
     {
       "name": "memory",
@@ -2608,7 +2608,7 @@
     },
     {
       "name": "messages",
-      "rows": 30
+      "rows": 32
     },
     {
       "name": "moderators",
@@ -2644,7 +2644,7 @@
     },
     {
       "name": "queue",
-      "rows": 703
+      "rows": 707
     },
     {
       "name": "research_evidence",
@@ -2680,7 +2680,7 @@
     },
     {
       "name": "sqlite_sequence",
-      "rows": 56
+      "rows": 58
     },
     {
       "name": "sudo_command_whitelist",
@@ -2688,7 +2688,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 0
+      "rows": 2
     },
     {
       "name": "swarm_event_acks",
@@ -2712,7 +2712,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5836
+      "rows": 5847
     },
     {
       "name": "terminal_shortcuts",
@@ -2720,27 +2720,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 155
+      "rows": 157
     },
     {
       "name": "tickets",
-      "rows": 163
+      "rows": 165
     },
     {
       "name": "time_checkpoints",
-      "rows": 930
+      "rows": 946
     },
     {
       "name": "time_events",
-      "rows": 52577
+      "rows": 52906
     },
     {
       "name": "time_journal",
-      "rows": 50471
+      "rows": 50774
     },
     {
       "name": "time_machine",
-      "rows": 4443
+      "rows": 4449
     },
     {
       "name": "tool_builds",
@@ -2768,7 +2768,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 0
+      "rows": 1
     }
   ],
   "agents": [

@@ -17,6 +17,7 @@ function loadSystemPulse() {
       _renderVitals(d);
       _renderPulseChart(d);
       _renderPulseSummary(d);
+      _updateMoodRing(d);
     })
     .catch(err => console.warn('[Diamond] pulse fetch:', err));
 
@@ -209,6 +210,49 @@ function _initAddNewTile() {
       if (btn) btn.click();
     }, 600);
   });
+}
+
+/* ── Mood Ring — ambient health glow ──────────────────────────────────────── */
+
+function _updateMoodRing(d) {
+  const scene = document.getElementById('ambient-scene');
+  if (!scene) return;
+
+  const s = d.system || {};
+  const q = d.queue || {};
+
+  // Compute worst-case health score: 0 = calm, 1 = busy, 2 = critical
+  const levels = [
+    _healthScore(s.cpu_percent, 60, 80),
+    _healthScore(s.ram_percent, 70, 85),
+    _healthScore(s.cpu_temp_c,  65, 80),
+    _healthScore(q.depth,        3, 10),
+  ];
+  const worst = Math.max(...levels);
+
+  // Map to colour: green (calm) → amber (busy) → red (attention)
+  let color, opacity;
+  if (worst >= 2) {
+    color = '255, 60, 60';      // red
+    opacity = 0.10;
+  } else if (worst >= 1) {
+    color = '255, 165, 0';      // amber
+    opacity = 0.07;
+  } else {
+    color = '76, 175, 80';      // green
+    opacity = 0.05;
+  }
+
+  scene.style.background = `radial-gradient(ellipse 120% 80% at 50% 30%, rgba(${color}, ${opacity}) 0%, transparent 70%)`;
+  scene.style.opacity = '1';
+  scene.style.transition = 'background 2s ease, opacity 1.5s ease';
+}
+
+function _healthScore(val, warnAt, critAt) {
+  if (val == null) return 0;
+  if (val >= critAt) return 2;
+  if (val >= warnAt) return 1;
+  return 0;
 }
 
 // ── Init hook ────────────────────────────────────────────────────────────────

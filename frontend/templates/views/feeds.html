@@ -1,0 +1,120 @@
+<!-- feeds.html — Social & developer feeds view template -->
+<div class="content-view" style="display:flex;flex-direction:column;height:100%;overflow-y:auto;">
+  <div style="max-width:680px;width:100%;margin:0 auto;padding:24px 20px;">
+
+    <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);">📡 Feeds</h2>
+    <p style="color:var(--text-dim);font-size:13px;margin:0 0 20px;line-height:1.6;">
+      Connect social media and developer feeds to track interests, discover topics, and combine knowledge across the swarm.
+    </p>
+
+    <!-- Connected accounts -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Connected Accounts</div>
+      <div id="feeds-connected" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="padding:14px;background:var(--card);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:12px;">
+          <span style="font-size:18px;">🐙</span>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--text);">GitHub</div>
+            <div style="font-size:11px;color:var(--text-dim);">Activity feed, starred repos, notifications</div>
+          </div>
+          <span id="feeds-github-status" style="font-size:10px;padding:2px 8px;border-radius:10px;background:#4caf5020;color:#4caf50;border:1px solid #4caf5060;font-weight:600;">connected</span>
+        </div>
+        <div style="padding:14px;background:var(--card);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:12px;">
+          <span style="font-size:18px;">📧</span>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--text);">Gmail</div>
+            <div style="font-size:11px;color:var(--text-dim);">Already configured in Email tile</div>
+          </div>
+          <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#4caf5020;color:#4caf50;border:1px solid #4caf5060;font-weight:600;">connected</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Available feeds to connect -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Available Feeds</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:8px;">
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;">🐦</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">X / Twitter</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Timeline, lists, bookmarks</div>
+        </div>
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;">🟠</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">Hacker News</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Top stories, comments, Show HN</div>
+        </div>
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;">🔵</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">LinkedIn</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Professional feed, connections</div>
+        </div>
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;">🟣</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">Stack Overflow</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Tags, questions, your answers</div>
+        </div>
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;">📺</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">YouTube</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Subscriptions, tech channels</div>
+        </div>
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;">🔴</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">Reddit</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Subreddits, saved posts</div>
+        </div>
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;">📦</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">npm / PyPI</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Package updates, trending</div>
+        </div>
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;">📰</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">RSS / Custom</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Add any RSS or Atom feed URL</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div style="padding:14px;background:color-mix(in srgb, var(--accent) 6%, var(--card));border:1px solid var(--border);border-radius:10px;">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;">Coming soon</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
+        Feed integration is being built. Connected feeds will combine topics across your interests and surface them in Library's knowledge graph. The swarm's members will use these feeds to stay current on topics you care about.
+      </div>
+    </div>
+
+  </div>
+
+  <style>
+    .feed-option:hover {
+      border-color: var(--accent) !important;
+      background: color-mix(in srgb, var(--accent) 4%, var(--card)) !important;
+    }
+  </style>
+</div>
