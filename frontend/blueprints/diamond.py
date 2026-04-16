@@ -247,13 +247,37 @@ def _get_system_vitals():
                               'free_gb': round(u.free / (1024**3), 1)})
             except Exception:
                 continue
+        # GPU VRAM — nvidia-smi if available, else None
+        gpu_vram_percent = None
+        gpu_vram_used_gb = None
+        gpu_vram_total_gb = None
+        try:
+            import subprocess
+            nv = subprocess.run(
+                ['nvidia-smi', '--query-gpu=memory.used,memory.total', '--format=csv,noheader,nounits'],
+                capture_output=True, text=True, timeout=3
+            )
+            if nv.returncode == 0 and nv.stdout.strip():
+                parts = nv.stdout.strip().split(',')
+                used_mb, total_mb = float(parts[0].strip()), float(parts[1].strip())
+                gpu_vram_used_gb = round(used_mb / 1024, 2)
+                gpu_vram_total_gb = round(total_mb / 1024, 2)
+                gpu_vram_percent = round((used_mb / total_mb) * 100, 1) if total_mb > 0 else 0
+        except Exception:
+            pass
+
         return {
             'cpu_percent': round(cpu, 1),
             'ram_percent': round(mem.percent, 1),
             'ram_used_gb': round(mem.used / (1024**3), 2),
             'ram_total_gb': round(mem.total / (1024**3), 2),
             'swap_percent': round(swap.percent, 1),
+            'swap_used_gb': round(swap.used / (1024**3), 2),
+            'swap_total_gb': round(swap.total / (1024**3), 2),
             'cpu_temp_c': round(temp_c, 1) if temp_c else None,
+            'gpu_vram_percent': gpu_vram_percent,
+            'gpu_vram_used_gb': gpu_vram_used_gb,
+            'gpu_vram_total_gb': gpu_vram_total_gb,
             'disks': disks,
         }
     except Exception as exc:
