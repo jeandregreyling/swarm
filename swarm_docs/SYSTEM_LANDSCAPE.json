@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 08:54",
+  "generated_at": "2026-04-16 16:09",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -442,6 +442,11 @@
       "description": ""
     },
     {
+      "path": "lib/knowledge/categories.py",
+      "group": "Lib",
+      "description": "lib/knowledge/categories.py \u2014 Knowledge Library category tree."
+    },
+    {
       "path": "lib/knowledge/ingest.py",
       "group": "Lib",
       "description": "lib/knowledge/ingest.py \u2014 Text chunking and Ollama embedding pipeline."
@@ -450,6 +455,11 @@
       "path": "lib/knowledge/retrieval.py",
       "group": "Lib",
       "description": "lib/knowledge/retrieval.py \u2014 Semantic search over embedded knowledge chunks."
+    },
+    {
+      "path": "lib/knowledge/seed.py",
+      "group": "Lib",
+      "description": "lib/knowledge/seed.py \u2014 Built-in knowledge documents for the Library."
     },
     {
       "path": "lib/knowledge/sources/__init__.py",
@@ -1372,9 +1382,27 @@
           "methods": [
             "GET"
           ]
+        },
+        {
+          "path": "/api/library/categories",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/library/context",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/library/seed",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 8
+      "route_count": 11
     },
     {
       "name": "localai",
@@ -2345,7 +2373,7 @@
     },
     {
       "name": "library.js",
-      "size_kb": 16.4
+      "size_kb": 21.8
     },
     {
       "name": "localai.js",
@@ -2403,7 +2431,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 18645
+      "rows": 19051
     },
     {
       "name": "agent_capabilities",
@@ -2419,7 +2447,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 52
+      "rows": 55
     },
     {
       "name": "chat_jobs",
@@ -2431,11 +2459,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 10
+      "rows": 11
     },
     {
       "name": "conversations",
-      "rows": 10
+      "rows": 11
     },
     {
       "name": "daily_checkpoint",
@@ -2455,7 +2483,7 @@
     },
     {
       "name": "decisions",
-      "rows": 964
+      "rows": 986
     },
     {
       "name": "deferred_items",
@@ -2463,7 +2491,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 394
+      "rows": 397
     },
     {
       "name": "file_versions",
@@ -2479,7 +2507,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1895
+      "rows": 1897
     },
     {
       "name": "governance_log",
@@ -2495,7 +2523,7 @@
     },
     {
       "name": "memory",
-      "rows": 2
+      "rows": 4
     },
     {
       "name": "memory_eight",
@@ -2503,7 +2531,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 1
+      "rows": 2
     },
     {
       "name": "memory_grok",
@@ -2515,7 +2543,7 @@
     },
     {
       "name": "memory_mistral",
-      "rows": 1
+      "rows": 2
     },
     {
       "name": "memory_nine",
@@ -2551,7 +2579,7 @@
     },
     {
       "name": "messages",
-      "rows": 21
+      "rows": 26
     },
     {
       "name": "moderators",
@@ -2587,7 +2615,7 @@
     },
     {
       "name": "queue",
-      "rows": 691
+      "rows": 695
     },
     {
       "name": "research_evidence",
@@ -2655,7 +2683,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5735
+      "rows": 5822
     },
     {
       "name": "terminal_shortcuts",
@@ -2663,27 +2691,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 149
+      "rows": 151
     },
     {
       "name": "tickets",
-      "rows": 157
+      "rows": 159
     },
     {
       "name": "time_checkpoints",
-      "rows": 877
+      "rows": 896
     },
     {
       "name": "time_events",
-      "rows": 49710
+      "rows": 52152
     },
     {
       "name": "time_journal",
-      "rows": 47658
+      "rows": 50080
     },
     {
       "name": "time_machine",
-      "rows": 4411
+      "rows": 4426
     },
     {
       "name": "tool_builds",
@@ -3233,6 +3261,10 @@
     },
     {
       "id": "studio-tab-all",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "library-seed-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -3797,6 +3829,18 @@
     },
     {
       "id": "library-pdf-input",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-add-category",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-category-nav",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-add-subcategory",
       "file": "frontend/static/js/views/library.js"
     },
     {
