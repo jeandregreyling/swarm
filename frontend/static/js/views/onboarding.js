@@ -73,9 +73,9 @@
     const lmsDetail = document.getElementById('ob-lmstudio-detail');
     const helpEl = document.getElementById('ob-local-help');
 
-    if (ollamaIcon) ollamaIcon.textContent = '⏳';
+    if (ollamaIcon) ollamaIcon.textContent = '...';
     if (ollamaDetail) ollamaDetail.textContent = 'Checking...';
-    if (lmsIcon) lmsIcon.textContent = '⏳';
+    if (lmsIcon) lmsIcon.textContent = '...';
     if (lmsDetail) lmsDetail.textContent = 'Checking...';
 
     try {
