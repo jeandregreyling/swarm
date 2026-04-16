@@ -13,7 +13,7 @@ import sqlite3
 import sys
 import pytest
 from unittest.mock import patch, MagicMock
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 SWARM_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, SWARM_ROOT)
@@ -154,7 +154,7 @@ class TestPulse:
 
     def test_pulse_tickets_trend_7_days(self, client, db_conn):
         # Insert a closed ticket from yesterday
-        yesterday = (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
         db_conn.execute("INSERT INTO tickets (status, updated_at) VALUES ('closed', ?)", (yesterday,))
         db_conn.commit()
 
