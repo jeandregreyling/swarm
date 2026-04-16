@@ -135,11 +135,20 @@ const rotation = Math.round(((data.cpu_temp_c || 0) / 100) * 180);
           <div style="font-weight:600;margin-bottom:4px;">ALM Governance</div>
           <div style="font-size:11px;color:var(--text-dim);">Loading governance status...</div>
         </div>
+        <div id="monitor-services" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
+          <div style="font-weight:600;margin-bottom:6px;">Service Health</div>
+          <div style="font-size:11px;color:var(--text-dim);">Loading...</div>
+        </div>
+        <div id="monitor-activity" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
+          <div style="font-weight:600;margin-bottom:6px;">System Activity</div>
+          <div style="font-size:11px;color:var(--text-dim);">Loading...</div>
+        </div>
         <div style="color:var(--text-dim);font-size:10px;margin-top:8px;">Updated ${H(data.last_activity||data.timestamp||'—')}</div>
       </div>`;
 
-    // Render ALM inline after main content is set (first render only or on demand)
     renderMonitorAlm();
+    _renderMonitorServices(win);
+    _renderMonitorActivity(win);
   };
 
   const refreshMonitor = () => {
@@ -159,9 +168,14 @@ const rotation = Math.round(((data.cpu_temp_c || 0) / 100) * 180);
 
   win._monitorRefreshFn = refreshMonitor;
   refreshMonitor();
-  // Fast refresh for live stats (2.5s), slow refresh for ALM (30s)
+  // Fast refresh for live stats (2.5s), slow refresh for ALM/services/activity (30s)
   win._monitorTimer    = setInterval(refreshMonitor,    2500);
-  win._monitorAlmTimer = setInterval(renderMonitorAlm, 30000);
+  win._monitorAlmTimer = setInterval(() => {
+    if (!winManager.windows.has(win.id)) return;
+    renderMonitorAlm();
+    _renderMonitorServices(win);
+    _renderMonitorActivity(win);
+  }, 30000);
 }
 
 function monitorManualRefresh() {
@@ -198,6 +212,52 @@ function loadHomeStats() {
 function loadAttentionPanel() {
   // Replaced by System Pulse — delegate to diamond.js
   if (typeof loadSystemPulse === 'function') loadSystemPulse();
+}
+
+function _renderMonitorServices(win) {
+  const el = win.el.querySelector('#monitor-services');
+  if (!el) return;
+  fetch('/api/services')
+    .then(r => r.json())
+    .then(services => {
+      if (!services || !services.length) {
+        el.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">Service Health</div><div style="font-size:11px;color:var(--text-dim);">No services found.</div>';
+        return;
+      }
+      const rows = services.map(s => {
+        const color = s.active ? '#4caf50' : s.status === 'activating' ? '#ffb366' : '#ff6b6b';
+        return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;"><span style="color:${color};font-size:8px;">●</span><span style="font-size:11px;flex:1;">${_escHtml(s.label)}</span><span style="font-size:9px;color:var(--text-dim);">${_escHtml(s.status || 'unknown')}</span></div>`;
+      }).join('');
+      el.innerHTML = `<div style="font-weight:600;margin-bottom:6px;">Service Health</div>${rows}`;
+    })
+    .catch(() => {
+      el.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">Service Health</div><div style="font-size:11px;color:#f77;">Failed to load</div>';
+    });
+}
+
+function _renderMonitorActivity(win) {
+  const el = win.el.querySelector('#monitor-activity');
+  if (!el) return;
+  fetch('/api/activity')
+    .then(r => r.json())
+    .then(data => {
+      const acts = (data.activities || []).slice(0, 15);
+      if (!acts.length) {
+        el.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">System Activity</div><div style="font-size:11px;color:var(--text-dim);">No recent activity.</div>';
+        return;
+      }
+      const rows = acts.map(a => {
+        let color = 'var(--text)';
+        if (a.level === 'error') color = '#f77';
+        else if (a.level === 'warning') color = '#ffa500';
+        else if (a.level === 'success') color = '#4caf50';
+        return `<div style="font-size:11px;color:${color};padding:2px 0;"><span style="color:var(--text-dim);font-size:9px;">[${_escHtml(a.timestamp || '')}]</span> ${_escHtml(a.message || '')}</div>`;
+      }).join('');
+      el.innerHTML = `<div style="font-weight:600;margin-bottom:6px;">System Activity</div>${rows}`;
+    })
+    .catch(() => {
+      el.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">System Activity</div><div style="font-size:11px;color:#f77;">Failed to load</div>';
+    });
 }
 
 
