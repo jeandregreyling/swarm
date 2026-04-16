@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 18:15",
+  "generated_at": "2026-04-16 18:38",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2378,7 +2378,7 @@
     },
     {
       "name": "diamond.js",
-      "size_kb": 8.4
+      "size_kb": 9.7
     },
     {
       "name": "docs.js",
@@ -2460,7 +2460,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 19287
+      "rows": 19416
     },
     {
       "name": "agent_capabilities",
@@ -2476,7 +2476,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 64
+      "rows": 70
     },
     {
       "name": "chat_jobs",
@@ -2488,11 +2488,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 14
+      "rows": 16
     },
     {
       "name": "conversations",
-      "rows": 14
+      "rows": 16
     },
     {
       "name": "daily_checkpoint",
@@ -2512,7 +2512,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1045
+      "rows": 1082
     },
     {
       "name": "deferred_items",
@@ -2520,7 +2520,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 403
+      "rows": 410
     },
     {
       "name": "file_versions",
@@ -2536,7 +2536,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1903
+      "rows": 1907
     },
     {
       "name": "governance_log",
@@ -2608,7 +2608,7 @@
     },
     {
       "name": "messages",
-      "rows": 32
+      "rows": 36
     },
     {
       "name": "moderators",
@@ -2644,7 +2644,7 @@
     },
     {
       "name": "queue",
-      "rows": 707
+      "rows": 718
     },
     {
       "name": "research_evidence",
@@ -2712,7 +2712,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5847
+      "rows": 5851
     },
     {
       "name": "terminal_shortcuts",
@@ -2720,27 +2720,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 157
+      "rows": 164
     },
     {
       "name": "tickets",
-      "rows": 165
+      "rows": 172
     },
     {
       "name": "time_checkpoints",
-      "rows": 946
+      "rows": 983
     },
     {
       "name": "time_events",
-      "rows": 52906
+      "rows": 53072
     },
     {
       "name": "time_journal",
-      "rows": 50774
+      "rows": 50903
     },
     {
       "name": "time_machine",
-      "rows": 4449
+      "rows": 4458
     },
     {
       "name": "tool_builds",
@@ -4318,6 +4318,10 @@
     },
     {
       "id": "add-new-tile",
+      "file": "frontend/static/js/views/diamond.js"
+    },
+    {
+      "id": "ambient-scene",
       "file": "frontend/static/js/views/diamond.js"
     }
   ]
