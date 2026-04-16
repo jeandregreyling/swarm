@@ -4,7 +4,7 @@
     <!-- Memory header -->
     <div style="padding:10px 14px 0;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <span style="font-size:13px;font-weight:700;">🧠 Memory Browser</span>
+        <span style="font-size:13px;font-weight:700;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-1px"><path d="M6 4a2 2 0 0 0-3 1.7v1.8A2.5 2.5 0 0 0 4.8 10H6m4-6a2 2 0 0 1 3 1.7v1.8A2.5 2.5 0 0 1 11.2 10H10M6 4v8m4-8v8M6 8h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Memory Browser</span>
         <input type="text" id="memory-search" placeholder="Search all memories..." style="flex:1;padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
         <span id="memory-count" style="font-size:10px;color:var(--text-dim);white-space:nowrap;"></span>
       </div>
@@ -13,6 +13,10 @@
         <button class="mem-tab active" data-source="all" onclick="_memSourceTab(this,'all')">All Sources</button>
         <button class="mem-tab" data-source="db" onclick="_memSourceTab(this,'db')">DB Only</button>
         <button class="mem-tab" data-source="local" onclick="_memSourceTab(this,'local')">Local Files</button>
+        <div style="flex:1;"></div>
+        <button id="memory-landscape-btn" class="mem-tab" onclick="_memToggleLandscape()" title="Memory Landscape">
+          <svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><circle cx="4" cy="6" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="6" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="12" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M6 6h4M5 7.5L7 11M11 7.5L9 11" stroke="currentColor" stroke-width="1" opacity="0.5"/></svg> Landscape
+        </button>
       </div>
       <div id="memory-bulk-toolbar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 0 10px;">
         <button id="memory-select-visible-btn" onclick="memorySelectVisible()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Select Visible</button>
@@ -22,6 +26,8 @@
         <span id="memory-selection-count" style="font-size:10px;color:var(--text-dim);white-space:nowrap;">0 selected</span>
       </div>
     </div>
+    <!-- Memory landscape canvas (hidden by default) -->
+    <canvas id="memory-landscape-canvas" style="display:none;width:100%;background:var(--bg);cursor:grab;" width="800" height="500"></canvas>
     <!-- Memory list -->
     <div id="memory-list" style="flex:1;overflow-y:auto;min-height:0;"></div>
     <!-- Memory detail panel -->
