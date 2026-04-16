@@ -333,19 +333,11 @@
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
-  .pulse-vitals {
-    gap: 4px;
+  #sundial {
+    width: 90px;
+    height: 90px;
   }
-  .pulse-badge {
-    min-width: 60px;
-    padding: 4px 7px;
-    font-size: 10px;
-  }
-  .pulse-graph-legend {
-    display: none;
-  }
-  .pulse-summary {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
+  #sundial-title { font-size: 12px; }
+  .sundial-dot { width: 20px; height: 20px; font-size: 9px; }
+  .sundial-val { font-size: 6px; }
 }

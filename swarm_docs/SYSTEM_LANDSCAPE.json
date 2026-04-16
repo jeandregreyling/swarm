@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16 18:47",
+  "generated_at": "2026-04-16 19:44",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2378,7 +2378,7 @@
     },
     {
       "name": "diamond.js",
-      "size_kb": 9.7
+      "size_kb": 16.2
     },
     {
       "name": "docs.js",
@@ -2460,7 +2460,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 19464
+      "rows": 19546
     },
     {
       "name": "agent_capabilities",
@@ -2476,7 +2476,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 73
+      "rows": 76
     },
     {
       "name": "chat_jobs",
@@ -2488,11 +2488,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 17
+      "rows": 18
     },
     {
       "name": "conversations",
-      "rows": 17
+      "rows": 18
     },
     {
       "name": "daily_checkpoint",
@@ -2512,7 +2512,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1103
+      "rows": 1123
     },
     {
       "name": "deferred_items",
@@ -2520,7 +2520,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 412
+      "rows": 414
     },
     {
       "name": "file_versions",
@@ -2536,7 +2536,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 1909
+      "rows": 1911
     },
     {
       "name": "governance_log",
@@ -2608,7 +2608,7 @@
     },
     {
       "name": "messages",
-      "rows": 38
+      "rows": 40
     },
     {
       "name": "moderators",
@@ -2644,7 +2644,7 @@
     },
     {
       "name": "queue",
-      "rows": 722
+      "rows": 726
     },
     {
       "name": "research_evidence",
@@ -2712,7 +2712,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5853
+      "rows": 5863
     },
     {
       "name": "terminal_shortcuts",
@@ -2720,27 +2720,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 166
+      "rows": 168
     },
     {
       "name": "tickets",
-      "rows": 174
+      "rows": 176
     },
     {
       "name": "time_checkpoints",
-      "rows": 999
+      "rows": 1016
     },
     {
       "name": "time_events",
-      "rows": 53140
+      "rows": 53395
     },
     {
       "name": "time_journal",
-      "rows": 50955
+      "rows": 51193
     },
     {
       "name": "time_machine",
-      "rows": 4460
+      "rows": 4468
     },
     {
       "name": "tool_builds",
@@ -4301,19 +4301,23 @@
       "file": "frontend/static/js/views/tickets.js"
     },
     {
-      "id": "pulse-chart",
+      "id": "sundial",
       "file": "frontend/static/js/views/diamond.js"
     },
     {
-      "id": "pulse-tickets-open",
+      "id": "sundial-rays",
       "file": "frontend/static/js/views/diamond.js"
     },
     {
-      "id": "pulse-proposals-pending",
+      "id": "sundial-center",
       "file": "frontend/static/js/views/diamond.js"
     },
     {
-      "id": "pulse-consults",
+      "id": "sundial-tip",
+      "file": "frontend/static/js/views/diamond.js"
+    },
+    {
+      "id": "sundial-title",
       "file": "frontend/static/js/views/diamond.js"
     },
     {
@@ -4321,7 +4325,11 @@
       "file": "frontend/static/js/views/diamond.js"
     },
     {
-      "id": "ambient-scene",
+      "id": "tile-context-menu",
+      "file": "frontend/static/js/views/diamond.js"
+    },
+    {
+      "id": "hidden-tiles-panel",
       "file": "frontend/static/js/views/diamond.js"
     }
   ]
