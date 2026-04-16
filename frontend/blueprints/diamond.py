@@ -377,12 +377,18 @@ def _get_governance_status():
     try:
         from db import get_connection
         conn = get_connection()
-        # Check if time wizard is active (recent commits)
-        tw_row = conn.execute(
-            "SELECT COUNT(*) AS n FROM time_wizard_log WHERE created_at > datetime('now', '-1 hour')"
+        # Check table exists before querying
+        tbl = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='time_wizard_log'"
         ).fetchone()
+        if tbl:
+            tw_row = conn.execute(
+                "SELECT COUNT(*) AS n FROM time_wizard_log WHERE created_at > datetime('now', '-1 hour')"
+            ).fetchone()
+            vortex_active = (tw_row['n'] if tw_row else 0) > 0
+        else:
+            vortex_active = False
         conn.close()
-        vortex_active = (tw_row['n'] if tw_row else 0) > 0
 
         # Sniffles check
         sniffles = False
@@ -396,7 +402,7 @@ def _get_governance_status():
         return {
             'vortex_active': vortex_active,
             'sniffles_enabled': sniffles,
-            'alm_status': 'enforced' if vortex_active else 'warn',
+            'alm_status': 'enforced' if vortex_active else 'standby',
         }
     except Exception:
-        return {'vortex_active': False, 'sniffles_enabled': False, 'alm_status': 'unknown'}
+        return {'vortex_active': False, 'sniffles_enabled': False, 'alm_status': 'standby'}
