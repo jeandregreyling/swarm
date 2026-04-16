@@ -85,8 +85,8 @@ class WindowManager {
         <button class="window-btn" onclick="openWindowHelp('${id}')" title="Help">?</button>
         <button class="window-btn" onclick="winManager.toggleMaximize('${id}')" title="Maximize">⬚</button>
         <button class="window-btn" onclick="winManager.minimize('${id}')" title="Minimize">_</button>
-        <button class="window-btn" onclick="winManager.pin('${id}')" title="Pin">📌</button>
-        <button class="window-btn" onclick="winManager.fullscreen('${id}')" title="Fullscreen">⛶</button>
+        <button class="window-btn" onclick="winManager.pin('${id}')" title="Pin"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M10 2L6 6 3 5.5 2 10l4-1 4-4M8.5 3.5l4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="window-btn" onclick="winManager.fullscreen('${id}')" title="Fullscreen"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="window-btn close" onclick="winManager.close('${id}')" title="Close">✕</button>
       </div>
     `;
