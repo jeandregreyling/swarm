@@ -26,20 +26,22 @@ def _cosine(a, b):
         return 0.0
 
 
-def search(query, top_k=6, deduplicate=True):
+def search(query, top_k=6, deduplicate=True, category=None):
     """
     Semantic search over the knowledge library.
 
     Returns a list of up to `top_k` dicts:
-      {source_id, chunk_id, title, source_type, domain_tags, chunk_text, score}
+      {source_id, chunk_id, title, source_type, domain_tags, category, subcategory, chunk_text, score}
 
     `deduplicate=True` keeps only the highest-scoring chunk per source so
     results span multiple documents rather than repeating the same one.
+
+    `category` scopes the search to a category and all its subcategories.
     """
     from lib.knowledge.store import get_all_chunks
     from lib.knowledge.ingest import embed_text
 
-    chunks = get_all_chunks()
+    chunks = get_all_chunks(category=category)
     if not chunks:
         return []
 
@@ -61,6 +63,8 @@ def search(query, top_k=6, deduplicate=True):
                 'title':       c['title'],
                 'source_type': c['source_type'],
                 'domain_tags': c['domain_tags'],
+                'category':    c.get('category', 'general'),
+                'subcategory': c.get('subcategory'),
                 'chunk_text':  c['chunk_text'],
                 'score':       round(score, 4),
             })

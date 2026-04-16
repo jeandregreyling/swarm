@@ -1,17 +1,22 @@
 /**
  * frontend/static/js/views/library.js
- * Knowledge Library — consultant knowledge pool with semantic search.
+ * Knowledge Library — SAP Corner, programming best practices, and consulting pool.
+ * Categories, semantic search, dedup, agent context injection.
  *
- * Exposes: libInit(), libSearch(), libToggleAddDrawer(), libSubmitSource()
+ * Exposes: libInit(), libSearch(), libToggleAddDrawer(), libSubmitSource(),
+ *          libSelectCategory(), libSeedKnowledge()
  */
 
 'use strict';
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let _libSources    = [];
-let _libActiveType = 'text';
-let _libSelTags    = new Set();
-let _libModelReady = null;   // null = unknown, true/false after check
+let _libSources     = [];
+let _libActiveType  = 'text';
+let _libSelTags     = new Set();
+let _libModelReady  = null;   // null = unknown, true/false after check
+let _libCategories  = [];     // loaded from /api/library/categories
+let _libByCat       = {};     // { cat_id: count }
+let _libActiveCat   = '';     // '' = all
 
 const _SAP_TAGS = [
   'sap_hcm', 'abap', 'payroll', 'sap_note',
@@ -31,12 +36,13 @@ const _TYPE_SVG = {
 function libInit() {
   _libSelTags.clear();
   _libActiveType = 'text';
+  _libActiveCat  = '';
   _renderTagGrid();
+  _loadCategories();
   _loadSources();
   _checkModel();
   _renderTypeContent();
 
-  // Search on Enter in input
   const inp = document.getElementById('library-search-input');
   if (inp) {
     inp.addEventListener('keydown', e => {
@@ -44,7 +50,6 @@ function libInit() {
     });
   }
 
-  // PDF drop zone
   const drop = document.getElementById('library-pdf-drop');
   const fileInput = document.getElementById('library-pdf-input');
   if (drop && fileInput) {
@@ -61,6 +66,10 @@ function libInit() {
       if (fileInput.files[0]) _setPdfFile(fileInput.files[0]);
     });
   }
+
+  // Category selector change in add drawer
+  const catSel = document.getElementById('library-add-category');
+  if (catSel) catSel.addEventListener('change', _updateSubcategoryOptions);
 }
 
 let _pdfFile = null;
@@ -75,6 +84,77 @@ function _setPdfFile(file) {
         <span style="font-weight:700;color:var(--text);">${_esc(file.name)}</span>
         <span style="font-size:10px;">${(file.size / 1024).toFixed(0)} KB — click to change</span>
       </div>`;
+  }
+}
+
+// ── Categories ────────────────────────────────────────────────────────────────
+async function _loadCategories() {
+  try {
+    const r = await fetch('/api/library/categories');
+    const d = await r.json();
+    if (!d.ok) return;
+    _libCategories = d.categories || [];
+    _libByCat      = d.by_category || {};
+    _renderCategoryNav();
+    _populateCategorySelect();
+  } catch (_) {}
+}
+
+function _renderCategoryNav() {
+  const nav = document.getElementById('library-category-nav');
+  if (!nav) return;
+  const total = Object.values(_libByCat).reduce((s, n) => s + n, 0);
+  let html = `<button class="lib-cat-btn${_libActiveCat === '' ? ' active' : ''}" data-cat="" onclick="libSelectCategory('', this)">
+    <span class="lib-cat-icon">📚</span>
+    <span class="lib-cat-label">All</span>
+    ${total ? `<span class="lib-cat-count">${total}</span>` : ''}
+  </button>`;
+  for (const cat of _libCategories) {
+    const count = _libByCat[cat.id] || 0;
+    const active = _libActiveCat === cat.id ? ' active' : '';
+    html += `<button class="lib-cat-btn${active}" data-cat="${cat.id}" onclick="libSelectCategory('${cat.id}', this)">
+      <span class="lib-cat-icon">${cat.icon}</span>
+      <span class="lib-cat-label">${_esc(cat.label)}</span>
+      ${count ? `<span class="lib-cat-count">${count}</span>` : ''}
+    </button>`;
+  }
+  nav.innerHTML = html;
+}
+
+function libSelectCategory(catId, btn) {
+  _libActiveCat = catId;
+  document.querySelectorAll('.lib-cat-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  _loadSources();
+}
+
+function _populateCategorySelect() {
+  const catSel = document.getElementById('library-add-category');
+  if (!catSel) return;
+  catSel.innerHTML = '';
+  for (const cat of _libCategories) {
+    const opt = document.createElement('option');
+    opt.value = cat.id;
+    opt.textContent = `${cat.icon} ${cat.label}`;
+    catSel.appendChild(opt);
+  }
+  _updateSubcategoryOptions();
+}
+
+function _updateSubcategoryOptions() {
+  const catSel = document.getElementById('library-add-category');
+  const subSel = document.getElementById('library-add-subcategory');
+  if (!catSel || !subSel) return;
+  const catId = catSel.value;
+  const cat = _libCategories.find(c => c.id === catId);
+  subSel.innerHTML = '<option value="">— None —</option>';
+  if (cat && cat.subcategories) {
+    for (const sub of cat.subcategories) {
+      const opt = document.createElement('option');
+      opt.value = sub.id;
+      opt.textContent = `${sub.icon} ${sub.label}`;
+      subSel.appendChild(opt);
+    }
   }
 }
 
@@ -107,7 +187,9 @@ function libPullModel() {
 // ── Sources ───────────────────────────────────────────────────────────────────
 async function _loadSources() {
   try {
-    const r = await fetch('/api/library/sources');
+    let url = '/api/library/sources';
+    if (_libActiveCat) url += `?category=${encodeURIComponent(_libActiveCat)}`;
+    const r = await fetch(url);
     const d = await r.json();
     if (!d.ok) return;
     _libSources = d.sources || [];
@@ -139,7 +221,7 @@ function _renderSourcesList() {
   if (!_libSources.length) {
     list.innerHTML =
       `<div style="padding:20px;text-align:center;font-size:11px;color:var(--text-dim);">
-        No sources yet — add your first document above.
+        ${_libActiveCat ? 'No sources in this category yet.' : 'No sources yet — add your first document or seed built-in knowledge.'}
       </div>`;
     return;
   }
@@ -156,6 +238,7 @@ function _renderSourcesList() {
           <span class="lib-source-name">${_esc(s.title)}</span>
         </div>
         <div class="lib-source-meta">
+          ${s.category ? `<span class="lib-cat-badge">${_esc(s.category)}${s.subcategory ? '/' + _esc(s.subcategory) : ''}</span>` : ''}
           <span>${s.source_type}</span>
           <span>${date}</span>
           ${chunks ? `<span>${chunks} chunk${chunks !== 1 ? 's' : ''}</span>` : '<span class="lib-source-processing"><span class="lib-spinner"></span> indexing…</span>'}
@@ -175,7 +258,7 @@ async function libDeleteSource(sourceId, btn) {
   try {
     const r = await fetch(`/api/library/sources/${sourceId}`, { method: 'DELETE' });
     const d = await r.json();
-    if (d.ok) _loadSources();
+    if (d.ok) { _loadSources(); _loadCategories(); }
     else alert('Delete failed: ' + (d.error || 'unknown error'));
   } catch (_) {
     if (btn) btn.disabled = false;
@@ -207,7 +290,9 @@ async function libSearch() {
   }
 
   try {
-    const r = await fetch(`/api/library/search?q=${encodeURIComponent(query)}&k=8`);
+    let url = `/api/library/search?q=${encodeURIComponent(query)}&k=8`;
+    if (_libActiveCat) url += `&category=${encodeURIComponent(_libActiveCat)}`;
+    const r = await fetch(url);
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'search failed');
     _renderResults(d.results || [], query);
@@ -226,8 +311,8 @@ function _renderResults(results, query) {
     panel.innerHTML =
       `<div class="lib-empty-state">
         <svg viewBox="0 0 24 24" width="40" height="40" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <div>No results for <strong>${_esc(query)}</strong></div>
-        <div style="opacity:0.6;">Try different keywords or add more sources</div>
+        <div>No results for <strong>${_esc(query)}</strong>${_libActiveCat ? ` in ${_libActiveCat}` : ''}</div>
+        <div style="opacity:0.6;">Try different keywords, change category, or add more sources</div>
       </div>`;
     return;
   }
@@ -239,11 +324,14 @@ function _renderResults(results, query) {
     const excerpt   = _highlight(_esc(r.chunk_text.slice(0, 320)), terms);
     const scorePct  = Math.round((r.score || 0) * 100);
     const icon      = _TYPE_SVG[r.source_type] || _TYPE_SVG.text;
+    const catLabel  = r.category || 'general';
+    const subLabel  = r.subcategory ? `/${r.subcategory}` : '';
     return `
       <div class="lib-result-card" onclick="libExpandResult(${r.source_id}, this)">
         <div class="lib-result-header">
           <div>
             <div class="lib-result-title">${_esc(r.title)}</div>
+            <span class="lib-cat-badge">${_esc(catLabel)}${_esc(subLabel)}</span>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
             <span class="lib-result-type">${icon} ${r.source_type}</span>
@@ -281,6 +369,7 @@ function libToggleAddDrawer() {
     _libSelTags.clear();
     _renderTagGrid();
     _renderTypeContent();
+    _populateCategorySelect();
     document.getElementById('library-add-title').value = '';
     ['library-text-content', 'library-url-input', 'library-email-content'].forEach(id => {
       const el = document.getElementById(id);
@@ -292,6 +381,12 @@ function libToggleAddDrawer() {
         ${_TYPE_SVG.pdf}
         <span>Drop PDF here or click to browse</span>
       </div>`;
+    // Pre-select category if filter is active
+    const catSel = document.getElementById('library-add-category');
+    if (catSel && _libActiveCat) {
+      catSel.value = _libActiveCat;
+      _updateSubcategoryOptions();
+    }
   }
 }
 
@@ -336,8 +431,10 @@ function libToggleTag(tag, btn) {
 // ── Submit ────────────────────────────────────────────────────────────────────
 async function libSubmitSource() {
   const btn = document.getElementById('library-submit-btn');
-  const title = (document.getElementById('library-add-title')?.value || '').trim();
-  const tags  = Array.from(_libSelTags);
+  const title       = (document.getElementById('library-add-title')?.value || '').trim();
+  const tags        = Array.from(_libSelTags);
+  const category    = document.getElementById('library-add-category')?.value || 'general';
+  const subcategory = document.getElementById('library-add-subcategory')?.value || '';
 
   if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
 
@@ -348,6 +445,8 @@ async function libSubmitSource() {
       fd.append('file', _pdfFile);
       if (title) fd.append('title', title);
       fd.append('tags', JSON.stringify(tags));
+      fd.append('category', category);
+      if (subcategory) fd.append('subcategory', subcategory);
       const r = await fetch('/api/library/ingest-pdf', { method: 'POST', body: fd });
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || 'ingest failed');
@@ -365,19 +464,44 @@ async function libSubmitSource() {
       const r = await fetch('/api/library/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: _libActiveType, title, content, tags }),
+        body: JSON.stringify({ type: _libActiveType, title, content, tags, category, subcategory }),
       });
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || 'ingest failed');
     }
 
     libCloseAddDrawer();
-    setTimeout(_loadSources, 1200);
+    setTimeout(() => { _loadSources(); _loadCategories(); }, 1200);
 
   } catch (err) {
     alert('Error: ' + String(err));
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Add to Library'; }
+  }
+}
+
+// ── Seed knowledge ────────────────────────────────────────────────────────────
+async function libSeedKnowledge() {
+  const btn = document.getElementById('library-seed-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '🌱 Seeding…'; }
+  try {
+    const r = await fetch('/api/library/seed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ collection: 'all' }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'seed failed');
+    if (typeof _toast === 'function') {
+      _toast(d.message || `Seeded ${d.added} docs`, 'success');
+    } else {
+      alert(d.message || `Seeded ${d.added} docs (${d.skipped} skipped)`);
+    }
+    setTimeout(() => { _loadSources(); _loadCategories(); }, 2000);
+  } catch (err) {
+    alert('Seed error: ' + String(err));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🌱 Seed Knowledge'; }
   }
 }
 

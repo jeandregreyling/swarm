@@ -423,6 +423,18 @@ def build_shared_context(question):
         for s in doc_sections:
             context += f'--- {s["doc_name"]} ---\n{s["content"]}\n\n'
 
+    # ── Library knowledge: inject relevant chunks from the Knowledge Library ──
+    try:
+        from lib.knowledge.retrieval import search as lib_search
+        lib_results = lib_search(question, top_k=3)
+        if lib_results:
+            context += '=== Library Knowledge ===\n'
+            for lr in lib_results:
+                cat_label = lr.get('category', 'general')
+                context += f'--- {lr["title"]} [{cat_label}] ---\n{lr["chunk_text"][:600]}\n\n'
+    except Exception:
+        pass  # Library not available — continue without it
+
     if relevant_memories:
         context += '=== Shared verified memories ===\n'
         for m in relevant_memories:
