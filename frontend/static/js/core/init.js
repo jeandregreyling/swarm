@@ -185,10 +185,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Ctrl+B — Open Library
+    // Ctrl+B — Open Knowledge
     if ((e.ctrlKey || e.metaKey) && e.key === 'b' && !isInput) {
       e.preventDefault();
-      if (typeof openWindow === 'function') openWindow('library', 'Library', 'view-library');
+      if (typeof openWindow === 'function') openWindow('knowledge', 'Knowledge', 'view-knowledge');
       return;
     }
 
@@ -228,7 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const commands = [
       { label: 'Chat', onclick: 'openWindow("chat", "Chat", "view-chat")', hint: 'Ctrl+J' },
       { label: 'Terminal', onclick: 'openWindow("terminal", "Terminal", "view-terminal")', hint: '' },
-        { label: 'Files', onclick: 'openWindow("files", "Files", "view-files")', hint: '' },
+      { label: 'Knowledge', onclick: 'openWindow("knowledge", "Knowledge", "view-knowledge")', hint: 'Ctrl+B' },
+      { label: 'Files', onclick: 'openWindow("files", "Files", "view-files")', hint: '' },
       { label: 'Git', onclick: 'openWindow("git", "Git", "view-git")', hint: 'Ctrl+G' },
       { label: 'Memory', onclick: 'openWindow("memory", "Memory", "view-memory")', hint: '' },
       { label: 'Monitor', onclick: 'openWindow("monitor", "Monitor", "view-monitor")', hint: '' },
@@ -237,9 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: 'Tickets', onclick: 'openWindow("tickets", "Tickets", "view-tickets")', hint: 'Ctrl+T' },
       { label: 'Studio', onclick: 'openWindow("studio", "Studio", "view-studio")', hint: 'Ctrl+P' },
       { label: 'Email', onclick: 'openWindow("email", "Email", "view-email")', hint: 'Ctrl+E' },
-      { label: 'Library', onclick: 'openWindow("library", "Library", "view-library")', hint: 'Ctrl+B' },
+      { label: 'Library', onclick: 'openWindow("library", "Library", "view-library")', hint: '' },
       { label: 'Vortex', onclick: 'openWindow("time-wizard", "Vortex", "view-time-wizard")', hint: '' },
       { label: 'Feeds', onclick: 'openWindow("feeds", "Feeds", "view-feeds")', hint: '' },
+      { label: 'VPN', onclick: 'openWindow("vpn", "VPN", "view-vpn")', hint: '' },
       { label: 'Home', onclick: 'goHome()', hint: 'Ctrl+H' },
     ];
     

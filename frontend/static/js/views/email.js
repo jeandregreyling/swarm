@@ -31,6 +31,8 @@ function _renderEmailShell(win) {
           style="padding:8px 14px;font-size:11px;background:transparent;color:var(--text-dim);border:none;border-left:1px solid var(--border);cursor:pointer;">⟳ Live</button>
         <button onclick="_loadEmailStats()"
           style="padding:8px 14px;font-size:11px;background:transparent;color:var(--text-dim);border:none;border-left:1px solid var(--border);cursor:pointer;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M3 3h10v10H3z" stroke="currentColor" stroke-width="1.3"/><path d="M6 8h4M8 3v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Stats</button>
+        <button onclick="_emailToggleCompose()"
+          style="padding:8px 14px;font-size:11px;background:var(--accent);color:#fff;border:none;border-left:1px solid var(--border);cursor:pointer;font-weight:700;">+ Compose</button>
       </div>
 
       <!-- Split: list + thread -->
@@ -50,6 +52,35 @@ function _renderEmailShell(win) {
           </div>
         </div>
 
+      </div>
+
+      <!-- Compose drawer (hidden by default) -->
+      <div id="email-compose-drawer" style="display:none;border-top:2px solid var(--accent);padding:14px;background:var(--card);flex-shrink:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:12px;font-weight:700;">New Email</span>
+          <button onclick="_emailToggleCompose()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;">&times;</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <label style="font-size:11px;color:var(--text-dim);min-width:50px;">From:</label>
+            <select id="email-compose-from" style="flex:1;padding:5px 8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;">
+              ${_EMAIL_ACCOUNTS.map(a => '<option value="'+a+'">'+a+'</option>').join('')}
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <label style="font-size:11px;color:var(--text-dim);min-width:50px;">To:</label>
+            <input id="email-compose-to" type="email" placeholder="recipient@example.com" style="flex:1;padding:5px 8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <label style="font-size:11px;color:var(--text-dim);min-width:50px;">Subject:</label>
+            <input id="email-compose-subject" type="text" placeholder="Subject" style="flex:1;padding:5px 8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;">
+          </div>
+          <textarea id="email-compose-body" rows="6" placeholder="Message body…" style="padding:8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;resize:vertical;font-family:monospace;"></textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onclick="_emailToggleCompose()" style="padding:6px 14px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">Cancel</button>
+            <button id="email-compose-send-btn" onclick="_emailSendCompose()" style="padding:6px 14px;background:var(--accent);border:none;border-radius:4px;color:#fff;font-size:11px;cursor:pointer;font-weight:700;">Send</button>
+          </div>
+        </div>
       </div>
     </div>`;
 }
@@ -293,5 +324,50 @@ async function _loadEmailStats() {
       </div>`;
   } catch (e) {
     panel.innerHTML = `<div style="color:#f44;padding:20px;">Stats error: ${_escHtml(e.message)}</div>`;
+  }
+}
+
+// ── Compose (Tier 3.1) ────────────────────────────────────────────────────────
+function _emailToggleCompose() {
+  const drawer = document.getElementById('email-compose-drawer');
+  if (!drawer) return;
+  drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+}
+
+async function _emailSendCompose() {
+  const from_account = document.getElementById('email-compose-from')?.value || '';
+  const to = (document.getElementById('email-compose-to')?.value || '').trim();
+  const subject = (document.getElementById('email-compose-subject')?.value || '').trim();
+  const body = (document.getElementById('email-compose-body')?.value || '').trim();
+
+  if (!to || !subject) {
+    showToast('To and Subject are required', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('email-compose-send-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  try {
+    const resp = await fetch('/api/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from_account, to, subject, body }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.ok === false) throw new Error(data.error || `HTTP ${resp.status}`);
+    showToast('Email sent', 'success');
+    _emailToggleCompose();
+    // Clear fields
+    const toEl = document.getElementById('email-compose-to');
+    const subjEl = document.getElementById('email-compose-subject');
+    const bodyEl = document.getElementById('email-compose-body');
+    if (toEl) toEl.value = '';
+    if (subjEl) subjEl.value = '';
+    if (bodyEl) bodyEl.value = '';
+  } catch (e) {
+    showToast(`Send failed: ${e.message}`, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
   }
 }

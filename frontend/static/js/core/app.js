@@ -109,6 +109,8 @@ function openWindow(id, title, templateId) {
             else if (id === 'localai') initializeLocalAiPanel && initializeLocalAiPanel();
             else if (id === 'trace') initTraceView && initTraceView(win);
             else if (id === 'onboarding') _initOnboarding && _initOnboarding();
+            else if (id === 'knowledge') loadKnowledgeData && loadKnowledgeData(win);
+            else if (id === 'vpn') loadVpnData && loadVpnData(win);
             
             _troubleshootLog && _troubleshootLog('info', 'Window opened', `id=${windowKey} base=${id}`);
         } catch (err) {

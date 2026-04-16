@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "swarm"
+version = "6.0.0"
+description = "Seven's Swarm — multi-agent orchestration platform"
+requires-python = ">=3.11"
+dependencies = [
+    "Flask",
+    "requests",
+    "python-telegram-bot",
+    "discord.py",
+    "ollama",
+    "psutil",
+    "anthropic",
+    "duckduckgo-search",
+    "openai",
+    "google-genai",
+    "tavily-python",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pylint",
+    "black",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+addopts = "-x -q --tb=short"
+
+[tool.black]
+line-length = 120
+
+[tool.pylint.messages_control]
+disable = ["C0114", "C0115", "C0116", "R0903", "W0511"]

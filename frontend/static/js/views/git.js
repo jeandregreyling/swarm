@@ -8,6 +8,7 @@ function _gitState() {
       selectedStaged: false,
       status: null,
       filter: '',
+      environment: '',  // '' = default (prod)
     };
   }
   return window.__gitState;
@@ -18,6 +19,7 @@ function loadGitData(win) {
   const state = _gitState();
   const filterInput = win.el.querySelector('#git-filter-input');
   const commitInput = win.el.querySelector('#git-commit-message');
+  const envSelect = win.el.querySelector('#git-env-select');
   if (filterInput && !filterInput.dataset.bound) {
     filterInput.dataset.bound = '1';
     filterInput.addEventListener('input', (e) => {
@@ -29,6 +31,13 @@ function loadGitData(win) {
     commitInput.dataset.bound = '1';
     commitInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') gitCommitChanges();
+    });
+  }
+  if (envSelect && !envSelect.dataset.bound) {
+    envSelect.dataset.bound = '1';
+    envSelect.addEventListener('change', () => {
+      state.environment = envSelect.value;
+      gitRefreshStatus({ preserveSelection: false });
     });
   }
   gitRefreshStatus({ preserveSelection: true });
@@ -44,7 +53,8 @@ async function gitRefreshStatus(options = {}) {
   if (diffBody && !preserveSelection) diffBody.textContent = 'Loading diff...';
 
   try {
-    const resp = await fetch('/api/git/status');
+    const envQ = state.environment ? `?environment=${encodeURIComponent(state.environment)}` : '';
+    const resp = await fetch(`/api/git/status${envQ}`);
     const data = await resp.json().catch(() => ({}));
     if (!data.ok) throw new Error(data.error || 'git status failed');
     state.status = data;
@@ -213,7 +223,8 @@ async function gitLoadDiff(path, staged = false, options = {}) {
   }
 
   try {
-    const resp = await fetch(`/api/git/diff?path=${encodeURIComponent(path)}&staged=${staged ? '1' : '0'}`);
+    const envP = _gitState().environment ? `&environment=${encodeURIComponent(_gitState().environment)}` : '';
+    const resp = await fetch(`/api/git/diff?path=${encodeURIComponent(path)}&staged=${staged ? '1' : '0'}${envP}`);
     const data = await resp.json().catch(() => ({}));
     if (!data.ok) throw new Error(data.error || 'git diff failed');
     bodyEl.textContent = data.diff || '(No diff in this view)';
@@ -409,24 +420,25 @@ async function gitExecuteProposal(proposalId) {
 
   try {
     const checkpoint = await gitCreateVortexCheckpoint(`git-${proposalId.slice(0, 16)}-pre-exec`, true);
+    const _env = _gitState().environment;
     let resp;
     if (parsed.action === 'stage') {
       resp = await fetch('/api/git/stage', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ paths: [parsed.path], proposal_id: proposalId })
+        body: JSON.stringify({ paths: [parsed.path], proposal_id: proposalId, environment: _env })
       });
     } else if (parsed.action === 'unstage') {
       resp = await fetch('/api/git/unstage', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ paths: [parsed.path], proposal_id: proposalId })
+        body: JSON.stringify({ paths: [parsed.path], proposal_id: proposalId, environment: _env })
       });
     } else {
       resp = await fetch('/api/git/commit', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ message: parsed.message, proposal_id: proposalId })
+        body: JSON.stringify({ message: parsed.message, proposal_id: proposalId, environment: _env })
       });
     }
 

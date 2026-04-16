@@ -8,12 +8,29 @@ def _git_repo_root() -> Path:
     return Path(os.environ.get('SWARM_ROOT', str(Path(__file__).parent.parent.parent)))
 
 
+_GIT_ENVS = {
+    'prod': Path('/home/seven/swarm'),
+    'uat':  Path('/home/seven/swarm-uat'),
+    'dev':  Path('/home/seven/swarm-dev'),
+}
 
-def _git_rel_path(path_value: str) -> str:
+
+def _git_env_root(env: str = '') -> Path:
+    """Return repo root for the given environment label, or default."""
+    env = str(env or '').strip().lower()
+    if env in _GIT_ENVS:
+        p = _GIT_ENVS[env]
+        if p.is_dir():
+            return p
+    return _git_repo_root()
+
+
+
+def _git_rel_path(path_value: str, env: str = '') -> str:
     rel_path = str(path_value or '').strip().replace('\\', '/').lstrip('/')
     if not rel_path:
         raise ValueError('path required')
-    repo_root = _git_repo_root().resolve()
+    repo_root = _git_env_root(env).resolve()
     full_path = (repo_root / rel_path).resolve()
     if not str(full_path).startswith(str(repo_root)):
         raise ValueError('path outside repository')
@@ -24,10 +41,10 @@ def _git_rel_path(path_value: str) -> str:
 
 
 
-def _run_git_command(args, timeout=20):
+def _run_git_command(args, timeout=20, env=''):
     import subprocess
 
-    repo_root = _git_repo_root()
+    repo_root = _git_env_root(env)
     proc = subprocess.run(
         ['git', '-C', str(repo_root), *args],
         capture_output=True,
@@ -228,12 +245,25 @@ def _parse_git_status_porcelain(status_text: str):
     }
 
 
+@git_bp.route('/api/git/environments', methods=['GET'])
+def api_git_environments():
+    """List available git environments (worktrees)."""
+    envs = []
+    for label, path in _GIT_ENVS.items():
+        envs.append({
+            'name': label,
+            'path': str(path),
+            'available': path.is_dir(),
+        })
+    return jsonify({'ok': True, 'environments': envs})
+
 
 @git_bp.route('/api/git/status', methods=['GET'])
 def api_git_status():
     """Return repository status for the Fridays Git panel."""
+    env = request.args.get('environment', '')
     try:
-        proc = _run_git_command(['status', '--porcelain=1', '--branch'], timeout=20)
+        proc = _run_git_command(['status', '--porcelain=1', '--branch'], timeout=20, env=env)
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
@@ -244,6 +274,7 @@ def api_git_status():
     files = parsed['files']
     return jsonify({
         'ok': True,
+        'environment': env or 'prod',
         'branch': parsed['branch'],
         'upstream': parsed['upstream'],
         'ahead': parsed['ahead'],
@@ -267,8 +298,9 @@ def api_git_diff():
     """Return a unified diff for a repository path."""
     path_value = request.args.get('path', '')
     staged = request.args.get('staged', '0') == '1'
+    env = request.args.get('environment', '')
     try:
-        rel_path = _git_rel_path(path_value)
+        rel_path = _git_rel_path(path_value, env=env)
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
 
@@ -278,7 +310,7 @@ def api_git_diff():
     args.extend(['--', rel_path])
 
     try:
-        proc = _run_git_command(args, timeout=20)
+        proc = _run_git_command(args, timeout=20, env=env)
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
@@ -308,11 +340,12 @@ def api_git_stage():
     if gate:
         return gate
 
+    env = str(data.get('environment', '')).strip()
     raw_paths = data.get('paths') or []
     if isinstance(raw_paths, str):
         raw_paths = [raw_paths]
     try:
-        rel_paths = [_git_rel_path(item) for item in raw_paths if str(item or '').strip()]
+        rel_paths = [_git_rel_path(item, env=env) for item in raw_paths if str(item or '').strip()]
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
 
@@ -320,7 +353,7 @@ def api_git_stage():
         return jsonify({'ok': False, 'error': 'paths required'}), 400
 
     try:
-        proc = _run_git_command(['add', '--', *rel_paths], timeout=20)
+        proc = _run_git_command(['add', '--', *rel_paths], timeout=20, env=env)
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
@@ -340,11 +373,12 @@ def api_git_unstage():
     if gate:
         return gate
 
+    env = str(data.get('environment', '')).strip()
     raw_paths = data.get('paths') or []
     if isinstance(raw_paths, str):
         raw_paths = [raw_paths]
     try:
-        rel_paths = [_git_rel_path(item) for item in raw_paths if str(item or '').strip()]
+        rel_paths = [_git_rel_path(item, env=env) for item in raw_paths if str(item or '').strip()]
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
 
@@ -352,7 +386,7 @@ def api_git_unstage():
         return jsonify({'ok': False, 'error': 'paths required'}), 400
 
     try:
-        proc = _run_git_command(['reset', 'HEAD', '--', *rel_paths], timeout=20)
+        proc = _run_git_command(['reset', 'HEAD', '--', *rel_paths], timeout=20, env=env)
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
@@ -372,13 +406,14 @@ def api_git_commit():
     if gate:
         return gate
 
+    env = str(data.get('environment', '')).strip()
     message = str(data.get('message') or '').strip()
     proposal_id = str(data.get('proposal_id') or '').strip()
     if not message:
         return jsonify({'ok': False, 'error': 'message required'}), 400
 
     try:
-        staged = _run_git_command(['diff', '--cached', '--name-only'], timeout=20)
+        staged = _run_git_command(['diff', '--cached', '--name-only'], timeout=20, env=env)
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
@@ -391,14 +426,14 @@ def api_git_commit():
 
     final_message = message if not proposal_id else f'{message} (proposal:{proposal_id[:12]})'
     try:
-        commit = _run_git_command(['commit', '-m', final_message], timeout=40)
+        commit = _run_git_command(['commit', '-m', final_message], timeout=40, env=env)
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
     if commit.returncode != 0:
         return jsonify({'ok': False, 'error': (commit.stderr or commit.stdout or 'git commit failed').strip()[:500]}), 500
 
-    rev = _run_git_command(['rev-parse', 'HEAD'], timeout=10)
+    rev = _run_git_command(['rev-parse', 'HEAD'], timeout=10, env=env)
     commit_hash = (rev.stdout or '').strip() if rev.returncode == 0 else ''
     log_activity('terminal', 'git_commit', commit_hash[:12] or final_message[:48])
     return jsonify({
