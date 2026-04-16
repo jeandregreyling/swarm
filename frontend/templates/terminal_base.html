@@ -986,8 +986,14 @@
         <button class="mem-tab active" data-source="all" onclick="_memSourceTab(this,'all')">All Sources</button>
         <button class="mem-tab" data-source="db" onclick="_memSourceTab(this,'db')">DB Only</button>
         <button class="mem-tab" data-source="local" onclick="_memSourceTab(this,'local')">Local Files</button>
+        <div style="flex:1;"></div>
+        <button id="memory-landscape-btn" class="mem-tab" onclick="_memToggleLandscape()" title="Memory Landscape">
+          <svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><circle cx="4" cy="6" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="6" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="12" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M6 6h4M5 7.5L7 11M11 7.5L9 11" stroke="currentColor" stroke-width="1" opacity="0.5"/></svg> Landscape
+        </button>
       </div>
     </div>
+    <!-- Memory landscape canvas (hidden by default) -->
+    <canvas id="memory-landscape-canvas" style="display:none;width:100%;background:var(--bg);cursor:grab;" width="800" height="500"></canvas>
     <!-- Memory list -->
     <div id="memory-list" style="flex:1;overflow-y:auto;min-height:0;"></div>
     <!-- Memory detail panel -->
@@ -1527,6 +1533,7 @@
 <script src="/static/js/views/files.js"></script>
 <script src="/static/js/views/git.js"></script>
 <script src="/static/js/views/memory.js"></script>
+<script src="/static/js/views/memory-landscape.js"></script>
 <script src="/static/js/views/monitor.js"></script>
 <script src="/static/js/views/docs.js"></script>
 <script src="/static/js/views/skills.js"></script>
