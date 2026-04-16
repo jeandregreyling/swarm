@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-17 00:50",
+  "generated_at": "2026-04-17 00:58",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2422,6 +2422,10 @@
       "size_kb": 8.5
     },
     {
+      "name": "memory-landscape.js",
+      "size_kb": 9.6
+    },
+    {
       "name": "memory.js",
       "size_kb": 30.0
     },
@@ -2473,7 +2477,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 20399
+      "rows": 20440
     },
     {
       "name": "agent_capabilities",
@@ -2489,11 +2493,11 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 112
+      "rows": 115
     },
     {
       "name": "chat_jobs",
-      "rows": 237
+      "rows": 238
     },
     {
       "name": "claude_log",
@@ -2501,11 +2505,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 47
+      "rows": 50
     },
     {
       "name": "conversations",
-      "rows": 11
+      "rows": 12
     },
     {
       "name": "daily_checkpoint",
@@ -2525,7 +2529,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1401
+      "rows": 1421
     },
     {
       "name": "deferred_items",
@@ -2533,7 +2537,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 443
+      "rows": 445
     },
     {
       "name": "file_versions",
@@ -2549,11 +2553,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2050
+      "rows": 2062
     },
     {
       "name": "governance_log",
-      "rows": 23
+      "rows": 25
     },
     {
       "name": "knowledge_chunks",
@@ -2573,7 +2577,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 6
+      "rows": 7
     },
     {
       "name": "memory_grok",
@@ -2621,7 +2625,7 @@
     },
     {
       "name": "messages",
-      "rows": 183
+      "rows": 200
     },
     {
       "name": "moderators",
@@ -2657,7 +2661,7 @@
     },
     {
       "name": "queue",
-      "rows": 804
+      "rows": 810
     },
     {
       "name": "research_evidence",
@@ -2669,7 +2673,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 182
+      "rows": 184
     },
     {
       "name": "scheduled_tasks",
@@ -2701,7 +2705,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 23
+      "rows": 25
     },
     {
       "name": "swarm_event_acks",
@@ -2733,27 +2737,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 197
+      "rows": 199
     },
     {
       "name": "tickets",
-      "rows": 205
+      "rows": 207
     },
     {
       "name": "time_checkpoints",
-      "rows": 1271
+      "rows": 1288
     },
     {
       "name": "time_events",
-      "rows": 55487
+      "rows": 55550
     },
     {
       "name": "time_journal",
-      "rows": 52994
+      "rows": 53040
     },
     {
       "name": "time_machine",
-      "rows": 4603
+      "rows": 4608
     },
     {
       "name": "tool_builds",
@@ -2781,7 +2785,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 22
+      "rows": 24
     }
   ],
   "agents": [
@@ -3271,6 +3275,10 @@
     },
     {
       "id": "files-btn-commit",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "memory-landscape-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4312,6 +4320,14 @@
     {
       "id": "git-proposals-list",
       "file": "frontend/static/js/views/git.js"
+    },
+    {
+      "id": "memory-landscape-canvas",
+      "file": "frontend/static/js/views/memory-landscape.js"
+    },
+    {
+      "id": "memory-list",
+      "file": "frontend/static/js/views/memory-landscape.js"
     },
     {
       "id": "tickets-content",
