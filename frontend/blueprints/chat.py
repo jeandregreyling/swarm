@@ -17,6 +17,10 @@ from services import *
 from utils.db.registry import get_agent_roster as _reg_roster, get_single_task_locals as _reg_stl
 from utils.db.timeline import timeline_append as _trace
 try:
+    from frontend.blueprints.sse import publish_chat_update as _sse_chat
+except ImportError:
+    def _sse_chat(*a, **kw): pass
+try:
     from utils.circuit_breaker import check as _cb_check, record_success as _cb_ok, record_failure as _cb_fail, health_probe as _cb_probe
     _CB_AVAILABLE = True
 except ImportError:
@@ -1308,6 +1312,10 @@ def api_chat():
             )
             if isinstance(job_ref, dict):
                 job_ref['job_id'] = job_id
+            try:
+                _sse_chat(conv_id, selected_agent, 'running', job_id=job_id, eta_seconds=eta_seconds)
+            except Exception:
+                pass
 
             def _finish_job(done_future):
                 updated_ts = time.time()
@@ -1360,6 +1368,10 @@ def api_chat():
                         elapsed_ms=int(elapsed_ms or 0), tokens=int(tokens_used or 0),
                         stage_trace_json=_trace_json,
                     )
+                    try:
+                        _sse_chat(conv_id, selected_agent, 'completed', job_id=job_id, tokens=int(tokens_used or 0))
+                    except Exception:
+                        pass
                 except Exception as exc:
                     err_text = str(exc or '').strip() or exc.__class__.__name__
                     with _CHAT_JOB_LOCK:
@@ -1398,6 +1410,10 @@ def api_chat():
                             _trace_json_f = json.dumps(job.get('stage_trace') or [])
                     update_chat_job_db(job_id, status='failed', stage='failed', error=err_text,
                                        stage_trace_json=_trace_json_f)
+                    try:
+                        _sse_chat(conv_id, selected_agent, 'failed', job_id=job_id, error=err_text)
+                    except Exception:
+                        pass
 
             future.add_done_callback(_finish_job)
             return job_id
