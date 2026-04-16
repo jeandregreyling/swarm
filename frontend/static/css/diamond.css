@@ -1,140 +1,169 @@
 /* ──────────────────────────────────────────────────────────────────────────────
-   diamond.css — System Pulse + Attention Dots + Add-New tile styles
+   diamond.css — Sundial Pulse + Attention Dots + Tile Context Menu
    ────────────────────────────────────────────────────────────────────────── */
 
-/* ── Pulse Section ────────────────────────────────────────────────────────── */
+/* ── Sundial ──────────────────────────────────────────────────────────────── */
 
-#system-pulse-section {
-  margin-bottom: 16px;
-}
-
-/* Vitals row */
-.pulse-vitals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
+#sundial {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
 }
 
-.pulse-badge {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: 20px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  font-size: 11px;
-  min-width: 72px;
-  transition: border-color 0.3s, box-shadow 0.3s;
+#sundial-rays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
 }
 
-.pulse-badge-icon {
-  font-size: 12px;
-  line-height: 1;
+.sundial-ray {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.3;
+  transition: stroke 0.6s, opacity 0.6s, stroke-width 0.4s;
+}
+.sundial-ray.ray-ok    { stroke: rgba(76, 175, 80, 0.35); opacity: 0.5; }
+.sundial-ray.ray-warn  { stroke: rgba(255, 183, 77, 0.6); opacity: 0.7; stroke-width: 1.5; }
+.sundial-ray.ray-crit  { stroke: rgba(239, 83, 80, 0.7);  opacity: 0.9; stroke-width: 2; }
+
+#sundial-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 2;
+  user-select: none;
 }
 
-.pulse-badge-val {
-  font-weight: 600;
-  color: var(--text);
-  min-width: 26px;
-}
-
-.pulse-badge-label {
-  color: var(--text-dim);
-  font-size: 10px;
-}
-
-/* Health states */
-.pulse-ok {
-  border-color: rgba(76, 175, 80, 0.35);
-}
-.pulse-ok .pulse-badge-val {
-  color: #4caf50;
-}
-
-.pulse-warn {
-  border-color: rgba(255, 183, 77, 0.5);
-  box-shadow: 0 0 6px rgba(255, 183, 77, 0.15);
-}
-.pulse-warn .pulse-badge-val {
-  color: #ffb74d;
-}
-
-.pulse-crit {
-  border-color: rgba(239, 83, 80, 0.5);
-  box-shadow: 0 0 8px rgba(239, 83, 80, 0.2);
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-.pulse-crit .pulse-badge-val {
-  color: #ef5350;
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 6px rgba(239, 83, 80, 0.15); }
-  50%      { box-shadow: 0 0 14px rgba(239, 83, 80, 0.35); }
-}
-
-/* ── Processing Graph ─────────────────────────────────────────────────────── */
-
-.pulse-graph-wrap {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px 8px;
-}
-
-.pulse-graph-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.pulse-graph-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.pulse-graph-legend {
-  display: flex;
-  gap: 12px;
-  font-size: 10px;
-  color: var(--text-dim);
-}
-
-.pulse-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.pulse-legend-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-#pulse-chart {
+#sundial-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
   display: block;
-  border-radius: 4px;
+  transition: color 0.6s, text-shadow 0.6s;
+  color: var(--text);
+}
+#sundial-title[data-health="ok"] {
+  color: #4caf50;
+  text-shadow: 0 0 10px rgba(76, 175, 80, 0.25);
+}
+#sundial-title[data-health="warn"] {
+  color: #ffb74d;
+  text-shadow: 0 0 12px rgba(255, 183, 77, 0.3);
+}
+#sundial-title[data-health="crit"] {
+  color: #ef5350;
+  text-shadow: 0 0 16px rgba(239, 83, 80, 0.4);
+  animation: sundial-rage 2s ease-in-out infinite;
+}
+@keyframes sundial-rage {
+  0%, 100% { text-shadow: 0 0 10px rgba(239, 83, 80, 0.3); }
+  50%      { text-shadow: 0 0 22px rgba(239, 83, 80, 0.55); }
 }
 
-.pulse-summary {
-  display: flex;
-  gap: 16px;
-  margin-top: 6px;
-  font-size: 10px;
+.sundial-refreshing #sundial-title {
+  animation: sundial-refresh 0.6s ease;
+}
+@keyframes sundial-refresh {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.12); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+#sundial-sub {
+  font-size: 8px;
   color: var(--text-dim);
+  display: block;
+  letter-spacing: 0.02em;
 }
 
-.pulse-summary span::before {
-  content: '•';
-  margin-right: 4px;
-  opacity: 0.4;
+/* ── Sundial Nodes ────────────────────────────────────────────────────────── */
+
+.sundial-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  transform: translate(-50%, -50%);
+  cursor: default;
+  z-index: 3;
 }
+
+.sundial-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+              border-color 0.4s, box-shadow 0.4s;
+}
+
+.sundial-val {
+  font-size: 7px;
+  color: var(--text-dim);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Node health states: grow + glow */
+.sundial-node[data-health="ok"] .sundial-dot {
+  border-color: rgba(76, 175, 80, 0.35);
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.12);
+}
+.sundial-node[data-health="warn"] .sundial-dot {
+  border-color: rgba(255, 183, 77, 0.6);
+  box-shadow: 0 0 10px rgba(255, 183, 77, 0.25);
+  transform: scale(1.18);
+}
+.sundial-node[data-health="crit"] .sundial-dot {
+  border-color: rgba(239, 83, 80, 0.6);
+  box-shadow: 0 0 14px rgba(239, 83, 80, 0.35);
+  transform: scale(1.35);
+  animation: sundial-throb 2s ease-in-out infinite;
+}
+@keyframes sundial-throb {
+  0%, 100% { transform: scale(1.35); box-shadow: 0 0 10px rgba(239, 83, 80, 0.25); }
+  50%      { transform: scale(1.55); box-shadow: 0 0 20px rgba(239, 83, 80, 0.5); }
+}
+
+.sundial-node:hover .sundial-dot {
+  border-color: var(--accent);
+}
+
+/* ── Sundial Tooltip ──────────────────────────────────────────────────────── */
+
+.sundial-tooltip {
+  position: fixed;
+  z-index: 10000;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  min-width: 140px;
+  max-width: 220px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  pointer-events: none;
+  display: none;
+  animation: stip-in 0.15s ease-out;
+}
+@keyframes stip-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stip-header { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.stip-desc   { font-size: 10px; color: var(--text-dim); line-height: 1.4; margin-bottom: 5px; }
+.stip-val    { font-size: 16px; font-weight: 700; color: var(--text); text-align: center; padding: 2px 0; }
+.stip-health { font-size: 9px; text-align: center; color: var(--text-dim); }
 
 /* ── Attention Dots ───────────────────────────────────────────────────────── */
 
@@ -155,28 +184,10 @@
   pointer-events: none;
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
-
-.attn-dot:empty {
-  width: 8px;
-  height: 8px;
-  min-width: 8px;
-  padding: 0;
-  border-radius: 50%;
-}
-
-.attn-dot-info {
-  background: #42a5f5;
-}
-
-.attn-dot-warn {
-  background: #ff9800;
-}
-
-.attn-dot-crit {
-  background: #ef5350;
-  animation: attn-throb 2s ease-in-out infinite;
-}
-
+.attn-dot:empty { width: 8px; height: 8px; min-width: 8px; padding: 0; border-radius: 50%; }
+.attn-dot-info { background: #42a5f5; }
+.attn-dot-warn { background: #ff9800; }
+.attn-dot-crit { background: #ef5350; animation: attn-throb 2s ease-in-out infinite; }
 @keyframes attn-throb {
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.15); }
@@ -204,35 +215,119 @@
   margin: 0 auto;
   border-radius: 20px !important;
 }
-
 .home-card-add:hover {
   opacity: 1;
   border-color: var(--accent) !important;
   background: rgba(var(--accent-rgb, 96, 165, 250), 0.06) !important;
 }
+.home-card-add .card-title { color: var(--text-dim); font-size: 11px; gap: 4px; }
+.home-card-add:hover .card-title { color: var(--accent); }
+.home-card-add .card-desc { display: none; }
 
-.home-card-add .card-title {
-  color: var(--text-dim);
+/* ── Tile Context Menu ───────────────────────────────────────────────────── */
+
+.tile-ctx {
+  position: fixed;
+  z-index: 10000;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  min-width: 170px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  animation: ctx-in 0.12s ease-out;
 }
-
-.home-card-add:hover .card-title {
-  color: var(--accent);
+@keyframes ctx-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
-
-.home-card-add .card-desc {
-  display: none;
-}
-
-.home-card-add .card-title {
+.ctx-item {
+  padding: 7px 10px;
   font-size: 11px;
-  gap: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.12s;
+}
+.ctx-item:hover { background: rgba(var(--accent-rgb, 96, 165, 250), 0.1); }
+.ctx-danger:hover { background: rgba(239, 83, 80, 0.1); color: #ef5350; }
+.ctx-sep { height: 1px; background: var(--border); margin: 3px 6px; }
+
+/* ── Hidden Tiles ─────────────────────────────────────────────────────────── */
+
+.hidden-badge {
+  margin-left: 8px;
+  font-size: 9px;
+  color: var(--accent);
+  opacity: 0.7;
+  font-weight: 500;
 }
 
-/* ── Mood Ring ────────────────────────────────────────────────────────────── */
+.hidden-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+  animation: ctx-in 0.15s ease-out;
+}
+.hidden-panel-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+.hidden-panel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 6px;
+  font-size: 11px;
+  border-radius: 4px;
+}
+.hidden-panel-item:hover { background: rgba(var(--accent-rgb, 96, 165, 250), 0.06); }
+.hidden-restore-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 10px;
+  padding: 2px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.hidden-restore-btn:hover { background: var(--accent); color: #fff; }
 
-#ambient-scene {
+/* ── Shortcut Tooltips (cute bounce-in) ───────────────────────────────────── */
+
+.home-card { position: relative; }
+
+[data-shortcut]::after {
+  content: attr(data-shortcut);
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  background: var(--card);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  opacity: 0;
   pointer-events: none;
-  transition: background 2s ease, opacity 1.5s ease;
+  transition: opacity 0.2s 0.35s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.35s;
+  z-index: 10;
+  letter-spacing: 0.3px;
+}
+[data-shortcut]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
