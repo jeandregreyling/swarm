@@ -1151,6 +1151,32 @@ const WORLD_CLOCK_DEFAULTS = [
   { city: 'New York', timeZone: 'America/New_York' }
 ];
 
+// Weather cache for world clocks
+let _clockWeatherCache = {};   // {city: {data, fetchedAt}}
+const _WEATHER_CACHE_TTL = 900000; // 15 minutes
+
+function _fetchClockWeather() {
+  const zones = loadWorldClockZones();
+  const cities = zones.map(z => z.city).join(',');
+  if (!cities) return;
+  fetch('/api/weather?cities=' + encodeURIComponent(cities))
+    .then(r => r.json())
+    .then(data => {
+      const now = Date.now();
+      for (const [city, w] of Object.entries(data || {})) {
+        _clockWeatherCache[city] = { data: w, fetchedAt: now };
+      }
+    })
+    .catch(() => {});
+}
+
+function _getClockWeather(city) {
+  const entry = _clockWeatherCache[city];
+  if (!entry) return null;
+  if (Date.now() - entry.fetchedAt > _WEATHER_CACHE_TTL * 2) return null;
+  return entry.data;
+}
+
 function getAllTimezones() {
   return [
     { city: 'UTC', timeZone: 'UTC' },
@@ -1348,6 +1374,10 @@ function updateWorldClocks() {
       const time = getTimeForTimezone(zone.timeZone);
       const digital = createDigitalTime(time);
       const analog = createAnalogClockHTML(time);
+      const weather = _getClockWeather(zone.city);
+      const weatherHtml = weather && weather.temperature != null
+        ? `<div style="font-size:9px;color:var(--text-dim);margin-top:1px;">${Math.round(weather.temperature)}°C ${weather.description || ''}</div>`
+        : '';
       
       html += `
         <div class="world-clock-item" onclick="openTimezonePicker(${idx})" style="gap: 8px;">
@@ -1355,6 +1385,7 @@ function updateWorldClocks() {
           <div style="font-family: 'Courier New', monospace; font-size: 11px; color: var(--accent); letter-spacing: 1px; text-align: center; line-height: 1.3;">${digital}</div>
           <div class="zone" style="font-size: 11px;">${zone.city}</div>
           <div style="font-size: 10px; color: var(--text-dim);">${time.offsetLabel}</div>
+          ${weatherHtml}
         </div>
       `;
     });
@@ -1441,9 +1472,11 @@ function initClocks() {
   
   updateHomeTimeDisplay();
   updateWorldClocks();
+  _fetchClockWeather();
   
   setInterval(updateHomeTimeDisplay, 60000);
   setInterval(updateWorldClocks, 1000);
+  setInterval(_fetchClockWeather, _WEATHER_CACHE_TTL);
   
   const modal = document.getElementById('timezone-picker-modal');
   if (modal) {
