@@ -78,10 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(loadOllamaPanel, 15000); // Refresh every 15 seconds
   loadAttentionPanel(); // Needs-attention summary → delegates to System Pulse
   setInterval(loadAttentionPanel, 30000); // Refresh every 30 seconds
-  updateActivityLog();
-  setInterval(updateActivityLog, 5000);
-  updateTicketQueue();
-  setInterval(updateTicketQueue, 10000);
+  // Home chat replaces activity log + ticket queue on the home page
+  if (typeof initHomeChat === 'function') initHomeChat();
   loadAuthProfiles();
   _renderIdentityPill();
   initChatSpellHelper();
@@ -253,21 +251,8 @@ document.addEventListener('DOMContentLoaded', () => {
     `).join('');
   });
   
-  // Filter activity log
-  document.getElementById('activity-filter').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('#activity-log .activity-item').forEach(item => {
-      item.style.display = item.textContent.toLowerCase().includes(query) ? 'block' : 'none';
-    });
-  });
-  
-  // Filter ticket queue
-  document.getElementById('ticket-filter').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('#ticket-queue .ticket-item').forEach(item => {
-      item.style.display = item.textContent.toLowerCase().includes(query) ? 'flex' : 'none';
-    });
-  });
+  // Filter listeners (activity/ticket removed — now on home chat)
+  // Activity log and ticket queue filters are available inside their tile windows
   
   // Close palette on click outside
   document.getElementById('command-palette').addEventListener('click', (e) => {
