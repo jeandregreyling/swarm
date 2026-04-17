@@ -483,9 +483,9 @@ function filesOpenFull() {
     .then(r => r.json())
     .then(data => {
       if (!data.ok) { showToast(data.error || 'Failed to load full file', 'error'); return; }
-      const win = winManager.open({ id: 'file-full-' + Date.now(), title: state.path.split('/').pop(), width: 620, height: 480 });
+      const win = winManager.create(`file-full-${Date.now()}`, state.path.split('/').pop(), '', { width: 620, height: 480 });
       if (!win?.el) return;
-      const c = win.el.querySelector('.window-body') || win.el;
+      const c = win.el.querySelector('.window-content') || win.el;
       c.innerHTML = `<pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);font-family:monospace;font-size:11px;line-height:1.45;padding:10px;overflow:auto;height:100%;background:rgba(0,0,0,0.15);">${_escHtml(data.content || '')}</pre>`;
     })
     .catch(() => showToast('Failed to load full file', 'error'));
