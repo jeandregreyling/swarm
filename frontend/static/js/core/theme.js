@@ -1155,6 +1155,30 @@ const WORLD_CLOCK_DEFAULTS = [
 let _clockWeatherCache = {};   // {city: {data, fetchedAt}}
 const _WEATHER_CACHE_TTL = 900000; // 15 minutes
 
+// WMO weather code → inline SVG icon mapping
+function _weatherIcon(code, isDay) {
+  const c = Number(code);
+  const sun = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M8 2.5v2M8 11.5v2M2.5 8h2M11.5 8h2M4.1 4.1l1.4 1.4M10.5 10.5l1.4 1.4M4.1 11.9l1.4-1.4M10.5 5.5l1.4-1.4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>';
+  const moon = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M10 3a5 5 0 1 0 3 7 4 4 0 0 1-3-7z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+  const cloud = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M4.5 11.5a3 3 0 0 1-.4-6A4 4 0 0 1 12 7a2.5 2.5 0 0 1 .5 5h-8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+  const rain = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M4.5 9a3 3 0 0 1-.4-6A4 4 0 0 1 12 5a2.5 2.5 0 0 1 .5 4h-8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 11v2M8 11.5v2M10 11v2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>';
+  const snow = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M4.5 9a3 3 0 0 1-.4-6A4 4 0 0 1 12 5a2.5 2.5 0 0 1 .5 4h-8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="6" cy="11.5" r=".7" fill="currentColor"/><circle cx="8.5" cy="12.5" r=".7" fill="currentColor"/><circle cx="10.5" cy="11" r=".7" fill="currentColor"/></svg>';
+  const storm = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M4.5 8.5a3 3 0 0 1-.4-6A4 4 0 0 1 12 4.5a2.5 2.5 0 0 1 .5 4h-8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 9l-2 3h2.5l-1.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const fog = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M3 7h10M3 9.5h10M3 12h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+
+  if (c === 0) return isDay ? sun : moon;                         // clear sky
+  if (c === 1) return isDay ? sun : moon;                         // mainly clear
+  if (c <= 3) return cloud;                                        // partly cloudy / overcast
+  if (c >= 45 && c <= 48) return fog;                              // fog / rime fog
+  if (c >= 51 && c <= 57) return rain;                             // drizzle
+  if (c >= 61 && c <= 67) return rain;                             // rain
+  if (c >= 71 && c <= 77) return snow;                             // snow
+  if (c >= 80 && c <= 82) return rain;                             // rain showers
+  if (c >= 85 && c <= 86) return snow;                             // snow showers
+  if (c >= 95 && c <= 99) return storm;                            // thunderstorm
+  return cloud;                                                    // fallback
+}
+
 function _fetchClockWeather() {
   const zones = loadWorldClockZones();
   const cities = zones.map(z => z.city).join(',');
@@ -1376,7 +1400,7 @@ function updateWorldClocks() {
       const analog = createAnalogClockHTML(time);
       const weather = _getClockWeather(zone.city);
       const weatherHtml = weather && weather.temperature != null
-        ? `<div style="font-size:9px;color:var(--text-dim);margin-top:1px;">${Math.round(weather.temperature)}°C ${weather.description || ''}</div>`
+        ? `<div style="font-size:9px;color:var(--text-dim);margin-top:1px;">${_weatherIcon(weather.weathercode, weather.is_day !== false)} ${Math.round(weather.temperature)}°C ${weather.description || ''}</div>`
         : '';
       
       html += `

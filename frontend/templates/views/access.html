@@ -3,7 +3,7 @@
 <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
   <div style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
     <div>
-      <h3 style="margin-bottom:3px;font-size:12px;">🔑 Access Control</h3>
+      <h3 style="margin-bottom:3px;font-size:12px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Access Control</h3>
       <div style="font-size:9px;color:var(--text-dim);">Trusted senders, ignored addresses, skill permissions, roles & skills</div>
     </div>
     <button onclick="loadAccessData(window._accessWin)" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:9px;cursor:pointer;">↻ Refresh</button>
@@ -15,9 +15,9 @@
              style="flex:1;min-width:200px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
       <select id="access-new-list"
               style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
-        <option value="trusted">✅ Trusted</option>
-        <option value="notification">🔔 Notification</option>
-        <option value="domain">🌐 Domain</option>
+        <option value="trusted"><svg viewBox="0 0 16 16" width="10" height="10" fill="none"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 8l2 2 3-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Trusted</option>
+        <option value="notification"><svg viewBox="0 0 16 16" width="10" height="10" fill="none"><path d="M5 6.5a3 3 0 0 1 6 0c0 2.5 1 3.5 1.5 4H3.5c.5-.5 1.5-1.5 1.5-4ZM7 12.5a1.5 1.5 0 0 0 2 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Notification</option>
+        <option value="domain"><svg viewBox="0 0 16 16" width="10" height="10" fill="none"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M3 8h10M8 3c-1.7 2-1.7 8 0 10M8 3c1.7 2 1.7 8 0 10" stroke="currentColor" stroke-width="1.3"/></svg> Domain</option>
       </select>
       <input type="text" id="access-new-note" placeholder="Note (optional)"
              style="width:160px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
@@ -27,21 +27,21 @@
     <!-- THREE LISTS -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:0;">
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">✅ Trusted — full pipeline</div>
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 8l2 2 3-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Trusted — full pipeline</div>
         <div id="access-trusted-list" style="font-size:12px;"></div>
       </div>
       <div>
-        <div style="font-size:11px;font-weight:700;color:#fa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">🔔 Notification / Ignored</div>
+        <div style="font-size:11px;font-weight:700;color:#fa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M5 6.5a3 3 0 0 1 6 0c0 2.5 1 3.5 1.5 4H3.5c.5-.5 1.5-1.5 1.5-4ZM7 12.5a1.5 1.5 0 0 0 2 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Notification / Ignored</div>
         <div id="access-notification-list" style="font-size:12px;"></div>
       </div>
       <div style="grid-column:1/-1;">
-        <div style="font-size:11px;font-weight:700;color:#8af;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">🌐 Trusted Domains</div>
+        <div style="font-size:11px;font-weight:700;color:#8af;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M3 8h10M8 3c-1.7 2-1.7 8 0 10M8 3c1.7 2 1.7 8 0 10" stroke="currentColor" stroke-width="1.3"/></svg> Trusted Domains</div>
         <div id="access-domain-list" style="font-size:12px;"></div>
       </div>
     </div>
     <!-- SKILL PERMISSIONS -->
     <div>
-      <div style="font-size:11px;font-weight:700;color:#c8f;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">🎛 Skill Permissions</div>
+      <div style="font-size:11px;font-weight:700;color:#c8f;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M3 4.5h10M3 8h10M3 11.5h10M6 3v3M10 6.5v3M7 10v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Skill Permissions</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
         <select id="skill-perm-user" onchange="loadSkillPerms()"
                 style="flex:1;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
@@ -53,7 +53,7 @@
     </div>
     <!-- ROLES & SKILLS ADMIN (if needed) -->
     <div>
-      <div style="font-size:11px;font-weight:700;color:#0af;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">📝 Roles & Skills Management</div>
+      <div style="font-size:11px;font-weight:700;color:#0af;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M4 3h8v10H4zM6 6h4M6 8h4M6 10h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Roles & Skills Management</div>
       <div id="roles-skills-admin-panel">
         <!-- Roles & skills management UI will be rendered here by JS -->
       </div>
