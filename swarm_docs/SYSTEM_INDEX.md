@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-18 00:07*
+*Auto-generated: 2026-04-18 08:51*
 
 
 ## Python Modules
@@ -77,7 +77,7 @@
 | File | Description |
 |------|-------------|
 | `agents/deepseek_local/deepseek_local_agent.py` | agents/deepseek_local/deepseek_local_agent.py — DeepSeek R1 (local Ollama) |
-| `agents/eight/eight_agent.py` | — |
+| `agents/eight/eight_agent.py` | agents/eight/eight_agent.py — Eight |
 | `agents/eleven/grok_agent.py` | # LINKED TO: utils/config.py — imports ELEVEN_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/gemma/gemma_agent.py` | agents/gemma/gemma_agent.py — Gemma (local Ollama) |
 | `agents/ghost_coder/ghost_coder_agent.py` | agents/ghost_coder/ghost_coder_agent.py — Ghost Coder (Agent #17) |
@@ -222,34 +222,34 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 21327 |
+| `activity_log` | 21643 |
 | `agent_capabilities` | 168 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 19 |
 | `approval_tokens` | 154 |
-| `audit_results` | 0 |
-| `chat_jobs` | 252 |
+| `audit_results` | 1 |
+| `chat_jobs` | 260 |
 | `claude_log` | 1 |
-| `conv_timeline` | 232 |
-| `conversations` | 14 |
+| `conv_timeline` | 473 |
+| `conversations` | 22 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1676 |
+| `decisions` | 1685 |
 | `deferred_items` | 0 |
 | `duck_log` | 471 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2261 |
-| `governance_log` | 52 |
+| `ghost_circle` | 2306 |
+| `governance_log` | 57 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
 | `memory` | 2 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 13 |
+| `memory_gemma` | 14 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 0 |
 | `memory_llama` | 1 |
@@ -262,7 +262,7 @@
 | `memory_ten` | 2 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 41 |
+| `messages` | 72 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -271,7 +271,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 889 |
+| `queue` | 893 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 210 |
@@ -280,29 +280,29 @@
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
-| `sqlite_sequence` | 58 |
+| `sqlite_sequence` | 59 |
 | `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 52 |
+| `swarm_bus` | 57 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 6014 |
+| `system_stats` | 6119 |
 | `terminal_shortcuts` | 10 |
 | `ticket_notes` | 225 |
 | `tickets` | 233 |
-| `time_checkpoints` | 1527 |
-| `time_events` | 63153 |
-| `time_journal` | 60401 |
-| `time_machine` | 4723 |
+| `time_checkpoints` | 1530 |
+| `time_events` | 65942 |
+| `time_journal` | 63187 |
+| `time_machine` | 4726 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 19 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 49 |
+| `work_proposals` | 53 |
 
 ## Agents
 

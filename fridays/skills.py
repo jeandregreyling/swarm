@@ -1692,33 +1692,83 @@ def _trust_gate(skill_name, agent_name):
 def call(skill_name, args='', agent='ghost', source_conv_id=None):
     """
     Invoke a skill by name. Returns (success: bool, output: str).
-
     skill_name     — one of REGISTRY keys
     args           — remaining arguments string
     agent          — calling agent name (for logging)
     source_conv_id — originating chat conversation id (forwarded to proposal skills)
     """
+    import json
     skill_name = skill_name.strip().lower()
+    thinking_tree_entry = {
+        'step': 'start',
+        'skill': skill_name,
+        'args': args,
+        'agent': agent,
+        'source_conv_id': source_conv_id,
+        'reasoning': f"Dispatching skill '{skill_name}' with args '{args}' for agent '{agent}'",
+        'todo': f"Execute skill '{skill_name}'."
+    }
+    try:
+        with open('fridays/thinking_tree_log.json', 'a') as f:
+            f.write(json.dumps(thinking_tree_entry) + "\n")
+    except Exception as log_exc:
+        logger.error(f'[ThinkingTreeLog] Write failed: {log_exc}')
 
     if skill_name not in _HANDLERS:
         known = ', '.join(sorted(_HANDLERS.keys()))
-        return False, f'Unknown skill: {skill_name!r}. Known skills: {known}'
+        result = f'Unknown skill: {skill_name!r}. Known skills: {known}'
+        thinking_tree_entry_error = {
+            'step': 'error',
+            'skill': skill_name,
+            'agent': agent,
+            'output': result,
+            'todo': f"Skill not found. Log failure."
+        }
+        try:
+            with open('fridays/thinking_tree_log.json', 'a') as f:
+                f.write(json.dumps(thinking_tree_entry_error) + "\n")
+        except Exception as log_exc:
+            logger.error(f'[ThinkingTreeLog] Write failed: {log_exc}')
+        return False, result
 
-    # ── A.2.1: Trust level enforcement ─────────────────────────────────────
     blocked, reason = _trust_gate(skill_name, agent)
     if blocked:
         _log(skill_name, agent, args, reason, False)
         logger.warning(f'[Skills] BLOCKED {agent} → {skill_name}: {reason}')
+        thinking_tree_entry_blocked = {
+            'step': 'blocked',
+            'skill': skill_name,
+            'agent': agent,
+            'reason': reason,
+            'todo': "Trust gate blocked skill execution."
+        }
+        try:
+            with open('fridays/thinking_tree_log.json', 'a') as f:
+                f.write(json.dumps(thinking_tree_entry_blocked) + "\n")
+        except Exception as log_exc:
+            logger.error(f'[ThinkingTreeLog] Write failed: {log_exc}')
         return False, reason
 
     logger.info(f'[Skills] {agent} → {skill_name}({args[:80]})')
-
     try:
         success, output = _HANDLERS[skill_name](args=args, agent=agent, source_conv_id=source_conv_id)
     except Exception as e:
         success = False
         output = f'Skill {skill_name} raised an error: {e}'
-        logger.error(f'[Skills] {skill_name} error: {e}')
+
+    thinking_tree_entry_finish = {
+        'step': 'finish',
+        'skill': skill_name,
+        'agent': agent,
+        'success': success,
+        'output': output[:200],
+        'todo': f"Log result and audit for skill '{skill_name}'."
+    }
+    try:
+        with open('fridays/thinking_tree_log.json', 'a') as f:
+            f.write(json.dumps(thinking_tree_entry_finish) + "\n")
+    except Exception as log_exc:
+        logger.error(f'[ThinkingTreeLog] Write failed: {log_exc}')
 
     _log(skill_name, agent, args, output, success)
 
