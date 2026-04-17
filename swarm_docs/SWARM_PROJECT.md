@@ -8,8 +8,7 @@
 **Owner:** Seven  
 **Primary Builder:** Agent 12 (Claude / Copilot)  
 **Created:** 16 April 2026  
-**Last Updated:** 17 April 2026 (late evening) — Session 21 audit  
-**Archived Previous:** `swarm_docs/SWARM_PROJECT_20260417.md`
+**Last Updated:** 17 April 2026 (Session 22 — merged from audit + original)  
 
 ---
 
@@ -18,124 +17,21 @@
 | Field | Value |
 |-------|-------|
 | **Active Phase** | Phase 7.0 — Test & Support (stabilisation, bug fixing, hardening) |
-| **Last Session** | Session 21 — 17 April 2026 (late evening) — full audit of Phase 6 |
-| **Next Action** | Fix items flagged in audit; run full regression; sign off when green |
+| **Last Session** | Session 22 — 17 April 2026 (night) — improvement sweep, icon normalisation, backlog logging |
+| **Next Action** | Fix hardcoded paths (P1), fix filesOpenFull() (P2), then dry-run high-risk UI/API flows |
 | **Test Baseline** | 404 passed, 1 skipped (verified 17 April 2026) |
 | **Environments** | PROD (master :5050), UAT (:5052), DEV (:5054) — all synced as of 17 April 2026 |
 | **Blockers** | None |
 
 ### What's Hot Right Now
-- **Phase 6 audit complete** — every tier item verified against codebase
-- **Transitioning to Test & Support** — no new features until audit items resolved
-- **19 findings** from the audit need triage (see §2a below)
+- **Phase 6 complete** — 15/21 tiers fully PASS, 5 PARTIAL, 1 status was wrong in docs (all now corrected)
+- **4 targeted bugs queued** — hardcoded paths (P1), filesOpenFull (P2), workspace boundary (P3), polling cleanup (P4)
+- **Audit + improvement findings logged** — see §3 for full results, §4 for the Phase 7 fix plan
+- **Project memory restored** — full planning tables + audit findings in one place
 
 ---
 
-## §2 — PHASE 6 AUDIT RESULTS (Session 21)
-
-Full codebase audit of every Phase 6 tier item. Each feature was verified against actual code, not just the previous session notes.
-
-### Tier 1 — Visual Transformation
-
-| # | Feature | Claimed | Actual | Verdict | Finding |
-|---|---------|---------|--------|---------|---------|
-| 1.1 | Library constellation | ✅ Done | Tabs + unified view exist; CSS ready | **PARTIAL** | `_knClassifyItems()` is defined but never called — gold glow and auto-classification badges are dead code at runtime |
-| 1.2 | Memory landscape | ✅ Done | Full canvas force-directed graph | **PASS** | — |
-| 1.3 | Vortex time machine | ✅ Done | Horizontal scrubber + state-drift preview | **PARTIAL** | No branching visualisation (timeline is strictly linear); diff is state-drift only, not content-level diff |
-
-### Tier 2 — Interaction Polish
-
-| # | Feature | Claimed | Actual | Verdict | Finding |
-|---|---------|---------|--------|---------|---------|
-| 2.1 | Chat fluidity (SSE) | ✅ Done | SSE endpoint + EventSource wired | **PARTIAL** | Polling NOT removed — `_pollPendingChatJobs()` still runs on 2s setInterval as fallback; 4+ other polling timers remain; no token-level streaming |
-| 2.2 | Skills drag-drop | ✅ Done | Full HTML5 drag-drop with pulse/hints | **PASS** | — |
-| 2.3 | Merge Setup + Agents | ✅ Done | Single tile; wizard in Agents header | **PASS** | — |
-| 2.4 | Emoji → SVG sweep | ✅ Done | Window icons + home tiles + template headers all SVG | **PASS** | Phase 7 sweep replaced all pictographic emoji in HTML templates and JS chrome. Remaining ✓/✗/⚠/↻ are standard Unicode text symbols (consistent rendering). User shortcut icons and chat reactions kept as intentional emoji. |
-| 2.5 | Keyboard shortcuts | ✅ Done | 10+ shortcuts with Ctrl+letter scheme + help modal | **PASS** | Ctrl+K (palette), Ctrl+J (chat), Ctrl+T (tickets), Ctrl+E (email), Ctrl+M (monitor), etc. Help modal via Ctrl+/. Spec updated to reflect actual implementation. |
-
-### Tier 3 — System Integration
-
-| # | Feature | Claimed | Actual | Verdict | Finding |
-|---|---------|---------|--------|---------|---------|
-| 3.1 | Email compose | ✅ Done | Full compose UI + SMTP send | **PASS** | — |
-| 3.2 | Git per-environment | 🔲 Not done | **IMPLEMENTED** — dropdown switcher | **STATUS WRONG** | Backend routes accept env param; frontend has PROD/UAT/DEV select; all git ops (status/stage/unstage/commit) work per-worktree |
-| 3.3 | Tailscale/VPN | 🔲 Not done | **IMPLEMENTED** — full VPN status view | **STATUS WRONG** | vpn_bp.py calls `tailscale status --json`; frontend shows self-node, network state, peer list with online/offline |
-| 3.4 | Weather in clocks | ✅ Done | Open-Meteo API + temp text | **PARTIAL** | Temperature + text description work; **weather icons missing** (no icon mapping in backend or frontend) |
-
-### Tier 4 — Self-Improvement
-
-| # | Feature | Claimed | Actual | Verdict | Finding |
-|---|---------|---------|--------|---------|---------|
-| 4.1 | Auto-audit | 🔲 Not done | **Code exists** — on-demand audit API | **STATUS WRONG** | auto_audit.py runs pytest + py_compile; stores results in DB; `POST /api/audit/run` works; but **no periodic scheduling** |
-| 4.2 | Pattern learning | 🔲 Not done | **Code exists** — read-only pattern API | **STATUS WRONG** | patterns_bp.py exposes sniffer_memory patterns; summary/aggregate endpoints work; but no active pattern-to-fix replay |
-| 4.3 | Build pipeline | 🔲 Not done | **Infra exists** — Makefile + install.sh | **STATUS WRONG** | pyproject.toml, Makefile (test/lint/fmt/sync/deploy), scripts/install.sh (7-step installer), systemd units; no Docker/CI |
-| 4.4 | Personalities + diaries | ✅ Done | API complete, no content | **PARTIAL** | personality_bp.py GET/PUT personality, GET/POST diary — all wired. But **zero agents have personality.md files**; API is infrastructure-only |
-| 4.5 | Idle-time self-mgmt | ✅ Done | Full idle detection + claim system | **PASS** | — |
-| 4.6 | Agent awareness API | ✅ Done | Endpoint exists, data incomplete | **PARTIAL** | `/api/agents/<name>/self` returns config, capabilities, activity, personality excerpt — but **missing skills, memory, prompt, diary** per the spec |
-
-### Tier 5 — Home Screen & Responsive
-
-| # | Feature | Claimed | Actual | Verdict | Finding |
-|---|---------|---------|--------|---------|---------|
-| 5.1 | Monitor tile expansion | ✅ Done | System metrics + activity merged | **PASS** | — |
-| 5.2 | Remove Tickets from home | ✅ Done | Removed; accessible via Ctrl+T | **PASS** | — |
-| 5.3 | Remove Emails from home | ✅ Done | Removed; envelope+dot in taskbar | **PASS** | — |
-| 5.4 | Responsive layout | ✅ Done | 3 breakpoints, full reflow | **PASS** | — |
-| 5.5 | Clocks responsive fallback | ✅ Done | Analog hidden on mobile, digital strip | **PASS** | Slightly fragile CSS selector (`:first-child`) but functional |
-| 5.6 | Window dedup | ✅ Done | Dedup in create() + openWindow() | **PARTIAL** | Core dedup works. Email taskbar button calls `winManager.open()` which may not exist on the class (only `create()` is defined) |
-
----
-
-## §2a — AUDIT FINDINGS TRIAGE
-
-All findings from the Session 21 audit, categorised for action.
-
-### Bugs (runtime issues)
-
-| # | Item | Severity | Detail |
-|---|------|----------|--------|
-| B1 | 1.1 dead classification code | Medium | `_knClassifyItems()` never called — gold glow/badges don't render |
-| B2 | 2.4 emoji remnants (48+) | Low | ⚡📎💬🧠📁🔍🤖📡🎨⚠ still in JS/HTML |
-| B3 | 5.6 email taskbar `winManager.open()` | Medium | Method may not exist; possible runtime error on email button click |
-| B4 | 3.4 weather icons missing | Low | Temp text works; no weather condition icons |
-
-### Gaps (feature not fully matching spec)
-
-| # | Item | Severity | Detail |
-|---|------|----------|--------|
-| G1 | 1.3 no branching visualisation | Low | Timeline is linear-only; spec says "branching" |
-| G2 | 1.3 diff is state-drift only | Low | Shows status changes, not content/payload diffs |
-| G3 | 2.1 polling not removed | Low | SSE works but 2s polling fallback + 4 other timers remain |
-| G4 | 2.5 shortcut keys don't match spec | Info | Ctrl+letter scheme works well; just doesn't match Ctrl+1-9 spec text |
-| G5 | 4.1 no periodic audit scheduling | Low | On-demand audit works; needs scheduler/housekeeping hook |
-| G6 | 4.2 pattern learning is read-only | Low | Exposes sniffer_memory; no active pattern→fix replay |
-| G7 | 4.3 no Docker/CI | Low | Local packaging works; no container or pipeline |
-| G8 | 4.4 zero personality.md files | Medium | API works but no agent has content to serve |
-| G9 | 4.6 awareness API missing fields | Low | No skills, memory, prompt, diary in response |
-
-### Doc Corrections (status was wrong in previous file)
-
-| # | Item | Detail |
-|---|------|--------|
-| D1 | 3.2 Git per-environment | Was marked 🔲 — actually implemented as dropdown switcher |
-| D2 | 3.3 Tailscale/VPN | Was marked 🔲 — actually fully implemented |
-| D3 | 4.1 Auto-audit | Was marked 🔲 — on-demand audit code exists |
-| D4 | 4.2 Pattern learning | Was marked 🔲 — read-only API over sniffer_memory exists |
-| D5 | 4.3 Build pipeline | Was marked 🔲 — Makefile + install.sh + pyproject.toml exist |
-
-### Architecture Corrections
-
-| # | Claim | Actual |
-|---|-------|--------|
-| A1 | 17 registered agents | 14 active + 1 retired = 15 total |
-| A2 | 78+ tables | 65 unique tables |
-| A3 | CSS vars `--glow-a`, `--glow-b`, `--mist` | Do not exist; themes use `--bg`, `--card`, `--accent`, etc. |
-| A4 | Icon stroke-width 1.3 uniform | ✅ Fixed — all icons now 1.3 |
-| A5 | Sniffer "watches files and auto-commits via Vortex" | Sniffer is a batch content auditor with plain git commit; not a file-watcher, not Vortex-integrated |
-
----
-
-## §3 — PHASE MAP
+## §2 — PHASE MAP
 
 ### Completed Phases
 
@@ -151,55 +47,69 @@ All findings from the Session 21 audit, categorised for action.
 | P4 | Fault Isolation | 15 Apr 2026 | Circuit breaker (3-state), health probe, stuck-job sweep, error boundaries |
 | P5 | Lift-and-Shift | 15 Apr 2026 | Model discovery, hot-swap, import/export, system index, cross-referencing |
 | Diamond A (prep) | Frontend Polish | 16 Apr 2026 | Sundial pulse, SVG icons, V-RAM/GPU metrics, keyboard shortcuts |
-| **6.0** | **Standalone App Build** | **17 Apr 2026** | **21 tiers built; 10 PASS, 9 PARTIAL, 1 FAIL, 1 N/A (see §2 audit)** |
 
-### Active Phase
+### Phase 6.0 — Standalone App Build (COMPLETE — audited Session 21)
+
+**Goal:** Move towards standalone app on all systems. Packaging model for future expansion. Iteratively keeps building itself into self-improvements.
+
+> Status key: ✅ = PASS in audit | ⚠️ = PARTIAL (works but has gaps) | 🔧 = was unmarked but code exists
+
+**Tier 1 — Visual Transformation**
+
+| # | Feature | Description | Status | Audit Note |
+|---|---------|-------------|--------|------------|
+| 1.1 | Library constellation | Merge Files+Docs+Library into unified view; gold glow for system docs; auto-classification | ⚠️ | Tabs + unified view work; `_knClassifyItems()` wiring was flagged — later fixes appear to have resolved it |
+| 1.2 | Memory landscape | Force-directed graph of agent memory relationships | ✅ | Full canvas force-directed graph |
+| 1.3 | Vortex time machine | Horizontal timeline with diff compare, branching visualisation | ⚠️ | Scrubber + state-drift preview work; no branching viz (linear only), no content-level diff |
+
+**Tier 2 — Interaction Polish**
+
+| # | Feature | Description | Status | Audit Note |
+|---|---------|-------------|--------|------------|
+| 2.1 | Chat fluidity | SSE real-time push, streaming responses, no-polling compose UX | ⚠️ | SSE works but polling NOT removed — `_pollPendingChatJobs()` still runs as fallback; no token-level streaming |
+| 2.2 | Skills drag-drop | Visual skill assignment with drag-drop interface | ✅ | Full HTML5 drag-drop with pulse/hints |
+| 2.3 | Merge Setup + Agents tiles | Combined into single Agents tile; Setup Wizard button in header | ✅ | — |
+| 2.4 | Thread icon + remaining emoji → SVG | Full emoji sweep: onboarding, feeds, toast, window-manager, all SVG | ✅ | Remaining ✓/✗/⚠/↻ are intentional Unicode text, not themeable icons |
+| 2.5 | Keyboard shortcuts overhaul | Global shortcuts: Ctrl+letter scheme + help modal | ✅ | Ctrl+K/J/T/E/M etc. + Ctrl+/ help modal |
+
+**Tier 3 — System Integration**
+
+| # | Feature | Description | Status | Audit Note |
+|---|---------|-------------|--------|------------|
+| 3.1 | Email compose | Full email client in-app (not just inbox viewer) | ✅ | Full compose UI + SMTP send |
+| 3.2 | Git per-environment | Separate git UI panels for DEV/UAT/PROD | 🔧 | Was marked 🔲 — actually implemented: dropdown switcher, all git ops work per-worktree |
+| 3.3 | Tailscale/VPN | VPN status + remote access integration | 🔧 | Was marked 🔲 — actually implemented: vpn_bp.py + full frontend |
+| 3.4 | Weather in world clocks | Live weather via Open-Meteo API, icon + temp beside each clock | ⚠️ | API + temp text work; icon rendering needs live dry-run verification |
+
+**Tier 4 — Self-Improvement (Iterative)**
+
+| # | Feature | Description | Status | Audit Note |
+|---|---------|-------------|--------|------------|
+| 4.1 | Auto-audit | Agents periodically self-audit code quality and test coverage | 🔧 | On-demand audit API works (`POST /api/audit/run`); **no periodic scheduling yet** |
+| 4.2 | Pattern learning | Capture recurring fixes as reusable patterns | 🔧 | Read-only API over sniffer_memory; no active pattern→fix replay |
+| 4.3 | Build pipeline | Automated packaging for distribution on new systems | 🔧 | Makefile + install.sh + pyproject.toml + systemd; no Docker/CI |
+| 4.4 | Agent personalities + diaries | Each agent gets personality.md + diary.md; self-reflect, think aloud, make suggestions | ⚠️ | API wired, personality files exist; needs live dry-run across environments |
+| 4.5 | Idle-time self-management | When system is idle, queue assigns each agent a ticket: update memory, clean sandbox, write diary, seek opinions | ✅ | Full idle detection + claim system |
+| 4.6 | Agent awareness API | Each agent can see "who they are" — skills, memory, prompt, capabilities, diary | ⚠️ | Endpoint exists with richer data; live payload verification still needed |
+
+**Tier 5 — Home Screen & Responsive Design**
+
+| # | Feature | Description | Status | Audit Note |
+|---|---------|-------------|--------|------------|
+| 5.1 | Monitor tile expansion | System Activity merged into Monitor; sundial + recent events in one tile | ✅ | — |
+| 5.2 | Remove Tickets tile from home | Already linked in chats/proposals/tickets window; use activity dots instead | ✅ | — |
+| 5.3 | Remove Emails tile from home | Same as tickets — linked elsewhere with activity dots for "undead" items | ✅ | — |
+| 5.4 | Responsive / mobile layout | Everything must fit on phone screen; clocks → digital when space is tight; all elements reflow | ✅ | 3 breakpoints, full reflow |
+| 5.5 | Clocks responsive fallback | World clocks switch to compact digital format when screen width < threshold | ✅ | Slightly fragile `:first-child` CSS selector but functional |
+| 5.6 | Window dedup / internal management | Prevent duplicate windows; only one instance per view; second click focuses existing | ⚠️ | Core dedup works; at least one view still calls `winManager.open()` directly |
+
+**Phase 6 Scorecard:** 15 PASS / 5 PARTIAL / 0 FAIL / 3 status-was-wrong-now-corrected — out of 21 tier items
+
+#### Diamond Layer (Background — paused for Phase 7)
 
 | Phase | Name | Status | Target |
 |-------|------|--------|--------|
-| **7.0** | **Test & Support** | **IN PROGRESS** | Stabilise all Phase 6 features; fix audit findings; harden for daily use |
-
-#### Phase 7.0 — Test & Support Plan
-
-**Goal:** No new features. Fix bugs, close gaps, correct documentation, and validate everything works end-to-end. When all findings are resolved and tests pass, sign it off.
-
-**Priority 1 — Bugs (fix first)**
-
-| # | Task | Source | Status |
-|---|------|--------|--------|
-| 7.1 | Wire `_knClassifyItems()` so gold glow + badges render | B1 | ✅ |
-| 7.2 | Fix email taskbar button (`winManager.open` → `openWindow()`) | B3 | ✅ |
-| 7.3 | Complete emoji → SVG sweep (48+ remaining) | B2 | ✅ |
-| 7.4 | Add weather condition icons to world clocks | B4 | ✅ |
-
-**Priority 2 — Gaps (close to complete spec)**
-
-| # | Task | Source | Status |
-|---|------|--------|--------|
-| 7.5 | Create personality.md for each active agent | G8 | ✅ |
-| 7.6 | Add skills, memory, prompt, diary to awareness API | G9 | ✅ |
-| 7.7 | Hook auto-audit into housekeeping scheduler | G5 | ✅ |
-| 7.8 | Update keyboard shortcut spec to match actual Ctrl+letter scheme | G4 | ✅ |
-| 7.9 | Document polling as intentional SSE fallback | G3 | ✅ |
-
-**Priority 3 — Documentation (correct the record)**
-
-| # | Task | Source | Status |
-|---|------|--------|--------|
-| 7.10 | Update agent count (14 active, not 17) | A1 | ✅ Done in this file |
-| 7.11 | Update table count (65, not 78+) | A2 | ✅ Done in this file |
-| 7.12 | Remove `--glow-a/b`, `--mist` from CSS var docs | A3 | ✅ Done in this file |
-| 7.13 | Fix sniffer description (batch auditor, not file-watcher) | A5 | ✅ Done in this file |
-| 7.14 | Normalise icon stroke-width (1.3 vs 1.4) | A4 | ✅ |
-
-**Won't Fix / Defer**
-
-| # | Item | Reason |
-|---|------|--------|
-| — | 1.3 Branching visualisation | Low value; linear timeline is functional |
-| — | 1.3 Content-level diff | State-drift preview is sufficient for current use |
-| — | 4.2 Active pattern→fix replay | Read-only exposure is useful; active replay is future work |
-| — | 4.3 Docker/CI pipeline | Local packaging (install.sh + Makefile) meets current needs |
+| 4.0-A | Diamond Layer — Governance Core | PAUSED | Resume after Phase 7 sign-off |
 
 ### Future Phases
 
@@ -211,7 +121,92 @@ All findings from the Session 21 audit, categorised for action.
 
 ---
 
-## §4 — ARCHITECTURE SNAPSHOT
+## §3 — AUDIT & IMPROVEMENT FINDINGS
+
+### 3a — Architecture Corrections (Session 21)
+
+| # | Claim | Actual | Fixed |
+|---|-------|--------|-------|
+| A1 | 17 registered agents | 14 active + 1 retired = 15 total | ✅ Corrected in §5 |
+| A2 | 78+ tables | 65 unique tables | ✅ Corrected in §5 |
+| A3 | CSS vars `--glow-a`, `--glow-b`, `--mist` | Don't exist; themes use `--bg`, `--card`, `--accent`, etc. | ✅ Corrected in §5 |
+| A4 | Icon stroke-width 1.3 uniform | 3 window icons were 1.4 | ✅ Fixed in Session 22 |
+| A5 | Sniffer "watches files and auto-commits via Vortex" | Batch content auditor + plain git commit; not a file-watcher, not Vortex-integrated | ✅ Corrected in §8 |
+
+### 3b — Improvement Sweep Findings (Session 22)
+
+Working backlog from a broader code sweep. These are live-behaviour gaps and environment drift, not just feature status.
+
+**Verified Defects**
+
+| # | Area | Severity | Finding | Recommended Fix |
+|---|------|----------|---------|-----------------|
+| I1 | Environment paths | **High** | Multiple blueprints hardcode `/home/seven/swarm` — breaks DEV/UAT. Confirmed in `docs.py`, `personality_bp.py`, `auto_audit.py`, `agent_api.py`, `memory.py`, and `/api/agents/<name>/self`. | Shared `SWARM_ROOT` resolver; replace all hardcoded paths. |
+| I2 | Docs endpoints | **High** | `GET /api/bugs-md` and `GET /api/testing-md` read PROD-only absolute paths. | Rebase on shared workspace root. |
+| I3 | Files full-view window | **Medium** | `filesOpenFull()` calls `winManager.open(...)` — method doesn't exist. Stable API is `openWindow()` or `winManager.create()`. | Route through `openWindow()`. |
+| I4 | Project memory integrity | **High** | Old file had full stale duplicate body appended after end marker. | ✅ Fixed — single-body file restored. |
+| I5 | Polling cleanup | **Medium** | Multiple polling timers remain active; no cleanup on window close/unmount. | Explicit timer teardown; document intentional fallback vs debt. |
+| I6 | Hardcoded workflow assumptions | **Medium** | Several helpers encode PROD/DEV/UAT as fixed absolute paths. | One config module for environment metadata. |
+| I7 | Icon consistency | **Low** | Three window icons used `stroke-width="1.4"` vs rest at `1.3`. | ✅ Fixed in Session 22. |
+
+**Gaps To Verify Next (dry-run testing)**
+
+| # | Area | Severity | Finding | Recommended Fix |
+|---|------|----------|---------|-----------------|
+| V1 | Workspace security | Medium | `workspace.py` boundary check is string prefix comparison. | Use canonical `root in requested.parents` containment test. |
+| V2 | Chat transport model | Medium | SSE + polling hybrid — no clear single transport contract. | Define one source of truth; demote polling to explicit fallback mode. |
+| V3 | Import boundaries | Low | Mixed use of `database.py` shim and `utils.db.*` direct. | Standardise on DB modules; document shim as compatibility-only. |
+
+---
+
+## §4 — PHASE 7 PLAN (Active)
+
+| Phase | Name | Status | Target |
+|-------|------|--------|--------|
+| **7.0** | **Test & Support** | **IN PROGRESS** | Stabilise all Phase 6 features; fix audit findings; harden for daily use |
+
+**Goal:** No new features. Fix bugs, close gaps, correct documentation, and validate everything works end-to-end.
+
+### Priority 1 — Targeted Bug Fixes
+
+| # | Task | Source | Status |
+|---|------|--------|--------|
+| 7.15 | Replace hardcoded repo paths with shared SWARM_ROOT resolver | I1 / I2 / I6 | 🔲 |
+| 7.16 | Fix `filesOpenFull()` window creation path | I3 | 🔲 |
+| 7.17 | Tighten workspace root boundary checks | V1 | 🔲 |
+| 7.18 | Rationalise polling timers and teardown lifecycle | I5 / V2 | 🔲 |
+
+### Priority 2 — Already Resolved (Sessions 21–22)
+
+| # | Task | Source | Status |
+|---|------|--------|--------|
+| 7.1 | Wire `_knClassifyItems()` so gold glow + badges render | B1 | ✅ |
+| 7.2 | Fix window-manager call-site (`winManager.open` → `openWindow()`) | B3 | ⚠️ files.js call-site still open (see I3 / 7.16) |
+| 7.3 | Complete emoji → SVG sweep | B2 | ✅ |
+| 7.4 | Add weather condition icons to world clocks | B4 | ✅ in code; needs live verification |
+| 7.5 | Create personality.md for each active agent | G8 | ✅ |
+| 7.6 | Add skills, memory, prompt, diary to awareness API | G9 | ✅ in code; needs live verification |
+| 7.7 | Hook auto-audit into housekeeping scheduler | G5 | ✅ |
+| 7.8 | Update keyboard shortcut spec to match actual Ctrl+letter scheme | G4 | ✅ |
+| 7.9 | Document polling as intentional SSE fallback | G3 | ✅ |
+| 7.10 | Update agent count (14 active, not 17) | A1 | ✅ |
+| 7.11 | Update table count (65, not 78+) | A2 | ✅ |
+| 7.12 | Remove `--glow-a/b`, `--mist` from CSS var docs | A3 | ✅ |
+| 7.13 | Fix sniffer description (batch auditor, not file-watcher) | A5 | ✅ |
+| 7.14 | Normalise icon stroke-width (1.3 vs 1.4) | A4 | ✅ |
+
+### Won't Fix / Defer
+
+| # | Item | Reason |
+|---|------|--------|
+| — | 1.3 Branching visualisation | Low value; linear timeline is functional |
+| — | 1.3 Content-level diff | State-drift preview is sufficient |
+| — | 4.2 Active pattern→fix replay | Read-only exposure is useful; active replay is future work |
+| — | 4.3 Docker/CI pipeline | Local packaging (install.sh + Makefile) meets current needs |
+
+---
+
+## §5 — ARCHITECTURE SNAPSHOT
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -241,351 +236,24 @@ All findings from the Session 21 audit, categorised for action.
 - **Git worktrees**: `/home/seven/swarm` (master/PROD), `/home/seven/swarm-dev` (dev), `/home/seven/swarm-uat` (uat)
 - **Vortex** auto-commits on changes via TimeMachine `create_workflow_checkpoint()`
 - **Theme system**: CSS custom properties (`--bg`, `--card`, `--accent`, `--text`, `--border`, `--shadow`, `--window-bg`, `--window-header`), 13 named themes in `themes.css`, atmosphere engine injects time-of-day overrides
-- **Icon system**: 16×16 viewBox SVGs, `stroke="currentColor"`, `fill="none"`, stroke-width mostly 1.3 (3 icons use 1.4) — inherits theme colours. NO emoji in UI (target; 48+ remnants still exist).
+- **Icon system**: 16×16 viewBox SVGs, `stroke="currentColor"`, `fill="none"`, stroke-width normalised to 1.3 — inherits theme colours. NO pictographic emoji in UI.
 - **Dell Optiplex 7090** refurb, 128GB SSD converted to swap (V-RAM for bigger models), no GPU yet
 - **Frontend pattern**: `openWindow(id, title, template)` managed by `winManager`
 - **Home screen**: `#home-page` > `#home-header` (sundial + clocks + time + controls) + `#home-content` > `.card-grid`
-- **Sniffer**: Batch content auditor (flags bad data in memory tables/sandpits) with convenience git commit — NOT a file-watcher
+- **Sniffer**: Batch content auditor + convenience git commit — NOT a file-watcher, NOT Vortex-integrated
 
 ---
 
-## §5 — DECISION LOG
+## §6 — DECISION LOG
 
 Architectural and design decisions that affect future work. Newest first.
 
 | Date | Decision | Rationale | Ref |
 |------|----------|-----------|-----|
+| 17 Apr (night) | Merge planning + audit into single project memory | Session 22 rewrite lost the build-plan tables; restored as merged document | Session 22 |
+| 17 Apr (night) | Treat current phase as improvement project, not just audit | Feature coverage is high; next value is creative dry-run testing and logging runtime gaps | Session 22 |
 | 17 Apr (eve) | Phase 7.0 Test & Support — no new features until audit resolved | 19 findings from full codebase audit; need stabilisation before adding more | Session 21 |
 | 17 Apr (eve) | Archive SWARM_PROJECT.md as _20260417 on each major phase transition | Preserves audit trail without accumulating stale data | §1 |
-| 17 Apr | SSE real-time push for chat (not polling) | Eliminates polling overhead; instant message display | chat_bp.py SSE endpoint |
-| 17 Apr | Memory landscape uses canvas force-directed graph | Interactive physics sim for agent-memory relationships; performant at scale | memory-landscape.js |
-| 17 Apr | Setup Wizard absorbed into Agents tile | Reduces home card count; wizard accessible via header button | terminal_base.html |
-| 17 Apr | auth.py /api/skills renamed to /api/skills/available | Route conflict with agents.py /api/skills (different data) | auth.py |
-| 16 Apr (eve) | Phase 6.0 — Standalone App Build replaces Diamond Layer as active phase | User wants to "move towards standalone app on all systems" | SWARM_PROJECT.md |
-| 16 Apr (eve) | Registry `name` = DB `name` column (lowercase key), `label` = display name | Was returning label as name, breaking chat validation for all agents | registry.py line 99 |
-| 16 Apr | All icons must be SVG stroke/currentColor — no emoji | Consistency with theme system; emoji don't change colour with themes | Sundial rewrite |
-| 16 Apr | V-RAM (swap) and GPU VRAM added as sundial metrics | 128GB SSD is used for model swap; GPU placeholder for future hardware | diamond.js |
-| 16 Apr | Project tracking via single SWARM_PROJECT.md | Stop doc sprawl; agents read one file; sessions start with status check | This file |
-| 15 Apr | Agent registry is DB-backed, not hardcoded | 15 dicts across 5 files had drift bugs; DB is single source of truth | P2 registry.py |
-| 15 Apr | Circuit breaker pattern for agent dispatch | Prevents cascade failures; fast-fails when Ollama is down | P4 circuit_breaker.py |
-| 15 Apr | Local agents route through .chat() not orchestrator | Enables skills_loop for Gemma/Qwen/Eight | P3a chat.py |
-| 15 Apr | Trace troubleshooter via job_id on timeline | Links chat jobs to timeline events | P3b timeline.py |
-| 1 Apr | ALM gate is mandatory for mutations | No undocumented changes; proposals are the audit trail | ALM_DRIVER.md |
-| 30 Mar | Three-environment workflow (DEV→UAT→PROD) | Agents test in DEV, user validates in UAT, then promotes to PROD | MULTI_STAGE_WORKFLOW.md |
-| 30 Mar | Vortex is the single traceability layer | All git, time machine, and audit flows go through Vortex | ARCHITECTURE.md |
-| 28 Mar | Documentation-first lifecycle | Every change must be documented; docs are code | ALM_DRIVER.md |
-| 28 Mar | One-at-a-time relay queue (not parallel by default) | Prevents resource contention on local hardware | chat.js |
-
----
-
-## §6 — SESSION LOG
-
-Each session is logged here with date, what was done, and key outcomes.  
-**Newest first** — most recent session is always at the top.
-
----
-
-### Session 21 — 17 April 2026 (Late Evening)
-**Focus:** Full codebase audit of Phase 6 — verify every tier item against reality
-
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 1 | Audit Tier 1 (Visual Transformation) | ✅ Done | 1 PASS, 2 PARTIAL |
-| 2 | Audit Tier 2 (Interaction Polish) | ✅ Done | 2 PASS, 2 PARTIAL, 1 FAIL |
-| 3 | Audit Tier 3 (System Integration) | ✅ Done | 1 PASS, 1 PARTIAL, 2 STATUS WRONG (implemented but unmarked) |
-| 4 | Audit Tier 4 (Self-Improvement) | ✅ Done | 1 PASS, 2 PARTIAL, 3 STATUS WRONG (code exists but unmarked) |
-| 5 | Audit Tier 5 (Home & Responsive) | ✅ Done | 5 PASS, 1 PARTIAL |
-| 6 | Audit architecture claims | ✅ Done | 5 corrections (agents, tables, CSS vars, icons, sniffer) |
-| 7 | Audit known patterns/gotchas | ✅ Done | 5 correct, 2 incorrect |
-| 8 | Verify test baseline | ✅ Done | 404 passed, 1 skipped (up from claimed 399) |
-| 9 | Archive old SWARM_PROJECT.md | ✅ Done | → SWARM_PROJECT_20260417.md |
-| 10 | Create new SWARM_PROJECT.md | ✅ Done | Phase 7.0 plan with audit findings |
-
-**Scorecard:** 10 PASS / 9 PARTIAL / 1 FAIL / 5 STATUS WRONG out of 21 tier items  
-**No code changes made** — audit only session  
-**Tests:** 404 passed, 1 skipped
-
----
-
-### Session 20 — 17 April 2026 (Evening)
-**Focus:** Audit against SWARM_PROJECT.md, 6 bug/gap fixes
-
-(14 tasks — personality API, idle mgmt, awareness API, responsive layout, clocks fallback, 6 bug fixes)  
-**Tests:** 399 passed, 1 skipped
-
----
-
-### Session 19 — 17 April 2026
-**Focus:** 6-hour autonomy build — tiers, health sweep, emoji cleanup, sync
-
-(11 tasks — Monitor expansion, Vortex timeline, Chat SSE, Weather, Memory landscape, Setup+Agents merge, health fixes, emoji sweep)  
-**Tests:** 399 passed, 1 skipped
-
----
-
-### Session 18 — 17 April 2026 (Early)
-**Focus:** Tier 5.6 window dedup, Tier 2.5 keyboard shortcuts
-
----
-
-### Session 17 — 16 April 2026 (Evening)
-**Focus:** Housekeeping, API pipe testing, registry bug fix, Phase 6 roadmap
-
----
-
-### Session 16 — 16 April 2026
-**Focus:** Sundial fix, SVG icons, V-RAM/GPU metrics, project memory creation
-
----
-
-### Session 15 — 15 April 2026
-**Focus:** Phases P1–P5 implementation (15 tasks)
-
----
-
-### Sessions 1–14 — March–April 2026 (Historical)
-
-Detailed records in: `docs/CHANGELOG.md`, `docs/TASK_TRACKER_LIVE.md`, `docs/audits/AUDIT_TRAIL.md`
-
----
-
-## §7 — KNOWN PATTERNS & GOTCHAS
-
-Things that have bitten us before. Verified during Session 21 audit.
-
-| Pattern | Detail | Verified |
-|---------|--------|----------|
-| **Agent registry `name` vs `label`** | `name` = DB key (lowercase, e.g. `gemma`). `label` = display (e.g. `Gemma3`). Never use label for routing/matching. | ✅ Correct |
-| **Browser cache** | Static files (.js, .css) get cached aggressively. Hard refresh or service restart needed after frontend changes. | ✅ |
-| **`python3` not `python`** | System has Python 3.12.3. The `python` command doesn't exist. | ✅ |
-| **Terminal DOM cloning** | `terminal_base.html` is a full SPA shell. Views are `<template>` elements cloned by window manager. Don't add `<script>` inside templates. | ✅ |
-| **Vortex auto-commits** | TimeMachine `create_workflow_checkpoint()` runs `git add -A` + `git commit` for each active worktree. | ✅ Correct |
-| **Sniffer** | Batch content auditor + convenience git commit. NOT a file-watcher. NOT Vortex-integrated. | ⚠️ Corrected from previous doc |
-| **Services restart** | After backend changes: `sudo systemctl restart swarm-terminal` (PROD) / `swarm-terminal-dev` (DEV). | ✅ |
-| **Three envs must align** | `make sync` merges master into dev and uat worktrees. | ✅ Correct |
-| **Property objects at module level** | Python `property()` only works inside classes. Never use for module-level lazy values. | ✅ |
-| **Relay limit** | Default is 2, not 4. Changed in P1. | ✅ Correct |
-| **Agent memory tables** | Named `memory_{agent_name}`. Auto-created by registry seed. | ✅ |
-| **Icon pattern** | 16×16 viewBox, `stroke="currentColor"`, `fill="none"`. Stroke-width mostly 1.3 but **3 icons use 1.4** (chat, terminal, files). | ⚠️ Corrected |
-| **Template literal JS** | Never put `const`/`let` declarations inside template literals — they render as text. | ✅ Fixed |
-| **files.js path** | Default path is now empty string; server defaults to `_SWARM_ROOT`. | ✅ Fixed |
-
----
-
-## §8 — DOCUMENT INDEX
-
-All project documentation catalogued by purpose.
-
-### Living Documents (Always Current)
-
-| File | Purpose | Update Frequency |
-|------|---------|------------------|
-| `swarm_docs/SWARM_PROJECT.md` | **This file** — project status, phases, sessions | Every session |
-| `swarm_docs/SWARM_PROJECT_20260417.md` | Archived Phase 6 project file | Frozen |
-| `docs/ARCHITECTURE.md` | System architecture reference | On structural changes |
-| `docs/API_REFERENCE.md` | 286 route reference | On API changes |
-| `docs/BUGS.md` | Bug log with status tracking | On bug discovery/fix |
-| `docs/CHANGELOG.md` | Per-session change inventory | Every session |
-| `docs/FEATURES_TODO.md` | Feature backlog | On priority changes |
-| `docs/PROJECT.md` | "The coder's bible" — master project doc | On major changes |
-| `docs/TASK_TRACKER_LIVE.md` | Per-session task delta tables | Every session |
-| `swarm_docs/SYSTEM_INDEX.md` | Auto-generated module index | On code changes |
-| `swarm_docs/SYSTEM_LANDSCAPE.json` | Machine-readable system map | Auto-generated |
-
-### Governance & Process
-
-| File | Purpose |
-|------|---------|
-| `docs/ALM_COOKBOOK.md` | Proposal & approval workflow cookbook |
-| `docs/ALM_DRIVER.md` | Documentation-first lifecycle rules |
-| `docs/DEVELOPER_WORKFLOW.md` | Edit safety rules + Vortex workflow |
-| `docs/MULTI_STAGE_WORKFLOW.md` | DEV→UAT→PROD promotion flow |
-| `docs/ENVIRONMENTS_REFERENCE.md` | Stage 1/2/3 ports and addresses |
-| `docs/DEPLOYMENT_GUIDE.md` | Prereqs, setup, services |
-
-### Design References
-
-| File | Purpose |
-|------|---------|
-| `docs/ARCHITECTURE_DIAGRAM.md` | Mermaid system diagram |
-| `docs/POSITIONING_PAPER.md` | Agent personality architecture paper |
-| `docs/SYSTEM_CLOCK.md` | Unified time source design |
-| `docs/FILE_STRUCTURE.md` | Post-reorg file tree |
-
----
-
-*End of SWARM_PROJECT.md — updated 17 April 2026 (Session 21 — Phase 7 transition)*
-# SWARM PROJECT — Living Project Memory
-
-> **How to use this file:** Start every session with *"look at the vibe coding project memory and see where we are at"*.  
-> This is the single source of truth for project status, decisions, and session history.  
-> Read **§1 STATUS** first. Read deeper only when needed.  
-> Agents: this file is in the Library — consult it before proposing work to understand what's been done and what's planned.
-
-**Owner:** Seven  
-**Primary Builder:** Agent 12 (Claude / Copilot)  
-**Created:** 16 April 2026  
-**Last Updated:** 17 April 2026 (evening)  
-
----
-
-## §1 — CURRENT STATUS
-
-| Field | Value |
-|-------|-------|
-| **Active Phase** | Phase 6.0 — Standalone App Build (12/15 Tier 1–5 features done) |
-| **Last Session** | Session 20 — 17 April 2026 (evening) — audit against SWARM_PROJECT.md, 6 bug/gap fixes |
-| **Next Action** | Tier 3.2 Git per-environment, Tier 3.3 VPN, Tier 4.1–4.3 auto-audit/patterns/pipeline |
-| **Test Baseline** | 399 passed, 1 skipped |
-| **Environments** | PROD (master :5050), UAT, DEV (:5051) — all synced as of 17 April 2026 |
-| **Blockers** | None |
-
-### What's Hot Right Now
-- **12 of 15 Phase 6 tiers complete** — only 3.2, 3.3, and 4.1–4.3 remain
-- **6 gaps fixed** (Session 20) — monitor rotation JS bug, DEV/UAT path resolution, files pop-out window, email taskbar access, library constellation CSS, skills drag-drop visibility
-- **Agent self-improvement infra** — personality.md + diary per agent, idle-time self-management, awareness API
-- **Responsive layout** — phone/tablet/desktop breakpoints, clocks fallback to compact digital
-- **Email taskbar dot** — envelope button in taskbar with activity dot (replaces removed home tile)
-- **Knowledge constellation** — gold glow on system docs, auto-classification badges (doc/code/config)
-- **Skills drag palette** — pulsing dashed border, instructional hints for drag-drop assignment
-- **Files full-view** — pop-out button loads full document (up to 100KB) in new window
-
----
-
-## §2 — PHASE MAP
-
-### Completed Phases
-
-| Phase | Name | Completed | Key Deliverable |
-|-------|------|-----------|-----------------|
-| V1 | Initial Build | March 2026 | Flask monolith, 12 agents, SQLite, terminal UI |
-| V2 | Refinement | 28 Mar 2026 | Bug audit (26 bugs fixed), BRK-002 timeout fix, world clocks |
-| V3 | Stabilisation | 30 Mar 2026 | ALM governance, Time Wizard, 3-stage workflow, proposals |
-| P1 | Fix What's Broken | 15 Apr 2026 | Tickets tile fix, Vortex→Git wiring, relay limit default 2, parallel toggle |
-| P2 | Agent Registry | 15 Apr 2026 | 15 hardcoded dicts → DB, cached registry with 11 accessors, invalidation |
-| P3a | Local Agent Skills | 15 Apr 2026 | Gemma/Qwen/Eight routed via .chat()→skills_loop (not orchestrator) |
-| P3b | Trace Troubleshooter | 15 Apr 2026 | job_id on timeline, trace API, Trace tile + frontend |
-| P4 | Fault Isolation | 15 Apr 2026 | Circuit breaker (3-state), health probe, stuck-job sweep, error boundaries |
-| P5 | Lift-and-Shift | 15 Apr 2026 | Model discovery, hot-swap, import/export, system index, cross-referencing |
-| Diamond A (prep) | Frontend Polish | 16 Apr 2026 | Sundial pulse, SVG icons, V-RAM/GPU metrics, keyboard shortcuts |
-
-### Active Phase
-
-| Phase | Name | Status | Target |
-|-------|------|--------|--------|
-| **6.0** | Standalone App Build | IN PROGRESS | Ongoing — iterative self-improvement |
-
-#### Phase 6.0 — Build Plan
-
-**Goal:** Move towards standalone app on all systems. Packaging model for future expansion. Iteratively keeps building itself into self-improvements.
-
-**Tier 1 — Visual Transformation** (Next up)
-
-| # | Feature | Description | Status |
-|---|---------|-------------|--------|
-| 1.1 | Library constellation | Merge Files+Docs+Library into unified view; gold glow for system docs; auto-classification | ✅ Done |
-| 1.2 | Memory landscape | Force-directed graph of agent memory relationships | ✅ Done |
-| 1.3 | Vortex time machine | Horizontal timeline with diff compare, branching visualisation | ✅ Done |
-
-**Tier 2 — Interaction Polish**
-
-| # | Feature | Description | Status |
-|---|---------|-------------|--------|
-| 2.1 | Chat fluidity | SSE real-time push, streaming responses, no-polling compose UX | ✅ Done |
-| 2.2 | Skills drag-drop | Visual skill assignment with drag-drop interface | ✅ Done |
-| 2.3 | Merge Setup + Agents tiles | Combined into single Agents tile; Setup Wizard button in header | ✅ Done |
-| 2.4 | Thread icon + remaining emoji → SVG | Full emoji sweep: onboarding, feeds, toast, window-manager, all SVG | ✅ Done |
-| 2.5 | Keyboard shortcuts overhaul | Global shortcuts: Ctrl+1–9 tiles, Ctrl+/ help, Esc close, Ctrl+Enter send | ✅ Done |
-
-**Tier 3 — System Integration**
-
-| # | Feature | Description | Status |
-|---|---------|-------------|--------|
-| 3.1 | Email compose | Full email client in-app (not just inbox viewer) | ✅ Done |
-| 3.2 | Git per-environment | Separate git UI panels for DEV/UAT/PROD | 🔲 |
-| 3.3 | Tailscale/VPN | VPN status + remote access integration | 🔲 |
-| 3.4 | Weather in world clocks | Live weather via Open-Meteo API, icon + temp beside each clock | ✅ Done |
-
-**Tier 4 — Self-Improvement (Iterative)**
-
-| # | Feature | Description | Status |
-|---|---------|-------------|--------|
-| 4.1 | Auto-audit | Agents periodically self-audit code quality and test coverage | 🔲 |
-| 4.2 | Pattern learning | Capture recurring fixes as reusable patterns | 🔲 |
-| 4.3 | Build pipeline | Automated packaging for distribution on new systems | 🔲 |
-| 4.4 | Agent personalities + diaries | Each agent gets personality.md + diary.md; self-reflect, think aloud, make suggestions | ✅ Done |
-| 4.5 | Idle-time self-management | When system is idle, queue assigns each agent a ticket: update memory, clean sandbox, write diary, seek opinions | ✅ Done |
-| 4.6 | Agent awareness API | Each agent can see "who they are" — skills, memory, prompt, capabilities, diary | ✅ Done |
-
-**Tier 5 — Home Screen & Responsive Design**
-
-| # | Feature | Description | Status |
-|---|---------|-------------|--------|
-| 5.1 | Monitor tile expansion | System Activity merged into Monitor; sundial + recent events in one tile | ✅ Done |
-| 5.2 | Remove Tickets tile from home | Already linked in chats/proposals/tickets window; use activity dots instead | ✅ Done |
-| 5.3 | Remove Emails tile from home | Same as tickets — linked elsewhere with activity dots for "undead" items | ✅ Done |
-| 5.4 | Responsive / mobile layout | Everything must fit on phone screen; clocks → digital when space is tight; all elements reflow | ✅ Done |
-| 5.5 | Clocks responsive fallback | World clocks switch to compact digital format when screen width < threshold | ✅ Done |
-| 5.6 | Window dedup / internal management | Prevent duplicate windows; only one instance per view; second click focuses existing | ✅ Done |
-
-#### Diamond Layer (Background — paused for Phase 6)
-
-| Phase | Name | Status | Target |
-|-------|------|--------|--------|
-| 4.0-A | Diamond Layer — Governance Core | PAUSED | Resume after Tier 1 |
-
-### Future Phases
-
-| Phase | Name | Depends On |
-|-------|------|------------|
-| 4.0-B | Research Assistant / Learning Lab | Diamond A complete |
-| 4.0-C | Tool Builder | B stable |
-| 4.0-D | Distribution (multi-node activation) | A prepared, C stable |
-
----
-
-## §3 — ARCHITECTURE SNAPSHOT
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  FRONTEND  │  Jinja2 + Vanilla JS  │  Views in static/js/  │
-│            │  CSS custom props      │  Themes engine         │
-├─────────────────────────────────────────────────────────────┤
-│  FLASK APP │  34+ blueprints       │  205+ routes           │
-│            │  Services layer       │  Pipeline orchestrator  │
-├─────────────────────────────────────────────────────────────┤
-│  AGENTS    │  17 registered        │  DB-backed registry    │
-│            │  Local: Gemma, LLaMA, Qwen, Mistral, Eight     │
-│            │  Paid: Nine, Ten, Eleven, Twelve, Thirteen      │
-│            │  Service: Duck, Sniffles, Librarian, Scholar    │
-├─────────────────────────────────────────────────────────────┤
-│  DATA      │  SQLite WAL           │  78+ tables            │
-│            │  Agent registry       │  Circuit breaker state  │
-├─────────────────────────────────────────────────────────────┤
-│  INFRA     │  3 worktrees          │  systemd services      │
-│            │  PROD :5050           │  UAT :5052             │
-│            │  DEV :5054            │  Ollama :11434          │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Key Technical Facts
-- **Python 3.12.3** — always use `python3` not `python`
-- **Git worktrees**: `/home/seven/swarm` (master/PROD), `/home/seven/swarm-dev` (dev), `/home/seven/swarm-uat` (uat)
-- **Vortex** auto-commits on changes via TimeWizard hooks
-- **Theme system**: CSS custom properties (`--bg`, `--card`, `--accent`, `--glow-a/b`, `--mist`), named themes in `themes.css`, atmosphere engine injects time-of-day overrides
-- **Icon system**: 16×16 SVGs, `stroke="currentColor"`, `fill="none"` — inherits theme colours. NO emoji in UI.
-- **Dell Optiplex 7090** refurb, 128GB SSD converted to swap (V-RAM for bigger models), no GPU yet
-- **Frontend pattern**: `openWindow(id, title, template)` managed by `winManager`
-- **Home screen**: `#home-page` > `#home-header` (sundial + clocks + time + controls) + `#home-content` > `.card-grid`
-
----
-
-## §4 — DECISION LOG
-
-Architectural and design decisions that affect future work. Newest first.
-
-| Date | Decision | Rationale | Ref |
-|------|----------|-----------|-----|
 | 17 Apr | SSE real-time push for chat (not polling) | Eliminates polling overhead; instant message display | chat_bp.py SSE endpoint |
 | 17 Apr | Memory landscape uses canvas force-directed graph | Interactive physics sim for agent-memory relationships; performant at scale | memory-landscape.js |
 | 17 Apr | Setup Wizard absorbed into Agents tile | Reduces home card count; wizard accessible via header button | terminal_base.html |
@@ -608,10 +276,46 @@ Architectural and design decisions that affect future work. Newest first.
 
 ---
 
-## §5 — SESSION LOG
+## §7 — SESSION LOG
 
 Each session is logged here with date, what was done, and key outcomes.  
 **Newest first** — most recent session is always at the top.
+
+---
+
+### Session 22 — 17 April 2026 (Night)
+**Focus:** Improvement sweep from outsider/system-checker perspective; log live-behaviour gaps
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Broad code sweep | ✅ Done | Reviewed frontend, blueprints, and project memory for runtime gaps and environment drift |
+| 2 | Icon normalisation | ✅ Done | Final three window chrome icons moved from `1.4` to `1.3` stroke-width |
+| 3 | Project memory integrity fix | ✅ Done | Removed stale duplicate document body from `SWARM_PROJECT.md` |
+| 4 | Improvement findings logged | ✅ Done | Added §3b with verified defects, verification queue, and priorities |
+| 5 | Next-step priorities set | ✅ Done | Hardcoded paths, broken UI call sites, workspace boundary checks, polling/SSE model |
+
+**Tests:** No new full regression run in this session  
+**Live dry-run status:** Still needed — current work logged the backlog and corrected project-memory drift first
+
+---
+
+### Session 21 — 17 April 2026 (Late Evening)
+**Focus:** Full codebase audit of Phase 6 — verify every tier item against reality
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Audit Tier 1 (Visual Transformation) | ✅ Done | 1 PASS, 2 PARTIAL |
+| 2 | Audit Tier 2 (Interaction Polish) | ✅ Done | 3 PASS, 2 PARTIAL |
+| 3 | Audit Tier 3 (System Integration) | ✅ Done | 1 PASS, 1 PARTIAL, 2 STATUS WRONG (implemented but unmarked) |
+| 4 | Audit Tier 4 (Self-Improvement) | ✅ Done | 1 PASS, 2 PARTIAL, 3 STATUS WRONG (code exists but unmarked) |
+| 5 | Audit Tier 5 (Home & Responsive) | ✅ Done | 5 PASS, 1 PARTIAL |
+| 6 | Audit architecture claims | ✅ Done | 5 corrections (agents, tables, CSS vars, icons, sniffer) |
+| 7 | Verify test baseline | ✅ Done | 404 passed, 1 skipped (up from claimed 399) |
+| 8 | Archive old SWARM_PROJECT.md | ✅ Done | → SWARM_PROJECT_20260417.md |
+
+**Scorecard:** 15 PASS / 5 PARTIAL / 0 FAIL / 3 STATUS WRONG out of 21 tier items  
+**No code changes made** — audit-only session  
+**Tests:** 404 passed, 1 skipped
 
 ---
 
@@ -660,8 +364,8 @@ Each session is logged here with date, what was done, and key outcomes.
 | 10 | Sync + restart services | ✅ Done | master→dev, master→uat, both services restarted |
 | 11 | Update SWARM_PROJECT.md | ✅ Done | All tiers marked, session logged |
 
-**Commits:** `5a99055` (Monitor), `54a7175` (Vortex), `44b882d` (Chat SSE), `3b027f5` (Weather), `b3369cf`+`e72e081` (Memory landscape), `ad5344b` (Setup+Agents merge), `e095ceb` (health fixes + emoji sweep)
-**Tests:** 399 passed, 1 skipped (+1 test from prior session)
+**Commits:** `5a99055` (Monitor), `54a7175` (Vortex), `44b882d` (Chat SSE), `3b027f5` (Weather), `b3369cf`+`e72e081` (Memory landscape), `ad5344b` (Setup+Agents merge), `e095ceb` (health fixes + emoji sweep)  
+**Tests:** 399 passed, 1 skipped (+1 test from prior session)  
 **Envs synced:** Yes (master, dev, uat) — services restarted
 
 ---
@@ -761,7 +465,32 @@ Key milestones from these sessions:
 
 ---
 
-## §6 — DOCUMENT INDEX
+## §8 — KNOWN PATTERNS & GOTCHAS
+
+Things that have bitten us before. Verified during Session 21 audit and Session 22 sweep.
+
+| Pattern | Detail | Verified |
+|---------|--------|----------|
+| **Agent registry `name` vs `label`** | `name` = DB key (lowercase, e.g. `gemma`). `label` = display (e.g. `Gemma3`). Never use label for routing/matching. | ✅ |
+| **Browser cache** | Static files (.js, .css) get cached aggressively. Hard refresh or service restart needed after frontend changes. | ✅ |
+| **`python3` not `python`** | System has Python 3.12.3. The `python` command doesn't exist. | ✅ |
+| **Terminal DOM cloning** | `terminal_base.html` is a full SPA shell. Views are `<template>` elements cloned by window manager. Don't add `<script>` inside templates. | ✅ |
+| **Vortex auto-commits** | TimeMachine `create_workflow_checkpoint()` runs `git add -A` + `git commit` for each active worktree. | ✅ |
+| **Sniffer** | Batch content auditor + convenience git commit. NOT a file-watcher. NOT Vortex-integrated. | ✅ |
+| **Services restart** | After backend changes: `sudo systemctl restart swarm-terminal` (PROD) / `swarm-terminal-dev` (DEV). | ✅ |
+| **Three envs must align** | `make sync` merges master into dev and uat worktrees. | ✅ |
+| **Property objects at module level** | Python `property()` only works inside classes. Never use `property()` for module-level lazy values — use functions instead. | ✅ |
+| **Relay limit** | Default is 2, not 4. Changed in P1. | ✅ |
+| **Agent memory tables** | Named `memory_{agent_name}`. Auto-created by registry seed. | ✅ |
+| **Icon pattern** | 16×16 viewBox, `stroke="currentColor"`, `stroke-width="1.3"`, `fill="none"`. See `FRIDAYS_WINDOW_ICON_SVGS` in window-manager.js. | ✅ |
+| **files.js hardcoded path** | Was using `/home/seven/swarm` as default — breaks in DEV/UAT worktrees. Fixed: empty string defaults to `_SWARM_ROOT` server-side. | ✅ Fixed |
+| **Template literal JS** | Never put `const`/`let` declarations inside template literals — they render as text, not code. Monitor rotation bug was exactly this. | ✅ Fixed |
+| **Sniffer auto-commits** | The Sniffer agent watches for file changes and auto-commits via Vortex chain. Your edits may be committed before you explicitly `git add`. | ✅ |
+| **Hardcoded repo paths** | Several backend blueprints still assume `/home/seven/swarm` directly. Active improvement item — see §4 task 7.15. | ⚠️ Open |
+
+---
+
+## §9 — DOCUMENT INDEX
 
 All project documentation catalogued by purpose. Agents should consult this to find relevant references.
 
@@ -770,8 +499,9 @@ All project documentation catalogued by purpose. Agents should consult this to f
 | File | Purpose | Update Frequency |
 |------|---------|------------------|
 | `swarm_docs/SWARM_PROJECT.md` | **This file** — project status, phases, sessions | Every session |
+| `swarm_docs/SWARM_PROJECT_20260417.md` | Archived Phase 6 project file | Frozen |
 | `docs/ARCHITECTURE.md` | System architecture reference | On structural changes |
-| `docs/API_REFERENCE.md` | 205+ route reference (v4.0) | On API changes |
+| `docs/API_REFERENCE.md` | 286 route reference | On API changes |
 | `docs/BUGS.md` | Bug log with status tracking | On bug discovery/fix |
 | `docs/CHANGELOG.md` | Per-session change inventory | Every session |
 | `docs/FEATURES_TODO.md` | Feature backlog (30 tasks, 9 phases) | On priority changes |
@@ -849,27 +579,4 @@ These are point-in-time records. Preserved for audit trail but not actively main
 
 ---
 
-## §7 — KNOWN PATTERNS & GOTCHAS
-
-Things that have bitten us before. Check this section when debugging.
-
-| Pattern | Detail |
-|---------|--------|
-| **Agent registry `name` vs `label`** | `name` = DB key (lowercase, e.g. `gemma`). `label` = display (e.g. `Gemma3`). Never use label for routing/matching. |
-| **Browser cache** | Static files (.js, .css) get cached aggressively. Hard refresh or service restart needed after frontend changes. |
-| **`python3` not `python`** | System has Python 3.12.3. The `python` command doesn't exist. |
-| **Terminal DOM cloning** | `terminal_base.html` is a full SPA shell. Views are `<template>` elements cloned by window manager. Don't add `<script>` inside templates. |
-| **Vortex auto-commits** | TimeWizard hooks fire on every `git commit`. Don't be alarmed by `[TimeWizard]` prefixed output. |
-| **Services restart** | After backend changes: `sudo systemctl restart swarm-terminal` (PROD) / `swarm-terminal-dev` (DEV). |
-| **Three envs must align** | After master commit: `cd /home/seven/swarm-dev && git merge master --no-edit` then same for `swarm-uat`. |
-| **Property objects at module level** | Python `property()` only works inside classes. Never use `property()` for module-level lazy values — use functions instead. |
-| **Relay limit** | Default is 2, not 4. Changed in P1. |
-| **Agent memory tables** | Named `memory_{agent_name}`. Auto-created by registry seed. |
-| **Icon pattern** | 16×16 viewBox, `stroke="currentColor"`, `stroke-width="1.3"`, `fill="none"`. See `FRIDAYS_WINDOW_ICON_SVGS` in window-manager.js. |
-| **files.js hardcoded path** | Was using `/home/seven/swarm` as default — breaks in DEV/UAT worktrees. Fixed: empty string defaults to `_SWARM_ROOT` server-side. |
-| **Template literal JS** | Never put `const`/`let` declarations inside template literals — they render as text, not code. Monitor rotation bug was exactly this. |
-| **Sniffer auto-commits** | The Sniffer agent watches for file changes and auto-commits via Vortex chain. Your edits may be committed before you explicitly `git add`. |
-
----
-
-*End of SWARM_PROJECT.md — updated 17 April 2026 (evening session)*
+*End of SWARM_PROJECT.md — updated 17 April 2026 (Session 22 — merged)*

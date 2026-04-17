@@ -1219,6 +1219,7 @@ def _seed_agents():
         (11,  'eleven',    'Grok',      'grok-api',                              0.5,  'Developer Agent — lateral thinker, creative synthesis, alternatives'),
         (12,  'twelve',    'Claude',    'claude-haiku-4-5',                      0.3,  'Developer Agent — time wizard, session continuity, Vortex'),
         (13,  'thirteen',  'HuggingFace', 'meta-llama/Llama-3.3-70B-Instruct',  0.5,  'Developer Agent — HuggingFace specialist (testing)'),
+        (17,  'ghost_coder', 'Ghost Coder', 'claude-sonnet-4-20250514',        0.3,  'Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays'),
     ]
     conn = get_connection()
     for number, name, label, model, temp, role in roster:

@@ -23,6 +23,7 @@ let CHAT_AGENT_OPTIONS = [
   { value: 'eleven',   label: '11 · Grok',    number: 11, tier: 'paid',  hasTemp: false },
   { value: 'twelve',   label: '12 · Claude',  number: 12, tier: 'paid',  hasTemp: false },
   { value: 'thirteen', label: '13 · HF', number: 13, tier: 'free', hasTemp: false },
+  { value: 'ghost_coder', label: '17 · Ghost Coder', number: 17, tier: 'paid', hasTemp: false },
 ];
 
 // Fetch agent registry from DB and update CHAT_AGENT_OPTIONS to only include enabled agents.
