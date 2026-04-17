@@ -23,6 +23,11 @@ logger = logging.getLogger('seven.ghost_coder')
 
 AGENT_NAME = 'ghost_coder'
 
+# Circuit breaker: skip Anthropic for 5 minutes after a billing failure
+_anthropic_backoff_until = 0.0
+# Circuit breaker: skip OpenAI for 5 minutes after a rate-limit failure
+_openai_backoff_until = 0.0
+
 # ── Project context builder ─────────────────────────────────────────────────
 
 def _build_context(message):
@@ -199,8 +204,39 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
         except Exception:
             return None
 
-    # Attempt Anthropic first
-    _api_call = _try_anthropic()
+    def _try_xai():
+        try:
+            from openai import OpenAI
+            from config import XAI_API_KEY
+            if not XAI_API_KEY:
+                return None
+            client = OpenAI(
+                api_key=XAI_API_KEY,
+                base_url='https://api.x.ai/v1',
+            )
+
+            def _api_call(msgs):
+                full_msgs = [{'role': 'system', 'content': system}] + msgs
+                resp = client.chat.completions.create(
+                    model='grok-3',
+                    max_tokens=8192,
+                    messages=full_msgs,
+                )
+                return resp.choices[0].message.content, resp.usage.total_tokens
+
+            return _api_call
+        except Exception:
+            return None
+
+    # Attempt Anthropic first (unless circuit breaker is active)
+    import time as _time
+    global _anthropic_backoff_until
+    _api_call = None
+    if _time.time() >= _anthropic_backoff_until:
+        _api_call = _try_anthropic()
+    else:
+        logger.info('[Ghost Coder] Anthropic circuit breaker active — skipping to OpenAI')
+
     if _api_call:
         _emit('reasoning · Claude Sonnet')
         try:
@@ -222,15 +258,23 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
                 return answer, tokens
             # Fall through to OpenAI
             logger.warning('[Ghost Coder] Anthropic credits depleted, trying OpenAI')
+            _anthropic_backoff_until = _time.time() + 300  # 5 min
         except Exception as e:
             err = str(e).lower()
             if 'credit' in err or 'billing' in err or '402' in err:
                 logger.warning('[Ghost Coder] Anthropic credits depleted, trying OpenAI')
+                _anthropic_backoff_until = _time.time() + 300
             else:
                 return f'[ghost_coder] Anthropic error: {e}', 0
 
     # Fallback to OpenAI
-    _api_call = _try_openai()
+    global _openai_backoff_until
+    if _time.time() >= _openai_backoff_until:
+        _api_call = _try_openai()
+    else:
+        _api_call = None
+        logger.info('[Ghost Coder] OpenAI circuit breaker active — skipping to Grok')
+
     if _api_call:
         backend_used = 'openai'
         _emit('reasoning · GPT-4.1 (fallback)')
@@ -249,9 +293,36 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
             logger.info(f'[Ghost Coder] openai tokens={tokens} | {message[:60]}')
             return answer, tokens
         except Exception as e:
-            return f'[ghost_coder] OpenAI error: {e}', 0
+            err_msg = str(e)
+            if '429' in err_msg or 'RateLimitReached' in err_msg:
+                logger.warning('[Ghost Coder] OpenAI rate limited, trying Grok')
+                _openai_backoff_until = _time.time() + 300  # 5 min
+            else:
+                return f'[ghost_coder] OpenAI error: {e}', 0
 
-    return '[ghost_coder] No API backend available (Anthropic credits depleted, OpenAI key missing)', 0
+    # Fallback to Grok-3 (XAI)
+    _api_call = _try_xai()
+    if _api_call:
+        backend_used = 'xai'
+        _emit('reasoning · Grok-3 (fallback)')
+        try:
+            from agents.skills_loop import run_skill_loop
+            answer, tokens = run_skill_loop(
+                agent_name=AGENT_NAME,
+                call_fn=_api_call,
+                messages=messages,
+                emit_fn=_emit,
+                max_passes=5,
+                source_conv_id=conv_id,
+            )
+            _emit('persisting memory')
+            _persist_memory(message, answer)
+            logger.info(f'[Ghost Coder] xai tokens={tokens} | {message[:60]}')
+            return answer, tokens
+        except Exception as e:
+            return f'[ghost_coder] Grok error: {e}', 0
+
+    return '[ghost_coder] No API backend available (all backends exhausted)', 0
 
 
 def _persist_memory(message, answer):

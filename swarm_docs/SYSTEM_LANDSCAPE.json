@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18 00:07",
+  "generated_at": "2026-04-18 08:51",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -289,7 +289,7 @@
     {
       "path": "agents/eight/eight_agent.py",
       "group": "Agent Modules",
-      "description": ""
+      "description": "agents/eight/eight_agent.py \u2014 Eight"
     },
     {
       "path": "agents/eleven/grok_agent.py",
@@ -2619,7 +2619,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 21327
+      "rows": 21643
     },
     {
       "name": "agent_capabilities",
@@ -2643,11 +2643,11 @@
     },
     {
       "name": "audit_results",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "chat_jobs",
-      "rows": 252
+      "rows": 260
     },
     {
       "name": "claude_log",
@@ -2655,11 +2655,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 232
+      "rows": 473
     },
     {
       "name": "conversations",
-      "rows": 14
+      "rows": 22
     },
     {
       "name": "daily_checkpoint",
@@ -2679,7 +2679,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1676
+      "rows": 1685
     },
     {
       "name": "deferred_items",
@@ -2703,11 +2703,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2261
+      "rows": 2306
     },
     {
       "name": "governance_log",
-      "rows": 52
+      "rows": 57
     },
     {
       "name": "knowledge_chunks",
@@ -2727,7 +2727,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 13
+      "rows": 14
     },
     {
       "name": "memory_ghost_coder",
@@ -2779,7 +2779,7 @@
     },
     {
       "name": "messages",
-      "rows": 41
+      "rows": 72
     },
     {
       "name": "moderators",
@@ -2815,7 +2815,7 @@
     },
     {
       "name": "queue",
-      "rows": 889
+      "rows": 893
     },
     {
       "name": "research_evidence",
@@ -2851,7 +2851,7 @@
     },
     {
       "name": "sqlite_sequence",
-      "rows": 58
+      "rows": 59
     },
     {
       "name": "sudo_command_whitelist",
@@ -2859,7 +2859,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 52
+      "rows": 57
     },
     {
       "name": "swarm_event_acks",
@@ -2883,7 +2883,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 6014
+      "rows": 6120
     },
     {
       "name": "terminal_shortcuts",
@@ -2899,19 +2899,19 @@
     },
     {
       "name": "time_checkpoints",
-      "rows": 1527
+      "rows": 1530
     },
     {
       "name": "time_events",
-      "rows": 63153
+      "rows": 65942
     },
     {
       "name": "time_journal",
-      "rows": 60401
+      "rows": 63187
     },
     {
       "name": "time_machine",
-      "rows": 4723
+      "rows": 4726
     },
     {
       "name": "tool_builds",
@@ -2939,7 +2939,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 49
+      "rows": 53
     }
   ],
   "agents": [
