@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-17 15:40*
+*Auto-generated: 2026-04-17 17:15*
 
 
 ## Python Modules
@@ -195,10 +195,10 @@
 | `diamond.js` | 19.7 KB |
 | `docs.js` | 30.2 KB |
 | `email.js` | 22.4 KB |
-| `files.js` | 40.7 KB |
+| `files.js` | 42.0 KB |
 | `fridays.js` | 7.0 KB |
 | `git.js` | 23.7 KB |
-| `knowledge.js` | 3.6 KB |
+| `knowledge.js` | 5.7 KB |
 | `library.js` | 22.0 KB |
 | `localai.js` | 8.5 KB |
 | `memory-landscape.js` | 9.6 KB |
@@ -207,7 +207,7 @@
 | `ollama.js` | 4.1 KB |
 | `onboarding.js` | 16.2 KB |
 | `services.js` | 4.7 KB |
-| `skills.js` | 25.2 KB |
+| `skills.js` | 25.7 KB |
 | `studio.js` | 84.3 KB |
 | `terminal-commands.js` | 13.0 KB |
 | `terminal.js` | 40.8 KB |
@@ -220,27 +220,27 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 20649 |
+| `activity_log` | 20754 |
 | `agent_capabilities` | 168 |
 | `agent_skills` | 9 |
 | `agents` | 18 |
-| `approval_tokens` | 130 |
-| `chat_jobs` | 243 |
+| `approval_tokens` | 133 |
+| `chat_jobs` | 244 |
 | `claude_log` | 1 |
-| `conv_timeline` | 62 |
-| `conversations` | 17 |
+| `conv_timeline` | 64 |
+| `conversations` | 18 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1521 |
+| `decisions` | 1541 |
 | `deferred_items` | 0 |
-| `duck_log` | 455 |
+| `duck_log` | 457 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2137 |
-| `governance_log` | 35 |
+| `ghost_circle` | 2149 |
+| `governance_log` | 37 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
 | `memory` | 2 |
@@ -257,7 +257,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 289 |
+| `messages` | 305 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -266,10 +266,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 840 |
+| `queue` | 846 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 194 |
+| `sandpit_log` | 196 |
 | `scheduled_tasks` | 2 |
 | `skills` | 38 |
 | `sniffer_log` | 232 |
@@ -277,27 +277,27 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 58 |
 | `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 35 |
+| `swarm_bus` | 37 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5913 |
+| `system_stats` | 5932 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 209 |
-| `tickets` | 217 |
-| `time_checkpoints` | 1377 |
-| `time_events` | 60389 |
-| `time_journal` | 57790 |
-| `time_machine` | 4648 |
+| `ticket_notes` | 211 |
+| `tickets` | 219 |
+| `time_checkpoints` | 1396 |
+| `time_events` | 60880 |
+| `time_journal` | 58262 |
+| `time_machine` | 4657 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 18 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 34 |
+| `work_proposals` | 36 |
 
 ## Agents
 
