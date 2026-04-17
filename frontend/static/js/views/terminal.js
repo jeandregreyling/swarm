@@ -474,7 +474,8 @@ function applyTerminalShortcutsState(win, collapsed) {
   headerToggle.textContent = collapsed ? '⟨' : '⟩';
   headerToggle.title = collapsed ? 'Expand' : 'Collapse';
 
-  mainToggle.textContent = collapsed ? '⚡ Show Shortcuts' : '⚡ Hide Shortcuts';
+  const _lightningIcon = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M9 2L4 9h4l-1 5 5-7H8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+  mainToggle.innerHTML = collapsed ? _lightningIcon + ' Show Shortcuts' : _lightningIcon + ' Hide Shortcuts';
   mainToggle.title = collapsed ? 'Show shortcuts' : 'Hide shortcuts';
 }
 
@@ -575,7 +576,7 @@ function addTerminalShortcut() {
   overlay.innerHTML = `
     <div style="background:var(--bg,#12121a);border:1px solid var(--border);border-radius:10px;width:780px;max-width:96vw;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.6);">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
-        <div style="font-weight:700;font-size:13px;">⚡ Terminal Controls</div>
+        <div style="font-weight:700;font-size:13px;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-2px"><path d="M9 2L4 9h4l-1 5 5-7H8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg> Terminal Controls</div>
         <button onclick="document.getElementById('terminal-shortcut-modal').remove()" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;line-height:1;padding:0 2px;">✕</button>
       </div>
       <div style="overflow-y:auto;flex:1;padding:0;">

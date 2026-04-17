@@ -92,6 +92,7 @@ function _knLoadSubView(tab) {
     // Create a mock win object for files
     const mockWin = { el: panel };
     if (typeof loadFilesData === 'function') loadFilesData(mockWin);
+    setTimeout(() => _knClassifyItems(panel), 500);
   }
   else if (tab === 'docs') {
     const panel = document.getElementById('kn-panel-docs');
@@ -104,6 +105,7 @@ function _knLoadSubView(tab) {
     }
     const mockWin = { el: panel };
     if (typeof loadDocsData === 'function') loadDocsData(mockWin);
+    setTimeout(() => _knClassifyItems(panel), 500);
   }
   else if (tab === 'library') {
     const panel = document.getElementById('kn-panel-library');
@@ -115,6 +117,7 @@ function _knLoadSubView(tab) {
       panel.appendChild(clone);
     }
     if (typeof libInit === 'function') libInit();
+    setTimeout(() => _knClassifyItems(panel), 500);
   }
 }
 
