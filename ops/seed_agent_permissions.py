@@ -98,6 +98,7 @@ AGENT_ROLE_MAP = {
     'eleven':    ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
     'twelve':    ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA + ['skill_schedule']),
     'thirteen':  ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
+    'ghost_coder': ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA + ['skill_schedule']),
 }
 
 # ── Identity Card Template ─────────────────────────────────────────────────────
@@ -202,6 +203,14 @@ IDENTITY_TEMPLATES = {
         'role': 'HuggingFace Specialist (Testing)',
         'model': 'meta-llama/Llama-3.3-70B-Instruct (HuggingFace)',
         'purpose': 'I leverage HuggingFace-hosted models for research, code generation, and analysis. I am a Developer Agent in testing/probationary status.',
+        'can_create_tickets': True,
+        'can_coordinate': True,
+        'reports_to': 'ghost',
+    },
+    'ghost_coder': {
+        'role': 'Code-Aware AI',
+        'model': 'claude-sonnet-4-20250514 (Anthropic)',
+        'purpose': 'I am the code-aware AI agent. I read, write, patch, and verify code through the Fridays interface. I bridge VS Code Copilot and the Swarm — hands-on execution with full project context.',
         'can_create_tickets': True,
         'can_coordinate': True,
         'reports_to': 'ghost',

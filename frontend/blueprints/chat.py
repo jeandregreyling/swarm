@@ -1111,6 +1111,17 @@ def api_chat():
                     answer, tokens = future.result(timeout=240 if persistent_mode else 120)
                     response_text = answer or '[lmstudio unavailable — is LM Studio running?]'
                     tokens_used = tokens or 0
+            elif selected_agent == 'ghost_coder':
+                _stage('dispatching to Ghost Coder · Claude Sonnet', est_eta)
+                try:
+                    from agents.ghost_coder import ghost_coder_agent
+                except Exception as _imp_err:
+                    response_text = f'[ghost_coder] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(ghost_coder_agent.chat, effective_prompt, history, stage_cb, conv_id)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 60)
+                    response_text = answer or '[ghost_coder unavailable]'
+                    tokens_used = tokens or 0
             else:
                 # Dynamic dispatch — any agent with agents/<name>/<name>_agent.py auto-routes here
                 import importlib
@@ -1191,7 +1202,8 @@ def api_chat():
 
         if conv_id is None:
             title_agents = ','.join(normalized_agents[:2])
-            conv_id = new_conversation(f'{title_agents}: {message[:90]}', source='terminal-ui')
+            _env_tag = os.environ.get('SWARM_ENV', 'prod').upper()
+            conv_id = new_conversation(f'{title_agents}: {message[:90]}', source=f'terminal-ui:{_env_tag}')
 
         to_agent = normalized_agents[0] if len(normalized_agents) == 1 else ','.join(normalized_agents)
         msg_sender = relay_from if relay_from else 'user'

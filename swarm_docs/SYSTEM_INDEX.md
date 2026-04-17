@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-17 18:58*
+*Auto-generated: 2026-04-18 00:05*
 
 
 ## Python Modules
@@ -80,6 +80,7 @@
 | `agents/eight/eight_agent.py` | — |
 | `agents/eleven/grok_agent.py` | # LINKED TO: utils/config.py — imports ELEVEN_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/gemma/gemma_agent.py` | agents/gemma/gemma_agent.py — Gemma (local Ollama) |
+| `agents/ghost_coder/ghost_coder_agent.py` | agents/ghost_coder/ghost_coder_agent.py — Ghost Coder (Agent #17) |
 | `agents/llama/llama_agent.py` | agents/llama/llama_agent.py — LLaMA (local Ollama) |
 | `agents/lmstudio/lmstudio_agent.py` | agents/lmstudio/lmstudio_agent.py — LM Studio (local OpenAI-compatible) |
 | `agents/mistral/mistral_agent.py` | # LINKED TO: utils/config.py — imports MISTRAL_SYSTEM_PROMPT (edit prompts there, not here) |
@@ -190,7 +191,7 @@
 |--------|------|
 | `access.js` | 69.9 KB |
 | `agents-config.js` | 9.1 KB |
-| `chat.js` | 233.8 KB |
+| `chat.js` | 233.9 KB |
 | `conversations.js` | 12.0 KB |
 | `diamond.js` | 19.7 KB |
 | `docs.js` | 30.2 KB |
@@ -198,6 +199,7 @@
 | `files.js` | 42.0 KB |
 | `fridays.js` | 7.0 KB |
 | `git.js` | 23.7 KB |
+| `home-chat.js` | 18.6 KB |
 | `knowledge.js` | 5.8 KB |
 | `library.js` | 22.0 KB |
 | `localai.js` | 8.5 KB |
@@ -220,44 +222,47 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 21049 |
+| `activity_log` | 21282 |
 | `agent_capabilities` | 168 |
-| `agent_skills` | 9 |
-| `agents` | 18 |
-| `approval_tokens` | 148 |
-| `chat_jobs` | 247 |
+| `agent_diary` | 0 |
+| `agent_skills` | 10 |
+| `agents` | 19 |
+| `approval_tokens` | 151 |
+| `audit_results` | 0 |
+| `chat_jobs` | 251 |
 | `claude_log` | 1 |
-| `conv_timeline` | 73 |
-| `conversations` | 6 |
+| `conv_timeline` | 230 |
+| `conversations` | 5 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1638 |
+| `decisions` | 1657 |
 | `deferred_items` | 0 |
-| `duck_log` | 467 |
+| `duck_log` | 469 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2215 |
-| `governance_log` | 48 |
+| `ghost_circle` | 2249 |
+| `governance_log` | 50 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
 | `memory` | 2 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 12 |
+| `memory_gemma` | 13 |
+| `memory_ghost_coder` | 0 |
 | `memory_grok` | 0 |
-| `memory_llama` | 2 |
+| `memory_llama` | 1 |
 | `memory_mistral` | 3 |
 | `memory_nine` | 0 |
 | `memory_qwen` | 0 |
 | `memory_scholar` | 0 |
 | `memory_seeker` | 0 |
 | `memory_sonic` | 0 |
-| `memory_ten` | 1 |
+| `memory_ten` | 2 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 87 |
+| `messages` | 25 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -266,10 +271,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 877 |
+| `queue` | 883 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 206 |
+| `sandpit_log` | 208 |
 | `scheduled_tasks` | 2 |
 | `skills` | 38 |
 | `sniffer_log` | 232 |
@@ -277,24 +282,24 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 58 |
 | `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 48 |
+| `swarm_bus` | 50 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 5953 |
+| `system_stats` | 6014 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 221 |
-| `tickets` | 229 |
-| `time_checkpoints` | 1490 |
-| `time_events` | 61481 |
-| `time_journal` | 58766 |
-| `time_machine` | 4705 |
+| `ticket_notes` | 223 |
+| `tickets` | 231 |
+| `time_checkpoints` | 1509 |
+| `time_events` | 63128 |
+| `time_journal` | 60394 |
+| `time_machine` | 4707 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
-| `user_profiles` | 18 |
+| `user_profiles` | 19 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
 | `work_proposals` | 47 |
@@ -321,6 +326,7 @@
 | `scholar` | gemini-2.0-flash | service | Research · Gemini | ✅ |
 | `seeker` | tavily | service | Internet Search · Tavily | ✅ |
 | `duck_ddg` | duckduckgo | service | Web Search · DuckDuckGo (no key) | ✅ |
+| `ghost_coder` | claude-sonnet-4-20250514 | paid | Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays | ✅ |
 
 ## Skills
 
