@@ -22,6 +22,8 @@ def init_security(app):
 
     @app.after_request
     def _set_security_headers(response):
+        # Strip hop-by-hop headers that wsgiref rejects (Connection, etc.)
+        response.headers.pop('Connection', None)
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         response.headers['X-XSS-Protection'] = '1; mode=block'

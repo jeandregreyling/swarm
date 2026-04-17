@@ -49,7 +49,7 @@ def chat(message, conversation_history=None, stage_cb=None):
     messages.append({"role": "user", "content": message})
     try:
         _emit('sending request')
-    client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key)
         response = client.chat.completions.create(
             model='gemma4:26b', messages=messages, max_tokens=2048)
         answer = response.choices[0].message.content
