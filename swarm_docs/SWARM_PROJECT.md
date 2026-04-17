@@ -8,7 +8,7 @@
 **Owner:** Seven  
 **Primary Builder:** Agent 12 (Claude / Copilot)  
 **Created:** 16 April 2026  
-**Last Updated:** 17 April 2026  
+**Last Updated:** 17 April 2026 (evening)  
 
 ---
 
@@ -16,23 +16,22 @@
 
 | Field | Value |
 |-------|-------|
-| **Active Phase** | Phase 6.0 — Standalone App Build (Tier 2–4 features next) |
-| **Last Session** | 18 April 2026 — 6 gap fixes: monitor rotation, DEV/UAT paths, files pop-out, email taskbar dot, library constellation, skills drag-drop |
+| **Active Phase** | Phase 6.0 — Standalone App Build (12/15 Tier 1–5 features done) |
+| **Last Session** | Session 20 — 17 April 2026 (evening) — audit against SWARM_PROJECT.md, 6 bug/gap fixes |
 | **Next Action** | Tier 3.2 Git per-environment, Tier 3.3 VPN, Tier 4.1–4.3 auto-audit/patterns/pipeline |
 | **Test Baseline** | 399 passed, 1 skipped |
 | **Environments** | PROD (master :5050), UAT, DEV (:5051) — all synced as of 17 April 2026 |
 | **Blockers** | None |
 
 ### What's Hot Right Now
-- **8 tiers completed** in Session 18 (6-hour autonomy build)
-- **Memory landscape** — canvas force-directed graph showing agent memory relationships
-- **Vortex timeline** — horizontal scrubber with diff compare and event detail
-- **Chat SSE streaming** — real-time push for chat messages, no more polling
-- **Weather in clocks** — live weather forecast per world clock location
-- **Setup+Agents merged** — single Agents tile with Setup Wizard button in header
-- **Monitor expanded** — System Activity absorbed, sundial metrics + recent events
-- **Full emoji sweep** — all UI emoji replaced with themed SVG icons
-- **Health check** — dead JS code removed, API route conflict fixed, all tests green
+- **12 of 15 Phase 6 tiers complete** — only 3.2, 3.3, and 4.1–4.3 remain
+- **6 gaps fixed** (Session 20) — monitor rotation JS bug, DEV/UAT path resolution, files pop-out window, email taskbar access, library constellation CSS, skills drag-drop visibility
+- **Agent self-improvement infra** — personality.md + diary per agent, idle-time self-management, awareness API
+- **Responsive layout** — phone/tablet/desktop breakpoints, clocks fallback to compact digital
+- **Email taskbar dot** — envelope button in taskbar with activity dot (replaces removed home tile)
+- **Knowledge constellation** — gold glow on system docs, auto-classification badges (doc/code/config)
+- **Skills drag palette** — pulsing dashed border, instructional hints for drag-drop assignment
+- **Files full-view** — pop-out button loads full document (up to 100KB) in new window
 
 ---
 
@@ -196,6 +195,34 @@ Architectural and design decisions that affect future work. Newest first.
 
 Each session is logged here with date, what was done, and key outcomes.  
 **Newest first** — most recent session is always at the top.
+
+---
+
+### Session 20 — 17 April 2026 (Evening)
+**Focus:** Audit SWARM_PROJECT.md against reality, fix 6 bugs/gaps found during testing
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Tier 4.4: Agent personality + diary | ✅ Done | personality_bp.py — GET/PUT personality.md, GET/POST diary entries |
+| 2 | Tier 4.5: Idle-time self-management | ✅ Done | idle_mgmt_bp.py — idle agent detection, claim pending work, queue depth |
+| 3 | Tier 4.6: Agent awareness API | ✅ Done | /api/agents/<name>/self — config, capabilities, activity, personality |
+| 4 | Tier 5.4: Responsive layout | ✅ Done | responsive.css — tablet/mobile/phone breakpoints, reflow |
+| 5 | Tier 5.5: Clocks responsive fallback | ✅ Done | Hides analog faces, horizontal digital strip on mobile |
+| 6 | Audit SWARM_PROJECT.md vs code | ✅ Done | Found 6 gaps between spec and implementation |
+| 7 | Fix: Monitor rotation error | ✅ Done | `const rotation` was inside template literal — moved before `content.innerHTML` |
+| 8 | Fix: Files path DEV/UAT | ✅ Done | Removed hardcoded `/home/seven/swarm` from files.js; server defaults to `_SWARM_ROOT` |
+| 9 | Fix: Files pop-out window | ✅ Done | Added "Full" button + `filesOpenFull()` — fetches up to 100KB, opens in new window |
+| 10 | Fix: Email access path | ✅ Done | Added email envelope button with activity dot to taskbar (beside Home) |
+| 11 | Fix: Library constellation visual | ✅ Done | Gold glow CSS, auto-classification badges (doc/code/config), tab active glow |
+| 12 | Fix: Skills drag-drop visibility | ✅ Done | Pulsing dashed border, accent-colored label, instructional hint text |
+| 13 | Update SWARM_PROJECT.md | ✅ Done | 10 tiers marked ✅, session logged |
+| 14 | Sync + restart services | ✅ Done | master→dev→uat, PROD + DEV restarted |
+
+**New Files:** `frontend/blueprints/personality_bp.py`, `frontend/blueprints/idle_mgmt_bp.py`, `frontend/static/css/responsive.css`  
+**Modified:** monitor.js, files.js, knowledge.js, skills.js, terminal_base.html, agents.py, terminal.py, SWARM_PROJECT.md  
+**Commits:** auto-committed by Vortex/Sniffer chain + `d5f7267` (gap fixes)  
+**Tests:** 399 passed, 1 skipped (unchanged)  
+**Envs synced:** Yes (master, dev, uat) — services restarted
 
 ---
 
@@ -422,7 +449,10 @@ Things that have bitten us before. Check this section when debugging.
 | **Relay limit** | Default is 2, not 4. Changed in P1. |
 | **Agent memory tables** | Named `memory_{agent_name}`. Auto-created by registry seed. |
 | **Icon pattern** | 16×16 viewBox, `stroke="currentColor"`, `stroke-width="1.3"`, `fill="none"`. See `FRIDAYS_WINDOW_ICON_SVGS` in window-manager.js. |
+| **files.js hardcoded path** | Was using `/home/seven/swarm` as default — breaks in DEV/UAT worktrees. Fixed: empty string defaults to `_SWARM_ROOT` server-side. |
+| **Template literal JS** | Never put `const`/`let` declarations inside template literals — they render as text, not code. Monitor rotation bug was exactly this. |
+| **Sniffer auto-commits** | The Sniffer agent watches for file changes and auto-commits via Vortex chain. Your edits may be committed before you explicitly `git add`. |
 
 ---
 
-*End of SWARM_PROJECT.md — updated 16 April 2026 (evening session)*
+*End of SWARM_PROJECT.md — updated 17 April 2026 (evening session)*
