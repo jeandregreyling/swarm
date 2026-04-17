@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-17 08:41",
+  "generated_at": "2026-04-17 15:40",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2638,7 +2638,7 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 61
+      "rows": 62
     },
     {
       "name": "conversations",
@@ -2662,7 +2662,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1520
+      "rows": 1521
     },
     {
       "name": "deferred_items",
@@ -2686,7 +2686,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2134
+      "rows": 2137
     },
     {
       "name": "governance_log",
@@ -2710,7 +2710,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 9
+      "rows": 10
     },
     {
       "name": "memory_grok",
@@ -2758,7 +2758,7 @@
     },
     {
       "name": "messages",
-      "rows": 287
+      "rows": 289
     },
     {
       "name": "moderators",
@@ -2862,7 +2862,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5913
+      "rows": 5914
     },
     {
       "name": "terminal_shortcuts",
@@ -2882,15 +2882,15 @@
     },
     {
       "name": "time_events",
-      "rows": 58130
+      "rows": 60389
     },
     {
       "name": "time_journal",
-      "rows": 55531
+      "rows": 57790
     },
     {
       "name": "time_machine",
-      "rows": 4646
+      "rows": 4648
     },
     {
       "name": "tool_builds",
