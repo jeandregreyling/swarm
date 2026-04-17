@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-17 15:40",
+  "generated_at": "2026-04-17 17:15",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2528,7 +2528,7 @@
     },
     {
       "name": "files.js",
-      "size_kb": 40.7
+      "size_kb": 42.0
     },
     {
       "name": "fridays.js",
@@ -2540,7 +2540,7 @@
     },
     {
       "name": "knowledge.js",
-      "size_kb": 3.6
+      "size_kb": 5.7
     },
     {
       "name": "library.js",
@@ -2576,7 +2576,7 @@
     },
     {
       "name": "skills.js",
-      "size_kb": 25.2
+      "size_kb": 25.7
     },
     {
       "name": "studio.js",
@@ -2610,7 +2610,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 20649
+      "rows": 20754
     },
     {
       "name": "agent_capabilities",
@@ -2626,11 +2626,11 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 130
+      "rows": 133
     },
     {
       "name": "chat_jobs",
-      "rows": 243
+      "rows": 244
     },
     {
       "name": "claude_log",
@@ -2638,11 +2638,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 62
+      "rows": 64
     },
     {
       "name": "conversations",
-      "rows": 17
+      "rows": 18
     },
     {
       "name": "daily_checkpoint",
@@ -2662,7 +2662,7 @@
     },
     {
       "name": "decisions",
-      "rows": 1521
+      "rows": 1541
     },
     {
       "name": "deferred_items",
@@ -2670,7 +2670,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 455
+      "rows": 457
     },
     {
       "name": "file_versions",
@@ -2686,11 +2686,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2137
+      "rows": 2149
     },
     {
       "name": "governance_log",
-      "rows": 35
+      "rows": 37
     },
     {
       "name": "knowledge_chunks",
@@ -2758,7 +2758,7 @@
     },
     {
       "name": "messages",
-      "rows": 289
+      "rows": 305
     },
     {
       "name": "moderators",
@@ -2794,7 +2794,7 @@
     },
     {
       "name": "queue",
-      "rows": 840
+      "rows": 846
     },
     {
       "name": "research_evidence",
@@ -2806,7 +2806,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 194
+      "rows": 196
     },
     {
       "name": "scheduled_tasks",
@@ -2838,7 +2838,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 35
+      "rows": 37
     },
     {
       "name": "swarm_event_acks",
@@ -2862,7 +2862,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 5914
+      "rows": 5932
     },
     {
       "name": "terminal_shortcuts",
@@ -2870,27 +2870,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 209
+      "rows": 211
     },
     {
       "name": "tickets",
-      "rows": 217
+      "rows": 219
     },
     {
       "name": "time_checkpoints",
-      "rows": 1377
+      "rows": 1396
     },
     {
       "name": "time_events",
-      "rows": 60389
+      "rows": 60880
     },
     {
       "name": "time_journal",
-      "rows": 57790
+      "rows": 58262
     },
     {
       "name": "time_machine",
-      "rows": 4648
+      "rows": 4657
     },
     {
       "name": "tool_builds",
@@ -2918,7 +2918,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 34
+      "rows": 36
     }
   ],
   "agents": [
@@ -3343,6 +3343,10 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "email-dot-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "chat-new-thread-btn",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -3609,6 +3613,10 @@
     {
       "id": "memory-bulk-selection-bar",
       "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "kn-constellation-css",
+      "file": "frontend/static/js/views/knowledge.js"
     },
     {
       "id": "kn-panel-files",
@@ -3973,6 +3981,10 @@
     {
       "id": "question-input",
       "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "skills-dd-css",
+      "file": "frontend/static/js/views/skills.js"
     },
     {
       "id": "skills-capability-matrix",
