@@ -81,7 +81,7 @@ function filesNavigateTo(path) {
   
   listEl.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:11px;">Loading directory...</div>';
   
-  fetch(`/api/workspace/dir?path=${encodeURIComponent(path || '/home/seven/swarm')}`)
+  fetch(`/api/workspace/dir?path=${encodeURIComponent(path || '')}`)
     .then(r => r.json())
     .then(data => {
       if (!data.ok) {
@@ -453,7 +453,7 @@ function filesRenderPreview() {
             <div style="font-size:11px;color:var(--text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(relPath)}</div>
             <div style="font-size:10px;color:var(--text-dim);">${sizeKb} KB</div>
           </div>
-          <div style="display:flex;gap:6px;align-items:center;">${truncatedBadge}<button onclick="filesStartEdit()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;">Edit</button></div>
+          <div style="display:flex;gap:6px;align-items:center;">${truncatedBadge}<button onclick="filesOpenFull()" title="Open full document in new window" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><path d="M9 2h5v5M14 2L8 8M6 3H3v10h10v-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Full</button><button onclick="filesStartEdit()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;">Edit</button></div>
         </div>
         <pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);font-family:monospace;font-size:11px;line-height:1.45;max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:rgba(0,0,0,0.15);">${_escHtml(content)}${state.truncated ? '\n\n[…file truncated, showing first 10KB]' : ''}</pre>
       </div>`;
@@ -474,6 +474,21 @@ function filesRenderPreview() {
       </div>
       <textarea id="files-editor" style="width:100%;min-height:360px;max-height:560px;resize:vertical;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:11px;font-family:monospace;line-height:1.45;outline:none;">${_escHtml(state.content || '')}</textarea>
     </div>`;
+}
+
+function filesOpenFull() {
+  const state = window.__filesPreviewState;
+  if (!state || !state.path) return;
+  fetch(`/api/workspace/file?path=${encodeURIComponent(state.path)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) { showToast(data.error || 'Failed to load full file', 'error'); return; }
+      const win = winManager.open({ id: 'file-full-' + Date.now(), title: state.path.split('/').pop(), width: 620, height: 480 });
+      if (!win?.el) return;
+      const c = win.el.querySelector('.window-body') || win.el;
+      c.innerHTML = `<pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);font-family:monospace;font-size:11px;line-height:1.45;padding:10px;overflow:auto;height:100%;background:rgba(0,0,0,0.15);">${_escHtml(data.content || '')}</pre>`;
+    })
+    .catch(() => showToast('Failed to load full file', 'error'));
 }
 
 function filesStartEdit() {

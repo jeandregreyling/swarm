@@ -1,6 +1,14 @@
 // Skills view — capabilities, permissions, identity manager
 // Extracted from terminal_base.html
 
+/* Inject drag-drop pulse animation */
+(function() {
+  if (document.getElementById('skills-dd-css')) return;
+  const s = document.createElement('style'); s.id = 'skills-dd-css';
+  s.textContent = '@keyframes kn-pulse-border{0%,100%{border-color:var(--accent)}50%{border-color:transparent}}';
+  document.head.appendChild(s);
+})();
+
 function loadSkillsData(win) {
   const content = win.el.querySelector('#skills-content');
   const summary = win.el.querySelector('#skills-identity-summary');
@@ -116,9 +124,10 @@ function loadCapabilityMatrix(host) {
           <button id="capability-high-disable" style="padding:5px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:11px;cursor:pointer;font-weight:700;">Disable High Access</button>
           <span style="font-size:10px;color:var(--text-dim);">Bundle: git_execute, propose_work, coordinate, shared_write, memory_read_all, skill_shell, skill_schedule</span>
         </div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);">
-          <label style="font-size:11px;color:var(--text-dim);margin-right:4px;">Drag to assign:</label>
-          ${_ALL_CAPS.map(c => `<span draggable="true" data-cap-drag="${c}" style="padding:2px 7px;border-radius:999px;background:var(--accent);color:#000;border:1px solid var(--accent);font-size:10px;cursor:grab;font-weight:600;">${c}</span>`).join(' ')}
+        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px;border:2px dashed var(--accent);border-radius:6px;background:rgba(247,184,75,0.06);animation:kn-pulse-border 2s ease-in-out infinite;">
+          <label style="font-size:11px;color:var(--accent);margin-right:4px;font-weight:700;">⇣ Drag to assign:</label>
+          ${_ALL_CAPS.map(c => `<span draggable="true" data-cap-drag="${c}" style="padding:2px 7px;border-radius:999px;background:var(--accent);color:#000;border:1px solid var(--accent);font-size:10px;cursor:grab;font-weight:600;transition:transform .15s;">${c}</span>`).join(' ')}
+          <span style="font-size:9px;color:var(--text-dim);margin-left:8px;font-style:italic;">drag pills onto agent rows below</span>
         </div>
         <div id="capability-matrix-list"></div>
       `;
