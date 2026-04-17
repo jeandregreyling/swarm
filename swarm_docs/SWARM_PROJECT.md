@@ -17,8 +17,8 @@
 | Field | Value |
 |-------|-------|
 | **Active Phase** | Phase 6.0 — Standalone App Build (Tier 2–4 features next) |
-| **Last Session** | 17 April 2026 — 6-hour autonomy build: 8 tiers completed, health sweep |
-| **Next Action** | Tier 1.1 Library constellation, Tier 2.2 Skills drag-drop, Tier 4.x self-improvement |
+| **Last Session** | 18 April 2026 — 6 gap fixes: monitor rotation, DEV/UAT paths, files pop-out, email taskbar dot, library constellation, skills drag-drop |
+| **Next Action** | Tier 3.2 Git per-environment, Tier 3.3 VPN, Tier 4.1–4.3 auto-audit/patterns/pipeline |
 | **Test Baseline** | 399 passed, 1 skipped |
 | **Environments** | PROD (master :5050), UAT, DEV (:5051) — all synced as of 17 April 2026 |
 | **Blockers** | None |
@@ -67,7 +67,7 @@
 
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
-| 1.1 | Library constellation | Merge Files+Docs+Library into unified view; gold glow for system docs; auto-classification | 🔲 |
+| 1.1 | Library constellation | Merge Files+Docs+Library into unified view; gold glow for system docs; auto-classification | ✅ Done |
 | 1.2 | Memory landscape | Force-directed graph of agent memory relationships | ✅ Done |
 | 1.3 | Vortex time machine | Horizontal timeline with diff compare, branching visualisation | ✅ Done |
 
@@ -76,7 +76,7 @@
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
 | 2.1 | Chat fluidity | SSE real-time push, streaming responses, no-polling compose UX | ✅ Done |
-| 2.2 | Skills drag-drop | Visual skill assignment with drag-drop interface | 🔲 |
+| 2.2 | Skills drag-drop | Visual skill assignment with drag-drop interface | ✅ Done |
 | 2.3 | Merge Setup + Agents tiles | Combined into single Agents tile; Setup Wizard button in header | ✅ Done |
 | 2.4 | Thread icon + remaining emoji → SVG | Full emoji sweep: onboarding, feeds, toast, window-manager, all SVG | ✅ Done |
 | 2.5 | Keyboard shortcuts overhaul | Global shortcuts: Ctrl+1–9 tiles, Ctrl+/ help, Esc close, Ctrl+Enter send | ✅ Done |
@@ -85,7 +85,7 @@
 
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
-| 3.1 | Email compose | Full email client in-app (not just inbox viewer) | 🔲 |
+| 3.1 | Email compose | Full email client in-app (not just inbox viewer) | ✅ Done |
 | 3.2 | Git per-environment | Separate git UI panels for DEV/UAT/PROD | 🔲 |
 | 3.3 | Tailscale/VPN | VPN status + remote access integration | 🔲 |
 | 3.4 | Weather in world clocks | Live weather via Open-Meteo API, icon + temp beside each clock | ✅ Done |
@@ -97,19 +97,19 @@
 | 4.1 | Auto-audit | Agents periodically self-audit code quality and test coverage | 🔲 |
 | 4.2 | Pattern learning | Capture recurring fixes as reusable patterns | 🔲 |
 | 4.3 | Build pipeline | Automated packaging for distribution on new systems | 🔲 |
-| 4.4 | Agent personalities + diaries | Each agent gets personality.md + diary.md; self-reflect, think aloud, make suggestions | 🔲 |
-| 4.5 | Idle-time self-management | When system is idle, queue assigns each agent a ticket: update memory, clean sandbox, write diary, seek opinions | 🔲 |
-| 4.6 | Agent awareness API | Each agent can see "who they are" — skills, memory, prompt, capabilities, diary | 🔲 |
+| 4.4 | Agent personalities + diaries | Each agent gets personality.md + diary.md; self-reflect, think aloud, make suggestions | ✅ Done |
+| 4.5 | Idle-time self-management | When system is idle, queue assigns each agent a ticket: update memory, clean sandbox, write diary, seek opinions | ✅ Done |
+| 4.6 | Agent awareness API | Each agent can see "who they are" — skills, memory, prompt, capabilities, diary | ✅ Done |
 
 **Tier 5 — Home Screen & Responsive Design**
 
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
 | 5.1 | Monitor tile expansion | System Activity merged into Monitor; sundial + recent events in one tile | ✅ Done |
-| 5.2 | Remove Tickets tile from home | Already linked in chats/proposals/tickets window; use activity dots instead | 🔲 |
-| 5.3 | Remove Emails tile from home | Same as tickets — linked elsewhere with activity dots for "undead" items | 🔲 |
-| 5.4 | Responsive / mobile layout | Everything must fit on phone screen; clocks → digital when space is tight; all elements reflow | 🔲 |
-| 5.5 | Clocks responsive fallback | World clocks switch to compact digital format when screen width < threshold | 🔲 |
+| 5.2 | Remove Tickets tile from home | Already linked in chats/proposals/tickets window; use activity dots instead | ✅ Done |
+| 5.3 | Remove Emails tile from home | Same as tickets — linked elsewhere with activity dots for "undead" items | ✅ Done |
+| 5.4 | Responsive / mobile layout | Everything must fit on phone screen; clocks → digital when space is tight; all elements reflow | ✅ Done |
+| 5.5 | Clocks responsive fallback | World clocks switch to compact digital format when screen width < threshold | ✅ Done |
 | 5.6 | Window dedup / internal management | Prevent duplicate windows; only one instance per view; second click focuses existing | ✅ Done |
 
 #### Diamond Layer (Background — paused for Phase 6)
