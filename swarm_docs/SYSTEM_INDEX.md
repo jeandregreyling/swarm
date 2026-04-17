@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-17 08:41*
+*Auto-generated: 2026-04-17 15:40*
 
 
 ## Python Modules
@@ -227,25 +227,25 @@
 | `approval_tokens` | 130 |
 | `chat_jobs` | 243 |
 | `claude_log` | 1 |
-| `conv_timeline` | 61 |
+| `conv_timeline` | 62 |
 | `conversations` | 17 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1520 |
+| `decisions` | 1521 |
 | `deferred_items` | 0 |
 | `duck_log` | 455 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2134 |
+| `ghost_circle` | 2137 |
 | `governance_log` | 35 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
 | `memory` | 2 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 9 |
+| `memory_gemma` | 10 |
 | `memory_grok` | 0 |
 | `memory_llama` | 2 |
 | `memory_mistral` | 3 |
@@ -257,7 +257,7 @@
 | `memory_ten` | 1 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 287 |
+| `messages` | 289 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -288,9 +288,9 @@
 | `ticket_notes` | 209 |
 | `tickets` | 217 |
 | `time_checkpoints` | 1377 |
-| `time_events` | 58130 |
-| `time_journal` | 55531 |
-| `time_machine` | 4646 |
+| `time_events` | 60389 |
+| `time_journal` | 57790 |
+| `time_machine` | 4648 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
