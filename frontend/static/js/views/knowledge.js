@@ -15,6 +15,23 @@ let _knowledgeWin = null;
 let _knowledgeTab = 'files';
 let _knowledgeLoaded = { files: false, docs: false, library: false };
 
+/* Constellation styling — injected once */
+(function _knInjectStyle() {
+  if (document.getElementById('kn-constellation-css')) return;
+  const s = document.createElement('style'); s.id = 'kn-constellation-css';
+  s.textContent = `
+    .kn-tab { background:var(--card);border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:4px 10px;cursor:pointer;font-size:10px;font-weight:600;transition:all .2s; }
+    .kn-tab:hover { color:var(--text);border-color:var(--accent); }
+    .kn-tab-active { background:var(--accent);color:#000;border-color:var(--accent);box-shadow:0 0 8px rgba(247,184,75,0.35); }
+    .kn-system-doc { border-left:2px solid #f7b84b;box-shadow:0 0 6px rgba(247,184,75,0.15); }
+    .kn-badge { display:inline-block;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:600;margin-left:6px; }
+    .kn-badge-config { background:#3a6b4e33;color:#5cb85c; }
+    .kn-badge-doc { background:#f7b84b22;color:#f7b84b; }
+    .kn-badge-code { background:#5bc0de22;color:#5bc0de; }
+  `;
+  document.head.appendChild(s);
+})();
+
 const _KN_TABS = [
   { id: 'files',   label: 'Files',   icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
   { id: 'docs',    label: 'Docs',    icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M4 3.5h7.5v9H4a1.5 1.5 0 0 0 0-3h7.5M4 3.5a1.5 1.5 0 0 0 0 3M4 6.5h7.5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
@@ -99,4 +116,23 @@ function _knLoadSubView(tab) {
     }
     if (typeof libInit === 'function') libInit();
   }
+}
+
+/* Auto-classify items in docs/library panels with gold glow and badges */
+function _knClassifyItems(panel) {
+  if (!panel) return;
+  panel.querySelectorAll('[data-doc-path], [data-file-path]').forEach(el => {
+    const p = (el.dataset.docPath || el.dataset.filePath || '').toLowerCase();
+    if (p.startsWith('swarm_docs/') || p.startsWith('docs/') || p.endsWith('.md')) {
+      el.classList.add('kn-system-doc');
+      if (!el.querySelector('.kn-badge')) {
+        const badge = document.createElement('span');
+        if (p.endsWith('.py') || p.endsWith('.js')) { badge.className = 'kn-badge kn-badge-code'; badge.textContent = 'code'; }
+        else if (p.includes('config') || p.endsWith('.yaml') || p.endsWith('.json') || p.endsWith('.toml')) { badge.className = 'kn-badge kn-badge-config'; badge.textContent = 'config'; }
+        else { badge.className = 'kn-badge kn-badge-doc'; badge.textContent = 'doc'; }
+        const title = el.querySelector('.card-title, .doc-title, [class*="title"]');
+        (title || el).appendChild(badge);
+      }
+    }
+  });
 }

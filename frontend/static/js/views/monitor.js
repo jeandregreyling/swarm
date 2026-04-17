@@ -86,15 +86,15 @@ function loadMonitorData(win) {
       `<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">• ${H(line)}</div>`
     ).join('');
 
+    const rotation = Math.round(((data.cpu_temp_c || 0) / 100) * 180);
     content.innerHTML = `
       <div style="font-size:12px;line-height:1.6;padding:4px 0;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
           <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
             <div style="color:var(--text-dim);font-size:10px;text-transform:uppercase;margin-bottom:4px;">CPU</div>
-const rotation = Math.round(((data.cpu_temp_c || 0) / 100) * 180);
             ${bar(data.cpu_percent||0, cpuColor)}
-<div style="color:var(--text-dim);font-size:10px;margin-top:4px;">Temp: <span style="color:${tempColor};">${data.cpu_temp_c || 'N/A'}°C</span> <!-- CPU Temperature Gauge --></div>
-<div class="gauge" style="width:28px;height:28px;border-radius:50%;border:3px solid var(--border);background:conic-gradient(var(--red) 0deg ${rotation}deg, var(--bg-tile) ${rotation}deg 180deg);transform:rotate(90deg);margin:4px auto;"></div>
+<div style="color:var(--text-dim);font-size:10px;margin-top:4px;">Temp: <span style="color:${tempColor};">${data.cpu_temp_c || 'N/A'}°C</span></div>
+<div style="width:28px;height:28px;border-radius:50%;border:3px solid var(--border);background:conic-gradient(var(--red) 0deg ${rotation}deg, var(--bg-tile) ${rotation}deg 180deg);transform:rotate(90deg);margin:4px auto;"></div>
 <div style="color:var(--text-dim);font-size:10px;margin-top:4px;">${(data.cpu_temp_c || 0) > 80 ? 'High Temp Warning' : 'Temp OK'}</div>
           </div>
           <div style="background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);">
