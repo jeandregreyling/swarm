@@ -710,7 +710,7 @@ async function codeOpRunTests() {
     });
     const result = await resp.json().catch(() => ({}));
     if (!result.ok) {
-      statusText.innerHTML = `<span style="color:#f44336;">❌ ${_escHtml(result.error || 'Test failed')}</span>`;
+      statusText.innerHTML = `<span style="color:#f44336;">✕ ${_escHtml(result.error || 'Test failed')}</span>`;
       showToast(`Tests failed: ${result.error || 'unknown error'}`, 'error');
     } else {
       const passed = result.passed || 0;
@@ -771,7 +771,7 @@ async function codeOpFormatFile() {
     });
     const result = await resp.json().catch(() => ({}));
     if (!result.ok) {
-      statusText.innerHTML = `<span style="color:#f44336;">❌ ${_escHtml(result.error || 'Format failed')}</span>`;
+      statusText.innerHTML = `<span style="color:#f44336;">✕ ${_escHtml(result.error || 'Format failed')}</span>`;
       showToast(`Format failed: ${result.error}`, 'error');
     } else {
       state.content = result.formatted_content;
@@ -829,7 +829,7 @@ async function codeOpCommit() {
     });
     const result = await resp.json().catch(() => ({}));
     if (!result.ok) {
-      statusText.innerHTML = `<span style="color:#f44336;">❌ ${_escHtml(result.error || 'Commit failed')}</span>`;
+      statusText.innerHTML = `<span style="color:#f44336;">✕ ${_escHtml(result.error || 'Commit failed')}</span>`;
       showToast(`Commit failed: ${result.error}`, 'error');
       if (proposalId) {
         await fetch(`/api/work-proposals/${encodeURIComponent(proposalId)}`, {

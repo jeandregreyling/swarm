@@ -437,6 +437,12 @@ function pollActiveThreadRuntime(force = false) {
     });
 }
 
+// Thread runtime polling — intentional SSE fallback.
+// The swarm uses polling (not SSE/WebSockets) for thread runtime status because:
+// 1. Polling is simpler and more reliable behind reverse proxies and on mobile.
+// 2. The 2-second interval is sufficient for the relay queue UI.
+// 3. SSE connections would need per-conversation multiplexing — complexity with no UX gain.
+// This is a deliberate architecture choice, not a TODO.
 function startThreadRuntimePolling() {
   if (window.__fridaysThreadRuntimePollTimer) {
     clearInterval(window.__fridaysThreadRuntimePollTimer);

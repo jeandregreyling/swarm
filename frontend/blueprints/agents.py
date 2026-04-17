@@ -1844,6 +1844,38 @@ def api_agent_self(name):
     except Exception:
         pending = 0
 
+    # Skills
+    try:
+        skills = conn.execute(
+            "SELECT capability FROM agent_capabilities WHERE agent_name=? AND granted=1",
+            (safe_name,)
+        ).fetchall()
+        skills_list = [r['capability'] for r in skills]
+    except Exception:
+        skills_list = []
+
+    # Recent memory entries
+    try:
+        mem_rows = conn.execute(
+            f"SELECT content, importance, created_at FROM memory_{safe_name} ORDER BY id DESC LIMIT 5"
+        ).fetchall()
+        memories = [dict(r) for r in mem_rows]
+    except Exception:
+        memories = []
+
+    # Recent diary entries
+    try:
+        diary_rows = conn.execute(
+            "SELECT entry, mood, created_at FROM agent_diary WHERE agent_name=? ORDER BY id DESC LIMIT 5",
+            (safe_name,)
+        ).fetchall()
+        diary = [dict(r) for r in diary_rows]
+    except Exception:
+        diary = []
+
+    # System prompt
+    system_prompt = agent_dict.get('system_prompt', '') or ''
+
     conn.close()
 
     # Personality excerpt
@@ -1857,8 +1889,12 @@ def api_agent_self(name):
         'agent': safe_name,
         'config': {k: agent_dict[k] for k in agent_dict if k != 'api_key'},
         'capabilities': [dict(c) for c in caps],
+        'skills': skills_list,
         'recent_activity': [dict(a) for a in activity],
         'pending_proposals': pending,
         'personality_excerpt': personality,
+        'recent_memory': memories,
+        'recent_diary': diary,
+        'system_prompt': system_prompt[:1000] if system_prompt else '',
     })
 

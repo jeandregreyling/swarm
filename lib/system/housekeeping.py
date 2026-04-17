@@ -197,5 +197,13 @@ def run_housekeeping():
     except Exception as e:
         print(f'[Librarian] Landscape refresh skipped: {e}')
 
+    # Auto-audit: run pytest + lint check (Tier 4.1)
+    try:
+        from frontend.blueprints.auto_audit import run_audit
+        result = run_audit()
+        print(f'[Librarian] Auto-audit: {result.get("summary", "done")}')
+    except Exception as e:
+        print(f'[Librarian] Auto-audit skipped: {e}')
+
 if __name__ == '__main__':
     run_housekeeping()
