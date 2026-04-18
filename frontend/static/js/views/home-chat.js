@@ -30,6 +30,9 @@
     _hcBindEvents();
     _hcRenderAgentPills();
     _hcLoadThreads();
+    _hcSetGreeting();
+    _hcFetchInterests();
+    _hcInitMiniLandscape();
   };
 
   // ── Environment badge ────────────────────────────────────────────────────
@@ -507,5 +510,262 @@
 
   // Expose for cross-module refresh (agent registry reload)
   window._hcRenderAgentPills = _hcRenderAgentPills;
+
+  // ── Greeting ─────────────────────────────────────────────────────────────
+  function _hcSetGreeting() {
+    const el = document.getElementById('home-welcome-greeting');
+    if (!el) return;
+    const h = new Date().getHours();
+    const period = h < 5 ? 'Late night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Late night';
+    el.textContent = period;
+  }
+
+  // ── Interests fetch & render ─────────────────────────────────────────────
+  function _hcFetchInterests() {
+    fetch('/api/interests?limit=8')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        _hcRenderInterestCards(data.interests || []);
+        _hcRenderResearchTopics(data.research_topics || []);
+      })
+      .catch(() => {}); // Silently degrade if endpoint missing
+  }
+
+  function _hcRenderInterestCards(interests) {
+    const row = document.getElementById('home-interests-row');
+    if (!row || interests.length === 0) return;
+
+    const icons = { memory: '🧠', patterns: '📊', conversations: '💬' };
+    row.innerHTML = interests.map(item => {
+      const topSrc = item.sources[item.sources.length - 1] || 'conversations';
+      const icon = icons[topSrc] || '💬';
+      return `<button class="home-interest-card" data-suggestion="${_hcEsc(item.suggestion)}" title="${_hcEsc(item.suggestion)}">` +
+        `<span class="home-interest-icon">${icon}</span>` +
+        `<span>${_hcEsc(item.topic)}</span>` +
+        `<span class="home-interest-source" data-src="${topSrc}">${topSrc}</span>` +
+        `</button>`;
+    }).join('');
+
+    row.querySelectorAll('.home-interest-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const suggestion = card.dataset.suggestion;
+        if (!suggestion) return;
+        const input = document.getElementById('home-chat-input');
+        if (input) {
+          input.value = suggestion;
+          input.focus();
+          input.dispatchEvent(new Event('input'));
+        }
+      });
+    });
+  }
+
+  function _hcRenderResearchTopics(topics) {
+    const row = document.getElementById('home-research-row');
+    if (!row || topics.length === 0) return;
+
+    row.innerHTML = '<span style="font-size:9px;color:var(--text-dim);opacity:0.6;text-transform:uppercase;letter-spacing:0.5px;font-weight:700;">Research:</span> ' +
+      topics.map(t => {
+        const status = (t.status || '').toLowerCase();
+        return `<button class="home-research-tag" data-status="${status}" data-topic="${_hcEsc(t.topic)}" title="Research: ${_hcEsc(t.topic)}">` +
+          `${_hcEsc(t.topic)}</button>`;
+      }).join('');
+
+    row.querySelectorAll('.home-research-tag').forEach(tag => {
+      tag.addEventListener('click', () => {
+        const topic = tag.dataset.topic;
+        if (!topic) return;
+        const input = document.getElementById('home-chat-input');
+        if (input) {
+          input.value = `What did the research on "${topic}" find?`;
+          input.focus();
+        }
+      });
+    });
+  }
+
+  // ── Mini memory landscape (ambient background) ───────────────────────────
+  let _hcMiniLandscapeActive = false;
+  let _hcMiniAnimFrame = null;
+
+  function _hcInitMiniLandscape() {
+    const canvas = document.getElementById('home-mini-landscape');
+    if (!canvas) return;
+
+    // Fetch memory data if not cached
+    if (!window.__memoryCache || window.__memoryCache.length === 0) {
+      fetch('/api/memory?limit=300&min=1')
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(data => {
+          // Flatten results into cache format
+          const flat = [];
+          const results = data.results || {};
+          for (const [agent, entries] of Object.entries(results)) {
+            entries.forEach(e => flat.push({ ...e, _agent: agent }));
+          }
+          if (flat.length > 0) {
+            window.__memoryCache = flat;
+            _hcStartMiniLandscape(canvas);
+          }
+        })
+        .catch(() => {});
+    } else {
+      _hcStartMiniLandscape(canvas);
+    }
+  }
+
+  function _hcStartMiniLandscape(canvas) {
+    if (_hcMiniLandscapeActive) return;
+    _hcMiniLandscapeActive = true;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const cache = window.__memoryCache || [];
+    if (!cache.length) return;
+
+    // Build simplified node data
+    const agentCounts = {};
+    const agentTags = {};
+    const globalTags = {};
+
+    cache.forEach(m => {
+      const agent = m._agent || m.agent || 'unknown';
+      agentCounts[agent] = (agentCounts[agent] || 0) + 1;
+      if (!agentTags[agent]) agentTags[agent] = {};
+      const tags = String(m.tags || '').split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+      tags.forEach(t => {
+        agentTags[agent][t] = (agentTags[agent][t] || 0) + 1;
+        globalTags[t] = (globalTags[t] || 0) + 1;
+      });
+    });
+
+    const agents = Object.keys(agentCounts);
+    const topTags = Object.entries(globalTags)
+      .filter(([tag]) => {
+        let cnt = 0;
+        for (const at of Object.values(agentTags)) { if (at[tag]) cnt++; }
+        return cnt >= 2;
+      })
+      .sort((a, b) => b[1] - a[1]).slice(0, 12).map(([t]) => t);
+
+    // Create nodes
+    const nodes = [];
+    const palette = ['#ff6b6b','#ffa500','#ffc800','#4caf50','#00bcd4','#2563eb','#9333ea','#ec4899','#6cb6ff','#00d084','#f59e0b','#8b5cf6'];
+    let ci = 0;
+
+    agents.forEach((agent, i) => {
+      const angle = (i / agents.length) * Math.PI * 2;
+      const r = 100 + Math.random() * 60;
+      nodes.push({
+        id: 'a:' + agent, label: agent, type: 'agent',
+        x: 300 + Math.cos(angle) * r, y: 200 + Math.sin(angle) * r,
+        vx: 0, vy: 0,
+        size: Math.min(5 + Math.sqrt(agentCounts[agent]) * 2, 16),
+        color: palette[ci++ % palette.length],
+      });
+    });
+
+    topTags.forEach((tag, i) => {
+      const angle = (i / topTags.length) * Math.PI * 2 + 0.5;
+      const r = 50 + Math.random() * 30;
+      nodes.push({
+        id: 't:' + tag, label: tag, type: 'tag',
+        x: 300 + Math.cos(angle) * r, y: 200 + Math.sin(angle) * r,
+        vx: 0, vy: 0, size: 3, color: 'rgba(108,182,255,0.4)',
+      });
+    });
+
+    // Build links
+    const links = [];
+    const nodeMap = {};
+    nodes.forEach(n => { nodeMap[n.id] = n; });
+    agents.forEach(agent => {
+      topTags.forEach(tag => {
+        if (agentTags[agent] && agentTags[agent][tag]) {
+          links.push({ source: 'a:' + agent, target: 't:' + tag, weight: agentTags[agent][tag] });
+        }
+      });
+    });
+
+    // Gentle animation loop — low CPU
+    function tick() {
+      if (!_hcMiniLandscapeActive) return;
+
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        _hcMiniAnimFrame = requestAnimationFrame(tick);
+        return;
+      }
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const w = rect.width, h = rect.height;
+
+      // Very gentle physics
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          let dx = b.x - a.x, dy = b.y - a.y;
+          let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const force = 400 / (dist * dist);
+          const fx = (dx / dist) * force, fy = (dy / dist) * force;
+          a.vx -= fx; a.vy -= fy;
+          b.vx += fx; b.vy += fy;
+        }
+      }
+      links.forEach(l => {
+        const a = nodeMap[l.source], b = nodeMap[l.target];
+        if (!a || !b) return;
+        let dx = b.x - a.x, dy = b.y - a.y;
+        let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const force = (dist - 80) * 0.003;
+        const fx = (dx / dist) * force, fy = (dy / dist) * force;
+        a.vx += fx; a.vy += fy;
+        b.vx -= fx; b.vy -= fy;
+      });
+      nodes.forEach(n => {
+        n.vx += (w / 2 - n.x) * 0.0003;
+        n.vy += (h / 2 - n.y) * 0.0003;
+        n.vx *= 0.92; n.vy *= 0.92;
+        n.x += n.vx; n.y += n.vy;
+      });
+
+      // Render
+      ctx.clearRect(0, 0, w, h);
+      links.forEach(l => {
+        const a = nodeMap[l.source], b = nodeMap[l.target];
+        if (!a || !b) return;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+      nodes.forEach(n => {
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.size, 0, Math.PI * 2);
+        ctx.fillStyle = n.type === 'agent' ? (n.color + '22') : 'rgba(108,182,255,0.08)';
+        ctx.fill();
+        ctx.strokeStyle = n.type === 'agent' ? (n.color + '44') : 'rgba(108,182,255,0.15)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      });
+
+      _hcMiniAnimFrame = requestAnimationFrame(tick);
+    }
+    tick();
+
+    // Stop animation when welcome state is hidden
+    const observer = new MutationObserver(() => {
+      const welcome = document.querySelector('.home-chat-welcome');
+      if (welcome && welcome.style.display === 'none') {
+        _hcMiniLandscapeActive = false;
+        if (_hcMiniAnimFrame) cancelAnimationFrame(_hcMiniAnimFrame);
+      }
+    });
+    const welcome = document.querySelector('.home-chat-welcome');
+    if (welcome) observer.observe(welcome, { attributes: true, attributeFilter: ['style'] });
+  }
 
 })();
