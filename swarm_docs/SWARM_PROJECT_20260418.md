@@ -16,18 +16,19 @@
 
 | Field | Value |
 |-------|-------|
-| **Active Phase** | Phase 7.0 — Improvement Sprint (chunked, self-testing) |
-| **Last Session** | Session 21 — 18 April 2026 — improvement plan, env alignment, 7 UI fixes |
-| **Next Action** | Chunk A (env align) → Chunk B (wizard→enrollment) → Chunk C (ghost coder model) |
+| **Active Phase** | Phase 8.0 — Agentic Chat (planning) / Phase 7.0 D–G remaining |
+| **Last Session** | Session 22 — 18 April 2026 — relay dispatch fix, Phase 8.0 vision locked |
+| **Next Action** | Phase 8.0 Chunk A (agent sidebar always expanded) |
 | **Test Baseline** | 398 passed, 1 skipped |
-| **Environments** | PROD (master :5050), UAT (:5053), DEV (:5051) — 16 files out of sync, fixing |
-| **Blockers** | DEV/UAT drift from PROD — Chunk A fixes this first |
+| **Environments** | PROD (master :5050), UAT (:5053), DEV (:5051) — synced, 18 agents each |
+| **Blockers** | None — relay dispatch fix unblocked multi-agent sends |
 
 ### What's Hot Right Now
-- **Phase 6.0 considered feature-complete** — remaining 3.2/3.3/4.1-4.3 tiers deferred
-- **Phase 7.0 starts** — user-reported improvement sprint, broken into 7 self-testing chunks
-- **Ghost Coder model selection** — DB persistence fixed (schema seed no longer overwrites), UI dropdown exists but needs end-to-end verification
-- **16 frontend files out of sync** across DEV/UAT — Chunk A hard-aligns from PROD
+- **Phase 8.0 — Agentic Chat** — major pivot: auto-routing agents, models, relay based on message content
+- **Relay dispatch bug fixed** — multi-agent sends now force parallel mode; stall gate bypassed for fan-out
+- **Phase 7.0 Chunks A–C complete** — env alignment, enrollment rename, Ghost Coder model dropdown verified
+- **Phase 7.0 Chunks D–G deferred** — will interleave with Phase 8.0 as needed
+- **Ghost Coder model selection confirmed working** — dropdown in Agents tile, 6 model options, DB-persisted
 - **Model persistence fix landed** — `_seed_agents()` no longer overwrites user-chosen models on restart
 - **qwen:1.5b deprecated** → replaced with `qwen:latest` across 5 files
 
@@ -106,32 +107,32 @@
 
 **Rule:** Every chunk must pass: (1) automated tests, (2) API smoke test, (3) visual check on PROD, (4) sync to DEV+UAT, (5) restart services.
 
-#### Chunk A — Environment Alignment (FIRST — unblocks everything)
+#### Chunk A — Environment Alignment ✅
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| A.1 | Hard-sync PROD → DEV/UAT | Copy ALL frontend/ files from PROD to DEV and UAT worktrees | 🔲 |
-| A.2 | Restart all services | Restart swarm-terminal-prod, dev, uat | 🔲 |
-| A.3 | Verify identical UI | Spot-check 3 tiles on each environment match PROD | 🔲 |
+| A.1 | Hard-sync PROD → DEV/UAT | Copy ALL frontend/ files from PROD to DEV and UAT worktrees | ✅ Done |
+| A.2 | Restart all services | Restart swarm-terminal-prod, dev, uat | ✅ Done |
+| A.3 | Verify identical UI | Spot-check 3 tiles on each environment match PROD | ✅ Done |
 
-#### Chunk B — Rename "Setup Wizard" to "Enrollment"
-
-| # | Task | Description | Status |
-|---|------|-------------|--------|
-| B.1 | Rename button text | terminal_base.html: "Setup Wizard" → "Enrollment" | 🔲 |
-| B.2 | Rename window title | winManager.open title: "Setup Wizard" → "Enrollment" | 🔲 |
-| B.3 | Update onboarding.js header | Any "wizard" text in the step UI → "enrollment" | 🔲 |
-| B.4 | Verify button works | Click Enrollment in Agents tile header, confirm 5-step flow loads | 🔲 |
-
-#### Chunk C — Ghost Coder Model Selection (PRIORITY)
+#### Chunk B — Rename "Setup Wizard" to "Enrollment" ✅
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| C.1 | Verify model dropdown renders | Open agents-config → Ghost Coder → model dropdown shows 6 options | 🔲 |
-| C.2 | Verify Apply button works | Select different model → Apply → confirm status message | 🔲 |
-| C.3 | Verify persistence | Set model → restart service → check model stayed | 🔲 |
-| C.4 | Verify dispatch | Send chat to ghost_coder with specific model → check which API was called | 🔲 |
-| C.5 | Model swap for ALL agents | Confirm local agents show Ollama models, paid agents show API models | 🔲 |
+| B.1 | Rename button text | terminal_base.html: "Setup Wizard" → "Enrollment" | ✅ Done |
+| B.2 | Rename window title | winManager.open title: "Setup Wizard" → "Enrollment" | ✅ Done |
+| B.3 | Update onboarding.js header | Any "wizard" text in the step UI → "enrollment" | ✅ Done |
+| B.4 | Verify button works | Click Enrollment in Agents tile header, confirm 5-step flow loads | ✅ Done |
+
+#### Chunk C — Ghost Coder Model Selection ✅
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| C.1 | Verify model dropdown renders | Open agents-config → Ghost Coder → model dropdown shows 6 options | ✅ Done |
+| C.2 | Verify Apply button works | Select different model → Apply → confirm status message | ✅ Done |
+| C.3 | Verify persistence | Set model → restart service → check model stayed | ✅ Done |
+| C.4 | Verify dispatch | Send chat to ghost_coder with specific model → check which API was called | ✅ Done |
+| C.5 | Model swap for ALL agents | Confirm local agents show Ollama models, paid agents show API models | ✅ Done |
 
 #### Chunk D — System Log in Trace Tile
 
@@ -176,9 +177,112 @@
 |-------|-------------|----------|
 | H | Fridays self-reasoning — todo, knowledge, local memory | HIGH |
 | I | VS Code as backend bridge — Ghost Coder ↔ Fridays pipeline | HIGH |
-| J | Chat 2.0 — thread management, multi-agent conversations | MEDIUM |
 | K | Skills tile cleanup — cleaner layout, better drag-drop | LOW |
 | L | Desktop packaging (Tauri) | LOW |
+
+> **Note:** Former Chunk J (Chat 2.0) has been superseded by **Phase 8.0 — Agentic Chat** below.
+
+---
+
+### Phase 8.0 — Agentic Chat (Active — Planning)
+
+**Goal:** Transform the chat from a manual multi-agent tool into an intelligent, auto-routing conversational interface. The system reads the user's message and automatically selects: which agent(s) to dispatch, which model to use, and whether to enable relay — all with manual override available at every step.
+
+**Vision (user's words):** *"The model selection should be automated based on whatever the user puts into the chat, relay should be automated as well as on or off, agent selection should be agentic and proper according to the request, this should all be automated."*
+
+**Design Principles:**
+1. **Zero-config default** — user types a message, system handles everything
+2. **Override always available** — manual agent/model/relay toggles remain accessible
+3. **Transparent decisions** — show the user what was auto-selected and why
+4. **Cautious rollout** — one chunk at a time, each tested before moving on
+5. **No regressions** — existing manual workflows must continue to work
+
+**Rule:** Same as Phase 7.0 — every chunk must pass: (1) automated tests, (2) API smoke test, (3) visual check on PROD, (4) sync to DEV+UAT, (5) restart services.
+
+#### Chunk 8A — Agent Sidebar Always Expanded
+
+**Scope:** Right dock Agent Controls section currently collapsed by default. Change to always expanded so agent pills are always visible.
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| 8A.1 | Change default state | `data-chat-default="closed"` → `"open"` on agent controls section | 🔲 |
+| 8A.2 | Style polish | Ensure pills are readable, properly spaced when dock is visible | 🔲 |
+| 8A.3 | Verify on all envs | Agent pills visible on load, toggleable, not breaking layout | 🔲 |
+
+#### Chunk 8B — Intent Classifier (Backend)
+
+**Scope:** Build a backend classifier that reads user message text and returns: recommended agent(s), model tier, and relay on/off. This is the brain of agentic routing.
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| 8B.1 | Create `/api/chat/classify` endpoint | Accepts message text, returns `{agents: [], model_tier: str, relay: bool, confidence: float, reasoning: str}` | 🔲 |
+| 8B.2 | Agent selection rules | Keyword/pattern matching: code→ghost_coder, search→seeker/scholar, multi-topic→relay, general→gemma | 🔲 |
+| 8B.3 | Model tier selection | Tasks categorised: simple→local (gemma/qwen), complex→paid (twelve/ten), code→ghost_coder, research→scholar | 🔲 |
+| 8B.4 | Relay auto-detection | Enable relay when: question spans multiple domains, or classifier confidence is low, or user says "ask around" | 🔲 |
+| 8B.5 | Unit tests | Test classifier with 20+ sample messages covering each category | 🔲 |
+
+**Classification categories (initial):**
+
+| Category | Primary Agent(s) | Model Tier | Relay |
+|----------|-----------------|------------|-------|
+| Code generation/review | ghost_coder | paid (claude/gpt) | off |
+| Code explanation | ghost_coder or twelve | paid | off |
+| Web search / current info | seeker, scholar | paid (scholar=gemini) | off |
+| General knowledge | gemma or llama | local | off |
+| Creative writing | eleven or ten | paid | off |
+| Multi-domain / ambiguous | gemma + specialist | local + paid | ON |
+| System/swarm admin | duck or librarian | service | off |
+| Math / reasoning | deepseek or nine | local/paid | off |
+| Summarisation | qwen or gemma | local | off |
+| Opinion / debate | multiple agents | mixed | ON |
+
+#### Chunk 8C — Wire Classifier into Chat Frontend
+
+**Scope:** Frontend calls `/api/chat/classify` before sending. Auto-populates agent selection, shows classification reasoning, allows override.
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| 8C.1 | Pre-send classify call | On send button click, call classify first, then dispatch with classified agents/model | 🔲 |
+| 8C.2 | Show classification badge | Small badge above input: "→ ghost_coder (code detected)" — clickable to expand reasoning | 🔲 |
+| 8C.3 | Override mechanism | User can still manually toggle agents; manual selection overrides classifier | 🔲 |
+| 8C.4 | Auto-relay wiring | If classifier says relay=true, auto-enable relay for that send | 🔲 |
+| 8C.5 | Model auto-selection | Classifier's model_tier maps to specific model per agent (e.g., ghost_coder→claude-sonnet-4) | 🔲 |
+| 8C.6 | "Why this agent?" tooltip | Hover on classification badge shows reasoning text | 🔲 |
+
+#### Chunk 8D — Home Screen Reorganisation
+
+**Scope:** Home screen stays but tiles reorganise to bottom. Chat gets more visual prominence.
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| 8D.1 | Move tile grid to bottom | Tile cards move below the sundial/clocks area, smaller form factor | 🔲 |
+| 8D.2 | Chat tile prominence | Chat card is visually larger or positioned as primary action | 🔲 |
+| 8D.3 | Quick-launch from home | Typing in a home search/quick-bar opens chat directly with pre-filled message | 🔲 |
+| 8D.4 | Verify responsive layout | Reorganised home works on all screen sizes | 🔲 |
+
+#### Chunk 8E — Auto-Model Selection Per Agent
+
+**Scope:** Each agent auto-selects the best available model based on task type and agent capabilities.
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| 8E.1 | Model preference matrix | DB table: agent × task_type → preferred model | 🔲 |
+| 8E.2 | Fallback chain | If preferred model unavailable (Ollama down, API limit), fall back to next best | 🔲 |
+| 8E.3 | Override from agent config | User-set model in Agents tile always takes priority over auto-selection | 🔲 |
+| 8E.4 | Verify dispatch | Confirm correct model is used when auto vs manual | 🔲 |
+
+#### Chunk 8F — Full Integration Test
+
+**Scope:** End-to-end testing of the complete agentic chat flow.
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| 8F.1 | Code question test | Type code question → ghost_coder auto-selected → correct model used | 🔲 |
+| 8F.2 | Search question test | Type "what's the news" → seeker/scholar auto-selected → relay off | 🔲 |
+| 8F.3 | Multi-domain test | Type ambiguous question → multiple agents → relay auto-enabled | 🔲 |
+| 8F.4 | Manual override test | Auto-selects agent, user changes it, correct agent dispatched | 🔲 |
+| 8F.5 | Regression test | All existing chat features (threads, attachments, history) still work | 🔲 |
+| 8F.6 | Performance test | Classify endpoint responds < 50ms (no external calls) | 🔲 |
 
 **Tier 5 — Home Screen & Responsive Design**
 
@@ -217,10 +321,10 @@
 │  FLASK APP │  34+ blueprints       │  205+ routes           │
 │            │  Services layer       │  Pipeline orchestrator  │
 ├─────────────────────────────────────────────────────────────┤
-│  AGENTS    │  17 registered        │  DB-backed registry    │
-│            │  Local: Gemma, LLaMA, Qwen, Mistral, Eight     │
-│            │  Paid: Nine, Ten, Eleven, Twelve, Thirteen      │
-│            │  Service: Duck, Sniffles, Librarian, Scholar    │
+│  AGENTS    │  18 registered        │  DB-backed registry    │
+│            │  Local: Gemma, LLaMA, Qwen, Mistral, Eight, Phi3, DeepSeek │
+│            │  Paid: Nine, Ten, Eleven, Twelve, Thirteen, Scholar, Ghost Coder │
+│            │  Service: Duck, Sniffles, Librarian, Seeker    │
 ├─────────────────────────────────────────────────────────────┤
 │  DATA      │  SQLite WAL           │  78+ tables            │
 │            │  Agent registry       │  Circuit breaker state  │
@@ -249,6 +353,11 @@ Architectural and design decisions that affect future work. Newest first.
 
 | Date | Decision | Rationale | Ref |
 |------|----------|-----------|-----|
+| 18 Apr | Phase 8.0 — Agentic Chat replaces manual agent/model/relay selection | User wants zero-config chat: system auto-routes based on message content | SWARM_PROJECT |
+| 18 Apr | Auto-route with manual override (not fully automatic) | User must always be able to override classifier decisions | Session 22 |
+| 18 Apr | Agent sidebar always expanded (not collapsed) | User wants agent pills visible at all times in right dock | Session 22 |
+| 18 Apr | Home stays, tiles reorganise to bottom | Not replacing home with chat — reorganise tiles for config/fine-tuning | Session 22 |
+| 18 Apr | Force parallel_mode for explicit multi-agent sends | Sequential stall gate was blocking multi-agent fan-out | chat.py relay fix |
 | 17 Apr | SSE real-time push for chat (not polling) | Eliminates polling overhead; instant message display | chat_bp.py SSE endpoint |
 | 17 Apr | Memory landscape uses canvas force-directed graph | Interactive physics sim for agent-memory relationships; performant at scale | memory-landscape.js |
 | 17 Apr | Setup Wizard absorbed into Agents tile | Reduces home card count; wizard accessible via header button | terminal_base.html |
@@ -275,6 +384,36 @@ Architectural and design decisions that affect future work. Newest first.
 
 Each session is logged here with date, what was done, and key outcomes.  
 **Newest first** — most recent session is always at the top.
+
+---
+
+### Session 22 — 18 April 2026 (Evening)
+**Focus:** Multi-agent relay dispatch fix + Phase 8.0 Agentic Chat vision
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Fix multi-agent relay dispatch | ✅ Done | Thread #706: 10 agents sent, only 1-2 responded. Root cause: sequential stall gate |
+| 2 | Force parallel for multi-agent | ✅ Done | chat.py line ~588: if >1 agent explicitly selected → parallel_mode=True |
+| 3 | Bypass stall gate for fan-out | ✅ Done | chat.py line ~1480: stall gate skipped when `_multi_agent_fanout` is true |
+| 4 | Sync fix to all envs | ✅ Done | PROD, DEV, UAT all updated with relay fix |
+| 5 | Confirm Ghost Coder model works | ✅ Done | User verified: dropdown visible in Agents tile, 6 model options |
+| 6 | Phase 8.0 vision discussion | ✅ Done | Locked: auto-route + override, agent pills expanded, home reorganised |
+| 7 | Update SWARM_PROJECT | ✅ Done | Phase 8.0 plan with 6 chunks (8A–8F), decisions logged |
+
+**Root Cause (relay bug):** `_sequential_stalled` flag was set after the first agent timeout in sequential mode. When user sends to multiple agents, the system defaulted to sequential mode, so after one agent's timeout, the stall gate blocked all remaining agents. Two fixes: (1) force parallel when >1 agent explicitly selected, (2) add `_multi_agent_fanout` bypass for stall gate.
+
+**Phase 8.0 Design Decisions:**
+- Agent selection: backend classifier at `/api/chat/classify` reads message → returns recommended agents
+- Model selection: classifier returns model_tier → maps to specific model per agent  
+- Relay: auto-detected based on multi-domain questions or low confidence
+- Override: manual toggles always available — user selection beats classifier
+- Agent sidebar: always expanded (pills visible), not collapsed by default
+- Home screen: stays as-is but tiles reorganise to bottom for config/fine-tuning access
+- Execution: sequential cautious chunks (8A→8B→8C→8D→8E→8F)
+
+**Files Modified:** `frontend/blueprints/chat.py` (2 changes), `swarm_docs/SWARM_PROJECT_20260418.md`
+**Tests:** 398 passed, 1 skipped
+**Envs synced:** Yes (PROD, DEV, UAT) — all running with 18 agents
 
 ---
 
