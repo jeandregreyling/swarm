@@ -1048,3 +1048,4 @@
 {"step": "finish", "skill": "ticket_create", "agent": "gemma", "success": true, "output": "Internal ticket created: queue_id=322, proposal_id=INTERNAL-TEST-0322", "todo": "Log result and audit for skill 'ticket_create'."}
 {"step": "start", "skill": "fs_readonly", "args": "grep agents/gemma.py \"rate limit\"", "agent": "gemma", "source_conv_id": null, "reasoning": "Dispatching skill 'fs_readonly' with args 'grep agents/gemma.py \"rate limit\"' for agent 'gemma'", "todo": "Execute skill 'fs_readonly'."}
 {"step": "finish", "skill": "fs_readonly", "agent": "gemma", "success": false, "output": "Invalid file: agents/gemma.py", "todo": "Log result and audit for skill 'fs_readonly'."}
+{"step": "start", "skill": "search", "args": "python", "agent": "ghost", "source_conv_id": null, "reasoning": "Dispatching skill 'search' with args 'python' for agent 'ghost'", "todo": "Execute skill 'search'."}
