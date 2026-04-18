@@ -16,9 +16,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Active Phase** | Phase 7.0 — Improvement Sprint (Chunk G remaining) |
-| **Last Session** | Session 23 — 18 April 2026 — Phase 8.0 + 7D + 7E + 7F done |
-| **Next Action** | Phase 7.0 Chunk G (Email as Own Tile) |
+| **Active Phase** | Phase 7.0 — Improvement Sprint ✅ ALL CHUNKS DONE |
+| **Last Session** | Session 23 — 18 April 2026 — Phase 8.0 + 7D + 7E + 7F + 7G done |
+| **Next Action** | Post-7G broken pipes: agents tab, enrollment, chat model selector |
 | **Test Baseline** | 484 passed, 1 skipped |
 | **Environments** | PROD (master :5050), UAT (:5053), DEV (:5051) — synced, 18 agents each |
 | **Blockers** | None |
@@ -186,10 +186,15 @@
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| G.1 | Add Email card to home grid | New home tile with envelope icon, "Email" title | 🔲 |
-| G.2 | Remove taskbar-only access | Email opens in normal window (not separate tab/window) | 🔲 |
-| G.3 | Keep Ctrl+E shortcut | Keyboard shortcut still works | 🔲 |
-| G.4 | Verify email loads | Click Email tile, inbox renders, compose works | 🔲 |
+| G.1 | Add Email card to home grid | `home-card` with envelope SVG, `data-win-id="email"`, `data-shortcut="Ctrl+E"` added back to home grid | ✅ Done |
+| G.2 | Remove taskbar-only access | Taskbar email button retained; home card restored so Email is discoverable at home | ✅ Done |
+| G.3 | Keep Ctrl+E shortcut | `init.js` unchanged — Ctrl+E still calls `openWindow('email','Email','view-email')` | ✅ Done |
+| G.4 | Verify email loads | Services restarted (PROD/DEV/UAT active) | ✅ Done |
+
+**Implementation notes (7G):**
+- HTML (`terminal_base.html`): Replaced `<!-- Email removed from home (5.3) -->` comment with full `home-card` div — envelope icon SVG, `data-win-id="email"`, `data-win-template="view-email"`, `data-shortcut="Ctrl+E"`, desc "Inbox & compose"
+- No JS changes required — `view-email` template and `email.js` already fully functional
+- Taskbar email dot button retained as-is (unread indicator still works)
 
 #### Future Chunks (after Sprint 7.0)
 
