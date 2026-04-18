@@ -1836,3 +1836,23 @@ def api_chat_librarian_review():
         return jsonify({'ok': True, 'candidates': [], 'error': str(e)[:120]})
 
 
+# ── Chunk 8B — Intent Classifier ─────────────────────────────────────────────
+
+@chat_bp.route('/api/chat/classify', methods=['POST'])
+def api_chat_classify():
+    """Classify a user message and return agent/model/relay recommendation.
+
+    Body: {message: str}
+    Returns: {ok, category, agents, model_tier, relay, confidence, reasoning}
+    """
+    data = request.get_json(silent=True) or {}
+    message = str(data.get('message') or '').strip()
+    if not message:
+        return jsonify({'ok': False, 'error': 'No message provided'}), 400
+
+    from utils.intent_classifier import classify_message
+    result = classify_message(message)
+    result['ok'] = True
+    return jsonify(result)
+
+
