@@ -586,6 +586,11 @@ def api_chat():
     if not message:
         return jsonify({'ok': False, 'response': 'Empty message'}), 400
 
+    # Force parallel dispatch when user explicitly selects multiple agents.
+    # Sequential stalling is for relay chains, not multi-agent fan-out.
+    if isinstance(requested_agents, list) and len(requested_agents) > 1:
+        parallel_mode = True
+
     if history_mode not in {'full', 'recent', 'none'}:
         history_mode = 'full'
 
@@ -1474,10 +1479,14 @@ def api_chat():
 
         # In sequential mode, once any agent goes pending we stop dispatching
         # further agents so they don't pile in simultaneously.
+        # EXCEPTION: when the user explicitly selected multiple agents, we
+        # always fan out to all of them — sequential stalling only applies
+        # to relay-chain scenarios, not multi-agent fan-out.
         _sequential_stalled = False
+        _multi_agent_fanout = len(runnable_agents) > 1
 
         for selected_agent in runnable_agents:
-            if _sequential_stalled:
+            if _sequential_stalled and not _multi_agent_fanout:
                 # Mark remaining agents as queued — not dispatched this turn.
                 responses_map[selected_agent] = {
                     'agent': selected_agent,
