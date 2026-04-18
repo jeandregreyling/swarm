@@ -40,6 +40,10 @@ const ATMOSPHERE_PRESET_VALUES = {
   ember: 76,
   graphite: 92,
   rose: 74,
+  midnight: 96,
+  copper: 78,
+  neon: 100,
+  arctic: 6,
 };
 const ATMOSPHERE_KEYFRAMES = [
   {
@@ -910,7 +914,7 @@ function applyTimeTheme(time, explicitValue = null) {
     document.documentElement.style.setProperty(key, value);
   });
 
-  document.body.classList.remove('theme-obsidian', 'theme-void', 'theme-aurora', 'theme-ember', 'theme-graphite', 'theme-rose', 'theme-lumen', 'theme-sky', 'theme-solar');
+  document.body.classList.remove('theme-obsidian', 'theme-void', 'theme-aurora', 'theme-ember', 'theme-graphite', 'theme-rose', 'theme-lumen', 'theme-sky', 'theme-solar', 'theme-midnight', 'theme-copper', 'theme-neon', 'theme-arctic');
   document.body.classList.toggle('mode-dark', resolvedFoundation === 'dark');
   document.body.classList.toggle('mode-light', resolvedFoundation !== 'dark');
   document.body.dataset.atmosphereSegment = mode.segment;
