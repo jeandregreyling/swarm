@@ -665,13 +665,20 @@
 
         <div id="input-area">
           <div id="input-wrapper">
+            <div id="chat-classify-badge" class="chat-classify-badge" style="display:none;" title="">
+              <span class="classify-arrow">→</span>
+              <span class="classify-agents"></span>
+              <span class="classify-category"></span>
+              <span class="classify-override" title="Manual override active">✎</span>
+              <button class="classify-dismiss" onclick="_dismissClassifyBadge()" title="Dismiss">✕</button>
+            </div>
             <input id="chat-attachment-input" type="file" multiple onchange="handleChatAttachmentInput(event)">
             <div class="chat-compose-shell">
               <button class="chat-attach-btn" onclick="pickChatAttachments()" title="Attach up to 6 files. Text and image files are supported."><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M7.5 4.5l-3 3a2.8 2.8 0 0 0 4 4l4.5-4.5a2 2 0 0 0-2.8-2.8L5.7 8.7a1 1 0 0 0 1.4 1.4L11 6.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               <span id="chat-attach-inline-state" class="chat-attach-inline-state" aria-live="polite"></span>
               <textarea id="question-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
                 onkeydown="handleQuestionInputKeydown(event)"
-                oninput="this.style.height='1px';this.style.height=Math.min(this.scrollHeight,200)+'px';this.style.overflowY=this.scrollHeight>=200?'auto':'hidden'"></textarea>
+                oninput="this.style.height='1px';this.style.height=Math.min(this.scrollHeight,200)+'px';this.style.overflowY=this.scrollHeight>=200?'auto':'hidden';_debouncedClassify()"></textarea>
               <button id="chat-parallel-mode-btn" onclick="onChatParallelModeToggle()" style="flex-shrink:0;background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px;white-space:nowrap;" title="Sequential: agents run one at a time">Seq</button>
               <button id="send-btn" onclick="sendMessage()">Send</button>
             </div>
