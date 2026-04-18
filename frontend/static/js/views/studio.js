@@ -86,7 +86,10 @@ const _PROPOSAL_STATUS = {
 
 function studioSetTab(tab) {
   window._studioTab = tab;
-  ['pending','in_progress','all'].forEach(t => {
+  const isGit = (tab === 'git');
+
+  // Style proposal tab buttons
+  ['pending','in_progress','all','git'].forEach(t => {
     const btn = document.getElementById('studio-tab-' + t);
     if (!btn) return;
     const on = tab === t;
@@ -94,8 +97,25 @@ function studioSetTab(tab) {
       (on ? 'background:var(--accent);color:#000;border-color:var(--accent);'
           : 'background:transparent;color:var(--text-dim);border-color:var(--border);');
   });
-  const container = document.getElementById('studio-content');
-  if (container) loadProposals(container, tab);
+
+  // Toggle between proposals content and git panel
+  const container  = document.getElementById('studio-content');
+  const gitPanel   = document.getElementById('studio-git-panel');
+  if (container) container.style.display = isGit ? 'none'  : '';
+  if (gitPanel)  gitPanel.style.display  = isGit ? 'flex'  : 'none';
+
+  if (isGit) {
+    // Initialise git view inside studio panel (reuse existing git.js logic)
+    const fakeWin = {
+      el: gitPanel,
+      id: 'studio-git',
+      querySelector: (sel) => gitPanel.querySelector(sel),
+    };
+    if (typeof loadGitData === 'function') loadGitData(fakeWin);
+    if (typeof gitRefreshStatus === 'function') gitRefreshStatus();
+  } else {
+    if (container) loadProposals(container, tab);
+  }
 }
 
 function loadProposals(container, tab) {

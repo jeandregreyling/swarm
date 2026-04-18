@@ -170,10 +170,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Ctrl+G — Open Git
+    // Ctrl+G — Open Studio > Git tab
     if ((e.ctrlKey || e.metaKey) && e.key === 'g' && !isInput) {
       e.preventDefault();
-      if (typeof openWindow === 'function') openWindow('git', 'Git', 'view-git');
+      if (typeof openWindow === 'function') openWindow('studio', 'Studio', 'view-studio');
+      setTimeout(() => { if (typeof studioSetTab === 'function') studioSetTab('git'); }, 120);
       return;
     }
 
@@ -229,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: 'Terminal', onclick: 'openWindow("terminal", "Terminal", "view-terminal")', hint: '' },
       { label: 'Knowledge', onclick: 'openWindow("knowledge", "Knowledge", "view-knowledge")', hint: 'Ctrl+B' },
       { label: 'Files', onclick: 'openWindow("files", "Files", "view-files")', hint: '' },
-      { label: 'Git', onclick: 'openWindow("git", "Git", "view-git")', hint: 'Ctrl+G' },
+      { label: 'Git', onclick: 'openWindow("studio","Studio","view-studio"); setTimeout(()=>studioSetTab("git"),120)', hint: 'Ctrl+G' },
       { label: 'Memory', onclick: 'openWindow("memory", "Memory", "view-memory")', hint: '' },
       { label: 'Monitor', onclick: 'openWindow("monitor", "Monitor", "view-monitor")', hint: '' },
       { label: 'Documents', onclick: 'openWindow("docs", "Documents", "view-docs")', hint: '' },
