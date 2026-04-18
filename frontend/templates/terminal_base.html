@@ -452,8 +452,53 @@
   </div>
 
   <div id="home-content">
+
+    <!-- ═══ Home Chat — primary interaction surface (above tiles for prominence) ═══ -->
+    <div class="home-section home-chat-section home-chat-prominent">
+      <div id="home-chat-bar">
+        <div class="home-chat-bar-left">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+          <span class="home-chat-label">Chat</span>
+          <span id="home-chat-env-badge" class="home-chat-env-badge"></span>
+        </div>
+        <div class="home-chat-bar-center">
+          <select id="home-chat-thread-select" title="Switch conversation thread">
+            <option value="">New conversation</option>
+          </select>
+          <button id="home-chat-new-btn" title="Start a new thread">+ New</button>
+        </div>
+        <div class="home-chat-bar-right">
+          <div id="home-chat-agents" class="home-chat-agents"></div>
+          <button id="home-chat-expand-btn" title="Open full Chat window">
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M2 10v4h4M14 6V2h-4M2 14L7 9M14 2L9 7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="home-chat-messages">
+        <div class="home-chat-welcome">
+          <div class="home-chat-welcome-icon">
+            <svg viewBox="0 0 16 16" width="32" height="32" fill="none"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="home-chat-welcome-text">Ask the swarm anything</div>
+          <div class="home-chat-welcome-hint">Select agents below, type your message, and press Send or Enter</div>
+        </div>
+      </div>
+      <div id="home-chat-input-area">
+        <div class="home-chat-compose">
+          <textarea id="home-chat-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
+          <button id="home-chat-send-btn" title="Send message">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2 8l12-5-5 12-2-5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M14 3L7 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div id="home-chat-meta">
+          <span id="home-chat-status">Ready</span>
+          <span id="home-chat-agent-count">0 agents</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Quick Access Cards -->
-    <div class="home-section">
+    <div class="home-section home-tiles-section">
       <div class="home-section-title" id="quick-access-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.4 1.4M10.6 10.6L12 12M4 12l1.4-1.4M10.6 5.4L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/></svg></span> Quick Access <span class="section-caret">▼</span></div>
       <div class="card-grid" id="quick-cards">
         <div class="home-card" data-win-id="chat" data-win-title="Chat" data-win-template="view-chat" data-shortcut="Ctrl+J">
@@ -530,49 +575,6 @@
     </div>
 
 
-    <!-- ═══ Home Chat — primary interaction surface ═══ -->
-    <div class="home-section home-chat-section">
-      <div id="home-chat-bar">
-        <div class="home-chat-bar-left">
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-          <span class="home-chat-label">Chat</span>
-          <span id="home-chat-env-badge" class="home-chat-env-badge"></span>
-        </div>
-        <div class="home-chat-bar-center">
-          <select id="home-chat-thread-select" title="Switch conversation thread">
-            <option value="">New conversation</option>
-          </select>
-          <button id="home-chat-new-btn" title="Start a new thread">+ New</button>
-        </div>
-        <div class="home-chat-bar-right">
-          <div id="home-chat-agents" class="home-chat-agents"></div>
-          <button id="home-chat-expand-btn" title="Open full Chat window">
-            <svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M2 10v4h4M14 6V2h-4M2 14L7 9M14 2L9 7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </div>
-      </div>
-      <div id="home-chat-messages">
-        <div class="home-chat-welcome">
-          <div class="home-chat-welcome-icon">
-            <svg viewBox="0 0 16 16" width="32" height="32" fill="none"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
-          </div>
-          <div class="home-chat-welcome-text">Ask the swarm anything</div>
-          <div class="home-chat-welcome-hint">Select agents below, type your message, and press Send or Enter</div>
-        </div>
-      </div>
-      <div id="home-chat-input-area">
-        <div class="home-chat-compose">
-          <textarea id="home-chat-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
-          <button id="home-chat-send-btn" title="Send message">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2 8l12-5-5 12-2-5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M14 3L7 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-          </button>
-        </div>
-        <div id="home-chat-meta">
-          <span id="home-chat-status">Ready</span>
-          <span id="home-chat-agent-count">0 agents</span>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 

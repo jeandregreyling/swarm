@@ -12,6 +12,33 @@
   padding-bottom: 0 !important;
 }
 
+/* Prominent mode — chat first, takes more space */
+.home-chat-prominent {
+  flex: 1;
+  min-height: 380px;
+  max-height: calc(100vh - 280px);
+  border-bottom: 1px solid var(--border) !important;
+  margin-bottom: 8px !important;
+  padding-bottom: 0 !important;
+}
+
+/* Tiles section — compact when below chat */
+.home-tiles-section {
+  flex-shrink: 0;
+  margin-bottom: 0 !important;
+  padding-bottom: 8px !important;
+  border-bottom: none !important;
+}
+.home-tiles-section .card-grid {
+  gap: 6px;
+}
+.home-tiles-section .home-card {
+  padding: 8px 10px;
+}
+.home-tiles-section .home-card .card-desc {
+  font-size: 10px;
+}
+
 /* ── Header bar ──────────────────────────────────────────────────────────── */
 #home-chat-bar {
   display: flex;
