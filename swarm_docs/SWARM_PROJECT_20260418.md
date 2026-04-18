@@ -270,10 +270,17 @@
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| 8D.1 | Move tile grid to bottom | Tile cards move below the sundial/clocks area, smaller form factor | 🔲 |
-| 8D.2 | Chat tile prominence | Chat card is visually larger or positioned as primary action | 🔲 |
-| 8D.3 | Quick-launch from home | Typing in a home search/quick-bar opens chat directly with pre-filled message | 🔲 |
-| 8D.4 | Verify responsive layout | Reorganised home works on all screen sizes | 🔲 |
+| 8D.1 | Move tile grid to bottom | Chat section moved above tiles; tiles now in compact `.home-tiles-section` below | ✅ Done |
+| 8D.2 | Chat tile prominence | Chat uses `home-chat-prominent` class: flex:1, taller min-height, more visual space | ✅ Done |
+| 8D.3 | Quick-launch from home | Typing anywhere on home page auto-focuses chat input (keydown handler on `#home-page`) | ✅ Done |
+| 8D.4 | Verify responsive layout | Mobile rules: chat min-height 240px, tiles 2-col grid on ≤768px | ✅ Done |
+
+**Implementation notes (8D):**
+- HTML: Swapped order in `#home-content` — `.home-chat-section.home-chat-prominent` first, `.home-tiles-section` second
+- CSS (`home-chat.css`): `.home-chat-prominent` gets `flex:1`, `min-height:380px`, `max-height:calc(100vh-280px)`
+- CSS (`home-chat.css`): `.home-tiles-section` compact: smaller padding, 6px gap
+- CSS (`responsive.css`): Mobile breakpoint ≤768px — chat min-height 240px, tiles 2-col
+- JS (`home-chat.js`): `keydown` listener on `#home-page` — single printable chars focus `#home-chat-input`, skips modifier keys and existing input fields
 
 #### Chunk 8E — Auto-Model Selection Per Agent
 
