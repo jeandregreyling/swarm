@@ -83,6 +83,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.interests_bp',   'interests_bp'),
     ('blueprints.login_bp',       'login_bp'),
     ('blueprints.idle_mgmt_bp',   'idle_bp'),
+    ('blueprints.tasker_bp',      'tasker_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)

@@ -48,6 +48,7 @@
 <link rel="stylesheet" href="/static/css/home-chat.css?v=27">
 <link rel="stylesheet" href="/static/css/login.css?v=27">
 <link rel="stylesheet" href="/static/css/skills.css?v=27">
+<link rel="stylesheet" href="/static/css/views/tasker.css?v=1">
 <script>
   // Pass ENV_STAGE from Flask to JS for the banner
   window.ENV_STAGE = "{{ ENV_STAGE }}";
@@ -581,6 +582,10 @@
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span>Feeds</span></div>
           <div class="card-desc">Social &amp; developer feeds</div>
         </div>
+        <div class="home-card" data-win-id="tasker" data-win-title="Tasker" data-win-template="view-tasker">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 3v3l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Tasker</span></div>
+          <div class="card-desc">Scheduled tasks &amp; automation</div>
+        </div>
         <!-- + Add New tile -->
         <div class="home-card home-card-add" id="add-new-tile" title="Create a proposal for new functionality">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 2"/><path d="M8 5.5v5M5.5 8h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span><span>Add New</span></div>
@@ -636,16 +641,16 @@
 
       <div id="chat-thread-resizer" class="chat-thread-resizer" onmousedown="startChatThreadResize(event)" title="Drag to resize thread rail"></div>
 
-      <div id="chat-main" class="chat-font-scope" style="display:flex;flex-direction:column;min-width:0;">
+      <div id="chat-main" class="chat-font-scope">
         <div id="chat-topbar">
           <div>
-            <div style="display:flex; gap:12px; align-items:center; margin-bottom:6px;">
-              <div style="flex:1;">
+            <div class="chat-topbar-row">
+              <div class="chat-topbar-title-col">
                 <div class="chat-title">Fridays Chat Console</div>
                 <div class="chat-subtitle">Multi-agent conversation with live orchestration <span class="chat-mini-system">CPU --% · RAM --%</span></div>
               </div>
-              <div style="display:flex; gap:8px; align-items:center; white-space:nowrap;">
-                <span style="font-size:9px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">Font Size</span>
+              <div class="chat-topbar-font-col">
+                <span class="chat-topbar-font-label">Font Size</span>
                 <select id="chat-font-size-select" onchange="setChatUiScale(this.value)" title="Scale chat/menu font size">
                   <option value="0.80">80%</option>
                   <option value="0.85">85%</option>
@@ -662,11 +667,11 @@
             </div>
           </div>
           <div id="chat-controls">
-            <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 180px; max-width: 300px; font-size:12px;">
+            <select id="chat-thread-select" class="chat-control-select" title="Choose thread" onchange="switchChatThread(this.value)">
               <option value="">New Thread</option>
             </select>
-            <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
-            <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
+            <button id="chat-new-thread-btn" class="chat-control-btn" onclick="createNewThread()">+ New</button>
+            <button id="chat-notify-toggle-btn" class="chat-control-btn" onclick="toggleDesktopNotifications()">Notifications Off</button>
           </div>
         </div>
         <div id="chat-section-main" class="chat-section chat-main-shell">
@@ -674,7 +679,7 @@
             <span class="chat-section-title"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg> Main Chat</span>
           </div>
           <div id="chat-section-main-content" class="chat-section-content">
-            <div id="chat-messages" style="flex:1; overflow-y: auto;">
+            <div id="chat-messages">
               <div class="welcome" style="display:none;"></div>
             </div>
           </div>
@@ -696,7 +701,7 @@
               <textarea id="question-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
                 onkeydown="handleQuestionInputKeydown(event)"
                 oninput="this.style.height='1px';this.style.height=Math.min(this.scrollHeight,200)+'px';this.style.overflowY=this.scrollHeight>=200?'auto':'hidden';_debouncedClassify()"></textarea>
-              <button id="chat-parallel-mode-btn" onclick="onChatParallelModeToggle()" style="flex-shrink:0;background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px;white-space:nowrap;" title="Sequential: agents run one at a time">Seq</button>
+              <button id="chat-parallel-mode-btn" class="chat-parallel-btn" onclick="onChatParallelModeToggle()" title="Sequential: agents run one at a time">Seq</button>
               <button id="send-btn" onclick="sendMessage()">Send</button>
             </div>
             <div id="chat-mention-menu" class="chat-mention-menu" role="listbox" aria-label="Agent mentions"></div>
@@ -705,26 +710,26 @@
             <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span><span id="chat-dictionary-inline">Dictionary: 0</span></div>
           </div>
         </div>
-        <div id="chat-thread-runtime" class="chat-thread-runtime"><div class="chat-thread-runtime-head"><div class="chat-thread-runtime-title" style="opacity:0.45;">Thread Runtime · idle</div></div></div>
+        <div id="chat-thread-runtime" class="chat-thread-runtime"><div class="chat-thread-runtime-head"><div class="chat-thread-runtime-title idle">Thread Runtime · idle</div></div></div>
 
         <!-- Agent Workflow Tracker Panel -->
-        <div id="agent-workflow-panel" style="position:absolute;bottom:0;right:0;width:320px;max-height:280px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin:8px;box-shadow:var(--shadow);overflow-y:auto;display:none;z-index:1000;font-family:monospace;font-size:11px;">
-          <div style="position:sticky;top:0;background:var(--window-header);padding:8px 12px;border-bottom:1px solid var(--border);font-weight:700;display:flex;justify-content:space-between;align-items:center;">
-            <span style="color:var(--accent);"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M4 3l2 2-2 2M8 7h4M4 9l2 2-2 2M8 13h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Agent Workflow</span>
-            <button onclick="document.getElementById('agent-workflow-panel').style.display='none'" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;">✕</button>
+        <div id="agent-workflow-panel">
+          <div class="workflow-panel-header">
+            <span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M4 3l2 2-2 2M8 7h4M4 9l2 2-2 2M8 13h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Agent Workflow</span>
+            <button class="workflow-panel-close" onclick="document.getElementById('agent-workflow-panel').style.display='none'">✕</button>
           </div>
-          <div id="workflow-content" style="padding:10px;color:var(--text-dim);">
-            <div style="color:var(--text);margin-bottom:8px;"><strong>Current Task:</strong></div>
-            <div id="workflow-task" style="background:var(--bg);padding:6px;border-radius:4px;margin-bottom:8px;color:var(--text);font-size:10px;"> None</div>
+          <div id="workflow-content" class="workflow-panel-body">
+            <div class="workflow-section-title"><strong>Current Task:</strong></div>
+            <div id="workflow-task" class="workflow-field workflow-field-task"> None</div>
             
-            <div style="color:var(--text);margin-bottom:8px;margin-top:8px;"><strong>Files Read:</strong></div>
-            <div id="workflow-files-read" style="background:var(--bg);padding:6px;border-radius:4px;margin-bottom:8px;color:#8a9c4d;max-height:80px;overflow-y:auto;">None</div>
+            <div class="workflow-section-title"><strong>Files Read:</strong></div>
+            <div id="workflow-files-read" class="workflow-field workflow-field-read">None</div>
             
-            <div style="color:var(--text);margin-bottom:8px;"><strong>Files Modified:</strong></div>
-            <div id="workflow-files-modified" style="background:var(--bg);padding:6px;border-radius:4px;margin-bottom:8px;color:#ff9e4d;max-height:80px;overflow-y:auto;">None</div>
+            <div class="workflow-section-title"><strong>Files Modified:</strong></div>
+            <div id="workflow-files-modified" class="workflow-field workflow-field-modified">None</div>
             
-            <div style="color:var(--text);margin-bottom:8px;"><strong>Status:</strong></div>
-            <div id="workflow-status" style="background:var(--bg);padding:6px;border-radius:4px;color:var(--accent);">Ready</div>
+            <div class="workflow-section-title"><strong>Status:</strong></div>
+            <div id="workflow-status" class="workflow-field workflow-field-status">Ready</div>
           </div>
         </div>
       </div>
@@ -799,7 +804,7 @@
                   </label>
                 </div>
                 <div class="chat-relay-slider-row">
-                  <span style="font-size:10px;color:var(--text-dim);">Agent-to-agent turns</span>
+                  <span class="chat-relay-label">Agent-to-agent turns</span>
                   <input id="chat-relay-turns-slider" class="chat-relay-turns-slider" type="range" min="1" max="12" step="1" value="4" oninput="onChatRelayTurnsSliderChange()" title="Maximum automatic relay turns per user send">
                   <span id="chat-relay-turns-value" class="chat-relay-turns-value">4</span>
                   <label class="chat-relay-toggle" style="padding:2px 8px;" title="Unlimited relay turns for the current send chain.">
@@ -814,23 +819,21 @@
                   <button class="chat-action-btn" onclick="clearRelayTimeline()">Clear timeline</button>
                 </div>
                 <div id="chat-relay-timeline" class="chat-relay-timeline"></div>
-                <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
-                  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
-                    <span style="font-size:11px;font-weight:700;color:var(--text);">Relay Rules</span>
+                <div class="chat-relay-section-divider">
+                  <div class="chat-relay-section-head">
+                    <span class="chat-relay-section-title">Relay Rules</span>
                     <button class="chat-action-btn" onclick="renderRelayRuleList()">Refresh</button>
                   </div>
-                  <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:8px;">
-                    <input class="relay-rule-pattern" type="text" placeholder="match text or phrase"
-                      style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;font-size:11px;">
+                  <div class="chat-relay-rule-grid">
+                    <input class="relay-rule-pattern chat-relay-rule-input" type="text" placeholder="match text or phrase">
                     <select class="relay-rule-target chat-relay-select" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;">
                       <option value="">Target agent</option>
                     </select>
                   </div>
-                  <input class="relay-rule-template" type="text" placeholder="optional rewrite, use {match}"
-                    style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;font-size:11px;margin-bottom:8px;">
-                  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                  <input class="relay-rule-template chat-relay-rule-input" type="text" placeholder="optional rewrite, use {match}" style="width:100%;margin-bottom:8px;">
+                  <div class="chat-relay-rule-actions">
                     <button class="chat-action-btn" onclick="addRelayRule()">Add rule</button>
-                    <span style="font-size:10px;color:var(--text-dim);">Store manual relay pickup patterns here.</span>
+                    <span class="chat-relay-rule-hint">Store manual relay pickup patterns here.</span>
                   </div>
                   <div id="chat-relay-rules-list" style="display:flex;flex-direction:column;gap:6px;"></div>
                 </div>
@@ -1140,34 +1143,53 @@
 
 <template id="view-skills">
   <div class="content-view skills-view">
-    <h3><svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm0-2.2v1.2m0 7.6V13m5-5H11.8M4.2 8H3m8.1-3.1.9-.9M4 12l.9-.9m6.2 0 .9.9M4 4l.9.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Available Skills</h3>
-    <div class="skills-id-bar">
-      <div id="skills-identity-summary" class="skills-id-summary">Identity: loading...</div>
-      <div class="skills-row">
-        <label class="skills-label">Manage permissions for:</label>
-        <select id="skills-user-select" class="skills-select" style="min-width:180px;" onchange="loadSkillPermissionEditor()"></select>
-        <button class="skills-btn" onclick="openIdentityManager()">Identity</button>
+    <!-- Tab bar -->
+    <div class="skills-tab-bar">
+      <button class="skills-tab active" data-tab="catalog" onclick="switchSkillsTab('catalog')">
+        <svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm0-2.2v1.2m0 7.6V13m5-5H11.8M4.2 8H3m8.1-3.1.9-.9M4 12l.9-.9m6.2 0 .9.9M4 4l.9.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Skills Catalog
+      </button>
+      <button class="skills-tab" data-tab="assign" onclick="switchSkillsTab('assign')">
+        <svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M5 7V5a3 3 0 0 1 6 0v2M4 7h8v6H4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        Assign &amp; Permissions
+      </button>
+    </div>
+
+    <!-- Tab: Skills Catalog -->
+    <div class="skills-tab-panel active" id="skills-tab-catalog">
+      <h3><svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm0-2.2v1.2m0 7.6V13m5-5H11.8M4.2 8H3m8.1-3.1.9-.9M4 12l.9-.9m6.2 0 .9.9M4 4l.9.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Available Skills</h3>
+      <div id="skills-content">
+        <p class="skills-empty">Loading skills…</p>
       </div>
-      <div class="skills-row">
-        <input id="skills-new-user" class="skills-input" type="text" placeholder="new username">
-        <input id="skills-new-display" class="skills-input" type="text" placeholder="display name">
-        <select id="skills-new-type" class="skills-select">
-          <option value="human">human</option>
-          <option value="agent">agent</option>
-        </select>
-        <button class="skills-btn-accent" onclick="createUserProfileFromSkills()">Add User</button>
+    </div>
+
+    <!-- Tab: Assign & Permissions -->
+    <div class="skills-tab-panel" id="skills-tab-assign">
+      <div class="skills-id-bar">
+        <div id="skills-identity-summary" class="skills-id-summary">Identity: loading...</div>
+        <div class="skills-row">
+          <label class="skills-label">Manage permissions for:</label>
+          <select id="skills-user-select" class="skills-select" style="min-width:180px;" onchange="loadSkillPermissionEditor()"></select>
+          <button class="skills-btn" onclick="openIdentityManager()">Identity</button>
+        </div>
+        <div class="skills-row">
+          <input id="skills-new-user" class="skills-input" type="text" placeholder="new username">
+          <input id="skills-new-display" class="skills-input" type="text" placeholder="display name">
+          <select id="skills-new-type" class="skills-select">
+            <option value="human">human</option>
+            <option value="agent">agent</option>
+          </select>
+          <button class="skills-btn-accent" onclick="createUserProfileFromSkills()">Add User</button>
+        </div>
       </div>
-    </div>
-    <div id="skills-content">
-      <p class="skills-empty">Loading skills…</p>
-    </div>
-    <h3 class="skills-section"><svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M5 7V5a3 3 0 0 1 6 0v2M4 7h8v6H4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg> Skill Permissions</h3>
-    <div id="skills-permissions-content">
-      <p class="skills-empty">Loading permissions…</p>
-    </div>
-    <h3 class="skills-section"><svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M8 2l2.5 3H12v6H4V5h1.5L8 2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7v3M8 11.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Agent Capability Matrix</h3>
-    <div id="skills-capability-matrix">
-      <p class="skills-empty">Loading capability matrix…</p>
+      <h3 class="skills-section"><svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M5 7V5a3 3 0 0 1 6 0v2M4 7h8v6H4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg> Skill Permissions</h3>
+      <div id="skills-permissions-content">
+        <p class="skills-empty">Loading permissions…</p>
+      </div>
+      <h3 class="skills-section"><svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M8 2l2.5 3H12v6H4V5h1.5L8 2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7v3M8 11.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Agent Capability Matrix</h3>
+      <div id="skills-capability-matrix">
+        <p class="skills-empty">Loading capability matrix…</p>
+      </div>
     </div>
   </div>
 </template>
@@ -1627,6 +1649,76 @@
   {% include 'views/onboarding.html' %}
 </template>
 
+<template id="view-tasker">
+  <div class="content-view tasker-view">
+    <h3><svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 3v3l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Tasker</h3>
+
+    <!-- Stats -->
+    <div class="tasker-stats">
+      <div class="tasker-stat"><div class="tasker-stat-value" id="tasker-stat-total">–</div><div class="tasker-stat-label">Total Tasks</div></div>
+      <div class="tasker-stat"><div class="tasker-stat-value" id="tasker-stat-active">–</div><div class="tasker-stat-label">Active</div></div>
+      <div class="tasker-stat"><div class="tasker-stat-value" id="tasker-stat-disabled">–</div><div class="tasker-stat-label">Disabled</div></div>
+      <div class="tasker-stat"><div class="tasker-stat-value" id="tasker-stat-last">–</div><div class="tasker-stat-label">Last Fired</div></div>
+    </div>
+
+    <!-- Header -->
+    <div class="tasker-header">
+      <input class="tasker-search" type="text" id="tasker-search" placeholder="Search tasks..." oninput="filterTaskerList()">
+      <select class="tasker-filter" id="tasker-filter-type" onchange="filterTaskerList()">
+        <option value="">All Types</option>
+        <option value="SHELL">Shell</option>
+        <option value="QUESTION">Question</option>
+        <option value="BRIEF">Brief</option>
+      </select>
+      <select class="tasker-filter" id="tasker-filter-status" onchange="filterTaskerList()">
+        <option value="">All Status</option>
+        <option value="active">Active</option>
+        <option value="disabled">Disabled</option>
+      </select>
+      <button class="tasker-btn-new" onclick="openTaskerForm()">+ New Task</button>
+    </div>
+
+    <!-- Create/Edit form -->
+    <div class="tasker-form" id="tasker-form">
+      <div class="tasker-form-title" id="tasker-form-title">New Scheduled Task</div>
+      <div class="tasker-form-row">
+        <label>Name<input type="text" id="tasker-field-name" placeholder="my_daily_backup"></label>
+        <label>Action Type
+          <select id="tasker-field-type">
+            <option value="SHELL">Shell Command</option>
+            <option value="QUESTION">Question</option>
+            <option value="BRIEF">Brief</option>
+          </select>
+        </label>
+      </div>
+      <div class="tasker-form-row">
+        <label>Schedule
+          <input type="text" id="tasker-field-schedule" placeholder="daily 09:00">
+          <div class="tasker-presets">
+            <button class="tasker-preset" type="button" onclick="document.getElementById('tasker-field-schedule').value='daily 09:00'">Daily 9am</button>
+            <button class="tasker-preset" type="button" onclick="document.getElementById('tasker-field-schedule').value='daily 18:00'">Daily 6pm</button>
+            <button class="tasker-preset" type="button" onclick="document.getElementById('tasker-field-schedule').value='hourly'">Hourly</button>
+            <button class="tasker-preset" type="button" onclick="document.getElementById('tasker-field-schedule').value='interval 30m'">Every 30m</button>
+          </div>
+        </label>
+        <label>Created By<input type="text" id="tasker-field-creator" value="ghost" placeholder="ghost"></label>
+      </div>
+      <div class="tasker-form-row full">
+        <label>Action Data<textarea id="tasker-field-data" placeholder="Command, question, or brief trigger..."></textarea></label>
+      </div>
+      <div class="tasker-form-actions">
+        <button class="tasker-form-cancel" type="button" onclick="closeTaskerForm()">Cancel</button>
+        <button class="tasker-form-save" type="button" onclick="saveTaskerForm()">Create Task</button>
+      </div>
+    </div>
+
+    <!-- Task list -->
+    <div class="tasker-list" id="tasker-list">
+      <div class="tasker-empty"><div class="tasker-empty-icon">⏱</div>Loading tasks...</div>
+    </div>
+  </div>
+</template>
+
 <template id="view-feeds">
   {% include 'views/feeds.html' %}
 </template>
@@ -1699,6 +1791,7 @@
 <script src="/static/js/views/monitor.js"></script>
 <script src="/static/js/views/docs.js"></script>
 <script src="/static/js/views/skills.js"></script>
+<script src="/static/js/views/tasker.js"></script>
 <script src="/static/js/views/tickets.js"></script>
 <script src="/static/js/views/email.js"></script>
 <script src="/static/js/views/studio.js"></script>

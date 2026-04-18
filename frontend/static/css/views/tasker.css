@@ -1,0 +1,351 @@
+/* views/tasker.css — Tasker / Scheduler UI */
+
+.tasker-view {
+  padding: 24px;
+  overflow-y: auto;
+  gap: 20px;
+}
+.tasker-view h3 {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Header bar ───────────────────────────────────────────────────────── */
+.tasker-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.tasker-search {
+  flex: 1;
+  min-width: 180px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.tasker-search:focus {
+  border-color: var(--accent);
+}
+.tasker-filter {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+.tasker-btn-new {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.tasker-btn-new:hover {
+  background: var(--accent-hover);
+}
+
+/* ── Task list ────────────────────────────────────────────────────────── */
+.tasker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tasker-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.tasker-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.tasker-card.disabled {
+  opacity: 0.45;
+}
+
+/* Left: toggle */
+.tasker-toggle {
+  width: 36px;
+  height: 20px;
+  border-radius: 12px;
+  background: var(--border);
+  cursor: pointer;
+  position: relative;
+  border: none;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.tasker-toggle.active {
+  background: var(--accent);
+}
+.tasker-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+.tasker-toggle.active::after {
+  transform: translateX(16px);
+}
+
+/* Center: info */
+.tasker-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.tasker-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tasker-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.tasker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.tasker-badge-shell { color: #ff9f43; background: rgba(255,159,67,0.12); }
+.tasker-badge-question { color: #6366f1; background: rgba(99,102,241,0.12); }
+.tasker-badge-brief { color: #10b981; background: rgba(16,185,129,0.12); }
+.tasker-schedule {
+  color: var(--text-dim);
+}
+.tasker-next-run {
+  color: var(--text-faint);
+}
+
+/* Right: actions */
+.tasker-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.tasker-action-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.tasker-action-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.tasker-action-btn.danger:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+/* ── Create/Edit form ─────────────────────────────────────────────────── */
+.tasker-form {
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius, 8px);
+  padding: 20px;
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+.tasker-form.open {
+  display: flex;
+}
+.tasker-form-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+.tasker-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.tasker-form-row.full {
+  grid-template-columns: 1fr;
+}
+.tasker-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.tasker-form input,
+.tasker-form select,
+.tasker-form textarea {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.tasker-form input:focus,
+.tasker-form select:focus,
+.tasker-form textarea:focus {
+  border-color: var(--accent);
+}
+.tasker-form textarea {
+  min-height: 60px;
+  resize: vertical;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.tasker-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.tasker-form-save {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tasker-form-save:hover {
+  background: var(--accent-hover);
+}
+.tasker-form-cancel {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tasker-form-cancel:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+/* ── Quick presets ────────────────────────────────────────────────────── */
+.tasker-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.tasker-preset {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tasker-preset:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────── */
+.tasker-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.tasker-empty-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+/* ── Stats row ────────────────────────────────────────────────────────── */
+.tasker-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.tasker-stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  padding: 12px 16px;
+  min-width: 120px;
+  flex: 1;
+}
+.tasker-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+.tasker-stat-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}

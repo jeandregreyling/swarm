@@ -2170,3 +2170,193 @@
   pointer-events: none;
   box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
+
+/* ── Chat layout polish (extracted from inline styles) ──────────────── */
+#chat-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.chat-topbar-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.chat-topbar-title-col { flex: 1; }
+.chat-topbar-font-col {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+.chat-topbar-font-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.chat-control-select {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-width: 180px;
+  max-width: 300px;
+  font-size: 12px;
+}
+.chat-control-btn {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.chat-control-btn:hover {
+  border-color: var(--accent);
+}
+.chat-parallel-btn {
+  flex-shrink: 0;
+  background: var(--card);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 9px;
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.chat-parallel-btn:hover {
+  border-color: var(--accent);
+}
+#chat-messages {
+  flex: 1;
+  overflow-y: auto;
+}
+.chat-thread-runtime-title.idle {
+  opacity: 0.45;
+}
+
+/* Workflow panel */
+#agent-workflow-panel {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 320px;
+  max-height: 280px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 8px;
+  box-shadow: var(--shadow);
+  overflow-y: auto;
+  display: none;
+  z-index: 1000;
+  font-family: monospace;
+  font-size: 11px;
+}
+.workflow-panel-header {
+  position: sticky;
+  top: 0;
+  background: var(--window-header);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.workflow-panel-header span {
+  color: var(--accent);
+}
+.workflow-panel-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+}
+.workflow-panel-close:hover {
+  color: var(--text);
+}
+.workflow-panel-body {
+  padding: 10px;
+  color: var(--text-dim);
+}
+.workflow-section-title {
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.workflow-section-title + .workflow-section-title {
+  margin-top: 8px;
+}
+.workflow-field {
+  background: var(--bg);
+  padding: 6px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  font-size: 10px;
+}
+.workflow-field-task { color: var(--text); }
+.workflow-field-read { color: #8a9c4d; max-height: 80px; overflow-y: auto; }
+.workflow-field-modified { color: #ff9e4d; max-height: 80px; overflow-y: auto; }
+.workflow-field-status { color: var(--accent); }
+
+/* Right dock panel layout */
+.chat-dock-panel {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.chat-relay-slider-row span.chat-relay-label {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.chat-relay-section-divider {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.chat-relay-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.chat-relay-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+}
+.chat-relay-rule-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.chat-relay-rule-input {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  outline: none;
+  font-size: 11px;
+}
+.chat-relay-rule-input:focus {
+  border-color: var(--accent);
+}
+.chat-relay-rule-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.chat-relay-rule-hint {
+  font-size: 10px;
+  color: var(--text-dim);
+}
