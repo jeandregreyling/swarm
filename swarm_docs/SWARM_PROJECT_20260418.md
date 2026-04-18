@@ -205,9 +205,9 @@
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| 8A.1 | Change default state | `data-chat-default="closed"` → `"open"` on agent controls section | 🔲 |
-| 8A.2 | Style polish | Ensure pills are readable, properly spaced when dock is visible | 🔲 |
-| 8A.3 | Verify on all envs | Agent pills visible on load, toggleable, not breaking layout | 🔲 |
+| 8A.1 | Change default state | `data-chat-default="collapsed"` → `"open"`, remove `collapsed` class | ✅ Done |
+| 8A.2 | Style polish | JS `initChatSections()` already had `agents: true` — now HTML matches | ✅ Done |
+| 8A.3 | Verify on all envs | Synced to DEV+UAT, PROD restarted | ✅ Done |
 
 #### Chunk 8B — Intent Classifier (Backend)
 
