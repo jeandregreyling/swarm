@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18 21:13",
+  "generated_at": "2026-04-18 21:50",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -1331,9 +1331,21 @@
           "methods": [
             "GET"
           ]
+        },
+        {
+          "path": "/api/interests/seed",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/interests/remove",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 1
+      "route_count": 3
     },
     {
       "name": "kb",
@@ -1561,6 +1573,73 @@
         }
       ],
       "route_count": 5
+    },
+    {
+      "name": "login_bp",
+      "description": "login_bp.py \u2014 User login, registration, session management, and approval.",
+      "routes": [
+        {
+          "path": "/api/auth/me",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/auth/setup-status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/auth/setup",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/login",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/logout",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/register",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/users",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/auth/users/<username>/approve",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/users/<username>/reject",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/users/<username>/role",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 10
     },
     {
       "name": "memory",
@@ -2566,7 +2645,7 @@
     },
     {
       "name": "home-chat.js",
-      "size_kb": 28.8
+      "size_kb": 34.3
     },
     {
       "name": "knowledge.js",
@@ -2606,7 +2685,7 @@
     },
     {
       "name": "skills.js",
-      "size_kb": 25.7
+      "size_kb": 22.4
     },
     {
       "name": "studio.js",
@@ -2640,7 +2719,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 24280
+      "rows": 24430
     },
     {
       "name": "agent_capabilities",
@@ -2660,7 +2739,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 274
+      "rows": 283
     },
     {
       "name": "audit_results",
@@ -2668,7 +2747,7 @@
     },
     {
       "name": "chat_jobs",
-      "rows": 356
+      "rows": 362
     },
     {
       "name": "claude_log",
@@ -2676,11 +2755,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 779
+      "rows": 788
     },
     {
       "name": "conversations",
-      "rows": 55
+      "rows": 82
     },
     {
       "name": "daily_checkpoint",
@@ -2700,7 +2779,7 @@
     },
     {
       "name": "decisions",
-      "rows": 2486
+      "rows": 2547
     },
     {
       "name": "deferred_items",
@@ -2708,7 +2787,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 557
+      "rows": 563
     },
     {
       "name": "file_versions",
@@ -2724,11 +2803,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2900
+      "rows": 2938
     },
     {
       "name": "governance_log",
-      "rows": 149
+      "rows": 155
     },
     {
       "name": "knowledge_chunks",
@@ -2740,7 +2819,7 @@
     },
     {
       "name": "memory",
-      "rows": 41
+      "rows": 44
     },
     {
       "name": "memory_eight",
@@ -2748,7 +2827,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 7
+      "rows": 8
     },
     {
       "name": "memory_ghost_coder",
@@ -2800,7 +2879,7 @@
     },
     {
       "name": "messages",
-      "rows": 108
+      "rows": 161
     },
     {
       "name": "moderators",
@@ -2836,7 +2915,7 @@
     },
     {
       "name": "queue",
-      "rows": 1157
+      "rows": 1175
     },
     {
       "name": "research_evidence",
@@ -2848,7 +2927,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 296
+      "rows": 302
     },
     {
       "name": "scheduled_tasks",
@@ -2872,7 +2951,7 @@
     },
     {
       "name": "sqlite_sequence",
-      "rows": 59
+      "rows": 61
     },
     {
       "name": "sudo_command_whitelist",
@@ -2880,7 +2959,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 149
+      "rows": 155
     },
     {
       "name": "swarm_event_acks",
@@ -2904,7 +2983,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 6268
+      "rows": 6275
     },
     {
       "name": "terminal_shortcuts",
@@ -2912,27 +2991,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 311
+      "rows": 317
     },
     {
       "name": "tickets",
-      "rows": 319
+      "rows": 325
     },
     {
       "name": "time_checkpoints",
-      "rows": 2282
+      "rows": 2337
     },
     {
       "name": "time_events",
-      "rows": 71322
+      "rows": 71578
     },
     {
       "name": "time_journal",
-      "rows": 67815
+      "rows": 68014
     },
     {
       "name": "time_machine",
-      "rows": 5033
+      "rows": 5058
     },
     {
       "name": "tool_builds",
@@ -2947,8 +3026,16 @@
       "rows": 10
     },
     {
+      "name": "user_interests",
+      "rows": 3
+    },
+    {
       "name": "user_profiles",
       "rows": 19
+    },
+    {
+      "name": "user_sessions",
+      "rows": 1
     },
     {
       "name": "user_skill_permissions",
@@ -2960,7 +3047,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 82
+      "rows": 88
     }
   ],
   "agents": [
@@ -3396,6 +3483,14 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "home-onboarding-save",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "home-onboarding-skip",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "home-chat-send-btn",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -3560,6 +3655,14 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "class": "home-onboarding-save-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "home-onboarding-skip-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "class": "chat-dock-btn",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -3585,6 +3688,14 @@
     },
     {
       "class": "mem-tab",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "skills-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "skills-btn-accent",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -3908,6 +4019,30 @@
       "file": "frontend/static/js/views/home-chat.js"
     },
     {
+      "id": "home-onboarding",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
+      "id": "home-onboarding-categories",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
+      "id": "home-onboarding-selected",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
+      "id": "home-onboarding-custom-input",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
+      "id": "home-onboarding-custom-add",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
+      "id": "home-onboarding-count",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
       "id": "home-interests-row",
       "file": "frontend/static/js/views/home-chat.js"
     },
@@ -4118,10 +4253,6 @@
     {
       "id": "question-input",
       "file": "frontend/static/js/views/studio.js"
-    },
-    {
-      "id": "skills-dd-css",
-      "file": "frontend/static/js/views/skills.js"
     },
     {
       "id": "skills-capability-matrix",
