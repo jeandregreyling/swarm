@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-18 16:54*
+*Auto-generated: 2026-04-18 16:56*
 
 
 ## Python Modules
@@ -224,32 +224,32 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 22996 |
+| `activity_log` | 23013 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 19 |
-| `approval_tokens` | 208 |
+| `approval_tokens` | 211 |
 | `audit_results` | 3 |
 | `chat_jobs` | 314 |
 | `claude_log` | 1 |
-| `conv_timeline` | 721 |
+| `conv_timeline` | 722 |
 | `conversations` | 37 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 2050 |
+| `decisions` | 2069 |
 | `deferred_items` | 0 |
 | `duck_log` | 513 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2620 |
+| `ghost_circle` | 2622 |
 | `governance_log` | 105 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
-| `memory` | 18 |
+| `memory` | 19 |
 | `memory_eight` | 0 |
 | `memory_gemma` | 4 |
 | `memory_ghost_coder` | 0 |
@@ -264,7 +264,7 @@
 | `memory_ten` | 0 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 68 |
+| `messages` | 69 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -290,14 +290,14 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 6216 |
+| `system_stats` | 6217 |
 | `terminal_shortcuts` | 10 |
 | `ticket_notes` | 267 |
 | `tickets` | 275 |
-| `time_checkpoints` | 1868 |
-| `time_events` | 69632 |
-| `time_journal` | 66539 |
-| `time_machine` | 4884 |
+| `time_checkpoints` | 1884 |
+| `time_events` | 69655 |
+| `time_journal` | 66546 |
+| `time_machine` | 4888 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |

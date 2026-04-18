@@ -16,12 +16,12 @@
 
 | Field | Value |
 |-------|-------|
-| **Active Phase** | Phase 8.0 — Agentic Chat (planning) / Phase 7.0 D–G remaining |
-| **Last Session** | Session 22 — 18 April 2026 — relay dispatch fix, Phase 8.0 vision locked |
-| **Next Action** | Phase 8.0 Chunk A (agent sidebar always expanded) |
-| **Test Baseline** | 398 passed, 1 skipped |
+| **Active Phase** | Phase 8.0 — Agentic Chat (8A–8E done, 8F next) / Phase 7.0 D–G remaining |
+| **Last Session** | Session 23 — 19 April 2026 — 8D home reorg + 8E auto-model selection complete |
+| **Next Action** | Phase 8.0 Chunk 8F (Full Integration Test) |
+| **Test Baseline** | 450 passed, 1 skipped |
 | **Environments** | PROD (master :5050), UAT (:5053), DEV (:5051) — synced, 18 agents each |
-| **Blockers** | None — relay dispatch fix unblocked multi-agent sends |
+| **Blockers** | None |
 
 ### What's Hot Right Now
 - **Phase 8.0 — Agentic Chat** — major pivot: auto-routing agents, models, relay based on message content
@@ -288,10 +288,20 @@
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| 8E.1 | Model preference matrix | DB table: agent × task_type → preferred model | 🔲 |
-| 8E.2 | Fallback chain | If preferred model unavailable (Ollama down, API limit), fall back to next best | 🔲 |
-| 8E.3 | Override from agent config | User-set model in Agents tile always takes priority over auto-selection | 🔲 |
-| 8E.4 | Verify dispatch | Confirm correct model is used when auto vs manual | 🔲 |
+| 8E.1 | Model preference matrix | `utils/model_selector.py`: `_PREFERENCES` dict — ~25 (agent, category) → [model...] combos + `_DEFAULTS` per agent | ✅ Done |
+| 8E.2 | Fallback chain | `get_fallback_chain()` returns ordered model list; preferences first, then agent default, deduped | ✅ Done |
+| 8E.3 | Override from agent config | `select_model()` priority: user DB override (non-'auto') → category preference → agent default | ✅ Done |
+| 8E.4 | Verify dispatch | 21 tests in `tests/test_model_selector.py`; `/api/chat/classify` returns `models` dict; verified on PROD | ✅ Done |
+
+**Implementation notes (8E):**
+- New standalone module `utils/model_selector.py` — no Flask deps, testable in isolation
+- `select_model(agent, category, user_model)` → `(model_str, source)` where source is 'override'|'preference'|'default'
+- `get_fallback_chain(agent, category)` → ordered list of models best→worst
+- `select_models_for_agents(agents, category, user_models)` → batch selection for multi-agent dispatch
+- `/api/chat/classify` enhanced: lazy imports `select_models_for_agents`, reads user models from `get_agent_models()`, adds `result['models']`
+- Frontend badge (`chat.js`) now shows model name in category text and detailed tooltip with model source info
+- Key preferences: ghost_coder+code→claude-sonnet-4, ghost_coder+creative→claude-opus-4, eleven+creative→grok-3, deepseek_local+math→deepseek-r1:7b
+- Regression: 450 passed, 1 skipped — verified on PROD, synced to DEV+UAT
 
 #### Chunk 8F — Full Integration Test
 
