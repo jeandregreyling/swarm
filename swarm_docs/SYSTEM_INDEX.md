@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-18 13:49*
+*Auto-generated: 2026-04-18 14:39*
 
 
 ## Python Modules
@@ -41,6 +41,7 @@
 | `utils/db/tools.py` | utils.db.tools — Tool build registry CRUD (C.1.2) |
 | `utils/git_commit_logger.py` | git_commit_logger.py — Seven's Swarm Time Wizard git hook |
 | `utils/governance.py` | utils/governance.py — Central proposal governance engine. |
+| `utils/intent_classifier.py` | Intent classifier for agentic chat routing (Phase 8.0). |
 | `utils/load_project_docs.py` | load_project_docs.py — Seven's Swarm |
 | `utils/node_discovery.py` | utils/node_discovery.py — Node discovery + heartbeat + event relay (A.5.1, D.2, D.3) |
 | `utils/proposal_review.py` | proposal_review.py — Duck's proposal sanity-check + chat-thread notification. |
@@ -150,7 +151,7 @@
 | `auth` | 12 | auth.py — Auth & Senders routes |
 | `auto_audit` | 2 | auto_audit.py — Periodic self-audit: pytest + basic lint checks. |
 | `brief` | 3 | brief.py — Ghost Brief routes |
-| `chat` | 4 | chat.py — Chat Engine routes |
+| `chat` | 5 | chat.py — Chat Engine routes |
 | `conversations` | 9 | conversations.py — Conversations routes |
 | `debates` | 5 | debates.py — Debates routes |
 | `decisions` | 3 | decisions.py — Decisions & Timeline routes |
@@ -222,34 +223,34 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 22258 |
+| `activity_log` | 22330 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 19 |
-| `approval_tokens` | 175 |
+| `approval_tokens` | 178 |
 | `audit_results` | 3 |
-| `chat_jobs` | 289 |
+| `chat_jobs` | 291 |
 | `claude_log` | 1 |
-| `conv_timeline` | 689 |
-| `conversations` | 64 |
+| `conv_timeline` | 693 |
+| `conversations` | 73 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1831 |
+| `decisions` | 1851 |
 | `deferred_items` | 0 |
-| `duck_log` | 489 |
+| `duck_log` | 491 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2458 |
-| `governance_log` | 81 |
+| `ghost_circle` | 2471 |
+| `governance_log` | 83 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
-| `memory` | 8 |
+| `memory` | 9 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 1 |
+| `memory_gemma` | 2 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 0 |
 | `memory_llama` | 1 |
@@ -262,7 +263,7 @@
 | `memory_ten` | 0 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 131 |
+| `messages` | 148 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -271,10 +272,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 953 |
+| `queue` | 959 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 228 |
+| `sandpit_log` | 230 |
 | `scheduled_tasks` | 2 |
 | `skills` | 38 |
 | `sniffer_log` | 232 |
@@ -282,27 +283,27 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 59 |
 | `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 81 |
+| `swarm_bus` | 83 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 6179 |
+| `system_stats` | 6189 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 243 |
-| `tickets` | 251 |
-| `time_checkpoints` | 1663 |
-| `time_events` | 68156 |
-| `time_journal` | 65268 |
-| `time_machine` | 4799 |
+| `ticket_notes` | 245 |
+| `tickets` | 253 |
+| `time_checkpoints` | 1681 |
+| `time_events` | 68631 |
+| `time_journal` | 65725 |
+| `time_machine` | 4809 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 19 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 14 |
+| `work_proposals` | 16 |
 
 ## Agents
 
