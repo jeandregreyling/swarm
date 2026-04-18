@@ -215,11 +215,18 @@
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| 8B.1 | Create `/api/chat/classify` endpoint | Accepts message text, returns `{agents: [], model_tier: str, relay: bool, confidence: float, reasoning: str}` | 🔲 |
-| 8B.2 | Agent selection rules | Keyword/pattern matching: code→ghost_coder, search→seeker/scholar, multi-topic→relay, general→gemma | 🔲 |
-| 8B.3 | Model tier selection | Tasks categorised: simple→local (gemma/qwen), complex→paid (twelve/ten), code→ghost_coder, research→scholar | 🔲 |
-| 8B.4 | Relay auto-detection | Enable relay when: question spans multiple domains, or classifier confidence is low, or user says "ask around" | 🔲 |
-| 8B.5 | Unit tests | Test classifier with 20+ sample messages covering each category | 🔲 |
+| 8B.1 | Create `/api/chat/classify` endpoint | Accepts message text, returns `{agents: [], model_tier: str, relay: bool, confidence: float, reasoning: str}` | ✅ Done |
+| 8B.2 | Agent selection rules | Keyword/pattern matching: code→ghost_coder, search→seeker/scholar, multi-topic→relay, general→gemma | ✅ Done |
+| 8B.3 | Model tier selection | Tasks categorised: simple→local (gemma/qwen), complex→paid (twelve/ten), code→ghost_coder, research→scholar | ✅ Done |
+| 8B.4 | Relay auto-detection | Enable relay when: question spans multiple domains, or classifier confidence is low, or user says "ask around" | ✅ Done |
+| 8B.5 | Unit tests | 25 tests covering all 8 categories + multi-domain + response shape — all passing | ✅ Done |
+
+**Implementation notes (8B):**
+- Classifier extracted to standalone `utils/intent_classifier.py` — no Flask deps, testable in isolation
+- Route in `chat.py` uses lazy import: `from utils.intent_classifier import classify_message`
+- 7 regex pattern categories + domain-specificity tiebreaker (code/math/creative/system win over generic search)
+- Multi-domain relay triggers when 2nd category has ≥50% of top category's match count
+- Regression: 429 passed, 1 skipped — verified on PROD, synced to DEV+UAT
 
 **Classification categories (initial):**
 
