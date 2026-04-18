@@ -8,7 +8,7 @@ Sessions are cookie-based with a secure random token.
 import hashlib
 import os
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from flask import Blueprint, jsonify, request, make_response
@@ -38,7 +38,7 @@ def _verify_password(password, stored_hash):
 def _create_session(username, days=30):
     """Create a session token and store in DB. Returns the token."""
     token = secrets.token_urlsafe(48)
-    expires = (datetime.utcnow() + timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
+    expires = (datetime.now(timezone.utc) + timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     ip = request.remote_addr or ''
     ua = (request.headers.get('User-Agent') or '')[:200]
     conn = get_connection()
@@ -69,7 +69,7 @@ def get_current_user():
     conn.close()
     if not row:
         return None
-    if row['expires_at'] < datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'):
+    if row['expires_at'] < datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'):
         return None
     if not row['is_active'] or not row['approved']:
         return None
