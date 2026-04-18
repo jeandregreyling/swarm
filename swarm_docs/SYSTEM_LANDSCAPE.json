@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18 21:50",
+  "generated_at": "2026-04-18 21:55",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2719,7 +2719,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 24430
+      "rows": 24475
     },
     {
       "name": "agent_capabilities",
@@ -2739,7 +2739,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 283
+      "rows": 286
     },
     {
       "name": "audit_results",
@@ -2747,7 +2747,7 @@
     },
     {
       "name": "chat_jobs",
-      "rows": 362
+      "rows": 363
     },
     {
       "name": "claude_log",
@@ -2755,11 +2755,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 788
+      "rows": 789
     },
     {
       "name": "conversations",
-      "rows": 82
+      "rows": 91
     },
     {
       "name": "daily_checkpoint",
@@ -2779,7 +2779,7 @@
     },
     {
       "name": "decisions",
-      "rows": 2547
+      "rows": 2566
     },
     {
       "name": "deferred_items",
@@ -2787,7 +2787,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 563
+      "rows": 565
     },
     {
       "name": "file_versions",
@@ -2803,11 +2803,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2938
+      "rows": 2950
     },
     {
       "name": "governance_log",
-      "rows": 155
+      "rows": 157
     },
     {
       "name": "knowledge_chunks",
@@ -2879,7 +2879,7 @@
     },
     {
       "name": "messages",
-      "rows": 161
+      "rows": 179
     },
     {
       "name": "moderators",
@@ -2915,7 +2915,7 @@
     },
     {
       "name": "queue",
-      "rows": 1175
+      "rows": 1181
     },
     {
       "name": "research_evidence",
@@ -2927,7 +2927,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 302
+      "rows": 304
     },
     {
       "name": "scheduled_tasks",
@@ -2959,7 +2959,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 155
+      "rows": 157
     },
     {
       "name": "swarm_event_acks",
@@ -2983,7 +2983,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 6275
+      "rows": 6276
     },
     {
       "name": "terminal_shortcuts",
@@ -2991,27 +2991,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 317
+      "rows": 319
     },
     {
       "name": "tickets",
-      "rows": 325
+      "rows": 327
     },
     {
       "name": "time_checkpoints",
-      "rows": 2337
+      "rows": 2356
     },
     {
       "name": "time_events",
-      "rows": 71578
+      "rows": 71618
     },
     {
       "name": "time_journal",
-      "rows": 68014
+      "rows": 68035
     },
     {
       "name": "time_machine",
-      "rows": 5058
+      "rows": 5063
     },
     {
       "name": "tool_builds",
@@ -3047,7 +3047,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 88
+      "rows": 90
     }
   ],
   "agents": [
