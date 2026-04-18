@@ -137,7 +137,7 @@ IDENTITY_TEMPLATES = {
     },
     'duck': {
         'role': 'Sanity Checker',
-        'model': 'qwen:1.5b',
+        'model': 'qwen:latest',
         'purpose': 'I run YES/NO sanity checks after every ticket close. I do NOT initiate work. I block proposals that fail basic coherence checks.',
         'can_create_tickets': False,
         'can_coordinate': False,
@@ -153,7 +153,7 @@ IDENTITY_TEMPLATES = {
     },
     'librarian': {
         'role': 'Gatekeeper',
-        'model': 'qwen:1.5b',
+        'model': 'qwen:latest',
         'purpose': 'I tag incoming items and manage the queue. I do not reason or respond directly. I stamp and file.',
         'can_create_tickets': False,
         'can_coordinate': False,

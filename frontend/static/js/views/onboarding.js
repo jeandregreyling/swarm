@@ -1,5 +1,5 @@
-// onboarding.js — Setup wizard logic
-// Drives the 5-step onboarding wizard (Welcome → Local AI → Keys → Nodes → Ready)
+// onboarding.js — Enrollment logic
+// Drives the 5-step enrollment flow (Welcome → Local AI → Keys → Nodes → Ready)
 
 (function () {
   'use strict';
@@ -287,7 +287,7 @@
 
   function obFinish() {
     try { localStorage.setItem('swarm_onboarding_complete', '1'); } catch (e) {}
-    // Close the wizard window and open Chat
+    // Close the enrollment window and open Chat
     if (typeof winManager !== 'undefined' && winManager.close) {
       winManager.close('onboarding');
     }
@@ -322,10 +322,10 @@
     try {
       if (localStorage.getItem('swarm_onboarding_complete') === '1') return;
     } catch (e) { return; }
-    // Auto-open the wizard after a short delay to let the home page render
+    // Auto-open enrollment after a short delay to let the home page render
     setTimeout(() => {
       if (typeof openWindow === 'function') {
-        openWindow('onboarding', 'Setup Wizard', 'view-onboarding');
+        openWindow('onboarding', 'Enrollment', 'view-onboarding');
       }
     }, 800);
   }
@@ -340,7 +340,7 @@
   window._initOnboarding = _initOnboarding;
   window._obMaybeAutoLaunch = _maybeAutoLaunch;
 
-  // When window opens, init the wizard
+  // When window opens, init enrollment
   // The window-manager calls load callbacks — we hook into DOMContentLoaded as a fallback
   document.addEventListener('DOMContentLoaded', () => {
     _maybeAutoLaunch();

@@ -12,7 +12,7 @@ AGENTS = {
     'LLaMA':     'llama3.2:latest',
     'Mistral':   'mistral:latest',
     'Qwen':      'qwen2.5:latest',
-    'Librarian': 'qwen:1.5b',
+    'Librarian': 'qwen:latest',
 }
 
 # Try to pull live models from registry

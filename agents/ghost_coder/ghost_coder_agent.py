@@ -124,13 +124,26 @@ def _build_context(message):
 
 # ── Chat entry point ────────────────────────────────────────────────────────
 
+def _get_configured_model():
+    """Read the model field from the agents DB for ghost_coder."""
+    try:
+        from database import get_connection
+        conn = get_connection()
+        row = conn.execute("SELECT model FROM agents WHERE name='ghost_coder'").fetchone()
+        conn.close()
+        return (row['model'] or 'auto') if row else 'auto'
+    except Exception:
+        return 'auto'
+
+
 def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     """
-    Send a message to Ghost Coder (Claude Sonnet). Returns (answer, tokens_used).
-
-    This agent has full code-awareness: it can read files, write patches,
-    run shell commands, search memory, and create proposals — all through
-    the standard SKILL framework.
+    Send a message to Ghost Coder. Returns (answer, tokens_used).
+    Respects the model configured in the agents DB:
+      - 'auto' or 'claude-sonnet-4-20250514': Anthropic → OpenAI → Grok fallback
+      - 'claude-opus-4-20250514': Anthropic Opus only
+      - 'gpt-4.1' / 'gpt-4o': OpenAI only
+      - 'grok-3': XAI only
     """
     def _emit(text):
         if callable(stage_cb):
@@ -148,6 +161,7 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     from config import GHOST_CODER_SYSTEM_PROMPT
 
     api_key = _load_api_key()
+    configured_model = _get_configured_model()
 
     _emit('building project context')
     context = _build_context(message)
@@ -158,18 +172,22 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
         messages.extend(conversation_history[-12:])
     messages.append({'role': 'user', 'content': message})
 
-    # Try Anthropic first, fall back to OpenAI if credits are depleted
+    # Determine which model string to use for Anthropic calls
+    _anthropic_model = configured_model if configured_model.startswith('claude-') else 'claude-sonnet-4-20250514'
+    _openai_model    = configured_model if configured_model.startswith('gpt-') else 'gpt-4.1'
+
     backend_used = 'anthropic'
 
-    def _try_anthropic():
+    def _try_anthropic(model_name=None):
         if not api_key:
             return None
         try:
             client = anthropic.Anthropic(api_key=api_key)
+            use_model = model_name or _anthropic_model
 
             def _api_call(msgs):
                 resp = client.messages.create(
-                    model='claude-sonnet-4-20250514',
+                    model=use_model,
                     max_tokens=8192,
                     system=system,
                     messages=msgs,
@@ -180,7 +198,7 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
         except Exception:
             return None
 
-    def _try_openai():
+    def _try_openai(model_name=None):
         try:
             from openai import OpenAI
             from config import GITHUB_TOKEN
@@ -190,11 +208,12 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
                 api_key=GITHUB_TOKEN,
                 base_url='https://models.inference.ai.azure.com',
             )
+            use_model = model_name or _openai_model
 
             def _api_call(msgs):
                 full_msgs = [{'role': 'system', 'content': system}] + msgs
                 resp = client.chat.completions.create(
-                    model='gpt-4.1',
+                    model=use_model,
                     max_tokens=8192,
                     messages=full_msgs,
                 )
@@ -228,9 +247,55 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
         except Exception:
             return None
 
-    # Attempt Anthropic first (unless circuit breaker is active)
+    # ── Dispatch based on configured model ──────────────────────────────────
     import time as _time
-    global _anthropic_backoff_until
+    global _anthropic_backoff_until, _openai_backoff_until
+    from agents.skills_loop import run_skill_loop
+
+    def _run_backend(call_fn, label):
+        _emit(f'reasoning · {label}')
+        answer, tokens = run_skill_loop(
+            agent_name=AGENT_NAME,
+            call_fn=call_fn,
+            messages=messages,
+            emit_fn=_emit,
+            max_passes=5,
+            source_conv_id=conv_id,
+        )
+        _emit('persisting memory')
+        _persist_memory(message, answer)
+        logger.info(f'[Ghost Coder] {label} tokens={tokens} | {message[:60]}')
+        return answer, tokens
+
+    # If user picked a specific model, route directly (no fallback chain)
+    if configured_model.startswith('claude-'):
+        _api_call = _try_anthropic(configured_model)
+        if _api_call:
+            try:
+                return _run_backend(_api_call, configured_model)
+            except Exception as e:
+                return f'[ghost_coder] Anthropic error ({configured_model}): {e}', 0
+        return f'[ghost_coder] Anthropic API key not configured', 0
+
+    if configured_model.startswith('gpt-'):
+        _api_call = _try_openai(configured_model)
+        if _api_call:
+            try:
+                return _run_backend(_api_call, configured_model)
+            except Exception as e:
+                return f'[ghost_coder] OpenAI error ({configured_model}): {e}', 0
+        return f'[ghost_coder] OpenAI/GitHub token not configured', 0
+
+    if configured_model == 'grok-3':
+        _api_call = _try_xai()
+        if _api_call:
+            try:
+                return _run_backend(_api_call, 'Grok-3')
+            except Exception as e:
+                return f'[ghost_coder] Grok error: {e}', 0
+        return f'[ghost_coder] XAI API key not configured', 0
+
+    # ── Auto mode: Anthropic → OpenAI → Grok with circuit breakers ───────
     _api_call = None
     if _time.time() >= _anthropic_backoff_until:
         _api_call = _try_anthropic()
@@ -238,27 +303,12 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
         logger.info('[Ghost Coder] Anthropic circuit breaker active — skipping to OpenAI')
 
     if _api_call:
-        _emit('reasoning · Claude Sonnet')
         try:
-            # Test with a quick call to detect credit issues early
-            from agents.skills_loop import run_skill_loop
-            answer, tokens = run_skill_loop(
-                agent_name=AGENT_NAME,
-                call_fn=_api_call,
-                messages=messages,
-                emit_fn=_emit,
-                max_passes=5,
-                source_conv_id=conv_id,
-            )
-            # Check if the answer indicates a billing failure
+            answer, tokens = _run_backend(_api_call, 'Claude Sonnet (auto)')
             if 'credit balance' not in answer.lower():
-                _emit('persisting memory')
-                _persist_memory(message, answer)
-                logger.info(f'[Ghost Coder] anthropic tokens={tokens} | {message[:60]}')
                 return answer, tokens
-            # Fall through to OpenAI
             logger.warning('[Ghost Coder] Anthropic credits depleted, trying OpenAI')
-            _anthropic_backoff_until = _time.time() + 300  # 5 min
+            _anthropic_backoff_until = _time.time() + 300
         except Exception as e:
             err = str(e).lower()
             if 'credit' in err or 'billing' in err or '402' in err:
@@ -268,7 +318,6 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
                 return f'[ghost_coder] Anthropic error: {e}', 0
 
     # Fallback to OpenAI
-    global _openai_backoff_until
     if _time.time() >= _openai_backoff_until:
         _api_call = _try_openai()
     else:
@@ -277,26 +326,13 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
 
     if _api_call:
         backend_used = 'openai'
-        _emit('reasoning · GPT-4.1 (fallback)')
         try:
-            from agents.skills_loop import run_skill_loop
-            answer, tokens = run_skill_loop(
-                agent_name=AGENT_NAME,
-                call_fn=_api_call,
-                messages=messages,
-                emit_fn=_emit,
-                max_passes=5,
-                source_conv_id=conv_id,
-            )
-            _emit('persisting memory')
-            _persist_memory(message, answer)
-            logger.info(f'[Ghost Coder] openai tokens={tokens} | {message[:60]}')
-            return answer, tokens
+            return _run_backend(_api_call, 'GPT-4.1 (fallback)')
         except Exception as e:
             err_msg = str(e)
             if '429' in err_msg or 'RateLimitReached' in err_msg:
                 logger.warning('[Ghost Coder] OpenAI rate limited, trying Grok')
-                _openai_backoff_until = _time.time() + 300  # 5 min
+                _openai_backoff_until = _time.time() + 300
             else:
                 return f'[ghost_coder] OpenAI error: {e}', 0
 
@@ -304,21 +340,8 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     _api_call = _try_xai()
     if _api_call:
         backend_used = 'xai'
-        _emit('reasoning · Grok-3 (fallback)')
         try:
-            from agents.skills_loop import run_skill_loop
-            answer, tokens = run_skill_loop(
-                agent_name=AGENT_NAME,
-                call_fn=_api_call,
-                messages=messages,
-                emit_fn=_emit,
-                max_passes=5,
-                source_conv_id=conv_id,
-            )
-            _emit('persisting memory')
-            _persist_memory(message, answer)
-            logger.info(f'[Ghost Coder] xai tokens={tokens} | {message[:60]}')
-            return answer, tokens
+            return _run_backend(_api_call, 'Grok-3 (fallback)')
         except Exception as e:
             return f'[ghost_coder] Grok error: {e}', 0
 
