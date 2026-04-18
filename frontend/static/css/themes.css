@@ -221,3 +221,73 @@ body.theme-mint {
   --window-header: #0A1A1F;
   --radius: 8px;
 }
+
+/* ── Premium Themes ─────────────────────────────────────────── */
+body.theme-midnight {
+  --bg: #080810;
+  --card: #10101C;
+  --card-hover: #1A1A2E;
+  --hover: #1A1A2E;
+  --bg-input: #0C0C18;
+  --border: #1E1E36;
+  --text: #D4D4F0;
+  --text-dim: #6868A0;
+  --text-faint: #4A4A78;
+  --accent: #7C3AED;
+  --accent-hover: #A78BFA;
+  --window-bg: #0E0E1A;
+  --window-header: #08080F;
+  --shadow: 0 4px 20px rgba(124, 58, 237, 0.08);
+  --radius: 10px;
+}
+body.theme-copper {
+  --bg: #12100E;
+  --card: #1E1A16;
+  --card-hover: #2A2420;
+  --hover: #2A2420;
+  --bg-input: #161210;
+  --border: #362E28;
+  --text: #E8DDD0;
+  --text-dim: #9A8A78;
+  --text-faint: #6A5E50;
+  --accent: #D97706;
+  --accent-hover: #F59E0B;
+  --window-bg: #1A1612;
+  --window-header: #0E0C0A;
+  --shadow: 0 4px 20px rgba(217, 119, 6, 0.08);
+  --radius: 8px;
+}
+body.theme-neon {
+  --bg: #050508;
+  --card: #0A0A12;
+  --card-hover: #12121E;
+  --hover: #12121E;
+  --bg-input: #08080E;
+  --border: #1A1A2A;
+  --text: #E0E0FF;
+  --text-dim: #6A6A90;
+  --text-faint: #4A4A68;
+  --accent: #00FFAA;
+  --accent-hover: #33FFBB;
+  --window-bg: #08080E;
+  --window-header: #040406;
+  --shadow: 0 4px 20px rgba(0, 255, 170, 0.06);
+  --radius: 6px;
+}
+body.theme-arctic {
+  --bg: #F0F4F8;
+  --card: #FFFFFF;
+  --card-hover: #E8EEF4;
+  --hover: #E0E8F0;
+  --bg-input: #F6F8FC;
+  --border: #D0D8E4;
+  --text: #1A2030;
+  --text-dim: #6878A0;
+  --text-faint: #90A0B8;
+  --accent: #2563EB;
+  --accent-hover: #3B82F6;
+  --window-bg: #F4F7FA;
+  --window-header: #E4EAF2;
+  --shadow: 0 2px 12px rgba(37, 99, 235, 0.06);
+  --radius: 10px;
+}

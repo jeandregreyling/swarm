@@ -1115,3 +1115,4 @@
 {"step": "start", "skill": "alm_self_approve", "args": "1182", "agent": "gemma", "source_conv_id": null, "reasoning": "Dispatching skill 'alm_self_approve' with args '1182' for agent 'gemma'", "todo": "Execute skill 'alm_self_approve'."}
 {"step": "finish", "skill": "alm_self_approve", "agent": "gemma", "success": false, "output": "agent-advance failed: port 5051: Proposal not found", "todo": "Log result and audit for skill 'alm_self_approve'."}
 {"step": "start", "skill": "alm_complete", "args": "1182", "agent": "gemma", "source_conv_id": null, "reasoning": "Dispatching skill 'alm_complete' with args '1182' for agent 'gemma'", "todo": "Execute skill 'alm_complete'."}
+{"step": "finish", "skill": "alm_complete", "agent": "gemma", "success": false, "output": "alm_complete failed: port 5051: Proposal not found", "todo": "Log result and audit for skill 'alm_complete'."}
