@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-18 21:55*
+*Auto-generated: 2026-04-18 22:39*
 
 
 ## Python Modules
@@ -182,6 +182,7 @@
 | `shell` | 17 | shell.py — Shell & Terminal routes |
 | `sse` | 1 | frontend/blueprints/sse.py — Server-Sent Events stream (R.2) |
 | `system` | 17 | system.py — System & Monitoring routes |
+| `tasker_bp` | 5 | tasker_bp.py — Scheduled tasks CRUD API for the Tasker UI. |
 | `tickets` | 11 | tickets.py — Tickets routes |
 | `time_wizard_bp` | 10 | time_wizard_bp.py — Time Wizard routes |
 | `tools` | 7 | frontend/blueprints/tools.py — Tool Build API (C.4.1) |
@@ -211,8 +212,9 @@
 | `ollama.js` | 4.1 KB |
 | `onboarding.js` | 16.2 KB |
 | `services.js` | 4.7 KB |
-| `skills.js` | 22.4 KB |
+| `skills.js` | 22.6 KB |
 | `studio.js` | 85.0 KB |
+| `tasker.js` | 10.0 KB |
 | `terminal-commands.js` | 13.0 KB |
 | `terminal.js` | 41.3 KB |
 | `tickets.js` | 6.7 KB |
@@ -224,34 +226,34 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 24475 |
+| `activity_log` | 24549 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 19 |
-| `approval_tokens` | 286 |
+| `approval_tokens` | 289 |
 | `audit_results` | 3 |
-| `chat_jobs` | 363 |
+| `chat_jobs` | 367 |
 | `claude_log` | 1 |
-| `conv_timeline` | 789 |
-| `conversations` | 91 |
+| `conv_timeline` | 794 |
+| `conversations` | 101 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 2566 |
+| `decisions` | 2589 |
 | `deferred_items` | 0 |
-| `duck_log` | 565 |
+| `duck_log` | 567 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2950 |
-| `governance_log` | 157 |
+| `ghost_circle` | 2967 |
+| `governance_log` | 160 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
-| `memory` | 44 |
+| `memory` | 45 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 8 |
+| `memory_gemma` | 9 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 0 |
 | `memory_llama` | 2 |
@@ -264,7 +266,7 @@
 | `memory_ten` | 0 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 179 |
+| `messages` | 199 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -273,10 +275,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1181 |
+| `queue` | 1188 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 304 |
+| `sandpit_log` | 306 |
 | `scheduled_tasks` | 2 |
 | `skills` | 38 |
 | `sniffer_log` | 232 |
@@ -284,20 +286,20 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 61 |
 | `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 157 |
+| `swarm_bus` | 160 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 6276 |
+| `system_stats` | 6285 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 319 |
-| `tickets` | 327 |
-| `time_checkpoints` | 2356 |
-| `time_events` | 71618 |
-| `time_journal` | 68035 |
-| `time_machine` | 5063 |
+| `ticket_notes` | 321 |
+| `tickets` | 329 |
+| `time_checkpoints` | 2376 |
+| `time_events` | 71971 |
+| `time_journal` | 68368 |
+| `time_machine` | 5193 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
@@ -306,7 +308,7 @@
 | `user_sessions` | 1 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 90 |
+| `work_proposals` | 93 |
 
 ## Agents
 

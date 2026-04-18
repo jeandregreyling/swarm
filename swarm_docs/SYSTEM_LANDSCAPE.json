@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18 21:55",
+  "generated_at": "2026-04-18 22:39",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2328,6 +2328,43 @@
       "route_count": 17
     },
     {
+      "name": "tasker_bp",
+      "description": "tasker_bp.py \u2014 Scheduled tasks CRUD API for the Tasker UI.",
+      "routes": [
+        {
+          "path": "/api/tasker/tasks",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/tasker/tasks",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tasker/tasks/<int:task_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/tasker/tasks/<int:task_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/tasker/tasks/<int:task_id>/run",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 5
+    },
+    {
       "name": "tickets",
       "description": "tickets.py \u2014 Tickets routes",
       "routes": [
@@ -2685,11 +2722,15 @@
     },
     {
       "name": "skills.js",
-      "size_kb": 22.4
+      "size_kb": 22.6
     },
     {
       "name": "studio.js",
       "size_kb": 85.0
+    },
+    {
+      "name": "tasker.js",
+      "size_kb": 10.0
     },
     {
       "name": "terminal-commands.js",
@@ -2719,7 +2760,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 24475
+      "rows": 24549
     },
     {
       "name": "agent_capabilities",
@@ -2739,7 +2780,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 286
+      "rows": 289
     },
     {
       "name": "audit_results",
@@ -2747,7 +2788,7 @@
     },
     {
       "name": "chat_jobs",
-      "rows": 363
+      "rows": 367
     },
     {
       "name": "claude_log",
@@ -2755,11 +2796,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 789
+      "rows": 794
     },
     {
       "name": "conversations",
-      "rows": 91
+      "rows": 101
     },
     {
       "name": "daily_checkpoint",
@@ -2779,7 +2820,7 @@
     },
     {
       "name": "decisions",
-      "rows": 2566
+      "rows": 2589
     },
     {
       "name": "deferred_items",
@@ -2787,7 +2828,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 565
+      "rows": 567
     },
     {
       "name": "file_versions",
@@ -2803,11 +2844,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2950
+      "rows": 2967
     },
     {
       "name": "governance_log",
-      "rows": 157
+      "rows": 160
     },
     {
       "name": "knowledge_chunks",
@@ -2819,7 +2860,7 @@
     },
     {
       "name": "memory",
-      "rows": 44
+      "rows": 45
     },
     {
       "name": "memory_eight",
@@ -2827,7 +2868,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 8
+      "rows": 9
     },
     {
       "name": "memory_ghost_coder",
@@ -2879,7 +2920,7 @@
     },
     {
       "name": "messages",
-      "rows": 179
+      "rows": 199
     },
     {
       "name": "moderators",
@@ -2915,7 +2956,7 @@
     },
     {
       "name": "queue",
-      "rows": 1181
+      "rows": 1188
     },
     {
       "name": "research_evidence",
@@ -2927,7 +2968,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 304
+      "rows": 306
     },
     {
       "name": "scheduled_tasks",
@@ -2959,7 +3000,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 157
+      "rows": 160
     },
     {
       "name": "swarm_event_acks",
@@ -2983,7 +3024,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 6276
+      "rows": 6285
     },
     {
       "name": "terminal_shortcuts",
@@ -2991,27 +3032,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 319
+      "rows": 321
     },
     {
       "name": "tickets",
-      "rows": 327
+      "rows": 329
     },
     {
       "name": "time_checkpoints",
-      "rows": 2356
+      "rows": 2376
     },
     {
       "name": "time_events",
-      "rows": 71618
+      "rows": 71970
     },
     {
       "name": "time_journal",
-      "rows": 68035
+      "rows": 68367
     },
     {
       "name": "time_machine",
-      "rows": 5063
+      "rows": 5193
     },
     {
       "name": "tool_builds",
@@ -3047,7 +3088,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 90
+      "rows": 93
     }
   ],
   "agents": [
@@ -3667,11 +3708,23 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "class": "chat-control-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "class": "classify-dismiss",
       "file": "frontend/templates/terminal_base.html"
     },
     {
       "class": "chat-attach-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "chat-parallel-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "workflow-panel-close",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -3691,6 +3744,14 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "class": "skills-tab active",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "skills-tab",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "class": "skills-btn",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -3700,6 +3761,22 @@
     },
     {
       "class": "lib-type-tab",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "tasker-btn-new",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "tasker-preset",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "tasker-form-cancel",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "tasker-form-save",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -3809,6 +3886,50 @@
     {
       "id": "memory-bulk-selection-bar",
       "file": "frontend/static/js/views/memory.js"
+    },
+    {
+      "id": "tasker-list",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-search",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-filter-type",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-filter-status",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-form",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-form-title",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-field-name",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-field-type",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-field-schedule",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-field-data",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-field-creator",
+      "file": "frontend/static/js/views/tasker.js"
     },
     {
       "id": "kn-constellation-css",
