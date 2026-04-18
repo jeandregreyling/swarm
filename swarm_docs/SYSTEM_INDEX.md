@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-18 09:38*
+*Auto-generated: 2026-04-18 13:12*
 
 
 ## Python Modules
@@ -189,9 +189,9 @@
 
 | Module | Size |
 |--------|------|
-| `access.js` | 69.9 KB |
-| `agents-config.js` | 9.1 KB |
-| `chat.js` | 233.9 KB |
+| `access.js` | 74.6 KB |
+| `agents-config.js` | 19.0 KB |
+| `chat.js` | 235.0 KB |
 | `conversations.js` | 12.0 KB |
 | `diamond.js` | 19.7 KB |
 | `docs.js` | 30.2 KB |
@@ -199,7 +199,7 @@
 | `files.js` | 42.0 KB |
 | `fridays.js` | 7.0 KB |
 | `git.js` | 23.7 KB |
-| `home-chat.js` | 18.6 KB |
+| `home-chat.js` | 18.7 KB |
 | `knowledge.js` | 5.8 KB |
 | `library.js` | 22.0 KB |
 | `localai.js` | 8.5 KB |
@@ -222,47 +222,47 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 21704 |
-| `agent_capabilities` | 168 |
+| `activity_log` | 21996 |
+| `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 19 |
-| `approval_tokens` | 154 |
-| `audit_results` | 2 |
-| `chat_jobs` | 261 |
+| `approval_tokens` | 157 |
+| `audit_results` | 3 |
+| `chat_jobs` | 280 |
 | `claude_log` | 1 |
-| `conv_timeline` | 476 |
-| `conversations` | 31 |
+| `conv_timeline` | 672 |
+| `conversations` | 10 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 1686 |
+| `decisions` | 1712 |
 | `deferred_items` | 0 |
-| `duck_log` | 473 |
+| `duck_log` | 479 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2319 |
-| `governance_log` | 59 |
+| `ghost_circle` | 2382 |
+| `governance_log` | 69 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
-| `memory` | 2 |
+| `memory` | 1 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 15 |
+| `memory_gemma` | 0 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 0 |
-| `memory_llama` | 1 |
-| `memory_mistral` | 3 |
-| `memory_nine` | 0 |
+| `memory_llama` | 0 |
+| `memory_mistral` | 0 |
+| `memory_nine` | 1 |
 | `memory_qwen` | 0 |
 | `memory_scholar` | 0 |
 | `memory_seeker` | 0 |
 | `memory_sonic` | 0 |
-| `memory_ten` | 2 |
+| `memory_ten` | 0 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 89 |
+| `messages` | 22 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -271,10 +271,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 899 |
+| `queue` | 920 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 212 |
+| `sandpit_log` | 216 |
 | `scheduled_tasks` | 2 |
 | `skills` | 38 |
 | `sniffer_log` | 232 |
@@ -282,27 +282,27 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 59 |
 | `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 59 |
+| `swarm_bus` | 69 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 6129 |
+| `system_stats` | 6172 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 227 |
-| `tickets` | 235 |
-| `time_checkpoints` | 1532 |
-| `time_events` | 66149 |
-| `time_journal` | 63392 |
-| `time_machine` | 4735 |
+| `ticket_notes` | 233 |
+| `tickets` | 241 |
+| `time_checkpoints` | 1555 |
+| `time_events` | 67730 |
+| `time_journal` | 64950 |
+| `time_machine` | 4765 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_profiles` | 19 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 55 |
+| `work_proposals` | 2 |
 
 ## Agents
 
@@ -314,8 +314,8 @@
 | `llama` | llama3.2:latest | local | Correspondent — web search, fast first response | ✅ |
 | `mistral` | mistral:latest | local | Analyst — deep reasoning, debates, challenges Two | ✅ |
 | `qwen` | qwen2.5:latest | local | Deep Analyst — specialist depth, multilingual reasoning | ✅ |
-| `librarian` | qwen:1.5b | local | Gatekeeper + Vortex — tags, queues, closes, checkpoints | ✅ |
-| `duck` | qwen:1.5b | local | Sanity checker — YES/NO after every ticket | ✅ |
+| `librarian` | qwen:latest | local | Gatekeeper + Vortex — tags, queues, closes, checkpoints | ✅ |
+| `duck` | qwen2.5:latest | local | Sanity checker — YES/NO after every ticket | ✅ |
 | `sniffles` | deepseek-r1:7b | local | Inspector — memory auditor, read only, chain-of-thought | ✅ |
 | `eight` | gemma4:26b | local | SAP specialist — three-voice debate (Functional/Technical/Devil) | ✅ |
 | `nine` | llama-3.3-70b-versatile | paid | Developer Agent — system architect, proposals, Ghost One-directed execution | ✅ |
@@ -326,7 +326,7 @@
 | `scholar` | gemini-2.0-flash | service | Research · Gemini | ✅ |
 | `seeker` | tavily | service | Internet Search · Tavily | ✅ |
 | `duck_ddg` | duckduckgo | service | Web Search · DuckDuckGo (no key) | ✅ |
-| `ghost_coder` | claude-sonnet-4-20250514 | paid | Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays | ✅ |
+| `ghost_coder` | claude-opus-4-20250514 | paid | Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays | ✅ |
 
 ## Skills
 
