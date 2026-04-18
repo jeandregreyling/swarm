@@ -490,4 +490,7 @@
       .replace(/"/g, '&quot;');
   }
 
+  // Expose for cross-module refresh (agent registry reload)
+  window._hcRenderAgentPills = _hcRenderAgentPills;
+
 })();
