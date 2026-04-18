@@ -1,0 +1,252 @@
+/* ── Friday Login / Auth UI ───────────────────────────────────────────────── */
+
+/* Overlay */
+.friday-auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg, #0d1117);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: authFadeIn 0.4s ease-out;
+}
+@keyframes authFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Card */
+.friday-auth-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 32px 28px;
+  background: var(--card, #161b22);
+  border: 1px solid var(--border, #30363d);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  animation: authCardIn 0.5s ease-out;
+}
+@keyframes authCardIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Logo / title */
+.friday-auth-logo {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.friday-auth-logo h1 {
+  font-size: 24px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent, #f7b84b), #a0c4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 4px;
+}
+.friday-auth-logo p {
+  font-size: 12px;
+  color: var(--text-dim, #8b949e);
+  margin: 0;
+}
+
+/* Tabs */
+.friday-auth-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border, #30363d);
+}
+.friday-auth-tab {
+  flex: 1;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim, #8b949e);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.friday-auth-tab:hover {
+  color: var(--text, #c9d1d9);
+}
+.friday-auth-tab.active {
+  color: var(--accent, #f7b84b);
+  border-bottom-color: var(--accent, #f7b84b);
+}
+
+/* Form */
+.friday-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.friday-auth-form label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim, #8b949e);
+  margin-bottom: 2px;
+}
+.friday-auth-form input {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #30363d);
+  background: var(--bg-input, #0d1117);
+  color: var(--text, #c9d1d9);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.friday-auth-form input:focus {
+  border-color: var(--accent, #f7b84b);
+}
+.friday-auth-submit {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent, #f7b84b);
+  color: #000;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+.friday-auth-submit:hover {
+  box-shadow: 0 0 14px rgba(247,184,75,0.4);
+  transform: scale(1.02);
+}
+.friday-auth-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Messages */
+.friday-auth-error {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(244,67,54,0.1);
+  border: 1px solid rgba(244,67,54,0.3);
+  color: #f44336;
+  font-size: 11px;
+  text-align: center;
+  animation: authFadeIn 0.3s ease-out;
+}
+.friday-auth-success {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(76,175,80,0.1);
+  border: 1px solid rgba(76,175,80,0.3);
+  color: #4caf50;
+  font-size: 11px;
+  text-align: center;
+  animation: authFadeIn 0.3s ease-out;
+}
+
+/* Setup mode extras */
+.friday-auth-setup-note {
+  font-size: 10px;
+  color: var(--text-faint, #6e7681);
+  text-align: center;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+/* User management bar in header */
+.friday-user-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #30363d);
+  background: var(--card, #161b22);
+  font-size: 10px;
+  color: var(--text-dim, #8b949e);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.friday-user-badge:hover {
+  border-color: var(--accent, #f7b84b);
+}
+.friday-user-badge .user-role {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--accent, #f7b84b);
+  color: #000;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* User management panel */
+.friday-users-panel {
+  max-height: 400px;
+  overflow-y: auto;
+}
+.friday-user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border, #30363d);
+  font-size: 11px;
+}
+.friday-user-row:last-child {
+  border-bottom: none;
+}
+.friday-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.friday-user-info .name {
+  font-weight: 600;
+  color: var(--text, #c9d1d9);
+}
+.friday-user-info .meta {
+  font-size: 9px;
+  color: var(--text-dim, #8b949e);
+}
+.friday-user-actions {
+  display: flex;
+  gap: 4px;
+}
+.friday-user-actions button {
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border, #30363d);
+  background: transparent;
+  color: var(--text-dim, #8b949e);
+  font-size: 9px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.friday-user-actions button:hover {
+  border-color: var(--accent, #f7b84b);
+  color: var(--text, #c9d1d9);
+}
+.friday-user-actions button.approve {
+  border-color: #4caf50;
+  color: #4caf50;
+}
+.friday-user-actions button.reject {
+  border-color: #f44336;
+  color: #f44336;
+}
+.friday-pending-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255,152,0,0.15);
+  color: #ff9800;
+  font-size: 9px;
+  font-weight: 600;
+}

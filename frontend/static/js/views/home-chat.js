@@ -525,10 +525,158 @@
     fetch('/api/interests?limit=8')
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
-        _hcRenderInterestCards(data.interests || []);
-        _hcRenderResearchTopics(data.research_topics || []);
+        if (data.onboarding && data.onboarding_categories && data.onboarding_categories.length > 0) {
+          // Empty state — show onboarding questionnaire
+          _hcShowOnboarding(data.onboarding_categories);
+        } else {
+          _hcRenderInterestCards(data.interests || []);
+          _hcRenderResearchTopics(data.research_topics || []);
+        }
       })
       .catch(() => {}); // Silently degrade if endpoint missing
+  }
+
+  // ── Onboarding flow ──────────────────────────────────────────────────────
+  let _hcSelectedTopics = new Set();
+
+  function _hcShowOnboarding(categories) {
+    const panel = document.getElementById('home-onboarding');
+    const catHost = document.getElementById('home-onboarding-categories');
+    if (!panel || !catHost) return;
+
+    // Update welcome messaging for onboarding state
+    const greeting = document.getElementById('home-welcome-greeting');
+    const tagline = document.querySelector('.home-welcome-tagline');
+    const subtitle = document.querySelector('.home-welcome-subtitle');
+    if (greeting) greeting.textContent = 'Welcome to Friday';
+    if (tagline) tagline.textContent = "Let's get to know you";
+    if (subtitle) subtitle.textContent = "I'm your AI assistant. Tell me what you're interested in and I'll personalise your experience.";
+
+    // Build category cards
+    catHost.innerHTML = categories.map(cat => {
+      const topicPills = cat.topics.map(t =>
+        `<button class="home-onboarding-topic" data-topic="${_hcEsc(t)}">${_hcEsc(t)}</button>`
+      ).join('');
+      return `<div class="home-onboarding-cat">` +
+        `<div class="home-onboarding-cat-label"><span class="cat-icon">${cat.icon}</span> ${_hcEsc(cat.label)}</div>` +
+        `<div class="home-onboarding-topics">${topicPills}</div>` +
+        `</div>`;
+    }).join('');
+
+    // Custom topic input
+    const selectedHost = document.getElementById('home-onboarding-selected');
+    if (selectedHost) {
+      selectedHost.innerHTML =
+        '<div class="home-onboarding-custom">' +
+        '<input id="home-onboarding-custom-input" type="text" placeholder="Or type your own interest..." maxlength="100">' +
+        '<button id="home-onboarding-custom-add">Add</button>' +
+        '</div>' +
+        '<div class="home-onboarding-selected-count" id="home-onboarding-count"></div>';
+    }
+
+    // Bind topic pill clicks
+    catHost.querySelectorAll('.home-onboarding-topic').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const topic = pill.dataset.topic;
+        if (_hcSelectedTopics.has(topic)) {
+          _hcSelectedTopics.delete(topic);
+          pill.classList.remove('selected');
+        } else {
+          _hcSelectedTopics.add(topic);
+          pill.classList.add('selected');
+        }
+        _hcUpdateOnboardingCount();
+      });
+    });
+
+    // Custom topic add
+    const customInput = document.getElementById('home-onboarding-custom-input');
+    const customAdd = document.getElementById('home-onboarding-custom-add');
+    if (customInput && customAdd) {
+      const addCustom = () => {
+        const val = customInput.value.trim();
+        if (val && val.length <= 100) {
+          _hcSelectedTopics.add(val);
+          customInput.value = '';
+          _hcUpdateOnboardingCount();
+        }
+      };
+      customAdd.addEventListener('click', addCustom);
+      customInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); addCustom(); }
+      });
+    }
+
+    // Save button
+    const saveBtn = document.getElementById('home-onboarding-save');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => _hcSaveOnboarding());
+    }
+
+    // Skip button
+    const skipBtn = document.getElementById('home-onboarding-skip');
+    if (skipBtn) {
+      skipBtn.addEventListener('click', () => {
+        panel.style.display = 'none';
+        // Restore normal greeting
+        _hcSetGreeting();
+      });
+    }
+
+    panel.style.display = 'block';
+  }
+
+  function _hcUpdateOnboardingCount() {
+    const countEl = document.getElementById('home-onboarding-count');
+    const saveBtn = document.getElementById('home-onboarding-save');
+    const n = _hcSelectedTopics.size;
+    if (countEl) {
+      countEl.innerHTML = n > 0
+        ? `<strong>${n}</strong> interest${n === 1 ? '' : 's'} selected`
+        : '';
+    }
+    if (saveBtn) saveBtn.disabled = n === 0;
+  }
+
+  function _hcSaveOnboarding() {
+    const topics = Array.from(_hcSelectedTopics);
+    if (topics.length === 0) return;
+
+    const saveBtn = document.getElementById('home-onboarding-save');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+    }
+
+    fetch('/api/interests/seed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topics: topics }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        // Transition: hide onboarding, re-fetch interests to show cards
+        const panel = document.getElementById('home-onboarding');
+        if (panel) panel.style.display = 'none';
+        _hcSetGreeting();
+        _hcSelectedTopics.clear();
+        // Re-fetch to show the new interest cards
+        fetch('/api/interests?limit=8')
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(d => {
+            _hcRenderInterestCards(d.interests || []);
+            _hcRenderResearchTopics(d.research_topics || []);
+          })
+          .catch(() => {});
+      }
+    })
+    .catch(() => {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save my interests';
+      }
+    });
   }
 
   function _hcRenderInterestCards(interests) {

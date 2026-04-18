@@ -81,6 +81,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.patterns_bp',    'patterns_bp'),
     ('blueprints.personality_bp', 'personality_bp'),
     ('blueprints.interests_bp',   'interests_bp'),
+    ('blueprints.login_bp',       'login_bp'),
     ('blueprints.idle_mgmt_bp',   'idle_bp'),
 ]
 

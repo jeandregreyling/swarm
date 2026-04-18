@@ -1,13 +1,7 @@
 // Skills view — capabilities, permissions, identity manager
 // Extracted from terminal_base.html
 
-/* Inject drag-drop pulse animation */
-(function() {
-  if (document.getElementById('skills-dd-css')) return;
-  const s = document.createElement('style'); s.id = 'skills-dd-css';
-  s.textContent = '@keyframes kn-pulse-border{0%,100%{border-color:var(--accent)}50%{border-color:transparent}}';
-  document.head.appendChild(s);
-})();
+/* drag-drop pulse animation now in skills.css */
 
 function loadSkillsData(win) {
   const content = win.el.querySelector('#skills-content');
@@ -45,16 +39,16 @@ function loadSkillsData(win) {
         content.innerHTML = skills.map(s => {
           const name    = _escHtml(s.name || '?');
           const desc    = _escHtml(s.description || '');
-          const usage   = s.usage   ? `<div style="font-family:monospace;font-size:10px;color:var(--accent);margin-top:4px;">${_escHtml(s.usage)}</div>` : '';
-          const example = s.example ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">e.g. ${_escHtml(s.example)}</div>` : '';
-          return `<div style="margin-bottom:10px;padding:10px;background:var(--card);border-radius:4px;border:1px solid var(--border);">
-            <strong>${name}</strong><br>
-            <span style="color:var(--text-dim);font-size:11px;">${desc}</span>
+          const usage   = s.usage   ? `<div class="skill-card-usage">${_escHtml(s.usage)}</div>` : '';
+          const example = s.example ? `<div class="skill-card-example">e.g. ${_escHtml(s.example)}</div>` : '';
+          return `<div class="skill-card">
+            <strong>${name}</strong>
+            <div class="skill-card-desc">${desc}</div>
             ${usage}${example}
           </div>`;
         }).join('');
       } else {
-        content.innerHTML = '<span style="color: var(--text-dim);">No skills available</span>';
+        content.innerHTML = '<span class="skills-empty">No skills available</span>';
       }
 
       if (permContent) {
@@ -64,12 +58,12 @@ function loadSkillsData(win) {
         loadCapabilityMatrix(matrixContent);
       }
     })
-    .catch(e => { content.innerHTML = `<span style="color:#f77;">Failed to load skills: ${e.message}</span>`; });
+    .catch(e => { content.innerHTML = `<span class="skills-error">Failed to load skills: ${e.message}</span>`; });
 }
 
 function loadCapabilityMatrix(host) {
   if (!host) return;
-  host.innerHTML = '<p style="color: var(--text-dim); font-size: 12px;">Loading capability matrix…</p>';
+  host.innerHTML = '<p class="skills-empty">Loading capability matrix…</p>';
 
   fetch('/api/agents/capability-matrix')
     .then(r => r.json().then(data => ({ status: r.status, data })))
@@ -79,34 +73,34 @@ function loadCapabilityMatrix(host) {
       }
       const agents = Array.isArray(data.agents) ? data.agents : [];
       if (!agents.length) {
-        host.innerHTML = '<p style="color: var(--text-dim); font-size: 12px;">No capability data found.</p>';
+        host.innerHTML = '<p class="skills-empty">No capability data found.</p>';
         return;
       }
 
       window.__capabilityMatrixData = agents;
       host.innerHTML = `
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);">
-          <label style="font-size:11px;color:var(--text-dim);">Has capability:</label>
-          <input id="capability-filter-text" type="text" placeholder="e.g. git_execute" style="min-width:160px;padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
-          <label style="font-size:11px;color:var(--text-dim);">Min trust:</label>
-          <select id="capability-filter-trust" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
+        <div class="cap-bar">
+          <label class="skills-label">Has capability:</label>
+          <input id="capability-filter-text" class="skills-input" type="text" placeholder="e.g. git_execute">
+          <label class="skills-label">Min trust:</label>
+          <select id="capability-filter-trust" class="skills-select">
             <option value="0">0+</option>
             <option value="1">1+</option>
             <option value="2">2+</option>
           </select>
-          <label style="font-size:11px;color:var(--text-dim);">Preset:</label>
-          <select id="capability-filter-preset" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
+          <label class="skills-label">Preset:</label>
+          <select id="capability-filter-preset" class="skills-select">
             <option value="">Custom</option>
             <option value="git-executors">Git Executors</option>
             <option value="high-trust">High Trust (2+)</option>
             <option value="no-git">No Git Access</option>
           </select>
-          <button id="capability-filter-reset" style="padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:11px;cursor:pointer;">Reset</button>
-          <span id="capability-filter-count" style="font-size:10px;color:var(--text-dim);margin-left:auto;"></span>
+          <button id="capability-filter-reset" class="skills-btn">Reset</button>
+          <span id="capability-filter-count" class="cap-bar-count"></span>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);">
-          <label style="font-size:11px;color:var(--text-dim);">High access agent:</label>
-          <select id="capability-high-agent" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;min-width:140px;">
+        <div class="cap-bar">
+          <label class="skills-label">High access agent:</label>
+          <select id="capability-high-agent" class="skills-select">
             <option value="gemma">1 · Gemma3</option>
             <option value="llama">2 · LlaMA</option>
             <option value="mistral">3 · Mistral</option>
@@ -120,14 +114,14 @@ function loadCapabilityMatrix(host) {
             <option value="eleven">11 · Grok (Eleven)</option>
             <option value="twelve">12 · Claude (Twelve)</option>
           </select>
-          <button id="capability-high-enable" style="padding:5px 10px;background:#4caf5020;border:1px solid #4caf5060;border-radius:6px;color:#4caf50;font-size:11px;cursor:pointer;font-weight:700;">Enable High Access</button>
-          <button id="capability-high-disable" style="padding:5px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:11px;cursor:pointer;font-weight:700;">Disable High Access</button>
-          <span style="font-size:10px;color:var(--text-dim);">Bundle: git_execute, propose_work, coordinate, shared_write, memory_read_all, skill_shell, skill_schedule</span>
+          <button id="capability-high-enable" class="cap-btn-high-enable">Enable High Access</button>
+          <button id="capability-high-disable" class="cap-btn-high-disable">Disable High Access</button>
+          <span class="cap-bar-bundle-info">Bundle: git_execute, propose_work, coordinate, shared_write, memory_read_all, skill_shell, skill_schedule</span>
         </div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px;border:2px dashed var(--accent);border-radius:6px;background:rgba(247,184,75,0.06);animation:kn-pulse-border 2s ease-in-out infinite;">
-          <label style="font-size:11px;color:var(--accent);margin-right:4px;font-weight:700;">⇣ Drag to assign:</label>
-          ${_ALL_CAPS.map(c => `<span draggable="true" data-cap-drag="${c}" style="padding:2px 7px;border-radius:999px;background:var(--accent);color:#000;border:1px solid var(--accent);font-size:10px;cursor:grab;font-weight:600;transition:transform .15s;">${c}</span>`).join(' ')}
-          <span style="font-size:9px;color:var(--text-dim);margin-left:8px;font-style:italic;">drag pills onto agent rows below</span>
+        <div class="cap-drag-palette">
+          <label class="cap-drag-label">⇣ Drag to assign:</label>
+          ${_ALL_CAPS.map(c => `<span class="cap-pill-palette" draggable="true" data-cap-drag="${c}">${c}</span>`).join(' ')}
+          <span class="cap-drag-hint">drag pills onto agent rows below</span>
         </div>
         <div id="capability-matrix-list"></div>
       `;
@@ -184,7 +178,7 @@ function loadCapabilityMatrix(host) {
       });
     })
     .catch(e => {
-      host.innerHTML = `<p style="color:#f77;font-size:12px;">Failed to load capability matrix: ${_escHtml(e.message || String(e))}</p>`;
+      host.innerHTML = `<p class="skills-error">Failed to load capability matrix: ${_escHtml(e.message || String(e))}</p>`;
     });
 }
 
@@ -218,7 +212,7 @@ function renderCapabilityMatrixList(host) {
   if (countEl) countEl.textContent = `${filtered.length} of ${allAgents.length} agents`;
 
   if (!filtered.length) {
-    listEl.innerHTML = '<p style="color: var(--text-dim); font-size: 12px;">No agents match current filters.</p>';
+    listEl.innerHTML = '<p class="skills-empty">No agents match current filters.</p>';
     return;
   }
 
@@ -231,18 +225,18 @@ function renderCapabilityMatrixList(host) {
       ? caps.map(cap => {
           const cname = _escHtml(String(cap.capability || '?'));
           const trust = Number(cap.trust_level || 0);
-          return `<span draggable="true" data-cap-drag="${_escHtml(cap.capability || '')}" title="trust ${trust} — drag to assign" style="padding:2px 7px;border-radius:999px;background:var(--card);border:1px solid var(--border);font-size:10px;color:var(--text-dim);cursor:grab;">${cname} · t${trust}</span>`;
+          return `<span class="cap-pill" draggable="true" data-cap-drag="${_escHtml(cap.capability || '')}" title="trust ${trust} — drag to assign">${cname} · t${trust}</span>`;
         }).join(' ')
-      : '<span style="font-size:11px;color:var(--text-dim);">no capabilities at current trust filter</span>';
+      : '<span class="skills-empty">no capabilities at current trust filter</span>';
 
-    return `<div class="cap-agent-row" data-cap-agent="${_escHtml(agent)}" style="margin-bottom:10px;padding:10px;background:var(--card);border-radius:6px;border:1px solid var(--border);transition:border-color 0.15s,box-shadow 0.15s;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+    return `<div class="cap-agent-row" data-cap-agent="${_escHtml(agent)}">
+      <div class="cap-agent-header">
         <strong>${name}</strong>
-        <span style="font-size:10px;color:var(--text-dim);">${Number(item.granted_count || 0)} granted</span>
+        <span class="cap-agent-count">${Number(item.granted_count || 0)} granted</span>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">${chips}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
-        <button onclick="toggleSingleAgentCapability('${agent}','git_execute',${hasGitExecute ? 'false' : 'true'})" style="padding:4px 8px;background:${hasGitExecute ? '#f4433620' : '#4caf5020'};border:1px solid ${hasGitExecute ? '#f4433660' : '#4caf5060'};border-radius:4px;color:${hasGitExecute ? '#f44336' : '#4caf50'};font-size:10px;cursor:pointer;">${hasGitExecute ? 'Disable git_execute' : 'Enable git_execute'}</button>
+      <div class="cap-agent-caps">${chips}</div>
+      <div class="cap-agent-actions">
+        <button class="${hasGitExecute ? 'cap-btn-disable' : 'cap-btn-enable'}" onclick="toggleSingleAgentCapability('${agent}','git_execute',${hasGitExecute ? 'false' : 'true'})">${hasGitExecute ? 'Disable git_execute' : 'Enable git_execute'}</button>
       </div>
     </div>`;
   }).join('');
@@ -482,7 +476,7 @@ function loadSkillPermissionEditor() {
 
   const username = (selector.value || '').trim().toLowerCase();
   if (!username) {
-    host.innerHTML = '<p style="color:var(--text-dim);font-size:12px;">Select a user to manage permissions.</p>';
+    host.innerHTML = '<p class="skills-empty">Select a user to manage permissions.</p>';
     return;
   }
 
@@ -504,17 +498,17 @@ function loadSkillPermissionEditor() {
         const explicit = Object.prototype.hasOwnProperty.call(map, skill);
         const allowed = explicit ? !!map[skill] : true;
         const hint = explicit ? 'explicit' : 'default allow';
-        return `<label style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);margin-bottom:8px;">
+        return `<label class="perm-row">
           <div>
-            <div style="font-size:12px;font-weight:600;">${skill}</div>
-            <div style="font-size:10px;color:var(--text-dim);">${hint}</div>
+            <div class="perm-name">${skill}</div>
+            <div class="perm-hint">${hint}</div>
           </div>
           <input type="checkbox" ${allowed ? 'checked' : ''} ${readonly ? 'disabled' : ''} onchange="setSkillPermissionToggle(${JSON.stringify(username)},${JSON.stringify(skill)},this.checked)">
         </label>`;
-      }).join('') + (readonly ? '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">Only ghost can update permissions.</div>' : '');
+      }).join('') + (readonly ? '<div class="perm-note">Only ghost can update permissions.</div>' : '');
     })
     .catch(e => {
-      host.innerHTML = `<div style="color:#f77;font-size:12px;">Failed to load permissions: ${e.message}</div>`;
+      host.innerHTML = `<div class="skills-error">Failed to load permissions: ${e.message}</div>`;
     });
 }
 
@@ -565,17 +559,14 @@ function _bindCapDragDrop(listEl) {
     row.addEventListener('dragover', e => {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
-      row.style.borderColor = 'var(--accent)';
-      row.style.boxShadow = '0 0 8px var(--accent)';
+      row.classList.add('cap-drag-over');
     });
     row.addEventListener('dragleave', () => {
-      row.style.borderColor = 'var(--border)';
-      row.style.boxShadow = 'none';
+      row.classList.remove('cap-drag-over');
     });
     row.addEventListener('drop', e => {
       e.preventDefault();
-      row.style.borderColor = 'var(--border)';
-      row.style.boxShadow = 'none';
+      row.classList.remove('cap-drag-over');
       const cap = e.dataTransfer.getData('text/plain');
       const agent = row.dataset.capAgent;
       if (cap && agent) {
