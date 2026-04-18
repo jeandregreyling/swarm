@@ -50,12 +50,11 @@ def _find_cross_imports(filepath: pathlib.Path):
 
 @pytest.mark.parametrize(
     "bp_file",
-    sorted(BP_DIR.glob("*.py")),
+    sorted(p for p in BP_DIR.glob("*.py")
+           if p.stem != "__init__" and not p.name.endswith((".bak", ".backup"))),
     ids=lambda p: p.stem,
 )
 def test_no_cross_blueprint_imports(bp_file):
-    if bp_file.stem == "__init__" or bp_file.name.endswith((".bak", ".backup")):
-        pytest.skip("not a blueprint")
     violations = _find_cross_imports(bp_file)
     assert violations == [], (
         f"{bp_file.name} cross-imports blueprints: "
