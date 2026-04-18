@@ -243,6 +243,7 @@ function onChatAgentToggleChange(input) {
     row.style.opacity = input.checked ? '1' : '0.3';
     row.style.pointerEvents = input.checked ? 'auto' : 'none';
   }
+  _onManualAgentToggle();
   persistThreadAgentSelection();
   updateComposerMeta();
 }
@@ -1410,6 +1411,108 @@ function updateComposerMeta() {
   left.textContent = `${chars} chars · ${words} words`;
   right.textContent = `${enabled} agent${enabled === 1 ? '' : 's'} on · ${flowLabel} · ${attached} file${attached === 1 ? '' : 's'} · ${modeLabel}`;
 }
+
+// ── Chunk 8C — Intent Classifier Frontend Wiring ─────────────────────────────
+// Debounced classify-as-you-type, badge rendering, auto-agent selection.
+
+window.__classifyTimer = null;
+window.__classifyLastText = '';
+window.__classifyResult = null;
+window.__classifyManualOverride = false;  // true once user manually toggles an agent after classify
+
+function _debouncedClassify() {
+  clearTimeout(window.__classifyTimer);
+  const input = document.getElementById('question-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (text.length < 6) {
+    _hideClassifyBadge();
+    return;
+  }
+  if (text === window.__classifyLastText) return;
+  window.__classifyTimer = setTimeout(() => _runClassify(text), 400);
+}
+
+function _runClassify(text) {
+  window.__classifyLastText = text;
+  fetch('/api/chat/classify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: text }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (!data || !data.ok) return;
+      // Ignore stale responses
+      const currentText = (document.getElementById('question-input') || {}).value || '';
+      if (currentText.trim() !== text) return;
+      window.__classifyResult = data;
+      _showClassifyBadge(data);
+      if (!window.__classifyManualOverride) {
+        _applyClassifyAgents(data);
+      }
+    })
+    .catch(() => {});
+}
+
+function _showClassifyBadge(data) {
+  const badge = document.getElementById('chat-classify-badge');
+  if (!badge) return;
+  const agentsEl = badge.querySelector('.classify-agents');
+  const catEl = badge.querySelector('.classify-category');
+  const overrideEl = badge.querySelector('.classify-override');
+  if (agentsEl) agentsEl.textContent = data.agents.map(a => _chatAgentLabel(a)).join(', ');
+  if (catEl) catEl.textContent = '(' + data.category + (data.relay ? ' · relay' : '') + ')';
+  if (overrideEl) overrideEl.style.display = window.__classifyManualOverride ? '' : 'none';
+  badge.title = data.reasoning || '';
+  badge.style.display = '';
+}
+
+function _hideClassifyBadge() {
+  const badge = document.getElementById('chat-classify-badge');
+  if (badge) badge.style.display = 'none';
+  window.__classifyResult = null;
+  window.__classifyLastText = '';
+  window.__classifyManualOverride = false;
+}
+
+function _dismissClassifyBadge() {
+  _hideClassifyBadge();
+  window.__classifyManualOverride = true;
+}
+
+function _applyClassifyAgents(data) {
+  if (!data || !data.agents || !data.agents.length) return;
+  // Turn off all agents first
+  const allKeys = CHAT_AGENT_OPTIONS.map(a => a.value);
+  allKeys.forEach(k => { window.__fridaysChatEnabledAgents[k] = false; });
+  // Turn on classified agents
+  data.agents.forEach(k => {
+    window.__fridaysChatEnabledAgents[k] = true;
+    _setAgentSelectionState(k, 'auto');
+  });
+  // Auto-relay
+  if (data.relay) {
+    window.__fridaysChatRelayAuto = true;
+    const autoEls = document.querySelectorAll('.chat-relay-auto');
+    autoEls.forEach(el => { el.checked = true; });
+  }
+  renderChatAgentToggles();
+  updateComposerMeta();
+}
+
+function _onManualAgentToggle() {
+  // Called when user manually toggles an agent — marks override
+  if (window.__classifyResult) {
+    window.__classifyManualOverride = true;
+    const badge = document.getElementById('chat-classify-badge');
+    if (badge) {
+      const overrideEl = badge.querySelector('.classify-override');
+      if (overrideEl) overrideEl.style.display = '';
+    }
+  }
+}
+
 
 function _normalizeMentionKey(raw) {
   return String(raw || '').toLowerCase().trim().replace(/^@+/, '').replace(/\s+/g, '');
@@ -5192,6 +5295,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   input.value = '';
   input.style.height = '';
   input.style.overflowY = 'hidden';
+  _hideClassifyBadge();
   clearReplyTarget();
   clearChatAttachments();
   updateComposerMeta();

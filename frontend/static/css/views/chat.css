@@ -2087,3 +2087,76 @@
 }
 .agent-sel-swatch::-webkit-color-swatch-wrapper { padding: 0; }
 .agent-sel-swatch::-webkit-color-swatch { border: none; border-radius: 50%; }
+
+/* ── Chunk 8C — Classify Badge ───────────────────────────────────────────── */
+.chat-classify-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin-bottom: 4px;
+  background: var(--card, #1e1e2e);
+  border: 1px solid var(--accent, #42a5f5);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text, #ccc);
+  cursor: default;
+  position: relative;
+  animation: classify-fade-in 0.2s ease;
+}
+@keyframes classify-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.chat-classify-badge .classify-arrow {
+  color: var(--accent, #42a5f5);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.chat-classify-badge .classify-agents {
+  font-weight: 600;
+  color: var(--text, #eee);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.chat-classify-badge .classify-category {
+  color: var(--text-dim, #888);
+  white-space: nowrap;
+}
+.chat-classify-badge .classify-override {
+  display: none;
+  color: var(--warning, #ffa726);
+  font-size: 12px;
+  margin-left: 2px;
+  cursor: default;
+}
+.chat-classify-badge .classify-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-dim, #666);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 0 0 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.chat-classify-badge .classify-dismiss:hover { color: var(--text, #eee); }
+.chat-classify-badge:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--bg, #111);
+  border: 1px solid var(--border, #333);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 10px;
+  color: var(--text-dim, #999);
+  white-space: pre-wrap;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
