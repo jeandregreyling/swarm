@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18 17:55",
+  "generated_at": "2026-04-18 18:30",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2525,7 +2525,7 @@
     },
     {
       "name": "agents-config.js",
-      "size_kb": 19.0
+      "size_kb": 23.1
     },
     {
       "name": "chat.js",
@@ -2605,7 +2605,7 @@
     },
     {
       "name": "studio.js",
-      "size_kb": 84.3
+      "size_kb": 85.0
     },
     {
       "name": "terminal-commands.js",
@@ -2635,7 +2635,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 23131
+      "rows": 23195
     },
     {
       "name": "agent_capabilities",
@@ -2655,7 +2655,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 217
+      "rows": 220
     },
     {
       "name": "audit_results",
@@ -2663,7 +2663,7 @@
     },
     {
       "name": "chat_jobs",
-      "rows": 317
+      "rows": 320
     },
     {
       "name": "claude_log",
@@ -2671,11 +2671,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 728
+      "rows": 731
     },
     {
       "name": "conversations",
-      "rows": 54
+      "rows": 63
     },
     {
       "name": "daily_checkpoint",
@@ -2695,7 +2695,7 @@
     },
     {
       "name": "decisions",
-      "rows": 2108
+      "rows": 2128
     },
     {
       "name": "deferred_items",
@@ -2703,7 +2703,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 517
+      "rows": 519
     },
     {
       "name": "file_versions",
@@ -2719,11 +2719,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2652
+      "rows": 2664
     },
     {
       "name": "governance_log",
-      "rows": 109
+      "rows": 111
     },
     {
       "name": "knowledge_chunks",
@@ -2735,7 +2735,7 @@
     },
     {
       "name": "memory",
-      "rows": 20
+      "rows": 21
     },
     {
       "name": "memory_eight",
@@ -2795,7 +2795,7 @@
     },
     {
       "name": "messages",
-      "rows": 103
+      "rows": 119
     },
     {
       "name": "moderators",
@@ -2831,7 +2831,7 @@
     },
     {
       "name": "queue",
-      "rows": 1037
+      "rows": 1043
     },
     {
       "name": "research_evidence",
@@ -2843,7 +2843,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 256
+      "rows": 258
     },
     {
       "name": "scheduled_tasks",
@@ -2875,7 +2875,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 109
+      "rows": 111
     },
     {
       "name": "swarm_event_acks",
@@ -2899,7 +2899,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 6228
+      "rows": 6235
     },
     {
       "name": "terminal_shortcuts",
@@ -2907,27 +2907,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 271
+      "rows": 273
     },
     {
       "name": "tickets",
-      "rows": 279
+      "rows": 281
     },
     {
       "name": "time_checkpoints",
-      "rows": 1921
+      "rows": 1940
     },
     {
       "name": "time_events",
-      "rows": 69997
+      "rows": 70209
     },
     {
       "name": "time_journal",
-      "rows": 66851
+      "rows": 67044
     },
     {
       "name": "time_machine",
-      "rows": 4904
+      "rows": 4915
     },
     {
       "name": "tool_builds",
@@ -2955,7 +2955,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 42
+      "rows": 44
     }
   ],
   "agents": [
@@ -3471,6 +3471,14 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "agents-tab-agents",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "agents-tab-localai",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "memory-landscape-btn",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -3504,6 +3512,10 @@
     },
     {
       "id": "studio-tab-all",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "studio-tab-git",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -3987,6 +3999,10 @@
       "file": "frontend/static/js/views/studio.js"
     },
     {
+      "id": "studio-git-panel",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
       "id": "proposal-diff-overlay",
       "file": "frontend/static/js/views/studio.js"
     },
@@ -4449,6 +4465,34 @@
     {
       "id": "trace-job-id",
       "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "agents-agents-body",
+      "file": "frontend/static/js/views/agents-config.js"
+    },
+    {
+      "id": "agents-localai-body",
+      "file": "frontend/static/js/views/agents-config.js"
+    },
+    {
+      "id": "agents-ollama-badge",
+      "file": "frontend/static/js/views/agents-config.js"
+    },
+    {
+      "id": "agents-lmstudio-badge",
+      "file": "frontend/static/js/views/agents-config.js"
+    },
+    {
+      "id": "agents-picoclaw-badge",
+      "file": "frontend/static/js/views/agents-config.js"
+    },
+    {
+      "id": "agents-ollama-models",
+      "file": "frontend/static/js/views/agents-config.js"
+    },
+    {
+      "id": "agents-lmstudio-info",
+      "file": "frontend/static/js/views/agents-config.js"
     },
     {
       "id": "chat-attachment-input",

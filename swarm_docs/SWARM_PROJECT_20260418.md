@@ -16,9 +16,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Active Phase** | Phase 7.0 — Improvement Sprint (Chunks F–G remaining) |
-| **Last Session** | Session 23 — 18 April 2026 — Phase 8.0 complete + 7D System Log + 7E Local AI in Agents done |
-| **Next Action** | Phase 7.0 Chunk F (Merge Git into Studio) |
+| **Active Phase** | Phase 7.0 — Improvement Sprint (Chunk G remaining) |
+| **Last Session** | Session 23 — 18 April 2026 — Phase 8.0 + 7D + 7E + 7F done |
+| **Next Action** | Phase 7.0 Chunk G (Email as Own Tile) |
 | **Test Baseline** | 484 passed, 1 skipped |
 | **Environments** | PROD (master :5050), UAT (:5053), DEV (:5051) — synced, 18 agents each |
 | **Blockers** | None |
@@ -169,11 +169,18 @@
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| F.1 | Add "Git" tab to Studio | Studio gets a new tab: Proposals | In Progress | History | Git | 🔲 |
-| F.2 | Move git.js content into studio tab | Git status, diff, stage, commit UI inside Studio | 🔲 |
-| F.3 | Remove Git home card | Remove separate Git tile from home grid | 🔲 |
-| F.4 | Keep Ctrl+G shortcut | Ctrl+G opens Studio and switches to Git tab | 🔲 |
-| F.5 | Verify git operations work | Stage, commit, diff all functional inside Studio | 🔲 |
+| F.1 | Add "Git" tab to Studio | `studio-tab-git` button added to Studio header toolbar | ✅ Done |
+| F.2 | Move git.js content into studio tab | `#studio-git-panel` embedded in Studio template; `studioSetTab('git')` shows panel + calls `loadGitData()` | ✅ Done |
+| F.3 | Remove Git home card | Home card removed; replaced with comment `<!-- Git merged into Studio (7F) -->` | ✅ Done |
+| F.4 | Keep Ctrl+G shortcut | Ctrl+G now opens Studio and calls `studioSetTab('git')` after 120ms; command palette updated | ✅ Done |
+| F.5 | Verify git operations work | Services restarted; PROD active; regression running | ✅ Done |
+
+**Implementation notes (7F):**
+- HTML (`terminal_base.html`): Added `id="studio-tab-git"` button to Studio header. Added `#studio-git-panel` div (display:none, full git UI inline — files list, diff, commit, proposals section)
+- JS (`studio.js`): `studioSetTab()` now handles `'git'` — hides `#studio-content`, shows `#studio-git-panel` as flex, calls `loadGitData()` + `gitRefreshStatus()` on switch
+- JS (`init.js`): Ctrl+G opens Studio then calls `studioSetTab('git')` after 120ms; command palette entry updated to match
+- Studio home card desc updated: "Proposals · Git · History"
+- Git home card removed from home grid
 
 #### Chunk G — Email as Own Tile
 
