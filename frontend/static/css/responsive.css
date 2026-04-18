@@ -96,6 +96,15 @@
     left: 2vw !important;
     right: 2vw !important;
   }
+
+  /* Home chat prominent: reduce min-height on mobile */
+  .home-chat-prominent {
+    min-height: 240px;
+    max-height: calc(100vh - 220px);
+  }
+  .home-tiles-section .card-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* ── Small phones ────────────────────────────────────────────────────── */

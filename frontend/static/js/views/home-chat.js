@@ -72,6 +72,21 @@
       });
       input.addEventListener('input', () => _hcAutoGrow(input));
     }
+
+    // Quick-launch: typing anywhere on home page focuses chat input
+    const homePage = document.getElementById('home-page');
+    if (homePage && input) {
+      homePage.addEventListener('keydown', (e) => {
+        // Skip if already in an input/textarea/select, or if modifier keys
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        if (e.key.length === 1 && !e.target.isContentEditable) {
+          input.focus();
+          // Let the character flow into the now-focused input naturally
+        }
+      });
+    }
   }
 
   // ── Auto-grow textarea ───────────────────────────────────────────────────
