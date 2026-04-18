@@ -1192,6 +1192,42 @@ def _migrate_schema(conn=None):
         except Exception:
             pass
 
+    # User interests — persistent interest/preference store for onboarding & suggestions
+    if 'user_interests' not in tables:
+        conn.execute('''CREATE TABLE IF NOT EXISTS user_interests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL DEFAULT 'ghost',
+            topic TEXT NOT NULL,
+            category TEXT DEFAULT 'general',
+            source TEXT DEFAULT 'user',
+            score REAL DEFAULT 10.0,
+            active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(username, topic)
+        )''')
+    # User login sessions — auth tokens for multi-user support
+    if 'user_sessions' not in tables:
+        conn.execute('''CREATE TABLE IF NOT EXISTS user_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            session_token TEXT UNIQUE NOT NULL,
+            ip_address TEXT DEFAULT '',
+            user_agent TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now')),
+            expires_at TEXT NOT NULL,
+            is_active INTEGER DEFAULT 1
+        )''')
+    # Add password_hash and role columns to user_profiles if missing
+    if 'user_profiles' in tables:
+        up_cols = {row[1] for row in conn.execute('PRAGMA table_info(user_profiles)').fetchall()}
+        if 'password_hash' not in up_cols:
+            conn.execute("ALTER TABLE user_profiles ADD COLUMN password_hash TEXT DEFAULT ''")
+        if 'role' not in up_cols:
+            conn.execute("ALTER TABLE user_profiles ADD COLUMN role TEXT DEFAULT 'viewer'")
+        if 'approved' not in up_cols:
+            conn.execute("ALTER TABLE user_profiles ADD COLUMN approved INTEGER DEFAULT 0")
+
     conn.commit()
 
     if _close:

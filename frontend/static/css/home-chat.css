@@ -613,3 +613,179 @@
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.3; transform: scale(0.7); }
 }
+
+/* ── Onboarding flow ─────────────────────────────────────────────────────── */
+.home-onboarding {
+  margin-top: 18px;
+  padding: 20px 18px;
+  background: linear-gradient(135deg, rgba(247,184,75,0.06) 0%, rgba(100,120,200,0.04) 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  animation: onboardFadeIn 0.6s ease-out;
+}
+@keyframes onboardFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.home-onboarding-header {
+  text-align: center;
+  margin-bottom: 18px;
+}
+.home-onboarding-title {
+  font-size: 17px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), #a0c4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+.home-onboarding-subtitle {
+  font-size: 11px;
+  color: var(--text-dim);
+  max-width: 380px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+.home-onboarding-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.home-onboarding-cat {
+  animation: onboardCatIn 0.4s ease-out both;
+}
+.home-onboarding-cat:nth-child(1) { animation-delay: 0.1s; }
+.home-onboarding-cat:nth-child(2) { animation-delay: 0.2s; }
+.home-onboarding-cat:nth-child(3) { animation-delay: 0.3s; }
+.home-onboarding-cat:nth-child(4) { animation-delay: 0.4s; }
+@keyframes onboardCatIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.home-onboarding-cat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.home-onboarding-cat-label .cat-icon {
+  font-size: 14px;
+}
+.home-onboarding-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.home-onboarding-topic {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.home-onboarding-topic:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(247,184,75,0.08);
+}
+.home-onboarding-topic.selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #000;
+  font-weight: 600;
+  transform: scale(1.04);
+  box-shadow: 0 0 8px rgba(247,184,75,0.25);
+}
+.home-onboarding-selected {
+  margin-top: 14px;
+  min-height: 24px;
+  text-align: center;
+}
+.home-onboarding-selected-count {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.home-onboarding-selected-count strong {
+  color: var(--accent);
+}
+.home-onboarding-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.home-onboarding-save-btn {
+  padding: 8px 22px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #000;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+.home-onboarding-save-btn:not(:disabled) {
+  opacity: 1;
+  box-shadow: 0 0 12px rgba(247,184,75,0.3);
+}
+.home-onboarding-save-btn:not(:disabled):hover {
+  transform: scale(1.03);
+  box-shadow: 0 0 18px rgba(247,184,75,0.5);
+}
+.home-onboarding-skip-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.home-onboarding-skip-btn:hover {
+  border-color: var(--text-dim);
+  color: var(--text);
+}
+/* Custom topic input inline with the save row */
+.home-onboarding-custom {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.home-onboarding-custom input {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 11px;
+  min-width: 180px;
+  outline: none;
+}
+.home-onboarding-custom input:focus {
+  border-color: var(--accent);
+}
+.home-onboarding-custom button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.home-onboarding-custom button:hover {
+  background: rgba(247,184,75,0.1);
+}
