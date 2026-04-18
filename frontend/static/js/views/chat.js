@@ -1462,9 +1462,29 @@ function _showClassifyBadge(data) {
   const catEl = badge.querySelector('.classify-category');
   const overrideEl = badge.querySelector('.classify-override');
   if (agentsEl) agentsEl.textContent = data.agents.map(a => _chatAgentLabel(a)).join(', ');
-  if (catEl) catEl.textContent = '(' + data.category + (data.relay ? ' · relay' : '') + ')';
+  // Build category + model label
+  let catText = data.category;
+  if (data.models) {
+    const modelNames = data.agents.map(a => {
+      const m = data.models[a];
+      return m ? m.model : null;
+    }).filter(Boolean);
+    const unique = [...new Set(modelNames)];
+    if (unique.length) catText += ' · ' + unique.join(', ');
+  }
+  if (data.relay) catText += ' · relay';
+  if (catEl) catEl.textContent = '(' + catText + ')';
   if (overrideEl) overrideEl.style.display = window.__classifyManualOverride ? '' : 'none';
-  badge.title = data.reasoning || '';
+  // Build detailed tooltip with model sources
+  let tip = data.reasoning || '';
+  if (data.models) {
+    const parts = data.agents.map(a => {
+      const m = data.models[a];
+      return m ? a + ' → ' + m.model + ' (' + m.source + ')' : null;
+    }).filter(Boolean);
+    if (parts.length) tip += '\nModels: ' + parts.join(', ');
+  }
+  badge.title = tip;
   badge.style.display = '';
 }
 
