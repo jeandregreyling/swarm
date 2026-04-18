@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-18 21:13*
+*Auto-generated: 2026-04-18 21:50*
 
 
 ## Python Modules
@@ -162,12 +162,13 @@
 | `exec_bp` | 4 | exec_bp.py — Ghost Exec routes |
 | `git` | 6 | git.py — Git Operations routes |
 | `idle_mgmt_bp` | 3 | idle_mgmt_bp.py — Idle-time self-management (Tier 4.5). |
-| `interests_bp` | 1 | Interests engine — derives user interests from conversations + system memory. |
+| `interests_bp` | 3 | Interests engine — derives user interests from conversations + system memory. |
 | `kb` | 7 | kb.py — Knowledge Base routes |
 | `killswitch` | 6 | killswitch.py — Kill Switches routes |
 | `legacy` | 3 | legacy.py — Legacy Pipeline & Approval routes |
 | `library` | 11 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
+| `login_bp` | 10 | login_bp.py — User login, registration, session management, and approval. |
 | `memory` | 8 | memory.py — Memory routes |
 | `metrics` | 2 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
 | `nine` | 4 | nine.py — Agent Nine routes |
@@ -200,7 +201,7 @@
 | `email.js` | 22.4 KB |
 | `files.js` | 42.0 KB |
 | `git.js` | 23.7 KB |
-| `home-chat.js` | 28.8 KB |
+| `home-chat.js` | 34.3 KB |
 | `knowledge.js` | 5.8 KB |
 | `library.js` | 22.0 KB |
 | `localai.js` | 8.5 KB |
@@ -210,7 +211,7 @@
 | `ollama.js` | 4.1 KB |
 | `onboarding.js` | 16.2 KB |
 | `services.js` | 4.7 KB |
-| `skills.js` | 25.7 KB |
+| `skills.js` | 22.4 KB |
 | `studio.js` | 85.0 KB |
 | `terminal-commands.js` | 13.0 KB |
 | `terminal.js` | 41.3 KB |
@@ -223,34 +224,34 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 24280 |
+| `activity_log` | 24430 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 19 |
-| `approval_tokens` | 274 |
+| `approval_tokens` | 283 |
 | `audit_results` | 3 |
-| `chat_jobs` | 356 |
+| `chat_jobs` | 362 |
 | `claude_log` | 1 |
-| `conv_timeline` | 779 |
-| `conversations` | 55 |
+| `conv_timeline` | 788 |
+| `conversations` | 82 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 2486 |
+| `decisions` | 2547 |
 | `deferred_items` | 0 |
-| `duck_log` | 557 |
+| `duck_log` | 563 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2900 |
-| `governance_log` | 149 |
+| `ghost_circle` | 2938 |
+| `governance_log` | 155 |
 | `knowledge_chunks` | 371 |
 | `knowledge_sources` | 29 |
-| `memory` | 41 |
+| `memory` | 44 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 7 |
+| `memory_gemma` | 8 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 0 |
 | `memory_llama` | 2 |
@@ -263,7 +264,7 @@
 | `memory_ten` | 0 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 108 |
+| `messages` | 161 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -272,38 +273,40 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1157 |
+| `queue` | 1175 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 296 |
+| `sandpit_log` | 302 |
 | `scheduled_tasks` | 2 |
 | `skills` | 38 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
-| `sqlite_sequence` | 59 |
+| `sqlite_sequence` | 61 |
 | `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 149 |
+| `swarm_bus` | 155 |
 | `swarm_event_acks` | 0 |
 | `swarm_events` | 0 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 0 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 6268 |
+| `system_stats` | 6275 |
 | `terminal_shortcuts` | 10 |
-| `ticket_notes` | 311 |
-| `tickets` | 319 |
-| `time_checkpoints` | 2282 |
-| `time_events` | 71322 |
-| `time_journal` | 67815 |
-| `time_machine` | 5033 |
+| `ticket_notes` | 317 |
+| `tickets` | 325 |
+| `time_checkpoints` | 2337 |
+| `time_events` | 71578 |
+| `time_journal` | 68014 |
+| `time_machine` | 5058 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
+| `user_interests` | 3 |
 | `user_profiles` | 19 |
+| `user_sessions` | 1 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 82 |
+| `work_proposals` | 88 |
 
 ## Agents
 
