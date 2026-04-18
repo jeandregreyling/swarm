@@ -317,6 +317,85 @@
         }
     }
 
+    // ── Local AI tab ─────────────────────────────────────────────────────────
+    function agentsSwitchTab(tab) {
+        const agentsBody  = document.getElementById('agents-agents-body');
+        const localaiBody = document.getElementById('agents-localai-body');
+        const tabAgents   = document.getElementById('agents-tab-agents');
+        const tabLocalai  = document.getElementById('agents-tab-localai');
+        if (!agentsBody || !localaiBody) return;
+
+        const isAgents = (tab === 'agents');
+        agentsBody.style.display  = isAgents ? 'flex'  : 'none';
+        localaiBody.style.display = isAgents ? 'none'  : 'block';
+
+        if (tabAgents)  {
+            tabAgents.style.borderBottomColor  = isAgents ? 'var(--accent)' : 'transparent';
+            tabAgents.style.color              = isAgents ? 'var(--text)'   : 'var(--text-dim)';
+            tabAgents.style.fontWeight         = isAgents ? '600'           : '400';
+        }
+        if (tabLocalai) {
+            tabLocalai.style.borderBottomColor = isAgents ? 'transparent'   : 'var(--accent)';
+            tabLocalai.style.color             = isAgents ? 'var(--text-dim)' : 'var(--text)';
+            tabLocalai.style.fontWeight        = isAgents ? '400'           : '600';
+        }
+
+        if (!isAgents) agentsLocalAIRefresh();
+    }
+
+    function agentsLocalAIRefresh() {
+        const ollamaBadge  = document.getElementById('agents-ollama-badge');
+        const lmsBadge     = document.getElementById('agents-lmstudio-badge');
+        const picoBadge    = document.getElementById('agents-picoclaw-badge');
+        const ollamaModels = document.getElementById('agents-ollama-models');
+        const lmsInfo      = document.getElementById('agents-lmstudio-info');
+
+        if (ollamaBadge) ollamaBadge.textContent = 'checking…';
+
+        const _b = (running) => ({
+            background: running
+                ? 'color-mix(in srgb,#22c55e 15%,var(--card))'
+                : 'color-mix(in srgb,#ef4444 15%,var(--card))',
+            color:  running ? '#22c55e' : '#ef4444',
+            border: `1px solid ${running ? '#22c55e55' : '#ef444455'}`,
+        });
+
+        fetch('/api/localai/status')
+            .then(r => r.json())
+            .then(data => {
+                if (ollamaBadge) {
+                    const ok  = data.ollama?.running;
+                    const cnt = (data.ollama?.models || []).length;
+                    ollamaBadge.textContent = ok ? `${cnt} model${cnt !== 1 ? 's' : ''}` : 'offline';
+                    Object.assign(ollamaBadge.style, _b(ok));
+                }
+                if (lmsBadge) {
+                    const ok = data.lmstudio?.running;
+                    lmsBadge.textContent = ok ? 'online' : 'offline';
+                    Object.assign(lmsBadge.style, _b(ok));
+                }
+                if (picoBadge) {
+                    const ok = data.picoclaw?.running;
+                    picoBadge.textContent = ok ? 'running' : 'offline';
+                    Object.assign(picoBadge.style, _b(ok));
+                }
+                if (ollamaModels) {
+                    const ms = data.ollama?.models || [];
+                    ollamaModels.innerHTML = ms.length
+                        ? ms.map(m => `<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 7px;border-radius:4px;background:var(--bg);border:1px solid var(--border);font-size:11px;">${m.name}</span>`).join('')
+                        : (data.ollama?.running ? 'No models loaded' : 'Ollama not running');
+                }
+                if (lmsInfo) {
+                    lmsInfo.textContent = data.lmstudio?.running
+                        ? `Loaded: ${data.lmstudio.loaded || 'unknown'}`
+                        : 'Not running';
+                }
+            })
+            .catch(() => {
+                if (ollamaBadge) { ollamaBadge.textContent = 'error'; ollamaBadge.style.color = 'var(--danger)'; }
+            });
+    }
+
     // ── Expose to window for onclick handlers ───────────────────────────────
     window.agentsRefresh       = agentsRefresh;
     window.agentsShowDetail    = agentsShowDetail;
@@ -326,7 +405,9 @@
     window.agentsConfirmToggle = agentsConfirmToggle;
     window.agentsConfirmReset  = agentsConfirmReset;
     window.agentsConfirmDelete = agentsConfirmDelete;
-    window.agentsSaveKey       = agentsSaveKey;
+    window.agentsSaveKey        = agentsSaveKey;
+    window.agentsSwitchTab      = agentsSwitchTab;
+    window.agentsLocalAIRefresh = agentsLocalAIRefresh;
 
     console.log('[Agents Config] Loaded with model selection support');
 })();
