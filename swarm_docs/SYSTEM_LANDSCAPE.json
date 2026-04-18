@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18 18:36",
+  "generated_at": "2026-04-18 19:03",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2521,7 +2521,7 @@
   "js_views": [
     {
       "name": "access.js",
-      "size_kb": 74.6
+      "size_kb": 77.9
     },
     {
       "name": "agents-config.js",
@@ -2635,7 +2635,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 23282
+      "rows": 23342
     },
     {
       "name": "agent_capabilities",
@@ -2655,7 +2655,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 226
+      "rows": 229
     },
     {
       "name": "audit_results",
@@ -2663,7 +2663,7 @@
     },
     {
       "name": "chat_jobs",
-      "rows": 323
+      "rows": 326
     },
     {
       "name": "claude_log",
@@ -2671,11 +2671,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 735
+      "rows": 738
     },
     {
       "name": "conversations",
-      "rows": 81
+      "rows": 90
     },
     {
       "name": "daily_checkpoint",
@@ -2695,7 +2695,7 @@
     },
     {
       "name": "decisions",
-      "rows": 2168
+      "rows": 2188
     },
     {
       "name": "deferred_items",
@@ -2703,7 +2703,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 523
+      "rows": 525
     },
     {
       "name": "file_versions",
@@ -2719,11 +2719,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2689
+      "rows": 2701
     },
     {
       "name": "governance_log",
-      "rows": 115
+      "rows": 117
     },
     {
       "name": "knowledge_chunks",
@@ -2735,7 +2735,7 @@
     },
     {
       "name": "memory",
-      "rows": 23
+      "rows": 24
     },
     {
       "name": "memory_eight",
@@ -2795,7 +2795,7 @@
     },
     {
       "name": "messages",
-      "rows": 155
+      "rows": 171
     },
     {
       "name": "moderators",
@@ -2831,7 +2831,7 @@
     },
     {
       "name": "queue",
-      "rows": 1055
+      "rows": 1061
     },
     {
       "name": "research_evidence",
@@ -2843,7 +2843,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 262
+      "rows": 264
     },
     {
       "name": "scheduled_tasks",
@@ -2875,7 +2875,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 115
+      "rows": 117
     },
     {
       "name": "swarm_event_acks",
@@ -2899,7 +2899,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 6237
+      "rows": 6242
     },
     {
       "name": "terminal_shortcuts",
@@ -2907,27 +2907,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 277
+      "rows": 279
     },
     {
       "name": "tickets",
-      "rows": 285
+      "rows": 287
     },
     {
       "name": "time_checkpoints",
-      "rows": 1976
+      "rows": 1994
     },
     {
       "name": "time_events",
-      "rows": 70273
+      "rows": 70440
     },
     {
       "name": "time_journal",
-      "rows": 67072
+      "rows": 67221
     },
     {
       "name": "time_machine",
-      "rows": 4927
+      "rows": 4938
     },
     {
       "name": "tool_builds",
@@ -2955,7 +2955,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 48
+      "rows": 50
     }
   ],
   "agents": [
@@ -4371,6 +4371,34 @@
       "file": "frontend/static/js/views/access.js"
     },
     {
+      "id": "agents-agents-body",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-localai-body",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-ollama-badge",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-lmstudio-badge",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-picoclaw-badge",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-ollama-models",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agents-lmstudio-info",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
       "id": "ob-ollama-icon",
       "file": "frontend/static/js/views/onboarding.js"
     },
@@ -4465,34 +4493,6 @@
     {
       "id": "trace-job-id",
       "file": "frontend/static/js/views/trace.js"
-    },
-    {
-      "id": "agents-agents-body",
-      "file": "frontend/static/js/views/agents-config.js"
-    },
-    {
-      "id": "agents-localai-body",
-      "file": "frontend/static/js/views/agents-config.js"
-    },
-    {
-      "id": "agents-ollama-badge",
-      "file": "frontend/static/js/views/agents-config.js"
-    },
-    {
-      "id": "agents-lmstudio-badge",
-      "file": "frontend/static/js/views/agents-config.js"
-    },
-    {
-      "id": "agents-picoclaw-badge",
-      "file": "frontend/static/js/views/agents-config.js"
-    },
-    {
-      "id": "agents-ollama-models",
-      "file": "frontend/static/js/views/agents-config.js"
-    },
-    {
-      "id": "agents-lmstudio-info",
-      "file": "frontend/static/js/views/agents-config.js"
     },
     {
       "id": "chat-attachment-input",
