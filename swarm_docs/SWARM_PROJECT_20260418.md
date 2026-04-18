@@ -16,21 +16,20 @@
 
 | Field | Value |
 |-------|-------|
-| **Active Phase** | Phase 7.0 — Improvement Sprint ✅ ALL CHUNKS DONE |
-| **Last Session** | Session 23 — 18 April 2026 — Phase 8.0 + 7A–G + broken pipes fixed |
-| **Next Action** | Phase 7.0 Future Chunks (H, I, K, L) or new phase |
+| **Active Phase** | Cleanup & Stabilisation → then Phase 7H/I or new phase |
+| **Last Session** | Session 24 — 18 April 2026 — cleanup audit, orphan deletion, smoke tests |
+| **Next Action** | User decides: H (self-reasoning), I (VS Code bridge), K (Skills), or L (Tauri) |
 | **Test Baseline** | 484 passed, 1 skipped |
 | **Environments** | PROD (master :5050), UAT (:5053), DEV (:5051) — synced, 18 agents each |
 | **Blockers** | None |
 
 ### What's Hot Right Now
-- **Phase 8.0 — Agentic Chat** — major pivot: auto-routing agents, models, relay based on message content
-- **Relay dispatch bug fixed** — multi-agent sends now force parallel mode; stall gate bypassed for fan-out
-- **Phase 7.0 Chunks A–C complete** — env alignment, enrollment rename, Ghost Coder model dropdown verified
-- **Phase 7.0 Chunks D–G deferred** — will interleave with Phase 8.0 as needed
-- **Ghost Coder model selection confirmed working** — dropdown in Agents tile, 6 model options, DB-persisted
-- **Model persistence fix landed** — `_seed_agents()` no longer overwrites user-chosen models on restart
-- **qwen:1.5b deprecated** → replaced with `qwen:latest` across 5 files
+- **Cleanup audit complete** — 63 onclick handlers verified, ~80 API endpoints cross-checked, all green
+- **2 orphan JS files deleted** — `agents-config.js` (412 lines) and `fridays.js` (169 lines) removed; never loaded at runtime
+- **Phase 7.0 Chunks A–G all done** — Trace tabs, Agents Local AI, Studio Git, Email tile, broken pipes fixed
+- **Phase 8.0 — Agentic Chat complete** — auto-routing agents, models, relay based on message content
+- **PROD smoke-tested** — health, activity, agents, localai, chat, services, globals, UI — all HTTP 200
+- **Codebase is clean** — every JS file on disk is loaded, every onclick resolves, every fetch has a Flask route
 
 ---
 
@@ -456,6 +455,44 @@ Architectural and design decisions that affect future work. Newest first.
 
 Each session is logged here with date, what was done, and key outcomes.  
 **Newest first** — most recent session is always at the top.
+
+---
+
+### Session 24 — 18 April 2026 (Late Evening)
+**Focus:** Cleanup audit & dead code removal
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Audit loaded vs on-disk JS files | ✅ Done | 26 loaded, 28 on disk → 2 orphans found |
+| 2 | Verify all 63 onclick handlers resolve | ✅ Done | Every handler has a matching global function in loaded JS |
+| 3 | Cross-check ~80 frontend API fetch URLs | ✅ Done | All match Flask backend routes |
+| 4 | Delete `agents-config.js` (412 lines) | ✅ Done | Superseded by access.js; was never loaded via script tag |
+| 5 | Delete `fridays.js` (169 lines) | ✅ Done | IIFE banner code; exposed globals never called from anywhere |
+| 6 | Smoke-test PROD endpoints | ✅ Done | health, activity, agents (18), localai, UI (175KB), chat, services (8), globals — all HTTP 200 |
+| 7 | Full test regression | ✅ Done | 484 passed, 1 skipped — unchanged |
+
+**Files Deleted:** `frontend/static/js/views/agents-config.js`, `frontend/static/js/views/fridays.js`
+**Tests:** 484 passed, 1 skipped
+**Envs:** PROD running and verified
+
+---
+
+### Session 23 — 18 April 2026 (Evening)
+**Focus:** Phase 7.0 Chunks D–G + broken pipe fixes
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | 7D: Trace tab bar | ✅ Done | Timeline/Syslog tabs, SSE syslog with 500-row cap |
+| 2 | 7E: Agents tab bar + Local AI body | ✅ Done | Agents/Local AI tabs in agents window, agentsSwitchTab() |
+| 3 | 7F: Git into Studio | ✅ Done | Studio git tab + panel, Ctrl+G shortcut, studioSetTab('git') |
+| 4 | 7G: Email as own tile | ✅ Done | Email home card restored to grid |
+| 5 | BP.1: Agents tab switching | ✅ Done | agentsSwitchTab() was in unloaded agents-config.js — added to access.js |
+| 6 | BP.2: Enrollment button | ✅ Done | Fixed winManager.open() → openWindow() |
+| 7 | BP.3: Chat dock restore button | ✅ Done | Styled prominent: accent color, padding, font-weight, box-shadow |
+
+**Files Modified:** `terminal_base.html`, `access.js`, `studio.js`, `init.js`, `chat.css`
+**Tests:** 484 passed, 1 skipped
+**Envs synced:** Yes (PROD, DEV, UAT)
 
 ---
 
