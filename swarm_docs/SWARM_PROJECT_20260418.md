@@ -17,8 +17,8 @@
 | Field | Value |
 |-------|-------|
 | **Active Phase** | Phase 7.0 — Improvement Sprint ✅ ALL CHUNKS DONE |
-| **Last Session** | Session 23 — 18 April 2026 — Phase 8.0 + 7D + 7E + 7F + 7G done |
-| **Next Action** | Post-7G broken pipes: agents tab, enrollment, chat model selector |
+| **Last Session** | Session 23 — 18 April 2026 — Phase 8.0 + 7A–G + broken pipes fixed |
+| **Next Action** | Phase 7.0 Future Chunks (H, I, K, L) or new phase |
 | **Test Baseline** | 484 passed, 1 skipped |
 | **Environments** | PROD (master :5050), UAT (:5053), DEV (:5051) — synced, 18 agents each |
 | **Blockers** | None |
@@ -195,6 +195,14 @@
 - HTML (`terminal_base.html`): Replaced `<!-- Email removed from home (5.3) -->` comment with full `home-card` div — envelope icon SVG, `data-win-id="email"`, `data-win-template="view-email"`, `data-shortcut="Ctrl+E"`, desc "Inbox & compose"
 - No JS changes required — `view-email` template and `email.js` already fully functional
 - Taskbar email dot button retained as-is (unread indicator still works)
+
+#### Post-7G — Broken Pipe Fixes (18 April 2026)
+
+| # | Issue | Root Cause | Fix | Status |
+|---|-------|------------|-----|--------|
+| BP.1 | Agents tab switching broken | `agentsSwitchTab()` and `agentsLocalAIRefresh()` only existed in `agents-config.js` (IIFE), which was never loaded via `<script>` tag. `access.js` has the full agents panel but lacked tab functions. | Added both functions to bottom of `access.js` | ✅ Done |
+| BP.2 | Enrollment button broken | Button used `winManager.open(...)` which doesn't exist — should be `openWindow(...)` | Changed onclick to `openWindow('onboarding','Enrollment','view-onboarding')` | ✅ Done |
+| BP.3 | Chat agent controls not discoverable | Right dock with agent toggles existed but was collapsed; restore button was small/dim | Made restore button accent-colored, larger, labeled "◀ Agents" with hover effect and box-shadow | ✅ Done |
 
 #### Future Chunks (after Sprint 7.0)
 
