@@ -1534,13 +1534,28 @@
       <button onclick="traceLoadJob()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 12px;cursor:pointer;font-size:12px;">Trace Job</button>
       <button onclick="traceLoadRecent()" style="margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 12px;cursor:pointer;font-size:12px;">Recent</button>
     </div>
-    <!-- Body: left = jobs, right = trace detail -->
-    <div style="display:flex;flex:1;overflow:hidden;">
+    <!-- Tab bar -->
+    <div id="trace-tab-bar" style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0;padding:0 14px;gap:2px;background:var(--card);">
+      <button id="trace-tab-trace" onclick="traceSwitchTab('trace')" style="background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text);padding:7px 14px;cursor:pointer;font-size:12px;font-weight:600;">Conversation Trace</button>
+      <button id="trace-tab-syslog" onclick="traceSwitchTab('syslog')" style="background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);padding:7px 14px;cursor:pointer;font-size:12px;">System Log</button>
+    </div>
+    <!-- Body: Conversation Trace -->
+    <div id="trace-trace-body" style="display:flex;flex:1;overflow:hidden;">
       <div id="trace-jobs-panel" style="width:260px;border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;">
         <div style="padding:12px 14px;font-size:11px;color:var(--text-dim);">Enter a conversation ID or job to begin.</div>
       </div>
       <div id="trace-detail-panel" style="flex:1;overflow-y:auto;padding:14px;">
         <div style="font-size:12px;color:var(--text-dim);">Select a job from the left panel to view its trace.</div>
+      </div>
+    </div>
+    <!-- Body: System Log -->
+    <div id="trace-syslog-body" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div style="padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:8px;">
+        <span id="trace-syslog-status" style="font-size:11px;color:var(--text-dim);">Connecting…</span>
+        <button onclick="traceSyslogClear()" style="margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 10px;cursor:pointer;font-size:11px;">Clear</button>
+      </div>
+      <div id="trace-syslog-panel" style="flex:1;overflow-y:auto;font-size:11px;font-family:monospace;padding:8px 14px;">
+        <div style="color:var(--text-dim);">Loading activity log…</div>
       </div>
     </div>
   </div>

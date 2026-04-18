@@ -34,6 +34,115 @@ function initTraceView(win) {
   // If opened from a conversation link, auto-load
   const convInput = document.getElementById('trace-conv-id');
   if (convInput && convInput.value) traceLoadConversation();
+  // Default tab is 'trace' — nothing extra to do
+}
+
+/* ── tab switching ───────────────────────────────────────────────────── */
+let _traceSyslogES = null;   // EventSource instance
+
+function traceSwitchTab(tab) {
+  const traceBody  = document.getElementById('trace-trace-body');
+  const syslogBody = document.getElementById('trace-syslog-body');
+  const tabTrace   = document.getElementById('trace-tab-trace');
+  const tabSyslog  = document.getElementById('trace-tab-syslog');
+  if (!traceBody || !syslogBody) return;
+
+  if (tab === 'syslog') {
+    traceBody.style.display  = 'none';
+    syslogBody.style.display = 'flex';
+    if (tabTrace)  { tabTrace.style.borderBottomColor  = 'transparent'; tabTrace.style.color  = 'var(--text-dim)'; tabTrace.style.fontWeight  = '400'; }
+    if (tabSyslog) { tabSyslog.style.borderBottomColor = 'var(--accent)'; tabSyslog.style.color = 'var(--text)';     tabSyslog.style.fontWeight = '600'; }
+    _traceStartSyslog();
+  } else {
+    syslogBody.style.display = 'none';
+    traceBody.style.display  = 'flex';
+    if (tabTrace)  { tabTrace.style.borderBottomColor  = 'var(--accent)'; tabTrace.style.color  = 'var(--text)';     tabTrace.style.fontWeight  = '600'; }
+    if (tabSyslog) { tabSyslog.style.borderBottomColor = 'transparent';   tabSyslog.style.color = 'var(--text-dim)'; tabSyslog.style.fontWeight = '400'; }
+    _traceStopSyslog();
+  }
+}
+
+/* ── system log: start SSE stream ────────────────────────────────────── */
+function _traceStartSyslog() {
+  if (_traceSyslogES) return;   // already running
+
+  const panel  = document.getElementById('trace-syslog-panel');
+  const status = document.getElementById('trace-syslog-status');
+  if (!panel) return;
+
+  // Load recent entries first via REST so the panel isn't empty on open
+  fetch('/api/activity?limit=100')
+    .then(r => r.json())
+    .then(data => {
+      const entries = data.activities || [];
+      if (!entries.length) {
+        panel.innerHTML = '<div style="color:var(--text-dim);">No activity log entries yet.</div>';
+      } else {
+        panel.innerHTML = '';
+        entries.reverse().forEach(e => panel.appendChild(_traceSyslogRow(e.timestamp, e.message, e.level || 'info')));
+      }
+    })
+    .catch(() => {
+      panel.innerHTML = '<div style="color:#f44336;">Failed to load activity log.</div>';
+    });
+
+  // Open SSE stream for live updates
+  try {
+    _traceSyslogES = new EventSource('/api/activity/stream');
+
+    _traceSyslogES.onopen = () => {
+      if (status) status.textContent = '● Live';
+      if (status) status.style.color = '#4caf50';
+    };
+
+    _traceSyslogES.onmessage = (e) => {
+      // Self-clean if the trace window was closed without switching tabs
+      const panel = document.getElementById('trace-syslog-panel');
+      if (!panel) { _traceStopSyslog(); return; }
+      try {
+        const row = JSON.parse(e.data);
+        const ts  = (row.created_at || '').slice(0, 16).replace('T', ' ');
+        const msg = `${row.service || 'system'}: ${row.event || ''} ${row.detail || ''}`.trim();
+        const el  = _traceSyslogRow(ts, msg, 'live');
+        panel.prepend(el);
+        // Cap at 500 rows to avoid memory growth
+        while (panel.children.length > 500) panel.removeChild(panel.lastChild);
+      } catch (_) {}
+    };
+
+    _traceSyslogES.onerror = () => {
+      if (status) { status.textContent = '⚠ Disconnected — retrying…'; status.style.color = '#ff9800'; }
+    };
+  } catch (err) {
+    if (status) { status.textContent = 'SSE not available'; status.style.color = 'var(--text-dim)'; }
+  }
+}
+
+/* ── system log: stop SSE stream ─────────────────────────────────────── */
+function _traceStopSyslog() {
+  if (_traceSyslogES) {
+    _traceSyslogES.close();
+    _traceSyslogES = null;
+  }
+  const status = document.getElementById('trace-syslog-status');
+  if (status) { status.textContent = 'Stopped'; status.style.color = 'var(--text-dim)'; }
+}
+
+/* ── system log: clear panel ─────────────────────────────────────────── */
+function traceSyslogClear() {
+  const panel = document.getElementById('trace-syslog-panel');
+  if (panel) panel.innerHTML = '';
+}
+
+/* ── system log: render one row ─────────────────────────────────────── */
+function _traceSyslogRow(ts, msg, level) {
+  const colors = { live: '#4caf50', warn: '#ff9800', error: '#f44336', info: 'var(--text-dim)' };
+  const col    = colors[level] || 'var(--text-dim)';
+  const el     = document.createElement('div');
+  el.style.cssText = 'padding:2px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:baseline;';
+  el.innerHTML = `<span style="color:${col};flex-shrink:0;min-width:130px;font-size:10px;">${_traceEsc(ts)}</span>`
+               + `<span style="color:var(--text);word-break:break-all;">${_traceEsc(msg)}</span>`;
+  return el;
 }
 
 /* ── load recent conversations (for quick access) ──────────────────── */
