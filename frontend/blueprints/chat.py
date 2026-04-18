@@ -1843,7 +1843,7 @@ def api_chat_classify():
     """Classify a user message and return agent/model/relay recommendation.
 
     Body: {message: str}
-    Returns: {ok, category, agents, model_tier, relay, confidence, reasoning}
+    Returns: {ok, category, agents, model_tier, relay, confidence, reasoning, models}
     """
     data = request.get_json(silent=True) or {}
     message = str(data.get('message') or '').strip()
@@ -1851,7 +1851,19 @@ def api_chat_classify():
         return jsonify({'ok': False, 'error': 'No message provided'}), 400
 
     from utils.intent_classifier import classify_message
+    from utils.model_selector import select_models_for_agents
     result = classify_message(message)
+
+    # Resolve per-agent model selections (8E)
+    try:
+        from utils.db.registry import get_agent_models
+        user_models = get_agent_models()
+    except Exception:
+        user_models = {}
+    result['models'] = select_models_for_agents(
+        result['agents'], result['category'], user_models,
+    )
+
     result['ok'] = True
     return jsonify(result)
 
