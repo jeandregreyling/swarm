@@ -3,6 +3,15 @@
 
 /* drag-drop pulse animation now in skills.css */
 
+function switchSkillsTab(tab) {
+  document.querySelectorAll('.skills-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  document.querySelectorAll('.skills-tab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'skills-tab-' + tab);
+  });
+}
+
 function loadSkillsData(win) {
   const content = win.el.querySelector('#skills-content');
   const summary = win.el.querySelector('#skills-identity-summary');

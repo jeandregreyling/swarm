@@ -111,6 +111,7 @@ function openWindow(id, title, templateId) {
             else if (id === 'onboarding') _initOnboarding && _initOnboarding();
             else if (id === 'knowledge') loadKnowledgeData && loadKnowledgeData(win);
             else if (id === 'vpn') loadVpnData && loadVpnData(win);
+            else if (id === 'tasker') loadTaskerData && loadTaskerData(win);
             
             _troubleshootLog && _troubleshootLog('info', 'Window opened', `id=${windowKey} base=${id}`);
         } catch (err) {
