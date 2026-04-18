@@ -249,12 +249,20 @@
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| 8C.1 | Pre-send classify call | On send button click, call classify first, then dispatch with classified agents/model | 🔲 |
-| 8C.2 | Show classification badge | Small badge above input: "→ ghost_coder (code detected)" — clickable to expand reasoning | 🔲 |
-| 8C.3 | Override mechanism | User can still manually toggle agents; manual selection overrides classifier | 🔲 |
-| 8C.4 | Auto-relay wiring | If classifier says relay=true, auto-enable relay for that send | 🔲 |
-| 8C.5 | Model auto-selection | Classifier's model_tier maps to specific model per agent (e.g., ghost_coder→claude-sonnet-4) | 🔲 |
-| 8C.6 | "Why this agent?" tooltip | Hover on classification badge shows reasoning text | 🔲 |
+| 8C.1 | Pre-send classify call | Debounced 400ms classify-on-type via `/api/chat/classify`, auto-selects agents before send | ✅ Done |
+| 8C.2 | Show classification badge | Badge above composer: "→ Agent (category · relay)" with tooltip showing reasoning | ✅ Done |
+| 8C.3 | Override mechanism | Manual agent toggle sets `__classifyManualOverride`, shows ✎ icon, stops auto-selection | ✅ Done |
+| 8C.4 | Auto-relay wiring | If classifier returns relay=true, auto-enables relay toggle | ✅ Done |
+| 8C.5 | Model auto-selection | Classifier's model_tier passed via agent selection — agent→model mapping deferred to 8E | ✅ Partial |
+| 8C.6 | "Why this agent?" tooltip | Hover on badge shows `data.reasoning` text via CSS ::after tooltip | ✅ Done |
+
+**Implementation notes (8C):**
+- `_debouncedClassify()` on textarea `oninput` — 400ms debounce, min 6 chars
+- `_applyClassifyAgents(data)` — turns off all agents, turns on classified ones with state `'auto'`
+- `_onManualAgentToggle()` hooked into `onChatAgentToggleChange` — sets override flag
+- Badge auto-hides on send (`_hideClassifyBadge()` in `sendMessage`)
+- Dismiss button (✕) manually hides badge and sets override
+- CSS: fade-in animation, accent border, hover tooltip via `::after`
 
 #### Chunk 8D — Home Screen Reorganisation
 
