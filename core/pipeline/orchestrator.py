@@ -80,8 +80,8 @@ except Exception:
 
 _AGENTS_FALLBACK = {
     'gemma': 'gemma3:latest', 'llama': 'llama3.2:latest', 'mistral': 'mistral:latest',
-    'qwen': 'qwen2.5:latest', 'eight': 'gemma4:26b', 'librarian': 'qwen:1.5b',
-    'duck': 'qwen:1.5b', 'sniffles': 'deepseek-r1:7b',
+    'qwen': 'qwen2.5:latest', 'eight': 'gemma4:26b', 'librarian': 'qwen:latest',
+    'duck': 'qwen:latest', 'sniffles': 'deepseek-r1:7b',
 }
 _TEMPERATURES_FALLBACK = {
     'gemma': 0.3, 'llama': 0.6, 'mistral': 0.7, 'qwen': 0.7,

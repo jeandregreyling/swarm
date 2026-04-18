@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindHomeLaunchClicks();
   initHomeCardReorder();
   initHomeHeaderCollapse();
+  initQuickAccessCollapse();
   _renderTroubleshootBadge();
 
   // Wire header buttons via JS (inline onclick may be suppressed)
@@ -263,6 +264,22 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // ESC key closes focused/topmost window (already handled above)
 });
+
+const QUICK_ACCESS_COLLAPSED_KEY = 'fridays-quick-access-collapsed';
+function initQuickAccessCollapse() {
+  const title = document.getElementById('quick-access-title');
+  if (!title) return;
+  const section = title.closest('.home-section');
+  if (!section) return;
+  // Restore saved state
+  if (localStorage.getItem(QUICK_ACCESS_COLLAPSED_KEY) === '1') {
+    section.classList.add('collapsed');
+  }
+  title.addEventListener('click', () => {
+    section.classList.toggle('collapsed');
+    localStorage.setItem(QUICK_ACCESS_COLLAPSED_KEY, section.classList.contains('collapsed') ? '1' : '0');
+  });
+}
 
 function initHomeHeaderCollapse() {
   const homePage = document.getElementById('home-page');

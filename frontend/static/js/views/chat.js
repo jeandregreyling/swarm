@@ -38,7 +38,27 @@ function _loadAgentRegistry() {
       const byValue = {};
       enabledAgents.forEach(a => { if (a.name) byValue[a.name.toLowerCase()] = a; });
       // Filter and update CHAT_AGENT_OPTIONS
+      // Filter existing options to only enabled agents
       CHAT_AGENT_OPTIONS = CHAT_AGENT_OPTIONS.filter(opt => byValue[opt.value.toLowerCase()]);
+      // Add any DB agents not already in the hardcoded list (skip 'ghost' human & internal agents)
+      const existingValues = new Set(CHAT_AGENT_OPTIONS.map(o => o.value.toLowerCase()));
+      const skipAgents = new Set(['ghost', 'duck_ddg']);
+      enabledAgents.forEach(a => {
+        const name = (a.name || '').toLowerCase();
+        if (!existingValues.has(name) && !skipAgents.has(name)) {
+          const tier = (a.tier || 'local').toLowerCase();
+          CHAT_AGENT_OPTIONS.push({
+            value: name,
+            label: a.number != null ? `${a.number} · ${a.label || name}` : (a.label || name),
+            number: a.number || 99,
+            tier: tier === 'human' ? 'local' : tier,
+            hasTemp: false
+          });
+        }
+      });
+      // Sort by number
+      CHAT_AGENT_OPTIONS.sort((a, b) => (a.number || 99) - (b.number || 99));
+      // Update labels from DB
       let changed = false;
       CHAT_AGENT_OPTIONS.forEach(opt => {
         const reg = byValue[opt.value.toLowerCase()];
@@ -49,9 +69,9 @@ function _loadAgentRegistry() {
         if (opt.label !== newLabel) { opt.label = newLabel; changed = true; }
         if (num != null) opt.number = num;
       });
-      if (changed) {
-        if (typeof renderChatAgentToggles === 'function') renderChatAgentToggles();
-      }
+      // Always re-render since we may have added new agents
+      if (typeof renderChatAgentToggles === 'function') renderChatAgentToggles();
+      if (typeof _hcRenderAgentPills === 'function') _hcRenderAgentPills();
     });
 }
 

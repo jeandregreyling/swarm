@@ -1210,8 +1210,8 @@ def _seed_agents():
         ( 2,  'llama',     'LlaMA',     'llama3.2:latest',           0.6,  'Correspondent — web search, fast first response'),
         ( 3,  'mistral',   'Mistral',   'mistral:latest',            0.7,  'Analyst — deep reasoning, debates, challenges Two'),
         ( 4,  'qwen',      'Qwen',      'qwen2.5:latest',            0.7,  'Deep Analyst — specialist depth, multilingual reasoning'),
-        ( 5,  'librarian', 'Vortex',    'qwen:1.5b',                 0.1,  'Gatekeeper + Vortex — tags, queues, closes, checkpoints'),
-        ( 6,  'duck',      'Duck',      'qwen:1.5b',                 0.1,  'Sanity checker — YES/NO after every ticket'),
+        ( 5,  'librarian', 'Vortex',    'qwen:latest',               0.1,  'Gatekeeper + Vortex — tags, queues, closes, checkpoints'),
+        ( 6,  'duck',      'Duck',      'qwen:latest',               0.1,  'Sanity checker — YES/NO after every ticket'),
         ( 7,  'sniffles',  'Sniffles',  'deepseek-r1:7b',            0.2,  'Inspector — memory auditor, read only, chain-of-thought'),
         ( 8,  'eight',     'Eight',     'gemma4:26b',                0.5,  'SAP specialist — three-voice debate (Functional/Technical/Devil)'),
         ( 9,  'nine',      'Groq',      'llama-3.3-70b-versatile',              0.5,  'Developer Agent — system architect, proposals, Ghost One-directed execution'),
@@ -1224,7 +1224,14 @@ def _seed_agents():
     conn = get_connection()
     for number, name, label, model, temp, role in roster:
         conn.execute(
-            'INSERT INTO agents (number, name, label, model, temperature, role) VALUES (?,?,?,?,?,?) ON CONFLICT(name) DO UPDATE SET number=excluded.number, label=excluded.label, model=excluded.model, temperature=excluded.temperature, role=excluded.role',
+            """INSERT INTO agents (number, name, label, model, temperature, role)
+               VALUES (?,?,?,?,?,?)
+               ON CONFLICT(name) DO UPDATE SET
+                   number=excluded.number,
+                   label=CASE WHEN agents.label IS NULL OR agents.label='' THEN excluded.label ELSE agents.label END,
+                   model=CASE WHEN agents.model IS NULL OR agents.model='' THEN excluded.model ELSE agents.model END,
+                   temperature=excluded.temperature,
+                   role=excluded.role""",
             (number, name, label, model, temp, role)
         )
     # Retire agents that no longer exist as standalone entries

@@ -31,8 +31,8 @@ DEFAULT_AGENTS = [
     (2,  'llama',     'LlaMA',     'llama3.2:latest',    0.6, 'researcher',  'local'),
     (3,  'mistral',   'Mistral',   'mistral:latest',     0.7, 'analyst',     'local'),
     (4,  'qwen',      'Qwen',      'qwen2.5:latest',     0.7, 'analyst',     'local'),
-    (5,  'librarian', 'Vortex',    'qwen:1.5b',          0.1, 'gatekeeper',  'local'),
-    (6,  'duck',      'Duck',      'qwen:1.5b',          0.1, 'reviewer',    'local'),
+    (5,  'librarian', 'Vortex',    'qwen:latest',          0.1, 'gatekeeper',  'local'),
+    (6,  'duck',      'Duck',      'qwen:latest',          0.1, 'reviewer',    'local'),
     (7,  'sniffles',  'Sniffles',  'deepseek-r1:7b',     0.2, 'inspector',   'local'),
     (8,  'eight',     'Eight',     'gemma4:26b',          0.5, 'specialist',  'local'),
 ]

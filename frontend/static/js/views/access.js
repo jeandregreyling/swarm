@@ -1,4 +1,72 @@
 // ═══════════════════════════════════════════════════════════════════════════
+// MODEL SELECTION CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const _MODEL_OPTIONS = {
+  ghost_coder: [
+    { value: 'auto',                    label: 'Auto (Anthropic → OpenAI → Grok)' },
+    { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+    { value: 'claude-opus-4-20250514',   label: 'Claude Opus 4' },
+    { value: 'gpt-4.1',                  label: 'GPT-4.1' },
+    { value: 'gpt-4o',                   label: 'GPT-4o' },
+    { value: 'grok-3',                   label: 'Grok 3' },
+  ],
+  paid: [
+    { value: 'claude-haiku-4-5',         label: 'Claude Haiku 4.5' },
+    { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+    { value: 'claude-opus-4-20250514',   label: 'Claude Opus 4' },
+    { value: 'gpt-4.1',                  label: 'GPT-4.1' },
+    { value: 'gpt-4o',                   label: 'GPT-4o' },
+    { value: 'grok-3',                   label: 'Grok 3' },
+    { value: 'llama-3.3-70b-versatile',  label: 'LLaMA 3.3 70B (Groq)' },
+    { value: 'gemini-2.0-flash',         label: 'Gemini 2.0 Flash' },
+  ],
+};
+
+let _ollamaModelsCache = null;
+
+async function _fetchOllamaModelList() {
+  if (_ollamaModelsCache) return _ollamaModelsCache;
+  try {
+    const res = await fetch('/api/localai/status');
+    const data = await res.json();
+    _ollamaModelsCache = (data.ollama?.models || []).map(m => m.name || m);
+  } catch(e) {
+    _ollamaModelsCache = [];
+  }
+  return _ollamaModelsCache;
+}
+
+function _buildModelSelect(agentName, agentTier, currentModel) {
+  let options = [];
+  if (agentName === 'ghost_coder') {
+    options = _MODEL_OPTIONS.ghost_coder;
+  } else if (['paid', 'free'].includes(agentTier)) {
+    options = _MODEL_OPTIONS.paid;
+  }
+  // Always include current model if not already in list
+  if (currentModel && !options.find(o => o.value === currentModel)) {
+    options = [{ value: currentModel, label: currentModel + ' (current)' }, ...options];
+  }
+  if (options.length === 0) return null; // fallback to text input
+  return '<select id="agent-model" style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;cursor:pointer;">'
+    + options.map(o => `<option value="${_esc(o.value)}" ${o.value === currentModel ? 'selected' : ''}>${_esc(o.label)}</option>`).join('')
+    + '</select>';
+}
+
+async function _buildLocalModelSelect(currentModel) {
+  const models = await _fetchOllamaModelList();
+  if (models.length === 0) return null;
+  let options = models.map(m => ({ value: m, label: m }));
+  if (currentModel && !options.find(o => o.value === currentModel)) {
+    options.unshift({ value: currentModel, label: currentModel + ' (current)' });
+  }
+  return '<select id="agent-model" style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;cursor:pointer;">'
+    + options.map(o => `<option value="${_esc(o.value)}" ${o.value === currentModel ? 'selected' : ''}>${_esc(o.label)}</option>`).join('')
+    + '</select>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ROLES–SKILLS MAPPING (META MANAGEMENT)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -433,6 +501,20 @@ function agentsShowDetail(agent) {
     : (isLocal
         ? '<span style="color:var(--text-dim);font-size:10px;">— n/a</span>'
         : '<span style="color:#ff6b6b;font-size:10px;">● not set</span>');
+
+  // Build model dropdown or text input
+  const currentModel = agent.model || '';
+  let modelHtml;
+  if (isLocal && agent.tier !== 'human') {
+    // For local agents, we'll inject the dropdown async after render
+    modelHtml = `<select id="agent-model" style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;cursor:pointer;">
+      <option value="${_esc(currentModel)}" selected>${_esc(currentModel || 'Loading…')}</option>
+    </select>`;
+  } else {
+    const selectHtml = _buildModelSelect(agent.name, agent.tier, currentModel);
+    modelHtml = selectHtml || `<input id="agent-model" type="text" value="${_esc(currentModel)}"
+      style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">`;
+  }
   el.innerHTML = `
     <div style="padding:18px 20px;max-width:700px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
@@ -454,8 +536,7 @@ function agentsShowDetail(agent) {
         </div>
         <div>
           <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Model</label>
-          <input id="agent-model" type="text" value="${_esc(agent.model || '')}"
-            style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
+          ${modelHtml}
         </div>
         <div>
           <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Tier</label>
@@ -562,6 +643,21 @@ function agentsShowDetail(agent) {
   const decommissionBtn = el.querySelector('#agent-decommission-btn');
   if (decommissionBtn) {
     decommissionBtn.addEventListener('click', () => agentsDecommission(agent.name, agent.label || agent.name));
+  }
+
+  // Async: populate local agent model dropdown with Ollama models
+  if (isLocal && agent.tier !== 'human') {
+    _buildLocalModelSelect(currentModel).then(selectHtml => {
+      if (selectHtml) {
+        const modelContainer = el.querySelector('#agent-model')?.parentElement;
+        if (modelContainer) {
+          const labelEl = modelContainer.querySelector('label');
+          modelContainer.innerHTML = '';
+          if (labelEl) modelContainer.appendChild(labelEl);
+          modelContainer.insertAdjacentHTML('beforeend', selectHtml);
+        }
+      }
+    });
   }
 }
 
