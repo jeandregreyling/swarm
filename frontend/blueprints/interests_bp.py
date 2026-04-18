@@ -2,7 +2,8 @@
 
 Scans recent user messages, cross-references with agent memory tags and sniffer
 patterns to surface what the user is actually interested in.  Results power the
-home-screen suggestion cards.
+home-screen suggestion cards.  When the system has no data yet, returns
+onboarding prompts so the UI can ask the user what they're into.
 """
 
 import re
@@ -40,6 +41,47 @@ _STOP_WORDS = frozenset(
     'can able try trying tried looks look looking working check update send '
     'give tell show run test make sure think know'.split()
 )
+
+# ── Onboarding categories & seed questions ───────────────────────────────────
+_ONBOARDING_CATEGORIES = [
+    {
+        'id': 'tech',
+        'label': 'Technology & Development',
+        'icon': '⚡',
+        'topics': [
+            'Python', 'JavaScript', 'AI & Machine Learning', 'Cloud & DevOps',
+            'Web Development', 'Data Science', 'Cybersecurity', 'Databases',
+            'Mobile Apps', 'Systems Architecture',
+        ],
+    },
+    {
+        'id': 'business',
+        'label': 'Business & Strategy',
+        'icon': '📊',
+        'topics': [
+            'Project Management', 'Product Design', 'Marketing', 'Finance',
+            'Startups', 'Leadership', 'Automation', 'Analytics',
+        ],
+    },
+    {
+        'id': 'creative',
+        'label': 'Creative & Learning',
+        'icon': '🎨',
+        'topics': [
+            'Writing', 'Music', 'Design', 'Photography',
+            'Research', 'Philosophy', 'Science', 'Education',
+        ],
+    },
+    {
+        'id': 'personal',
+        'label': 'Life & Interests',
+        'icon': '🌍',
+        'topics': [
+            'Health & Fitness', 'Travel', 'Cooking', 'Gaming',
+            'Books', 'Nature', 'History', 'Space',
+        ],
+    },
+]
 
 
 @interests_bp.route('/api/interests')
@@ -123,8 +165,33 @@ def get_interests():
     except Exception:
         pass  # Table may not exist yet
 
+    # 5b. Saved user interests from onboarding / manual entry
+    saved_interests = []
+    try:
+        saved_rows = conn.execute(
+            "SELECT topic, category, score FROM user_interests "
+            "WHERE active = 1 ORDER BY score DESC, created_at DESC LIMIT 30"
+        ).fetchall()
+        saved_interests = [
+            {'topic': r['topic'], 'category': r['category'], 'score': r['score']}
+            for r in saved_rows
+        ]
+    except Exception:
+        pass  # Table may not exist yet
+
     # 6. Score & merge
     scored = {}
+
+    # Inject saved interests first (highest priority)
+    for si in saved_interests:
+        key = si['topic'].lower()
+        scored[key] = {
+            'topic': si['topic'],
+            'score': si['score'],
+            'sources': ['saved'],
+            'category': si['category'],
+        }
+
     for word, count in word_counts.items():
         if count < 2:
             continue
@@ -136,11 +203,16 @@ def get_interests():
         if word in pattern_topics:
             score *= 1.5
             sources.append('patterns')
-        scored[word] = {
-            'topic': word,
-            'score': round(score, 1),
-            'sources': sources,
-        }
+        if word in scored:
+            # Boost saved interests that also appear in conversations
+            scored[word]['score'] += score
+            scored[word]['sources'] = list(set(scored[word]['sources'] + sources))
+        else:
+            scored[word] = {
+                'topic': word,
+                'score': round(score, 1),
+                'sources': sources,
+            }
 
     # Strong bigrams (more specific than unigrams)
     for bigram, count in bigram_counts.items():
@@ -159,16 +231,83 @@ def get_interests():
     # 8. Generate suggestion prompts
     for item in interests:
         topic = item['topic']
-        if 'memory' in item['sources']:
+        if 'saved' in item['sources']:
+            item['suggestion'] = f"Let's explore {topic} together"
+        elif 'memory' in item['sources']:
             item['suggestion'] = f"What do the agents know about {topic}?"
         elif 'patterns' in item['sources']:
             item['suggestion'] = f"Show me patterns around {topic}"
         else:
             item['suggestion'] = f"Tell me more about {topic}"
 
+    # 9. Detect empty state → return onboarding prompt
+    needs_onboarding = len(interests) == 0 and len(saved_interests) == 0
+
     return jsonify({
         'interests': interests,
         'research_topics': research_topics,
         'total_messages_analyzed': total_analyzed,
         'total_memory_tags': sum(tag_counts.values()),
+        'onboarding': needs_onboarding,
+        'onboarding_categories': _ONBOARDING_CATEGORIES if needs_onboarding else [],
     })
+
+
+@interests_bp.route('/api/interests/seed', methods=['POST'])
+def seed_interests():
+    """Save user-selected interests from onboarding or manual entry."""
+    data = request.get_json() or {}
+    topics = data.get('topics', [])
+    username = data.get('username', 'ghost')
+
+    if not topics or not isinstance(topics, list):
+        return jsonify({'ok': False, 'error': 'topics array required'}), 400
+
+    # Sanitise: max 30 topics, max 100 chars each
+    topics = [str(t).strip()[:100] for t in topics[:30] if str(t).strip()]
+    if not topics:
+        return jsonify({'ok': False, 'error': 'no valid topics'}), 400
+
+    conn = get_connection()
+    saved = []
+    for topic in topics:
+        # Determine category from onboarding data
+        category = 'general'
+        topic_lower = topic.lower()
+        for cat in _ONBOARDING_CATEGORIES:
+            if any(t.lower() == topic_lower for t in cat['topics']):
+                category = cat['id']
+                break
+        try:
+            conn.execute(
+                "INSERT INTO user_interests (username, topic, category, source, score) "
+                "VALUES (?, ?, ?, 'user', 10.0) "
+                "ON CONFLICT(username, topic) DO UPDATE SET "
+                "active = 1, score = MAX(score, 10.0), updated_at = datetime('now')",
+                (username, topic, category),
+            )
+            saved.append(topic)
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'saved': saved, 'count': len(saved)})
+
+
+@interests_bp.route('/api/interests/remove', methods=['POST'])
+def remove_interest():
+    """Deactivate a saved interest."""
+    data = request.get_json() or {}
+    topic = (data.get('topic') or '').strip()
+    username = data.get('username', 'ghost')
+    if not topic:
+        return jsonify({'ok': False, 'error': 'topic required'}), 400
+    conn = get_connection()
+    conn.execute(
+        "UPDATE user_interests SET active = 0, updated_at = datetime('now') "
+        "WHERE username = ? AND topic = ?",
+        (username, topic),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'removed': topic})
