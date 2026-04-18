@@ -16,9 +16,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Active Phase** | Phase 8.0 — Agentic Chat COMPLETE ✅ / Phase 7.0 D–G remaining |
-| **Last Session** | Session 23 — 18 April 2026 — Phase 8.0 Agentic Chat complete (8A–8F) |
-| **Next Action** | Phase 7.0 Chunk D (System Log in Trace Tile) or new phase |
+| **Active Phase** | Phase 7.0 — Improvement Sprint (Chunks F–G remaining) |
+| **Last Session** | Session 23 — 18 April 2026 — Phase 8.0 complete + 7D System Log + 7E Local AI in Agents done |
+| **Next Action** | Phase 7.0 Chunk F (Merge Git into Studio) |
 | **Test Baseline** | 484 passed, 1 skipped |
 | **Environments** | PROD (master :5050), UAT (:5053), DEV (:5051) — synced, 18 agents each |
 | **Blockers** | None |
@@ -138,19 +138,32 @@
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| D.1 | Add "System Log" tab to Trace | New tab alongside conversation trace showing activity_log entries | 🔲 |
-| D.2 | Wire to /api/activity endpoint | Fetch recent activity_log and render in scrollable list | 🔲 |
-| D.3 | Auto-refresh | Poll every 5s or use SSE stream for live updates | 🔲 |
-| D.4 | Verify log entries appear | Trigger a chat → check trace shows the activity in system log | 🔲 |
+| D.1 | Add "System Log" tab to Trace | Tab bar added to `#view-trace` template: "Conversation Trace" + "System Log" | ✅ Done |
+| D.2 | Wire to /api/activity endpoint | REST fetch on tab open: `GET /api/activity?limit=100` → populate panel | ✅ Done |
+| D.3 | Auto-refresh | SSE stream via `/api/activity/stream` — live rows prepend, 500-row cap, self-cleans on window close | ✅ Done |
+| D.4 | Verify log entries appear | API returns live vortex/checkpoint entries; PROD verified | ✅ Done |
+
+**Implementation notes (7D):**
+- HTML (`terminal_base.html`): Added `#trace-tab-bar` with two tab buttons calling `traceSwitchTab(tab)`. Split body into `#trace-trace-body` (flex, default visible) and `#trace-syslog-body` (display:none until tab clicked)
+- JS (`trace.js`): `traceSwitchTab()` swaps display + active tab styling. `_traceStartSyslog()` opens `EventSource('/api/activity/stream')`, prepends rows with timestamp + service:event:detail. `_traceStopSyslog()` closes stream. `traceSyslogClear()` clears panel. `_traceSyslogRow()` renders monospace log row
+- SSE self-cleans: `onmessage` checks `getElementById('trace-syslog-panel')` — if gone (window closed), calls `_traceStopSyslog()`
+- Status badge shows ● Live (green) / ⚠ Disconnected (orange) based on SSE state
+- Regression: 484 passed, 1 skipped — synced to DEV+UAT, all 3 services restarted
 
 #### Chunk E — Merge Local AI into Agents Tile
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| E.1 | Add "Local AI" tab/section to agents-config | Show Ollama/LM Studio status in agents tile header or as tab | 🔲 |
-| E.2 | Show model pull/status | Inference engine status badges (online/offline) in agents view | 🔲 |
-| E.3 | Remove Local AI home card | Remove the separate tile from home grid | 🔲 |
-| E.4 | Verify Ollama status visible | Open Agents tile, confirm inference engine status is shown | 🔲 |
+| E.1 | Add "Local AI" tab/section to agents-config | Tab bar added to agents tile: "Agents" + "Local AI" | ✅ Done |
+| E.2 | Show model pull/status | Ollama model pills, LM Studio loaded-model, Picoclaw status badges | ✅ Done |
+| E.3 | Remove Local AI home card | Home card removed; replaced with comment `<!-- Local AI merged into Agents tile (7E) -->` | ✅ Done |
+| E.4 | Verify Ollama status visible | `/api/localai/status` returns ollama + lmstudio + picoclaw; PROD verified | ✅ Done |
+
+**Implementation notes (7E):**
+- HTML (`terminal_base.html`): Added `#agents-tab-bar` with "Agents" / "Local AI" tabs calling `agentsSwitchTab(tab)`. Wrapped existing list+detail+footer in `#agents-agents-body`. Added `#agents-localai-body` (hidden) with 3 status cards (Ollama, LM Studio, Picoclaw) and a Refresh button
+- JS (`agents-config.js`): `agentsSwitchTab()` swaps display + active tab styling + triggers `agentsLocalAIRefresh()` on switch. `agentsLocalAIRefresh()` fetches `/api/localai/status` and renders badges + Ollama model pills + LM Studio loaded-model text
+- Home card removed; full `view-localai` template retained (accessible via other means or direct winManager call)
+- Regression: 484 passed, 1 skipped — synced to DEV+UAT, all 3 services restarted
 
 #### Chunk F — Merge Git into Studio
 

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18 17:36",
+  "generated_at": "2026-04-18 17:55",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2625,7 +2625,7 @@
     },
     {
       "name": "trace.js",
-      "size_kb": 17.5
+      "size_kb": 22.6
     },
     {
       "name": "vpn.js",
@@ -2635,7 +2635,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 23079
+      "rows": 23131
     },
     {
       "name": "agent_capabilities",
@@ -2655,7 +2655,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 214
+      "rows": 217
     },
     {
       "name": "audit_results",
@@ -2671,11 +2671,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 726
+      "rows": 728
     },
     {
       "name": "conversations",
-      "rows": 46
+      "rows": 54
     },
     {
       "name": "daily_checkpoint",
@@ -2695,7 +2695,7 @@
     },
     {
       "name": "decisions",
-      "rows": 2089
+      "rows": 2108
     },
     {
       "name": "deferred_items",
@@ -2703,7 +2703,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 515
+      "rows": 517
     },
     {
       "name": "file_versions",
@@ -2719,11 +2719,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2637
+      "rows": 2652
     },
     {
       "name": "governance_log",
-      "rows": 107
+      "rows": 109
     },
     {
       "name": "knowledge_chunks",
@@ -2743,7 +2743,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 5
+      "rows": 6
     },
     {
       "name": "memory_ghost_coder",
@@ -2795,7 +2795,7 @@
     },
     {
       "name": "messages",
-      "rows": 87
+      "rows": 103
     },
     {
       "name": "moderators",
@@ -2831,7 +2831,7 @@
     },
     {
       "name": "queue",
-      "rows": 1031
+      "rows": 1037
     },
     {
       "name": "research_evidence",
@@ -2843,7 +2843,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 254
+      "rows": 256
     },
     {
       "name": "scheduled_tasks",
@@ -2875,7 +2875,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 107
+      "rows": 109
     },
     {
       "name": "swarm_event_acks",
@@ -2899,7 +2899,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 6225
+      "rows": 6228
     },
     {
       "name": "terminal_shortcuts",
@@ -2907,27 +2907,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 269
+      "rows": 271
     },
     {
       "name": "tickets",
-      "rows": 277
+      "rows": 279
     },
     {
       "name": "time_checkpoints",
-      "rows": 1902
+      "rows": 1921
     },
     {
       "name": "time_events",
-      "rows": 69881
+      "rows": 69997
     },
     {
       "name": "time_journal",
-      "rows": 66754
+      "rows": 66851
     },
     {
       "name": "time_machine",
-      "rows": 4897
+      "rows": 4904
     },
     {
       "name": "tool_builds",
@@ -2955,7 +2955,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 40
+      "rows": 42
     }
   ],
   "agents": [
@@ -3532,6 +3532,14 @@
     },
     {
       "id": "pico-embed-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "trace-tab-trace",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "trace-tab-syslog",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4412,6 +4420,22 @@
     },
     {
       "id": "trace-conv-id",
+      "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "trace-trace-body",
+      "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "trace-syslog-body",
+      "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "trace-syslog-panel",
+      "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "trace-syslog-status",
       "file": "frontend/static/js/views/trace.js"
     },
     {
