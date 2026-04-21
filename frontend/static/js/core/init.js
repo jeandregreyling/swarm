@@ -72,11 +72,11 @@ document.addEventListener('DOMContentLoaded', () => {
   
   _loadAgentRegistry(); // Load agent numbers + labels from DB — updates CHAT_AGENT_OPTIONS
   loadHomeStats(); // Load system stats with colors and trends
-  setInterval(loadHomeStats, 10000); // Update stats every 10 seconds
+  setInterval(loadHomeStats, 20000); // Update stats every 20 seconds (was 10s — this is a light dashboard, not a thermal monitor)
   loadServicesPanel(); // Load service status + restart buttons
   setInterval(loadServicesPanel, 30000); // Refresh every 30 seconds
   loadOllamaPanel(); // Load Ollama model panel
-  setInterval(loadOllamaPanel, 15000); // Refresh every 15 seconds
+  setInterval(loadOllamaPanel, 20000); // Refresh every 20 seconds (was 15s — shares /api/monitor cache with home stats)
   loadAttentionPanel(); // Needs-attention summary → delegates to System Pulse
   setInterval(loadAttentionPanel, 30000); // Refresh every 30 seconds
   // Home chat replaces activity log + ticket queue on the home page
