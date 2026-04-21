@@ -676,9 +676,28 @@ Each session is logged here with date, what was done, and key outcomes.
 | 3 | Project memory integrity fix | ✅ Done | Removed stale duplicate document body from `SWARM_PROJECT.md` |
 | 4 | Improvement findings logged | ✅ Done | Added §3b with verified defects, verification queue, and priorities |
 | 5 | Next-step priorities set | ✅ Done | Hardcoded paths, broken UI call sites, workspace boundary checks, polling/SSE model |
+| 6 | **Phase A — registry unification** | ✅ Done | DB is single source of truth for agent identity. Removed `_LOCAL_OLLAMA_CHAT_AGENTS` (chat.py), 4× `memory_tables` dicts (agents.py), 16-row hardcoded `CHAT_AGENT_OPTIONS` (chat.js). All consumers now read `utils/db/registry.py`. Commit 09b36d0. |
+| 7 | **Ollama CPU runaway triage** | ✅ Done | Two runners at ~400% CPU each. Root cause: `/api/monitor` called `ollama.show()` per loaded model, Monitor tile polled every 2.5s → 36–48 show-calls/min. Fixed by stripping show() from /api/monitor, adding 5s TTL on `get_system_status()` + 5min TTL on `ollama.show()` wrappers, bumping all poll intervals to 20s, and replacing `keep_alive=-1` with `keep_alive=300` in 6 agent/pipeline files. |
 
-**Tests:** No new full regression run in this session  
-**Live dry-run status:** Still needed — current work logged the backlog and corrected project-memory drift first
+**Tests:** 560/560 passing after Phase A + poll consolidation  
+**Live dry-run status:** Prod service restarted clean; `/api/show` flood reduced to zero; `/api/monitor` warm-cache hit latency ~40ms.
+
+### Outstanding phases (post DELL restart)
+
+| Phase | Item | Status |
+|-------|------|--------|
+| **B** | Split `frontend/services.py` (~900 lines) into `services/auth.py`, `services/sessions.py`, `services/models.py`; eliminate `from services import *` | **Next** |
+| B.1 | Unblock DEV/UAT worktree sync (merge conflicts are mostly in services.py) | Blocked on B |
+| C | Home chat vs full/floating chat — unified controller (C5 in backlog) | Queued |
+| C.1 | Home-card external shortcut tooltip (item 7 from Session 22 — never shipped) | Queued |
+| D | marked.js DOMPurify (XSS risk, N3) | Queued |
+| D.1 | Consolidate 4+ escape helpers (`_escHtml`, `_escapeHtml`, `_esc`) (N2) | Queued |
+| E | Install `deepseek-r1:7b` OR repoint sniffles to installed model | Queued |
+| F | Hardcoded `/home/seven/swarm` paths in remaining backend blueprints (task 7.15) | Queued |
+
+### Poll cadence contract (locked in Session 22)
+
+All UI polling of system/health/model state **must be ≥ 20 seconds**. Backends serving shared endpoints must cache (`get_system_status` 5s, `ollama.show` 5min). Per-request fan-out over loaded models is forbidden.
 
 ---
 
