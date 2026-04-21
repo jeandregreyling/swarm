@@ -25,4 +25,4 @@ python3 /home/seven/swarm/ollama_killswitch.py --service || true
 sudo fuser -k 5050/tcp 5051/tcp 5053/tcp 11434/tcp 2>/dev/null || true
 
 echo "All swarm services stopped."
-echo "Run ~/swarm/startswarm.sh to restart."
+echo "To restart: sudo systemctl start swarm-terminal (or 'make wake-dev' / 'make wake-uat' for other stages)."

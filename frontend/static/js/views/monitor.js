@@ -240,12 +240,13 @@ function monitorManualRefresh() {
 
 function loadHomeStats() {
   // Slim version: just feeds chat mini-stats and resource cache.
-  // System Pulse (diamond.js) now handles the home dashboard vitals/graph.
-  fetch('/api/monitor')
+  // System Pulse (diamond.js) handles the home dashboard vitals/graph.
+  // Uses /api/pulse (the pulse bus) — compact payload, shared 3s cache.
+  fetch('/api/pulse')
     .then(r => r.json())
     .then(data => {
-      const cpu = data.cpu_percent != null ? data.cpu_percent : 0;
-      const mem = data.ram_percent  != null ? data.ram_percent  : 0;
+      const cpu = (data && data.cpu != null) ? data.cpu : 0;
+      const mem = (data && data.ram && data.ram.percent != null) ? data.ram.percent : 0;
       updateChatMiniSystemStats(cpu, mem);
       window.__fridaysChatRelayResource = {
         cpuPercent: Number.isFinite(Number(cpu)) ? Number(cpu) : null,

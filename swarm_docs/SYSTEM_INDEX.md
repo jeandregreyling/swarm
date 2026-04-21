@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-22 09:50*
+*Auto-generated: 2026-04-22 09:55*
 
 
 ## Python Modules
@@ -190,7 +190,7 @@
 | `research` | 5 | frontend/blueprints/research.py — Research API (B.4.1) |
 | `shell` | 18 | shell.py — Shell & Terminal routes |
 | `sse` | 1 | frontend/blueprints/sse.py — Server-Sent Events stream (R.2) |
-| `system` | 15 | system.py — System & Monitoring routes |
+| `system` | 16 | system.py — System & Monitoring routes |
 | `tasker_bp` | 8 | tasker_bp.py — Scheduled tasks CRUD API for the Tasker UI. |
 | `tickets` | 11 | tickets.py — Tickets routes |
 | `time_wizard_bp` | 10 | time_wizard_bp.py — Time Wizard routes |
@@ -240,29 +240,29 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 32661 |
+| `activity_log` | 32703 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 466 |
+| `approval_tokens` | 469 |
 | `audit_results` | 34 |
 | `chat_jobs` | 583 |
 | `claude_log` | 1 |
 | `conv_timeline` | 2185 |
 | `conversations` | 9 |
-| `council_output` | 975 |
+| `council_output` | 987 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 6080 |
+| `decisions` | 6127 |
 | `deferred_items` | 0 |
-| `duck_log` | 758 |
+| `duck_log` | 760 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4222 |
+| `ghost_circle` | 4224 |
 | `governance_log` | 383 |
 | `knowledge_chunks` | 632 |
 | `knowledge_sources` | 46 |
@@ -281,7 +281,7 @@
 | `memory_ten` | 59 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `memory_twenty` | 260 |
+| `memory_twenty` | 264 |
 | `messages` | 17 |
 | `moderators` | 2 |
 | `node_config` | 0 |
@@ -291,7 +291,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1776 |
+| `queue` | 1780 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 506 |
@@ -308,15 +308,15 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7079 |
+| `system_stats` | 7080 |
 | `task_run_log` | 0 |
 | `terminal_shortcuts` | 16 |
-| `ticket_notes` | 512 |
-| `tickets` | 520 |
-| `time_checkpoints` | 3686 |
-| `time_events` | 95147 |
+| `ticket_notes` | 514 |
+| `tickets` | 522 |
+| `time_checkpoints` | 3706 |
+| `time_events` | 95167 |
 | `time_journal` | 90231 |
-| `time_machine` | 5676 |
+| `time_machine` | 5684 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
