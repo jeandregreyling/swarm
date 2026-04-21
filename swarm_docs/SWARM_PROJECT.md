@@ -694,10 +694,15 @@ Each session is logged here with date, what was done, and key outcomes.
 | D.1 | Consolidate 4+ escape helpers (`_escHtml`, `_escapeHtml`, `_esc`) (N2) | Partial (Session 24) — canonical `window.escHtml()` exposed in `terminal_base.html`; per-module duplicates left in place (9 files) for follow-up migration |
 | E | Install `deepseek-r1:7b` OR repoint sniffles to installed model | ✅ Done (Session 24) — `ollama pull deepseek-r1:7b` succeeded (4.7 GB) |
 | F | Hardcoded `/home/seven/swarm` paths in remaining backend blueprints (task 7.15) | ✅ Done (Session 24) — audit confirms no hardcoded runtime paths in `frontend/blueprints/`; remaining matches are comments/docstrings |
+| G | **Ollama CPU runaway (recurrence)** | ✅ Done (Session 24) — `swarm-prewarm.service` was loading 3 CPU-only models on boot (gemma3 + qwen + deepseek-r1), spiking load avg to 10+ and consuming ~12 GB RAM. Service disabled in systemd (`systemctl disable swarm-prewarm`) and `MODELS=()` in `swarm-prewarm.sh` as belt-and-braces. Idle baseline now 0 – 1 % across 20 verified cycles. |
 
 ### Poll cadence contract (locked in Session 22)
 
 All UI polling of system/health/model state **must be ≥ 20 seconds**. Backends serving shared endpoints must cache (`get_system_status` 5s, `ollama.show` 5min). Per-request fan-out over loaded models is forbidden.
+
+### Ollama boot contract (locked in Session 24)
+
+**Do not pre-warm Ollama models on boot.** This is CPU-only hardware; every model load pegs all cores for 15 – 90 s and consumes 3 – 5 GB RAM. Agents lazy-load their model on first real request with `keep_alive=300 s`; boot must stay quiet. `swarm-prewarm.service` is permanently disabled; `MODELS=()` in `swarm-prewarm.sh` enforces this even if the unit is re-enabled.
 
 ---
 
