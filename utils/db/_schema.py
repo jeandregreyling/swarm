@@ -343,6 +343,54 @@ CREATE TABLE IF NOT EXISTS memory_twelve (
     archived INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS memory_mistral (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'mistral',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'session',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_thirteen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'thirteen',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'session',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_scholar (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'scholar',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'session',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memory_seeker (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT DEFAULT 'seeker',
+    subject TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    tags TEXT DEFAULT '',
+    importance INTEGER DEFAULT 7,
+    source TEXT DEFAULT 'session',
+    ticket_ref TEXT DEFAULT '',
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS decisions (
     decision_id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp TEXT DEFAULT (datetime('now')),
@@ -432,6 +480,13 @@ CREATE TABLE IF NOT EXISTS scheduled_tasks (
     enabled INTEGER DEFAULT 1,
     created_by TEXT DEFAULT 'ghost',
     created_at TEXT
+);
+CREATE TABLE IF NOT EXISTS task_run_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ok',
+    output TEXT DEFAULT '',
+    run_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS work_proposals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -803,6 +858,13 @@ def _migrate_schema(conn=None):
     for tbl, ddl in [
         ('memory_grok', 'CREATE TABLE IF NOT EXISTS memory_grok (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "grok", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
         ('memory_twelve', 'CREATE TABLE IF NOT EXISTS memory_twelve (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "twelve", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
+        ('memory_mistral', 'CREATE TABLE IF NOT EXISTS memory_mistral (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "mistral", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
+        ('memory_thirteen', 'CREATE TABLE IF NOT EXISTS memory_thirteen (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "thirteen", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
+        ('memory_scholar', 'CREATE TABLE IF NOT EXISTS memory_scholar (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "scholar", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
+        ('memory_seeker', 'CREATE TABLE IF NOT EXISTS memory_seeker (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "seeker", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
+        ('memory_twenty', 'CREATE TABLE IF NOT EXISTS memory_twenty (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "twenty", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "council", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
+        ('council_output', 'CREATE TABLE IF NOT EXISTS council_output (id INTEGER PRIMARY KEY AUTOINCREMENT, orb_role TEXT NOT NULL, thought TEXT NOT NULL, detail TEXT DEFAULT "", urgency INTEGER DEFAULT 0, confidence REAL DEFAULT 0.5, pfv_p REAL, pfv_f REAL, pfv_v REAL, source_refs TEXT DEFAULT "[]", context_json TEXT DEFAULT "{}", dismissed INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), expires_at TEXT NOT NULL)'),
+        ('user_patterns', 'CREATE TABLE IF NOT EXISTS user_patterns (id INTEGER PRIMARY KEY AUTOINCREMENT, pattern_type TEXT NOT NULL, pattern_key TEXT NOT NULL, pattern_value TEXT, confidence REAL DEFAULT 0.1, occurrences INTEGER DEFAULT 1, first_seen TEXT DEFAULT (datetime("now")), last_seen TEXT DEFAULT (datetime("now")), UNIQUE(pattern_type, pattern_key))'),
         ('decisions', 'CREATE TABLE IF NOT EXISTS decisions (decision_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT (datetime("now")), agent TEXT NOT NULL, component TEXT DEFAULT "", proposal_file TEXT DEFAULT "", decision TEXT NOT NULL, reasoning TEXT DEFAULT "", test_status TEXT DEFAULT "PENDING", commit_hash TEXT DEFAULT "", checkpoint_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), archived INTEGER DEFAULT 0)'),
         ('time_machine', 'CREATE TABLE IF NOT EXISTS time_machine (checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT (datetime("now")), agent TEXT NOT NULL, file_path TEXT NOT NULL, before_code TEXT DEFAULT "", after_code TEXT NOT NULL, before_hash TEXT DEFAULT "", after_hash TEXT DEFAULT "", test_results TEXT DEFAULT "", decision_id INTEGER DEFAULT 0, commit_hash TEXT DEFAULT "", outcome TEXT DEFAULT "success", is_rollback_point INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
         ('time_events', 'CREATE TABLE IF NOT EXISTS time_events (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT "", event_type TEXT NOT NULL, agent TEXT NOT NULL, action TEXT DEFAULT "", target TEXT DEFAULT "", state_hash TEXT DEFAULT "", details TEXT DEFAULT "{}", created_at TEXT DEFAULT (datetime("now")))'),
@@ -811,6 +873,7 @@ def _migrate_schema(conn=None):
         ('daily_checkpoint', 'CREATE TABLE IF NOT EXISTS daily_checkpoint (checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, codebase_hash TEXT, memory_state TEXT, decisions_count INTEGER DEFAULT 0, description TEXT, is_stable INTEGER DEFAULT 0)'),
         ('ghost_briefs', 'CREATE TABLE IF NOT EXISTS ghost_briefs (id INTEGER PRIMARY KEY AUTOINCREMENT, generated_at TEXT DEFAULT CURRENT_TIMESTAMP, brief_type TEXT DEFAULT "on_demand", content TEXT NOT NULL, raw_data_snapshot TEXT, tokens_used INTEGER DEFAULT 0, triggered_by TEXT DEFAULT "system")'),
         ('scheduled_tasks', 'CREATE TABLE IF NOT EXISTS scheduled_tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, schedule TEXT NOT NULL, action_type TEXT NOT NULL, action_data TEXT NOT NULL, last_run TEXT, next_run TEXT, enabled INTEGER DEFAULT 1, created_by TEXT DEFAULT "ghost", created_at TEXT)'),
+        ('task_run_log', 'CREATE TABLE IF NOT EXISTS task_run_log (id INTEGER PRIMARY KEY AUTOINCREMENT, task_name TEXT NOT NULL, status TEXT NOT NULL DEFAULT "ok", output TEXT DEFAULT "", run_at TEXT NOT NULL)'),
         ('work_proposals', 'CREATE TABLE IF NOT EXISTS work_proposals (id INTEGER PRIMARY KEY AUTOINCREMENT, proposal_id TEXT UNIQUE NOT NULL, agent TEXT NOT NULL, title TEXT NOT NULL, description TEXT DEFAULT "", status TEXT DEFAULT "pending", proposal_file TEXT DEFAULT "", ticket_number TEXT DEFAULT "", queue_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
         ('agent_capabilities', 'CREATE TABLE IF NOT EXISTS agent_capabilities (id INTEGER PRIMARY KEY AUTOINCREMENT, agent_name TEXT NOT NULL, capability TEXT NOT NULL, granted INTEGER DEFAULT 0, trust_level INTEGER DEFAULT 0, granted_by TEXT DEFAULT "system", proposal_id TEXT DEFAULT "", notes TEXT DEFAULT "", granted_at TEXT, created_at TEXT DEFAULT (datetime("now")), UNIQUE(agent_name, capability))'),
         ('chat_jobs', 'CREATE TABLE IF NOT EXISTS chat_jobs (job_id TEXT PRIMARY KEY, conversation_id INTEGER DEFAULT 0, agent TEXT DEFAULT "", status TEXT DEFAULT "running", runtime_class TEXT DEFAULT "", stage TEXT DEFAULT "", eta_seconds INTEGER DEFAULT 60, elapsed_ms INTEGER DEFAULT 0, tokens INTEGER DEFAULT 0, error TEXT DEFAULT "", stage_trace_json TEXT DEFAULT "[]", started_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
@@ -845,24 +908,70 @@ def _migrate_schema(conn=None):
     except Exception:
         pass
 
-    # Seed default shortcuts — insert each if its exact cmd doesn't already exist
+    # Sync managed default shortcuts while preserving user-defined entries.
     try:
         defaults = [
-            ('🔁', 'Hard Boot Terminal',      'sudo systemctl restart swarm-terminal', 0),
-            ('🎨', 'Theme Engine Check',       'head -n 80 /home/seven/swarm/themes/fridays.json', 1),
-            ('📡', 'ALM Status',               'curl -s http://localhost:5050/api/alm/status', 2),
-            ('💬', 'Restart Discord Bot',      'sudo systemctl restart swarm-discord', 3),
-            ('📨', 'Restart Telegram Bot',     'sudo systemctl restart swarm-telegram', 4),
-            ('✅', 'Terminal Service Status',  'systemctl status swarm-terminal', 5),
-            ('🧠', 'System Memory',            'free -h', 6),
+            ('🟢', 'PROD Health', 'curl -s http://127.0.0.1:5050/_health', 0, (), ()),
+            ('🧪', 'UAT Health', 'curl -s http://127.0.0.1:5053/_health', 1, ('Start Port 5053',), ()),
+            ('🛠', 'DEV Health', 'curl -s http://127.0.0.1:5051/_health', 2, ('Start Port 5051',), ()),
+            ('🔁', 'Restart PROD UI', 'sudo systemctl restart swarm-terminal-prod', 3, ('Hard Boot Terminal', 'restart swarm-terminal-prod'), ('sudo systemctl restart swarm-terminal', 'sudo systemctl restart swarm-terminal-prod')),
+            ('🔁', 'Restart UAT UI', 'sudo systemctl restart swarm-terminal-uat', 4, ('restart swarm-terminal-uat',), ('sudo systemctl restart swarm-terminal-uat',)),
+            ('🔁', 'Restart DEV UI', 'sudo systemctl restart swarm-terminal-dev', 5, ('restart swarm-terminal-dev',), ('sudo systemctl restart swarm-terminal-dev',)),
+            ('🧭', 'Restart Fridays', 'sudo systemctl restart swarm-fridays', 6, (), ()),
+            ('📥', 'Restart Listener', 'sudo systemctl restart swarm-listener', 7, (), ()),
+            ('📈', 'Restart Monitor', 'sudo systemctl restart swarm-monitor', 8, (), ()),
+            ('💬', 'Restart Discord Bot', 'sudo systemctl restart swarm-discord', 9, (), ('sudo systemctl restart swarm-discord',)),
+            ('📨', 'Restart Telegram Bot', 'sudo systemctl restart swarm-telegram', 10, (), ('sudo systemctl restart swarm-telegram',)),
+            ('🔥', 'Restart Prewarm', 'sudo systemctl restart swarm-prewarm', 11, ('swarm-prewarm.sh - restart',), ('bash /home/seven/swarm/swarm-prewarm.sh',)),
+            ('📡', 'ALM Status', 'curl -s http://127.0.0.1:5050/api/alm/status', 12, ('ALM Status',), ('curl -s http://localhost:5050/api/alm/status',)),
+            ('🧠', 'Ollama Models', 'ollama ps', 13, (), ()),
+            ('⛔', 'Ollama Kill Switch', 'python3 /home/seven/swarm/ollama_killswitch.py --service', 14, (), ()),
+            ('💾', 'System Memory', 'free -h', 15, ('System Memory',), ('free -h',)),
         ]
-        existing_cmds = {r[0] for r in conn.execute("SELECT cmd FROM terminal_shortcuts").fetchall()}
-        for icon, label, cmd, sort_order in defaults:
-            if cmd not in existing_cmds:
+        retired_labels = {
+            'Theme Engine Check',
+            'Terminal Service Status',
+        }
+        retired_cmds = {
+            'head -n 80 /home/seven/swarm/themes/fridays.json',
+            'systemctl status swarm-terminal',
+        }
+        rows = [
+            {'id': r[0], 'label': r[2], 'cmd': r[3]}
+            for r in conn.execute("SELECT id, icon, label, cmd, sort_order FROM terminal_shortcuts ORDER BY sort_order ASC, id ASC").fetchall()
+        ]
+        used_ids = set()
+        legacy_labels = set(retired_labels)
+        legacy_cmds = set(retired_cmds)
+
+        for icon, label, cmd, sort_order, old_labels, old_cmds in defaults:
+            desired_labels = {label, *old_labels}
+            desired_cmds = {cmd, *old_cmds}
+            legacy_labels.update(old_labels)
+            legacy_cmds.update(old_cmds)
+            match = None
+            for row in rows:
+                if row['id'] in used_ids:
+                    continue
+                if row['label'] in desired_labels or row['cmd'] in desired_cmds:
+                    match = row
+                    break
+            if match:
+                conn.execute(
+                    "UPDATE terminal_shortcuts SET icon=?, label=?, cmd=?, sort_order=? WHERE id=?",
+                    (icon, label, cmd, sort_order, match['id'])
+                )
+                used_ids.add(match['id'])
+            else:
                 conn.execute(
                     "INSERT INTO terminal_shortcuts (icon, label, cmd, sort_order) VALUES (?, ?, ?, ?)",
                     (icon, label, cmd, sort_order)
                 )
+        for row in rows:
+            if row['id'] in used_ids:
+                continue
+            if row['label'] in legacy_labels or row['cmd'] in legacy_cmds:
+                conn.execute("DELETE FROM terminal_shortcuts WHERE id=?", (row['id'],))
         conn.commit()
     except Exception:
         pass
@@ -921,7 +1030,7 @@ def _migrate_schema(conn=None):
         ('ten',       TEN_SYSTEM_PROMPT,        'GITHUB_TOKEN',      'paid'),
         ('eleven',    ELEVEN_SYSTEM_PROMPT,     'XAI_API_KEY',       'paid'),
         ('twelve',    TWELVE_SYSTEM_PROMPT,     'ANTHROPIC_API_KEY', 'paid'),
-        ('thirteen',  THIRTEEN_SYSTEM_PROMPT,   'HF_API_KEY',        'paid'),
+        ('thirteen',  THIRTEEN_SYSTEM_PROMPT,   'HF_API_TOKEN',      'paid'),
         ('scholar',   SCHOLAR_SYSTEM_PROMPT,    'GEMINI_API_KEY',    'service'),
         ('seeker',    SEEKER_SYSTEM_PROMPT,     'TAVILY_API_KEY',    'service'),
         ('ghost',     '',                       '',                  'human'),
@@ -955,6 +1064,7 @@ def _migrate_schema(conn=None):
         ('thirteen',  'memory_thirteen', 'THIRTEEN (HF)',                    '["huggingface"]',                      12,   None),
         ('scholar',   'memory_scholar',  'SCHOLAR (GEMINI)',                 '["gemini"]',                           12,   None),
         ('seeker',    'memory_seeker',   'SEEKER (TAVILY)',                  '["tavily"]',                           8,    None),
+        ('twenty',    'memory_twenty',   'TWENTY (LOCAL)',                    '["council","nervous"]',                None, None),
     ]
     try:
         for name, mem_tbl, disp, aliases, eta, ka in _registry_seed:
@@ -1227,6 +1337,8 @@ def _migrate_schema(conn=None):
             conn.execute("ALTER TABLE user_profiles ADD COLUMN role TEXT DEFAULT 'viewer'")
         if 'approved' not in up_cols:
             conn.execute("ALTER TABLE user_profiles ADD COLUMN approved INTEGER DEFAULT 0")
+        if 'email' not in up_cols:
+            conn.execute("ALTER TABLE user_profiles ADD COLUMN email TEXT DEFAULT ''")
 
     conn.commit()
 
@@ -1248,7 +1360,7 @@ def _seed_agents():
         ( 4,  'qwen',      'Qwen',      'qwen2.5:latest',            0.7,  'Deep Analyst — specialist depth, multilingual reasoning'),
         ( 5,  'librarian', 'Vortex',    'qwen:latest',               0.1,  'Gatekeeper + Vortex — tags, queues, closes, checkpoints'),
         ( 6,  'duck',      'Duck',      'qwen:latest',               0.1,  'Sanity checker — YES/NO after every ticket'),
-        ( 7,  'sniffles',  'Sniffles',  'deepseek-r1:7b',            0.2,  'Inspector — memory auditor, read only, chain-of-thought'),
+        (20,  'sniffles',  'Sniffles',  'deepseek-r1:7b',            0.2,  'Inspector — memory auditor, read only, chain-of-thought'),
         ( 8,  'eight',     'Eight',     'gemma4:26b',                0.5,  'SAP specialist — three-voice debate (Functional/Technical/Devil)'),
         ( 9,  'nine',      'Groq',      'llama-3.3-70b-versatile',              0.5,  'Developer Agent — system architect, proposals, Ghost One-directed execution'),
         (10,  'ten',       'Github',    'gpt-4o',                                0.4,  'Developer Agent — software engineer, code quality, implementation'),
@@ -1256,6 +1368,8 @@ def _seed_agents():
         (12,  'twelve',    'Claude',    'claude-haiku-4-5',                      0.3,  'Developer Agent — time wizard, session continuity, Vortex'),
         (13,  'thirteen',  'HuggingFace', 'meta-llama/Llama-3.3-70B-Instruct',  0.5,  'Developer Agent — HuggingFace specialist (testing)'),
         (17,  'ghost_coder', 'Ghost Coder', 'claude-sonnet-4-20250514',        0.3,  'Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays'),
+        ( 7,  'seven',      'Seven',      'local-algorithm',                 0.0,  'Personal companion — loyal, thinks out loud'),
+        (21,  'twenty',     'Qwen3.6',    'qwen3:latest',                    0.8,  'Nervous system — observes, deliberates, suggests (no LLM)'),
     ]
     conn = get_connection()
     for number, name, label, model, temp, role in roster:
@@ -1263,7 +1377,10 @@ def _seed_agents():
             """INSERT INTO agents (number, name, label, model, temperature, role)
                VALUES (?,?,?,?,?,?)
                ON CONFLICT(name) DO UPDATE SET
-                   number=excluded.number,
+                   number=CASE
+                       WHEN agents.number IS NULL OR agents.number=0 THEN excluded.number
+                       ELSE agents.number
+                   END,
                    label=CASE WHEN agents.label IS NULL OR agents.label='' THEN excluded.label ELSE agents.label END,
                    model=CASE WHEN agents.model IS NULL OR agents.model='' THEN excluded.model ELSE agents.model END,
                    temperature=excluded.temperature,

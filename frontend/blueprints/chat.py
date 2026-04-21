@@ -12,6 +12,8 @@ LINKED TO:
   frontend/blueprints/proposals.py — ALM gate creates/checks work_proposals;
                               developer_agents set here must match that file.
 """
+import subprocess
+
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
 from utils.db.registry import get_agent_roster as _reg_roster, get_single_task_locals as _reg_stl
@@ -33,6 +35,129 @@ def _sse_chat(conversation_id, agent, status, **extra):
         pass
 
 chat_bp = Blueprint('chat', __name__)
+
+_LOCAL_OLLAMA_CHAT_AGENTS = {
+    'gemma', 'llama', 'qwen', 'eight', 'mistral', 'phi3', 'deepseek_local', 'twenty'
+}
+
+
+def _chat_model_aliases(name):
+    raw = str(name or '').strip().lower()
+    if not raw:
+        return set()
+    aliases = {raw}
+    if ':' in raw:
+        aliases.add(raw.split(':', 1)[0])
+    return aliases
+
+
+def _chat_agent_configured_model(agent_name):
+    normalized = _normalize_chat_participant(agent_name)
+    if not normalized:
+        return ''
+    try:
+        from utils.db.registry import get_all_agents_raw
+        roster = get_all_agents_raw() or []
+    except Exception:
+        return ''
+    for row in roster:
+        name = _normalize_chat_participant(row.get('name'))
+        if name == normalized:
+            return str(row.get('model') or '').strip()
+    return ''
+
+
+def _chat_running_ollama_models():
+    try:
+        import ollama
+
+        running = ollama.ps()
+        models = list(running.models if hasattr(running, 'models') else [])
+        names = []
+        for model in models:
+            name = str(getattr(model, 'model', '') or getattr(model, 'name', '') or '').strip()
+            if name:
+                names.append(name)
+        return names
+    except Exception:
+        return []
+
+
+def _chat_try_hard_kill_local_agent(agent_name):
+    normalized = _normalize_chat_participant(agent_name)
+    result = {
+        'agent': normalized or str(agent_name or '').strip().lower(),
+        'configured_model': '',
+        'models': [],
+        'attempts': [],
+        'ok': False,
+        'detail': '',
+    }
+    if normalized not in _LOCAL_OLLAMA_CHAT_AGENTS:
+        result['detail'] = 'agent is not an Ollama-backed local runtime'
+        return result
+
+    configured_model = _chat_agent_configured_model(normalized)
+    result['configured_model'] = configured_model
+    wanted_aliases = _chat_model_aliases(configured_model)
+    running_models = _chat_running_ollama_models()
+
+    candidates = []
+    for running_name in running_models:
+        if wanted_aliases and _chat_model_aliases(running_name) & wanted_aliases:
+            candidates.append(running_name)
+    if configured_model and not candidates:
+        candidates.append(configured_model)
+    if not candidates:
+        result['detail'] = 'no matching Ollama model is configured or currently running'
+        return result
+
+    unique_candidates = []
+    seen = set()
+    for model_name in candidates:
+        key = str(model_name or '').strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        unique_candidates.append(str(model_name).strip())
+
+    result['models'] = unique_candidates
+    for model_name in unique_candidates:
+        try:
+            proc = subprocess.run(
+                ['ollama', 'stop', model_name],
+                capture_output=True,
+                text=True,
+                timeout=12,
+                check=False,
+            )
+            stdout = str(proc.stdout or '').strip()
+            stderr = str(proc.stderr or '').strip()
+            ok = proc.returncode == 0
+            result['attempts'].append({
+                'model': model_name,
+                'ok': ok,
+                'returncode': proc.returncode,
+                'stdout': stdout,
+                'stderr': stderr,
+            })
+        except Exception as exc:
+            result['attempts'].append({
+                'model': model_name,
+                'ok': False,
+                'returncode': None,
+                'stdout': '',
+                'stderr': str(exc),
+            })
+
+    ok_models = [item['model'] for item in result['attempts'] if item.get('ok')]
+    result['ok'] = bool(ok_models)
+    if ok_models:
+        result['detail'] = 'stopped ' + ', '.join(ok_models)
+    else:
+        errors = [item.get('stderr') or item.get('stdout') or 'unknown error' for item in result['attempts']]
+        result['detail'] = '; '.join(errors[:2])
+    return result
 
 def _fetch_chat_thread_rows(conv_id, limit=20):
     conn = get_connection()
@@ -151,11 +276,26 @@ def _infer_reply_target_from_text(response_text):
     text = str(response_text or '').strip()
     if not text:
         return ''
+    _relay_re = re.compile(r'^(?:@)?([A-Za-z][A-Za-z0-9_ /-]{0,30})\s*[:,]\s+', re.MULTILINE)
+    # Check first line (legacy format: relay at start)
     first_line = text.splitlines()[0].strip()
-    match = re.match(r'^(?:@)?([A-Za-z][A-Za-z0-9_ /-]{0,30})\s*[:,]\s+', first_line)
-    if not match:
-        return ''
-    return _normalize_chat_participant(match.group(1))
+    match = _relay_re.match(first_line)
+    if match:
+        target = _normalize_chat_participant(match.group(1))
+        if target:
+            return target
+    # Check last 5 lines (instructed format: relay at end of response)
+    tail_lines = text.splitlines()[-5:]
+    for line in reversed(tail_lines):
+        line = line.strip()
+        if not line:
+            continue
+        match = _relay_re.match(line)
+        if match:
+            target = _normalize_chat_participant(match.group(1))
+            if target:
+                return target
+    return ''
 
 
 
@@ -893,6 +1033,7 @@ def api_chat():
                 ), 0, int((time.time() - started_at) * 1000)
 
         # ── A.2.3: Auto-reroute if target agent is busy/down ────────────────
+        _original_agent = selected_agent
         if auto_relay:
             try:
                 from utils.agent_coordination import check_and_reroute
@@ -935,7 +1076,7 @@ def api_chat():
         elif selected_agent == 'duck':
             local_timeout = 18
         if persistent_mode:
-            if selected_agent in {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'librarian', 'duck', 'sniffles'}:
+            if selected_agent in {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'seven', 'librarian', 'duck', 'sniffles'}:
                 local_timeout = 2000
             else:
                 local_timeout = 240
@@ -951,7 +1092,7 @@ def api_chat():
                 pass
 
         # ── Resource gate — one Ollama model at a time, Eight exclusive ──────────
-        _LOCAL_OLLAMA_AGENTS = {'gemma', 'llama', 'qwen', 'eight', 'mistral', 'phi3', 'deepseek_local'}
+        _LOCAL_OLLAMA_AGENTS = {'gemma', 'llama', 'qwen', 'eight', 'mistral', 'phi3', 'deepseek_local', 'twenty'}
         if selected_agent in _LOCAL_OLLAMA_AGENTS:
             try:
                 from utils.resource_gate import acquire, release as rg_release
@@ -969,7 +1110,7 @@ def api_chat():
 
         try:
             _trace(conv_id, selected_agent, 'dispatch', f'route={selected_agent} prompt_len={len(effective_prompt)}')
-            if selected_agent in {'gemma', 'qwen', 'eight'}:
+            if selected_agent in {'gemma', 'qwen', 'eight', 'seven', 'twenty'}:
                 # Route through agent .chat() directly — enables skills_loop
                 _stage(f'dispatching to local ollama · {selected_agent}', est_eta)
                 try:
@@ -1127,6 +1268,17 @@ def api_chat():
                     answer, tokens = future.result(timeout=240 if persistent_mode else 120)
                     response_text = answer or '[ghost_coder unavailable]'
                     tokens_used = tokens or 0
+            elif selected_agent == 'nineteen':
+                _stage('dispatching to o4-mini (GitHub Models)', est_eta)
+                try:
+                    from agents.nineteen import nineteen_agent
+                except Exception as _imp_err:
+                    response_text = f'[nineteen] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(nineteen_agent.chat, effective_prompt, history, stage_cb, conv_id)
+                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    response_text = answer or '[nineteen unavailable]'
+                    tokens_used = tokens or 0
             else:
                 # Dynamic dispatch — any agent with agents/<name>/<name>_agent.py auto-routes here
                 import importlib
@@ -1177,6 +1329,15 @@ def api_chat():
         if _CB_AVAILABLE:
             _cb_ok(selected_agent)
         _trace(conv_id, selected_agent, 'complete', f'tokens={tokens_used} elapsed={elapsed_ms}ms len={len(response_text or "")}')
+
+        # Prepend a visible reroute notice so the user knows which agent actually responded
+        if _original_agent != selected_agent:
+            response_text = (
+                f'⚡ *Rerouted from {_original_agent} → {selected_agent}* '
+                f'({_original_agent} was unavailable)\n\n'
+                + (response_text or '')
+            )
+
         return response_text, tokens_used, elapsed_ms
 
     try:
@@ -1384,6 +1545,7 @@ def api_chat():
                                 'updated_at': updated_iso,
                                 'elapsed_ms': int(elapsed_ms or 0),
                                 'tokens': int(tokens_used or 0),
+                                'response': response_text or '',
                             })
                             _trace_json = json.dumps(job.get('stage_trace') or [])
                     update_chat_job_db(
@@ -1711,6 +1873,7 @@ def api_chat_jobs_status():
                     'updated_at': row.get('updated_at'),
                     'elapsed_ms': elapsed,
                     'error': row.get('error') or '',
+                    'response': row.get('response') or '',
                     'stage_trace': _db_trace,
                 })
 

@@ -6,13 +6,15 @@ conversations_bp = Blueprint('conversations', __name__)
 
 def _recent_conversations(limit=40):
     conn = get_connection()
-    rows = conn.execute(
-        "SELECT id, title, source, created_at FROM conversations ORDER BY id DESC LIMIT ?",
-        (limit,)
-    ).fetchall()
-    conn.close()
-    # Alias created_at to timestamp for frontend compatibility
-    return [dict(r, timestamp=r['created_at']) for r in rows]
+    try:
+        rows = conn.execute(
+            "SELECT id, title, source, created_at FROM conversations ORDER BY id DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+        # Alias created_at to timestamp for frontend compatibility
+        return [dict(r, timestamp=r['created_at']) for r in rows]
+    finally:
+        conn.close()
 
 
 
@@ -91,7 +93,8 @@ def api_conversation_messages(conv_id):
 
 
 @conversations_bp.route('/api/conversations/<int:conv_id>/messages/<int:msg_id>', methods=['PATCH'])
-def api_conversation_message_patch(conv_id, msg_id):
+@require_auth
+def api_conversation_message_patch(conv_id, msg_id, current_user=None):
     """Edit a single user-authored prompt message inside a conversation."""
     data = request.get_json() or {}
     new_content = str(data.get('content') or '').strip()
@@ -128,7 +131,8 @@ def api_conversation_message_patch(conv_id, msg_id):
 
 
 @conversations_bp.route('/api/conversations/<int:conv_id>/messages/<int:msg_id>', methods=['DELETE'])
-def api_conversation_message_delete(conv_id, msg_id):
+@require_auth
+def api_conversation_message_delete(conv_id, msg_id, current_user=None):
     """Delete a single message inside a conversation."""
     conn = get_connection()
     row = conn.execute(

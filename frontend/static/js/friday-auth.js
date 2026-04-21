@@ -9,6 +9,27 @@
   'use strict';
 
   let _currentUser = null;
+  const LOGIN_PREFS_KEY = 'fridays-login-prefs';
+
+  function _loadLoginPrefs() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LOGIN_PREFS_KEY) || '{}');
+      return {
+        username: String(raw.username || '').trim(),
+        remember: !!raw.remember,
+      };
+    } catch (_) {
+      return { username: '', remember: false };
+    }
+  }
+
+  function _saveLoginPrefs(username, remember) {
+    if (!remember) {
+      localStorage.removeItem(LOGIN_PREFS_KEY);
+      return;
+    }
+    localStorage.setItem(LOGIN_PREFS_KEY, JSON.stringify({ username: String(username || '').trim().toLowerCase(), remember: true }));
+  }
 
   // ── Bootstrap ────────────────────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', () => _authCheck());
@@ -20,6 +41,16 @@
         if (data.user) {
           _currentUser = data.user;
           window.__fridayUser = data.user;
+          // Sync identity pill with auth session on page load
+          try {
+            const authState = { acting_user: (data.user.username || 'ghost').toLowerCase(), proxy_as: '' };
+            const existing = JSON.parse(localStorage.getItem('fridays-auth-state') || '{}');
+            // Only overwrite if still default or stale
+            if (!existing.acting_user || existing.acting_user === 'ghost') {
+              localStorage.setItem('fridays-auth-state', JSON.stringify(authState));
+            }
+            if (typeof _renderIdentityPill === 'function') _renderIdentityPill();
+          } catch (_) {}
           _hideAuthOverlay();
           _renderUserBadge();
         } else {
@@ -130,6 +161,7 @@
   // ── Login / Register ──────────────────────────────────────────────────
   function _showLogin() {
     const overlay = _getOrCreateOverlay();
+    const loginPrefs = _loadLoginPrefs();
     overlay.innerHTML = `
       <div class="friday-auth-card">
         <div class="friday-auth-logo">
@@ -141,10 +173,15 @@
           <button class="friday-auth-tab" data-tab="register">Register</button>
         </div>
         <div id="auth-login-panel" class="friday-auth-form">
-          <label>Username</label>
-          <input type="text" id="login-user" placeholder="Username" autocomplete="username">
+          <label>Username, email, or display name</label>
+          <input type="text" id="login-user" placeholder="Username, email, or display name" autocomplete="username" value="${_esc(loginPrefs.username)}">
           <label>Password</label>
           <input type="password" id="login-pass" placeholder="Password" autocomplete="current-password">
+          <label class="friday-auth-check">
+            <input type="checkbox" id="login-remember" ${loginPrefs.remember ? 'checked' : ''}>
+            <span>Remember me on this device</span>
+          </label>
+          <div class="friday-auth-setup-note">Username can be your account name, email, or display name. Password stays in the browser password manager, not local storage.</div>
           <div id="login-msg"></div>
           <button class="friday-auth-submit" id="login-btn">Sign In</button>
         </div>
@@ -179,23 +216,32 @@
     const loginBtn = overlay.querySelector('#login-btn');
     const loginUser = overlay.querySelector('#login-user');
     const loginPass = overlay.querySelector('#login-pass');
+    const loginRemember = overlay.querySelector('#login-remember');
     const loginMsg = overlay.querySelector('#login-msg');
     loginBtn.addEventListener('click', () => {
       const u = loginUser.value.trim().toLowerCase();
       const p = loginPass.value.trim();
+      const remember = !!loginRemember.checked;
       if (!u || !p) return _setMsg(loginMsg, 'Enter username and password', 'error');
       loginBtn.disabled = true;
       loginBtn.textContent = 'Signing in...';
       fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p }),
+        body: JSON.stringify({ username: u, password: p, remember }),
       })
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
           _currentUser = data.user;
           window.__fridayUser = data.user;
+          _saveLoginPrefs(u, remember);
+          // Sync identity pill with login session
+          try {
+            const authState = { acting_user: (data.user.username || 'ghost').toLowerCase(), proxy_as: '' };
+            localStorage.setItem('fridays-auth-state', JSON.stringify(authState));
+            if (typeof _renderIdentityPill === 'function') _renderIdentityPill();
+          } catch (_) {}
           _hideAuthOverlay();
           _renderUserBadge();
         } else {
@@ -315,6 +361,17 @@
 
   window.fridayGetCurrentUser = function () {
     return _currentUser;
+  };
+
+  // ── Load users into a WindowManager window ───────────────────────────
+  window._loadUsersWindowContent = function (win) {
+    // win is the window state object; win.el is the DOM element
+    const el = win && win.el ? win.el : win;
+    if (!el) return;
+    const body = el.querySelector('.window-content');
+    if (!body) return;
+    body.innerHTML = '<div style="padding:12px;"><div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);">User Management</div><div id="friday-users-list" style="color:var(--text-dim);font-size:11px;">Loading...</div></div>';
+    _loadUsersList();
   };
 
   // ── User management overlay (owner only) ─────────────────────────────

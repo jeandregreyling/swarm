@@ -105,6 +105,22 @@
 .friday-auth-form input:focus {
   border-color: var(--accent, #f7b84b);
 }
+.friday-auth-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim, #8b949e);
+  margin-top: 2px;
+  cursor: pointer;
+  user-select: none;
+}
+.friday-auth-check input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent, #f7b84b);
+}
 .friday-auth-submit {
   padding: 10px 20px;
   border-radius: 8px;
