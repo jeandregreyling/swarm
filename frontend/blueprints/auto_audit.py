@@ -40,9 +40,12 @@ def run_audit():
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # Run pytest
+    # NOTE: test_chat_quality.py is excluded — it POSTs live /api/chat requests
+    # which trigger ollama to load models. Not suitable for unattended audit.
     try:
         proc = subprocess.run(
-            ['python3', '-m', 'pytest', 'tests/', '-x', '-q', '--tb=short'],
+            ['python3', '-m', 'pytest', 'tests/', '-x', '-q', '--tb=short',
+             '--ignore=tests/test_chat_quality.py'],
             capture_output=True, text=True, timeout=120,
             cwd=_SWARM_ROOT,
         )
