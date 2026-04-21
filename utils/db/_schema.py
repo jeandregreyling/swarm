@@ -1047,16 +1047,19 @@ def _migrate_schema(conn=None):
 
     # Phase 2 — Seed registry metadata (memory_table, display_label, aliases, eta, keep_alive)
     # fmt: (name, memory_table, display_label, aliases_json, eta_seconds, keep_alive)
+    # keep_alive in SECONDS. Must be a positive finite value — NEVER -1 (Forever).
+    # Forever pins defeat the resource gate and have caused two CPU runaways.
+    # Standard: 300s (5 min) for local Ollama agents; None for non-Ollama tiers.
     _registry_seed = [
         ('ghost',     '',                'GHOST (OPERATOR)',                  '[]',                                   None, None),
-        ('gemma',     'memory_gemma',    'GEMMA',                             '[]',                                   85,   -1),
-        ('llama',     'memory_llama',    'LLAMA',                             '[]',                                   70,   -1),
-        ('mistral',   'memory_mistral',  'MISTRAL',                           '[]',                                   90,   -1),
-        ('qwen',      'memory_qwen',     'QWEN',                              '[]',                                   120,  -1),
-        ('librarian', 'memory',          'LIBRARIAN',                         '[]',                                   50,   -1),
-        ('duck',      'memory',          'DUCK',                              '[]',                                   35,   -1),
-        ('sniffles',  'memory',          'SNIFFLES',                          '[]',                                   160,  -1),
-        ('eight',     'memory_eight',    'EIGHT',                             '[]',                                   120,  -1),
+        ('gemma',     'memory_gemma',    'GEMMA',                             '[]',                                   85,   300),
+        ('llama',     'memory_llama',    'LLAMA',                             '[]',                                   70,   300),
+        ('mistral',   'memory_mistral',  'MISTRAL',                           '[]',                                   90,   300),
+        ('qwen',      'memory_qwen',     'QWEN',                              '[]',                                   120,  300),
+        ('librarian', 'memory',          'LIBRARIAN',                         '[]',                                   50,   300),
+        ('duck',      'memory',          'DUCK',                              '[]',                                   35,   300),
+        ('sniffles',  'memory',          'SNIFFLES',                          '[]',                                   160,  300),
+        ('eight',     'memory_eight',    'EIGHT',                             '[]',                                   120,  300),
         ('nine',      'memory_nine',     'NINE (GROQ LLAMA 3.3 70B)',        '["claude"]',                           8,    None),
         ('ten',       'memory_ten',      'TEN (GPT-5.3-CODEX)',              '["copilot","gpt"]',                    8,    None),
         ('eleven',    'memory_grok',     'ELEVEN (GROK API)',                 '["grok"]',                             10,   None),
