@@ -80,7 +80,7 @@ def api_ollama_load():
     try:
         resp = _requests.post(
             'http://localhost:11434/api/generate',
-            json={'model': model, 'prompt': ' ', 'keep_alive': -1},
+            json={'model': model, 'prompt': ' ', 'keep_alive': 300},
             timeout=180,
             stream=True,
         )

@@ -241,7 +241,7 @@ def consult(question, web_results, shared_context, conv_id, status_cb=None):
             {'role': 'user',   'content': user_prompt},
         ],
         options={'temperature': TEMP},
-        keep_alive=-1,
+        keep_alive=300,
     )
     verdict = response['message']['content'].strip()
     elapsed_ms = int((time.time() - start) * 1000)

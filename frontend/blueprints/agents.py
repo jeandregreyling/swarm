@@ -1767,7 +1767,7 @@ def api_agents_import():
                  ag.get('tier', 'local'), 1 if ag.get('enabled', True) else 0,
                  ag.get('memory_table', ''), ag.get('display_label', ''),
                  ag.get('aliases', ''), int(ag.get('eta_seconds', 0) or 0),
-                 int(ag.get('keep_alive', -1) if ag.get('keep_alive') is not None else -1),
+                 int(ag.get('keep_alive', 300) if ag.get('keep_alive') is not None else 300),
                  name)
             )
         else:
@@ -1784,7 +1784,7 @@ def api_agents_import():
                  ag.get('tier', 'local'), 1 if ag.get('enabled', True) else 0, max_num + 1,
                  ag.get('memory_table', ''), ag.get('display_label', ''),
                  ag.get('aliases', ''), int(ag.get('eta_seconds', 0) or 0),
-                 int(ag.get('keep_alive', -1) if ag.get('keep_alive') is not None else -1))
+                 int(ag.get('keep_alive', 300) if ag.get('keep_alive') is not None else 300))
             )
         imported.append(name)
 
