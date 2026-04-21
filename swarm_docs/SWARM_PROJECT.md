@@ -686,14 +686,14 @@ Each session is logged here with date, what was done, and key outcomes.
 
 | Phase | Item | Status |
 |-------|------|--------|
-| **B** | Split `frontend/services.py` (~900 lines) into `services/auth.py`, `services/sessions.py`, `services/models.py`; eliminate `from services import *` | **Next** |
-| B.1 | Unblock DEV/UAT worktree sync (merge conflicts are mostly in services.py) | Blocked on B |
-| C | Home chat vs full/floating chat — unified controller (C5 in backlog) | Queued |
-| C.1 | Home-card external shortcut tooltip (item 7 from Session 22 — never shipped) | Queued |
-| D | marked.js DOMPurify (XSS risk, N3) | Queued |
-| D.1 | Consolidate 4+ escape helpers (`_escHtml`, `_escapeHtml`, `_esc`) (N2) | Queued |
-| E | Install `deepseek-r1:7b` OR repoint sniffles to installed model | Queued |
-| F | Hardcoded `/home/seven/swarm` paths in remaining backend blueprints (task 7.15) | Queued |
+| **B** | Split `frontend/services.py` (~900 lines) into `services/auth.py`, `services/chat_jobs.py`, `services/duck_review.py`, `services/queue_wrappers.py`, `services/identity.py`, `services/alm.py`; eliminate `from services import *` | ✅ Done (Session 24) |
+| B.1 | DEV/UAT worktree sync (hard-reset to `proposal/1306`; 178 divergent dev commits were all Vortex noise) | ✅ Done (Session 24) — 605/605 green on both worktrees |
+| C | Home chat vs full/floating chat — unified controller (C5 in backlog) | Deferred — ~6.7k LOC JS with no shared function names; needs scoped design session |
+| C.1 | Home-card external shortcut tooltip (original scope unclear — "item 7" in Session 22 was Ollama CPU triage, already Done) | Withdrawn |
+| D | marked.js DOMPurify (XSS risk, N3) | ✅ Done (Session 24) — DOMPurify loaded in `terminal_base.html`; shared `window.safeMarkdown()` helper; all `marked.parse()` call sites migrated (chat.js, home-chat.js, guide.js, conversations.js) |
+| D.1 | Consolidate 4+ escape helpers (`_escHtml`, `_escapeHtml`, `_esc`) (N2) | Partial (Session 24) — canonical `window.escHtml()` exposed in `terminal_base.html`; per-module duplicates left in place (9 files) for follow-up migration |
+| E | Install `deepseek-r1:7b` OR repoint sniffles to installed model | ✅ Done (Session 24) — `ollama pull deepseek-r1:7b` succeeded (4.7 GB) |
+| F | Hardcoded `/home/seven/swarm` paths in remaining backend blueprints (task 7.15) | ✅ Done (Session 24) — audit confirms no hardcoded runtime paths in `frontend/blueprints/`; remaining matches are comments/docstrings |
 
 ### Poll cadence contract (locked in Session 22)
 
