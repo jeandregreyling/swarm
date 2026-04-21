@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-21 20:59",
+  "generated_at": "2026-04-21 21:59",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2844,7 +2844,7 @@
     },
     {
       "name": "chat.js",
-      "size_kb": 243.6
+      "size_kb": 241.5
     },
     {
       "name": "conversations.js",
@@ -2970,7 +2970,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 29667
+      "rows": 29780
     },
     {
       "name": "agent_capabilities",
@@ -2990,15 +2990,15 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 382
+      "rows": 385
     },
     {
       "name": "audit_results",
-      "rows": 25
+      "rows": 26
     },
     {
       "name": "chat_jobs",
-      "rows": 510
+      "rows": 516
     },
     {
       "name": "claude_log",
@@ -3006,15 +3006,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2059
+      "rows": 2065
     },
     {
       "name": "conversations",
-      "rows": 494
+      "rows": 512
     },
     {
       "name": "council_output",
-      "rows": 312
+      "rows": 765
     },
     {
       "name": "daily_checkpoint",
@@ -3034,7 +3034,7 @@
     },
     {
       "name": "decisions",
-      "rows": 3638
+      "rows": 4816
     },
     {
       "name": "deferred_items",
@@ -3042,7 +3042,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 679
+      "rows": 683
     },
     {
       "name": "file_versions",
@@ -3058,11 +3058,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 3720
+      "rows": 3745
     },
     {
       "name": "governance_log",
-      "rows": 297
+      "rows": 301
     },
     {
       "name": "knowledge_chunks",
@@ -3074,7 +3074,7 @@
     },
     {
       "name": "memory",
-      "rows": 89
+      "rows": 90
     },
     {
       "name": "memory_eight",
@@ -3082,7 +3082,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 18
+      "rows": 19
     },
     {
       "name": "memory_ghost_coder",
@@ -3134,11 +3134,11 @@
     },
     {
       "name": "memory_twenty",
-      "rows": 64
+      "rows": 207
     },
     {
       "name": "messages",
-      "rows": 1094
+      "rows": 1128
     },
     {
       "name": "moderators",
@@ -3174,7 +3174,7 @@
     },
     {
       "name": "queue",
-      "rows": 1534
+      "rows": 1546
     },
     {
       "name": "research_evidence",
@@ -3186,7 +3186,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 420
+      "rows": 424
     },
     {
       "name": "scheduled_tasks",
@@ -3218,7 +3218,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 297
+      "rows": 301
     },
     {
       "name": "swarm_event_acks",
@@ -3242,7 +3242,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 6974
+      "rows": 6986
     },
     {
       "name": "task_run_log",
@@ -3254,27 +3254,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 433
+      "rows": 437
     },
     {
       "name": "tickets",
-      "rows": 441
+      "rows": 445
     },
     {
       "name": "time_checkpoints",
-      "rows": 3032
+      "rows": 3054
     },
     {
       "name": "time_events",
-      "rows": 90850
+      "rows": 91187
     },
     {
       "name": "time_journal",
-      "rows": 86588
+      "rows": 86903
     },
     {
       "name": "time_machine",
-      "rows": 5264
+      "rows": 5399
     },
     {
       "name": "tool_builds",
@@ -3314,7 +3314,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 222
+      "rows": 226
     }
   ],
   "agents": [
@@ -3467,7 +3467,7 @@
     },
     {
       "name": "twenty",
-      "model": "qwen3:latest",
+      "model": "Qwen3.6:latest",
       "role": "Nervous system \u2014 observes, deliberates, suggests (no LLM)",
       "tier": "local",
       "enabled": 1
