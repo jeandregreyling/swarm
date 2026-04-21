@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-21 23:22",
+  "generated_at": "2026-04-21 23:25",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2970,7 +2970,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 30114
+      "rows": 30157
     },
     {
       "name": "agent_capabilities",
@@ -2990,7 +2990,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 397
+      "rows": 400
     },
     {
       "name": "audit_results",
@@ -3006,11 +3006,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2088
+      "rows": 2091
     },
     {
       "name": "conversations",
-      "rows": 583
+      "rows": 592
     },
     {
       "name": "council_output",
@@ -3034,7 +3034,7 @@
     },
     {
       "name": "decisions",
-      "rows": 5175
+      "rows": 5194
     },
     {
       "name": "deferred_items",
@@ -3042,7 +3042,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 699
+      "rows": 701
     },
     {
       "name": "file_versions",
@@ -3058,11 +3058,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 3836
+      "rows": 3848
     },
     {
       "name": "governance_log",
-      "rows": 317
+      "rows": 319
     },
     {
       "name": "knowledge_chunks",
@@ -3138,7 +3138,7 @@
     },
     {
       "name": "messages",
-      "rows": 1264
+      "rows": 1282
     },
     {
       "name": "moderators",
@@ -3174,7 +3174,7 @@
     },
     {
       "name": "queue",
-      "rows": 1594
+      "rows": 1600
     },
     {
       "name": "research_evidence",
@@ -3186,7 +3186,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 440
+      "rows": 442
     },
     {
       "name": "scheduled_tasks",
@@ -3218,7 +3218,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 317
+      "rows": 319
     },
     {
       "name": "swarm_event_acks",
@@ -3254,27 +3254,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 453
+      "rows": 455
     },
     {
       "name": "tickets",
-      "rows": 461
+      "rows": 463
     },
     {
       "name": "time_checkpoints",
-      "rows": 3139
+      "rows": 3158
     },
     {
       "name": "time_events",
-      "rows": 91585
+      "rows": 91613
     },
     {
       "name": "time_journal",
-      "rows": 87216
+      "rows": 87225
     },
     {
       "name": "time_machine",
-      "rows": 5449
+      "rows": 5454
     },
     {
       "name": "tool_builds",
@@ -3314,7 +3314,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 242
+      "rows": 244
     }
   ],
   "agents": [
