@@ -201,12 +201,21 @@ def get_agent_runtime_classes():
 
 def get_single_task_locals():
     """Replaces _CHAT_SINGLE_TASK_LOCAL_AGENTS in services.py.
-    Returns set of local agents that run as single-task Ollama instances."""
+    Returns set of local agents that run as single-task Ollama instances.
+    Excludes shared-memory runners (librarian/duck/sniffles) and non-Ollama
+    agents (seven uses local-algorithm, ghost is human)."""
     skip = {'librarian', 'duck', 'sniffles'}
+    non_ollama_models = {'external', 'local-algorithm', ''}
     out = set()
     for r in _load_rows():
-        if r.get('tier', 'local') == 'local' and r['name'] not in skip and r['name'] != 'ghost':
-            out.add(r['name'])
+        if r.get('tier', 'local') != 'local':
+            continue
+        if r['name'] in skip or r['name'] == 'ghost':
+            continue
+        model = str(r.get('model') or '').strip().lower()
+        if model in non_ollama_models:
+            continue
+        out.add(r['name'])
     return out
 
 

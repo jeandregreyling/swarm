@@ -5,74 +5,47 @@
 // MESSAGE FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Agent options — internal `value` keys never change.
-// `label` and `number` are data not code — fetched from DB on load via _loadAgentRegistry().
-// Fallback labels below are already correct; the fetch keeps them in sync if DB changes.
-// To rename an agent or swap its model: UPDATE agents SET label=... WHERE name=... in the DB.
+// Agent options — rebuilt from DB on every load via _loadAgentRegistry().
+// The 3-item fallback below is only for the brief window before the API responds;
+// the DB is the canonical source of truth for agent number/label/tier.
+// To rename an agent or swap its model: UPDATE agents SET label=..., number=... WHERE name=...
 let CHAT_AGENT_OPTIONS = [
-  { value: 'gemma',    label: '1 · Gemma3',   number: 1,  tier: 'local', hasTemp: true  },
-  { value: 'llama',    label: '2 · LlaMA',    number: 2,  tier: 'local', hasTemp: true  },
-  { value: 'mistral',  label: '3 · Mistral',  number: 3,  tier: 'local', hasTemp: true  },
-  { value: 'qwen',     label: '4 · Qwen',     number: 4,  tier: 'local', hasTemp: true  },
-  { value: 'librarian',label: '5 · Vortex',   number: 5,  tier: 'local', hasTemp: false },
-  { value: 'duck',     label: '6 · Duck',     number: 6,  tier: 'local', hasTemp: true  },
-  { value: 'sniffles', label: '21 · Sniffles', number: 21,  tier: 'local', hasTemp: true  },
-  { value: 'eight',    label: '8 · Eight',    number: 8,  tier: 'local', hasTemp: true  },
-  { value: 'nine',     label: '9 · Groq',     number: 9,  tier: 'paid',  hasTemp: false },
-  { value: 'ten',      label: '10 · Github',  number: 10, tier: 'paid',  hasTemp: true  },
-  { value: 'eleven',   label: '11 · Grok',    number: 11, tier: 'paid',  hasTemp: false },
-  { value: 'twelve',   label: '12 · Claude',  number: 12, tier: 'paid',  hasTemp: false },
-  { value: 'thirteen', label: '13 · HF', number: 13, tier: 'paid', hasTemp: false },
-  { value: 'ghost_coder', label: '17 · GPT5', number: 17, tier: 'paid', hasTemp: false },
-  { value: 'seven',       label: '7 · Seven',  number: 7,  tier: 'local', hasTemp: false },
-  { value: 'twenty',      label: '20 · Qwen3.6', number: 20, tier: 'local', hasTemp: true  },
+  { value: 'gemma', label: '1 · Gemma3', number: 1, tier: 'local', hasTemp: true },
+  { value: 'llama', label: '2 · LlaMA',  number: 2, tier: 'local', hasTemp: true },
+  { value: 'seven', label: '7 · Seven',  number: 7, tier: 'local', hasTemp: false },
 ];
 
-// Fetch agent registry from DB and update CHAT_AGENT_OPTIONS to only include enabled agents.
+// Temperature-capable agents (UI controls only). DB drives everything else.
+const _TEMP_CAPABLE = new Set(['gemma','llama','mistral','qwen','duck','sniffles','eight','ten','twenty']);
+
+// Fetch agent registry from DB and REBUILD CHAT_AGENT_OPTIONS (DB wins every field).
 function _loadAgentRegistry() {
   fetch('/api/agents/config')
     .then(r => r.ok ? r.json() : null)
     .catch(() => null)
     .then(data => {
       if (!Array.isArray(data)) return;
-      // Only include agents with enabled: true
-      const enabledAgents = data.filter(a => a.enabled);
-      const byValue = {};
-      enabledAgents.forEach(a => { if (a.name) byValue[a.name.toLowerCase()] = a; });
-      // Filter and update CHAT_AGENT_OPTIONS
-      // Filter existing options to only enabled agents
-      CHAT_AGENT_OPTIONS = CHAT_AGENT_OPTIONS.filter(opt => byValue[opt.value.toLowerCase()]);
-      // Add any DB agents not already in the hardcoded list (skip 'ghost' human & internal agents)
-      const existingValues = new Set(CHAT_AGENT_OPTIONS.map(o => o.value.toLowerCase()));
       const skipAgents = new Set(['ghost', 'duck_ddg']);
-      enabledAgents.forEach(a => {
-        const name = (a.name || '').toLowerCase();
-        const agentTier = (a.tier || '').toLowerCase();
-        if (!existingValues.has(name) && !skipAgents.has(name) && agentTier !== 'service') {
-          const tier = (a.tier || 'local').toLowerCase();
-          CHAT_AGENT_OPTIONS.push({
-            value: name,
-            label: a.number != null ? `${a.number} · ${a.label || name}` : (a.label || name),
-            number: a.number || 99,
-            tier: tier === 'human' ? 'local' : tier,
-            hasTemp: false
-          });
-        }
+      const next = [];
+      data.forEach(a => {
+        if (!a || !a.enabled || !a.name) return;
+        const name = String(a.name).toLowerCase();
+        if (skipAgents.has(name)) return;
+        const tierRaw = String(a.tier || 'local').toLowerCase();
+        if (tierRaw === 'service') return;
+        const tier = tierRaw === 'human' ? 'local' : tierRaw;
+        const num = (a.number != null && a.number >= 0) ? a.number : 99;
+        const lbl = a.label || name;
+        next.push({
+          value: name,
+          label: `${num} · ${lbl}`,
+          number: num,
+          tier,
+          hasTemp: _TEMP_CAPABLE.has(name),
+        });
       });
-      // Sort by number
-      CHAT_AGENT_OPTIONS.sort((a, b) => (a.number || 99) - (b.number || 99));
-      // Update labels from DB
-      let changed = false;
-      CHAT_AGENT_OPTIONS.forEach(opt => {
-        const reg = byValue[opt.value.toLowerCase()];
-        if (!reg) return;
-        const num = reg.number != null ? reg.number : opt.number;
-        const lbl = reg.label || opt.label;
-        const newLabel = num != null ? `${num} · ${lbl}` : lbl;
-        if (opt.label !== newLabel) { opt.label = newLabel; changed = true; }
-        if (num != null) opt.number = num;
-      });
-      // Always re-render since we may have added new agents
+      next.sort((a, b) => (a.number || 99) - (b.number || 99));
+      CHAT_AGENT_OPTIONS = next;
       if (typeof renderChatAgentToggles === 'function') renderChatAgentToggles();
       if (typeof _hcRenderAgentPills === 'function') _hcRenderAgentPills();
     });
