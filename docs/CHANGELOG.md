@@ -5,6 +5,10 @@
 _Comprehensive change log with agent attribution, timestamps, and version control tracking._
 _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
+[2026-04-22 02:10:00] Copilot: **Phase G** — Ollama CPU runaway (recurrence) fixed at system level. Root cause: `swarm-prewarm.service` (systemd oneshot on boot) was loading 3 CPU-only models simultaneously — gemma3 + qwen + deepseek-r1, ~12 GB RAM, load avg 10+. Fix: `systemctl disable swarm-prewarm.service` (cannot mask because file still exists); `MODELS=()` in `swarm-prewarm.sh` as belt-and-braces so re-enabling won't re-trigger. Current models unloaded via `/api/generate {keep_alive:0}`. RAM recovered 19.6 → 6.6 GB. Idle Ollama CPU now 0 – 1 % across 20 verified cycles. Session 24 locked an **Ollama boot contract**: no pre-warming on CPU-only hardware.
+
+[2026-04-22 02:13:00] Copilot: 20-cycle smoke test (two back-to-back 10-cycle passes): 20/20 endpoints green (`/api/health`, `/api/agents/status`, `/api/monitor`), 20/20 CPU-idle (0 – 1 % aggregate across all ollama procs, sampled 2 s each), 0 swarm errors in the test window. Stray port-conflict orphan (`python3 PID 1084`, user-launched `/usr/bin/python3 frontend/terminal.py`, 9 min old) killed mid-test; service now owns :5050 cleanly under systemd MainPID.
+
 ---
 
 ## Version 2026-04-22 Session 24 — Phase B split + XSS hardening + dev/uat sync + deepseek-r1 install
