@@ -5,7 +5,6 @@ sys.path.insert(0, '/home/seven/swarm/lib/search')
 from database import (new_conversation, log_message, save_memory,
                       search_memory, get_ghost_history, get_all_memories)
 from internet import search_web
-import ollama
 
 AGENTS = {
     'Gemma':     'gemma3:latest',
@@ -35,11 +34,11 @@ def ask_agent(agent_name, prompt):
     if not model:
         raise KeyError(f'Unknown debate agent: {agent_name}')
     print(f'\n[{agent_name}] thinking...')
-    response = ollama.chat(
-        model=model,
-        messages=[{'role': 'user', 'content': prompt}]
+    from core import llm as _llm
+    answer, _tokens = _llm.chat(
+        model,
+        [{'role': 'user', 'content': prompt}],
     )
-    answer = response['message']['content']
     print(f'[{agent_name}] {answer}')
     return answer
 

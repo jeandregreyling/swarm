@@ -15,7 +15,6 @@ sys.path.insert(0, '/home/seven/swarm')
 from database import (log_message, save_agent_memory, get_agent_memory,
                       search_memory, promote_to_verified)
 from logging_bridge import log_action, log_agent_thinking, batch_commit
-import ollama
 import time
 
 # RL-015 — Eight gets Tavily for SAP-specific search (graceful degradation)
@@ -234,16 +233,16 @@ def consult(question, web_results, shared_context, conv_id, status_cb=None):
 
     _status('Deliberating...')
     start = time.time()
-    response = ollama.chat(
-        model=MODEL,
-        messages=[
+    from core import llm as _llm
+    verdict, _tokens = _llm.chat(
+        MODEL,
+        [
             {'role': 'system', 'content': EIGHT_SYSTEM_PROMPT},
             {'role': 'user',   'content': user_prompt},
         ],
-        options={'temperature': TEMP},
-        keep_alive=300,
+        temperature=TEMP,
     )
-    verdict = response['message']['content'].strip()
+    verdict = verdict.strip()
     elapsed_ms = int((time.time() - start) * 1000)
     log_agent_thinking('Eight', 'deliberated', elapsed_ms)
     print(f'[Eight] {verdict[:120]}...' if len(verdict) > 120 else f'[Eight] {verdict}')

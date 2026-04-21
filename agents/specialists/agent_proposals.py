@@ -18,7 +18,6 @@ Rules:
 import sys
 sys.path.insert(0, '/home/seven/swarm')
 
-import ollama
 from database import get_connection, get_project_docs, log_activity
 from sandpits import write_proposal
 from sniffer import sniff as sniff_sandpit
@@ -147,15 +146,16 @@ def draft_proposal(agent):
     context = _build_context(agent)
 
     try:
-        response = ollama.chat(
-            model=model,
-            messages=[
+        from core import llm as _llm
+        content, _tokens = _llm.chat(
+            model,
+            [
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user',   'content': context},
             ],
-            options={'temperature': 0.7}
+            temperature=0.7,
         )
-        content = response['message']['content'].strip()
+        content = content.strip()
         return content if content else None
     except Exception as e:
         print(f'[Proposals] Draft failed for {agent}: {e}')
