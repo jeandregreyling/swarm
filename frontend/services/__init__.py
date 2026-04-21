@@ -28,7 +28,8 @@ import sys
 import importlib.util
 from pathlib import Path
 
-SWARM_ROOT = Path(__file__).resolve().parents[1]
+# frontend/services/__init__.py → parents[2] = swarm root
+SWARM_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(SWARM_ROOT))
 sys.path.insert(0, str(SWARM_ROOT / 'utils'))
 sys.path.insert(0, str(SWARM_ROOT / 'core' / 'pipeline'))
@@ -52,7 +53,7 @@ import threading
 import os
 
 # Load .env.agents into environment so AGENT_API_KEY is available to agent auth middleware
-_ENV_AGENTS = Path(__file__).resolve().parents[1] / '.env.agents'
+_ENV_AGENTS = Path(__file__).resolve().parents[2] / '.env.agents'
 if _ENV_AGENTS.exists() and not os.environ.get('AGENT_API_KEY'):
     for _line in _ENV_AGENTS.read_text().splitlines():
         _line = _line.strip()
