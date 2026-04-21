@@ -20,11 +20,14 @@ const FRIDAYS_HUE_VALUE_KEY = 'fridays_hue_value';
 const FRIDAYS_CONTRAST_VALUE_KEY = 'fridays_contrast_value';
 const FRIDAYS_SCENE_KEY = 'fridays_scene';
 const FRIDAYS_SCENE_EFFECT_KEY = 'fridays_scene_effect';
+const FRIDAYS_SCENE_LAYERS_KEY = 'fridays_scene_layers';
 const FRIDAYS_FOUNDATION_MODE_KEY = 'fridays_foundation_mode';
 const FRIDAYS_GLOW_VALUE_KEY = 'fridays_glow_value';
 const SCENE_MODES = ['off', 'beach', 'forest', 'rain'];
 const FOUNDATION_MODES = ['auto', 'light', 'dark'];
 const SCENE_EFFECT_MODES = ['on', 'off'];
+const SCENE_LAYER_KEYS = ['orbs', 'lattice', 'clusters', 'scene'];
+const SCENE_LAYER_DEFAULTS = Object.freeze({ orbs: true, lattice: true, clusters: true, scene: true });
 const WINDOW_THEME_MODES = ['auto', 'morning', 'afternoon', 'evening', 'night'];
 const ATMOSPHERE_PRESET_VALUES = {
   morning: 10,
@@ -77,7 +80,7 @@ const ATMOSPHERE_KEYFRAMES = [
       '--bg-input': '#EEF9FF',
       '--border': '#B9D8EE',
       '--text': '#18384E',
-      '--text-dim': '#58758E',
+      '--text-dim': '#3A5A72',
       '--text-faint': '#8FAFC5',
       '--accent': '#27CBFF',
       '--accent-hover': '#62DEFF',
@@ -209,6 +212,17 @@ function _normalizeFoundationMode(mode) {
 function _normalizeSceneEffectMode(mode) {
   const key = String(mode || 'on').toLowerCase();
   return SCENE_EFFECT_MODES.includes(key) ? key : 'on';
+}
+
+function _normalizeSceneLayers(layers) {
+  const next = { ...SCENE_LAYER_DEFAULTS };
+  if (!layers || typeof layers !== 'object') return next;
+  SCENE_LAYER_KEYS.forEach((key) => {
+    const value = layers[key];
+    if (typeof value === 'string') next[key] = value !== 'off' && value !== 'false';
+    else if (value !== undefined && value !== null) next[key] = !!value;
+  });
+  return next;
 }
 
 function _rgbFromHex(hex) {
@@ -364,6 +378,14 @@ function _currentSceneMode() {
 
 function _currentSceneEffectMode() {
   return _normalizeSceneEffectMode(localStorage.getItem(FRIDAYS_SCENE_EFFECT_KEY) || document.body?.dataset?.sceneEffect || 'on');
+}
+
+function _currentSceneLayers() {
+  try {
+    return _normalizeSceneLayers(JSON.parse(localStorage.getItem(FRIDAYS_SCENE_LAYERS_KEY) || 'null'));
+  } catch (_) {
+    return _normalizeSceneLayers(null);
+  }
 }
 
 function _applyScenePalette(palette, scene, atmosphereValue = 38) {
@@ -539,7 +561,9 @@ function _buildAtmosphereColors(value) {
     ['--bg', '--card', '--card-hover', '--hover', '--bg-input', '--window-bg', '--window-header'].forEach((key) => {
       adjustedPalette[key] = _tuneHex(adjustedPalette[key], { saturation: 1, contrast: 5, lightness: -6 });
     });
-    adjustedPalette['--mist'] = _tuneHex(adjustedPalette['--mist'], { saturation: -2, contrast: 2, lightness: -10 });
+    adjustedPalette['--mist'] = _tuneHex(adjustedPalette['--mist'], { saturation: -10, contrast: -2, lightness: -14 });
+    adjustedPalette['--glow-a'] = _tuneHex(adjustedPalette['--glow-a'], { saturation: 6, contrast: 6, lightness: -20 });
+    adjustedPalette['--glow-b'] = _tuneHex(adjustedPalette['--glow-b'], { saturation: 6, contrast: 6, lightness: -18 });
   }
   const accent = adjustedPalette['--accent'] || '#27CBFF';
   const midrange = v >= 44 && v <= 68;
@@ -549,15 +573,15 @@ function _buildAtmosphereColors(value) {
     '--foundation-mode': resolvedFoundation,
     '--radius': isDark ? '16px' : '18px',
     '--mist': midrange
-      ? _hexWithAlpha(adjustedPalette['--mist'] || '#FFF7EF', 0.24)
+      ? _hexWithAlpha(adjustedPalette['--mist'] || '#FFF7EF', 0.14)
       : eveningBand
         ? _hexWithAlpha(adjustedPalette['--mist'] || '#36283D', 0.08)
-        : _hexWithAlpha(adjustedPalette['--mist'] || '#FFFFFF', isDark ? 0.03 : 0.34),
+        : _hexWithAlpha(adjustedPalette['--mist'] || '#FFFFFF', isDark ? 0.03 : 0.22),
     '--shadow': isDark
       ? `0 22px 64px ${_hexWithAlpha('#000000', 0.34)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.06)}, 0 0 70px ${_hexWithAlpha(accent, 0.10)}`
       : midrange
-        ? `0 16px 34px ${_hexWithAlpha(accent, 0.12)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.92)}`
-        : `0 18px 48px ${_hexWithAlpha(accent, 0.18)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.86)}`,
+        ? `0 14px 28px ${_hexWithAlpha(accent, 0.08)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.94)}`
+        : `0 16px 36px ${_hexWithAlpha(accent, 0.12)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.90)}`,
   };
 }
 
@@ -742,15 +766,40 @@ function _syncSceneEffectControls(mode) {
   if (label) label.textContent = isOn ? 'Effect On' : 'Effect Off';
 }
 
+function _syncSceneLayerControls(layers) {
+  const next = _normalizeSceneLayers(layers);
+  SCENE_LAYER_KEYS.forEach((key) => {
+    const input = document.getElementById(`scene-layer-${key}-input`);
+    if (input) input.checked = !!next[key];
+  });
+}
+
+function _storeSceneLayers(layers) {
+  const next = _normalizeSceneLayers(layers);
+  try { localStorage.setItem(FRIDAYS_SCENE_LAYERS_KEY, JSON.stringify(next)); } catch (e) {}
+  try {
+    const settings = JSON.parse(localStorage.getItem('fridays-settings') || '{}');
+    settings.sceneLayers = next;
+    localStorage.setItem('fridays-settings', JSON.stringify(settings));
+  } catch (e) {}
+  return next;
+}
+
 function applyScene(scene) {
   const key = _normalizeSceneMode(scene);
   document.body.dataset.scene = key;
   const effectMode = _currentSceneEffectMode();
+  const layers = _currentSceneLayers();
   document.body.dataset.sceneEffect = effectMode;
-  document.documentElement.style.setProperty('--scene-opacity', effectMode === 'off' ? '0' : _sceneOpacity(key));
+  document.body.dataset.sceneOrbs = effectMode === 'off' || !layers.orbs ? 'off' : 'on';
+  document.body.dataset.sceneLattice = effectMode === 'off' || !layers.lattice ? 'off' : 'on';
+  document.body.dataset.sceneClusters = effectMode === 'off' || !layers.clusters ? 'off' : 'on';
+  document.body.dataset.sceneAmbient = effectMode === 'off' || !layers.scene ? 'off' : 'on';
+  document.documentElement.style.setProperty('--scene-opacity', effectMode === 'off' || !layers.scene ? '0' : _sceneOpacity(key));
   try { localStorage.setItem(FRIDAYS_SCENE_KEY, key); } catch (e) {}
   _syncSceneControls(key);
   _syncSceneEffectControls(effectMode);
+  _syncSceneLayerControls(layers);
   return key;
 }
 
@@ -771,6 +820,14 @@ function setSceneEffectMode(mode) {
   try { localStorage.setItem(FRIDAYS_SCENE_EFFECT_KEY, next); } catch (e) {}
   const currentScene = _currentSceneMode();
   applyScene(currentScene);
+}
+
+function setSceneLayerEnabled(layerKey, enabled) {
+  if (!SCENE_LAYER_KEYS.includes(String(layerKey || ''))) return;
+  const layers = _currentSceneLayers();
+  layers[layerKey] = !!enabled;
+  _storeSceneLayers(layers);
+  applyScene(_currentSceneMode());
 }
 
 function _resolveAtmosphere(mode, explicitValue = null) {
@@ -902,6 +959,10 @@ function applyTimeTheme(time, explicitValue = null) {
 
   colors['--accent'] = accent.color;
   colors['--accent-hover'] = accent.hover;
+  // Compute readable text colour for content placed ON the accent background
+  const _ar = _rgbFromHex(accent.color);
+  const _rl = (_ar.r / 255) ** 2.2, _gl = (_ar.g / 255) ** 2.2, _bl = (_ar.b / 255) ** 2.2;
+  colors['--text-on-accent'] = (0.2126 * _rl + 0.7152 * _gl + 0.0722 * _bl) > 0.30 ? '#000' : '#fff';
   colors['--edge-glow'] = `0 0 ${4 + (glowValue * 0.16)}px ${_hexWithAlpha(accent.color, mode.isDark ? 0.08 + (glowValue * 0.0012) : 0.05 + (glowValue * 0.001))}`;
   colors['--edge-glow-hover'] = `0 0 ${10 + (glowValue * 0.24)}px ${_hexWithAlpha(accent.color, mode.isDark ? 0.14 + (glowValue * 0.0016) : 0.10 + (glowValue * 0.0012))}`;
   colors['--glow-animation'] = glowValue >= 62 ? 'edge-glow-pulse 9s ease-in-out infinite' : 'none';
@@ -909,6 +970,25 @@ function applyTimeTheme(time, explicitValue = null) {
   colors['--shadow'] = mode.isDark
     ? `0 22px 64px ${_hexWithAlpha('#000000', 0.34)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.06)}, 0 0 70px ${_hexWithAlpha(accent.color, 0.12)}`
     : `0 18px 48px ${_hexWithAlpha(accent.color, mode.value >= 44 && mode.value <= 68 ? 0.12 : 0.18)}, 0 0 0 1px ${_hexWithAlpha('#FFFFFF', 0.86)}`;
+
+  // When foundation forces light mode over a dark atmosphere palette, the dark --bg/glow vars
+  // bleed purple through the white overlay gradients. Override to clean light values.
+  if (resolvedFoundation === 'light' && mode.value >= 58) {
+    colors['--bg'] = '#F6F8FB';
+    colors['--card'] = '#FFFFFF';
+    colors['--card-hover'] = '#EDF2F8';
+    colors['--hover'] = '#E4EBF5';
+    colors['--bg-input'] = '#F0F4FA';
+    colors['--border'] = '#C8D5E2';
+    colors['--window-bg'] = '#FFFFFF';
+    colors['--window-header'] = '#EDF2F8';
+    colors['--text'] = '#1B2A3A';
+    colors['--text-dim'] = '#526070';
+    colors['--text-faint'] = '#8A9BAA';
+    colors['--glow-a'] = _tuneHex(accent.color, { lightness: 34, saturation: -14 });
+    colors['--glow-b'] = _tuneHex(accent.color, { lightness: 40, saturation: -22 });
+    colors['--mist'] = 'rgba(255,255,255,0.38)';
+  }
 
   Object.entries(colors).forEach(([key, value]) => {
     document.documentElement.style.setProperty(key, value);
@@ -994,6 +1074,7 @@ function loadSettings() {
     glowValue: 52,
     scene: 'beach',
     sceneEffect: 'on',
+    sceneLayers: { ...SCENE_LAYER_DEFAULTS },
     opacity: 5,  // 5% transparent = 95% opaque by default
     setAsDefault: false
   };
@@ -1043,6 +1124,15 @@ function loadSettings() {
     ?? settings.sceneEffect
     ?? 'on'
   );
+  const sceneLayers = _normalizeSceneLayers(
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem(FRIDAYS_SCENE_LAYERS_KEY) || 'null') ?? settings.sceneLayers;
+      } catch (_) {
+        return settings.sceneLayers;
+      }
+    })()
+  );
   const glowValue = _clampAtmosphereValue(
     localStorage.getItem(FRIDAYS_GLOW_VALUE_KEY)
     ?? settings.glowValue
@@ -1058,6 +1148,7 @@ function loadSettings() {
   try { localStorage.setItem(FRIDAYS_CONTRAST_VALUE_KEY, String(Math.round(contrastValue))); } catch (e) {}
   try { localStorage.setItem(FRIDAYS_SCENE_KEY, scene); } catch (e) {}
   try { localStorage.setItem(FRIDAYS_SCENE_EFFECT_KEY, sceneEffect); } catch (e) {}
+  try { localStorage.setItem(FRIDAYS_SCENE_LAYERS_KEY, JSON.stringify(sceneLayers)); } catch (e) {}
   try { localStorage.setItem(FRIDAYS_FOUNDATION_MODE_KEY, foundationMode); } catch (e) {}
   try { localStorage.setItem(FRIDAYS_GLOW_VALUE_KEY, String(Math.round(glowValue))); } catch (e) {}
   applyTimeTheme(savedMode, savedMode === 'manual' ? savedValue : null);
@@ -1081,6 +1172,7 @@ function loadSettings() {
   _syncGlowControls(glowValue);
   _syncSceneControls(scene);
   _syncSceneEffectControls(sceneEffect);
+  _syncSceneLayerControls(sceneLayers);
 
   return settings;
 }
@@ -1536,6 +1628,7 @@ function saveSettings() {
     glowValue: _clampAtmosphereValue(document.getElementById('glow-slider')?.value ?? localStorage.getItem(FRIDAYS_GLOW_VALUE_KEY) ?? 52),
     scene: _normalizeSceneMode(localStorage.getItem(FRIDAYS_SCENE_KEY) ?? 'beach'),
     sceneEffect: _normalizeSceneEffectMode(localStorage.getItem(FRIDAYS_SCENE_EFFECT_KEY) ?? 'on'),
+    sceneLayers: _currentSceneLayers(),
     opacity: _clampTransparencyValue(document.getElementById('opacity-slider').value || '5'),
     setAsDefault: false,
   };
@@ -1550,6 +1643,7 @@ function saveSettings() {
   localStorage.setItem(FRIDAYS_GLOW_VALUE_KEY, String(Math.round(settings.glowValue)));
   localStorage.setItem(FRIDAYS_SCENE_KEY, settings.scene);
   localStorage.setItem(FRIDAYS_SCENE_EFFECT_KEY, settings.sceneEffect);
+  localStorage.setItem(FRIDAYS_SCENE_LAYERS_KEY, JSON.stringify(settings.sceneLayers));
   showToast('Atmosphere saved', 'success');
 
   document.documentElement.style.setProperty('--glass-opacity', (100 - settings.opacity) / 100);

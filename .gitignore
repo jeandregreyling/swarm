@@ -49,3 +49,11 @@ archive/
 # OS
 .DS_Store
 Thumbs.db
+
+# Credentials & local-only (added 2026-04-21)
+.secret_key
+.vs/
+models/
+windows/
+llama.cpp
+agents/seven/llama.cpp

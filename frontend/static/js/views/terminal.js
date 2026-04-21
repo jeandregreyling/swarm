@@ -187,7 +187,7 @@ function terminalFilterOutput(value) {
   cards.forEach((card) => {
     const haystack = `${card.dataset.terminalCommand || ''}\n${card.dataset.terminalOutput || ''}`.toLowerCase();
     const visible = !needle || haystack.includes(needle);
-    const container = card.parentElement && card.parentElement !== output ? card.parentElement : card;
+    const container = card.closest('.terminal-entry') || (card.parentElement && card.parentElement !== output ? card.parentElement : card);
     container.style.display = visible ? '' : 'none';
     if (visible && card.dataset.terminalEntryId) {
       visibleEntryIds.add(card.dataset.terminalEntryId);
@@ -207,13 +207,19 @@ function terminalFilterOutput(value) {
 }
 
 function _terminalAppendPromptLine(output, cmd, entryId) {
+  const entry = document.createElement('div');
+  entry.className = 'terminal-entry';
+  entry.dataset.terminalEntryId = entryId;
+  entry.style.cssText = 'margin:0 0 6px;padding:0;';
+
   const line = document.createElement('div');
   line.className = 'terminal-prompt-line';
   line.dataset.terminalEntryId = entryId;
-  line.style.color = '#5c9bd6';
+  line.style.cssText = 'color:var(--accent, #5c9bd6);margin:0 0 1px;';
   line.textContent = '❯ ' + cmd;
-  output.appendChild(line);
-  return line;
+  entry.appendChild(line);
+  output.appendChild(entry);
+  return entry;
 }
 
 function _persistTerminalHistory() {
@@ -480,13 +486,22 @@ function applyTerminalShortcutsState(win, collapsed) {
 }
 
 const DEFAULT_TERMINAL_SHORTCUTS = [
-  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2 4l4.5 4L2 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: 'Hard Boot Terminal', cmd: 'sudo systemctl restart swarm-terminal' },
-  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><circle cx="5" cy="11" r="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 8.5V3h6v2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: 'Theme Engine Check', cmd: 'head -n 80 /home/seven/swarm/themes/fridays.json' },
-  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M8 8v5M5 11h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: 'ALM Status', cmd: 'curl -s http://localhost:5050/api/alm/status' },
-  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2.5 3h11a1 1 0 011 1v6a1 1 0 01-1 1h-3l-3 2.5V11h-5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', label: 'Restart Discord Bot', cmd: 'sudo systemctl restart swarm-discord' },
-  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 3l5 5-5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 3v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: 'Restart Telegram Bot', cmd: 'sudo systemctl restart swarm-telegram' },
-  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3.5 8.5l3 3 6-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', label: 'Terminal Service Status', cmd: 'systemctl status swarm-terminal' },
-  { icon: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><rect x="2" y="5" width="12" height="7" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M4 8h3M9 8h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', label: 'System Memory', cmd: 'free -h' },
+  { icon: '🟢', label: 'PROD Health', cmd: 'curl -s http://127.0.0.1:5050/_health' },
+  { icon: '🧪', label: 'UAT Health', cmd: 'curl -s http://127.0.0.1:5053/_health' },
+  { icon: '🛠', label: 'DEV Health', cmd: 'curl -s http://127.0.0.1:5051/_health' },
+  { icon: '🔁', label: 'Restart PROD UI', cmd: 'sudo systemctl restart swarm-terminal-prod' },
+  { icon: '🔁', label: 'Restart UAT UI', cmd: 'sudo systemctl restart swarm-terminal-uat' },
+  { icon: '🔁', label: 'Restart DEV UI', cmd: 'sudo systemctl restart swarm-terminal-dev' },
+  { icon: '🧭', label: 'Restart Fridays', cmd: 'sudo systemctl restart swarm-fridays' },
+  { icon: '📥', label: 'Restart Listener', cmd: 'sudo systemctl restart swarm-listener' },
+  { icon: '📈', label: 'Restart Monitor', cmd: 'sudo systemctl restart swarm-monitor' },
+  { icon: '💬', label: 'Restart Discord Bot', cmd: 'sudo systemctl restart swarm-discord' },
+  { icon: '📨', label: 'Restart Telegram Bot', cmd: 'sudo systemctl restart swarm-telegram' },
+  { icon: '🔥', label: 'Restart Prewarm', cmd: 'sudo systemctl restart swarm-prewarm' },
+  { icon: '📡', label: 'ALM Status', cmd: 'curl -s http://127.0.0.1:5050/api/alm/status' },
+  { icon: '🧠', label: 'Ollama Models', cmd: 'ollama ps' },
+  { icon: '⛔', label: 'Ollama Kill Switch', cmd: 'python3 /home/seven/swarm/ollama_killswitch.py --service' },
+  { icon: '💾', label: 'System Memory', cmd: 'free -h' },
 ];
 
 // ── Terminal shortcuts (DB-backed) ───────────────────────────────────────────
@@ -554,6 +569,7 @@ function renderTerminalQuickButtons(btnContainer, win) {
   all.forEach((item) => {
     const btn = document.createElement('button');
     btn.className = 'cmd-btn custom';
+    if (item.id) { btn.dataset.scId = item.id; btn.draggable = true; }
     const removeBtn = item.id
       ? `<button class="cmd-remove" title="Remove shortcut" onclick="event.stopPropagation(); _scDelete(${item.id})">✕</button>`
       : '';
@@ -561,6 +577,7 @@ function renderTerminalQuickButtons(btnContainer, win) {
     btn.onclick = () => cmdTerminal(item.cmd || '');
     btnContainer.appendChild(btn);
   });
+  if (_terminalDbShortcuts.length) _scEnableDrag(btnContainer);
 }
 
 // Open shortcut manager modal (replaces prompt() dialogs)
@@ -623,7 +640,8 @@ function _scModalRenderList() {
   } else {
     _terminalDbShortcuts.forEach(item => {
       html += `
-        <div id="sc-row-${item.id}" style="${rowStyle}">
+        <div id="sc-row-${item.id}" data-sc-id="${item.id}" draggable="true" style="${rowStyle}cursor:grab;">
+          <span style="color:var(--text-dim);font-size:11px;margin-right:2px;" title="Drag to reorder">⠿</span>
           <span style="font-size:16px;min-width:24px;">${_escHtml(item.icon || '⚡')}</span>
           <span style="flex:1;font-weight:500;">${_escHtml(item.label)}</span>
           <code style="flex:2;color:var(--text-dim);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(item.cmd)}</code>
@@ -633,6 +651,7 @@ function _scModalRenderList() {
     });
   }
   list.innerHTML = html;
+  if (_terminalDbShortcuts.length) _scEnableDrag(list);
 
   const sudoList = document.getElementById('sudo-modal-list');
   if (!sudoList) return;
@@ -797,6 +816,74 @@ async function _sudoWhitelistDelete(id) {
     showToast('Sudo whitelist entry removed', 'info');
   } catch (e) {
     showToast('Whitelist delete failed: ' + e.message, 'error');
+  }
+}
+
+// ── Shortcut drag-to-reorder ─────────────────────────────────────────────────
+
+function _scEnableDrag(container) {
+  let dragSrc = null;
+
+  const getItem = (el) => el.closest('[data-sc-id]');
+
+  container.addEventListener('dragstart', e => {
+    const item = getItem(e.target);
+    if (!item) return;
+    dragSrc = item;
+    item.style.opacity = '0.4';
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  container.addEventListener('dragover', e => {
+    e.preventDefault();
+    const item = getItem(e.target);
+    if (!item || item === dragSrc) return;
+    e.dataTransfer.dropEffect = 'move';
+    container.querySelectorAll('[data-sc-id]').forEach(i => i.style.outline = '');
+    item.style.outline = '1px solid var(--accent,#0f9)';
+  });
+
+  container.addEventListener('dragleave', e => {
+    const item = getItem(e.target);
+    if (item) item.style.outline = '';
+  });
+
+  container.addEventListener('drop', e => {
+    e.preventDefault();
+    const target = getItem(e.target);
+    container.querySelectorAll('[data-sc-id]').forEach(i => { i.style.outline = ''; i.style.opacity = ''; });
+    if (!target || !dragSrc || target === dragSrc) return;
+    const all = Array.from(container.querySelectorAll('[data-sc-id]'));
+    const srcIdx = all.indexOf(dragSrc);
+    const tgtIdx = all.indexOf(target);
+    if (srcIdx < tgtIdx) container.insertBefore(dragSrc, target.nextSibling);
+    else container.insertBefore(dragSrc, target);
+    dragSrc = null;
+    _scSaveSortOrder(container);
+  });
+
+  container.addEventListener('dragend', () => {
+    container.querySelectorAll('[data-sc-id]').forEach(i => { i.style.outline = ''; i.style.opacity = ''; });
+    dragSrc = null;
+  });
+}
+
+async function _scSaveSortOrder(container) {
+  const items = Array.from(container.querySelectorAll('[data-sc-id]'));
+  items.forEach((el, idx) => {
+    const id = parseInt(el.dataset.scId);
+    const cached = _terminalDbShortcuts.find(s => s.id === id);
+    if (cached) cached.sort_order = idx;
+  });
+  _terminalDbShortcuts.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  for (const el of items) {
+    const id = parseInt(el.dataset.scId);
+    const idx = items.indexOf(el);
+    if (id) await fetch(`/api/terminal/shortcuts/${id}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ sort_order: idx })
+    }).catch(() => {});
   }
 }
 

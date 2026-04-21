@@ -5,14 +5,16 @@ from services import *
 killswitch_bp = Blueprint('killswitch', __name__)
 
 @killswitch_bp.route('/api/killswitch/buttons', methods=['GET'])
-def api_killswitch_buttons():
+@require_auth
+def api_killswitch_buttons(current_user=None):
     """Get desktop kill switch button configuration."""
     return jsonify(kill_switch.create_desktop_buttons())
 
 
 
 @killswitch_bp.route('/api/killswitch/emergency', methods=['POST'])
-def api_killswitch_emergency():
+@require_owner
+def api_killswitch_emergency(current_user=None):
     """EMERGENCY SHUTDOWN — immediate stop all agents."""
     reason = request.json.get('reason', 'Manual emergency shutdown') if request.json else 'Manual emergency shutdown'
     
@@ -28,7 +30,8 @@ def api_killswitch_emergency():
 
 
 @killswitch_bp.route('/api/killswitch/pause', methods=['POST'])
-def api_killswitch_pause():
+@require_owner
+def api_killswitch_pause(current_user=None):
     """Pause all active agents."""
     reason = request.json.get('reason', 'Manual pause') if request.json else 'Manual pause'
     
@@ -44,7 +47,8 @@ def api_killswitch_pause():
 
 
 @killswitch_bp.route('/api/killswitch/resume', methods=['POST'])
-def api_killswitch_resume():
+@require_owner
+def api_killswitch_resume(current_user=None):
     """Resume paused agents."""
     kill_switch.record_kill_event('resume_all', agent='system')
     success = kill_switch.resume_agents()
@@ -58,16 +62,17 @@ def api_killswitch_resume():
 
 
 @killswitch_bp.route('/api/killswitch/restart', methods=['POST'])
-def api_killswitch_restart():
+@require_owner
+def api_killswitch_restart(current_user=None):
     """Restart swarm server."""
     kill_switch.record_kill_event('restart_server', agent='system')
     kill_switch.broadcast_alert('🔄 RESTART SERVER initiated')
     
-    # Spawn restart in background
+    # Spawn restart in background via subprocess (os.execv in a thread is undefined)
     def _restart():
-        import time
+        import time, subprocess
         time.sleep(1)
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        subprocess.Popen([sys.executable] + sys.argv)
     
     threading.Thread(target=_restart, daemon=True).start()
     
@@ -81,7 +86,8 @@ def api_killswitch_restart():
 
 
 @killswitch_bp.route('/api/killswitch/agent/<agent_name>/reset', methods=['POST'])
-def api_killswitch_agent_reset(agent_name):
+@require_owner
+def api_killswitch_agent_reset(agent_name, current_user=None):
     """Reset specific agent."""
     kill_switch.record_kill_event('agent_reset', agent=agent_name)
     success = kill_switch.reset_agent(agent_name)

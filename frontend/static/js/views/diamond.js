@@ -24,13 +24,41 @@ const SUNDIAL_ICONS = {
 const SUNDIAL_METRICS = [
   { key: 'cpu',    label: 'CPU',     tip: 'Processor load — how busy the CPU is right now' },
   { key: 'ram',    label: 'RAM',     tip: 'Memory usage — allocated system memory' },
-  { key: 'swap',   label: 'V-RAM',   tip: 'Virtual RAM — 128 GB SSD swap for bigger models' },
+  { key: 'swap',   label: 'V-RAM',   tip: 'Virtual RAM — 48 GB SSD swap for bigger models' },
   { key: 'gpu',    label: 'GPU',     tip: 'GPU VRAM — dedicated graphics memory for models' },
   { key: 'temp',   label: 'Temp',    tip: 'CPU temperature — thermal sensor reading' },
   { key: 'disk',   label: 'Disk',    tip: 'Primary disk utilisation — storage capacity' },
   { key: 'agents', label: 'Members', tip: 'Active swarm members — enabled agents in roster' },
   { key: 'gov',    label: 'Gov',     tip: 'Governance — ALM pipeline enforcement via Vortex' },
 ];
+
+function _escapeDiamondHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function _sundialResidencyHtml(metricKey) {
+  const system = window.__fridaysDiamondPulse?.system || {};
+  const residency = system.agent_residency || {};
+  const bucket = metricKey === 'ram' ? 'ram' : metricKey === 'swap' ? 'swap' : metricKey === 'gpu' ? 'gpu' : '';
+  if (!bucket) return '';
+  const entries = Array.isArray(residency[bucket]) ? residency[bucket] : [];
+  const title = bucket === 'ram' ? 'Loaded in RAM' : bucket === 'swap' ? 'Loaded in V-RAM' : 'Loaded on GPU';
+  if (!entries.length) {
+    return '<div class="stip-section"><div class="stip-section-title">' + title + '</div><div class="stip-empty">No resident agents reported.</div></div>';
+  }
+  return '<div class="stip-section"><div class="stip-section-title">' + title + '</div><div class="stip-list">' + entries.map(entry => {
+    const modelBits = [];
+    if (entry.model) modelBits.push(_escapeDiamondHtml(entry.model));
+    if (bucket === 'gpu' && entry.size_vram_gb) modelBits.push(_escapeDiamondHtml(entry.size_vram_gb + ' GB VRAM'));
+    else if (entry.size_gb) modelBits.push(_escapeDiamondHtml(entry.size_gb + ' GB'));
+    return '<div class="stip-list-row"><span class="stip-list-label">' + _escapeDiamondHtml(entry.label || entry.agent || 'Agent') + '</span><span class="stip-list-meta">' + modelBits.join(' · ') + '</span></div>';
+  }).join('') + '</div></div>';
+}
 
 /* ── Sundial Initialisation ───────────────────────────────────────────────── */
 
@@ -118,7 +146,8 @@ function _showSundialTip(metric, node) {
     '<div class="stip-header"><span class="stip-icon">' + iconSvg + '</span> ' + metric.label + '</div>' +
     '<div class="stip-desc">' + metric.tip + '</div>' +
     '<div class="stip-val">' + (valEl ? valEl.textContent : '\u2014') + '</div>' +
-    '<div class="stip-health ' + hClass + '"><span class="stip-dot"></span> ' + hLabel + '</div>';
+    '<div class="stip-health ' + hClass + '"><span class="stip-dot"></span> ' + hLabel + '</div>' +
+    _sundialResidencyHtml(metric.key);
   tip.style.display = 'block';
 
   const rect = node.getBoundingClientRect();
@@ -150,6 +179,7 @@ function loadSystemPulse() {
 /* ── Sundial Update ──────────────────────────────────────────────────────── */
 
 function _updateSundial(d) {
+  window.__fridaysDiamondPulse = d || {};
   const s = d.system || {}, q = d.queue || {}, a = d.agents || {}, g = d.governance || {};
   const mainDisk = (s.disks && s.disks.length) ? s.disks[0] : {};
 
@@ -280,9 +310,58 @@ function _closeTileContextMenu() {
   if (m) m.remove();
 }
 
+function _showTileHoverTip(card) {
+  if (!card || card.classList.contains('home-card-add')) return;
+  let tip = document.getElementById('tile-hover-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'tile-hover-tip';
+    tip.className = 'tile-hover-tip';
+    document.body.appendChild(tip);
+  }
+  const title = card.dataset.winTitle || card.querySelector('.card-title span:last-child')?.textContent || 'Tile';
+  const desc = card.querySelector('.card-desc')?.textContent || '';
+  const shortcut = card.dataset.shortcut || '';
+  tip.innerHTML =
+    '<div class="tile-hover-tip-title">' + _escapeDiamondHtml(title) + '</div>' +
+    (desc ? '<div class="tile-hover-tip-desc">' + _escapeDiamondHtml(desc) + '</div>' : '') +
+    (shortcut ? '<div class="tile-hover-tip-shortcut">Shortcut · ' + _escapeDiamondHtml(shortcut) + '</div>' : '');
+  tip.style.display = 'block';
+
+  const rect = card.getBoundingClientRect();
+  const tipW = tip.offsetWidth || 220;
+  const tipH = tip.offsetHeight || 90;
+  let left = rect.left + (rect.width / 2) - (tipW / 2);
+  left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
+  let top = rect.top - tipH - 12;
+  if (top < 8) top = rect.bottom + 12;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+
+function _hideTileHoverTip() {
+  const tip = document.getElementById('tile-hover-tip');
+  if (tip) tip.style.display = 'none';
+}
+
+function _initTileHoverTips() {
+  document.querySelectorAll('.home-card').forEach(card => {
+    if (card.classList.contains('home-card-add')) return;
+    card.addEventListener('mouseenter', () => _showTileHoverTip(card));
+    card.addEventListener('focusin', () => _showTileHoverTip(card));
+    card.addEventListener('mouseleave', _hideTileHoverTip);
+    card.addEventListener('focusout', _hideTileHoverTip);
+  });
+}
+
 /* ── Hidden Tiles ─────────────────────────────────────────────────────────── */
 
 function _hideTile(winId) {
+  // Keep Local AI discoverable; users rely on this tile to manage Ollama health.
+  if (winId === 'localai') {
+    if (typeof showToast === 'function') showToast('Local AI tile cannot be hidden.', 'info');
+    return;
+  }
   const card = document.querySelector('.home-card[data-win-id="' + winId + '"]');
   if (card) {
     card.style.transition = 'opacity 0.25s, transform 0.25s';
@@ -319,7 +398,17 @@ function _showTile(winId) {
 }
 
 function _applyHiddenTiles() {
-  const hidden = JSON.parse(localStorage.getItem('fridays_hidden_tiles') || '[]');
+  let hidden = JSON.parse(localStorage.getItem('fridays_hidden_tiles') || '[]');
+  if (!Array.isArray(hidden)) hidden = [];
+
+  // Backward compatibility + safety cleanup for stale values.
+  hidden = hidden
+    .map(id => id === 'ollama' ? 'localai' : id)
+    .filter((id, idx, arr) => !!id && arr.indexOf(id) === idx)
+    .filter(id => id !== 'localai');
+
+  localStorage.setItem('fridays_hidden_tiles', JSON.stringify(hidden));
+
   hidden.forEach(winId => {
     const card = document.querySelector('.home-card[data-win-id="' + winId + '"]');
     if (card) card.style.display = 'none';
@@ -333,20 +422,55 @@ function _updateHiddenBadge() {
   if (!sectionTitle) return;
   let badge = sectionTitle.querySelector('.hidden-badge');
   if (hidden.length > 0) {
-    if (!badge) { badge = document.createElement('span'); badge.className = 'hidden-badge'; sectionTitle.appendChild(badge); }
-    badge.textContent = hidden.length + ' hidden — click to restore';
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'hidden-badge';
+      badge.title = 'Restore hidden tiles';
+      badge.style.cssText = 'cursor:pointer;font-size:9px;font-weight:600;letter-spacing:0.03em;'
+        + 'color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);'
+        + 'border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);'
+        + 'border-radius:999px;padding:1px 8px;margin-left:6px;transition:background 0.15s;';
+      sectionTitle.appendChild(badge);
+    }
+    badge.textContent = hidden.length + ' hidden ↩';
     badge.style.display = '';
-    sectionTitle.style.cursor = 'pointer';
   } else {
     if (badge) badge.style.display = 'none';
-    sectionTitle.style.cursor = '';
   }
 }
 
 function _initHiddenTilesRestore() {
   const sectionTitle = document.querySelector('#quick-cards')?.previousElementSibling;
   if (!sectionTitle) return;
-  sectionTitle.addEventListener('click', _toggleHiddenPanel);
+  // Attach only to the badge so it doesn't conflict with the section collapse click
+  sectionTitle.addEventListener('click', (e) => {
+    if (e.target.closest('.hidden-badge')) {
+      e.stopPropagation();
+      _toggleHiddenPanel();
+    }
+  });
+}
+
+function _addTileHideButtons() {
+  document.querySelectorAll('#quick-cards .home-card:not(.home-card-add)').forEach(card => {
+    if (card.querySelector('.tile-hide-btn')) return;
+    const btn = document.createElement('button');
+    btn.className = 'tile-hide-btn';
+    btn.title = 'Hide tile';
+    btn.innerHTML = '<svg viewBox="0 0 16 16" width="10" height="10" fill="none"><line x1="3" y1="13" x2="13" y2="3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    btn.style.cssText = 'position:absolute;top:5px;right:5px;width:18px;height:18px;'
+      + 'background:color-mix(in srgb,var(--border) 60%,transparent);border:none;border-radius:4px;'
+      + 'cursor:pointer;display:flex;align-items:center;justify-content:center;'
+      + 'opacity:0;transition:opacity 0.15s,background 0.15s;color:var(--text-dim);padding:0;z-index:2;';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _hideTile(card.dataset.winId);
+    });
+    card.style.position = 'relative';
+    card.appendChild(btn);
+    card.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
+    card.addEventListener('mouseleave', () => { btn.style.opacity = '0'; });
+  });
 }
 
 function _toggleHiddenPanel() {
@@ -371,12 +495,53 @@ function _toggleHiddenPanel() {
   if (grid) grid.before(panel);
 }
 
+/* ── Home chat vertical resize ────────────────────────────────────────────── */
+
+function _initHomeChatResize() {
+  const handle = document.getElementById('home-chat-resizer');
+  const chat = document.querySelector('.home-chat-section');
+  if (!handle || !chat) return;
+
+  const STORAGE_KEY = 'fridays-home-chat-height';
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    const h = parseInt(saved, 10);
+    if (h >= 200) { chat.style.minHeight = h + 'px'; chat.style.maxHeight = h + 'px'; }
+  }
+
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = chat.getBoundingClientRect().height;
+
+    const onMove = (ev) => {
+      const h = Math.max(200, Math.min(window.innerHeight - 140, startH + ev.clientY - startY));
+      chat.style.minHeight = h + 'px';
+      chat.style.maxHeight = h + 'px';
+    };
+
+    const onUp = () => {
+      localStorage.setItem(STORAGE_KEY, String(chat.getBoundingClientRect().height));
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
 /* ── Init ─────────────────────────────────────────────────────────────────── */
 
 document.addEventListener('DOMContentLoaded', () => {
   _initSundial();
   _initAddNewTile();
   _initTileContextMenu();
+  _initTileHoverTips();
   _applyHiddenTiles();
   _initHiddenTilesRestore();
+  _addTileHideButtons();
+  _initHomeChatResize();
 });

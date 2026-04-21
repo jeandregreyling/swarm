@@ -266,6 +266,8 @@ def _get_system_vitals():
         except Exception:
             pass
 
+        agent_residency = _get_agent_residency()
+
         return {
             'cpu_percent': round(cpu, 1),
             'ram_percent': round(mem.percent, 1),
@@ -278,11 +280,96 @@ def _get_system_vitals():
             'gpu_vram_percent': gpu_vram_percent,
             'gpu_vram_used_gb': gpu_vram_used_gb,
             'gpu_vram_total_gb': gpu_vram_total_gb,
+            'agent_residency': agent_residency,
             'disks': disks,
         }
     except Exception as exc:
         logger.warning(f'[Diamond] system vitals: {exc}')
         return {}
+
+
+def _model_aliases(name):
+    raw = str(name or '').strip().lower()
+    if not raw:
+        return set()
+    aliases = {raw}
+    if ':' in raw:
+        aliases.add(raw.split(':', 1)[0])
+    return aliases
+
+
+def _get_agent_residency():
+    try:
+        import ollama
+        from utils.db.registry import get_all_agents_raw
+
+        roster = get_all_agents_raw() or []
+        agent_rows = []
+        for row in roster:
+            name = str(row.get('name') or '').strip().lower()
+            if not name:
+                continue
+            label = str(row.get('display_label') or row.get('label') or name).strip()
+            number = row.get('number')
+            model = str(row.get('model') or '').strip()
+            agent_rows.append({
+                'name': name,
+                'label': f'{number} · {label}' if number is not None else label,
+                'model': model,
+            })
+
+        model_map = {}
+        for agent in agent_rows:
+            for alias in _model_aliases(agent['model']):
+                model_map.setdefault(alias, []).append(agent)
+
+        running = ollama.ps()
+        models = list(running.models if hasattr(running, 'models') else [])
+        residency = {'ram': [], 'swap': [], 'gpu': []}
+        seen = {'ram': set(), 'swap': set(), 'gpu': set()}
+        swap_pref_agents = {'qwen', 'eight', 'sniffles'}
+
+        for model in models:
+            model_name = str(getattr(model, 'model', '') or getattr(model, 'name', '') or '').strip()
+            if not model_name:
+                continue
+            size_bytes = int(getattr(model, 'size', 0) or 0)
+            vram_bytes = int(getattr(model, 'size_vram', 0) or 0)
+            matched = []
+            for alias in _model_aliases(model_name):
+                matched.extend(model_map.get(alias, []))
+            unique = []
+            used_names = set()
+            for agent in matched:
+                if agent['name'] in used_names:
+                    continue
+                used_names.add(agent['name'])
+                unique.append(agent)
+
+            for agent in unique:
+                if vram_bytes > 0:
+                    bucket = 'gpu'
+                elif agent['name'] in swap_pref_agents or size_bytes >= 8 * (1024 ** 3):
+                    bucket = 'swap'
+                else:
+                    bucket = 'ram'
+                if agent['name'] in seen[bucket]:
+                    continue
+                seen[bucket].add(agent['name'])
+                residency[bucket].append({
+                    'agent': agent['name'],
+                    'label': agent['label'],
+                    'model': model_name,
+                    'size_gb': round(size_bytes / (1024 ** 3), 2),
+                    'size_vram_gb': round(vram_bytes / (1024 ** 3), 2),
+                })
+
+        for bucket in residency.values():
+            bucket.sort(key=lambda item: item.get('label') or item.get('agent') or '')
+        return residency
+    except Exception as exc:
+        logger.warning(f'[Diamond] residency: {exc}')
+        return {'ram': [], 'swap': [], 'gpu': []}
 
 
 def _get_queue_status():
