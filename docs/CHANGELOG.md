@@ -9,6 +9,24 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 [2026-04-22 02:13:00] Copilot: 20-cycle smoke test (two back-to-back 10-cycle passes): 20/20 endpoints green (`/api/health`, `/api/agents/status`, `/api/monitor`), 20/20 CPU-idle (0 – 1 % aggregate across all ollama procs, sampled 2 s each), 0 swarm errors in the test window. Stray port-conflict orphan (`python3 PID 1084`, user-launched `/usr/bin/python3 frontend/terminal.py`, 9 min old) killed mid-test; service now owns :5050 cleanly under systemd MainPID.
 
+[2026-04-22 03:15:00] Copilot: **Phase G — part 2 (deep fix, after recurrence during pytest)**. During the first validation pytest run (`.venv/bin/python -m pytest tests/`), `ollama ps` showed `Qwen2.5:latest` and `qwen:latest` pinned as `UNTIL Forever`. Triaged and fixed **three** remaining layers that Session 22 and Phase G part 1 had missed:
+
+1. **Runtime code sites with `keep_alive=-1`** (4 files):
+   - `frontend/blueprints/ollama.py:83` (warm-up payload to `/api/generate`).
+   - `agents/mistral/mistral_agent.py:100` and `:120` (stream + blocking fallback).
+   - `agents/specialists/eight.py:244`.
+   All rewritten to `keep_alive=300`.
+2. **Agent-import sentinel default** in `frontend/blueprints/agents.py:1770,1787` — UPDATE and INSERT paths both defaulted to `-1` when the incoming JSON had no `keep_alive`. Both flipped to `300`.
+3. **DB + schema seed**:
+   - `swarm_memory.db` `agents` table had 22 rows with `keep_alive IN (NULL, -1)` — the **authoritative** agents registry DB (NOT `swarm.db`). Bulk `UPDATE agents SET keep_alive=300 WHERE keep_alive IS NULL OR keep_alive < 0 OR keep_alive > 3600`.
+   - `utils/db/_schema.py` Phase-2 registry seed ran on every schema boot and **re-overwrote** every Ollama-routed agent with `keep_alive=-1`. Seed tuple changed from `-1` → `300` for all 8 Ollama agents (gemma, llama, mistral, qwen, librarian, duck, sniffles, eight). Non-Ollama tiers keep `None`. Added an inline comment locking the rule: **"keep_alive in SECONDS. Must be a positive finite value — NEVER -1 (Forever)."**
+
+Evidence of regression before fix: runner PIDs 35207/35623 ran 40+ minutes at 312-350 % CPU with `UNTIL Forever` — pattern-matching the original runaway exactly.
+
+Evidence of fix after deep patch: four consecutive 10-cycle smokes (10/10 endpoints, 0 `Forever` entries). Full pytest run (`605 passed, 1 warning in 470.54s`) triggered only finite-TTL loads (`4 minutes from now`, `50 seconds from now`). 4-minute drain window observed: CPU 576 % → 2 % as each model's 300 s timer expired; `ollama ps` went from 1 loaded model to empty without intervention. System RAM recovered 19 GB → 11 GB → 8.5 GB free.
+
+Final service state: `swarm-terminal.service` MainPID owns `:5050` cleanly after killing 4 boot-launched orphan `/usr/bin/python3 frontend/terminal.py` instances (prod + dev + uat + respawn). `/api/health` 200. No `Forever` entries anywhere. Ollama **will self-unload every load**.
+
 ---
 
 ## Version 2026-04-22 Session 24 — Phase B split + XSS hardening + dev/uat sync + deepseek-r1 install
