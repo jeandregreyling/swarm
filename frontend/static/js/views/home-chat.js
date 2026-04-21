@@ -352,8 +352,10 @@
   }
 
   function _hcRenderContent(text) {
-    // marked.parse handles its own HTML sanitisation — pre-escaping causes
-    // double-encoded entities (&amp;amp; etc.).  Only escape in the fallback.
+    // Use shared safeMarkdown (marked + DOMPurify) when available to prevent XSS.
+    if (typeof window !== 'undefined' && typeof window.safeMarkdown === 'function') {
+      return window.safeMarkdown(text);
+    }
     if (typeof marked !== 'undefined' && marked.parse) {
       try { return marked.parse(String(text || ''), { gfm: true, breaks: false }); } catch (e) { /* fall through */ }
     }
