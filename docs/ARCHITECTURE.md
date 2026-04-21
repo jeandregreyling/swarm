@@ -1,6 +1,6 @@
 # Architecture — Seven's Swarm
 
-**Last Updated:** 2026-04-20 | **Status:** Production, Post-Session 21
+**Last Updated:** 2026-04-21 | **Status:** Production, Post-Session 22 (Phase A registry unification)
 
 ---
 
@@ -264,7 +264,11 @@ Ghost marks executed → status: executed → PROD
 ### Core
 
 ```sql
-agents           — Agent registry (14 seeded)
+agents           — Agent registry (21 enabled). Single source of truth for
+                   number, label, display_label, model, tier, memory_table,
+                   temperature, system_prompt, api_key_var, eta_seconds,
+                   keep_alive. All runtime surfaces read via utils/db/registry.py
+                   (60s TTL cache). Zero hardcoded agent lists in blueprints.
 conversations    — Conversation log
 messages         — Agent messages per conversation
 ```
