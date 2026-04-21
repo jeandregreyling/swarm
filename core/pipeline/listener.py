@@ -719,7 +719,7 @@ def librarian_triage(from_addr, subject, body):
             model='qwen:latest',
             messages=[{'role': 'user', 'content': prompt}],
             options={'temperature': 0.1},
-            keep_alive=-1,
+            keep_alive=300,
         )
         text = response['message']['content'].strip()
         lines = [l.strip() for l in text.splitlines() if l.strip()]

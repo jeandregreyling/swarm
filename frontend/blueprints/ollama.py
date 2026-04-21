@@ -1,11 +1,18 @@
 """ollama.py — Ollama Models routes"""
 import os
 import re
+import time
 import requests
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
 
 ollama_bp = Blueprint('ollama', __name__)
+
+# Cache /api/ollama/show responses for 5 minutes.
+# Model metadata (family, quantisation, capabilities) is static at runtime, and
+# repeated /api/show calls wake/block the loaded runner, burning CPU.
+_SHOW_CACHE = {}
+_SHOW_TTL = 300
 
 _OLLAMA_LIBRARY_FALLBACK = [
     'gemma3:latest',
@@ -130,12 +137,17 @@ def api_ollama_ps():
 
 @ollama_bp.route('/api/ollama/show/<path:model>')
 def api_ollama_show(model):
-    """Return rich model metadata: family, quantisation, capabilities, parameters."""
+    """Return rich model metadata: family, quantisation, capabilities, parameters.
+    Cached for 5 minutes to prevent UI polling from storming the ollama runner."""
     import ollama as _ollama
+    now = time.time()
+    cached = _SHOW_CACHE.get(model)
+    if cached and (now - cached[0]) < _SHOW_TTL:
+        return jsonify(cached[1])
     try:
         result = _ollama.show(model)
         details = getattr(result, 'details', None)
-        return jsonify({
+        payload = {
             'ok': True,
             'model': model,
             'modelfile':    getattr(result, 'modelfile', '') or '',
@@ -148,7 +160,9 @@ def api_ollama_show(model):
                 'parameter_size':      getattr(details, 'parameter_size', '') or '' if details else '',
                 'quantization_level':  getattr(details, 'quantization_level', '') or '' if details else '',
             },
-        })
+        }
+        _SHOW_CACHE[model] = (now, payload)
+        return jsonify(payload)
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 

@@ -70,7 +70,7 @@ def chat(message, conversation_history=None, stage_cb=None):
         try:
             stream = _ollama.chat(
                 model=MODEL, messages=msgs,
-                options={'temperature': 0.6}, keep_alive=-1, stream=True,
+                options={'temperature': 0.6}, keep_alive=300, stream=True,
             )
             for chunk in stream:
                 part = (chunk.get('message') or {}).get('content') or ''
@@ -83,7 +83,7 @@ def chat(message, conversation_history=None, stage_cb=None):
                     tokens = int(chunk.get('eval_count') or 0)
         except Exception as exc:
             logger.warning(f'[Seven] stream fallback: {exc}')
-            resp = _ollama.chat(model=MODEL, messages=msgs, options={'temperature': 0.6}, keep_alive=-1)
+            resp = _ollama.chat(model=MODEL, messages=msgs, options={'temperature': 0.6}, keep_alive=300)
             """
             agents/seven/seven_agent.py — Seven (local-algorithm)
             The nervous system of the Swarm. Observes, deliberates, and speaks without an LLM.
