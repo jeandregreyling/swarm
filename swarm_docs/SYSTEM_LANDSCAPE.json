@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-22 00:05",
+  "generated_at": "2026-04-22 00:06",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2970,7 +2970,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 30316
+      "rows": 30335
     },
     {
       "name": "agent_capabilities",
@@ -3034,7 +3034,7 @@
     },
     {
       "name": "decisions",
-      "rows": 5255
+      "rows": 5256
     },
     {
       "name": "deferred_items",
@@ -3042,7 +3042,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 707
+      "rows": 709
     },
     {
       "name": "file_versions",
@@ -3174,7 +3174,7 @@
     },
     {
       "name": "queue",
-      "rows": 1618
+      "rows": 1621
     },
     {
       "name": "research_evidence",
@@ -3242,7 +3242,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 7011
+      "rows": 7012
     },
     {
       "name": "task_run_log",
@@ -3254,27 +3254,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 461
+      "rows": 463
     },
     {
       "name": "tickets",
-      "rows": 469
+      "rows": 471
     },
     {
       "name": "time_checkpoints",
-      "rows": 3218
+      "rows": 3220
     },
     {
       "name": "time_events",
-      "rows": 91833
+      "rows": 91838
     },
     {
       "name": "time_journal",
-      "rows": 87385
+      "rows": 87388
     },
     {
       "name": "time_machine",
-      "rows": 5475
+      "rows": 5478
     },
     {
       "name": "tool_builds",
