@@ -22,7 +22,6 @@ sys.path.insert(0, '/home/seven/swarm/lib/system')
 
 from database import get_connection, save_agent_memory, get_agent_memory
 from orchestrator import tag_content
-import ollama
 
 MODEL = 'qwen2.5:latest'
 
@@ -72,12 +71,13 @@ def _eight_confirm(subject, content):
         'Confirm in 1-2 sentences that you understood this and state the key takeaway '
         'in your own words using correct SAP terminology.'
     )
-    response = ollama.chat(
-        model=MODEL,
-        messages=[{'role': 'user', 'content': prompt}],
-        options={'temperature': 0.2}
+    from core import llm as _llm
+    content, _tokens = _llm.chat(
+        MODEL,
+        [{'role': 'user', 'content': prompt}],
+        temperature=0.2,
     )
-    return response['message']['content'].strip()
+    return content.strip()
 
 
 # ── Mode: seed ────────────────────────────────────────────────────────────────

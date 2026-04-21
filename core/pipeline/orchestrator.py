@@ -45,7 +45,6 @@ from config import (GEMMA_SYSTEM_PROMPT, LLAMA_SYSTEM_PROMPT,
                      QWEN_SYSTEM_PROMPT, LIBRARIAN_SYSTEM_PROMPT,
                      MISTRAL_SYSTEM_PROMPT)
 from logging_bridge import log_action, log_agent_thinking, batch_commit
-import ollama
 import logging
 import time
 import os
@@ -327,20 +326,15 @@ def ask_agent(agent_name, prompt, retries=2):
     start_time = time.time()
     keep_alive = _select_keep_alive(agent_name)
     log_action('orchestrator', f'keepalive:{agent_name}', f'keep_alive={keep_alive}', 'info')
+    from core import llm as _llm
     for attempt in range(retries + 1):
         try:
-            response = ollama.chat(
-                model=model,
-                messages=messages,
-                options={'temperature': temp},
+            answer, ec = _llm.chat(
+                model,
+                messages,
+                temperature=temp,
                 keep_alive=keep_alive,
             )
-            answer = response['message']['content']
-            # Capture token count for verbose thinking-tile display (non-streaming).
-            try:
-                ec = int(getattr(response, 'eval_count', None) or response.get('eval_count') or 0)
-            except Exception:
-                ec = 0
             _LAST_EVAL_COUNT[agent_name] = ec
             elapsed_ms = int((time.time() - start_time) * 1000)
             log_agent_thinking(agent_name, f'responded to prompt', elapsed_ms)
@@ -569,13 +563,14 @@ def librarian_relay_review(text, from_agent, timeout_s=18):
     ]
     start = time.time()
     try:
-        response = ollama.chat(
-            model=model,
-            messages=messages,
-            options={'temperature': 0.05},
+        from core import llm as _llm
+        raw, _tokens = _llm.chat(
+            model,
+            messages,
+            temperature=0.05,
             keep_alive=keep_alive,
         )
-        raw = str(response['message']['content'] or '').strip()
+        raw = str(raw or '').strip()
         elapsed_ms = int((time.time() - start) * 1000)
         log_action('librarian', 'relay_review', f'from={from_key} elapsed={elapsed_ms}ms', 'info')
         # Extract JSON — strip fences if model adds them anyway
