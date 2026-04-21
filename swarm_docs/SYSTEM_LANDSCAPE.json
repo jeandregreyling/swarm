@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-22 08:54",
+  "generated_at": "2026-04-22 09:50",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -267,6 +267,11 @@
       "description": "KILL SWITCHES \u2014 Emergency control agents via Telegram/Discord"
     },
     {
+      "path": "core/llm.py",
+      "group": "Core",
+      "description": "core/llm.py \u2014 Single Ollama gateway for the entire swarm."
+    },
+    {
       "path": "core/pipeline/debate.py",
       "group": "Core",
       "description": ""
@@ -369,7 +374,7 @@
     {
       "path": "agents/seven/seven_agent.py",
       "group": "Agent Modules",
-      "description": "agents/seven/seven_agent.py \u2014 Qwen3.6 (Agent 18)"
+      "description": "agents/seven/seven_agent.py \u2014 Seven (local-algorithm)"
     },
     {
       "path": "agents/ten/copilot_agent.py",
@@ -2395,12 +2400,6 @@
       "description": "system.py \u2014 System & Monitoring routes",
       "routes": [
         {
-          "path": "/api/health",
-          "methods": [
-            "GET"
-          ]
-        },
-        {
           "path": "/api/circuit-breaker",
           "methods": [
             "GET"
@@ -2410,12 +2409,6 @@
           "path": "/api/circuit-breaker/<agent>/reset",
           "methods": [
             "POST"
-          ]
-        },
-        {
-          "path": "/",
-          "methods": [
-            "GET"
           ]
         },
         {
@@ -2497,7 +2490,7 @@
           ]
         }
       ],
-      "route_count": 17
+      "route_count": 15
     },
     {
       "name": "tasker_bp",
@@ -2970,7 +2963,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 32548
+      "rows": 32661
     },
     {
       "name": "agent_capabilities",
@@ -2990,15 +2983,15 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 463
+      "rows": 466
     },
     {
       "name": "audit_results",
-      "rows": 33
+      "rows": 34
     },
     {
       "name": "chat_jobs",
-      "rows": 580
+      "rows": 583
     },
     {
       "name": "claude_log",
@@ -3006,15 +2999,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2182
+      "rows": 2185
     },
     {
       "name": "conversations",
-      "rows": 0
+      "rows": 9
     },
     {
       "name": "council_output",
-      "rows": 923
+      "rows": 975
     },
     {
       "name": "daily_checkpoint",
@@ -3034,7 +3027,7 @@
     },
     {
       "name": "decisions",
-      "rows": 5926
+      "rows": 6080
     },
     {
       "name": "deferred_items",
@@ -3042,7 +3035,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 754
+      "rows": 758
     },
     {
       "name": "file_versions",
@@ -3058,11 +3051,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4209
+      "rows": 4222
     },
     {
       "name": "governance_log",
-      "rows": 381
+      "rows": 383
     },
     {
       "name": "knowledge_chunks",
@@ -3074,7 +3067,7 @@
     },
     {
       "name": "memory",
-      "rows": 104
+      "rows": 105
     },
     {
       "name": "memory_eight",
@@ -3134,11 +3127,11 @@
     },
     {
       "name": "memory_twenty",
-      "rows": 243
+      "rows": 260
     },
     {
       "name": "messages",
-      "rows": 0
+      "rows": 17
     },
     {
       "name": "moderators",
@@ -3174,7 +3167,7 @@
     },
     {
       "name": "queue",
-      "rows": 1766
+      "rows": 1776
     },
     {
       "name": "research_evidence",
@@ -3186,7 +3179,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 504
+      "rows": 506
     },
     {
       "name": "scheduled_tasks",
@@ -3218,7 +3211,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 381
+      "rows": 383
     },
     {
       "name": "swarm_event_acks",
@@ -3242,7 +3235,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 7068
+      "rows": 7079
     },
     {
       "name": "task_run_log",
@@ -3254,27 +3247,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 508
+      "rows": 512
     },
     {
       "name": "tickets",
-      "rows": 516
+      "rows": 520
     },
     {
       "name": "time_checkpoints",
-      "rows": 3664
+      "rows": 3686
     },
     {
       "name": "time_events",
-      "rows": 95123
+      "rows": 95147
     },
     {
       "name": "time_journal",
-      "rows": 90229
+      "rows": 90231
     },
     {
       "name": "time_machine",
-      "rows": 5649
+      "rows": 5676
     },
     {
       "name": "tool_builds",
@@ -3314,7 +3307,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 299
+      "rows": 301
     }
   ],
   "agents": [
