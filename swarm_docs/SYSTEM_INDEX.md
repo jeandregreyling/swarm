@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-22 00:05*
+*Auto-generated: 2026-04-22 00:06*
 
 
 ## Python Modules
@@ -239,7 +239,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 30316 |
+| `activity_log` | 30335 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
@@ -255,9 +255,9 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 5255 |
+| `decisions` | 5256 |
 | `deferred_items` | 0 |
-| `duck_log` | 707 |
+| `duck_log` | 709 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
@@ -290,7 +290,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1618 |
+| `queue` | 1621 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 448 |
@@ -307,15 +307,15 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7011 |
+| `system_stats` | 7012 |
 | `task_run_log` | 0 |
 | `terminal_shortcuts` | 16 |
-| `ticket_notes` | 461 |
-| `tickets` | 469 |
-| `time_checkpoints` | 3218 |
-| `time_events` | 91833 |
-| `time_journal` | 87385 |
-| `time_machine` | 5475 |
+| `ticket_notes` | 463 |
+| `tickets` | 471 |
+| `time_checkpoints` | 3220 |
+| `time_events` | 91838 |
+| `time_journal` | 87388 |
+| `time_machine` | 5478 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
