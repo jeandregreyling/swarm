@@ -62,8 +62,17 @@ def _lock_for(model: str) -> threading.Semaphore:
         return sem
 
 
-def _sanitize_keep_alive(value: Any) -> int:
-    """Force finite TTL. -1 / None / 0 → DEFAULT_KEEP_ALIVE."""
+def _sanitize_keep_alive(value: Any) -> Any:
+    """Force finite TTL. -1 / None / 0 → DEFAULT_KEEP_ALIVE.
+    Ollama-style duration strings ('20m', '1h', '300s') pass through unchanged
+    — Ollama parses them natively and they are always finite and positive.
+    """
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s in ('', '-1', '0'):
+            return DEFAULT_KEEP_ALIVE
+        # Duration strings like '20m' / '1h' / '5s' / '300' are finite. Pass through.
+        return s
     try:
         n = int(value)
     except (TypeError, ValueError):
