@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-22 00:03*
+*Auto-generated: 2026-04-22 00:05*
 
 
 ## Python Modules
@@ -239,7 +239,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 30310 |
+| `activity_log` | 30316 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
@@ -248,14 +248,14 @@
 | `audit_results` | 28 |
 | `chat_jobs` | 544 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2096 |
+| `conv_timeline` | 2098 |
 | `conversations` | 619 |
 | `council_output` | 872 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 5254 |
+| `decisions` | 5255 |
 | `deferred_items` | 0 |
 | `duck_log` | 707 |
 | `file_versions` | 4 |
@@ -265,9 +265,9 @@
 | `governance_log` | 325 |
 | `knowledge_chunks` | 632 |
 | `knowledge_sources` | 46 |
-| `memory` | 94 |
+| `memory` | 95 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 19 |
+| `memory_gemma` | 20 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
 | `memory_llama` | 1 |
@@ -281,7 +281,7 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 242 |
-| `messages` | 1332 |
+| `messages` | 1336 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -313,9 +313,9 @@
 | `ticket_notes` | 461 |
 | `tickets` | 469 |
 | `time_checkpoints` | 3218 |
-| `time_events` | 91825 |
-| `time_journal` | 87377 |
-| `time_machine` | 5472 |
+| `time_events` | 91833 |
+| `time_journal` | 87385 |
+| `time_machine` | 5475 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
