@@ -38,11 +38,12 @@ done
 # fill it. Smaller models page to NVMe swap as needed.
 # gemma4:26b removed — too large for CPU-only (19GB), disabled in agents DB
 MODELS=(
-  "gemma3:latest"
-  "llama3.2:latest"
-  "mistral:latest"
-  "qwen:latest"
-  "deepseek-r1:7b"
+  # PREWARM DISABLED (Session 24, 2026-04-22): loading multiple models on a
+  # CPU-only box spikes load avg to 10+ and pegs all cores for 60-90s per
+  # model. Unit is now disabled in systemd; this list is also empty as a
+  # belt-and-braces safeguard. Agents will load their model on first call
+  # (with keep_alive=300s), which amortises cost over actual usage.
+  # If you re-enable, add AT MOST one small model (e.g. "qwen:latest").
 )
 
 LOADED=0
