@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-22 08:54*
+*Auto-generated: 2026-04-22 09:50*
 
 
 ## Python Modules
@@ -68,6 +68,7 @@
 | File | Description |
 |------|-------------|
 | `core/kill_switch.py` | KILL SWITCHES — Emergency control agents via Telegram/Discord |
+| `core/llm.py` | core/llm.py — Single Ollama gateway for the entire swarm. |
 | `core/pipeline/debate.py` | — |
 | `core/pipeline/listener.py` | listener.py — Seven's Swarm |
 | `core/pipeline/orchestrator.py` | — |
@@ -93,7 +94,7 @@
 | `agents/qwen/qwen_agent.py` | agents/qwen/qwen_agent.py — Qwen (local Ollama) |
 | `agents/scholar/scholar_agent.py` | # LINKED TO: utils/config.py — imports SCHOLAR_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/seeker/seeker_agent.py` | # LINKED TO: utils/config.py — imports SEEKER_SYSTEM_PROMPT (edit prompts there, not here) |
-| `agents/seven/seven_agent.py` | agents/seven/seven_agent.py — Qwen3.6 (Agent 18) |
+| `agents/seven/seven_agent.py` | agents/seven/seven_agent.py — Seven (local-algorithm) |
 | `agents/ten/copilot_agent.py` | # LINKED TO: utils/config.py — imports TEN_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/thirteen/thirteen_agent.py` | # LINKED TO: utils/config.py — imports THIRTEEN_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/twelve/twelve_agent.py` | # LINKED TO: utils/config.py — imports TWELVE_SYSTEM_PROMPT (edit prompts there, not here) |
@@ -189,7 +190,7 @@
 | `research` | 5 | frontend/blueprints/research.py — Research API (B.4.1) |
 | `shell` | 18 | shell.py — Shell & Terminal routes |
 | `sse` | 1 | frontend/blueprints/sse.py — Server-Sent Events stream (R.2) |
-| `system` | 17 | system.py — System & Monitoring routes |
+| `system` | 15 | system.py — System & Monitoring routes |
 | `tasker_bp` | 8 | tasker_bp.py — Scheduled tasks CRUD API for the Tasker UI. |
 | `tickets` | 11 | tickets.py — Tickets routes |
 | `time_wizard_bp` | 10 | time_wizard_bp.py — Time Wizard routes |
@@ -239,33 +240,33 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 32548 |
+| `activity_log` | 32661 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 463 |
-| `audit_results` | 33 |
-| `chat_jobs` | 580 |
+| `approval_tokens` | 466 |
+| `audit_results` | 34 |
+| `chat_jobs` | 583 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2182 |
-| `conversations` | 0 |
-| `council_output` | 923 |
+| `conv_timeline` | 2185 |
+| `conversations` | 9 |
+| `council_output` | 975 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 5926 |
+| `decisions` | 6080 |
 | `deferred_items` | 0 |
-| `duck_log` | 754 |
+| `duck_log` | 758 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4209 |
-| `governance_log` | 381 |
+| `ghost_circle` | 4222 |
+| `governance_log` | 383 |
 | `knowledge_chunks` | 632 |
 | `knowledge_sources` | 46 |
-| `memory` | 104 |
+| `memory` | 105 |
 | `memory_eight` | 0 |
 | `memory_gemma` | 21 |
 | `memory_ghost_coder` | 0 |
@@ -280,8 +281,8 @@
 | `memory_ten` | 59 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `memory_twenty` | 243 |
-| `messages` | 0 |
+| `memory_twenty` | 260 |
+| `messages` | 17 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -290,10 +291,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1766 |
+| `queue` | 1776 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 504 |
+| `sandpit_log` | 506 |
 | `scheduled_tasks` | 9 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
@@ -301,21 +302,21 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 66 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 381 |
+| `swarm_bus` | 383 |
 | `swarm_event_acks` | 24 |
 | `swarm_events` | 2 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7068 |
+| `system_stats` | 7079 |
 | `task_run_log` | 0 |
 | `terminal_shortcuts` | 16 |
-| `ticket_notes` | 508 |
-| `tickets` | 516 |
-| `time_checkpoints` | 3664 |
-| `time_events` | 95123 |
-| `time_journal` | 90229 |
-| `time_machine` | 5649 |
+| `ticket_notes` | 512 |
+| `tickets` | 520 |
+| `time_checkpoints` | 3686 |
+| `time_events` | 95147 |
+| `time_journal` | 90231 |
+| `time_machine` | 5676 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
@@ -325,7 +326,7 @@
 | `user_sessions` | 3 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 299 |
+| `work_proposals` | 301 |
 
 ## Agents
 

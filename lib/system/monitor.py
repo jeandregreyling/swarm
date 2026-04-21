@@ -157,9 +157,10 @@ def get_model_details(model):
 
 # Short TTL cache for get_system_status() — collapses concurrent pollers
 # (monitor tile + home stats + ollama panel + chat relay) into one computation.
-# 5s is fast enough to feel live and slow enough to stop the per-tile fan-out.
+# 3s matches the frontend pulse cadence: every UI poll gets fresh data, but
+# concurrent subscribers share a single snapshot.
 _SYSTEM_STATUS_CACHE = {'ts': 0.0, 'payload': None}
-_SYSTEM_STATUS_TTL = 5.0
+_SYSTEM_STATUS_TTL = 3.0
 
 
 def get_system_status():

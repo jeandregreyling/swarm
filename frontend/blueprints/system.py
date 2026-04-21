@@ -50,6 +50,47 @@ def api_system():
 
 
 
+@system_bp.route('/api/pulse')
+def api_pulse():
+    """
+    Compact pulse snapshot — the canonical bus for live UI tiles.
+
+    One source of truth for CPU / RAM / swap / temp / ollama residency /
+    queue state. Shares the 3s-TTL cache inside monitor.get_system_status(),
+    so any number of tiles can subscribe at 3s cadence without fanning out
+    multiple expensive sensor / ollama-ps / SQL calls.
+
+    Tiles should prefer this over /api/monitor when they only need the
+    live metrics (not runtime_jobs, insights, etc.).
+    """
+    s = get_system_status() or {}
+    active_models = s.get('active_models') or []
+    return jsonify({
+        'cpu':    float(s.get('cpu_percent') or 0),
+        'temp':   float(s.get('cpu_temp_c') or 0),
+        'ram':    {
+            'percent': float(s.get('ram_percent') or 0),
+            'used_gb': float(s.get('ram_used_gb') or 0),
+            'total_gb': float(s.get('ram_total_gb') or 0),
+        },
+        'swap':   {
+            'percent': float(s.get('swap_percent') or 0),
+        },
+        'ollama': {
+            'count':  int(s.get('active_models_count') or len(active_models) or 0),
+            'models': [str(m.get('model') or m.get('name') or '')
+                       for m in active_models if isinstance(m, dict)],
+        },
+        'queue':  {
+            'depth':      int(s.get('queue_depth') or 0),
+            'processing': int(s.get('queue_processing') or 0),
+        },
+        'tickets': int(s.get('open_tickets') or 0),
+        'ts':      s.get('timestamp') or get_timestamp(),
+    })
+
+
+
 @system_bp.route('/api/monitor/stats')
 def api_monitor_stats():
     """System snapshot + API usage counts for Monitor tab."""
