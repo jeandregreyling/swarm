@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-22 01:22",
+  "generated_at": "2026-04-22 01:43",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2844,11 +2844,11 @@
     },
     {
       "name": "chat.js",
-      "size_kb": 241.5
+      "size_kb": 241.6
     },
     {
       "name": "conversations.js",
-      "size_kb": 13.1
+      "size_kb": 13.2
     },
     {
       "name": "diamond.js",
@@ -2872,7 +2872,7 @@
     },
     {
       "name": "guide.js",
-      "size_kb": 7.5
+      "size_kb": 7.9
     },
     {
       "name": "health-digest.js",
@@ -2970,7 +2970,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 30881
+      "rows": 30940
     },
     {
       "name": "agent_capabilities",
@@ -2990,7 +2990,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 436
+      "rows": 439
     },
     {
       "name": "audit_results",
@@ -2998,7 +2998,7 @@
     },
     {
       "name": "chat_jobs",
-      "rows": 550
+      "rows": 553
     },
     {
       "name": "claude_log",
@@ -3006,11 +3006,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2148
+      "rows": 2150
     },
     {
       "name": "conversations",
-      "rows": 763
+      "rows": 772
     },
     {
       "name": "council_output",
@@ -3034,7 +3034,7 @@
     },
     {
       "name": "decisions",
-      "rows": 5540
+      "rows": 5559
     },
     {
       "name": "deferred_items",
@@ -3042,7 +3042,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 729
+      "rows": 731
     },
     {
       "name": "file_versions",
@@ -3058,11 +3058,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4063
+      "rows": 4075
     },
     {
       "name": "governance_log",
-      "rows": 357
+      "rows": 359
     },
     {
       "name": "knowledge_chunks",
@@ -3138,7 +3138,7 @@
     },
     {
       "name": "messages",
-      "rows": 1624
+      "rows": 1639
     },
     {
       "name": "moderators",
@@ -3174,7 +3174,7 @@
     },
     {
       "name": "queue",
-      "rows": 1693
+      "rows": 1699
     },
     {
       "name": "research_evidence",
@@ -3186,7 +3186,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 480
+      "rows": 482
     },
     {
       "name": "scheduled_tasks",
@@ -3218,7 +3218,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 357
+      "rows": 359
     },
     {
       "name": "swarm_event_acks",
@@ -3242,7 +3242,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 7027
+      "rows": 7031
     },
     {
       "name": "task_run_log",
@@ -3254,27 +3254,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 483
+      "rows": 485
     },
     {
       "name": "tickets",
-      "rows": 491
+      "rows": 493
     },
     {
       "name": "time_checkpoints",
-      "rows": 3483
+      "rows": 3502
     },
     {
       "name": "time_events",
-      "rows": 92455
+      "rows": 92599
     },
     {
       "name": "time_journal",
-      "rows": 87742
+      "rows": 87867
     },
     {
       "name": "time_machine",
-      "rows": 5552
+      "rows": 5561
     },
     {
       "name": "tool_builds",
@@ -3314,7 +3314,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 282
+      "rows": 284
     }
   ],
   "agents": [
