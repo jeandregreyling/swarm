@@ -1,12 +1,20 @@
 # Swarm Ops Scripts
 
-- start_stage1_prod.sh: Start Production server (5050)
-- start_stage2_uat.sh: Start UAT/Pre-prod server (5053)
-- start_stage3_dev.sh: Start DEV server (5051)
-- stage1.env, stage2.env, stage3.env: Environment configs for each stage
+Boot is owned by systemd, not shell scripts. The legacy `start_stage*.sh` and
+`startswarm.sh` launchers have been removed.
 
-## Usage
+## Start / stop stages
 
-1. Run the appropriate script to start the desired environment.
-2. Each environment is isolated and can be managed independently.
-3. Use the environment variables to configure Flask and other services.
+| Stage            | Port | Unit                         | Command                                  |
+|------------------|------|------------------------------|------------------------------------------|
+| PROD             | 5050 | `swarm-terminal.service`     | `sudo systemctl start swarm-terminal`    |
+| UAT  (asleep)    | 5053 | `swarm-terminal-uat.service` | `make wake-uat` / `make sleep-uat`       |
+| DEV  (asleep)    | 5051 | `swarm-terminal-dev.service` | `make wake-dev` / `make sleep-dev`       |
+
+`make status` prints the enabled/active state of every swarm unit.
+`killswitch.sh` stops everything at once.
+
+## Stage env files
+
+`stage1.env`, `stage2.env`, `stage3.env` hold per-stage environment vars that
+the systemd units load via `EnvironmentFile=`.
