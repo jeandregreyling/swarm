@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-22 01:16",
+  "generated_at": "2026-04-22 01:18",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2970,7 +2970,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 30820
+      "rows": 30842
     },
     {
       "name": "agent_capabilities",
@@ -3006,11 +3006,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2139
+      "rows": 2142
     },
     {
       "name": "conversations",
-      "rows": 736
+      "rows": 745
     },
     {
       "name": "council_output",
@@ -3034,7 +3034,7 @@
     },
     {
       "name": "decisions",
-      "rows": 5483
+      "rows": 5502
     },
     {
       "name": "deferred_items",
@@ -3058,11 +3058,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4033
+      "rows": 4043
     },
     {
       "name": "governance_log",
-      "rows": 351
+      "rows": 353
     },
     {
       "name": "knowledge_chunks",
@@ -3138,7 +3138,7 @@
     },
     {
       "name": "messages",
-      "rows": 1570
+      "rows": 1588
     },
     {
       "name": "moderators",
@@ -3174,7 +3174,7 @@
     },
     {
       "name": "queue",
-      "rows": 1687
+      "rows": 1689
     },
     {
       "name": "research_evidence",
@@ -3186,7 +3186,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 474
+      "rows": 476
     },
     {
       "name": "scheduled_tasks",
@@ -3218,7 +3218,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 351
+      "rows": 353
     },
     {
       "name": "swarm_event_acks",
@@ -3262,19 +3262,19 @@
     },
     {
       "name": "time_checkpoints",
-      "rows": 3431
+      "rows": 3448
     },
     {
       "name": "time_events",
-      "rows": 92365
+      "rows": 92394
     },
     {
       "name": "time_journal",
-      "rows": 87704
+      "rows": 87716
     },
     {
       "name": "time_machine",
-      "rows": 5542
+      "rows": 5546
     },
     {
       "name": "tool_builds",
@@ -3314,7 +3314,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 276
+      "rows": 278
     }
   ],
   "agents": [
