@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-22 03:03",
+  "generated_at": "2026-04-22 07:28",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2970,7 +2970,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 31348
+      "rows": 31522
     },
     {
       "name": "agent_capabilities",
@@ -3006,7 +3006,7 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2169
+      "rows": 2170
     },
     {
       "name": "conversations",
@@ -3034,7 +3034,7 @@
     },
     {
       "name": "decisions",
-      "rows": 5717
+      "rows": 5718
     },
     {
       "name": "deferred_items",
@@ -3058,7 +3058,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4173
+      "rows": 4174
     },
     {
       "name": "governance_log",
@@ -3074,7 +3074,7 @@
     },
     {
       "name": "memory",
-      "rows": 100
+      "rows": 101
     },
     {
       "name": "memory_eight",
@@ -3138,7 +3138,7 @@
     },
     {
       "name": "messages",
-      "rows": 1779
+      "rows": 1781
     },
     {
       "name": "moderators",
@@ -3242,7 +3242,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 7048
+      "rows": 7050
     },
     {
       "name": "task_run_log",
@@ -3266,15 +3266,15 @@
     },
     {
       "name": "time_events",
-      "rows": 93098
+      "rows": 94976
     },
     {
       "name": "time_journal",
-      "rows": 88210
+      "rows": 90088
     },
     {
       "name": "time_machine",
-      "rows": 5620
+      "rows": 5623
     },
     {
       "name": "tool_builds",
