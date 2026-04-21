@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-22 00:49*
+*Auto-generated: 2026-04-22 00:52*
 
 
 ## Python Modules
@@ -239,30 +239,30 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 30639 |
+| `activity_log` | 30679 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 427 |
+| `approval_tokens` | 430 |
 | `audit_results` | 29 |
 | `chat_jobs` | 550 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2121 |
-| `conversations` | 682 |
+| `conv_timeline` | 2124 |
+| `conversations` | 691 |
 | `council_output` | 872 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 5372 |
+| `decisions` | 5391 |
 | `deferred_items` | 0 |
-| `duck_log` | 723 |
+| `duck_log` | 725 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 3967 |
-| `governance_log` | 339 |
+| `ghost_circle` | 3979 |
+| `governance_log` | 341 |
 | `knowledge_chunks` | 632 |
 | `knowledge_sources` | 46 |
 | `memory` | 95 |
@@ -281,7 +281,7 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 242 |
-| `messages` | 1462 |
+| `messages` | 1480 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -290,10 +290,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1663 |
+| `queue` | 1669 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 462 |
+| `sandpit_log` | 464 |
 | `scheduled_tasks` | 9 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
@@ -301,21 +301,21 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 66 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 339 |
+| `swarm_bus` | 341 |
 | `swarm_event_acks` | 24 |
 | `swarm_events` | 2 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7020 |
+| `system_stats` | 7021 |
 | `task_run_log` | 0 |
 | `terminal_shortcuts` | 16 |
-| `ticket_notes` | 477 |
-| `tickets` | 485 |
-| `time_checkpoints` | 3336 |
-| `time_events` | 92125 |
-| `time_journal` | 87559 |
-| `time_machine` | 5515 |
+| `ticket_notes` | 479 |
+| `tickets` | 487 |
+| `time_checkpoints` | 3355 |
+| `time_events` | 92159 |
+| `time_journal` | 87574 |
+| `time_machine` | 5521 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
@@ -325,7 +325,7 @@
 | `user_sessions` | 3 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 264 |
+| `work_proposals` | 266 |
 
 ## Agents
 
