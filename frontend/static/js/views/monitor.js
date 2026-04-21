@@ -218,8 +218,10 @@ function loadMonitorData(win) {
 
   win._monitorRefreshFn = refreshMonitor;
   refreshMonitor();
-  // Fast refresh for live stats (2.5s), slow refresh for ALM/services/activity (30s)
-  win._monitorTimer    = setInterval(refreshMonitor,    2500);
+  // Refresh every 20s — this is a health indicator, not a thermal monitor.
+  // Backend caches /api/monitor for 5s, so tiles sharing this endpoint don't
+  // re-fan-out system calls on every tick.
+  win._monitorTimer    = setInterval(refreshMonitor,    20000);
   win._monitorAlmTimer = setInterval(() => {
     if (!winManager.windows.has(win.id)) return;
     renderMonitorAlm();
@@ -232,7 +234,7 @@ function monitorManualRefresh() {
   const win = window.__monitorWin;
   if (!win) return;
   const indicator = win.el.querySelector('#monitor-refresh-indicator');
-  if (indicator) { indicator.textContent = 'refreshing…'; setTimeout(() => { indicator.textContent = 'auto-refresh 2.5s'; }, 800); }
+  if (indicator) { indicator.textContent = 'refreshing…'; setTimeout(() => { indicator.textContent = 'auto-refresh 20s'; }, 800); }
   if (win._monitorRefreshFn) win._monitorRefreshFn();
 }
 
