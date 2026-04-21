@@ -242,21 +242,18 @@ def api_agents_config_put(name):
 
     set_clause = ', '.join(f'{k}=?' for k in updates)
     conn.execute(f"UPDATE agents SET {set_clause} WHERE name=?", (*updates.values(), name))
-    # If disabling, archive memory rows for this agent (don't delete)
+    # If disabling, archive memory rows for this agent (don't delete).
+    # Memory table mapping comes from the DB registry (single source of truth).
     if 'enabled' in updates and not updates['enabled']:
-        dedicated_tables = {
-            'gemma': 'memory_gemma', 'llama': 'memory_llama', 'mistral': 'memory_mistral', 'qwen': 'memory_qwen',
-            'eight': 'memory_eight', 'nine': 'memory_nine', 'ten': 'memory_ten',
-            'eleven': 'memory_grok', 'twelve': 'memory_twelve', 'thirteen': 'memory_thirteen',
-            'scholar': 'memory_scholar', 'seeker': 'memory_seeker',
-        }
-        shared_table_agents = {'librarian', 'duck', 'sniffles'}
+        from utils.db.registry import get_agent_tables
+        agent_tables = get_agent_tables()
         agent_key = name.strip().lower()
+        table = agent_tables.get(agent_key)
         try:
-            if agent_key in dedicated_tables:
-                conn.execute(f"UPDATE {dedicated_tables[agent_key]} SET archived=1 WHERE archived=0")
+            if table and table != 'memory':
+                conn.execute(f"UPDATE {table} SET archived=1 WHERE archived=0")
                 conn.commit()
-            elif agent_key in shared_table_agents:
+            elif table == 'memory':
                 conn.execute("UPDATE memory SET archived=1 WHERE agent=? AND archived=0", (agent_key,))
                 conn.commit()
         except Exception as e:
@@ -492,18 +489,10 @@ def api_agent_memory(agent):
     
     conn = get_connection()
     
-    # Map agent name to memory table
+    # Map agent name to memory table (from DB registry)
+    from utils.db.registry import get_agent_tables
     agent_key = agent.lower()
-    memory_tables = {
-        'gemma': 'memory_gemma', 'llama': 'memory_llama', 'mistral': 'memory_mistral', 'qwen': 'memory_qwen',
-        'eight': 'memory_eight', 'nine': 'memory_nine', 'ten': 'memory_ten',
-        'twelve': 'memory_twelve',
-        'librarian': 'memory', 'duck': 'memory', 'sniffles': 'memory',
-        'thirteen': 'memory_thirteen',
-        'twenty': 'memory_twenty',
-    }
-    
-    table = memory_tables.get(agent_key)
+    table = get_agent_tables().get(agent_key)
     if not table:
         conn.close()
         return jsonify({'error': f'No memory pool for agent: {agent}'}), 404
@@ -571,17 +560,9 @@ def api_agent_memory_write(agent):
     
     conn = get_connection()
     
+    from utils.db.registry import get_agent_tables
     agent_key = agent.lower()
-    memory_tables = {
-        'gemma': 'memory_gemma', 'llama': 'memory_llama', 'mistral': 'memory_mistral', 'qwen': 'memory_qwen',
-        'eight': 'memory_eight', 'nine': 'memory_nine', 'ten': 'memory_ten',
-        'twelve': 'memory_twelve',
-        'librarian': 'memory', 'duck': 'memory', 'sniffles': 'memory',
-        'thirteen': 'memory_thirteen',
-        'twenty': 'memory_twenty',
-    }
-    
-    table = memory_tables.get(agent_key)
+    table = get_agent_tables().get(agent_key)
     if not table:
         conn.close()
         return jsonify({'error': f'No memory pool for agent: {agent}'}), 404
@@ -637,14 +618,8 @@ def api_agents_memories_query():
     if not q:
         return jsonify({'error': 'q (query) required'}), 400
     
-    memory_tables = {
-        'gemma': 'memory_gemma', 'llama': 'memory_llama', 'mistral': 'memory_mistral', 'qwen': 'memory_qwen',
-        'eight': 'memory_eight', 'nine': 'memory_nine', 'ten': 'memory_ten',
-        'twelve': 'memory_twelve',
-        'librarian': 'memory', 'duck': 'memory', 'sniffles': 'memory',
-        'thirteen': 'memory_thirteen',
-        'twenty': 'memory_twenty',
-    }
+    from utils.db.registry import get_agent_tables
+    memory_tables = get_agent_tables()
     
     conn = get_connection()
     results = {}
