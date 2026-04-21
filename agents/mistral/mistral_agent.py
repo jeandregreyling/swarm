@@ -97,7 +97,7 @@ def chat(message, conversation_history=None, stage_cb=None):
                 model=MODEL,
                 messages=msgs,
                 options={'temperature': 0.6},
-                keep_alive=-1,
+                keep_alive=300,
                 stream=True,
             )
             for chunk in stream:
@@ -117,7 +117,7 @@ def chat(message, conversation_history=None, stage_cb=None):
                 model=MODEL,
                 messages=msgs,
                 options={'temperature': 0.6},
-                keep_alive=-1,
+                keep_alive=300,
             )
             chunks = [resp['message']['content']]
             try:
