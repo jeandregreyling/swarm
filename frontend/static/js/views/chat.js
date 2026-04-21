@@ -16,7 +16,7 @@ let CHAT_AGENT_OPTIONS = [
   { value: 'qwen',     label: '4 · Qwen',     number: 4,  tier: 'local', hasTemp: true  },
   { value: 'librarian',label: '5 · Vortex',   number: 5,  tier: 'local', hasTemp: false },
   { value: 'duck',     label: '6 · Duck',     number: 6,  tier: 'local', hasTemp: true  },
-  { value: 'sniffles', label: '20 · Sniffles', number: 20,  tier: 'local', hasTemp: true  },
+  { value: 'sniffles', label: '21 · Sniffles', number: 21,  tier: 'local', hasTemp: true  },
   { value: 'eight',    label: '8 · Eight',    number: 8,  tier: 'local', hasTemp: true  },
   { value: 'nine',     label: '9 · Groq',     number: 9,  tier: 'paid',  hasTemp: false },
   { value: 'ten',      label: '10 · Github',  number: 10, tier: 'paid',  hasTemp: true  },
@@ -25,7 +25,7 @@ let CHAT_AGENT_OPTIONS = [
   { value: 'thirteen', label: '13 · HF', number: 13, tier: 'paid', hasTemp: false },
   { value: 'ghost_coder', label: '17 · GPT5', number: 17, tier: 'paid', hasTemp: false },
   { value: 'seven',       label: '7 · Seven',  number: 7,  tier: 'local', hasTemp: false },
-  { value: 'twenty',      label: '21 · Qwen3.6', number: 21, tier: 'local', hasTemp: true  },
+  { value: 'twenty',      label: '20 · Qwen3.6', number: 20, tier: 'local', hasTemp: true  },
 ];
 
 // Fetch agent registry from DB and update CHAT_AGENT_OPTIONS to only include enabled agents.
