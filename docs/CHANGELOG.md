@@ -7,6 +7,57 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
+## Version 2026-04-21 Session 22 — Ollama CPU runaway triage + poll consolidation
+
+### Changes by Copilot (Ghost One direction)
+
+**2026-04-21 UTC** Copilot: Two runaway Ollama runners were burning ~800% CPU during otherwise idle periods. Root cause was a per-request `ollama.show()` fan-out inside `/api/monitor` combined with the Monitor tile polling every 2.5s. Each poll tick walked every loaded model and called `ollama.show()` on it — waking the runner's metadata lock and serialising inference. With 2 models loaded and the Monitor window open this produced 36–48 show-calls per minute on top of legitimate chat traffic.
+
+- **Type:** Performance / Stability
+- **Status:** COMPLETE
+
+#### Metadata caching
+
+- `lib/system/monitor.py` — `get_model_details()` now caches per-model metadata for 5 minutes. Model details (family, quantisation, capabilities) are static at runtime.
+- `lib/system/monitor.py` — `get_system_status()` now caches its full payload for 5 seconds. Collapses concurrent callers (Monitor tile + home stats + Ollama panel + chat relay) into one computation instead of four parallel fan-outs.
+- `frontend/blueprints/ollama.py` — `/api/ollama/show/<model>` caches responses for 5 minutes. Defense-in-depth against UI polling loops.
+
+#### /api/monitor shape change
+
+- Removed the per-model `ollama.show()` call from inside `get_system_status()`. `active_models` entries now contain only `name`, `size`, `size_vram`, `expires_at` (the only fields the tile UIs actually render). Rich metadata is fetched on demand by the Local AI hover flow via `/api/ollama/show/<model>`.
+
+#### Poll cadence consolidation
+
+- `frontend/static/js/core/init.js`: `loadHomeStats` 10s → 20s; `loadOllamaPanel` 15s → 20s.
+- `frontend/static/js/views/monitor.js`: `refreshMonitor` **2.5s → 20s** (biggest offender by a wide margin). Label updated in `frontend/templates/views/monitor.html` and `frontend/templates/terminal_base.html`.
+- Rationale: this is a health indicator, not a thermal monitor. 20s is enough to catch drift; sub-second polling just burns CPU we're trying to preserve.
+
+#### keep_alive policy
+
+Replaced hardcoded `keep_alive=-1` (Forever) with `keep_alive=300` (5 minutes) in six call sites. Infinite pins defeated the resource gate and prevented models from unloading after idle.
+
+- `agents/phi3/phi3_agent.py`
+- `agents/deepseek_local/deepseek_local_agent.py`
+- `agents/twenty/twenty_agent.py`
+- `agents/seven/seven_agent.py`
+- `agents/qwen/qwen_agent.py`
+- `core/pipeline/listener.py`
+- `swarm-prewarm.sh` header comment updated (script body already used 300).
+
+#### Verified outcome
+
+- `/api/show` traffic: **36/min → 0** in a 60-second sample.
+- `/api/monitor` latency: cold 1.28s, warm ~40ms (5-second cache hit).
+- `curl /_health` returns 200; `/api/monitor` payload shape validated; runaway runners stopped cleanly via `ollama stop`.
+- 560/560 tests pass.
+
+#### Follow-ups for Phase B (deferred)
+
+- `frontend/services.py` split into services/auth.py, services/sessions.py, services/models.py.
+- Investigate whether Qwen2.5 runner had a 500-status `/api/chat` earlier (seen in logs at 22:26:33) — possibly an orphan abort during the storm.
+
+---
+
 ## Version 2026-04-21 Session 22 — Phase A: Single Source of Truth for Agent Identity
 
 ### Changes by Copilot (Ghost One direction)
