@@ -201,92 +201,13 @@ from .duck_review import (
 
 
 
-def _safe_time_event(agent, action, event_type='workflow', target='', details=None):
-    try:
-        return time_wizard.record_event(
-            agent=agent,
-            action=action,
-            event_type=event_type,
-            target=target,
-            details=details or {}
-        )
-    except Exception as exc:
-        log_activity('terminal', 'vortex_log_warning', f'{action}: {exc}')
-        return None
-
-
-
-def _safe_workflow_checkpoint(label, agent='terminal_ui', description=''):
-    try:
-        return time_wizard.create_workflow_checkpoint(label=label, agent=agent, description=description)
-    except Exception as exc:
-        log_activity('terminal', 'vortex_checkpoint_warning', f'{label}: {exc}')
-        return None
-
-
-
-def _is_time_wizard_active():
-    """Time Wizard is considered active when at least one session exists."""
-    # ALM gate defaults to ON; set ALM_REQUIRE_APPROVALS=0 to disable explicitly.
-    if os.environ.get('ALM_REQUIRE_APPROVALS', '1') == '1':
-        return True
-    try:
-        sessions = time_wizard.get_sessions(limit=1)
-        return bool(sessions)
-    except Exception:
-        return False
-
-
-
-def _alm_gate_or_response(data, action_name):
-    """
-    Enforce proposal approval for mutating actions — ALWAYS enforced.
-    Returns a Flask response tuple on failure, else None.
-    
-    A.1.2: Gate is now mandatory. No bypass for Time Wizard inactive state.
-    """
-    proposal_id = (data.get('proposal_id') or '').strip()
-    if not proposal_id:
-        return jsonify({
-            'ok': False,
-            'error': 'proposal_id required — all mutating actions need an approved proposal',
-            'action': action_name,
-            'required_status': ['approved', 'in_progress']
-        }), 428
-
-    # Ownership bypass for Ghost (human operator)
-    identity, _ = _resolve_identity_or_response(data)
-    conn = get_connection()
-    try:
-        prop = conn.execute("SELECT agent FROM work_proposals WHERE proposal_id=?", (proposal_id,)).fetchone()
-        if prop and prop['agent'].lower() == identity['effective_user'].lower() and identity['effective_user'] in _get_ghost_agent_names():
-            return None  # Ghost bypass
-
-        row = conn.execute(
-            "SELECT proposal_id, status, agent, title FROM work_proposals WHERE proposal_id=?",
-            (proposal_id,)
-        ).fetchone()
-    finally:
-        conn.close()
-
-    if not row:
-        return jsonify({
-            'ok': False,
-            'error': f'proposal not found: {proposal_id}',
-            'action': action_name
-        }), 404
-
-    if row['status'] not in ('approved', 'in_progress', 'executed'):
-        return jsonify({
-            'ok': False,
-            'error': f'proposal status not permitted: {row["status"]}',
-            'action': action_name,
-            'proposal_id': proposal_id,
-            'required_status': ['approved', 'in_progress']
-        }), 403
-
-    log_activity('terminal', 'alm_gate_pass', f'{action_name}:{proposal_id}')
-    return None
+# ── ALM governance + Vortex event helpers (extracted to services.alm) ───────
+from .alm import (
+    _safe_time_event,
+    _safe_workflow_checkpoint,
+    _is_time_wizard_active,
+    _alm_gate_or_response,
+)
 
 
 
