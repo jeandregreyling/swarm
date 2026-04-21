@@ -61,7 +61,7 @@ def chat(message, conversation_history=None, stage_cb=None):
         try:
             stream = _ollama.chat(
                 model=MODEL, messages=msgs,
-                options={'temperature': 0.7}, keep_alive=-1, stream=True,
+                options={'temperature': 0.7}, keep_alive=300, stream=True,
             )
             for chunk in stream:
                 part = (chunk.get('message') or {}).get('content') or ''
@@ -74,7 +74,7 @@ def chat(message, conversation_history=None, stage_cb=None):
                     tokens = int(chunk.get('eval_count') or 0)
         except Exception as exc:
             logger.warning(f'[Gemma] stream fallback: {exc}')
-            resp = _ollama.chat(model=MODEL, messages=msgs, options={'temperature': 0.7}, keep_alive=-1)
+            resp = _ollama.chat(model=MODEL, messages=msgs, options={'temperature': 0.7}, keep_alive=300)
             chunks = [resp['message']['content']]
             tokens = int(resp.get('eval_count') or 0)
         return ''.join(chunks), tokens

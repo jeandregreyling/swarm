@@ -6,31 +6,37 @@ from pathlib import Path
 from datetime import datetime
 from flask import Blueprint, jsonify, request
 from database import get_connection, log_activity
+from services import require_auth
 
 personality_bp = Blueprint('personality', __name__)
 
-_AGENTS_DIR = Path('/home/seven/swarm/agents')
+_AGENTS_DIR = Path(os.environ.get('SWARM_ROOT', str(Path(__file__).resolve().parents[2]))) / 'agents'
 
 
 def _ensure_diary_table():
     conn = get_connection()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS agent_diary (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            agent_name TEXT NOT NULL,
-            entry TEXT NOT NULL,
-            mood TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS agent_diary (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                agent_name TEXT NOT NULL,
+                entry TEXT NOT NULL,
+                mood TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def _personality_path(agent_name: str) -> Path:
     """Return path to agent's personality.md file."""
     safe = agent_name.replace('/', '').replace('..', '').strip().lower()
-    return _AGENTS_DIR / safe / 'personality.md'
+    result = (_AGENTS_DIR / safe / 'personality.md').resolve()
+    if not result.is_relative_to(_AGENTS_DIR.resolve()):
+        raise ValueError('invalid agent name')
+    return result
 
 
 @personality_bp.route('/api/agents/<agent_name>/personality', methods=['GET'])
@@ -44,7 +50,8 @@ def get_personality(agent_name):
 
 
 @personality_bp.route('/api/agents/<agent_name>/personality', methods=['PUT'])
-def set_personality(agent_name):
+@require_auth
+def set_personality(agent_name, current_user=None):
     """Write/update an agent's personality file."""
     data = request.get_json(force=True, silent=True) or {}
     content = str(data.get('personality', '')).strip()

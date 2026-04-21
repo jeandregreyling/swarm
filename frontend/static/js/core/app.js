@@ -64,30 +64,34 @@ function bindHomeLaunchClicks() {
     });
 }
 
-function openWindow(id, title, templateId) {
+function openWindow(id, title, templateId, options = {}) {
     _troubleshootLog && _troubleshootLog('info', 'openWindow requested', `id=${id} title=${title} template=${templateId}`);
-    
+
     const cleanTitle = title.replace(/^[^\w\s]+ /, '').replace(/<[^>]+>/g, '').trim();
-    
-    const existing = winManager && winManager.windows ? winManager.windows.get(id) : null;
-    
-    if (existing && existing.minimized) {
-        winManager.minimize(id); // restore minimized window
-        return;
+    const multi     = options.multi || false;
+    const windowKey = multi ? `${id}-${Date.now()}` : id;
+
+    if (!multi) {
+        const existing = winManager && winManager.windows ? winManager.windows.get(windowKey) : null;
+        if (existing && existing.minimized) {
+            winManager.minimize(windowKey);
+            return;
+        }
+        if (existing) {
+            // Focus existing window — opening a second instance with shared DOM IDs
+            // (e.g. #question-input, #chat-messages) breaks getElementById lookups.
+            winManager.focus(windowKey);
+            return;
+        }
     }
-    
-    if (existing && !existing.minimized) {
-        winManager.focus(id);
-        return;
-    }
-    
-    const win = winManager.create(id, cleanTitle, templateId, { baseId: id });
+
+    const win = winManager.create(windowKey, cleanTitle, templateId, { baseId: id, templateId });
     if (!win) {
-        _troubleshootLog && _troubleshootLog('error', 'winManager.create returned no window', `id=${id}`);
+        _troubleshootLog && _troubleshootLog('error', 'winManager.create returned no window', `id=${windowKey}`);
         return;
     }
-    
-    // Load data based on window type
+
+    // Load data based on the base window type (id, not windowKey)
     setTimeout(() => {
         try {
             if (id === 'chat') loadChatData && loadChatData(win);
@@ -112,14 +116,25 @@ function openWindow(id, title, templateId) {
             else if (id === 'knowledge') loadKnowledgeData && loadKnowledgeData(win);
             else if (id === 'vpn') loadVpnData && loadVpnData(win);
             else if (id === 'tasker') loadTaskerData && loadTaskerData(win);
-            
+            else if (id === 'health-digest') loadHealthDigest && loadHealthDigest(win);
+            else if (id === 'users') _loadUsersWindowContent && _loadUsersWindowContent(win);
+
             _troubleshootLog && _troubleshootLog('info', 'Window opened', `id=${windowKey} base=${id}`);
         } catch (err) {
             _troubleshootLog && _troubleshootLog('error', 'Window loader failed', `id=${windowKey} base=${id} error=${err?.message || err}`);
         }
     }, 100);
-    
+
     showToast && showToast(`Opened ${cleanTitle}`, 'success');
+}
+
+// Open a second instance of any tile — called by the ⧉ button in window headers.
+function openWindowDuplicate(winId) {
+    const state = winManager && winManager.windows ? winManager.windows.get(winId) : null;
+    if (!state) return;
+    const baseId     = state.baseId || winId;
+    const templateId = state.templateId || `view-${baseId}`;
+    openWindow(baseId, state.title, templateId, { multi: true });
 }
 
 function goHome() {

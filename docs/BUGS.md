@@ -2,7 +2,7 @@
 
 <!-- markdownlint-disable -->
 
-_Maintained by Nine (Ghost Layer). Last updated: 2026-04-01 08:10:00 (Session 11 self-healing QA hardening)._
+_Maintained by Nine (Ghost Layer). Last updated: 2026-04-19 (Session 21 — Tasker + Seven LLM fixes)._
 
 ---
 
@@ -13,6 +13,51 @@ _Maintained by Nine (Ghost Layer). Last updated: 2026-04-01 08:10:00 (Session 11
 | **open** | Confirmed bug, not yet resolved |
 | **deferred** | Won't fix in this phase |
 | **fixed** | Resolved and tested |
+| **needs_verification** | Fix applied, awaiting UAT confirmation |
+
+---
+
+## BUG-028: Scheduler shell injection vector via shell=True
+- **Status:** fixed
+- **Found:** 2026-04-19 (Session 21 audit)
+- **Fixed:** 2026-04-19
+- **Service:** fridays/scheduler.py
+- **Error:** `check_due()` used `subprocess.Popen(action_data, shell=True)` — any SHELL task with user-controlled action_data could execute arbitrary commands
+- **Cause:** Original scheduler used shell=True for convenience; never updated after action_data became user-editable via the tasker API
+- **Fix:** Replaced with `subprocess.Popen(shlex.split(action_data))`. Shell metacharacters no longer interpreted.
+
+---
+
+## BUG-029: Scheduler main_loop() hardcoded run_daily_digest() call
+- **Status:** fixed
+- **Found:** 2026-04-19 (Session 21 audit)
+- **Fixed:** 2026-04-19
+- **Service:** fridays/scheduler.py
+- **Error:** `main_loop()` called `run_daily_digest()` every 60 seconds regardless of schedule, bypassing the `check_due()` scheduling system entirely
+- **Cause:** Legacy code from before the scheduler's `check_due()` system was built; never removed
+- **Fix:** Removed direct `run_daily_digest()` call. Daily digest now fires via `check_due()` like all other tasks.
+
+---
+
+## BUG-030: Seven model memory exhaustion from keep_alive=-1
+- **Status:** fixed
+- **Found:** 2026-04-19 (Session 21 diagnosis)
+- **Fixed:** 2026-04-19
+- **Service:** agents/seven/seven_agent.py + Ollama model management
+- **Error:** Seven model hangs after ~5 minutes, system becomes unresponsive. 12GB+ swap thrash.
+- **Cause:** Three Ollama models loaded simultaneously with `keep_alive=-1` (infinite retention): seven:latest 7.2GB + gemma3 4.0GB + llama3.2 2.3GB = 13.5GB resident on 32GB system
+- **Fix:** Changed `keep_alive` from `-1` to `300` (5 minutes auto-unload). Unloaded idle gemma3 + llama3.2 models.
+
+---
+
+## BUG-031: PROD crash-loop — orphaned PID holding port 5050
+- **Status:** fixed
+- **Found:** 2026-04-19 (Session 21)
+- **Fixed:** 2026-04-19
+- **Service:** systemd / swarm-terminal-prod.service
+- **Error:** PROD not serving. Systemd restart counter reached 2725. Port 5050 occupied by orphaned PID 7338.
+- **Cause:** Previous Flask process survived a systemd restart and held the port, causing every subsequent restart to fail immediately
+- **Fix:** Killed orphaned PID 7338. PROD restored on :5050 (PID 443874).
 | **needs_verification** | Fix applied, awaiting UAT confirmation |
 
 ---

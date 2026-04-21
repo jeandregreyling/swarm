@@ -94,9 +94,9 @@ def get_current_stats():
 
 
 def get_disk_info():
-    """Return disk usage for both NVMe drives."""
+    """Return disk usage for the active storage paths."""
     disks = []
-    for path, label in [('/', 'nvme1 — OS / Swarm code'), ('/mnt/swarm_drive', 'nvme0 — Models / Swap file')]:
+    for path, label in [('/', 'nvme1 — OS / Swarm code / Ollama models'), ('/mnt/swarm_drive', 'nvme0 — Linux data')]:
         try:
             usage = psutil.disk_usage(path)
             disks.append({
@@ -119,6 +119,27 @@ def get_ollama_models():
         return [m.model for m in models.models] if hasattr(models, 'models') else []
     except Exception:
         return []
+
+
+def get_model_details(model):
+    """
+    Return rich metadata for a single model via ollama.show().
+    Fields: family, parameter_size, quantization, format, capabilities, parameters.
+    """
+    try:
+        result  = ollama.show(model)
+        details = getattr(result, 'details', None)
+        return {
+            'model':          model,
+            'family':         (getattr(details, 'family', '') or '') if details else '',
+            'parameter_size': (getattr(details, 'parameter_size', '') or '') if details else '',
+            'quantization':   (getattr(details, 'quantization_level', '') or '') if details else '',
+            'format':         (getattr(details, 'format', '') or '') if details else '',
+            'capabilities':   list(getattr(result, 'capabilities', None) or []),
+            'parameters':     (getattr(result, 'parameters', '') or ''),
+        }
+    except Exception:
+        return {'model': model}
 
 
 def get_system_status():
@@ -178,12 +199,16 @@ def get_system_status():
         running = ollama.ps()
         if hasattr(running, 'models') and running.models:
             for m in running.models:
-                active_models.append({
-                    'name': getattr(m, 'model', '') or '',
-                    'size': int(getattr(m, 'size', 0) or 0),
-                    'size_vram': int(getattr(m, 'size_vram', 0) or 0),
-                    'expires_at': getattr(m, 'expires_at', '') or '',
-                })
+                name = getattr(m, 'model', '') or ''
+                entry = {
+                    'name':       name,
+                    'size':       int(getattr(m, 'size', 0) or 0),
+                    'size_vram':  int(getattr(m, 'size_vram', 0) or 0),
+                    'expires_at': str(getattr(m, 'expires_at', '') or ''),
+                }
+                if name:
+                    entry.update(get_model_details(name))
+                active_models.append(entry)
         active_model = active_models[0]['name'] if active_models else 'none'
     except Exception:
         active_model = 'unknown'

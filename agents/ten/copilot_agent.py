@@ -142,9 +142,15 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     _emit('persisting response memory')
     try:
         from database import save_agent_memory
+        # Strip routing/relay context prefixes to get the actual user question
+        _user_q = str(message or '')
+        for _marker in ('=== End memory ===', '=== End knowledge broadcast ===', '=== EXECUTION CONFIRMATION ==='):
+            if _marker in _user_q:
+                _user_q = _user_q[_user_q.rindex(_marker) + len(_marker):]
+        _user_q = _user_q.strip().lstrip('\n')[:100]
         save_agent_memory(
             agent_name='ten',
-            subject=str(message or '')[:100],
+            subject=_user_q or 'ten terminal chat',
             content=answer,
             tags='chat,shared-thread',
             importance=7,

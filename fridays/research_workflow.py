@@ -192,29 +192,24 @@ def _decompose_heuristic(topic, max_questions):
 
 def _decompose_via_agent(topic, max_questions):
     """Use a local Ollama agent to decompose the topic into sub-questions."""
-    try:
-        import requests
-        prompt = (
-            f"Break this research topic into exactly {max_questions} specific search queries. "
-            f"Return ONLY a JSON array of strings, no other text.\n\n"
-            f"Topic: {topic}"
-        )
-        resp = requests.post(
-            'http://localhost:11434/api/generate',
-            json={'model': 'qwen2.5:latest', 'prompt': prompt, 'stream': False},
-            timeout=30,
-        )
-        if resp.status_code == 200:
-            text = resp.json().get('response', '')
-            # Extract JSON array from response
-            start = text.find('[')
-            end = text.rfind(']')
-            if start >= 0 and end > start:
-                questions = json.loads(text[start:end + 1])
-                if isinstance(questions, list) and len(questions) > 0:
-                    return [str(q).strip() for q in questions[:max_questions]]
-    except Exception:
-        pass
+    import ollama
+    prompt = (
+        f"Break this research topic into exactly {max_questions} specific search queries. "
+        f"Return ONLY a JSON array of strings, no other text.\n\n"
+        f"Topic: {topic}"
+    )
+    resp = ollama.chat(
+        model='qwen2.5:latest',
+        messages=[{'role': 'user', 'content': prompt}],
+        options={'temperature': 0.1},
+    )
+    text = resp['message']['content']
+    start = text.find('[')
+    end   = text.rfind(']')
+    if start >= 0 and end > start:
+        questions = json.loads(text[start:end + 1])
+        if isinstance(questions, list) and len(questions) > 0:
+            return [str(q).strip() for q in questions[:max_questions]]
     raise RuntimeError('Agent decomposition unavailable')
 
 
@@ -222,12 +217,41 @@ def _search(query, *, max_results=5):
     """
     Search for a query. Returns list of dicts with keys:
     url, title, snippet, confidence, source_type, agent
-    Tries Seeker (Tavily) first, falls back to DuckDuckGo.
+    Priority: Tavily → Ollama cloud web_search → DuckDuckGo.
     """
     results = _search_tavily(query, max_results)
     if results:
         return results
+    results = _search_ollama_web(query, max_results)
+    if results:
+        return results
     return _search_duckduckgo(query, max_results)
+
+
+def _search_ollama_web(query, max_results):
+    """Search using ollama.web_search() if OLLAMA_API_KEY is configured."""
+    import os
+    api_key = os.environ.get('OLLAMA_API_KEY', '').strip()
+    if not api_key:
+        return []
+    try:
+        import ollama
+        client = ollama.Client(headers={'Authorization': f'Bearer {api_key}'})
+        result = client.web_search(query, max_results=max_results)
+        out = []
+        for r in (result.results or []):
+            out.append({
+                'url':         r.url or '',
+                'title':       r.title or '',
+                'snippet':     str(r.content or '')[:500],
+                'confidence':  0.7,
+                'source_type': 'web',
+                'agent':       'ollama_web',
+            })
+        return out
+    except Exception as e:
+        logger.debug(f'[Research] Ollama web_search failed: {e}')
+        return []
 
 
 def _search_tavily(query, max_results):

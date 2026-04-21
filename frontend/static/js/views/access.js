@@ -24,6 +24,8 @@ const _MODEL_OPTIONS = {
 };
 
 let _ollamaModelsCache = null;
+let _localAiStatusCache = null;
+let _localAiStatusCacheTs = 0;
 
 async function _fetchOllamaModelList() {
   if (_ollamaModelsCache) return _ollamaModelsCache;
@@ -35,6 +37,20 @@ async function _fetchOllamaModelList() {
     _ollamaModelsCache = [];
   }
   return _ollamaModelsCache;
+}
+
+async function _fetchLocalAiStatus(force) {
+  const now = Date.now();
+  if (!force && _localAiStatusCache && (now - _localAiStatusCacheTs) < 8000) return _localAiStatusCache;
+  try {
+    const res = await fetch('/api/localai/status');
+    const data = await res.json();
+    _localAiStatusCache = data;
+    _localAiStatusCacheTs = now;
+    return data;
+  } catch (e) {
+    return null;
+  }
 }
 
 function _buildModelSelect(agentName, agentTier, currentModel) {
@@ -249,7 +265,7 @@ async function accessAdd() {
 }
 
 async function accessRemove(address, listType) {
-  if (!confirm(`Remove ${address} from ${listType}?`)) return;
+  // Inline confirmation — no popup
   try {
     const res  = await fetch('/api/senders', {
       method: 'DELETE', headers: {'Content-Type':'application/json'},
@@ -338,6 +354,262 @@ async function setSkillPerm(username, skillName, allowed) {
 
 function _esc(text) {
   return String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACCESS TILE — TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _accessActiveTab = 'senders';
+
+function accessSwitchTab(tab) {
+  _accessActiveTab = tab;
+  const sP = document.getElementById('access-panel-senders');
+  const uP = document.getElementById('access-panel-users');
+  const sT = document.getElementById('access-tab-senders');
+  const uT = document.getElementById('access-tab-users');
+  const activeS = 'padding:4px 10px;background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:4px 4px 0 0;font-size:10px;font-weight:600;cursor:pointer;';
+  const inactiveS = 'padding:4px 10px;background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:4px 4px 0 0;font-size:10px;font-weight:600;cursor:pointer;';
+  if (tab === 'users') {
+    if (sP) sP.style.display = 'none';
+    if (uP) { uP.style.display = 'flex'; }
+    if (sT) sT.style.cssText = inactiveS;
+    if (uT) uT.style.cssText = activeS;
+    accessLoadUsers();
+  } else {
+    if (sP) sP.style.display = 'flex';
+    if (uP) uP.style.display = 'none';
+    if (sT) sT.style.cssText = activeS;
+    if (uT) uT.style.cssText = inactiveS;
+  }
+}
+
+function accessRefreshTab() {
+  if (_accessActiveTab === 'users') {
+    accessLoadUsers();
+  } else {
+    loadAccessData(window._accessWin);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// USER MANAGEMENT — CRUD
+// ═══════════════════════════════════════════════════════════════════════════
+
+function _utcToLocal(s) {
+  if (!s) return '';
+  if (/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s) && !/[Z+]/.test(s.slice(-6)))
+    s = s.replace(' ', 'T') + 'Z';
+  const d = new Date(s);
+  return isNaN(d) ? s : d.toLocaleDateString('en-AU', {day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' + d.toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
+}
+
+async function accessLoadUsers() {
+  const list = document.getElementById('access-users-list');
+  if (!list) return;
+  list.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Loading…</div>';
+  try {
+    const res = await fetch('/api/auth/users');
+    const data = await res.json();
+    if (!data.ok) { list.innerHTML = `<div style="color:#f77;font-size:12px;">Error: ${_esc(data.error || 'unknown')}</div>`; return; }
+    const users = data.users || [];
+    if (!users.length) { list.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">No users found.</div>'; return; }
+    list.innerHTML = users.map(u => {
+      const statusBadge = u.approved
+        ? `<span style="color:#4caf50;font-size:10px;font-weight:600;">Active</span>`
+        : `<span style="color:#ffa500;font-size:10px;font-weight:600;">Pending</span>`;
+      const isOwner = u.username === 'ghost';
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-size:13px;font-weight:600;color:var(--text);">${_esc(u.display_name || u.username)}</span>
+              ${statusBadge}
+              <span style="font-size:10px;color:var(--text-dim);padding:1px 6px;background:var(--bg);border-radius:3px;">${_esc(u.role)}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">
+              ${u.email ? _esc(u.email) + ' · ' : ''}${_esc(u.username)} · joined ${_utcToLocal(u.created_at)}
+            </div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0;">
+            ${!u.approved ? `<button onclick="accessApproveUser('${_esc(u.username)}')" style="padding:4px 10px;background:#4caf5030;color:#4caf50;border:1px solid #4caf5060;border-radius:4px;font-size:10px;cursor:pointer;font-weight:600;">Approve</button>` : ''}
+            ${!isOwner ? `<button onclick="accessEditUser('${_esc(u.username)}','${_esc(u.display_name||'')}','${_esc(u.email||'')}','${_esc(u.role)}')" style="padding:4px 8px;background:var(--bg);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;" title="Edit">✎</button>` : ''}
+            ${!isOwner ? `<button onclick="accessResetPw('${_esc(u.username)}')" style="padding:4px 8px;background:var(--bg);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;" title="Reset Password">🔑</button>` : ''}
+            ${!isOwner ? `<button onclick="accessDeleteUser('${_esc(u.username)}')" style="padding:4px 8px;background:#f4433620;color:#f44336;border:1px solid #f4433660;border-radius:4px;font-size:10px;cursor:pointer;" title="Delete">✕</button>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = `<div style="color:#f77;font-size:12px;">Failed to load users: ${_esc(e.message)}</div>`;
+  }
+}
+
+async function accessCreateUser() {
+  const email = (document.getElementById('access-user-email')?.value || '').trim();
+  const name = (document.getElementById('access-user-name')?.value || '').trim();
+  const pw = (document.getElementById('access-user-pw')?.value || '').trim();
+  const role = document.getElementById('access-user-role')?.value || 'viewer';
+  if (!email) { showToast('Email is required', 'error'); return; }
+  if (!pw || pw.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
+  try {
+    const res = await fetch('/api/auth/users/create', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email, display_name: name, password: pw, role })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`User ${data.display_name} created`, 'success');
+      document.getElementById('access-user-email').value = '';
+      document.getElementById('access-user-name').value = '';
+      document.getElementById('access-user-pw').value = '';
+      accessLoadUsers();
+    } else {
+      showToast(data.error || 'Failed', 'error');
+    }
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function accessEditUser(username, currentName, currentEmail, currentRole) {
+  const list = document.getElementById('access-users-list');
+  if (!list) return;
+  // Inline edit panel
+  const editId = 'access-edit-' + username;
+  const existing = document.getElementById(editId);
+  if (existing) { existing.remove(); return; } // toggle off
+
+  // Find the user row and insert edit panel after it
+  const rows = list.children;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].innerHTML.includes(username)) {
+      const panel = document.createElement('div');
+      panel.id = editId;
+      panel.style.cssText = 'padding:10px 12px;background:var(--bg);border:1px solid var(--accent);border-radius:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
+      panel.innerHTML = `
+        <input type="email" id="${editId}-email" value="${_esc(currentEmail)}" placeholder="Email"
+               style="flex:1;min-width:160px;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+        <input type="text" id="${editId}-name" value="${_esc(currentName)}" placeholder="Preferred name"
+               style="width:130px;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+        <select id="${editId}-role" style="padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+          <option value="viewer" ${currentRole==='viewer'?'selected':''}>Viewer</option>
+          <option value="user" ${currentRole==='user'?'selected':''}>User</option>
+          <option value="admin" ${currentRole==='admin'?'selected':''}>Admin</option>
+        </select>
+        <button onclick="accessSaveEdit('${_esc(username)}','${editId}')" style="padding:6px 12px;background:var(--accent);color:#000;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Save</button>
+        <button onclick="document.getElementById('${editId}').remove()" style="padding:6px 8px;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Cancel</button>`;
+      rows[i].after(panel);
+      break;
+    }
+  }
+}
+
+async function accessSaveEdit(username, editId) {
+  const email = (document.getElementById(editId + '-email')?.value || '').trim();
+  const name = (document.getElementById(editId + '-name')?.value || '').trim();
+  const role = document.getElementById(editId + '-role')?.value || '';
+  try {
+    // Update profile
+    const res1 = await fetch(`/api/auth/users/${encodeURIComponent(username)}/edit`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ display_name: name, email })
+    });
+    const d1 = await res1.json();
+    if (!d1.ok) { showToast(d1.error || 'Edit failed', 'error'); return; }
+    // Update role
+    if (role) {
+      await fetch(`/api/auth/users/${encodeURIComponent(username)}/role`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ role })
+      });
+    }
+    showToast('User updated', 'success');
+    accessLoadUsers();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function accessResetPw(username) {
+  const list = document.getElementById('access-users-list');
+  if (!list) return;
+  const editId = 'access-pw-' + username;
+  const existing = document.getElementById(editId);
+  if (existing) { existing.remove(); return; }
+
+  const rows = list.children;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].innerHTML.includes(username)) {
+      const panel = document.createElement('div');
+      panel.id = editId;
+      panel.style.cssText = 'padding:10px 12px;background:var(--bg);border:1px solid var(--accent);border-radius:6px;display:flex;gap:8px;align-items:center;';
+      panel.innerHTML = `
+        <span style="font-size:11px;color:var(--text-dim);">New password for ${_esc(username)}:</span>
+        <input type="password" id="${editId}-pw" placeholder="New password (min 6)"
+               style="flex:1;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+        <button onclick="accessDoResetPw('${_esc(username)}','${editId}')" style="padding:6px 12px;background:var(--accent);color:#000;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Reset</button>
+        <button onclick="document.getElementById('${editId}').remove()" style="padding:6px 8px;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Cancel</button>`;
+      rows[i].after(panel);
+      break;
+    }
+  }
+}
+
+async function accessDoResetPw(username, editId) {
+  const pw = (document.getElementById(editId + '-pw')?.value || '').trim();
+  if (!pw || pw.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
+  try {
+    const res = await fetch(`/api/auth/users/${encodeURIComponent(username)}/reset-password`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`Password reset for ${username}`, 'success');
+      const el = document.getElementById(editId);
+      if (el) el.remove();
+    } else {
+      showToast(data.error || 'Failed', 'error');
+    }
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function accessApproveUser(username) {
+  try {
+    const res = await fetch(`/api/auth/users/${encodeURIComponent(username)}/approve`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) { showToast(`${username} approved`, 'success'); accessLoadUsers(); }
+    else { showToast(data.error || 'Failed', 'error'); }
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function accessDeleteUser(username) {
+  // Inline confirmation instead of confirm()
+  const list = document.getElementById('access-users-list');
+  if (!list) return;
+  const cId = 'access-del-' + username;
+  const existing = document.getElementById(cId);
+  if (existing) { existing.remove(); return; }
+
+  const rows = list.children;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].innerHTML.includes(username)) {
+      const panel = document.createElement('div');
+      panel.id = cId;
+      panel.style.cssText = 'padding:8px 12px;background:#f4433615;border:1px solid #f4433660;border-radius:6px;display:flex;gap:8px;align-items:center;';
+      panel.innerHTML = `
+        <span style="font-size:11px;color:#f44336;">Delete ${_esc(username)} permanently?</span>
+        <button onclick="accessDoDelete('${_esc(username)}')" style="padding:4px 12px;background:#f44336;color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Yes, delete</button>
+        <button onclick="document.getElementById('${cId}').remove()" style="padding:4px 8px;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Cancel</button>`;
+      rows[i].after(panel);
+      break;
+    }
+  }
+}
+
+async function accessDoDelete(username) {
+  try {
+    const res = await fetch(`/api/auth/users/${encodeURIComponent(username)}/delete`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) { showToast(`${username} deleted`, 'success'); accessLoadUsers(); }
+    else { showToast(data.error || 'Failed', 'error'); }
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -432,8 +704,8 @@ function agentsRefresh() {
   if (list)   list.innerHTML   = '<div style="padding:20px;color:var(--text-dim);font-size:11px;">Loading…</div>';
   if (detail) detail.innerHTML = '';
   return Promise.all([
-    fetch('/api/agents/config').then(r => r.json()),
-    fetch('/api/swarm/globals').then(r => r.json())
+    fetch('/api/agents/config').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+    fetch('/api/swarm/globals').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
   ]).then(([agentsData, globalsData]) => {
     window.__agentsData  = Array.isArray(agentsData)  ? agentsData  : (agentsData.agents  || []);
     window.__globalsData = Array.isArray(globalsData) ? globalsData : (globalsData.globals || []);
@@ -530,6 +802,11 @@ function agentsShowDetail(agent) {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
         <div>
+          <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Number</label>
+          <input id="agent-number" type="number" value="${Number.isFinite(Number(agent.number)) ? Number(agent.number) : ''}"
+            style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
+        </div>
+        <div>
           <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Label</label>
           <input id="agent-label" type="text" value="${_esc(agent.label || '')}"
             style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
@@ -549,6 +826,9 @@ function agentsShowDetail(agent) {
             <option value="human"   ${agent.tier==='human'   ?'selected':''}>Human</option>
           </select>
         </div>
+        ${isLocal && agent.tier !== 'human' ? `
+        <div id="agent-local-status" style="grid-column:span 2;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;color:var(--text-dim);">Checking local runtime availability...</div>
+        ` : ''}
         <div style="grid-column:span 2;">
           <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">API Key</label>
           ${isLocal ? `<span style="font-size:11px;color:var(--text-dim);">— n/a for ${agent.tier} agents</span>` : `
@@ -658,13 +938,56 @@ function agentsShowDetail(agent) {
         }
       }
     });
+    _renderLocalAgentAvailability(agent);
   }
+}
+
+async function _renderLocalAgentAvailability(agent) {
+  const statusEl = document.getElementById('agent-local-status');
+  if (!statusEl || !agent) return;
+
+  const status = await _fetchLocalAiStatus(false);
+  if (!status) {
+    statusEl.style.borderColor = '#f59e0b55';
+    statusEl.innerHTML = `
+      <div style="color:#f59e0b;font-weight:600;">Could not verify local runtime status.</div>
+      <div style="margin-top:4px;">Open Local AI to inspect Ollama and LM Studio manually.</div>
+      <div style="margin-top:8px;"><button onclick="openWindow('localai','Local AI','view-localai')" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;">Open Local AI</button></div>`;
+    return;
+  }
+
+  const ollamaRunning = !!status.ollama?.running;
+  const installed = (status.ollama?.models || []).map(m => (m.name || m).toLowerCase());
+  const model = String(agent.model || '').toLowerCase();
+  const modelInstalled = installed.some(name => name === model || name.startsWith(model) || model.startsWith(name));
+
+  if (!ollamaRunning) {
+    statusEl.style.borderColor = '#ef444455';
+    statusEl.innerHTML = `
+      <div style="color:#ef4444;font-weight:600;">Local agent unavailable: Ollama is offline.</div>
+      <div style="margin-top:4px;">Start Ollama, then return here. You can also pull missing models in Local AI.</div>
+      <div style="margin-top:8px;"><button onclick="openWindow('localai','Local AI','view-localai')" style="background:var(--card);border:1px solid #ef444455;color:var(--text);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;">Open Local AI</button></div>`;
+    return;
+  }
+
+  if (!modelInstalled) {
+    statusEl.style.borderColor = '#ef444455';
+    statusEl.innerHTML = `
+      <div style="color:#ef4444;font-weight:600;">Local agent unavailable: model not installed.</div>
+      <div style="margin-top:4px;">Model <strong>${_esc(agent.model || 'unknown')}</strong> was not found in Ollama. Re-download it from Local AI.</div>
+      <div style="margin-top:8px;"><button onclick="openWindow('localai','Local AI','view-localai')" style="background:var(--card);border:1px solid #ef444455;color:var(--text);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;">Open Local AI</button></div>`;
+    return;
+  }
+
+  statusEl.style.borderColor = '#22c55e55';
+  statusEl.innerHTML = `<div style="color:#22c55e;font-weight:600;">Local runtime ready.</div><div style="margin-top:4px;">Ollama is running and the assigned model is installed.</div>`;
 }
 
 function agentsSave(name) {
   const statusEl = document.getElementById('agent-save-status');
   if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.style.color = 'var(--text-dim)'; }
   const payload = {
+    number:        Number(document.getElementById('agent-number')?.value || 0),
     label:         document.getElementById('agent-label')?.value    || '',
     model:         document.getElementById('agent-model')?.value    || '',
     tier:          document.getElementById('agent-tier')?.value     || 'local',
@@ -700,6 +1023,8 @@ function agentsSave(name) {
           if (kd.ok) window.__agentsData[idx].api_key_set = true;
         }
         _agentsRefreshDetail(name);
+        // Propagate model/label changes to chat agent registry
+        if (typeof _loadAgentRegistry === 'function') _loadAgentRegistry();
         if (kd.ok) {
           if (statusEl) { statusEl.textContent = '✓ Saved'; statusEl.style.color = '#4caf50'; }
           setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
@@ -713,6 +1038,8 @@ function agentsSave(name) {
     const idx = (window.__agentsData || []).findIndex(a => a.name === name);
     if (idx >= 0) Object.assign(window.__agentsData[idx], payload);
     _agentsRefreshDetail(name);
+    // Propagate model/label changes to chat agent registry
+    if (typeof _loadAgentRegistry === 'function') _loadAgentRegistry();
   }).catch(err => {
     if (statusEl) { statusEl.textContent = err.message; statusEl.style.color = '#ff6b6b'; }
   });

@@ -11,9 +11,11 @@ _SUDO_ALLOWED = _re.compile(
 )
 
 import os as _os
+from pathlib import Path as _Path
 
 _SWARM_ROOT = _os.environ.get('SWARM_ROOT',
               _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+_SWARM_ROOT_PATH = _Path(_SWARM_ROOT).resolve()
 
 
 
@@ -33,9 +35,10 @@ def api_exec():
     from database import log_activity
 
     if _SUDO_ALLOWED.match(cmd):
+        import shlex
         try:
             result = _sp.run(
-                cmd.split(), capture_output=True, text=True, timeout=15
+                shlex.split(cmd), capture_output=True, text=True, timeout=15
             )
             output = (result.stdout + result.stderr).strip() or '(done)'
             ok     = result.returncode == 0
@@ -105,7 +108,7 @@ def api_services_status():
 
 @exec_bp.route('/api/exec/write', methods=['POST'])
 def api_exec_write():
-    """Write a file. Path must be inside /home/seven/swarm."""
+    """Write a file. Path must be inside the swarm root."""
     data    = request.get_json() or {}
     path    = (data.get('path') or '').strip()
     content = data.get('content', '')
@@ -115,8 +118,8 @@ def api_exec_write():
     if gate:
         return gate
 
-    if not path or not path.startswith(_SWARM_ROOT):
-        return jsonify({'error': 'Path must be within /home/seven/swarm'}), 400
+    if not path or not _Path(path).resolve().is_relative_to(_SWARM_ROOT_PATH):
+        return jsonify({'error': 'Path must be within swarm root'}), 400
     if '..' in path:
         return jsonify({'error': 'Invalid path'}), 400
 

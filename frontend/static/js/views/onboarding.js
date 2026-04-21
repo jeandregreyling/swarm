@@ -262,7 +262,9 @@
       {
         icon: ol.running ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M3 8.5l3 3 7-7" stroke="#4caf50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : (lm.running ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M3 8.5l3 3 7-7" stroke="#4caf50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px;"><path d="M2.5 12L8 3l5.5 9z" stroke="#ff9800" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7.5v2M8 11v.5" stroke="#ff9800" stroke-width="1.3" stroke-linecap="round"/></svg>'),
         text: ol.running
-          ? `Ollama running with ${ol.model_count} model${ol.model_count !== 1 ? 's' : ''}`
+          ? (ol.model_count > 0
+              ? `Ollama running with ${ol.model_count} model${ol.model_count !== 1 ? 's' : ''}`
+              : 'Ollama running but no models installed yet — open Local AI to pull one')
           : (lm.running ? 'LM Studio running' : 'No local AI detected — local agents won\'t work until Ollama is started'),
       },
       {
@@ -294,6 +296,19 @@
     if (typeof openWindow === 'function') {
       openWindow('chat', 'Chat', 'view-chat');
     }
+  }
+
+  function resetOnboardingWalkthrough() {
+    try {
+      localStorage.removeItem('swarm_onboarding_complete');
+    } catch (e) {}
+    _step = 0;
+    if (typeof openWindow === 'function') {
+      openWindow('onboarding', 'Enrollment', 'view-onboarding');
+    }
+    setTimeout(() => {
+      _initOnboarding();
+    }, 120);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
@@ -337,6 +352,7 @@
   window.obTestAndSaveKey = obTestAndSaveKey;
   window.obDiscoverNode = obDiscoverNode;
   window.obFinish = obFinish;
+  window.resetOnboardingWalkthrough = resetOnboardingWalkthrough;
   window._initOnboarding = _initOnboarding;
   window._obMaybeAutoLaunch = _maybeAutoLaunch;
 

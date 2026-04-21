@@ -13,8 +13,10 @@ It stamps and files. That is all.
 """
 
 import sys
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
+from pathlib import Path as _Path
+_SWARM_ROOT = str(_Path(__file__).resolve().parent.parent.parent)
+sys.path.insert(0, _SWARM_ROOT)
+sys.path.insert(0, str(_Path(_SWARM_ROOT) / 'utils'))
 import logging
 
 logger = logging.getLogger('seven.queue_manager')
@@ -97,24 +99,28 @@ def mark_processing(queue_id):
     """Called when the swarm begins working on a ticket."""
     from database import get_connection
     conn = get_connection()
-    conn.execute(
-        "UPDATE queue SET status='processing', processed_at=datetime('now') WHERE id=?",
-        (queue_id,)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            "UPDATE queue SET status='processing', processed_at=datetime('now') WHERE id=?",
+            (queue_id,)
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def mark_completed(queue_id):
     """Called by Librarian close — ticket is fully resolved."""
     from database import get_connection
     conn = get_connection()
-    conn.execute(
-        "UPDATE queue SET status='completed', completed_at=datetime('now') WHERE id=?",
-        (queue_id,)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            "UPDATE queue SET status='completed', completed_at=datetime('now') WHERE id=?",
+            (queue_id,)
+        )
+        conn.commit()
+    finally:
+        conn.close()
     logger.info(f'[Queue] #{queue_id} marked completed.')
 
 
@@ -122,12 +128,14 @@ def mark_failed(queue_id, reason=''):
     """Called when processing crashes so entries do not stay stuck in processing."""
     from database import get_connection
     conn = get_connection()
-    conn.execute(
-        "UPDATE queue SET status='queued', completed_at=NULL WHERE id=?",
-        (queue_id,)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            "UPDATE queue SET status='queued', completed_at=NULL WHERE id=?",
+            (queue_id,)
+        )
+        conn.commit()
+    finally:
+        conn.close()
     if reason:
         logger.warning(f'[Queue] #{queue_id} reset to queued after failure: {reason}')
     else:
@@ -138,10 +146,12 @@ def get_queue_depth():
     """How many emails are currently waiting or processing."""
     from database import get_connection
     conn = get_connection()
-    result = conn.execute(
-        "SELECT COUNT(*) FROM queue WHERE status IN ('queued', 'processing')"
-    ).fetchone()
-    conn.close()
+    try:
+        result = conn.execute(
+            "SELECT COUNT(*) FROM queue WHERE status IN ('queued', 'processing')"
+        ).fetchone()
+    finally:
+        conn.close()
     return result[0] if result else 0
 
 
@@ -194,8 +204,8 @@ def update_proposal_status(proposal_id, status, ticket_number=''):
     """Update a work_proposal status via governance state machine."""
     from database import get_connection
     import sys
-    sys.path.insert(0, '/home/seven/swarm')
-    sys.path.insert(0, '/home/seven/swarm/utils')
+    sys.path.insert(0, _SWARM_ROOT)
+    sys.path.insert(0, str(_Path(_SWARM_ROOT) / 'utils'))
     from governance import transition_proposal, GovernanceError
 
     # Look up owning agent

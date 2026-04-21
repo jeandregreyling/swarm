@@ -63,7 +63,7 @@
   }
 
   // ── 2. Env switcher pill — all environments, fixed bottom-right ───────────
-  // Sits above the taskbar (48px) so it never overlaps any header content
+  // Floats at same level as taskbar (both bottom: 14px)
   const pills = [
     { label: 'Fridays',    href: 'http://localhost:5050/ui', active: stage === 'PROD', color: 'var(--accent,#2f6bff)', glow: null },
     { label: 'Mondays',    href: 'http://localhost:5051/ui', active: stage === 'DEV',  color: '#4facfe',               glow: '#4facfe88' },
@@ -73,7 +73,7 @@
   const switcher = document.createElement('div');
   switcher.id = 'env-switcher';
   switcher.style.cssText = [
-    'position:fixed', 'bottom:60px', 'right:14px', 'z-index:10001',
+    'position:fixed', 'bottom:14px', 'right:14px', 'z-index:200',
     'display:flex', 'align-items:center', 'gap:2px',
     'background:var(--card,#fff)', 'border:1px solid var(--border,#d6e0ef)',
     'border-radius:8px', 'padding:3px',

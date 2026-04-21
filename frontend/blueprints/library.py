@@ -17,6 +17,7 @@ import threading
 from pathlib import Path
 
 from flask import Blueprint, request, jsonify
+from services import require_auth
 
 logger = logging.getLogger('seven.library')
 
@@ -59,7 +60,8 @@ def api_library_sources():
 
 
 @library_bp.route('/api/library/sources/<int:source_id>', methods=['DELETE'])
-def api_library_delete(source_id):
+@require_auth
+def api_library_delete(source_id, current_user=None):
     try:
         from lib.knowledge.store import delete_source
         delete_source(source_id)
@@ -362,7 +364,7 @@ def api_library_context():
 def api_library_seed():
     """
     POST /api/library/seed
-    Body JSON: { "collection": "sap_corner" | "programming" | "all" }
+    Body JSON: { "collection": "sap_corner" | "programming" | "fridays" | "all" }
 
     Seeds the library with built-in knowledge documents. Idempotent — skips
     documents whose content_hash already exists.

@@ -13,18 +13,19 @@
 
 let _knowledgeWin = null;
 let _knowledgeTab = 'files';
-let _knowledgeLoaded = { files: false, docs: false, library: false };
+let _knowledgeLoaded = { files: false, docs: false, library: false, guide: false };
 
 /* Constellation styling — injected once */
 (function _knInjectStyle() {
   if (document.getElementById('kn-constellation-css')) return;
   const s = document.createElement('style'); s.id = 'kn-constellation-css';
   s.textContent = `
-    .kn-tab { background:var(--card);border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:4px 10px;cursor:pointer;font-size:10px;font-weight:600;transition:all .2s; }
-    .kn-tab:hover { color:var(--text);border-color:var(--accent); }
-    .kn-tab-active { background:var(--accent);color:#000;border-color:var(--accent);box-shadow:0 0 8px rgba(247,184,75,0.35); }
+    .kn-tab { display:inline-flex;align-items:center;gap:7px;background:color-mix(in srgb, var(--card) 88%, transparent);border:1px solid var(--border);color:var(--text-dim);border-radius:999px;padding:7px 12px;cursor:pointer;font-size:11px;font-weight:700;transition:all .18s;white-space:nowrap; }
+    .kn-tab:hover { color:var(--text);border-color:color-mix(in srgb, var(--accent) 38%, var(--border));transform:translateY(-1px); }
+    .kn-tab-active { background:var(--accent);color:#000;border-color:var(--accent);box-shadow:0 10px 26px color-mix(in srgb, var(--accent) 28%, transparent); }
+    .kn-tab svg { opacity:.9; }
     .kn-system-doc { border-left:2px solid #f7b84b;box-shadow:0 0 6px rgba(247,184,75,0.15); }
-    .kn-badge { display:inline-block;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:600;margin-left:6px; }
+    .kn-badge { display:inline-block;padding:2px 6px;border-radius:999px;font-size:9px;font-weight:700;margin-left:6px;letter-spacing:.03em;text-transform:uppercase; }
     .kn-badge-config { background:#3a6b4e33;color:#5cb85c; }
     .kn-badge-doc { background:#f7b84b22;color:#f7b84b; }
     .kn-badge-code { background:#5bc0de22;color:#5bc0de; }
@@ -36,6 +37,7 @@ const _KN_TABS = [
   { id: 'files',   label: 'Files',   icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
   { id: 'docs',    label: 'Docs',    icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M4 3.5h7.5v9H4a1.5 1.5 0 0 0 0-3h7.5M4 3.5a1.5 1.5 0 0 0 0 3M4 6.5h7.5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
   { id: 'library', label: 'Library', icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
+  { id: 'guide',   label: 'Guide',   icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M3 2.5h10v11H3zM5.5 6h5M5.5 8.5h5M5.5 11h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
 ];
 
 function loadKnowledgeData(win) {
@@ -118,6 +120,18 @@ function _knLoadSubView(tab) {
     }
     if (typeof libInit === 'function') libInit();
     setTimeout(() => _knClassifyItems(panel), 500);
+  }
+  else if (tab === 'guide') {
+    const panel = document.getElementById('kn-panel-guide');
+    if (!panel) return;
+    const tpl = document.getElementById('view-guide');
+    if (tpl) {
+      const clone = tpl.content.cloneNode(true);
+      panel.innerHTML = '';
+      panel.appendChild(clone);
+    }
+    const mockWin = { el: panel };
+    if (typeof loadGuideData === 'function') loadGuideData(mockWin);
   }
 }
 

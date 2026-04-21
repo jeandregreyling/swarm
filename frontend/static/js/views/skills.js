@@ -87,6 +87,17 @@ function loadCapabilityMatrix(host) {
       }
 
       window.__capabilityMatrixData = agents;
+      const highAccessOptions = agents
+        .slice()
+        .sort((a, b) => String(a.agent || '').localeCompare(String(b.agent || '')))
+        .map(a => {
+          const agentName = String(a.agent || '').trim().toLowerCase();
+          if (!agentName) return '';
+          const display = agentName.charAt(0).toUpperCase() + agentName.slice(1);
+          return `<option value="${_escHtml(agentName)}">${_escHtml(display)}</option>`;
+        })
+        .join('');
+
       host.innerHTML = `
         <div class="cap-bar">
           <label class="skills-label">Has capability:</label>
@@ -110,18 +121,7 @@ function loadCapabilityMatrix(host) {
         <div class="cap-bar">
           <label class="skills-label">High access agent:</label>
           <select id="capability-high-agent" class="skills-select">
-            <option value="gemma">1 · Gemma3</option>
-            <option value="llama">2 · LlaMA</option>
-            <option value="mistral">3 · Mistral</option>
-            <option value="qwen">4 · Qwen</option>
-            <option value="librarian">5 · Vortex (Librarian)</option>
-            <option value="duck">6 · Duck</option>
-            <option value="sniffles">7 · Sniffles</option>
-            <option value="eight">8 · Eight</option>
-            <option value="nine">9 · Groq (Nine)</option>
-            <option value="ten">10 · Github (Ten)</option>
-            <option value="eleven">11 · Grok (Eleven)</option>
-            <option value="twelve">12 · Claude (Twelve)</option>
+            ${highAccessOptions}
           </select>
           <button id="capability-high-enable" class="cap-btn-high-enable">Enable High Access</button>
           <button id="capability-high-disable" class="cap-btn-high-disable">Disable High Access</button>
@@ -406,36 +406,74 @@ function loadAuthProfiles(refreshSkills = false) {
 }
 
 function openIdentityManager() {
+  // Remove existing panel if open (toggle behaviour)
+  const existing = document.getElementById('identity-manager-panel');
+  if (existing) { existing.remove(); return; }
+
   const profiles = Array.isArray(window.__fridaysProfiles) ? window.__fridaysProfiles : [];
   if (!profiles.length) {
     showToast('No user profiles loaded yet', 'error');
     return;
   }
   const state = _getAuthState();
-  const names = profiles.map(p => p.username).join(', ');
-  const acting = prompt(`Acting user (${names})`, state.acting_user || 'ghost');
-  if (acting === null) return;
-  const actingNorm = acting.trim().toLowerCase();
-  if (!actingNorm) return;
-  if (!profiles.some(p => p.username === actingNorm)) {
-    showToast(`Unknown user: ${actingNorm}`, 'error');
-    return;
-  }
 
-  const proxy = prompt('Proxy as (blank for none)', state.proxy_as || '');
-  if (proxy === null) return;
-  const proxyNorm = proxy.trim().toLowerCase();
-  if (proxyNorm && !profiles.some(p => p.username === proxyNorm)) {
-    showToast(`Unknown proxy user: ${proxyNorm}`, 'error');
-    return;
-  }
+  // Create inline panel anchored to the pill button
+  const pill = document.getElementById('auth-user-pill');
+  const panel = document.createElement('div');
+  panel.id = 'identity-manager-panel';
+  panel.style.cssText = 'position:fixed;top:42px;right:12px;z-index:10001;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,0.35);padding:12px 14px;min-width:220px;max-width:300px;font-size:11px;color:var(--text);';
 
-  _saveAuthState({ acting_user: actingNorm, proxy_as: proxyNorm });
-  _renderIdentityPill();
-  if (window.windows && window.windows.skills) {
-    loadSkillsData(window.windows.skills);
-  }
-  showToast(`Identity set: ${actingNorm}${proxyNorm ? ' ▶ ' + proxyNorm : ''}`, 'success');
+  const actingOptions = profiles.map(p => {
+    const sel = p.username === state.acting_user ? ' selected' : '';
+    return `<option value="${_escHtml(p.username)}"${sel}>${_escHtml(p.display_name || p.username)}</option>`;
+  }).join('');
+  const proxyOptions = `<option value="">None</option>` + profiles.map(p => {
+    const sel = p.username === state.proxy_as ? ' selected' : '';
+    return `<option value="${_escHtml(p.username)}"${sel}>${_escHtml(p.display_name || p.username)}</option>`;
+  }).join('');
+
+  panel.innerHTML =
+    `<div style="font-weight:700;margin-bottom:8px;">Identity</div>` +
+    `<label style="display:block;margin-bottom:3px;color:var(--text-dim);">Acting as</label>` +
+    `<select id="idm-acting" style="width:100%;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;margin-bottom:8px;">${actingOptions}</select>` +
+    `<label style="display:block;margin-bottom:3px;color:var(--text-dim);">Proxy as</label>` +
+    `<select id="idm-proxy" style="width:100%;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;margin-bottom:10px;">${proxyOptions}</select>` +
+    `<div style="display:flex;gap:6px;justify-content:flex-end;">` +
+      `<button id="idm-apply" style="padding:4px 12px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:11px;cursor:pointer;">Apply</button>` +
+      `<button id="idm-close" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;cursor:pointer;">Close</button>` +
+    `</div>`;
+
+  document.body.appendChild(panel);
+
+  const close = () => panel.remove();
+  panel.querySelector('#idm-close').addEventListener('click', close);
+  panel.querySelector('#idm-apply').addEventListener('click', () => {
+    const actingNorm = (panel.querySelector('#idm-acting').value || 'ghost').toLowerCase();
+    const proxyNorm = (panel.querySelector('#idm-proxy').value || '').toLowerCase();
+    _saveAuthState({ acting_user: actingNorm, proxy_as: proxyNorm });
+    _renderIdentityPill();
+    if (typeof winManager !== 'undefined' && winManager.windows && winManager.windows.get('skills')) {
+      loadSkillsData(winManager.windows.get('skills'));
+    }
+    showToast(`Identity set: ${actingNorm}${proxyNorm ? ' ▶ ' + proxyNorm : ''}`, 'success');
+    close();
+  });
+
+  // Close on outside click (delay to avoid immediate close)
+  setTimeout(() => {
+    const outsideClick = (e) => {
+      if (!panel.contains(e.target) && e.target !== pill && !pill.contains(e.target)) {
+        close();
+        document.removeEventListener('click', outsideClick);
+      }
+    };
+    document.addEventListener('click', outsideClick);
+  }, 100);
+}
+
+// Escape helper for identity manager HTML attributes
+function _escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function createUserProfileFromSkills() {
@@ -585,8 +623,5 @@ function _bindCapDragDrop(listEl) {
   });
 }
 
-function _escHtml(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+// _escHtml defined once at line ~475 — do not duplicate
 

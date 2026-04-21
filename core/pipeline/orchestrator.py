@@ -1,11 +1,13 @@
 import sys
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/core/pipeline')
-sys.path.insert(0, '/home/seven/swarm/agents/specialists')
-sys.path.insert(0, '/home/seven/swarm/lib/search')
-sys.path.insert(0, '/home/seven/swarm/lib/system')
-sys.path.insert(0, '/home/seven/swarm/lib/email')
+from pathlib import Path as _Path
+_SWARM_ROOT = str(_Path(__file__).resolve().parent.parent.parent)
+sys.path.insert(0, _SWARM_ROOT)
+sys.path.insert(0, str(_Path(_SWARM_ROOT) / 'utils'))
+sys.path.insert(0, str(_Path(_SWARM_ROOT) / 'core' / 'pipeline'))
+sys.path.insert(0, str(_Path(_SWARM_ROOT) / 'agents' / 'specialists'))
+sys.path.insert(0, str(_Path(_SWARM_ROOT) / 'lib' / 'search'))
+sys.path.insert(0, str(_Path(_SWARM_ROOT) / 'lib' / 'system'))
+sys.path.insert(0, str(_Path(_SWARM_ROOT) / 'lib' / 'email'))
 
 from database import (new_conversation, log_message, save_memory,
                       search_memory, search_project_docs, get_ghost_history,
@@ -250,7 +252,7 @@ SYSTEM_PROMPTS = dict(_SYSTEM_PROMPTS_INLINE)  # static snapshot for backward co
 # Active agents — prewarmed and kept resident in RAM/NVMe swap.
 # qwen is on the virtual RAM layer: present in AGENTS but NOT prewarmed.
 # Load qwen manually via /api/ollama/load when a second analyst voice is needed.
-_MODEL_KEEP_ALIVE_FALLBACK = {agent: -1 for agent in ('gemma', 'llama', 'mistral', 'qwen', 'librarian', 'duck', 'sniffles', 'eight')}
+_MODEL_KEEP_ALIVE_FALLBACK = {agent: 300 for agent in ('gemma', 'llama', 'mistral', 'qwen', 'librarian', 'duck', 'sniffles', 'eight')}
 
 def _get_keep_alive():
     if _REGISTRY_AVAILABLE:
@@ -299,10 +301,9 @@ def _apply_local_memory_policy(routing):
 
 
 def _select_keep_alive(agent_name):
-    """All agents keep_alive=-1: models stay resident in RAM or NVMe swap
-    indefinitely. The OS pages idle models to the 127 GB NVMe swap as needed."""
+    """Models auto-unload after 300s (5 min) of inactivity to free RAM/CPU."""
     ka = _get_keep_alive()
-    return ka.get(agent_name, -1)
+    return ka.get(agent_name, 300)
 
 def ask_agent(agent_name, prompt, retries=2):
     agent_name = agent_name.lower()  # normalize — AGENTS dict uses lowercase keys

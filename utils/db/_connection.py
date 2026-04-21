@@ -33,6 +33,7 @@ AGENT_POOL_MAP = {
     'eleven': 'memory_grok', 'grok': 'memory_grok',
     'thirteen': 'memory_thirteen',
     'scholar': 'memory_scholar', 'seeker': 'memory_seeker',
+    'twenty': 'memory_twenty',
 }
 
 

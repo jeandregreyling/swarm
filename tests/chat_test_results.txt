@@ -1,0 +1,87 @@
+Starting 10 chat tests with agents Ten and Eleven
+Target: http://localhost:5050
+Time: 2026-04-20 16:31:01
+
+>>> Test 1: Single agent Ten - basic prompt
+
+================================================================================
+TEST 1: Single agent Ten - basic prompt
+================================================================================
+  Conversation: 1310
+
+>>> Test 2: Single agent Eleven - basic prompt
+
+================================================================================
+TEST 2: Single agent Eleven - basic prompt
+================================================================================
+  Conversation: 1311
+
+>>> Test 3: Parallel Ten + Eleven - same question
+
+================================================================================
+TEST 3: Parallel Ten + Eleven - same question
+================================================================================
+  Conversation: 1312
+
+>>> Test 4: Relay awareness - ask Ten to involve Eleven
+
+================================================================================
+TEST 4: Relay awareness - Ten asked to relay to Eleven
+================================================================================
+  Conversation: 1315
+
+>>> Test 5: Complex reasoning - triggers thinking display
+
+================================================================================
+TEST 5: Complex reasoning - thinking display
+================================================================================
+  Conversation: 1317
+
+>>> Test 6: Ask Ten to describe a code change (proposal-style)
+
+================================================================================
+TEST 6: Proposal-style code request
+================================================================================
+  Conversation: 1320
+
+>>> Test 7: Follow-up in Test 1's thread
+
+================================================================================
+TEST 7: Thread continuity - follow-up
+================================================================================
+  Conversation: 1310
+
+>>> Test 8: Edge case - minimal message
+
+================================================================================
+TEST 8: Edge case - single character message
+================================================================================
+  Conversation: 1323
+
+>>> Test 9: Multi-agent conversation with cross-talk
+
+================================================================================
+TEST 9: Multi-agent debate with relay
+================================================================================
+  Conversation: 1324
+
+>>> Test 10: Stress test - long detailed request
+
+================================================================================
+TEST 10: Stress test - long detailed request
+================================================================================
+  Conversation: 1330
+
+================================================================================
+SUMMARY
+================================================================================
+  Test  1: OK=[none] FAIL=[none]
+  Test  2: OK=[none] FAIL=[none]
+  Test  3: OK=[none] FAIL=[none]
+  Test  4: OK=[none] FAIL=[none]
+  Test  5: OK=[none] FAIL=[none]
+  Test  6: OK=[none] FAIL=[none]
+  Test  7: OK=[none] FAIL=[none]
+  Test  8: OK=[none] FAIL=[none]
+  Test  9: OK=[none] FAIL=[none]
+  Test 10: OK=[none] FAIL=[none]

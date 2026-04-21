@@ -1,8 +1,13 @@
 """agent_api.py — Agent Self-Service API routes"""
+import os as _os
+from pathlib import Path as _Path
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
 
 agent_api_bp = Blueprint('agent_api', __name__)
+
+_SWARM_ROOT = _os.environ.get('SWARM_ROOT',
+              str(_Path(__file__).resolve().parent.parent.parent))
 
 @agent_api_bp.route('/api/agent/tickets', methods=['POST'])
 def api_agent_create_ticket():
@@ -395,7 +400,7 @@ def api_agent_identity():
     if error_response:
         return error_response
     
-    sandpit = Path('/home/seven/swarm/sandpits') / agent_id
+    sandpit = _Path(_SWARM_ROOT) / 'sandpits' / agent_id
     identity_file = sandpit / 'WHO_AM_I.md'
     
     identity_md = identity_file.read_text() if identity_file.exists() else None
@@ -416,7 +421,7 @@ def api_agent_identity():
         'capabilities_count': caps_count,
         'capabilities': cap_names,
         'sandpit_path': str(sandpit),
-        'shared_path': '/home/seven/swarm/sandpits/shared',
+        'shared_path': str(_Path(_SWARM_ROOT) / 'sandpits' / 'shared'),
     })
 
 

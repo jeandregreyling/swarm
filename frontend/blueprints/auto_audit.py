@@ -9,7 +9,9 @@ from database import get_connection, log_activity
 
 audit_bp = Blueprint('audit', __name__)
 
-_SWARM_ROOT = '/home/seven/swarm'
+import os as _os
+_SWARM_ROOT = _os.environ.get('SWARM_ROOT',
+              _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
 
 
 def _ensure_table():

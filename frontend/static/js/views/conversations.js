@@ -6,16 +6,23 @@ function loadChatData(win) {
   if (!messages) return;
 
   initializeChatPanel();
+  // Clear stale render signature so messages always render fresh on open
+  window.__fridaysChatLastRenderSig = '';
   const savedThread = localStorage.getItem('fridays-chat-active-thread');
-  const preferred = window.__fridaysChatConversationId || (savedThread ? Number(savedThread) : null);
+  // Prefer localStorage (shared with home-chat) over stale window global
+  const preferred = (savedThread ? Number(savedThread) : null) || window.__fridaysChatConversationId;
   refreshChatThreadList(preferred).then(() => {
-    if (window.__fridaysChatConversationId) {
-      loadConversationMessages(window.__fridaysChatConversationId);
+    const convId = window.__fridaysChatConversationId;
+    if (convId) {
+      loadConversationMessages(convId).then(() => {
+        startChatLiveSyncService && startChatLiveSyncService();
+      });
       return;
     }
     const first = (window._chatConversations || [])[0];
     if (first && first.id) {
       switchChatThread(String(first.id));
+      startChatLiveSyncService && startChatLiveSyncService();
     }
   });
 }
@@ -84,7 +91,7 @@ function openConversationDetail(convId) {
         <button onclick="renameConversation(${conv.id})" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">Edit Title</button>
         <button onclick="deleteConversation(${conv.id})" style="padding:6px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;cursor:pointer;">Delete</button>
         ${proposalBadges}
-        <span style="margin-left:auto;color:var(--text-dim);font-size:11px;">${(conv.created_at || '').slice(0,16)} · ${(conv.source || 'unknown')}</span>
+        <span style="margin-left:auto;color:var(--text-dim);font-size:11px;">${(function(s){ if(!s)return''; if(/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s)&&!/[Z+]/.test(s.slice(-6))) s=s.replace(' ','T')+'Z'; const d=new Date(s); return isNaN(d)?s.slice(0,16):d.toLocaleString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); })(conv.created_at||'')} · ${(conv.source || 'unknown')}</span>
       `;
 
       if (!rows.length) {
@@ -97,7 +104,7 @@ function openConversationDetail(convId) {
       const msgsHtml = rows.map(m => {
         const sender = _escHtml(m.sender || 'agent');
         const to = _escHtml(m.to_agent || '—');
-        const ts = _escHtml((m.created_at || '').slice(0,16));
+        const ts = _escHtml((function(s){ if(!s)return''; if(/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s)&&!/[Z+]/.test(s.slice(-6))) s=s.replace(' ','T')+'Z'; const d=new Date(s); return isNaN(d)?s.slice(0,16):d.toLocaleString('en-AU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); })(m.created_at||''));
         const type = _escHtml(m.message_type || 'text');
         const isFridays = (m.sender || '').toLowerCase() === 'fridays';
         const isUser = (m.sender || '').toLowerCase() === 'user';
@@ -172,7 +179,7 @@ function loadConversationTimeline(convId) {
         <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">${events.length} event(s) — oldest first</div>
         ${events.map(ev => {
           const typeStyle = _TYPE_STYLE[ev.event_type] || 'background:var(--card);color:var(--text);';
-          const ts = String(ev.created_at || '').slice(11, 19); // HH:MM:SS
+          const ts = (function(s){ if(!s)return''; if(/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s)&&!/[Z+]/.test(s.slice(-6))) s=s.replace(' ','T')+'Z'; const d=new Date(s); return isNaN(d)?s.slice(11,19):d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); })(ev.created_at||'');
           const agentBadge = `<span style="font-weight:600;color:var(--text);">${_escHtml(ev.agent || '')}</span>`;
           const typeBadge = `<span style="padding:1px 5px;border-radius:3px;font-size:10px;${typeStyle}">${_escHtml(ev.event_type || '')}</span>`;
           const payload = _escHtml(ev.payload || '');

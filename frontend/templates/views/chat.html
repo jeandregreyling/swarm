@@ -48,13 +48,11 @@
             </div>
           </div>
           <div id="chat-controls">
-            <button id="chat-exec-mode-btn" onclick="onChatExecModeToggle()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size:11px; font-weight:600; min-width:100px;" title="Sequential: one agent speaks at a time via relay queue."><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M6.5 9.5l3-3M5 10.5l-1 1a1.4 1.4 0 0 0 2 2l1-1M12 5.5l1-1a1.4 1.4 0 0 0-2-2l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Sequential</button>
-            <button id="chat-parallel-mode-btn" onclick="onChatParallelModeToggle()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size:11px; font-weight:600; min-width:100px;" title="Both Seq: selected local and online agents can participate, but relay runs one speaker at a time.">Both Seq</button>
-            <select id="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 180px; max-width: 300px; font-size:12px;">
+            <select id="chat-thread-select" class="chat-thread-select" title="Choose thread" onchange="switchChatThread(this.value)">
               <option value="">New Thread</option>
             </select>
-            <button id="chat-new-thread-btn" onclick="createNewThread()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">+ New</button>
-            <button id="chat-notify-toggle-btn" onclick="toggleDesktopNotifications()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size:12px;">Notifications Off</button>
+            <button id="chat-new-thread-btn" class="chat-util-btn" onclick="createNewThread()">+ New</button>
+            <button id="chat-notify-toggle-btn" class="chat-util-btn" onclick="toggleDesktopNotifications()">Notifications Off</button>
           </div>
         </div>
         <div id="chat-section-main" class="chat-section chat-main-shell">
@@ -149,6 +147,10 @@
                 <span class="chat-section-caret" aria-hidden="true"></span>
               </button>
               <div id="chat-section-flow-content" class="chat-section-content">
+                <div class="chat-flow-mode-row">
+                  <button id="chat-exec-mode-btn" class="chat-mode-btn" onclick="onChatExecModeToggle()" title="Sequential: one agent speaks at a time via relay queue."><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M6.5 9.5l3-3M5 10.5l-1 1a1.4 1.4 0 0 0 2 2l1-1M12 5.5l1-1a1.4 1.4 0 0 0-2-2l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Sequential</button>
+                  <button id="chat-parallel-mode-btn" class="chat-mode-btn" onclick="onChatParallelModeToggle()" title="Both Seq: selected local and online agents can participate, but relay runs one speaker at a time.">Both Seq</button>
+                </div>
                 <div class="chat-flow-grid">
                   <label class="chat-relay-toggle" title="Which thread context is sent to selected agents.">
                     <span>Context</span>

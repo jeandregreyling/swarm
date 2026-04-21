@@ -24,11 +24,9 @@ function loadDocsData(win) {
 
 function docsSetTab(tab, contentEl) {
   window._docsTab = tab;
-  const active   = 'background:var(--accent);color:#000;border-color:var(--accent);font-weight:600;';
-  const inactive = 'background:transparent;color:var(--text-dim);border-color:var(--border);font-weight:600;';
   ['kb','workspace','brief','pinboard','history'].forEach(t => {
     const btn = document.getElementById('docs-tab-' + t);
-    if (btn) btn.style.cssText = btn.style.cssText.replace(/background[^;]+;|color[^;]+;|border-color[^;]+;/g,'') + (tab===t ? active : inactive);
+    if (btn) btn.classList.toggle('docs-tab-btn-active', tab === t);
   });
   const content = contentEl || document.getElementById('docs-content');
   if (!content) return;
@@ -42,28 +40,28 @@ function docsSetTab(tab, contentEl) {
 function loadDocsWorkspace(content) {
   window._kbSelectedId = null;
   content.innerHTML = `
-    <div style="display:flex;gap:14px;height:100%;min-height:460px;">
-      <aside style="width:320px;max-width:42%;display:flex;flex-direction:column;gap:8px;border-right:1px solid var(--border);padding-right:12px;">
-        <div style="font-size:12px;font-weight:700;">Knowledgebase Documents</div>
-        <input id="kb-search" type="text" placeholder="Search title or tags..." style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;">
-        <button onclick="createNewKbDoc()" style="padding:8px 10px;background:var(--accent);border:none;border-radius:6px;color:#000;font-size:12px;font-weight:700;cursor:pointer;text-align:left;">+ New Document</button>
-        <div id="kb-doc-list" style="flex:1;overflow-y:auto;"></div>
+    <div class="docs-layout docs-workspace-layout">
+      <aside class="docs-panel docs-sidebar docs-workspace-sidebar">
+        <div class="docs-section-heading">Knowledgebase Documents</div>
+        <input id="kb-search" class="knowledge-input docs-input" type="text" placeholder="Search title or tags...">
+        <button onclick="createNewKbDoc()" class="knowledge-btn knowledge-btn-primary docs-block-btn">+ New Document</button>
+        <div id="kb-doc-list" class="docs-scroll-list docs-doc-list"></div>
       </aside>
-      <section style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;">
-        <div style="display:grid;grid-template-columns:1fr 180px;gap:8px;">
-          <input id="kb-doc-name" type="text" placeholder="Document title" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;">
-          <input id="kb-doc-tags" type="text" placeholder="tags (comma)" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;">
+      <section class="docs-panel docs-workspace-editor">
+        <div class="docs-form-grid">
+          <input id="kb-doc-name" class="knowledge-input docs-input" type="text" placeholder="Document title">
+          <input id="kb-doc-tags" class="knowledge-input docs-input" type="text" placeholder="tags (comma)">
         </div>
-        <textarea id="kb-doc-content" placeholder="Write documentation content here..." style="flex:1;min-height:220px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--text);outline:none;resize:vertical;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;font-size:12px;line-height:1.5;"></textarea>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button onclick="saveKbDoc()" style="padding:7px 12px;background:var(--accent);border:none;border-radius:6px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">Save</button>
-          <button onclick="deleteKbDoc()" style="padding:7px 12px;background:#f4433620;border:1px solid #f4433660;border-radius:6px;color:#f44336;font-size:12px;font-weight:700;cursor:pointer;">Delete</button>
-          <button onclick="reloadKbDocs()" style="padding:7px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;">Refresh</button>
-          <div id="kb-status" style="margin-left:auto;font-size:11px;color:var(--text-dim);display:flex;align-items:center;">No document selected</div>
+        <textarea id="kb-doc-content" class="docs-textarea" placeholder="Write documentation content here..."></textarea>
+        <div class="docs-action-row">
+          <button onclick="saveKbDoc()" class="knowledge-btn knowledge-btn-primary">Save</button>
+          <button onclick="deleteKbDoc()" class="docs-danger-btn">Delete</button>
+          <button onclick="reloadKbDocs()" class="knowledge-btn">Refresh</button>
+          <div id="kb-status" class="docs-status">No document selected</div>
         </div>
-        <div style="border-top:1px solid var(--border);padding-top:10px;">
-          <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Versions</div>
-          <div id="kb-versions" style="max-height:170px;overflow-y:auto;"></div>
+        <div class="docs-subpanel">
+          <div class="docs-section-label">Versions</div>
+          <div id="kb-versions" class="docs-scroll-list docs-version-list"></div>
         </div>
       </section>
     </div>`;
@@ -78,22 +76,23 @@ function loadDocsWorkspace(content) {
 
 function loadDocsPinboard(contentEl) {
   contentEl.innerHTML = `
-    <div style="max-width:680px;margin:0 auto;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;">
+    <div class="docs-center-stage">
+      <div class="docs-panel docs-pinboard-shell">
+        <div class="docs-toolbar docs-toolbar-spaced">
         <div>
-          <div style="font-size:13px;font-weight:700;">&#128204; Pinboard</div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Things to remember — fed into Ghost Brief's NEXT 24H section</div>
+          <div class="docs-title-line">&#128204; Pinboard</div>
+          <div class="docs-muted-copy">Things to remember, deferred work, and anything Ghost Brief should surface next.</div>
         </div>
-        <button id="pin-show-resolved" onclick="_pinToggleResolved()" style="padding:5px 10px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text-dim);font-size:11px;cursor:pointer;">Show Resolved</button>
+        <button id="pin-show-resolved" onclick="_pinToggleResolved()" class="knowledge-btn">Show Resolved</button>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <input id="pin-new-input" type="text" placeholder="Add a pinned item…"
-          style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);outline:none;font-size:12px;font-family:inherit;"
+        <div class="docs-toolbar">
+          <input id="pin-new-input" class="knowledge-input docs-input" type="text" placeholder="Add a pinned item…"
           onkeydown="if(event.key==='Enter') _pinAdd()">
-        <button onclick="_pinAdd()" style="padding:8px 16px;background:var(--accent);border:none;border-radius:6px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">+ Pin</button>
-      </div>
-      <div id="pin-list" style="display:flex;flex-direction:column;gap:8px;">
-        <div style="color:var(--text-dim);font-size:12px;text-align:center;padding:20px;">Loading…</div>
+          <button onclick="_pinAdd()" class="knowledge-btn knowledge-btn-primary">+ Pin</button>
+        </div>
+        <div id="pin-list" class="docs-stack-list">
+          <div class="docs-empty-state">Loading…</div>
+        </div>
       </div>
     </div>`;
   _pinLoad();
@@ -109,28 +108,28 @@ function _pinLoad() {
   fetch(url).then(r => r.json()).then(data => {
     const items = data.items || [];
     if (!items.length) {
-      list.innerHTML = `<div style="color:var(--text-dim);font-size:12px;text-align:center;padding:30px;">
+      list.innerHTML = `<div class="docs-empty-state">
         ${_pinShowResolved ? 'No items here at all yet.' : 'Nothing pinned. Add something above or use the &#128204; Pin button on tickets and proposals.'}
       </div>`;
       return;
     }
     list.innerHTML = items.map(item => {
-      const src = item.source ? `<span style="font-size:10px;color:var(--text-dim);padding:1px 6px;border:1px solid var(--border);border-radius:8px;">${item.source}</span>` : '';
+      const src = item.source ? `<span class="docs-chip">${item.source}</span>` : '';
       const age = item.created_at ? item.created_at.slice(0, 16) : '';
-      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;${item.resolved?'opacity:0.5;':''}">
+      return `<div class="docs-pin-card${item.resolved ? ' is-resolved' : ''}">
         <input type="checkbox" ${item.resolved?'checked':''} onchange="_pinResolve(${item.id}, this.checked)"
-          style="margin-top:2px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;line-height:1.5;${item.resolved?'text-decoration:line-through;color:var(--text-dim);':''}">${_escHtml(item.content)}</div>
-          <div style="display:flex;gap:6px;margin-top:4px;align-items:center;">${src}<span style="font-size:10px;color:var(--text-dim);">${age}</span></div>
+          class="docs-checkbox">
+        <div class="docs-pin-copy">
+          <div class="docs-pin-text">${_escHtml(item.content)}</div>
+          <div class="docs-meta-row">${src}<span>${age}</span></div>
         </div>
         <button onclick="_pinDelete(${item.id})"
-          style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;flex-shrink:0;opacity:0.6;padding:0 4px;" title="Remove">&#x2715;</button>
+          class="docs-quiet-icon" title="Remove">&#x2715;</button>
       </div>`;
     }).join('');
   }).catch(e => {
     const list = document.getElementById('pin-list');
-    if (list) list.innerHTML = `<div style="color:#f77;font-size:12px;">Failed: ${e.message}</div>`;
+    if (list) list.innerHTML = `<div class="docs-error-state">Failed: ${_escHtml(e.message)}</div>`;
   });
 }
 
@@ -206,7 +205,7 @@ function renderKbDocList(docs) {
   });
 
   if (!rows.length) {
-    host.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:12px;">No docs found.</div>';
+    host.innerHTML = '<div class="docs-empty-state docs-empty-compact">No docs found.</div>';
     return;
   }
 
@@ -214,11 +213,11 @@ function renderKbDocList(docs) {
     const active = Number(window._kbSelectedId) === Number(d.id);
     const updated = (d.updated_at || '').slice(0,16) || 'unknown';
     const versions = Number(d.version_count || 0);
-    return `<div onclick="loadKbDoc(${d.id})" style="padding:10px;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'};border-radius:6px;background:${active ? 'var(--card-hover)' : 'var(--card)'};margin-bottom:8px;cursor:pointer;">
-      <div style="font-size:12px;font-weight:700;">${_escHtml(d.doc_name || '(untitled)')}</div>
-      <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">${_escHtml(d.tags || 'all')} · ${updated}</div>
-      <div style="font-size:10px;color:var(--text-dim);">Versions: ${versions}</div>
-    </div>`;
+    return `<button type="button" onclick="loadKbDoc(${d.id})" class="docs-doc-row${active ? ' is-active' : ''}">
+      <div class="docs-doc-row-title">${_escHtml(d.doc_name || '(untitled)')}</div>
+      <div class="docs-doc-row-meta">${_escHtml(d.tags || 'all')} · ${updated}</div>
+      <div class="docs-doc-row-meta">Versions: ${versions}</div>
+    </button>`;
   }).join('');
 }
 
@@ -232,7 +231,7 @@ function createNewKbDoc() {
   if (name) name.value = '';
   if (tags) tags.value = 'all';
   if (content) content.value = '';
-  if (versions) versions.innerHTML = '<div style="font-size:11px;color:var(--text-dim);">No versions yet.</div>';
+  if (versions) versions.innerHTML = '<div class="docs-empty-state docs-empty-compact">No versions yet.</div>';
   if (status) status.textContent = 'Creating a new document';
 }
 
@@ -300,21 +299,21 @@ function loadKbVersions(docId) {
       if (status >= 400 || data.ok === false) throw new Error(data.error || 'versions unavailable');
       const rows = data.versions || [];
       if (!rows.length) {
-        host.innerHTML = '<div style="font-size:11px;color:var(--text-dim);">No versions recorded yet.</div>';
+        host.innerHTML = '<div class="docs-empty-state docs-empty-compact">No versions recorded yet.</div>';
         return;
       }
       host.innerHTML = rows.map(v => {
         const ts = (v.created_at || '').slice(0,16) || 'unknown';
-        return `<div style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);margin-bottom:7px;">
-          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">
-            <div style="font-size:11px;font-weight:700;">v${v.version_number} · ${_escHtml(v.action || 'update')}</div>
-            <button onclick="restoreKbVersion(${docId}, ${v.id})" style="padding:4px 8px;background:var(--card-hover);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;cursor:pointer;">Restore</button>
+        return `<div class="docs-version-card">
+          <div class="docs-version-header">
+            <div class="docs-version-title">v${v.version_number} · ${_escHtml(v.action || 'update')}</div>
+            <button onclick="restoreKbVersion(${docId}, ${v.id})" class="knowledge-btn docs-inline-btn">Restore</button>
           </div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">${_escHtml(ts)} · ${Math.round((v.content_length || 0)/1024)}KB</div>
+          <div class="docs-doc-row-meta">${_escHtml(ts)} · ${Math.round((v.content_length || 0)/1024)}KB</div>
         </div>`;
       }).join('');
     })
-    .catch(e => { host.innerHTML = `<div style="font-size:11px;color:#f77;">${_escHtml(e.message)}</div>`; });
+    .catch(e => { host.innerHTML = `<div class="docs-error-state">${_escHtml(e.message)}</div>`; });
 }
 
 function restoreKbVersion(docId, versionId) {
@@ -350,35 +349,35 @@ function loadDocsLibrary(content) {
       ];
 
       const qButtons = quick.map(([fname, label]) =>
-        `<button onclick="openDocDetail('${fname}', '${label}')" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">${label}</button>`
+        `<button onclick="openDocDetail('${fname}', '${label}')" class="knowledge-btn docs-inline-btn">${label}</button>`
       ).join('');
 
       content.innerHTML = `
-        <div style="display:flex;gap:14px;height:100%;min-height:420px;">
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
-            <div style="margin-bottom:10px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;">
-              <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Welcome home Doctor Specles, this is where the good reading lives.</div>
-              <div style="font-size:12px;color:var(--text-dim);">Choose your weapons wisely. Search, filter, and open any doc with one click.</div>
+        <div class="docs-layout docs-library-layout">
+          <div class="docs-library-main">
+            <div class="docs-panel docs-hero-card">
+              <div class="docs-hero-title">Knowledge reads better when the signal is obvious.</div>
+              <div class="docs-muted-copy">Search, filter, jump to the highest-value docs, and keep one metadata rail visible while you browse.</div>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-              <input id="docs-search" type="text" placeholder="Search docs, ALM notes, tests..." style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);outline:none;">
-              <select id="docs-kind-filter" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);">
+            <div class="docs-toolbar">
+              <input id="docs-search" class="knowledge-input docs-input" type="text" placeholder="Search docs, ALM notes, tests...">
+              <select id="docs-kind-filter" class="knowledge-select docs-select">
                 <option value="all">All</option>
                 <option value="text">Text/Markdown</option>
                 <option value="html">HTML</option>
               </select>
             </div>
-            <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;">${qButtons}</div>
-            <div id="docs-catalogue" style="flex:1;overflow-y:auto;"></div>
+            <div class="docs-quick-actions">${qButtons}</div>
+            <div id="docs-catalogue" class="docs-catalogue"></div>
           </div>
-          <aside style="width:250px;max-width:42%;border-left:1px solid var(--border);padding-left:12px;display:flex;flex-direction:column;gap:10px;">
-            <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Sections</div>
-            <button onclick="docsQuickFilter('all')" style="padding:7px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;cursor:pointer;text-align:left;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><rect x="3" y="1.5" width="8" height="11" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 5h3M5.5 7.5h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><rect x="5" y="3.5" width="8" height="11" rx="1" stroke="currentColor" stroke-width="1.3" fill="var(--card)"/><path d="M7.5 7h3M7.5 9.5h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg> All Documents</button>
-            <button onclick="docsQuickFilter('testing')" style="padding:7px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;cursor:pointer;text-align:left;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M5 2h6M6.5 2v3.5L4 12.5a1 1 0 001 1h6a1 1 0 001-1L9.5 5.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Testing Docs</button>
-            <button onclick="docsQuickFilter('root')" style="padding:7px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;cursor:pointer;text-align:left;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M2 4h5l1.5 1.5H14v8H2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg> Core Docs</button>
-            <button onclick="docsQuickFilter('html')" style="padding:7px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;cursor:pointer;text-align:left;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><ellipse cx="8" cy="8" rx="3" ry="6" stroke="currentColor" stroke-width="1.1"/><path d="M2.5 6h11M2.5 10h11" stroke="currentColor" stroke-width="1.1"/></svg> HTML Manuals</button>
-            <button onclick="docsSetTab('history')" style="padding:7px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;cursor:pointer;text-align:left;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><rect x="3" y="2" width="10" height="12" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 5h5M5.5 7.5h5M5.5 10h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg> ALM History</button>
-            <div id="docs-last-change" style="margin-top:auto;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-dim);">Select a document to inspect metadata.</div>
+          <aside class="docs-panel docs-library-rail">
+            <div class="docs-section-label">Sections</div>
+            <button onclick="docsQuickFilter('all')" class="docs-filter-btn" data-docs-section="all"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><rect x="3" y="1.5" width="8" height="11" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 5h3M5.5 7.5h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><rect x="5" y="3.5" width="8" height="11" rx="1" stroke="currentColor" stroke-width="1.3" fill="var(--card)"/><path d="M7.5 7h3M7.5 9.5h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg> All Documents</button>
+            <button onclick="docsQuickFilter('testing')" class="docs-filter-btn" data-docs-section="testing"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><path d="M5 2h6M6.5 2v3.5L4 12.5a1 1 0 001 1h6a1 1 0 001-1L9.5 5.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Testing Docs</button>
+            <button onclick="docsQuickFilter('root')" class="docs-filter-btn" data-docs-section="root"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><path d="M2 4h5l1.5 1.5H14v8H2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg> Core Docs</button>
+            <button onclick="docsQuickFilter('html')" class="docs-filter-btn" data-docs-section="html"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><ellipse cx="8" cy="8" rx="3" ry="6" stroke="currentColor" stroke-width="1.1"/><path d="M2.5 6h11M2.5 10h11" stroke="currentColor" stroke-width="1.1"/></svg> HTML Manuals</button>
+            <button onclick="docsSetTab('history')" class="docs-filter-btn"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><rect x="3" y="2" width="10" height="12" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 5h5M5.5 7.5h5M5.5 10h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg> ALM History</button>
+            <div id="docs-last-change" class="docs-metadata-card">Select a document to inspect metadata.</div>
           </aside>
         </div>`;
 
@@ -387,13 +386,16 @@ function loadDocsLibrary(content) {
       if (search) search.addEventListener('input', () => renderDocsCatalogue(window._docsCatalogue || []));
       if (kind) kind.addEventListener('change', () => renderDocsCatalogue(window._docsCatalogue || []));
       window._docsSectionFilter = 'all';
-      renderDocsCatalogue(window._docsCatalogue || []);
+      docsQuickFilter('all');
     })
-    .catch(e => { content.innerHTML = `<span style="color:#f77;">Failed to load docs: ${e.message}</span>`; });
+    .catch(e => { content.innerHTML = `<div class="docs-error-state">Failed to load docs: ${_escHtml(e.message)}</div>`; });
 }
 
 function docsQuickFilter(section) {
   window._docsSectionFilter = section || 'all';
+  document.querySelectorAll('[data-docs-section]').forEach(btn => {
+    btn.classList.toggle('docs-filter-btn-active', btn.dataset.docsSection === window._docsSectionFilter);
+  });
   renderDocsCatalogue(window._docsCatalogue || []);
 }
 
@@ -414,7 +416,7 @@ function renderDocsCatalogue(docs) {
   });
 
   if (!filtered.length) {
-    list.innerHTML = '<div style="padding:20px;color:var(--text-dim);font-size:12px;text-align:center;">No matching documents.</div>';
+    list.innerHTML = '<div class="docs-empty-state">No matching documents.</div>';
     return;
   }
 
@@ -430,14 +432,14 @@ function renderDocsCatalogue(docs) {
     const modH   = _escHtml(mod);
     const sizeH  = _escHtml(size);
     const kindH  = _escHtml(kindTag);
-    return `<div style="margin-bottom:10px;padding:11px 12px;background:var(--card);border-radius:6px;border:1px solid var(--border);cursor:pointer;" onclick="openDocDetail(${JSON.stringify(fname)},${JSON.stringify(title)}); updateDocsLastChange(${JSON.stringify(title)},${JSON.stringify(mod)},${JSON.stringify(size)},${JSON.stringify(kindTag)})" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <strong style="font-size:12px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-2px;margin-right:2px;"><path d="M4.5 1.5h4.59L12.5 5v9.5h-8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 1.5v4h3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> ${titleH}</strong>
-        <span style="font-size:10px;color:var(--text-dim);">${kindH}</span>
+    return `<button type="button" class="docs-catalogue-card" onclick="openDocDetail(${JSON.stringify(fname)},${JSON.stringify(title)}); updateDocsLastChange(${JSON.stringify(title)},${JSON.stringify(mod)},${JSON.stringify(size)},${JSON.stringify(kindTag)})">
+      <div class="docs-catalogue-head">
+        <strong class="docs-catalogue-title"><svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M4.5 1.5h4.59L12.5 5v9.5h-8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 1.5v4h3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> ${titleH}</strong>
+        <span class="docs-chip">${kindH}</span>
       </div>
-      <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${descH}</div>
-      <div style="font-size:10px;color:var(--text-dim);margin-top:5px;">Last changed: ${modH} · ${sizeH}</div>
-    </div>`;
+      <div class="docs-catalogue-desc">${descH}</div>
+      <div class="docs-doc-row-meta">Last changed: ${modH} · ${sizeH}</div>
+    </button>`;
   }).join('');
 }
 
@@ -445,11 +447,11 @@ function updateDocsLastChange(title, modified, size, kind) {
   const el = document.getElementById('docs-last-change');
   if (!el) return;
   el.innerHTML = `
-    <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px;">Selected</div>
-    <div style="font-size:11px;color:var(--text);">${_escHtml(title || '(unknown)')}</div>
-    <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">Type: ${_escHtml(kind || 'DOC')}</div>
-    <div style="font-size:10px;color:var(--text-dim);">Last changed: ${_escHtml(modified || 'unknown')}</div>
-    <div style="font-size:10px;color:var(--text-dim);">Size: ${_escHtml(size || '—')}</div>`;
+    <div class="docs-section-heading">Selected</div>
+    <div class="docs-metadata-title">${_escHtml(title || '(unknown)')}</div>
+    <div class="docs-doc-row-meta">Type: ${_escHtml(kind || 'DOC')}</div>
+    <div class="docs-doc-row-meta">Last changed: ${_escHtml(modified || 'unknown')}</div>
+    <div class="docs-doc-row-meta">Size: ${_escHtml(size || '—')}</div>`;
 }
 
 function loadDocsALMHistory(content) {
@@ -459,7 +461,7 @@ function loadDocsALMHistory(content) {
       const items = data.proposals || [];
       window._proposals = items;
       if (!items.length) {
-        content.innerHTML = '<div style="color:var(--text-dim);font-size:12px;text-align:center;padding:30px;">No ALM history yet.</div>';
+        content.innerHTML = '<div class="docs-empty-state">No ALM history yet.</div>';
         return;
       }
       const statusMeta = {
@@ -469,7 +471,8 @@ function loadDocsALMHistory(content) {
         rejected: { color: '#f44336', bg: '#f4433620', border: '#f4433660' },
       };
       content.innerHTML = `
-        <div style="padding:0 0 8px;font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
+        <div class="docs-history-wrap">
+        <div class="docs-section-label">
           ${items.length} Proposal${items.length !== 1 ? 's' : ''} (ALM Documentation History)
         </div>
         ${items.map(p => {
@@ -480,22 +483,23 @@ function loadDocsALMHistory(content) {
           const title = _escHtml(p.title || p.proposal_id || 'Untitled Proposal');
           const pid = p.proposal_id || '';
           const pidSafe = _escHtml(pid);
-          return `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:6px;padding:12px;margin-bottom:10px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-              <div style="flex:1;cursor:pointer;" onclick="openProposalDetail(${JSON.stringify(pid)})">
-                <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${title}</div>
-                <div style="font-size:10px;color:var(--text-dim);">${_escHtml(p.agent || 'agent')} · ${created}${updated && updated !== created ? ' → ' + updated : ''} · <span style="font-family:monospace;">${pidSafe}</span></div>
+          return `<div class="docs-history-card" style="border-left-color:${m.color};">
+            <div class="docs-history-head">
+              <div class="docs-history-main" onclick="openProposalDetail(${JSON.stringify(pid)})">
+                <div class="docs-history-title">${title}</div>
+                <div class="docs-doc-row-meta">${_escHtml(p.agent || 'agent')} · ${created}${updated && updated !== created ? ' → ' + updated : ''} · <span class="docs-mono">${pidSafe}</span></div>
               </div>
-              <span style="padding:2px 8px;border-radius:10px;background:${m.bg};color:${m.color};font-size:10px;font-weight:700;border:1px solid ${m.border};">${st}</span>
+              <span class="docs-chip" style="background:${m.bg};color:${m.color};border-color:${m.border};">${st}</span>
             </div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-              <button onclick="openDocDetail('CHANGELOG.md','Change Log')" style="padding:5px 9px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">Change Log</button>
-              <button onclick="openDocDetail('ALM_DRIVER.md','ALM Driver')" style="padding:5px 9px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">ALM Driver</button>
-              <button onclick="openDocDetail('UAT_TEST_SCRIPTS.md','UAT Test Scripts')" style="padding:5px 9px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">UAT Tests</button>
+            <div class="docs-quick-actions">
+              <button onclick="openDocDetail('CHANGELOG.md','Change Log')" class="knowledge-btn docs-inline-btn">Change Log</button>
+              <button onclick="openDocDetail('ALM_DRIVER.md','ALM Driver')" class="knowledge-btn docs-inline-btn">ALM Driver</button>
+              <button onclick="openDocDetail('UAT_TEST_SCRIPTS.md','UAT Test Scripts')" class="knowledge-btn docs-inline-btn">UAT Tests</button>
             </div>
           </div>`;
-        }).join('')}`;
+        }).join('')}
+        </div>`;
     })
-    .catch(e => { content.innerHTML = `<div style="color:#f77;padding:20px;font-size:12px;">Error loading ALM history: ${e.message}</div>`; });
+    .catch(e => { content.innerHTML = `<div class="docs-error-state">Error loading ALM history: ${_escHtml(e.message)}</div>`; });
 }
 

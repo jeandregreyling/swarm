@@ -217,6 +217,28 @@ http://localhost:5050
 | POST | `/api/library/sources/<id>/reprocess` | Re-index source |
 | GET | `/api/library/model-status` | Embedding model status |
 | POST | `/api/library/pull-model` | Pull embedding model |
+| POST | `/api/library/seed` | Seed built-in collection (`swarm`, `fridays`) |
+
+---
+
+## Tasker (`/api/tasker`)
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/api/tasker` | List all scheduled tasks |
+| POST | `/api/tasker` | Create scheduled task |
+| GET | `/api/tasker/<id>` | Get task details |
+| PUT | `/api/tasker/<id>` | Update task |
+| DELETE | `/api/tasker/<id>` | Delete task |
+| POST | `/api/tasker/<id>/run` | Run task immediately |
+| POST | `/api/tasker/<id>/toggle` | Enable/disable task |
+| GET | `/api/tasker/registered` | List Python-registered tasks (task_runner.py) |
+| GET | `/api/tasker/history` | Recent task execution log |
+| POST | `/api/tasker/bootstrap` | Seed default scheduled tasks (7 presets) |
+
+**Action Types**: `SHELL` (subprocess via shlex.split), `PYTHON` (task_runner.py dispatch), `URL` (HTTP call)
+
+**Schedule Types**: `daily HH:MM`, `weekly DAY HH:MM`, `monthly DAY HH:MM`, `hourly :MM`, `interval Nm` (every N minutes)
 
 ---
 

@@ -9,9 +9,9 @@ def _git_repo_root() -> Path:
 
 
 _GIT_ENVS = {
-    'prod': Path('/home/seven/swarm'),
-    'uat':  Path('/home/seven/swarm-uat'),
-    'dev':  Path('/home/seven/swarm-dev'),
+    'prod': Path(os.environ.get('SWARM_ROOT', str(Path(__file__).parent.parent.parent))),
+    'uat':  Path(os.environ.get('SWARM_ROOT', str(Path(__file__).parent.parent.parent)) + '-uat'),
+    'dev':  Path(os.environ.get('SWARM_ROOT', str(Path(__file__).parent.parent.parent)) + '-dev'),
 }
 
 
@@ -32,7 +32,7 @@ def _git_rel_path(path_value: str, env: str = '') -> str:
         raise ValueError('path required')
     repo_root = _git_env_root(env).resolve()
     full_path = (repo_root / rel_path).resolve()
-    if not str(full_path).startswith(str(repo_root)):
+    if not full_path.is_relative_to(repo_root):
         raise ValueError('path outside repository')
     try:
         return str(full_path.relative_to(repo_root)).replace('\\', '/')
