@@ -53,13 +53,12 @@ def chat(message, conversation_history=None, stage_cb=None):
                 tokens = int(chunk.get('eval_count') or 0)
         answer = ''.join(chunks)
     except Exception as exc:
-        logger.warning(f'[DeepSeekLocal] stream fallback: {exc}')
-        try:
-            resp = _ollama.chat(model=MODEL, messages=messages, options={'temperature': 0.6}, keep_alive=300)
-            answer = resp['message']['content']
-            tokens = int(resp.get('eval_count') or 0)
-        except Exception as e:
-            return f'[deepseek-local] error: {e}', 0
+        # No blocking retry: re-calling ollama.chat on a stuck runner spawns
+        # a second runner that also hangs. Return what we have (if any) or error.
+        logger.warning(f'[DeepSeekLocal] stream error (no retry): {exc}')
+        answer = ''.join(chunks)
+        if not answer:
+            return f'[deepseek-local] error: {exc}', 0
 
     logger.info(f'[DeepSeekLocal] model={MODEL} tokens={tokens}')
     return answer, tokens

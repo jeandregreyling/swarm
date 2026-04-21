@@ -80,10 +80,12 @@ def chat(message, conversation_history=None, stage_cb=None):
                 if chunk.get('done'):
                     tokens = int(chunk.get('eval_count') or 0)
         except Exception as exc:
-            logger.warning(f'[Twenty] stream fallback: {exc}')
-            resp = _ollama.chat(model=MODEL, messages=msgs, options={'temperature': 0.6}, keep_alive=300)
-            chunks = [resp['message']['content']]
-            tokens = int(resp.get('eval_count') or 0)
+            # No blocking retry: re-calling ollama.chat on a stuck runner spawns
+            # a second runner that also hangs. Return what we have and let the
+            # caller surface the error.
+            logger.warning(f'[Twenty] stream error (no retry): {exc}')
+            if not chunks:
+                raise
         return ''.join(chunks), tokens
 
     try:
