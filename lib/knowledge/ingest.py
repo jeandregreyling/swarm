@@ -95,6 +95,38 @@ def embed_text(text):
         return None
 
 
+async def _embed_batch_async(texts):
+    """Embed a list of texts concurrently using AsyncClient."""
+    import asyncio
+    import ollama
+    client = ollama.AsyncClient()
+
+    async def _one(text):
+        try:
+            result = await client.embeddings(model=OLLAMA_MODEL, prompt=text)
+            return getattr(result, 'embedding', None) or result.get('embedding')
+        except Exception:
+            return None
+
+    return await asyncio.gather(*[_one(t) for t in texts])
+
+
+def embed_batch(texts):
+    """
+    Embed a list of texts in parallel via AsyncClient.
+    Returns a list of vectors (same length as texts); None entries mean embed failed.
+    Falls back to sequential embed_text() if asyncio is unavailable.
+    """
+    import asyncio
+    if not texts:
+        return []
+    try:
+        return asyncio.run(_embed_batch_async(texts))
+    except Exception as exc:
+        logger.warning(f'[Ingest] batch embed fell back to sequential: {exc}')
+        return [embed_text(t) for t in texts]
+
+
 def check_model_available():
     """Return True if nomic-embed-text is pulled and ready."""
     try:
@@ -113,7 +145,7 @@ def check_model_available():
 
 def process_source(source_id, raw_text):
     """
-    Chunk raw_text → embed each chunk → persist to DB.
+    Chunk raw_text → embed all chunks in parallel → persist to DB.
     Returns (chunk_count: int, error: str | None).
     """
     from lib.knowledge.store import save_chunks
@@ -122,13 +154,9 @@ def process_source(source_id, raw_text):
     if not chunks:
         return 0, 'No usable text extracted'
 
-    pairs = []
-    failed_embeds = 0
-    for chunk in chunks:
-        vec = embed_text(chunk)
-        if vec is None:
-            failed_embeds += 1
-        pairs.append((chunk, vec))
+    vectors      = embed_batch(chunks)
+    pairs        = list(zip(chunks, vectors))
+    failed_embeds = sum(1 for _, v in pairs if v is None)
 
     save_chunks(source_id, pairs)
     embedded = len(pairs) - failed_embeds

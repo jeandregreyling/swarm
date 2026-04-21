@@ -1,0 +1,446 @@
+/* views/localai.css — Local AI tile: Ollama · LM Studio · Picoclaw
+   Simplified visual hierarchy — fewer borders, softer panels, tighter layout */
+
+.localai-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 20px;
+  background:
+    radial-gradient(80% 120% at 10% 0%, color-mix(in srgb, var(--accent) 6%, transparent) 0%, transparent 50%),
+    linear-gradient(180deg, var(--window-bg) 0%, color-mix(in srgb, var(--card) 94%, transparent) 100%);
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.localai-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.localai-header-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.localai-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.localai-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.localai-subtitle {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  max-width: 600px;
+}
+
+.localai-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.localai-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Grid ────────────────────────────────────────────────────────────────── */
+
+.localai-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr);
+  gap: 12px;
+}
+
+/* ── Panels — unified, minimal border ────────────────────────────────────── */
+
+.localai-panel {
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.localai-panel-ollama,
+.localai-panel-roster {
+  grid-column: 1 / -1;
+}
+
+.localai-panel-head {
+  padding: 12px 16px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.localai-panel-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.localai-panel-subtitle,
+.localai-muted,
+.localai-copy,
+.localai-port,
+.localai-section-kicker {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+
+.localai-panel-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Status strip — subtle, no extra borders ─────────────────────────────── */
+
+.localai-status-strip {
+  padding: 6px 16px;
+  font-size: 10px;
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--bg) 40%, transparent);
+}
+
+.localai-status-strip[data-state="busy"] { color: #f59e0b; }
+.localai-status-strip[data-state="error"] { color: #ef4444; }
+.localai-status-strip[data-state="ok"] { color: #22c55e; }
+
+/* ── Ollama two-column layout ────────────────────────────────────────────── */
+
+.localai-ollama-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  min-height: 360px;
+}
+
+.localai-ollama-inventory,
+.localai-ollama-detail,
+.localai-chat-card,
+.localai-stack-card {
+  padding: 12px 16px;
+}
+
+.localai-ollama-inventory {
+  border-right: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+}
+
+.localai-ollama-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: color-mix(in srgb, var(--window-header) 30%, transparent);
+}
+
+/* ── Section titles — very small kickers ─────────────────────────────────── */
+
+.localai-section-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+
+/* ── Model list + rows — compact, borderless ─────────────────────────────── */
+
+.localai-model-list,
+.localai-roster {
+  display: grid;
+  gap: 4px;
+}
+
+.localai-model-row {
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.14s ease;
+  text-align: left;
+}
+
+.localai-model-row:hover {
+  background: color-mix(in srgb, var(--card-hover) 60%, transparent);
+}
+
+.localai-model-row.is-active {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.localai-model-row.is-loaded {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, #22c55e 65%, transparent);
+}
+
+.localai-model-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.localai-model-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.localai-model-meta {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.localai-model-state {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  border: none;
+}
+
+.localai-model-state[data-state="loaded"] {
+  color: #22c55e;
+  background: color-mix(in srgb, #22c55e 10%, transparent);
+}
+
+.localai-model-state[data-state="installed"] {
+  color: var(--text-dim);
+  background: transparent;
+}
+
+/* ── Detail / manager cards — subtle grouping ────────────────────────────── */
+
+.localai-detail-card,
+.localai-manager-card,
+.localai-chat-card,
+.localai-stack-card {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.localai-detail-card,
+.localai-manager-card,
+.localai-stack-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.localai-manager-card {
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 30%, transparent);
+}
+
+.localai-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+}
+
+.localai-detail-label { color: var(--text-dim); }
+.localai-detail-value { color: var(--text); text-align: right; word-break: break-word; }
+
+/* ── Action rows, inputs ─────────────────────────────────────────────────── */
+
+.localai-action-row,
+.localai-field-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.localai-input { width: 100%; }
+
+.localai-textarea {
+  min-height: 80px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
+.localai-textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.localai-danger-btn {
+  min-height: 30px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, #ef4444 8%, transparent);
+  border: 1px solid color-mix(in srgb, #ef4444 20%, transparent);
+  border-radius: 8px;
+  color: #ef4444;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── Chat card ───────────────────────────────────────────────────────────── */
+
+.localai-chat-card {
+  border-top: 1px solid color-mix(in srgb, var(--border) 30%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.localai-chat-card-tight {
+  margin: 0 16px 14px;
+}
+
+.localai-result-box {
+  font-size: 11px;
+  color: var(--text);
+  max-height: 140px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  border: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--bg) 50%, transparent);
+}
+
+.localai-fill-btn { flex: 1; }
+
+/* ── Picoclaw embed ──────────────────────────────────────────────────────── */
+
+.localai-embed-frame {
+  border-top: 1px solid color-mix(in srgb, var(--border) 30%, transparent);
+}
+
+.localai-embed-frame iframe {
+  width: 100%;
+  height: 420px;
+  border: none;
+}
+
+/* ── Agent Roster — compact cards ────────────────────────────────────────── */
+
+.localai-roster {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  padding: 12px 16px 14px;
+}
+
+.localai-agent-card {
+  border: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+  border-radius: 10px;
+  padding: 10px 11px;
+  background: color-mix(in srgb, var(--bg) 40%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.localai-agent-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.localai-agent-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.localai-agent-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.localai-agent-source,
+.localai-agent-copy,
+.localai-agent-model {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+/* ── Download progress bar ───────────────────────────────────────────────── */
+
+.localai-pull-progress {
+  margin-top: 2px;
+  height: 3px;
+  background: color-mix(in srgb, var(--border) 40%, transparent);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.localai-pull-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent));
+  transition: width 0.3s linear;
+  border-radius: 999px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1080px) {
+  .localai-grid { grid-template-columns: 1fr; }
+  .localai-ollama-layout { grid-template-columns: 1fr; }
+  .localai-ollama-inventory {
+    border-right: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  }
+}
+
+@media (max-width: 720px) {
+  .localai-shell { padding: 10px; }
+  .localai-roster { grid-template-columns: 1fr; }
+  .localai-field-row,
+  .localai-action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

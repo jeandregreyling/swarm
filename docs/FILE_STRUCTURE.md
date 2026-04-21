@@ -58,6 +58,11 @@ Future: `nine.py` (Claude Sonnet 4.6 via API), `ten.py` (GPT-5.3-Codex), `twelve
 
 **Trust Level**: Medium (reads memory, creates proposals, affects queue)
 
+#### `/agents/seven/` — Seven Custom LLM
+- `seven_agent.py` — Chat handler for Seven (agent #18). SLERP merge of Qwen2.5-7B-Instruct + DeepSeek-R1-Distill-Qwen-7B. Q8_0 quantized (8.1GB). Streams via Ollama at 1.4 tok/s on CPU. `keep_alive=300`.
+
+**Trust Level**: Medium (reads memory, creates proposals, affects queue)
+
 ---
 
 ### `/lib/` — Shared Libraries
@@ -89,6 +94,10 @@ System utilities and monitoring:
 - `housekeeping.py` — Maintenance and cleanup.
 - `discord_notify.py` — Discord notifications (passive, no responses).
 - `contradiction_check.py` — Logic consistency checking.
+
+#### `/lib/knowledge/`
+RAG knowledge base:
+- `seed.py` — Built-in knowledge document seeder. Supports `swarm` and `fridays` collections. Fridays maps 17 docs across 4 subcategories (architecture, agent_guides, deployment, troubleshoot). Chunks at 1800 chars with 200-char overlap.
 
 ---
 
@@ -173,17 +182,16 @@ Automated tests and validation:
 
 ---
 
-### `/fridays/` — Action Layer (Unchanged)
-Discord/Telegram/Shell agent handlers (separate MCP-style agents):
+### `/fridays/` — Action Layer
+Discord/Telegram/Shell agent handlers and task scheduling:
 - `discord_bot.py` — Discord integration (Seven's Fridays).
 - `telegram_bot.py` — Telegram integration.
 - `shell_agent.py` — Shell command execution.
 - `file_agent.py` — File operations.
 - `browser_agent.py` — Browser automation.
-- `scheduler.py` — Async scheduling.
-- `skills.py` — Shared skills for fridays agents.
-
-**Note**: Unchanged in reorganization (separate tier from core).
+- `scheduler.py` — Backend scheduler with `check_due()` loop. Supports SHELL + PYTHON action types. Weekly/monthly/hourly/interval schedules.
+- `task_runner.py` — **NEW** Python task registry. `@register` decorator, 13 built-in tasks (housekeeping, dedup, SLA checks, RAG seeding, etc). Execution logged to `task_run_log` table.
+- `skills.py` — Central skill registry and dispatcher. 60+ skills including tasker_list, tasker_run, tasker_history.
 
 ---
 

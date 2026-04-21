@@ -4,7 +4,7 @@ blueprints/localai.py — Local AI status and proxy API
 Unified status and chat proxy for all local inference services:
   - Ollama         (port 11434)
   - LM Studio      (port 1234, OpenAI-compatible)
-  - Picoclaw       (port 18800, launcher UI)
+  - Picoclaw       (port 18790, gateway API)
 """
 import requests
 import json
@@ -14,7 +14,7 @@ localai_bp = Blueprint('localai', __name__)
 
 _OLLAMA_BASE  = 'http://localhost:11434'
 _LMSTUDIO_BASE = 'http://localhost:1234'
-_PICOCLAW_BASE = 'http://localhost:18800'
+_PICOCLAW_BASE = 'http://localhost:18790'
 
 _TIMEOUT = 3   # seconds for status checks
 

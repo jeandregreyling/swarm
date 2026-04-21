@@ -132,6 +132,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const tag = (e.target.tagName || '').toLowerCase();
     const isInput = tag === 'input' || tag === 'textarea' || e.target.isContentEditable;
 
+    if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
+      e.preventDefault();
+      if (typeof openSpotlight === 'function') openSpotlight();
+      return;
+    }
+
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
       const palette = document.getElementById('command-palette');
@@ -210,6 +216,15 @@ document.addEventListener('DOMContentLoaded', () => {
         shortcutsModal.classList.remove('open');
         return;
       }
+      // Close spotlight
+      const spotlight = document.getElementById('spotlight-overlay');
+      if (spotlight?.classList.contains('open')) {
+        if (typeof closeSpotlight === 'function') closeSpotlight();
+        return;
+      }
+      // Close any dynamically-created overlay modals (terminal shortcuts, etc.)
+      const dynModal = document.getElementById('terminal-shortcut-modal');
+      if (dynModal) { dynModal.remove(); return; }
       if (closeTopModal()) return;
       if (closeTopWindow()) return;
       const palette = document.getElementById('command-palette');
@@ -243,6 +258,8 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: 'Feeds', onclick: 'openWindow("feeds", "Feeds", "view-feeds")', hint: '' },
       { label: 'VPN', onclick: 'openWindow("vpn", "VPN", "view-vpn")', hint: '' },
       { label: 'Home', onclick: 'goHome()', hint: 'Ctrl+H' },
+      { label: 'User Guide', onclick: 'openWindow("guide","User Guide","view-guide")', hint: '' },
+      { label: 'Spotlight Search', onclick: 'openSpotlight()', hint: 'Ctrl+Space' },
     ];
     
     const filtered = commands.filter(c => c.label.toLowerCase().includes(query));

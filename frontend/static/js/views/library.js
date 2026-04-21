@@ -10,13 +10,14 @@
 'use strict';
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let _libSources     = [];
-let _libActiveType  = 'text';
-let _libSelTags     = new Set();
-let _libModelReady  = null;   // null = unknown, true/false after check
-let _libCategories  = [];     // loaded from /api/library/categories
-let _libByCat       = {};     // { cat_id: count }
-let _libActiveCat   = '';     // '' = all
+let _libSources       = [];
+let _libActiveType    = 'text';
+let _libSelTags       = new Set();
+let _libModelReady    = null;
+let _libCategories    = [];
+let _libByCat         = {};
+let _libActiveCat     = '';
+let _libSelectedSource = null;  // currently selected node detail
 
 const _SAP_TAGS = [
   'sap_hcm', 'abap', 'payroll', 'sap_note',
@@ -47,6 +48,11 @@ function libInit() {
   if (inp) {
     inp.addEventListener('keydown', e => {
       if (e.key === 'Enter') libSearch();
+    });
+    // Real-time graph highlight as user types
+    inp.addEventListener('input', () => {
+      if (typeof libGraphHighlight === 'function') libGraphHighlight(inp.value.trim());
+      if (!inp.value.trim()) _libHideSearchResults();
     });
   }
 
@@ -195,7 +201,93 @@ async function _loadSources() {
     _libSources = d.sources || [];
     _renderStats(d.stats || {});
     _renderSourcesList();
+    _libInitGraph();
   } catch (_) {}
+}
+
+function _libInitGraph() {
+  const canvas = document.getElementById('library-graph-canvas');
+  const empty  = document.getElementById('library-graph-empty');
+  if (!canvas) return;
+  if (!_libSources.length) {
+    if (empty) empty.classList.add('visible');
+    return;
+  }
+  if (empty) empty.classList.remove('visible');
+  // Reset detail panel
+  _libHideNodeDetail();
+  if (typeof libGraphInit === 'function') {
+    libGraphInit(_libSources, canvas, _libNodeClick);
+  }
+}
+
+function _libNodeClick(source, related) {
+  _libSelectedSource = source;
+  _libShowNodeDetail(source, related);
+}
+
+function _libShowNodeDetail(source, related) {
+  const detail  = document.getElementById('library-node-detail');
+  const list    = document.getElementById('library-sources-list');
+  if (!detail) return;
+
+  const tags = _parseTags(source.domain_tags);
+  const cat  = source.category || 'general';
+  const catColor = { sap_corner:'#f7b84b', programming:'#5bc0de', fridays:'#5cb85c', general:'#9b9b9b' }[cat] || '#888';
+
+  document.getElementById('library-node-title').textContent = source.title;
+  document.getElementById('library-node-meta').innerHTML =
+    `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;background:${catColor}22;color:${catColor};border:1px solid ${catColor}44;">${cat.replace('_',' ')}</span>` +
+    `<span style="font-size:10px;color:var(--text-dim);">${source.source_type}</span>` +
+    `<span style="font-size:10px;color:var(--text-dim);">${source.chunk_count || 0} chunks</span>`;
+
+  document.getElementById('library-node-tags').innerHTML = tags.length
+    ? tags.map(t => `<span class="lib-node-tag">${_esc(t)}</span>`).join('')
+    : '<span style="font-size:11px;color:var(--text-dim);">No tags</span>';
+
+  const relEl = document.getElementById('library-node-related');
+  relEl.innerHTML = related.length
+    ? related.slice(0, 6).map(r => {
+        const rc = { sap_corner:'#f7b84b', programming:'#5bc0de', fridays:'#5cb85c', general:'#9b9b9b' }[r.category] || '#888';
+        return `<div class="lib-related-item" onclick="_libNodeClick(${JSON.stringify(r).replace(/"/g,'&quot;')}, [])">
+          <span class="lib-related-dot" style="background:${rc};"></span>
+          <span>${_esc(r.title)}</span>
+        </div>`;
+      }).join('')
+    : '<span style="font-size:11px;color:var(--text-dim);">No related sources yet</span>';
+
+  const preview = (source.raw_text || source.content || '').slice(0, 500);
+  document.getElementById('library-node-preview').textContent = preview || '(No preview available)';
+
+  if (list) list.style.display = 'none';
+  detail.style.display = 'flex';
+}
+
+function _libHideNodeDetail() {
+  const detail = document.getElementById('library-node-detail');
+  const list   = document.getElementById('library-sources-list');
+  if (detail) detail.style.display = 'none';
+  if (list)   list.style.display = '';
+  _libSelectedSource = null;
+}
+
+function _libHideSearchResults() {
+  const sr = document.getElementById('library-search-results');
+  const gv = document.getElementById('library-graph-view');
+  if (sr) sr.style.display = 'none';
+  if (gv) gv.style.display = '';
+  if (typeof libGraphReset === 'function') libGraphReset();
+}
+
+function libNodeDelete() {
+  if (!_libSelectedSource) return;
+  libDeleteSource(_libSelectedSource.source_id, null);
+  _libHideNodeDetail();
+}
+
+function libNodeReprocess() {
+  if (!_libSelectedSource) return;
+  libReprocess(_libSelectedSource.source_id, null);
 }
 
 function _renderStats(stats) {
@@ -284,10 +376,12 @@ async function libSearch() {
   const btn = document.getElementById('library-search-btn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="lib-spinner"></span>'; }
 
-  const panel = document.getElementById('library-results-panel');
-  if (panel) {
-    panel.innerHTML = `<div style="display:flex;justify-content:center;padding:24px;"><span class="lib-spinner"></span></div>`;
-  }
+  // Show search results overlay, keep graph in background highlighted
+  const gv = document.getElementById('library-graph-view');
+  const sr = document.getElementById('library-search-results');
+  if (gv) gv.style.display = 'none';
+  if (sr) { sr.style.display = ''; sr.innerHTML = `<div style="display:flex;justify-content:center;padding:24px;"><span class="lib-spinner"></span></div>`; }
+  if (typeof libGraphHighlight === 'function') libGraphHighlight(query);
 
   try {
     let url = `/api/library/search?q=${encodeURIComponent(query)}&k=8`;
@@ -297,18 +391,24 @@ async function libSearch() {
     if (!d.ok) throw new Error(d.error || 'search failed');
     _renderResults(d.results || [], query);
   } catch (err) {
-    if (panel) panel.innerHTML = `<div class="lib-empty-state"><span style="color:var(--danger);">Search error: ${_esc(String(err))}</span></div>`;
+    if (sr) sr.innerHTML = `<div class="lib-empty-state"><span style="color:var(--danger);">Search error: ${_esc(String(err))}</span></div>`;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Search'; }
   }
 }
 
 function _renderResults(results, query) {
-  const panel = document.getElementById('library-results-panel');
+  const panel = document.getElementById('library-search-results');
   if (!panel) return;
 
+  // Back-to-graph button header
+  const backBtn = `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-dim);">
+    <span><strong style="color:var(--text);">${results.length}</strong> results for "${_esc(query)}"</span>
+    <button onclick="_libHideSearchResults()" style="background:var(--window-header);border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:10px;color:var(--text-dim);cursor:pointer;">← Graph</button>
+  </div>`;
+
   if (!results.length) {
-    panel.innerHTML =
+    panel.innerHTML = backBtn +
       `<div class="lib-empty-state">
         <svg viewBox="0 0 24 24" width="40" height="40" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         <div>No results for <strong>${_esc(query)}</strong>${_libActiveCat ? ` in ${_libActiveCat}` : ''}</div>
@@ -319,7 +419,7 @@ function _renderResults(results, query) {
 
   const terms = query.toLowerCase().split(/\s+/).filter(t => t.length > 2);
 
-  panel.innerHTML = results.map(r => {
+  panel.innerHTML = backBtn + results.map(r => {
     const tags      = _parseTags(r.domain_tags);
     const excerpt   = _highlight(_esc(r.chunk_text.slice(0, 320)), terms);
     const scorePct  = Math.round((r.score || 0) * 100);
@@ -492,8 +592,8 @@ async function libSeedKnowledge() {
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'seed failed');
-    if (typeof _toast === 'function') {
-      _toast(d.message || `Seeded ${d.added} docs`, 'success');
+    if (typeof showToast === 'function') {
+      showToast(d.message || `Seeded ${d.added} docs`, 'success');
     } else {
       alert(d.message || `Seeded ${d.added} docs (${d.skipped} skipped)`);
     }

@@ -32,7 +32,7 @@ def add_task(name, schedule, action_type, action_data, created_by='system'):
 
 
 def _advance_next_run(name):
-    """Advance next_run for a task after it fires. Parses 'daily HH:MM' schedules."""
+    """Advance next_run for a task after it fires. Supports daily, weekly, monthly, hourly, interval."""
     with get_connection() as conn:
         row = conn.execute(
             'SELECT schedule FROM scheduled_tasks WHERE name=?', (name,)
@@ -42,13 +42,56 @@ def _advance_next_run(name):
         schedule = (row[0] or '').strip()
         now = datetime.now()
         next_run = None
-        if schedule.lower().startswith('daily '):
+        s = schedule.lower()
+        if s.startswith('daily '):
             try:
                 hhmm = schedule.split(None, 1)[1]
                 h, m = int(hhmm.split(':')[0]), int(hhmm.split(':')[1])
                 candidate = now.replace(hour=h, minute=m, second=0, microsecond=0)
                 if candidate <= now:
                     candidate += timedelta(days=1)
+                next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
+            except Exception:
+                pass
+        elif s.startswith('weekly '):
+            try:
+                parts = schedule.split(None, 2)  # weekly MON 09:00
+                day_map = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
+                target_day = day_map.get(parts[1].lower()[:3], 0)
+                hhmm = parts[2] if len(parts) > 2 else '09:00'
+                h, m = int(hhmm.split(':')[0]), int(hhmm.split(':')[1])
+                candidate = now.replace(hour=h, minute=m, second=0, microsecond=0)
+                days_ahead = target_day - now.weekday()
+                if days_ahead <= 0:
+                    days_ahead += 7
+                candidate += timedelta(days=days_ahead)
+                next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
+            except Exception:
+                pass
+        elif s.startswith('monthly '):
+            try:
+                parts = schedule.split(None, 2)  # monthly 1 09:00
+                day_of_month = int(parts[1])
+                hhmm = parts[2] if len(parts) > 2 else '09:00'
+                h, m = int(hhmm.split(':')[0]), int(hhmm.split(':')[1])
+                candidate = now.replace(day=min(day_of_month, 28), hour=h, minute=m, second=0, microsecond=0)
+                if candidate <= now:
+                    month = now.month + 1
+                    year = now.year
+                    if month > 12:
+                        month = 1
+                        year += 1
+                    candidate = candidate.replace(year=year, month=month)
+                next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
+            except Exception:
+                pass
+        elif s == 'hourly':
+            candidate = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+            next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
+        elif s.startswith('interval '):
+            try:
+                val = int(s.split(None, 1)[1].rstrip('m'))
+                candidate = now + timedelta(minutes=val)
                 next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
             except Exception:
                 pass
@@ -143,6 +186,7 @@ def parse_schedule_command(line):
 
 def check_due():
     """Check for scheduled tasks that are due and run them."""
+    import shlex
     import subprocess
     from datetime import datetime
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -157,12 +201,16 @@ def check_due():
         task_id, name, action_type, action_data = row[0], row[1], row[2], row[3]
         try:
             if action_type.upper() == 'SHELL':
-                subprocess.Popen(action_data, shell=True)
+                subprocess.Popen(shlex.split(action_data))
                 print(f'[Scheduler] Fired SHELL task #{task_id}: {action_data[:60]}')
+            elif action_type.upper() == 'PYTHON':
+                from fridays.task_runner import run_task
+                success, output = run_task(action_data.strip())
+                status = '✓' if success else '✗'
+                print(f'[Scheduler] {status} PYTHON task #{task_id} ({name}): {output[:80]}')
             elif action_type.upper() in ('QUESTION', 'BRIEF'):
-                # Delegate to brief engine for brief tasks; ignore questions (handled by listener)
                 if 'brief_engine' in (action_data or ''):
-                    subprocess.Popen(action_data, shell=True)
+                    subprocess.Popen(shlex.split(action_data))
                     print(f'[Scheduler] Fired BRIEF task #{task_id}')
             # Advance next_run for this task
             _advance_next_run(name)
@@ -188,7 +236,6 @@ def main_loop():
         try:
             check_due()
             check_snoozed()
-            run_daily_digest()
             time.sleep(60)
         except KeyboardInterrupt:
             print("\nScheduler stopped.")

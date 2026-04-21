@@ -38,7 +38,7 @@ SANDPIT_ROOT  = SWARM_ROOT / 'sandpits'
 
 AGENT_SANDPITS = [
     'gemma', 'llama', 'mistral', 'eight', 'librarian', 'duck', 'sniffles',
-    'nine', 'ten', 'eleven', 'twelve', 'qwen', 'thirteen', 'ghost', 'shared'
+    'nine', 'ten', 'eleven', 'twelve', 'twenty', 'qwen', 'thirteen', 'ghost', 'shared'
 ]
 
 

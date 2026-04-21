@@ -95,6 +95,7 @@ _DEFAULTS = {
     'duck':          'qwen:latest',
     'librarian':     'qwen:latest',
     'sniffles':      'deepseek-r1:7b',
+    'seven':         'qwen3:latest',
     'ghost':         'external',
 }
 

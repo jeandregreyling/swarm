@@ -7,6 +7,92 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
+## Version 2026-04-19 Session 21 — Seven LLM Build + Enhanced Tasker + Fridays RAG Seeding
+
+### Changes by Copilot (Ghost One direction)
+
+**2026-04-19 UTC** Copilot: Seven custom LLM diagnostics and memory fix, enhanced Python tasker system with scheduler integration, fridays knowledge category seeding, agent tasker awareness via skills, security fix in scheduler.
+
+- **Type:** LLM / Feature / Security / RAG
+- **Status:** COMPLETE
+
+#### Seven LLM Memory Fix (`agents/seven/seven_agent.py`)
+
+Root cause analysis of Seven model hanging after ~5 minutes: three Ollama models loaded simultaneously with `keep_alive=-1` (infinite retention) — seven:latest (7.2GB) + gemma3 (4.0GB) + llama3.2 (2.3GB) = 13.5GB resident, causing 12GB+ swap thrash on 32GB system.
+
+- Changed `keep_alive` from `-1` to `300` (5 minutes) in Seven's `_api_call()`
+- Unloaded gemma3 and llama3.2 from Ollama to free ~6.3GB
+- Seven now generates at 1.4 tok/s on CPU (expected for 8.1GB Q8_0 model, no GPU)
+
+#### Enhanced Task Runner (`fridays/task_runner.py` — NEW)
+
+Built a Python-native task runner with decorator-based registration, replacing shell-only scheduled tasks:
+
+- `@register(name, description, category)` decorator for zero-boilerplate task definition
+- `TASK_REGISTRY` dict with metadata (name, description, category, function reference)
+- `run_task(name, args)` → `(success, output)` with exception capture
+- `list_registered()` returns all registered tasks with metadata
+- `_log_run()` writes execution results to `task_run_log` table
+- **13 registered tasks**: housekeeping, archive_memories, dedup_memories, curate_memories, daily_digest, daily_brief, sla_check, snoozed_check, proposals_check, play_time, knowledge_seed, knowledge_reindex, landscape_refresh
+
+#### Scheduler Security Fix + PYTHON Action Type (`fridays/scheduler.py`)
+
+- **Security fix**: `subprocess.Popen(action_data, shell=True)` → `shlex.split()` — eliminated shell injection vector in `check_due()`
+- Added `PYTHON` action type dispatch: `from fridays.task_runner import run_task` called for PYTHON-type tasks
+- Extended `_advance_next_run()` for weekly, monthly, hourly, and interval schedules
+- Removed hardcoded `run_daily_digest()` call from `main_loop()` — all tasks now fire through `check_due()` only
+
+#### Tasker REST API (`frontend/blueprints/tasker_bp.py`)
+
+New and updated endpoints for full task lifecycle management:
+
+- `GET /api/tasker/registered` — list all Python-registered tasks from task_runner
+- `GET /api/tasker/history` — recent task execution log from task_run_log table
+- `POST /api/tasker/bootstrap` — register default scheduled tasks (housekeeping weekly Sun 02:00, dedup daily 03:00, sla_check interval 60m, snoozed_check interval 15m, proposals_check interval 30m, landscape_refresh weekly Mon 04:00, knowledge_seed monthly 1 03:00). Also migrates existing daily_digest/daily_brief from SHELL→PYTHON
+- Added `PYTHON` to `_VALID_ACTION_TYPES`
+- Added weekly/monthly schedule validation via `_validate_schedule()` + `_valid_hhmm()`
+- PYTHON task execution in `run_task_now()`
+
+#### Fridays Knowledge Category Seeding (`lib/knowledge/seed.py`)
+
+Extended the built-in knowledge seeder to support a `fridays` collection:
+
+- Added `_all_fridays_docs()` scanner + `_FRIDAYS_DOC_MAP` mapping 17 docs → 4 subcategories
+- **architecture** (5 docs): ARCHITECTURE, ARCHITECTURE_DIAGRAM, PHASE_4.0_DIAMOND_LAYER, PROJECT_ANALYSIS, PROJECT
+- **agent_guides** (5 docs): AGENT_TWELVE_MANUAL, ALM_COOKBOOK, ALM_DRIVER, DEVELOPER_WORKFLOW, MULTI_STAGE_WORKFLOW
+- **deployment** (4 docs): DEPLOYMENT_GUIDE, ENVIRONMENTS_REFERENCE, FILE_STRUCTURE, VERSION_CONTROL
+- **troubleshoot** (3 docs): BUGS, SYSTEM_CLOCK, UAT_TEST_SCRIPTS
+- Total: 17 docs, ~348K chars, chunked at 1800 chars with 200-char overlap
+- `seed_collection('fridays')` now available via `POST /api/library/seed`
+
+#### Agent Tasker Skills (`fridays/skills.py`)
+
+Added 3 new skills to the central skill registry so agents can interact with the tasker:
+
+- `tasker_list` — shows all scheduled + registered Python tasks
+- `tasker_run` — execute a registered task by name
+- `tasker_history` — recent execution log from task_run_log table
+- All three added to both `REGISTRY` dict and `_HANDLERS` dispatch
+
+#### Database Schema (`utils/db/_schema.py`)
+
+- Added `task_run_log` table: `id INTEGER PRIMARY KEY, task_name TEXT, status TEXT, output TEXT, run_at TEXT DEFAULT (datetime('now'))`
+- Added to both SCHEMA block and migration block for fresh + existing installs
+
+#### Tasker UI Updates (`frontend/templates/terminal_base.html`, `frontend/static/js/views/tasker.js`)
+
+- Added PYTHON option to filter dropdown and create/edit form action type selects
+- Added weekly/monthly preset buttons for common schedules
+- Added Bootstrap button calling `bootstrapTasker()` to seed default tasks
+- `bootstrapTasker()` function: POST /api/tasker/bootstrap with result toast
+
+#### PROD Crash Recovery
+
+- Diagnosed orphaned PID 7338 holding port 5050, systemd restart counter at 2725
+- Killed orphan, PROD restored on :5050 (PID 443874)
+
+---
+
 ## Version 2026-04-13 Session 13 — ALM Pipeline Redesign + Bug Fixes
 
 ### Changes by Copilot (Ghost One direction)

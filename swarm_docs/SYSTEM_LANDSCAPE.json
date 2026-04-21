@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18 22:39",
+  "generated_at": "2026-04-21 20:59",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -177,6 +177,11 @@
       "description": "utils/node_discovery.py \u2014 Node discovery + heartbeat + event relay (A.5.1, D.2, D.3)"
     },
     {
+      "path": "utils/platform_compat.py",
+      "group": "Utils",
+      "description": "utils/platform_compat.py \u2014 Cross-platform guard helpers."
+    },
+    {
       "path": "utils/proposal_review.py",
       "group": "Utils",
       "description": "proposal_review.py \u2014 Duck's proposal sanity-check + chat-thread notification."
@@ -299,7 +304,7 @@
     {
       "path": "agents/eight/eight_agent.py",
       "group": "Agent Modules",
-      "description": "agents/eight/eight_agent.py \u2014 Eight"
+      "description": "agents/eight/eight_agent.py \u2014 Gemma 4 (agent Eight)"
     },
     {
       "path": "agents/eleven/grok_agent.py",
@@ -337,6 +342,11 @@
       "description": "# LINKED TO: utils/config.py \u2014 imports NINE_SYSTEM_PROMPT (edit prompts there, not here)"
     },
     {
+      "path": "agents/nineteen/nineteen_agent.py",
+      "group": "Agent Modules",
+      "description": "# LINKED TO: utils/config.py \u2014 imports NINETEEN_SYSTEM_PROMPT (edit prompts there, not here)"
+    },
+    {
       "path": "agents/phi3/phi3_agent.py",
       "group": "Agent Modules",
       "description": "agents/phi3/phi3_agent.py \u2014 Phi-3 Mini (local Ollama)"
@@ -357,6 +367,11 @@
       "description": "# LINKED TO: utils/config.py \u2014 imports SEEKER_SYSTEM_PROMPT (edit prompts there, not here)"
     },
     {
+      "path": "agents/seven/seven_agent.py",
+      "group": "Agent Modules",
+      "description": "agents/seven/seven_agent.py \u2014 Qwen3.6 (Agent 18)"
+    },
+    {
       "path": "agents/ten/copilot_agent.py",
       "group": "Agent Modules",
       "description": "# LINKED TO: utils/config.py \u2014 imports TEN_SYSTEM_PROMPT (edit prompts there, not here)"
@@ -370,6 +385,11 @@
       "path": "agents/twelve/twelve_agent.py",
       "group": "Agent Modules",
       "description": "# LINKED TO: utils/config.py \u2014 imports TWELVE_SYSTEM_PROMPT (edit prompts there, not here)"
+    },
+    {
+      "path": "agents/twenty/twenty_agent.py",
+      "group": "Agent Modules",
+      "description": "agents/twenty/twenty_agent.py - Twenty (Qwen3.6)"
     },
     {
       "path": "fridays/__init__.py",
@@ -415,6 +435,11 @@
       "path": "fridays/skills.py",
       "group": "Fridays / Skills",
       "description": "fridays/skills.py \u2014 Seven's Swarm (RL-021)"
+    },
+    {
+      "path": "fridays/task_runner.py",
+      "group": "Fridays / Skills",
+      "description": "fridays/task_runner.py \u2014 Python task runner registry for the Tasker."
     },
     {
       "path": "fridays/telegram_bot.py",
@@ -1027,6 +1052,25 @@
       "route_count": 9
     },
     {
+      "name": "council_bp",
+      "description": "Council API blueprint \u2014 serves Agent 20 output to the frontend.",
+      "routes": [
+        {
+          "path": "/api/council/latest",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/council/dismiss/<int:thought_id>",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 2
+    },
+    {
       "name": "debates",
       "description": "debates.py \u2014 Debates routes",
       "routes": [
@@ -1178,13 +1222,31 @@
           ]
         },
         {
+          "path": "/api/search/global",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/guide",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/guide/<section_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
           "path": "/api/testing/run-simulation",
           "methods": [
             "POST"
           ]
         }
       ],
-      "route_count": 11
+      "route_count": 14
     },
     {
       "name": "email_bp",
@@ -1296,6 +1358,44 @@
         }
       ],
       "route_count": 6
+    },
+    {
+      "name": "health",
+      "description": "",
+      "routes": [
+        {
+          "path": "/api/health",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 1
+    },
+    {
+      "name": "health_bp",
+      "description": "Health digest API blueprint \u2014 one-stop-shop system visibility.",
+      "routes": [
+        {
+          "path": "/api/health/digest",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/health/status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/health/memory",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 3
     },
     {
       "name": "idle_mgmt_bp",
@@ -1637,9 +1737,33 @@
           "methods": [
             "POST"
           ]
+        },
+        {
+          "path": "/api/auth/users/<username>/edit",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/users/<username>/reset-password",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/users/<username>/delete",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/auth/users/create",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 10
+      "route_count": 14
     },
     {
       "name": "memory",
@@ -1830,6 +1954,12 @@
           ]
         },
         {
+          "path": "/api/ollama/library",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
           "path": "/api/ollama/load",
           "methods": [
             "POST"
@@ -1846,9 +1976,45 @@
           "methods": [
             "GET"
           ]
+        },
+        {
+          "path": "/api/ollama/show/<path:model>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/ollama/pull",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/ollama/delete",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/ollama/create",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/ollama/web_search",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/ollama/web_fetch",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 4
+      "route_count": 11
     },
     {
       "name": "onboarding",
@@ -2174,6 +2340,12 @@
         {
           "path": "/api/terminal/shortcuts/<int:shortcut_id>",
           "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/terminal/shortcuts/<int:shortcut_id>",
+          "methods": [
             "DELETE"
           ]
         },
@@ -2203,7 +2375,7 @@
           ]
         }
       ],
-      "route_count": 17
+      "route_count": 18
     },
     {
       "name": "sse",
@@ -2360,9 +2532,27 @@
           "methods": [
             "POST"
           ]
+        },
+        {
+          "path": "/api/tasker/registered",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/tasker/history",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/tasker/bootstrap",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 5
+      "route_count": 8
     },
     {
       "name": "tickets",
@@ -2650,23 +2840,23 @@
   "js_views": [
     {
       "name": "access.js",
-      "size_kb": 77.9
+      "size_kb": 96.3
     },
     {
       "name": "chat.js",
-      "size_kb": 239.1
+      "size_kb": 243.6
     },
     {
       "name": "conversations.js",
-      "size_kb": 12.0
+      "size_kb": 13.1
     },
     {
       "name": "diamond.js",
-      "size_kb": 19.7
+      "size_kb": 26.9
     },
     {
       "name": "docs.js",
-      "size_kb": 30.2
+      "size_kb": 24.3
     },
     {
       "name": "email.js",
@@ -2678,23 +2868,35 @@
     },
     {
       "name": "git.js",
-      "size_kb": 23.7
+      "size_kb": 23.8
+    },
+    {
+      "name": "guide.js",
+      "size_kb": 7.5
+    },
+    {
+      "name": "health-digest.js",
+      "size_kb": 8.2
     },
     {
       "name": "home-chat.js",
-      "size_kb": 34.3
+      "size_kb": 46.9
     },
     {
       "name": "knowledge.js",
-      "size_kb": 5.8
+      "size_kb": 6.7
+    },
+    {
+      "name": "library-graph.js",
+      "size_kb": 12.4
     },
     {
       "name": "library.js",
-      "size_kb": 22.0
+      "size_kb": 26.4
     },
     {
       "name": "localai.js",
-      "size_kb": 8.5
+      "size_kb": 25.5
     },
     {
       "name": "memory-landscape.js",
@@ -2706,7 +2908,7 @@
     },
     {
       "name": "monitor.js",
-      "size_kb": 15.4
+      "size_kb": 17.9
     },
     {
       "name": "ollama.js",
@@ -2714,7 +2916,11 @@
     },
     {
       "name": "onboarding.js",
-      "size_kb": 16.2
+      "size_kb": 16.8
+    },
+    {
+      "name": "orbs.js",
+      "size_kb": 63.0
     },
     {
       "name": "services.js",
@@ -2722,23 +2928,27 @@
     },
     {
       "name": "skills.js",
-      "size_kb": 22.6
+      "size_kb": 25.0
+    },
+    {
+      "name": "spotlight.js",
+      "size_kb": 8.2
     },
     {
       "name": "studio.js",
-      "size_kb": 85.0
+      "size_kb": 85.3
     },
     {
       "name": "tasker.js",
-      "size_kb": 10.0
+      "size_kb": 10.7
     },
     {
       "name": "terminal-commands.js",
-      "size_kb": 13.0
+      "size_kb": 13.1
     },
     {
       "name": "terminal.js",
-      "size_kb": 41.3
+      "size_kb": 43.4
     },
     {
       "name": "tickets.js",
@@ -2746,7 +2956,7 @@
     },
     {
       "name": "time-wizard.js",
-      "size_kb": 36.1
+      "size_kb": 35.8
     },
     {
       "name": "trace.js",
@@ -2760,7 +2970,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 24549
+      "rows": 29667
     },
     {
       "name": "agent_capabilities",
@@ -2776,19 +2986,19 @@
     },
     {
       "name": "agents",
-      "rows": 19
+      "rows": 22
     },
     {
       "name": "approval_tokens",
-      "rows": 289
+      "rows": 382
     },
     {
       "name": "audit_results",
-      "rows": 3
+      "rows": 25
     },
     {
       "name": "chat_jobs",
-      "rows": 367
+      "rows": 510
     },
     {
       "name": "claude_log",
@@ -2796,11 +3006,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 794
+      "rows": 2059
     },
     {
       "name": "conversations",
-      "rows": 101
+      "rows": 494
+    },
+    {
+      "name": "council_output",
+      "rows": 312
     },
     {
       "name": "daily_checkpoint",
@@ -2820,7 +3034,7 @@
     },
     {
       "name": "decisions",
-      "rows": 2589
+      "rows": 3638
     },
     {
       "name": "deferred_items",
@@ -2828,7 +3042,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 567
+      "rows": 679
     },
     {
       "name": "file_versions",
@@ -2844,23 +3058,23 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 2967
+      "rows": 3720
     },
     {
       "name": "governance_log",
-      "rows": 160
+      "rows": 297
     },
     {
       "name": "knowledge_chunks",
-      "rows": 371
+      "rows": 632
     },
     {
       "name": "knowledge_sources",
-      "rows": 29
+      "rows": 46
     },
     {
       "name": "memory",
-      "rows": 45
+      "rows": 89
     },
     {
       "name": "memory_eight",
@@ -2868,7 +3082,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 9
+      "rows": 18
     },
     {
       "name": "memory_ghost_coder",
@@ -2876,11 +3090,11 @@
     },
     {
       "name": "memory_grok",
-      "rows": 0
+      "rows": 47
     },
     {
       "name": "memory_llama",
-      "rows": 2
+      "rows": 1
     },
     {
       "name": "memory_mistral",
@@ -2888,11 +3102,11 @@
     },
     {
       "name": "memory_nine",
-      "rows": 1
+      "rows": 0
     },
     {
       "name": "memory_qwen",
-      "rows": 0
+      "rows": 2
     },
     {
       "name": "memory_scholar",
@@ -2908,7 +3122,7 @@
     },
     {
       "name": "memory_ten",
-      "rows": 0
+      "rows": 59
     },
     {
       "name": "memory_thirteen",
@@ -2919,8 +3133,12 @@
       "rows": 0
     },
     {
+      "name": "memory_twenty",
+      "rows": 64
+    },
+    {
       "name": "messages",
-      "rows": 199
+      "rows": 1094
     },
     {
       "name": "moderators",
@@ -2956,7 +3174,7 @@
     },
     {
       "name": "queue",
-      "rows": 1188
+      "rows": 1534
     },
     {
       "name": "research_evidence",
@@ -2968,15 +3186,15 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 306
+      "rows": 420
     },
     {
       "name": "scheduled_tasks",
-      "rows": 2
+      "rows": 9
     },
     {
       "name": "skills",
-      "rows": 38
+      "rows": 47
     },
     {
       "name": "sniffer_log",
@@ -2992,23 +3210,23 @@
     },
     {
       "name": "sqlite_sequence",
-      "rows": 61
+      "rows": 66
     },
     {
       "name": "sudo_command_whitelist",
-      "rows": 4
+      "rows": 5
     },
     {
       "name": "swarm_bus",
-      "rows": 160
+      "rows": 297
     },
     {
       "name": "swarm_event_acks",
-      "rows": 0
+      "rows": 24
     },
     {
       "name": "swarm_events",
-      "rows": 0
+      "rows": 2
     },
     {
       "name": "swarm_globals",
@@ -3016,7 +3234,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 0
+      "rows": 2
     },
     {
       "name": "swarm_nodes",
@@ -3024,35 +3242,39 @@
     },
     {
       "name": "system_stats",
-      "rows": 6285
+      "rows": 6974
+    },
+    {
+      "name": "task_run_log",
+      "rows": 0
     },
     {
       "name": "terminal_shortcuts",
-      "rows": 10
+      "rows": 20
     },
     {
       "name": "ticket_notes",
-      "rows": 321
+      "rows": 433
     },
     {
       "name": "tickets",
-      "rows": 329
+      "rows": 441
     },
     {
       "name": "time_checkpoints",
-      "rows": 2376
+      "rows": 3032
     },
     {
       "name": "time_events",
-      "rows": 71970
+      "rows": 90850
     },
     {
       "name": "time_journal",
-      "rows": 68367
+      "rows": 86588
     },
     {
       "name": "time_machine",
-      "rows": 5193
+      "rows": 5264
     },
     {
       "name": "tool_builds",
@@ -3071,12 +3293,16 @@
       "rows": 3
     },
     {
+      "name": "user_patterns",
+      "rows": 3
+    },
+    {
       "name": "user_profiles",
-      "rows": 19
+      "rows": 23
     },
     {
       "name": "user_sessions",
-      "rows": 1
+      "rows": 3
     },
     {
       "name": "user_skill_permissions",
@@ -3088,7 +3314,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 93
+      "rows": 222
     }
   ],
   "agents": [
@@ -3152,6 +3378,13 @@
       "name": "sniffles",
       "model": "deepseek-r1:7b",
       "role": "Inspector \u2014 memory auditor, read only, chain-of-thought",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "seven",
+      "model": "local-algorithm",
+      "role": "Personal companion \u2014 loyal, thinks out loud",
       "tier": "local",
       "enabled": 1
     },
@@ -3220,9 +3453,23 @@
     },
     {
       "name": "ghost_coder",
-      "model": "claude-sonnet-4-20250514",
+      "model": "gpt-5",
       "role": "Developer Agent \u2014 code-aware AI, reads/writes/patches code, bridges Copilot and Fridays",
       "tier": "paid",
+      "enabled": 1
+    },
+    {
+      "name": "nineteen",
+      "model": "o4-mini",
+      "role": "developer",
+      "tier": "paid",
+      "enabled": 1
+    },
+    {
+      "name": "twenty",
+      "model": "qwen3:latest",
+      "role": "Nervous system \u2014 observes, deliberates, suggests (no LLM)",
+      "tier": "local",
       "enabled": 1
     }
   ],
@@ -3261,6 +3508,16 @@
       "name": "build_tool",
       "description": "Scaffold a new tool from template. Types: script, skill, widget, cron, shell. Creates files + DB record.",
       "trust_level": 1
+    },
+    {
+      "name": "check_models",
+      "description": "List locally installed Ollama models with sizes. Use \"new\" to check Ollama registry for trending models. Use \"update <model>\" to pull latest.",
+      "trust_level": 0
+    },
+    {
+      "name": "claude_code",
+      "description": "Run a prompt through the Claude Code CLI (non-interactive). Best for code generation, review, and analysis tasks.",
+      "trust_level": 0
     },
     {
       "name": "deep_dive",
@@ -3323,8 +3580,28 @@
       "trust_level": 0
     },
     {
+      "name": "lmstudio",
+      "description": "Chat with whatever model is currently loaded in LM Studio (port 1234, OpenAI-compat API).",
+      "trust_level": 0
+    },
+    {
       "name": "memory_search",
       "description": "Search the swarm memory pools. Returns top matches.",
+      "trust_level": 0
+    },
+    {
+      "name": "ollama_web_fetch",
+      "description": "Fetch and return full page content from a URL via Ollama cloud API (requires OLLAMA_API_KEY).",
+      "trust_level": 0
+    },
+    {
+      "name": "ollama_web_search",
+      "description": "Web search via Ollama cloud API (requires OLLAMA_API_KEY). Returns title, URL, and snippet per result.",
+      "trust_level": 0
+    },
+    {
+      "name": "picoclaw",
+      "description": "Send a message to a PicoClaw agent (has exec, web_fetch, web_search, subagent, cron tools built in). Runs picoclaw agent -m.",
       "trust_level": 0
     },
     {
@@ -3380,6 +3657,21 @@
     {
       "name": "system_index",
       "description": "Generate or query the system index (modules, blueprints, tables, agents, skills). No args = regenerate. With args = search the index.",
+      "trust_level": 0
+    },
+    {
+      "name": "tasker_history",
+      "description": "Show recent task execution history \u2014 what ran, when, and the result.",
+      "trust_level": 0
+    },
+    {
+      "name": "tasker_list",
+      "description": "List all scheduled tasks and registered Python tasks with their schedules and status.",
+      "trust_level": 0
+    },
+    {
+      "name": "tasker_run",
+      "description": "Run a registered Python task immediately. Use tasker_list to see available tasks.",
       "trust_level": 0
     },
     {
@@ -3521,6 +3813,10 @@
     },
     {
       "id": "home-chat-expand-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "home-chat-agents-toggle",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -3684,6 +3980,22 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "ollama-load-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "ollama-unload-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "ollama-inspect-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "ollama-delete-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "pico-embed-btn",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -3701,6 +4013,10 @@
     },
     {
       "class": "home-onboarding-skip-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "hc-panel-close",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -3736,11 +4052,31 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "class": "knowledge-icon-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "knowledge-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "knowledge-btn knowledge-btn-primary",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "knowledge-icon-btn files-preview-close",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "class": "mem-tab active",
       "file": "frontend/templates/terminal_base.html"
     },
     {
       "class": "mem-tab",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "docs-tab-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -3764,6 +4100,14 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "class": "localai-danger-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "knowledge-btn knowledge-btn-primary localai-fill-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "class": "tasker-btn-new",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -3781,6 +4125,14 @@
     },
     {
       "id": "chat-exec-mode-btn",
+      "file": "frontend/templates/views/chat.html"
+    },
+    {
+      "class": "chat-util-btn",
+      "file": "frontend/templates/views/chat.html"
+    },
+    {
+      "class": "chat-mode-btn",
       "file": "frontend/templates/views/chat.html"
     },
     {
@@ -3822,6 +4174,14 @@
     {
       "id": "add-source-btn",
       "file": "frontend/templates/views/library.html"
+    },
+    {
+      "id": "access-tab-senders",
+      "file": "frontend/templates/views/access.html"
+    },
+    {
+      "id": "access-tab-users",
+      "file": "frontend/templates/views/access.html"
     },
     {
       "id": "memory-agent-tabs",
@@ -3957,6 +4317,14 @@
     },
     {
       "id": "view-library",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "kn-panel-guide",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "view-guide",
       "file": "frontend/static/js/views/knowledge.js"
     },
     {
@@ -4136,6 +4504,18 @@
       "file": "frontend/static/js/views/home-chat.js"
     },
     {
+      "id": "home-chat-agents-panel",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
+      "id": "home-chat-manual-override",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
+      "id": "hc-auto-label",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
       "id": "home-welcome-greeting",
       "file": "frontend/static/js/views/home-chat.js"
     },
@@ -4208,6 +4588,18 @@
       "file": "frontend/static/js/views/email.js"
     },
     {
+      "id": "ollama-action-status",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-pull-datalist",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-pull-select",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
       "id": "localai-overall-status",
       "file": "frontend/static/js/views/localai.js"
     },
@@ -4224,11 +4616,43 @@
       "file": "frontend/static/js/views/localai.js"
     },
     {
+      "id": "ollama-selected-meta",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-pull-input",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-pull-bar",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-pull-bar-fill",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-pull-controls",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-create-name",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "ollama-create-system",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
       "id": "lmstudio-status-badge",
       "file": "frontend/static/js/views/localai.js"
     },
     {
       "id": "lmstudio-model-info",
+      "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "lmstudio-model-select",
       "file": "frontend/static/js/views/localai.js"
     },
     {
@@ -4384,6 +4808,10 @@
       "file": "frontend/static/js/views/skills.js"
     },
     {
+      "id": "identity-manager-panel",
+      "file": "frontend/static/js/views/skills.js"
+    },
+    {
       "id": "skills-new-user",
       "file": "frontend/static/js/views/skills.js"
     },
@@ -4456,7 +4884,15 @@
       "file": "frontend/static/js/views/library.js"
     },
     {
-      "id": "library-stats",
+      "id": "library-graph-canvas",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-graph-empty",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-node-detail",
       "file": "frontend/static/js/views/library.js"
     },
     {
@@ -4464,7 +4900,35 @@
       "file": "frontend/static/js/views/library.js"
     },
     {
-      "id": "library-results-panel",
+      "id": "library-node-title",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-node-meta",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-node-tags",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-node-related",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-node-preview",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-search-results",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-graph-view",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "library-stats",
       "file": "frontend/static/js/views/library.js"
     },
     {
@@ -4500,6 +4964,42 @@
       "file": "frontend/static/js/views/access.js"
     },
     {
+      "id": "access-panel-senders",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "access-panel-users",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "access-users-list",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "access-user-email",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "access-user-name",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "access-user-pw",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "access-user-role",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "${editId}",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "${cId}",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
       "id": "agent-workflow-panel",
       "file": "frontend/static/js/views/access.js"
     },
@@ -4528,7 +5028,15 @@
       "file": "frontend/static/js/views/access.js"
     },
     {
+      "id": "agent-local-status",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
       "id": "agent-save-status",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-number",
       "file": "frontend/static/js/views/access.js"
     },
     {
@@ -4720,6 +5228,22 @@
       "file": "frontend/static/js/views/ollama.js"
     },
     {
+      "id": "spotlight-overlay",
+      "file": "frontend/static/js/views/spotlight.js"
+    },
+    {
+      "id": "spotlight-input",
+      "file": "frontend/static/js/views/spotlight.js"
+    },
+    {
+      "id": "spotlight-results",
+      "file": "frontend/static/js/views/spotlight.js"
+    },
+    {
+      "id": "orb-canvas",
+      "file": "frontend/static/js/views/orbs.js"
+    },
+    {
       "id": "trace-conv-id",
       "file": "frontend/static/js/views/trace.js"
     },
@@ -4750,6 +5274,18 @@
     {
       "id": "trace-job-id",
       "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "guide-css",
+      "file": "frontend/static/js/views/guide.js"
+    },
+    {
+      "id": "guide-body",
+      "file": "frontend/static/js/views/guide.js"
+    },
+    {
+      "id": "guide-nav",
+      "file": "frontend/static/js/views/guide.js"
     },
     {
       "id": "chat-attachment-input",
@@ -4976,7 +5512,15 @@
       "file": "frontend/static/js/views/diamond.js"
     },
     {
+      "id": "tile-hover-tip",
+      "file": "frontend/static/js/views/diamond.js"
+    },
+    {
       "id": "hidden-tiles-panel",
+      "file": "frontend/static/js/views/diamond.js"
+    },
+    {
+      "id": "home-chat-resizer",
       "file": "frontend/static/js/views/diamond.js"
     }
   ]

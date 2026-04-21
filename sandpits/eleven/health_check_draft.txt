@@ -1,0 +1,10 @@
+Health Check Endpoint - Lateral Notes
+- Base response: {status: 'ok', uptime: seconds}
+- Potential extensions:
+  - Add query param for detailed metrics (e.g., /api/health?details=true)
+  - Include swarm-specific data: active agents, queue status, relay timeouts
+  - Consider a configurable depth of health data for different consumers (internal vs external)
+- Implications:
+  - Preempts debugging by exposing runtime state
+  - Could evolve into a full monitoring API with minimal overhead
+  - Risk: overexposure of internal data if not secured or rate-limited

@@ -67,7 +67,7 @@ function deleteTicket(ticketId) {
   fetch('/api/tickets/' + encodeURIComponent(ticketId), { method: 'DELETE' })
     .then(r => {
       if (r.ok) {
-        const win = (window._fridaysWindows || []).find(w => w.id === 'tickets');
+        const win = winManager && winManager.windows ? winManager.windows.get('tickets') : null;
         if (win) loadTicketsData(win);
       }
     })
@@ -85,7 +85,7 @@ function deleteTicketWithConfirm(ticketNumber, btnEl) {
         // Close modal, refresh list, toast
         const modal = document.getElementById('ticket-detail-modal');
         if (modal) modal.classList.remove('open');
-        const win = (window._fridaysWindows || []).find(w => w.id === 'tickets');
+        const win = winManager && winManager.windows ? winManager.windows.get('tickets') : null;
         if (win) loadTicketsData(win);
         if (typeof showToast === 'function') showToast(ticketNumber + ' deleted', 'success');
       })

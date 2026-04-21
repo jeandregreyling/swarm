@@ -3,7 +3,7 @@
 <!-- markdownlint-disable -->
 
 _Comprehensive list of all planned features, organized by phase and priority._
-_Last updated: 2026-04-05 by Codex + Seven planning direction_
+_Last updated: 2026-04-19 by Copilot (Session 21)_
 
 ---
 
@@ -22,6 +22,40 @@ _Last updated: 2026-04-05 by Codex + Seven planning direction_
 | **G** | Frontend Tile Modularisation | 🔴 High | 3 weeks | In Progress |
 | **H** | Desktop Application Path | 🟡 Medium | 4 weeks | Planned |
 | **I** | Atmosphere Engine | 🔴 High | 2-3 weeks | Planned |
+| **J** | Enhanced Tasker & RAG Automation | 🔴 High | 1 week | **DONE (Session 21)** |
+
+---
+
+## Phase J: Enhanced Tasker & RAG Automation (Session 21 — DONE)
+
+### J-1: Python Task Runner ✅
+- Built `fridays/task_runner.py` — decorator-based task registry with 13 built-in tasks
+- Categories: housekeeping, knowledge, monitoring, reporting
+- Execution logged to `task_run_log` DB table
+
+### J-2: Scheduler Security + PYTHON Dispatch ✅
+- Fixed shell injection vector (`shell=True` → `shlex.split()`) in `fridays/scheduler.py`
+- Added PYTHON action type — calls task_runner instead of subprocess
+- Extended schedule support: weekly, monthly, hourly, interval
+- Removed hardcoded `run_daily_digest()` from main loop
+
+### J-3: Tasker REST API + UI ✅
+- Full CRUD API in `frontend/blueprints/tasker_bp.py`
+- Bootstrap endpoint seeds 7 default tasks
+- PYTHON type in UI filter/form, preset buttons, bootstrap button
+
+### J-4: Fridays Knowledge RAG Seeding ✅
+- Extended `lib/knowledge/seed.py` with `fridays` collection
+- 17 swarm docs mapped to 4 subcategories (~348K chars)
+- Available via `POST /api/library/seed {"collection": "fridays"}`
+
+### J-5: Agent Tasker Awareness ✅
+- Added 3 new skills to `fridays/skills.py`: tasker_list, tasker_run, tasker_history
+- Agents can now view, trigger, and inspect scheduled tasks
+
+### J-6: Seven LLM Memory Fix ✅
+- Root cause: 3 models loaded with `keep_alive=-1` → 13.5GB swap thrash
+- Fixed: `keep_alive=300`, unloaded idle models
 
 ---
 

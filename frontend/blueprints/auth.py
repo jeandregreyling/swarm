@@ -6,17 +6,19 @@ auth_bp = Blueprint('auth', __name__)
 
 def _get_sender_lists():
     conn = get_connection()
-    trusted = [dict(r) for r in conn.execute(
-        "SELECT id, email, added_by, notes, added_at FROM trusted_senders ORDER BY added_at DESC"
-    ).fetchall()]
-    notification = [dict(r) for r in conn.execute(
-        "SELECT id, email, added_by, notes, added_at FROM notification_senders ORDER BY added_at DESC"
-    ).fetchall()]
-    domains = [dict(r) for r in conn.execute(
-        "SELECT id, domain, channel, added_by, notes, added_at FROM trusted_domains ORDER BY added_at DESC"
-    ).fetchall()]
-    conn.close()
-    return {'trusted': trusted, 'notification': notification, 'domains': domains}
+    try:
+        trusted = [dict(r) for r in conn.execute(
+            "SELECT id, email, added_by, notes, added_at FROM trusted_senders ORDER BY added_at DESC"
+        ).fetchall()]
+        notification = [dict(r) for r in conn.execute(
+            "SELECT id, email, added_by, notes, added_at FROM notification_senders ORDER BY added_at DESC"
+        ).fetchall()]
+        domains = [dict(r) for r in conn.execute(
+            "SELECT id, domain, channel, added_by, notes, added_at FROM trusted_domains ORDER BY added_at DESC"
+        ).fetchall()]
+        return {'trusted': trusted, 'notification': notification, 'domains': domains}
+    finally:
+        conn.close()
 
 
 

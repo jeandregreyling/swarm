@@ -267,6 +267,18 @@ def api_terminal_shortcuts_put(shortcut_id):
 
 
 
+@shell_bp.route('/api/terminal/shortcuts/<int:shortcut_id>', methods=['PATCH'])
+def api_terminal_shortcuts_patch(shortcut_id):
+    data = request.get_json(force=True, silent=True) or {}
+    conn = get_connection()
+    if 'sort_order' in data:
+        conn.execute("UPDATE terminal_shortcuts SET sort_order=? WHERE id=?",
+                     (int(data['sort_order']), shortcut_id))
+        conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
 @shell_bp.route('/api/terminal/shortcuts/<int:shortcut_id>', methods=['DELETE'])
 def api_terminal_shortcuts_delete(shortcut_id):
     conn = get_connection()

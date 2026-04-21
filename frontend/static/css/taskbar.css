@@ -4,18 +4,24 @@
    ───────────────────────────────────────────────────────────────────────── */
 #taskbar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 48px;
-  background: var(--window-header);
-  border-top: 1px solid var(--border);
-  z-index: 50;
+  bottom: 14px;
+  left: 14px;
+  width: auto;
+  max-width: calc(100vw - 180px);
+  height: auto;
+  background: color-mix(in srgb, var(--card) 82%, transparent 18%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent 30%);
+  border-radius: 12px;
+  box-shadow: 0 4px 22px rgba(0,0,0,0.16), 0 1px 4px rgba(0,0,0,0.08);
+  z-index: 200;
   display: flex;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: 4px;
+  padding: 5px 8px;
   align-items: center;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 .taskbar-btn {
   display: inline-flex;

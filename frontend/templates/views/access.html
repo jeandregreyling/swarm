@@ -1,14 +1,20 @@
-<!-- access.html — reverted to single-section layout -->
+<!-- access.html — tabbed layout: Senders & Permissions | Users -->
 <!-- Original: <template id="view-access"> -->
 <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
   <div style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-    <div>
-      <h3 style="margin-bottom:3px;font-size:12px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Access Control</h3>
-      <div style="font-size:9px;color:var(--text-dim);">Trusted senders, ignored addresses, skill permissions, roles & skills</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <h3 style="margin:0;font-size:12px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Access Control</h3>
+      <div id="access-tab-bar" style="display:flex;gap:2px;">
+        <button id="access-tab-senders" onclick="accessSwitchTab('senders')"
+          style="padding:4px 10px;background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:4px 4px 0 0;font-size:10px;font-weight:600;cursor:pointer;">Senders & Permissions</button>
+        <button id="access-tab-users" onclick="accessSwitchTab('users')"
+          style="padding:4px 10px;background:var(--card);color:var(--text-dim);border:1px solid var(--border);border-radius:4px 4px 0 0;font-size:10px;font-weight:600;cursor:pointer;">Users</button>
+      </div>
     </div>
-    <button onclick="loadAccessData(window._accessWin)" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:9px;cursor:pointer;">↻ Refresh</button>
+    <button onclick="accessRefreshTab()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:9px;cursor:pointer;">↻ Refresh</button>
   </div>
-  <div style="flex:1;overflow-y:auto;padding:18px 0 0 0;display:flex;flex-direction:column;gap:24px;">
+  <!-- TAB: SENDERS & PERMISSIONS -->
+  <div id="access-panel-senders" style="flex:1;overflow-y:auto;padding:18px 0 0 0;display:flex;flex-direction:column;gap:24px;">
     <!-- ADD SENDER FORM -->
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:12px;background:var(--card);border-radius:6px;border:1px solid var(--border);">
       <input type="text" id="access-new-address" placeholder="email / telegram:id / discord:id / domain.com"
@@ -57,6 +63,34 @@
       <div id="roles-skills-admin-panel">
         <!-- Roles & skills management UI will be rendered here by JS -->
       </div>
+    </div>
+  </div>
+  <!-- TAB: USERS -->
+  <div id="access-panel-users" style="flex:1;overflow-y:auto;padding:18px 12px 12px 12px;display:none;flex-direction:column;gap:16px;">
+    <!-- Add User Form -->
+    <div style="padding:12px;background:var(--card);border-radius:6px;border:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
+        <svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M8 2a3 3 0 100 6 3 3 0 000-6zM3 14c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 3v4M10 5h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Add New User
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input type="email" id="access-user-email" placeholder="Email address"
+               style="flex:1;min-width:180px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+        <input type="text" id="access-user-name" placeholder="Preferred name"
+               style="width:140px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+        <input type="password" id="access-user-pw" placeholder="Password"
+               style="width:120px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+        <select id="access-user-role" style="padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+          <option value="viewer">Viewer</option>
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button onclick="accessCreateUser()"
+                style="padding:7px 14px;background:var(--accent);color:#000;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;">Add</button>
+      </div>
+    </div>
+    <!-- User List -->
+    <div id="access-users-list" style="display:flex;flex-direction:column;gap:6px;">
+      <div style="color:var(--text-dim);font-size:12px;">Loading users…</div>
     </div>
   </div>
 </div>
