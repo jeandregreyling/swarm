@@ -7,6 +7,24 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
+## Version 2026-04-22 Session 24 — Phase B split + XSS hardening + dev/uat sync + deepseek-r1 install
+
+[2026-04-22 00:00:00] Copilot: **Phase B** — Split `frontend/services.py` (904 LOC) into `frontend/services/` package: `auth.py` (70), `chat_jobs.py` (215), `duck_review.py` (99), `queue_wrappers.py` (113), `identity.py` (105), `alm.py` (122). Package root `__init__.py` now 338 LOC (-63%). All 16+ blueprints import unchanged via re-exports; shared-state identity preserved (`services._CHAT_JOBS is services.chat_jobs._CHAT_JOBS`). Late-bound deps via `from . import SYMBOL` inside function body to avoid circular imports.
+
+[2026-04-22 00:10:00] Copilot: **Phase B.1** — DEV/UAT worktree sync. Merge from `proposal/1306` produced 17 conflict files (all Vortex auto-commit noise across 178 commits). Hard-reset both `/home/seven/swarm-dev` and `/home/seven/swarm-uat` to `proposal/1306@d12a993`. Services/ subdirectory verified with all 6 files present. Pytest: 605/605 green on both worktrees.
+
+[2026-04-22 00:30:00] Copilot: **Phase D** — XSS hardening. Added `DOMPurify 3.1.6` CDN script to `frontend/templates/terminal_base.html` alongside existing `marked.min.js`. Introduced shared `window.safeMarkdown(text, opts)` helper that runs `marked.parse()` then `DOMPurify.sanitize()`, with safe plaintext-escape fallback on either lib missing. Migrated all markdown call sites: `chat.js` `_renderMarkdown()`, `home-chat.js` `_hcRenderContent()`, `guide.js` `_guideRenderContent()` + search highlight, `conversations.js` agent message render. N3 XSS risk closed.
+
+[2026-04-22 00:35:00] Copilot: **Phase D.1** — Escape helper consolidation (partial). Canonical `window.escHtml()` exposed on `terminal_base.html`. Per-module duplicates (`_escHtml`, `_escapeHtml`, `_esc` in 9 files) left in place pending a follow-up migration pass — safe default, no behaviour change.
+
+[2026-04-22 00:45:00] Copilot: **Phase E** — Installed `deepseek-r1:7b` via `ollama pull` (4.7 GB; models live on ext4 at `/var/lib/ollama/data/models/`). Sniffles (auditor agent) now resolves its configured model cleanly; no repoint needed.
+
+[2026-04-22 00:50:00] Copilot: **Phase F** — Hardcoded path audit of `frontend/blueprints/**`. Confirmed no runtime `/home/seven/swarm` string references remain; surviving matches (6) are all comments/docstrings in `agents.py`, `proposals.py`, `workspace.py`.
+
+[2026-04-22 00:55:00] Copilot: Prod service `swarm-terminal.service` restarted cleanly. Pytest (prod): 605 passed, 1 warning in 169.37s. `/api/health` 200, `/api/agents/status` 200. Ollama systemd service reactivated; `ollama list` shows 9 models.
+
+---
+
 ## Version 2026-04-21 Session 22 — Ollama CPU runaway triage + poll consolidation
 
 ### Changes by Copilot (Ghost One direction)
