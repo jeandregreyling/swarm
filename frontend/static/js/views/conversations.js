@@ -111,7 +111,7 @@ function openConversationDetail(convId) {
         // skill/system output: pre-wrap; user: pre-wrap; agents: markdown
         const contentHtml = (isFridays || isUser)
           ? `<div style="white-space:pre-wrap;line-height:1.55;">${_escHtml(m.content || '')}</div>`
-          : `<div class="chat-text" style="line-height:1.55;">${(typeof marked !== 'undefined' ? marked.parse(String(m.content || ''), {gfm:true,breaks:false}) : _escHtml(m.content || ''))}</div>`;
+          : `<div class="chat-text" style="line-height:1.55;">${(typeof window !== 'undefined' && typeof window.safeMarkdown === 'function' ? window.safeMarkdown(m.content || '') : (typeof marked !== 'undefined' ? marked.parse(String(m.content || ''), {gfm:true,breaks:false}) : _escHtml(m.content || '')))}</div>`;
         return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
             <div style="font-size:11px;"><strong>${sender}</strong> → <span style="color:var(--text-dim);">${to}</span></div>

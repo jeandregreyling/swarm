@@ -1807,6 +1807,9 @@ function _escapeHtml(v) {
 }
 
 function _renderMarkdown(text) {
+  if (typeof window !== 'undefined' && typeof window.safeMarkdown === 'function') {
+    return window.safeMarkdown(text);
+  }
   if (typeof marked === 'undefined') return _escapeHtml(text);
   try {
     return marked.parse(_escapeHtml(String(text || '')), { gfm: true, breaks: false });
