@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # swarm-prewarm.sh — load all swarm models into memory on boot
 # Runs as a oneshot systemd service after ollama.service is ready.
-# Each model is loaded with keep_alive=-1 (never evict voluntarily).
+# Each model is loaded with keep_alive=300 (5 minutes). After the idle window
+# expires, ollama unloads automatically. Agents re-pin on next call with the
+# same 300s window (see agents/*/...agent.py). Never pin Forever — it defeats
+# the resource gate and caused the April 2026 CPU runaway.
 # Unique models derived from core/pipeline/orchestrator.py AGENTS dict.
 
 set -euo pipefail

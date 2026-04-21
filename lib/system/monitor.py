@@ -155,12 +155,24 @@ def get_model_details(model):
         return {'model': model}
 
 
+# Short TTL cache for get_system_status() — collapses concurrent pollers
+# (monitor tile + home stats + ollama panel + chat relay) into one computation.
+# 5s is fast enough to feel live and slow enough to stop the per-tile fan-out.
+_SYSTEM_STATUS_CACHE = {'ts': 0.0, 'payload': None}
+_SYSTEM_STATUS_TTL = 5.0
+
+
 def get_system_status():
     """
     Full system status dict — called by Librarian to answer health questions
     and by the terminal /api/system endpoint.
-    Always reads live — never from DB cache.
+    Cached for 5 seconds so multiple UI tiles share one snapshot.
     """
+    now = time.time()
+    if _SYSTEM_STATUS_CACHE['payload'] is not None \
+            and (now - _SYSTEM_STATUS_CACHE['ts']) < _SYSTEM_STATUS_TTL:
+        return _SYSTEM_STATUS_CACHE['payload']
+
     mem  = psutil.virtual_memory()
     swap = psutil.swap_memory()
     cpu  = psutil.cpu_percent(interval=1)
@@ -206,28 +218,29 @@ def get_system_status():
         queue_processing = 0
         pending_proposals = 0
 
-    # Active Ollama models
+    # Active Ollama models — basic fields only (name/size/vram/expiry).
+    # Rich metadata (family/quantisation/capabilities) is served on demand by
+    # /api/ollama/show/<model> which is cached for 5 minutes. Fanning out
+    # ollama.show() per loaded model on every poll tick was the root cause of
+    # the April 2026 CPU runaway — do NOT re-introduce it here.
     active_models = []
     try:
         running = ollama.ps()
         if hasattr(running, 'models') and running.models:
             for m in running.models:
                 name = getattr(m, 'model', '') or ''
-                entry = {
+                active_models.append({
                     'name':       name,
                     'size':       int(getattr(m, 'size', 0) or 0),
                     'size_vram':  int(getattr(m, 'size_vram', 0) or 0),
                     'expires_at': str(getattr(m, 'expires_at', '') or ''),
-                }
-                if name:
-                    entry.update(get_model_details(name))
-                active_models.append(entry)
+                })
         active_model = active_models[0]['name'] if active_models else 'none'
     except Exception:
         active_model = 'unknown'
         active_models = []
 
-    return {
+    payload = {
         'ram_total_gb':    round(mem.total / 1e9, 1),
         'ram_used_gb':     round(mem.used / 1e9, 1),
         'ram_available_gb':round(mem.available / 1e9, 1),
@@ -251,6 +264,9 @@ def get_system_status():
         'pending_proposals': pending_proposals,
         'timestamp':         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
     }
+    _SYSTEM_STATUS_CACHE['ts'] = now
+    _SYSTEM_STATUS_CACHE['payload'] = payload
+    return payload
 
 
 def librarian_health_summary():
