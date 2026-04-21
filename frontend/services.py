@@ -45,6 +45,7 @@ except Exception as _e_tav:
     _tavily_search = None
 
 from flask import Flask, render_template, request, Response, jsonify
+from functools import wraps
 import json
 import queue
 import threading
@@ -145,6 +146,64 @@ from utils.db.registry import (
 )
 
 # Legacy names removed — use _reg_etas(), _reg_runtime(), _reg_single_task() directly
+
+# ── Authentication helpers (shared across blueprints) ────────────────────────
+
+def get_current_user():
+    """Look up the currently logged-in user from the session cookie.
+    Returns a dict with profile info, or None if not logged in."""
+    token = request.cookies.get('friday_session')
+    if not token:
+        return None
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT s.username, s.expires_at, p.display_name, p.role, p.approved, p.is_active "
+            "FROM user_sessions s "
+            "JOIN user_profiles p ON p.username = s.username "
+            "WHERE s.session_token = ? AND s.is_active = 1",
+            (token,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return None
+    # String comparison works for ISO-like format since it sorts lexicographically
+    now_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    if row['expires_at'] < now_str:
+        return None
+    if not row['is_active'] or not row['approved']:
+        return None
+    return {
+        'username': row['username'],
+        'display_name': row['display_name'],
+        'role': row['role'],
+        'approved': bool(row['approved']),
+    }
+
+
+def require_auth(f):
+    """Decorator: require a valid session. Injects `current_user` kwarg."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        user = get_current_user()
+        if not user:
+            return jsonify({'ok': False, 'error': 'Not authenticated'}), 401
+        kwargs['current_user'] = user
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def require_owner(f):
+    """Decorator: require owner role."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        user = get_current_user()
+        if not user or user['role'] != 'owner':
+            return jsonify({'ok': False, 'error': 'Owner access required'}), 403
+        kwargs['current_user'] = user
+        return f(*args, **kwargs)
+    return wrapper
 
 
 def _chat_now_iso():
@@ -414,8 +473,12 @@ def _chat_try_hard_kill_local_agent(agent_name):
 
     try:
         import subprocess
-        proc = subprocess.run(['pkill', '-9', '-f', 'ollama'], capture_output=True, text=True, timeout=6)
-        attempts.append(f'pkill-ollama-rc:{proc.returncode}')
+        # Only kill the specific model runner, not the ollama server
+        if model:
+            proc = subprocess.run(['pkill', '-f', f'ollama.*run.*{model}'], capture_output=True, text=True, timeout=6)
+        else:
+            proc = subprocess.run(['pkill', '-f', f'ollama.*run.*{name}'], capture_output=True, text=True, timeout=6)
+        attempts.append(f'pkill-model-rc:{proc.returncode}')
         ok = proc.returncode in (0, 1)
         return {'agent': name, 'attempted': True, 'ok': ok, 'detail': '; '.join(attempts)}
     except Exception as exc:
@@ -446,16 +509,19 @@ def _chat_job_public(job):
         'updated_at': job.get('updated_at'),
         'elapsed_ms': elapsed_ms,
         'error': job.get('error', ''),
+        'response': job.get('response', ''),
         'stage_trace': job.get('stage_trace') or [],
     }
 
 
 def _duck_stats():
     conn = get_connection()
-    total  = conn.execute("SELECT COUNT(*) FROM duck_log").fetchone()[0]
-    passed = conn.execute("SELECT COUNT(*) FROM duck_log WHERE result='YES'").fetchone()[0]
-    failed = conn.execute("SELECT COUNT(*) FROM duck_log WHERE result='NO'").fetchone()[0]
-    conn.close()
+    try:
+        total  = conn.execute("SELECT COUNT(*) FROM duck_log").fetchone()[0]
+        passed = conn.execute("SELECT COUNT(*) FROM duck_log WHERE result='YES'").fetchone()[0]
+        failed = conn.execute("SELECT COUNT(*) FROM duck_log WHERE result='NO'").fetchone()[0]
+    finally:
+        conn.close()
     return {'total': total, 'passed': passed, 'failed': failed}
 
 
@@ -510,13 +576,15 @@ def _run_proposal_duck_review(row):
     if agent:
         try:
             conn = get_connection()
-            recent_count = conn.execute(
-                """SELECT COUNT(*) FROM work_proposals
-                   WHERE agent=? AND status IN ('pending','approved')
-                   AND created_at >= datetime('now', '-5 minutes')""",
-                (agent,)
-            ).fetchone()[0]
-            conn.close()
+            try:
+                recent_count = conn.execute(
+                    """SELECT COUNT(*) FROM work_proposals
+                       WHERE agent=? AND status IN ('pending','approved')
+                       AND created_at >= datetime('now', '-5 minutes')""",
+                    (agent,)
+                ).fetchone()[0]
+            finally:
+                conn.close()
             if recent_count >= 2:
                 return {
                     'result': 'NO',
@@ -585,16 +653,17 @@ def _alm_gate_or_response(data, action_name):
     # Ownership bypass for Ghost (human operator)
     identity, _ = _resolve_identity_or_response(data)
     conn = get_connection()
-    prop = conn.execute("SELECT agent FROM work_proposals WHERE proposal_id=?", (proposal_id,)).fetchone()
-    if prop and prop['agent'].lower() == identity['effective_user'].lower() and identity['effective_user'] in _get_ghost_agent_names():
-        conn.close()
-        return None  # Ghost bypass
+    try:
+        prop = conn.execute("SELECT agent FROM work_proposals WHERE proposal_id=?", (proposal_id,)).fetchone()
+        if prop and prop['agent'].lower() == identity['effective_user'].lower() and identity['effective_user'] in _get_ghost_agent_names():
+            return None  # Ghost bypass
 
-    row = conn.execute(
-        "SELECT proposal_id, status, agent, title FROM work_proposals WHERE proposal_id=?",
-        (proposal_id,)
-    ).fetchone()
-    conn.close()
+        row = conn.execute(
+            "SELECT proposal_id, status, agent, title FROM work_proposals WHERE proposal_id=?",
+            (proposal_id,)
+        ).fetchone()
+    finally:
+        conn.close()
 
     if not row:
         return jsonify({
@@ -780,6 +849,7 @@ __all__ = [
     'get_agent_memory',
     'get_chat_jobs_by_ids',
     'get_connection',
+    'get_current_user',
     'get_full_time_string',
     'get_pending_emails',
     'get_queue_entries',
@@ -789,6 +859,8 @@ __all__ = [
     'get_timestamp',
     'get_timestamp_iso',
     'get_user_profile',
+    'require_auth',
+    'require_owner',
     'grant_agent_capability',
     'initialise_database',
     'intake_internal',

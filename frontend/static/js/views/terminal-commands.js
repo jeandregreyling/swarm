@@ -75,15 +75,15 @@ async function _renderTerminalResultCard(cmd, output, statusEl, startTime) {
   const rerunId = _terminalStoreActionValue(cmd, 'term-rerun');
   const pinId   = _terminalStoreActionValue(cmd, 'term-pin');
   const entryId = statusEl.entryId || '';
-  const statusColor = ok ? '#4caf50' : '#f44336';
+  const statusColor = ok ? 'var(--success, #4caf50)' : 'var(--danger, #f44336)';
   const statusLabel = ok ? '✓' : '✕';
   const btnStyle = 'background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:1px 7px;cursor:pointer;font-size:10px;';
   const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   return `
-    <div class="terminal-result-card" data-terminal-entry-id="${_escHtml(entryId)}" data-terminal-command="${_escHtml(cmd)}" data-terminal-output="${_escHtml((output||'').slice(0,2000))}" style="margin-top:2px;">
-      <pre style="margin:0;padding:2px 0 4px;font-family:'SF Mono','Courier New',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5;color:${ok ? '#0f9' : '#f77'};">${_escHtml(displayOutput)}</pre>
-      <div style="display:flex;align-items:center;gap:8px;padding:3px 0 10px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:10px;color:var(--text-dim);">
+    <div class="terminal-result-card" data-terminal-entry-id="${_escHtml(entryId)}" data-terminal-command="${_escHtml(cmd)}" data-terminal-output="${_escHtml((output||'').slice(0,2000))}" style="margin-top:0;">
+      <pre style="margin:0;padding:2px 0 2px;font-family:'SF Mono','Courier New',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.45;color:${ok ? 'var(--text, #0f9)' : 'var(--danger, #f77)'};">${_escHtml(displayOutput)}</pre>
+      <div style="display:flex;align-items:center;gap:8px;padding:2px 0 4px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text-dim);">
         <span style="color:${statusColor};font-weight:600;">${statusLabel}</span>
         <span>${Math.round(elapsed * 100) / 100}s</span>
         <span>${lines} line${lines === 1 ? '' : 's'}${truncated ? ' · truncated' : ''}</span>
@@ -97,7 +97,7 @@ async function _renderTerminalResultCard(cmd, output, statusEl, startTime) {
   `;
 }
 
-async function _runTerminalCommandStream(cmd, outputEl, startTime, proposalId, entryId) {
+async function _runTerminalCommandStream(cmd, outputEl, entryEl, startTime, proposalId, entryId) {
   const state = _terminalStreamState();
   if (state.running) {
     throw new Error('Another command is already running');
@@ -112,12 +112,12 @@ async function _runTerminalCommandStream(cmd, outputEl, startTime, proposalId, e
 
   const liveWrap = document.createElement('div');
   liveWrap.dataset.terminalEntryId = entryId || '';
-  liveWrap.style.cssText = 'margin-top:2px;';
+  liveWrap.style.cssText = 'margin-top:0;';
   liveWrap.innerHTML = `
-    <pre style="margin:0;padding:2px 0 4px;font-family:'SF Mono','Courier New',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5;color:#0f9;min-height:1.4em;"></pre>
-    <div style="font-size:10px;color:#f7b84b;padding:2px 0 8px;">● running…</div>
+    <pre style="margin:0;padding:2px 0 2px;font-family:'SF Mono','Courier New',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.45;color:var(--text, #0f9);min-height:1.4em;"></pre>
+    <div style="font-size:10px;color:var(--accent, #f7b84b);padding:2px 0 4px;">● running…</div>
   `;
-  outputEl.appendChild(liveWrap);
+  (entryEl || outputEl).appendChild(liveWrap);
   const pre = liveWrap.querySelector('pre');
 
   let combined = '';
@@ -220,8 +220,7 @@ async function runTerminalCmd() {
   terminalToggleHistory(false);
   _terminalPushHistory(cmd);
   const entryId = _terminalAllocEntryId();
-  
-  _terminalAppendPromptLine(output, cmd, entryId);
+  const entryEl = _terminalAppendPromptLine(output, cmd, entryId);
 
   input.value = '';
   const startTime = Date.now();
@@ -234,10 +233,10 @@ async function runTerminalCmd() {
     const warn = document.createElement('div');
     warn.style.cssText = 'font-size:10px;color:var(--text-dim);padding:2px 0;';
     warn.textContent = '⚠ ALM proposal unavailable — command will still run.';
-    output.appendChild(warn);
+    entryEl.appendChild(warn);
   }
 
-  _runTerminalCommandStream(cmd, output, startTime, proposalId, entryId)
+  _runTerminalCommandStream(cmd, output, entryEl, startTime, proposalId, entryId)
     .catch(async (e) => {
       // Fallback to non-stream endpoint if streaming is unavailable.
       try {
@@ -249,7 +248,7 @@ async function runTerminalCmd() {
         await _finalizeALMProposal(proposalId);
         const res = document.createElement('div');
         res.innerHTML = await _renderTerminalResultCard(cmd, data.output || '', { ok: data.ok, entryId }, startTime);
-        output.appendChild(res);
+        entryEl.appendChild(res);
         terminalFilterOutput(_terminalCurrentFilter());
         output.scrollTop = output.scrollHeight;
       } catch (fallbackErr) {
@@ -260,7 +259,7 @@ async function runTerminalCmd() {
           : 'Error: ' + (fallbackErr.message || e.message);
         const res = document.createElement('div');
         res.innerHTML = await _renderTerminalResultCard(cmd, msg, { ok: false, entryId }, startTime);
-        output.appendChild(res);
+        entryEl.appendChild(res);
         terminalFilterOutput(_terminalCurrentFilter());
         output.scrollTop = output.scrollHeight;
       }
@@ -278,7 +277,7 @@ async function cmdTerminal(cmd) {
   terminalToggleHistory(false);
   _terminalPushHistory(cmd);
   const entryId = _terminalAllocEntryId();
-  _terminalAppendPromptLine(output, cmd, entryId);
+  const entryEl = _terminalAppendPromptLine(output, cmd, entryId);
 
   const startTime = Date.now();
 
@@ -290,10 +289,10 @@ async function cmdTerminal(cmd) {
     const warn = document.createElement('div');
     warn.style.cssText = 'font-size:10px;color:var(--text-dim);padding:2px 0;';
     warn.textContent = '⚠ ALM proposal unavailable — command will still run.';
-    output.appendChild(warn);
+    entryEl.appendChild(warn);
   }
 
-  _runTerminalCommandStream(cmd, output, startTime, proposalId, entryId)
+  _runTerminalCommandStream(cmd, output, entryEl, startTime, proposalId, entryId)
     .catch(async (e) => {
       try {
         const data = await fetch('/api/terminal/run', {
@@ -304,14 +303,14 @@ async function cmdTerminal(cmd) {
         await _finalizeALMProposal(proposalId);
         const res = document.createElement('div');
         res.innerHTML = await _renderTerminalResultCard(cmd, data.output || '', { ok: data.ok, entryId }, startTime);
-        output.appendChild(res);
+        entryEl.appendChild(res);
         terminalFilterOutput(_terminalCurrentFilter());
         output.scrollTop = output.scrollHeight;
       } catch (fallbackErr) {
         await _finalizeALMProposal(proposalId);
         const res = document.createElement('div');
         res.innerHTML = await _renderTerminalResultCard(cmd, 'Error: ' + (fallbackErr.message || e.message), { ok: false, entryId }, startTime);
-        output.appendChild(res);
+        entryEl.appendChild(res);
         terminalFilterOutput(_terminalCurrentFilter());
         output.scrollTop = output.scrollHeight;
       }

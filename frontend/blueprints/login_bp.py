@@ -14,16 +14,17 @@ from functools import wraps
 from flask import Blueprint, jsonify, request, make_response
 
 from database import get_connection
+from services import get_current_user, require_auth, require_owner
 
 login_bp = Blueprint('login', __name__)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _hash_password(password, salt=None):
-    """SHA-256 hash with per-user salt. Returns 'salt:hash'."""
+    """PBKDF2-SHA256 hash with per-user salt. Returns 'salt:hash'."""
     if salt is None:
         salt = secrets.token_hex(16)
-    h = hashlib.sha256((salt + password).encode()).hexdigest()
+    h = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), iterations=260000).hex()
     return f'{salt}:{h}'
 
 
@@ -35,6 +36,45 @@ def _verify_password(password, stored_hash):
     return _hash_password(password, salt) == stored_hash
 
 
+def _resolve_login_profile(identifier, password):
+    """Find the matching account for a login identifier and password.
+
+    Supports login by username, email, or display name. If multiple rows match,
+    return the one whose password verifies, preferring exact username/email hits.
+    """
+    key = (identifier or '').strip().lower()
+    if not key or not password:
+        return None
+
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT username, display_name, password_hash, role, approved, is_active, email "
+            "FROM user_profiles "
+            "WHERE lower(username) = ? OR lower(coalesce(email, '')) = ? OR lower(coalesce(display_name, '')) = ?",
+            (key, key, key),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return None
+
+    def _priority(row):
+        row_username = str(row['username'] or '').strip().lower()
+        row_email = str(row['email'] or '').strip().lower()
+        if row_username == key:
+          return 0
+        if row_email == key:
+          return 1
+        return 2
+
+    for row in sorted(rows, key=_priority):
+        if row['password_hash'] and _verify_password(password, row['password_hash']):
+            return row
+    return None
+
+
 def _create_session(username, days=30):
     """Create a session token and store in DB. Returns the token."""
     token = secrets.token_urlsafe(48)
@@ -42,67 +82,20 @@ def _create_session(username, days=30):
     ip = request.remote_addr or ''
     ua = (request.headers.get('User-Agent') or '')[:200]
     conn = get_connection()
-    conn.execute(
-        "INSERT INTO user_sessions (username, session_token, ip_address, user_agent, expires_at) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (username, token, ip, ua, expires),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            "INSERT INTO user_sessions (username, session_token, ip_address, user_agent, expires_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (username, token, ip, ua, expires),
+        )
+        conn.commit()
+    finally:
+        conn.close()
     return token, expires
 
 
-def get_current_user():
-    """Look up the currently logged-in user from the session cookie.
-    Returns a dict with profile info, or None if not logged in."""
-    token = request.cookies.get('friday_session')
-    if not token:
-        return None
-    conn = get_connection()
-    row = conn.execute(
-        "SELECT s.username, s.expires_at, p.display_name, p.role, p.approved, p.is_active "
-        "FROM user_sessions s "
-        "JOIN user_profiles p ON p.username = s.username "
-        "WHERE s.session_token = ? AND s.is_active = 1",
-        (token,),
-    ).fetchone()
-    conn.close()
-    if not row:
-        return None
-    if row['expires_at'] < datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'):
-        return None
-    if not row['is_active'] or not row['approved']:
-        return None
-    return {
-        'username': row['username'],
-        'display_name': row['display_name'],
-        'role': row['role'],
-        'approved': bool(row['approved']),
-    }
 
 
-def require_auth(f):
-    """Decorator: require a valid session. Injects `current_user` kwarg."""
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        user = get_current_user()
-        if not user:
-            return jsonify({'ok': False, 'error': 'Not authenticated'}), 401
-        kwargs['current_user'] = user
-        return f(*args, **kwargs)
-    return wrapper
-
-
-def require_owner(f):
-    """Decorator: require owner role."""
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        user = get_current_user()
-        if not user or user['role'] != 'owner':
-            return jsonify({'ok': False, 'error': 'Owner access required'}), 403
-        kwargs['current_user'] = user
-        return f(*args, **kwargs)
-    return wrapper
 
 
 # ── Ensure owner account exists ──────────────────────────────────────────────
@@ -110,12 +103,14 @@ def require_owner(f):
 def _ensure_owner():
     """Make sure ghost has owner role and is approved. Idempotent."""
     conn = get_connection()
-    conn.execute(
-        "UPDATE user_profiles SET role = 'owner', approved = 1 "
-        "WHERE username = 'ghost'",
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            "UPDATE user_profiles SET role = 'owner', approved = 1 "
+            "WHERE username = 'ghost'",
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -184,33 +179,28 @@ def auth_login():
     data = request.get_json() or {}
     username = (data.get('username') or '').strip().lower()
     password = (data.get('password') or '').strip()
+    remember = bool(data.get('remember'))
     if not username or not password:
         return jsonify({'ok': False, 'error': 'Username and password required'}), 400
 
-    conn = get_connection()
-    row = conn.execute(
-        "SELECT username, display_name, password_hash, role, approved, is_active "
-        "FROM user_profiles WHERE username = ?",
-        (username,),
-    ).fetchone()
-    conn.close()
-
-    if not row or not row['password_hash']:
-        return jsonify({'ok': False, 'error': 'Invalid credentials'}), 401
-    if not _verify_password(password, row['password_hash']):
+    row = _resolve_login_profile(username, password)
+    if not row:
         return jsonify({'ok': False, 'error': 'Invalid credentials'}), 401
     if not row['is_active']:
         return jsonify({'ok': False, 'error': 'Account is disabled'}), 403
     if not row['approved']:
         return jsonify({'ok': False, 'error': 'Account pending approval by the owner'}), 403
 
-    token, expires = _create_session(username)
+    token, expires = _create_session(row['username'], days=30 if remember else 1)
     resp = make_response(jsonify({'ok': True, 'user': {
         'username': row['username'],
         'display_name': row['display_name'],
         'role': row['role'],
     }}))
-    resp.set_cookie('friday_session', token, httponly=True, samesite='Lax', max_age=30*86400)
+    cookie_kwargs = {'httponly': True, 'samesite': 'Lax'}
+    if remember:
+        cookie_kwargs['max_age'] = 30 * 86400
+    resp.set_cookie('friday_session', token, **cookie_kwargs)
     return resp
 
 
@@ -281,7 +271,7 @@ def auth_list_users(current_user=None):
     """List all user profiles (owner only)."""
     conn = get_connection()
     rows = conn.execute(
-        "SELECT username, display_name, user_type, role, approved, is_active, created_at, created_by "
+        "SELECT username, display_name, email, user_type, role, approved, is_active, created_at, created_by "
         "FROM user_profiles WHERE user_type = 'human' ORDER BY created_at DESC"
     ).fetchall()
     conn.close()
@@ -341,3 +331,119 @@ def auth_set_role(username, current_user=None):
     conn.commit()
     conn.close()
     return jsonify({'ok': True, 'username': username, 'role': role})
+
+
+@login_bp.route('/api/auth/users/<username>/edit', methods=['POST'])
+@require_owner
+def auth_edit_user(username, current_user=None):
+    """Edit a user's display_name and/or email (owner only)."""
+    data = request.get_json() or {}
+    display_name = data.get('display_name')
+    email = data.get('email')
+    if display_name is None and email is None:
+        return jsonify({'ok': False, 'error': 'Nothing to update'}), 400
+
+    sets, params = [], []
+    if display_name is not None:
+        sets.append('display_name = ?')
+        params.append(display_name.strip())
+    if email is not None:
+        sets.append('email = ?')
+        params.append(email.strip().lower())
+    sets.append("updated_at = datetime('now')")
+    params.append(username)
+
+    conn = get_connection()
+    conn.execute(f"UPDATE user_profiles SET {', '.join(sets)} WHERE username = ?", params)
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'username': username})
+
+
+@login_bp.route('/api/auth/users/<username>/reset-password', methods=['POST'])
+@require_owner
+def auth_reset_password(username, current_user=None):
+    """Reset a user's password (owner only). Owner provides new password."""
+    data = request.get_json() or {}
+    password = (data.get('password') or '').strip()
+    if not password or len(password) < 6:
+        return jsonify({'ok': False, 'error': 'Password must be at least 6 characters'}), 400
+    conn = get_connection()
+    row = conn.execute("SELECT username FROM user_profiles WHERE username = ?", (username,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'User not found'}), 404
+    hashed = _hash_password(password)
+    conn.execute(
+        "UPDATE user_profiles SET password_hash = ?, updated_at = datetime('now') WHERE username = ?",
+        (hashed, username),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'username': username})
+
+
+@login_bp.route('/api/auth/users/<username>/delete', methods=['DELETE'])
+@require_owner
+def auth_delete_user(username, current_user=None):
+    """Delete a human user account (owner only). Cannot delete owner."""
+    if username == 'ghost':
+        return jsonify({'ok': False, 'error': 'Cannot delete owner account'}), 403
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT username, user_type FROM user_profiles WHERE username = ?", (username,)
+    ).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'User not found'}), 404
+    if row['user_type'] != 'human':
+        conn.close()
+        return jsonify({'ok': False, 'error': 'Cannot delete agent accounts'}), 403
+    conn.execute("DELETE FROM user_sessions WHERE username = ?", (username,))
+    conn.execute("DELETE FROM user_profiles WHERE username = ?", (username,))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'deleted': username})
+
+
+@login_bp.route('/api/auth/users/create', methods=['POST'])
+@require_owner
+def auth_create_user(current_user=None):
+    """Owner creates a new user. Email as identifier, preferred name as display_name."""
+    import re
+    data = request.get_json() or {}
+    email = (data.get('email') or '').strip().lower()
+    display_name = (data.get('display_name') or '').strip()
+    password = (data.get('password') or '').strip()
+    role = (data.get('role') or 'viewer').strip().lower()
+
+    if not email:
+        return jsonify({'ok': False, 'error': 'Email is required'}), 400
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        return jsonify({'ok': False, 'error': 'Invalid email address'}), 400
+    if not password or len(password) < 6:
+        return jsonify({'ok': False, 'error': 'Password must be at least 6 characters'}), 400
+    if role not in ('viewer', 'user', 'admin'):
+        return jsonify({'ok': False, 'error': 'Invalid role'}), 400
+
+    # Derive username from email prefix
+    username = re.sub(r'[^a-z0-9_]', '_', email.split('@')[0].lower())[:30]
+    if not display_name:
+        display_name = email.split('@')[0].title()
+
+    hashed = _hash_password(password)
+    conn = get_connection()
+    try:
+        conn.execute(
+            "INSERT INTO user_profiles (username, display_name, email, user_type, password_hash, role, approved, created_by) "
+            "VALUES (?, ?, ?, 'human', ?, ?, 1, ?)",
+            (username, display_name, email, hashed, role, current_user['username']),
+        )
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        if 'UNIQUE' in str(e).upper():
+            return jsonify({'ok': False, 'error': 'A user with that email/username already exists'}), 409
+        return jsonify({'ok': False, 'error': f'Failed to create user: {e}'}), 500
+    conn.close()
+    return jsonify({'ok': True, 'username': username, 'email': email, 'display_name': display_name}), 201

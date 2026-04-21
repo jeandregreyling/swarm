@@ -315,33 +315,74 @@
 }
 .hidden-restore-btn:hover { background: var(--accent); color: #fff; }
 
-/* ── Shortcut Tooltips (cute bounce-in) ───────────────────────────────────── */
+/* ── Tile Hover Tip ───────────────────────────────────────────────────────── */
 
 .home-card { position: relative; }
 
-[data-shortcut]::after {
-  content: attr(data-shortcut);
-  position: absolute;
-  bottom: -20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(5px);
-  background: var(--card);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font-size: 9px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 10px;
-  white-space: nowrap;
-  opacity: 0;
+.tile-hover-tip {
+  position: fixed;
+  z-index: 10000;
+  display: none;
+  min-width: 190px;
+  max-width: 260px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border) 76%);
+  background: color-mix(in srgb, var(--card) 92%, black 8%);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.28);
   pointer-events: none;
-  transition: opacity 0.2s 0.35s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.35s;
-  z-index: 10;
-  letter-spacing: 0.3px;
+  animation: ctx-in 0.12s ease-out;
 }
-[data-shortcut]:hover::after {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+.tile-hover-tip-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.tile-hover-tip-desc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+.tile-hover-tip-shortcut {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.stip-section {
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent 28%);
+}
+.stip-section-title {
+  font-size: 9px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.stip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.stip-list-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.stip-list-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text);
+}
+.stip-list-meta,
+.stip-empty {
+  font-size: 9px;
+  color: var(--text-dim);
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */

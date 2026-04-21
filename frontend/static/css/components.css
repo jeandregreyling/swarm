@@ -66,6 +66,105 @@ body {
   flex-direction: column;
   transition: background 0.45s ease, color 0.25s ease;
 }
+.bg-orbs {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+#orb-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+  pointer-events: none; /* so elementFromPoint sees through to DOM below */
+}
+body[data-scene-effect="off"] .bg-orbs {
+  display: none;
+}
+body[data-scene-orbs="off"] .bg-orbs {
+  display: none;
+}
+body.orb-dragging,
+body.orb-dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.bg-hive {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-hive-lattice,
+.bg-hive-clusters,
+.bg-hive-clusters span {
+  position: absolute;
+}
+
+.bg-hive-lattice {
+  inset: -8%;
+  opacity: 0.22;
+  background:
+    linear-gradient(120deg, transparent 0 47%, color-mix(in srgb, var(--accent) 18%, transparent) 49%, transparent 51%) 0 0/220px 140px,
+    linear-gradient(60deg, transparent 0 47%, color-mix(in srgb, var(--accent) 16%, transparent) 49%, transparent 51%) 0 0/220px 140px,
+    radial-gradient(circle at 18% 22%, color-mix(in srgb, var(--accent) 34%, transparent) 0 2px, transparent 3px),
+    radial-gradient(circle at 42% 36%, color-mix(in srgb, var(--text-dim) 24%, transparent) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 71% 18%, color-mix(in srgb, var(--accent) 28%, transparent) 0 2px, transparent 3px),
+    radial-gradient(circle at 82% 62%, color-mix(in srgb, var(--text-dim) 22%, transparent) 0 2px, transparent 3px),
+    radial-gradient(circle at 28% 78%, color-mix(in srgb, var(--accent) 28%, transparent) 0 2px, transparent 3px);
+  filter: blur(0.2px);
+  animation: hiveDrift 36s linear infinite alternate;
+}
+
+.bg-hive-clusters {
+  inset: 0;
+}
+
+.bg-hive-clusters span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 68%, white 32%) 0%, color-mix(in srgb, var(--accent) 18%, transparent) 52%, transparent 72%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
+    0 0 34px color-mix(in srgb, var(--accent) 14%, transparent),
+    68px 34px 0 -6px color-mix(in srgb, var(--accent) 22%, transparent),
+    136px 18px 0 -8px color-mix(in srgb, var(--text-dim) 16%, transparent),
+    92px 74px 0 -10px color-mix(in srgb, var(--accent) 14%, transparent);
+  opacity: 0.18;
+  animation: hivePulse 18s ease-in-out infinite;
+}
+
+.bg-hive-clusters span:nth-child(1) { top: 11%; left: 12%; animation-delay: -1s; }
+.bg-hive-clusters span:nth-child(2) { top: 22%; right: 14%; animation-delay: -5s; }
+.bg-hive-clusters span:nth-child(3) { top: 56%; left: 8%; animation-delay: -9s; }
+.bg-hive-clusters span:nth-child(4) { top: 64%; left: 52%; animation-delay: -3s; }
+.bg-hive-clusters span:nth-child(5) { top: 74%; right: 16%; animation-delay: -11s; }
+.bg-hive-clusters span:nth-child(6) { top: 34%; left: 44%; animation-delay: -7s; }
+
+body[data-foundation="light"] .bg-hive-lattice { opacity: 0.04; }
+body[data-foundation="dark"] .bg-hive-lattice { opacity: 0.12; }
+body[data-foundation="light"] .bg-hive-clusters span { opacity: 0.04; }
+body[data-foundation="dark"] .bg-hive-clusters span { opacity: 0.1; }
+body[data-scene-lattice="off"] .bg-hive-lattice { display: none; }
+body[data-scene-clusters="off"] .bg-hive-clusters { display: none; }
+
+@keyframes hiveDrift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-1.4vw, 1vh, 0) scale(1.02); }
+  100% { transform: translate3d(1vw, -1.2vh, 0) scale(0.99); }
+}
+
+@keyframes hivePulse {
+  0%, 100% { transform: scale(1); opacity: 0.14; }
+  50% { transform: scale(1.12); opacity: 0.22; }
+}
+
 #ambient-scene {
   position: fixed;
   inset: 0;
@@ -290,8 +389,15 @@ body.mode-dark {
 body[data-scene-effect="off"] #ambient-scene {
   opacity: 0 !important;
 }
+body[data-scene-ambient="off"] #ambient-scene {
+  opacity: 0 !important;
+}
 body[data-scene-effect="off"] .scene-layer,
 body[data-scene-effect="off"] .scene-layer > div {
+  animation-play-state: paused !important;
+}
+body[data-scene-ambient="off"] .scene-layer,
+body[data-scene-ambient="off"] .scene-layer > div {
   animation-play-state: paused !important;
 }
 .scene-effect-toggle {
@@ -335,6 +441,19 @@ body[data-scene-effect="off"] .scene-layer > div {
   transform: translateX(16px);
   background: var(--accent);
 }
+.scene-layer-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.scene-layer-toggle {
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 74%, transparent 26%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 92%, white 8%);
+}
 #settings-box input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -374,10 +493,10 @@ body[data-scene-effect="off"] .scene-layer > div {
 }
 body.mode-light {
   background:
-    radial-gradient(1100px 660px at 8% -12%, color-mix(in srgb, var(--glow-a, color-mix(in srgb, var(--accent) 18%, white 82%)) 72%, white 28%) 0%, transparent 58%),
-    radial-gradient(820px 420px at 100% 0%, color-mix(in srgb, var(--glow-b, color-mix(in srgb, var(--card-hover) 70%, white 30%)) 70%, white 30%) 0%, transparent 50%),
-    linear-gradient(180deg, var(--mist, rgba(255,255,255,0.36)) 0%, rgba(255,255,255,0.08) 24%, transparent 100%),
-    var(--bg);
+    radial-gradient(1200px 720px at 8% -12%, color-mix(in srgb, var(--glow-a, color-mix(in srgb, var(--accent) 18%, white 82%)) 32%, white 68%) 0%, transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, color-mix(in srgb, var(--glow-b, color-mix(in srgb, var(--card-hover) 70%, white 30%)) 26%, white 74%) 0%, transparent 52%),
+    linear-gradient(180deg, rgba(255,255,255,0.46) 0%, rgba(255,255,255,0.08) 28%, transparent 100%),
+    var(--bg, #F6F8FB);
 }
 /* Premium dark theme backgrounds */
 body.theme-obsidian,
@@ -407,23 +526,23 @@ body.theme-rose {
 }
 body.theme-lumen {
   background:
-    radial-gradient(ellipse 880px 430px at 10% 0%, rgba(255,231,74,0.24) 0%, transparent 64%),
-    radial-gradient(ellipse 760px 360px at 100% 10%, rgba(255,250,208,0.72) 0%, transparent 58%),
-    linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,249,224,0.52) 44%, rgba(255,255,255,0.15) 100%),
+    radial-gradient(ellipse 1000px 520px at 10% 0%, rgba(255,231,74,0.38) 0%, transparent 64%),
+    radial-gradient(ellipse 760px 360px at 100% 10%, rgba(255,200,80,0.28) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(255,252,220,0.65) 0%, rgba(255,249,200,0.28) 44%, transparent 100%),
     var(--bg);
 }
 body.theme-sky {
   background:
-    radial-gradient(ellipse 920px 470px at 0% 0%, rgba(33,212,253,0.16) 0%, transparent 62%),
-    radial-gradient(ellipse 720px 380px at 100% 12%, rgba(175,238,255,0.72) 0%, transparent 58%),
-    linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(234,248,255,0.55) 45%, rgba(255,255,255,0.18) 100%),
+    radial-gradient(ellipse 1020px 520px at 0% 0%, rgba(33,212,253,0.28) 0%, transparent 62%),
+    radial-gradient(ellipse 720px 380px at 100% 12%, rgba(100,210,255,0.24) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(220,248,255,0.65) 0%, rgba(200,240,255,0.28) 45%, transparent 100%),
     var(--bg);
 }
 body.theme-solar {
   background:
-    radial-gradient(ellipse 860px 430px at 12% 0%, rgba(255,159,67,0.22) 0%, transparent 62%),
-    radial-gradient(ellipse 780px 420px at 100% 10%, rgba(255,220,180,0.74) 0%, transparent 58%),
-    linear-gradient(180deg, rgba(255,252,247,0.92) 0%, rgba(255,239,213,0.56) 42%, rgba(255,255,255,0.14) 100%),
+    radial-gradient(ellipse 980px 480px at 12% 0%, rgba(255,159,67,0.34) 0%, transparent 62%),
+    radial-gradient(ellipse 780px 420px at 100% 10%, rgba(255,180,80,0.26) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(255,242,220,0.65) 0%, rgba(255,230,190,0.28) 42%, transparent 100%),
     var(--bg);
 }
 #home-page {
@@ -492,7 +611,7 @@ body.theme-solar {
 .theme-btn.active { border-color: var(--accent); background: rgba(76, 175, 80, 0.1); }
 #home-content {
   flex: 1;
-  padding: 18px 20px;
+  padding: 18px 20px 72px;
   overflow-y: auto;
   display: grid;
   gap: 14px;
@@ -656,7 +775,7 @@ body.theme-solar {
   cursor: pointer;
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: var(--edge-glow);
   animation: var(--glow-animation);
   user-select: none;
@@ -666,6 +785,7 @@ body.theme-solar {
   content: '';
   position: absolute;
   inset: 0;
+  border-radius: 8px;
   background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 70%);
   opacity: 0;
   transition: opacity 0.18s;
@@ -725,7 +845,27 @@ body.theme-solar {
   height: 12px;
   display: block;
 }
-.card-desc { font-size: 9px; color: var(--text-dim); line-height: 1.35; }
+.card-desc {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  right: -1px;
+  font-size: 8px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 7px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 60;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.22);
+  line-height: 1.4;
+}
+.home-card:hover .card-desc {
+  opacity: 1;
+}
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

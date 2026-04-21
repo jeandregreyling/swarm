@@ -16,14 +16,16 @@ let CHAT_AGENT_OPTIONS = [
   { value: 'qwen',     label: '4 · Qwen',     number: 4,  tier: 'local', hasTemp: true  },
   { value: 'librarian',label: '5 · Vortex',   number: 5,  tier: 'local', hasTemp: false },
   { value: 'duck',     label: '6 · Duck',     number: 6,  tier: 'local', hasTemp: true  },
-  { value: 'sniffles', label: '7 · Sniffles', number: 7,  tier: 'local', hasTemp: true  },
+  { value: 'sniffles', label: '20 · Sniffles', number: 20,  tier: 'local', hasTemp: true  },
   { value: 'eight',    label: '8 · Eight',    number: 8,  tier: 'local', hasTemp: true  },
   { value: 'nine',     label: '9 · Groq',     number: 9,  tier: 'paid',  hasTemp: false },
   { value: 'ten',      label: '10 · Github',  number: 10, tier: 'paid',  hasTemp: true  },
   { value: 'eleven',   label: '11 · Grok',    number: 11, tier: 'paid',  hasTemp: false },
   { value: 'twelve',   label: '12 · Claude',  number: 12, tier: 'paid',  hasTemp: false },
-  { value: 'thirteen', label: '13 · HF', number: 13, tier: 'free', hasTemp: false },
-  { value: 'ghost_coder', label: '17 · Ghost Coder', number: 17, tier: 'paid', hasTemp: false },
+  { value: 'thirteen', label: '13 · HF', number: 13, tier: 'paid', hasTemp: false },
+  { value: 'ghost_coder', label: '17 · GPT5', number: 17, tier: 'paid', hasTemp: false },
+  { value: 'seven',       label: '7 · Seven',  number: 7,  tier: 'local', hasTemp: false },
+  { value: 'twenty',      label: '21 · Qwen3.6', number: 21, tier: 'local', hasTemp: true  },
 ];
 
 // Fetch agent registry from DB and update CHAT_AGENT_OPTIONS to only include enabled agents.
@@ -45,7 +47,8 @@ function _loadAgentRegistry() {
       const skipAgents = new Set(['ghost', 'duck_ddg']);
       enabledAgents.forEach(a => {
         const name = (a.name || '').toLowerCase();
-        if (!existingValues.has(name) && !skipAgents.has(name)) {
+        const agentTier = (a.tier || '').toLowerCase();
+        if (!existingValues.has(name) && !skipAgents.has(name) && agentTier !== 'service') {
           const tier = (a.tier || 'local').toLowerCase();
           CHAT_AGENT_OPTIONS.push({
             value: name,
@@ -131,9 +134,9 @@ function _loadInitialChatFlowMode() {
 }
 
 window.__fridaysChatConversationId = window.__fridaysChatConversationId || null;
-window.__fridaysChatEnabledAgents = window.__fridaysChatEnabledAgents || { gemma: true };
+window.__fridaysChatEnabledAgents = window.__fridaysChatEnabledAgents || {};
 window.__fridaysReplyTargets = Array.isArray(window.__fridaysReplyTargets) ? window.__fridaysReplyTargets : [];
-window.__fridaysChatForceNewThread = window.__fridaysChatForceNewThread || false;
+window.__fridaysChatForceNewThread = window.__fridaysChatForceNewThread ?? true;
 window.__fridaysChatPendingJobIds = window.__fridaysChatPendingJobIds || [];
 window.__fridaysChatPendingConversationId = window.__fridaysChatPendingConversationId || null;
 window.__fridaysChatPendingPollTimer = window.__fridaysChatPendingPollTimer || null;
@@ -222,15 +225,49 @@ function persistThreadAgentSelection(convId = window.__fridaysChatConversationId
   _saveThreadAgentSelections();
 }
 
+function _emptyThreadAgentSelection() {
+  const next = {};
+  CHAT_AGENT_OPTIONS.forEach(agent => {
+    next[agent.value] = false;
+  });
+  return next;
+}
+
+function _applySingleThreadAgent(agentKey, convId = window.__fridaysChatConversationId) {
+  const normalized = String(agentKey || '').toLowerCase().trim();
+  const next = _emptyThreadAgentSelection();
+  if (!normalized || !Object.prototype.hasOwnProperty.call(next, normalized)) {
+    window.__fridaysChatEnabledAgents = next;
+    return false;
+  }
+  next[normalized] = true;
+  window.__fridaysChatEnabledAgents = next;
+  persistThreadAgentSelection(convId);
+  return true;
+}
+
+function _lastReplyingAgent(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  for (let index = list.length - 1; index >= 0; index -= 1) {
+    const row = list[index] || {};
+    const sender = String(row.sender || '').toLowerCase().trim();
+    if (!sender || sender === 'user' || String(row.message_type || '').toLowerCase() === 'relay') continue;
+    if (CHAT_AGENT_OPTIONS.some(agent => agent.value === sender)) return sender;
+  }
+  return '';
+}
+
 function applyThreadAgentSelection(convId = window.__fridaysChatConversationId) {
   const key = _threadSelectionKey(convId);
   const saved = (window.__fridaysThreadAgentSelections || {})[key];
-  if (!saved || typeof saved !== 'object' || !Object.keys(saved).length) return;
-  const next = {};
+  const next = _emptyThreadAgentSelection();
+  if (!saved || typeof saved !== 'object' || !Object.keys(saved).length) {
+    window.__fridaysChatEnabledAgents = next;
+    return;
+  }
   CHAT_AGENT_OPTIONS.forEach(agent => {
     next[agent.value] = !!saved[agent.value];
   });
-  if (!Object.values(next).some(Boolean)) next.gemma = true;
   window.__fridaysChatEnabledAgents = next;
 }
 
@@ -1237,6 +1274,7 @@ function resetThemeAndFontDefaults() {
     settings.glowValue = 52;
     settings.scene = 'beach';
     settings.sceneEffect = 'on';
+    settings.sceneLayers = { orbs: true, lattice: true, clusters: true, scene: true };
     settings.opacity = 5;
     localStorage.setItem('fridays-settings', JSON.stringify(settings));
     localStorage.setItem('fridays_theme_mode', 'auto');
@@ -1248,6 +1286,7 @@ function resetThemeAndFontDefaults() {
     localStorage.setItem('fridays_glow_value', '52');
     localStorage.setItem('fridays_scene', 'beach');
     localStorage.setItem('fridays_scene_effect', 'on');
+    localStorage.setItem('fridays_scene_layers', JSON.stringify({ orbs: true, lattice: true, clusters: true, scene: true }));
   } catch (_) {}
   applyTimeTheme('auto');
   if (typeof applyScene === 'function') applyScene('beach');
@@ -1503,6 +1542,8 @@ function _dismissClassifyBadge() {
 
 function _applyClassifyAgents(data) {
   if (!data || !data.agents || !data.agents.length) return;
+  // Do not auto-switch agents when auto relay is off — user has manual control
+  if (!window.__fridaysChatRelayAuto) return;
   // Turn off all agents first
   const allKeys = CHAT_AGENT_OPTIONS.map(a => a.value);
   allKeys.forEach(k => { window.__fridaysChatEnabledAgents[k] = false; });
@@ -1795,7 +1836,7 @@ function _escapeHtml(v) {
 function _renderMarkdown(text) {
   if (typeof marked === 'undefined') return _escapeHtml(text);
   try {
-    return marked.parse(String(text || ''), { gfm: true, breaks: false });
+    return marked.parse(_escapeHtml(String(text || '')), { gfm: true, breaks: false });
   } catch (_) {
     return _escapeHtml(text);
   }
@@ -1911,13 +1952,13 @@ const _CHAT_AGENT_META = {
   mistral:   { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2.5l5.5 9.5H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>', purpose: '3 · Mistral. Analyst — deep reasoning, debates, challenges Two.',            runtime: 'local', tier: 'local' },
   librarian: { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4.5 3.5v9M4.5 3.5h5a2 2 0 010 4h-5M4.5 7.5h5.5a2 2 0 010 4H4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '5 · Vortex. Gatekeeper + time machine checkpoints.',                         runtime: 'local', tier: 'local' },
   duck:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 9.5c0 2 1.8 3 4 3s4-1 4-3c0-1.5-1-2.5-3-2.5H8c1 0 2-1 2-2S9 3 8 3C6.5 3 5.5 4 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 7.5l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '6 · Duck. Sanity checker — YES/NO after every ticket.',                      runtime: 'local', tier: 'local' },
-  sniffles:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '7 · Sniffles. Inspector — memory auditor, read only.',                       runtime: 'local', tier: 'local' },
+  sniffles:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: 'Sniffles. Inspector — memory auditor, read only.',                       runtime: 'local', tier: 'local' },
   eight:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2C6.3 2 5 3.1 5 4.5S6.3 7 8 7s3 1.1 3 2.5S9.7 12 8 12s-3-1-3-2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 2v2M8 12v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '8 · Eight. SAP specialist — Functional/Technical/Devil three-voice debate.', runtime: 'local', tier: 'local' },
   nine:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2l1.5 4h4L10 8.5l1.5 4L8 10l-3.5 2.5 1.5-4-3.5-2.5h4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>', purpose: '9 · Groq. LlaMA 3.3 70B via Groq — fast, high-capacity reasoning.',        runtime: 'paid',  tier: 'paid' },
   ten:       { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 8h8M10 5l3 3-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 5l-3 3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '10 · Github. Engineering advisor — code quality, implementation clarity.',   runtime: 'paid',  tier: 'paid' },
   eleven:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M9 2L5 9h4l-2 5 6-8H9z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '11 · Grok. Lateral thinking advisor — creative synthesis, alternatives.',     runtime: 'paid',  tier: 'paid' },
   twelve:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 3C5.5 3 4 5 4 7c0 1.5 1 2.5 2 3l-.5 3h5L10 10c1-.5 2-1.5 2-3 0-2-1.5-4-4-4z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 10.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '12 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals.',       runtime: 'paid',  tier: 'paid' },
-  thirteen:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M3 5h10M3 8h10M3 11h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="11" r="2" stroke="currentColor" stroke-width="1.3"/></svg>', purpose: '13 · HF. Hugging Face inference — open-source models, free tier.',              runtime: 'free',  tier: 'free' },
+  thirteen:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M3 5h10M3 8h10M3 11h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="11" r="2" stroke="currentColor" stroke-width="1.3"/></svg>', purpose: '13 · HF. Hugging Face inference — open-source models, paid tier.',              runtime: 'paid',  tier: 'paid' },
   you:       { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: 'Human operator input.',                                                       runtime: 'human', tier: 'human' },
 };
 
@@ -3493,6 +3534,17 @@ function _upsertThinkingBubble(job) {
 function _syncThinkingBubbles(jobs) {
   const messages = _chatMessagesEl();
   if (!messages) return;
+
+  // Only show thinking bubbles for the thread that owns these jobs.
+  // If the user has switched to a different thread, remove any stale bubbles
+  // but don't insert new ones — they belong to the originating thread.
+  const pendingConvId = Number(window.__fridaysChatPendingConversationId || 0);
+  const activeConvId  = Number(window.__fridaysChatConversationId || 0);
+  if (pendingConvId && activeConvId && pendingConvId !== activeConvId) {
+    messages.querySelectorAll('.chat-bubble[data-pending-job-id]').forEach(n => n.remove());
+    return;
+  }
+
   const list = Array.isArray(jobs) ? jobs : [];
   const active = list.filter(job => String(job.status || 'running') === 'running' && job.job_id);
   const wanted = new Set(active.map(job => String(job.job_id)));
@@ -3715,34 +3767,56 @@ function _appendChatBubble(sender, text, opts = {}) {
 }
 
 async function editOwnPrompt(convId, msgId) {
-  const currentBubble = document.querySelector(`[data-message-id="${msgId}"] .chat-text`);
-  const currentText = currentBubble ? currentBubble.textContent : '';
-  const edited = prompt('Edit your prompt:', currentText || '');
-  if (edited === null) return;
-  const nextText = String(edited || '').trim();
-  if (!nextText) {
-    showToast('Prompt cannot be empty', 'error');
-    return;
-  }
-  if (nextText === String(currentText || '').trim()) {
-    showToast('No changes detected', 'info');
-    return;
-  }
-  try {
-    const resp = await fetch(`/api/conversations/${convId}/messages/${msgId}`, {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ content: nextText })
-    });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || !data.ok) {
-      throw new Error((data && data.error) || `HTTP ${resp.status}`);
+  const bubble = document.querySelector(`[data-message-id="${msgId}"]`);
+  const textEl = bubble ? bubble.querySelector('.chat-text') : null;
+  if (!textEl) return;
+  if (textEl.querySelector('.chat-inline-edit')) return; // already editing
+
+  const currentText = textEl.textContent || '';
+  const originalHtml = textEl.innerHTML;
+
+  // Replace content with textarea
+  textEl.innerHTML = '';
+  const ta = document.createElement('textarea');
+  ta.className = 'chat-inline-edit';
+  ta.value = currentText;
+  ta.rows = Math.min(8, Math.max(2, currentText.split('\n').length));
+  ta.style.cssText = 'width:100%;resize:vertical;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--accent);border-radius:6px;padding:6px 8px;';
+  textEl.appendChild(ta);
+
+  const bar = document.createElement('div');
+  bar.style.cssText = 'display:flex;gap:6px;margin-top:4px;';
+  bar.innerHTML = '<button class="chat-action-btn" data-role="save">Save</button><button class="chat-action-btn" data-role="cancel">Cancel</button>';
+  textEl.appendChild(bar);
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+
+  const cancel = () => { textEl.innerHTML = originalHtml; };
+  const save = async () => {
+    const nextText = ta.value.trim();
+    if (!nextText) { showToast('Prompt cannot be empty', 'error'); return; }
+    if (nextText === currentText.trim()) { cancel(); return; }
+    try {
+      const resp = await fetch(`/api/conversations/${convId}/messages/${msgId}`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ content: nextText })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.ok) throw new Error((data && data.error) || `HTTP ${resp.status}`);
+      showToast('Prompt updated', 'success');
+      loadConversationMessages(convId);
+    } catch (e) {
+      showToast('Failed to update prompt: ' + (e.message || e), 'error');
     }
-    showToast('Prompt updated', 'success');
-    loadConversationMessages(convId);
-  } catch (e) {
-    showToast('Failed to update prompt: ' + (e.message || e), 'error');
-  }
+  };
+
+  bar.querySelector('[data-role="save"]').addEventListener('click', save);
+  bar.querySelector('[data-role="cancel"]').addEventListener('click', cancel);
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') cancel();
+    if (e.key === 'Enter' && e.ctrlKey) save();
+  });
 }
 
 function revisePromptDraft(text) {
@@ -4489,7 +4563,6 @@ function renderChatAgentToggles() {
     const tierLabel = agent.tier === 'local' ? 'Local' : 'Online';
     const temp = agent.hasTemp ? (window.__agentTemps[agent.value] ?? 0.7).toFixed(2) : null;
     const bubbleColor = _getActorBubbleColor(agent.value) || (agent.tier === 'paid' ? '#ff7043' : '#4caf50');
-    const vid = 'atv-' + agent.value;
     const selState = _getAgentSelectionState(agent.value);
     const agentIcon = _chatAgentMeta(agent.value).icon;
 
@@ -4501,14 +4574,14 @@ function renderChatAgentToggles() {
       else                           rowState = ' agent-sel-row--on';
     }
 
+    const _tempVals = [0.00,0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1.00];
     const tempPart = temp !== null ? `
-      <div class="agent-sel-temp${isOn ? '' : ' agent-sel-temp--off'}">
-        <input type="range" min="0" max="1" step="0.05" value="${temp}"
-          class="agent-sel-slider" data-temp-row="${agent.value}"
-          onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"
-          oninput="document.getElementById('${vid}').textContent=parseFloat(this.value).toFixed(2);_setAgentTemp('${agent.value}',this.value)">
-        <span id="${vid}" class="agent-sel-tval">${temp}</span>
-      </div>` : `<div class="agent-sel-temp agent-sel-temp--placeholder"></div>`;
+      <select class="agent-sel-temp-select${isOn ? '' : ' agent-sel-temp--off'}"
+        title="Temperature for ${_escapeHtml(agent.label)}"
+        onclick="event.stopPropagation()"
+        onchange="_setAgentTemp('${agent.value}',this.value)">
+        ${_tempVals.map(v => `<option value="${v.toFixed(2)}"${Math.abs(parseFloat(temp)-v)<0.005?' selected':''}>${v.toFixed(1)}</option>`).join('')}
+      </select>` : `<div class="agent-sel-temp agent-sel-temp--placeholder"></div>`;
 
     return `
       <div class="agent-sel-row${rowState}" title="${_escapeHtml(agent.label)} · ${tierLabel}">
@@ -4706,7 +4779,8 @@ function renderChatThreadRail() {
 
   rail.innerHTML = convs.slice(0, 80).map(conv => {
     const active = Number(window.__fridaysChatConversationId) === Number(conv.id) ? ' active' : '';
-    const ts = (conv.timestamp || conv.created_at || '').slice(0, 16);
+    const _rawTs = conv.timestamp || conv.created_at || '';
+    const ts = _rawTs ? (function(s){ if (/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s) && !/[Z+]/.test(s.slice(-6))) s = s.replace(' ','T')+'Z'; const d = new Date(s); return isNaN(d) ? s.slice(0,16) : d.toLocaleDateString('en-AU',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'}); })(_rawTs) : '';
     const title = _escapeHtml(conv.title || '(untitled)');
     const src = String(conv.source || '').toLowerCase();
     const srcIcon = src === 'telegram' ? '<span title="Telegram" style="opacity:0.75;line-height:1;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><path d="M2 8l12-5-3 12-4-3.5L2 8zm5 3.5V14l1.5-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
@@ -4840,6 +4914,8 @@ function renderChatMessages(rows) {
     });
     window.__fridaysPendingBubbleTraces = {};
   }
+  // Scroll to newest message
+  requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; });
 }
 
 function _chatRowsSignature(rows) {
@@ -4871,10 +4947,24 @@ function loadConversationMessages(convId, options = {}) {
       const rows = data.messages || [];
       const nextSig = `${requestedConvId}:${_chatRowsSignature(rows)}`;
       if (!force && window.__fridaysChatLastRenderSig === nextSig) {
+        if (options.syncLastResponder) {
+          const lastAgent = _lastReplyingAgent(rows);
+          if (lastAgent) {
+            _applySingleThreadAgent(lastAgent, requestedConvId);
+            renderChatAgentToggles();
+            updateComposerMeta();
+          }
+        }
         return false;
       }
       window.__fridaysChatLastRenderSig = nextSig;
       renderChatMessages(rows);
+      if (options.syncLastResponder) {
+        const lastAgent = _lastReplyingAgent(rows);
+        _applySingleThreadAgent(lastAgent, requestedConvId);
+        renderChatAgentToggles();
+        updateComposerMeta();
+      }
       // Render linked ticket banner if present
       _renderTicketBanner(data.ticket, data.conv);
       return true;
@@ -4925,15 +5015,13 @@ function refreshChatThreadList(preferredId = null) {
       convs.slice(0, 50).forEach(conv => {
         const opt = document.createElement('option');
         opt.value = String(conv.id);
-        const ts = (conv.timestamp || conv.created_at || '').slice(0, 16);
+        const _rawTs2 = conv.timestamp || conv.created_at || '';
+        const ts = _rawTs2 ? (function(s){ if (/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s) && !/[Z+]/.test(s.slice(-6))) s = s.replace(' ','T')+'Z'; const d = new Date(s); return isNaN(d) ? s.slice(0,16) : d.toLocaleDateString('en-AU',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'}); })(_rawTs2) : '';
         opt.textContent = '#' + conv.id + ' · ' + (conv.title || '(untitled)') + (ts ? ' · ' + ts : '');
         threadSelect.appendChild(opt);
       });
 
       let targetId = preferredId || window.__fridaysChatConversationId;
-      if (!targetId && !window.__fridaysChatForceNewThread && convs.length) {
-        targetId = convs[0].id;
-      }
       if (targetId) {
         threadSelect.value = String(targetId);
         _setActiveThreadId(Number(targetId));
@@ -4960,7 +5048,7 @@ function switchChatThread(convIdValue) {
   const threadSelect = document.getElementById('chat-thread-select');
   if (threadSelect) threadSelect.value = convId ? String(convId) : '';
   renderChatThreadRail();
-  loadConversationMessages(window.__fridaysChatConversationId);
+  loadConversationMessages(window.__fridaysChatConversationId, { syncLastResponder: !!convId });
   pollActiveThreadRuntime(true);
 }
 
