@@ -113,7 +113,9 @@ function guideSetSection(id) {
 }
 
 function _guideRenderContent(body, markdown) {
-  if (typeof marked !== 'undefined' && marked.parse) {
+  if (typeof window !== 'undefined' && typeof window.safeMarkdown === 'function') {
+    body.innerHTML = window.safeMarkdown(markdown);
+  } else if (typeof marked !== 'undefined' && marked.parse) {
     body.innerHTML = marked.parse(markdown);
   } else {
     // Fallback: basic markdown-to-HTML
@@ -161,8 +163,8 @@ function guideSearch(q) {
   // Search within current section content
   if (_guideCurrentId && _guideSectionCache[_guideCurrentId]) {
     const rendered = _guideSectionCache[_guideCurrentId];
-    if (typeof marked !== 'undefined' && marked.parse) {
-      const html = marked.parse(rendered);
+    if ((typeof window !== 'undefined' && typeof window.safeMarkdown === 'function') || (typeof marked !== 'undefined' && marked.parse)) {
+      const html = (typeof window !== 'undefined' && typeof window.safeMarkdown === 'function') ? window.safeMarkdown(rendered) : marked.parse(rendered);
       // Highlight matches in text nodes via a simple regex on innerHTML
       body.innerHTML = html.replace(
         new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),

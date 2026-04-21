@@ -5,6 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fridays — Seven's Swarm</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script>
+/* safeMarkdown — XSS-hardened markdown renderer.
+   Always use this instead of marked.parse() for untrusted content.
+   Falls back to escaped plain text if either lib is missing. */
+(function(){
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  window.escHtml = esc;  // canonical HTML-escape helper — prefer this over per-module duplicates
+  window.safeMarkdown = function(text, opts){
+    const src = String(text == null ? '' : text);
+    if (typeof marked === 'undefined' || !marked.parse) return esc(src);
+    let html;
+    try { html = marked.parse(src, Object.assign({ gfm: true, breaks: false }, opts || {})); }
+    catch (e) { return esc(src); }
+    if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
+      try { return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } }); } catch (e) { /* fall through */ }
+    }
+    return html;
+  };
+})();
+</script>
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
    FALLBACK VARIABLES — overridden by {{ theme_css }} injection below
