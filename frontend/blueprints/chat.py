@@ -36,9 +36,16 @@ def _sse_chat(conversation_id, agent, status, **extra):
 
 chat_bp = Blueprint('chat', __name__)
 
-_LOCAL_OLLAMA_CHAT_AGENTS = {
-    'gemma', 'llama', 'qwen', 'eight', 'mistral', 'phi3', 'deepseek_local', 'twenty'
-}
+
+def _local_ollama_chat_agents():
+    """Single-task local Ollama agents eligible for hard-kill via `ollama stop`.
+    Computed from the DB registry (tier=local minus shared-memory runners)."""
+    try:
+        from utils.db.registry import get_single_task_locals
+        return get_single_task_locals()
+    except Exception:
+        # Registry unavailable — fail closed: no hard-kill on unknown agents.
+        return set()
 
 
 def _chat_model_aliases(name):
@@ -93,7 +100,7 @@ def _chat_try_hard_kill_local_agent(agent_name):
         'ok': False,
         'detail': '',
     }
-    if normalized not in _LOCAL_OLLAMA_CHAT_AGENTS:
+    if normalized not in _local_ollama_chat_agents():
         result['detail'] = 'agent is not an Ollama-backed local runtime'
         return result
 
@@ -1092,8 +1099,7 @@ def api_chat():
                 pass
 
         # ── Resource gate — one Ollama model at a time, Eight exclusive ──────────
-        _LOCAL_OLLAMA_AGENTS = {'gemma', 'llama', 'qwen', 'eight', 'mistral', 'phi3', 'deepseek_local', 'twenty'}
-        if selected_agent in _LOCAL_OLLAMA_AGENTS:
+        if selected_agent in _local_ollama_chat_agents():
             try:
                 from utils.resource_gate import acquire, release as rg_release
                 _stage(f'waiting for model slot · {selected_agent}', est_eta)
