@@ -25,10 +25,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             except Exception:
                 pass
 
-    try:
-        import ollama as _ollama
-    except ImportError:
-        return '[deepseek-local] ollama package not installed', 0
+    from core import llm as _llm
 
     _emit('dispatching to deepseek-r1:7b (local)')
     messages = [{'role': 'system', 'content': _SYSTEM_PROMPT}]
@@ -37,28 +34,15 @@ def chat(message, conversation_history=None, stage_cb=None):
     messages.append({'role': 'user', 'content': message})
 
     try:
-        chunks, token_count, tokens = [], 0, 0
-        stream = _ollama.chat(
-            model=MODEL, messages=messages,
-            options={'temperature': 0.6}, keep_alive=300, stream=True,
-        )
-        for chunk in stream:
-            part = (chunk.get('message') or {}).get('content') or ''
-            if part:
-                chunks.append(part)
-                token_count += 1
-                if token_count % 15 == 0:
-                    _emit(f'reasoning · {("".join(chunks))[-300:]}')
-            if chunk.get('done'):
-                tokens = int(chunk.get('eval_count') or 0)
-        answer = ''.join(chunks)
+        buf = []
+        def _cb(piece):
+            buf.append(piece)
+            if len(buf) % 15 == 0:
+                _emit(f'reasoning · {("".join(buf))[-300:]}')
+        answer, tokens = _llm.chat(MODEL, messages, stream=True, temperature=0.6, on_chunk=_cb)
     except Exception as exc:
-        # No blocking retry: re-calling ollama.chat on a stuck runner spawns
-        # a second runner that also hangs. Return what we have (if any) or error.
-        logger.warning(f'[DeepSeekLocal] stream error (no retry): {exc}')
-        answer = ''.join(chunks)
-        if not answer:
-            return f'[deepseek-local] error: {exc}', 0
+        logger.warning(f'[DeepSeekLocal] stream error: {exc}')
+        return f'[deepseek-local] error: {exc}', 0
 
     logger.info(f'[DeepSeekLocal] model={MODEL} tokens={tokens}')
     return answer, tokens

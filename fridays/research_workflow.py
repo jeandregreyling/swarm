@@ -192,18 +192,17 @@ def _decompose_heuristic(topic, max_questions):
 
 def _decompose_via_agent(topic, max_questions):
     """Use a local Ollama agent to decompose the topic into sub-questions."""
-    import ollama
+    from core import llm as _llm
     prompt = (
         f"Break this research topic into exactly {max_questions} specific search queries. "
         f"Return ONLY a JSON array of strings, no other text.\n\n"
         f"Topic: {topic}"
     )
-    resp = ollama.chat(
-        model='qwen2.5:latest',
-        messages=[{'role': 'user', 'content': prompt}],
-        options={'temperature': 0.1},
+    text, _tokens = _llm.chat(
+        'qwen2.5:latest',
+        [{'role': 'user', 'content': prompt}],
+        temperature=0.1,
     )
-    text = resp['message']['content']
     start = text.find('[')
     end   = text.rfind(']')
     if start >= 0 and end > start:

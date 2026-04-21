@@ -38,10 +38,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             except Exception:
                 pass
 
-    try:
-        import ollama as _ollama
-    except ImportError:
-        return '[llama] ollama package not installed', 0
+    from core import llm as _llm
 
     from config import LLAMA_SYSTEM_PROMPT
 
@@ -55,29 +52,12 @@ def chat(message, conversation_history=None, stage_cb=None):
     messages.append({'role': 'user', 'content': message})
 
     def _api_call(msgs):
-        chunks, token_count, tokens = [], 0, 0
-        try:
-            stream = _ollama.chat(
-                model=MODEL, messages=msgs,
-                options={'temperature': 0.7}, keep_alive=300, stream=True,
-            )
-            for chunk in stream:
-                part = (chunk.get('message') or {}).get('content') or ''
-                if part:
-                    chunks.append(part)
-                    token_count += 1
-                    if token_count % 15 == 0:
-                        _emit(f'generating · {("".join(chunks))[-300:]}')
-                if chunk.get('done'):
-                    tokens = int(chunk.get('eval_count') or 0)
-        except Exception as exc:
-            # No blocking retry: re-calling ollama.chat on a stuck runner spawns
-            # a second runner that also hangs. Return what we have and let the
-            # caller surface the error.
-            logger.warning(f'[LLaMA] stream error (no retry): {exc}')
-            if not chunks:
-                raise
-        return ''.join(chunks), tokens
+        buf = []
+        def _cb(piece):
+            buf.append(piece)
+            if len(buf) % 15 == 0:
+                _emit(f'generating · {("".join(buf))[-300:]}')
+        return _llm.chat(MODEL, msgs, stream=True, temperature=0.7, on_chunk=_cb)
 
     try:
         sys.path.insert(0, '/home/seven/swarm/agents')

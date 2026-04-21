@@ -699,7 +699,7 @@ def librarian_triage(from_addr, subject, body):
     ANSWER — Librarian thinks it's a genuine question worth processing.
     IGNORE — Looks like spam, newsletter, notification, or junk.
     """
-    import ollama
+    from core import llm as _llm
 
     preview = body[:600].strip()
     prompt = (
@@ -715,13 +715,12 @@ def librarian_triage(from_addr, subject, body):
     )
 
     try:
-        response = ollama.chat(
-            model='qwen:latest',
-            messages=[{'role': 'user', 'content': prompt}],
-            options={'temperature': 0.1},
-            keep_alive=300,
+        text, _tokens = _llm.chat(
+            'qwen:latest',
+            [{'role': 'user', 'content': prompt}],
+            temperature=0.1,
         )
-        text = response['message']['content'].strip()
+        text = text.strip()
         lines = [l.strip() for l in text.splitlines() if l.strip()]
         decision = lines[0].upper() if lines else 'IGNORE'
         reason = lines[1] if len(lines) > 1 else 'No reason given.'

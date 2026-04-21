@@ -4,10 +4,7 @@ from services import *
 
 system_bp = Blueprint('system', __name__)
 
-@system_bp.route('/api/health')
-def api_health():
-    """Lightweight health check endpoint. Returns 200 if server is up."""
-    return jsonify({'ok': True, 'status': 'up', 'service': 'swarm-terminal'})
+# NOTE: /api/health is owned by health.py (health_bp). Do not re-register here.
 
 
 @system_bp.route('/api/circuit-breaker')
@@ -31,14 +28,7 @@ def api_circuit_breaker_reset(agent):
         return jsonify({'error': 'circuit_breaker module not available'}), 501
 
 
-
-@system_bp.route('/')
-def index():
-    """Render themed terminal. Theme engine handles CSS injection."""
-    html = get_themed_html()
-    return Response(html, mimetype='text/html')
-
-
+# NOTE: '/' is owned by frontend/terminal.py (root_status JSON). UI is at /ui.
 
 
 @system_bp.route('/api/system/time')
