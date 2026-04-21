@@ -112,18 +112,12 @@ def chat(message, conversation_history=None, stage_cb=None):
                 if chunk.get('done'):
                     tokens = int(chunk.get('eval_count') or 0)
         except Exception as exc:
-            logger.warning(f'[Mistral] stream error, falling back to blocking call: {exc}')
-            resp = _ollama.chat(
-                model=MODEL,
-                messages=msgs,
-                options={'temperature': 0.6},
-                keep_alive=300,
-            )
-            chunks = [resp['message']['content']]
-            try:
-                tokens = int(getattr(resp, 'eval_count', None) or resp.get('eval_count') or 0)
-            except Exception:
-                tokens = 0
+            # No blocking retry: re-calling ollama.chat on a stuck runner spawns
+            # a second runner that also hangs. Return what we have and let the
+            # caller surface the error.
+            logger.warning(f'[Mistral] stream error (no retry): {exc}')
+            if not chunks:
+                raise
         content = ''.join(chunks)
         return content, tokens
 
