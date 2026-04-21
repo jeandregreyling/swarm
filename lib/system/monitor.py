@@ -121,15 +121,26 @@ def get_ollama_models():
         return []
 
 
+# Cache for get_model_details — model metadata is static, so we cache for 5 min.
+# Prevents /api/monitor polling from storming ollama with /api/show calls per loaded model.
+_MODEL_DETAILS_CACHE = {}
+_MODEL_DETAILS_TTL = 300  # seconds
+
+
 def get_model_details(model):
     """
     Return rich metadata for a single model via ollama.show().
+    Cached for 5 minutes — model metadata does not change at runtime.
     Fields: family, parameter_size, quantization, format, capabilities, parameters.
     """
+    now = time.time()
+    cached = _MODEL_DETAILS_CACHE.get(model)
+    if cached and (now - cached[0]) < _MODEL_DETAILS_TTL:
+        return cached[1]
     try:
         result  = ollama.show(model)
         details = getattr(result, 'details', None)
-        return {
+        payload = {
             'model':          model,
             'family':         (getattr(details, 'family', '') or '') if details else '',
             'parameter_size': (getattr(details, 'parameter_size', '') or '') if details else '',
@@ -138,6 +149,8 @@ def get_model_details(model):
             'capabilities':   list(getattr(result, 'capabilities', None) or []),
             'parameters':     (getattr(result, 'parameters', '') or ''),
         }
+        _MODEL_DETAILS_CACHE[model] = (now, payload)
+        return payload
     except Exception:
         return {'model': model}
 
