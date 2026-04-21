@@ -33,8 +33,8 @@ done
 # ── Models to warm (unique set from orchestrator.py AGENTS) ───────────────
 # gemma4:26b FIRST — at 18.5 GB it must claim RAM before the smaller models
 # fill it. Smaller models page to NVMe swap as needed.
+# gemma4:26b removed — too large for CPU-only (19GB), disabled in agents DB
 MODELS=(
-  "gemma4:26b"
   "gemma3:latest"
   "llama3.2:latest"
   "mistral:latest"
@@ -66,7 +66,7 @@ sys.exit(0 if any('$MODEL' in n for n in models) else 1)
     --max-time "$TVAL" \
     -X POST "$OLLAMA_URL/api/generate" \
     -H "Content-Type: application/json" \
-    -d "{\"model\":\"$MODEL\",\"prompt\":\" \",\"keep_alive\":-1}" 2>/dev/null || echo "000")
+    -d "{\"model\":\"$MODEL\",\"prompt\":\" \",\"keep_alive\":300}" 2>/dev/null || echo "000")
 
   if [[ "$HTTP_CODE" == "200" ]]; then
     log "OK    $MODEL"

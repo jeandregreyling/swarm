@@ -8,7 +8,7 @@
 **Owner:** Seven  
 **Primary Builder:** Agent 12 (Claude / Copilot)  
 **Created:** 16 April 2026  
-**Last Updated:** 17 April 2026 (Session 22 — merged from audit + original)  
+**Last Updated:** 21 April 2026 (Session 26 — Agent 20 design, Qwen3.6 rename, scope lock)  
 
 ---
 
@@ -17,17 +17,20 @@
 | Field | Value |
 |-------|-------|
 | **Active Phase** | Phase 7.0 — Test & Support (stabilisation, bug fixing, hardening) |
-| **Last Session** | Session 22 — 17 April 2026 (night) — improvement sweep, icon normalisation, backlog logging |
-| **Next Action** | Fix hardcoded paths (P1), fix filesOpenFull() (P2), then dry-run high-risk UI/API flows |
-| **Test Baseline** | 404 passed, 1 skipped (verified 17 April 2026) |
-| **Environments** | PROD (master :5050), UAT (:5052), DEV (:5054) — all synced as of 17 April 2026 |
+| **Last Session** | Session 26 — 21 April 2026 — Agent 20 design & scope lock, Agent 18 renamed to Qwen3.6 |
+| **Next Action** | Build Phase 8.1 — Agent 20 observer + council + PFV gate (deterministic foundation) |
+| **Test Baseline** | 445 passed, 1 pre-existing failure (verified 21 April 2026) |
+| **Environments** | PROD (master :5050), UAT (:5052), DEV (:5054) — PROD updated, UAT/DEV need sync |
 | **Blockers** | None |
 
 ### What's Hot Right Now
-- **Phase 6 complete** — 15/21 tiers fully PASS, 5 PARTIAL, 1 status was wrong in docs (all now corrected)
-- **4 targeted bugs queued** — hardcoded paths (P1), filesOpenFull (P2), workspace boundary (P3), polling cleanup (P4)
-- **Audit + improvement findings logged** — see §3 for full results, §4 for the Phase 7 fix plan
-- **Project memory restored** — full planning tables + audit findings in one place
+- **Agent 20 design locked** — full process model, PFV gate, 7-sense council, 4-phase delivery plan in §4b
+- **Agent 18 renamed** to Qwen3.6 (seed, agent file, live DB)
+- **Phase 8.1 ready to build** — observer, council, PFV scoring, tables, API, feature flag, tests
+- **All 4 tile groups audited** — 13 bugs fixed across Sessions 24–25, 0 regressions
+- **Remaining Phase 7 work:** 7.23 DOMPurify, 7.24 escape consolidation (root cause of 4/6 Session 25 bugs), env sync
+- **Test baseline updated:** 445 passed (up from 404); 1 pre-existing failure (conversations.py cross-import of login_bp)
+- **Secondary tiles still to audit** — tickets, email, proposals, clocks, memory landscape
 
 ---
 
@@ -101,9 +104,9 @@
 | 5.3 | Remove Emails tile from home | Same as tickets — linked elsewhere with activity dots for "undead" items | ✅ | — |
 | 5.4 | Responsive / mobile layout | Everything must fit on phone screen; clocks → digital when space is tight; all elements reflow | ✅ | 3 breakpoints, full reflow |
 | 5.5 | Clocks responsive fallback | World clocks switch to compact digital format when screen width < threshold | ✅ | Slightly fragile `:first-child` CSS selector but functional |
-| 5.6 | Window dedup / internal management | Prevent duplicate windows; only one instance per view; second click focuses existing | ⚠️ | Core dedup works; at least one view still calls `winManager.open()` directly |
+| 5.6 | Window dedup / internal management | Prevent duplicate windows; only one instance per view; second click focuses existing | ✅ | Fixed in Session 24 — `openWindow()` now focuses existing instead of creating duplicates |
 
-**Phase 6 Scorecard:** 15 PASS / 5 PARTIAL / 0 FAIL / 3 status-was-wrong-now-corrected — out of 21 tier items
+**Phase 6 Scorecard:** 16 PASS / 4 PARTIAL / 0 FAIL / 3 status-was-wrong-now-corrected — out of 21 tier items
 
 #### Diamond Layer (Background — paused for Phase 7)
 
@@ -157,6 +160,92 @@ Working backlog from a broader code sweep. These are live-behaviour gaps and env
 | V2 | Chat transport model | Medium | SSE + polling hybrid — no clear single transport contract. | Define one source of truth; demote polling to explicit fallback mode. |
 | V3 | Import boundaries | Low | Mixed use of `database.py` shim and `utils.db.*` direct. | Standardise on DB modules; document shim as compatibility-only. |
 
+### 3c — Chat & Relay Findings (Session 23)
+
+Focused outcomes from live chat debugging and relay-oriented test passes on 20 April 2026.
+
+**Verified Fixes**
+
+| # | Area | Severity | Finding | Fix / Outcome |
+|---|------|----------|---------|---------------|
+| C1 | Floating chat reopen | High | Reopening floating chat could skip message render because `__fridaysChatLastRenderSig` stayed warm across close/reopen. | ✅ Reset render signature on open so messages reload predictably. |
+| C2 | Home chat thread sync | High | Home chat could keep stale global conversation state and fail to follow selected thread correctly. | ✅ Prefer localStorage/current selection and always sync the active conversation id. |
+| C3 | Home chat thread labels | Low | Embedded thread dropdown hid thread numbers, making verification harder. | ✅ Render thread options as `#id · title`. |
+| C4 | Job response propagation | High | Completed chat jobs could lose `response` content in job/public payloads, weakening polling fallback and relay inspection. | ✅ Response now carried through finish callback, DB fallback, and public job serializer. |
+
+**Verified Design Risks**
+
+| # | Area | Severity | Finding | Recommended Fix |
+|---|------|----------|---------|-----------------|
+| C5 | Chat surface divergence | High | Home chat and full chat do not share a single behaviour engine; relay dispatch exists in full chat but not in home chat. | Unify chat send/state/relay rules behind one shared controller with thin UI wrappers. |
+| C6 | Relay capability ambiguity | Medium | Backend can infer relay targets, but actual continuation depends on frontend surface and auto-relay wiring. | Expose relay capability explicitly in UI and API, not as implied behaviour. |
+| C7 | External model constraints | Medium | Relay stress testing with Eleven/Nineteen is now limited by credit and daily rate limits, producing false noise during validation. | Prioritise deterministic UI/API tests; reserve paid relay tests for short targeted checks only. |
+
+**Testing Note**
+
+- `tests/chat_test_relay_10x.py` completed with **0 assertion failures** during this session, but later turns showed vendor rate-limit responses from Eleven and Nineteen. Treat the suite as useful for protocol coverage, not for indefinite soak testing on paid models.
+
+### 3d — Tile-by-Tile Stabilisation Audit (Session 24)
+
+Systematic audit of 3 tile groups with code-level review. Fix-on-sight for real bugs; design findings logged for next phase.
+
+**Verified Fixes (7 bugs)**
+
+| # | File | Severity | Finding | Fix |
+|---|------|----------|---------|-----|
+| D1 | home-chat.js `_hcRenderContent()` | **High** | Double-escape: called `_hcEsc(text)` then `marked.parse(escaped)`, rendering `&amp;` literally | Pass raw text to `marked.parse()`; escape only in fallback path |
+| D2 | app.js `openWindow()` | **High** | When window already open+visible, created SECOND instance with `multi: true` — duplicate DOM IDs broke all `getElementById` calls | Changed to `winManager.focus(windowKey)` instead of re-creating |
+| D3 | workspace.py + files.js + git.js | **High** | `_filesAbsPath()` hardcoded `/home/seven/swarm` — breaks DEV/UAT. Backend didn't expose workspace root. | Added `workspace_root` to `/api/workspace/dir` response; frontend stores in `window.__filesWorkspaceRoot`; `_filesAbsPath()` uses it dynamically |
+| D4 | files.js `codeOpCommit()` | **Medium** | 3 PATCH calls missing `Content-Type: application/json` header — Flask may not parse body | Added headers to all 3 PATCH calls |
+| D5 | library.js `libSeedKnowledge()` | **Medium** | Called nonexistent `_toast()` function — silent failure | Changed to `showToast()` |
+| D6 | skills.js identity manager | **Medium** | Used `window.windows.skills` (always undefined) — Apply button silently did nothing | Changed to `winManager.windows.get('skills')` |
+| D7 | 5.6 Window dedup | **Fixed** | `openWindow()` duplicate-instance issue (D2) was the root cause of 5.6 PARTIAL status | Now correctly focuses existing window |
+
+**Verified False Positives (3 rejected)**
+
+| # | Area | Why Rejected |
+|---|------|-------------|
+| FP1 | Timer stacking in `startChatLiveSyncService()` | Already clears previous timers before starting new ones |
+| FP2 | Relay mutex deadlock in chat.js | `finally` block always runs, mutex always released |
+| FP3 | `filesOpenFull()` broken call | Already uses correct `winManager.create()` — was mis-reported in I3 |
+
+**Architecture / Design Findings (deferred to next phase)**
+
+| # | Area | Severity | Finding | Recommended Fix |
+|---|------|----------|---------|-----------------|
+| N1 | DOM ID collisions | Medium | Knowledge window + standalone windows could share DOM IDs when both open | Scope IDs per window instance or use data-attributes |
+| N2 | `_escHtml` / `_esc` fragile globals | Medium | 4+ independent definitions across files; load-order dependent; `init.js` uses `_escHtml` but doesn't define it | Consolidate into one core utility function |
+| N3 | marked.js XSS | **High** | No DOMPurify or sanitization configured for `marked.parse()` — user/agent content rendered as HTML | Add DOMPurify or configure `marked` with sanitizer |
+| N4 | `libInit()` scoping | Low | Not scoped to window parameter — always hits first DOM match | Pass window container, query within |
+| N5 | `window.__filesWin` overwrite | Low | Knowledge sub-tab and Files tile both write this global | Namespace per window instance |
+| N6 | `agentsDelete()` orphaned | Low | Fully implemented function but unreachable — no UI element calls it | Remove or wire to UI |
+| N7 | Dead access.js functions | Low | `accessSwitchTab()`, `accessRefreshTab()`, `loadRolesSkillsGrid()` target missing DOM elements | Remove dead code |
+| N8 | Home chat polling-only | Medium | Home chat has no SSE listener; relies entirely on polling | Add SSE or share chat controller (relates to C5) |
+
+### 3e — Secondary Tile Stabilisation Audit (Session 25)
+
+Completed the 4th and final tile group: tickets, email, tasker, memory, time-wizard, diamond, memory-landscape.
+
+**Verified Fixes (6 bugs)**
+
+| # | File | Severity | Finding | Fix |
+|---|------|----------|---------|-----|
+| E1 | memory.js `renderMemoryAgentTabs()` | **Medium** | `a.name` completely unescaped in `data-agent`, `onclick`, and text — agent name with `"`, `'`, or `<` breaks HTML/JS | Used `_escHtml()` for attributes/text; `this.dataset.agent` in onclick to avoid JS-in-HTML escaping |
+| E2 | memory.js `memoryEdit()` | **Medium** | `_escapeHtml()` (studio.js) used in `value=""` attribute — doesn't escape `"`, so content with `"` breaks the input | Replaced `_escapeHtml` with `_escHtml` (which escapes `"`) |
+| E3 | memory.js `memorySharePrompt()` | **Medium** | Same `_escapeHtml` in `value=""` as E2 | Replaced `_escapeHtml` with `_escHtml` |
+| E4 | tasker.js `renderTaskerList()` | **Medium** | `_escHtml(t.name)` inside single-quoted JS onclick — runtime `_escHtml` (skills.js) doesn't escape `'`, so names with `'` break | Changed to `_escHtml(JSON.stringify(t.name))` — JSON handles JS escaping, `_escHtml` handles HTML attribute encoding |
+| E5 | time-wizard.js (4 occurrences) | **Medium** | `JSON.stringify()` inside `onclick="..."` produces literal `"` that terminates the HTML attribute — every string-valued onclick was broken | Wrapped all 4 with `_escHtml()` / `H()` to entity-encode `"` for HTML attribute context |
+| E6 | (_escHtml redefinition) | **Design** | skills.js redefines `_escHtml` (originally from conversations.js), silently dropping `'` escaping — makes all later `'`-context uses unsafe | Root cause of E4; strengthens case for 7.24 consolidation |
+
+**Files audited clean (no bugs)**
+
+| File | Lines | Notes |
+|------|-------|-------|
+| tickets.js | 130 | Well-structured, uses `JSON.stringify` for JS-in-HTML correctly, proper delete-confirm |
+| email.js | 373 | Full email client; `_escAttr` from studio.js works at runtime (fragile dependency, not a bug) |
+| memory-landscape.js | 330 | Clean canvas physics simulation, no escape/fetch patterns |
+| diamond.js | 472 | Self-contained SVG metrics, no external dependencies, properly guarded `showToast`/`openWindow` |
+
 ---
 
 ## §4 — PHASE 7 PLAN (Active)
@@ -172,16 +261,32 @@ Working backlog from a broader code sweep. These are live-behaviour gaps and env
 | # | Task | Source | Status |
 |---|------|--------|--------|
 | 7.15 | Replace hardcoded repo paths with shared SWARM_ROOT resolver | I1 / I2 / I6 | 🔲 |
-| 7.16 | Fix `filesOpenFull()` window creation path | I3 | 🔲 |
+| 7.16 | Fix `filesOpenFull()` window creation path | I3 | ✅ Already correct — uses `winManager.create()` (verified Session 24, false positive FP3) |
 | 7.17 | Tighten workspace root boundary checks | V1 | 🔲 |
 | 7.18 | Rationalise polling timers and teardown lifecycle | I5 / V2 | 🔲 |
+| 7.19 | Unify home chat and floating/full chat state model | C5 / C6 | 🔲 |
+| 7.20 | Audit high-traffic tiles one by one for broken controls and silent failures | Session 23 | ✅ Done — all 4 tile groups audited (Sessions 24–25), 13 bugs fixed total |
+| 7.21 | Classify findings as bug vs UX gap vs architecture debt during audit | Session 23 | ✅ Done — 7 bugs fixed, 3 FPs rejected, 8 design findings logged in §3d |
+| 7.22 | Build a next-phase polish list from working-but-awkward interactions and visual issues | Session 23 | ✅ Done — N1–N8 in §3d |
+| 7.23 | Add DOMPurify or sanitizer for marked.js rendering | N3 (Session 24) | 🔲 High priority — XSS risk |
+| 7.24 | Consolidate `_escHtml` / `_escapeHtml` / `_esc` into single core utility | N2 (Session 24) | 🔲 |
+| 7.25 | Audit secondary tiles (tickets, email, proposals, clocks, memory landscape) | Session 24 | ✅ Done — 6 bugs fixed (E1–E5), see §3e |
+
+### Priority 1A — Session 23 Immediate Audit Order
+
+| Order | Surface | Why First | Success Condition |
+|---|---------|-----------|-------------------|
+| 1 | Chat surfaces (home chat, floating chat, full chat) | Highest recent bug density; state divergence already proven | One shared expectation for thread selection, message loading, relay affordances, and reopen behaviour |
+| 2 | Files / Library / Docs windows | Existing `filesOpenFull()` defect and workflow/navigation centrality | All open/focus/full-view actions work without duplicate-window or dead-button paths |
+| 3 | Agents / Setup / Monitor controls | High visibility, many buttons, likely hidden no-op controls | Every control gives visible feedback and writes consistent state |
+| 4 | Secondary tiles (tickets, email, proposals, clocks, memory landscape) | Lower immediate risk, but polish and affordance gaps likely remain | No silent failures; visual hierarchy and action clarity improved |
 
 ### Priority 2 — Already Resolved (Sessions 21–22)
 
 | # | Task | Source | Status |
 |---|------|--------|--------|
 | 7.1 | Wire `_knClassifyItems()` so gold glow + badges render | B1 | ✅ |
-| 7.2 | Fix window-manager call-site (`winManager.open` → `openWindow()`) | B3 | ⚠️ files.js call-site still open (see I3 / 7.16) |
+| 7.2 | Fix window-manager call-site (`winManager.open` → `openWindow()`) | B3 | ✅ Fixed in Session 24 — `openWindow()` dedup + focus logic corrected |
 | 7.3 | Complete emoji → SVG sweep | B2 | ✅ |
 | 7.4 | Add weather condition icons to world clocks | B4 | ✅ in code; needs live verification |
 | 7.5 | Create personality.md for each active agent | G8 | ✅ |
@@ -203,6 +308,179 @@ Working backlog from a broader code sweep. These are live-behaviour gaps and env
 | — | 1.3 Content-level diff | State-drift preview is sufficient |
 | — | 4.2 Active pattern→fix replay | Read-only exposure is useful; active replay is future work |
 | — | 4.3 Docker/CI pipeline | Local packaging (install.sh + Makefile) meets current needs |
+
+---
+
+## §4b — AGENT 20 DESIGN (Phase 8 — "Seven's Nervous System")
+
+> **What it is:** A local algorithm + orchestrator that acts as the face of Fridays Swarm. Not an LLM — a system lens with a chat interface that can call existing agents when it needs reasoning power.
+>
+> **What it is NOT:** An autonomous actor, a chatbot, an emotional companion, or an LLM replacement.
+>
+> **Design principle:** Every output is gated by **PFV** (Plausible, Feasible, Valuable) before it reaches the user.
+
+### 4b.1 — The Seven Senses (Council Roles)
+
+Each orb represents one cognitive faculty. Odd count (7) means no deadlocked votes.
+
+| # | Orb | Sense | Cognitive Question | Data Sources |
+|---|-----|-------|--------------------|-------------|
+| 1 | **Lookout** | Sight | What's in front of me right now? | `activity_log`, `system_stats`, open windows (Brain.ctx), recent `messages` |
+| 2 | **Snoop** | Hearing | Who do we know and what connects? | `memory_*` tables, `knowledge_chunks`, `pending_emails`, `conversations`, `tickets` |
+| 3 | **Spark** | Touch | What can we do about it? | `queue`, `scheduled_tasks`, `work_proposals`, `agent_capabilities`, `skills` |
+| 4 | **Skulk** | Smell | Something doesn't add up… | `audit_results`, `sniffer_log`, `governance_log`, `decisions`, cross-table anomaly detection |
+| 5 | **Keeper** | Taste | Why does this matter to YOU? | `user_interests`, `user_patterns` (new), `user_sessions`, conversation frequency/topics |
+| 6 | **Sage** | Balance | Here's what makes sense | Aggregates all 6 others, applies PFV scoring, synthesises position |
+| 7 | **Patrol** | Gut | Why SHOULDN'T we do this? | Resource cost estimation, queue depth, dependency checks, past dismissal rate |
+
+### 4b.2 — Process Model
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    AGENT 20 LOOP (every 3 min)               │
+│                                                              │
+│  ┌─────────┐    ┌──────────┐    ┌─────────┐    ┌─────────┐  │
+│  │ OBSERVE │───→│DELIBERATE│───→│  SCORE  │───→│ SURFACE │  │
+│  │         │    │          │    │  (PFV)  │    │         │  │
+│  │ Read:   │    │ 7 voice  │    │         │    │ Write:  │  │
+│  │ tables  │    │ scoring  │    │ Gate:   │    │ council │  │
+│  │ DOM ctx │    │ functions │    │ P ≥ 0.5 │    │ _output │  │
+│  │ patterns│    │          │    │ F ≥ 0.4 │    │         │  │
+│  │         │    │ Sage     │    │ V ≥ 0.3 │    │ → orbs  │  │
+│  │         │    │ weighs   │    │ OR drop │    │ → inbox │  │
+│  └─────────┘    └──────────┘    └─────────┘    └─────────┘  │
+│                                                              │
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │ FEEDBACK LOOP                                            ││
+│  │ User taps orb → accepted (boost V) or dismissed (decay) ││
+│  │ Past dismissals feed back into future V scoring          ││
+│  └──────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 4b.3 — PFV Gate (Plausible · Feasible · Valuable)
+
+Every thought, suggestion, and search result is scored before surfacing:
+
+| Gate | Question | How It's Measured | Threshold | Failure Output |
+|------|----------|-------------------|-----------|----------------|
+| **P (Plausible)** | Can this actually be done with what exists? | API/table existence check, agent availability, past success/failure on similar actions | ≥ 0.5 | "Not possible — [reason]" or silently dropped |
+| **F (Feasible)** | Can we realistically do this right now? | Queue depth, resource load (CPU/RAM from `system_stats`), dependency chain length, estimated effort | ≥ 0.4 | "Possible but not right now — queue has [n] items" |
+| **V (Valuable)** | Does the user actually care about this? | `user_interests` score, topic recency, frequency, past dismissal rate, time-of-day relevance | ≥ 0.3 | Silently dropped — user never sees low-value noise |
+
+**Combined score:** `PFV = P × 0.4 + F × 0.3 + V × 0.3` — minimum 0.35 to surface.
+
+### 4b.4 — Wrong Advice Safeguards
+
+**The core problem:** What if Agent 20 gives blatantly incorrect advice?
+
+| Safeguard | How It Works |
+|-----------|-------------|
+| **1. Confidence tagging** | Every output carries a confidence score (0.0–1.0). Below 0.6 → prepend "Low confidence: ". Below 0.3 → don't surface at all. |
+| **2. Source citation** | Every suggestion must cite its source table/record. "Based on ticket #247" or "Based on email from 2026-01-15". User can verify. No source = no output. |
+| **3. Never-execute rule** | Agent 20 SUGGESTS only. It cannot create tickets, send emails, approve proposals, or modify data. All actions go through existing governance. |
+| **4. Dismissal learning** | User can dismiss any suggestion. Three dismissals on the same topic → that topic gets a V penalty for 7 days. Pattern of dismissals on a category → entire category gets dampened. |
+| **5. Contradiction detection** | If two orbs reach opposing conclusions, Sage flags it explicitly: "Snoop says X but Patrol says Y — here's why they disagree." Contradictions are surfaced, not hidden. |
+| **6. Audit trail** | Every council cycle writes to `council_output` with full `context_json`. Every suggestion, every score, every dismissal is logged and reviewable. |
+| **7. Staleness decay** | Thoughts expire. TTL defaults: Lookout 5min, Snoop 30min, Patrol 15min, Skulk 60min, Keeper 24hr, Sage 15min, Spark 30min. Stale thoughts disappear, not linger. |
+| **8. Feature flag** | `AGENT20_ENABLED = false` in config → orbs revert to current random thoughts. Instant kill switch, zero code changes. |
+
+### 4b.5 — Tone Detection
+
+Agent 20 classifies user input before responding:
+
+| Mode | Detection Heuristic | Response Behaviour |
+|------|--------------------|--------------------|
+| **Analytical** | Short sentences, questions, references to specific data/IDs | Direct, factual, cite sources, skip preamble |
+| **Creative** | Long sentences, "what if", "imagine", exploratory language | Open possibilities, suggest options, don't shut down ideas |
+| **Urgent** | "now", "broken", "error", "fix", exclamation marks | Prioritise, triage, skip reasoning — give the answer first |
+| **Exploratory** | "I think", "maybe", "there was", vague references | Sherlock mode — search broadly, suggest connections, ask clarifying questions |
+
+**Key rule:** Agent 20 detects emotion but never responds emotionally. If creative mode is detected, it says "Creative exploration detected — options are wide, here's what's available" not "That's a great idea!"
+
+### 4b.6 — Metrics & Observation
+
+**What the observer reads (existing tables, no new data capture):**
+
+| Signal | Source Table(s) | Update Frequency |
+|--------|----------------|------------------|
+| Active windows / current view | `Brain.ctx` (frontend DOM scan) | Every 5s (existing) |
+| Queue depth & aging | `queue` (status='queued') | Per cycle (3min) |
+| Pending proposals | `work_proposals` (status='pending') | Per cycle |
+| Open tickets aging | `tickets` (status='open', age > 24h) | Per cycle |
+| Agent health | `system_stats`, `activity_log` (recent errors) | Per cycle |
+| User topics | `user_interests`, `conversations` (recent) | Per cycle |
+| Recent decisions | `decisions` (last 7 days) | Per cycle |
+| Scheduled tasks due | `scheduled_tasks` (next_run < now + 1h) | Per cycle |
+| Sniffer findings | `sniffer_log`, `audit_results` (unresolved) | Per cycle |
+| Email backlog | `pending_emails` (unprocessed count) | Per cycle |
+
+**New table — `user_patterns` (write-only in Phase 1):**
+```sql
+CREATE TABLE user_patterns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pattern_type TEXT NOT NULL,   -- 'time_of_day', 'topic_cluster', 'agent_preference', 'action_sequence'
+    pattern_key TEXT NOT NULL,    -- e.g. 'morning_routine', 'email_batch_time', 'preferred_agent'
+    pattern_value TEXT,           -- JSON blob with pattern data
+    confidence REAL DEFAULT 0.1, -- grows with repeated observation
+    occurrences INTEGER DEFAULT 1,
+    first_seen TEXT DEFAULT (datetime('now')),
+    last_seen TEXT DEFAULT (datetime('now')),
+    UNIQUE(pattern_type, pattern_key)
+);
+```
+
+**New table — `council_output`:**
+```sql
+CREATE TABLE council_output (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    orb_role TEXT NOT NULL,        -- 'lookout','snoop','patrol','skulk','sage','keeper','spark'
+    thought TEXT NOT NULL,         -- short surface text (≤ 140 chars)
+    detail TEXT,                   -- longer explanation if user taps
+    urgency INTEGER DEFAULT 0,    -- 0=ambient, 1=notable, 2=important, 3=critical
+    confidence REAL DEFAULT 0.5,  -- 0.0–1.0
+    pfv_p REAL, pfv_f REAL, pfv_v REAL,  -- individual gate scores
+    source_refs TEXT,             -- JSON array of {table, id} citations
+    context_json TEXT,            -- full signal snapshot that produced this
+    dismissed INTEGER DEFAULT 0,  -- user dismissed this thought
+    created_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL       -- TTL per role
+);
+```
+
+### 4b.7 — Phased Delivery
+
+| Phase | Name | Scope | Sessions Est. |
+|-------|------|-------|---------------|
+| **8.1** | Foundation | `observer.py`, `council.py` (7 scoring functions), `council_output` + `user_patterns` tables, `council_bp.py` (GET endpoint), APScheduler in Flask, feature flag, 10+ unit tests. **No LLM. Deterministic only.** | 2–3 |
+| **8.2** | Orb Integration | Modify `orbs.js` to fetch from `/api/council/latest`. Signal-driven thought category selection with existing pools as phrasing layer. Add Keeper + Spark orbs (dormant until high-urgency). Dismissal feedback writes back to `council_output`. | 1–2 |
+| **8.3** | Chat Interface | "Ask Seven" — conversational local search scoped to system data only. Tone detection (heuristic). PFV inline scoring on responses. Optional Ollama call for natural phrasing. Source citations on every answer. | 2–3 |
+| **8.4** | Coordinator | Agent 20 as the main driver: monitors for broken pipes (escape issues, dead references, stale data), suggests fixes via proposals pipeline, tracks system health trends, becomes the "what didn't I consider" lens. Prompt shaper for vague ideas. | 2–3 |
+
+**Phase 8.1 acceptance criteria:**
+- [ ] Observer reads ≥ 8 signal types from existing tables
+- [ ] Council produces one thought per orb role per cycle
+- [ ] PFV gate filters out at least 30% of candidate thoughts
+- [ ] `AGENT20_ENABLED=false` → zero behaviour change
+- [ ] 10+ unit tests passing, all deterministic
+- [ ] No new Python dependencies
+- [ ] No new systemd services
+- [ ] Zero LLM calls
+
+### 4b.8 — File Structure
+
+```
+agents/twenty/
+├── __init__.py           # Agent 20 package, AGENT20_ENABLED flag
+├── observer.py           # collect_signals() → signal dict
+├── council.py            # 7 scoring functions + sage aggregator + PFV gate
+├── scheduler.py          # APScheduler job registration
+├── tone.py               # classify_tone(text) → mode enum
+└── pfv.py                # score_plausible/feasible/valuable functions
+
+frontend/blueprints/council_bp.py   # GET /api/council/latest
+                                     # POST /api/council/dismiss/{id}
+```
 
 ---
 
@@ -250,6 +528,12 @@ Architectural and design decisions that affect future work. Newest first.
 
 | Date | Decision | Rationale | Ref |
 |------|----------|-----------|-----|
+| 21 Apr | DOMPurify for marked.js is a high-priority next task | All `marked.parse()` calls render unsanitised HTML — XSS vector for any user/agent content | N3 / Session 24 |
+| 21 Apr | Consolidate escape helpers into one core function before adding more views | 4+ independent `_escHtml`/`_escapeHtml`/`_esc` definitions are load-order fragile and bug-prone | N2 / Session 24 |
+| 21 Apr | Fix bugs on sight, log design improvements for next phase | Keeps stabilisation phase focused; prevents scope creep while preserving improvement momentum | Session 24 |
+| 20 Apr | Shift Phase 7 from broad relay exploration to tile-by-tile stabilisation audit | Current highest-value work is deterministic UI/API hardening; paid relay testing is now noisy due to model limits | Session 23 |
+| 20 Apr | Treat home chat vs full chat divergence as architecture debt, not just isolated bugs | Recent fixes show repeated state/relay defects from split implementations | C5 / C6 |
+| 20 Apr | Log "works but awkward" findings into next-phase polish instead of fixing everything inline | Keeps Phase 7 focused on reliability while preserving design improvement momentum | Session 23 |
 | 17 Apr (night) | Merge planning + audit into single project memory | Session 22 rewrite lost the build-plan tables; restored as merged document | Session 22 |
 | 17 Apr (night) | Treat current phase as improvement project, not just audit | Feature coverage is high; next value is creative dry-run testing and logging runtime gaps | Session 22 |
 | 17 Apr (eve) | Phase 7.0 Test & Support — no new features until audit resolved | 19 findings from full codebase audit; need stabilisation before adding more | Session 21 |
@@ -280,6 +564,105 @@ Architectural and design decisions that affect future work. Newest first.
 
 Each session is logged here with date, what was done, and key outcomes.  
 **Newest first** — most recent session is always at the top.
+
+---
+
+### Session 26 — 21 April 2026
+**Focus:** Agent 20 vision, design, scope lock. Agent 18 rename to Qwen3.6.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Discuss Agent 20 concept — local orchestrator + system face | ✅ Done | "Like Siri but useful" — local algorithm, not an LLM, uses existing agents for heavy reasoning |
+| 2 | Design 7 senses framework | ✅ Done | Sight/Hearing/Touch/Smell/Taste/Balance/Gut → Lookout/Snoop/Spark/Skulk/Keeper/Sage/Patrol |
+| 3 | Run council deliberation (7 voices) | ✅ Done | All voices spoke; unanimous on Phase 1 scope with Patrol's conditions accepted |
+| 4 | Design PFV gate (Plausible/Feasible/Valuable) | ✅ Done | Scoring model, thresholds, failure outputs, feedback loop |
+| 5 | Design wrong-advice safeguards | ✅ Done | 8 safeguards: confidence tagging, source citation, never-execute, dismissal learning, contradiction detection, audit trail, staleness decay, kill switch |
+| 6 | Design tone detection | ✅ Done | 4 modes: analytical/creative/urgent/exploratory — heuristic, no LLM needed |
+| 7 | Rename Agent 18 (Seven → Qwen3.6) | ✅ Done | Updated seed in `_schema.py`, docstring in `seven_agent.py`, live DB |
+| 8 | Write §4b into SWARM_PROJECT.md | ✅ Done | Full design spec: roles, process model, PFV, safeguards, tone, metrics, phases, file structure |
+
+**Files Modified:**
+- `utils/db/_schema.py` — Agent 18 label Qwen3 → Qwen3.6
+- `agents/seven/seven_agent.py` — docstring updated
+- `swarm_memory.db` — live label updated via SQL
+- `swarm_docs/SWARM_PROJECT.md` — §1, §4b (new), §7 updated
+
+**Key Design Decisions:**
+- D20: Agent 20 is algorithm + orchestrator, NOT an LLM. Uses existing agents when reasoning needed.
+- D21: PFV gate (Plausible ≥ 0.5, Feasible ≥ 0.4, Valuable ≥ 0.3) filters all output before user sees it.
+- D22: Seven senses = seven orbs = odd number for no-deadlock council votes.
+- D23: Phase 1 is entirely deterministic — no LLM calls, no new deps, no new services, feature-flagged.
+- D24: Agent 20 SUGGESTS only — never executes. All actions go through existing governance pipeline.
+- D25: Phase 4 vision — Agent 20 becomes the main driver for system health, broken-pipe detection, and change coordination.
+
+**Tests:** Not re-run (no code changes to runtime — only seed data and docs)
+
+---
+
+### Session 25 — 21 April 2026
+**Focus:** Secondary tile stabilisation audit — tickets, email, tasker, memory, time-wizard, diamond, memory-landscape
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Audit all 7 secondary tile JS files | ✅ Done | Full read of all files; systematic check for escape, fetch, function-existence, DOM patterns |
+| 2 | Fix memory.js escape bugs (3 instances) | ✅ Done | E1 unescaped agent name → _escHtml + dataset; E2/E3 _escapeHtml → _escHtml in value attrs |
+| 3 | Fix tasker.js escape bug | ✅ Done | E4 single-quote breakout → JSON.stringify + _escHtml pattern |
+| 4 | Fix time-wizard.js onclick bugs (4 instances) | ✅ Done | E5 JSON.stringify " breaking HTML attr → wrapped with _escHtml/H |
+| 5 | Validate test suite | ✅ Done | 445 passed, 0 failed |
+| 6 | Update SWARM_PROJECT.md | ✅ Done | §1/§3e/§4/§7 updated |
+
+**Files Modified:**
+- `frontend/static/js/views/memory.js` — E1 agent tabs escape, E2/E3 _escapeHtml → _escHtml
+- `frontend/static/js/views/tasker.js` — E4 delete onclick escape
+- `frontend/static/js/views/time-wizard.js` — E5 JSON.stringify in onclick (4 locations)
+
+**Tests:** 445 passed, 1 pre-existing failure (conversations.py cross-import of login_bp)
+**Tile audit scorecard:** All 4 groups complete — 13 bugs fixed across Sessions 24–25, 0 regressions
+**Key Insight:** _escHtml fragmentation (N2/E6) is the root cause of 4 of the 6 Session 25 bugs — consolidation task 7.24 now higher priority
+
+---
+
+### Session 24 — 21 April 2026
+**Focus:** Tile-by-tile stabilisation audit — chat surfaces, files/library/docs, agents/setup/monitor
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Audit chat surfaces (home chat, floating, full) | ✅ Done | 2 bugs fixed (D1 double-escape, D2 duplicate windows), 3 false positives rejected |
+| 2 | Audit files/library/docs windows | ✅ Done | 4 bugs fixed (D3 hardcoded path, D4 missing Content-Type, D5 dead _toast, D3 workspace_root) |
+| 3 | Audit agents/setup/monitor controls | ✅ Done | 1 bug fixed (D6 stale window ref in skills), dead code documented (N6, N7) |
+| 4 | Fix all identified bugs | ✅ Done | 7 bugs fixed total across 6 files; no regressions |
+| 5 | Validate test suite | ✅ Done | 445 passed, 0 failed (1 pre-existing deselected: conversations cross-import) |
+| 6 | Update SWARM_PROJECT.md | ✅ Done | §1/§3d/§4/§5.6/§6/§7/§8 all updated |
+
+**Files Modified:**
+- `frontend/static/js/views/home-chat.js` — D1 double-escape fix
+- `frontend/static/js/core/app.js` — D2 window dedup fix
+- `frontend/blueprints/workspace.py` — D3 expose workspace_root
+- `frontend/static/js/views/files.js` — D3 capture workspace_root + D4 Content-Type headers
+- `frontend/static/js/views/git.js` — D3 dynamic path resolution
+- `frontend/static/js/views/library.js` — D5 _toast → showToast
+- `frontend/static/js/views/skills.js` — D6 window ref fix
+
+**Tests:** 445 passed, 1 pre-existing failure (conversations.py cross-import of login_bp)
+**Phase 6 scorecard:** 16 PASS / 4 PARTIAL (was 15/5 — 5.6 window dedup now PASS)
+
+---
+
+### Session 23 — 20 April 2026
+**Focus:** Chat stabilisation, relay test review, tile-by-tile audit planning
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Fix floating chat reopen render | ✅ Done | Reset `__fridaysChatLastRenderSig` on open (C1) |
+| 2 | Fix home chat thread sync | ✅ Done | Prefer localStorage/current selection, always sync active conversation id (C2) |
+| 3 | Fix home chat thread labels | ✅ Done | Render thread options as `#id · title` (C3) |
+| 4 | Fix job response propagation | ✅ Done | Response carried through finish callback, DB fallback, public job serializer (C4) |
+| 5 | Review relay test results | ✅ Done | 0 assertion failures but vendor rate limits create noise (C7) |
+| 6 | Plan tile-by-tile audit order | ✅ Done | Chat → Files/Lib/Docs → Agents/Setup/Monitor → Secondary |
+| 7 | Update SWARM_PROJECT.md | ✅ Done | §1, §3c, §4 updated with chat findings and audit plan |
+
+**Tests:** Not re-run this session (relay test suite run separately)
+**Key Insight:** Home chat and full chat divergence (C5) is architecture debt that will keep generating bugs until unified
 
 ---
 
@@ -487,6 +870,11 @@ Things that have bitten us before. Verified during Session 21 audit and Session 
 | **Template literal JS** | Never put `const`/`let` declarations inside template literals — they render as text, not code. Monitor rotation bug was exactly this. | ✅ Fixed |
 | **Sniffer auto-commits** | The Sniffer agent watches for file changes and auto-commits via Vortex chain. Your edits may be committed before you explicitly `git add`. | ✅ |
 | **Hardcoded repo paths** | Several backend blueprints still assume `/home/seven/swarm` directly. Active improvement item — see §4 task 7.15. | ⚠️ Open |
+| **`_filesAbsPath()` dynamic root** | Frontend now uses `window.__filesWorkspaceRoot` from `/api/workspace/dir` response. Falls back to `/home/seven/swarm`. | ✅ Fixed (Session 24) |
+| **`openWindow()` focuses, not duplicates** | Second click on a tile now calls `winManager.focus()` instead of creating a new instance with `multi: true`. | ✅ Fixed (Session 24) |
+| **Escape helper fragmentation** | 4+ independent `_escHtml`/`_escapeHtml`/`_esc` definitions across view files. `init.js` uses `_escHtml` without defining it — depends on conversations.js or skills.js loading first. | ⚠️ Open (N2) |
+| **marked.js has no sanitiser** | All `marked.parse()` calls render raw HTML. No DOMPurify configured. XSS risk for user/agent content. | ⚠️ Open (N3) |
+| **`showToast()` not `_toast()`** | The global toast function is `showToast()`. `_toast()` doesn't exist — was a silent failure in library.js. | ✅ Fixed (Session 24) |
 
 ---
 
@@ -579,4 +967,4 @@ These are point-in-time records. Preserved for audit trail but not actively main
 
 ---
 
-*End of SWARM_PROJECT.md — updated 17 April 2026 (Session 22 — merged)*
+*End of SWARM_PROJECT.md — updated 21 April 2026 (Session 24 — tile-by-tile stabilisation audit)*

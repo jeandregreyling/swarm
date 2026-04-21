@@ -92,6 +92,24 @@ REGISTRY = {
         'usage': 'SKILL schedule <schedule> <action> <data>',
         'example': 'SKILL schedule daily 09:00 QUESTION What is today\'s news?',
     },
+    'tasker_list': {
+        'description': 'List all scheduled tasks and registered Python tasks with their schedules and status.',
+        'trust_level': 0,
+        'usage': 'SKILL tasker_list',
+        'example': 'SKILL tasker_list',
+    },
+    'tasker_run': {
+        'description': 'Run a registered Python task immediately. Use tasker_list to see available tasks.',
+        'trust_level': 0,
+        'usage': 'SKILL tasker_run <task_name>',
+        'example': 'SKILL tasker_run housekeeping',
+    },
+    'tasker_history': {
+        'description': 'Show recent task execution history — what ran, when, and the result.',
+        'trust_level': 0,
+        'usage': 'SKILL tasker_history',
+        'example': 'SKILL tasker_history',
+    },
     'list': {
         'description': 'List all available skills.',
         'trust_level': 0,
@@ -279,6 +297,42 @@ REGISTRY = {
         'trust_level': 0,
         'usage': 'SKILL tool_list [agent]',
         'example': 'SKILL tool_list gemma',
+    },
+    'ollama_web_search': {
+        'description': 'Web search via Ollama cloud API (requires OLLAMA_API_KEY). Returns title, URL, and snippet per result.',
+        'trust_level': 0,
+        'usage': 'SKILL ollama_web_search <query>',
+        'example': 'SKILL ollama_web_search SAP ECP payroll latest changes',
+    },
+    'ollama_web_fetch': {
+        'description': 'Fetch and return full page content from a URL via Ollama cloud API (requires OLLAMA_API_KEY).',
+        'trust_level': 0,
+        'usage': 'SKILL ollama_web_fetch <https://...>',
+        'example': 'SKILL ollama_web_fetch https://help.sap.com/docs/ecp',
+    },
+    'picoclaw': {
+        'description': 'Send a message to a PicoClaw agent (has exec, web_fetch, web_search, subagent, cron tools built in). Runs picoclaw agent -m.',
+        'trust_level': 0,
+        'usage': 'SKILL picoclaw <message>',
+        'example': 'SKILL picoclaw What is the current Bitcoin price?',
+    },
+    'lmstudio': {
+        'description': 'Chat with whatever model is currently loaded in LM Studio (port 1234, OpenAI-compat API).',
+        'trust_level': 0,
+        'usage': 'SKILL lmstudio <message>',
+        'example': 'SKILL lmstudio Explain quantum entanglement in simple terms',
+    },
+    'claude_code': {
+        'description': 'Run a prompt through the Claude Code CLI (non-interactive). Best for code generation, review, and analysis tasks.',
+        'trust_level': 0,
+        'usage': 'SKILL claude_code <prompt>',
+        'example': 'SKILL claude_code Review utils/config.py for security issues',
+    },
+    'check_models': {
+        'description': 'List locally installed Ollama models with sizes. Use "new" to check Ollama registry for trending models. Use "update <model>" to pull latest.',
+        'trust_level': 0,
+        'usage': 'SKILL check_models [new|update <model>]',
+        'example': 'SKILL check_models new',
     },
 }
 
@@ -497,6 +551,65 @@ def _skill_schedule(args, agent, **_):
     name, schedule, action_type, action_data = parsed
     task_id = add_task(name, schedule, action_type, action_data, created_by=agent)
     return True, f'Task #{task_id} scheduled: {name} | {schedule} | next run computed.'
+
+
+def _skill_tasker_list(args, agent, **_):
+    """List all scheduled tasks and registered Python tasks."""
+    from fridays.scheduler import list_tasks
+    from fridays.task_runner import list_registered
+    tasks = list_tasks()
+    registered = list_registered()
+
+    lines = ['=== Scheduled Tasks ===']
+    if tasks:
+        for t in tasks:
+            lines.append(f'  #{t["id"]} {t["name"]:20s} | {t["schedule"]:16s} | {t["action_type"]:6s} | next: {t["next_run"] or "?"}')
+    else:
+        lines.append('  (none)')
+
+    lines.append('\n=== Registered Python Tasks ===')
+    by_cat = {}
+    for r in registered:
+        by_cat.setdefault(r['category'], []).append(r)
+    for cat in sorted(by_cat):
+        lines.append(f'  [{cat}]')
+        for r in by_cat[cat]:
+            lines.append(f'    {r["name"]:20s} — {r["description"]}')
+
+    return True, '\n'.join(lines)
+
+
+def _skill_tasker_run(args, agent, **_):
+    """Run a registered Python task immediately."""
+    task_name = args.strip()
+    if not task_name:
+        return False, 'Usage: SKILL tasker_run <task_name>\nUse SKILL tasker_list to see available tasks.'
+    from fridays.task_runner import run_task
+    success, output = run_task(task_name)
+    return success, output
+
+
+def _skill_tasker_history(args, agent, **_):
+    """Show recent task execution history."""
+    from database import get_connection
+    limit = 15
+    try:
+        with get_connection() as conn:
+            rows = conn.execute(
+                'SELECT task_name, status, output, run_at FROM task_run_log ORDER BY id DESC LIMIT ?',
+                (limit,)
+            ).fetchall()
+    except Exception:
+        return True, 'No task history found (table may not exist yet).'
+
+    if not rows:
+        return True, 'No task runs recorded yet.'
+
+    lines = ['Recent task runs:']
+    for r in rows:
+        status_icon = '✓' if r[1] == 'ok' else '✗'
+        lines.append(f'  {status_icon} {r[3]} | {r[0]:20s} | {(r[2] or "")[:60]}')
+    return True, '\n'.join(lines)
 
 
 def _skill_list(args, agent, **_):
@@ -1566,6 +1679,189 @@ def _skill_tool_list(args, agent, **_):
         return False, f'tool_list error: {e}'
 
 
+def _skill_ollama_web_search(args, agent, **_):
+    """SKILL ollama_web_search <query> — cloud web search via Ollama API."""
+    import os
+    query = (args or '').strip()
+    if not query:
+        return False, 'No query provided. Usage: SKILL ollama_web_search <query>'
+    api_key = os.environ.get('OLLAMA_API_KEY', '').strip()
+    if not api_key:
+        return False, (
+            'OLLAMA_API_KEY is not set. ollama_web_search is a cloud feature from Ollama.\n'
+            'Set OLLAMA_API_KEY to enable it, or use SKILL search for local DuckDuckGo search.'
+        )
+    try:
+        import ollama
+        client  = ollama.Client(headers={'Authorization': f'Bearer {api_key}'})
+        result  = client.web_search(query, max_results=5)
+        if not result.results:
+            return True, 'No results found.'
+        lines = [f'Web search results for: {query}']
+        for r in result.results:
+            lines.append(f'\n[{r.title}]')
+            lines.append(f'URL: {r.url}')
+            if r.content:
+                lines.append(r.content[:300])
+        return True, '\n'.join(lines)
+    except Exception as e:
+        return False, f'ollama_web_search failed: {e}'
+
+
+def _skill_ollama_web_fetch(args, agent, **_):
+    """SKILL ollama_web_fetch <url> — fetch full page content via Ollama API."""
+    import os
+    url = (args or '').strip()
+    if not url:
+        return False, 'No URL provided. Usage: SKILL ollama_web_fetch <https://...>'
+    if not url.startswith('http://') and not url.startswith('https://'):
+        return False, f'Expected a URL starting with http:// or https://\nGot: {url}'
+    api_key = os.environ.get('OLLAMA_API_KEY', '').strip()
+    if not api_key:
+        return False, (
+            'OLLAMA_API_KEY is not set. ollama_web_fetch is a cloud feature from Ollama.\n'
+            'Set OLLAMA_API_KEY to enable it, or use SKILL browse for local Playwright fetching.'
+        )
+    try:
+        import ollama
+        client = ollama.Client(headers={'Authorization': f'Bearer {api_key}'})
+        result = client.web_fetch(url)
+        lines  = []
+        if result.title:
+            lines.append(f'Title: {result.title}')
+        lines.append(f'URL: {url}')
+        if result.content:
+            lines.append('\n' + result.content[:3000])
+        if result.links:
+            lines.append(f'\nLinks ({len(result.links)}): ' + ', '.join(list(result.links)[:10]))
+        return True, '\n'.join(lines)
+    except Exception as e:
+        return False, f'ollama_web_fetch failed: {e}'
+
+
+def _skill_picoclaw(args, agent, **_):
+    import subprocess
+    msg = args.strip()
+    if not msg:
+        return False, 'No message provided. Usage: SKILL picoclaw <message>'
+    try:
+        result = subprocess.run(
+            ['picoclaw', 'agent', '-m', msg],
+            capture_output=True, text=True, timeout=90,
+        )
+        output = result.stdout.strip() or result.stderr.strip()
+        return bool(output), output or 'No response from PicoClaw.'
+    except FileNotFoundError:
+        return False, 'picoclaw binary not found at /usr/bin/picoclaw.'
+    except subprocess.TimeoutExpired:
+        return False, 'PicoClaw agent timed out after 90s.'
+    except Exception as e:
+        return False, f'PicoClaw error: {e}'
+
+
+def _skill_lmstudio(args, agent, **_):
+    import requests as _req
+    msg = args.strip()
+    if not msg:
+        return False, 'No message provided. Usage: SKILL lmstudio <message>'
+    try:
+        r = _req.post(
+            'http://localhost:1234/v1/chat/completions',
+            json={'messages': [{'role': 'user', 'content': msg}], 'stream': False},
+            timeout=60,
+        )
+        r.raise_for_status()
+        data = r.json()
+        content = data.get('choices', [{}])[0].get('message', {}).get('content', '')
+        model = data.get('model', 'unknown')
+        return True, f'[LM Studio — {model}]\n{content}'
+    except _req.exceptions.ConnectionError:
+        return False, 'LM Studio is not running (port 1234 not reachable).'
+    except Exception as e:
+        return False, f'LM Studio error: {e}'
+
+
+def _skill_claude_code(args, agent, **_):
+    import subprocess
+    prompt = args.strip()
+    if not prompt:
+        return False, 'No prompt provided. Usage: SKILL claude_code <prompt>'
+    try:
+        result = subprocess.run(
+            ['claude', '-p', prompt, '--output-format', 'text'],
+            capture_output=True, text=True, timeout=120,
+            cwd='/home/seven/swarm',
+        )
+        output = result.stdout.strip() or result.stderr.strip()
+        return bool(output), output or 'No response from Claude Code.'
+    except FileNotFoundError:
+        return False, 'claude CLI not found. Ensure Claude Code is installed and on PATH.'
+    except subprocess.TimeoutExpired:
+        return False, 'Claude Code timed out after 120s.'
+    except Exception as e:
+        return False, f'Claude Code error: {e}'
+
+
+def _skill_check_models(args, agent, **_):
+    import ollama as _ol
+    mode = (args.strip() or '').lower()
+    try:
+        local = _ol.list()
+        models = local.models if hasattr(local, 'models') else []
+    except Exception as e:
+        return False, f'Could not reach Ollama: {e}'
+
+    if not mode or mode == 'local':
+        lines = [f'Installed Ollama models ({len(models)}):']
+        for m in sorted(models, key=lambda x: getattr(x, 'size', 0) or 0, reverse=True):
+            name = getattr(m, 'model', str(m))
+            size_gb = round((getattr(m, 'size', 0) or 0) / 1e9, 1)
+            modified = str(getattr(m, 'modified_at', ''))[:10]
+            lines.append(f'  {name:<38} {size_gb:>5.1f} GB  ({modified})')
+        return True, '\n'.join(lines)
+
+    if mode in ('new', 'trending', 'registry'):
+        local_names = {getattr(m, 'model', '').split(':')[0] for m in models}
+        try:
+            import requests as _req, re as _re
+            r = _req.get(
+                'https://ollama.com/search?q=&sort=newest', timeout=15,
+                headers={'User-Agent': 'Mozilla/5.0'},
+            )
+            hits = _re.findall(r'href="/([a-z][a-z0-9_.-]+)"', r.text)
+            nav_skip = {'search', 'library', 'blog', 'docs', 'login', 'signup',
+                        'pricing', 'about', 'models', 'tags', 'api'}
+            seen, rows = set(), []
+            for name in hits:
+                if name in seen or name in nav_skip or len(name) < 3:
+                    continue
+                seen.add(name)
+                tag = '  (installed)' if name in local_names else '  ⭐ new'
+                rows.append(f'  {name:<30}{tag}')
+                if len(rows) >= 20:
+                    break
+            if rows:
+                return True, 'Ollama registry — newest models:\n' + '\n'.join(rows)
+            return False, 'Could not parse Ollama registry. Try: SKILL browse https://ollama.com/library'
+        except Exception as e:
+            return False, f'Registry fetch failed: {e}'
+
+    if mode.startswith('update ') or mode.startswith('pull '):
+        target = mode.split(None, 1)[1].strip()
+        try:
+            statuses = []
+            for progress in _ol.pull(target, stream=True):
+                status = getattr(progress, 'status', '') or ''
+                if status:
+                    statuses.append(status)
+            last = statuses[-3:] if statuses else ['done']
+            return True, f'Pulled {target}: ' + ' → '.join(last)
+        except Exception as e:
+            return False, f'Pull failed for {target}: {e}'
+
+    return False, f'Unknown mode: {mode!r}. Usage: SKILL check_models [new|update <model>]'
+
+
 _HANDLERS = {
     'shell':          _skill_shell,
     'browse':         _skill_browse,
@@ -1574,6 +1870,9 @@ _HANDLERS = {
     'search':         _skill_search,
     'remind':         _skill_remind,
     'schedule':       _skill_schedule,
+    'tasker_list':    _skill_tasker_list,
+    'tasker_run':     _skill_tasker_run,
+    'tasker_history': _skill_tasker_history,
     'list':           _skill_list,
     'housekeeping':   _skill_housekeeping,
     'proposals':      _skill_proposals,
@@ -1608,6 +1907,14 @@ _HANDLERS = {
     'tool_test':               _skill_tool_test,
     'tool_status':             _skill_tool_status,
     'tool_list':               _skill_tool_list,
+    # Ollama cloud tools
+    'ollama_web_search':       _skill_ollama_web_search,
+    'ollama_web_fetch':        _skill_ollama_web_fetch,
+    # External agents
+    'picoclaw':                _skill_picoclaw,
+    'lmstudio':                _skill_lmstudio,
+    'claude_code':             _skill_claude_code,
+    'check_models':            _skill_check_models,
 }
 
 

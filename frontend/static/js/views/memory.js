@@ -9,7 +9,7 @@ function renderMemoryAgentTabs() {
       if (!Array.isArray(agents)) return;
       let html = `<button class=\"mem-tab active\" data-agent=\"\" onclick=\"_memTab(this,'')\">All</button>`;
       agents.filter(a => a.enabled).forEach(a => {
-        html += `<button class=\"mem-tab\" data-agent=\"${a.name}\" onclick=\"_memTab(this,'${a.name}')\">${a.number != null ? a.number + ' · ' : ''}${a.label || a.name}</button>`;
+        html += `<button class="mem-tab" data-agent="${_escHtml(a.name)}" onclick="_memTab(this, this.dataset.agent)">${a.number != null ? a.number + ' · ' : ''}${_escHtml(a.label || a.name)}</button>`;
       });
       tabsEl.innerHTML = html;
     });
@@ -465,7 +465,7 @@ function memoryEdit(id, table) {
   area.innerHTML = `
     <div style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--card);display:flex;flex-direction:column;gap:8px;">
       <div style="font-size:11px;color:var(--text-dim);">Edit memory entry</div>
-      <input id="mem-edit-subject" placeholder="Subject" value="${_escapeHtml(String(m.subject || ''))}" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:6px;">
+      <input id="mem-edit-subject" placeholder="Subject" value="${_escHtml(String(m.subject || ''))}" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:6px;">
       <textarea id="mem-edit-content" rows="7" placeholder="Content" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:8px;resize:vertical;">${_escapeHtml(String(m.content || ''))}</textarea>
       <div style="display:flex;gap:6px;justify-content:flex-end;">
         <button class="chat-action-btn" onclick="document.getElementById('mem-det-action-area').innerHTML=''">Cancel</button>
@@ -580,7 +580,7 @@ function memoryAssign(id, table, defaultAgent) {
   area.innerHTML = `
     <div style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--card);display:flex;flex-direction:column;gap:8px;">
       <div style="font-size:11px;color:var(--text-dim);">Share this memory with other agents</div>
-      <input id="mem-share-targets" placeholder="gemma,nine,ten" value="${_escapeHtml(String(defaultAgent || 'gemma,nine,ten'))}" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:6px;">
+      <input id="mem-share-targets" placeholder="gemma,nine,ten" value="${_escHtml(String(defaultAgent || 'gemma,nine,ten'))}" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:6px;">
       <input id="mem-share-note" placeholder="Optional note" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:6px;">
       <div style="display:flex;gap:6px;justify-content:flex-end;">
         <button class="chat-action-btn" onclick="document.getElementById('mem-det-action-area').innerHTML=''">Cancel</button>

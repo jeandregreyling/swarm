@@ -35,7 +35,11 @@ function loadStudioData(win) {
     </div>`;
 
   // Replace the old header + content area
-  content.parentElement.innerHTML = headerHTML + content.outerHTML;
+  const parent = content.parentElement;
+  parent.innerHTML = headerHTML + content.outerHTML;
+
+  // Re-query content since innerHTML replaced the DOM node
+  const newContent = parent.querySelector('#studio-content');
 
   // Ensure the function exists and is not overwritten
   window.createNewProposalFromStudio = createNewProposalFromStudio;
@@ -1375,6 +1379,10 @@ function closeTopWindow() {
       parseInt(a.el.style.zIndex || 0) > parseInt(b.el.style.zIndex || 0) ? a : b
     );
     if (topmost?.id) {
+      if (topmost.fullscreen && typeof winManager.fullscreen === 'function') {
+        winManager.fullscreen(topmost.id);
+        return true;
+      }
       winManager.close(topmost.id);
       return true;
     }

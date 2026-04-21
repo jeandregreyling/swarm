@@ -10,10 +10,9 @@ import re
 # Max request body (default 1MB)
 MAX_CONTENT_LENGTH = int(os.environ.get('SWARM_MAX_REQUEST_MB', '1')) * 1024 * 1024
 
-# Allowed CORS origins (comma-separated)
-CORS_ORIGINS = os.environ.get(
-    'SWARM_CORS_ORIGINS', 'http://localhost:5050,http://127.0.0.1:5050'
-).split(',')
+# Allowed CORS origins (comma-separated) — auto-include all known ports
+_DEFAULT_CORS = 'http://localhost:5050,http://127.0.0.1:5050,http://localhost:5051,http://127.0.0.1:5051,http://localhost:5053,http://127.0.0.1:5053'
+CORS_ORIGINS = os.environ.get('SWARM_CORS_ORIGINS', _DEFAULT_CORS).split(',')
 
 
 def init_security(app):
@@ -36,10 +35,12 @@ def init_security(app):
             origin = req_origin
         if origin:
             response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Vary'] = 'Origin'
             response.headers['Access-Control-Allow-Headers'] = (
-                'Content-Type, X-Node-ID, X-Node-API-Key, X-Request-ID'
+                'Content-Type, Authorization, X-Node-ID, X-Node-API-Key, X-Request-ID'
             )
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
         return response
 
 

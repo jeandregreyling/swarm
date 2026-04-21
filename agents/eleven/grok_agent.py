@@ -41,10 +41,10 @@ def _build_context(message):
         conn.close()
     relevant = get_agent_memory(AGENT_NAME, query=message, limit=5)
     if relevant:
-        lines.append("\n=== Eleven's relevant memory ===")
+        lines.append("\n=== PAST MEMORY RECORDS (database — NOT prior messages in this conversation) ===")
         for m in relevant:
             m = dict(m)
-            lines.append(f"[{str(m.get('created_at',''))[:16]}] {m.get('subject','')}: {str(m.get('content',''))[:200]}")
+            lines.append(f"[RECORD {str(m.get('created_at',''))[:16]}] subject={m.get('subject','')!r} | {str(m.get('content',''))[:200]}")
     return '\n'.join(lines)
 
 
@@ -98,17 +98,23 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
             call_fn=_api_call,
             messages=messages,
             emit_fn=_emit,
-            max_passes=10,            # multi-file exploration needs more passes than default 5
-            nudge_if_no_skills=True,  # Grok defaults to prose — nudge it to emit SKILL commands
+            max_passes=10,
+            nudge_if_no_skills=False,  # Grok handles SKILL commands fine when the task needs them; nudge causes confusion on general questions
             source_conv_id=conv_id,
         )
 
         _emit('persisting response memory')
         try:
             from database import save_agent_memory
+            # Strip routing/relay context prefixes to get the actual user question
+            _user_q = str(message or '')
+            for _marker in ('=== End memory ===', '=== End knowledge broadcast ===', '=== EXECUTION CONFIRMATION ==='):
+                if _marker in _user_q:
+                    _user_q = _user_q[_user_q.rindex(_marker) + len(_marker):]
+            _user_q = _user_q.strip().lstrip('\n')[:100]
             save_agent_memory(
                 agent_name=AGENT_NAME,
-                subject=str(message or '')[:100],
+                subject=_user_q or 'eleven terminal chat',
                 content=answer,
                 tags='chat,shared-thread',
                 importance=7,

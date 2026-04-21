@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-18 22:39*
+*Auto-generated: 2026-04-21 20:59*
 
 
 ## Python Modules
@@ -45,6 +45,7 @@
 | `utils/load_project_docs.py` | load_project_docs.py — Seven's Swarm |
 | `utils/model_selector.py` | Model selector for agentic chat routing (Phase 8.0 — Chunk 8E). |
 | `utils/node_discovery.py` | utils/node_discovery.py — Node discovery + heartbeat + event relay (A.5.1, D.2, D.3) |
+| `utils/platform_compat.py` | utils/platform_compat.py — Cross-platform guard helpers. |
 | `utils/proposal_review.py` | proposal_review.py — Duck's proposal sanity-check + chat-thread notification. |
 | `utils/rate_limiter.py` | utils/rate_limiter.py — Token-bucket rate limiter middleware (E.1.2) |
 | `utils/resource_gate.py` | utils/resource_gate.py — Ollama model resource gate |
@@ -79,7 +80,7 @@
 | File | Description |
 |------|-------------|
 | `agents/deepseek_local/deepseek_local_agent.py` | agents/deepseek_local/deepseek_local_agent.py — DeepSeek R1 (local Ollama) |
-| `agents/eight/eight_agent.py` | agents/eight/eight_agent.py — Eight |
+| `agents/eight/eight_agent.py` | agents/eight/eight_agent.py — Gemma 4 (agent Eight) |
 | `agents/eleven/grok_agent.py` | # LINKED TO: utils/config.py — imports ELEVEN_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/gemma/gemma_agent.py` | agents/gemma/gemma_agent.py — Gemma (local Ollama) |
 | `agents/ghost_coder/ghost_coder_agent.py` | agents/ghost_coder/ghost_coder_agent.py — Ghost Coder (Agent #17) |
@@ -87,13 +88,16 @@
 | `agents/lmstudio/lmstudio_agent.py` | agents/lmstudio/lmstudio_agent.py — LM Studio (local OpenAI-compatible) |
 | `agents/mistral/mistral_agent.py` | # LINKED TO: utils/config.py — imports MISTRAL_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/nine/nine_agent.py` | # LINKED TO: utils/config.py — imports NINE_SYSTEM_PROMPT (edit prompts there, not here) |
+| `agents/nineteen/nineteen_agent.py` | # LINKED TO: utils/config.py — imports NINETEEN_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/phi3/phi3_agent.py` | agents/phi3/phi3_agent.py — Phi-3 Mini (local Ollama) |
 | `agents/qwen/qwen_agent.py` | agents/qwen/qwen_agent.py — Qwen (local Ollama) |
 | `agents/scholar/scholar_agent.py` | # LINKED TO: utils/config.py — imports SCHOLAR_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/seeker/seeker_agent.py` | # LINKED TO: utils/config.py — imports SEEKER_SYSTEM_PROMPT (edit prompts there, not here) |
+| `agents/seven/seven_agent.py` | agents/seven/seven_agent.py — Qwen3.6 (Agent 18) |
 | `agents/ten/copilot_agent.py` | # LINKED TO: utils/config.py — imports TEN_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/thirteen/thirteen_agent.py` | # LINKED TO: utils/config.py — imports THIRTEEN_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/twelve/twelve_agent.py` | # LINKED TO: utils/config.py — imports TWELVE_SYSTEM_PROMPT (edit prompts there, not here) |
+| `agents/twenty/twenty_agent.py` | agents/twenty/twenty_agent.py - Twenty (Qwen3.6) |
 
 ### Fridays / Skills
 
@@ -108,6 +112,7 @@
 | `fridays/scheduler.py` | scheduler.py — Seven's Swarm Scheduler |
 | `fridays/shell_agent.py` | fridays/shell_agent.py — Seven's Swarm (RL-019) |
 | `fridays/skills.py` | fridays/skills.py — Seven's Swarm (RL-021) |
+| `fridays/task_runner.py` | fridays/task_runner.py — Python task runner registry for the Tasker. |
 | `fridays/telegram_bot.py` | fridays/telegram_bot.py — Seven's Swarm (RL-022) |
 | `fridays/tool_builder.py` | fridays/tool_builder.py — Tool build pipeline orchestrator (C.2) |
 
@@ -154,13 +159,16 @@
 | `brief` | 3 | brief.py — Ghost Brief routes |
 | `chat` | 5 | chat.py — Chat Engine routes |
 | `conversations` | 9 | conversations.py — Conversations routes |
+| `council_bp` | 2 | Council API blueprint — serves Agent 20 output to the frontend. |
 | `debates` | 5 | debates.py — Debates routes |
 | `decisions` | 3 | decisions.py — Decisions & Timeline routes |
 | `diamond` | 3 | frontend/blueprints/diamond.py — Diamond Layer governance API. |
-| `docs` | 11 | docs.py — Docs & Project Files routes |
+| `docs` | 14 | docs.py — Docs & Project Files routes |
 | `email_bp` | 5 | blueprints/email_bp.py — Email tile API |
 | `exec_bp` | 4 | exec_bp.py — Ghost Exec routes |
 | `git` | 6 | git.py — Git Operations routes |
+| `health` | 1 | — |
+| `health_bp` | 3 | Health digest API blueprint — one-stop-shop system visibility. |
 | `idle_mgmt_bp` | 3 | idle_mgmt_bp.py — Idle-time self-management (Tier 4.5). |
 | `interests_bp` | 3 | Interests engine — derives user interests from conversations + system memory. |
 | `kb` | 7 | kb.py — Knowledge Base routes |
@@ -168,21 +176,21 @@
 | `legacy` | 3 | legacy.py — Legacy Pipeline & Approval routes |
 | `library` | 11 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
-| `login_bp` | 10 | login_bp.py — User login, registration, session management, and approval. |
+| `login_bp` | 14 | login_bp.py — User login, registration, session management, and approval. |
 | `memory` | 8 | memory.py — Memory routes |
 | `metrics` | 2 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
 | `nine` | 4 | nine.py — Agent Nine routes |
 | `node` | 11 | frontend/blueprints/node.py — Node registration + federation endpoints (A.4.5 + A.5) |
-| `ollama` | 4 | ollama.py — Ollama Models routes |
+| `ollama` | 11 | ollama.py — Ollama Models routes |
 | `onboarding` | 2 | frontend/blueprints/onboarding.py — Onboarding wizard API |
 | `patterns_bp` | 2 | patterns_bp.py — Pattern learning API (Tier 4.2). |
 | `personality_bp` | 4 | personality_bp.py — Agent personality + diary system (Tier 4.4). |
 | `proposals` | 22 | — |
 | `research` | 5 | frontend/blueprints/research.py — Research API (B.4.1) |
-| `shell` | 17 | shell.py — Shell & Terminal routes |
+| `shell` | 18 | shell.py — Shell & Terminal routes |
 | `sse` | 1 | frontend/blueprints/sse.py — Server-Sent Events stream (R.2) |
 | `system` | 17 | system.py — System & Monitoring routes |
-| `tasker_bp` | 5 | tasker_bp.py — Scheduled tasks CRUD API for the Tasker UI. |
+| `tasker_bp` | 8 | tasker_bp.py — Scheduled tasks CRUD API for the Tasker UI. |
 | `tickets` | 11 | tickets.py — Tickets routes |
 | `time_wizard_bp` | 10 | time_wizard_bp.py — Time Wizard routes |
 | `tools` | 7 | frontend/blueprints/tools.py — Tool Build API (C.4.1) |
@@ -194,31 +202,36 @@
 
 | Module | Size |
 |--------|------|
-| `access.js` | 77.9 KB |
-| `chat.js` | 239.1 KB |
-| `conversations.js` | 12.0 KB |
-| `diamond.js` | 19.7 KB |
-| `docs.js` | 30.2 KB |
+| `access.js` | 96.3 KB |
+| `chat.js` | 243.6 KB |
+| `conversations.js` | 13.1 KB |
+| `diamond.js` | 26.9 KB |
+| `docs.js` | 24.3 KB |
 | `email.js` | 22.4 KB |
 | `files.js` | 42.0 KB |
-| `git.js` | 23.7 KB |
-| `home-chat.js` | 34.3 KB |
-| `knowledge.js` | 5.8 KB |
-| `library.js` | 22.0 KB |
-| `localai.js` | 8.5 KB |
+| `git.js` | 23.8 KB |
+| `guide.js` | 7.5 KB |
+| `health-digest.js` | 8.2 KB |
+| `home-chat.js` | 46.9 KB |
+| `knowledge.js` | 6.7 KB |
+| `library-graph.js` | 12.4 KB |
+| `library.js` | 26.4 KB |
+| `localai.js` | 25.5 KB |
 | `memory-landscape.js` | 9.6 KB |
 | `memory.js` | 30.0 KB |
-| `monitor.js` | 15.4 KB |
+| `monitor.js` | 17.9 KB |
 | `ollama.js` | 4.1 KB |
-| `onboarding.js` | 16.2 KB |
+| `onboarding.js` | 16.8 KB |
+| `orbs.js` | 63.0 KB |
 | `services.js` | 4.7 KB |
-| `skills.js` | 22.6 KB |
-| `studio.js` | 85.0 KB |
-| `tasker.js` | 10.0 KB |
-| `terminal-commands.js` | 13.0 KB |
-| `terminal.js` | 41.3 KB |
+| `skills.js` | 25.0 KB |
+| `spotlight.js` | 8.2 KB |
+| `studio.js` | 85.3 KB |
+| `tasker.js` | 10.7 KB |
+| `terminal-commands.js` | 13.1 KB |
+| `terminal.js` | 43.4 KB |
 | `tickets.js` | 6.7 KB |
-| `time-wizard.js` | 36.1 KB |
+| `time-wizard.js` | 35.8 KB |
 | `trace.js` | 22.6 KB |
 | `vpn.js` | 4.2 KB |
 
@@ -226,47 +239,49 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 24549 |
+| `activity_log` | 29667 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
-| `agents` | 19 |
-| `approval_tokens` | 289 |
-| `audit_results` | 3 |
-| `chat_jobs` | 367 |
+| `agents` | 22 |
+| `approval_tokens` | 382 |
+| `audit_results` | 25 |
+| `chat_jobs` | 510 |
 | `claude_log` | 1 |
-| `conv_timeline` | 794 |
-| `conversations` | 101 |
+| `conv_timeline` | 2059 |
+| `conversations` | 494 |
+| `council_output` | 312 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 2589 |
+| `decisions` | 3638 |
 | `deferred_items` | 0 |
-| `duck_log` | 567 |
+| `duck_log` | 679 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 2967 |
-| `governance_log` | 160 |
-| `knowledge_chunks` | 371 |
-| `knowledge_sources` | 29 |
-| `memory` | 45 |
+| `ghost_circle` | 3720 |
+| `governance_log` | 297 |
+| `knowledge_chunks` | 632 |
+| `knowledge_sources` | 46 |
+| `memory` | 89 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 9 |
+| `memory_gemma` | 18 |
 | `memory_ghost_coder` | 0 |
-| `memory_grok` | 0 |
-| `memory_llama` | 2 |
+| `memory_grok` | 47 |
+| `memory_llama` | 1 |
 | `memory_mistral` | 0 |
-| `memory_nine` | 1 |
-| `memory_qwen` | 0 |
+| `memory_nine` | 0 |
+| `memory_qwen` | 2 |
 | `memory_scholar` | 0 |
 | `memory_seeker` | 0 |
 | `memory_sonic` | 0 |
-| `memory_ten` | 0 |
+| `memory_ten` | 59 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `messages` | 199 |
+| `memory_twenty` | 64 |
+| `messages` | 1094 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -275,40 +290,42 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1188 |
+| `queue` | 1534 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 306 |
-| `scheduled_tasks` | 2 |
-| `skills` | 38 |
+| `sandpit_log` | 420 |
+| `scheduled_tasks` | 9 |
+| `skills` | 47 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
-| `sqlite_sequence` | 61 |
-| `sudo_command_whitelist` | 4 |
-| `swarm_bus` | 160 |
-| `swarm_event_acks` | 0 |
-| `swarm_events` | 0 |
+| `sqlite_sequence` | 66 |
+| `sudo_command_whitelist` | 5 |
+| `swarm_bus` | 297 |
+| `swarm_event_acks` | 24 |
+| `swarm_events` | 2 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 0 |
+| `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 6285 |
-| `terminal_shortcuts` | 10 |
-| `ticket_notes` | 321 |
-| `tickets` | 329 |
-| `time_checkpoints` | 2376 |
-| `time_events` | 71971 |
-| `time_journal` | 68368 |
-| `time_machine` | 5193 |
+| `system_stats` | 6973 |
+| `task_run_log` | 0 |
+| `terminal_shortcuts` | 16 |
+| `ticket_notes` | 433 |
+| `tickets` | 441 |
+| `time_checkpoints` | 3032 |
+| `time_events` | 90849 |
+| `time_journal` | 86587 |
+| `time_machine` | 5264 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_interests` | 3 |
-| `user_profiles` | 19 |
-| `user_sessions` | 1 |
+| `user_patterns` | 3 |
+| `user_profiles` | 23 |
+| `user_sessions` | 3 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 93 |
+| `work_proposals` | 222 |
 
 ## Agents
 
@@ -323,6 +340,7 @@
 | `librarian` | qwen:latest | local | Gatekeeper + Vortex — tags, queues, closes, checkpoints | ✅ |
 | `duck` | qwen2.5:latest | local | Sanity checker — YES/NO after every ticket | ✅ |
 | `sniffles` | deepseek-r1:7b | local | Inspector — memory auditor, read only, chain-of-thought | ✅ |
+| `seven` | local-algorithm | local | Personal companion — loyal, thinks out loud | ✅ |
 | `eight` | gemma4:26b | local | SAP specialist — three-voice debate (Functional/Technical/Devil) | ✅ |
 | `nine` | llama-3.3-70b-versatile | paid | Developer Agent — system architect, proposals, Ghost One-directed execution | ✅ |
 | `ten` | gpt-4o | paid | Developer Agent — software engineer, code quality, implementation | ✅ |
@@ -332,7 +350,9 @@
 | `scholar` | gemini-2.0-flash | service | Research · Gemini | ✅ |
 | `seeker` | tavily | service | Internet Search · Tavily | ✅ |
 | `duck_ddg` | duckduckgo | service | Web Search · DuckDuckGo (no key) | ✅ |
-| `ghost_coder` | claude-sonnet-4-20250514 | paid | Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays | ✅ |
+| `ghost_coder` | gpt-5 | paid | Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays | ✅ |
+| `nineteen` | o4-mini | paid | developer | ✅ |
+| `twenty` | qwen3:latest | local | Nervous system — observes, deliberates, suggests (no LLM) | ✅ |
 
 ## Skills
 
@@ -345,6 +365,8 @@
 | `alm_vortex` | Create a named Vortex (time machine) checkpoint. Call before making any file changes. |
 | `browse` | Fetch a URL with headless Chromium. Returns page text. Needs a full URL — use search for questions. |
 | `build_tool` | Scaffold a new tool from template. Types: script, skill, widget, cron, shell. Creates files + DB record. |
+| `check_models` | List locally installed Ollama models with sizes. Use "new" to check Ollama registry for trending models. Use "update <model>" to pull latest. |
+| `claude_code` | Run a prompt through the Claude Code CLI (non-interactive). Best for code generation, review, and analysis tasks. |
 | `deep_dive` | Start a deep research investigation. 5+ sources, cross-validation, gap analysis. |
 | `file_read` | Read a file from a sandpit. Format: agent/filename.txt |
 | `file_write` | Write content to your sandpit. |
@@ -357,7 +379,11 @@
 | `knowledge_search` | Search the consultant knowledge library (SAP HCM, ABAP, emails, PDFs, SAP notes). |
 | `knowledge_write` | Write a new entry to the shared swarm knowledge base. Governed: only from completed proposal context or ghost. |
 | `list` | List all available skills. |
+| `lmstudio` | Chat with whatever model is currently loaded in LM Studio (port 1234, OpenAI-compat API). |
 | `memory_search` | Search the swarm memory pools. Returns top matches. |
+| `ollama_web_fetch` | Fetch and return full page content from a URL via Ollama cloud API (requires OLLAMA_API_KEY). |
+| `ollama_web_search` | Web search via Ollama cloud API (requires OLLAMA_API_KEY). Returns title, URL, and snippet per result. |
+| `picoclaw` | Send a message to a PicoClaw agent (has exec, web_fetch, web_search, subagent, cron tools built in). Runs picoclaw agent -m. |
 | `proposals` | Check sandpits/shared/proposals/ for new agent proposals and notify Ghost. |
 | `remind` | Send Ghost an immediate plain-text reminder email. |
 | `research` | Start a research session on a topic. Searches, analyses, and archives findings. Default depth: standard. |
@@ -369,6 +395,9 @@
 | `shell` | Run a whitelisted shell command. Output returned and emailed to Ghost. |
 | `swarm_knowledge_search` | Search the shared swarm knowledge base (lessons, decisions, facts, patterns, warnings). |
 | `system_index` | Generate or query the system index (modules, blueprints, tables, agents, skills). No args = regenerate. With args = search the index. |
+| `tasker_history` | Show recent task execution history — what ran, when, and the result. |
+| `tasker_list` | List all scheduled tasks and registered Python tasks with their schedules and status. |
+| `tasker_run` | Run a registered Python task immediately. Use tasker_list to see available tasks. |
 | `ticket_create` | Create an internal ticket/proposal. Format: <title> || <description> |
 | `tool_list` | List tool builds. Optionally filter by agent name. |
 | `tool_status` | Check the status of a tool build (scaffolded/building/testing/passed/failed/registered). |

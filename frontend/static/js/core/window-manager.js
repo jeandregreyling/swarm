@@ -46,6 +46,8 @@ class WindowManager {
       return this.windows.get(id);
     }
 
+    const baseId = options.baseId || id;
+
     const defaults = {
       width: Math.max(520, Math.min(860, Math.round(window.innerWidth * 0.42))),
       height: Math.min(600, window.innerHeight * 0.7),
@@ -79,10 +81,11 @@ class WindowManager {
     header.className = 'window-header';
     header.innerHTML = `
       <div class="window-title-wrap">
-        <div class="window-title">${fridaysWindowIconMarkup(id)}<span class="window-title-label">${fridaysCleanWindowTitle(title)}</span></div>
+        <div class="window-title">${fridaysWindowIconMarkup(baseId)}<span class="window-title-label">${fridaysCleanWindowTitle(title)}</span></div>
       </div>
       <div class="window-controls">
         <button class="window-btn" onclick="openWindowHelp('${id}')" title="Help">?</button>
+        <button class="window-btn" onclick="openWindowDuplicate('${id}')" title="New window">⧉</button>
         <button class="window-btn" onclick="winManager.toggleMaximize('${id}')" title="Maximize">⬚</button>
         <button class="window-btn" onclick="winManager.minimize('${id}')" title="Minimize">_</button>
         <button class="window-btn" onclick="winManager.pin('${id}')" title="Pin"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px"><path d="M10 2L6 6 3 5.5 2 10l4-1 4-4M8.5 3.5l4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -120,7 +123,8 @@ class WindowManager {
     this.windows.set(id, {
       el: win,
       id,
-      baseId: options.baseId || id,
+      baseId,
+      templateId: options.templateId || contentTemplateId,
       title,
       config,
       docked: !!config.docked,
@@ -134,7 +138,7 @@ class WindowManager {
     this.setDocked(id, !!config.docked);
     applyWindowThemeToWindow(this.windows.get(id), this.windows.get(id).windowTheme || 'auto');
 
-    this.addTaskbarBtn(id, title);
+    this.addTaskbarBtn(id, title, baseId);
     this.save();
     return this.windows.get(id);
   }
@@ -162,8 +166,10 @@ class WindowManager {
       startLeft: this.windows.get(id).el.offsetLeft,
       startTop: this.windows.get(id).el.offsetTop,
     };
-    document.addEventListener('mousemove', (evt) => this.drag(evt));
-    document.addEventListener('mouseup', () => this.stopDrag());
+    this._boundDrag = (evt) => this.drag(evt);
+    this._boundStopDrag = () => this.stopDrag();
+    document.addEventListener('mousemove', this._boundDrag);
+    document.addEventListener('mouseup', this._boundStopDrag);
   }
 
   drag(e) {
@@ -181,6 +187,12 @@ class WindowManager {
       this.dragging = null;
       this.save();
     }
+    if (this._boundDrag) {
+      document.removeEventListener('mousemove', this._boundDrag);
+      document.removeEventListener('mouseup', this._boundStopDrag);
+      this._boundDrag = null;
+      this._boundStopDrag = null;
+    }
   }
 
   startResize(e, id, direction = 'se') {
@@ -197,8 +209,10 @@ class WindowManager {
       startLeft: winState.el.offsetLeft,
       startTop: winState.el.offsetTop,
     };
-    document.addEventListener('mousemove', (evt) => this.resize(evt));
-    document.addEventListener('mouseup', () => this.stopResize());
+    this._boundResize = (evt) => this.resize(evt);
+    this._boundStopResize = () => this.stopResize();
+    document.addEventListener('mousemove', this._boundResize);
+    document.addEventListener('mouseup', this._boundStopResize);
   }
 
   resize(e) {
@@ -242,6 +256,12 @@ class WindowManager {
       this.resizing = null;
       this.save();
     }
+    if (this._boundResize) {
+      document.removeEventListener('mousemove', this._boundResize);
+      document.removeEventListener('mouseup', this._boundStopResize);
+      this._boundResize = null;
+      this._boundStopResize = null;
+    }
   }
 
   setDocked(id, docked) {
@@ -249,23 +269,13 @@ class WindowManager {
     if (!win) return;
     // Docking disabled: always keep windows as floating.
     win.docked = false;
-    if (win.docked) {
-      win.el.classList.add('docked-right');
-      win.el.style.width = (win.config.width || Math.max(520, Math.min(860, Math.round(window.innerWidth * 0.42)))) + 'px';
-      win.el.style.height = 'calc(100vh - 50px)';
-      win.el.style.top = '0px';
-      win.el.style.left = 'auto';
-      win.el.style.right = '0px';
-      win.el.style.zIndex = this.zIndex++;
-    } else {
-      win.el.classList.remove('docked-right');
-      win.el.style.right = '';
-      win.el.style.left = (win.config.x || 80) + 'px';
-      win.el.style.top = (win.config.y || 60) + 'px';
-      win.el.style.width = (win.config.width || 640) + 'px';
-      win.el.style.height = (win.config.height || 600) + 'px';
-      win.el.style.zIndex = this.zIndex++;
-    }
+    win.el.classList.remove('docked-right');
+    win.el.style.right = '';
+    win.el.style.left = (win.config.x || 80) + 'px';
+    win.el.style.top = (win.config.y || 60) + 'px';
+    win.el.style.width = (win.config.width || 640) + 'px';
+    win.el.style.height = (win.config.height || 600) + 'px';
+    win.el.style.zIndex = this.zIndex++;
     this.save();
   }
 
@@ -384,6 +394,13 @@ class WindowManager {
   close(id) {
     const win = this.windows.get(id);
     if (win) {
+      if (win.fullscreen) {
+        const home = document.getElementById('home-page');
+        if (home) home.style.display = 'flex';
+        const stale = win.el.querySelectorAll('.quick-actions');
+        stale.forEach(node => node.remove());
+        win.fullscreen = false;
+      }
       // Persist last known floating geometry even after the window is closed.
       this.savedState = this.savedState || {};
       this.savedState[id] = {
@@ -406,12 +423,12 @@ class WindowManager {
     }
   }
 
-  addTaskbarBtn(id, title) {
+  addTaskbarBtn(id, title, baseId) {
     const cleanTitle = fridaysCleanWindowTitle(title);
     const btn = document.createElement('button');
     btn.className = 'taskbar-btn active';
     btn.setAttribute('data-winid', id);
-    btn.innerHTML = `${fridaysWindowIconMarkup(id)}<span class="taskbar-label">${cleanTitle}</span>`;
+    btn.innerHTML = `${fridaysWindowIconMarkup(baseId || id)}<span class="taskbar-label">${cleanTitle}</span>`;
     
     // Add preview tooltip
     const preview = document.createElement('div');

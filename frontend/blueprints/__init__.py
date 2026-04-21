@@ -1,1 +1,1 @@
-# Blueprint package
+from .health import health_bp

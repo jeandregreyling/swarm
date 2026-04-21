@@ -84,6 +84,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.login_bp',       'login_bp'),
     ('blueprints.idle_mgmt_bp',   'idle_bp'),
     ('blueprints.tasker_bp',      'tasker_bp'),
+    ('blueprints.health',         'health_bp'),    ('blueprints.health_bp',       'health_digest_bp'),    ('blueprints.council_bp',     'council_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
@@ -163,6 +164,13 @@ def create_app():
         start_heartbeat()
     except Exception as _hb_err:
         print(f'[Terminal] node heartbeat start warning: {_hb_err}')
+
+    # Agent 20 — council scheduler (§4b, Phase 8.1)
+    try:
+        from agents.twenty.scheduler import start as _a20_start
+        _a20_start(app)
+    except Exception as _a20_err:
+        print(f'[Terminal] Agent 20 scheduler start warning: {_a20_err}')
 
     # ── Routes ────────────────────────────────────────────────────────────────
 

@@ -299,7 +299,7 @@ def update_proposal_status(proposal_id):
         # Notify chat thread + trigger Duck quality check when done
         try:
             import sys as _sys
-            _sys.path.insert(0, '/home/seven/swarm/utils')
+            _sys.path.insert(0, _os.path.join(_SWARM_PROD_ROOT, 'utils'))
             from proposal_review import notify_proposal_status_change
             import threading as _t
             _t.Thread(
@@ -323,7 +323,7 @@ def duck_execute_route(proposal_id):
         data = request.get_json(silent=True) or {}
         actor = data.get("actor", "duck")
         import sys as _sys
-        _sys.path.insert(0, '/home/seven/swarm/utils')
+        _sys.path.insert(0, _os.path.join(_SWARM_PROD_ROOT, 'utils'))
         from proposal_review import duck_execute_proposal
         ok, msg = duck_execute_proposal(proposal_id, actor=actor)
         return jsonify({"ok": ok, "message": msg})
@@ -492,7 +492,7 @@ def agent_advance(proposal_id):
 
         try:
             import sys as _sys
-            _sys.path.insert(0, '/home/seven/swarm/utils')
+            _sys.path.insert(0, _os.path.join(_SWARM_PROD_ROOT, 'utils'))
             from proposal_review import notify_proposal_status_change
             threading.Thread(
                 target=notify_proposal_status_change,

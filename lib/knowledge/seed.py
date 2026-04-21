@@ -778,6 +778,7 @@ def seed_collection(collection='all'):
     """
     Seed the library with built-in knowledge documents.
     Returns (added_count, skipped_count).
+    Supports: 'sap_corner', 'programming', 'fridays', 'all'.
     """
     from lib.knowledge.store import add_source, check_duplicate, ensure_schema
     from lib.knowledge.ingest import process_source
@@ -789,6 +790,8 @@ def seed_collection(collection='all'):
         docs.extend(_all_sap_docs())
     if collection in ('all', 'programming'):
         docs.extend(_all_programming_docs())
+    if collection in ('all', 'fridays'):
+        docs.extend(_all_fridays_docs())
 
     added = 0
     skipped = 0
@@ -822,3 +825,78 @@ def seed_collection(collection='all'):
 
     logger.info(f'[Seed] collection={collection}: added={added}, skipped={skipped}')
     return added, skipped
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# FRIDAYS / SWARM DOCS — Seeded from docs/ directory
+# ════════════════════════════════════════════════════════════════════════════════
+
+# Mapping of doc files → fridays subcategories
+_FRIDAYS_DOC_MAP = {
+    # Architecture
+    'ARCHITECTURE.md':          ('architecture', ['architecture', 'swarm', 'design']),
+    'ARCHITECTURE_DIAGRAM.md':  ('architecture', ['architecture', 'diagram']),
+    'FILE_STRUCTURE.md':        ('architecture', ['architecture', 'files', 'structure']),
+    'PROJECT.md':               ('architecture', ['project', 'overview']),
+    'PHASE_4.0_DIAMOND_LAYER.md': ('architecture', ['phase4', 'diamond', 'design']),
+
+    # Agent guides
+    'AGENT_TWELVE_MANUAL.md':   ('agent_guides', ['agents', 'twelve', 'claude']),
+    'ALM_COOKBOOK.md':           ('agent_guides', ['alm', 'proposals', 'workflow']),
+    'ALM_DRIVER.md':            ('agent_guides', ['alm', 'automation']),
+    'API_REFERENCE.md':         ('agent_guides', ['api', 'reference']),
+    'DEVELOPER_WORKFLOW.md':    ('agent_guides', ['developer', 'workflow']),
+
+    # Deployment
+    'DEPLOYMENT_GUIDE.md':      ('deployment', ['deployment', 'systemd', 'production']),
+    'ENVIRONMENTS_REFERENCE.md':('deployment', ['environments', 'stages', 'worktrees']),
+    'MULTI_STAGE_WORKFLOW.md':  ('deployment', ['stages', 'workflow', 'promote']),
+    'VERSION_CONTROL.md':       ('deployment', ['git', 'version', 'branching']),
+
+    # Troubleshooting
+    'BUGS.md':                  ('troubleshoot', ['bugs', 'issues', 'fixes']),
+    'SYSTEM_CLOCK.md':          ('troubleshoot', ['time', 'scheduling', 'clock']),
+    'CHANGELOG.md':             ('troubleshoot', ['changelog', 'history', 'fixes']),
+}
+
+
+def _all_fridays_docs():
+    """Read swarm documentation files from docs/ and return as seed entries."""
+    import os
+    docs_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'docs')
+    docs_dir = os.path.normpath(docs_dir)
+
+    docs = []
+    for filename, (subcategory, tags) in _FRIDAYS_DOC_MAP.items():
+        filepath = os.path.join(docs_dir, filename)
+        if not os.path.isfile(filepath):
+            logger.warning(f'[Seed] fridays doc not found: {filepath}')
+            continue
+
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except Exception as e:
+            logger.warning(f'[Seed] failed to read {filepath}: {e}')
+            continue
+
+        if not content.strip():
+            continue
+
+        # Use first heading as title, or filename
+        title = filename.replace('.md', '').replace('_', ' ').title()
+        for line in content.split('\n'):
+            line = line.strip()
+            if line.startswith('# '):
+                title = line.lstrip('# ').strip()
+                break
+
+        docs.append({
+            'title': f'Swarm Docs — {title}',
+            'content': content,
+            'category': 'fridays',
+            'subcategory': subcategory,
+            'tags': ['swarm', 'fridays'] + tags,
+        })
+
+    return docs

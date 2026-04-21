@@ -312,7 +312,7 @@ function renderTwTimeline(decisions) {
     const color = statusColors[status] || '#888';
     const rawId = d.id || d.decision_id || '';
     return `
-      <div style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid ${color}; border-radius: 4px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer;" onclick="expandTwDecision(${JSON.stringify(rawId)})">
+      <div style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid ${color}; border-radius: 4px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer;" onclick="expandTwDecision(${_escHtml(JSON.stringify(rawId))})">
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
           <span style="font-size: 11px; color: var(--text-dim); font-family: monospace;">${_escHtml(rawId || '—')}</span>
           <span style="font-size: 10px; font-weight: 700; color: ${color}; text-transform: uppercase;">${_escHtml(status)}</span>
@@ -368,7 +368,7 @@ function renderTwHistoryPanel() {
     const kindLabel = isCheckpoint ? 'SNAPSHOT' : 'LOG';
     const rollbackLabel = isCheckpoint ? 'Rollback' : 'Rollback to point';
     return `<div style="margin-bottom:8px;padding:10px;border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};border-radius:6px;background:var(--card);">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer;" onclick="selectTwHistoryItem(${JSON.stringify(item.kind)},${JSON.stringify(String(item.id))})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer;" onclick="selectTwHistoryItem(${_escHtml(JSON.stringify(item.kind))},${_escHtml(JSON.stringify(String(item.id)))})">
         <div style="flex:1;min-width:0;">
           <div style="font-size:10px;color:${color};font-weight:700;letter-spacing:0.4px;">${kindLabel}</div>
           <div style="font-size:11px;color:var(--text);font-weight:600;line-height:1.35;margin-top:2px;word-break:break-word;">${_escHtml(item.title || '(untitled)')}</div>
@@ -376,7 +376,7 @@ function renderTwHistoryPanel() {
         </div>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-        <button onclick="twRollbackToHistory(${JSON.stringify(item.kind)},${JSON.stringify(String(item.id))})" style="padding:4px 8px;background:${isCheckpoint ? '#f59e0b22' : 'var(--bg)'};border:1px solid ${isCheckpoint ? '#f59e0b55' : 'var(--border)'};border-radius:4px;color:${isCheckpoint ? '#f59e0b' : 'var(--text)'};font-size:10px;cursor:pointer;">${rollbackLabel}</button>
+        <button onclick="twRollbackToHistory(${_escHtml(JSON.stringify(item.kind))},${_escHtml(JSON.stringify(String(item.id)))})" style="padding:4px 8px;background:${isCheckpoint ? '#f59e0b22' : 'var(--bg)'};border:1px solid ${isCheckpoint ? '#f59e0b55' : 'var(--border)'};border-radius:4px;color:${isCheckpoint ? '#f59e0b' : 'var(--text)'};font-size:10px;cursor:pointer;">${rollbackLabel}</button>
       </div>
     </div>`;
   }).join('');
@@ -483,7 +483,7 @@ function renderTwVisualTimeline() {
     const label = isCheckpoint ? (item.checkpoint_name || item.title || '').slice(0, 18) : '';
     // Connector line (not for the first node)
     const connector = idx > 0 ? `<div style="width:20px;height:2px;background:var(--border);flex-shrink:0;"></div>` : '';
-    return `${connector}<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;flex-shrink:0;min-width:${isCheckpoint ? 48 : 16}px;" onclick="selectTwHistoryItem(${JSON.stringify(item.kind)},${JSON.stringify(String(item.id))})" title="${H((item.title || '').slice(0, 80))}\n${H(item.ts || '')}">
+    return `${connector}<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;flex-shrink:0;min-width:${isCheckpoint ? 48 : 16}px;" onclick="selectTwHistoryItem(${H(JSON.stringify(item.kind))},${H(JSON.stringify(String(item.id)))})" title="${H((item.title || '').slice(0, 80))}\n${H(item.ts || '')}">
       <div style="width:${size}px;height:${size}px;${shape}border:${border};background:${bg};flex-shrink:0;"></div>
       ${label ? `<div style="font-size:8px;color:var(--text-dim);margin-top:3px;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${H(label)}</div>` : ''}
       ${timeStr ? `<div style="font-size:7px;color:var(--text-dim);opacity:0.7;">${H(dateStr)} ${H(timeStr)}</div>` : ''}
@@ -608,22 +608,26 @@ function loadDocsGhostBrief(contentEl) {
   _gbContentEl = contentEl;
   _gbHistoryVisible = false;
   contentEl.innerHTML = `
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-      <button id="gb-regen-btn" onclick="regenerateBriefInDocs()"
-        style="padding:5px 14px;border-radius:4px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:12px;cursor:pointer;font-family:inherit;">
-        &#8635; Generate
-      </button>
-      <button id="gb-hist-btn" onclick="toggleBriefHistoryInDocs()"
-        style="padding:5px 14px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:12px;cursor:pointer;font-family:inherit;">
-        History
-      </button>
-      <span id="gb-meta" style="font-size:10px;color:var(--text-dim);margin-left:auto;"></span>
-    </div>
-    <div id="gb-history-panel" style="display:none;max-height:200px;overflow-y:auto;margin-bottom:12px;
-         border:1px solid var(--border);border-radius:4px;padding:8px;background:var(--bg);">
-      <div id="gb-history-list" style="font-size:11px;color:var(--text-dim);">Loading...</div>
-    </div>
-    <div id="gb-body"></div>`;
+    <div class="docs-center-stage docs-brief-stage">
+      <div class="docs-panel docs-brief-shell">
+        <div class="docs-toolbar docs-toolbar-spaced docs-brief-toolbar">
+          <div>
+            <div class="docs-title-line">Ghost Brief</div>
+            <div class="docs-muted-copy">Daily synthesis, active swarm state, patterns, and the next 24h view.</div>
+          </div>
+          <div class="docs-quick-actions">
+            <button id="gb-regen-btn" onclick="regenerateBriefInDocs()" class="knowledge-btn knowledge-btn-primary">&#8635; Generate</button>
+            <button id="gb-hist-btn" onclick="toggleBriefHistoryInDocs()" class="knowledge-btn">History</button>
+          </div>
+        </div>
+        <div id="gb-meta" class="docs-doc-row-meta docs-brief-meta"></div>
+        <div id="gb-history-panel" class="docs-panel docs-brief-history-panel" style="display:none;">
+          <div class="docs-section-label">Recent Briefs</div>
+          <div id="gb-history-list" class="docs-scroll-list docs-doc-list">Loading...</div>
+        </div>
+        <div id="gb-body" class="docs-panel docs-brief-body"></div>
+      </div>
+    </div>`;
   _fetchAndRenderBrief(false);
 }
 
@@ -633,10 +637,10 @@ async function _fetchAndRenderBrief(forceGenerate) {
   const btn  = document.getElementById('gb-regen-btn');
   if (!body) return;
 
-  body.innerHTML = `<div style="color:var(--text-dim);text-align:center;padding:60px 20px;font-size:12px;">
-    <div style="font-size:24px;margin-bottom:12px;">&#128203;</div>
+  body.innerHTML = `<div class="docs-empty-state docs-brief-loading">
+    <div class="docs-brief-loading-icon">&#128203;</div>
     <div>${forceGenerate ? 'Nine is reading the swarm state and synthesising...' : 'Loading latest brief...'}</div>
-    ${forceGenerate ? '<div style="font-size:11px;margin-top:6px;">This takes ~15 seconds.</div>' : ''}
+    ${forceGenerate ? '<div class="docs-doc-row-meta">This takes ~15 seconds.</div>' : ''}
   </div>`;
   if (btn) { btn.disabled = true; btn.textContent = forceGenerate ? 'Thinking...' : 'Loading...'; }
 
@@ -653,14 +657,14 @@ async function _fetchAndRenderBrief(forceGenerate) {
 
     const text = (brief.content || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const coloured = text
-      .replace(/(═+)/g, '<span style="color:var(--accent);opacity:0.6">$1</span>')
-      .replace(/(GHOST BRIEF[^\n]*)/g, '<span style="color:var(--accent);font-weight:700;font-size:13px;">$1</span>')
+      .replace(/(═+)/g, '<span class="docs-brief-rule">$1</span>')
+      .replace(/(GHOST BRIEF[^\n]*)/g, '<span class="docs-brief-headline">$1</span>')
       .replace(/^(SITUATION|TICKET PATTERNS|MEMORY HIGHLIGHTS|OPEN ITEMS|SYSTEM HEALTH|NINE'S TAKE|NEXT 24H)$/gm,
-               '<span style="color:var(--accent);font-weight:700;letter-spacing:0.05em;">$1</span>')
-      .replace(/(⚠️[^\n]*)/g, '<span style="color:#ffc800;">$1</span>')
-      .replace(/(✅[^\n]*)/g, '<span style="color:#00ff80;">$1</span>');
+               '<span class="docs-brief-section">$1</span>')
+      .replace(/(⚠️[^\n]*)/g, '<span class="docs-brief-warning">$1</span>')
+      .replace(/(✅[^\n]*)/g, '<span class="docs-brief-success">$1</span>');
 
-    body.innerHTML = `<div style="font-family:monospace;font-size:12px;line-height:1.75;white-space:pre-wrap;">${coloured}</div>`;
+    body.innerHTML = `<div class="docs-brief-content">${coloured}</div>`;
 
     if (meta) {
       const genAt   = brief.generated_at || '';
@@ -669,9 +673,9 @@ async function _fetchAndRenderBrief(forceGenerate) {
       meta.textContent = `Generated ${genAt} · ${tokens} tokens · trigger: ${trigger}`;
     }
   } catch (e) {
-    body.innerHTML = `<div style="color:#f44;padding:20px;font-size:12px;">
+    body.innerHTML = `<div class="docs-error-state">
       <strong>Failed to load brief:</strong> ${e.message}<br>
-      <span style="color:var(--text-dim);font-size:11px;">Check ANTHROPIC_API_KEY is set and Claude API is reachable.</span>
+      <span class="docs-doc-row-meta">Check ANTHROPIC_API_KEY is set and Claude API is reachable.</span>
     </div>`;
     showToast('Brief failed: ' + e.message, 'error');
   } finally {
@@ -690,7 +694,7 @@ function toggleBriefHistoryInDocs() {
   if (!panel) return;
   _gbHistoryVisible = !_gbHistoryVisible;
   panel.style.display = _gbHistoryVisible ? 'block' : 'none';
-  if (btn) btn.style.borderColor = _gbHistoryVisible ? 'var(--accent)' : 'var(--border)';
+  if (btn) btn.classList.toggle('docs-filter-btn-active', _gbHistoryVisible);
   if (_gbHistoryVisible) _loadBriefHistoryList();
 }
 
@@ -702,15 +706,13 @@ async function _loadBriefHistoryList() {
     const data = await res.json();
     _gbBriefs  = data.briefs || [];
     list.innerHTML = _gbBriefs.map(b => `
-      <div onclick="_loadBriefPreview(${b.id})"
-           style="padding:8px;border-radius:4px;border:1px solid var(--border);margin-bottom:6px;
-                  cursor:pointer;font-size:11px;background:var(--card);">
-        <div style="color:var(--accent);font-weight:600;">#${b.id} · ${b.brief_type}</div>
-        <div style="color:var(--text-dim);margin-top:2px;">${(b.generated_at||'').slice(0,16)}</div>
-        <div style="color:var(--text-dim);font-size:10px;">${b.tokens_used||0} tokens</div>
-      </div>`).join('') || '<div style="color:var(--text-dim);">No briefs yet.</div>';
+      <button type="button" onclick="_loadBriefPreview(${b.id})" class="docs-doc-row">
+        <div class="docs-doc-row-title">#${b.id} · ${b.brief_type}</div>
+        <div class="docs-doc-row-meta">${(b.generated_at||'').slice(0,16)}</div>
+        <div class="docs-doc-row-meta">${b.tokens_used||0} tokens</div>
+      </button>`).join('') || '<div class="docs-empty-state docs-empty-compact">No briefs yet.</div>';
   } catch (e) {
-    list.innerHTML = `<div style="color:#f44;">Failed: ${e.message}</div>`;
+    list.innerHTML = `<div class="docs-error-state">Failed: ${e.message}</div>`;
   }
 }
 
@@ -719,9 +721,9 @@ function _loadBriefPreview(id) {
   const meta = document.getElementById('gb-meta');
   const brief = _gbBriefs.find(b => b.id === id);
   if (!brief || !body) { showToast('Brief not found', 'error'); return; }
-  body.innerHTML = `<div style="font-family:monospace;font-size:12px;line-height:1.75;white-space:pre-wrap;">${
+  body.innerHTML = `<div class="docs-brief-content">${
     (brief.preview || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-  }\n\n<span style="color:var(--text-dim);">[Brief #${id} preview — hit Generate for full text]</span></div>`;
+  }\n\n<span class="docs-brief-preview-note">[Brief #${id} preview — hit Generate for full text]</span></div>`;
   if (meta) meta.textContent = `Brief #${id} · ${(brief.generated_at||'').slice(0,16)} · ${brief.tokens_used||0} tokens`;
 }
 

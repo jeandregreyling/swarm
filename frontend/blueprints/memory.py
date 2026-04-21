@@ -1,8 +1,15 @@
 """memory.py — Memory routes"""
+import re
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
 
 memory_bp = Blueprint('memory', __name__)
+
+def _safe_table_name(name):
+    """Validate table name is alphanumeric/underscore only (SQL injection guard)."""
+    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name):
+        raise ValueError(f"Invalid table name: {name!r}")
+    return name
 
 # Agent memory table mapping — now from DB registry (single source of truth)
 from utils.db.registry import get_agent_tables as _reg_mem_tables
@@ -25,7 +32,7 @@ def _get_all_memory_tables():
 
 def _collect_local_file_memories(query='', agent='', limit=120):
     """Collect local file-based memories from sandpits for UI visibility."""
-    sandpit_root = Path('/home/seven/swarm/sandpits')
+    sandpit_root = Path(os.environ.get('SWARM_ROOT', str(Path(__file__).resolve().parents[2]))) / 'sandpits'
     if not sandpit_root.exists():
         return []
 
@@ -251,6 +258,7 @@ def bulk_update_memory():
             if table not in _get_all_memory_tables():
                 skipped.append({'id': row_id, 'table': table, 'reason': 'invalid table'})
                 continue
+            table = _safe_table_name(table)
 
             cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
             row = conn.execute(f"SELECT * FROM {table} WHERE id=?", (row_id,)).fetchone()
@@ -336,6 +344,7 @@ def bulk_delete_memory():
             if table not in _get_all_memory_tables():
                 skipped.append({'id': row_id, 'table': table, 'reason': 'invalid table'})
                 continue
+            table = _safe_table_name(table)
 
             cur = conn.execute(f'DELETE FROM {table} WHERE id=?', (row_id,))
             if cur.rowcount:
@@ -352,7 +361,7 @@ def bulk_delete_memory():
 
 @memory_bp.route('/api/memory/<int:row_id>', methods=['DELETE'])
 def delete_memory(row_id):
-    table = request.args.get('table', 'memory')
+    table = _safe_table_name(request.args.get('table', 'memory'))
     if table not in _get_all_memory_tables():
         return jsonify({'error': 'invalid table'}), 400
     conn = get_connection()
@@ -368,7 +377,7 @@ def delete_memory(row_id):
 @memory_bp.route('/api/memory/<int:row_id>', methods=['PATCH'])
 def update_memory(row_id):
     data = request.get_json(silent=True) or {}
-    table = (data.get('table') or request.args.get('table') or 'memory').strip()
+    table = _safe_table_name((data.get('table') or request.args.get('table') or 'memory').strip())
     if table not in _get_all_memory_tables():
         return jsonify({'error': 'invalid table'}), 400
 
@@ -434,7 +443,7 @@ def attach_memory(row_id):
     data = request.get_json(silent=True) or {}
     label = (data.get('label') or '').strip()
     value = (data.get('value') or '').strip()
-    table = (data.get('table') or request.args.get('table') or 'memory').strip()
+    table = _safe_table_name((data.get('table') or request.args.get('table') or 'memory').strip())
     if table not in _get_all_memory_tables():
         return jsonify({'error': 'invalid table'}), 400
     if not label or not value:
@@ -465,7 +474,7 @@ def attach_memory(row_id):
 @memory_bp.route('/api/memory/<int:row_id>/assign', methods=['POST'])
 def assign_memory(row_id):
     data = request.get_json(silent=True) or {}
-    from_table = (data.get('table') or request.args.get('table') or 'memory').strip()
+    from_table = _safe_table_name((data.get('table') or request.args.get('table') or 'memory').strip())
     targets = data.get('targets') or []
     if isinstance(targets, str):
         targets = [x.strip() for x in targets.split(',') if x.strip()]
@@ -489,6 +498,7 @@ def assign_memory(row_id):
             if not tgt_table or tgt_table not in _get_all_memory_tables():
                 skipped.append({'agent': agent_name, 'reason': 'unknown target'})
                 continue
+            tgt_table = _safe_table_name(tgt_table)
 
             cols = {r[1] for r in conn.execute(f"PRAGMA table_info({tgt_table})").fetchall()}
             now_iso = datetime.now(timezone.utc).isoformat()

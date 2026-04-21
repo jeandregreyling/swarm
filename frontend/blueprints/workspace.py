@@ -28,9 +28,9 @@ def api_workspace_dir():
     
     # Security: only allow paths within SWARM_ROOT
     try:
-        swarm_root = Path(_SWARM_ROOT)
+        swarm_root = Path(_SWARM_ROOT).resolve()
         requested = Path(base_path).resolve()
-        if not str(requested).startswith(str(swarm_root)):
+        if not requested.is_relative_to(swarm_root):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
     except Exception as e:
         return jsonify({'ok': False, 'error': f'invalid path: {e}'}), 400
@@ -81,6 +81,7 @@ def api_workspace_dir():
         'ok': True,
         'path': str(requested.relative_to(swarm_root)),
         'absolute_path': str(requested),
+        'workspace_root': str(swarm_root),
         'entries': entries,
         'count': len(entries),
         'depth_limit': depth,
@@ -111,11 +112,11 @@ def api_workspace_file():
     max_bytes = max(1024, min(max_bytes, 500000))  # 1KB min, 500KB max
     
     try:
-        swarm_root = Path(_SWARM_ROOT)
+        swarm_root = Path(_SWARM_ROOT).resolve()
         full_path = (swarm_root / file_path).resolve()
         
         # Security check
-        if not str(full_path).startswith(str(swarm_root)):
+        if not full_path.is_relative_to(swarm_root):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
     except Exception as e:
         return jsonify({'ok': False, 'error': f'invalid path: {e}'}), 400
@@ -176,9 +177,9 @@ def api_workspace_file_save():
         return jsonify({'ok': False, 'error': 'content too large (max 1MB)'}), 413
 
     try:
-        swarm_root = Path(_SWARM_ROOT)
+        swarm_root = Path(_SWARM_ROOT).resolve()
         full_path = (swarm_root / file_path).resolve()
-        if not str(full_path).startswith(str(swarm_root)):
+        if not full_path.is_relative_to(swarm_root):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
     except Exception as e:
         return jsonify({'ok': False, 'error': f'invalid path: {e}'}), 400
@@ -275,7 +276,7 @@ def _workspace_replace_candidates(scope_path, pattern, max_files=300):
     swarm_root = Path(_SWARM_ROOT)
     rel_scope = str(scope_path or '').strip().lstrip('/')
     scope = (swarm_root / rel_scope).resolve() if rel_scope else swarm_root
-    if not str(scope).startswith(str(swarm_root)):
+    if not scope.is_relative_to(swarm_root):
         raise ValueError('scope outside workspace')
     if not scope.exists():
         raise ValueError('scope not found')
@@ -443,9 +444,9 @@ def api_code_ops_pytest():
         return jsonify({'ok': False, 'error': 'file_path required'}), 400
 
     try:
-        swarm_root = Path(_SWARM_ROOT)
+        swarm_root = Path(_SWARM_ROOT).resolve()
         full_path = (swarm_root / file_path).resolve()
-        if not str(full_path).startswith(str(swarm_root)):
+        if not full_path.is_relative_to(swarm_root):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
         if not full_path.exists() or not full_path.is_file():
             return jsonify({'ok': False, 'error': 'file not found'}), 404
@@ -489,9 +490,9 @@ def api_code_ops_pylint():
         return jsonify({'ok': False, 'error': 'only .py files supported'}), 400
 
     try:
-        swarm_root = Path(_SWARM_ROOT)
+        swarm_root = Path(_SWARM_ROOT).resolve()
         full_path = (swarm_root / file_path).resolve()
-        if not str(full_path).startswith(str(swarm_root)):
+        if not full_path.is_relative_to(swarm_root):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
         if not full_path.exists() or not full_path.is_file():
             return jsonify({'ok': False, 'error': 'file not found'}), 404
@@ -536,9 +537,9 @@ def api_code_ops_format():
         return jsonify({'ok': False, 'error': 'only .py files supported'}), 400
 
     try:
-        swarm_root = Path(_SWARM_ROOT)
+        swarm_root = Path(_SWARM_ROOT).resolve()
         full_path = (swarm_root / file_path).resolve()
-        if not str(full_path).startswith(str(swarm_root)):
+        if not full_path.is_relative_to(swarm_root):
             return jsonify({'ok': False, 'error': 'path outside workspace'}), 403
     except Exception as e:
         return jsonify({'ok': False, 'error': f'invalid path: {e}'}), 400

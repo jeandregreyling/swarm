@@ -49,11 +49,19 @@ def login_required(f):
 
 def init_session_auth(app):
     """Wire session auth into a Flask app. Call once in create_app()."""
-    # Set secret key for sessions
-    app.secret_key = os.environ.get(
-        'SWARM_SECRET_KEY',
-        secrets.token_hex(32),
-    )
+    # Persist secret key so sessions survive restarts
+    _key_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.secret_key')
+    secret = os.environ.get('SWARM_SECRET_KEY', '')
+    if not secret:
+        try:
+            with open(_key_file, 'r') as f:
+                secret = f.read().strip()
+        except FileNotFoundError:
+            secret = secrets.token_hex(32)
+            with open(_key_file, 'w') as f:
+                f.write(secret)
+            os.chmod(_key_file, 0o600)
+    app.secret_key = secret
 
     app.register_blueprint(session_auth_bp)
 

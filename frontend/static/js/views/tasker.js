@@ -120,7 +120,7 @@ function _taskerRenderList() {
       <div class="tasker-actions">
         <button class="tasker-action-btn" onclick="runTaskerNow(${t.id})" title="Run now">▶</button>
         <button class="tasker-action-btn" onclick="editTasker(${t.id})" title="Edit">✎</button>
-        <button class="tasker-action-btn danger" onclick="deleteTasker(${t.id}, '${_escHtml(t.name)}')" title="Delete">✕</button>
+        <button class="tasker-action-btn danger" onclick="deleteTasker(${t.id}, ${_escHtml(JSON.stringify(t.name))})" title="Delete">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -270,4 +270,21 @@ function _taskerToast(msg, level) {
   } else {
     console.log('[Tasker]', msg);
   }
+}
+
+// ── Bootstrap — register default Python tasks ───────────────────────────
+
+function bootstrapTasker() {
+  if (!confirm('Register built-in tasks (housekeeping, SLA, digest, etc.)? Existing tasks are kept.')) return;
+  fetch('/api/tasker/bootstrap', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        _taskerToast('Bootstrapped ' + (d.bootstrapped || 0) + ' default tasks');
+        _taskerRefresh();
+      } else {
+        _taskerToast(d.error || 'Bootstrap failed', 'error');
+      }
+    })
+    .catch(e => _taskerToast('Error: ' + e, 'error'));
 }

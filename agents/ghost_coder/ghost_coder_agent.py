@@ -214,7 +214,7 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
                 full_msgs = [{'role': 'system', 'content': system}] + msgs
                 resp = client.chat.completions.create(
                     model=use_model,
-                    max_tokens=8192,
+                    max_completion_tokens=8192,
                     messages=full_msgs,
                 )
                 return resp.choices[0].message.content, resp.usage.total_tokens

@@ -491,8 +491,9 @@ function gitOpenVortex(proposalId = '') {
 }
 
 function _filesAbsPath(relPath) {
+  const root = window.__filesWorkspaceRoot || '/home/seven/swarm';
   const clean = String(relPath || '').replace(/^\/+/, '');
-  return `/home/seven/swarm/${clean}`;
+  return `${root.replace(/\/+$/, '')}/${clean}`;
 }
 
 function _filesShellQuote(value) {
