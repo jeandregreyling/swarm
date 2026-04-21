@@ -7,6 +7,55 @@ _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 ---
 
+## Version 2026-04-21 Session 22 — Phase A: Single Source of Truth for Agent Identity
+
+### Changes by Copilot (Ghost One direction)
+
+**2026-04-21 UTC** Copilot: Eliminated duplicate hardcoded agent rosters. DB `agents` table is now the only source of truth for number, label, memory_table, tier, and model. Every runtime surface (chat backend, agents blueprint, chat.js dropdown, diamond pulse) now reads from `utils/db/registry.py`.
+
+- **Type:** Refactor / Data Integrity
+- **Status:** COMPLETE
+
+#### Registry hardening (`utils/db/registry.py`)
+
+- `get_single_task_locals()` now excludes non-Ollama `local` agents (Seven uses `local-algorithm`, not an Ollama model). Prevents accidental `ollama stop seven` on hard-kill.
+- All 13 accessor functions already existed; this session wired them into the remaining consumers.
+
+#### Backend consumers (`frontend/blueprints/chat.py`)
+
+- Removed module-level `_LOCAL_OLLAMA_CHAT_AGENTS` set (8 hardcoded names).
+- Removed inline duplicate `_LOCAL_OLLAMA_AGENTS` inside dispatch (line 1095).
+- Both now call `_local_ollama_chat_agents()` → `registry.get_single_task_locals()`.
+
+#### Backend consumers (`frontend/blueprints/agents.py`)
+
+- Removed 4 duplicated `memory_tables` dicts (archive-on-disable, memory GET, memory POST, memory search).
+- Replaced `dedicated_tables` + `shared_table_agents` split with `registry.get_agent_tables()` which returns both in one map (shared agents map to `'memory'`, dedicated agents map to `memory_<name>`).
+
+#### Frontend consumers (`frontend/static/js/views/chat.js`)
+
+- `CHAT_AGENT_OPTIONS` fallback reduced from 16 hardcoded rows → 3-row minimal set (gemma/llama/seven) covering the brief render window before the API responds.
+- `_loadAgentRegistry()` now **rebuilds** from DB instead of filter+append. DB wins every label, number, and tier.
+
+#### DB data fixes
+
+- `twenty.number = 20`, `sniffles.number = 21` (were collided at 7 and 21).
+- `twenty.model = 'Qwen3.6:latest'` (was non-existent `qwen3:latest`).
+- `seven.display_label = 'SEVEN'`, `grok.display_label = 'GROK'`, `duck_ddg.display_label = 'DUCK (DDG)'` (were empty).
+
+#### Sundial pulse verification (`/api/diamond/pulse`)
+
+- `system.agent_residency.{gpu,ram,swap}` now populates with `{agent, label, model, size_gb, size_vram_gb}` from `ollama.ps()` cross-referenced with registry. Labels render as `"N · NAME"` using DB numbering.
+- Verified live: ram bucket showed `1 · GEMMA`, `5 · LIBRARIAN`, `6 · DUCK`; swap bucket showed `4 · QWEN`.
+
+#### Validation
+
+- 560/560 tests pass.
+- Prod service healthy; all blueprints loaded.
+- `/api/agents/config` returns 21 enabled agents with contiguous 0–21 numbering (one gap at 18).
+
+---
+
 ## Version 2026-04-19 Session 21 — Seven LLM Build + Enhanced Tasker + Fridays RAG Seeding
 
 ### Changes by Copilot (Ghost One direction)
