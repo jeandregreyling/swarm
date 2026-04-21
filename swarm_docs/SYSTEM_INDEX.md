@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-21 20:59*
+*Auto-generated: 2026-04-21 21:59*
 
 
 ## Python Modules
@@ -203,7 +203,7 @@
 | Module | Size |
 |--------|------|
 | `access.js` | 96.3 KB |
-| `chat.js` | 243.6 KB |
+| `chat.js` | 241.5 KB |
 | `conversations.js` | 13.1 KB |
 | `diamond.js` | 26.9 KB |
 | `docs.js` | 24.3 KB |
@@ -239,35 +239,35 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 29667 |
+| `activity_log` | 29780 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 382 |
-| `audit_results` | 25 |
-| `chat_jobs` | 510 |
+| `approval_tokens` | 385 |
+| `audit_results` | 26 |
+| `chat_jobs` | 516 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2059 |
-| `conversations` | 494 |
-| `council_output` | 312 |
+| `conv_timeline` | 2065 |
+| `conversations` | 512 |
+| `council_output` | 762 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 3638 |
+| `decisions` | 4809 |
 | `deferred_items` | 0 |
-| `duck_log` | 679 |
+| `duck_log` | 683 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 3720 |
-| `governance_log` | 297 |
+| `ghost_circle` | 3745 |
+| `governance_log` | 301 |
 | `knowledge_chunks` | 632 |
 | `knowledge_sources` | 46 |
-| `memory` | 89 |
+| `memory` | 90 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 18 |
+| `memory_gemma` | 19 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
 | `memory_llama` | 1 |
@@ -280,8 +280,8 @@
 | `memory_ten` | 59 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `memory_twenty` | 64 |
-| `messages` | 1094 |
+| `memory_twenty` | 206 |
+| `messages` | 1128 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -290,10 +290,10 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1534 |
+| `queue` | 1546 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 420 |
+| `sandpit_log` | 424 |
 | `scheduled_tasks` | 9 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
@@ -301,21 +301,21 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 66 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 297 |
+| `swarm_bus` | 301 |
 | `swarm_event_acks` | 24 |
 | `swarm_events` | 2 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 6973 |
+| `system_stats` | 6986 |
 | `task_run_log` | 0 |
-| `terminal_shortcuts` | 16 |
-| `ticket_notes` | 433 |
-| `tickets` | 441 |
-| `time_checkpoints` | 3032 |
-| `time_events` | 90849 |
-| `time_journal` | 86587 |
-| `time_machine` | 5264 |
+| `terminal_shortcuts` | 20 |
+| `ticket_notes` | 437 |
+| `tickets` | 445 |
+| `time_checkpoints` | 3054 |
+| `time_events` | 91187 |
+| `time_journal` | 86903 |
+| `time_machine` | 5399 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
@@ -325,7 +325,7 @@
 | `user_sessions` | 3 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 222 |
+| `work_proposals` | 226 |
 
 ## Agents
 
@@ -352,7 +352,7 @@
 | `duck_ddg` | duckduckgo | service | Web Search · DuckDuckGo (no key) | ✅ |
 | `ghost_coder` | gpt-5 | paid | Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays | ✅ |
 | `nineteen` | o4-mini | paid | developer | ✅ |
-| `twenty` | qwen3:latest | local | Nervous system — observes, deliberates, suggests (no LLM) | ✅ |
+| `twenty` | Qwen3.6:latest | local | Nervous system — observes, deliberates, suggests (no LLM) | ✅ |
 
 ## Skills
 
