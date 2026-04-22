@@ -37,57 +37,10 @@ def _sse_chat(conversation_id, agent, status, **extra):
 chat_bp = Blueprint('chat', __name__)
 
 
-def _local_ollama_chat_agents():
-    """Single-task local Ollama agents eligible for hard-kill via `ollama stop`.
-    Computed from the DB registry (tier=local minus shared-memory runners)."""
-    try:
-        from utils.db.registry import get_single_task_locals
-        return get_single_task_locals()
-    except Exception:
-        # Registry unavailable — fail closed: no hard-kill on unknown agents.
-        return set()
-
-
-def _chat_model_aliases(name):
-    raw = str(name or '').strip().lower()
-    if not raw:
-        return set()
-    aliases = {raw}
-    if ':' in raw:
-        aliases.add(raw.split(':', 1)[0])
-    return aliases
-
-
-def _chat_agent_configured_model(agent_name):
-    normalized = _normalize_chat_participant(agent_name)
-    if not normalized:
-        return ''
-    try:
-        from utils.db.registry import get_all_agents_raw
-        roster = get_all_agents_raw() or []
-    except Exception:
-        return ''
-    for row in roster:
-        name = _normalize_chat_participant(row.get('name'))
-        if name == normalized:
-            return str(row.get('model') or '').strip()
-    return ''
-
-
-def _chat_running_ollama_models():
-    try:
-        from core import llm as _llm
-
-        running = _llm.ps()
-        models = list(running.models if hasattr(running, 'models') else [])
-        names = []
-        for model in models:
-            name = str(getattr(model, 'model', '') or getattr(model, 'name', '') or '').strip()
-            if name:
-                names.append(name)
-        return names
-    except Exception:
-        return []
+# Ollama-agent helpers live in services.chat_agents and are re-exported through
+# services/__init__.py. Names available here via `from services import *`:
+#   _local_ollama_chat_agents, _chat_model_aliases,
+#   _chat_agent_configured_model, _chat_running_ollama_models.
 
 
 def _chat_try_hard_kill_local_agent(agent_name):
