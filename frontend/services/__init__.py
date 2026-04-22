@@ -227,6 +227,16 @@ from .chat_agents import (
 )
 
 
+# ── Chat thread/history helpers (extracted to services.chat_history) ─────────
+from .chat_history import (
+    _build_chat_handoff_block,
+    _chat_history_from_rows,
+    _conversation_reply_context_from_rows,
+    _fetch_chat_thread_rows,
+    _thread_transcript_from_rows,
+)
+
+
 
 # ── ALM governance + Vortex event helpers (extracted to services.alm) ───────
 from .alm import (
@@ -278,9 +288,11 @@ __all__ = [
     '_TAVILY_OK',
     '_agent_reachability_status',
     '_alm_gate_or_response',
+    '_build_chat_handoff_block',
     '_chat_agent_configured_model',
     '_chat_eta_seconds',
     '_chat_find_running_job_for_agent_locked',
+    '_chat_history_from_rows',
     '_chat_job_public',
     '_chat_model_aliases',
     '_chat_now_iso',
@@ -290,10 +302,12 @@ __all__ = [
     '_chat_try_hard_kill_local_agent',
     '_chat_update_job',
     '_cleanup_chat_jobs_locked',
+    '_conversation_reply_context_from_rows',
     '_derive_proposal_from_text',
     '_display_chat_participant',
     '_duck_stats',
     '_extract_skill_lines_from_text',
+    '_fetch_chat_thread_rows',
     '_gate_relay_target',
     '_get_duck_flags_today',
     '_infer_reply_target_from_text',
@@ -313,6 +327,7 @@ __all__ = [
     '_streams',
     '_strip_relay_routing',
     '_tavily_search',
+    '_thread_transcript_from_rows',
     '_validate_agent_request',
     'add_notification_sender',
     'add_trusted_sender',
