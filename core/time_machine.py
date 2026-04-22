@@ -721,7 +721,15 @@ class TimeMachine:
                 # Route through governance with singleton bypass (system restore op)
                 try:
                     import sys as _sys
-                    _sys.path.insert(0, '/home/seven/swarm/utils')
+                    import os as _os_tm
+                    _utils = _os_tm.path.join(
+                        _os_tm.environ.get('SWARM_ROOT') or _os_tm.path.dirname(
+                            _os_tm.path.dirname(_os_tm.path.abspath(__file__))
+                        ),
+                        'utils',
+                    )
+                    if _utils not in _sys.path:
+                        _sys.path.insert(0, _utils)
                     from governance import transition_proposal, GovernanceError
                     transition_proposal(
                         row.get('proposal_id'), row.get('status', 'pending'),

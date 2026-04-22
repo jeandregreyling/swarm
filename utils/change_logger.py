@@ -19,9 +19,16 @@ This module is the bridge between Nine's editing sessions and the Time Wizard.
 
 import hashlib
 import logging
+import os
 import sys
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/core/pipeline')
+
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+for _sub in ('utils', 'core/pipeline'):
+    _p = os.path.join(_SWARM_ROOT, _sub)
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 logger = logging.getLogger('seven.change_logger')
 

@@ -11,10 +11,17 @@ Neither step is optional.
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+import os
 import sys
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/lib/system')
+
+# Worktree-safe path derivation. See core/pipeline/listener.py for rationale.
+SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+for _sub in ('', 'utils', 'lib/system'):
+    _p = os.path.join(SWARM_ROOT, _sub) if _sub else SWARM_ROOT
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 from system_clock import get_timestamp
 from logging_bridge import log_action, log_ticket_lifecycle, batch_commit
 import logging
@@ -144,7 +151,9 @@ def librarian_close(ticket_number, question, final_answer, queue_id=None, sender
 
     # Vortex checkpoint + DECISION logging on every ticket close.
     try:
-        sys.path.insert(0, '/home/seven/swarm/core')
+        _core = os.path.join(SWARM_ROOT, 'core')
+        if _core not in sys.path:
+            sys.path.insert(0, _core)
         from time_machine import time_wizard
         decision_id = f'DECISION-{ticket_number}'
         time_wizard.create_checkpoint(

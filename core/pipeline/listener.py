@@ -15,13 +15,20 @@ Flow for trusted senders:
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+import os
 import sys
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/core/pipeline')
-sys.path.insert(0, '/home/seven/swarm/lib/email')
-sys.path.insert(0, '/home/seven/swarm/lib/system')
-sys.path.insert(0, '/home/seven/swarm/agents/ghost')
+
+# ── Swarm root resolution (worktree-safe) ───────────────────────────────────
+# Derive SWARM_ROOT from this file's location so listener.py runs correctly
+# in prod, swarm-dev, and swarm-uat without code changes. Override with
+# SWARM_ROOT env var for non-standard layouts.
+SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+for _sub in ('', 'utils', 'core/pipeline', 'lib/email', 'lib/system', 'agents/ghost'):
+    _p = os.path.join(SWARM_ROOT, _sub) if _sub else SWARM_ROOT
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 from config import GMAIL_ADDRESS, SEVEN_EMAIL, GHOST_EMAIL, DB_PATH, GMAIL_PASSWORD
 from email_handler import fetch_unread, send_reply, mark_as_read
@@ -1253,7 +1260,7 @@ def process_emails(emails=None):
         if random.random() < 0.2:
             print('[Listener] RL-008: Random Sniffles audit triggered.')
             import subprocess
-            subprocess.Popen(['python3', '/home/seven/swarm/agents/ghost/sniffer.py'])
+            subprocess.Popen(['python3', os.path.join(SWARM_ROOT, 'agents/ghost/sniffer.py')])
 
         # ── Duck queue-clear notification ─────────────────────
         # If nothing left processing or queued, Duck sends Ghost the all-clear.
@@ -1279,12 +1286,12 @@ def _ensure_digest_scheduled():
         tasks = list_tasks()
         if not any('digest' in (t.get('name') or '').lower() for t in tasks):
             add_task('daily_digest', 'daily 07:00', 'SHELL',
-                     'python3 /home/seven/swarm/swarm_tasks.py digest',
+                     f'python3 {os.path.join(SWARM_ROOT, "swarm_tasks.py")} digest',
                      created_by='system')
             print('[Listener] Daily digest scheduled at 07:00.')
         if not any('brief' in (t.get('name') or '').lower() for t in tasks):
             add_task('daily_brief', 'daily 07:05', 'SHELL',
-                     'python3 /home/seven/swarm/utils/brief_engine.py daily',
+                     f'python3 {os.path.join(SWARM_ROOT, "utils/brief_engine.py")} daily',
                      created_by='system')
             print('[Listener] Daily Ghost Brief scheduled at 07:05.')
     except Exception as e:
@@ -1326,7 +1333,7 @@ def run_forever(interval=60):
     _startup_queue_cleanup()
 
     # Use Gmail Push if token exists, otherwise fall back to IMAP poll
-    push_token = '/home/seven/swarm/lib/email/gmail_token.json'
+    push_token = os.path.join(SWARM_ROOT, 'lib/email/gmail_token.json')
     use_push = os.path.exists(push_token)
 
     if use_push:
