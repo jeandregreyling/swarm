@@ -200,6 +200,21 @@ from .duck_review import (
 )
 
 
+# ── Chat relay / intent parsing helpers (extracted to services.chat_relay) ───
+from .chat_relay import (
+    _RELAY_LINE_PATTERNS,
+    _RELAY_ROUTE_PATTERNS,
+    _derive_proposal_from_text,
+    _extract_skill_lines_from_text,
+    _gate_relay_target,
+    _infer_reply_target_from_text,
+    _is_execution_confirmation,
+    _parse_chat_skill_command,
+    _resolve_chat_reply_target,
+    _strip_relay_routing,
+)
+
+
 
 # ── ALM governance + Vortex event helpers (extracted to services.alm) ───────
 from .alm import (
@@ -244,6 +259,8 @@ __all__ = [
     '_CHAT_JOB_LOCK',
     '_CHAT_JOB_TTL_SECONDS',
     '_CHAT_WORKER_EXECUTOR',
+    '_RELAY_LINE_PATTERNS',
+    '_RELAY_ROUTE_PATTERNS',
     '_SHELL_STREAM_LOCK',
     '_SHELL_STREAM_PROCS',
     '_TAVILY_OK',
@@ -258,19 +275,27 @@ __all__ = [
     '_chat_try_hard_kill_local_agent',
     '_chat_update_job',
     '_cleanup_chat_jobs_locked',
+    '_derive_proposal_from_text',
     '_display_chat_participant',
     '_duck_stats',
+    '_extract_skill_lines_from_text',
+    '_gate_relay_target',
     '_get_duck_flags_today',
+    '_infer_reply_target_from_text',
+    '_is_execution_confirmation',
     '_is_time_wizard_active',
     '_log_proposal_duck_review',
     '_normalize_chat_participant',
     '_original_ask_agent',
+    '_parse_chat_skill_command',
     '_patched_ask_agent',
+    '_resolve_chat_reply_target',
     '_resolve_identity_or_response',
     '_run_proposal_duck_review',
     '_safe_time_event',
     '_safe_workflow_checkpoint',
     '_streams',
+    '_strip_relay_routing',
     '_tavily_search',
     '_validate_agent_request',
     'add_notification_sender',
