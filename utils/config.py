@@ -25,7 +25,17 @@ NINE_EMAIL     = "ninepotato7@gmail.com"
 SWARM_NAME     = "Seven's Swarm"
 GHOST_NAME     = "Ghost"
 GHOST_ONE_NAME = "Ghost One"  # primary human operator; Jeandre
-DB_PATH        = "/home/seven/swarm/swarm_memory.db"
+
+# ── Canonical swarm root + DB path ──────────────────────────────────────────
+# SWARM_ROOT is derived from this file's location so the same code works in
+# production (/home/seven/swarm), worktrees (/home/seven/swarm-dev,
+# /home/seven/swarm-uat), and dev checkouts. Override with the
+# SWARM_ROOT env var for non-standard layouts.
+import os as _os
+SWARM_ROOT     = _os.environ.get('SWARM_ROOT') or _os.path.dirname(
+    _os.path.dirname(_os.path.abspath(__file__))
+)
+DB_PATH        = _os.environ.get('SWARM_DB_PATH') or _os.path.join(SWARM_ROOT, 'swarm_memory.db')
 SEVEN_EMAIL    = "sevenpotato9@gmail.com"
 GHOST_EMAIL    = "jeandre.greyling@gmail.com"
 
