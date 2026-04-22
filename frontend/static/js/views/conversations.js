@@ -92,7 +92,7 @@ function openConversationDetail(convId) {
         <button id="chat-det-tab-tl" onclick="openConversationDetail.showTab('timeline',${conv.id})"
           style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">Timeline</button>
         <button onclick="renameConversation(${conv.id})" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">Edit Title</button>
-        <button onclick="deleteConversation(${conv.id})" style="padding:6px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;cursor:pointer;">Delete</button>
+        <button onclick="deleteConversation(${conv.id}, event)" style="padding:6px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;cursor:pointer;">Delete</button>
         ${proposalBadges}
         <span style="margin-left:auto;color:var(--text-dim);font-size:11px;">${(function(s){ if(!s)return''; if(/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s)&&!/[Z+]/.test(s.slice(-6))) s=s.replace(' ','T')+'Z'; const d=new Date(s); return isNaN(d)?s.slice(0,16):d.toLocaleString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); })(conv.created_at||'')} · ${(conv.source || 'unknown')}</span>
       `;
@@ -226,17 +226,28 @@ function renameConversation(convId) {
     .catch(e => showToast('Error: ' + e.message, 'error'));
 }
 
-function deleteConversation(convId) {
+function deleteConversation(convId, event) {
+  // Session 28 Workstream A: inline two-click arm-to-confirm on the button
+  // when we have the triggering event; fall back to native confirm for any
+  // programmatic callers that don't supply one.
+  var btn = event && event.currentTarget;
+  var fire = function () {
+    fetch(`/api/conversations/${convId}`, { method: 'DELETE' })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) throw new Error(data.error || 'delete failed');
+        showToast('Conversation deleted', 'success');
+        document.getElementById('chat-detail-modal')?.classList.remove('open');
+        const chatWin = winManager.windows.get('chat');
+        if (chatWin) loadChatData(chatWin);
+      })
+      .catch(e => showToast('Error: ' + e.message, 'error'));
+  };
+  if (btn && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btn, fire, { confirmLabel: 'Confirm', timeoutMs: 4000 });
+    return;
+  }
   if (!confirm('Delete this conversation and all of its messages?')) return;
-  fetch(`/api/conversations/${convId}`, { method: 'DELETE' })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.ok) throw new Error(data.error || 'delete failed');
-      showToast('Conversation deleted', 'success');
-      document.getElementById('chat-detail-modal')?.classList.remove('open');
-      const chatWin = winManager.windows.get('chat');
-      if (chatWin) loadChatData(chatWin);
-    })
-    .catch(e => showToast('Error: ' + e.message, 'error'));
+  fire();
 }
 
