@@ -169,11 +169,17 @@ def get_interests():
     saved_interests = []
     try:
         saved_rows = conn.execute(
-            "SELECT topic, category, score FROM user_interests "
+            "SELECT topic, category, score, source, source_agent FROM user_interests "
             "WHERE active = 1 ORDER BY score DESC, created_at DESC LIMIT 30"
         ).fetchall()
         saved_interests = [
-            {'topic': r['topic'], 'category': r['category'], 'score': r['score']}
+            {
+                'topic': r['topic'],
+                'category': r['category'],
+                'score': r['score'],
+                'source': r['source'] or 'user',
+                'source_agent': r['source_agent'] or '',
+            }
             for r in saved_rows
         ]
     except Exception:
@@ -190,6 +196,8 @@ def get_interests():
             'score': si['score'],
             'sources': ['saved'],
             'category': si['category'],
+            'source': si.get('source') or 'user',
+            'source_agent': si.get('source_agent') or '',
         }
 
     for word, count in word_counts.items():
@@ -245,6 +253,7 @@ def get_interests():
 
     return jsonify({
         'interests': interests,
+        'saved_interests': saved_interests,
         'research_topics': research_topics,
         'total_messages_analyzed': total_analyzed,
         'total_memory_tags': sum(tag_counts.values()),

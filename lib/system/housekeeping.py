@@ -1,5 +1,11 @@
+import os
 import sys
-sys.path.insert(0, '/home/seven/swarm')
+
+SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+for _p in (SWARM_ROOT, os.path.join(SWARM_ROOT, 'utils'), os.path.join(SWARM_ROOT, 'core', 'pipeline')):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from database import get_connection
 from config import DB_PATH
 import sqlite3
@@ -179,6 +185,14 @@ def run_housekeeping():
     except Exception as e:
         print(f'[Vortex] Curation skipped: {e}')
     print(f'\n[Librarian] Done. Archived: {archived}, Duplicates removed: {dupes}')
+
+    # Phase 5: decay agent-sourced interests (user rows untouched).
+    try:
+        from utils.db.interests import decay_agent_interests
+        decayed, deactivated = decay_agent_interests(factor=0.9, deactivate_below=1.0)
+        print(f'[Librarian] Interests: {decayed} decayed, {deactivated} deactivated')
+    except Exception as e:
+        print(f'[Librarian] Interest decay skipped: {e}')
 
     # Agent play time — give idle agents a chance to draft proposals
     try:
