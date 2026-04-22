@@ -86,10 +86,9 @@ def embed_text(text):
     Returns a list of floats, or None on failure (model not pulled / Ollama down).
     """
     try:
-        import ollama
-        result = ollama.embeddings(model=OLLAMA_MODEL, prompt=text)
-        vec = getattr(result, 'embedding', None) or result.get('embedding')
-        return vec
+        from core import llm as _llm
+        vec = _llm.embeddings(model=OLLAMA_MODEL, prompt=text)
+        return vec or None
     except Exception as exc:
         logger.debug(f'[Ingest] Ollama embed failed: {exc}')
         return None
@@ -130,8 +129,8 @@ def embed_batch(texts):
 def check_model_available():
     """Return True if nomic-embed-text is pulled and ready."""
     try:
-        import ollama
-        models = ollama.list()
+        from core import llm as _llm
+        models = _llm.list_models()
         names = [
             (getattr(m, 'model', None) or getattr(m, 'name', '') or '').lower()
             for m in (models.models if hasattr(models, 'models') else [])

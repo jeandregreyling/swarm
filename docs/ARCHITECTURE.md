@@ -1,6 +1,27 @@
 # Architecture — Seven's Swarm
 
-**Last Updated:** 2026-04-21 | **Status:** Production, Post-Session 22 (Phase A registry unification)
+**Last Updated:** 2026-04-22 | **Status:** Production, Post-Session 25 (gateway + pulse bus)
+
+---
+
+## Layer model
+
+The runtime is organised in four tiers. Each tier owns a specific kind of
+work; lower tiers never import higher tiers.
+
+```
+core/        ── pure engine: ollama gateway (core/llm.py), pipeline, time machine, kill switch
+ services/   ── stateful helpers shared across blueprints (chat jobs, auth, queue wrappers)
+  blueprints/ ── thin Flask route handlers; delegate to services
+   static/js/ ── browser views; subscribe to /api/pulse and the other bus endpoints
+```
+
+- **core/llm.py** is the **only** module permitted to `import ollama` for chat
+  or generation. It enforces finite `keep_alive`, per-model concurrency, and
+  non-retrying stream behaviour. All agents and pipelines route through it.
+- **`/api/pulse`** is the canonical live-metrics bus. Tiles subscribe to it
+  instead of fanning out to multiple endpoints. Backed by a 3-second TTL cache
+  inside `lib/system/monitor.get_system_status()`.
 
 ---
 

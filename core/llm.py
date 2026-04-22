@@ -172,22 +172,19 @@ def chat(
         )
 
 
-def ps() -> list[dict]:
-    """Return currently loaded models (thin passthrough)."""
-    result = _get_ollama().ps()
-    return result.get('models', []) if isinstance(result, dict) else getattr(result, 'models', [])
+def ps():
+    """Return running models (raw ollama ListResponse; has `.models`)."""
+    return _get_ollama().ps()
 
 
-def list_models() -> list[dict]:
-    """Return all pulled models (thin passthrough)."""
-    result = _get_ollama().list()
-    return result.get('models', []) if isinstance(result, dict) else getattr(result, 'models', [])
+def list_models():
+    """Return all pulled models (raw ollama ListResponse; has `.models`)."""
+    return _get_ollama().list()
 
 
-def show(model: str) -> dict:
-    """Return metadata for a single model."""
-    result = _get_ollama().show(model)
-    return result if isinstance(result, dict) else dict(result)
+def show(model: str):
+    """Return metadata for a single model (raw ollama ShowResponse)."""
+    return _get_ollama().show(model)
 
 
 def embeddings(model: str, prompt: str) -> list[float]:

@@ -68,8 +68,8 @@ _active_agents  = set()   # agents currently running an Ollama model
 def _ollama_running_models():
     """Return list of model name strings currently loaded in Ollama."""
     try:
-        import ollama
-        result = ollama.ps()
+        from core import llm as _llm
+        result = _llm.ps()
         # result is an object with .models list of RunningModel objects
         models = getattr(result, 'models', None)
         if models is None and isinstance(result, dict):

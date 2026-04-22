@@ -5,6 +5,30 @@
 _Comprehensive change log with agent attribution, timestamps, and version control tracking._
 _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
+[2026-04-22 10:04:00] Copilot: **Session 25 refactor pass 1** — simplify & combine. Six planned steps, four landed, two deferred.
+
+**Step 3 — routes dedupe (LANDED).** Verified via `app.url_map` introspection, not text grep (earlier 33 "duplicates" were legitimate REST method overloads). True collisions: two — `/api/health` (`system.py` re-registered after `health.py`) and `/` (`system.py` re-registered after `frontend/terminal.py:root_status`). Both stubs removed from `system.py`. Collision count is now 0.
+
+**Step 1 — `core/llm.py` Ollama gateway (LANDED).** New module; the **only** place that imports the `ollama` package for chat/completion. Public API: `chat(model, messages, *, stream, temperature, keep_alive, options, on_chunk) -> (content, tokens)`, plus passthroughs for `ps/list_models/show/embeddings/pull`. Enforced policy: `_sanitize_keep_alive()` forces `None/-1/0` to `DEFAULT_KEEP_ALIVE=300`; duration strings (`'20m'`, `'1h'`) pass through; per-model `Semaphore` at `MAX_CONCURRENT_PER_MODEL=1` prevents the double-runner spawn that plagued Sessions 22–24; **no blocking retry** on stream error — partial content returned, never a second `ollama.chat` call to a stuck runner. One structured log line per call.
+
+Callers swept onto the gateway (14 files): `agents/seven,gemma,llama,qwen,mistral,twenty,phi3,deepseek_local`, `agents/specialists/{eight,eight_memory,agent_proposals}`, `core/pipeline/{debate,orchestrator,listener}`, `fridays/research_workflow`. Remaining `ollama` imports are state-read callsites (`ps/list/show/embeddings`, cloud `Client(headers=…)`) — not chat, not part of the pinning bug, left alone to keep the diff small.
+
+**Step 2 — pulse bus (LANDED).** `monitor.get_system_status()` already had a short-TTL cache; tuned from 5 s → 3 s so the frontend's pulse cadence always gets fresh data. Added `/api/pulse` — a compact single-source-of-truth endpoint (CPU / RAM / swap / temp / ollama residency / queue / tickets) that every live tile can subscribe to. `loadHomeStats` in `monitor.js` now uses `/api/pulse` (smaller payload, same cache) instead of `/api/monitor`. Concurrent subscribers share a single computation.
+
+**Step 5 — boot manifest cleanup (LANDED).** Deleted four redundant launchers that were shadowed by systemd: `start_stage1_prod.sh`, `start_stage2_uat.sh`, `start_stage3_dev.sh`, `startswarm.sh`. No systemd unit, Makefile target, or live script referenced them (verified with a full-repo grep). Kept `seven.sh` (desktop `.desktop` entry). `killswitch.sh` and `ops/README.md` rewritten to point at systemd + `make wake-{dev,uat}` / `make status`. All swarm `.service` files already have `After=ollama.service` — nothing to add.
+
+**Step 6 — tile groups (PARTIAL).** `loadHomeStats` migrated to the pulse bus. Full tile-group refactor (grouping Hardware / Swarm / Activity tiles under a single subscribed driver) deferred — backend is already cache-collapsed, so the current cadences are cheap. No functional change pending here.
+
+**Step 4 — split giants (DEFERRED).** `chat.py` (2039 LOC), `agents.py` (1898 LOC), `proposals.py` (1020 LOC). Shared state (`_CHAT_JOBS`, locks, helpers) already lives in `frontend/services/` via `from services import *`. Further splitting requires moving route handlers themselves, which is high-risk for a refactor session without targeted tests for every route. Logged for a future pass.
+
+**Bugs found and fixed in-flight:**
+- `agents/seven/seven_agent.py` was a pre-existing corruption: the deterministic `_compose / _read_state / chat` implementation had been pasted inside an `except` block of the old LLM wrapper, so the local-algorithm path was unreachable (the outer `chat()` fell off the end and returned `None`). Cleaned via full rewrite; 259 → 177 LOC; `_ollama` import path removed entirely. Seven is local-algorithm only now, as designed.
+- `core/llm.py:_sanitize_keep_alive` initially rejected string durations (`'20m'`, `'1h'`) and coerced them to 300 s — that would have silently shortened `orchestrator._select_keep_alive` agents. Fixed to pass duration strings through unchanged.
+
+**Test evidence:** `590 passed, 1 warning in 75.72s` (`pytest tests/ --ignore=tests/test_chat_quality.py`). `/api/pulse` smoke OK. `core/llm._sanitize_keep_alive` sanity table OK. `grep 'import ollama'` now returns only `ps/list/show/embeddings/cloud-Client` callsites — no chat/completion callers left outside the gateway.
+
+---
+
 [2026-04-22 02:10:00] Copilot: **Phase G** — Ollama CPU runaway (recurrence) fixed at system level. Root cause: `swarm-prewarm.service` (systemd oneshot on boot) was loading 3 CPU-only models simultaneously — gemma3 + qwen + deepseek-r1, ~12 GB RAM, load avg 10+. Fix: `systemctl disable swarm-prewarm.service` (cannot mask because file still exists); `MODELS=()` in `swarm-prewarm.sh` as belt-and-braces so re-enabling won't re-trigger. Current models unloaded via `/api/generate {keep_alive:0}`. RAM recovered 19.6 → 6.6 GB. Idle Ollama CPU now 0 – 1 % across 20 verified cycles. Session 24 locked an **Ollama boot contract**: no pre-warming on CPU-only hardware.
 
 [2026-04-22 02:13:00] Copilot: 20-cycle smoke test (two back-to-back 10-cycle passes): 20/20 endpoints green (`/api/health`, `/api/agents/status`, `/api/monitor`), 20/20 CPU-idle (0 – 1 % aggregate across all ollama procs, sampled 2 s each), 0 swarm errors in the test window. Stray port-conflict orphan (`python3 PID 1084`, user-launched `/usr/bin/python3 frontend/terminal.py`, 9 min old) killed mid-test; service now owns :5050 cleanly under systemd MainPID.
