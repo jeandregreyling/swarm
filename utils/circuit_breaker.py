@@ -198,9 +198,9 @@ def health_probe(agent_name, timeout=3):
     if agent_name not in _LOCAL_OLLAMA_AGENTS:
         return True, 'api-agent (assumed ok)'
     try:
-        import ollama
+        from core import llm as _llm
         # Lightweight list call — fast, no model load
-        ollama.list()
+        _llm.list_models()
         return True, 'ollama reachable'
     except Exception as e:
         return False, f'ollama unreachable: {e}'

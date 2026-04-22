@@ -76,9 +76,9 @@ def _chat_agent_configured_model(agent_name):
 
 def _chat_running_ollama_models():
     try:
-        import ollama
+        from core import llm as _llm
 
-        running = ollama.ps()
+        running = _llm.ps()
         models = list(running.models if hasattr(running, 'models') else [])
         names = []
         for model in models:
