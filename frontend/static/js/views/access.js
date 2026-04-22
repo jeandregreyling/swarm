@@ -353,6 +353,9 @@ async function setSkillPerm(username, skillName, allowed) {
 }
 
 function _esc(text) {
+  if (typeof window !== 'undefined' && window.SwarmChat && typeof window.SwarmChat.esc === 'function') {
+    return window.SwarmChat.esc(text);
+  }
   return String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 

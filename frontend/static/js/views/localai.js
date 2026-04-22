@@ -69,6 +69,9 @@ function _formatCountLabel(installedCount, loadedCount) {
 }
 
 function _escapeHtml(value) {
+  if (typeof window !== 'undefined' && window.SwarmChat && typeof window.SwarmChat.esc === 'function') {
+    return window.SwarmChat.esc(value);
+  }
   return String(value || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

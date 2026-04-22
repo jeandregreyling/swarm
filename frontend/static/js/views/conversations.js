@@ -28,6 +28,9 @@ function loadChatData(win) {
 }
 
 function _escHtml(v) {
+  if (typeof window !== 'undefined' && window.SwarmChat && typeof window.SwarmChat.esc === 'function') {
+    return window.SwarmChat.esc(v);
+  }
   return String(v ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
