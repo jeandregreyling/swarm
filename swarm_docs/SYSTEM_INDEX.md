@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-22 11:45*
+*Auto-generated: 2026-04-22 11:54*
 
 
 ## Python Modules
@@ -69,11 +69,13 @@
 |------|-------------|
 | `core/kill_switch.py` | KILL SWITCHES — Emergency control agents via Telegram/Discord |
 | `core/llm.py` | core/llm.py — Single Ollama gateway for the entire swarm. |
+| `core/notifications.py` | core/notifications.py — Shared notification formatter. |
 | `core/pipeline/debate.py` | — |
 | `core/pipeline/listener.py` | listener.py — Seven's Swarm |
 | `core/pipeline/orchestrator.py` | — |
 | `core/pipeline/queue_manager.py` | queue_manager.py — Seven's Swarm |
 | `core/pipeline/ticket.py` | ticket.py — Seven's Swarm |
+| `core/routing.py` | core/routing.py — Deterministic routing brain for Seven's Swarm. |
 | `core/time_machine.py` | TIME MACHINE — Agent Twelve's Core Capability |
 
 ### Agent Modules
@@ -242,12 +244,12 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 33390 |
+| `activity_log` | 33435 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 517 |
+| `approval_tokens` | 520 |
 | `audit_results` | 34 |
 | `chat_jobs` | 583 |
 | `claude_log` | 1 |
@@ -258,13 +260,13 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 6446 |
+| `decisions` | 6465 |
 | `deferred_items` | 0 |
-| `duck_log` | 792 |
+| `duck_log` | 794 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4256 |
+| `ghost_circle` | 4258 |
 | `governance_log` | 383 |
 | `knowledge_chunks` | 632 |
 | `knowledge_sources` | 46 |
@@ -293,7 +295,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1844 |
+| `queue` | 1848 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 506 |
@@ -310,15 +312,15 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7102 |
+| `system_stats` | 7104 |
 | `task_run_log` | 0 |
 | `terminal_shortcuts` | 16 |
-| `ticket_notes` | 546 |
-| `tickets` | 554 |
-| `time_checkpoints` | 4012 |
-| `time_events` | 95478 |
-| `time_journal` | 90236 |
-| `time_machine` | 5796 |
+| `ticket_notes` | 548 |
+| `tickets` | 556 |
+| `time_checkpoints` | 4031 |
+| `time_events` | 95498 |
+| `time_journal` | 90237 |
+| `time_machine` | 5807 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
