@@ -7,11 +7,16 @@ Usage:
     python3 load_project_docs.py
 """
 
+import os
 import sys
 import re
 from pathlib import Path
 
-sys.path.insert(0, '/home/seven/swarm')
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
 from database import get_connection
 
 PROJECT_MD = Path(__file__).parent / 'PROJECT.md'

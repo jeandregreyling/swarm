@@ -5,11 +5,17 @@ Clean version with trust ladder and proposal system.
 
 import os
 import sys
-sys.path.insert(0, '/home/seven/swarm')
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
 from database import get_connection
 from datetime import datetime
 
-SANDPIT_BASE = '/home/seven/swarm/sandpits'
+# SANDPIT_BASE is intentionally anchored to the production swarm root even in
+# worktrees: agent sandboxes are a shared workspace, not per-stage artifacts.
+SANDPIT_BASE = os.environ.get('SANDPIT_BASE') or '/home/seven/swarm/sandpits'
 SHARED_DIR = os.path.join(SANDPIT_BASE, 'shared')
 PROPOSALS_DIR = os.path.join(SHARED_DIR, 'proposals')
 

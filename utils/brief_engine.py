@@ -11,14 +11,19 @@ Usage:
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+import os
 import sys
 import json
 import logging
 from datetime import datetime, timedelta
 
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/lib/system')
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+for _sub in ('', 'utils', 'lib/system'):
+    _p = os.path.join(_SWARM_ROOT, _sub) if _sub else _SWARM_ROOT
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 logger = logging.getLogger('seven.brief_engine')
 
@@ -393,7 +398,9 @@ def generate_brief(trigger='on_demand'):
     # Discord ping — pull headline numbers from state so Ghost knows at a glance
     try:
         import sys as _sys
-        _sys.path.insert(0, '/home/seven/swarm/lib/system')
+        _lib_sys = os.path.join(_SWARM_ROOT, 'lib/system')
+        if _lib_sys not in _sys.path:
+            _sys.path.insert(0, _lib_sys)
         import discord_notify
         t = state.get('tickets', {})
         duck = state.get('duck_log', {})
