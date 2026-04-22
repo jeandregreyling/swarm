@@ -108,7 +108,47 @@ sys.modules['time_machine'] = _tm_mod
 time_wizard = _tm_mod.time_wizard
 from kill_switch import kill_switch
 
+# DISABLED_AGENTS — in-memory "soft disable" set. Mirrored from DB at boot so
+# the runtime state matches persisted truth after a restart. Toggle endpoints
+# update BOTH the DB `enabled` column AND this set, so all readers (chat
+# relay, registry.get_routable_agents, /api/agents/status) see consistent
+# state. Never pre-populated on import — synced on first use via
+# _sync_disabled_from_db() below.
 DISABLED_AGENTS = set()
+
+
+def _sync_disabled_from_db():
+    """Pull currently-disabled agent names from DB into DISABLED_AGENTS.
+
+    Idempotent. Called once at first import and whenever the DB truth may
+    have drifted from the runtime set (e.g. direct DB edits).
+    """
+    try:
+        from database import get_connection as _gc
+        conn = _gc()
+        try:
+            rows = conn.execute(
+                "SELECT name FROM agents WHERE enabled=0 AND number >= 0"
+            ).fetchall()
+        finally:
+            conn.close()
+        DISABLED_AGENTS.clear()
+        for r in rows:
+            DISABLED_AGENTS.add(r['name'])
+    except Exception as _e:
+        # Don't fail import if DB not ready; will retry on next call.
+        print(f'[services] DISABLED_AGENTS sync skipped: {_e}')
+
+
+_sync_disabled_from_db()
+
+# Tell the DB registry how to read our runtime soft-disable set so
+# get_routable_agents() honors toggles without a restart.
+try:
+    from utils.db.registry import set_runtime_disabled_provider as _set_rt_disabled
+    _set_rt_disabled(lambda: set(DISABLED_AGENTS))
+except Exception as _e:
+    print(f'[services] runtime-disabled provider registration failed: {_e}')
 
 _original_ask_agent = orchestrator.ask_agent
 
@@ -141,6 +181,8 @@ from utils.db.registry import (
     get_display_labels    as _reg_display,
     get_api_key_map       as _reg_api_keys,
     get_agent_models      as _reg_models,
+    get_routable_agents   as _reg_routable,
+    is_agent_routable     as _reg_is_routable,
 )
 
 # Legacy names removed — use _reg_etas(), _reg_runtime(), _reg_single_task() directly
@@ -276,6 +318,7 @@ __all__ = [
     'ThreadPoolExecutor',
     '_reg_roster', '_reg_aliases', '_reg_tables', '_reg_etas', '_reg_runtime',
     '_reg_single_task', '_reg_display', '_reg_api_keys', '_reg_models',
+    '_reg_routable', '_reg_is_routable',
     '_CHAT_DISPATCH_EXECUTOR',
     '_CHAT_JOBS',
     '_CHAT_JOB_LOCK',

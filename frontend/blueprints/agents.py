@@ -455,14 +455,50 @@ def api_agents_capabilities_update():
 
 @agents_bp.route('/api/agents/<name>/toggle', methods=['POST'])
 def toggle_agent(name):
-    if name in DISABLED_AGENTS:
+    """Toggle agent enabled state. Persists to DB and mirrors to the runtime
+    DISABLED_AGENTS set so registry.get_routable_agents() honours it immediately
+    without a cache wait.
+    """
+    # Resolve current DB state
+    try:
+        conn = get_connection()
+        row = conn.execute(
+            "SELECT enabled, tier FROM agents WHERE name=?", (name,)
+        ).fetchone()
+        if row is None:
+            conn.close()
+            return jsonify({'ok': False, 'error': f'unknown agent {name}'}), 404
+        current = bool(row['enabled']) if row['enabled'] is not None else True
+        tier = row['tier'] or 'local'
+        # Silent-API tier (Scholar/Seeker) should not be toggled from this UI —
+        # they are not user-facing routable agents.
+        if tier == 'service':
+            conn.close()
+            return jsonify({
+                'ok': False,
+                'error': f'{name} is a silent-API service; not toggleable from chat.',
+            }), 400
+        new_enabled = 0 if current else 1
+        conn.execute("UPDATE agents SET enabled=? WHERE name=?", (new_enabled, name))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    # Mirror to runtime set + invalidate registry cache so routing sees it now.
+    if new_enabled:
         DISABLED_AGENTS.discard(name)
-        enabled = True
     else:
         DISABLED_AGENTS.add(name)
-        enabled = False
-    print(f'[Terminal] {name} {"enabled" if enabled else "disabled"}')
-    return jsonify({'name': name, 'enabled': enabled})
+    try:
+        from utils.db.registry import invalidate_cache as _inv
+        _inv()
+    except Exception:
+        pass
+
+    enabled_bool = bool(new_enabled)
+    print(f'[Terminal] {name} {"enabled" if enabled_bool else "disabled"}')
+    return jsonify({'name': name, 'enabled': enabled_bool})
 
 
 
