@@ -4754,8 +4754,18 @@ function renderChatThreadRail() {
   });
   if (!convs.length) {
     rail.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:11px;">No matching threads.</div>';
+    _chatThreadSyncBulkBar();
     updateChatStatusPills();
     return;
+  }
+
+  // Session 28 Workstream A.2: per-row multi-select checkbox + mass-delete bar.
+  // Prune any selected ids that are no longer in the visible/loaded list so a
+  // deleted or filtered-out thread doesn't linger in the selection count.
+  const validIds = new Set((window._chatConversations || []).map(c => Number(c.id)));
+  const selected = _chatThreadSelectedSet();
+  for (const id of Array.from(selected)) {
+    if (!validIds.has(Number(id))) selected.delete(id);
   }
 
   rail.innerHTML = convs.slice(0, 80).map(conv => {
@@ -4768,8 +4778,11 @@ function renderChatThreadRail() {
                   : src === 'discord'  ? '<span title="Discord" style="opacity:0.75;line-height:1;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><path d="M5.5 3C4 3.5 3 4.5 2.5 6c1.5 5 4 7 5.5 7.5C9.5 13 12 11 13.5 6 13 4.5 12 3.5 10.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="6" cy="8" r="1" fill="currentColor"/><circle cx="10" cy="8" r="1" fill="currentColor"/></svg></span>'
                   : src === 'email'    ? '<span title="Email" style="opacity:0.55;line-height:1;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5l6 4 6-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
                   : '';
+    const isSelected = selected.has(Number(conv.id));
+    const checkbox = `<input type="checkbox" class="chat-thread-check" data-thread-id="${Number(conv.id)}" onclick="threadActionToggleSelect(event, ${Number(conv.id)});" ${isSelected ? 'checked' : ''} style="margin:4px 2px 0 0;flex:0 0 auto;cursor:pointer;accent-color:var(--accent);" title="Select thread">`;
     return `
       <div class="thread-item${active}" onclick="switchChatThread('${conv.id}')" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        ${checkbox}
         <div style="min-width:0;flex:1;">
           <div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;">${srcIcon}<span>${title}</span></div>
           <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">#${conv.id}${ts ? ' · ' + ts : ''}</div>
@@ -4781,7 +4794,115 @@ function renderChatThreadRail() {
       </div>
     `;
   }).join('');
+  _chatThreadSyncBulkBar();
   updateChatStatusPills();
+}
+
+// ---- Thread rail multi-select (Session 28 Workstream A.2) --------------------
+function _chatThreadSelectedSet() {
+  if (!(window.__chatThreadSelected instanceof Set)) {
+    window.__chatThreadSelected = new Set();
+  }
+  return window.__chatThreadSelected;
+}
+
+function _chatThreadEnsureBulkBar() {
+  const list = document.getElementById('chat-thread-list');
+  if (!list || !list.parentNode) return null;
+  let bar = document.getElementById('chat-thread-bulk-bar');
+  if (bar) return bar;
+  bar = document.createElement('div');
+  bar.id = 'chat-thread-bulk-bar';
+  bar.style.cssText = 'display:none;align-items:center;gap:6px;padding:6px 4px;margin:4px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-wrap:wrap;';
+  bar.innerHTML = `
+    <span id="chat-thread-bulk-count" style="font-size:10px;color:var(--text-dim);">0 selected</span>
+    <span style="flex:1;"></span>
+    <button type="button" id="chat-thread-bulk-clear" onclick="threadActionClearSelection()" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Clear</button>
+    <button type="button" id="chat-thread-bulk-delete" onclick="threadActionMassDelete(event)" style="background:#f4433620;border:1px solid #f4433660;color:#f44336;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;font-weight:600;">Mass delete</button>
+  `;
+  list.parentNode.insertBefore(bar, list);
+  return bar;
+}
+
+function _chatThreadSyncBulkBar() {
+  const bar = _chatThreadEnsureBulkBar();
+  if (!bar) return;
+  const count = _chatThreadSelectedSet().size;
+  bar.style.display = count > 0 ? 'flex' : 'none';
+  const countEl = document.getElementById('chat-thread-bulk-count');
+  if (countEl) countEl.textContent = `${count} selected`;
+  const delBtn = document.getElementById('chat-thread-bulk-delete');
+  if (delBtn) {
+    // Disarm if selection changed; re-label with live count.
+    if (delBtn.getAttribute('data-swarm-armed') === '1' && window.SwarmChat && typeof window.SwarmChat.disarmConfirm === 'function') {
+      window.SwarmChat.disarmConfirm(delBtn);
+    }
+    delBtn.textContent = `Mass delete (${count})`;
+  }
+}
+
+function threadActionToggleSelect(event, convId) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const box = event && event.currentTarget;
+  // Re-check state after the default toggle has been prevented — we drive the
+  // checked state ourselves to stay in sync with the Set.
+  const set = _chatThreadSelectedSet();
+  const id = Number(convId);
+  const wasSelected = set.has(id);
+  if (wasSelected) {
+    set.delete(id);
+    if (box) box.checked = false;
+  } else {
+    set.add(id);
+    if (box) box.checked = true;
+  }
+  _chatThreadSyncBulkBar();
+}
+
+function threadActionClearSelection() {
+  _chatThreadSelectedSet().clear();
+  document.querySelectorAll('.chat-thread-check').forEach(box => { box.checked = false; });
+  _chatThreadSyncBulkBar();
+}
+
+function threadActionMassDelete(event) {
+  const set = _chatThreadSelectedSet();
+  if (!set.size) return;
+  const btn = event && event.currentTarget;
+  const fire = async () => {
+    const ids = Array.from(set);
+    let deleted = 0;
+    for (const id of ids) {
+      try {
+        const resp = await fetch('/api/conversations/' + id, { method: 'DELETE' });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && data.ok) {
+          deleted += 1;
+          window._chatConversations = (window._chatConversations || []).filter(c => Number(c.id) !== Number(id));
+          if (Number(window.__fridaysChatConversationId) === Number(id)) {
+            window.__fridaysChatConversationId = null;
+          }
+        }
+      } catch (_) { /* continue */ }
+    }
+    set.clear();
+    if (!window.__fridaysChatConversationId) {
+      createNewThread();
+    } else {
+      renderChatThreadRail();
+    }
+    showToast(`Deleted ${deleted} thread(s)`, deleted ? 'success' : 'error');
+    refreshChatThreadList(window.__fridaysChatConversationId || null);
+  };
+  if (btn && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btn, fire, { confirmLabel: `Confirm delete ${set.size}`, timeoutMs: 4000 });
+    return;
+  }
+  if (!confirm(`Delete ${set.size} thread(s)?`)) return;
+  fire();
 }
 
 function threadActionRename(event, convId) {
