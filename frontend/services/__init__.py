@@ -215,6 +215,18 @@ from .chat_relay import (
 )
 
 
+# ── Chat agent / model helpers (extracted to services.chat_agents) ───────────
+# NOTE: _chat_try_hard_kill_local_agent is deliberately NOT here — the
+# worker-pool variant from chat_jobs wins in the services namespace, and
+# chat.py keeps its own CLI-based variant locally.
+from .chat_agents import (
+    _chat_agent_configured_model,
+    _chat_model_aliases,
+    _chat_running_ollama_models,
+    _local_ollama_chat_agents,
+)
+
+
 
 # ── ALM governance + Vortex event helpers (extracted to services.alm) ───────
 from .alm import (
@@ -266,11 +278,14 @@ __all__ = [
     '_TAVILY_OK',
     '_agent_reachability_status',
     '_alm_gate_or_response',
+    '_chat_agent_configured_model',
     '_chat_eta_seconds',
     '_chat_find_running_job_for_agent_locked',
     '_chat_job_public',
+    '_chat_model_aliases',
     '_chat_now_iso',
     '_chat_runtime_class',
+    '_chat_running_ollama_models',
     '_chat_stage_for',
     '_chat_try_hard_kill_local_agent',
     '_chat_update_job',
@@ -284,6 +299,7 @@ __all__ = [
     '_infer_reply_target_from_text',
     '_is_execution_confirmation',
     '_is_time_wizard_active',
+    '_local_ollama_chat_agents',
     '_log_proposal_duck_review',
     '_normalize_chat_participant',
     '_original_ask_agent',
