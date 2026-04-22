@@ -498,6 +498,15 @@
   color: var(--accent);
 }
 
+/* Phase 5: provenance badge for agent-suggested interests */
+.home-interest-agent {
+  font-size: 11px;
+  line-height: 1;
+  margin: 0 2px;
+  opacity: 0.85;
+  cursor: help;
+}
+
 /* ── Research topics row ───────────────────────────────────────────────── */
 .home-research-row {
   display: flex;
