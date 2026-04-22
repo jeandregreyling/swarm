@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-22 12:05*
+*Auto-generated: 2026-04-22 12:16*
 
 
 ## Python Modules
@@ -244,12 +244,12 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 33556 |
+| `activity_log` | 33601 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 529 |
+| `approval_tokens` | 532 |
 | `audit_results` | 34 |
 | `chat_jobs` | 583 |
 | `claude_log` | 1 |
@@ -260,13 +260,13 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 6522 |
+| `decisions` | 6541 |
 | `deferred_items` | 0 |
-| `duck_log` | 800 |
+| `duck_log` | 802 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4264 |
+| `ghost_circle` | 4266 |
 | `governance_log` | 383 |
 | `knowledge_chunks` | 632 |
 | `knowledge_sources` | 46 |
@@ -295,7 +295,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1860 |
+| `queue` | 1864 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 506 |
@@ -312,15 +312,15 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7106 |
+| `system_stats` | 7108 |
 | `task_run_log` | 0 |
 | `terminal_shortcuts` | 16 |
-| `ticket_notes` | 554 |
-| `tickets` | 562 |
-| `time_checkpoints` | 4089 |
-| `time_events` | 95557 |
-| `time_journal` | 90238 |
-| `time_machine` | 5831 |
+| `ticket_notes` | 556 |
+| `tickets` | 564 |
+| `time_checkpoints` | 4108 |
+| `time_events` | 95577 |
+| `time_journal` | 90239 |
+| `time_machine` | 5838 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
