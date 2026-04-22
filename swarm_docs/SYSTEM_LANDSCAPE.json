@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-22 11:54",
+  "generated_at": "2026-04-22 11:55",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2993,7 +2993,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 33435
+      "rows": 33474
     },
     {
       "name": "agent_capabilities",
@@ -3013,7 +3013,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 520
+      "rows": 523
     },
     {
       "name": "audit_results",
@@ -3057,7 +3057,7 @@
     },
     {
       "name": "decisions",
-      "rows": 6465
+      "rows": 6484
     },
     {
       "name": "deferred_items",
@@ -3065,7 +3065,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 794
+      "rows": 796
     },
     {
       "name": "file_versions",
@@ -3081,7 +3081,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4258
+      "rows": 4260
     },
     {
       "name": "governance_log",
@@ -3197,7 +3197,7 @@
     },
     {
       "name": "queue",
-      "rows": 1848
+      "rows": 1852
     },
     {
       "name": "research_evidence",
@@ -3277,19 +3277,19 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 548
+      "rows": 550
     },
     {
       "name": "tickets",
-      "rows": 556
+      "rows": 558
     },
     {
       "name": "time_checkpoints",
-      "rows": 4031
+      "rows": 4051
     },
     {
       "name": "time_events",
-      "rows": 95498
+      "rows": 95518
     },
     {
       "name": "time_journal",
@@ -3297,7 +3297,7 @@
     },
     {
       "name": "time_machine",
-      "rows": 5807
+      "rows": 5811
     },
     {
       "name": "tool_builds",
