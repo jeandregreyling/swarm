@@ -473,6 +473,9 @@ function openIdentityManager() {
 
 // Escape helper for identity manager HTML attributes
 function _escHtml(s) {
+  if (typeof window !== 'undefined' && window.SwarmChat && typeof window.SwarmChat.esc === 'function') {
+    return window.SwarmChat.esc(s);
+  }
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 

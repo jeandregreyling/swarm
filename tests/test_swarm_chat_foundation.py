@@ -48,6 +48,30 @@ def test_chat_js_prefers_shared_escape():
     assert 'window.SwarmChat.esc' in src
 
 
+def test_all_view_escape_helpers_prefer_shared():
+    """Phase 7 N2: every duplicate _esc* call site must defer to SwarmChat.esc."""
+    sites = [
+        'frontend/static/js/friday-auth.js',
+        'frontend/static/js/views/studio.js',
+        'frontend/static/js/views/localai.js',
+        'frontend/static/js/views/onboarding.js',
+        'frontend/static/js/views/conversations.js',
+        'frontend/static/js/views/skills.js',
+        'frontend/static/js/views/library.js',
+        'frontend/static/js/views/access.js',
+        'frontend/static/js/views/chat.js',
+    ]
+    for rel in sites:
+        p = ROOT / rel
+        assert p.exists(), f'missing {p}'
+        src = p.read_text()
+        assert 'window.SwarmChat' in src, f'{rel}: no SwarmChat reference'
+        assert 'SwarmChat.esc' in src, f'{rel}: does not defer to SwarmChat.esc'
+    # studio.js additionally must delegate _escAttr → SwarmChat.escAttr
+    studio_src = (ROOT / 'frontend/static/js/views/studio.js').read_text()
+    assert 'SwarmChat.escAttr' in studio_src
+
+
 def test_swarm_chat_js_served_by_flask():
     app = create_app()
     with app.test_client() as c:
