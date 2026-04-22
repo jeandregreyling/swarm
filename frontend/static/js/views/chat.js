@@ -4797,7 +4797,42 @@ function threadActionDelete(event, convId) {
     event.preventDefault();
     event.stopPropagation();
   }
+  // Session 28 Workstream A: inline two-click arm-to-confirm instead of modal.
+  // First click turns the button red with "Confirm" label; second click fires.
+  var btn = event && event.currentTarget;
+  if (btn && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btn, function () {
+      _performDeleteThread(convId);
+    }, { confirmLabel: 'Confirm', timeoutMs: 4000 });
+    return;
+  }
+  // Fallback for the unlikely case SwarmChat isn't loaded yet.
   deleteThread(convId);
+}
+
+// Actual delete without the modal; used by the armed path above and by the
+// legacy deleteThread() which still triggers a modal for keyboard / menu paths.
+async function _performDeleteThread(convId) {
+  try {
+    const resp = await fetch('/api/conversations/' + convId, { method: 'DELETE' });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.ok) throw new Error((data && data.error) || `HTTP ${resp.status}`);
+    window._chatConversations = (window._chatConversations || []).filter(c => Number(c.id) !== Number(convId));
+    const threadSelect = document.getElementById('chat-thread-select');
+    if (threadSelect) {
+      const dead = Array.from(threadSelect.options).find(o => Number(o.value) === Number(convId));
+      if (dead) dead.remove();
+    }
+    if (Number(window.__fridaysChatConversationId) === Number(convId)) {
+      createNewThread();
+    } else {
+      renderChatThreadRail();
+    }
+    showToast('Thread deleted', 'success');
+    refreshChatThreadList(window.__fridaysChatConversationId || null);
+  } catch (e) {
+    showToast('Failed to delete thread: ' + (e.message || e), 'error');
+  }
 }
 
 function renderChatMessages(rows) {
@@ -5097,27 +5132,11 @@ function _confirmDelete(message, onConfirm) {
 }
 
 async function deleteThread(convId) {
+  // Modal path — used by keyboard shortcuts / "delete current thread" menu
+  // where there's no specific button to arm. Inline per-row buttons use
+  // threadActionDelete() → _performDeleteThread() for the armed UX.
   _confirmDelete('Delete this chat thread and all messages?', async () => {
-    try {
-      const resp = await fetch('/api/conversations/' + convId, { method: 'DELETE' });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok || !data.ok) throw new Error((data && data.error) || `HTTP ${resp.status}`);
-      window._chatConversations = (window._chatConversations || []).filter(c => Number(c.id) !== Number(convId));
-      const threadSelect = document.getElementById('chat-thread-select');
-      if (threadSelect) {
-        const dead = Array.from(threadSelect.options).find(o => Number(o.value) === Number(convId));
-        if (dead) dead.remove();
-      }
-      if (Number(window.__fridaysChatConversationId) === Number(convId)) {
-        createNewThread();
-      } else {
-        renderChatThreadRail();
-      }
-      showToast('Thread deleted', 'success');
-      refreshChatThreadList(window.__fridaysChatConversationId || null);
-    } catch (e) {
-      showToast('Failed to delete thread: ' + (e.message || e), 'error');
-    }
+    await _performDeleteThread(convId);
   });
 }
 
