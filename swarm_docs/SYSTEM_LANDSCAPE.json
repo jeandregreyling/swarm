@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-22 10:53",
+  "generated_at": "2026-04-22 11:01",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2143,54 +2143,6 @@
           ]
         },
         {
-          "path": "/api/work-proposals/<proposal_id>/diff",
-          "methods": [
-            "GET"
-          ]
-        },
-        {
-          "path": "/api/work-proposals/<proposal_id>/approve-to-uat",
-          "methods": [
-            "POST"
-          ]
-        },
-        {
-          "path": "/api/work-proposals/<proposal_id>/promote-to-prod",
-          "methods": [
-            "POST"
-          ]
-        },
-        {
-          "path": "/api/work-proposals/<proposal_id>/revert",
-          "methods": [
-            "POST"
-          ]
-        },
-        {
-          "path": "/api/work-proposals/<proposal_id>/attachments",
-          "methods": [
-            "GET"
-          ]
-        },
-        {
-          "path": "/api/work-proposals/<proposal_id>/attachments",
-          "methods": [
-            "POST"
-          ]
-        },
-        {
-          "path": "/api/work-proposals/<proposal_id>/attachments/<int:att_id>",
-          "methods": [
-            "GET"
-          ]
-        },
-        {
-          "path": "/api/work-proposals/<proposal_id>/attachments/<int:att_id>",
-          "methods": [
-            "DELETE"
-          ]
-        },
-        {
           "path": "/api/work-proposals/<proposal_id>/notes",
           "methods": [
             "GET"
@@ -2227,7 +2179,69 @@
           ]
         }
       ],
-      "route_count": 22
+      "route_count": 14
+    },
+    {
+      "name": "proposals_attachments",
+      "description": "proposals_attachments.py \u2014 Attachment routes for work proposals.",
+      "routes": [
+        {
+          "path": "/api/work-proposals/<proposal_id>/attachments",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/attachments",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/attachments/<int:att_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/attachments/<int:att_id>",
+          "methods": [
+            "DELETE"
+          ]
+        }
+      ],
+      "route_count": 4
+    },
+    {
+      "name": "proposals_git",
+      "description": "proposals_git.py \u2014 Git operations for work proposals.",
+      "routes": [
+        {
+          "path": "/api/work-proposals/<proposal_id>/diff",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/approve-to-uat",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/promote-to-prod",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/work-proposals/<proposal_id>/revert",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 4
     },
     {
       "name": "research",
@@ -2969,7 +2983,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 33239
+      "rows": 33280
     },
     {
       "name": "agent_capabilities",
@@ -2989,7 +3003,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 508
+      "rows": 511
     },
     {
       "name": "audit_results",
@@ -3033,7 +3047,7 @@
     },
     {
       "name": "decisions",
-      "rows": 6388
+      "rows": 6407
     },
     {
       "name": "deferred_items",
@@ -3041,7 +3055,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 786
+      "rows": 788
     },
     {
       "name": "file_versions",
@@ -3057,7 +3071,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4250
+      "rows": 4252
     },
     {
       "name": "governance_log",
@@ -3173,7 +3187,7 @@
     },
     {
       "name": "queue",
-      "rows": 1832
+      "rows": 1836
     },
     {
       "name": "research_evidence",
@@ -3241,7 +3255,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 7092
+      "rows": 7093
     },
     {
       "name": "task_run_log",
@@ -3253,27 +3267,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 540
+      "rows": 542
     },
     {
       "name": "tickets",
-      "rows": 548
+      "rows": 550
     },
     {
       "name": "time_checkpoints",
-      "rows": 3955
+      "rows": 3974
     },
     {
       "name": "time_events",
-      "rows": 95418
+      "rows": 95438
     },
     {
       "name": "time_journal",
-      "rows": 90233
+      "rows": 90234
     },
     {
       "name": "time_machine",
-      "rows": 5771
+      "rows": 5781
     },
     {
       "name": "tool_builds",
