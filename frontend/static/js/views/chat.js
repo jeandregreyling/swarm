@@ -1798,6 +1798,11 @@ function _chatMessagesEl() {
 }
 
 function _escapeHtml(v) {
+  // Phase 4 foundation: prefer shared SwarmChat.esc; fall back if the core
+  // module hasn't loaded (e.g. script-order edge case during dev reload).
+  if (typeof window !== 'undefined' && window.SwarmChat && typeof window.SwarmChat.esc === 'function') {
+    return window.SwarmChat.esc(v);
+  }
   return String(v ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
