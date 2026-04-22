@@ -411,7 +411,9 @@ def api_chat():
         history_limit = 8
     history_limit = max(1, min(30, history_limit))
 
-    allowed_agents = {a['name'].lower() for a in _reg_roster() if a['name'].lower() != 'ghost'}
+    # Routable view: excludes Ghost (human tier), Scholar + Seeker (silent-api
+    # services used by local agents for internet access), disabled agents.
+    allowed_agents = {a['name'].lower() for a in _reg_routable()}
 
     if isinstance(requested_agents, list) and requested_agents:
         normalized_agents = []
