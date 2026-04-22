@@ -1,7 +1,13 @@
+import os as _os
 import sys
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/lib/search')
+
+_SWARM_ROOT = _os.environ.get('SWARM_ROOT') or _os.path.dirname(
+    _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+)
+for _sub in ('', 'utils', 'lib/search'):
+    _p = _os.path.join(_SWARM_ROOT, _sub) if _sub else _SWARM_ROOT
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 from database import (new_conversation, log_message, save_memory,
                       search_memory, get_ghost_history, get_all_memories)
 from internet import search_web
@@ -143,7 +149,10 @@ if __name__ == '__main__':
 # ══════════════════════════════════════════════════════════════════════════════
 
 import sys as _sys
-_sys.path.insert(0, '/home/seven/swarm')
+import os as _os2
+_sys.path.insert(0, _os2.environ.get('SWARM_ROOT') or _os2.path.dirname(
+    _os2.path.dirname(_os2.path.dirname(_os2.path.abspath(__file__)))
+))
 
 from datetime import datetime as _dt
 

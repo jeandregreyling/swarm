@@ -11,13 +11,17 @@ Usage:
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+import os
 import sys
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/core/pipeline')
-sys.path.insert(0, '/home/seven/swarm/agents/ghost')
-sys.path.insert(0, '/home/seven/swarm/lib/system')
-sys.path.insert(0, '/home/seven/swarm/lib/email')
+
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+for _sub in ('', 'utils', 'core/pipeline', 'agents/ghost',
+             'lib/system', 'lib/email'):
+    _p = os.path.join(_SWARM_ROOT, _sub) if _sub else _SWARM_ROOT
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 # ── Patch send_reply before any import touches it ─────────────────────────
 import email_handler as _eh

@@ -7,11 +7,17 @@ Pipeline:
   ghost reviews UAT   → mark closed (legacy: executed)
 """
 
+import os
 import sys
 import time
 
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+for _sub in ('', 'utils'):
+    _p = os.path.join(_SWARM_ROOT, _sub) if _sub else _SWARM_ROOT
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 from proposal_status import STATUS_CLOSED, normalize_proposal_status
 
