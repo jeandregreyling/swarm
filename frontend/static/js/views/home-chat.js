@@ -955,13 +955,22 @@
     const row = document.getElementById('home-interests-row');
     if (!row || interests.length === 0) return;
 
-    const icons = { memory: '🧠', patterns: '📊', conversations: '💬' };
+    const icons = { memory: '🧠', patterns: '📊', conversations: '💬', saved: '⭐' };
+    // Phase 5: agent-sourced interests get a provenance badge so the user can
+    // see which local agent suggested a topic (Librarian/Scholar/Seeker).
+    const agentBadge = { librarian: '📚', scholar: '🔭', seeker: '🌐' };
     row.innerHTML = interests.map(item => {
       const topSrc = item.sources[item.sources.length - 1] || 'conversations';
       const icon = icons[topSrc] || '💬';
+      const sa = (item.source === 'agent' && item.source_agent)
+        ? String(item.source_agent).toLowerCase() : '';
+      const badge = sa
+        ? `<span class="home-interest-agent" title="Suggested by ${_hcEsc(sa)}" data-agent="${_hcEsc(sa)}">${agentBadge[sa] || '🤖'}</span>`
+        : '';
       return `<button class="home-interest-card" data-suggestion="${_hcEsc(item.suggestion)}" title="${_hcEsc(item.suggestion)}">` +
         `<span class="home-interest-icon">${icon}</span>` +
         `<span>${_hcEsc(item.topic)}</span>` +
+        badge +
         `<span class="home-interest-source" data-src="${topSrc}">${topSrc}</span>` +
         `</button>`;
     }).join('');
