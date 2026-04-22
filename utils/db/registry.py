@@ -33,7 +33,18 @@ __all__ = [
     'get_agent_etas', 'get_agent_runtime_classes', 'get_single_task_locals',
     'get_keep_alive_map', 'get_display_labels', 'get_api_key_map',
     'invalidate_cache', 'get_all_agents_raw',
+    # Routing view — used by chat/relay/queue to decide who's addressable.
+    'get_routable_agents', 'is_agent_routable',
+    'SILENT_API_TIERS', 'ROUTABLE_EXCLUDED_TIERS',
+    'set_runtime_disabled_provider',
 ]
+
+# Tiers that are NEVER in the routable (user-facing) view.
+#   service = silent APIs (Scholar=Gemini, Seeker=Tavily) used by local agents
+#             for internet/vision access. They are not chat participants.
+#   human   = Ghost — the operator, not an agent to be routed to.
+SILENT_API_TIERS = frozenset({'service'})
+ROUTABLE_EXCLUDED_TIERS = frozenset({'service', 'human'})
 
 # ── Cache internals ──────────────────────────────────────────────────────────
 _CACHE_TTL = 60  # seconds
@@ -251,3 +262,67 @@ def get_api_key_map():
         if kv:
             out[r['name']] = kv
     return out
+
+
+# ── Routing view ─────────────────────────────────────────────────────────────
+# A single accessor that chat, relay, queue dispatch, and agent-awareness all
+# consult to decide "who can this message go to right now". Consolidates:
+#   - DB `enabled` column (persisted truth)
+#   - tier filter (service/human tiers never user-facing)
+#   - runtime soft-disable set (late-bound to avoid circular import)
+# Callers should NEVER reimplement their own "routable" logic; this is the view.
+
+_runtime_disabled_provider = None  # late-bound; set by services layer at boot.
+
+
+def set_runtime_disabled_provider(provider):
+    """Register a zero-arg callable that returns an iterable of disabled agent names.
+
+    The registry cannot import from `frontend.services` (circular); the services
+    layer registers its `DISABLED_AGENTS` set here at boot, so runtime soft
+    disables are honored without a restart.
+    """
+    global _runtime_disabled_provider
+    _runtime_disabled_provider = provider
+
+
+def _current_runtime_disabled():
+    if _runtime_disabled_provider is None:
+        return frozenset()
+    try:
+        return frozenset(str(n).lower() for n in _runtime_disabled_provider())
+    except Exception:
+        return frozenset()
+
+
+def get_routable_agents():
+    """Return the list of agents addressable for chat/relay/queue routing.
+
+    Filters applied (in order):
+      1. DB `enabled = 1` (already enforced by _load_rows).
+      2. Tier not in ROUTABLE_EXCLUDED_TIERS (service, human).
+      3. Name not in runtime disabled set (soft-toggle without restart).
+
+    Scholar and Seeker (tier='service') are silent-API services used by local
+    agents for internet access; they never appear here.
+    Ghost (tier='human') is the operator; never a routing target.
+    """
+    disabled = _current_runtime_disabled()
+    out = []
+    for r in _load_rows():
+        tier = r.get('tier') or 'local'
+        if tier in ROUTABLE_EXCLUDED_TIERS:
+            continue
+        name = r['name']
+        if name.lower() in disabled:
+            continue
+        out.append(dict(r))
+    return out
+
+
+def is_agent_routable(name):
+    """Convenience: True if `name` is currently in the routable set."""
+    if not name:
+        return False
+    wanted = str(name).strip().lower()
+    return any(r['name'].lower() == wanted for r in get_routable_agents())
