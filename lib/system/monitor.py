@@ -12,13 +12,13 @@ from database import get_connection
 from config import GHOST_EMAIL
 from email_handler import send_reply
 import psutil
-import ollama
+from core import llm as _llm
 from datetime import datetime
 import time
 
 def get_active_model():
     try:
-        running = ollama.ps()
+        running = _llm.ps()
         if running and hasattr(running, 'models') and running.models:
             return running.models[0].model
         return 'none'
@@ -115,7 +115,7 @@ def get_disk_info():
 def get_ollama_models():
     """Return list of locally available Ollama models."""
     try:
-        models = ollama.list()
+        models = _llm.list_models()
         return [m.model for m in models.models] if hasattr(models, 'models') else []
     except Exception:
         return []
@@ -138,7 +138,7 @@ def get_model_details(model):
     if cached and (now - cached[0]) < _MODEL_DETAILS_TTL:
         return cached[1]
     try:
-        result  = ollama.show(model)
+        result  = _llm.show(model)
         details = getattr(result, 'details', None)
         payload = {
             'model':          model,
@@ -226,7 +226,7 @@ def get_system_status():
     # the April 2026 CPU runaway — do NOT re-introduce it here.
     active_models = []
     try:
-        running = ollama.ps()
+        running = _llm.ps()
         if hasattr(running, 'models') and running.models:
             for m in running.models:
                 name = getattr(m, 'model', '') or ''

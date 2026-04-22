@@ -300,7 +300,7 @@ def _model_aliases(name):
 
 def _get_agent_residency():
     try:
-        import ollama
+        from core import llm as _llm
         from utils.db.registry import get_all_agents_raw
 
         roster = get_all_agents_raw() or []
@@ -323,7 +323,7 @@ def _get_agent_residency():
             for alias in _model_aliases(agent['model']):
                 model_map.setdefault(alias, []).append(agent)
 
-        running = ollama.ps()
+        running = _llm.ps()
         models = list(running.models if hasattr(running, 'models') else [])
         residency = {'ram': [], 'swap': [], 'gpu': []}
         seen = {'ram': set(), 'swap': set(), 'gpu': set()}

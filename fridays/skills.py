@@ -1803,10 +1803,10 @@ def _skill_claude_code(args, agent, **_):
 
 
 def _skill_check_models(args, agent, **_):
-    import ollama as _ol
+    from core import llm as _llm
     mode = (args.strip() or '').lower()
     try:
-        local = _ol.list()
+        local = _llm.list_models()
         models = local.models if hasattr(local, 'models') else []
     except Exception as e:
         return False, f'Could not reach Ollama: {e}'
