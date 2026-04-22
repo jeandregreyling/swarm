@@ -438,6 +438,9 @@
   }
 
   function _esc(s) {
+    if (typeof window !== 'undefined' && window.SwarmChat && typeof window.SwarmChat.esc === 'function') {
+      return window.SwarmChat.esc(s);
+    }
     const d = document.createElement('div');
     d.textContent = s || '';
     return d.innerHTML;

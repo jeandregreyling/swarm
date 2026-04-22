@@ -414,6 +414,9 @@ async function promoteToProd(proposalId) {
 }
 
 function _escapeHtml(str) {
+  if (typeof window !== 'undefined' && window.SwarmChat && typeof window.SwarmChat.esc === 'function') {
+    return window.SwarmChat.esc(str);
+  }
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
@@ -806,6 +809,9 @@ async function sudoApproveRun(token, proposalId) {
 }
 
 function _escAttr(s) {
+  if (typeof window !== 'undefined' && window.SwarmChat && typeof window.SwarmChat.escAttr === 'function') {
+    return window.SwarmChat.escAttr(s);
+  }
   return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 

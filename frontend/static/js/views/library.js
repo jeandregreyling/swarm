@@ -618,6 +618,9 @@ function _fmtDate(iso) {
 }
 
 function _esc(s) {
+  if (typeof window !== 'undefined' && window.SwarmChat && typeof window.SwarmChat.esc === 'function') {
+    return window.SwarmChat.esc(s);
+  }
   return String(s || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
