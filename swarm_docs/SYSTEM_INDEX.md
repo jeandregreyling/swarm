@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-22 12:34*
+*Auto-generated: 2026-04-22 12:39*
 
 
 ## Python Modules
@@ -30,6 +30,7 @@
 | `utils/db/audit.py` | db.audit — Ghost circle and activity log. |
 | `utils/db/auth.py` | db.auth — User profiles, skill permissions, trusted senders / domains, |
 | `utils/db/chat.py` | db.chat — Conversations, messages, and chat job tracking. |
+| `utils/db/interests.py` | utils/db/interests.py — Phase 5: agent-facing interests CRUD with provenance. |
 | `utils/db/knowledge.py` | utils/db/knowledge.py — Shared swarm knowledge base CRUD + event broadcasts (A.3) |
 | `utils/db/memory.py` | db.memory — Shared memory, agent-specific memory, project docs. |
 | `utils/db/node_skills.py` | utils.db.node_skills — Federated skill registry CRUD (D.2) |
@@ -244,12 +245,12 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 33728 |
+| `activity_log` | 33769 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 541 |
+| `approval_tokens` | 544 |
 | `audit_results` | 34 |
 | `chat_jobs` | 583 |
 | `claude_log` | 1 |
@@ -260,13 +261,13 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 6598 |
+| `decisions` | 6617 |
 | `deferred_items` | 0 |
-| `duck_log` | 808 |
+| `duck_log` | 810 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4272 |
+| `ghost_circle` | 4274 |
 | `governance_log` | 383 |
 | `knowledge_chunks` | 632 |
 | `knowledge_sources` | 46 |
@@ -295,7 +296,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1876 |
+| `queue` | 1880 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 506 |
@@ -312,15 +313,15 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7112 |
+| `system_stats` | 7113 |
 | `task_run_log` | 0 |
 | `terminal_shortcuts` | 16 |
-| `ticket_notes` | 562 |
-| `tickets` | 570 |
-| `time_checkpoints` | 4165 |
-| `time_events` | 95637 |
-| `time_journal` | 90242 |
-| `time_machine` | 5868 |
+| `ticket_notes` | 564 |
+| `tickets` | 572 |
+| `time_checkpoints` | 4184 |
+| `time_events` | 95657 |
+| `time_journal` | 90243 |
+| `time_machine` | 5876 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
