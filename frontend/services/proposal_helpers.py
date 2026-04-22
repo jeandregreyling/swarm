@@ -27,9 +27,21 @@ _SWARM_PROD_ROOT = os.environ.get(
 _SWARM_UAT_ROOT = os.environ.get('SWARM_UAT_ROOT', _SWARM_PROD_ROOT + '-uat')
 _SWARM_DEV_ROOT = os.environ.get('SWARM_DEV_ROOT', _SWARM_PROD_ROOT + '-dev')
 
+# Freeze flag — when SWARM_STAGES_FROZEN=1 the 3-stage promote/approve flow
+# collapses to a single `apply` (governance transition + PROD restart), and
+# worktree merges are skipped even if the worktrees exist on disk.
+# Introduced in the Apr 2026 rewire: chat/queue/agent logic is being rebuilt
+# and running DEV/UAT in parallel triples every surface a bug must survive.
+# Re-enable by unsetting the env var; no code change required.
+SWARM_STAGES_FROZEN = os.environ.get('SWARM_STAGES_FROZEN', '1').strip() not in ('0', 'false', 'no', '')
+
 
 def _worktrees_ready():
-    """True once both swarm-uat and swarm-dev worktrees exist on disk."""
+    """True once both swarm-uat and swarm-dev worktrees exist on disk AND the
+    3-stage flow has not been frozen via `SWARM_STAGES_FROZEN`.
+    """
+    if SWARM_STAGES_FROZEN:
+        return False
     return os.path.isdir(_SWARM_UAT_ROOT) and os.path.isdir(_SWARM_DEV_ROOT)
 
 
@@ -153,4 +165,5 @@ __all__ = [
     '_restart_service_async',
     '_run_dev_tests',
     '_worktrees_ready',
+    'SWARM_STAGES_FROZEN',
 ]
