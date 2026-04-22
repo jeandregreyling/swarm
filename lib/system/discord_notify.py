@@ -11,12 +11,17 @@ Requires DISCORD_TOKEN and DISCORD_CHANNEL_ID in config.py.
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+import os
 import sys
 import asyncio
 import logging
 import threading
 
-sys.path.insert(0, '/home/seven/swarm')
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
 
 logger = logging.getLogger('seven.discord_notify')
 
@@ -306,3 +311,43 @@ def post_raw(title: str, body: str, colour: int = COLOUR_INFO):
     embed = discord.Embed(title=title, description=body[:4000], colour=colour)
     embed.set_footer(text="Seven's Swarm")
     _send(embed)
+
+
+# ── Shared formatter bridge (Session 27, Phase 6) ───────────────────────────
+_LEVEL_COLOURS = {
+    'info':     COLOUR_INFO,
+    'success':  COLOUR_OK,
+    'warn':     COLOUR_WARN,
+    'error':    COLOUR_URGENT,
+    'critical': COLOUR_URGENT,
+}
+
+
+def notify_alert(envelope):
+    """Post a structured alert using the shared `core.notifications` formatter.
+
+    `envelope` must be a `core.notifications.AlertEnvelope`. The level → colour
+    map keeps Discord embeds consistent with Telegram/Email output. Fire-and-
+    forget: any failure is logged but never raised to callers.
+    """
+    if not _is_configured():
+        return
+    try:
+        from core.notifications import format_alert, AlertEnvelope  # local import to avoid cycles
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.warning('[discord_notify] shared formatter unavailable: %s', exc)
+        return
+
+    if not isinstance(envelope, AlertEnvelope):
+        logger.warning('[discord_notify] notify_alert expects AlertEnvelope, got %r', type(envelope))
+        return
+
+    try:
+        body = format_alert(envelope, max_chars=3800)  # Discord embed desc cap is 4096
+    except Exception as exc:
+        logger.warning('[discord_notify] format_alert failed: %s', exc)
+        return
+
+    colour = _LEVEL_COLOURS.get(str(envelope.level).lower(), COLOUR_INFO)
+    title = str(envelope.subject or '').strip().splitlines()[0][:250] or '(alert)'
+    post_raw(title, body, colour=colour)
