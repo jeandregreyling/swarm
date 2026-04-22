@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-22 12:25*
+*Auto-generated: 2026-04-22 12:34*
 
 
 ## Python Modules
@@ -207,9 +207,9 @@
 
 | Module | Size |
 |--------|------|
-| `access.js` | 96.3 KB |
+| `access.js` | 96.5 KB |
 | `chat.js` | 241.9 KB |
-| `conversations.js` | 13.2 KB |
+| `conversations.js` | 13.4 KB |
 | `diamond.js` | 26.9 KB |
 | `docs.js` | 24.3 KB |
 | `email.js` | 22.4 KB |
@@ -220,18 +220,18 @@
 | `home-chat.js` | 46.9 KB |
 | `knowledge.js` | 6.7 KB |
 | `library-graph.js` | 12.4 KB |
-| `library.js` | 26.4 KB |
-| `localai.js` | 25.5 KB |
+| `library.js` | 26.5 KB |
+| `localai.js` | 25.7 KB |
 | `memory-landscape.js` | 9.6 KB |
 | `memory.js` | 30.0 KB |
 | `monitor.js` | 18.1 KB |
 | `ollama.js` | 4.1 KB |
-| `onboarding.js` | 16.8 KB |
+| `onboarding.js` | 16.9 KB |
 | `orbs.js` | 63.0 KB |
 | `services.js` | 4.7 KB |
-| `skills.js` | 25.0 KB |
+| `skills.js` | 25.1 KB |
 | `spotlight.js` | 8.2 KB |
-| `studio.js` | 85.3 KB |
+| `studio.js` | 85.6 KB |
 | `tasker.js` | 10.7 KB |
 | `terminal-commands.js` | 13.1 KB |
 | `terminal.js` | 43.4 KB |
@@ -244,12 +244,12 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 33684 |
+| `activity_log` | 33728 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 538 |
+| `approval_tokens` | 541 |
 | `audit_results` | 34 |
 | `chat_jobs` | 583 |
 | `claude_log` | 1 |
@@ -260,13 +260,13 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 6579 |
+| `decisions` | 6598 |
 | `deferred_items` | 0 |
-| `duck_log` | 806 |
+| `duck_log` | 808 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4270 |
+| `ghost_circle` | 4272 |
 | `governance_log` | 383 |
 | `knowledge_chunks` | 632 |
 | `knowledge_sources` | 46 |
@@ -295,7 +295,7 @@
 | `project_doc_versions` | 56 |
 | `project_docs` | 64 |
 | `proposal_attachments` | 0 |
-| `queue` | 1872 |
+| `queue` | 1876 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 506 |
@@ -312,15 +312,15 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7110 |
+| `system_stats` | 7112 |
 | `task_run_log` | 0 |
 | `terminal_shortcuts` | 16 |
-| `ticket_notes` | 560 |
-| `tickets` | 568 |
-| `time_checkpoints` | 4146 |
-| `time_events` | 95617 |
-| `time_journal` | 90241 |
-| `time_machine` | 5854 |
+| `ticket_notes` | 562 |
+| `tickets` | 570 |
+| `time_checkpoints` | 4165 |
+| `time_events` | 95637 |
+| `time_journal` | 90242 |
+| `time_machine` | 5868 |
 | `tool_builds` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |

@@ -1313,12 +1313,19 @@ def _migrate_schema(conn=None):
             topic TEXT NOT NULL,
             category TEXT DEFAULT 'general',
             source TEXT DEFAULT 'user',
+            source_agent TEXT DEFAULT '',
             score REAL DEFAULT 10.0,
             active INTEGER DEFAULT 1,
             created_at TEXT DEFAULT (datetime('now')),
             updated_at TEXT DEFAULT (datetime('now')),
             UNIQUE(username, topic)
         )''')
+    # Phase 5: provenance column so Librarian/Scholar/Seeker can own interests
+    # distinctly from user-entered ones. Idempotent ALTER for existing DBs.
+    if 'user_interests' in tables:
+        ui_cols = {row[1] for row in conn.execute('PRAGMA table_info(user_interests)').fetchall()}
+        if 'source_agent' not in ui_cols:
+            conn.execute("ALTER TABLE user_interests ADD COLUMN source_agent TEXT DEFAULT ''")
     # User login sessions — auth tokens for multi-user support
     if 'user_sessions' not in tables:
         conn.execute('''CREATE TABLE IF NOT EXISTS user_sessions (
