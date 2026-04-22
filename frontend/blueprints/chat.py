@@ -1699,6 +1699,23 @@ def api_chat_classify():
         result['agents'], result['category'], user_models,
     )
 
+    # Phase 3 parallel signal: deterministic router decision (non-breaking).
+    # Surfaces explicit-target / @mention / role-keyword precedence so callers
+    # can diff against classify_message() and eventually migrate.
+    try:
+        from core.routing import route as _route
+        from utils.db.registry import get_routable_agents as _reg_routable
+        _decision = _route(message, sender='user', routable_agents=_reg_routable())
+        result['router'] = {
+            'target': _decision.target,
+            'category': _decision.category,
+            'confidence': _decision.confidence,
+            'rationale': _decision.rationale,
+            'candidates': list(_decision.candidates),
+        }
+    except Exception as _e:
+        result['router'] = {'error': str(_e)[:160]}
+
     result['ok'] = True
     return jsonify(result)
 
