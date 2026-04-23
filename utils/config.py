@@ -1401,3 +1401,45 @@ TEAM AWARENESS: You know every agent in the swarm via the agents table. You read
 
 MEMORY: memory_twenty — your own persistent memory for patterns, learnings, and council history."""
 
+
+
+# ── Coding Bible injection (Phase-4 B20 · Phase-5 refinement) ────────────
+# Every coder-capable agent drinks from the same fountain. At import time we
+# prepend the Coding Bible quick-card to each *_SYSTEM_PROMPT constant listed
+# below. The Librarian is excluded because it emits tags-only output and the
+# extra tokens would confuse it. Seven is excluded because it runs phi3:mini
+# with a 4K context and needs every token for its paperclip loop.
+_CODING_BIBLE_AGENTS = (
+    'GEMMA_SYSTEM_PROMPT',
+    'LLAMA_SYSTEM_PROMPT',
+    'QWEN_SYSTEM_PROMPT',
+    'MISTRAL_SYSTEM_PROMPT',
+    'TWENTY_SYSTEM_PROMPT',
+    'EIGHT_SYSTEM_PROMPT',
+    'ELEVEN_SYSTEM_PROMPT',
+    'NINE_SYSTEM_PROMPT',
+    'TEN_SYSTEM_PROMPT',
+    'TWELVE_SYSTEM_PROMPT',
+    'THIRTEEN_SYSTEM_PROMPT',
+    'NINETEEN_SYSTEM_PROMPT',
+    'SCHOLAR_SYSTEM_PROMPT',
+    'SEEKER_SYSTEM_PROMPT',
+    'GHOST_CODER_SYSTEM_PROMPT',
+)
+try:
+    # Try both import paths: `utils.coding_bible` (package-style) and
+    # `coding_bible` (direct, when utils/ is on sys.path via agents).
+    try:
+        from utils.coding_bible import quick_card as _cb_quick_card  # type: ignore
+    except Exception:
+        from coding_bible import quick_card as _cb_quick_card  # type: ignore
+    _cb_card = _cb_quick_card()
+    if _cb_card:
+        _cb_prefix = _cb_card + '\n\n'
+        for _name in _CODING_BIBLE_AGENTS:
+            _val = globals().get(_name)
+            if isinstance(_val, str) and 'CODING BIBLE' not in _val:
+                globals()[_name] = _cb_prefix + _val
+except Exception:
+    # Bible is best-effort; never block config import.
+    pass

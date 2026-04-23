@@ -19,12 +19,12 @@ logger = logging.getLogger('seven.seven')
 AGENT_NAME = 'seven'
 # 2026-04-23 — Seven scoped as the in-house "paperclip": tiny, always-hot,
 # lives in the system to nudge orbs, flip the "?" glyph, and answer quick
-# status/identity probes. qwen2.5:0.5b (~400 MB) keeps him resident without
-# touching the CPU budget that Duck/Librarian/Gemma need. The earlier custom
-# merged GGUF (seven:latest = Qwen 2.5 7B + DeepSeek-R1-Distill-Qwen-7B) is
-# shelved pending a rebuild — output was incoherent (repetition, token leakage).
+# status/identity probes. Switched from qwen2.5:0.5b (~400 MB, too small to
+# reason) to phi3:mini (~2.3 GB) per Ghost's feedback — still cheap but able
+# to hold a conversation. The earlier custom merged GGUF (seven:latest = Qwen
+# 2.5 7B + DeepSeek-R1-Distill-Qwen-7B) is shelved pending a rebuild.
 # Override with SEVEN_MODEL env var to test other backends.
-SEVEN_MODEL = os.environ.get('SEVEN_MODEL', 'qwen2.5:0.5b')
+SEVEN_MODEL = os.environ.get('SEVEN_MODEL', 'phi3:mini')
 
 
 def _read_state():
