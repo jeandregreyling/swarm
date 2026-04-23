@@ -231,6 +231,9 @@ from .chat_jobs import (
     _chat_find_running_job_for_agent_locked,
     _chat_try_hard_kill_local_agent,
     _chat_job_public,
+    _watchdog_mark_stalled_jobs_locked,
+    _record_job_health_locked,
+    get_chat_agent_health_snapshot,
 )
 
 
@@ -345,8 +348,10 @@ __all__ = [
     '_chat_try_hard_kill_local_agent',
     '_chat_update_job',
     '_cleanup_chat_jobs_locked',
-    '_conversation_reply_context_from_rows',
-    '_derive_proposal_from_text',
+    '_watchdog_mark_stalled_jobs_locked',
+    '_record_job_health_locked',
+    'get_chat_agent_health_snapshot',
+    '_conversation_reply_context_from_rows',    '_derive_proposal_from_text',
     '_display_chat_participant',
     '_duck_stats',
     '_extract_skill_lines_from_text',

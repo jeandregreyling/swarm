@@ -117,4 +117,26 @@
       background: color-mix(in srgb, var(--accent) 4%, var(--card)) !important;
     }
   </style>
+
+  <script>
+    // Wire tile clicks honestly — connectors aren't built yet, but the tiles
+    // should acknowledge the click instead of appearing dead. When a real
+    // connector ships, replace this handler with the per-provider flow.
+    (function(){
+      const labels = [];
+      document.querySelectorAll('#view-feeds .feed-option, .feed-option').forEach(el => {
+        if (el.__fridaysFeedsWired) return;
+        el.__fridaysFeedsWired = true;
+        el.addEventListener('click', () => {
+          const name = (el.querySelector('span[style*="font-weight:600"]')?.textContent || 'this feed').trim();
+          const msg = name === 'RSS / Custom'
+            ? 'RSS/Custom feed connector is not wired yet — coming soon.'
+            : `${name} connector is not wired yet — coming soon.`;
+          if (typeof showToast === 'function') showToast(msg, 'info');
+          else if (typeof window.showToast === 'function') window.showToast(msg, 'info');
+          else console.info('[Feeds]', msg);
+        });
+      });
+    })();
+  </script>
 </div>

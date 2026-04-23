@@ -116,13 +116,16 @@ class TestClassifyGeneral:
     def test_hello(self):
         r = _classify("Hello, how are you?")
         assert r['category'] == 'general'
-        assert 'gemma' in r['agents']
+        # 2026-04-23 — classifier no longer auto-tags Gemma on no-signal
+        # messages. Empty agents list means "defer to manual selection".
+        assert r['agents'] == []
         assert r['relay'] is False
 
     def test_empty(self):
         r = _classify("")
         assert r['category'] == 'general'
         assert r['confidence'] == 0.0
+        assert r['agents'] == []
 
 
 class TestClassifyMultiDomain:
@@ -146,4 +149,5 @@ class TestClassifyResponse:
     def test_agents_is_list(self):
         r = _classify("anything")
         assert isinstance(r['agents'], list)
-        assert len(r['agents']) >= 1
+        # 2026-04-23 — no-signal messages return [] now (defer to manual).
+        # The shape must still be a list.

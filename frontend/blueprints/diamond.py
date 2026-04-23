@@ -16,7 +16,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, current_app, jsonify
 
 logger = logging.getLogger('seven.diamond')
 
@@ -25,6 +25,15 @@ sys.path.insert(0, str(_SWARM_ROOT / 'utils'))
 sys.path.insert(0, str(_SWARM_ROOT))
 
 diamond_bp = Blueprint('diamond', __name__)
+
+
+# ── Pulse cache ──────────────────────────────────────────────────────────────
+# The home-page sundial polls this endpoint every ~2s. Every call otherwise
+# fans out to 6 DB queries + psutil vitals. A short in-memory cache lets
+# multiple tiles (sundial, monitor, chat mini-stats) share the same payload
+# without turning the sundial into a DB hammer.
+_PULSE_CACHE_TTL_S = 2.0
+_pulse_cache = {'ts': 0.0, 'payload': None}
 
 
 # ── Pulse ─────────────────────────────────────────────────────────────────────
@@ -43,6 +52,17 @@ def api_diamond_pulse():
       governance — ALM status, vortex active, sniffles
     """
     try:
+        # Serve from short-lived cache when fresh — avoids re-fanning 6 DB
+        # queries on every 2s sundial tick while still feeling real-time.
+        # Bypassed under TESTING so per-test DB mutations are observed.
+        now = time.time()
+        testing = bool(current_app and current_app.config.get('TESTING'))
+        cached = _pulse_cache.get('payload')
+        if (not testing
+                and cached is not None
+                and (now - _pulse_cache.get('ts', 0.0)) < _PULSE_CACHE_TTL_S):
+            return jsonify(cached)
+
         # ── System vitals ──────────────────────────────────────────────────
         system = _get_system_vitals()
 
@@ -61,7 +81,7 @@ def api_diamond_pulse():
         # ── Governance ─────────────────────────────────────────────────────
         governance = _get_governance_status()
 
-        return jsonify({
+        payload = {
             'ok': True,
             'ts': datetime.now(timezone.utc).isoformat(),
             'system': system,
@@ -70,7 +90,10 @@ def api_diamond_pulse():
             'proposals': proposals,
             'agents': agents,
             'governance': governance,
-        })
+        }
+        _pulse_cache['payload'] = payload
+        _pulse_cache['ts'] = now
+        return jsonify(payload)
     except Exception as exc:
         logger.exception('[Diamond] pulse')
         return jsonify({'ok': False, 'error': str(exc)}), 500

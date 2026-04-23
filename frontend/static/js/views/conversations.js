@@ -8,22 +8,37 @@ function loadChatData(win) {
   initializeChatPanel();
   // Clear stale render signature so messages always render fresh on open
   window.__fridaysChatLastRenderSig = '';
-  const savedThread = localStorage.getItem('fridays-chat-active-thread');
-  // Prefer localStorage (shared with home-chat) over stale window global
-  const preferred = (savedThread ? Number(savedThread) : null) || window.__fridaysChatConversationId;
-  refreshChatThreadList(preferred).then(() => {
-    const convId = window.__fridaysChatConversationId;
-    if (convId) {
-      loadConversationMessages(convId).then(() => {
+
+  // Session 28 fix: main chat window always opens on a fresh thread unless
+  // the caller explicitly handed us a conversation id to resume
+  // (e.g. home-chat "expand" button sets __fridaysChatOpenWithConvId).
+  // Previously we auto-resumed the most-recent thread from localStorage or
+  // fell back to the first conversation, which made it impossible to start
+  // a new chat just by opening the window.
+  const explicitOpenId = window.__fridaysChatOpenWithConvId || null;
+  window.__fridaysChatOpenWithConvId = null; // one-shot
+
+  if (explicitOpenId) {
+    refreshChatThreadList(explicitOpenId).then(() => {
+      const convId = window.__fridaysChatConversationId;
+      if (convId) {
+        loadConversationMessages(convId).then(() => {
+          startChatLiveSyncService && startChatLiveSyncService();
+        });
+      } else {
         startChatLiveSyncService && startChatLiveSyncService();
-      });
-      return;
-    }
-    const first = (window._chatConversations || [])[0];
-    if (first && first.id) {
-      switchChatThread(String(first.id));
-      startChatLiveSyncService && startChatLiveSyncService();
-    }
+      }
+    });
+    return;
+  }
+
+  // No explicit resume — start a new thread, but still populate the thread
+  // picker so the user can jump to any existing conversation.
+  window.__fridaysChatConversationId = null;
+  window.__fridaysChatForceNewThread = true;
+  refreshChatThreadList(null).then(() => {
+    _renderWelcome && _renderWelcome();
+    startChatLiveSyncService && startChatLiveSyncService();
   });
 }
 

@@ -120,7 +120,7 @@ function _taskerRenderList() {
       <div class="tasker-actions">
         <button class="tasker-action-btn" onclick="runTaskerNow(${t.id})" title="Run now">▶</button>
         <button class="tasker-action-btn" onclick="editTasker(${t.id})" title="Edit">✎</button>
-        <button class="tasker-action-btn danger" onclick="deleteTasker(${t.id}, ${_escHtml(JSON.stringify(t.name))})" title="Delete">✕</button>
+        <button class="tasker-action-btn danger" onclick="deleteTasker(${t.id}, ${_escHtml(JSON.stringify(t.name))}, event)" title="Delete">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -247,19 +247,27 @@ function editTasker(taskId) {
   if (task) openTaskerForm(task);
 }
 
-function deleteTasker(taskId, name) {
+function deleteTasker(taskId, name, event) {
+  var fire = function () {
+    fetch('/api/tasker/tasks/' + taskId, { method: 'DELETE' })
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) {
+          _taskerToast('Task deleted');
+          _taskerRefresh();
+        } else {
+          _taskerToast(d.error || 'Delete failed', 'error');
+        }
+      })
+      .catch(e => _taskerToast('Error: ' + e, 'error'));
+  };
+  var btn = event && event.currentTarget;
+  if (btn && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btn, fire, { confirmLabel: '?', timeoutMs: 4000 });
+    return;
+  }
   if (!confirm('Delete task "' + name + '"? This cannot be undone.')) return;
-  fetch('/api/tasker/tasks/' + taskId, { method: 'DELETE' })
-    .then(r => r.json())
-    .then(d => {
-      if (d.ok) {
-        _taskerToast('Task deleted');
-        _taskerRefresh();
-      } else {
-        _taskerToast(d.error || 'Delete failed', 'error');
-      }
-    })
-    .catch(e => _taskerToast('Error: ' + e, 'error'));
+  fire();
 }
 
 // ── Toast helper (reuses showToast if available) ─────────────────────────

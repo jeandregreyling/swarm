@@ -87,6 +87,8 @@ def chat():
 @legacy_bp.route('/stream/<ticket_number>')
 def stream(ticket_number):
     def generate():
+        # Connect-ack per SSE contract (D28)
+        yield ': ready\n\n'
         q = _streams.get(ticket_number)
         if not q:
             yield f"data: {json.dumps({'type': 'error', 'text': 'stream not found'})}\n\n"

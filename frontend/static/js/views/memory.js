@@ -346,7 +346,7 @@ function loadMemoryData(win) {
         ? ''
         : `<div style="display:flex;gap:6px;align-items:center;margin-left:8px;padding-top:1px;" onclick="event.stopPropagation()">
             <button class="chat-action-btn" style="padding:3px 8px;font-size:10px;" onclick="memoryQuickEdit(${m.id || 0}, '${safeTable}')">Edit</button>
-            <button class="chat-action-btn" style="padding:3px 8px;font-size:10px;border-color:#f44336;color:#f44336;" onclick="memoryDelete(${m.id || 0}, '${safeTable}')">Delete</button>
+            <button class="chat-action-btn" style="padding:3px 8px;font-size:10px;border-color:#f44336;color:#f44336;" onclick="memoryDelete(${m.id || 0}, '${safeTable}', event)">Delete</button>
           </div>`;
       return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;" onmouseenter="this.style.background='rgba(255,255,255,0.03)'" onmouseleave="this.style.background=''" onclick="_memExpand(${m.id || 0},'${safeTable}')">
         <div style="padding-top:2px;">${checkbox}</div>
@@ -450,7 +450,7 @@ function _memExpand(id, table) {
         <button class="chat-action-btn" onclick="memoryAppend(${id},'${table}')"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Append</button>
         <button class="chat-action-btn" onclick="memoryAttach(${id},'${table}')"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M7 13.5c-2-1-3.5-3-3.5-5V4.5l7-2.5v4c0 2.5-1.5 4.5-3.5 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Attach</button>
         <button class="chat-action-btn" onclick="memoryAssign(${id},'${table}','${_escHtml(agent)}')"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M12 8H4M12 8l-3-3M12 8l-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Share</button>
-        <button class="chat-action-btn" onclick="memoryDelete(${id},'${table}')" style="border-color:#f44336;color:#f44336;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4v8.5h7V4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete</button>
+        <button class="chat-action-btn" onclick="memoryDelete(${id},'${table}', event)" style="border-color:#f44336;color:#f44336;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;margin-right:2px;"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4v8.5h7V4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete</button>
       </div>
       <div id="mem-det-action-area" style="margin-top:10px;"></div>`
     }
@@ -613,19 +613,27 @@ function memorySubmitAssign(id, table) {
     .catch(e => showToast('Share failed: ' + e.message, 'error'));
 }
 
-function memoryDelete(id, table) {
-  if (!confirm('Delete this memory entry?')) return;
-  fetch(`/api/memory/${id}?table=${encodeURIComponent(table)}`, {
-    method: 'DELETE',
-    headers: {'Content-Type': 'application/json'}
-  })
-    .then(_memoryParseApiResponse)
-    .then(data => {
-      if (!data.deleted) throw new Error(data.error || 'delete failed');
-      showToast('Memory deleted', 'success');
-      const memoryWin = winManager.windows.get('memory');
-      if (memoryWin) loadMemoryData(memoryWin);
-      document.getElementById('memory-detail-modal')?.classList.remove('open');
+function memoryDelete(id, table, event) {
+  var fire = function () {
+    fetch(`/api/memory/${id}?table=${encodeURIComponent(table)}`, {
+      method: 'DELETE',
+      headers: {'Content-Type': 'application/json'}
     })
-    .catch(e => showToast('Delete failed: ' + e.message, 'error'));
+      .then(_memoryParseApiResponse)
+      .then(data => {
+        if (!data.deleted) throw new Error(data.error || 'delete failed');
+        showToast('Memory deleted', 'success');
+        const memoryWin = winManager.windows.get('memory');
+        if (memoryWin) loadMemoryData(memoryWin);
+        document.getElementById('memory-detail-modal')?.classList.remove('open');
+      })
+      .catch(e => showToast('Delete failed: ' + e.message, 'error'));
+  };
+  var btn = event && event.currentTarget;
+  if (btn && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btn, fire, { confirmLabel: 'Confirm', timeoutMs: 4000 });
+    return;
+  }
+  if (!confirm('Delete this memory entry?')) return;
+  fire();
 }

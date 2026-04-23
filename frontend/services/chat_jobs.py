@@ -24,6 +24,19 @@ _CHAT_JOB_LOCK = threading.Lock()
 _CHAT_JOBS = {}
 _CHAT_JOB_TTL_SECONDS = 2 * 60 * 60
 
+# Watchdog: Thread #2104 (Gemma) hung for 12+ minutes in April 2026. Any job
+# still 'running' past max(ETA × WATCHDOG_ETA_MULT, WATCHDOG_MIN_SECONDS) is
+# marked failed with a user-visible stall reason so the chat surface doesn't
+# freeze behind a thinking bubble forever.
+_CHAT_WATCHDOG_ETA_MULT = 4.0
+_CHAT_WATCHDOG_MIN_SECONDS = 300   # 5 min floor even for fast agents
+_CHAT_WATCHDOG_MAX_SECONDS = 900   # 15 min hard ceiling regardless of ETA
+
+# Ring buffer of recently finished jobs (per agent) for health metrics.
+# Newest first; capped to the last _CHAT_HEALTH_RING_MAX entries per agent.
+_CHAT_HEALTH_RING = {}
+_CHAT_HEALTH_RING_MAX = 50
+
 # ── Shared thread pools for chat dispatch ─────────────────────────────────────
 # Two separate pools to prevent deadlock from nested submits:
 #   _CHAT_DISPATCH_EXECUTOR  — outer layer: api_chat submits _run_single_agent here
@@ -117,6 +130,142 @@ def _cleanup_chat_jobs_locked():
             stale.append(jid)
     for jid in stale:
         _CHAT_JOBS.pop(jid, None)
+
+
+def _watchdog_budget_seconds(job):
+    """Per-job timeout ceiling. Scales with agent ETA, clamped to sane bounds.
+
+    Rationale: expected local ETA is ~60s (Gemma), so a 4× multiplier gives a
+    4-min soft budget; the 5-min floor protects very fast agents; the 15-min
+    cap is the hard "something is definitely stuck" limit proven by the
+    Thread #2104 incident.
+    """
+    try:
+        eta = float(job.get('eta_seconds') or 60.0)
+    except Exception:
+        eta = 60.0
+    budget = max(eta * _CHAT_WATCHDOG_ETA_MULT, float(_CHAT_WATCHDOG_MIN_SECONDS))
+    return min(budget, float(_CHAT_WATCHDOG_MAX_SECONDS))
+
+
+def _watchdog_mark_stalled_jobs_locked():
+    """Fail any 'running' job that has exceeded its watchdog budget.
+
+    Must be called with _CHAT_JOB_LOCK held. Returns the list of job ids that
+    were marked failed so the caller can persist + kill + emit SSE outside the
+    lock.
+    """
+    now = time.time()
+    stalled = []
+    for jid, job in _CHAT_JOBS.items():
+        if str(job.get('status') or '') != 'running':
+            continue
+        started = float(job.get('started_ts') or now)
+        elapsed = now - started
+        budget = _watchdog_budget_seconds(job)
+        if elapsed <= budget:
+            continue
+        agent = job.get('agent') or 'agent'
+        error_msg = (
+            f'Watchdog: {agent} exceeded {int(budget)}s budget '
+            f'(elapsed {int(elapsed)}s). Automatic stall detection.'
+        )
+        job.update({
+            'status': 'failed',
+            'stage': 'stalled',
+            'error': error_msg,
+            'updated_ts': now,
+            'updated_at': _chat_now_iso(),
+            'stalled': True,
+        })
+        job.setdefault('stage_trace', []).append({'text': 'stalled (watchdog)', 'ts': now})
+        stalled.append({
+            'job_id': jid,
+            'agent': agent,
+            'conversation_id': job.get('conversation_id'),
+            'elapsed_ms': int(elapsed * 1000),
+            'eta_seconds': int(job.get('eta_seconds') or 0),
+            'error': error_msg,
+        })
+        # Session 29 — spine emit. Best-effort; never break watchdog if spine is absent.
+        try:
+            from core import spine as _spine
+            _spine.log(
+                _spine.EventKind.WATCHDOG,
+                f'{agent} stalled after {int(elapsed)}s',
+                severity=_spine.Severity.WARN,
+                source='chat_jobs',
+                agent=agent,
+                thread_id=str(job.get('conversation_id') or '') or None,
+                payload={
+                    'job_id': jid,
+                    'elapsed_ms': int(elapsed * 1000),
+                    'budget_s': int(budget),
+                    'eta_s': int(job.get('eta_seconds') or 0),
+                },
+            )
+        except Exception:
+            pass
+    return stalled
+
+
+def _record_job_health_locked(job):
+    """Append a finished job's outcome to the per-agent ring buffer.
+
+    Called from the job-completion path and the watchdog path so stalls are
+    visible in the health metrics, not hidden.
+    """
+    agent = str(job.get('agent') or '').strip().lower()
+    if not agent:
+        return
+    started = float(job.get('started_ts') or 0.0)
+    updated = float(job.get('updated_ts') or time.time())
+    ring = _CHAT_HEALTH_RING.setdefault(agent, [])
+    ring.insert(0, {
+        'ts': updated,
+        'elapsed_ms': max(0, int((updated - started) * 1000)) if started else 0,
+        'status': str(job.get('status') or 'unknown'),
+        'stalled': bool(job.get('stalled')),
+    })
+    if len(ring) > _CHAT_HEALTH_RING_MAX:
+        del ring[_CHAT_HEALTH_RING_MAX:]
+
+
+def get_chat_agent_health_snapshot():
+    """Public accessor: per-agent p50/p95 and stall counts over the ring.
+
+    Used by /api/chat/agents/health (and, in the future, the Monitor tile).
+    Cheap enough to call on every poll.
+    """
+    snapshot = {}
+    with _CHAT_JOB_LOCK:
+        for agent, ring in _CHAT_HEALTH_RING.items():
+            if not ring:
+                continue
+            elapsed_ok = sorted(
+                r['elapsed_ms'] for r in ring
+                if r.get('status') == 'completed' and r.get('elapsed_ms')
+            )
+            count = len(ring)
+            completed = sum(1 for r in ring if r.get('status') == 'completed')
+            failed = sum(1 for r in ring if r.get('status') == 'failed')
+            stalled = sum(1 for r in ring if r.get('stalled'))
+
+            def _pct(seq, p):
+                if not seq:
+                    return 0
+                k = max(0, min(len(seq) - 1, int(round((p / 100.0) * (len(seq) - 1)))))
+                return int(seq[k])
+
+            snapshot[agent] = {
+                'count': count,
+                'completed': completed,
+                'failed': failed,
+                'stalled': stalled,
+                'p50_ms': _pct(elapsed_ok, 50),
+                'p95_ms': _pct(elapsed_ok, 95),
+            }
+    return snapshot
 
 
 def _chat_find_running_job_for_agent_locked(agent_name):

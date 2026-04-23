@@ -119,13 +119,25 @@ window.__fridaysBubbleAttachmentStore = window.__fridaysBubbleAttachmentStore ||
 window.__fridaysChatHistoryMode = window.__fridaysChatHistoryMode || localStorage.getItem(CHAT_HISTORY_MODE_KEY) || 'full';
 window.__fridaysChatHistoryLimit = Number(window.__fridaysChatHistoryLimit || localStorage.getItem(CHAT_HISTORY_LIMIT_KEY) || 8);
 window.__fridaysChatThreadWidth = Number(window.__fridaysChatThreadWidth || localStorage.getItem(CHAT_THREAD_WIDTH_KEY) || 280);
-window.__fridaysChatThreadCollapsed = window.__fridaysChatThreadCollapsed ?? (localStorage.getItem(CHAT_THREAD_COLLAPSED_KEY) === '1');
+// Session 29.2 — default the thread rail to collapsed. The topbar dropdown
+// (`#chat-thread-select`) is the primary thread picker now; the rail is a
+// power-user option you can still expand via the ⟩ restore button.
+window.__fridaysChatThreadCollapsed = window.__fridaysChatThreadCollapsed ?? (
+  localStorage.getItem(CHAT_THREAD_COLLAPSED_KEY) === null
+    ? true
+    : localStorage.getItem(CHAT_THREAD_COLLAPSED_KEY) === '1'
+);
 window.__fridaysChatDockWidth = Number(window.__fridaysChatDockWidth || localStorage.getItem(CHAT_DOCK_WIDTH_KEY) || 420);
 window.__fridaysChatDockCollapsed = window.__fridaysChatDockCollapsed ?? (localStorage.getItem(CHAT_DOCK_COLLAPSED_KEY) === '1');
 window.__fridaysChatUiScale = Number(window.__fridaysChatUiScale || localStorage.getItem(CHAT_UI_SCALE_KEY) || CHAT_UI_SCALE_DEFAULT);
 window.__fridaysChatRuntimeHidden = false;
 window.__fridaysChatRuntimePinned = true;
-window.__fridaysChatRelayAuto = window.__fridaysChatRelayAuto ?? (localStorage.getItem(CHAT_RELAY_AUTO_KEY) !== '0');
+// 2026-04-23 — default to MANUAL model selection. Previously the default
+// was `relay-auto ON` (anything except literal '0' in localStorage), which
+// made the classifier overwrite the user's chosen agents on every keystroke
+// and bias toward Gemma. Now relay-auto is opt-in: only honor an explicit
+// '1' in localStorage. Anything else (including unset) = OFF.
+window.__fridaysChatRelayAuto = window.__fridaysChatRelayAuto ?? (localStorage.getItem(CHAT_RELAY_AUTO_KEY) === '1');
 window.__fridaysChatFlowMode = window.__fridaysChatFlowMode || _loadInitialChatFlowMode();
 window.__fridaysChatExecMode = window.__fridaysChatExecMode || (localStorage.getItem(CHAT_EXEC_MODE_KEY) || 'sequential');
 window.__fridaysChatRelayInfinite = window.__fridaysChatRelayInfinite ?? (localStorage.getItem(CHAT_RELAY_MAX_KEY) === 'inf');
@@ -1485,8 +1497,20 @@ function _showClassifyBadge(data) {
     if (unique.length) catText += ' · ' + unique.join(', ');
   }
   if (data.relay) catText += ' · relay';
+  // Session 29 — Seven-as-guardian narrator hint. When guardian activates,
+  // classify badge shows a short "Seven stepping in" note so the user knows
+  // why a low-confidence auto-pick was overridden.
+  if (data.guardian && data.guardian.active) {
+    const orig = data.guardian.original_target || 'an agent';
+    const conf = Math.round((data.guardian.confidence || 0) * 100) / 100;
+    catText += ' · 🛡 Seven (was ' + orig + ' @ ' + conf + ')';
+  }
   if (catEl) catEl.textContent = '(' + catText + ')';
   if (overrideEl) overrideEl.style.display = window.__classifyManualOverride ? '' : 'none';
+  // Session 29.2 — full narrator card when guardian actually redirected
+  // to a different agent. Subtle suffix above stays; this adds a dismissible
+  // inline card so the user has full context on the intercept.
+  _renderGuardianNarrator(data);
   // Build detailed tooltip with model sources
   let tip = data.reasoning || '';
   if (data.models) {
@@ -1506,6 +1530,7 @@ function _hideClassifyBadge() {
   window.__classifyResult = null;
   window.__classifyLastText = '';
   window.__classifyManualOverride = false;
+  _hideGuardianNarrator();
 }
 
 function _dismissClassifyBadge() {
@@ -1513,19 +1538,71 @@ function _dismissClassifyBadge() {
   window.__classifyManualOverride = true;
 }
 
+// ── Session 29.2 — guardian narrator card ─────────────────────────────────
+function _renderGuardianNarrator(data) {
+  const g = data && data.guardian;
+  const badge = document.getElementById('chat-classify-badge');
+  if (!badge || !g || !g.active) return _hideGuardianNarrator();
+  const origTarget = g.original_target || null;
+  const finalTarget = g.target || 'seven';
+  // Only show the full card if Seven actually redirected. If the router
+  // already picked Seven naturally, the subtle badge suffix is enough.
+  if (!origTarget || origTarget === finalTarget || origTarget === 'seven') {
+    return _hideGuardianNarrator();
+  }
+  let card = document.getElementById('chat-guardian-narrator');
+  if (!card) {
+    card = document.createElement('div');
+    card.id = 'chat-guardian-narrator';
+    card.style.cssText = 'margin-top:6px;padding:8px 10px;border-left:3px solid #d8a032;background:#d8a03216;border-radius:3px;font-size:11px;color:var(--text);display:flex;align-items:center;gap:8px;';
+    badge.parentNode && badge.parentNode.insertBefore(card, badge.nextSibling);
+  }
+  const conf = Math.round((g.confidence || 0) * 100) / 100;
+  const orig = _escHtml(origTarget);
+  const rationale = _escHtml(g.rationale || '');
+  card.innerHTML = `
+    <span style="font-size:14px;">🛡</span>
+    <span style="flex:1;">
+      <strong>Seven stepped in.</strong>
+      Router suggested <code style="color:#d8a032;">${orig}</code> at confidence
+      <code style="color:#d8a032;">${conf}</code> — below Seven's guardian threshold (0.6),
+      so Seven is taking this one.
+      ${rationale ? `<span style="color:var(--text-dim);"> · ${rationale}</span>` : ''}
+    </span>
+    <button onclick="_hideGuardianNarrator()" title="Dismiss"
+      style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;line-height:1;">✕</button>`;
+  card.style.display = '';
+}
+
+function _hideGuardianNarrator() {
+  const card = document.getElementById('chat-guardian-narrator');
+  if (card) card.style.display = 'none';
+}
+
 function _applyClassifyAgents(data) {
   if (!data || !data.agents || !data.agents.length) return;
   // Do not auto-switch agents when auto relay is off — user has manual control
   if (!window.__fridaysChatRelayAuto) return;
-  // Turn off all agents first
+  // Preserve any manually-selected agents. Auto-classify may ADD suggested
+  // agents but MUST NOT remove a manual selection or silently "correct" it.
+  // This was the cause of the "Gemma keeps getting selected even after I
+  // picked 10 and 19" bug (2026-04-23).
+  const manualKeys = new Set();
+  Object.keys(window.__fridaysChatAgentSelectionState || {}).forEach(k => {
+    if (window.__fridaysChatAgentSelectionState[k] === 'manual') manualKeys.add(k);
+  });
   const allKeys = CHAT_AGENT_OPTIONS.map(a => a.value);
-  allKeys.forEach(k => { window.__fridaysChatEnabledAgents[k] = false; });
-  // Turn on classified agents
+  allKeys.forEach(k => {
+    if (!manualKeys.has(k)) {
+      window.__fridaysChatEnabledAgents[k] = false;
+    }
+  });
+  // Turn on classified agents (additive with manual set)
   data.agents.forEach(k => {
     window.__fridaysChatEnabledAgents[k] = true;
-    _setAgentSelectionState(k, 'auto');
+    if (!manualKeys.has(k)) _setAgentSelectionState(k, 'auto');
   });
-  // Auto-relay
+  // Auto-relay hint from the classifier
   if (data.relay) {
     window.__fridaysChatRelayAuto = true;
     const autoEls = document.querySelectorAll('.chat-relay-auto');
@@ -1797,6 +1874,26 @@ function _chatMessagesEl() {
   return document.getElementById('chat-messages');
 }
 
+// Workstream I / Phase 4: delegate to shared SwarmChat.maybeShowActionPill so
+// tile chat and main chat use the same pipeline. Kept as a wrapper for call
+// sites that already reference _chatMaybeShowActionPill.
+function _chatMaybeShowActionPill(rawMessage) {
+  try {
+    var host = _chatMessagesEl();
+    if (!host) return;
+    if (window.SwarmChat && typeof window.SwarmChat.maybeShowActionPill === 'function') {
+      window.SwarmChat.maybeShowActionPill(host, rawMessage);
+    }
+  } catch (_) { /* non-fatal */ }
+}
+
+// Thin delegator to the shared dispatcher. Unknown ids remain no-ops.
+function _chatExecuteIntent(intent) {
+  if (window.SwarmChat && typeof window.SwarmChat.executeIntent === 'function') {
+    window.SwarmChat.executeIntent(intent);
+  }
+}
+
 function _escapeHtml(v) {
   // Phase 4 foundation: prefer shared SwarmChat.esc; fall back if the core
   // module hasn't loaded (e.g. script-order edge case during dev reload).
@@ -1928,19 +2025,26 @@ function _renderSkillEvents(events, sender) {
 
 const _CHAT_AGENT_META = {
   // Internal key → icon, purpose, runtime. Label comes from CHAT_AGENT_OPTIONS (DB-driven).
-  gemma:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '1 · Gemma3. Director — routes, synthesises, speaks last.',                   runtime: 'local', tier: 'local' },
-  llama:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M5 13V9c0-2.5 6-2.5 6 0v4M5 13h6M8 6.5c0-1.1-.9-2-2-2s-2 .9-2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '2 · LlaMA. Correspondent — web search, fast first response.',                runtime: 'local', tier: 'local' },
-  mistral:   { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2.5l5.5 9.5H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>', purpose: '3 · Mistral. Analyst — deep reasoning, debates, challenges Two.',            runtime: 'local', tier: 'local' },
-  librarian: { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4.5 3.5v9M4.5 3.5h5a2 2 0 010 4h-5M4.5 7.5h5.5a2 2 0 010 4H4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '5 · Vortex. Gatekeeper + time machine checkpoints.',                         runtime: 'local', tier: 'local' },
-  duck:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 9.5c0 2 1.8 3 4 3s4-1 4-3c0-1.5-1-2.5-3-2.5H8c1 0 2-1 2-2S9 3 8 3C6.5 3 5.5 4 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 7.5l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '6 · Duck. Sanity checker — YES/NO after every ticket.',                      runtime: 'local', tier: 'local' },
-  sniffles:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: 'Sniffles. Inspector — memory auditor, read only.',                       runtime: 'local', tier: 'local' },
+  gemma:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '1 · Gemma3. Orchestrator — routes, synthesises, speaks last. Diplomatic, measured.', runtime: 'local', tier: 'local' },
+  llama:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M5 13V9c0-2.5 6-2.5 6 0v4M5 13h6M8 6.5c0-1.1-.9-2-2-2s-2 .9-2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '2 · LlaMA. Correspondent — fast first word, web-aware. Eager, generous.', runtime: 'local', tier: 'local' },
+  mistral:   { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2.5l5.5 9.5H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>', purpose: '3 · Mistral. Analyst — deep reasoning, challenges consensus. Sharp, contrarian.', runtime: 'local', tier: 'local' },
+  qwen:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M3 8l5-5 5 5-5 5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>', purpose: '4 · Qwen. Multilingual specialist — cross-language reasoning, precise.', runtime: 'local', tier: 'local' },
+  librarian: { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4.5 3.5v9M4.5 3.5h5a2 2 0 010 4h-5M4.5 7.5h5.5a2 2 0 010 4H4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '5 · Vortex. Gatekeeper + time machine checkpoints. Vigilant, archival.', runtime: 'local', tier: 'local' },
+  duck:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 9.5c0 2 1.8 3 4 3s4-1 4-3c0-1.5-1-2.5-3-2.5H8c1 0 2-1 2-2S9 3 8 3C6.5 3 5.5 4 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 7.5l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '6 · Duck. Sanity checker — YES/NO after every ticket. Blunt, friendly.', runtime: 'local', tier: 'local' },
+  seven:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M3 3h10l-5 10z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>', purpose: '7 · Seven. Guardian/commander — intervenes only when no agent is confident. Quiet, decisive.', runtime: 'local', tier: 'local' },
+  sniffles:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: 'Sniffles. Memory auditor — read-only observer. Patient, suspicious.', runtime: 'local', tier: 'local' },
   eight:     { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2C6.3 2 5 3.1 5 4.5S6.3 7 8 7s3 1.1 3 2.5S9.7 12 8 12s-3-1-3-2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 2v2M8 12v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '8 · Eight. SAP specialist — Functional/Technical/Devil three-voice debate.', runtime: 'local', tier: 'local' },
-  nine:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2l1.5 4h4L10 8.5l1.5 4L8 10l-3.5 2.5 1.5-4-3.5-2.5h4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>', purpose: '9 · Groq. LlaMA 3.3 70B via Groq — fast, high-capacity reasoning.',        runtime: 'paid',  tier: 'paid' },
-  ten:       { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 8h8M10 5l3 3-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 5l-3 3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '10 · Github. Engineering advisor — code quality, implementation clarity.',   runtime: 'paid',  tier: 'paid' },
-  eleven:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M9 2L5 9h4l-2 5 6-8H9z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '11 · Grok. Lateral thinking advisor — creative synthesis, alternatives.',     runtime: 'paid',  tier: 'paid' },
-  twelve:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 3C5.5 3 4 5 4 7c0 1.5 1 2.5 2 3l-.5 3h5L10 10c1-.5 2-1.5 2-3 0-2-1.5-4-4-4z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 10.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '12 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals.',       runtime: 'paid',  tier: 'paid' },
-  thirteen:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M3 5h10M3 8h10M3 11h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="11" r="2" stroke="currentColor" stroke-width="1.3"/></svg>', purpose: '13 · HF. Hugging Face inference — open-source models, paid tier.',              runtime: 'paid',  tier: 'paid' },
-  you:       { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: 'Human operator input.',                                                       runtime: 'human', tier: 'human' },
+  nine:      { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2l1.5 4h4L10 8.5l1.5 4L8 10l-3.5 2.5 1.5-4-3.5-2.5h4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>', purpose: '9 · Groq. LlaMA 3.3 70B via Groq — fast, high-capacity reasoning.', runtime: 'paid', tier: 'paid' },
+  ten:       { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 8h8M10 5l3 3-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 5l-3 3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '10 · GitHub. Engineering advisor — code quality, sharp-edged implementation reviews.', runtime: 'paid', tier: 'paid' },
+  eleven:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M9 2L5 9h4l-2 5 6-8H9z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', purpose: '11 · Grok. Lateral thinker — creative synthesis, unafraid to go sideways.', runtime: 'paid', tier: 'paid' },
+  twelve:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 3C5.5 3 4 5 4 7c0 1.5 1 2.5 2 3l-.5 3h5L10 10c1-.5 2-1.5 2-3 0-2-1.5-4-4-4z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 10.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: '12 · Claude. System architect — Ghost Layer, Ghost Briefs, proposals. Careful.', runtime: 'paid', tier: 'paid' },
+  thirteen:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M3 5h10M3 8h10M3 11h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="11" r="2" stroke="currentColor" stroke-width="1.3"/></svg>', purpose: '13 · HF. Hugging Face inference — open-source models, paid tier.', runtime: 'paid', tier: 'paid' },
+  nineteen:  { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M8 2l5 3v6l-5 3-5-3V5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>', purpose: '19 · Nineteen. Analyst — methodical, data-driven, long-context reasoning.', runtime: 'paid', tier: 'paid' },
+  twenty:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3"/></svg>', purpose: '20 · Twenty. Utility model — general paid fallback, balanced.', runtime: 'paid', tier: 'paid' },
+  scholar:   { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M2 6l6-3 6 3-6 3z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5 7.5v3c0 1 1.5 1.5 3 1.5s3-.5 3-1.5v-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: 'Scholar. Research + citations — rigorous, thorough.', runtime: 'local', tier: 'local' },
+  seeker:    { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4" stroke="currentColor" stroke-width="1.3"/><path d="M10 10l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: 'Seeker. Discovery scout — finds, lists, explores. Curious.', runtime: 'local', tier: 'local' },
+  ghost_coder: { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: 'Ghost Coder. Autonomous code-writer — executes proposals. Silent workman.', runtime: 'local', tier: 'local' },
+  you:       { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: 'Human operator input.', runtime: 'human', tier: 'human' },
 };
 
 function _chatAgentLabel(sender) {
@@ -4951,6 +5055,12 @@ async function _performDeleteThread(convId) {
     }
     showToast('Thread deleted', 'success');
     refreshChatThreadList(window.__fridaysChatConversationId || null);
+    // Session 28: notify other chat surfaces (home-chat) of deletion.
+    try {
+      window.dispatchEvent(new CustomEvent('swarm:conversation-changed', {
+        detail: { type: 'deleted', conversation_id: Number(convId), source: 'chat' }
+      }));
+    } catch (_) { /* non-fatal */ }
   } catch (e) {
     showToast('Failed to delete thread: ' + (e.message || e), 'error');
   }
@@ -5512,6 +5622,11 @@ function sendMessage(source = 'user', relayMeta = null) {
       , attachments: attachmentPayload.bubbleAttachments || []
       , relayMeta: relayMeta || null
     });
+    // Workstream I — agents-as-actors: fire-and-forget detect a client action
+    // in the user's message (open window, spotlight search, capture checkpoint).
+    // If one is found, render an inline pill with an Execute button. The normal
+    // agent reply still comes back in parallel.
+    if (msg) _chatMaybeShowActionPill(msg);
   }
 
   const estMs = _estimateBatchMs(selectedAgents);
@@ -5560,6 +5675,7 @@ function sendMessage(source = 'user', relayMeta = null) {
       return;
     }
     if (data && data.conversation_id) {
+      const _hcWasNew = !window.__fridaysChatConversationId;
       _setActiveThreadId(data.conversation_id);
       window.__fridaysChatForceNewThread = false;
       persistThreadAgentSelection(data.conversation_id);
@@ -5568,6 +5684,15 @@ function sendMessage(source = 'user', relayMeta = null) {
       updateComposerMeta();
       refreshChatThreadList(data.conversation_id);
       pollActiveThreadRuntime(true);
+      // Session 28: broadcast so home-chat (and any other chat surface)
+      // can refresh its thread list without waiting for focus/poll.
+      if (_hcWasNew) {
+        try {
+          window.dispatchEvent(new CustomEvent('swarm:conversation-changed', {
+            detail: { type: 'created', conversation_id: data.conversation_id, source: 'chat' }
+          }));
+        } catch (_) { /* non-fatal */ }
+      }
     }
 
     const allResponses = Array.isArray(data.responses) ? data.responses : [];

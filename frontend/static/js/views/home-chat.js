@@ -34,7 +34,32 @@
     _hcFetchInterests();
     _hcInitMiniLandscape();
     _hcRestorePanelState();
+    _hcBindCrossSurfaceRefresh();
   };
+
+  // ── Session 28 fix: cross-surface refresh ────────────────────────────────
+  // When another chat surface (main chat window, spotlight, etc.) creates or
+  // deletes a conversation, refresh the home-chat thread list so the tile is
+  // never stale. Also refresh when the page regains focus, in case an event
+  // was missed while the tab was backgrounded.
+  let _hcCrossBound = false;
+  function _hcBindCrossSurfaceRefresh() {
+    if (_hcCrossBound) return;
+    _hcCrossBound = true;
+    window.addEventListener('swarm:conversation-changed', (ev) => {
+      const detail = (ev && ev.detail) || {};
+      // If the deleted conv is the one we're viewing, drop back to welcome.
+      if (detail.type === 'deleted' && Number(detail.conversation_id) === Number(_hcConvId)) {
+        _hcNewThread();
+        return;
+      }
+      _hcLoadThreads();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') _hcLoadThreads();
+    });
+    window.addEventListener('focus', () => _hcLoadThreads());
+  }
 
   // ── Environment badge ────────────────────────────────────────────────────
   function _hcSetEnvBadge() {
@@ -57,6 +82,10 @@
     if (sendBtn) sendBtn.addEventListener('click', _hcSend);
     if (newBtn) newBtn.addEventListener('click', _hcNewThread);
     if (expandBtn) expandBtn.addEventListener('click', () => {
+      // Session 28 fix: hand the current home-chat thread to the main chat
+      // window so expand preserves context. Without this the main chat
+      // opens on a fresh thread (by design, see conversations.js).
+      if (_hcConvId) window.__fridaysChatOpenWithConvId = _hcConvId;
       if (typeof openWindow === 'function') openWindow('chat', 'Chat', 'view-chat');
     });
     if (threadSel) threadSel.addEventListener('change', (e) => {
@@ -496,6 +525,16 @@
     });
     _hcScrollBottom();
 
+    // Workstream J / Phase 4 — shared action pill pipeline. Same Siri-style
+    // detection as main chat; compact layout for the tile. Fires in parallel
+    // with the /api/chat send below.
+    try {
+      var _hcMsgEl = document.getElementById('home-chat-messages');
+      if (_hcMsgEl && window.SwarmChat && typeof window.SwarmChat.maybeShowActionPill === 'function') {
+        window.SwarmChat.maybeShowActionPill(_hcMsgEl, text, { compact: true });
+      }
+    } catch (_) { /* non-fatal */ }
+
     input.value = '';
     input.style.height = 'auto';
     _hcSending = true;
@@ -527,11 +566,6 @@
     })
       .then(r => r.json())
       .then(data => {
-        // Remove pre-send placeholder thinking bubble
-        const _hcTmpBubble = document.getElementById('home-chat-messages')?.querySelector(`.hc-bubble[data-pending-job-id="${CSS.escape(_hcTempJobId)}"]`);
-        if (_hcTmpBubble) _hcTmpBubble.remove();
-        delete _hcJobHistory[_hcTempJobId];
-
         if (data.conversation_id && !_hcConvId) {
           _hcConvId = data.conversation_id;
           localStorage.setItem(HC_ACTIVE_THREAD_KEY, String(_hcConvId));
@@ -539,13 +573,36 @@
           _hcSaveEnabledAgents();
           // Refresh thread list to show the new thread
           _hcLoadThreads();
+          // Session 28: notify other chat surfaces.
+          try {
+            window.dispatchEvent(new CustomEvent('swarm:conversation-changed', {
+              detail: { type: 'created', conversation_id: _hcConvId, source: 'home-chat' }
+            }));
+          } catch (_) { /* non-fatal */ }
         }
 
-        // Render agent responses (skip pending/acknowledged responses — those get thinking bubbles instead)
-        const pendingAgents = new Set((data.pending_jobs || []).map(j => String(j.agent || '').toLowerCase()));
-        if (data.responses && data.responses.length > 0) {
-          data.responses.forEach(resp => {
-            if (pendingAgents.has(String(resp.agent || '').toLowerCase())) return;
+        // Split responses into done-now vs pending-acknowledgement
+        const allResponses = Array.isArray(data.responses) ? data.responses : [];
+        const immediate    = allResponses.filter(r => !r.pending);
+        const pendingAcks  = allResponses.filter(r =>  r.pending && r.job_id);
+        // Backend returns pending_jobs as array of job id strings.
+        const pendingJobIds = Array.isArray(data.pending_jobs) ? data.pending_jobs.filter(Boolean) : [];
+
+        // If first pending ack exists, reuse the placeholder bubble for its job_id
+        // instead of removing-then-recreating (prevents the "thinking bubble flashes and dies").
+        const _hcTmpBubble = document.getElementById('home-chat-messages')?.querySelector(`.hc-bubble[data-pending-job-id="${CSS.escape(_hcTempJobId)}"]`);
+        if (pendingAcks.length && _hcTmpBubble) {
+          const firstAck = pendingAcks[0];
+          _hcTmpBubble.dataset.pendingJobId = String(firstAck.job_id);
+          _hcJobHistory[firstAck.job_id] = _hcJobHistory[_hcTempJobId] || [];
+        } else if (_hcTmpBubble) {
+          _hcTmpBubble.remove();
+        }
+        delete _hcJobHistory[_hcTempJobId];
+
+        // Render completed (non-pending) agent responses
+        if (immediate.length > 0) {
+          immediate.forEach(resp => {
             _hcAppendBubble({
               sender: resp.agent || 'agent',
               message_type: 'agent',
@@ -553,7 +610,7 @@
               created_at: new Date().toISOString()
             });
           });
-        } else if (data.response) {
+        } else if (!pendingAcks.length && !pendingJobIds.length && data.response) {
           _hcAppendBubble({
             sender: data.agent || 'agent',
             message_type: 'agent',
@@ -562,12 +619,18 @@
           });
         }
 
-        // Handle pending jobs (async agents)
-        if (data.pending_jobs && data.pending_jobs.length > 0) {
-          data.pending_jobs.forEach(job => {
-            _hcUpsertThinkingBubble({ job_id: job.job_id, agent: job.agent, stage: 'initializing', status: 'running' });
+        // Spawn / upsert thinking bubbles from the ack records (carries real job_id + agent)
+        pendingAcks.forEach(ack => {
+          _hcUpsertThinkingBubble({
+            job_id: ack.job_id,
+            agent: ack.agent,
+            stage: 'queued',
+            status: 'running',
           });
-          _hcPollJobs(data.pending_jobs.map(j => j.job_id));
+        });
+
+        if (pendingJobIds.length) {
+          _hcPollJobs(pendingJobIds);
         }
 
         _hcScrollBottom();
@@ -722,8 +785,15 @@
   }
 
   // ── Utilities ────────────────────────────────────────────────────────────
+  // Phase 4: delegate to the shared SwarmChat.esc so every chat surface uses
+  // one escape implementation. Kept as a local wrapper because this file has
+  // dozens of call sites and we want a single swap point if the contract
+  // changes.
   function _hcEsc(v) {
-    return String(v ?? '')
+    if (window.SwarmChat && typeof window.SwarmChat.esc === 'function') {
+      return window.SwarmChat.esc(v);
+    }
+    return String(v == null ? '' : v)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')

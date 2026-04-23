@@ -3,7 +3,71 @@
 <!-- markdownlint-disable -->
 
 _Comprehensive list of all planned features, organized by phase and priority._
-_Last updated: 2026-04-19 by Copilot (Session 21)_
+_Last updated: 2026-04-22 by Copilot (Session 29)_
+
+---
+
+## Session 29.2 — UX polish + Knowledge Center foundation (SHIPPED)
+
+- [x] **Main chat sidebar too dominant** — Fixed. Thread rail now collapsed by default; topbar `#chat-thread-select` dropdown is primary.
+- [x] **Email multi-select** — Shipped. Per-row checkboxes, select-all toggle, bulk Close. Disabled on rows with no ticket. Sequential close + toast.
+- [x] **Guardian narrator card** — Full dismissible card under the classify badge when Seven actually redirected (original_target ≠ final). Keeps subtle suffix for non-redirect cases.
+- [x] **Knowledge Center owns testlab registry (partial)** — `core.knowledge.scripts` re-exports the legacy registry and owns change-run history. New endpoints `/api/knowledge/testlab/scripts`, `/api/knowledge/change-runs`, `/api/knowledge/change-runs/<change_id>`. `/api/studio/testlab/resolve` now persists selections via `record_change_run()`. Physical data migration deferred — not worth duplicating until we retire `core.testlab_registry`.
+
+### Session 29.2 — Still open / new backlog
+
+- [ ] **Email: additional configuration** — Unspecified during Session 29.1 feedback. Likely SMTP-from-address per account, default-folder / auto-file rules, signature. Needs triage conversation to define scope.
+- [ ] **Hard refresh: no login prompt** — Carry-over. `friday-auth.js:_authCheck()` checks `/api/auth/me`; if a session cookie is valid, login is correctly skipped. User may be seeing cookie-persistence behaviour. Needs clarification: is the expectation "always re-auth on hard refresh" or "session cookies should not persist across refresh in local dev"?
+- [ ] **Hard refresh: main chat not opening new thread** — Carry-over. The main chat window is not auto-restored after hard refresh (no window persistence), so `loadChatData()` isn't called. If user means "opening the Chat tile on the home grid shouldn't remember the last thread", that already works — it defaults to a fresh thread unless `__fridaysChatOpenWithConvId` is set. Needs clarification on repro path.
+- [ ] **Promote KC into its own tile/window** — Currently the Knowledge Center is API-only. Needs a dedicated Knowledge Center view (tile + window template) that shows the script registry, recent change runs, and eventually skills/agent docs in one place.
+- [ ] **Periodic chat+AI round-trip smoke probe** — still open from Session 28. Now easier with spine emit.
+
+---
+
+## Session 29.1 — Spine ↔ System Log bridge (SHIPPED)
+
+- [x] **Watchdog warnings invisible in System Log** — Fixed. `core/spine.py:log()` now mirrors warn+ events into `activity_log` via `utils.db.audit.log_activity()`, so the Trace tile's System Log tab and `/api/activity/stream` SSE pick them up automatically. Info-level events stay in the spine ring/DB only.
+- [x] **Chat tile thread bar duplicates main chat sidebar** — Fixed. `#home-chat-thread-select` hidden in `home-chat-bar-center`; `+ New` button kept so users can fork without expanding to main chat.
+- [x] **Test Lab tab not visible after deploy** — Fixed. Browser was serving cached pre-Session-28 template. Added `?v=29` cache-bust query string to all Session 29 frontend (`studio-testlab.js`, `traced.js`, `core/trace-bus.js`, `chat.js`, `time-wizard.js`).
+
+### Session 29.1 — New backlog
+
+- [ ] **Hard refresh in main chat doesn't open new thread or prompt for login** — Reported during Session 29 walkthrough. Likely interaction between the Session 28 "default to fresh thread" change and the auth gate. Repro: hard refresh `/`, watch network. Suspect either `loadChatData()` running before `/api/auth/me` resolves, or the one-shot `__fridaysChatOpenWithConvId` handoff fighting the fresh-thread default. Investigate before next chat-flow change.
+- [ ] **Email window: multi-select + missing configuration** — Reported during Session 29 walkthrough. Email view is missing the bulk-select checkbox column (mark several emails → archive/delete/file together) and unspecified "additional configuration" (likely SMTP-from-address, signature, default-folder). Triage during Session 30: spec the missing config items, then ship multi-select first (cheaper, immediate UX win).
+- [ ] **Replace main chat sidebar with thread dropdown** — User finds dropdown cleaner than sidebar ("that dropdown should only be on the main screen chat because its cleaner than the sidebar"). Migrate the `chat-thread-list` sidebar in `view-chat` template into a dropdown styled like the home-chat tile dropdown. Keep keyboard navigation. Will free up horizontal space for the message column.
+
+---
+
+## Session 29 — Seven as Spine (SHIPPED)
+
+- [x] **Unified event spine** — `core/spine.py` single in-memory ring (deque MAX=500) + best-effort DB mirror via `utils/db/trace_log.py`. `TraceEvent` dataclass covers id/ts/kind/severity/source/agent/thread_id/change_id/message/payload. `EventKind` taxonomy: RELAY_STEP / WATCHDOG / CHECKPOINT / TICKET / TESTLAB / ROUTE / CHAT / SYSTEM / GUARDIAN. Publishers: `chat_jobs` (watchdog stalls), `time_machine` (checkpoints), `listener` (tickets), `testlab_bp` (resolve runs), `chat.py` (relay steps). All emit points wrap the spine call in try/except — nothing in the hot path can fail from a spine error.
+- [x] **Trace ticker (top-right, warn+)** — `frontend/static/js/core/trace-bus.js` + `frontend/static/css/trace.css`. `#trace-ticker` shows up to 3 live events with severity borders (warn amber, error red, critical pulsing), 8s auto-drop. SSE over `/api/spine/stream` with 20s heartbeat. `window.__trace.pin(evId)` promotes a ticker entry into a SYSTEM event so it persists in the DB mirror.
+- [x] **Traced window (full history, filterable)** — `frontend/static/js/views/traced.js` + `<template id="view-traced">`. Kind + severity dropdowns, search input, live updates via `window.__trace.on('event', …)`. Row click shows full JSON payload. Opens via `window.__trace.open(filter)` from ticker or Vortex "Open Traced" button.
+- [x] **Vortex spine feed (live sidebar)** — Vortex aside now has a "Spine Feed" section with `<div id="tw-spine-feed">` showing the last 30 significant events (relay_step/watchdog/checkpoint/ticket/testlab/guardian). Primes from `/api/spine/events?limit=30&source=db`, then subscribes live. Re-attaches on each `loadTimeWizardData()` call.
+- [x] **Seven as guardian of last resort** — `spine.route(message, sender, routable_agents, explicit_target)` wraps `core/routing.route()` and intercepts non-Seven picks when confidence < 0.6 OR target is unroutable, returning `SpineRoute(guardian=True, original_target=<intercepted>)`. `/api/chat/classify` returns parallel `guardian` block (non-breaking). `chat.js:_showClassifyBadge()` renders "🛡 Seven (was <orig> @ <conf>)" suffix when active. `GUARDIAN_THRESHOLD=0.6`.
+- [x] **20 new tests** — `tests/test_spine.py` covers ring/fanout/dead-queue-drop, log-with-persist, get_recent filters, route pass-through (seven + non-Seven @ ≥0.6), route intercept (non-Seven @ <0.6, via FakeDecision monkeypatch of `routing.route`), persist round-trip, list_events filters, vacuum age + row-cap, count. Full suite → **705 passed** (685 prior + 20 new).
+
+### Session 29 — Deferred to Session 30
+
+- [ ] **Knowledge Center owns testlab registry** — Move `core/testlab_registry.py` → `core/knowledge/scripts.py` and add `knowledge.change_runs` table (change_id / selected_script_ids / ts) so per-change selection persists server-side. Current registry works and is covered by 12 tests — the move is a cleanup, not a fix.
+- [ ] **Narrator card upgrade** — Current guardian signal is a small suffix on the classify badge. Future: full inline card ("Seven stepped in — <orig> was at <conf>, here's what Seven did instead") with a "why" explainer that cites the spine GUARDIAN event.
+- [ ] **Periodic chat+AI round-trip smoke probe** — sub-item from Session 28. Now easier with spine: the probe can emit CHAT events and Traced will show historical latency at a glance.
+
+---
+
+## Session 28 Backlog (triaged — needs investigation)
+
+- [x] **Undeliverable-email ticket audit** — A Discord notification landed for an undeliverable email ticket after an earlier `/api/email/send` probe. Shipped (1) `is_bounce_or_auto_reply()` pure detector in `core/pipeline/listener.py` that short-circuits mailer-daemon/postmaster/noreply bounces, Delivery Status Notifications, Undeliverable/Returned-Mail subjects, Out-of-Office auto-replies, and our own `[SWARM-INTERNAL-TEST]` probe returns — filing them silently to Notifications with an `listener/bounce_filed` audit entry and **no** ticket creation, **no** Discord alert, **no** queue intake; (2) an `internal_test: true` flag on `POST /api/email/send` that prefixes the subject with `[SWARM-INTERNAL-TEST]` and adds `X-Swarm-Internal-Test: 1` + `Auto-Submitted: auto-generated` headers so any bounce of an internal probe is guaranteed to be caught even if the remote mailer doesn't send from a standard bounce address; (3) 8 unit tests in `tests/test_email_bounce_guard.py` covering mailer-daemon, postmaster, OOO, tagged-probe bounce, plain-user false-positive, and empty-input safety.
+- [x] **Local agent response health checks** — Gemma chat Thread **#2104** hung with a thinking bubble for 12+ minutes before user cancel. Shipped (1) a watchdog that auto-fails any chat job exceeding `max(ETA × 4, 5min)` capped at 15min, with a user-visible "Watchdog: <agent> exceeded budget" error and best-effort hard-kill of the local model; (2) a per-agent in-memory ring of recent job outcomes; (3) `GET /api/chat/agents/health` exposing per-agent count/completed/failed/stalled/p50_ms/p95_ms for the Monitor tile / Health Digest. Periodic round-trip smoke probe still queued.
+
+### Session 28 — Deferred / queued follow-ups
+
+- [x] **Home tile not refreshing after new thread** — Fixed. Home chat now listens for a `swarm:conversation-changed` CustomEvent dispatched by `chat.js` on thread create/delete (and by `home-chat.js` on its own creates), plus re-runs `_hcLoadThreads()` on `visibilitychange`/`focus` so the tile is never stale when the tab regains focus.
+- [x] **Main chat opens on last thread instead of new one** — Fixed. `conversations.js:loadChatData()` now defaults to a fresh thread on window open. Continuity is preserved via a one-shot `window.__fridaysChatOpenWithConvId` handoff that the home-chat "expand" button sets so expanding from the tile still resumes the same thread.
+- [ ] **Periodic chat+AI round-trip smoke probe** — sub-item of the watchdog/health work. Hook into `fridays/task_runner.py` with a scheduled task that pings each local agent (Gemma/LLaMA/Qwen) with a tiny prompt every N minutes and records the latency into the existing `_CHAT_HEALTH_RING` (or a dedicated `agent_probe_log` table). Output surfaces automatically through `/api/chat/agents/health`.
+- [x] **Studio Test Lab — script selection per change (structure shipped)** — New "Test Lab" tab in Studio (sibling to Pending/In Progress/History/Git). Backed by `core/testlab_registry.py` (10 registered scripts across Smoke/Pytest/JS/Relay groups) and `frontend/blueprints/testlab_bp.py` (`GET /api/studio/testlab/scripts`, `POST /api/studio/testlab/resolve`). UI is `frontend/static/js/views/studio-testlab.js` — checkboxes per script, per-change ID input, Defaults/All/None/Run selected buttons, output pane rendered through the existing `_terminalFormatOutput` ANSI/semantic formatter from Workstream H. Change-aware scripts receive a `SWARM_CHANGE_ID=<id>` env prefix so they can branch on the change id when we wire proposal-level behaviour. 12 unit tests in `tests/test_testlab.py`. Follow-ups: streaming output via `_runTerminalCommandStream` (currently sync), per-proposal script presets, and one-click "Run from Vortex checkpoint" integration.
+
+
 
 ---
 

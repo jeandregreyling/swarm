@@ -1,0 +1,21 @@
+# Fridays Windows dependencies
+# pip install -r requirements-windows.txt
+
+# Core (same as Linux)
+Flask
+requests
+ollama
+psutil
+anthropic
+openai
+google-genai
+tavily-python
+duckduckgo-search
+
+# Windows UI
+pywebview>=4.4.1
+pystray>=0.19.5
+Pillow>=10.0.0
+
+# Build tool
+pyinstaller>=6.0

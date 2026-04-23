@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-22 13:43",
+  "generated_at": "2026-04-23 00:13",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -152,6 +152,11 @@
       "description": "utils.db.tools \u2014 Tool build registry CRUD (C.1.2)"
     },
     {
+      "path": "utils/db/trace_log.py",
+      "group": "Utils",
+      "description": "utils/db/trace_log.py \u2014 Session 29 durable mirror for core.spine events."
+    },
+    {
       "path": "utils/git_commit_logger.py",
       "group": "Utils",
       "description": "git_commit_logger.py \u2014 Seven's Swarm Time Wizard git hook"
@@ -267,9 +272,34 @@
       "description": "vs_tools.py \u2014 VS tab file read/memory tools for Nine"
     },
     {
+      "path": "core/chat_actions.py",
+      "group": "Core",
+      "description": "core/chat_actions.py \u2014 Pure-rules chat action detector (\"Siri-but-better\")."
+    },
+    {
       "path": "core/kill_switch.py",
       "group": "Core",
       "description": "KILL SWITCHES \u2014 Emergency control agents via Telegram/Discord"
+    },
+    {
+      "path": "core/knowledge/__init__.py",
+      "group": "Core",
+      "description": "core.knowledge \u2014 Knowledge Center package."
+    },
+    {
+      "path": "core/knowledge/projects.py",
+      "group": "Core",
+      "description": "core.knowledge.projects \u2014 Session 30.1: Projects, Steps, Test Cases."
+    },
+    {
+      "path": "core/knowledge/scripts.py",
+      "group": "Core",
+      "description": "core.knowledge.scripts \u2014 Knowledge Center's test-lab script registry."
+    },
+    {
+      "path": "core/knowledge/test_runs.py",
+      "group": "Core",
+      "description": "core.knowledge.test_runs \u2014 Session 30: ALM-style test run history."
     },
     {
       "path": "core/llm.py",
@@ -310,6 +340,16 @@
       "path": "core/routing.py",
       "group": "Core",
       "description": "core/routing.py \u2014 Deterministic routing brain for Seven's Swarm."
+    },
+    {
+      "path": "core/spine.py",
+      "group": "Core",
+      "description": "core/spine.py \u2014 Session 29: Seven-as-spine."
+    },
+    {
+      "path": "core/testlab_registry.py",
+      "group": "Core",
+      "description": "core/testlab_registry.py \u2014 Session 28 Studio Test Lab"
     },
     {
       "path": "core/time_machine.py",
@@ -990,6 +1030,12 @@
           ]
         },
         {
+          "path": "/api/chat/agents/health",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
           "path": "/api/chat/jobs/cancel",
           "methods": [
             "POST"
@@ -1006,9 +1052,15 @@
           "methods": [
             "POST"
           ]
+        },
+        {
+          "path": "/api/chat/action-intent",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 5
+      "route_count": 7
     },
     {
       "name": "conversations",
@@ -1388,9 +1440,15 @@
           "methods": [
             "GET"
           ]
+        },
+        {
+          "path": "/api/_introspect/routes",
+          "methods": [
+            "GET"
+          ]
         }
       ],
-      "route_count": 1
+      "route_count": 2
     },
     {
       "name": "health_bp",
@@ -1558,6 +1616,127 @@
         }
       ],
       "route_count": 6
+    },
+    {
+      "name": "knowledge_bp",
+      "description": "Knowledge Center blueprint.",
+      "routes": [
+        {
+          "path": "/api/knowledge/testlab/scripts",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/change-runs",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/change-runs/<change_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/test-runs",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/knowledge/test-runs/<run_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/knowledge/test-runs/<run_id>/artifacts",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/knowledge/test-runs",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/test-runs/<run_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>/steps",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>/steps",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/steps/<step_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>/test-cases",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>/test-cases",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>/link-proposal",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/knowledge/cases/<case_id>",
+          "methods": [
+            "PATCH"
+          ]
+        }
+      ],
+      "route_count": 19
     },
     {
       "name": "legacy",
@@ -2412,6 +2591,31 @@
       "route_count": 18
     },
     {
+      "name": "spine_bp",
+      "description": "blueprints/spine_bp.py \u2014 Session 29: spine events API.",
+      "routes": [
+        {
+          "path": "/api/spine/events",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/spine/log",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/spine/stream",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 3
+    },
+    {
       "name": "sse",
       "description": "frontend/blueprints/sse.py \u2014 Server-Sent Events stream (R.2)",
       "routes": [
@@ -2581,6 +2785,25 @@
         }
       ],
       "route_count": 8
+    },
+    {
+      "name": "testlab_bp",
+      "description": "blueprints/testlab_bp.py \u2014 Studio Test Lab API (Session 28)",
+      "routes": [
+        {
+          "path": "/api/studio/testlab/scripts",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/studio/testlab/resolve",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 2
     },
     {
       "name": "tickets",
@@ -2872,11 +3095,11 @@
     },
     {
       "name": "chat.js",
-      "size_kb": 242.9
+      "size_kb": 252.9
     },
     {
       "name": "conversations.js",
-      "size_kb": 13.9
+      "size_kb": 14.5
     },
     {
       "name": "diamond.js",
@@ -2884,11 +3107,11 @@
     },
     {
       "name": "docs.js",
-      "size_kb": 24.3
+      "size_kb": 24.6
     },
     {
       "name": "email.js",
-      "size_kb": 22.4
+      "size_kb": 26.1
     },
     {
       "name": "files.js",
@@ -2896,7 +3119,7 @@
     },
     {
       "name": "git.js",
-      "size_kb": 23.8
+      "size_kb": 24.1
     },
     {
       "name": "guide.js",
@@ -2908,11 +3131,11 @@
     },
     {
       "name": "home-chat.js",
-      "size_kb": 47.5
+      "size_kb": 50.0
     },
     {
       "name": "knowledge.js",
-      "size_kb": 6.7
+      "size_kb": 17.3
     },
     {
       "name": "library-graph.js",
@@ -2920,7 +3143,7 @@
     },
     {
       "name": "library.js",
-      "size_kb": 26.5
+      "size_kb": 26.8
     },
     {
       "name": "localai.js",
@@ -2932,7 +3155,7 @@
     },
     {
       "name": "memory.js",
-      "size_kb": 30.0
+      "size_kb": 30.3
     },
     {
       "name": "monitor.js",
@@ -2951,44 +3174,56 @@
       "size_kb": 63.0
     },
     {
+      "name": "projects.js",
+      "size_kb": 15.5
+    },
+    {
       "name": "services.js",
       "size_kb": 4.7
     },
     {
       "name": "skills.js",
-      "size_kb": 25.1
+      "size_kb": 26.2
     },
     {
       "name": "spotlight.js",
-      "size_kb": 8.2
+      "size_kb": 14.6
+    },
+    {
+      "name": "studio-testlab.js",
+      "size_kb": 25.3
     },
     {
       "name": "studio.js",
-      "size_kb": 85.6
+      "size_kb": 86.3
     },
     {
       "name": "tasker.js",
-      "size_kb": 10.7
+      "size_kb": 11.0
     },
     {
       "name": "terminal-commands.js",
-      "size_kb": 13.1
+      "size_kb": 17.6
     },
     {
       "name": "terminal.js",
-      "size_kb": 43.4
+      "size_kb": 43.6
     },
     {
       "name": "tickets.js",
-      "size_kb": 6.7
+      "size_kb": 6.0
     },
     {
       "name": "time-wizard.js",
-      "size_kb": 35.8
+      "size_kb": 43.4
     },
     {
       "name": "trace.js",
       "size_kb": 22.6
+    },
+    {
+      "name": "traced.js",
+      "size_kb": 5.8
     },
     {
       "name": "vpn.js",
@@ -2998,7 +3233,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 34104
+      "rows": 35328
     },
     {
       "name": "agent_capabilities",
@@ -3018,15 +3253,19 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 559
+      "rows": 610
     },
     {
       "name": "audit_results",
-      "rows": 34
+      "rows": 35
+    },
+    {
+      "name": "change_runs",
+      "rows": 2
     },
     {
       "name": "chat_jobs",
-      "rows": 583
+      "rows": 585
     },
     {
       "name": "claude_log",
@@ -3034,7 +3273,7 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2185
+      "rows": 2192
     },
     {
       "name": "conversations",
@@ -3042,7 +3281,7 @@
     },
     {
       "name": "council_output",
-      "rows": 993
+      "rows": 1275
     },
     {
       "name": "daily_checkpoint",
@@ -3062,7 +3301,7 @@
     },
     {
       "name": "decisions",
-      "rows": 6714
+      "rows": 7665
     },
     {
       "name": "deferred_items",
@@ -3070,7 +3309,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 820
+      "rows": 861
     },
     {
       "name": "file_versions",
@@ -3086,11 +3325,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4284
+      "rows": 4324
     },
     {
       "name": "governance_log",
-      "rows": 385
+      "rows": 387
     },
     {
       "name": "knowledge_chunks",
@@ -3098,19 +3337,19 @@
     },
     {
       "name": "knowledge_sources",
-      "rows": 49
+      "rows": 50
     },
     {
       "name": "memory",
-      "rows": 105
+      "rows": 106
     },
     {
       "name": "memory_eight",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "memory_gemma",
-      "rows": 21
+      "rows": 22
     },
     {
       "name": "memory_ghost_coder",
@@ -3134,7 +3373,7 @@
     },
     {
       "name": "memory_qwen",
-      "rows": 2
+      "rows": 1
     },
     {
       "name": "memory_scholar",
@@ -3162,7 +3401,7 @@
     },
     {
       "name": "memory_twenty",
-      "rows": 266
+      "rows": 375
     },
     {
       "name": "messages",
@@ -3194,15 +3433,31 @@
     },
     {
       "name": "project_docs",
-      "rows": 64
+      "rows": 74
+    },
+    {
+      "name": "project_steps",
+      "rows": 32
+    },
+    {
+      "name": "project_test_cases",
+      "rows": 34
+    },
+    {
+      "name": "projects",
+      "rows": 21
     },
     {
       "name": "proposal_attachments",
       "rows": 0
     },
     {
+      "name": "proposal_projects",
+      "rows": 2
+    },
+    {
       "name": "queue",
-      "rows": 1900
+      "rows": 1570
     },
     {
       "name": "research_evidence",
@@ -3218,7 +3473,7 @@
     },
     {
       "name": "scheduled_tasks",
-      "rows": 9
+      "rows": 51
     },
     {
       "name": "skills",
@@ -3238,7 +3493,7 @@
     },
     {
       "name": "sqlite_sequence",
-      "rows": 66
+      "rows": 68
     },
     {
       "name": "sudo_command_whitelist",
@@ -3246,7 +3501,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 385
+      "rows": 387
     },
     {
       "name": "swarm_event_acks",
@@ -3270,7 +3525,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 7126
+      "rows": 7253
     },
     {
       "name": "task_run_log",
@@ -3281,32 +3536,44 @@
       "rows": 16
     },
     {
+      "name": "test_run_artifacts",
+      "rows": 1
+    },
+    {
+      "name": "test_runs",
+      "rows": 37
+    },
+    {
       "name": "ticket_notes",
-      "rows": 574
+      "rows": 615
     },
     {
       "name": "tickets",
-      "rows": 582
+      "rows": 623
     },
     {
       "name": "time_checkpoints",
-      "rows": 4281
+      "rows": 4617
     },
     {
       "name": "time_events",
-      "rows": 95841
+      "rows": 96233
     },
     {
       "name": "time_journal",
-      "rows": 90248
+      "rows": 90297
     },
     {
       "name": "time_machine",
-      "rows": 5910
+      "rows": 5918
     },
     {
       "name": "tool_builds",
       "rows": 0
+    },
+    {
+      "name": "trace_events",
+      "rows": 136
     },
     {
       "name": "trusted_domains",
@@ -3342,7 +3609,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 302
+      "rows": 2
     }
   ],
   "agents": [
@@ -3948,6 +4215,10 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "kn-quick-query-clear",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "docs-tab-kb",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -3980,7 +4251,23 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "studio-tab-projects",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "studio-tab-git",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "studio-tab-testlab",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "testlab-run-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "testlab-stop-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4324,6 +4611,26 @@
       "file": "frontend/static/js/views/knowledge.js"
     },
     {
+      "id": "kn-info-modal",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "kn-seed-input",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "kn-seed-status",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "kn-quick-query-input",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "kn-quick-query-results",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
       "id": "kn-panel-files",
       "file": "frontend/static/js/views/knowledge.js"
     },
@@ -4420,6 +4727,10 @@
       "file": "frontend/static/js/views/time-wizard.js"
     },
     {
+      "id": "tw-info-modal",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
       "id": "tw-search",
       "file": "frontend/static/js/views/time-wizard.js"
     },
@@ -4484,6 +4795,10 @@
       "file": "frontend/static/js/views/time-wizard.js"
     },
     {
+      "id": "tw-spine-feed",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
       "id": "services-dropdown-menu",
       "file": "frontend/static/js/views/services.js"
     },
@@ -4498,6 +4813,54 @@
     {
       "id": "services-dropdown-dot",
       "file": "frontend/static/js/views/services.js"
+    },
+    {
+      "id": "studio-testlab-panel",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "testlab-change-id",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "testlab-project-id",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "testlab-step-id",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "testlab-script-list",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "testlab-output",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "testlab-history",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "testlab-run-modal",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "tl-run-note-input",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "home-studio-badge",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "home-studio-desc",
+      "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "testlab-run-status",
+      "file": "frontend/static/js/views/studio-testlab.js"
     },
     {
       "id": "home-chat-env-badge",
@@ -4584,7 +4947,43 @@
       "file": "frontend/static/js/views/home-chat.js"
     },
     {
+      "id": "traced-panel",
+      "file": "frontend/static/js/views/traced.js"
+    },
+    {
+      "id": "traced-kind",
+      "file": "frontend/static/js/views/traced.js"
+    },
+    {
+      "id": "traced-sev",
+      "file": "frontend/static/js/views/traced.js"
+    },
+    {
+      "id": "traced-search",
+      "file": "frontend/static/js/views/traced.js"
+    },
+    {
+      "id": "traced-list",
+      "file": "frontend/static/js/views/traced.js"
+    },
+    {
+      "id": "traced-summary",
+      "file": "frontend/static/js/views/traced.js"
+    },
+    {
+      "id": "traced-detail",
+      "file": "frontend/static/js/views/traced.js"
+    },
+    {
       "id": "email-list-inner",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
+      "id": "email-select-count",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
+      "id": "email-select-all",
       "file": "frontend/static/js/views/email.js"
     },
     {
@@ -4729,6 +5128,10 @@
     },
     {
       "id": "studio-git-panel",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "studio-projects-panel",
       "file": "frontend/static/js/views/studio.js"
     },
     {
@@ -5256,6 +5659,10 @@
       "file": "frontend/static/js/views/ollama.js"
     },
     {
+      "id": "shortcuts-help-modal",
+      "file": "frontend/static/js/views/spotlight.js"
+    },
+    {
       "id": "spotlight-overlay",
       "file": "frontend/static/js/views/spotlight.js"
     },
@@ -5360,6 +5767,10 @@
       "file": "frontend/static/js/views/chat.js"
     },
     {
+      "id": "chat-guardian-narrator",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
       "id": "chat-mention-menu",
       "file": "frontend/static/js/views/chat.js"
     },
@@ -5448,6 +5859,18 @@
       "file": "frontend/static/js/views/chat.js"
     },
     {
+      "id": "chat-thread-bulk-bar",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-thread-bulk-count",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-thread-bulk-delete",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
       "id": "chat-thread-select",
       "file": "frontend/static/js/views/chat.js"
     },
@@ -5510,6 +5933,34 @@
     {
       "id": "tickets-content",
       "file": "frontend/static/js/views/tickets.js"
+    },
+    {
+      "id": "projects-detail",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "projects-list",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "projects-new-name",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "projects-new-method",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "pd-step-title",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "pd-case-title",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "pd-case-script",
+      "file": "frontend/static/js/views/projects.js"
     },
     {
       "id": "sundial",

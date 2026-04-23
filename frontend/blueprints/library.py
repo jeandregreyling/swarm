@@ -70,6 +70,41 @@ def api_library_delete(source_id, current_user=None):
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
 
+@library_bp.route('/api/library/sources/<int:source_id>', methods=['GET'])
+def api_library_source_get(source_id):
+    """Return full source record (raw_text + metadata) for the Open modal."""
+    try:
+        from lib.knowledge.store import get_source
+        src = get_source(source_id)
+        if not src:
+            return jsonify({'ok': False, 'error': 'Not found'}), 404
+        return jsonify({'ok': True, 'source': src})
+    except Exception as exc:
+        logger.exception('[Library] source_get')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/library/sources/<int:source_id>', methods=['PATCH'])
+def api_library_source_update(source_id):
+    """Reclassify or rename a source. Body: { title?, category?, subcategory?, tags? }"""
+    try:
+        data = request.get_json(silent=True) or {}
+        from lib.knowledge.store import update_source, get_source
+        if not get_source(source_id):
+            return jsonify({'ok': False, 'error': 'Not found'}), 404
+        ok = update_source(
+            source_id,
+            title=data.get('title'),
+            category=data.get('category'),
+            subcategory=data.get('subcategory'),
+            domain_tags=data.get('tags'),
+        )
+        return jsonify({'ok': True, 'updated': bool(ok)})
+    except Exception as exc:
+        logger.exception('[Library] source_update')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
 @library_bp.route('/api/library/sources/<int:source_id>/reprocess', methods=['POST'])
 def api_library_reprocess(source_id):
     """Re-embed a source (useful after pulling nomic-embed-text for the first time)."""
@@ -107,13 +142,13 @@ def api_library_ingest():
     try:
         _init()
         data        = request.get_json(silent=True) or {}
-        src_type    = (data.get('type') or 'text').strip().lower()
-        title       = (data.get('title') or '').strip()
-        content     = (data.get('content') or '').strip()
+        src_type    = str(data.get('type') or 'text').strip().lower()
+        title       = str(data.get('title') or '').strip()
+        content     = str(data.get('content') or '').strip()
         tags        = data.get('tags') or []
-        added_by    = (data.get('added_by') or 'ghost').strip()
-        category    = (data.get('category') or 'general').strip()
-        subcategory = (data.get('subcategory') or '').strip() or None
+        added_by    = str(data.get('added_by') or 'ghost').strip()
+        category    = str(data.get('category') or 'general').strip()
+        subcategory = str(data.get('subcategory') or '').strip() or None
 
         if not content:
             return jsonify({'ok': False, 'error': 'content is required'}), 400
@@ -385,4 +420,179 @@ def api_library_seed():
         })
     except Exception as exc:
         logger.exception('[Library] seed')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+# ── Research Topics (idle-research interest nodes) ────────────────────────────
+
+def _topics_owner():
+    """Username the topics are filed under. Defaults to 'ghost' (primary user)."""
+    return 'ghost'
+
+
+@library_bp.route('/api/library/topics', methods=['GET'])
+def api_library_topics_list():
+    """List research topics (user_interests rows). Active + paused together, newest first."""
+    try:
+        from database import get_connection
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT id, topic, category, score, source, source_agent, active, "
+                "       created_at, updated_at "
+                "FROM user_interests WHERE username = ? "
+                "ORDER BY active DESC, score DESC, id DESC",
+                (_topics_owner(),),
+            ).fetchall()
+        finally:
+            conn.close()
+        out = []
+        for r in rows:
+            out.append({
+                'id':           r['id'],
+                'topic':        r['topic'],
+                'category':     r['category'],
+                'score':        r['score'],
+                'source':       r['source'],
+                'source_agent': r['source_agent'],
+                'active':       bool(r['active']),
+                'created_at':   r['created_at'],
+                'updated_at':   r['updated_at'],
+            })
+        return jsonify({'ok': True, 'topics': out})
+    except Exception as exc:
+        logger.exception('[Library] topics list')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/library/topics', methods=['POST'])
+def api_library_topics_add():
+    """Add a new research topic.
+    Body: { topic, category?, score?, source_agent? }
+    Defaults: category='sap_corner', score=8.0, source='user', source_agent=''.
+    Idempotent on (username, topic) — re-adding an existing topic reactivates it."""
+    try:
+        data  = request.get_json(silent=True) or {}
+        topic = str(data.get('topic') or '').strip()[:100]
+        if not topic:
+            return jsonify({'ok': False, 'error': 'topic is required'}), 400
+        category     = str(data.get('category') or 'sap_corner').strip() or 'sap_corner'
+        score        = float(data.get('score') or 8.0)
+        source_agent = str(data.get('source_agent') or '').strip().lower()
+
+        from database import get_connection
+        conn = get_connection()
+        try:
+            existing = conn.execute(
+                "SELECT id FROM user_interests WHERE username = ? AND topic = ?",
+                (_topics_owner(), topic),
+            ).fetchone()
+            if existing:
+                conn.execute(
+                    "UPDATE user_interests SET active = 1, score = ?, "
+                    "category = ?, updated_at = datetime('now') WHERE id = ?",
+                    (score, category, existing['id']),
+                )
+                tid = existing['id']
+            else:
+                cur = conn.execute(
+                    "INSERT INTO user_interests "
+                    "(username, topic, category, source, source_agent, score, active) "
+                    "VALUES (?, ?, ?, 'user', ?, ?, 1)",
+                    (_topics_owner(), topic, category, source_agent, score),
+                )
+                tid = cur.lastrowid
+            conn.commit()
+        finally:
+            conn.close()
+        return jsonify({'ok': True, 'id': tid, 'topic': topic})
+    except Exception as exc:
+        logger.exception('[Library] topics add')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/library/topics/<int:topic_id>', methods=['PATCH'])
+def api_library_topics_update(topic_id):
+    """Pause/resume/rescope a topic. Body may contain: active, score, category, topic."""
+    try:
+        data = request.get_json(silent=True) or {}
+        fields = []
+        params = []
+        if 'active' in data:
+            fields.append('active=?')
+            params.append(1 if data.get('active') else 0)
+        if 'score' in data:
+            fields.append('score=?')
+            params.append(float(data.get('score') or 0))
+        if 'category' in data and data['category']:
+            fields.append('category=?')
+            params.append(str(data['category']).strip())
+        if 'topic' in data and data['topic']:
+            fields.append('topic=?')
+            params.append(str(data['topic']).strip()[:100])
+        if not fields:
+            return jsonify({'ok': False, 'error': 'no fields to update'}), 400
+        fields.append("updated_at=datetime('now')")
+        params.append(topic_id)
+
+        from database import get_connection
+        conn = get_connection()
+        try:
+            conn.execute(
+                f"UPDATE user_interests SET {', '.join(fields)} WHERE id=?", params,
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return jsonify({'ok': True})
+    except Exception as exc:
+        logger.exception('[Library] topics update')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/library/topics/<int:topic_id>', methods=['DELETE'])
+def api_library_topics_delete(topic_id):
+    """Hard-delete a topic."""
+    try:
+        from database import get_connection
+        conn = get_connection()
+        try:
+            conn.execute("DELETE FROM user_interests WHERE id=?", (topic_id,))
+            conn.commit()
+        finally:
+            conn.close()
+        return jsonify({'ok': True})
+    except Exception as exc:
+        logger.exception('[Library] topics delete')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/library/topics/run/<int:topic_id>', methods=['POST'])
+def api_library_topics_run_now(topic_id):
+    """Kick off an immediate research session for a single topic (background thread)."""
+    try:
+        from database import get_connection
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT topic FROM user_interests WHERE id=? AND active=1",
+                (topic_id,),
+            ).fetchone()
+        finally:
+            conn.close()
+        if not row:
+            return jsonify({'ok': False, 'error': 'Topic not found or paused'}), 404
+        topic_text = row['topic']
+
+        def _run():
+            try:
+                from fridays.research_workflow import run_research
+                run_research(topic_text, depth='standard', requesting_agent='scholar')
+            except Exception as exc2:
+                logger.error(f'[Library] topic run error topic={topic_text!r}: {exc2}')
+
+        threading.Thread(target=_run, daemon=True).start()
+        return jsonify({'ok': True, 'queued': True, 'topic': topic_text})
+    except Exception as exc:
+        logger.exception('[Library] topics run')
         return jsonify({'ok': False, 'error': str(exc)}), 500

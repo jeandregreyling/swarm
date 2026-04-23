@@ -257,6 +257,23 @@ class TimeMachine:
             
             checkpoint_id = cursor.lastrowid
             conn.commit()
+            # Session 29 — spine emit. Best-effort.
+            try:
+                from core import spine as _spine
+                _spine.log(
+                    _spine.EventKind.CHECKPOINT,
+                    f'Checkpoint created: {checkpoint_name}',
+                    severity=_spine.Severity.INFO,
+                    source='time_machine',
+                    agent=agent,
+                    payload={
+                        'checkpoint_id': checkpoint_id,
+                        'checkpoint_name': checkpoint_name,
+                        'description': description[:500] if description else '',
+                    },
+                )
+            except Exception:
+                pass
             return checkpoint_id
         finally:
             conn.close()

@@ -6,6 +6,55 @@ function renderVortexHistory() {
     (_twCheckpoints.length ? _twCheckpoints.map(c => `<div style="font-size:11px;padding:6px 0;border-bottom:1px solid var(--border);"><b>${_escHtml(c.checkpoint_name || c.name || 'checkpoint')}</b> <span style="color:var(--text-dim);">@ ${_escHtml(c.timestamp || c.created_at || '')}</span></div>`).join('') : '<div style="color:var(--text-dim);font-size:11px;">No checkpoints yet.</div>');
 }
 
+// Vortex explainer popover — what is this thing, how do checkpoints differ from git,
+// what step-back actually does. Surfaced via the (i) button in the header.
+function twOpenInfo() {
+  let modal = document.getElementById('tw-info-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'tw-info-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .15s;';
+    modal.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:22px 26px;max-width:560px;width:92%;max-height:86vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.4);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);">About Vortex</div>
+          <button onclick="document.getElementById('tw-info-modal').style.opacity=0;document.getElementById('tw-info-modal').style.pointerEvents='none';" style="background:none;border:none;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;padding:4px;">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div style="font-size:12px;line-height:1.65;color:var(--text);">
+          <p style="margin:0 0 10px;"><strong>Vortex</strong> is the swarm's traceability layer — every architectural decision, proposal, and state change flows through it. It's what lets you understand <em>why</em> the system is in its current shape, and step back if something went wrong.</p>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:12px 0;font-size:11.5px;">
+            <div style="color:var(--accent);font-weight:700;">Decisions</div><div>Proposals from agents or the user that change architecture. Status: <code style="font-size:10.5px;">PROPOSED</code> → <code style="font-size:10.5px;">TESTING</code> → <code style="font-size:10.5px;">EXECUTED</code>.</div>
+            <div style="color:var(--accent);font-weight:700;">Checkpoints</div><div>Snapshots of the DB plus tracked files, captured manually with <strong>Capture Checkpoint</strong> or automatically by proposals.</div>
+            <div style="color:var(--accent);font-weight:700;">Events</div><div>Fine-grained state transitions (proposal merged, config changed, migration applied). Useful for audit.</div>
+            <div style="color:var(--accent);font-weight:700;">Step-Back</div><div>Restores the DB and key files to a checkpoint. Always <strong>Dry Run</strong> first to see the diff.</div>
+          </div>
+          <div style="padding:10px 12px;border:1px solid color-mix(in srgb,var(--warning) 45%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--warning) 9%,var(--card));margin:10px 0 12px;font-size:11px;color:var(--text);">
+            <strong>Not the same as git.</strong> Git tracks code. Vortex tracks <em>state</em> — DB rows, attachments, chat history, proposal outcomes. Both can be used together; roll back Vortex for data, roll back git for code.
+          </div>
+          <div style="padding:10px 12px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--accent) 9%,var(--card));margin:10px 0 12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <svg viewBox="0 0 20 20" width="14" height="14" fill="none" style="color:var(--accent);"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <strong>Find a proposal or decision fast</strong>
+              <kbd style="margin-left:auto;background:var(--window-header);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:11px;font-family:inherit;">Ctrl+Space</kbd>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);">Spotlight searches proposals by ID or title — type <code style="font-size:10.5px;">PROP-</code> or a keyword to jump straight to one.</div>
+          </div>
+          <p style="margin:6px 0 0;font-size:11.5px;color:var(--text-dim);">
+            <strong style="color:var(--text);">Safety:</strong> apply-step-back is irreversible without another checkpoint — the system prompts you to capture one first if none exists within the last hour.
+          </p>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) { modal.style.opacity = '0'; modal.style.pointerEvents = 'none'; }
+    });
+  }
+  modal.style.opacity = '1';
+  modal.style.pointerEvents = 'auto';
+}
+
 // Patch into loadTimeWizardData
 const _origLoadTimeWizardData = loadTimeWizardData;
 loadTimeWizardData = async function() {
@@ -734,3 +783,70 @@ function toggleBriefHistory() {}
 async function loadBriefHistory() {}
 async function loadBriefById(id) {}
 
+
+// ── Session 29 — Vortex spine feed ───────────────────────────────────────
+// Small live list in the sidebar that shows the last ~30 significant spine
+// events (relay steps, watchdog stalls, tickets, checkpoints, testlab runs).
+// Subscribes to window.__trace; falls back to a one-shot fetch if the bus
+// isn't online yet.
+(function () {
+  const MAX = 30;
+  const KINDS = new Set(['relay_step', 'watchdog', 'checkpoint', 'ticket', 'testlab', 'guardian']);
+  const buf = [];
+
+  function render() {
+    const el = document.getElementById('tw-spine-feed');
+    if (!el) return;
+    if (!buf.length) {
+      el.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:8px;">No spine events yet.</div>';
+      return;
+    }
+    el.innerHTML = buf.map(ev => {
+      const ts = new Date((ev.ts || 0) * 1000);
+      const hh = String(ts.getHours()).padStart(2, '0');
+      const mm = String(ts.getMinutes()).padStart(2, '0');
+      const sevClr = { warn: '#d8a032', error: '#d85032', critical: '#ff3860', info: '#6a8ab0', debug: '#555' }[ev.severity] || '#6a8ab0';
+      return `<div style="display:flex;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+        <span style="color:var(--text-dim);font-family:monospace;">${hh}:${mm}</span>
+        <span style="color:${sevClr};font-weight:700;text-transform:uppercase;font-size:8px;min-width:54px;">${_escHtml(ev.kind || '')}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(ev.agent ? ev.agent + ' · ' : '')}${_escHtml(ev.message || '')}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function push(ev) {
+    if (!ev || !KINDS.has(ev.kind)) return;
+    buf.unshift(ev);
+    if (buf.length > MAX) buf.length = MAX;
+    render();
+  }
+
+  function primeFromApi() {
+    fetch('/api/spine/events?limit=30&source=db&kinds=' + Array.from(KINDS).join(','))
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) return;
+        buf.length = 0;
+        (data.items || []).forEach(ev => { if (KINDS.has(ev.kind)) buf.push(ev); });
+        render();
+      })
+      .catch(() => {});
+  }
+
+  function attach() {
+    primeFromApi();
+    if (window.__trace && !window.__tw_spine_bound) {
+      window.__trace.on('event', push);
+      window.__tw_spine_bound = true;
+    }
+  }
+
+  // Re-attach whenever the Vortex window becomes visible.
+  document.addEventListener('DOMContentLoaded', attach);
+  const _origLoadTimeWizard = window.loadTimeWizardData;
+  window.loadTimeWizardData = function () {
+    const r = _origLoadTimeWizard ? _origLoadTimeWizard.apply(this, arguments) : undefined;
+    setTimeout(attach, 120);
+    return r;
+  };
+})();

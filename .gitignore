@@ -37,6 +37,10 @@ archive/
 # Backups (already backed up separately)
 *.backup
 *.bak
+*.db.backup.*
+swarm_memory.db.backup.*
+swarm.db.backup.*
+swarm.db.empty.backup.*
 
 # Temp/Build
 /build/
@@ -54,6 +58,13 @@ Thumbs.db
 .secret_key
 .vs/
 models/
-windows/
 llama.cpp
 agents/seven/llama.cpp
+agents/seven/models/
+
+# Sandpit / worktree dumps
+sandpits_stage1/
+sandpits_stage2/
+sandpits_stage3/
+
+# Windows installer scripts ARE tracked (windows/ no longer ignored as of 2026-04-23)

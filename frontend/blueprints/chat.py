@@ -1205,6 +1205,25 @@ def api_chat():
                         message_type='response',
                         tokens_used=int(tokens_used or 0),
                     )
+                    # Session 29 — spine emit for relay handoffs only (skips self-replies).
+                    if response_target and response_target != selected_agent:
+                        try:
+                            from core import spine as _spine
+                            _spine.log(
+                                _spine.EventKind.RELAY_STEP,
+                                f'{selected_agent} → {response_target}',
+                                severity=_spine.Severity.INFO,
+                                source='chat',
+                                agent=selected_agent,
+                                thread_id=str(conv_id) if conv_id else None,
+                                payload={
+                                    'from': selected_agent,
+                                    'to': response_target,
+                                    'job_id': job_id,
+                                },
+                            )
+                        except Exception:
+                            pass
                     _trace_json = None
                     with _CHAT_JOB_LOCK:
                         job = _CHAT_JOBS.get(job_id)
@@ -1220,6 +1239,13 @@ def api_chat():
                                 'response': response_text or '',
                             })
                             _trace_json = json.dumps(job.get('stage_trace') or [])
+                            # Workstream: agent health watchdog. Record the
+                            # completion in the per-agent ring buffer so p50/p95
+                            # and stall counts stay current.
+                            try:
+                                _record_job_health_locked(job)
+                            except Exception:
+                                pass
                     update_chat_job_db(
                         job_id, status='completed', stage='completed',
                         elapsed_ms=int(elapsed_ms or 0), tokens=int(tokens_used or 0),
@@ -1265,6 +1291,10 @@ def api_chat():
                                 'updated_at': updated_iso,
                             })
                             _trace_json_f = json.dumps(job.get('stage_trace') or [])
+                            try:
+                                _record_job_health_locked(job)
+                            except Exception:
+                                pass
                     update_chat_job_db(job_id, status='failed', stage='failed', error=err_text,
                                        stage_trace_json=_trace_json_f)
                     try:
@@ -1511,6 +1541,17 @@ def api_chat_jobs_status():
 
     with _CHAT_JOB_LOCK:
         _cleanup_chat_jobs_locked()
+        # Workstream: watchdog. Mark any job past its budget as failed BEFORE
+        # building the response payload so the UI sees the stall on its very
+        # next poll. Stalled jobs are also recorded in the health ring.
+        _stalled = _watchdog_mark_stalled_jobs_locked()
+        for _s_job in _stalled:
+            _job_obj = _CHAT_JOBS.get(_s_job['job_id'])
+            if _job_obj is not None:
+                try:
+                    _record_job_health_locked(_job_obj)
+                except Exception:
+                    pass
         jobs = []
         for job in _CHAT_JOBS.values():
             if conv_id_int is not None and int(job.get('conversation_id') or -1) != conv_id_int:
@@ -1518,6 +1559,29 @@ def api_chat_jobs_status():
             if want_ids and job.get('job_id') not in want_ids:
                 continue
             jobs.append(_chat_job_public(job))
+
+    # Persist + best-effort hard-kill outside the lock. Failures are tolerated:
+    # the in-memory state already shows stalled, so the UI is not blocked.
+    for _s in _stalled:
+        try:
+            update_chat_job_db(
+                _s['job_id'],
+                status='failed',
+                stage='stalled',
+                error=_s['error'],
+                elapsed_ms=int(_s.get('elapsed_ms') or 0),
+            )
+        except Exception:
+            pass
+        try:
+            _chat_try_hard_kill_local_agent(_s.get('agent') or '')
+        except Exception:
+            pass
+        try:
+            _sse_chat(_s.get('conversation_id'), _s.get('agent'), 'failed',
+                      job_id=_s.get('job_id'), error=_s.get('error'))
+        except Exception:
+            pass
 
     # For any explicitly requested IDs not found in memory, fall back to DB.
     # This surfaces outcomes for jobs that finished after a server restart.
@@ -1552,6 +1616,27 @@ def api_chat_jobs_status():
     jobs.sort(key=lambda j: (j.get('status') != 'running', j.get('agent') or ''))
     return jsonify({'ok': True, 'jobs': jobs})
 
+
+@chat_bp.route('/api/chat/agents/health')
+def api_chat_agents_health():
+    """Per-agent latency + stall snapshot from the in-memory health ring.
+
+    Returns: {ok, agents: {agent_name: {count, completed, failed, stalled,
+    p50_ms, p95_ms}}, watchdog: {budget_min_seconds, budget_max_seconds,
+    eta_multiplier}}.
+
+    Cheap to call; designed to be polled by the Monitor tile / Health Digest.
+    """
+    snapshot = get_chat_agent_health_snapshot()
+    return jsonify({
+        'ok': True,
+        'agents': snapshot,
+        'watchdog': {
+            'eta_multiplier': 4.0,
+            'budget_min_seconds': 300,
+            'budget_max_seconds': 900,
+        },
+    })
 
 
 @chat_bp.route('/api/chat/jobs/cancel', methods=['POST'])
@@ -1716,7 +1801,48 @@ def api_chat_classify():
     except Exception as _e:
         result['router'] = {'error': str(_e)[:160]}
 
+    # Session 29 — Seven-as-guardian signal. Callers (chat UI) can render a
+    # "Seven is taking this" card when guardian=true without changing the
+    # underlying classify_message result.
+    try:
+        from core import spine as _spine
+        from utils.db.registry import get_routable_agents as _reg_routable
+        _spine_decision = _spine.route(
+            message, sender='user', routable_agents=_reg_routable(),
+        )
+        result['guardian'] = {
+            'active': bool(_spine_decision.guardian),
+            'target': _spine_decision.target,
+            'original_target': _spine_decision.original_target,
+            'confidence': _spine_decision.confidence,
+            'rationale': _spine_decision.rationale,
+        }
+    except Exception as _g:
+        result['guardian'] = {'error': str(_g)[:160]}
+
     result['ok'] = True
     return jsonify(result)
+
+
+@chat_bp.route('/api/chat/action-intent', methods=['POST'])
+def api_chat_action_intent():
+    """Detect a Siri-style client action in a chat message.
+
+    Body: {message: str}
+    Returns: {ok: True, intent: {...} | None}
+
+    Pure rules (core.chat_actions) — no LLM, no state mutation. The UI shows
+    a confirmation pill and only performs the action on user click.
+    """
+    data = request.get_json(silent=True) or {}
+    message = str(data.get('message') or '').strip()
+    if not message:
+        return jsonify({'ok': False, 'error': 'No message provided'}), 400
+    try:
+        from core.chat_actions import detect_action
+        intent = detect_action(message)
+    except Exception as exc:  # pragma: no cover - defensive
+        return jsonify({'ok': False, 'error': str(exc)[:160]}), 500
+    return jsonify({'ok': True, 'intent': intent})
 
 
