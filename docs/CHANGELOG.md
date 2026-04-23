@@ -5,6 +5,31 @@
 _Comprehensive change log with agent attribution, timestamps, and version control tracking._
 _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
+[2026-04-23 20:10:00] Copilot: **Phase-5 SMALL batch (12 frontend polish items) + voice deps online.**
+
+Frontend polish (all shipped; cache-bust bumps in `terminal_base.html`: `app.js?v=31`, `terminal.js?v=3`, `chat.js?v=39`, `onboarding.js?v=2`, `diamond.js?v=3`, `chat.css?v=3`):
+- **Dictionary button polish** (`chat.js`): `#chat-dictionary-inline` rendered as a proper styled button with SVG book icon, role=button, tabindex=0, keydown Enter/Space; modal adds Esc-to-close with self-cleanup and visible kbd hint.
+- **Remove Clock + Vibe clocks** (`terminal_base.html`): `#world-clocks` and `#time-display` hidden via display:none; theme.js updaters remain as safe no-ops.
+- **Add-new tile draggable** (`app.js `): removed `home-card-add` exclusions from drag-ready tagging, pointerdown guard, and neighbor selector; tile got `data-win-id="add-new"`.
+- **Chat-tile thread row L/R collapse polish** (`terminal_base.html` + `chat.css`): wrapped caret + rail-collapse in `.chat-section-actions`; rail-collapse gets SVG chevron + border/hover styling.
+- **Front-terminal thread dropdown restored** (`terminal_base.html`): `#home-chat-thread-select` reinstated with inline styling.
+- **Quick Access back above chat** (`terminal_base.html`): `#home-content` restructured — tiles on top, resize handle between tiles and chat.
+- **Chat resize dragger above chat** (`terminal_base.html` + `diamond.js`): `#home-chat-resizer` given class `home-chat-resizer-top`; `_initHomeChatResize` inverts drag math when handle sits above.
+- **History popout as own window** (`terminal.js`): `_terminalPromoteHistoryPanel` / `_terminalDemoteHistoryPanel` reparent `#terminal-history-panel` into a fixed `#terminal-history-floating` wrapper (380px, top:120px, right:40px, draggable header, close ×, Esc handler) and restore original DOM state on close.
+- **Add-to-favs star + multi-select combine** (`terminal.html` + `terminal.js`): new `#terminal-fav-btn` ★ in input row; `renderTerminalQuickButtons` supports shift/ctrl/cmd-click multi-select with a sticky combine bar ("Run combined" / "Fill combined" / clear).
+- **Enrollment open-every-launch tick** (`onboarding.html` + `onboarding.js`): new `#ob-reopen-every-launch` checkbox; `obFinish` stores `swarm_onboarding_reopen_every_launch`; `_maybeAutoLaunch` re-opens enrollment every launch when ticked.
+- **Spotlight mic B19**: verified already shipped (`#spotlight-mic-btn` in `terminal_base.html`).
+
+Voice deps (Phase-5 MANUAL S-69A9FD6563):
+- Installed `piper-tts` into `.venv` (ships `piper` binary); pulled `en_GB-alba-medium.onnx` + config into `models/piper/`.
+- `swarm-terminal.service` gained `Environment="PIPER_BIN=/home/seven/swarm/.venv/bin/piper"`; `/api/voice/status` now reports `tts.available=true`; `/api/voice/tts` returns 200 WAV (RIFF 22 050 Hz mono).
+
+Fan controller install (Phase-5 MANUAL S-A3ACA49EA8): `swarm-fanctl` helper installed; Dell OptiPlex 7090 uses `dell_smm` hwmon pwm1 (no pwm1_enable). Cross-platform bullet-proofing + onboarding opt-in + settings toggle queued for Phase-6.
+
+Phase-6 backlog pushed to Studio (P-A3AA05D060): fan controller cross-platform / onboarding opt-in / settings toggle; KC seeds for Hugging Face + GitHub; KC seeding framework (`ops/kc_seeds/<topic>.yaml`).
+
+Full suite: **783 passed, 2 skipped** (up from 770).
+
 [2026-04-23 19:45:00] Copilot: **Phase-5 kickoff — Seven model swap + Coding Bible fan-out.**
 - `agents/seven/seven_agent.py`: default model `qwen2.5:0.5b` → `phi3:mini`; `temperature` key removed from the Ollama generate options. `SEVEN_MODEL` env still overrides.
 - `utils/config.py`: added module-bottom hook that prepends the Coding Bible quick-card to every coder-capable `*_SYSTEM_PROMPT` (Gemma, LLaMA, Qwen, Mistral, Twenty, Eight, Eleven, Nine, Ten, Twelve, Thirteen, Nineteen, Scholar, Seeker, Ghost-Coder). Idempotent (skips if "CODING BIBLE" already present). Librarian and Seven intentionally excluded.
