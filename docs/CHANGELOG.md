@@ -5,6 +5,26 @@
 _Comprehensive change log with agent attribution, timestamps, and version control tracking._
 _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
+[2026-04-23 19:00:00] Copilot: **Phase-4 BIG batch (B18–B21) + bug-fix roll-forward.**
+
+**BIG (B18–B21).**
+- **B18 — Cross-platform fan controller (scaffold + opt-in root helper).** New `core/fan_controller.py` reads temps from `/sys/class/hwmon/*`; new `frontend/blueprints/fan.py` exposes `GET /api/fan/status` (always 200) and `POST /api/fan/mode` (503 until helper installed, 400 for invalid). New `ops/swarm-fanctl.py` + `ops/swarm-fanctl.service` implement a privileged Unix-socket helper that writes `/sys/firmware/acpi/platform_profile` and `/sys/class/hwmon/*/pwmN*`. Modes: `auto` 56–60 °C, `boost` ~40 °C. Install steps in `docs/runbooks/fan-controller.md`. **Not auto-installed** — user runs the sudo commands themselves.
+- **B19 — Voice I/O (Whisper + Piper).** New `frontend/blueprints/voice.py` with `/api/voice/status`, `/api/voice/stt` (multipart audio → text via faster-whisper / openai-whisper) and `/api/voice/tts` (JSON `{text,voice}` → audio/wav via Piper CLI). Both endpoints degrade gracefully to HTTP 503 when the backing tool is missing. New `static/js/voice.js` exposes `voiceRecordToggle / voiceSpeak / voiceStatus` with browser SpeechRecognition / speechSynthesis fallbacks. Mic button added to the home-chat composer and the Spotlight input row, styled with a shared `.voice-mic-btn` rule.
+- **B20 — Coding Bible.** New `docs/CODING_BIBLE.md` v1.0.0 (10 sections; agent role matrix, repo geometry, testing, style, security, docs discipline, persona quick card). New `utils/coding_bible.py` loads the file, extracts the Quick Card via regex, 30 s cache. `inject(prompt)` prepends the card. Wired into `agents/mistral/mistral_agent.py`, `agents/twenty/twenty_agent.py`, `agents/eleven/grok_agent.py`. New `frontend/blueprints/coding_bible.py` endpoints `GET /api/coding-bible`, `/api/coding-bible/quick`, `/api/coding-bible/json`.
+- **B21 — Hive Nodes pop-out (20 most recent).** `lib/knowledge/store.py:list_sources()` now returns `updated_at` and accepts `order='updated'` + `limit`. `frontend/blueprints/library.py` added `?recent=N` shorthand (caps at 200, flips order to `updated`). New `frontend/templates/hive_nodes.html` and `static/js/views/hive-nodes.js` render the 20 most recently touched sources in a new browser window using the existing `library-graph.js` engine. Click-through opens the source in the opener Library window via `_libNodeClick`. New `GET /hive-nodes` route in `terminal.py`. New "Hive Nodes ↗" button in the Library graph overlay.
+
+**Bug fix rolled forward.**
+- **TWENTY_SYSTEM_PROMPT shadow bug.** `utils/config.py` defined `TWENTY_SYSTEM_PROMPT` twice — the legacy "Nervous System" card at line 1386 was clobbering the M25 "BIG CODER (Qwen3.6)" definition at line 180. Renamed legacy to `NERVOUS_SYSTEM_PROMPT`. Regression test: `tests/test_phase4_big.py::test_twenty_system_prompt_is_big_coder`.
+- **`test_five_roost_positions` pre-existing fail.** Slice-based search `self.js[self.js.index('ROOST_BASE'):+500]` hit a comment at line 105 instead of the real array at line 390. Patched to regex `ROOST_BASE\s*=\s*\[(.*?)\]\s*;` in `tests/test_agent20.py`.
+
+**Tests.** New `tests/test_phase4_big.py` — 13 tests covering bible retrieval + inject, hive-nodes page + recent query, voice status + graceful-degrade 503s, fan status + invalid mode + helper-absent 503. **Full suite: 764 passed** (was 748 pre-session).
+
+**Cache-bust bumps.** `library.js?v=32`, new `hive-nodes.js?v=1`, new `voice.js?v=1`, new `hive_nodes.html`.
+
+**Smoke.** Post-restart: `/`, `/hive-nodes`, `/api/coding-bible/{full,quick,json}`, `/api/voice/status`, `/api/fan/status`, `/api/library/sources?recent=20` all 200. `/api/fan/mode` and `/api/voice/{stt,tts}` correctly 503 in degrade path.
+
+**Studio.** Closed step IDs (to be patched on next Studio sync): B18 `S-4D060BA9ED`, B19 `S-D71DE6D1EF`, B20 `S-4F3203083E`, B21 `S-9BE04F3FDD`.
+
 [2026-04-10 21:00:00] Copilot: **Phase-4 SMALL + MEDIUM batch (S32–S38, M22–M31).**
 
 **SMALL (S32–S38).**

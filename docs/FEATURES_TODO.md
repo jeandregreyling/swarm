@@ -3,7 +3,20 @@
 <!-- markdownlint-disable -->
 
 _Comprehensive list of all planned features, organized by phase and priority._
-_Last updated: 2026-04-22 by Copilot (Session 29)_
+_Last updated: 2026-04-23 by Copilot (Phase-4 BIG wave)._
+
+---
+
+## Phase 4 — BIG batch (2026-04-23) — SHIPPED
+
+- [x] **B18** — Cross-platform fan controller. `core/fan_controller.py` (read-only status), `/api/fan/{status,mode}`, `ops/swarm-fanctl.{py,service}` opt-in root helper, runbook at `docs/runbooks/fan-controller.md`. Targets: auto 56–60 °C, boost ~40 °C.
+- [x] **B19** — Voice I/O with Whisper + Piper. `/api/voice/{status,stt,tts}` with browser SpeechRecognition / speechSynthesis fallback. Mic button in home-chat composer + Spotlight input row.
+- [x] **B20** — Coding Bible. `docs/CODING_BIBLE.md` v1.0.0. `utils/coding_bible.py` loader. Quick-card injected into Mistral, Twenty, Eleven system prompts at runtime. `/api/coding-bible/{full,quick,json}` retrieval endpoints.
+- [x] **B21** — Hive Nodes pop-out graph (20 most recently touched). New `/hive-nodes` route + `hive_nodes.html` + `views/hive-nodes.js` reusing `library-graph.js`. `list_sources()` now returns `updated_at` and accepts `?recent=N`. Pop-out button in Library graph; click-through navigates via opener.
+
+### Fixes rolled forward
+- [x] **TWENTY_SYSTEM_PROMPT duplicate.** Legacy "Nervous System" card renamed to `NERVOUS_SYSTEM_PROMPT`; big-coder prompt from M25 is now live.
+- [x] **`test_five_roost_positions`.** Slice search of `orbs.js` hit a comment; replaced with regex targeting the real array literal.
 
 ---
 
