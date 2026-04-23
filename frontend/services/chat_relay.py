@@ -13,13 +13,32 @@ import re
 from .chat_jobs import _normalize_chat_participant
 
 
+# Canonical list of agent tokens used in relay detection. Kept in one place
+# so both _RELAY_ROUTE_PATTERNS (audit/inference) and _RELAY_LINE_PATTERNS
+# (strip-when-off) stay in sync.
+_RELAY_AGENTS = (
+    'ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|'
+    'duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local'
+)
+
+
+def is_relay_routing_line(line: str) -> bool:
+    """M14 follow-up: single predicate used by callers that only need to know
+    whether a line is pure relay-routing language (no content value). Keeps
+    the regex machinery in one place."""
+    return bool(_RELAY_LINE_PATTERNS.match(line or ''))
+
+
 # Patterns that indicate an agent is trying to route to another agent.
+# M14 audit note: the `X to Y` sub-pattern used to match casual phrasing like
+# "Nine to five" — now requires a leading routing verb or bullet marker so it
+# only fires on genuine handoff directives.
 _RELAY_ROUTE_PATTERNS = re.compile(
     r'(?:'
-    r'(?:route|send|forward|hand(?:\s*off)?|pass|relay|escalate|ask|check\s+with|consult)\s+(?:this\s+)?(?:to\s+)?(?:agent\s+)?(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local)\b'
-    r'|(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local):\s+can\s+you'
-    r'|→\s*(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local)\b'
-    r'|(?:\d+\s*[·•]\s*)?(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)\s+to\s+(?:\d+\s*[·•]\s*)?(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)'
+    r'(?:route|send|forward|hand(?:\s*off)?|pass|relay|escalate|ask|check\s+with|consult)\s+(?:this\s+)?(?:to\s+)?(?:agent\s+)?(?:' + _RELAY_AGENTS + r')\b'
+    r'|(?:' + _RELAY_AGENTS + r'):\s+can\s+you'
+    r'|→\s*(?:' + _RELAY_AGENTS + r')\b'
+    r'|(?:^|[\n\r])\s*(?:\d+\s*[·•]\s*)(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)\s+to\s+(?:\d+\s*[·•]\s*)?(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)\b'
     r')',
     re.IGNORECASE,
 )
@@ -28,10 +47,10 @@ _RELAY_ROUTE_PATTERNS = re.compile(
 # Lines that are purely routing/handoff instructions with no content value.
 _RELAY_LINE_PATTERNS = re.compile(
     r'^\s*(?:'
-    r'(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local):\s+can\s+you\b.*'
+    r'(?:' + _RELAY_AGENTS + r'):\s+can\s+you\b.*'
     r'|(?:\d+\s*[·•]\s*)?(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude)\s+to\s+\S.*'
     r'|route\s+to\s+\S.*'
-    r'|→\s*(?:ten|nine|eight|eleven|twelve|thirteen|gemma|llama|mistral|qwen|duck|sniffles|librarian|grok|claude|scholar|seeker|phi3|lmstudio|deepseek.local)\b.*'
+    r'|→\s*(?:' + _RELAY_AGENTS + r')\b.*'
     r'|\d+\s*[·•]\s*(?:ten|nine|eight|eleven|twelve|thirteen|grok|claude|github|groq).*?:\s+.*'
     r')\s*$',
     re.IGNORECASE,
@@ -42,25 +61,39 @@ def _infer_reply_target_from_text(response_text):
     text = str(response_text or '').strip()
     if not text:
         return ''
+    # M14 audit: ignore common heading labels ("Title:", "Note:", "Warning:", etc.)
+    # so prose lines are not misread as relay targets. Only lines whose prefix
+    # normalises to a real participant survive.
+    _ignore_labels = {
+        'note', 'title', 'description', 'warning', 'error', 'summary', 'tldr',
+        'tl;dr', 'subject', 'status', 'result', 'context', 'goal', 'scope',
+        'todo', 'next', 'action', 'objective', 'plan', 'step', 'update',
+    }
     _relay_re = re.compile(r'^(?:@)?([A-Za-z][A-Za-z0-9_ /-]{0,30})\s*[:,]\s+', re.MULTILINE)
+
+    def _match_line(line_text: str) -> str:
+        m = _relay_re.match(line_text)
+        if not m:
+            return ''
+        candidate = m.group(1).strip()
+        if candidate.lower().rstrip(':,') in _ignore_labels:
+            return ''
+        return _normalize_chat_participant(candidate) or ''
+
     # Check first line (legacy format: relay at start)
     first_line = text.splitlines()[0].strip()
-    match = _relay_re.match(first_line)
-    if match:
-        target = _normalize_chat_participant(match.group(1))
-        if target:
-            return target
+    target = _match_line(first_line)
+    if target:
+        return target
     # Check last 5 lines (instructed format: relay at end of response)
     tail_lines = text.splitlines()[-5:]
     for line in reversed(tail_lines):
         line = line.strip()
         if not line:
             continue
-        match = _relay_re.match(line)
-        if match:
-            target = _normalize_chat_participant(match.group(1))
-            if target:
-                return target
+        target = _match_line(line)
+        if target:
+            return target
     return ''
 
 

@@ -5,6 +5,35 @@
 _Comprehensive change log with agent attribution, timestamps, and version control tracking._
 _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
+[2026-04-10 21:00:00] Copilot: **Phase-4 SMALL + MEDIUM batch (S32–S38, M22–M31).**
+
+**SMALL (S32–S38).**
+- **S32 — Services dropdown moved bottom-right.** `frontend/static/js/env-banner.js` injects the existing `#services-dropdown-wrap` into the `#env-switcher` strip on DOM ready and rewrites the button styling to match the pill bar. `frontend/static/js/views/services.js:toggleServicesDropdown()` now opens upward when the button sits in the lower viewport half, downward otherwise.
+- **S33 — Files view-mode toggle.** `frontend/templates/views/files.html` adds a list/grid/compact button row plus a collapsible breadcrumb. `files.js` injects the matching CSS once, persists the choice in `localStorage` (`fridays-files-view`, `fridays-files-breadcrumb-open`), and `loadFilesData` restores both on open.
+- **S34 — Editable popout + raised cap.** `/api/workspace/file` GET default 100 KB → 200 KB, max 500 KB → **2 MB**. `files.js:filesOpenFull()` rewritten to render an inline editable textarea + Save (PUT /api/workspace/file). `filesStartEdit()` auto-falls-through to popout when the preview is truncated.
+- **S35 — Library duplicate-path collapsed.** Now renders inside a `<details>` block.
+- **S36 — Knowledge unified search row.** `view-knowledge` template merges the spotlight hint into the quick-query row (Ask + Spotlight + Clear). RAG result cards are individually selectable with **Open / Send to chat / Copy path**; new handlers `knowledgeOpenResult / knowledgeSendResultToChat / knowledgeCopyResultPath` in `knowledge.js`.
+- **S37 — Interests strip pulled forward.** New `#kn-interests-strip` row on the Knowledge Center top, populated by `knowledgeRefreshInterestStrip()` from `/api/interests`, auto-refreshes after seeding.
+- **S38 — Library emoji → SVG.** Five remaining glyph icons (✕, ▶ Resume, ⏸ Pause, X-delete) replaced with inline SVG.
+
+**MEDIUM (M22–M31).**
+- **M22 — Linux download diagnosis.** `docs/audits/2026-04-10-download-speed.md` — `speedtest-cli` shows 1.22 Mbit/s, `enp0s31f6` is `NO-CARRIER`, machine is on wifi. Root cause: ethernet unplugged. Fix path documented.
+- **M23 — Tauri rewire.** `desktop/src-tauri/src/main.rs`, `build.rs`, `Cargo.toml` (added `tauri-plugin-shell`, `[lib]`, `[[bin]]`); `tauri.conf.json` migrated to schema v2, single window pointing at `http://localhost:5050`, CSP widened, MSI target removed; `desktop/README.md` rewritten for the Dell Seven workflow.
+- **M24 — Mac remote-access doc.** `docs/MAC_REMOTE_ACCESS.md` — Tailscale install, MagicDNS, voice path via `tailscale serve --https`, mic capture flow, Whisper + Piper smoke test.
+- **M25 — Agent role reset.** `utils/config.py` — Gemma SAP bias defanged ("GENERAL work first"); Mistral identity → **Quick coder**; Eleven role → **Short and honest**; new `TWENTY_SYSTEM_PROMPT` for **Big coder (Qwen3.6)**. DB roles updated for `gemma`, `llama`, `mistral`, `twenty`, `eleven`.
+- **M26 — Agents tile dynamic layout.** `agents-config.html` — sidebar width changed to `clamp(180px, 26%, 340px)`, root container fills the tile (no `100vh` leak), narrow-tile rule (≤560px) collapses sidebar to 64 px chips.
+- **M27 — Agent number as dropdown.** `access.js:agentsShowDetail()` — `<input type="number">` replaced with `<select>` listing slots 0..22 with current occupant labels; taken slots are disabled.
+- **M28 — Hardcoded slot role + editable description.** New "Slot Role" readout (immutable per slot number) above the editable "Description" field.
+- **M29 — Sidebar number + drag-drop.** `home-chat.js:_hcRenderAgentPills()` adds a numeric badge per pill (sourced from `__agentsData`) and HTML5 drag-and-drop reorder persisted under `fridays-chat-pill-order`.
+- **M30 — Global font picker.** `terminal_base.html` adds a UI Font dropdown next to the existing Font Size dropdown (Open Sans Light default + SF Pro / Inter / Geist / IBM Plex / Helvetica Neue / Georgia / SF Mono) plus a "+ Add font" button. `chat.js` ships `setUiFontFamily / addCustomUiFont` and a boot hook that persists choice in `fridays-ui-font-family` (custom list under `fridays-ui-font-custom-list`). Reset hook now also resets the font family.
+- **M31 — Hive Grid parallax (first pass).** `static/css/diamond.css` adds GPU-only tilt vars on `.home-card` (with `prefers-reduced-motion` opt-out). New `static/js/hive-parallax.js` writes `--hc-rx / --hc-ry` from mousemove on a single rAF.
+
+**Cache-bust bumps.** `env-banner.js?v=2`, `files.js?v=2`, `services.js?v=2`, `library.js?v=31`, `knowledge.js?v=3`, `chat.js?v=38`, `access.js?v=3`, `home-chat.js?v=33`, `diamond.css?v=2`, new `hive-parallax.js?v=1`.
+
+**Smoke.** Post-restart: `/`, `/api/agents`, `/api/conversations`, `/api/feeds`, `/api/interests`, `/api/manual/home`, `/api/workspace/file?path=README.md` all 200. No errors in `journalctl -u swarm-terminal`.
+
+**Studio.** Closed step IDs: S32 `S-8EB01A0602`, S33 `S-EC2ED88F7D`, S34 `S-C8D110B007`, S35 `S-F5B4253935`, S36 `S-657F72FC95`, S37 `S-7CB4908329`, S38 `S-224E918419`, M22 `S-C3F5D34A66`, M23 `S-0287B37256`, M24 `S-3C362268F5`, M25 `S-F932DD3ED8`, M26 `S-B3DF7C086C`, M27 `S-EA2407F7B1`, M28 `S-5A11BEBD59`, M29 `S-4F7B8EB6CA`, M30 `S-6A4F80B25C`, M31 `S-A2888BCDC2`.
+
 [2026-04-22 22:40:00] Copilot: **Session 29.2 — UX polish + Knowledge Center foundation.**
 
 **Main chat thread rail collapsed by default.** `frontend/static/js/views/chat.js` — `window.__fridaysChatThreadCollapsed` now defaults to `true` when the localStorage key is unset (users who had explicitly expanded it keep their preference). The `#chat-thread-select` dropdown in the topbar is the primary thread picker per user feedback ("that dropdown should only be on the main screen chat because its cleaner than the sidebar"); the rail stays one click away via the ⟩ restore button. No DOM removal — rail still available for power users.

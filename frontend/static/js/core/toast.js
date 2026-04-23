@@ -136,6 +136,19 @@ function _renderTroubleshootBadge() {
     btn.style.color = '#72e6a6';
     btn.style.borderColor = '#22c55e66';
   }
+  // M9: mirror error/warning counts onto the Trace tile pills.
+  try {
+    const errEl = document.getElementById('trace-tile-errors');
+    const warnEl = document.getElementById('trace-tile-warnings');
+    if (errEl) {
+      if (errors > 0) { errEl.textContent = String(errors); errEl.style.display = ''; }
+      else errEl.style.display = 'none';
+    }
+    if (warnEl) {
+      if (warns > 0) { warnEl.textContent = String(warns); warnEl.style.display = ''; }
+      else warnEl.style.display = 'none';
+    }
+  } catch (e) {}
 }
 
 function _renderTroubleshootToggleBtn() {

@@ -112,6 +112,30 @@ def api_ollama_unload():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@ollama_bp.route('/api/ollama/keepalive', methods=['POST'])
+def api_ollama_keepalive():
+    """Set per-model keep-alive (seconds). Sends a noop generate to refresh Ollama's TTL."""
+    import requests as _requests
+    data = request.get_json(silent=True) or {}
+    model = (data.get('model') or '').strip()
+    try:
+        seconds = int(data.get('seconds', 300))
+    except (TypeError, ValueError):
+        seconds = 300
+    seconds = max(0, min(seconds, 86400))  # clamp 0..24h
+    if not model:
+        return jsonify({'ok': False, 'error': 'model required'}), 400
+    try:
+        _requests.post(
+            'http://localhost:11434/api/generate',
+            json={'model': model, 'prompt': ' ', 'keep_alive': seconds},
+            timeout=30,
+        )
+        return jsonify({'ok': True, 'model': model, 'seconds': seconds})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 
 @ollama_bp.route('/api/ollama/ps')
 def api_ollama_ps():

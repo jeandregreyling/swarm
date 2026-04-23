@@ -596,3 +596,83 @@ def api_library_topics_run_now(topic_id):
     except Exception as exc:
         logger.exception('[Library] topics run')
         return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+# ── Manual / Single-source help ───────────────────────────────────────────────
+# B15: every '?' tooltip pulls from `manual_content.MANUAL`. Update once → all
+# tiles update. Frontend calls /api/manual/<key> from openWindowHelp().
+
+@library_bp.route('/api/manual', methods=['GET'])
+def api_manual_list():
+    try:
+        from manual_content import list_manual_keys
+        return jsonify({'ok': True, 'keys': list_manual_keys()})
+    except Exception as exc:
+        logger.exception('[Manual] list')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/manual/<key>', methods=['GET'])
+def api_manual_get(key):
+    try:
+        from manual_content import get_manual
+        entry = get_manual(key)
+        if not entry:
+            return jsonify({'ok': False, 'error': 'not_found', 'key': key}), 404
+        return jsonify({'ok': True, 'key': key, 'title': entry.get('title', ''), 'body': entry.get('body', '')})
+    except Exception as exc:
+        logger.exception('[Manual] get')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+# ── Feeds (M13 follow-up) ─────────────────────────────────────────────────────
+# Lightweight per-user feed storage so Scholar/Librarian can ingest the same
+# list the UI shows. Persists JSON in sandpits/<user>/feeds.json.
+
+import json as _feeds_json
+from pathlib import Path as _FeedsPath
+
+
+def _feeds_path():
+    base = _FeedsPath(__file__).resolve().parents[2] / 'sandpits' / 'seven'
+    base.mkdir(parents=True, exist_ok=True)
+    return base / 'feeds.json'
+
+
+@library_bp.route('/api/feeds', methods=['GET'])
+def api_feeds_get():
+    try:
+        p = _feeds_path()
+        if not p.exists():
+            return jsonify({'ok': True, 'feeds': {}})
+        return jsonify({'ok': True, 'feeds': _feeds_json.loads(p.read_text() or '{}')})
+    except Exception as exc:
+        logger.exception('[Feeds] get')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/feeds', methods=['PUT'])
+def api_feeds_put():
+    try:
+        payload = request.get_json(silent=True) or {}
+        feeds = payload.get('feeds') or {}
+        if not isinstance(feeds, dict):
+            return jsonify({'ok': False, 'error': 'feeds must be an object'}), 400
+        # Basic shape validation
+        clean = {}
+        for key, v in list(feeds.items())[:200]:
+            if not isinstance(v, dict):
+                continue
+            clean[str(key)[:256]] = {
+                'type': str(v.get('type') or 'provider')[:32],
+                'url': str(v.get('url') or '')[:1024],
+                'label': str(v.get('label') or '')[:256],
+                'status': str(v.get('status') or 'connected')[:32],
+                'added': int(v.get('added') or 0),
+            }
+        p = _feeds_path()
+        p.write_text(_feeds_json.dumps(clean, indent=2))
+        return jsonify({'ok': True, 'count': len(clean)})
+    except Exception as exc:
+        logger.exception('[Feeds] put')
+        return jsonify({'ok': False, 'error': str(exc)}), 500

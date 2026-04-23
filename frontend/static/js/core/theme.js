@@ -23,7 +23,7 @@ const FRIDAYS_SCENE_EFFECT_KEY = 'fridays_scene_effect';
 const FRIDAYS_SCENE_LAYERS_KEY = 'fridays_scene_layers';
 const FRIDAYS_FOUNDATION_MODE_KEY = 'fridays_foundation_mode';
 const FRIDAYS_GLOW_VALUE_KEY = 'fridays_glow_value';
-const SCENE_MODES = ['off', 'beach', 'forest', 'rain'];
+const SCENE_MODES = ['off', 'beach', 'forest', 'rain', 'solar', 'underwater'];
 const FOUNDATION_MODES = ['auto', 'light', 'dark'];
 const SCENE_EFFECT_MODES = ['on', 'off'];
 const SCENE_LAYER_KEYS = ['orbs', 'lattice', 'clusters', 'scene'];
@@ -100,9 +100,9 @@ const ATMOSPHERE_KEYFRAMES = [
       '--hover': '#FFE9D0',
       '--bg-input': '#FFF6E8',
       '--border': '#E8CCAA',
-      '--text': '#4A311D',
-      '--text-dim': '#8E6B4F',
-      '--text-faint': '#C7A382',
+      '--text': '#2E1A0A',
+      '--text-dim': '#5B3C1F',
+      '--text-faint': '#8A6438',
       '--accent': '#FFB15A',
       '--accent-hover': '#FFC680',
       '--window-bg': '#FFFDF9',
@@ -110,6 +110,27 @@ const ATMOSPHERE_KEYFRAMES = [
       '--glow-a': '#FFE1B8',
       '--glow-b': '#FFF1D8',
       '--mist': '#FFF7EF',
+    },
+  },
+  {
+    stop: 64,
+    palette: {
+      '--bg': '#FFEDDC',
+      '--card': '#FFF7EA',
+      '--card-hover': '#FFE1C1',
+      '--hover': '#FFD6A8',
+      '--bg-input': '#FFE9D0',
+      '--border': '#E2A87A',
+      '--text': '#2A1005',
+      '--text-dim': '#5E2A10',
+      '--text-faint': '#8A4A22',
+      '--accent': '#E04E3C',
+      '--accent-hover': '#FF6B53',
+      '--window-bg': '#FFF7EA',
+      '--window-header': '#FFDDB8',
+      '--glow-a': '#FFB37A',
+      '--glow-b': '#FFD9A3',
+      '--mist': '#FFECD6',
     },
   },
   {
@@ -180,6 +201,14 @@ const SCENE_PALETTE_STRIPS = {
   rain: {
     gradient: 'linear-gradient(90deg,#5a6c78 0%,#6d8592 24%,#7ea3ae 48%,#7b9382 76%,#a9b8b2 100%)',
     labels: ['Rain Grey', 'Soft Blue', 'Wet Glass', 'Green Mist'],
+  },
+  solar: {
+    gradient: 'linear-gradient(90deg,#0a0618 0%,#2b0d2e 20%,#8a1a2b 44%,#e24b2c 68%,#ff9a3a 86%,#fff0b8 100%)',
+    labels: ['Deep Void', 'Nebula', 'Red Giant', 'Corona'],
+  },
+  underwater: {
+    gradient: 'linear-gradient(90deg,#031525 0%,#05355b 22%,#0c5f88 46%,#2e9fbf 70%,#d2ecf6 100%)',
+    labels: ['Abyss', 'Deep Blue', 'Coral Light', 'Shallow'],
   },
 };
 

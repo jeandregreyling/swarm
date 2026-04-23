@@ -17,11 +17,14 @@ sys.path.insert(0, '/home/seven/swarm/utils')
 
 logger = logging.getLogger('seven.seven')
 AGENT_NAME = 'seven'
-# 2026-04-23 — The custom merged GGUF (Qwen 2.5 7B + DeepSeek-R1-Distill-Qwen-7B)
-# produces incoherent output (repetition, token leakage). Until the merge is
-# rebuilt, Seven runs on qwen2.5:latest with the Seven personality prompt.
+# 2026-04-23 — Seven scoped as the in-house "paperclip": tiny, always-hot,
+# lives in the system to nudge orbs, flip the "?" glyph, and answer quick
+# status/identity probes. qwen2.5:0.5b (~400 MB) keeps him resident without
+# touching the CPU budget that Duck/Librarian/Gemma need. The earlier custom
+# merged GGUF (seven:latest = Qwen 2.5 7B + DeepSeek-R1-Distill-Qwen-7B) is
+# shelved pending a rebuild — output was incoherent (repetition, token leakage).
 # Override with SEVEN_MODEL env var to test other backends.
-SEVEN_MODEL = os.environ.get('SEVEN_MODEL', 'qwen2.5:latest')
+SEVEN_MODEL = os.environ.get('SEVEN_MODEL', 'qwen2.5:0.5b')
 
 
 def _read_state():
@@ -58,6 +61,71 @@ def _load_memory(message):
     except Exception:
         pass
     return mems
+
+
+def _load_kc_context(message, limit=4):
+    """Pull the most relevant Knowledge Center docs so Seven answers from the
+    living documentation instead of stale personality-only context.
+
+    Order of preference:
+      1. project_docs whose doc_name/content matches keywords in ``message``
+      2. recent auto-generated step completions (``tags`` contains 'auto,step')
+      3. most recently updated docs overall
+
+    Returns a list of dicts: ``[{doc_name, tags, snippet}, ...]``.
+    """
+    docs = []
+    try:
+        from database import get_connection
+        conn = get_connection()
+        try:
+            # 1. keyword-ish search: pick up to 3 salient words >=4 chars.
+            words = [w for w in ''.join(c if c.isalnum() else ' '
+                     for c in (message or '').lower()).split()
+                     if len(w) >= 4][:3]
+            if words:
+                like_clauses = ' OR '.join(
+                    '(LOWER(doc_name) LIKE ? OR LOWER(content) LIKE ?)'
+                    for _ in words)
+                params = []
+                for w in words:
+                    params.extend([f'%{w}%', f'%{w}%'])
+                rows = conn.execute(
+                    f"SELECT id, doc_name, tags, content FROM project_docs "
+                    f"WHERE {like_clauses} ORDER BY updated_at DESC LIMIT ?",
+                    (*params, limit),
+                ).fetchall()
+                for r in rows:
+                    docs.append(dict(r))
+            # 2. fall back / top-up with recent auto step docs + recent edits.
+            if len(docs) < limit:
+                seen = {d['id'] for d in docs}
+                more = conn.execute(
+                    "SELECT id, doc_name, tags, content FROM project_docs "
+                    "ORDER BY updated_at DESC LIMIT ?",
+                    (limit * 2,),
+                ).fetchall()
+                for r in more:
+                    if r['id'] in seen:
+                        continue
+                    docs.append(dict(r))
+                    if len(docs) >= limit:
+                        break
+        finally:
+            conn.close()
+    except Exception:
+        return []
+    out = []
+    for d in docs[:limit]:
+        snippet = str(d.get('content') or '').strip().replace('\n', ' ')
+        if len(snippet) > 320:
+            snippet = snippet[:320] + '…'
+        out.append({
+            'doc_name': d.get('doc_name') or '',
+            'tags': d.get('tags') or '',
+            'snippet': snippet,
+        })
+    return out
 
 
 def _format_state_block(s):
@@ -170,11 +238,17 @@ def _llm_chat(message, state, memories, history):
             mem_lines.append(f"- [{subj}] {body}")
     mem_block = '\n'.join(mem_lines) if mem_lines else '(no relevant memory)'
 
+    # Knowledge Center: Seven reads from the same docs the team writes.
+    kc_docs = _load_kc_context(message, limit=4)
+    kc_lines = [f"- [{d['doc_name']}] {d['snippet']}" for d in kc_docs if d.get('snippet')]
+    kc_block = '\n'.join(kc_lines) if kc_lines else '(no knowledge docs matched)'
+
     system = (
         f"{SEVEN_SYSTEM_PROMPT}\n\n"
         f"LIVE SWARM STATE (for your awareness — only mention if relevant):\n{state_block}\n"
         f"Local agents online: {agents}\n\n"
-        f"RELEVANT MEMORY:\n{mem_block}"
+        f"RELEVANT MEMORY:\n{mem_block}\n\n"
+        f"KNOWLEDGE CENTER (auto-maintained project/step docs — cite these when answering Fridays questions):\n{kc_block}"
     )
 
     msgs = [{'role': 'system', 'content': system}]

@@ -10,9 +10,9 @@
         <button onclick="agentsShowAdd()" style="background:var(--accent);border:none;color:#000;border-radius:4px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:700;">+ Add Agent</button>
       </div>
     </div>
-    <!-- Body: list + detail panel -->
-    <div id="agents-config-root" style="display:flex;flex-direction:row;gap:0;min-height:100vh;">
-      <div id="agents-list" style="width:270px;min-width:180px;max-width:340px;background:var(--sidebar);border-right:1.5px solid var(--border);overflow-y:auto;box-shadow:1px 0 0 0 var(--border);">
+    <!-- Body: list + detail panel — P4-M26: dynamic layout, fills the tile (no 100vh leak) -->
+    <div id="agents-config-root" style="display:flex;flex-direction:row;gap:0;flex:1;min-height:0;overflow:hidden;">
+      <div id="agents-list" style="width:clamp(180px, 26%, 340px);background:var(--sidebar);border-right:1.5px solid var(--border);overflow-y:auto;box-shadow:1px 0 0 0 var(--border);">
         <!-- agent list rendered by JS -->
       </div>
       <div id="agents-detail" style="flex:1;min-width:0;background:var(--main-bg);overflow-y:auto;">
@@ -33,13 +33,19 @@
       flex-direction: column;
     }
     #agents-list {
-      width: 100vw;
-      max-width: 100vw;
+      width: 100% !important;
+      max-width: 100% !important;
       min-width: 0;
+      max-height: 38%;
       border-right: none;
       border-bottom: 1.5px solid var(--border);
       box-shadow: none;
     }
+  }
+  /* P4-M26: very narrow tile (resized small) → hide list labels, keep numbered chips only */
+  @media (max-width: 560px) {
+    #agents-list .agent-list-label { display:none; }
+    #agents-list { width: 64px !important; max-width:64px !important; }
   }
   </style>
   </div>

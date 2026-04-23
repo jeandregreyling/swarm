@@ -210,14 +210,13 @@ function _terminalAppendPromptLine(output, cmd, entryId) {
   const entry = document.createElement('div');
   entry.className = 'terminal-entry';
   entry.dataset.terminalEntryId = entryId;
-  // 10px bottom gap + 6px top padding keep multi-command runs visually
-  // distinct without a hard divider line.
-  entry.style.cssText = 'margin:0 0 10px;padding:6px 0 0;';
+  // S8: tight spacing between entries, keep copy/paste-friendly layout.
+  entry.style.cssText = 'margin:0 0 4px;padding:0;';
 
   const line = document.createElement('div');
   line.className = 'terminal-prompt-line';
   line.dataset.terminalEntryId = entryId;
-  line.style.cssText = 'color:var(--accent, #5c9bd6);margin:0 0 1px;';
+  line.style.cssText = 'color:var(--accent, #5c9bd6);margin:0;padding:0;';
   line.textContent = '❯ ' + cmd;
   entry.appendChild(line);
   output.appendChild(entry);

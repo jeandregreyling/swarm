@@ -56,7 +56,11 @@ function _sundialResidencyHtml(metricKey) {
     if (entry.model) modelBits.push(_escapeDiamondHtml(entry.model));
     if (bucket === 'gpu' && entry.size_vram_gb) modelBits.push(_escapeDiamondHtml(entry.size_vram_gb + ' GB VRAM'));
     else if (entry.size_gb) modelBits.push(_escapeDiamondHtml(entry.size_gb + ' GB'));
-    return '<div class="stip-list-row"><span class="stip-list-label">' + _escapeDiamondHtml(entry.label || entry.agent || 'Agent') + '</span><span class="stip-list-meta">' + modelBits.join(' · ') + '</span></div>';
+    // M11: per-loaded-model unload button
+    const unloadBtn = entry.model
+      ? '<button class="stip-unload-btn" data-model="' + _escapeDiamondHtml(entry.model) + '" title="Unload ' + _escapeDiamondHtml(entry.model) + '" style="margin-left:6px;background:transparent;border:1px solid #f7b84b66;color:#f7b84b;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:9px;">Unload</button>'
+      : '';
+    return '<div class="stip-list-row"><span class="stip-list-label">' + _escapeDiamondHtml(entry.label || entry.agent || 'Agent') + '</span><span class="stip-list-meta">' + modelBits.join(' · ') + unloadBtn + '</span></div>';
   }).join('') + '</div></div>';
 }
 
@@ -136,6 +140,26 @@ function _showSundialTip(metric, node) {
     tip.id = 'sundial-tip';
     tip.className = 'sundial-tooltip';
     document.body.appendChild(tip);
+    // M11: keep tip open when hovering into it (so Unload buttons are clickable)
+    tip.addEventListener('mouseenter', () => { tip._hover = true; });
+    tip.addEventListener('mouseleave', () => { tip._hover = false; tip.style.display = 'none'; });
+    tip.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.stip-unload-btn');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const model = btn.dataset.model;
+      if (!model) return;
+      btn.textContent = '…';
+      btn.disabled = true;
+      try {
+        const r = await fetch('/api/ollama/unload', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ model }) });
+        const j = await r.json();
+        btn.textContent = j.ok ? '✓' : '✕';
+      } catch (err) {
+        btn.textContent = '✕';
+      }
+    });
   }
   const valEl  = node.querySelector('.sundial-val');
   const health = node.dataset.health;
@@ -163,7 +187,9 @@ function _showSundialTip(metric, node) {
 
 function _hideSundialTip() {
   const tip = document.getElementById('sundial-tip');
-  if (tip) tip.style.display = 'none';
+  if (!tip) return;
+  // M11: delay hide so user can move into the tooltip to click unload buttons
+  setTimeout(() => { if (!tip._hover) tip.style.display = 'none'; }, 180);
 }
 
 /* ── System Pulse Fetch ──────────────────────────────────────────────────── */

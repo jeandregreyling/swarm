@@ -287,6 +287,133 @@ body[data-scene="off"] #${HOST_ID}{display:none}
         }
       },
     ],
+    solar: [
+      { // drifting planets (big, slow, reds dominate)
+        every: [5000, 10000], fn: () => {
+          spawn(pick(['🪐', '🌍', '🌎', '🌏', '☄️']), {
+            size: rand(36, 72),
+            animation: Math.random() < 0.5 ? 'sp-fly-rl' : 'sp-fly-lr',
+            duration: rand(40, 70),
+            extra: 'filter:drop-shadow(0 0 18px rgba(255,140,90,.55))',
+            vars: { '--y': `${rand(10, 70)}vh`, '--dy': `${rand(-6, 6)}vh`, '--s': rand(0.8, 1.2), '--o': 0.9 }
+          });
+        }
+      },
+      { // red mars-ish accents
+        every: [9000, 18000], fn: () => {
+          spawn('🔴', {
+            size: rand(28, 48),
+            animation: 'sp-drift-up',
+            duration: rand(30, 50),
+            extra: 'color:#e24b2c;text-shadow:0 0 24px #ff6a3a,0 0 60px #c81f0a',
+            vars: { '--x': `${rand(10, 90)}vw`, '--dx': `${rand(-6, 6)}vw`, '--rot': '0deg' }
+          });
+        }
+      },
+      { // shooting stars / comets
+        every: [2500, 5500], fn: () => {
+          spawn('✦', {
+            size: rand(10, 22),
+            animation: 'sp-fly-lr',
+            duration: rand(3, 6),
+            extra: 'color:#ffe7a8;text-shadow:0 0 14px #ffb26a,0 0 40px #ff7a3a;letter-spacing:-4px',
+            vars: { '--y': `${rand(6, 60)}vh`, '--dy': `${rand(8, 20)}vh`, '--s': rand(0.7, 1.1), '--o': 0.85 }
+          });
+        }
+      },
+      { // dim background stars
+        every: [120, 300], fn: () => {
+          spawn('·', {
+            size: rand(8, 18),
+            animation: 'sp-flicker',
+            duration: rand(3, 6),
+            extra: 'color:#fff6c8;text-shadow:0 0 6px #fff6c8',
+            vars: { '--x': `${rand(2, 98)}vw`, '--y': `${rand(2, 88)}vh` }
+          });
+        }
+      },
+      { // sun halo bursts (red-gold)
+        every: [15000, 32000], fn: () => {
+          spawn('☀️', {
+            size: rand(80, 140),
+            animation: 'sp-sunshine',
+            duration: rand(10, 16),
+            extra: 'color:#ff9a3a;text-shadow:0 0 60px #ff5a2a,0 0 120px #c81f0a',
+            vars: { '--x': `${rand(20, 80)}vw`, '--y': `${rand(10, 40)}vh` }
+          });
+        }
+      },
+    ],
+    underwater: [
+      { // fish schools (right-left and left-right)
+        every: [1600, 3400], fn: () => {
+          const rl = Math.random() < 0.5;
+          spawn(pick(['🐟', '🐠', '🐡', '🐳', '🦑']), {
+            size: rand(20, 38),
+            animation: rl ? 'sp-fly-rl' : 'sp-fly-lr',
+            duration: rand(14, 26),
+            extra: 'filter:drop-shadow(0 0 10px rgba(120,210,255,.55))',
+            vars: { '--y': `${rand(20, 80)}vh`, '--dy': `${rand(-12, 12)}vh`, '--s': rand(0.8, 1.2), '--o': 0.9 }
+          });
+        }
+      },
+      { // red coral + crab accents (the reds the user wants)
+        every: [9000, 20000], fn: () => {
+          spawn(pick(['🦐', '🦀', '🌺']), {
+            size: rand(26, 40),
+            animation: 'sp-walk',
+            duration: rand(14, 22),
+            extra: 'color:#e24b2c;filter:drop-shadow(0 0 12px rgba(226,75,44,.6))',
+            vars: { '--y': `${rand(82, 94)}vh`, '--s': rand(0.9, 1.2) }
+          });
+        }
+      },
+      { // bubble columns rising
+        every: [280, 700], fn: () => {
+          spawn('●', {
+            size: rand(6, 14),
+            animation: 'sp-drift-up',
+            duration: rand(5, 10),
+            extra: 'color:rgba(200,240,255,0.55);text-shadow:0 0 6px rgba(180,230,255,.6)',
+            vars: { '--x': `${rand(3, 97)}vw`, '--dx': `${rand(-3, 3)}vw`, '--rot': '0deg' }
+          });
+        }
+      },
+      { // jellyfish (slow pulse, drift up)
+        every: [12000, 24000], fn: () => {
+          spawn('🪼', {
+            size: rand(32, 56),
+            animation: 'sp-drift-up',
+            duration: rand(30, 50),
+            extra: 'filter:drop-shadow(0 0 20px rgba(255,140,200,.6))',
+            vars: { '--x': `${rand(10, 90)}vw`, '--dx': `${rand(-5, 5)}vw`, '--rot': '15deg' }
+          });
+        }
+      },
+      { // shark silhouette cameo
+        every: [25000, 55000], fn: () => {
+          const rl = Math.random() < 0.5;
+          spawn('🦈', {
+            size: rand(44, 72),
+            animation: rl ? 'sp-fly-rl' : 'sp-fly-lr',
+            duration: rand(22, 34),
+            extra: 'filter:drop-shadow(0 0 14px rgba(60,90,120,.7))',
+            vars: { '--y': `${rand(40, 72)}vh`, '--dy': `${rand(-4, 4)}vh`, '--s': rand(1.0, 1.3), '--o': 0.85 }
+          });
+        }
+      },
+      { // sunbeam shimmer (top of water)
+        every: [6000, 12000], fn: () => {
+          spawn('║', {
+            size: rand(80, 160),
+            animation: 'sp-wave',
+            duration: rand(10, 16),
+            extra: `top:0;color:rgba(180,230,255,0.35);letter-spacing:8px`,
+            vars: {}
+          });
+        }
+      },
+    ],
   };
 
   function stopEmitters() {
