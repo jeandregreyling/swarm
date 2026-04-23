@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-23 20:24*
+*Auto-generated: 2026-04-23 20:28*
 
 
 ## Python Modules
@@ -265,34 +265,34 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 37061 |
+| `activity_log` | 37108 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 640 |
+| `approval_tokens` | 643 |
 | `audit_results` | 36 |
-| `change_runs` | 12 |
-| `chat_jobs` | 604 |
+| `change_runs` | 13 |
+| `chat_jobs` | 606 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2256 |
-| `conversations` | 20 |
+| `conv_timeline` | 2258 |
+| `conversations` | 29 |
 | `council_output` | 2101 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 12838 |
+| `decisions` | 12858 |
 | `deferred_items` | 0 |
-| `duck_log` | 885 |
+| `duck_log` | 887 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4376 |
+| `ghost_circle` | 4390 |
 | `governance_log` | 410 |
 | `knowledge_chunks` | 638 |
 | `knowledge_sources` | 51 |
-| `memory` | 110 |
+| `memory` | 111 |
 | `memory_eight` | 1 |
 | `memory_gemma` | 24 |
 | `memory_ghost_coder` | 0 |
@@ -308,7 +308,7 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 430 |
-| `messages` | 46 |
+| `messages` | 64 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -321,10 +321,10 @@
 | `projects` | 28 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 2 |
-| `queue` | 1618 |
+| `queue` | 1622 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 510 |
+| `sandpit_log` | 512 |
 | `scheduled_tasks` | 1298 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
@@ -338,19 +338,19 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7497 |
+| `system_stats` | 7498 |
 | `task_run_log` | 1 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 1 |
 | `test_runs` | 60 |
-| `ticket_notes` | 639 |
-| `tickets` | 647 |
-| `time_checkpoints` | 4872 |
-| `time_events` | 98714 |
-| `time_journal` | 92370 |
-| `time_machine` | 6161 |
+| `ticket_notes` | 641 |
+| `tickets` | 649 |
+| `time_checkpoints` | 4890 |
+| `time_events` | 98762 |
+| `time_journal` | 92400 |
+| `time_machine` | 6167 |
 | `tool_builds` | 0 |
-| `trace_events` | 408 |
+| `trace_events` | 426 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_interests` | 13 |
