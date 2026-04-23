@@ -332,7 +332,7 @@ async function gitLoadProposals() {
             ${status === 'pending' ? `<button onclick="gitApproveProposal(${pidJs})" style="flex:1;min-width:60px;padding:3px 6px;background:#4caf5020;border:1px solid #4caf5060;border-radius:3px;color:#4caf50;font-size:9px;font-weight:600;cursor:pointer;">✓ Approve</button>` : ''}
             ${canModerate ? `<button onclick="gitRejectProposal(${pidJs})" style="flex:1;min-width:60px;padding:3px 6px;background:#f4433620;border:1px solid #f4433660;border-radius:3px;color:#f44336;font-size:9px;font-weight:600;cursor:pointer;">✗ Reject</button>` : ''}
             ${isExecutable ? `<button onclick="gitExecuteProposal(${pidJs})" style="flex:1;min-width:60px;padding:3px 6px;background:#29b6f620;border:1px solid #29b6f660;border-radius:3px;color:#29b6f6;font-size:9px;font-weight:700;cursor:pointer;">▶ Execute</button>` : ''}
-            <button onclick="gitDeleteProposal(${pidJs})" style="flex:1;min-width:60px;padding:3px 6px;background:#f4433620;border:1px solid #f4433660;border-radius:3px;color:#f44336;font-size:9px;font-weight:600;cursor:pointer;"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" style="vertical-align:-1px;"><path d="M3 4.5h10M6.5 4.5V3a1 1 0 011-1h1a1 1 0 011 1v1.5M5 4.5l.5 8a1 1 0 001 1h3a1 1 0 001-1l.5-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete</button>
+            <button onclick="gitDeleteProposal(${pidJs}, event)" style="flex:1;min-width:60px;padding:3px 6px;background:#f4433620;border:1px solid #f4433660;border-radius:3px;color:#f44336;font-size:9px;font-weight:600;cursor:pointer;"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" style="vertical-align:-1px;"><path d="M3 4.5h10M6.5 4.5V3a1 1 0 011-1h1a1 1 0 011 1v1.5M5 4.5l.5 8a1 1 0 001 1h3a1 1 0 001-1l.5-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete</button>
             <button onclick="gitOpenVortex(${pidJs})" style="flex:1;min-width:60px;padding:3px 6px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:9px;cursor:pointer;"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" style="vertical-align:-1px;"><path d="M8 2a6 6 0 106 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 2v4h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Vortex</button>
             <button onclick="openWindow('studio','Studio','view-studio');setTimeout(() => studioSetTab('all'),150)" style="flex:1;min-width:60px;padding:3px 6px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:9px;cursor:pointer;">Studio</button>
           </div>
@@ -376,14 +376,23 @@ async function gitRejectProposal(proposalId) {
   }
 }
 
-async function gitDeleteProposal(proposalId) {
-  if (!confirm(`Delete proposal ${proposalId}? This cannot be undone.`)) return;
-  try {
-    await deleteProposal(proposalId);
-    await gitLoadProposals();
-  } catch (e) {
-    showToast('Delete failed: ' + (e.message || e), 'error');
+async function gitDeleteProposal(proposalId, event) {
+  // Session 28 Workstream A.3: inline two-click arm-to-confirm.
+  var btn = event && event.currentTarget;
+  var fire = async function () {
+    try {
+      await deleteProposal(proposalId);
+      await gitLoadProposals();
+    } catch (e) {
+      showToast('Delete failed: ' + (e.message || e), 'error');
+    }
+  };
+  if (btn && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btn, fire, { confirmLabel: 'Confirm', timeoutMs: 4000 });
+    return;
   }
+  if (!confirm(`Delete proposal ${proposalId}? This cannot be undone.`)) return;
+  fire();
 }
 
 function _gitParseProposalAction(proposal) {

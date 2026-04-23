@@ -165,6 +165,74 @@ def is_own_email(from_addr):
 
 
 # ─────────────────────────────────────────────────────────────
+# Bounce / auto-responder detection (Session 28 Backlog #1)
+# ─────────────────────────────────────────────────────────────
+# Prevents bounce-backs, auto-replies, and delivery-status notifications
+# from opening user-facing tickets or firing Discord alerts. They still get
+# filed to Notifications + audit-logged so we can inspect them.
+
+_BOUNCE_FROM_PREFIXES = (
+    'mailer-daemon@', 'mailerdaemon@', 'postmaster@',
+    'no-reply@', 'noreply@', 'do-not-reply@', 'donotreply@',
+    'bounces@', 'bounce@', 'delivery@',
+)
+
+_BOUNCE_SUBJECT_MARKERS = (
+    'delivery status notification',
+    'undeliverable',
+    'undelivered mail',
+    'returned mail',
+    'mail delivery failed',
+    'mail delivery failure',
+    'failure notice',
+    'address not found',
+    'message not delivered',
+    'auto-reply',
+    'automatic reply',
+    'out of office',
+    'out of the office',
+    '[swarm-internal-test]',
+)
+
+_BOUNCE_BODY_MARKERS = (
+    'the following message to',
+    'address rejected your message',
+    'your message wasn\'t delivered',
+    'message could not be delivered',
+    'recipient address rejected',
+    'no such user',
+    'user unknown',
+)
+
+
+def is_bounce_or_auto_reply(from_addr: str, subject: str, body: str) -> tuple[bool, str]:
+    """Return (True, reason) if the email looks like a bounce or auto-responder.
+
+    Pure function — safe to unit test without IMAP. Checks, in order:
+      1. From-address prefix (mailer-daemon, postmaster, noreply, bounces…)
+      2. Subject markers (Delivery Status Notification, Undeliverable…)
+      3. Body markers (for bounces that come from unusual addresses)
+    """
+    clean = extract_email_address(from_addr or '')
+    subj = (subject or '').strip().lower()
+    body_head = (body or '')[:600].lower()
+
+    for prefix in _BOUNCE_FROM_PREFIXES:
+        if clean.startswith(prefix):
+            return True, f'from-prefix:{prefix.rstrip("@")}'
+
+    for marker in _BOUNCE_SUBJECT_MARKERS:
+        if marker in subj:
+            return True, f'subject:{marker}'
+
+    for marker in _BOUNCE_BODY_MARKERS:
+        if marker in body_head:
+            return True, f'body:{marker[:30]}'
+
+    return False, ''
+
+
+# ─────────────────────────────────────────────────────────────
 # Sender classification
 # ─────────────────────────────────────────────────────────────
 
@@ -937,6 +1005,24 @@ def process_emails(emails=None):
         print(f'[Listener] Classification: {classification}')
         log_activity('listener', 'email_received', f'From: {clean_from} | {subject[:80]} | {classification}')
 
+        # ── Bounce / auto-reply short-circuit (Session 28 Backlog #1) ─
+        # Never open a ticket or fire Discord for mailer-daemon bounces,
+        # out-of-office replies, or delivery-status notifications.
+        is_bounce, bounce_reason = is_bounce_or_auto_reply(from_addr, subject, body)
+        if is_bounce:
+            print(f'[Listener] Bounce/auto-reply detected ({bounce_reason}) — filing silently.')
+            log_activity('listener', 'bounce_filed',
+                         f'From: {clean_from} | {subject[:80]} | {bounce_reason}')
+            try:
+                _mail = get_imap_connection()
+                _mail.select('inbox')
+                move_to_notifications(_mail, msg_id)
+                _mail.logout()
+            except Exception as _be:
+                print(f'[Listener] Move-to-notifications failed: {_be}')
+                mark_as_read(msg_id)
+            continue
+
         # ── Self ──────────────────────────────────────────────
         if classification == 'self':
             print('[Listener] Skipping — own email.')
@@ -1111,6 +1197,25 @@ def process_emails(emails=None):
             import discord_notify
             discord_notify.notify_ticket_opened(ticket_number, clean_from, question,
                                                 is_urgent=is_urgent, source='email')
+        except Exception:
+            pass
+        # Session 29 — spine emit. Best-effort.
+        try:
+            from core import spine as _spine
+            _spine.log(
+                _spine.EventKind.TICKET,
+                f'Ticket opened: {ticket_number}',
+                severity=(_spine.Severity.WARN if is_urgent else _spine.Severity.INFO),
+                source='listener',
+                thread_id=str(conv_id) if conv_id else None,
+                payload={
+                    'ticket_number': ticket_number,
+                    'from': clean_from,
+                    'is_urgent': bool(is_urgent),
+                    'queue_position': queue_position,
+                    'preview': (question or '')[:300],
+                },
+            )
         except Exception:
             pass
 

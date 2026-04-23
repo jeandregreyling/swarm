@@ -236,12 +236,25 @@ def api_project_md_raw():
 
 @docs_bp.route('/api/testing-md')
 def api_testing_md():
-    """Return the content of UAT_TEST_SCRIPTS.md for the dashboard."""
-    path = _os.path.join(_SWARM_ROOT, 'docs/UAT_TEST_SCRIPTS.md')
-    if not _os.path.isfile(path):
-        return jsonify({'error': 'not found'}), 404
-    with open(path, encoding='utf-8') as fh:
-        return jsonify({'content': fh.read()})
+    """Return the content of the canonical testing doc for the dashboard.
+
+    The historical UAT_TEST_SCRIPTS.md was archived in 2026-04; prefer the
+    live ALM test spec, falling back through known alternatives so this
+    endpoint never 404s when *some* testing doc exists on disk.
+    """
+    candidates = (
+        'docs/testing/ALM_TEST_SPECIFICATION.md',
+        'docs/testing/E2E_TEST_SUITE.md',
+        'docs/testing/COMPREHENSIVE_TEST_PLAN_2026-04-01.md',
+        'docs/UAT_TEST_SCRIPTS.md',                 # legacy, may be absent
+        'docs/archive/UAT_TEST_SCRIPTS.md',         # archived original
+    )
+    for rel in candidates:
+        path = _os.path.join(_SWARM_ROOT, rel)
+        if _os.path.isfile(path):
+            with open(path, encoding='utf-8') as fh:
+                return jsonify({'content': fh.read(), 'source': rel})
+    return jsonify({'error': 'no testing doc on disk', 'tried': list(candidates)}), 404
 
 
 
@@ -265,6 +278,7 @@ def api_search_global():
 
     q_lower = q.lower()
     results = []
+    _DOC_CAP = 8  # reserve budget for other result types below
 
     # --- Walk all .md files under docs/ ---
     for dirpath, _dirs, files in _os.walk(_DOCS_DIR):
@@ -297,6 +311,11 @@ def api_search_global():
                         'line': i + 1,
                     })
                     break  # one hit per file
+        if sum(1 for r in results if r['type'] == 'doc') >= _DOC_CAP:
+            break
+    # Hard cap on docs so other groups get visibility
+    _docs = [r for r in results if r['type'] == 'doc'][:_DOC_CAP]
+    results = _docs
 
     # --- Search KB workspace docs (project_docs table) ---
     try:
@@ -322,9 +341,106 @@ def api_search_global():
     except Exception:
         pass
 
-    # Sort: docs first by title relevance, then kb
-    results.sort(key=lambda r: (r['type'] != 'doc', q_lower not in r['title'].lower()))
-    return jsonify({'results': results[:16]})
+    # --- Tickets (open + recent) ---
+    try:
+        conn = get_connection()
+        rows = conn.execute(
+            "SELECT ticket_number, status, question, created_at FROM tickets "
+            "WHERE LOWER(question) LIKE ? OR LOWER(ticket_number) LIKE ? "
+            "ORDER BY created_at DESC LIMIT 5",
+            (f'%{q_lower}%', f'%{q_lower}%')
+        ).fetchall()
+        conn.close()
+        for row in rows:
+            question = (row['question'] or '')[:200]
+            results.append({
+                'type': 'ticket',
+                'title': f"#{row['ticket_number']} · {row['status']}",
+                'ticket_number': row['ticket_number'],
+                'snippet': question,
+                'section': 'tickets',
+            })
+    except Exception:
+        pass
+
+    # --- Work proposals (title + description) ---
+    try:
+        conn = get_connection()
+        rows = conn.execute(
+            "SELECT proposal_id, title, status, description FROM work_proposals "
+            "WHERE LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(proposal_id) LIKE ? "
+            "ORDER BY id DESC LIMIT 5",
+            (f'%{q_lower}%', f'%{q_lower}%', f'%{q_lower}%')
+        ).fetchall()
+        conn.close()
+        for row in rows:
+            desc = (row['description'] or '')[:180]
+            results.append({
+                'type': 'proposal',
+                'title': f"{row['proposal_id']} · {row['status']}",
+                'proposal_id': row['proposal_id'],
+                'snippet': (row['title'] or '') + (f' — {desc}' if desc else ''),
+                'section': 'proposals',
+            })
+    except Exception:
+        pass
+
+    # --- Conversations (by title or recent preview) ---
+    try:
+        conn = get_connection()
+        rows = conn.execute(
+            "SELECT id, title, source, created_at FROM conversations "
+            "WHERE LOWER(title) LIKE ? ORDER BY created_at DESC LIMIT 5",
+            (f'%{q_lower}%',)
+        ).fetchall()
+        conn.close()
+        for row in rows:
+            results.append({
+                'type': 'conversation',
+                'title': row['title'] or f"Conversation #{row['id']}",
+                'conversation_id': row['id'],
+                'snippet': f"{row['source'] or 'chat'} · {(row['created_at'] or '')[:16]}",
+                'section': 'conversations',
+            })
+    except Exception:
+        pass
+
+    # --- Memory (memories table, if present) ---
+    try:
+        conn = get_connection()
+        # Be schema-tolerant: try common memory table layouts.
+        rows = []
+        for sql in (
+            "SELECT id, content FROM memories WHERE LOWER(content) LIKE ? ORDER BY id DESC LIMIT 5",
+            "SELECT id, note AS content FROM memory WHERE LOWER(note) LIKE ? ORDER BY id DESC LIMIT 5",
+        ):
+            try:
+                rows = conn.execute(sql, (f'%{q_lower}%',)).fetchall()
+                if rows:
+                    break
+            except Exception:
+                continue
+        conn.close()
+        for row in rows:
+            content = (row['content'] or '')[:200]
+            results.append({
+                'type': 'memory',
+                'title': f"Memory #{row['id']}",
+                'memory_id': row['id'],
+                'snippet': content,
+                'section': 'memory',
+            })
+    except Exception:
+        pass
+
+    # Sort: docs first by title relevance, then kb, then everything else.
+    _type_order = {'doc': 0, 'kb': 1, 'ticket': 2, 'proposal': 3,
+                   'conversation': 4, 'memory': 5}
+    results.sort(key=lambda r: (
+        _type_order.get(r.get('type'), 9),
+        q_lower not in (r.get('title') or '').lower(),
+    ))
+    return jsonify({'results': results[:24]})
 
 
 _GUIDE_SECTIONS = [

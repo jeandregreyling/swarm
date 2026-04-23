@@ -132,7 +132,7 @@ def ollama_models():
 @localai_bp.route('/api/localai/ollama/chat', methods=['POST'])
 def ollama_quick_chat():
     """Quick single-turn chat against any Ollama model."""
-    data  = request.get_json(force=True) or {}
+    data  = request.get_json(silent=True) or {}
     model = (data.get('model') or 'mistral:latest').strip()
     msg   = (data.get('message') or '').strip()
     if not msg:
@@ -161,7 +161,7 @@ def ollama_quick_chat():
 @localai_bp.route('/api/localai/lmstudio/chat', methods=['POST'])
 def lmstudio_quick_chat():
     """Quick single-turn chat against LM Studio."""
-    data  = request.get_json(force=True) or {}
+    data  = request.get_json(silent=True) or {}
     msg   = (data.get('message') or '').strip()
     if not msg:
         return jsonify({'ok': False, 'error': 'message required'}), 400

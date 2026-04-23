@@ -1,58 +1,29 @@
 // Studio view — proposals, pipeline, agent details, custom cards
 // Extracted from terminal_base.html
+//
+// NOTE (2026-04-23): earlier versions of loadStudioData() rewrote the entire
+// Studio window header via `parent.innerHTML = headerHTML + content.outerHTML`.
+// That pattern destroyed the sibling Git / Test Lab / Projects panels AND
+// replaced the 6-tab header with a stale 3-tab version — causing Test Lab /
+// Git / Projects tabs to disappear as soon as Studio was opened. The template
+// in terminal_base.html already has the correct header + all three panels,
+// so loadStudioData() now just runs the initial tab switch and leaves the
+// DOM alone.
 
 function loadStudioData(win) {
-  const content = win.el.querySelector('#studio-content');
-  if (!content) return;
-
-  // Clean header with + New Proposal right next to Pending tab
-  const headerHTML = `
-    <div style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-      <div style="display:flex;gap:12px;align-items:center;">
-        <h3 style="margin:0;font-size:13px;">Studio — Proposals</h3>
-        
-        <div style="display:flex;gap:6px;align-items:center;">
-          <button id="studio-tab-pending"
-            onclick="studioSetTab('pending')"
-            style="padding:4px 10px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#000;font-size:9px;font-weight:600;cursor:pointer;">Pending</button>
-          <button id="studio-tab-in_progress"
-            onclick="studioSetTab('in_progress')"
-            style="padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:9px;font-weight:600;cursor:pointer;">In Progress</button>
-          <button id="studio-tab-all"
-            onclick="studioSetTab('all')"
-            style="padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:9px;font-weight:600;cursor:pointer;">History</button>
-        </div>
-
-        <!-- New Proposal button placed directly next to tabs -->
-        <button onclick="createNewProposalFromStudio()" 
-          style="padding:5px 14px;background:var(--accent);color:#000;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">
-          + New Proposal
-        </button>
-      </div>
-      
-      <button onclick="studioSetTab(window._studioTab || 'pending')" 
-        style="padding:4px 8px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:9px;cursor:pointer;">↻</button>
-    </div>`;
-
-  // Replace the old header + content area
-  const parent = content.parentElement;
-  parent.innerHTML = headerHTML + content.outerHTML;
-
-  // Re-query content since innerHTML replaced the DOM node
-  const newContent = parent.querySelector('#studio-content');
-
-  // Ensure the function exists and is not overwritten
+  // Ensure the global handler is bound (template calls it from onclick).
   window.createNewProposalFromStudio = createNewProposalFromStudio;
-
   window._studioTab = window._studioTab || 'pending';
   studioSetTab(window._studioTab);
+}
+
 // Handler for New Proposal button in Studio header
 function createNewProposalFromStudio() {
   const title = prompt('New proposal title:');
   if (!title || !title.trim()) return;
-  
+
   const description = prompt('Description (optional):', '');
-  
+
   fetch('/api/queue', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -75,7 +46,6 @@ function createNewProposalFromStudio() {
   })
   .catch(e => showToast('Error: ' + e.message, 'error'));
 }
-}
 
 // ── Studio status palette (shared) ──────────────────────────────────────────
 const _PROPOSAL_STATUS = {
@@ -85,31 +55,45 @@ const _PROPOSAL_STATUS = {
   done:        { color: '#ab47bc', bg: '#ab47bc20', border: '#ab47bc60', label: 'Done',        step: 3 },
   uat:         { color: '#fbc02d', bg: '#fbc02d20', border: '#fbc02d60', label: 'UAT',         step: 4 },
   executed:    { color: '#2196f3', bg: '#2196f320', border: '#2196f360', label: 'Executed',    step: 5 },
+  closed:      { color: '#78909c', bg: '#78909c20', border: '#78909c60', label: 'Closed',      step: 6 },
   rejected:    { color: '#f44336', bg: '#f4433620', border: '#f4433660', label: 'Rejected',    step: -1 },
 };
 
 function studioSetTab(tab) {
   window._studioTab = tab;
   const isGit = (tab === 'git');
+  const isTestLab = (tab === 'testlab');
+  const isProjects = (tab === 'projects');
 
   // Style proposal tab buttons
-  ['pending','in_progress','all','git'].forEach(t => {
+  ['pending','in_progress','all','projects','git','testlab'].forEach(t => {
     const btn = document.getElementById('studio-tab-' + t);
     if (!btn) return;
     const on = tab === t;
+    // Test Lab tab gets a distinct "info-tinted" identity so it's visually
+    // discoverable among the row of proposal tabs (Seven reported missing it).
+    if (t === 'testlab') {
+      btn.style.cssText = btn.style.cssText.replace(/background[^;]+;|color[^;]+;|border-color[^;]+;|box-shadow[^;]+;/g,'') +
+        (on ? 'background:var(--info);color:#fff;border-color:var(--info);box-shadow:0 0 0 2px color-mix(in srgb, var(--info) 40%, transparent);'
+            : 'background:color-mix(in srgb, var(--info) 18%, transparent);color:var(--info);border-color:var(--info);box-shadow:0 0 0 1px color-mix(in srgb, var(--info) 30%, transparent);');
+      return;
+    }
     btn.style.cssText = btn.style.cssText.replace(/background[^;]+;|color[^;]+;|border-color[^;]+;/g,'') +
       (on ? 'background:var(--accent);color:#000;border-color:var(--accent);'
           : 'background:transparent;color:var(--text-dim);border-color:var(--border);');
   });
 
-  // Toggle between proposals content and git panel
+  // Toggle between proposals content, git, test lab, and projects panels
   const container  = document.getElementById('studio-content');
   const gitPanel   = document.getElementById('studio-git-panel');
-  if (container) container.style.display = isGit ? 'none'  : '';
-  if (gitPanel)  gitPanel.style.display  = isGit ? 'flex'  : 'none';
+  const testLabPanel = document.getElementById('studio-testlab-panel');
+  const projectsPanel = document.getElementById('studio-projects-panel');
+  if (container)      container.style.display      = (isGit || isTestLab || isProjects) ? 'none' : '';
+  if (gitPanel)       gitPanel.style.display       = isGit       ? 'flex' : 'none';
+  if (testLabPanel)   testLabPanel.style.display   = isTestLab   ? 'flex' : 'none';
+  if (projectsPanel)  projectsPanel.style.display  = isProjects  ? 'flex' : 'none';
 
   if (isGit) {
-    // Initialise git view inside studio panel (reuse existing git.js logic)
     const fakeWin = {
       el: gitPanel,
       id: 'studio-git',
@@ -117,6 +101,10 @@ function studioSetTab(tab) {
     };
     if (typeof loadGitData === 'function') loadGitData(fakeWin);
     if (typeof gitRefreshStatus === 'function') gitRefreshStatus();
+  } else if (isTestLab) {
+    if (typeof loadStudioTestLabPanel === 'function') loadStudioTestLabPanel();
+  } else if (isProjects) {
+    if (typeof loadStudioProjectsPanel === 'function') loadStudioProjectsPanel();
   } else {
     if (container) loadProposals(container, tab);
   }
@@ -511,43 +499,34 @@ async function deleteProposalSafe(proposalId, closeModal = false) {
     return;
   }
 
-  const card = document.querySelector(`[data-proposal-id="${proposalId}"]`);
-  if (!card) return;
+  // Prefer the current click's button (works for both cards and modal header).
+  var ev = (typeof window !== 'undefined') ? window.event : null;
+  var btn = ev && ev.currentTarget;
+  if (!btn) {
+    var card = document.querySelector(`[data-proposal-id="${proposalId}"]`);
+    btn = card ? card.querySelector('.delete-btn') : null;
+  }
 
-  const deleteBtn = card.querySelector('.delete-btn');
-  if (!deleteBtn) return;
-
-  if (deleteBtn.dataset.state !== 'confirm') {
-    // First click → turn into Confirm
-    deleteBtn.textContent = 'Confirm';
-    deleteBtn.dataset.state = 'confirm';
-    deleteBtn.style.background = '#f4433622';
-    deleteBtn.style.borderColor = '#f44336';
-    deleteBtn.style.color = '#f44336';
-    setTimeout(() => {
-      if (deleteBtn.dataset.state === 'confirm') {
-        deleteBtn.innerHTML = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4l.5 9a1 1 0 001 1h4a1 1 0 001-1l.5-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-        delete deleteBtn.dataset.state;
-        deleteBtn.style.background = '';
-        deleteBtn.style.borderColor = '';
-        deleteBtn.style.color = '';
+  var fire = async function () {
+    try {
+      const result = await deleteProposal(proposalId, closeModal);
+      if (result && result.ok) {
+        // Refresh handled inside deleteProposal(); toast already shown there.
+        const container = document.getElementById('studio-content');
+        if (container) loadProposals(container, window._studioTab || 'pending');
       }
-    }, 4000); // revert after 4 seconds
+    } catch (e) {
+      showToast('Delete failed: ' + (e.message || e), 'error');
+    }
+  };
+
+  if (btn && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btn, fire, { confirmLabel: 'Confirm', timeoutMs: 4000 });
     return;
   }
-
-  // Second click → actually delete
-  try {
-    const result = await deleteProposal(proposalId, closeModal);
-    if (result.ok) {
-      showToast('Proposal deleted', 'success');
-      // Refresh current tab
-      const container = document.getElementById('studio-content');
-      if (container) loadProposals(container, window._studioTab || 'pending');
-    }
-  } catch (e) {
-    showToast('Delete failed: ' + (e.message || e), 'error');
-  }
+  // Fallback: native confirm if SwarmChat unavailable.
+  if (!confirm(`Delete proposal ${proposalId}? This cannot be undone.`)) return;
+  fire();
 }
 
 // Keep voteProposal as alias for ALM terminal auto-approve
@@ -867,7 +846,7 @@ async function _pdetLoadAttachments(pid) {
         <span style="font-size:10px;color:var(--text-dim);">${_fmtBytes(a.size_bytes)}</span>
         <a href="/api/work-proposals/${encodeURIComponent(pid)}/attachments/${a.id}" download="${_escAttr(a.original_name)}"
            style="font-size:11px;color:#2196f3;text-decoration:none;">↓</a>
-        <button onclick="_pdetDeleteAttachment(${_jsStr(pid)}, ${a.id})"
+        <button onclick="_pdetDeleteAttachment(${_jsStr(pid)}, ${a.id}, event)"
           style="background:none;border:none;color:#f44336;cursor:pointer;font-size:14px;line-height:1;padding:0;">×</button>
       </div>`).join('');
   } catch(e) {
@@ -899,12 +878,20 @@ async function _pdetUploadAttachment(pid, input) {
   input.value = '';
 }
 
-async function _pdetDeleteAttachment(pid, attId) {
+async function _pdetDeleteAttachment(pid, attId, event) {
+  var fire = async function () {
+    const resp = await fetch(`/api/work-proposals/${encodeURIComponent(pid)}/attachments/${attId}`, {method:'DELETE'});
+    const data = await resp.json();
+    if (!data.ok) { showToast('Delete failed', 'error'); return; }
+    _pdetLoadAttachments(pid);
+  };
+  var btn = event && event.currentTarget;
+  if (btn && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btn, fire, { confirmLabel: '?', timeoutMs: 4000 });
+    return;
+  }
   if (!confirm('Remove this attachment?')) return;
-  const resp = await fetch(`/api/work-proposals/${encodeURIComponent(pid)}/attachments/${attId}`, {method:'DELETE'});
-  const data = await resp.json();
-  if (!data.ok) { showToast('Delete failed', 'error'); return; }
-  _pdetLoadAttachments(pid);
+  fire();
 }
 
 async function _pdetLoadAgentNotes(pid) {

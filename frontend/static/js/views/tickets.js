@@ -75,14 +75,13 @@ function deleteTicket(ticketId) {
 }
 
 function deleteTicketWithConfirm(ticketNumber, btnEl) {
-  if (btnEl.dataset.confirming === '1') {
-    // Second click — actually delete
+  // Session 28 Workstream A.3: shared armToConfirm primitive.
+  var fire = function () {
     btnEl.disabled = true;
     btnEl.textContent = 'Deleting…';
     fetch('/api/tickets/' + encodeURIComponent(ticketNumber), { method: 'DELETE' })
       .then(r => {
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        // Close modal, refresh list, toast
         const modal = document.getElementById('ticket-detail-modal');
         if (modal) modal.classList.remove('open');
         const win = winManager && winManager.windows ? winManager.windows.get('tickets') : null;
@@ -92,30 +91,15 @@ function deleteTicketWithConfirm(ticketNumber, btnEl) {
       .catch(e => {
         if (typeof showToast === 'function') showToast('Delete failed: ' + e.message, 'error');
         btnEl.disabled = false;
-        btnEl.dataset.confirming = '';
         btnEl.innerHTML = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4l.5 9a1 1 0 001 1h4a1 1 0 001-1l.5-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete';
-        btnEl.style.background = '#f443361a';
-        btnEl.style.borderColor = '#f4433644';
-        btnEl.style.color = '#f44336';
       });
-  } else {
-    // First click — switch to confirm state
-    btnEl.dataset.confirming = '1';
-    btnEl.innerHTML = 'Confirm Delete?';
-    btnEl.style.background = '#f44336';
-    btnEl.style.borderColor = '#f44336';
-    btnEl.style.color = '#fff';
-    // Auto-revert after 3s
-    setTimeout(() => {
-      if (btnEl.dataset.confirming === '1') {
-        btnEl.dataset.confirming = '';
-        btnEl.innerHTML = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4l.5 9a1 1 0 001 1h4a1 1 0 001-1l.5-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete';
-        btnEl.style.background = '#f443361a';
-        btnEl.style.borderColor = '#f4433644';
-        btnEl.style.color = '#f44336';
-      }
-    }, 3000);
+  };
+  if (btnEl && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btnEl, fire, { confirmLabel: 'Confirm Delete?', timeoutMs: 3000 });
+    return;
   }
+  if (!confirm('Delete ticket ' + ticketNumber + '?')) return;
+  fire();
 }
 
 function filterTicketsByStatus(status) {

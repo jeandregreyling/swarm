@@ -76,15 +76,23 @@ def api_time_checkpoints():
 def api_time_create_checkpoint():
     """Capture a Swarm-facing Vortex checkpoint from current workflow state."""
     data = request.get_json() or {}
-    label = (data.get('label') or 'manual-checkpoint').strip()
-    description = (data.get('description') or '').strip()
-    agent = (data.get('agent') or 'terminal_ui').strip()
+    label = str(data.get('label') or 'manual-checkpoint').strip()
+    description = str(data.get('description') or '').strip()
+    agent = str(data.get('agent') or 'terminal_ui').strip()
 
     try:
         checkpoint = time_wizard.create_workflow_checkpoint(label=label, agent=agent, description=description)
         return jsonify({'ok': True, 'checkpoint': checkpoint}), 201
+    except ValueError as e:
+        # Domain-layer rejection (e.g. label collision) — 400 not 500
+        return jsonify({'ok': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
+        msg = str(e)
+        # SQLite UNIQUE violation on label collision surfaces as 409 Conflict
+        # rather than 500 — the client supplied a duplicate label.
+        if 'UNIQUE constraint failed' in msg:
+            return jsonify({'ok': False, 'error': 'checkpoint label already exists'}), 409
+        return jsonify({'ok': False, 'error': msg}), 500
 
 
 

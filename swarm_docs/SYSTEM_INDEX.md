@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-22 13:43*
+*Auto-generated: 2026-04-23 00:13*
 
 
 ## Python Modules
@@ -40,6 +40,7 @@
 | `utils/db/tickets.py` | db.tickets — Ticket CRUD, snooze, overdue, digest stats. |
 | `utils/db/timeline.py` | utils/db/timeline.py — Conversation timeline writer. |
 | `utils/db/tools.py` | utils.db.tools — Tool build registry CRUD (C.1.2) |
+| `utils/db/trace_log.py` | utils/db/trace_log.py — Session 29 durable mirror for core.spine events. |
 | `utils/git_commit_logger.py` | git_commit_logger.py — Seven's Swarm Time Wizard git hook |
 | `utils/governance.py` | utils/governance.py — Central proposal governance engine. |
 | `utils/intent_classifier.py` | Intent classifier for agentic chat routing (Phase 8.0). |
@@ -68,7 +69,12 @@
 
 | File | Description |
 |------|-------------|
+| `core/chat_actions.py` | core/chat_actions.py — Pure-rules chat action detector ("Siri-but-better"). |
 | `core/kill_switch.py` | KILL SWITCHES — Emergency control agents via Telegram/Discord |
+| `core/knowledge/__init__.py` | core.knowledge — Knowledge Center package. |
+| `core/knowledge/projects.py` | core.knowledge.projects — Session 30.1: Projects, Steps, Test Cases. |
+| `core/knowledge/scripts.py` | core.knowledge.scripts — Knowledge Center's test-lab script registry. |
+| `core/knowledge/test_runs.py` | core.knowledge.test_runs — Session 30: ALM-style test run history. |
 | `core/llm.py` | core/llm.py — Single Ollama gateway for the entire swarm. |
 | `core/notifications.py` | core/notifications.py — Shared notification formatter. |
 | `core/pipeline/debate.py` | — |
@@ -77,6 +83,8 @@
 | `core/pipeline/queue_manager.py` | queue_manager.py — Seven's Swarm |
 | `core/pipeline/ticket.py` | ticket.py — Seven's Swarm |
 | `core/routing.py` | core/routing.py — Deterministic routing brain for Seven's Swarm. |
+| `core/spine.py` | core/spine.py — Session 29: Seven-as-spine. |
+| `core/testlab_registry.py` | core/testlab_registry.py — Session 28 Studio Test Lab |
 | `core/time_machine.py` | TIME MACHINE — Agent Twelve's Core Capability |
 
 ### Agent Modules
@@ -161,7 +169,7 @@
 | `auth` | 12 | auth.py — Auth & Senders routes |
 | `auto_audit` | 2 | auto_audit.py — Periodic self-audit: pytest + basic lint checks. |
 | `brief` | 3 | brief.py — Ghost Brief routes |
-| `chat` | 5 | chat.py — Chat Engine routes |
+| `chat` | 8 | chat.py — Chat Engine routes |
 | `conversations` | 9 | conversations.py — Conversations routes |
 | `council_bp` | 2 | Council API blueprint — serves Agent 20 output to the frontend. |
 | `debates` | 5 | debates.py — Debates routes |
@@ -171,12 +179,13 @@
 | `email_bp` | 5 | blueprints/email_bp.py — Email tile API |
 | `exec_bp` | 4 | exec_bp.py — Ghost Exec routes |
 | `git` | 6 | git.py — Git Operations routes |
-| `health` | 1 | — |
+| `health` | 2 | — |
 | `health_bp` | 3 | Health digest API blueprint — one-stop-shop system visibility. |
 | `idle_mgmt_bp` | 3 | idle_mgmt_bp.py — Idle-time self-management (Tier 4.5). |
 | `interests_bp` | 3 | Interests engine — derives user interests from conversations + system memory. |
 | `kb` | 7 | kb.py — Knowledge Base routes |
 | `killswitch` | 6 | killswitch.py — Kill Switches routes |
+| `knowledge_bp` | 19 | Knowledge Center blueprint. |
 | `legacy` | 3 | legacy.py — Legacy Pipeline & Approval routes |
 | `library` | 11 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
@@ -194,9 +203,11 @@
 | `proposals_git` | 4 | proposals_git.py — Git operations for work proposals. |
 | `research` | 5 | frontend/blueprints/research.py — Research API (B.4.1) |
 | `shell` | 18 | shell.py — Shell & Terminal routes |
+| `spine_bp` | 3 | blueprints/spine_bp.py — Session 29: spine events API. |
 | `sse` | 1 | frontend/blueprints/sse.py — Server-Sent Events stream (R.2) |
 | `system` | 16 | system.py — System & Monitoring routes |
 | `tasker_bp` | 8 | tasker_bp.py — Scheduled tasks CRUD API for the Tasker UI. |
+| `testlab_bp` | 2 | blueprints/testlab_bp.py — Studio Test Lab API (Session 28) |
 | `tickets` | 11 | tickets.py — Tickets routes |
 | `time_wizard_bp` | 10 | time_wizard_bp.py — Time Wizard routes |
 | `tools` | 7 | frontend/blueprints/tools.py — Tool Build API (C.4.1) |
@@ -209,84 +220,88 @@
 | Module | Size |
 |--------|------|
 | `access.js` | 96.5 KB |
-| `chat.js` | 242.9 KB |
-| `conversations.js` | 13.9 KB |
+| `chat.js` | 252.9 KB |
+| `conversations.js` | 14.5 KB |
 | `diamond.js` | 26.9 KB |
-| `docs.js` | 24.3 KB |
-| `email.js` | 22.4 KB |
+| `docs.js` | 24.6 KB |
+| `email.js` | 26.1 KB |
 | `files.js` | 42.0 KB |
-| `git.js` | 23.8 KB |
+| `git.js` | 24.1 KB |
 | `guide.js` | 7.9 KB |
 | `health-digest.js` | 8.2 KB |
-| `home-chat.js` | 47.5 KB |
-| `knowledge.js` | 6.7 KB |
+| `home-chat.js` | 50.0 KB |
+| `knowledge.js` | 17.3 KB |
 | `library-graph.js` | 12.4 KB |
-| `library.js` | 26.5 KB |
+| `library.js` | 26.8 KB |
 | `localai.js` | 25.7 KB |
 | `memory-landscape.js` | 9.6 KB |
-| `memory.js` | 30.0 KB |
+| `memory.js` | 30.3 KB |
 | `monitor.js` | 18.1 KB |
 | `ollama.js` | 4.1 KB |
 | `onboarding.js` | 16.9 KB |
 | `orbs.js` | 63.0 KB |
+| `projects.js` | 15.5 KB |
 | `services.js` | 4.7 KB |
-| `skills.js` | 25.1 KB |
-| `spotlight.js` | 8.2 KB |
-| `studio.js` | 85.6 KB |
-| `tasker.js` | 10.7 KB |
-| `terminal-commands.js` | 13.1 KB |
-| `terminal.js` | 43.4 KB |
-| `tickets.js` | 6.7 KB |
-| `time-wizard.js` | 35.8 KB |
+| `skills.js` | 26.2 KB |
+| `spotlight.js` | 14.6 KB |
+| `studio-testlab.js` | 25.3 KB |
+| `studio.js` | 86.3 KB |
+| `tasker.js` | 11.0 KB |
+| `terminal-commands.js` | 17.6 KB |
+| `terminal.js` | 43.6 KB |
+| `tickets.js` | 6.0 KB |
+| `time-wizard.js` | 43.4 KB |
 | `trace.js` | 22.6 KB |
+| `traced.js` | 5.8 KB |
 | `vpn.js` | 4.2 KB |
 
 ## Database Tables
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 34104 |
+| `activity_log` | 35328 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 559 |
-| `audit_results` | 34 |
-| `chat_jobs` | 583 |
+| `approval_tokens` | 610 |
+| `audit_results` | 35 |
+| `change_runs` | 2 |
+| `chat_jobs` | 585 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2185 |
+| `conv_timeline` | 2192 |
 | `conversations` | 0 |
-| `council_output` | 993 |
+| `council_output` | 1275 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 6714 |
+| `decisions` | 7665 |
 | `deferred_items` | 0 |
-| `duck_log` | 820 |
+| `duck_log` | 861 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4284 |
-| `governance_log` | 385 |
+| `ghost_circle` | 4324 |
+| `governance_log` | 387 |
 | `knowledge_chunks` | 638 |
-| `knowledge_sources` | 49 |
-| `memory` | 105 |
-| `memory_eight` | 0 |
-| `memory_gemma` | 21 |
+| `knowledge_sources` | 50 |
+| `memory` | 106 |
+| `memory_eight` | 1 |
+| `memory_gemma` | 22 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
 | `memory_llama` | 1 |
 | `memory_mistral` | 0 |
 | `memory_nine` | 0 |
-| `memory_qwen` | 2 |
+| `memory_qwen` | 1 |
 | `memory_scholar` | 0 |
 | `memory_seeker` | 0 |
 | `memory_sonic` | 0 |
 | `memory_ten` | 59 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `memory_twenty` | 266 |
+| `memory_twenty` | 375 |
 | `messages` | 0 |
 | `moderators` | 2 |
 | `node_config` | 0 |
@@ -294,35 +309,42 @@
 | `notification_senders` | 8 |
 | `pending_emails` | 8 |
 | `project_doc_versions` | 56 |
-| `project_docs` | 64 |
+| `project_docs` | 74 |
+| `project_steps` | 32 |
+| `project_test_cases` | 34 |
+| `projects` | 21 |
 | `proposal_attachments` | 0 |
-| `queue` | 1900 |
+| `proposal_projects` | 2 |
+| `queue` | 1570 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 506 |
-| `scheduled_tasks` | 9 |
+| `scheduled_tasks` | 51 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
-| `sqlite_sequence` | 66 |
+| `sqlite_sequence` | 68 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 385 |
+| `swarm_bus` | 387 |
 | `swarm_event_acks` | 24 |
 | `swarm_events` | 2 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7126 |
+| `system_stats` | 7253 |
 | `task_run_log` | 0 |
 | `terminal_shortcuts` | 16 |
-| `ticket_notes` | 574 |
-| `tickets` | 582 |
-| `time_checkpoints` | 4281 |
-| `time_events` | 95841 |
-| `time_journal` | 90248 |
-| `time_machine` | 5910 |
+| `test_run_artifacts` | 1 |
+| `test_runs` | 37 |
+| `ticket_notes` | 615 |
+| `tickets` | 623 |
+| `time_checkpoints` | 4617 |
+| `time_events` | 96233 |
+| `time_journal` | 90297 |
+| `time_machine` | 5918 |
 | `tool_builds` | 0 |
+| `trace_events` | 136 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_interests` | 3 |
@@ -331,7 +353,7 @@
 | `user_sessions` | 3 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 302 |
+| `work_proposals` | 2 |
 
 ## Agents
 

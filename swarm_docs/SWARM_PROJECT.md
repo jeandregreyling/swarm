@@ -8,7 +8,7 @@
 **Owner:** Seven  
 **Primary Builder:** Agent 12 (Claude / Copilot)  
 **Created:** 16 April 2026  
-**Last Updated:** 21 April 2026 (Session 26 — Agent 20 design, Qwen3.6 rename, scope lock)  
+**Last Updated:** 23 April 2026 (Session 30.1 v7 — RnR captain's shift: content-type confusion probe added, 7-tier audit hierarchy, parser-crash safety invariant locked)  
 
 ---
 
@@ -17,20 +17,19 @@
 | Field | Value |
 |-------|-------|
 | **Active Phase** | Phase 7.0 — Test & Support (stabilisation, bug fixing, hardening) |
-| **Last Session** | Session 26 — 21 April 2026 — Agent 20 design & scope lock, Agent 18 renamed to Qwen3.6 |
-| **Next Action** | Build Phase 8.1 — Agent 20 observer + council + PFV gate (deterministic foundation) |
-| **Test Baseline** | 445 passed, 1 pre-existing failure (verified 21 April 2026) |
-| **Environments** | PROD (master :5050), UAT (:5052), DEV (:5054) — PROD updated, UAT/DEV need sync |
+| **Last Session** | Session 30.1 v7 — 23 April 2026 RnR — Content-type confusion probe; 4 BROKEN baseline fixed by `get_json(silent=True)` conversion across 6 handler sites; all 7 audit tiers green |
+| **Next Action** | Seven reviews v7; then either build v8 (candidate: auth/header-confusion or large-payload probe), investigate DISPATCHED_WORK.md cron residue, or resume Phase 8.1 Agent 20 build |
+| **Test Baseline** | Ctype 0/188, Concurrency 0/188 (fanout=5+10), Bogus 0/188, Mutation 0/188, Wide 0/256, ALM 30/30, pytest green |
+| **Environments** | PROD (master :5050) green; UAT (:5052), DEV (:5054) need sync |
 | **Blockers** | None |
 
 ### What's Hot Right Now
-- **Agent 20 design locked** — full process model, PFV gate, 7-sense council, 4-phase delivery plan in §4b
-- **Agent 18 renamed** to Qwen3.6 (seed, agent file, live DB)
-- **Phase 8.1 ready to build** — observer, council, PFV scoring, tables, API, feature flag, tests
-- **All 4 tile groups audited** — 13 bugs fixed across Sessions 24–25, 0 regressions
-- **Remaining Phase 7 work:** 7.23 DOMPurify, 7.24 escape consolidation (root cause of 4/6 Session 25 bugs), env sync
-- **Test baseline updated:** 445 passed (up from 404); 1 pre-existing failure (conversations.py cross-import of login_bp)
-- **Secondary tiles still to audit** — tickets, email, proposals, clocks, memory landscape
+- **Seven-tier audit hierarchy** now in place: module ALM → GET wide-probe → empty-body mutation probe → bogus-body type-confusion probe → parallel-fanout concurrency probe → **content-type confusion probe (NEW)** → targeted pytest. All seven record into Projects via `/api/knowledge/test-runs`.
+- **New tool** `tests/api_ctype_probe.py` — fires 5 content-type variants per endpoint (no Content-Type, text/plain, lying application/json, application/xml, XML-as-JSON). Catches parser-crashes where `request.get_json(force=True)` raises werkzeug `BadRequest` and a broad `except Exception` mis-labels it as 500.
+- **D36 Parser-crash safety invariant** (new): HTTP handlers MUST use `request.get_json(silent=True) or {}` not `force=True`. Malformed JSON MUST produce a 400 via required-field validation, not a 500 wrapping a 400 message.
+- **v7 baseline caught 4 BROKEN** on `POST /api/node/{discover,register}` + v1 aliases — status/body contradiction from `force=True` + generic `except Exception`. Fixed by converting 6 sites in `node.py` + `localai.py`.
+- **api-ctype-probe** registered in Test Lab under `Audit` group — runnable from UI.
+- Earlier highlights still live: Agent 20 design locked (§4b), Agent 18 renamed Qwen3.6, DOMPurify/escape consolidation remain in Phase 7 backlog.
 
 ---
 
@@ -564,6 +563,201 @@ Architectural and design decisions that affect future work. Newest first.
 
 Each session is logged here with date, what was done, and key outcomes.  
 **Newest first** — most recent session is always at the top.
+
+---
+
+### Session 30.1 v7 — 23 April 2026 (RnR captain's shift, continued)
+**Focus:** Content-type confusion tier. "Continue" — extend the audit hierarchy past timing into parser safety. Where tier 4 exercises *payload shape* and tier 6 exercises *timing*, tier 7 exercises *wire-format honesty*: what happens when the Content-Type lies about the body, is missing, or claims a format the handler can't parse.
+
+Seventh tier of the audit hierarchy. Fires 5 content-type variants per endpoint (no Content-Type, text/plain, lying application/json with non-JSON body, application/xml, XML-as-JSON). Surfaces handlers that let `request.get_json(force=True)` raise werkzeug `BadRequest` into a broad `except Exception` block, which then returns a 400 message wrapped in a 500 status — status contradicts body.
+
+| Tool | Baseline | Verify | Notes |
+|------|----------|--------|-------|
+| `tests/api_ctype_probe.py` (new) | **4 bad / 188** | **0 bad / 188** | Caught `POST /api/node/{discover,register}` + v1 aliases returning 500-with-400-body on `V3_lying_json` variant |
+| `tests/api_concurrency_probe.py` (regression) | 0 bad / 188 | — | |
+| `tests/api_bogus_probe.py` (regression) | 0 bad / 188 | — | |
+| `tests/api_mutation_probe.py` (regression) | 0 bad / 188 | — | |
+| `tests/api_wide_probe.py` (regression) | 0 bad / 256 | — | |
+| `tests/alm_self_test.py` (regression) | 30/30 | — | |
+| pytest (projects + testlab + spine + knowledge) | green | — | |
+
+**Real fixes (1 class × 6 sites):**
+1. **`request.get_json(force=True)` inside broad `except Exception`** — `force=True` raises werkzeug `BadRequest` on invalid JSON; the generic except block stringifies the exception ("400 Bad Request: ...") and returns it with status 500. Converted all 6 sites to `get_json(silent=True) or {}` — parse failure now returns `None`, `or {}` falls through to the existing required-field check → clean 400. Sites: `frontend/blueprints/node.py` (`node_register`, `node_discover`, `node_sync_proposals`, `node_events`) + `frontend/blueprints/localai.py` (`ollama_quick_chat`, `lmstudio_quick_chat`).
+
+**New contract — D36 Parser-crash safety invariant**: HTTP handlers MUST NOT let the JSON parser raise into user-facing responses. Forbidden pattern: `get_json(force=True)` inside `try/except Exception`. Preferred pattern: `data = request.get_json(silent=True) or {}` then explicit required-field validation → 400. The 16 ACCEPTED cases on v7 baseline are handlers with no required body fields (empty body is a valid call) — correct behavior.
+
+**Audit hierarchy now 7-tier**: module ALM → GET wide-probe → empty-body mutation probe → bogus-body type-confusion probe → parallel-fanout concurrency probe → **content-type confusion probe (NEW)** → targeted pytest. Bug classes caught, in order: enum/FK/validation → dead GETs+SSE → required-fields → type-coercion → races/deadlocks → **malformed-body/parser-crashes** → logic regressions.
+
+**ALM record**: project `P-C8142629F3` (archived).
+
+---
+
+### Session 30.1 v6 — 23 April 2026 (RnR captain's shift, continued)
+**Focus:** Concurrency / idempotency tier. "Set course for infinity and beyond" — extend the audit hierarchy to cover parallel-call safety. Where tiers 3 & 4 exercise *content* of the request, tier 6 exercises *timing*.
+
+Sixth tier of the audit hierarchy. Fires N=5 parallel empty-body requests per endpoint to surface UNIQUE-constraint races, lock contention, TOCTOU checks that pass single-threaded but fail in parallel.
+
+| Tool | Baseline | Stress | Notes |
+|------|----------|--------|-------|
+| `tests/api_concurrency_probe.py` (new) | **0 bad / 188 @ fanout=5** | **0 bad / 188 @ fanout=10** | `ThreadPoolExecutor`; worst-outcome classifier |
+| `tests/api_bogus_probe.py` (regression) | 0 bad / 188 | — | |
+| `tests/api_mutation_probe.py` (regression) | 0 bad / 188 | — | |
+| `tests/alm_self_test.py` (regression) | 30/30 | — | |
+| pytest (projects + testlab + spine + knowledge) | green | — | |
+
+**Zero bugs found.** First pass was clean and held at fanout=10. The prior five tiers have hardened the surface enough that concurrency surfaces no new failures. Only FLAKY entries: `/api/time/checkpoints` + v1 alias — but that's *correct* behaviour: v5's UNIQUE→409 fix working under load (first parallel request wins 201, rest get 409). Non-bug.
+
+**New infrastructure:**
+- `tests/api_concurrency_probe.py` — reuses SKIP from `api_mutation_probe` (DRY) + v1 alias expansion. Classifier: worst-outcome across N parallel responses. New `FLAKY` category for mixed non-bad outcomes (report-only).
+- Registered `api-concurrency-probe` in `core/testlab_registry.py` under `Audit` group.
+
+**New contract — D35 Concurrency-safety invariant:**
+Every non-destructive mutation endpoint MUST survive N=5 concurrent calls with the same body. Valid outcomes: all-ACCEPTED (idempotent), all-VALIDATED (schema rejects), all-AUTH (unauthenticated), all-DEPENDENCY (missing integration), or deterministic first-wins pattern (e.g. 201+409×(N-1) for unique-key defaults). 5xx or timeout under load = BROKEN.
+
+**ALM project:** P-2A70FBE2EA (archived). Run ID: a7a0dd588b6448f6.
+
+**Lessons:**
+- Surface hardening compounds: tier-1 through tier-5 fixes meant tier-6 baseline was already clean. Audit tiers act like successive sieves.
+- FLAKY is a useful middle category — it catches non-determinism without false-flagging intentional first-wins race patterns.
+- When a new audit tier finds 0 bugs on baseline, the invariant is *still* valuable: it locks the property against future regressions.
+
+---
+
+### Session 30.1 v5 — 22 April 2026 (RnR captain's shift, continued)
+**Focus:** Type-confusion audit tier. Extend the write-side audit from empty-body to structurally wrong payloads. "You may proceed captain" — continue autonomous work.
+
+Extended the four-tier hierarchy to **five tiers** by adding bogus-body coverage. Empty-body mutation probe caught missing required-field checks; bogus-body catches type coercion bugs (`int.strip()` et al.).
+
+| Tool | Baseline | Final | Notes |
+|------|----------|-------|-------|
+| `tests/api_bogus_probe.py` (new) | **64 bad / 188 probed** | **0 bad / 188 probed** | 5 wrong-type payload variants; severity-ranked worst-wins classifier |
+| `tests/api_mutation_probe.py` (regression) | 0 bad / 188 | **0 bad / 188** | Guard did not change ACCEPTED bucket |
+| `tests/api_wide_probe.py` (regression) | 0 bad / 256 | **0 bad / 256** | |
+| `tests/alm_self_test.py` (regression) | 30/30 | **30/30** | |
+| pytest (projects + testlab_runs + spine + knowledge) | green | **green** | |
+
+**Progression:** 64 BROKEN → 7 BROKEN (after global guard) → 1 BROKEN (after surgical coercion) → 0 (after UNIQUE→409 mapping).
+
+**Real fixes (4):**
+1. **Global type-guard** in `frontend/terminal.py::create_app()`: `register_error_handler(TypeError)` + `register_error_handler(AttributeError)` → 400 when `request.path.startswith('/api/')` AND `request.content_length > 0`. Re-raises otherwise so real 500s stay visible. Logged via `swarm.input_guard` logger. Resolved 57 of 64.
+2. **Surgical coercion** on 3 endpoints whose broad `except Exception` intercepted TypeError before global handler: `node.py::node_register`, `node.py::node_discover`, `library.py::api_library_ingest` — all now use `str(data.get('x') or '').strip()` pattern.
+3. **UNIQUE→409 mapping** in `time_wizard_bp.py::api_time_create_checkpoint`: rapid duplicate checkpoint label now returns 409 Conflict (was 500).
+4. Probe classifiers (bogus + mutation): 409 and 502 added to VALIDATED code set as legitimate HTTP refusals.
+
+**New infrastructure:**
+- `tests/api_bogus_probe.py` — shares SKIP with `api_mutation_probe` (DRY) + v1 alias auto-expansion. Severity order: BROKEN > STUCK > DEPENDENCY > AUTH > ACCEPTED > VALIDATED; worst outcome per endpoint wins across 5 payload variants.
+- Registered `api-bogus-probe` in `core/testlab_registry.py` under `Audit` group.
+
+**New contract — D34 Input-type guard:**
+Flask apps MUST register `TypeError` + `AttributeError` error handlers that convert to 400 on JSON-body `/api/*` requests. Blueprints with broad `except Exception` MUST coerce with `str(data.get('x') or '').strip()` at input boundary to avoid intercepting the global guard. Re-raise for non-API / empty-body so real 500s propagate.
+
+**ALM project:** P-EB07CD8588 (archived). Run ID: bd646b0e6fa94030.
+
+**Lessons:**
+- Broad `except Exception` + 500 return silently shadows global exception handlers — always coerce input at boundary.
+- Global handlers should be narrow (specific exception classes + path + body-present gates) to avoid masking real bugs.
+- Each new probe tier targets a distinct bug class: ALM=enum/FK, wide=dead GETs+SSE, mutation=required-fields, bogus=type-coercion.
+
+---
+
+### Session 30.1 v4 — 22 April 2026 (RnR captain's shift)
+**Focus:** Write-side audit companion to the GET probe. "Captain has the bridge" — autonomous 6-hour shift to build, test, document, improve.
+
+Extended the three-tier audit hierarchy to four tiers by adding mutation coverage. Previous tiers only hit GETs; POST/PATCH/PUT endpoints were blind spots.
+
+| Tool | Baseline | Final | Notes |
+|------|----------|-------|-------|
+| `tests/api_mutation_probe.py` (new) | 3 bad / 202 probed | **0 bad / 188 probed** | Probes empty-body to POST/PATCH/PUT; skips destructive |
+| `tests/api_wide_probe.py` (regression) | 0 bad / 256 | **0 bad / 256** (HEALTHY 222→224) | `/api/activity/stream` now counts HEALTHY |
+| `tests/alm_self_test.py` (regression) | 30/30 | **30/30** | |
+| pytest (projects + testlab_runs + spine + knowledge) | 61/61 | **61/61** | |
+
+**Real fixes (3):**
+1. `POST /api/queue` accepted empty body and inserted `work_proposals` row with defaulted title `"Untitled"`. Now requires `title`, returns 400. All 7 frontend callers already supply title, verified safe.
+2. `POST /api/spine/log` accepted empty body and wrote a spine event with empty `message`. Now requires `message`, returns 400. Only caller (`trace-bus.js::pin`) already supplies message.
+3. Mutation probe classifier treated 503 as BROKEN. 503 is a legitimate "dependency unavailable" response (Claude API key missing on `/api/brief/generate`). New `DEPENDENCY` category; BROKEN now strictly 500/502/504.
+
+**Contract extensions (2):**
+4. **SSE connect-ack** — applied to `/api/activity/stream` (system.py) and `/stream/<ticket>` (legacy.py). All 4 SSE endpoints now yield an initial `': ready\n\n'` (or equivalent `: connected`) within same-RTT of handshake.
+5. **Probe SKIP v1 expansion** — allow-list was literal; `/api/v1/audit/run` slipped through and hung. Now auto-expands every `/api/foo` SKIP entry to also cover `/api/v1/foo`.
+
+**ACCEPTED bucket (24)** — reviewed and cleared. All 24 endpoints that returned 2xx on empty body are genuinely idempotent: `/api/library/pull-model` pulls fixed `nomic-embed-text`, `/api/node/heartbeat` accepts zero-payload pings, `/api/time/bootstrap` creates a new session (by design), etc. None are silent garbage-ingesters after the two fixes.
+
+**Files Modified:**
+- `tests/api_mutation_probe.py` — **new**, 188 mutation endpoints probed on empty body, SKIP allow-list with v1 expansion, 6-way classifier.
+- `frontend/blueprints/proposals.py` — `POST /api/queue` requires `title`.
+- `frontend/blueprints/spine_bp.py` — `POST /api/spine/log` requires `message`.
+- `frontend/blueprints/system.py` — `/api/activity/stream` connect-ack.
+- `frontend/blueprints/legacy.py` — `/stream/<ticket>` connect-ack.
+- `core/testlab_registry.py` — `api-mutation-probe` registered in `Audit` group.
+
+**Key Design Decisions:**
+- D31: **Four-tier audit hierarchy**: module ALM → system wide-audit (GET) → mutation probe (POST/PATCH/PUT empty-body) → targeted pytest. Destructive verbs (DELETE) are intentionally not probed; any future DELETE coverage must use sandboxed fixtures.
+- D32: **Dependency response contract** — when an optional integration is missing (API key absent, upstream down), endpoints MUST return 503 with `{error: "<what's missing>"}`, not 500. The mutation probe enforces this.
+- D33: **SKIP allow-list v1 auto-expansion** — any audit tool that filters by path MUST expand its literal allow-list to include `/api/v1/*` aliases. Canonical implementation in `api_mutation_probe.py::main()`.
+
+**Tests:** All four audit tiers green. Mutation 0 bad / 188, wide 0 bad / 256, ALM 30/30, pytest 61/61. Live `/api/health = 200` throughout.
+
+**ALM Project:** `P-37D85DF4F4` (archived). 5 steps, 5 cases, 5 runs recorded. Run IDs: fail-baseline `4eaa67818b254e79`, verify-pass `7f58f4e3ef2c4ea0`, wide-regression `908738058f5a49be`, alm-regression `3e079cb6cfab4b68`, pytest-regression `fa3155b331be4598`.
+
+---
+
+### Session 30.1 — 22 April 2026
+**Focus:** Test Center ALM self-audit → system-wide API audit. "Go big and make it small."
+
+Three-tier audit hierarchy established, all three executed end-to-end against a live service:
+
+| Tier | Tool | Baseline | Final | Project |
+|------|------|----------|-------|---------|
+| Module ALM v1 | `tests/alm_self_test.py` (10 checks) | 6 fail | 0 fail | `P-F6C9CE3B73` (archived) |
+| Module ALM v2 | `tests/alm_self_test.py` (30 checks) | 5 fail | 0 fail | `P-4D40686C2F` (archived) |
+| System-wide audit | `tests/api_wide_probe.py` (256 GETs) | 2 MISSING + 7 STUCK | 0 bad | `P-4BC4356649` (archived) |
+
+**Real fixes landed across the chain (11 total):**
+
+v1 (Test Center foundations — 3):
+1. `PROJECT_STATUSES` enum — `update_project` rejects bogus status, blueprint → 400.
+2. `update_case_status()` + `PATCH /api/knowledge/cases/<id>` — cases can now transition past `draft/ready`.
+3. `start_run(project_id=…)` validates project exists → 400 instead of silent orphan.
+
+v2 (validation layer hardening — 5):
+4. `add_step` validates parent project → 404 on unknown.
+5. `add_test_case` validates project + optional step ownership → 404.
+6. `start_run` validates `step_id` belongs to `project_id` → 400.
+7. `start_run` validates `case_id` belongs to `project_id` → 400.
+8. `PATCH /projects/<id>` strips reserved keys (`project_id/created_at/updated_at`) before `**body` splat — no more positional-arg collision, valid fields still land.
+
+v3 (system-wide — 3):
+9. `/api/testing-md` — returned 404 since `UAT_TEST_SCRIPTS.md` was archived. Now tries candidate list (`ALM_TEST_SPECIFICATION.md` → `E2E_TEST_SUITE.md` → `COMPREHENSIVE_TEST_PLAN_*.md` → legacy + archived), returns `{content, source}`.
+10. `/api/spine/stream` — SSE emitted zero bytes until first event, probes/proxies called it stuck. `_gen()` now yields `': ready\n\n'` immediately on connect. **New SSE contract.**
+11. `api_wide_probe.py` tolerance — `TIMEOUT` 4.0 → 8.0 AND new `KNOWN_SLOW` set for contract-declared expensive endpoints (`/api/email/live` + v1 alias honor their own docstring "Slow — only called on demand").
+
+**New infrastructure:**
+- `GET /api/_introspect/routes` — enumerates `current_app.url_map` for `/api/*`; lets the probe (and future audits) discover without importing the app.
+- `core/testlab_registry.py` — `api-wide-probe` registered in `Audit` group, runnable from Test Lab UI.
+- `tests/api_wide_probe.py` — classifies every GET into HEALTHY / EXPECTED / STREAMING / SLOW / MISSING / BROKEN / STUCK.
+
+**Final wide-probe scorecard:** HEALTHY 222, EXPECTED 28, STREAMING 4, SLOW 2, MISSING 0, BROKEN 0, STUCK 0 / 256 probed (of 616 total `/api/*` rules).
+
+**Files Modified:**
+- `core/knowledge/projects.py` — enum validators, `_project_exists`, `_step_belongs_to`, `_case_belongs_to`, `update_case_status`.
+- `core/knowledge/test_runs.py` — FK-style validation in `start_run`.
+- `frontend/blueprints/knowledge_bp.py` — ValueError→400/404 translation on 5 endpoints, reserved-key stripping on PATCH, `PATCH /api/knowledge/cases/<id>` added.
+- `frontend/blueprints/docs.py` — testing-md candidate list.
+- `frontend/blueprints/spine_bp.py` — SSE connect-ack heartbeat.
+- `frontend/blueprints/health.py` — `/api/_introspect/routes` endpoint.
+- `core/testlab_registry.py` — `api-wide-probe` entry.
+- `tests/alm_self_test.py` — 10 → 30 scenarios.
+- `tests/api_wide_probe.py` — new.
+
+**Key Design Decisions:**
+- D26: Every new **module** ships with its own ALM self-audit project co-located in `tests/`, registered in `testlab_registry.py` under `Audit` group, and recorded into the Projects system via `/api/knowledge/test-runs`.
+- D27: Every new **system** ships with a wide-audit companion that walks all HTTP surface and classifies by behavior, not by authorship.
+- D28: **SSE contract** — any blueprint streaming `text/event-stream` MUST yield `': ready\n\n'` before its event loop. Same-RTT liveness signal for probes/proxies/tabs.
+- D29: **Slow-but-correct** is a first-class classification. Endpoints whose docstring declares them expensive go on `KNOWN_SLOW`, not `STUCK`.
+- D30: Validation layer map — domain layer (`core/knowledge/*.py`) raises `ValueError`; blueprint translates to 400 (invalid input) or 404 (unknown parent); blueprint strips reserved keys before `**body` splat.
+
+**Tests:** `alm_self_test.py` 30/30, `api_wide_probe.py` 0 bad / 256, targeted pytest (test_projects + test_testlab_runs + test_spine + test_knowledge) **61/61 green**, live health=200 throughout.
 
 ---
 

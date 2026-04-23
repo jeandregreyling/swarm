@@ -342,6 +342,28 @@ REGISTRY = {
 # Skills that should create a work_proposal entry when they succeed
 _PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule', 'fs_write', 'fs_patch', 'fs_patch_lines'}
 
+# Shell commands at this trust level or below are pure read-only inspections
+# (pwd, ls, ps, df, free, cat, grep, etc.). Logging every one of them as a
+# work_proposal + queue row pollutes the database with hundreds of "[shell] pwd"
+# closed proposals. We skip proposal logging for these but still log to
+# ghost_circle / sandpit_log inside shell_agent.run() for the audit trail.
+_SHELL_PROPOSAL_MIN_TRUST_LEVEL = 2
+
+
+def _shell_should_log_as_proposal(command):
+    """Return True if this shell command is mutating enough to deserve a proposal row."""
+    try:
+        from fridays.shell_agent import _match_whitelist
+        match = _match_whitelist((command or '').strip())
+        if match is None:
+            # Unknown / blocked — caller already returned False before reaching here,
+            # but fail-open to keep audit trail if we somehow get here.
+            return True
+        trust_level, _desc = match
+        return trust_level >= _SHELL_PROPOSAL_MIN_TRUST_LEVEL
+    except Exception:
+        return True
+
 
 def _log(skill_name, agent, args_preview, result_preview, success):
     try:
@@ -2080,6 +2102,12 @@ def call(skill_name, args='', agent='ghost', source_conv_id=None):
     _log(skill_name, agent, args, output, success)
 
     if success and skill_name in _PROPOSAL_SKILLS:
+        # Suppress proposal logging for read-only (Level 0/1) shell commands —
+        # pwd/ls/ps/df/free/cat do not change system state and should not
+        # pollute work_proposals + queue with hundreds of closed rows.
+        if skill_name == 'shell' and not _shell_should_log_as_proposal(args):
+            print(f'[Skills] {"✓" if success else "✗"} {agent} → {skill_name} | {output[:60]}')
+            return success, output
         # Tracer: capture git diff for file-changing skills
         diff = ''
         _PATCH_SKILLS = {'fs_patch', 'fs_patch_lines', 'fs_write', 'file_write'}

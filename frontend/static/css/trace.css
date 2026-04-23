@@ -1,0 +1,153 @@
+/* trace.css — Session 29 Trace ticker + Traced window styling. */
+
+/* ── Top-right Trace ticker ──────────────────────────────────────────── */
+#trace-ticker {
+  position: fixed;
+  top: 8px;
+  right: 12px;
+  z-index: 9800;  /* below modals but above the main workspace */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 380px;
+  pointer-events: none;
+}
+
+#trace-ticker .trace-item {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(22, 22, 30, 0.85);
+  border: 1px solid var(--border, #2a2a35);
+  border-left-width: 3px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text, #d0d0dc);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  animation: trace-slide-in 180ms ease-out;
+  min-width: 200px;
+}
+#trace-ticker .trace-item:hover {
+  background: rgba(30, 30, 40, 0.95);
+}
+#trace-ticker .trace-kind {
+  font-weight: 600;
+  color: var(--text-dim, #a0a0b0);
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+#trace-ticker .trace-msg {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+#trace-ticker .trace-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+#trace-ticker .trace-warn       { border-left-color: #d8a032; }
+#trace-ticker .trace-warn .trace-dot      { background: #d8a032; }
+#trace-ticker .trace-error      { border-left-color: #d85032; }
+#trace-ticker .trace-error .trace-dot     { background: #d85032; }
+#trace-ticker .trace-critical   { border-left-color: #ff3860; }
+#trace-ticker .trace-critical .trace-dot  { background: #ff3860; animation: trace-pulse 0.9s ease-in-out infinite; }
+#trace-ticker .trace-info       { border-left-color: #3a7fbe; }
+#trace-ticker .trace-info .trace-dot      { background: #3a7fbe; }
+
+@keyframes trace-slide-in {
+  from { transform: translateX(12px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes trace-pulse {
+  0%,100% { transform: scale(1);    opacity: 1;   }
+  50%     { transform: scale(1.35); opacity: 0.6; }
+}
+
+/* ── Traced window (history) ─────────────────────────────────────────── */
+#traced-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  color: var(--text, #d0d0dc);
+  font-size: 12px;
+}
+#traced-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border, #2a2a35);
+  flex-wrap: wrap;
+}
+#traced-toolbar select,
+#traced-toolbar input {
+  background: var(--card, #1a1a22);
+  border: 1px solid var(--border, #2a2a35);
+  color: var(--text);
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+#traced-toolbar button {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+}
+#traced-toolbar button:hover { color: var(--text); }
+
+#traced-summary {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+#traced-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 10px 12px;
+}
+.traced-row {
+  display: grid;
+  grid-template-columns: 78px 90px 80px 1fr;
+  gap: 10px;
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-family: ui-monospace, 'JetBrains Mono', monospace;
+  font-size: 11px;
+  align-items: baseline;
+}
+.traced-row.selected { background: rgba(80, 140, 200, 0.08); }
+.traced-row:hover    { background: rgba(255, 255, 255, 0.03); cursor: pointer; }
+.traced-ts    { color: var(--text-dim); white-space: nowrap; }
+.traced-kind  { color: #8aa0c8; font-weight: 600; text-transform: uppercase; font-size: 9px; }
+.traced-sev   { font-weight: 700; font-size: 9px; text-transform: uppercase; }
+.traced-sev.info     { color: #3a7fbe; }
+.traced-sev.warn     { color: #d8a032; }
+.traced-sev.error    { color: #d85032; }
+.traced-sev.critical { color: #ff3860; }
+.traced-msg   { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.traced-detail {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid var(--border);
+  max-height: 180px;
+  overflow-y: auto;
+  font-family: ui-monospace, 'JetBrains Mono', monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+}

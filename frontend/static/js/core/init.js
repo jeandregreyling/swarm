@@ -79,6 +79,17 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(loadOllamaPanel, 20000); // Refresh every 20 seconds (was 15s — shares /api/monitor cache with home stats)
   loadAttentionPanel(); // Needs-attention summary → delegates to System Pulse
   setInterval(loadAttentionPanel, 30000); // Refresh every 30 seconds
+  // Session 30 — Test Lab tile badge (latest run status)
+  if (typeof paintHomeTestlabBadge === 'function') {
+    paintHomeTestlabBadge();
+    setInterval(paintHomeTestlabBadge, 30000);
+  }
+  // Sundial pulse runs on its own faster cadence (2s) — feels live without
+  // hammering the DB thanks to the 2s server-side cache on /api/diamond/pulse.
+  // Any other tile sharing this endpoint rides the same cache for free.
+  if (typeof loadSystemPulse === 'function') {
+    setInterval(loadSystemPulse, 2000);
+  }
   // Home chat replaces activity log + ticket queue on the home page
   if (typeof initHomeChat === 'function') initHomeChat();
   loadAuthProfiles();

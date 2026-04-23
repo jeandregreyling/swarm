@@ -1,9 +1,14 @@
 """
-agents/seven/seven_agent.py — Seven (local-algorithm)
-The nervous system of the Swarm. Observes, deliberates, and speaks without an LLM.
-Reads DB state directly and synthesises a deterministic, structured response.
+agents/seven/seven_agent.py — Seven
+Personal companion + nervous-system observer.
+
+Historically a pure local algorithm (deterministic templates). 2026-04-23 —
+now LLM-backed for open conversation while keeping fast state templates for
+status/identity queries. The model is the custom merge (seven:latest =
+Qwen 2.5 7B + DeepSeek-R1-Distill-Qwen-7B) registered in Ollama.
 """
 import logging
+import os
 import random
 import sys
 
@@ -12,6 +17,11 @@ sys.path.insert(0, '/home/seven/swarm/utils')
 
 logger = logging.getLogger('seven.seven')
 AGENT_NAME = 'seven'
+# 2026-04-23 — The custom merged GGUF (Qwen 2.5 7B + DeepSeek-R1-Distill-Qwen-7B)
+# produces incoherent output (repetition, token leakage). Until the merge is
+# rebuilt, Seven runs on qwen2.5:latest with the Seven personality prompt.
+# Override with SEVEN_MODEL env var to test other backends.
+SEVEN_MODEL = os.environ.get('SEVEN_MODEL', 'qwen2.5:latest')
 
 
 def _read_state():
@@ -107,7 +117,7 @@ def _compose(message, state, memories):
             + random.choice(_STATUS_SUFFIXES)
         ), 0
 
-    # Status / queue / tickets
+    # Status / queue / tickets — fast deterministic path (no LLM needed)
     if _is_about(msg, ['status', 'queue', 'ticket', 'backlog', 'proposal', 'pending',
                        "what's happening", 'how is', 'health']):
         parts = [f"{intro}\n\n{state_block}"]
@@ -120,7 +130,7 @@ def _compose(message, state, memories):
                     parts.append(f"  [{subj}] {body}")
         return '\n'.join(parts), 0
 
-    # Agent / team query
+    # Agent / team query — fast deterministic path
     if _is_about(msg, ['agent', 'team', 'who is', 'list', 'agents', 'roster']):
         return (
             f"{intro}\n\n"
@@ -129,23 +139,65 @@ def _compose(message, state, memories):
             "I manage routing between all of them. Select any agent in this chat to speak directly with them."
         ), 0
 
-    # Memory / history
-    if memories and _is_about(msg, ['remember', 'recall', 'history', 'last time', 'previous', 'before']):
-        lines = [f"{intro}\n\nFrom memory:"]
-        for m in memories[:3]:
-            subj = str(m.get('subject') or '').strip()[:80]
-            body = str(m.get('content') or '').strip()[:300]
-            lines.append(f"  [{subj}]: {body}")
-        return '\n'.join(lines), 0
+    # For anything else — signal to caller to route through the LLM.
+    return None, 0
 
-    # Fallback: general system read
-    return (
-        f"{intro}\n\n"
-        f"{state_block}\n\n"
-        f"Local agents: {agents}\n\n"
-        f"Your message arrived at the algorithm layer. I do not interpret language — "
-        f"I observe structure. For a conversational response, route to one of the agents above."
-    ), 0
+
+def _llm_chat(message, state, memories, history):
+    """Call Seven's merged Ollama model with system prompt + live context.
+    Returns (text, tokens) or (None, 0) on failure.
+    """
+    try:
+        from utils.config import SEVEN_SYSTEM_PROMPT
+    except Exception:
+        SEVEN_SYSTEM_PROMPT = (
+            "You are Seven — the personal companion AI for Ghost One (Jeandre). "
+            "Be direct, honest, and loyal. No filler openers. Have opinions."
+        )
+    try:
+        import ollama
+    except Exception as exc:
+        logger.warning(f"[Seven] ollama import failed: {exc}")
+        return None, 0
+
+    state_block = _format_state_block(state)
+    agents = ', '.join(state.get('local_agents', [])) or 'none listed'
+    mem_lines = []
+    for m in (memories or [])[:3]:
+        subj = str(m.get('subject') or '').strip()[:80]
+        body = str(m.get('content') or '').strip()[:240]
+        if subj or body:
+            mem_lines.append(f"- [{subj}] {body}")
+    mem_block = '\n'.join(mem_lines) if mem_lines else '(no relevant memory)'
+
+    system = (
+        f"{SEVEN_SYSTEM_PROMPT}\n\n"
+        f"LIVE SWARM STATE (for your awareness — only mention if relevant):\n{state_block}\n"
+        f"Local agents online: {agents}\n\n"
+        f"RELEVANT MEMORY:\n{mem_block}"
+    )
+
+    msgs = [{'role': 'system', 'content': system}]
+    for h in (history or [])[-6:]:
+        role = h.get('role') or ('user' if h.get('sender') in (None, 'you', 'user') else 'assistant')
+        content = h.get('content') or h.get('message') or ''
+        if content:
+            msgs.append({'role': role if role in ('user', 'assistant', 'system') else 'user',
+                         'content': str(content)[:2000]})
+    msgs.append({'role': 'user', 'content': str(message or '')})
+
+    try:
+        resp = ollama.chat(
+            model=SEVEN_MODEL,
+            messages=msgs,
+            options={'temperature': 0.8, 'top_p': 0.9, 'num_ctx': 4096, 'num_predict': 640},
+        )
+        text = (resp or {}).get('message', {}).get('content', '') or ''
+        tokens = int((resp or {}).get('eval_count') or 0)
+        return text.strip(), tokens
+    except Exception as exc:
+        logger.warning(f"[Seven] ollama chat failed: {exc}")
+        return None, 0
 
 
 def chat(message, conversation_history=None, stage_cb=None):
@@ -164,6 +216,24 @@ def chat(message, conversation_history=None, stage_cb=None):
 
     _emit('synthesising response')
     answer, tokens = _compose(message, state, memories)
+
+    # Fast deterministic paths returned an answer (status/identity/roster).
+    # Anything else → Seven's merged LLM.
+    if answer is None:
+        _emit('thinking · seven merged model')
+        llm_text, llm_tokens = _llm_chat(message, state, memories, conversation_history or [])
+        if llm_text:
+            answer, tokens = llm_text, llm_tokens
+        else:
+            # Last-resort fallback: simple state read (prevents a silent fail).
+            intro = random.choice(_INTROS)
+            state_block = _format_state_block(state)
+            agents = ', '.join(state.get('local_agents', [])) or 'none listed'
+            answer = (
+                f"{intro}\n\n{state_block}\n\nLocal agents: {agents}\n\n"
+                "My model is offline right now — state read only."
+            )
+            tokens = 0
 
     try:
         from database import save_agent_memory

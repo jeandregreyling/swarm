@@ -71,13 +71,15 @@ def classify_message(text):
     Returns dict: {category, agents, model_tier, relay, confidence, reasoning}
     """
     if not text or not text.strip():
+        # Empty → no auto pick. Caller should fall back to user's manual
+        # selection rather than auto-tagging anyone.
         return {
             'category': 'general',
-            'agents': ['gemma'],
+            'agents': [],
             'model_tier': 'local',
             'relay': False,
             'confidence': 0.0,
-            'reasoning': 'Empty message — defaulting to Gemma.',
+            'reasoning': 'Empty message — no auto routing.',
         }
 
     txt = text.strip()
@@ -89,13 +91,17 @@ def classify_message(text):
             hits[category] = len(matches)
 
     if not hits:
+        # No signal → low-confidence general. Keep confidence low so callers
+        # that gate on threshold (e.g. Seven guardian) don't treat this as
+        # a deliberate pick. Agents list kept empty so the UI doesn't auto-
+        # tag Gemma on every keystroke.
         return {
             'category': 'general',
-            'agents': ['gemma'],
+            'agents': [],
             'model_tier': 'local',
             'relay': False,
-            'confidence': 0.5,
-            'reasoning': 'No strong category signals — routing to Gemma as general assistant.',
+            'confidence': 0.2,
+            'reasoning': 'No category signals — deferring to manual selection.',
         }
 
     # Sort by match count descending, with domain-specificity as tiebreaker

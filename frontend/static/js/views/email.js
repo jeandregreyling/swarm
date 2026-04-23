@@ -114,7 +114,20 @@ async function _loadEmailInbox(account) {
       return;
     }
 
-    inner.innerHTML = emails.map(e => {
+    // Session 29.2 — multi-select toolbar + per-row checkbox.
+    const toolbar = `<div id="email-bulk-toolbar" style="position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:6px;background:var(--bg);border-bottom:1px solid var(--border);font-size:11px;">
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text-dim);">
+        <input type="checkbox" id="email-select-all" onclick="_emailToggleSelectAll(this)" style="cursor:pointer;"/>
+        <span id="email-select-count">0 selected</span>
+      </label>
+      <span style="flex:1;"></span>
+      <button onclick="_emailBulkClose()" title="Close tickets for selected emails"
+        style="padding:3px 10px;font-size:10px;background:#f443361a;border:1px solid #f4433644;border-radius:3px;color:#f44336;cursor:pointer;">Close selected</button>
+      <button onclick="_emailBulkClearSelection()" title="Clear selection"
+        style="padding:3px 10px;font-size:10px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);cursor:pointer;">Clear</button>
+    </div>`;
+
+    const rows = emails.map(e => {
       const st        = e.status || 'queued';
       const stColor   = st === 'processing' ? '#2196f3' : st === 'done' || st === 'closed' ? '#4caf50' : st === 'abandoned' ? '#888' : '#ffa500';
       const hasTicket = e.ticket_number;
@@ -122,26 +135,82 @@ async function _loadEmailInbox(account) {
       const subj      = (e.subject || '(no subject)').slice(0, 60);
       const ts        = (e.created_at || '').slice(0, 16);
       const acct      = (e.swarm_account || '').split('@')[0];
-      return `<div class="email-row" onclick="_emailOpenThread('${_escAttr(e.ticket_number || '')}', '${_escAttr(e.id || '')}')"
-        style="padding:10px;border-radius:4px;margin-bottom:6px;cursor:pointer;border-left:3px solid ${stColor};background:var(--card);transition:background 0.15s;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
-          <span style="font-size:10px;font-family:monospace;color:${stColor};font-weight:700;">${_escHtml(st.toUpperCase())}</span>
-          ${hasTicket ? `<span style="font-size:9px;color:#2196f3;font-family:monospace;">${_escHtml(e.ticket_number)}</span>` : ''}
-          <span style="font-size:9px;color:var(--text-dim);">${_escHtml(acct)}</span>
+      const ticketAttr = hasTicket ? _escAttr(e.ticket_number) : '';
+      return `<div class="email-row" data-ticket="${ticketAttr}" data-qid="${_escAttr(e.id || '')}"
+        style="display:flex;align-items:stretch;border-radius:4px;margin-bottom:6px;border-left:3px solid ${stColor};background:var(--card);transition:background 0.15s;overflow:hidden;">
+        <label style="display:flex;align-items:center;padding:0 8px;cursor:pointer;border-right:1px solid var(--border);" onclick="event.stopPropagation();">
+          <input type="checkbox" class="email-row-check" data-ticket="${ticketAttr}" onchange="_emailOnRowCheck()" ${hasTicket ? '' : 'disabled title="No ticket"'} style="cursor:pointer;"/>
+        </label>
+        <div style="flex:1;padding:10px;cursor:pointer;" onclick="_emailOpenThread('${ticketAttr}', '${_escAttr(e.id || '')}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+            <span style="font-size:10px;font-family:monospace;color:${stColor};font-weight:700;">${_escHtml(st.toUpperCase())}</span>
+            ${hasTicket ? `<span style="font-size:9px;color:#2196f3;font-family:monospace;">${_escHtml(e.ticket_number)}</span>` : ''}
+            <span style="font-size:9px;color:var(--text-dim);">${_escHtml(acct)}</span>
+          </div>
+          <div style="font-size:11px;font-weight:600;margin:3px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(subj)}</div>
+          <div style="font-size:10px;color:var(--text-dim);">${_escHtml(from)} · ${_escHtml(ts)}</div>
         </div>
-        <div style="font-size:11px;font-weight:600;margin:3px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(subj)}</div>
-        <div style="font-size:10px;color:var(--text-dim);">${_escHtml(from)} · ${_escHtml(ts)}</div>
       </div>`;
     }).join('');
+
+    inner.innerHTML = toolbar + rows;
 
     // Hover highlight
     inner.querySelectorAll('.email-row').forEach(el => {
       el.addEventListener('mouseenter', () => el.style.background = 'var(--hover, #ffffff10)');
       el.addEventListener('mouseleave', () => el.style.background = 'var(--card)');
     });
+    _emailOnRowCheck();
   } catch (e) {
     inner.innerHTML = `<div style="color:#f44;font-size:12px;padding:12px;">Error: ${_escHtml(e.message)}</div>`;
   }
+}
+
+// ── Session 29.2 — multi-select helpers ───────────────────────────────────
+function _emailCheckedTickets() {
+  return Array.from(document.querySelectorAll('.email-row-check:checked'))
+    .map(cb => cb.getAttribute('data-ticket'))
+    .filter(Boolean);
+}
+
+function _emailOnRowCheck() {
+  const count = _emailCheckedTickets().length;
+  const total = document.querySelectorAll('.email-row-check:not(:disabled)').length;
+  const countEl = document.getElementById('email-select-count');
+  if (countEl) countEl.textContent = `${count} selected`;
+  const allBox = document.getElementById('email-select-all');
+  if (allBox) allBox.checked = count > 0 && count === total;
+}
+
+function _emailToggleSelectAll(cb) {
+  const checked = !!cb.checked;
+  document.querySelectorAll('.email-row-check:not(:disabled)').forEach(box => { box.checked = checked; });
+  _emailOnRowCheck();
+}
+
+function _emailBulkClearSelection() {
+  document.querySelectorAll('.email-row-check:checked').forEach(box => { box.checked = false; });
+  const allBox = document.getElementById('email-select-all');
+  if (allBox) allBox.checked = false;
+  _emailOnRowCheck();
+}
+
+async function _emailBulkClose() {
+  const tickets = _emailCheckedTickets();
+  if (!tickets.length) { if (typeof showToast === 'function') showToast('No emails selected', 'info'); return; }
+  if (!confirm(`Close ${tickets.length} ticket${tickets.length === 1 ? '' : 's'}?`)) return;
+  let ok = 0, fail = 0;
+  for (const tn of tickets) {
+    try {
+      const r = await fetch(`/api/tickets/${encodeURIComponent(tn)}/close`, { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok && data.ok !== false) ok++; else fail++;
+    } catch (_) { fail++; }
+  }
+  if (typeof showToast === 'function') {
+    showToast(`Closed ${ok}${fail ? ` · ${fail} failed` : ''}`, fail ? 'error' : 'success');
+  }
+  _loadEmailInbox(_emailActiveAccount);
 }
 
 async function _emailOpenThread(ticketNumber, queueId) {

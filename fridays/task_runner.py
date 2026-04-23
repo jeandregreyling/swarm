@@ -139,14 +139,65 @@ def _task_knowledge_reindex(**kwargs):
     return f'Re-indexed {count}/{len(sources)} sources'
 
 
+@register('idle_research', 'Pick an active topic from user_interests and run Scholar research on it', 'knowledge')
+def _task_idle_research(**kwargs):
+    """
+    Idle research rotation — weighted random draw from active user_interests rows.
+    Optional args (space-separated): username=<name> depth=<standard|deep> category=<cat>
+    Defaults: username=ghost depth=deep (no category filter).
+    """
+    import random
+    from database import get_connection
+
+    # Parse args
+    opts = {'username': 'ghost', 'depth': 'deep', 'category': None}
+    for tok in (kwargs.get('args') or '').split():
+        if '=' in tok:
+            k, v = tok.split('=', 1)
+            k = k.strip().lower()
+            if k in opts:
+                opts[k] = v.strip()
+
+    sql = ("SELECT id, topic, score FROM user_interests "
+           "WHERE active=1 AND username=?")
+    params = [opts['username']]
+    if opts['category']:
+        sql += " AND category=?"
+        params.append(opts['category'])
+
+    conn = get_connection()
+    try:
+        rows = conn.execute(sql, params).fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return 'No active research topics — nothing to do.'
+
+    weights = [float(r['score'] or 1.0) for r in rows]
+    pick = random.choices(list(rows), weights=weights, k=1)[0]
+    topic = pick['topic']
+    logger.info(f'[idle_research] picked topic_id={pick["id"]} score={pick["score"]} topic={topic!r}')
+
+    from fridays.research_workflow import run_research
+    sid = run_research(topic, depth=opts['depth'], requesting_agent='scholar')
+    return f'Started research session {sid} on {topic!r} (depth={opts["depth"]})'
+
+
 @register('landscape_refresh', 'Regenerate system index and landscape JSON', 'maintenance')
 def _task_landscape_refresh(**kwargs):
     try:
         from scripts.generate_system_index import generate as gen_md
         from scripts.generate_landscape_json import generate as gen_json
+        from scripts.update_docs import generate as gen_ref
         gen_md()
         _, count = gen_json()
-        return f'Landscape refreshed ({count} entries)'
+        ref = gen_ref()
+        return (
+            f"Landscape refreshed ({count} entries; "
+            f"{ref['routes']} routes → {ref['api_doc']}, "
+            f"{ref['shortcuts_doc']})"
+        )
     except Exception as e:
         return f'Landscape refresh partial: {e}'
 

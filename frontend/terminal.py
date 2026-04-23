@@ -86,6 +86,9 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.login_bp',       'login_bp'),
     ('blueprints.idle_mgmt_bp',   'idle_bp'),
     ('blueprints.tasker_bp',      'tasker_bp'),
+    ('blueprints.testlab_bp',     'testlab_bp'),
+    ('blueprints.spine_bp',       'spine_bp'),
+    ('blueprints.knowledge_bp',   'knowledge_bp'),
     ('blueprints.health',         'health_bp'),    ('blueprints.health_bp',       'health_digest_bp'),    ('blueprints.council_bp',     'council_bp'),
 ]
 
@@ -260,6 +263,36 @@ def create_app():
         register_versioned_routes(app, version='v1')
     except Exception as _ver_err:
         print(f'[Terminal] API versioning warning: {_ver_err}')
+
+    # Global input-type guard (Session 30.1 v5): when a request handler
+    # raises TypeError or AttributeError while parsing the request body,
+    # it's almost always a bad-type input (e.g. int where string expected
+    # hitting `.strip()`). Return a proper 400 instead of a generic 500.
+    # Real server bugs still surface as 500 — only these two exception
+    # types during a JSON-body request are converted.
+    from flask import jsonify as _jsonify, request as _request
+    import logging as _logging
+    _input_guard_log = _logging.getLogger('swarm.input_guard')
+
+    def _bad_input_type(err):
+        # Only convert when the request actually had a JSON body; routes
+        # without a body that legitimately TypeError should still 500.
+        is_api = _request.path.startswith('/api/')
+        has_body = _request.content_length and _request.content_length > 0
+        if is_api and has_body:
+            _input_guard_log.warning(
+                "bad-type input on %s %s: %s",
+                _request.method, _request.path, err,
+            )
+            return _jsonify({
+                'ok': False,
+                'error': 'invalid request body (wrong field types)',
+            }), 400
+        # Re-raise for Flask's default 500 handling
+        raise err
+
+    app.register_error_handler(TypeError, _bad_input_type)
+    app.register_error_handler(AttributeError, _bad_input_type)
 
     return app
 
