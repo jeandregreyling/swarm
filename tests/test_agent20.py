@@ -595,10 +595,13 @@ class TestOrbsJSStructure:
         assert 'voice: VOICE' in self.js
 
     def test_five_roost_positions(self):
-        # Count ROOST_BASE entries
+        # Count ROOST_BASE entries.
+        # Phase-4 fix: the first textual occurrence of "ROOST_BASE" is now in a
+        # comment block, so we must locate the actual array literal.
         import re
-        roost_section = self.js[self.js.index('ROOST_BASE'):self.js.index('ROOST_BASE') + 500]
-        roost_entries = re.findall(r'\[\d+\.\d+,\s*\d+\.\d+\]', roost_section)
+        m = re.search(r'ROOST_BASE\s*=\s*\[(.*?)\]', self.js, re.DOTALL)
+        assert m is not None, "ROOST_BASE array not found in orbs.js"
+        roost_entries = re.findall(r'\[\d+\.\d+,\s*\d+\.\d+\]', m.group(1))
         assert len(roost_entries) == 5
 
     def test_five_orbs_created(self):
