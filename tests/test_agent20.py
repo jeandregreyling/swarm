@@ -596,12 +596,13 @@ class TestOrbsJSStructure:
 
     def test_five_roost_positions(self):
         # Count ROOST_BASE entries.
-        # Phase-4 fix: the first textual occurrence of "ROOST_BASE" is now in a
-        # comment block, so we must locate the actual array literal.
+        # Phase-4 fix: the first textual occurrence of "ROOST_BASE" is in a
+        # comment, so locate the actual array assignment and capture greedily
+        # up to the closing `];`.
         import re
-        m = re.search(r'ROOST_BASE\s*=\s*\[(.*?)\]', self.js, re.DOTALL)
-        assert m is not None, "ROOST_BASE array not found in orbs.js"
-        roost_entries = re.findall(r'\[\d+\.\d+,\s*\d+\.\d+\]', m.group(1))
+        m = re.search(r'ROOST_BASE\s*=\s*\[(.*?)\]\s*;', self.js, re.DOTALL)
+        assert m is not None, "ROOST_BASE = [...] block not found in orbs.js"
+        roost_entries = re.findall(r'\[\s*\d+\.\d+\s*,\s*\d+\.\d+\s*\]', m.group(1))
         assert len(roost_entries) == 5
 
     def test_five_orbs_created(self):
