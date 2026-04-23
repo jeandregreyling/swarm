@@ -67,7 +67,9 @@ def summary() -> dict:
     if cpu is None and temps:
         cpu = max(t['c'] for t in temps)
     helper_up = os.path.exists(FANCTL_SOCK)
-    mode = _query_helper('mode') if helper_up else None
+    mode_raw = _query_helper('mode') if helper_up else None
+    # The helper returns {"ok":true,"mode":"auto"}; surface just the string.
+    mode = mode_raw.get('mode') if isinstance(mode_raw, dict) else mode_raw
     return {
         'cpu_c': cpu,
         'temps': temps,

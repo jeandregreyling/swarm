@@ -57,8 +57,26 @@ per the standing directive.
 - [ ] **Governance tab** — noted by user as untested; end-to-end walkthrough + gap-list.
 
 ### Phase-5 — MANUAL (Ghost runs these)
-- [ ] **Fan controller install** — see answer at the top of this session's reply; one-time sudo install of `ops/swarm-fanctl.py` + `.service`, then group-add so Flask can talk to `/run/swarm-fanctl.sock`. Full steps in [docs/runbooks/fan-controller.md](runbooks/fan-controller.md).
-- [ ] **Voice deps (optional)** — `pip install faster-whisper` for STT; download a Piper voice (e.g. `en_GB-alba-medium.onnx`) into `models/piper/` for TTS. Without these, the mic buttons fall back to the browser's Web Speech API.
+- [x] **Fan controller install** — installed 2026-04-23. `swarm-fanctl.service` enabled + socket chowned to `seven` group. Status reports `helper_installed:true`; boost writes `pwm1=255` on `dell_smm` confirmed live.
+- [x] **Voice deps (shipped 2026-04-23)** — `faster-whisper` + `piper-tts` in `.venv`; Alba voice (`en_GB-alba-medium.onnx`, 61 MB) in `models/piper/`; `PIPER_BIN` env added to swarm-terminal.service. `/api/voice/status` reports both stt+tts available.
+
+---
+
+## Phase 6 — Rollover backlog (2026-04-23) — from Phase-5 session observations
+
+### Phase-6 — System features (cross-platform hardening)
+- [ ] **Fan controller bullet-proof** — make it a first-class system feature, not a hand-installed helper.
+  - Auto-detect hardware profile on install (Dell OptiPlex / Lenovo ThinkPad / generic ACPI / macOS / Windows).
+  - Bundle a lookup table (`ops/fanctl_profiles.json`) keyed on DMI product_name → {platform_profile availability, pwm path hints, auto fallback value}.
+  - Self-install flow from the Settings tile so a second PC install doesn't need shell access.
+  - Graceful degrade on hardware without writable `pwmN` (surface "read-only" badge in Monitor).
+- [ ] **Onboarding — optional system-modifications pack** — surface fan control + future privileged helpers as an **optional** tick in the enrollment flow. Plain-English explanation of what sudo is needed, link to the runbook. Ghost ticks it → we run a one-shot privileged installer; Ghost leaves it → everything degrades to safe read-only.
+- [ ] **Settings tile — system-modifications toggle** — once installed, enable/disable per-helper (fanctl, future helpers) from Settings. Toggle maps to `systemctl enable --now` / `systemctl disable --now`. Same place reveals install-status for each helper.
+
+### Phase-6 — Knowledge Centre seeding (the interesting stuff)
+- [ ] **Hugging Face seeding** — curate a KC seed bundle of high-signal HF resources: model hub structure, datasets, Spaces, Inference API, PEFT/LoRA, quantisation guides, evaluation leaderboards, Transformers + Diffusers + Sentence-Transformers cheat-sheets. Feed through Librarian → `library_sources` with `category=huggingface`, `subcategory=<area>`.
+- [ ] **GitHub functionality seeding** — seed KC with GitHub Actions patterns, Gists, Dependabot, Copilot API, REST + GraphQL + Octokit references, Codespaces, repo-topic taxonomy, release-automation, branch-protection, webhooks. `category=github`, `subcategory=<area>`.
+- [ ] **KC seeding framework** — formalise the seeding pipeline so future "seed topic X" asks don't require custom scripts: a declarative `ops/kc_seeds/<topic>.yaml` (source URLs + fetch rules + categorisation hints) consumed by a Librarian batch job. Start with `huggingface.yaml` + `github.yaml` as the first two.
 
 ---
 

@@ -85,7 +85,7 @@
 <link rel="stylesheet" href="/static/css/components.css?v=6">
 <link rel="stylesheet" href="/static/css/windows.css">
 <link rel="stylesheet" href="/static/css/taskbar.css">
-<link rel="stylesheet" href="/static/css/views/chat.css?v=2">
+<link rel="stylesheet" href="/static/css/views/chat.css?v=3">
 <link rel="stylesheet" href="/static/css/modals.css?v=3">
 <link rel="stylesheet" href="/static/css/library.css">
 <link rel="stylesheet" href="/static/css/diamond.css?v=2">
@@ -665,8 +665,12 @@
         </div>
       </div>
     </div>
-    <div id="world-clocks"></div>
-    <div id="time-display"></div>
+    <!-- Phase-5 SMALL: Clock + Vibe removed from main header; both still reachable via
+         the five-click settings overlay. Containers kept in DOM as display:none so
+         theme.js updaters (drawWorldClocks / updateTimeDisplay) remain no-ops if
+         someone re-enables via Settings. -->
+    <div id="world-clocks" style="display:none;"></div>
+    <div id="time-display" style="display:none;"></div>
     <div id="home-controls">
       <button id="auth-user-pill" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Identity & proxy user">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span id="auth-user-pill-label">ghost</span>
@@ -717,7 +721,66 @@
 
   <div id="home-content">
 
-    <!-- ═══ Home Chat — primary interaction surface (above tiles for prominence) ═══ -->
+    <!-- ═══ Quick Access tiles (Phase-5 SMALL: moved back above chat) ═══ -->
+    <div class="home-section home-tiles-section">
+      <div class="home-section-title" id="quick-access-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.4 1.4M10.6 10.6L12 12M4 12l1.4-1.4M10.6 5.4L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/></svg></span> Quick Access <span class="section-caret">▼</span></div>
+      <div class="card-grid" id="quick-cards">
+        <div class="home-card" data-win-id="chat" data-win-title="Chat" data-win-template="view-chat" data-shortcut="Ctrl+J">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span><span>Chat</span></div>
+          <div class="card-desc">Ask the swarm</div>
+        </div>
+        <div class="home-card" data-win-id="terminal" data-win-title="Terminal" data-win-template="view-terminal">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 3.5h11v9h-11zM5 6l2 2-2 2M8.5 10h2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Terminal</span></div>
+          <div class="card-desc">Shell commands</div>
+        </div>
+        <div class="home-card" data-win-id="knowledge" data-win-title="Knowledge" data-win-template="view-knowledge" data-shortcut="Ctrl+B">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Knowledge</span></div>
+          <div class="card-desc">Files, docs, memory &amp; library</div>
+        </div>
+        <div class="home-card" data-win-id="monitor" data-win-title="Monitor" data-win-template="view-monitor">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 8l2.5-2.5M4.5 11.5A5 5 0 0 1 11.5 4.5M2.8 13.2a7.4 7.4 0 0 1 10.4-10.4M8 8l-1.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Monitor</span></div>
+          <div class="card-desc">System status &amp; health digest</div>
+        </div>
+        <div class="home-card" data-win-id="trace" data-win-title="Trace" data-win-template="view-trace">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Trace</span><span id="trace-tile-errors" style="display:none;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:var(--danger,#f44336);color:#fff;" title="Errors"></span><span id="trace-tile-warnings" style="display:none;margin-left:4px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:var(--warning,#f7b84b);color:#000;" title="Warnings"></span></div>
+          <div class="card-desc">End-to-end message tracing</div>
+        </div>
+        <div class="home-card" data-win-id="studio" data-win-title="Studio" data-win-template="view-studio" data-shortcut="Ctrl+P">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3c-2.8 0-5 1.9-5 4.4 0 2.4 2 4.3 4.5 4.3H9a1.5 1.5 0 0 0 0-3h-.5a.8.8 0 0 1-.8-.8A1.9 1.9 0 0 1 9.6 6H11A2 2 0 0 0 13 4c0-.6-.3-1-.8-1.1A9.4 9.4 0 0 0 8 3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="5.2" cy="7" r=".7" fill="currentColor"/><circle cx="7" cy="5.7" r=".7" fill="currentColor"/></svg></span><span>Studio</span><span id="home-studio-badge" style="display:none;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;"></span></div>
+          <div class="card-desc" id="home-studio-desc">Projects · Proposals · Git · Test Lab</div>
+        </div>
+        <div class="home-card" data-win-id="time-wizard" data-win-title="Vortex" data-win-template="view-time-wizard">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Vortex</span></div>
+          <div class="card-desc">State timeline</div>
+        </div>
+        <div class="home-card" data-win-id="access" data-win-title="Access" data-win-template="view-access">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Access</span></div>
+          <div class="card-desc">Senders &amp; permissions</div>
+        </div>
+        <div class="home-card" data-win-id="agents-config" data-win-title="Agents" data-win-template="view-agents-config">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Agents</span></div>
+          <div class="card-desc">Roster, skills, Local AI &amp; nodes</div>
+        </div>
+        <div class="home-card" data-win-id="email" data-win-title="Email" data-win-template="view-email" data-shortcut="Ctrl+E">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Email</span></div>
+          <div class="card-desc">Inbox &amp; compose</div>
+        </div>
+        <div class="home-card" data-win-id="feeds" data-win-title="Feeds" data-win-template="view-feeds">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span>Feeds</span></div>
+          <div class="card-desc">Social &amp; developer feeds</div>
+        </div>
+        <div class="home-card home-card-add" id="add-new-tile" data-win-id="add-new" title="Create a proposal for new functionality">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 2"/><path d="M8 5.5v5M5.5 8h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span><span>Add New</span></div>
+          <div class="card-desc">Propose a feature or tool</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat resize handle (Phase-5 SMALL: now sits ABOVE chat). Dragging up
+         grows chat, dragging down shrinks it — see _initHomeChatResize. -->
+    <div class="home-chat-resizer home-chat-resizer-top" id="home-chat-resizer" title="Drag to resize chat"></div>
+
+    <!-- ═══ Home Chat — primary interaction surface ═══ -->
     <div class="home-section home-chat-section home-chat-prominent">
       <div id="home-chat-body">
         <!-- Main chat column -->
@@ -729,13 +792,14 @@
               <span id="home-chat-env-badge" class="home-chat-env-badge"></span>
             </div>
             <div class="home-chat-bar-center">
-              <!-- Session 29.1 — thread dropdown removed from tile.
-                   Threads live in the main chat sidebar (and an upcoming
-                   dropdown there). The tile keeps "+ New" so users can fork
-                   without expanding. The select element stays in the DOM
-                   (display:none) so home-chat.js's getElementById calls keep
-                   working without a refactor. -->
-              <select id="home-chat-thread-select" title="Switch conversation thread" style="display:none;">
+              <!-- Session 29.1 removed this dropdown from the front-terminal by
+                   mistake while stripping it from the chat-tile. Phase-5 SMALL
+                   restores it here: the front-terminal home-chat gets the
+                   dropdown back (thread quick-switch without opening the full
+                   Chat view). The chat-tile must stay dropdown-free — threads
+                   live in its rail. -->
+              <select id="home-chat-thread-select" title="Switch conversation thread"
+                      style="background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:4px 8px;max-width:180px;">
                 <option value="">New conversation</option>
               </select>
               <button id="home-chat-new-btn" title="Start a new thread">+ New</button>
@@ -812,80 +876,6 @@
       </div>
     </div>
 
-    <!-- Chat resize handle -->
-    <div class="home-chat-resizer" id="home-chat-resizer" title="Drag to resize chat"></div>
-
-    <!-- Quick Access Cards -->
-    <div class="home-section home-tiles-section">
-      <div class="home-section-title" id="quick-access-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.4 1.4M10.6 10.6L12 12M4 12l1.4-1.4M10.6 5.4L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/></svg></span> Quick Access <span class="section-caret">▼</span></div>
-      <div class="card-grid" id="quick-cards">
-        <div class="home-card" data-win-id="chat" data-win-title="Chat" data-win-template="view-chat" data-shortcut="Ctrl+J">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span><span>Chat</span></div>
-          <div class="card-desc">Ask the swarm</div>
-        </div>
-        <div class="home-card" data-win-id="terminal" data-win-title="Terminal" data-win-template="view-terminal">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 3.5h11v9h-11zM5 6l2 2-2 2M8.5 10h2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Terminal</span></div>
-          <div class="card-desc">Shell commands</div>
-        </div>
-        <div class="home-card" data-win-id="knowledge" data-win-title="Knowledge" data-win-template="view-knowledge" data-shortcut="Ctrl+B">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Knowledge</span></div>
-          <div class="card-desc">Files, docs, memory &amp; library</div>
-        </div>
-        <!-- Memory merged into Knowledge (M9) -->
-        <div class="home-card" data-win-id="monitor" data-win-title="Monitor" data-win-template="view-monitor">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 8l2.5-2.5M4.5 11.5A5 5 0 0 1 11.5 4.5M2.8 13.2a7.4 7.4 0 0 1 10.4-10.4M8 8l-1.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Monitor</span></div>
-          <div class="card-desc">System status &amp; health digest</div>
-        </div>
-        <!-- Trace moved next to Monitor (M9), with error/warning tags -->
-        <div class="home-card" data-win-id="trace" data-win-title="Trace" data-win-template="view-trace">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Trace</span><span id="trace-tile-errors" style="display:none;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:var(--danger,#f44336);color:#fff;" title="Errors"></span><span id="trace-tile-warnings" style="display:none;margin-left:4px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:var(--warning,#f7b84b);color:#000;" title="Warnings"></span></div>
-          <div class="card-desc">End-to-end message tracing</div>
-        </div>
-        <!-- Health Digest merged into Monitor (M9) -->
-        <!-- Docs merged into Knowledge (Tier 1.1) -->
-        <!-- Skills merged into Agents tile (M9) -->
-        <!-- Tickets removed from home (5.2): accessible via Ctrl+T, Studio, and Ticket Queue section below -->
-        <div class="home-card" data-win-id="studio" data-win-title="Studio" data-win-template="view-studio" data-shortcut="Ctrl+P">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3c-2.8 0-5 1.9-5 4.4 0 2.4 2 4.3 4.5 4.3H9a1.5 1.5 0 0 0 0-3h-.5a.8.8 0 0 1-.8-.8A1.9 1.9 0 0 1 9.6 6H11A2 2 0 0 0 13 4c0-.6-.3-1-.8-1.1A9.4 9.4 0 0 0 8 3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="5.2" cy="7" r=".7" fill="currentColor"/><circle cx="7" cy="5.7" r=".7" fill="currentColor"/></svg></span><span>Studio</span><span id="home-studio-badge" style="display:none;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;"></span></div>
-          <div class="card-desc" id="home-studio-desc">Projects · Proposals · Git · Test Lab</div>
-        </div>
-        <div class="home-card" data-win-id="time-wizard" data-win-title="Vortex" data-win-template="view-time-wizard">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Vortex</span></div>
-          <div class="card-desc">State timeline</div>
-        </div>
-        <div class="home-card" data-win-id="access" data-win-title="Access" data-win-template="view-access">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Access</span></div>
-          <div class="card-desc">Senders &amp; permissions</div>
-        </div>
-        <div class="home-card" data-win-id="agents-config" data-win-title="Agents" data-win-template="view-agents-config">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Agents</span></div>
-          <div class="card-desc">Roster, skills, Local AI &amp; nodes</div>
-        </div>
-        <!-- Local AI merged into Agents tile (M9) -->
-        <!-- Email restored to home (7G) -->
-        <div class="home-card" data-win-id="email" data-win-title="Email" data-win-template="view-email" data-shortcut="Ctrl+E">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Email</span></div>
-          <div class="card-desc">Inbox &amp; compose</div>
-        </div>
-        <!-- Git merged into Studio (7F): Ctrl+G opens Studio > Git tab -->
-        <!-- Library merged into Knowledge (Tier 1.1) -->
-        <!-- Local AI merged into Agents tile (7E) -->
-        <!-- VPN moved into Access view header -->
-        <!-- Trace tile relocated next to Monitor (M9) -->
-
-        <div class="home-card" data-win-id="feeds" data-win-title="Feeds" data-win-template="view-feeds">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span>Feeds</span></div>
-          <div class="card-desc">Social &amp; developer feeds</div>
-        </div>
-        <!-- Tasker moved into Knowledge view header -->
-        <!-- + Add New tile -->
-        <div class="home-card home-card-add" id="add-new-tile" title="Create a proposal for new functionality">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 2"/><path d="M8 5.5v5M5.5 8h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span><span>Add New</span></div>
-          <div class="card-desc">Propose a feature or tool</div>
-        </div>
-      </div>
-    </div>
-
 
   </div>
 </div>
@@ -917,8 +907,12 @@
         <div id="chat-section-threads" class="chat-section">
           <button type="button" class="chat-section-header" onclick="toggleChatSection('threads')" aria-controls="chat-section-threads-content" aria-expanded="true">
             <span class="chat-section-title"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M4 3v10M8 3v10M12 5v6M4 6h4M8 9h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Threads</span>
-            <span class="chat-section-caret" aria-hidden="true"></span>
-            <button type="button" class="chat-dock-btn chat-rail-collapse" onclick="event.stopPropagation();toggleThreadRail();" title="Collapse thread rail">⟨</button>
+            <span class="chat-section-actions" aria-hidden="false">
+              <span class="chat-section-caret" aria-hidden="true" title="Expand/collapse list"></span>
+              <button type="button" class="chat-dock-btn chat-rail-collapse" onclick="event.stopPropagation();toggleThreadRail();" title="Collapse thread rail" aria-label="Collapse thread rail">
+                <svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </span>
           </button>
           <div id="chat-section-threads-content" class="chat-section-content">
             <input id="chat-thread-search" type="text" placeholder="Search threads..." />
@@ -1157,6 +1151,7 @@
         <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--border);flex-shrink:0;">
           <span style="color:var(--accent,#0f9);font-family:monospace;font-size:13px;font-weight:700;flex-shrink:0;">$</span>
           <input id="terminal-input" type="text" placeholder="Enter command…" autocomplete="off" spellcheck="false" style="flex:1;background:transparent;border:none;color:var(--text);font-family:'SF Mono',ui-monospace,monospace;font-size:12px;outline:none;caret-color:var(--accent,#0f9);" onkeydown="terminalHandleInputKeydown(event)">
+          <button id="terminal-fav-btn" onclick="terminalFavFromInput()" title="Save current input as a shortcut" style="background:transparent;border:1px solid var(--border);color:#f7b84b;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;line-height:1;flex-shrink:0;">★</button>
         </div>
       </div>
       <!-- Shortcuts sidebar -->
@@ -2383,11 +2378,11 @@
 <script src="/static/js/core/toast.js?v=2"></script>
 <script src="/static/js/core/icons.js"></script>
 <script src="/static/js/core/swarm-chat.js"></script>
-<script src="/static/js/core/app.js?v=30"></script>
+<script src="/static/js/core/app.js?v=31"></script>
 
 <!-- Views -->
 <script src="/static/js/views/conversations.js"></script>
-<script src="/static/js/views/terminal.js?v=2"></script>
+<script src="/static/js/views/terminal.js?v=3"></script>
 <script src="/static/js/views/terminal-commands.js?v=2"></script>
 <script src="/static/js/views/files.js?v=2"></script>
 <script src="/static/js/views/git.js"></script>
@@ -2404,7 +2399,7 @@
 <script src="/static/js/views/projects.js?v=31"></script>
 <script src="/static/js/views/traced.js?v=29"></script>
 <script src="/static/js/core/trace-bus.js?v=29"></script>
-<script src="/static/js/views/chat.js?v=38"></script>
+<script src="/static/js/views/chat.js?v=39"></script>
 <script src="/static/js/views/services.js?v=2"></script>
 <script src="/static/js/views/ollama.js"></script>
 <script src="/static/js/views/time-wizard.js?v=29"></script>
@@ -2419,8 +2414,8 @@
 <script src="/static/js/views/vpn.js"></script>
 <script src="/static/js/views/localai.js?v=2"></script>
 <script src="/static/js/views/trace.js"></script>
-<script src="/static/js/views/onboarding.js"></script>
-<script src="/static/js/views/diamond.js?v=2"></script>
+<script src="/static/js/views/onboarding.js?v=2"></script>
+<script src="/static/js/views/diamond.js?v=3"></script>
 <script src="/static/js/views/health-digest.js"></script>
 
 <script src="/static/js/views/home-chat.js?v=33"></script>
