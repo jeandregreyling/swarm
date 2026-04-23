@@ -14,9 +14,83 @@
   // Five Voices of Seven — the local-algorithm nervous system made visible
   const EYE = 0, ECHO = 1, THREAD = 2, PULSE = 3, VOICE = 4;
   const ROLE_NAMES = ['Eye', 'Echo', 'Thread', 'Pulse', 'Voice'];
+  const ROLE_KEYS  = ['eye', 'echo', 'thread', 'pulse', 'voice'];
   const ROLE_KEY = { eye: EYE, echo: ECHO, thread: THREAD, pulse: PULSE, voice: VOICE };
+
+  // ── Per-orb visibility & graphics quality (user-controllable) ────────────────
+  // Persisted in localStorage. Each voice can be hidden individually; quality
+  // toggles between 'high' (3D wireframes, rotation, depth, trails) and 'low'
+  // (flat 2D rings, cheap glow — best for low-power machines).
+  const ORB_VIS_KEY = 'fridays_orb_visible';
+  const ORB_QUALITY_KEY = 'fridays_orb_quality';
+  let _orbVisible = { eye:true, echo:true, thread:true, pulse:true, voice:true };
+  let _orbQuality = 'high';
+  try {
+    const stored = JSON.parse(localStorage.getItem(ORB_VIS_KEY) || 'null');
+    if (stored && typeof stored === 'object') {
+      ROLE_KEYS.forEach(k => { if (typeof stored[k] === 'boolean') _orbVisible[k] = stored[k]; });
+    }
+  } catch (e) {}
+  try {
+    const q = String(localStorage.getItem(ORB_QUALITY_KEY) || 'high').toLowerCase();
+    _orbQuality = (q === 'low') ? 'low' : 'high';
+  } catch (e) {}
+  function isOrbVisible(role) {
+    const key = ROLE_KEYS[role];
+    return _orbVisible[key] !== false;
+  }
+  function setOrbVisible(roleKey, on) {
+    const k = String(roleKey || '').toLowerCase();
+    if (!(k in _orbVisible)) return;
+    _orbVisible[k] = !!on;
+    try { localStorage.setItem(ORB_VIS_KEY, JSON.stringify(_orbVisible)); } catch (e) {}
+    _syncOrbControls();
+  }
+  function setOrbQuality(mode) {
+    _orbQuality = (String(mode || 'high').toLowerCase() === 'low') ? 'low' : 'high';
+    try { localStorage.setItem(ORB_QUALITY_KEY, _orbQuality); } catch (e) {}
+    document.body.dataset.orbQuality = _orbQuality;
+    _syncOrbControls();
+  }
+  function _syncOrbControls() {
+    ROLE_KEYS.forEach(k => {
+      const el = document.getElementById('orb-vis-' + k);
+      if (el) el.checked = _orbVisible[k] !== false;
+    });
+    const lo = document.getElementById('orb-quality-low');
+    const hi = document.getElementById('orb-quality-high');
+    [lo, hi].forEach(el => {
+      if (!el) return;
+      el.style.background = 'var(--card)';
+      el.style.color = 'var(--text-dim)';
+      el.style.borderColor = 'var(--border)';
+    });
+    const active = (_orbQuality === 'low') ? lo : hi;
+    if (active) {
+      active.style.background = 'var(--accent, #27CBFF)';
+      active.style.color = '#0a0f14';
+      active.style.borderColor = 'var(--accent, #27CBFF)';
+    }
+  }
+  // Expose for inline onchange handlers in the settings panel
+  window.setOrbVisible = setOrbVisible;
+  window.setOrbQuality = setOrbQuality;
+  window.syncOrbControls = _syncOrbControls;
+  // Initial body dataset so CSS / other code can react if it wants to
+  try { document.body.dataset.orbQuality = _orbQuality; } catch (e) {}
+
   // Voice shapes: each uses a fixed draw function — never shared
   const VOICE_STYLE = [0, 1, 4, 5, 6]; // drawRings, drawMandala, drawLissajous, drawVortex, drawPulsar
+  // 2026-04-23 — Personalities. Each orb has a "home" shape (above) and an
+  // "alt" shape it morphs into when its mood/state peaks. Cross-faded over
+  // ~700ms. Keeps each voice geometrically distinct AND gives them a
+  // visible reaction to what the system is doing.
+  //   Eye   (Rings)     → Crystal  when alert       — sharper, focused
+  //   Echo  (Mandala)   → Helix    when recalling   — deeper, twisted
+  //   Thread(Lissajous) → Vortex   when reasoning   — pulling threads in
+  //   Pulse (Vortex)    → Pulsar   when active      — stronger beat
+  //   Voice (Pulsar)    → Rings    when speaking    — broadcasting out
+  const ALT_STYLE = [3, 2, 5, 6, 0]; // index into DRAW_FNS
 
   // ── Mouse ─────────────────────────────────────────────────────────────────────
   const mouse = { x: -999, y: -999 };
@@ -24,8 +98,14 @@
   let mouseStillPos = null, mouseStillTimer = null;
   const mouseHeat = [];
 
-  // ── Drag ──────────────────────────────────────────────────────────────────────
+  // ── Drag / Carry ──────────────────────────────────────────────────────────────
+  // dragOrb  — pressed mouse-down on orb, drag while held, release = throw.
+  // carriedOrb — picked up via double-click, follows cursor with no button,
+  //              next click anywhere drops it and sets that spot as its new
+  //              home/anchor (overrides the hardcoded ROOST_BASE).
   let dragOrb = null, dragPX = 0, dragPY = 0, dragHistory = [];
+  let carriedOrb = null;
+  let lastClickTS = 0, lastClickOrb = null;
 
   function setOrbDragState(active) {
     document.body.classList.toggle('orb-dragging', !!active);
@@ -316,7 +396,13 @@
   ];
 
   function updateRoost(o, i) {
-    let rx = ROOST_BASE[i][0]*W, ry = ROOST_BASE[i][1]*H;
+    // User-assigned anchor (from double-click drop) overrides hardcoded base.
+    let rx, ry;
+    if (o.customHomeX != null && o.customHomeY != null) {
+      rx = o.customHomeX; ry = o.customHomeY;
+    } else {
+      rx = ROOST_BASE[i][0]*W; ry = ROOST_BASE[i][1]*H;
+    }
     mouseHeat.forEach(p => {
       const dx=rx-p.x, dy=ry-p.y, d=Math.sqrt(dx*dx+dy*dy)||1;
       if (d < 260) { rx += (dx/d)*(260-d)*0.22; ry += (dy/d)*(260-d)*0.22; }
@@ -332,15 +418,27 @@
   function mkOrb(role, styleIdx, baseRF, spd) {
     return {
       role, style: styleIdx, baseRF, speed: spd,
+      // Personality morph (2026-04-23): each orb can cross-fade between its
+      // home `style` and an `altStyle` based on its current mood/state.
+      altStyle: ALT_STYLE[role] != null ? ALT_STYLE[role] : styleIdx,
+      morphPhase: 0,      // 0 = fully home, 1 = fully alt
+      morphTarget: 0,     // 0 or 1 — eased toward by tickMorph()
       x: 0, y: 0, vx: 0, vy: 0,
       z: rand(0.5, 0.9), vz: rand(-0.0003, 0.0003),
       baseR: 0, r: 0,
       roostX: 0, roostY: 0,
+      customHomeX: null, customHomeY: null,  // user-set anchor (double-click drop)
       settled: 0, watchAngle: rand(0, Math.PI*2),
       state: 'idle', stateTimer: rand(1000, 4000),
       driftAngle: rand(0, Math.PI*2),
       driftPhase: rand(0, Math.PI*2),
       breathPhase: rand(0, Math.PI*2),
+      // 3D rotation (yaw around Y, pitch around X). Each orb spins at its own
+      // rate so the wireframe shapes read as genuine 3D bodies.
+      yaw: rand(0, Math.PI*2),
+      pitch: rand(-0.4, 0.4),
+      yawSpd:   rand(0.25, 0.55) * (Math.random()<0.5?-1:1),  // rad/sec
+      pitchSpd: rand(0.08, 0.22) * (Math.random()<0.5?-1:1),
       flash: 0, trail: [],
       tiltX: 0, tiltY: 0,           // 3D tilt angles (radians)
       // Thought bubble
@@ -637,6 +735,82 @@
     ctx.closePath();ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.globalAlpha=alpha;
     ctx.shadowColor=color;ctx.shadowBlur=14;ctx.setLineDash([]);ctx.stroke();ctx.restore();
   }
+
+  // ── 3D wireframe helpers ─────────────────────────────────────────────────────
+  // Unit-sphere point rotated by yaw (Y-axis, left/right) then pitch (X-axis, up/down).
+  // Returns projected screen {x,y} plus normalized z in [-1..1] for depth cues.
+  function proj3(o, ux, uy, uz, yaw, pitch, R){
+    const cy=Math.cos(yaw),  sy=Math.sin(yaw);
+    const cp=Math.cos(pitch),sp=Math.sin(pitch);
+    // Yaw around Y: (x,z)
+    let x1 = ux*cy + uz*sy;
+    let z1 = -ux*sy + uz*cy;
+    const y1 = uy;
+    // Pitch around X: (y,z)
+    const y2 = y1*cp - z1*sp;
+    const z2 = y1*sp + z1*cp;
+    // Orthographic projection with a tiny perspective squash (front bigger)
+    const persp = 1 + z2*0.18;
+    return { x: o.x + x1*R*persp, y: o.y + y2*R*persp, z: z2 };
+  }
+  // Depth-based alpha: front faces bright, back faces dim (never fully hidden).
+  function zAlpha(z, front, back){ const k=(z+1)*0.5; return back + (front-back)*k; }
+  function zLW(z, front, back){ const k=(z+1)*0.5; return back + (front-back)*k; }
+
+  // Stroke a 3D-polyline on the unit sphere (points in [-1..1] cube, projected).
+  function strokePath3(o, pts, yaw, pitch, R, color, baseLW, baseAlpha, closed){
+    if (pts.length < 2) return;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 6;
+    ctx.setLineDash([]);
+    // Sample 2 projected points to compute avg depth per segment
+    let prev = proj3(o, pts[0][0], pts[0][1], pts[0][2], yaw, pitch, R);
+    for (let i=1;i<pts.length;i++){
+      const p = proj3(o, pts[i][0], pts[i][1], pts[i][2], yaw, pitch, R);
+      const avgZ = (prev.z + p.z) * 0.5;
+      ctx.globalAlpha = baseAlpha * zAlpha(avgZ, 1.0, 0.22);
+      ctx.lineWidth = baseLW * zLW(avgZ, 1.0, 0.55);
+      ctx.beginPath();
+      ctx.moveTo(prev.x, prev.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      prev = p;
+    }
+    if (closed){
+      const p0 = proj3(o, pts[0][0], pts[0][1], pts[0][2], yaw, pitch, R);
+      const avgZ = (prev.z + p0.z)*0.5;
+      ctx.globalAlpha = baseAlpha * zAlpha(avgZ, 1.0, 0.22);
+      ctx.lineWidth = baseLW * zLW(avgZ, 1.0, 0.55);
+      ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(p0.x, p0.y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Latitude ring at given polar angle φ (0 = equator, ±π/2 = poles).
+  function latitudePts(phi, samples){
+    const pts = new Array(samples);
+    const y = Math.sin(phi);
+    const rr = Math.cos(phi);
+    for (let i=0;i<samples;i++){
+      const th = (i/samples)*Math.PI*2;
+      pts[i] = [Math.cos(th)*rr, y, Math.sin(th)*rr];
+    }
+    return pts;
+  }
+  // Longitude meridian at given azimuth θ.
+  function longitudePts(theta, samples){
+    const pts = new Array(samples);
+    const ct = Math.cos(theta), st = Math.sin(theta);
+    for (let i=0;i<samples;i++){
+      const phi = -Math.PI/2 + (i/(samples-1))*Math.PI;
+      const y = Math.sin(phi), rr = Math.cos(phi);
+      pts[i] = [ct*rr, y, st*rr];
+    }
+    return pts;
+  }
+
   function eyeDot(o, r, color, blur) {
     dot(o.x, o.y, r, color, blur);
     if (o.settled < 0.1) return;
@@ -648,45 +822,204 @@
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
-  //  DRAW STYLES
+  //  DRAW STYLES — all render as rotating 3D wireframes (yaw around Y,
+  //  pitch around X). Depth fades back-facing strokes so the sphere reads true.
   // ══════════════════════════════════════════════════════════════════════════════
   function drawRings(o,t){
-    const rings=[{s:1.00,spd:1.0,dash:[9,5],lw:1.5,nodes:8,col:ACCENT},{s:0.77,spd:-1.4,dash:[5,9],lw:1.0,nodes:6,col:GLOW_A},{s:0.57,spd:2.0,dash:[14,4],lw:1.8,nodes:10,col:ACCENT},{s:0.37,spd:-2.2,dash:[3,7],lw:1.2,nodes:5,col:GLOW_B},{s:0.18,spd:3.2,dash:[],lw:2.5,nodes:0,col:ACCENT}];
-    rings.forEach((ring,i)=>{ctx.save();ctx.translate(o.x,o.y);ctx.rotate(t*ring.spd);ctx.beginPath();ctx.arc(0,0,o.r*ring.s,0,Math.PI*2);ctx.setLineDash(ring.dash);ctx.strokeStyle=ring.col;ctx.lineWidth=ring.lw;ctx.globalAlpha=0.72-i*0.1;ctx.shadowColor=ring.col;ctx.shadowBlur=10;ctx.stroke();for(let j=0;j<ring.nodes;j++){const a=(j/ring.nodes)*Math.PI*2;ctx.beginPath();ctx.arc(Math.cos(a)*o.r*ring.s,Math.sin(a)*o.r*ring.s,2.2,0,Math.PI*2);ctx.fillStyle=ACCENT;ctx.globalAlpha=1;ctx.shadowBlur=18;ctx.setLineDash([]);ctx.fill();}ctx.restore();});
-    eyeDot(o,4,ACCENT,32);
+    // Globe: 5 latitude rings + 8 longitude meridians
+    const R = o.r, yaw = o.yaw, pitch = o.pitch;
+    const lats = [-Math.PI/3, -Math.PI/6, 0, Math.PI/6, Math.PI/3];
+    lats.forEach((phi,i)=>{
+      const col = i===2 ? ACCENT : GLOW_A;
+      strokePath3(o, latitudePts(phi, 48), yaw, pitch, R*0.96, col, 1.2, 0.65, true);
+    });
+    const MERIDIANS = 8;
+    for (let i=0;i<MERIDIANS;i++){
+      const th = (i/MERIDIANS)*Math.PI*2;
+      strokePath3(o, longitudePts(th, 28), yaw, pitch, R*0.96, ACCENT, 1.0, 0.55, false);
+    }
+    // Core bead
+    dot(o.x, o.y, 3.2, ACCENT, 22);
+    eyeDot(o, 4, ACCENT, 28);
   }
+
   function drawMandala(o,t){
-    const N=8;for(let i=0;i<N;i++){ctx.save();ctx.translate(o.x,o.y);ctx.rotate((i/N)*Math.PI*2+t*0.32);ctx.beginPath();ctx.moveTo(0,0);ctx.bezierCurveTo(o.r*0.44,-o.r*0.36,o.r*0.86,0,0,o.r*0.94);ctx.bezierCurveTo(-o.r*0.11,o.r*0.70,0,o.r*0.36,0,0);ctx.setLineDash([]);ctx.strokeStyle=ACCENT;ctx.lineWidth=1;ctx.globalAlpha=0.32;ctx.shadowColor=ACCENT;ctx.shadowBlur=8;ctx.stroke();ctx.restore();}
-    ctx.save();ctx.beginPath();ctx.arc(o.x,o.y,o.r*0.97,0,Math.PI*2);ctx.strokeStyle=GLOW_A;ctx.lineWidth=0.8;ctx.setLineDash([2,9]);ctx.globalAlpha=0.32;ctx.stroke();ctx.restore();
-    polygon(o.x,o.y,o.r*0.44,6,-t*0.62,ACCENT,1.5,0.76);polygon(o.x,o.y,o.r*0.44,6,-t*0.62+Math.PI/6,GLOW_A,1.0,0.46);polygon(o.x,o.y,o.r*0.22,3,t*0.92,ACCENT,2.0,0.86);
-    eyeDot(o,4.5,ACCENT,34);
+    // Four great-circles tilted at 45° intervals, plus a slow equator ring.
+    const R = o.r, yaw = o.yaw, pitch = o.pitch;
+    const rings = [0, Math.PI/4, Math.PI/2, 3*Math.PI/4];
+    rings.forEach((roll,i)=>{
+      // Build a great circle with an in-plane roll applied before yaw/pitch.
+      const pts = [];
+      const samples = 56;
+      const cr = Math.cos(roll), sr = Math.sin(roll);
+      for (let j=0;j<samples;j++){
+        const a = (j/samples)*Math.PI*2;
+        const x0 = Math.cos(a), y0 = Math.sin(a)*cr, z0 = Math.sin(a)*sr;
+        pts.push([x0,y0,z0]);
+      }
+      const col = i%2===0 ? ACCENT : GLOW_A;
+      strokePath3(o, pts, yaw, pitch, R*0.96, col, 1.1, 0.55, true);
+    });
+    // Inner small polygon billboarded to face viewer
+    polygon(o.x,o.y,R*0.22,6,t*0.8,ACCENT,1.6,0.8);
+    eyeDot(o, 4, ACCENT, 28);
   }
+
   function drawHelix(o,t){
-    for(let i=0;i<3;i++){const rot=t*0.72+(i/3)*Math.PI*2;ctx.save();ctx.translate(o.x,o.y);ctx.rotate(rot);ctx.beginPath();ctx.ellipse(0,0,o.r*0.90,o.r*0.27,0,0,Math.PI*2);ctx.strokeStyle=i===0?ACCENT:(i===1?GLOW_A:GLOW_B);ctx.lineWidth=1.6;ctx.globalAlpha=0.56;ctx.shadowColor=ACCENT;ctx.shadowBlur=12;ctx.setLineDash([]);ctx.stroke();ctx.restore();const tx=o.x+Math.cos(rot)*o.r*0.90,ty=o.y+Math.sin(rot)*o.r*0.90;dot(tx,ty,4,ACCENT,24);dot(o.x-(tx-o.x),o.y-(ty-o.y),4,ACCENT,24);}
-    ctx.save();ctx.beginPath();ctx.arc(o.x,o.y,o.r*0.92,0,Math.PI*2);ctx.strokeStyle=GLOW_A;ctx.lineWidth=0.8;ctx.globalAlpha=0.24;ctx.setLineDash([4,11]);ctx.stroke();ctx.restore();
-    eyeDot(o,5.5,ACCENT,38);
+    // Double helix wrapped around the sphere axis.
+    const R = o.r, yaw = o.yaw, pitch = o.pitch;
+    const TURNS = 3, SAMPLES = 140;
+    for (let strand=0; strand<2; strand++){
+      const pts = [];
+      const offset = strand * Math.PI;
+      for (let i=0;i<SAMPLES;i++){
+        const u = i/(SAMPLES-1);           // 0..1 along axis
+        const y = -1 + 2*u;                // -1..1
+        const rr = Math.sqrt(Math.max(0, 1 - y*y)); // sphere radius at height
+        const ang = u*TURNS*Math.PI*2 + offset + t*1.2;
+        pts.push([Math.cos(ang)*rr, y, Math.sin(ang)*rr]);
+      }
+      strokePath3(o, pts, yaw, pitch, R*0.94, strand===0?ACCENT:GLOW_A, 1.4, 0.7, false);
+    }
+    // Equator ring for reference
+    strokePath3(o, latitudePts(0, 48), yaw, pitch, R*0.96, GLOW_B, 0.8, 0.35, true);
+    eyeDot(o, 4.5, ACCENT, 30);
   }
+
   function drawCrystal(o,t){
-    polygon(o.x,o.y,o.r*0.96,6,t*0.36,ACCENT,1.5,0.62);polygon(o.x,o.y,o.r*0.68,6,-t*0.54+Math.PI/6,GLOW_A,1.0,0.46);polygon(o.x,o.y,o.r*0.48,3,t*0.86,ACCENT,2.0,0.74);polygon(o.x,o.y,o.r*0.48,3,-t*0.70+Math.PI,GLOW_B,1.5,0.56);
-    ctx.save();ctx.beginPath();ctx.arc(o.x,o.y,o.r*0.19,0,Math.PI*2);ctx.strokeStyle=ACCENT;ctx.lineWidth=2.2;ctx.globalAlpha=0.88;ctx.shadowColor=ACCENT;ctx.shadowBlur=24;ctx.setLineDash([]);ctx.stroke();ctx.restore();
-    ctx.save();ctx.translate(o.x,o.y);ctx.rotate(t*0.36);ctx.setLineDash([4,9]);ctx.strokeStyle=ACCENT;ctx.lineWidth=0.5;ctx.globalAlpha=0.22;for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2-Math.PI/2;ctx.beginPath();ctx.moveTo(Math.cos(a)*o.r*0.19,Math.sin(a)*o.r*0.19);ctx.lineTo(Math.cos(a)*o.r*0.96,Math.sin(a)*o.r*0.96);ctx.stroke();}ctx.restore();
-    eyeDot(o,4,ACCENT,32);
+    // Icosahedron-like wireframe: 12 vertices of an icosahedron with edges.
+    const R = o.r, yaw = o.yaw, pitch = o.pitch;
+    const phi = (1 + Math.sqrt(5))/2;
+    const s = 1/Math.sqrt(1 + phi*phi);   // normalize
+    const a = s, b = s*phi;
+    const V = [
+      [ 0,  a,  b], [ 0,  a, -b], [ 0, -a,  b], [ 0, -a, -b],
+      [ a,  b,  0], [ a, -b,  0], [-a,  b,  0], [-a, -b,  0],
+      [ b,  0,  a], [ b,  0, -a], [-b,  0,  a], [-b,  0, -a],
+    ];
+    // Edges: pairs of vertex indices (30 edges of icosahedron)
+    const E = [
+      [0,4],[0,6],[0,8],[0,10],[0,2],
+      [1,4],[1,6],[1,9],[1,11],[1,3],
+      [2,8],[2,10],[2,5],[2,7],
+      [3,9],[3,11],[3,5],[3,7],
+      [4,8],[4,9],[4,6],
+      [5,8],[5,9],[5,7],
+      [6,10],[6,11],
+      [7,10],[7,11],
+      [8,9],[10,11],
+    ];
+    // Pre-project all vertices
+    const P = V.map(v => proj3(o, v[0], v[1], v[2], yaw, pitch, R*0.95));
+    ctx.save();
+    ctx.strokeStyle = ACCENT;
+    ctx.shadowColor = ACCENT;
+    ctx.shadowBlur = 8;
+    ctx.setLineDash([]);
+    E.forEach(ed => {
+      const p1 = P[ed[0]], p2 = P[ed[1]];
+      const avgZ = (p1.z + p2.z) * 0.5;
+      ctx.globalAlpha = 0.7 * zAlpha(avgZ, 1.0, 0.18);
+      ctx.lineWidth = 1.2 * zLW(avgZ, 1.0, 0.45);
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+    });
+    // Vertex dots scaled by depth
+    P.forEach(p => {
+      const a2 = zAlpha(p.z, 1.0, 0.25);
+      ctx.globalAlpha = a2;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 1.8*zLW(p.z,1.2,0.5), 0, Math.PI*2);
+      ctx.fillStyle = p.z > 0 ? '#fff' : ACCENT;
+      ctx.shadowBlur = 10; ctx.fill();
+    });
+    ctx.restore();
+    eyeDot(o, 3.6, ACCENT, 24);
   }
+
   function drawLissajous(o,t){
-    const A=3,B=2,STEPS=420,delta=t*0.36;ctx.save();ctx.beginPath();for(let i=0;i<=STEPS;i++){const p=(i/STEPS)*Math.PI*2,px=o.x+Math.sin(A*p+delta)*o.r*0.88,py=o.y+Math.sin(B*p)*o.r*0.88;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}ctx.closePath();ctx.strokeStyle=ACCENT;ctx.lineWidth=1.6;ctx.globalAlpha=0.65;ctx.shadowColor=ACCENT;ctx.shadowBlur=14;ctx.setLineDash([]);ctx.stroke();ctx.restore();
-    ctx.save();ctx.beginPath();ctx.ellipse(o.x,o.y,o.r*0.90,o.r*0.90,0,0,Math.PI*2);ctx.strokeStyle=GLOW_A;ctx.lineWidth=0.7;ctx.globalAlpha=0.18;ctx.setLineDash([3,11]);ctx.stroke();ctx.restore();
-    const np=(t*0.4)%(Math.PI*2);dot(o.x+Math.sin(A*np+delta)*o.r*0.88,o.y+Math.sin(B*np)*o.r*0.88,3.5,GLOW_A,18);
-    eyeDot(o,5,ACCENT,30);
+    // 3D Lissajous on the sphere surface — parametric (θ,φ) traced as a knot.
+    const R = o.r, yaw = o.yaw, pitch = o.pitch;
+    const A=3, B=2, C=2, delta=t*0.36;
+    const SAMPLES=260;
+    const pts = [];
+    for (let i=0;i<=SAMPLES;i++){
+      const u = (i/SAMPLES)*Math.PI*2;
+      const theta = A*u + delta;          // azimuth
+      const phi   = Math.sin(B*u)*0.8;    // polar
+      const rr = Math.cos(phi);
+      pts.push([Math.cos(theta)*rr, Math.sin(phi), Math.sin(theta)*rr]);
+    }
+    strokePath3(o, pts, yaw, pitch, R*0.92, ACCENT, 1.5, 0.7, true);
+    // Second inverted curve
+    const pts2 = [];
+    for (let i=0;i<=SAMPLES;i++){
+      const u = (i/SAMPLES)*Math.PI*2;
+      const theta = C*u - delta;
+      const phi   = Math.cos(B*u)*0.6;
+      const rr = Math.cos(phi);
+      pts2.push([Math.cos(theta)*rr, Math.sin(phi), Math.sin(theta)*rr]);
+    }
+    strokePath3(o, pts2, yaw, pitch, R*0.92, GLOW_A, 1.0, 0.45, true);
+    eyeDot(o, 4, ACCENT, 28);
   }
+
   function drawVortex(o,t){
-    const ARMS=3,POINTS=160;for(let arm=0;arm<ARMS;arm++){const off=(arm/ARMS)*Math.PI*2;ctx.save();ctx.translate(o.x,o.y);ctx.beginPath();for(let i=0;i<POINTS;i++){const frac=i/POINTS,angle=frac*Math.PI*4.2+off+t*0.52,rad=frac*o.r*0.92;i===0?ctx.moveTo(Math.cos(angle)*rad,Math.sin(angle)*rad):ctx.lineTo(Math.cos(angle)*rad,Math.sin(angle)*rad);}ctx.strokeStyle=arm===0?ACCENT:(arm===1?GLOW_A:GLOW_B);ctx.lineWidth=1.6-arm*0.3;ctx.globalAlpha=0.62-arm*0.14;ctx.shadowColor=ACCENT;ctx.shadowBlur=9;ctx.setLineDash([]);ctx.stroke();ctx.restore();}
-    ctx.save();const g=ctx.createRadialGradient(o.x,o.y,0,o.x,o.y,o.r*0.26);g.addColorStop(0,ACCENT+'cc');g.addColorStop(1,ACCENT+'00');ctx.beginPath();ctx.arc(o.x,o.y,o.r*0.26,0,Math.PI*2);ctx.fillStyle=g;ctx.globalAlpha=1;ctx.fill();ctx.restore();
-    eyeDot(o,4,ACCENT,28);
+    // Fibonacci / phyllotaxis sphere: N points spiral-distributed, drawn as dots
+    // with depth cues; a faint spiral arm connects them.
+    const R = o.r, yaw = o.yaw, pitch = o.pitch;
+    const N = 120;
+    const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+    const pts = [];
+    for (let i=0;i<N;i++){
+      const y = 1 - (i/(N-1))*2;
+      const rr = Math.sqrt(Math.max(0, 1 - y*y));
+      const theta = i*GOLDEN + t*0.5;
+      pts.push([Math.cos(theta)*rr, y, Math.sin(theta)*rr]);
+    }
+    // Spiral arm (thin, connects consecutive points)
+    strokePath3(o, pts, yaw, pitch, R*0.94, ACCENT, 0.7, 0.35, false);
+    // Dots
+    ctx.save(); ctx.shadowColor = ACCENT; ctx.setLineDash([]);
+    pts.forEach(pp => {
+      const p = proj3(o, pp[0], pp[1], pp[2], yaw, pitch, R*0.94);
+      const a2 = zAlpha(p.z, 1.0, 0.20);
+      const sz = 1.3 * zLW(p.z, 1.4, 0.55);
+      ctx.globalAlpha = a2 * 0.9;
+      ctx.fillStyle = p.z > 0.2 ? '#fff' : ACCENT;
+      ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(p.x, p.y, sz, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.restore();
+    eyeDot(o, 3.4, ACCENT, 22);
   }
+
   function drawPulsar(o,t){
-    for(let i=0;i<4;i++){const phase=((t*0.7+i*0.25)%1);const rr=o.r*(0.2+phase*0.8);ctx.save();ctx.beginPath();ctx.arc(o.x,o.y,rr,0,Math.PI*2);ctx.strokeStyle=i%2===0?ACCENT:GLOW_B;ctx.lineWidth=2.0-phase*1.2;ctx.globalAlpha=(1-phase)*0.55;ctx.shadowColor=ACCENT;ctx.shadowBlur=8;ctx.setLineDash([]);ctx.stroke();ctx.restore();}
-    ctx.save();ctx.translate(o.x,o.y);ctx.rotate(t*0.3);ctx.strokeStyle=ACCENT;ctx.lineWidth=1.0;ctx.globalAlpha=0.4;ctx.setLineDash([3,6]);ctx.beginPath();ctx.moveTo(-o.r*0.7,0);ctx.lineTo(o.r*0.7,0);ctx.stroke();ctx.beginPath();ctx.moveTo(0,-o.r*0.7);ctx.lineTo(0,o.r*0.7);ctx.stroke();ctx.restore();
-    eyeDot(o,4,ACCENT,28);
+    // Three pulsing great-circles (X/Y/Z planes) + axial beam aligned with pole.
+    const R = o.r, yaw = o.yaw, pitch = o.pitch;
+    const pulse = 0.85 + Math.sin(t*2.2)*0.15;
+    // Great circle in XY plane (equator)
+    strokePath3(o, latitudePts(0, 56), yaw, pitch, R*0.96*pulse, ACCENT, 1.6, 0.7, true);
+    // XZ circle (90° roll)
+    {
+      const pts=[]; for(let i=0;i<56;i++){const a=(i/56)*Math.PI*2;pts.push([Math.cos(a),0,Math.sin(a)]);}
+      // That's the same as equator — use a rolled variant instead:
+      const pts2=[]; for(let i=0;i<56;i++){const a=(i/56)*Math.PI*2;pts2.push([Math.cos(a),Math.sin(a),0]);}
+      strokePath3(o, pts2, yaw, pitch, R*0.96*pulse, GLOW_A, 1.2, 0.55, true);
+    }
+    // YZ circle
+    {
+      const pts=[]; for(let i=0;i<56;i++){const a=(i/56)*Math.PI*2;pts.push([0,Math.cos(a),Math.sin(a)]);}
+      strokePath3(o, pts, yaw, pitch, R*0.96*pulse, GLOW_B, 1.2, 0.55, true);
+    }
+    // Axial beam through poles (north/south)
+    const north = proj3(o, 0,  1.25, 0, yaw, pitch, R);
+    const south = proj3(o, 0, -1.25, 0, yaw, pitch, R);
+    ctx.save();
+    ctx.strokeStyle = ACCENT; ctx.shadowColor = ACCENT; ctx.shadowBlur = 12;
+    ctx.globalAlpha = 0.75 * pulse; ctx.lineWidth = 1.4;
+    ctx.setLineDash([4,5]);
+    ctx.beginPath(); ctx.moveTo(north.x,north.y); ctx.lineTo(south.x,south.y); ctx.stroke();
+    ctx.restore();
+    eyeDot(o, 3.8, ACCENT, 26);
   }
 
   const DRAW_FNS    = [drawRings, drawMandala, drawHelix, drawCrystal, drawLissajous, drawVortex, drawPulsar];
@@ -973,6 +1306,15 @@
         case PULSE:  behaviorPulse(o,dt);  break;
         case VOICE:  behaviorVoice(o,dt);  break;
       }
+      // Personality morph target — tied to behavioral state per role
+      const wantsAlt = (
+        (o.role === EYE    && o.state === 'alert') ||
+        (o.role === ECHO   && (o.state === 'recalling' || o.state === 'investigating')) ||
+        (o.role === THREAD && (o.state === 'reasoning' || o.state === 'weaving')) ||
+        (o.role === PULSE  && o.state === 'active') ||
+        (o.role === VOICE  && (o.state === 'speaking' || o.ideaReady))
+      );
+      o.morphTarget = wantsAlt ? 1 : 0;
       // Roost pull when drifting slowly
       const spd0=Math.sqrt(o.vx*o.vx+o.vy*o.vy);
       const pull=Math.max(0,0.42-spd0)*0.0015;
@@ -998,6 +1340,19 @@
 
     // Settled
     o.settled=lerp(o.settled,spd<0.20?1:0,0.007);
+
+    // Morph ease (~1400ms full transit for a softer mood cross-fade;
+    // the render layer additionally applies a smoothstep curve).
+    const morphStep = Math.min(1, dt * 0.0007);
+    o.morphPhase = lerp(o.morphPhase, o.morphTarget, morphStep);
+
+    // 3D rotation integration — yaw (left/right) and pitch (up/down).
+    // Rates scale slightly with motion so active orbs visibly spin more.
+    const rotBoost = 1 + Math.min(spd/MAX_SPD, 1.0)*0.6 + (o.interestLevel*0.3);
+    o.yaw   = (o.yaw   + o.yawSpd   * (dt*0.001) * rotBoost) % (Math.PI*2);
+    o.pitch = o.pitch + o.pitchSpd * (dt*0.001) * rotBoost;
+    // Gentle pitch re-centering so it wobbles rather than flips
+    o.pitch += (0 - o.pitch) * 0.0015;
 
     // Tilt recovery
     if(!o.fighting){o.tiltX=lerp(o.tiltX,0,0.05);o.tiltY=lerp(o.tiltY,0,0.05);}
@@ -1044,6 +1399,31 @@
     const baseAlpha=sleeping?(0.12+o.z*0.18):(0.30+o.z*0.42);
     const boost=o.interestLevel*0.10+(o.role===EYE&&o.state==='alert'?0.14:0)+(o.ideaReady?0.12:0);
 
+    // ── Low-graphics mode ─────────────────────────────────────────────────────
+    // Skip 3D wireframes, tilt, morph cross-fade, and trails. Render each orb
+    // as a flat ringed disc with a soft glow. Cheap, readable, and friendly
+    // to integrated graphics / CPU-only rendering.
+    if (_orbQuality === 'low') {
+      ctx.save();
+      ctx.globalAlpha = Math.min(baseAlpha + boost, 0.88);
+      ctx.shadowColor = ACCENT;
+      ctx.shadowBlur = 16;
+      ctx.strokeStyle = ACCENT;
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([]);
+      // Outer ring
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 0.95, 0, Math.PI*2); ctx.stroke();
+      // Mid ring
+      ctx.globalAlpha *= 0.65;
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 0.62, 0, Math.PI*2); ctx.stroke();
+      // Core dot
+      ctx.globalAlpha = Math.min(baseAlpha + boost, 0.88);
+      ctx.fillStyle = ACCENT;
+      ctx.beginPath(); ctx.arc(o.x, o.y, 3.2, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+      return;
+    }
+
     ctx.save();
 
     // 3D tilt transform
@@ -1055,7 +1435,20 @@
 
     ctx.globalAlpha=Math.min(baseAlpha+boost,0.88)*dormFade;
     const animSpeed=o.speed*lerp(1.0,0.24,o.settled)*(1+o.interestLevel*0.28)*(o.ideaReady?1.3:1);
-    DRAW_FNS[o.style%DRAW_FNS.length](o,t*animSpeed);
+    const baseG = ctx.globalAlpha;
+
+    // Morph: cross-fade home shape ↔ alt shape based on mood (smoothstep curve).
+    const mpRaw = o.morphPhase || 0;
+    const mp = mpRaw*mpRaw*(3 - 2*mpRaw);  // ease-in-out smoothstep
+    if (mp < 0.995) {
+      ctx.globalAlpha = baseG * (1 - mp);
+      DRAW_FNS[o.style % DRAW_FNS.length](o, t * animSpeed);
+    }
+    if (mp > 0.005 && o.altStyle !== o.style) {
+      ctx.globalAlpha = baseG * mp;
+      DRAW_FNS[o.altStyle % DRAW_FNS.length](o, t * animSpeed);
+    }
+    ctx.globalAlpha = baseG;
 
     // IDEAS sparkle halo
     if(o.ideaReady){
@@ -1137,7 +1530,11 @@
 
     drawParticles(ts);
     drawConnections();
-    [...orbs].sort((a,b)=>a.z-b.z).forEach(o=>{drawTrail(o);renderOrb(o,t);});
+    [...orbs].sort((a,b)=>a.z-b.z).forEach(o=>{
+      if (!isOrbVisible(o.role)) return;       // hidden by user toggle
+      if (_orbQuality !== 'low') drawTrail(o);  // trails are pricey on low-spec
+      renderOrb(o,t);
+    });
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
@@ -1151,9 +1548,64 @@
   // ══════════════════════════════════════════════════════════════════════════════
   //  EVENTS
   // ══════════════════════════════════════════════════════════════════════════════
+  // Interaction model:
+  //   • mousedown on orb → drag while held → mouseup throws with release velocity
+  //   • double-click on orb → carry mode: orb follows cursor with no button held
+  //   • next click anywhere while carrying → drops orb there, sets it as new home
+  //   • single click on orb (no drag, not carrying) → cycle shape style
+  const CARRY_STYLE_SENTINEL = '__orbCarry';
+
+  function computeThrowVelocity(history){
+    // Use only the last ~140ms of drag motion for the release flick,
+    // so early slow dragging doesn't dilute a fast final throw.
+    if (!history || history.length < 2) return {vx:0, vy:0};
+    const newest = history[history.length-1];
+    const cutoff = newest.ts - 140;
+    let start = history[0];
+    for (let i = history.length - 2; i >= 0; i--) {
+      if (history[i].ts <= cutoff) { start = history[i]; break; }
+      start = history[i];
+    }
+    const el = Math.max(newest.ts - start.ts, 8);
+    const sc = 16 / el;  // px per 16ms frame
+    return {
+      vx: clamp((newest.x - start.x) * sc, -MAX_SPD*3, MAX_SPD*3),
+      vy: clamp((newest.y - start.y) * sc, -MAX_SPD*3, MAX_SPD*3),
+    };
+  }
+
+  function setCustomHome(o, x, y){
+    const mg = Math.min(W,H)*0.08;
+    o.customHomeX = clamp(x, mg, W-mg);
+    o.customHomeY = clamp(y, mg, H-mg);
+    const i = orbs.indexOf(o);
+    if (i >= 0) updateRoost(o, i);
+  }
+
+  function startCarry(orb){
+    carriedOrb = orb;
+    orb.placedTimer = 0;
+    orb.vx = 0; orb.vy = 0;
+    setOrbDragState(true);
+    document.body.style.cursor = 'grabbing';
+    if (typeof showToast === 'function') showToast(ROLE_NAMES[orb.role]+' picked up — click to place anchor', 'info');
+  }
+  function endCarry(x, y){
+    if (!carriedOrb) return;
+    const o = carriedOrb;
+    o.x = x; o.y = y;
+    o.vx = 0; o.vy = 0;
+    setCustomHome(o, x, y);
+    o.placedTimer = 900;  // brief settle
+    burst(x, y, 12, 0.7);
+    if (typeof showToast === 'function') showToast(ROLE_NAMES[o.role]+' anchored here', 'info');
+    carriedOrb = null;
+    setOrbDragState(false);
+  }
+
   document.addEventListener('mousemove',function(e){
     if(document.body.dataset.sceneEffect==='off')return;
-    if(dragOrb)e.preventDefault();
+    if(dragOrb||carriedOrb)e.preventDefault();
     const now=performance.now();
     const mdt=Math.max(now-prevMT,8);
     mouseVX=lerp(mouseVX,(e.clientX-prevMX)/mdt*16,0.20);
@@ -1163,28 +1615,32 @@
     mouseStillTimer=setTimeout(()=>{mouseStillPos={x:mouse.x,y:mouse.y};},2200);
     if(sleeping)sleeping=false;
     clearTimeout(sleepTimer);sleepTimer=setTimeout(()=>{sleeping=true;},10000);
-    if(dragOrb){dragOrb.x=mouse.x;dragOrb.y=mouse.y;dragHistory.push({x:mouse.x,y:mouse.y,ts:now});if(dragHistory.length>6)dragHistory.shift();updateTrail(dragOrb);}
+    if(dragOrb){dragOrb.x=mouse.x;dragOrb.y=mouse.y;dragHistory.push({x:mouse.x,y:mouse.y,ts:now});if(dragHistory.length>10)dragHistory.shift();updateTrail(dragOrb);}
+    if(carriedOrb){carriedOrb.x=mouse.x;carriedOrb.y=mouse.y;carriedOrb.vx=0;carriedOrb.vy=0;updateTrail(carriedOrb);}
     const hit=orbAt(mouse.x,mouse.y);
-    const cur=hit?(dragOrb?'grabbing':'grab'):'';
+    const cur=carriedOrb?'grabbing':(hit?(dragOrb?'grabbing':'grab'):'');
     if(cur!==document.body._oc){document.body._oc=cur;document.body.style.cursor=cur||'';}
   });
 
   document.addEventListener('mousedown',function(e){
     if(document.body.dataset.sceneEffect==='off')return;
+    // If carrying, a mousedown drops the orb at this spot (single click = place).
+    if(carriedOrb){
+      // Don't start a drag on another orb while carrying; always drop.
+      endCarry(e.clientX, e.clientY);
+      e.preventDefault(); e.stopPropagation();
+      return;
+    }
     const hit=orbAt(e.clientX,e.clientY);
     if(hit){dragOrb=hit;dragPX=e.clientX;dragPY=e.clientY;dragHistory=[{x:e.clientX,y:e.clientY,ts:performance.now()}];hit.placedTimer=0;setOrbDragState(true);e.preventDefault();e.stopPropagation();}
   },true);
 
-  document.addEventListener('mouseup',function(){
+  document.addEventListener('mouseup',function(e){
     if(!dragOrb)return;
     const dropped=dragOrb;
-    // Compute throw velocity
-    if(dragHistory.length>=2){
-      const n=dragHistory[dragHistory.length-1],o2=dragHistory[0];
-      const el=Math.max(n.ts-o2.ts,8),sc=16/el;
-      dropped.vx=clamp((n.x-o2.x)*sc,-MAX_SPD*3,MAX_SPD*3);
-      dropped.vy=clamp((n.y-o2.y)*sc,-MAX_SPD*3,MAX_SPD*3);
-    }
+    // Throw velocity from the final flick (last ~140ms only)
+    const v = computeThrowVelocity(dragHistory);
+    dropped.vx = v.vx; dropped.vy = v.vy;
     // Check if dropped onto another orb → attempt merge/fight
     let mergeTarget=null;
     orbs.forEach(other=>{
@@ -1194,10 +1650,15 @@
     if(mergeTarget){
       tryMerge(dropped, mergeTarget);
     } else {
-      // Gentle drop = sit still
       const throwSpd=Math.sqrt(dropped.vx**2+dropped.vy**2);
-      if(throwSpd<0.8){dropped.placedTimer=rand(12000,22000);dropped.vx=0;dropped.vy=0;}
-      else burst(dropped.x,dropped.y,Math.round(clamp(throwSpd * 5, 12, 28)),0.85);
+      // Only a truly motionless release (<0.25) counts as a placement.
+      // Anything above that keeps its release velocity — no more "plop".
+      if(throwSpd<0.25){
+        dropped.vx=0; dropped.vy=0;
+        dropped.placedTimer=rand(1200,2200);
+      } else {
+        burst(dropped.x,dropped.y,Math.round(clamp(throwSpd * 5, 10, 28)),0.85);
+      }
     }
     dropped.settled=0;
     burst(dropped.x,dropped.y,10,0.6);
@@ -1206,16 +1667,29 @@
   });
 
   document.addEventListener('selectstart', function(e){
-    if(!dragOrb) return;
+    if(!dragOrb && !carriedOrb) return;
     e.preventDefault();
   });
 
   document.addEventListener('click',function(e){
     if(document.body.dataset.sceneEffect==='off')return;
+    // If a throw drag just happened, the click event still fires — ignore it when
+    // the pointer moved meaningfully between mousedown and click.
     if(dist(e.clientX,e.clientY,dragPX,dragPY)>10)return;
     const hit=orbAt(e.clientX,e.clientY);
-    if(!hit)return;
-    // Council thought dismissal — if orb is showing a council thought, dismiss it
+    if(!hit) { lastClickOrb = null; lastClickTS = 0; return; }
+
+    // Double-click detection: two quick taps on the same orb → carry mode
+    const now = performance.now();
+    if (lastClickOrb === hit && (now - lastClickTS) < 320) {
+      lastClickOrb = null; lastClickTS = 0;
+      startCarry(hit);
+      e.preventDefault(); e.stopPropagation();
+      return;
+    }
+    lastClickOrb = hit; lastClickTS = now;
+
+    // Council thought dismissal
     if(hit._councilThoughtId && hit.thoughtPhase !== 'hidden'){
       CouncilLink.dismiss(hit._councilThoughtId);
       hit._councilThoughtId = null;
@@ -1226,34 +1700,54 @@
       return;
     }
     if(hit.mergedFrom){splitOrb(hit);return;}
-    hit.style=(hit.style+1)%DRAW_FNS.length;
-    hit.vx+=rand(-0.5,0.5);hit.vy+=rand(-0.5,0.5);
-    hit.z=clamp(hit.z+rand(0.1,0.22),0.25,1.0);
-    hit.settled=0;hit.placedTimer=0;
-    burst(hit.x,hit.y,14,0.82);
-    if(typeof showToast==='function')showToast((hit.mergedName||ROLE_NAMES[hit.role])+' → '+STYLE_NAMES[hit.style],'info');
+    // Single click: cycle shape style (briefly deferred so a double-click
+    // can cancel it if the user intends to pick up the orb instead).
+    const targetOrb = hit;
+    setTimeout(() => {
+      if (lastClickOrb !== targetOrb) return; // consumed by dblclick
+      targetOrb.style=(targetOrb.style+1)%DRAW_FNS.length;
+      targetOrb.vx+=rand(-0.5,0.5);targetOrb.vy+=rand(-0.5,0.5);
+      targetOrb.z=clamp(targetOrb.z+rand(0.1,0.22),0.25,1.0);
+      targetOrb.settled=0;targetOrb.placedTimer=0;
+      burst(targetOrb.x,targetOrb.y,14,0.82);
+      if(typeof showToast==='function')showToast((targetOrb.mergedName||ROLE_NAMES[targetOrb.role])+' → '+STYLE_NAMES[targetOrb.style],'info');
+      lastClickOrb = null; lastClickTS = 0;
+    }, 330);
   },true);
 
   // Touch
-  let lastTouch=null;
+  let lastTouch=null, lastTouchTS=0, lastTouchOrb=null;
   document.addEventListener('touchstart',e=>{
     if(document.body.dataset.sceneEffect==='off')return;
     const t=e.touches[0];lastTouch={x:t.clientX,y:t.clientY};mouse.x=t.clientX;mouse.y=t.clientY;
+    if(carriedOrb){ endCarry(t.clientX, t.clientY); e.preventDefault(); return; }
     const hit=orbAt(t.clientX,t.clientY);
-    if(hit){dragOrb=hit;dragPX=t.clientX;dragPY=t.clientY;dragHistory=[{x:t.clientX,y:t.clientY,ts:performance.now()}];setOrbDragState(true);e.preventDefault();}
+    if(hit){
+      // Double-tap → carry mode
+      const now = performance.now();
+      if (lastTouchOrb === hit && (now - lastTouchTS) < 320) {
+        lastTouchOrb = null; lastTouchTS = 0;
+        startCarry(hit);
+        e.preventDefault();
+        return;
+      }
+      lastTouchOrb = hit; lastTouchTS = now;
+      dragOrb=hit;dragPX=t.clientX;dragPY=t.clientY;dragHistory=[{x:t.clientX,y:t.clientY,ts:performance.now()}];setOrbDragState(true);e.preventDefault();
+    }
   },{passive:false});
   document.addEventListener('touchmove',e=>{
     if(document.body.dataset.sceneEffect==='off')return;
     const t=e.touches[0];mouse.x=t.clientX;mouse.y=t.clientY;
-    if(dragOrb){dragOrb.x=t.clientX;dragOrb.y=t.clientY;dragHistory.push({x:t.clientX,y:t.clientY,ts:performance.now()});if(dragHistory.length>6)dragHistory.shift();updateTrail(dragOrb);e.preventDefault();}
+    if(carriedOrb){carriedOrb.x=t.clientX;carriedOrb.y=t.clientY;carriedOrb.vx=0;carriedOrb.vy=0;updateTrail(carriedOrb);e.preventDefault();return;}
+    if(dragOrb){dragOrb.x=t.clientX;dragOrb.y=t.clientY;dragHistory.push({x:t.clientX,y:t.clientY,ts:performance.now()});if(dragHistory.length>10)dragHistory.shift();updateTrail(dragOrb);e.preventDefault();}
   },{passive:false});
   document.addEventListener('touchend',e=>{
     if(!dragOrb)return;
-    const t=e.changedTouches[0];
-    if(lastTouch&&dist(t.clientX,t.clientY,lastTouch.x,lastTouch.y)<12){dragOrb.style=(dragOrb.style+1)%DRAW_FNS.length;burst(dragOrb.x,dragOrb.y,12,0.8);}
-    if(dragHistory.length>=2){const n=dragHistory[dragHistory.length-1],o2=dragHistory[0],el=Math.max(n.ts-o2.ts,8),sc=16/el;dragOrb.vx=clamp((n.x-o2.x)*sc,-MAX_SPD*3,MAX_SPD*3);dragOrb.vy=clamp((n.y-o2.y)*sc,-MAX_SPD*3,MAX_SPD*3);}
+    const v = computeThrowVelocity(dragHistory);
+    dragOrb.vx = v.vx; dragOrb.vy = v.vy;
     const throwSpd=Math.sqrt(dragOrb.vx**2+dragOrb.vy**2);
-    if(throwSpd>0.8)burst(dragOrb.x,dragOrb.y,Math.round(clamp(throwSpd * 5, 12, 28)),0.85);
+    if(throwSpd<0.25){dragOrb.vx=0;dragOrb.vy=0;dragOrb.placedTimer=rand(1200,2200);}
+    else burst(dragOrb.x,dragOrb.y,Math.round(clamp(throwSpd * 5, 10, 28)),0.85);
     dragOrb=null;dragHistory=[];
     setOrbDragState(false);
     e.preventDefault();
@@ -1267,6 +1761,12 @@
   Brain.scan();
   CouncilLink.fetch();  // Initial council fetch
   sleepTimer=setTimeout(()=>{sleeping=true;},10000);
+  // Sync orb visibility / quality controls once the settings panel exists.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _syncOrbControls);
+  } else {
+    _syncOrbControls();
+  }
   requestAnimationFrame(draw);
 
 })();

@@ -371,7 +371,27 @@ function _renderIdentityPill() {
   const label = document.getElementById('auth-user-pill-label');
   if (!label) return;
   const s = _getAuthState();
-  label.textContent = s.proxy_as ? `${s.acting_user} ▶ ${s.proxy_as}` : s.acting_user;
+  // Session 28 Workstream C: unify identity display so the main-page pill
+  // matches the home-chat user badge. Resolution order:
+  //   1. Current auth session (window.__fridayUser) when slug matches
+  //   2. Loaded profiles (__fridaysProfiles) display_name for the slug
+  //   3. Title-cased username slug as a last resort.
+  function displayFor(slug) {
+    if (!slug) return '';
+    const s = String(slug).toLowerCase();
+    const authUser = (typeof window !== 'undefined') ? window.__fridayUser : null;
+    if (authUser && String(authUser.username || '').toLowerCase() === s) {
+      const dn = (authUser.display_name || '').trim();
+      if (dn) return dn;
+    }
+    const profiles = Array.isArray(window.__fridaysProfiles) ? window.__fridaysProfiles : [];
+    const hit = profiles.find(p => String(p.username || '').toLowerCase() === s);
+    if (hit && String(hit.display_name || '').trim()) return String(hit.display_name).trim();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  const acting = displayFor(s.acting_user);
+  const proxy = s.proxy_as ? displayFor(s.proxy_as) : '';
+  label.textContent = proxy ? `${acting} ▶ ${proxy}` : acting;
 }
 
 function _syncAuthStateWithProfiles() {

@@ -337,6 +337,8 @@ function _renderSourcesList() {
         </div>
         ${tags.length ? `<div class="lib-source-tags">${tags.map(t => `<span class="lib-tag">${_esc(t)}</span>`).join('')}</div>` : ''}
         <div class="lib-source-actions">
+          <button class="lib-source-btn" onclick="libOpenSource(${s.source_id})" title="Open full text">⤢</button>
+          <button class="lib-source-btn" onclick="libReclassifyPrompt(${s.source_id}, event)" title="Reclassify / retag">⇄</button>
           <button class="lib-source-btn" onclick="libReprocess(${s.source_id}, this)" title="Re-embed">↻</button>
           <button class="lib-source-btn danger" onclick="libDeleteSource(${s.source_id}, this)" title="Delete">✕</button>
         </div>
@@ -345,16 +347,24 @@ function _renderSourcesList() {
 }
 
 async function libDeleteSource(sourceId, btn) {
-  if (!confirm('Remove this source and all its chunks?')) return;
-  if (btn) btn.disabled = true;
-  try {
-    const r = await fetch(`/api/library/sources/${sourceId}`, { method: 'DELETE' });
-    const d = await r.json();
-    if (d.ok) { _loadSources(); _loadCategories(); }
-    else alert('Delete failed: ' + (d.error || 'unknown error'));
-  } catch (_) {
-    if (btn) btn.disabled = false;
+  // Session 28 Workstream A.3: shared armToConfirm primitive.
+  var fire = async function () {
+    if (btn) btn.disabled = true;
+    try {
+      const r = await fetch(`/api/library/sources/${sourceId}`, { method: 'DELETE' });
+      const d = await r.json();
+      if (d.ok) { _loadSources(); _loadCategories(); }
+      else alert('Delete failed: ' + (d.error || 'unknown error'));
+    } catch (_) {
+      if (btn) btn.disabled = false;
+    }
+  };
+  if (btn && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btn, fire, { confirmLabel: '?', timeoutMs: 4000 });
+    return;
   }
+  if (!confirm('Remove this source and all its chunks?')) return;
+  fire();
 }
 
 async function libReprocess(sourceId, btn) {
@@ -635,4 +645,310 @@ function _highlight(escaped, terms) {
     s = s.replace(re, '<mark style="background:color-mix(in srgb, var(--accent) 20%, transparent);color:var(--text);border-radius:2px;padding:0 1px;">$1</mark>');
   });
   return s;
+}
+
+// ── Open / Reclassify modal (Session — library edit support) ──────────────────
+async function libOpenSource(sourceId) {
+  try {
+    const r = await fetch(`/api/library/sources/${sourceId}`);
+    const d = await r.json();
+    if (!d.ok) { alert('Open failed: ' + (d.error || 'unknown')); return; }
+    _libShowSourceModal(d.source);
+  } catch (e) {
+    alert('Open failed: ' + String(e));
+  }
+}
+
+function libReclassifyPrompt(sourceId, ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  libOpenSource(sourceId);
+}
+
+function _libShowSourceModal(src) {
+  let modal = document.getElementById('lib-source-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'lib-source-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);';
+    document.body.appendChild(modal);
+  }
+  const tags = _parseTags(src.domain_tags);
+  const catOpts = (_libCategories || []).map(c =>
+    `<option value="${_esc(c.id)}" ${c.id === src.category ? 'selected' : ''}>${_esc(c.label)}</option>`
+  ).join('') || `<option value="general">general</option>`;
+  const activeCat = (_libCategories || []).find(c => c.id === src.category);
+  const subOpts = '<option value="">— None —</option>' +
+    ((activeCat && activeCat.subcategories) || []).map(s =>
+      `<option value="${_esc(s.id)}" ${s.id === src.subcategory ? 'selected' : ''}>${_esc(s.label)}</option>`
+    ).join('');
+
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 22px;max-width:820px;width:94%;max-height:88vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 14px 44px rgba(0,0,0,0.45);">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;">Library Document #${src.source_id}</div>
+        <button onclick="_libCloseSourceModal()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;width:26px;height:26px;">✕</button>
+      </div>
+
+      <input id="lib-modal-title" class="lib-form-input" value="${_esc(src.title || '')}" placeholder="Title"
+        style="font-size:14px;font-weight:600;">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px;">
+        <div>
+          <div class="lib-form-label">Category</div>
+          <select id="lib-modal-cat" class="lib-form-input" onchange="_libModalCatChange()">${catOpts}</select>
+        </div>
+        <div>
+          <div class="lib-form-label">Subcategory</div>
+          <select id="lib-modal-sub" class="lib-form-input">${subOpts}</select>
+        </div>
+        <div>
+          <div class="lib-form-label">Tags (comma-separated)</div>
+          <input id="lib-modal-tags" class="lib-form-input" value="${_esc(tags.join(', '))}" placeholder="sap_hcm, abap, payroll">
+        </div>
+      </div>
+
+      <div style="font-size:10px;color:var(--text-dim);">
+        ${src.source_type} · ${src.chunk_count || 0} chunks · added by ${_esc(src.added_by || '')} · ${_fmtDate(src.created_at)}
+        ${src.source_ref ? ` · <span style="opacity:.7;">${_esc(src.source_ref)}</span>` : ''}
+      </div>
+
+      <div style="flex:1;min-height:200px;max-height:50vh;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:color-mix(in srgb, var(--window-header) 50%, var(--card));font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);">
+${_esc(src.raw_text || '(No content stored)')}
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:space-between;">
+        <button onclick="_libModalDelete(${src.source_id})" class="lib-form-input" style="flex:0 0 auto;color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%, var(--border));background:transparent;cursor:pointer;">Delete</button>
+        <div style="display:flex;gap:8px;">
+          <button onclick="_libCloseSourceModal()" class="lib-form-input" style="flex:0 0 auto;background:transparent;cursor:pointer;">Cancel</button>
+          <button onclick="_libModalSave(${src.source_id})" class="lib-form-input" style="flex:0 0 auto;background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;cursor:pointer;">Save</button>
+        </div>
+      </div>
+    </div>`;
+  modal.style.display = 'flex';
+}
+
+function _libCloseSourceModal() {
+  const m = document.getElementById('lib-source-modal');
+  if (m) m.style.display = 'none';
+}
+
+function _libModalCatChange() {
+  const catSel = document.getElementById('lib-modal-cat');
+  const subSel = document.getElementById('lib-modal-sub');
+  if (!catSel || !subSel) return;
+  const cat = (_libCategories || []).find(c => c.id === catSel.value);
+  subSel.innerHTML = '<option value="">— None —</option>' +
+    ((cat && cat.subcategories) || []).map(s => `<option value="${_esc(s.id)}">${_esc(s.label)}</option>`).join('');
+}
+
+async function _libModalSave(sourceId) {
+  const title = (document.getElementById('lib-modal-title')?.value || '').trim();
+  const category = document.getElementById('lib-modal-cat')?.value || 'general';
+  const subcategory = document.getElementById('lib-modal-sub')?.value || '';
+  const tagsRaw = document.getElementById('lib-modal-tags')?.value || '';
+  const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+  try {
+    const r = await fetch(`/api/library/sources/${sourceId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, category, subcategory, tags }),
+    });
+    const d = await r.json();
+    if (!d.ok) { alert('Save failed: ' + (d.error || 'unknown')); return; }
+    _libCloseSourceModal();
+    _loadSources();
+    _loadCategories();
+  } catch (e) {
+    alert('Save failed: ' + String(e));
+  }
+}
+
+async function _libModalDelete(sourceId) {
+  if (!confirm('Delete this document and all its chunks? This cannot be undone.')) return;
+  try {
+    const r = await fetch(`/api/library/sources/${sourceId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!d.ok) { alert('Delete failed: ' + (d.error || 'auth required — sign in first')); return; }
+    _libCloseSourceModal();
+    _loadSources();
+    _loadCategories();
+  } catch (e) {
+    alert('Delete failed: ' + String(e));
+  }
+}
+
+// ── Research Topics (idle-research interest manager) ──────────────────────────
+let _libTopicsFilter = 'all';
+let _libTopicsEscHandler = null;
+
+function _libCloseTopicsModal() {
+  const m = document.getElementById('lib-topics-modal');
+  if (m) m.style.display = 'none';
+  if (_libTopicsEscHandler) {
+    document.removeEventListener('keydown', _libTopicsEscHandler);
+    _libTopicsEscHandler = null;
+  }
+}
+
+async function libOpenTopicsManager() {
+  let modal = document.getElementById('lib-topics-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'lib-topics-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99991;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);';
+    // Click-outside to close
+    modal.addEventListener('mousedown', (ev) => {
+      if (ev.target === modal) _libCloseTopicsModal();
+    });
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div id="lib-topics-panel" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px 12px;width:min(720px, 94vw);height:min(70vh, 640px);min-width:440px;min-height:360px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 14px 44px rgba(0,0,0,0.45);resize:both;overflow:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex:0 0 auto;">
+        <div style="min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--text);">Research Topics</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.35;">Scholar &amp; Seeker run idle research on active topics overnight. Paused topics stay in the list but are skipped.</div>
+        </div>
+        <button onclick="_libCloseTopicsModal()" title="Close (Esc)" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;width:24px;height:24px;flex:0 0 auto;line-height:1;">✕</button>
+      </div>
+
+      <form onsubmit="event.preventDefault(); libTopicsAdd();" style="display:flex;gap:6px;align-items:center;flex:0 0 auto;">
+        <input id="lib-topics-new" class="lib-form-input" placeholder="Add a topic (e.g. SAP Payroll schemas and PCRs)" style="flex:1 1 auto;width:auto;">
+        <select id="lib-topics-new-cat" class="lib-form-input" title="Category for the new topic" style="flex:0 0 132px;width:132px;">
+          <option value="sap_corner" selected>sap_corner</option>
+          <option value="programming">programming</option>
+          <option value="fridays">fridays</option>
+          <option value="general">general</option>
+        </select>
+        <button type="submit" title="Add topic" style="flex:0 0 auto;background:var(--window-header);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;">+ Add</button>
+      </form>
+
+      <div style="display:flex;gap:6px;align-items:center;flex:0 0 auto;font-size:11px;color:var(--text-dim);">
+        <span>Filter:</span>
+        <select id="lib-topics-filter" onchange="libTopicsApplyFilter(this.value)" class="lib-form-input" style="flex:0 0 auto;width:auto;padding:4px 8px;font-size:11px;">
+          <option value="all">All</option>
+          <option value="active">Active only</option>
+          <option value="paused">Paused only</option>
+          <option value="sap_corner">Category: sap_corner</option>
+          <option value="programming">Category: programming</option>
+          <option value="fridays">Category: fridays</option>
+          <option value="general">Category: general</option>
+          <option value="tech">Category: tech</option>
+          <option value="personal">Category: personal</option>
+        </select>
+        <span id="lib-topics-count" style="margin-left:auto;"></span>
+      </div>
+
+      <div id="lib-topics-list" style="flex:1 1 auto;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;min-height:0;">
+        <div style="padding:14px;text-align:center;font-size:11px;color:var(--text-dim);">Loading…</div>
+      </div>
+    </div>`;
+  modal.style.display = 'flex';
+
+  // Restore filter selection and wire Esc-to-close
+  const filterSel = document.getElementById('lib-topics-filter');
+  if (filterSel) filterSel.value = _libTopicsFilter;
+  if (_libTopicsEscHandler) document.removeEventListener('keydown', _libTopicsEscHandler);
+  _libTopicsEscHandler = (ev) => {
+    if (ev.key === 'Escape') { ev.preventDefault(); _libCloseTopicsModal(); }
+  };
+  document.addEventListener('keydown', _libTopicsEscHandler);
+
+  await libTopicsReload();
+}
+
+function libTopicsApplyFilter(val) {
+  _libTopicsFilter = String(val || 'all');
+  libTopicsReload();
+}
+
+async function libTopicsReload() {
+  const list = document.getElementById('lib-topics-list');
+  const countEl = document.getElementById('lib-topics-count');
+  if (!list) return;
+  try {
+    const r = await fetch('/api/library/topics');
+    const d = await r.json();
+    if (!d.ok) { list.innerHTML = `<div style="padding:14px;color:var(--danger);font-size:11px;">${_esc(d.error || 'Failed to load')}</div>`; return; }
+    const all = d.topics || [];
+    const f = _libTopicsFilter;
+    const topics = all.filter(t => {
+      if (f === 'all') return true;
+      if (f === 'active') return !!t.active;
+      if (f === 'paused') return !t.active;
+      return String(t.category || '').toLowerCase() === f;
+    });
+    if (countEl) countEl.textContent = `${topics.length} of ${all.length}`;
+    if (!topics.length) {
+      list.innerHTML = `<div style="padding:14px;text-align:center;font-size:11px;color:var(--text-dim);">No topics match this filter.</div>`;
+      return;
+    }
+    list.innerHTML = topics.map(t => {
+      const paused = !t.active;
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:${paused ? 'color-mix(in srgb, var(--window-header) 60%, transparent)' : 'var(--card)'};opacity:${paused ? '0.6' : '1'};">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(t.topic)}</div>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">
+              ${_esc(t.category || 'general')} · score ${Number(t.score || 0).toFixed(1)} · ${_esc(t.source || 'user')}${t.source_agent ? '/' + _esc(t.source_agent) : ''}
+            </div>
+          </div>
+          <button onclick="libTopicsRunNow(${t.id})" title="Run now" style="background:none;border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;color:var(--accent);cursor:pointer;" ${paused ? 'disabled' : ''}>▶</button>
+          <button onclick="libTopicsToggle(${t.id}, ${paused ? 1 : 0})" title="${paused ? 'Resume' : 'Pause'}" style="background:none;border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;color:var(--text-dim);cursor:pointer;">${paused ? '▶ Resume' : '⏸ Pause'}</button>
+          <button onclick="libTopicsDelete(${t.id})" title="Delete" style="background:none;border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;color:var(--danger);cursor:pointer;">✕</button>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = `<div style="padding:14px;color:var(--danger);font-size:11px;">${_esc(String(e))}</div>`;
+  }
+}
+
+async function libTopicsAdd() {
+  const topic = (document.getElementById('lib-topics-new')?.value || '').trim();
+  const category = document.getElementById('lib-topics-new-cat')?.value || 'sap_corner';
+  if (!topic) return;
+  try {
+    const r = await fetch('/api/library/topics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, category, score: 8.0 }),
+    });
+    const d = await r.json();
+    if (!d.ok) { alert('Add failed: ' + (d.error || 'unknown')); return; }
+    const inp = document.getElementById('lib-topics-new');
+    if (inp) inp.value = '';
+    libTopicsReload();
+  } catch (e) {
+    alert('Add failed: ' + String(e));
+  }
+}
+
+async function libTopicsToggle(id, newActive) {
+  try {
+    await fetch(`/api/library/topics/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: Boolean(newActive) }),
+    });
+    libTopicsReload();
+  } catch (_) {}
+}
+
+async function libTopicsDelete(id) {
+  if (!confirm('Delete this topic permanently?')) return;
+  try {
+    await fetch(`/api/library/topics/${id}`, { method: 'DELETE' });
+    libTopicsReload();
+  } catch (_) {}
+}
+
+async function libTopicsRunNow(id) {
+  try {
+    const r = await fetch(`/api/library/topics/run/${id}`, { method: 'POST' });
+    const d = await r.json();
+    if (!d.ok) { alert('Run failed: ' + (d.error || 'unknown')); return; }
+    alert(`Queued research: "${d.topic}". Check swarm_knowledge in a few minutes.`);
+  } catch (e) {
+    alert('Run failed: ' + String(e));
+  }
 }

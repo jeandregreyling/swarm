@@ -95,10 +95,19 @@ def get_proposal_detail(proposal_id):
 
 @proposals_bp.route("/api/queue", methods=["POST"])
 def intake():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     agent = data.get("agent", "manual_test")
-    title = data.get("title", "Untitled")
-    description = data.get("description", "")
+    title = (data.get("title") or "").strip()
+    description = data.get("description", "") or ""
+    if not title:
+        return jsonify({"ok": False, "error": "title required"}), 400
+    # Length guards: prevent audit-probe / abuse payloads from polluting the
+    # proposals stream. 256 chars is already far longer than any legitimate
+    # human-authored proposal title.
+    if len(title) > 256:
+        return jsonify({"ok": False, "error": "title too long (max 256)"}), 413
+    if isinstance(description, str) and len(description) > 16384:
+        return jsonify({"ok": False, "error": "description too long (max 16384)"}), 413
     try:
         conn = get_connection()
         c = conn.cursor()
@@ -117,16 +126,24 @@ def intake():
 def edit_proposal(proposal_id):
     """Edit proposal title, description, and/or notes text."""
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         conn = get_connection()
         c = conn.cursor()
         updates, values = [], []
         if 'title' in data:
+            new_title = (data['title'] or '').strip()
+            if len(new_title) > 256:
+                conn.close()
+                return jsonify({"ok": False, "error": "title too long (max 256)"}), 413
             updates.append("title = ?")
-            values.append((data['title'] or '').strip())
+            values.append(new_title)
         if 'description' in data:
+            new_desc = data['description'] or ''
+            if isinstance(new_desc, str) and len(new_desc) > 16384:
+                conn.close()
+                return jsonify({"ok": False, "error": "description too long (max 16384)"}), 413
             updates.append("description = ?")
-            values.append(data['description'])
+            values.append(new_desc)
         if 'notes' in data:
             updates.append("notes = ?")
             values.append(data['notes'])

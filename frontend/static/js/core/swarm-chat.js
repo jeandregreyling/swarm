@@ -81,13 +81,19 @@
   function revert(btn) {
     if (!btn) return;
     var orig = btn.dataset.swarmOrigLabel;
+    var origHtml = btn.dataset.swarmOrigHtml;
     var origBg = btn.dataset.swarmOrigBg;
     var origColor = btn.dataset.swarmOrigColor;
-    if (orig != null) btn.textContent = orig;
+    if (origHtml != null) {
+      btn.innerHTML = origHtml;
+    } else if (orig != null) {
+      btn.textContent = orig;
+    }
     if (origBg != null) btn.style.background = origBg;
     if (origColor != null) btn.style.color = origColor;
     btn.removeAttribute(ARMED_ATTR);
     delete btn.dataset.swarmOrigLabel;
+    delete btn.dataset.swarmOrigHtml;
     delete btn.dataset.swarmOrigBg;
     delete btn.dataset.swarmOrigColor;
     if (btn._swarmArmTimer) {
@@ -115,8 +121,9 @@
       return true;
     }
 
-    // First click → arm
+    // First click → arm. Preserve innerHTML so icon-only buttons survive revert.
     btn.dataset.swarmOrigLabel = opts.label != null ? String(opts.label) : btn.textContent;
+    btn.dataset.swarmOrigHtml = btn.innerHTML;
     btn.dataset.swarmOrigBg = btn.style.background || '';
     btn.dataset.swarmOrigColor = btn.style.color || '';
     btn.textContent = confirmLabel;
@@ -141,5 +148,129 @@
 
   ns.armToConfirm = armToConfirm;
   ns.disarmConfirm = revert;
+})();
+
+
+/**
+ * SwarmChat.actions — unified Phase 4 action-pill pipeline.
+ *
+ * Workstream J: gives both the main chat window (chat.js) and the home-page
+ * tile chat (home-chat.js) the same "Siri-but-better" action pill. The server
+ * endpoint /api/chat/action-intent already returns {ok, intent}; this module
+ * owns the presentation + dispatch contract so both surfaces stay in sync.
+ *
+ * Contract:
+ *   SwarmChat.fetchActionIntent(message) -> Promise<intent|null>
+ *   SwarmChat.executeIntent(intent)      -> void  (UI dispatch, never throws)
+ *   SwarmChat.maybeShowActionPill(hostEl, message, opts?) -> void
+ *     opts.minConfidence (default 0.7)
+ *     opts.compact (default false) — smaller pill for the tile chat
+ */
+(function () {
+  'use strict';
+  if (typeof window === 'undefined') return;
+  var ns = window.SwarmChat || (window.SwarmChat = {});
+  if (typeof ns.maybeShowActionPill === 'function') return;
+
+  function fetchActionIntent(message) {
+    var text = String(message == null ? '' : message).trim();
+    if (!text) return Promise.resolve(null);
+    return fetch('/api/chat/action-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text }),
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !data.ok || !data.intent) return null;
+        return data.intent;
+      })
+      .catch(function () { return null; });
+  }
+
+  function executeIntent(intent) {
+    if (!intent || !intent.id) return;
+    var args = intent.args || {};
+    try {
+      switch (intent.id) {
+        case 'open_window':
+          if (typeof window.openWindow === 'function' && args.view) {
+            window.openWindow(args.view, args.title || args.view, args.template || ('view-' + args.view));
+          }
+          break;
+        case 'spotlight_search':
+          if (typeof window.openSpotlight === 'function') {
+            window.openSpotlight();
+            setTimeout(function () {
+              var inp = document.getElementById('spotlight-input');
+              if (inp) {
+                inp.value = String(args.q || '');
+                inp.dispatchEvent(new Event('input', { bubbles: true }));
+                inp.focus();
+              }
+            }, 60);
+          }
+          break;
+        case 'vortex_capture':
+          if (typeof window.openWindow === 'function') {
+            window.openWindow('time-wizard', 'Vortex', 'view-time-wizard');
+          }
+          setTimeout(function () {
+            if (typeof window.createTwCheckpoint === 'function') window.createTwCheckpoint();
+          }, 250);
+          break;
+        case 'go_home':
+          if (typeof window.goHome === 'function') window.goHome();
+          break;
+        case 'show_shortcuts': {
+          var m = document.getElementById('shortcuts-help-modal');
+          if (m) m.classList.add('open');
+          break;
+        }
+        default:
+          break;
+      }
+    } catch (_) { /* never let UI dispatch throw into the chat loop */ }
+  }
+
+  function maybeShowActionPill(hostEl, message, opts) {
+    if (!hostEl) return;
+    opts = opts || {};
+    var minConf = typeof opts.minConfidence === 'number' ? opts.minConfidence : 0.7;
+    var compact = !!opts.compact;
+    fetchActionIntent(message).then(function (intent) {
+      if (!intent) return;
+      if ((Number(intent.confidence) || 0) < minConf) return;
+      var pill = document.createElement('div');
+      pill.className = 'swarm-action-pill' + (compact ? ' swarm-action-pill-compact' : '');
+      var pad = compact ? '6px 10px' : '8px 12px';
+      var fontSize = compact ? '10.5px' : '11.5px';
+      pill.style.cssText = 'margin:4px 0 6px;padding:' + pad + ';background:color-mix(in srgb,var(--accent) 10%,var(--card));border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));border-radius:8px;display:flex;align-items:center;gap:10px;font-size:' + fontSize + ';';
+      var label = ns.esc(intent.label || 'Run action');
+      var rationale = ns.esc(intent.rationale || '');
+      pill.innerHTML = ''
+        + '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="color:var(--accent);flex-shrink:0;"><path d="M4 3l8 5-8 5V3z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>'
+        + '<div style="flex:1;min-width:0;">'
+        +   '<div style="font-weight:600;color:var(--text);">' + label + '</div>'
+        +   (compact ? '' : '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;">Detected action · ' + rationale + '</div>')
+        + '</div>'
+        + '<button class="swarm-action-run" style="padding:4px 10px;background:var(--accent);border:none;border-radius:4px;color:#000;font-size:10.5px;font-weight:700;cursor:pointer;">Execute</button>'
+        + '<button class="swarm-action-dismiss" title="Dismiss" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:2px 4px;display:flex;align-items:center;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>';
+      pill.querySelector('.swarm-action-run').addEventListener('click', function () {
+        executeIntent(intent);
+        pill.style.opacity = '0.55';
+        pill.style.pointerEvents = 'none';
+        var runBtn = pill.querySelector('.swarm-action-run');
+        if (runBtn) runBtn.textContent = '\u2713 Done';
+      });
+      pill.querySelector('.swarm-action-dismiss').addEventListener('click', function () { pill.remove(); });
+      hostEl.appendChild(pill);
+      if (hostEl.scrollHeight) hostEl.scrollTop = hostEl.scrollHeight;
+    });
+  }
+
+  ns.fetchActionIntent = fetchActionIntent;
+  ns.executeIntent = executeIntent;
+  ns.maybeShowActionPill = maybeShowActionPill;
 })();
 

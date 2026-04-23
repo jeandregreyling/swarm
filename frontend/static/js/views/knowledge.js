@@ -50,13 +50,162 @@ function loadKnowledgeData(win) {
   // Build tab bar
   const tabBar = root.querySelector('#knowledge-tab-bar');
   if (tabBar) {
-    tabBar.innerHTML = _KN_TABS.map(t =>
+    const tabsHtml = _KN_TABS.map(t =>
       `<button class="kn-tab${t.id === _knowledgeTab ? ' kn-tab-active' : ''}" data-kn-tab="${t.id}" onclick="knowledgeSetTab('${t.id}')">${t.icon} ${t.label}</button>`
     ).join('');
+    // Trailing (i) info button — explains what this panel does
+    const infoHtml = `<button class="kn-tab kn-info-btn" type="button" onclick="knowledgeOpenInfo()" title="What is the Knowledge Center?" style="margin-left:auto;border-radius:50%;width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;">
+      <svg viewBox="0 0 16 16" width="12" height="12" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 5.2h0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>`;
+    tabBar.style.display = 'flex';
+    tabBar.style.alignItems = 'center';
+    tabBar.innerHTML = tabsHtml + infoHtml;
   }
 
   // Show initial tab
   knowledgeSetTab(_knowledgeTab);
+}
+
+/* Info popover: describes Knowledge Center + how Ctrl+Space plugs into it */
+function knowledgeOpenInfo() {
+  let modal = document.getElementById('kn-info-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'kn-info-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .15s;';
+    modal.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:22px 26px;max-width:540px;width:92%;max-height:86vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.4);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);">About the Knowledge Center</div>
+          <button onclick="document.getElementById('kn-info-modal').style.opacity=0;document.getElementById('kn-info-modal').style.pointerEvents='none';" style="background:none;border:none;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;padding:4px;">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div style="font-size:12px;line-height:1.65;color:var(--text);">
+          <p style="margin:0 0 10px;"><strong>Knowledge Center</strong> is the swarm's unified memory — your files, project docs and curated library in one place.</p>
+          <div style="display:grid;grid-template-columns:70px 1fr;gap:6px 12px;margin:10px 0 14px;font-size:11.5px;">
+            <div style="color:var(--accent);font-weight:700;">Files</div><div>Upload PDFs, notes and attachments. Everything is indexed for later search.</div>
+            <div style="color:var(--accent);font-weight:700;">Docs</div><div>Project documentation (<code style="font-size:10.5px;">docs/</code>) — architecture, roadmap, runbooks.</div>
+            <div style="color:var(--accent);font-weight:700;">Library</div><div>Curated sources: URLs, books, references the swarm can pull from.</div>
+            <div style="color:var(--accent);font-weight:700;">Guide</div><div>Step-by-step user guide — how to use every part of Fridays.</div>
+          </div>
+          <div style="padding:10px 12px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--accent) 9%,var(--card));margin:10px 0 12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <svg viewBox="0 0 20 20" width="14" height="14" fill="none" style="color:var(--accent);"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <strong>Tip: Spotlight searches all of it</strong>
+              <kbd style="margin-left:auto;background:var(--window-header);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:11px;font-family:inherit;">Ctrl+Space</kbd>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);">Press Ctrl+Space from anywhere — results include docs, KB, tickets, proposals, conversations and memory.</div>
+          </div>
+          <p style="margin:6px 0 10px;font-size:11.5px;color:var(--text-dim);">
+            <strong style="color:var(--text);">How retrieval works:</strong> documents are split into chunks, embedded, and matched against your query. Chat answers cite the source chunks when they use the knowledge base. Try the <strong style="color:var(--text);">Ask the knowledge base</strong> bar at the top of this panel to see retrieval in action.
+          </p>
+          <!-- Seed interests: helps the swarm pre-fetch relevant knowledge -->
+          <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="color:var(--accent);"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <strong style="font-size:12px;">Tell the swarm what you're into</strong>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Add topics so Librarian/Scholar/Seeker can surface relevant sources proactively. One per line, or comma-separated.</div>
+            <textarea id="kn-seed-input" rows="3" placeholder="e.g. rust, local LLMs, homelab automation"
+              style="width:100%;background:var(--window-header);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:11.5px;color:var(--text);font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;"></textarea>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+              <button onclick="knowledgeSeedInterests()" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">Save interests</button>
+              <span id="kn-seed-status" style="font-size:11px;color:var(--text-dim);"></span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  modal.style.opacity = '1';
+  modal.style.pointerEvents = 'auto';
+}
+
+/* Save free-text topics (comma- or newline-separated) via /api/interests/seed */
+async function knowledgeSeedInterests() {
+  const ta = document.getElementById('kn-seed-input');
+  const status = document.getElementById('kn-seed-status');
+  if (!ta) return;
+  const raw = (ta.value || '').trim();
+  if (!raw) { if (status) status.textContent = 'Enter at least one topic.'; return; }
+  const topics = raw.split(/[\n,]+/).map(t => t.trim()).filter(Boolean).slice(0, 30);
+  if (!topics.length) { if (status) status.textContent = 'Nothing to save.'; return; }
+  if (status) status.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/interests/seed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topics }),
+    });
+    const d = await r.json();
+    if (d && d.ok) {
+      if (status) status.textContent = `Saved ${d.count || 0} topic${d.count === 1 ? '' : 's'}.`;
+      ta.value = '';
+      if (typeof showToast === 'function') showToast('Interests saved — Librarian will keep an eye out.');
+    } else {
+      if (status) status.textContent = `Error: ${(d && d.error) || 'failed'}`;
+    }
+  } catch (err) {
+    if (status) status.textContent = `Error: ${err}`;
+  }
+}
+
+/* Run a RAG query against /api/library/search and render the top chunks. */
+async function knowledgeRunQuery() {
+  const inp = document.getElementById('kn-quick-query-input');
+  const out = document.getElementById('kn-quick-query-results');
+  const clr = document.getElementById('kn-quick-query-clear');
+  if (!inp || !out) return;
+  const q = (inp.value || '').trim();
+  if (!q) return;
+  out.style.display = '';
+  out.innerHTML = `<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:11px;color:var(--text-dim);">Retrieving…</div>`;
+  if (clr) clr.style.display = '';
+  try {
+    const r = await fetch('/api/library/search?q=' + encodeURIComponent(q) + '&k=5');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'search failed');
+    const results = d.results || [];
+    if (!results.length) {
+      out.innerHTML = `<div style="padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:11.5px;color:var(--text-dim);">
+        <strong style="color:var(--text);">No knowledge matched "${_knEsc(q)}".</strong>
+        <div style="margin-top:4px;">Try different keywords, or add sources in the Library tab so the swarm has something to retrieve from.</div>
+      </div>`;
+      return;
+    }
+    const header = `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:10.5px;color:var(--text-dim);">
+      <span><strong style="color:var(--text);">${results.length}</strong> chunks retrieved for "${_knEsc(q)}"</span>
+      <span>Top result: <strong style="color:var(--text);">${Math.round((results[0].score || 0) * 100)}% match</strong></span>
+    </div>`;
+    const rows = results.map(r => {
+      const scorePct = Math.round((r.score || 0) * 100);
+      const excerpt = _knEsc((r.chunk_text || '').slice(0, 240));
+      return `<div style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:4px;">
+          <div style="font-size:11.5px;font-weight:700;color:var(--text);">${_knEsc(r.title || 'Untitled')}</div>
+          <div style="font-size:10px;color:var(--text-dim);white-space:nowrap;">${_knEsc(r.source_type || 'source')} · ${scorePct}%</div>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.55;">${excerpt}…</div>
+      </div>`;
+    }).join('');
+    out.innerHTML = header + rows;
+  } catch (err) {
+    out.innerHTML = `<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:11px;color:var(--danger);">Retrieval error: ${_knEsc(String(err))}</div>`;
+  }
+}
+
+function knowledgeClearQuery() {
+  const inp = document.getElementById('kn-quick-query-input');
+  const out = document.getElementById('kn-quick-query-results');
+  const clr = document.getElementById('kn-quick-query-clear');
+  if (inp) inp.value = '';
+  if (out) { out.style.display = 'none'; out.innerHTML = ''; }
+  if (clr) clr.style.display = 'none';
+}
+
+function _knEsc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function knowledgeSetTab(tab) {

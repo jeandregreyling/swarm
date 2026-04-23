@@ -345,14 +345,17 @@
   gap: 8px;
   background: var(--bg);
   min-height: 180px;
-  scrollbar-width: thin;
+  scrollbar-width: auto;
   scrollbar-color: var(--accent) transparent;
 }
-#home-chat-messages::-webkit-scrollbar { width: 6px; }
+#home-chat-messages::-webkit-scrollbar { width: 14px; }
 #home-chat-messages::-webkit-scrollbar-track { background: transparent; }
 #home-chat-messages::-webkit-scrollbar-thumb {
   background: var(--accent);
   border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  min-height: 40px;
 }
 
 /* Welcome state */

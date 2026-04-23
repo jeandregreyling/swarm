@@ -55,7 +55,7 @@ function loadDocsWorkspace(content) {
         <textarea id="kb-doc-content" class="docs-textarea" placeholder="Write documentation content here..."></textarea>
         <div class="docs-action-row">
           <button onclick="saveKbDoc()" class="knowledge-btn knowledge-btn-primary">Save</button>
-          <button onclick="deleteKbDoc()" class="docs-danger-btn">Delete</button>
+          <button onclick="deleteKbDoc(event)" class="docs-danger-btn">Delete</button>
           <button onclick="reloadKbDocs()" class="knowledge-btn">Refresh</button>
           <div id="kb-status" class="docs-status">No document selected</div>
         </div>
@@ -274,20 +274,27 @@ function saveKbDoc() {
     .catch(e => showToast('Save failed: ' + e.message, 'error'));
 }
 
-function deleteKbDoc() {
+function deleteKbDoc(event) {
   const selected = window._kbSelectedId;
   if (!selected) return showToast('Select a document first', 'error');
+  var fire = function () {
+    fetch(`/api/kb/${selected}`, { method: 'DELETE' })
+      .then(r => r.json().then(data => ({status: r.status, data})))
+      .then(({status, data}) => {
+        if (status >= 400 || data.ok === false) throw new Error(data.error || 'delete failed');
+        showToast('Document deleted', 'info');
+        createNewKbDoc();
+        reloadKbDocs();
+      })
+      .catch(e => showToast('Delete failed: ' + e.message, 'error'));
+  };
+  var btn = event && event.currentTarget;
+  if (btn && window.SwarmChat && typeof window.SwarmChat.armToConfirm === 'function') {
+    window.SwarmChat.armToConfirm(btn, fire, { confirmLabel: 'Confirm', timeoutMs: 4000 });
+    return;
+  }
   if (!confirm('Delete this document? You can still restore from Versions.')) return;
-
-  fetch(`/api/kb/${selected}`, { method: 'DELETE' })
-    .then(r => r.json().then(data => ({status: r.status, data})))
-    .then(({status, data}) => {
-      if (status >= 400 || data.ok === false) throw new Error(data.error || 'delete failed');
-      showToast('Document deleted', 'info');
-      createNewKbDoc();
-      reloadKbDocs();
-    })
-    .catch(e => showToast('Delete failed: ' + e.message, 'error'));
+  fire();
 }
 
 function loadKbVersions(docId) {

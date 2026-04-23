@@ -88,11 +88,11 @@ def node_info():
 def node_register():
     """Register a remote node. Requires name, url, api_key."""
     try:
-        data = request.get_json(force=True)
-        name = data.get('name', '').strip()
-        url = data.get('url', '').strip()
-        api_key = data.get('api_key', '').strip()
-        role = data.get('role', 'contributor').strip()
+        data = request.get_json(silent=True) or {}
+        name = str(data.get('name') or '').strip()
+        url = str(data.get('url') or '').strip()
+        api_key = str(data.get('api_key') or '').strip()
+        role = str(data.get('role') or 'contributor').strip()
         agents = data.get('agents', [])
         capabilities = data.get('capabilities', [])
 
@@ -131,10 +131,10 @@ def node_list():
 def node_discover():
     """Discover and register a remote node by URL. Requires url + api_key."""
     try:
-        data = request.get_json(force=True)
-        url = data.get('url', '').strip()
-        api_key = data.get('api_key', '').strip()
-        name = data.get('name', '').strip() or None
+        data = request.get_json(silent=True) or {}
+        url = str(data.get('url') or '').strip()
+        api_key = str(data.get('api_key') or '').strip()
+        name = str(data.get('name') or '').strip() or None
 
         if not url or not api_key:
             return jsonify({'error': 'url and api_key are required'}), 400
@@ -336,7 +336,7 @@ def federation_roster():
 def node_sync_proposals():
     """Accept a batch of proposals from a remote node. Last-writer-wins merge."""
     try:
-        data = request.get_json(force=True)
+        data = request.get_json(silent=True) or {}
         proposals = data.get('proposals', [])
         source_node = data.get('source_node', '').strip()
         if not proposals or not source_node:
@@ -435,7 +435,7 @@ def node_events():
     """Receive relayed events from a remote node. Dedup by topic+payload hash."""
     try:
         import hashlib
-        data = request.get_json(force=True)
+        data = request.get_json(silent=True) or {}
         events = data.get('events', [])
         source_node = data.get('source_node', '').strip()
         if not events or not source_node:

@@ -415,6 +415,9 @@ def api_activity_stream():
     import time
 
     def generate():
+        # Immediate connect-ack so clients know the stream is live
+        # before any data rows are available. SSE contract (D28).
+        yield ': ready\n\n'
         since_id = 0
         # Send last 20 entries on connect so the feed isn't empty
         rows = get_activity_log(limit=20)

@@ -55,6 +55,11 @@ function bindHomeLaunchClicks() {
                     setTimeout(() => {
                         if (typeof docsSetTab === 'function') docsSetTab(tab);
                     }, 120);
+                } else if (afterOpen.startsWith('studioSetTab:')) {
+                    const tab = afterOpen.split(':')[1] || 'pending';
+                    setTimeout(() => {
+                        if (typeof studioSetTab === 'function') studioSetTab(tab);
+                    }, 140);
                 }
             } catch (err) {
                 _troubleshootLog && _troubleshootLog('error', 'Card click launch failed', String(err?.message || err));

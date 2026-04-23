@@ -203,6 +203,45 @@ def delete_source(source_id):
         conn.close()
 
 
+def update_source(source_id, *, title=None, category=None, subcategory=None, domain_tags=None):
+    """Reclassify / rename a source. Only non-None fields are written.
+    `domain_tags` may be a list (stored as JSON) or a string. `subcategory`
+    may be '' to clear. Returns True if a row was touched, False if not found."""
+    import json as _json
+    fields = []
+    params = []
+    if title is not None:
+        fields.append('title=?')
+        params.append(str(title).strip() or 'Untitled')
+    if category is not None:
+        fields.append('category=?')
+        params.append(str(category).strip() or 'general')
+    if subcategory is not None:
+        fields.append('subcategory=?')
+        params.append(str(subcategory).strip() or None)
+    if domain_tags is not None:
+        if isinstance(domain_tags, (list, tuple, set)):
+            tags_val = _json.dumps(list(domain_tags))
+        else:
+            tags_val = str(domain_tags or '[]')
+        fields.append('domain_tags=?')
+        params.append(tags_val)
+    if not fields:
+        return False
+    fields.append("updated_at=datetime('now')")
+    params.append(source_id)
+    conn = _conn()
+    try:
+        cur = conn.execute(
+            f"UPDATE knowledge_sources SET {', '.join(fields)} WHERE source_id=?",
+            params,
+        )
+        conn.commit()
+        return (cur.rowcount or 0) > 0
+    finally:
+        conn.close()
+
+
 def get_all_chunks(category=None):
     """Return all chunks (with embeddings) from active sources for search."""
     conn = _conn()

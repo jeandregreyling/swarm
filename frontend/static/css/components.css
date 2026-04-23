@@ -638,7 +638,7 @@ body.theme-solar {
 #tdet-body,
 #mem-det-body,
 #doc-det-body {
-  scrollbar-width: thin;
+  scrollbar-width: auto;
   scrollbar-color: var(--accent) var(--window-header);
 }
 
@@ -659,8 +659,8 @@ body.theme-solar {
 #tdet-body::-webkit-scrollbar,
 #mem-det-body::-webkit-scrollbar,
 #doc-det-body::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
 }
 
 #home-content::-webkit-scrollbar-track,
@@ -706,6 +706,8 @@ body.theme-solar {
   background: linear-gradient(180deg, var(--accent), var(--accent-hover));
   border-radius: 999px;
   border: 2px solid color-mix(in srgb, var(--window-header) 88%, transparent);
+  min-height: 40px;
+  min-width: 40px;
 }
 
 #home-content::-webkit-scrollbar-thumb:hover,

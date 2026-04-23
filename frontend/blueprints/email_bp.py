@@ -210,12 +210,20 @@ def get_email_thread(ticket_number):
 
 @email_bp.route('/api/email/send', methods=['POST'])
 def send_email():
-    """Send an email via Gmail SMTP from one of the swarm accounts."""
+    """Send an email via Gmail SMTP from one of the swarm accounts.
+
+    Pass ``internal_test: true`` in the JSON body to tag this send as an
+    internal probe. Internal-test sends add an ``X-Swarm-Internal-Test: 1``
+    header and a ``[SWARM-INTERNAL-TEST]`` subject tag so any bounce-back
+    can be correlated and silently discarded by the listener's bounce
+    short-circuit (Session 28 Backlog #1).
+    """
     body = request.get_json(force=True, silent=True) or {}
     to_addr = str(body.get('to', '')).strip()
     subject = str(body.get('subject', '')).strip()
     message = str(body.get('body', '')).strip()
     from_account = str(body.get('from_account', '')).strip()
+    internal_test = bool(body.get('internal_test', False))
 
     if not to_addr or not subject:
         return jsonify({'ok': False, 'error': 'to and subject are required'}), 400
@@ -231,10 +239,16 @@ def send_email():
     if not password:
         return jsonify({'ok': False, 'error': 'No password for selected account'}), 503
 
+    if internal_test and '[SWARM-INTERNAL-TEST]' not in subject:
+        subject = f'[SWARM-INTERNAL-TEST] {subject}'
+
     msg = MIMEMultipart()
     msg['From'] = sender
     msg['To'] = to_addr
     msg['Subject'] = subject
+    if internal_test:
+        msg['X-Swarm-Internal-Test'] = '1'
+        msg['Auto-Submitted'] = 'auto-generated'
     msg.attach(MIMEText(message, 'plain', 'utf-8'))
 
     try:
@@ -245,5 +259,9 @@ def send_email():
         log_activity('email', 'send_error', f'to={to_addr} err={exc}')
         return jsonify({'ok': False, 'error': f'SMTP error: {exc}'}), 502
 
-    log_activity('email', 'send', f'from={sender} to={to_addr} subj={subject[:60]}')
-    return jsonify({'ok': True, 'message': 'Email sent'})
+    log_activity(
+        'email',
+        'send_internal_test' if internal_test else 'send',
+        f'from={sender} to={to_addr} subj={subject[:60]}',
+    )
+    return jsonify({'ok': True, 'message': 'Email sent', 'internal_test': internal_test})
