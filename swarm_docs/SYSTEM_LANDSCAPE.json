@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-23 00:13",
+  "generated_at": "2026-04-23 18:27",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -429,7 +429,7 @@
     {
       "path": "agents/seven/seven_agent.py",
       "group": "Agent Modules",
-      "description": "agents/seven/seven_agent.py \u2014 Seven (local-algorithm)"
+      "description": "agents/seven/seven_agent.py \u2014 Seven"
     },
     {
       "path": "agents/ten/copilot_agent.py",
@@ -1225,9 +1225,21 @@
           "methods": [
             "GET"
           ]
+        },
+        {
+          "path": "/api/governance/state",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/governance/toggle",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 3
+      "route_count": 5
     },
     {
       "name": "docs",
@@ -1734,9 +1746,51 @@
           "methods": [
             "PATCH"
           ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/knowledge/steps/<step_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/knowledge/steps/<step_id>/edit",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/knowledge/cases/<case_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/knowledge/cases/<case_id>/edit",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/knowledge/steps/<step_id>/test-scripts",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/steps/<step_id>/complete",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 19
+      "route_count": 26
     },
     {
       "name": "legacy",
@@ -1777,6 +1831,18 @@
           "path": "/api/library/sources/<int:source_id>",
           "methods": [
             "DELETE"
+          ]
+        },
+        {
+          "path": "/api/library/sources/<int:source_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/library/sources/<int:source_id>",
+          "methods": [
+            "PATCH"
           ]
         },
         {
@@ -1832,9 +1898,63 @@
           "methods": [
             "POST"
           ]
+        },
+        {
+          "path": "/api/library/topics",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/library/topics",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/library/topics/<int:topic_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/library/topics/<int:topic_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/library/topics/run/<int:topic_id>",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/manual",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/manual/<key>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/feeds",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/feeds",
+          "methods": [
+            "PUT"
+          ]
         }
       ],
-      "route_count": 11
+      "route_count": 22
     },
     {
       "name": "localai",
@@ -2171,6 +2291,12 @@
           ]
         },
         {
+          "path": "/api/ollama/keepalive",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
           "path": "/api/ollama/ps",
           "methods": [
             "GET"
@@ -2213,7 +2339,7 @@
           ]
         }
       ],
-      "route_count": 11
+      "route_count": 12
     },
     {
       "name": "onboarding",
@@ -3091,11 +3217,11 @@
   "js_views": [
     {
       "name": "access.js",
-      "size_kb": 96.5
+      "size_kb": 103.5
     },
     {
       "name": "chat.js",
-      "size_kb": 252.9
+      "size_kb": 266.1
     },
     {
       "name": "conversations.js",
@@ -3103,7 +3229,7 @@
     },
     {
       "name": "diamond.js",
-      "size_kb": 26.9
+      "size_kb": 28.3
     },
     {
       "name": "docs.js",
@@ -3111,11 +3237,11 @@
     },
     {
       "name": "email.js",
-      "size_kb": 26.1
+      "size_kb": 26.5
     },
     {
       "name": "files.js",
-      "size_kb": 42.0
+      "size_kb": 47.6
     },
     {
       "name": "git.js",
@@ -3131,11 +3257,11 @@
     },
     {
       "name": "home-chat.js",
-      "size_kb": 50.0
+      "size_kb": 56.1
     },
     {
       "name": "knowledge.js",
-      "size_kb": 17.3
+      "size_kb": 22.0
     },
     {
       "name": "library-graph.js",
@@ -3143,11 +3269,11 @@
     },
     {
       "name": "library.js",
-      "size_kb": 26.8
+      "size_kb": 43.7
     },
     {
       "name": "localai.js",
-      "size_kb": 25.7
+      "size_kb": 26.3
     },
     {
       "name": "memory-landscape.js",
@@ -3171,15 +3297,15 @@
     },
     {
       "name": "orbs.js",
-      "size_kb": 63.0
+      "size_kb": 83.1
     },
     {
       "name": "projects.js",
-      "size_kb": 15.5
+      "size_kb": 24.4
     },
     {
       "name": "services.js",
-      "size_kb": 4.7
+      "size_kb": 5.0
     },
     {
       "name": "skills.js",
@@ -3195,7 +3321,7 @@
     },
     {
       "name": "studio.js",
-      "size_kb": 86.3
+      "size_kb": 86.4
     },
     {
       "name": "tasker.js",
@@ -3207,7 +3333,7 @@
     },
     {
       "name": "terminal.js",
-      "size_kb": 43.6
+      "size_kb": 43.5
     },
     {
       "name": "tickets.js",
@@ -3233,7 +3359,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 35328
+      "rows": 36470
     },
     {
       "name": "agent_capabilities",
@@ -3253,19 +3379,19 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 610
+      "rows": 613
     },
     {
       "name": "audit_results",
-      "rows": 35
+      "rows": 36
     },
     {
       "name": "change_runs",
-      "rows": 2
+      "rows": 3
     },
     {
       "name": "chat_jobs",
-      "rows": 585
+      "rows": 599
     },
     {
       "name": "claude_log",
@@ -3273,15 +3399,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2192
+      "rows": 2251
     },
     {
       "name": "conversations",
-      "rows": 0
+      "rows": 2
     },
     {
       "name": "council_output",
-      "rows": 1275
+      "rows": 1945
     },
     {
       "name": "daily_checkpoint",
@@ -3301,7 +3427,7 @@
     },
     {
       "name": "decisions",
-      "rows": 7665
+      "rows": 11004
     },
     {
       "name": "deferred_items",
@@ -3309,7 +3435,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 861
+      "rows": 867
     },
     {
       "name": "file_versions",
@@ -3325,11 +3451,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4324
+      "rows": 4337
     },
     {
       "name": "governance_log",
-      "rows": 387
+      "rows": 406
     },
     {
       "name": "knowledge_chunks",
@@ -3337,11 +3463,11 @@
     },
     {
       "name": "knowledge_sources",
-      "rows": 50
+      "rows": 51
     },
     {
       "name": "memory",
-      "rows": 106
+      "rows": 108
     },
     {
       "name": "memory_eight",
@@ -3349,7 +3475,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 22
+      "rows": 24
     },
     {
       "name": "memory_ghost_coder",
@@ -3361,7 +3487,7 @@
     },
     {
       "name": "memory_llama",
-      "rows": 1
+      "rows": 2
     },
     {
       "name": "memory_mistral",
@@ -3389,7 +3515,7 @@
     },
     {
       "name": "memory_ten",
-      "rows": 59
+      "rows": 62
     },
     {
       "name": "memory_thirteen",
@@ -3405,7 +3531,7 @@
     },
     {
       "name": "messages",
-      "rows": 0
+      "rows": 12
     },
     {
       "name": "moderators",
@@ -3437,15 +3563,15 @@
     },
     {
       "name": "project_steps",
-      "rows": 32
+      "rows": 102
     },
     {
       "name": "project_test_cases",
-      "rows": 34
+      "rows": 54
     },
     {
       "name": "projects",
-      "rows": 21
+      "rows": 28
     },
     {
       "name": "proposal_attachments",
@@ -3457,7 +3583,7 @@
     },
     {
       "name": "queue",
-      "rows": 1570
+      "rows": 1582
     },
     {
       "name": "research_evidence",
@@ -3473,7 +3599,7 @@
     },
     {
       "name": "scheduled_tasks",
-      "rows": 51
+      "rows": 1298
     },
     {
       "name": "skills",
@@ -3493,7 +3619,7 @@
     },
     {
       "name": "sqlite_sequence",
-      "rows": 68
+      "rows": 69
     },
     {
       "name": "sudo_command_whitelist",
@@ -3501,7 +3627,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 387
+      "rows": 406
     },
     {
       "name": "swarm_event_acks",
@@ -3525,11 +3651,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 7253
+      "rows": 7474
     },
     {
       "name": "task_run_log",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "terminal_shortcuts",
@@ -3541,31 +3667,31 @@
     },
     {
       "name": "test_runs",
-      "rows": 37
+      "rows": 60
     },
     {
       "name": "ticket_notes",
-      "rows": 615
+      "rows": 621
     },
     {
       "name": "tickets",
-      "rows": 623
+      "rows": 629
     },
     {
       "name": "time_checkpoints",
-      "rows": 4617
+      "rows": 4712
     },
     {
       "name": "time_events",
-      "rows": 96233
+      "rows": 97300
     },
     {
       "name": "time_journal",
-      "rows": 90297
+      "rows": 91266
     },
     {
       "name": "time_machine",
-      "rows": 5918
+      "rows": 6077
     },
     {
       "name": "tool_builds",
@@ -3573,7 +3699,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 136
+      "rows": 254
     },
     {
       "name": "trusted_domains",
@@ -3585,7 +3711,7 @@
     },
     {
       "name": "user_interests",
-      "rows": 3
+      "rows": 13
     },
     {
       "name": "user_patterns",
@@ -3609,7 +3735,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 2
+      "rows": 4
     }
   ],
   "agents": [
@@ -3666,13 +3792,6 @@
       "name": "duck",
       "model": "qwen2.5:latest",
       "role": "Sanity checker \u2014 YES/NO after every ticket",
-      "tier": "local",
-      "enabled": 1
-    },
-    {
-      "name": "sniffles",
-      "model": "deepseek-r1:7b",
-      "role": "Inspector \u2014 memory auditor, read only, chain-of-thought",
       "tier": "local",
       "enabled": 1
     },
@@ -3764,6 +3883,13 @@
       "name": "twenty",
       "model": "Qwen3.6:latest",
       "role": "Nervous system \u2014 observes, deliberates, suggests (no LLM)",
+      "tier": "local",
+      "enabled": 1
+    },
+    {
+      "name": "sniffles",
+      "model": "deepseek-r1:7b",
+      "role": "Inspector \u2014 memory auditor, read only, chain-of-thought",
       "tier": "local",
       "enabled": 1
     }
@@ -4015,6 +4141,14 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "orb-quality-low",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "orb-quality-high",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "scene-off-btn",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -4028,6 +4162,14 @@
     },
     {
       "id": "scene-rain-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "scene-solar-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "scene-underwater-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4083,10 +4225,6 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
-      "id": "services-dropdown-btn",
-      "file": "frontend/templates/terminal_base.html"
-    },
-    {
       "id": "auth-user-pill",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -4100,6 +4238,10 @@
     },
     {
       "id": "home-settings-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "services-dropdown-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4143,11 +4285,15 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
-      "id": "chat-parallel-mode-btn",
+      "id": "send-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
-      "id": "send-btn",
+      "id": "chat-exec-mode-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "chat-parallel-mode-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4263,11 +4409,19 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "studio-btn-governance",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "testlab-run-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
       "id": "testlab-stop-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "library-topics-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4335,7 +4489,7 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
-      "class": "chat-dock-btn",
+      "class": "chat-dock-btn chat-rail-collapse",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4351,15 +4505,15 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
-      "class": "chat-parallel-btn",
-      "file": "frontend/templates/terminal_base.html"
-    },
-    {
       "class": "workflow-panel-close",
       "file": "frontend/templates/terminal_base.html"
     },
     {
       "class": "chat-section-header",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "chat-mode-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4439,7 +4593,11 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
-      "id": "chat-exec-mode-btn",
+      "id": "files-breadcrumb-toggle",
+      "file": "frontend/templates/views/files.html"
+    },
+    {
+      "class": "chat-dock-btn",
       "file": "frontend/templates/views/chat.html"
     },
     {
@@ -4447,8 +4605,8 @@
       "file": "frontend/templates/views/chat.html"
     },
     {
-      "class": "chat-mode-btn",
-      "file": "frontend/templates/views/chat.html"
+      "id": "feeds-add-btn",
+      "file": "frontend/templates/views/feeds.html"
     },
     {
       "id": "memory-select-visible-btn",
@@ -4611,6 +4769,10 @@
       "file": "frontend/static/js/views/knowledge.js"
     },
     {
+      "id": "kn-interests-list",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
       "id": "kn-info-modal",
       "file": "frontend/static/js/views/knowledge.js"
     },
@@ -4631,6 +4793,10 @@
       "file": "frontend/static/js/views/knowledge.js"
     },
     {
+      "id": "chat-input",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
       "id": "kn-panel-files",
       "file": "frontend/static/js/views/knowledge.js"
     },
@@ -4644,6 +4810,14 @@
     },
     {
       "id": "view-docs",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "kn-panel-memory",
+      "file": "frontend/static/js/views/knowledge.js"
+    },
+    {
+      "id": "view-memory",
       "file": "frontend/static/js/views/knowledge.js"
     },
     {
@@ -4863,15 +5037,15 @@
       "file": "frontend/static/js/views/studio-testlab.js"
     },
     {
+      "id": "home-chat-thread-select",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
       "id": "home-chat-env-badge",
       "file": "frontend/static/js/views/home-chat.js"
     },
     {
       "id": "home-chat-input",
-      "file": "frontend/static/js/views/home-chat.js"
-    },
-    {
-      "id": "home-chat-thread-select",
       "file": "frontend/static/js/views/home-chat.js"
     },
     {
@@ -4888,6 +5062,10 @@
     },
     {
       "id": "home-chat-agent-count",
+      "file": "frontend/static/js/views/home-chat.js"
+    },
+    {
+      "id": "home-chat-token-count",
       "file": "frontend/static/js/views/home-chat.js"
     },
     {
@@ -5109,6 +5287,10 @@
     {
       "id": "pico-embed-container",
       "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "files-view-css",
+      "file": "frontend/static/js/views/files.js"
     },
     {
       "id": "files-op-status",
@@ -5384,6 +5566,50 @@
     },
     {
       "id": "library-email-content",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-source-modal",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-modal-cat",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-modal-sub",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-modal-title",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-modal-tags",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-topics-modal",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-topics-filter",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-topics-list",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-topics-count",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-topics-new",
+      "file": "frontend/static/js/views/library.js"
+    },
+    {
+      "id": "lib-topics-new-cat",
       "file": "frontend/static/js/views/library.js"
     },
     {
@@ -5723,6 +5949,22 @@
       "file": "frontend/static/js/views/guide.js"
     },
     {
+      "id": "dictionary-manager-modal",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "dict-add-input",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "dict-list",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "dict-count",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
       "id": "chat-attachment-input",
       "file": "frontend/static/js/views/chat.js"
     },
@@ -5744,6 +5986,22 @@
     },
     {
       "id": "theme-font-size-select",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "theme-font-family-select",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-topbar-title-col",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-topbar-subtitle",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "chat-topbar-caret",
       "file": "frontend/static/js/views/chat.js"
     },
     {
