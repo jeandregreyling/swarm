@@ -5,6 +5,13 @@
 _Comprehensive change log with agent attribution, timestamps, and version control tracking._
 _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
+[2026-04-23 19:45:00] Copilot: **Phase-5 kickoff — Seven model swap + Coding Bible fan-out.**
+- `agents/seven/seven_agent.py`: default model `qwen2.5:0.5b` → `phi3:mini`; `temperature` key removed from the Ollama generate options. `SEVEN_MODEL` env still overrides.
+- `utils/config.py`: added module-bottom hook that prepends the Coding Bible quick-card to every coder-capable `*_SYSTEM_PROMPT` (Gemma, LLaMA, Qwen, Mistral, Twenty, Eight, Eleven, Nine, Ten, Twelve, Thirteen, Nineteen, Scholar, Seeker, Ghost-Coder). Idempotent (skips if "CODING BIBLE" already present). Librarian and Seven intentionally excluded.
+- `tests/test_phase5.py`: 6 new tests — Seven default + env override, Bible presence in all 15 prompts, no-duplicate, TWENTY BIG-CODER regression, NERVOUS_SYSTEM_PROMPT preserved.
+- `docs/FEATURES_TODO.md`: prepended Phase-5 backlog (Ghost's feedback dump, small→medium→big).
+- Full suite: 764 passed (Phase-4 baseline) + 6 new = **770 passed**.
+
 [2026-04-23 19:00:00] Copilot: **Phase-4 BIG batch (B18–B21) + bug-fix roll-forward.**
 
 **BIG (B18–B21).**
