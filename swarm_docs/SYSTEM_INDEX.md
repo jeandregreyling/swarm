@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-23 18:31*
+*Auto-generated: 2026-04-23 19:18*
 
 
 ## Python Modules
@@ -17,6 +17,7 @@
 | `utils/change_logger.py` | change_logger.py — Seven's Swarm Time Wizard integration |
 | `utils/circuit_breaker.py` | utils/circuit_breaker.py — Per-agent circuit breaker + health probe |
 | `utils/claude_api.py` | claude_api.py — Seven's Swarm |
+| `utils/coding_bible.py` | utils/coding_bible.py — Coding Bible loader. |
 | `utils/config.py` | — |
 | `utils/config_validator.py` | utils/config_validator.py — Configuration validation & node config (D.4) |
 | `utils/convert_docs.py` | convert_docs.py — Seven's Swarm (RL-022 docs) |
@@ -70,6 +71,7 @@
 | File | Description |
 |------|-------------|
 | `core/chat_actions.py` | core/chat_actions.py — Pure-rules chat action detector ("Siri-but-better"). |
+| `core/fan_controller.py` | core/fan_controller.py — read-only fan / temperature monitor. |
 | `core/kill_switch.py` | KILL SWITCHES — Emergency control agents via Telegram/Discord |
 | `core/knowledge/__init__.py` | core.knowledge — Knowledge Center package. |
 | `core/knowledge/projects.py` | core.knowledge.projects — Session 30.1: Projects, Steps, Test Cases. |
@@ -170,6 +172,7 @@
 | `auto_audit` | 2 | auto_audit.py — Periodic self-audit: pytest + basic lint checks. |
 | `brief` | 3 | brief.py — Ghost Brief routes |
 | `chat` | 8 | chat.py — Chat Engine routes |
+| `coding_bible` | 3 | blueprints/coding_bible.py — Coding Bible retrieval API. |
 | `conversations` | 9 | conversations.py — Conversations routes |
 | `council_bp` | 2 | Council API blueprint — serves Agent 20 output to the frontend. |
 | `debates` | 5 | debates.py — Debates routes |
@@ -178,6 +181,7 @@
 | `docs` | 14 | docs.py — Docs & Project Files routes |
 | `email_bp` | 5 | blueprints/email_bp.py — Email tile API |
 | `exec_bp` | 4 | exec_bp.py — Ghost Exec routes |
+| `fan` | 2 | blueprints/fan.py — CPU temperature + fan mode API. |
 | `git` | 6 | git.py — Git Operations routes |
 | `health` | 2 | — |
 | `health_bp` | 3 | Health digest API blueprint — one-stop-shop system visibility. |
@@ -211,6 +215,7 @@
 | `tickets` | 11 | tickets.py — Tickets routes |
 | `time_wizard_bp` | 10 | time_wizard_bp.py — Time Wizard routes |
 | `tools` | 7 | frontend/blueprints/tools.py — Tool Build API (C.4.1) |
+| `voice` | 3 | blueprints/voice.py — Voice I/O endpoints. |
 | `vpn_bp` | 1 | vpn_bp.py — Tailscale / VPN status API for Fridays terminal. |
 | `weather_bp` | 1 | weather_bp.py — Lightweight weather proxy for world clocks. |
 | `workspace` | 10 | workspace.py — Workspace & Code Ops routes |
@@ -229,6 +234,7 @@
 | `git.js` | 24.1 KB |
 | `guide.js` | 7.9 KB |
 | `health-digest.js` | 8.2 KB |
+| `hive-nodes.js` | 2.7 KB |
 | `home-chat.js` | 56.1 KB |
 | `knowledge.js` | 22.0 KB |
 | `library-graph.js` | 12.4 KB |
@@ -259,31 +265,31 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 36589 |
+| `activity_log` | 36662 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 622 |
+| `approval_tokens` | 625 |
 | `audit_results` | 36 |
-| `change_runs` | 6 |
+| `change_runs` | 7 |
 | `chat_jobs` | 599 |
 | `claude_log` | 1 |
 | `conv_timeline` | 2251 |
 | `conversations` | 2 |
-| `council_output` | 1955 |
+| `council_output` | 2007 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 11091 |
+| `decisions` | 11795 |
 | `deferred_items` | 0 |
-| `duck_log` | 873 |
+| `duck_log` | 875 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4343 |
-| `governance_log` | 406 |
+| `ghost_circle` | 4345 |
+| `governance_log` | 410 |
 | `knowledge_chunks` | 638 |
 | `knowledge_sources` | 51 |
 | `memory` | 108 |
@@ -301,7 +307,7 @@
 | `memory_ten` | 62 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `memory_twenty` | 375 |
+| `memory_twenty` | 399 |
 | `messages` | 12 |
 | `moderators` | 2 |
 | `node_config` | 0 |
@@ -315,7 +321,7 @@
 | `projects` | 28 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 2 |
-| `queue` | 1594 |
+| `queue` | 1598 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 506 |
@@ -326,25 +332,25 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 69 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 406 |
+| `swarm_bus` | 410 |
 | `swarm_event_acks` | 24 |
 | `swarm_events` | 2 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7475 |
+| `system_stats` | 7484 |
 | `task_run_log` | 1 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 1 |
 | `test_runs` | 60 |
-| `ticket_notes` | 627 |
-| `tickets` | 635 |
-| `time_checkpoints` | 4765 |
-| `time_events` | 97375 |
-| `time_journal` | 91288 |
-| `time_machine` | 6090 |
+| `ticket_notes` | 629 |
+| `tickets` | 637 |
+| `time_checkpoints` | 4782 |
+| `time_events` | 97832 |
+| `time_journal` | 91728 |
+| `time_machine` | 6116 |
 | `tool_builds` | 0 |
-| `trace_events` | 304 |
+| `trace_events` | 320 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_interests` | 13 |
@@ -353,7 +359,7 @@
 | `user_sessions` | 3 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 4 |
+| `work_proposals` | 6 |
 
 ## Agents
 
