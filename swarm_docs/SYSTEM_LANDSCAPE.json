@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-23 18:31",
+  "generated_at": "2026-04-23 19:18",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -35,6 +35,11 @@
       "path": "utils/claude_api.py",
       "group": "Utils",
       "description": "claude_api.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "utils/coding_bible.py",
+      "group": "Utils",
+      "description": "utils/coding_bible.py \u2014 Coding Bible loader."
     },
     {
       "path": "utils/config.py",
@@ -275,6 +280,11 @@
       "path": "core/chat_actions.py",
       "group": "Core",
       "description": "core/chat_actions.py \u2014 Pure-rules chat action detector (\"Siri-but-better\")."
+    },
+    {
+      "path": "core/fan_controller.py",
+      "group": "Core",
+      "description": "core/fan_controller.py \u2014 read-only fan / temperature monitor."
     },
     {
       "path": "core/kill_switch.py",
@@ -1063,6 +1073,31 @@
       "route_count": 7
     },
     {
+      "name": "coding_bible",
+      "description": "blueprints/coding_bible.py \u2014 Coding Bible retrieval API.",
+      "routes": [
+        {
+          "path": "/api/coding-bible",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/coding-bible/quick",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/coding-bible/json",
+          "methods": [
+            "GET"
+          ]
+        }
+      ],
+      "route_count": 3
+    },
+    {
       "name": "conversations",
       "description": "conversations.py \u2014 Conversations routes",
       "routes": [
@@ -1399,6 +1434,25 @@
         }
       ],
       "route_count": 4
+    },
+    {
+      "name": "fan",
+      "description": "blueprints/fan.py \u2014 CPU temperature + fan mode API.",
+      "routes": [
+        {
+          "path": "/api/fan/status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/fan/mode",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 2
     },
     {
       "name": "git",
@@ -3121,6 +3175,31 @@
       "route_count": 7
     },
     {
+      "name": "voice",
+      "description": "blueprints/voice.py \u2014 Voice I/O endpoints.",
+      "routes": [
+        {
+          "path": "/api/voice/status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/voice/stt",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/voice/tts",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 3
+    },
+    {
       "name": "vpn_bp",
       "description": "vpn_bp.py \u2014 Tailscale / VPN status API for Fridays terminal.",
       "routes": [
@@ -3256,6 +3335,10 @@
       "size_kb": 8.2
     },
     {
+      "name": "hive-nodes.js",
+      "size_kb": 2.7
+    },
+    {
       "name": "home-chat.js",
       "size_kb": 56.1
     },
@@ -3359,7 +3442,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 36589
+      "rows": 36662
     },
     {
       "name": "agent_capabilities",
@@ -3379,7 +3462,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 622
+      "rows": 625
     },
     {
       "name": "audit_results",
@@ -3387,7 +3470,7 @@
     },
     {
       "name": "change_runs",
-      "rows": 6
+      "rows": 7
     },
     {
       "name": "chat_jobs",
@@ -3407,7 +3490,7 @@
     },
     {
       "name": "council_output",
-      "rows": 1955
+      "rows": 2007
     },
     {
       "name": "daily_checkpoint",
@@ -3427,7 +3510,7 @@
     },
     {
       "name": "decisions",
-      "rows": 11091
+      "rows": 11795
     },
     {
       "name": "deferred_items",
@@ -3435,7 +3518,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 873
+      "rows": 875
     },
     {
       "name": "file_versions",
@@ -3451,11 +3534,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4343
+      "rows": 4345
     },
     {
       "name": "governance_log",
-      "rows": 406
+      "rows": 410
     },
     {
       "name": "knowledge_chunks",
@@ -3527,7 +3610,7 @@
     },
     {
       "name": "memory_twenty",
-      "rows": 375
+      "rows": 399
     },
     {
       "name": "messages",
@@ -3583,7 +3666,7 @@
     },
     {
       "name": "queue",
-      "rows": 1594
+      "rows": 1598
     },
     {
       "name": "research_evidence",
@@ -3627,7 +3710,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 406
+      "rows": 410
     },
     {
       "name": "swarm_event_acks",
@@ -3651,7 +3734,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 7475
+      "rows": 7484
     },
     {
       "name": "task_run_log",
@@ -3671,27 +3754,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 627
+      "rows": 629
     },
     {
       "name": "tickets",
-      "rows": 635
+      "rows": 637
     },
     {
       "name": "time_checkpoints",
-      "rows": 4765
+      "rows": 4782
     },
     {
       "name": "time_events",
-      "rows": 97375
+      "rows": 97832
     },
     {
       "name": "time_journal",
-      "rows": 91288
+      "rows": 91728
     },
     {
       "name": "time_machine",
-      "rows": 6090
+      "rows": 6116
     },
     {
       "name": "tool_builds",
@@ -3699,7 +3782,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 304
+      "rows": 320
     },
     {
       "name": "trusted_domains",
@@ -3735,7 +3818,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 4
+      "rows": 6
     }
   ],
   "agents": [
@@ -4133,6 +4216,10 @@
   ],
   "ui_elements": [
     {
+      "id": "spotlight-mic-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "atmosphere-auto-btn",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -4262,6 +4349,10 @@
     },
     {
       "id": "home-onboarding-skip",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "home-chat-mic-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4437,6 +4528,10 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "library-graph-popout",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "library-add-btn",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -4474,6 +4569,10 @@
     },
     {
       "id": "trace-tab-syslog",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "voice-mic-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -5287,6 +5386,14 @@
     {
       "id": "pico-embed-container",
       "file": "frontend/static/js/views/localai.js"
+    },
+    {
+      "id": "hive-status",
+      "file": "frontend/static/js/views/hive-nodes.js"
+    },
+    {
+      "id": "hive-graph-canvas",
+      "file": "frontend/static/js/views/hive-nodes.js"
     },
     {
       "id": "files-view-css",
