@@ -3,7 +3,62 @@
 <!-- markdownlint-disable -->
 
 _Comprehensive list of all planned features, organized by phase and priority._
-_Last updated: 2026-04-23 by Copilot (Phase-4 BIG wave)._
+_Last updated: 2026-04-23 by Copilot (Phase-5 kickoff — Ghost feedback dump)._
+
+---
+
+## Phase 5 — Refinement pass (2026-04-23) — BACKLOG
+
+Source: Ghost's post-Phase-4 walkthrough feedback. Ordered **small → medium → big**
+per the standing directive.
+
+### Phase-5 — SHIPPED (this session)
+- [x] **Seven model swap** — `agents/seven/seven_agent.py`: default changed from `qwen2.5:0.5b` → `phi3:mini`; temperature option removed from the generate call. (`SEVEN_MODEL` env still overrides.)
+- [x] **Coding Bible fan-out** — `utils/config.py` now prepends the Coding Bible quick-card to every coder-capable `*_SYSTEM_PROMPT` at import time. Covers Gemma, LLaMA, Qwen, Mistral, Twenty, Eight, Eleven, Nine, Ten, Twelve, Thirteen, Nineteen, Scholar, Seeker, Ghost-Coder. (Librarian excluded — tags-only output. Seven excluded — 4K context budget on phi3.) Regression test in `tests/test_phase5.py`.
+
+### Phase-5 — SMALL
+- [ ] **Dictionary button polish** — make it look clickable, close on Esc, swap PNG/emoji icon for SVG.
+- [ ] **Main-screen tile cleanup** — remove Clock and Vibe tiles from the main screen (redundant with five-clicks).
+- [ ] **Add-new-tile** — make it draggable like every other tile on the main screen.
+- [ ] **Chat-tile thread row** — add a left/right collapse button next to the up/down button, on the same row as the label.
+- [ ] **Main-terminal thread dropdown** — restore the dropdown on the front terminal; only the chat-tile should have it removed.
+- [ ] **Quick-access placement** — move quick-access back to the top, above the chat list.
+- [ ] **Chat resize dragger** — move to above the chat once quick-access moves up, not at the bottom.
+- [ ] **History popout** — history should open as a new window, not as a bottom pop-up.
+- [ ] **Favourites star** — add an "add-to-favs" star next to the chat input, shortcut bubbles should support multi-select and combo.
+- [ ] **Enrollment "open every time" tick** — persist a setting to reopen enrollment on every launch.
+- [ ] **Spotlight mic button** — confirm the new mic tile works on the spotlight input row after Phase-4 B19 landed.
+
+### Phase-5 — MEDIUM
+- [ ] **Spotlight bottom-bar shortcut** — every window's bottom-bar gets a Spotlight launch button, plus each tile gets a little bottom-tab shortcut to Spotlight.
+- [ ] **Terminal output refactor** — big spaces tightened; move redo/pin/copy/timestamp to a bottom menu-bar on every terminal output; terminal boxes become resizable; shortcut bubbles get same-size grid fill, else hover see-through overlay above output.
+- [ ] **Settings tile** — behave as a normal draggable/resizable tile window; replace the hard-to-grab slider with a dropdown (per user preference).
+- [ ] **Trace tile** — behave as a normal window; port over the Trace functionality that was missing after the last refactor.
+- [ ] **Health check visibility** — surface the health-check result in the Monitor tile (currently invisible).
+- [ ] **Theme timeline** — fill the 00:00–06:00 gap; widen the color range beyond white/dark.
+- [ ] **Studio defaults** — Projects tab is the default on open; Projects highlighted in accent-colour and glowing, sitting right of "Add New", followed by Test Lab, then Proposals.
+- [ ] **Studio Proposals branching** — Proposals splits into Proposed / In Progress / History, with fall-through defaults.
+- [ ] **Studio GIT blocks** — make resizable; Test Center likewise; add test-script details + output panel that went missing.
+- [ ] **Vortex** — every section gets expand/collapse and resize; each section gets a "?" info button linked to its KC manual page.
+- [ ] **Universal "?" button** — add to Studio tabs and Vortex sections, linked to the KC interactive system guide (Agile / PRINCE / Waterfall consistency).
+- [ ] **Available feeds** — surface what they're tracking; add login with user or system account so feeds curate interests/topics as KC suggestions.
+
+### Phase-5 — BIG
+- [ ] **Orbs behaviour overhaul**
+  - [ ] Explore after 1 min idle (don't stick at bases).
+  - [ ] Hook up thoughts with Seven — Seven looks around, asks questions, notes changes, orbs react.
+  - [ ] Fix throw-an-orb interaction (currently broken).
+  - [ ] Slow the bounce-back animation; slow the idle shrink.
+  - [ ] Move orbs behind text when working so they don't obscure output.
+  - [ ] Return-to-base timeout after being thrown.
+- [ ] **Seven thought-thread bug** — thread 2112 is missing his earlier memories; audit memory_seven and the thread-binding logic.
+- [ ] **Email tile** — add folder navigation; add account management UI (add/remove/change accounts); link login to the system email account.
+- [ ] **Enrollment → user accounts** — extend enrollment to create user accounts + link to system email; optionally mention picoclaw / lmstudio (keep in system, remove from UI).
+- [ ] **Governance tab** — noted by user as untested; end-to-end walkthrough + gap-list.
+
+### Phase-5 — MANUAL (Ghost runs these)
+- [ ] **Fan controller install** — see answer at the top of this session's reply; one-time sudo install of `ops/swarm-fanctl.py` + `.service`, then group-add so Flask can talk to `/run/swarm-fanctl.sock`. Full steps in [docs/runbooks/fan-controller.md](runbooks/fan-controller.md).
+- [ ] **Voice deps (optional)** — `pip install faster-whisper` for STT; download a Piper voice (e.g. `en_GB-alba-medium.onnx`) into `models/piper/` for TTS. Without these, the mic buttons fall back to the browser's Web Speech API.
 
 ---
 
