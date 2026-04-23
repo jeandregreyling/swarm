@@ -1328,7 +1328,12 @@
     if(sleeping){o.vx*=0.92;o.vy*=0.92;}
     o.vx*=FRICTION;o.vy*=FRICTION;
     const spd=Math.sqrt(o.vx*o.vx+o.vy*o.vy);
-    if(spd>MAX_SPD){o.vx=o.vx/spd*MAX_SPD;o.vy=o.vy/spd*MAX_SPD;}
+    // Recently-thrown orbs may exceed MAX_SPD until friction brings them back.
+    // Without this allowance, a release flick is clamped to 1.6 px/frame and
+    // friction kills it inside half a second — the orb "plops" instead of flying.
+    if (o.thrownTimer && o.thrownTimer > 0) { o.thrownTimer -= dt; }
+    const cap = (o.thrownTimer && o.thrownTimer > 0) ? MAX_SPD * 4 : MAX_SPD;
+    if(spd>cap){o.vx=o.vx/spd*cap;o.vy=o.vy/spd*cap;}
     o.x+=o.vx;o.y+=o.vy;
 
     // Depth
@@ -1404,22 +1409,96 @@
     // as a flat ringed disc with a soft glow. Cheap, readable, and friendly
     // to integrated graphics / CPU-only rendering.
     if (_orbQuality === 'low') {
+      // 2D versions of the same 7 shapes — cheaper than 3D wireframes,
+      // but each voice still has a recognizable silhouette.
       ctx.save();
       ctx.globalAlpha = Math.min(baseAlpha + boost, 0.88);
       ctx.shadowColor = ACCENT;
-      ctx.shadowBlur = 16;
+      ctx.shadowBlur = 14;
       ctx.strokeStyle = ACCENT;
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = 1.3;
       ctx.setLineDash([]);
-      // Outer ring
-      ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 0.95, 0, Math.PI*2); ctx.stroke();
-      // Mid ring
-      ctx.globalAlpha *= 0.65;
-      ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 0.62, 0, Math.PI*2); ctx.stroke();
-      // Core dot
-      ctx.globalAlpha = Math.min(baseAlpha + boost, 0.88);
-      ctx.fillStyle = ACCENT;
-      ctx.beginPath(); ctx.arc(o.x, o.y, 3.2, 0, Math.PI*2); ctx.fill();
+      const r = o.r * 0.92;
+      const styleIdx = ((o.style|0) % 7 + 7) % 7;
+      const phase = (t * o.speed) % (Math.PI * 2);
+      switch (styleIdx) {
+        case 0: { // Rings -> concentric arcs
+          ctx.beginPath(); ctx.arc(o.x, o.y, r,        0, Math.PI*2); ctx.stroke();
+          ctx.globalAlpha *= 0.7;
+          ctx.beginPath(); ctx.arc(o.x, o.y, r * 0.65, 0, Math.PI*2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(o.x, o.y, r * 0.32, 0, Math.PI*2); ctx.stroke();
+          break;
+        }
+        case 1: { // Mandala -> 4-petal rose
+          ctx.beginPath();
+          for (let a = 0; a <= Math.PI*2 + 0.01; a += 0.08) {
+            const rad = r * (0.55 + 0.45 * Math.abs(Math.cos(2 * (a + phase * 0.3))));
+            const px = o.x + Math.cos(a) * rad;
+            const py = o.y + Math.sin(a) * rad;
+            if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+          break;
+        }
+        case 2: { // Helix -> sine wave across a circle
+          ctx.beginPath(); ctx.arc(o.x, o.y, r, 0, Math.PI*2); ctx.stroke();
+          ctx.beginPath();
+          for (let i = 0; i <= 40; i++) {
+            const tt = i / 40;
+            const px = o.x - r + tt * 2 * r;
+            const py = o.y + Math.sin(tt * Math.PI * 4 + phase) * r * 0.45;
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+          break;
+        }
+        case 3: { // Crystal -> rotating hexagon
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2 + phase * 0.3;
+            const px = o.x + Math.cos(a) * r;
+            const py = o.y + Math.sin(a) * r;
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath(); ctx.stroke();
+          break;
+        }
+        case 4: { // Lissajous -> 3:2 figure
+          ctx.beginPath();
+          for (let i = 0; i <= 80; i++) {
+            const tt = (i / 80) * Math.PI * 2;
+            const px = o.x + Math.sin(tt * 3 + phase) * r;
+            const py = o.y + Math.sin(tt * 2) * r * 0.78;
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+          break;
+        }
+        case 5: { // Vortex -> spiral
+          ctx.beginPath();
+          for (let i = 0; i <= 60; i++) {
+            const tt = i / 60;
+            const a = tt * Math.PI * 6 + phase * 0.4;
+            const rad = r * tt;
+            const px = o.x + Math.cos(a) * rad;
+            const py = o.y + Math.sin(a) * rad;
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+          break;
+        }
+        case 6: { // Pulsar -> ring + cross + pulsing core
+          const pulse = 0.85 + Math.sin(phase * 2.2) * 0.15;
+          ctx.beginPath(); ctx.arc(o.x, o.y, r * pulse, 0, Math.PI*2); ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(o.x - r, o.y); ctx.lineTo(o.x + r, o.y);
+          ctx.moveTo(o.x, o.y - r); ctx.lineTo(o.x, o.y + r);
+          ctx.stroke();
+          ctx.fillStyle = ACCENT;
+          ctx.beginPath(); ctx.arc(o.x, o.y, 3 * pulse, 0, Math.PI*2); ctx.fill();
+          break;
+        }
+      }
       ctx.restore();
       return;
     }
@@ -1657,6 +1736,9 @@
         dropped.vx=0; dropped.vy=0;
         dropped.placedTimer=rand(1200,2200);
       } else {
+        // Mark as recently-thrown so the per-tick velocity cap stays loose
+        // for ~1.4s — friction will bring it back to MAX_SPD naturally.
+        dropped.thrownTimer = 1400;
         burst(dropped.x,dropped.y,Math.round(clamp(throwSpd * 5, 10, 28)),0.85);
       }
     }
