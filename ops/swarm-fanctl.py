@@ -47,13 +47,31 @@ def _write_platform_profile(profile: str) -> bool:
 
 
 def _pwm_paths() -> list:
+    """Enumerate writable pwm nodes.
+
+    Returns (pwm_path, enable_path_or_None) tuples. Some drivers (e.g. the
+    Dell OptiPlex ``dell_smm`` hwmon) expose a writable ``pwmN`` *without*
+    an ``_enable`` sibling — BIOS always owns the fan curve and writes to
+    ``pwmN`` are direct overrides. Treat those as still-controllable with
+    ``enable=None``.
+    """
     out = []
     for hwmon in sorted(glob.glob('/sys/class/hwmon/hwmon*')):
         for pwm in sorted(glob.glob(os.path.join(hwmon, 'pwm[0-9]'))):
+            # Skip pwm[0-9]_* metadata files.
+            if os.path.basename(pwm) not in ('pwm1', 'pwm2', 'pwm3', 'pwm4'):
+                continue
+            # Must be writable at all (dell_smm exposes pwm1 as 0666).
+            if not os.access(pwm, os.W_OK):
+                continue
             enable = pwm + '_enable'
-            if os.path.exists(enable):
-                out.append((pwm, enable))
+            out.append((pwm, enable if os.path.exists(enable) else None))
     return out
+
+
+# PWM target when set_mode('auto') is called on hardware that has no proper
+# auto-enable gate (e.g. dell_smm). Lower = quieter but hotter; 128 = 50%.
+AUTO_PWM_FALLBACK = int(os.environ.get('SWARM_FANCTL_AUTO_PWM', '128'))
 
 
 def _apply_mode(mode: str) -> dict:
@@ -61,27 +79,35 @@ def _apply_mode(mode: str) -> dict:
     if mode == 'auto':
         if _write_platform_profile('balanced'):
             applied.append('platform_profile=balanced')
-        # Release any pwm overrides (enable=2 = automatic on most hwmon).
+        # Prefer handing control back to firmware via pwmN_enable=2.
+        # For drivers without _enable (dell_smm), fall back to a mid-range
+        # PWM so we don't leave the fan pinned at whatever the last boost set.
         for pwm, enable in _pwm_paths():
             try:
-                with open(enable, 'w') as f:
-                    f.write('2')
-                applied.append(f'{enable}=2')
-            except OSError:
-                pass
+                if enable is not None:
+                    with open(enable, 'w') as f:
+                        f.write('2')
+                    applied.append(f'{enable}=2')
+                else:
+                    with open(pwm, 'w') as f:
+                        f.write(str(AUTO_PWM_FALLBACK))
+                    applied.append(f'{pwm}={AUTO_PWM_FALLBACK}')
+            except OSError as exc:
+                applied.append(f'{pwm}:err:{exc.errno}')
         STATE['mode'] = 'auto'
     elif mode == 'boost':
         if _write_platform_profile('performance'):
             applied.append('platform_profile=performance')
         for pwm, enable in _pwm_paths():
             try:
-                with open(enable, 'w') as f:
-                    f.write('1')
+                if enable is not None:
+                    with open(enable, 'w') as f:
+                        f.write('1')
                 with open(pwm, 'w') as f:
                     f.write('255')
                 applied.append(f'{pwm}=255')
-            except OSError:
-                pass
+            except OSError as exc:
+                applied.append(f'{pwm}:err:{exc.errno}')
         STATE['mode'] = 'boost'
     else:
         return {'ok': False, 'error': 'invalid mode'}
@@ -123,6 +149,17 @@ def main():
     srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     srv.bind(SOCK_PATH)
     os.chmod(SOCK_PATH, 0o660)  # group access — add your user to the owning group
+    # Best-effort: chown the socket to a group the Flask user is in, so the
+    # (unprivileged) swarm-terminal process can talk to us without extra setup.
+    # Order of preference: $SWARM_FANCTL_GROUP env → 'swarm' → 'seven'.
+    import grp
+    for gname in filter(None, (os.environ.get('SWARM_FANCTL_GROUP'), 'swarm', 'seven')):
+        try:
+            gid = grp.getgrnam(gname).gr_gid
+            os.chown(SOCK_PATH, 0, gid)
+            break
+        except (KeyError, PermissionError, OSError):
+            continue
     srv.listen(8)
     # Apply initial mode so boot state is known.
     _apply_mode('auto')

@@ -170,14 +170,13 @@ function _initDragAndDrop(grid) {
     let offsetX = 0, offsetY = 0;
     let hasMoved = false;
 
-    // Mark all cards as draggable
-    grid.querySelectorAll('.home-card').forEach(c => {
-        if (!c.classList.contains('home-card-add')) c.classList.add('drag-ready');
-    });
+    // Mark all cards as draggable (Phase-5 SMALL: include home-card-add so the "+" tile
+    // can be repositioned like any other tile).
+    grid.querySelectorAll('.home-card').forEach(c => c.classList.add('drag-ready'));
 
     grid.addEventListener('pointerdown', (e) => {
         const card = e.target.closest('.home-card');
-        if (!card || card.classList.contains('home-card-add')) return;
+        if (!card) return;
         if (e.button !== 0) return; // left click only
 
         dragged = card;
@@ -236,8 +235,8 @@ function _initDragAndDrop(grid) {
         dragged.style.left = (ev.clientX - offsetX) + 'px';
         dragged.style.top  = (ev.clientY - offsetY) + 'px';
 
-        // Find which card we're hovering over
-        const cards = Array.from(grid.querySelectorAll('.home-card:not(.drag-active):not(.home-card-add)'));
+        // Find which card we're hovering over (include home-card-add so "+" is a valid neighbour)
+        const cards = Array.from(grid.querySelectorAll('.home-card:not(.drag-active)'));
         let closest = null, closestDist = Infinity;
         for (const c of cards) {
             const r = c.getBoundingClientRect();

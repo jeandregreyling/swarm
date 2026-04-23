@@ -539,9 +539,14 @@ function _initHomeChatResize() {
     e.preventDefault();
     const startY = e.clientY;
     const startH = chat.getBoundingClientRect().height;
+    // Phase-5 SMALL: handle moved to ABOVE the chat. Dragging UP (negative
+    // delta) grows the chat; dragging DOWN shrinks it. Invert the delta.
+    const handleAbove = handle.classList.contains('home-chat-resizer-top');
 
     const onMove = (ev) => {
-      const h = Math.max(200, Math.min(window.innerHeight - 140, startH + ev.clientY - startY));
+      const delta = ev.clientY - startY;
+      const targetH = handleAbove ? startH - delta : startH + delta;
+      const h = Math.max(200, Math.min(window.innerHeight - 140, targetH));
       chat.style.minHeight = h + 'px';
       chat.style.maxHeight = h + 'px';
     };

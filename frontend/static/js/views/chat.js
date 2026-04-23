@@ -286,12 +286,39 @@ function _setActiveThreadId(convId) {
 function updateChatStatusPills() {
   document.querySelectorAll('[id="chat-dictionary-inline"]').forEach(dictInline => {
     const size = Array.from(window.__fridaysChatCustomDictionary || []).length;
-    dictInline.textContent = 'Dictionary: ' + size;
+    // Phase-5 small polish: render as a proper button with SVG book icon.
+    dictInline.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      <span>Dictionary: ${size}</span>`;
     if (!dictInline.dataset.dictBound) {
       dictInline.dataset.dictBound = '1';
       dictInline.style.cursor = 'pointer';
+      dictInline.style.display = 'inline-flex';
+      dictInline.style.alignItems = 'center';
+      dictInline.style.gap = '5px';
+      dictInline.style.padding = '3px 9px';
+      dictInline.style.border = '1px solid var(--border)';
+      dictInline.style.borderRadius = '12px';
+      dictInline.style.background = 'color-mix(in srgb,var(--card) 60%,transparent)';
+      dictInline.style.transition = 'background .15s, border-color .15s';
+      dictInline.setAttribute('role', 'button');
+      dictInline.setAttribute('tabindex', '0');
       dictInline.title = 'Click to manage custom dictionary';
+      dictInline.addEventListener('mouseenter', () => {
+        dictInline.style.background = 'var(--card)';
+        dictInline.style.borderColor = 'var(--accent)';
+      });
+      dictInline.addEventListener('mouseleave', () => {
+        dictInline.style.background = 'color-mix(in srgb,var(--card) 60%,transparent)';
+        dictInline.style.borderColor = 'var(--border)';
+      });
       dictInline.addEventListener('click', () => openDictionaryManager());
+      dictInline.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDictionaryManager(); }
+      });
     }
   });
 }
@@ -305,11 +332,17 @@ function openDictionaryManager() {
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(560px,92vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 14px 40px rgba(0,0,0,.4);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div style="font-size:14px;font-weight:700;">📖 Custom Dictionary</div>
-        <button onclick="document.getElementById('dictionary-manager-modal').remove()" style="background:transparent;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">×</button>
+        <div style="font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          <span>Custom Dictionary</span>
+        </div>
+        <button onclick="document.getElementById('dictionary-manager-modal').remove()" aria-label="Close" style="background:transparent;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">×</button>
       </div>
       <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
-        Words here are treated as correct spellings and preferred vocabulary. They suppress spell-check suggestions and are considered when the classifier interprets your messages.
+        Words here are treated as correct spellings and preferred vocabulary. They suppress spell-check suggestions and are considered when the classifier interprets your messages. Press <kbd style="padding:1px 5px;border:1px solid var(--border);border-radius:3px;background:var(--bg);">Esc</kbd> to close.
       </div>
       <div style="display:flex;gap:6px;margin-bottom:10px;">
         <input id="dict-add-input" type="text" placeholder="Add a word (e.g. fridays, vortex, seven)"
@@ -325,6 +358,15 @@ function openDictionaryManager() {
     </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  // Phase-5: Esc-close + cleanup.
+  const escHandler = (e) => {
+    if (e.key === 'Escape') {
+      const m = document.getElementById('dictionary-manager-modal');
+      if (m) m.remove();
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
   _renderDictionaryList();
   setTimeout(() => { const i = document.getElementById('dict-add-input'); if (i) i.focus(); }, 30);
 }

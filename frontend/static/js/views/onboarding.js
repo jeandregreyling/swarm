@@ -288,7 +288,19 @@
   }
 
   function obFinish() {
-    try { localStorage.setItem('swarm_onboarding_complete', '1'); } catch (e) {}
+    // Phase-5 SMALL: respect the "open every launch" tick. If checked, we
+    // DON'T mark onboarding as complete — the auto-launcher will reopen it
+    // on the next page load.
+    const reopenTick = document.getElementById('ob-reopen-every-launch');
+    const reopen = !!(reopenTick && reopenTick.checked);
+    try {
+      localStorage.setItem('swarm_onboarding_reopen_every_launch', reopen ? '1' : '0');
+      if (reopen) {
+        localStorage.removeItem('swarm_onboarding_complete');
+      } else {
+        localStorage.setItem('swarm_onboarding_complete', '1');
+      }
+    } catch (e) {}
     // Close the enrollment window and open Chat
     if (typeof winManager !== 'undefined' && winManager.close) {
       winManager.close('onboarding');
@@ -338,13 +350,24 @@
 
   function _maybeAutoLaunch() {
     try {
-      if (localStorage.getItem('swarm_onboarding_complete') === '1') return;
+      // Phase-5 SMALL: "Open every launch" tick overrides the "complete" flag.
+      const reopen = localStorage.getItem('swarm_onboarding_reopen_every_launch') === '1';
+      if (!reopen && localStorage.getItem('swarm_onboarding_complete') === '1') return;
     } catch (e) { return; }
     // Auto-open enrollment after a short delay to let the home page render
     setTimeout(() => {
       if (typeof openWindow === 'function') {
         openWindow('onboarding', 'Enrollment', 'view-onboarding');
       }
+      // Pre-tick the checkbox so users can see/confirm the setting after the window loads.
+      setTimeout(() => {
+        try {
+          const cb = document.getElementById('ob-reopen-every-launch');
+          if (cb && localStorage.getItem('swarm_onboarding_reopen_every_launch') === '1') {
+            cb.checked = true;
+          }
+        } catch (e) {}
+      }, 300);
     }, 800);
   }
 
