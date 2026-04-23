@@ -26,6 +26,15 @@
 
   // ── Initialization ───────────────────────────────────────────────────────
   window.initHomeChat = function () {
+    // B17-adjacent: every refresh must start on a fresh thread. Wipe the
+    // active-thread marker and local state BEFORE anything else so the UI
+    // never flashes the stale conversation while the fetch is in flight.
+    try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
+    _hcConvId = null;
+    window.__fridaysChatConversationId = null;
+    _hcClearMessages();
+    _hcShowWelcome(true);
+
     _hcSetEnvBadge();
     _hcBindEvents();
     _hcRenderAgentPills();
@@ -35,6 +44,21 @@
     _hcInitMiniLandscape();
     _hcRestorePanelState();
     _hcBindCrossSurfaceRefresh();
+    _hcPruneStaleAgentToggles();
+
+    // Handle browser bfcache restore (back/forward) — re-reset to a new thread.
+    window.addEventListener('pageshow', (ev) => {
+      if (ev.persisted) {
+        try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
+        _hcConvId = null;
+        window.__fridaysChatConversationId = null;
+        _hcClearMessages();
+        _hcShowWelcome(true);
+        const sel = document.getElementById('home-chat-thread-select');
+        if (sel) sel.value = '';
+        _hcLoadThreads();
+      }
+    });
   };
 
   // ── Session 28 fix: cross-surface refresh ────────────────────────────────
@@ -103,7 +127,8 @@
           _hcSend();
         }
       });
-      input.addEventListener('input', () => _hcAutoGrow(input));
+      input.addEventListener('input', () => { _hcAutoGrow(input); _hcUpdateTokenCount(input); });
+      _hcUpdateTokenCount(input);
     }
 
     // Quick-launch: typing anywhere on home page focuses chat input
@@ -136,15 +161,15 @@
         _hcConversations = Array.isArray(data) ? data : [];
         _hcRenderThreadSelect();
 
-        // Restore last active thread
-        const saved = localStorage.getItem(HC_ACTIVE_THREAD_KEY);
-        const preferred = saved ? Number(saved) : null;
-        const match = preferred && _hcConversations.find(c => c.id === preferred);
-        if (match) {
-          _hcSwitchThread(match.id);
-        } else if (_hcConversations.length > 0) {
-          _hcSwitchThread(_hcConversations[0].id);
-        }
+        // Refresh = always fresh thread. User can switch from the dropdown.
+        // Wipe any stale active-thread marker so floating chat doesn't latch onto it.
+        try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
+        window.__fridaysChatConversationId = null;
+        _hcConvId = null;
+        _hcClearMessages();
+        _hcShowWelcome(true);
+        _hcRenderAgentPills();
+        _hcUpdateMeta();
       })
       .catch(() => {});
   }
@@ -413,11 +438,53 @@
     }
   }
 
+  // ── Follow-up #2: prune stale per-thread agent toggles ──────────────────
+  // HC_AGENT_TOGGLE_PREFIX keys grow unbounded. Every 24 h we look up the
+  // current conversation list and delete any toggle whose conv id is no
+  // longer present. Runs at most once a day (stamped in localStorage).
+  function _hcPruneStaleAgentToggles() {
+    try {
+      const STAMP_KEY = 'fridays-chat-toggle-prune-stamp';
+      const last = Number(localStorage.getItem(STAMP_KEY) || 0);
+      if (Date.now() - last < 86400 * 1000) return;
+      fetch('/api/conversations').then(r => r.json()).then(list => {
+        const known = new Set((Array.isArray(list) ? list : []).map(c => String(c.id)));
+        const toDelete = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k || !k.startsWith(HC_AGENT_TOGGLE_PREFIX)) continue;
+          const convId = k.slice(HC_AGENT_TOGGLE_PREFIX.length);
+          if (!known.has(convId)) toDelete.push(k);
+        }
+        toDelete.forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+        try { localStorage.setItem(STAMP_KEY, String(Date.now())); } catch (_) {}
+      }).catch(() => {});
+    } catch (_) { /* non-fatal */ }
+  }
+
   // ── Agent pills ──────────────────────────────────────────────────────────
+  // P4-M29: persist user's drag-drop ordering of pills
+  const HC_PILL_ORDER_KEY = 'fridays-chat-pill-order';
+  function _hcGetPillOrder() {
+    try { return JSON.parse(localStorage.getItem(HC_PILL_ORDER_KEY) || '[]'); }
+    catch (_) { return []; }
+  }
+  function _hcSavePillOrder(order) {
+    try { localStorage.setItem(HC_PILL_ORDER_KEY, JSON.stringify(order)); } catch (_) {}
+  }
+  function _hcAgentNumberFor(name) {
+    // Pull number from agents-config registry if present
+    try {
+      const reg = (window.__agentsData || []);
+      const a = reg.find(x => x.name === name || x.label === name);
+      if (a && Number.isFinite(Number(a.number))) return Number(a.number);
+    } catch (_) {}
+    return null;
+  }
   function _hcRenderAgentPills() {
     const host = document.getElementById('home-chat-agents');
     if (!host) return;
-    const agents = _hcAgentOptions();
+    let agents = _hcAgentOptions();
     if (agents.length === 0) {
       // Retry once after agent registry loads
       setTimeout(() => {
@@ -427,12 +494,28 @@
       return;
     }
 
+    // Apply persisted drag-drop order: any agent listed in saved order comes first,
+    // in that order. Anything new (not yet in saved order) appears at the end.
+    const savedOrder = _hcGetPillOrder();
+    if (savedOrder.length) {
+      const idx = new Map(savedOrder.map((v, i) => [v, i]));
+      agents = [...agents].sort((a, b) => {
+        const ai = idx.has(a.value) ? idx.get(a.value) : 999;
+        const bi = idx.has(b.value) ? idx.get(b.value) : 999;
+        return ai - bi;
+      });
+    }
+
     const enabled = _hcGetEnabledAgents();
     host.innerHTML = agents.map(a => {
       const active = enabled.includes(a.value) ? ' active' : '';
       const tierClass = (a.tier === 'paid' || a.tier === 'online') ? 'paid' : 'local';
-      return `<button class="home-chat-agent-pill${active}" data-agent="${_hcEsc(a.value)}" title="${_hcEsc(a.label)}">` +
-        `<span class="agent-dot ${tierClass}"></span>${_hcEsc(a.label)}</button>`;
+      const num = _hcAgentNumberFor(a.value);
+      const numBadge = (num !== null)
+        ? `<span class="agent-num-badge" style="font-size:9px;font-weight:700;background:rgba(0,0,0,0.35);color:#fff;border-radius:8px;padding:1px 5px;margin-right:4px;">${num}</span>`
+        : '';
+      return `<button class="home-chat-agent-pill${active}" draggable="true" data-agent="${_hcEsc(a.value)}" title="${_hcEsc(a.label)}">` +
+        `${numBadge}<span class="agent-dot ${tierClass}"></span>${_hcEsc(a.label)}</button>`;
     }).join('');
 
     host.querySelectorAll('.home-chat-agent-pill').forEach(btn => {
@@ -440,6 +523,34 @@
         btn.classList.toggle('active');
         _hcSaveEnabledAgents();
         _hcUpdateMeta();
+      });
+      // P4-M29: HTML5 drag-and-drop reorder
+      btn.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', btn.dataset.agent);
+        e.dataTransfer.effectAllowed = 'move';
+        btn.style.opacity = '0.5';
+      });
+      btn.addEventListener('dragend', () => { btn.style.opacity = ''; });
+      btn.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        btn.style.outline = '2px dashed var(--accent)';
+      });
+      btn.addEventListener('dragleave', () => { btn.style.outline = ''; });
+      btn.addEventListener('drop', e => {
+        e.preventDefault();
+        btn.style.outline = '';
+        const src = e.dataTransfer.getData('text/plain');
+        const dst = btn.dataset.agent;
+        if (!src || src === dst) return;
+        const all = Array.from(host.querySelectorAll('.home-chat-agent-pill')).map(p => p.dataset.agent);
+        const from = all.indexOf(src);
+        const to = all.indexOf(dst);
+        if (from < 0 || to < 0) return;
+        all.splice(from, 1);
+        all.splice(to, 0, src);
+        _hcSavePillOrder(all);
+        _hcRenderAgentPills();
       });
     });
     _hcUpdateMeta();
@@ -487,6 +598,17 @@
         countEl.textContent = 'auto-route';
       }
     }
+  }
+
+  // Live token counter under the chat input. Estimate = chars/4 (Qwen/Llama).
+  function _hcUpdateTokenCount(input) {
+    const el = document.getElementById('home-chat-token-count');
+    if (!el) return;
+    const text = (input && input.value) || '';
+    const chars = text.length;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const est = Math.ceil(chars / 4);
+    el.textContent = `${chars} c · ${words} w · ~${est} t`;
   }
 
   // ── Send message ─────────────────────────────────────────────────────────
@@ -537,6 +659,7 @@
 
     input.value = '';
     input.style.height = 'auto';
+    _hcUpdateTokenCount(input);
     _hcSending = true;
     if (sendBtn) sendBtn.classList.add('sending');
     sendBtn && (sendBtn.disabled = true);

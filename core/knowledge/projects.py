@@ -26,8 +26,11 @@ from typing import Any, Dict, List, Optional
 
 __all__ = [
     'create_project', 'list_projects', 'get_project', 'update_project',
-    'add_step', 'list_steps', 'update_step_status',
+    'delete_project',
+    'add_step', 'list_steps', 'update_step_status', 'update_step',
+    'delete_step',
     'add_test_case', 'list_test_cases', 'update_case_status',
+    'update_test_case', 'delete_test_case',
     'link_proposal', 'list_proposals_for_project',
     'METHODOLOGIES', 'STEP_STATUSES', 'CASE_STATUSES', 'PROJECT_STATUSES',
 ]
@@ -551,6 +554,205 @@ def list_proposals_for_project(project_id: str) -> List[Dict[str, Any]]:
             rows = conn.execute(
                 "SELECT proposal_id, created_at FROM proposal_projects WHERE project_id=? ORDER BY created_at ASC",
                 (project_id,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
+
+# ── Delete / edit (Phase 3) ────────────────────────────────────────────────
+
+def delete_project(project_id: str) -> bool:
+    """Delete a project and cascade-clean its steps, cases and proposal links.
+
+    Test runs keep their project_id column for historical visibility — the
+    runs table is never destroyed.
+    """
+    if not project_id:
+        return False
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            cur = conn.execute("DELETE FROM projects WHERE project_id=?", (project_id,))
+            conn.execute("DELETE FROM project_steps WHERE project_id=?", (project_id,))
+            conn.execute("DELETE FROM project_test_cases WHERE project_id=?", (project_id,))
+            conn.execute("DELETE FROM proposal_projects WHERE project_id=?", (project_id,))
+            conn.commit()
+            ok = cur.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
+    if ok:
+        _emit_spine(f"Project deleted: {project_id}", {'project_id': project_id}, severity='warn')
+    return ok
+
+
+def update_step(
+    step_id: str,
+    *,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    owner: Optional[str] = None,
+) -> bool:
+    """Rename / re-describe / re-assign a step. Status changes go through
+    ``update_step_status`` which already emits spine events per transition."""
+    if not step_id:
+        return False
+    updates: Dict[str, Any] = {}
+    if title is not None:
+        t = title.strip()
+        if not t:
+            raise ValueError("title cannot be empty")
+        updates['title'] = t[:200]
+    if description is not None:
+        updates['description'] = description[:4000]
+    if owner is not None:
+        o = owner.strip()
+        if o:
+            updates['owner'] = o[:64]
+    if not updates:
+        return False
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            cols = ", ".join(f"{k}=?" for k in updates)
+            params = list(updates.values()) + [time.time(), step_id]
+            cur = conn.execute(
+                f"UPDATE project_steps SET {cols}, updated_at=? WHERE step_id=?",
+                params,
+            )
+            conn.commit()
+            ok = cur.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
+    if ok:
+        _emit_spine(f"Step edited: {step_id}", {'step_id': step_id, 'fields': list(updates.keys())})
+    return ok
+
+
+def delete_step(step_id: str) -> bool:
+    """Delete a step. Test cases previously tied to the step keep their
+    project link but lose their step_id (so they don't dangle)."""
+    if not step_id:
+        return False
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            conn.execute(
+                "UPDATE project_test_cases SET step_id=NULL, updated_at=? WHERE step_id=?",
+                (time.time(), step_id),
+            )
+            cur = conn.execute("DELETE FROM project_steps WHERE step_id=?", (step_id,))
+            conn.commit()
+            ok = cur.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
+    if ok:
+        _emit_spine(f"Step deleted: {step_id}", {'step_id': step_id}, severity='warn')
+    return ok
+
+
+def update_test_case(
+    case_id: str,
+    *,
+    title: Optional[str] = None,
+    script_id: Optional[str] = None,
+    step_id: Optional[str] = None,
+    owner: Optional[str] = None,
+) -> bool:
+    """Edit a test case. Pass ``script_id=''`` or ``step_id=''`` to clear."""
+    if not case_id:
+        return False
+    updates: Dict[str, Any] = {}
+    if title is not None:
+        t = title.strip()
+        if not t:
+            raise ValueError("title cannot be empty")
+        updates['title'] = t[:200]
+    if script_id is not None:
+        updates['script_id'] = (script_id.strip()[:128] or None)
+    if step_id is not None:
+        updates['step_id'] = (step_id.strip()[:64] or None)
+    if owner is not None:
+        o = owner.strip()
+        if o:
+            updates['owner'] = o[:64]
+    if not updates:
+        return False
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            cols = ", ".join(f"{k}=?" for k in updates)
+            params = list(updates.values()) + [time.time(), case_id]
+            cur = conn.execute(
+                f"UPDATE project_test_cases SET {cols}, updated_at=? WHERE case_id=?",
+                params,
+            )
+            conn.commit()
+            ok = cur.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
+    if ok:
+        _emit_spine(f"Case edited: {case_id}", {'case_id': case_id, 'fields': list(updates.keys())})
+    return ok
+
+
+def delete_test_case(case_id: str) -> bool:
+    if not case_id:
+        return False
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            cur = conn.execute("DELETE FROM project_test_cases WHERE case_id=?", (case_id,))
+            conn.commit()
+            ok = cur.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
+    if ok:
+        _emit_spine(f"Case deleted: {case_id}", {'case_id': case_id}, severity='warn')
+    return ok
+
+
+def scripts_for_step(step_id: str) -> List[Dict[str, Any]]:
+    """Return Test Lab script_ids tied to cases of this step.
+
+    Result: ``[{case_id, title, script_id, status}, ...]`` — UI posts the
+    ``script_id`` list to ``/api/studio/testlab/resolve`` to get shell
+    commands to execute.
+    """
+    if not step_id:
+        return []
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT case_id, title, script_id, status FROM project_test_cases "
+                "WHERE step_id=? AND script_id IS NOT NULL AND script_id != '' "
+                "ORDER BY created_at ASC",
+                (step_id,),
             ).fetchall()
             return [dict(r) for r in rows]
         finally:

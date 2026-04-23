@@ -805,9 +805,26 @@ function agentsShowDetail(agent) {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
         <div>
-          <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Number</label>
-          <input id="agent-number" type="number" value="${Number.isFinite(Number(agent.number)) ? Number(agent.number) : ''}"
-            style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
+          <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Number / Slot</label>
+          <select id="agent-number" style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;cursor:pointer;box-sizing:border-box;">
+            ${(() => {
+              // P4-M27: dropdown of all known slots (0..22) with current occupant shown
+              const cur = Number.isFinite(Number(agent.number)) ? Number(agent.number) : -1;
+              const occupants = {};
+              (window.__agentsData || []).forEach(a => { if (Number.isFinite(Number(a.number))) occupants[Number(a.number)] = a.label || a.name; });
+              const opts = [];
+              for (let n = 0; n <= 22; n++) {
+                const occ = occupants[n];
+                const isMine = (n === cur);
+                const taken = (!!occ && !isMine);
+                const label = isMine ? `${n} — ${agent.label || agent.name} (current)`
+                            : taken ? `${n} — ${occ} (taken)`
+                            : `${n} — empty`;
+                opts.push(`<option value="${n}" ${isMine ? 'selected' : ''} ${taken ? 'disabled' : ''}>${_esc(label)}</option>`);
+              }
+              return opts.join('');
+            })()}
+          </select>
         </div>
         <div>
           <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Label</label>
@@ -850,7 +867,40 @@ function agentsShowDetail(agent) {
       </div>
 
       <div style="margin-bottom:14px;">
-        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Role / Description</label>
+        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Slot Role <span style="color:var(--text-dim);text-transform:none;font-weight:400;letter-spacing:0;">— hardcoded by slot number, not editable</span></label>
+        <div id="agent-slot-role-readout" style="padding:6px 9px;background:color-mix(in srgb,var(--accent) 4%,var(--card));border:1px dashed var(--border);border-radius:5px;color:var(--text);font-size:12px;font-weight:600;">${(() => {
+          // P4-M28: hardcoded role per slot — must match utils/config.py + DB roster
+          const SLOT_ROLES = {
+            0: 'Ghost — Human operator',
+            1: 'Generalist + decision maker',
+            2: 'Researcher (web)',
+            3: 'Quick coder',
+            4: 'Deep analyst',
+            5: 'Vortex — gatekeeper / time wizard',
+            6: 'Sanity checker',
+            7: 'Personal companion (Seven)',
+            8: 'SAP HCM/Payroll specialist (Gemma4)',
+            9: 'Developer Agent — system architect',
+            10: 'Developer Agent — software engineer',
+            11: 'Short and honest (Grok)',
+            12: 'Developer Agent — Claude / continuity',
+            13: 'Developer Agent — HuggingFace',
+            14: 'Research · Gemini',
+            15: 'Internet Search · Tavily',
+            16: 'Web Search · DuckDuckGo',
+            17: 'Developer Agent — Ghost Coder',
+            19: 'Developer Agent — o4-mini',
+            20: 'Big coder (Qwen3.6)',
+            21: 'Inspector — memory auditor (DeepSeek)',
+            22: 'Reserved'
+          };
+          const n = Number.isFinite(Number(agent.number)) ? Number(agent.number) : -1;
+          return _esc(SLOT_ROLES[n] || 'Unassigned slot');
+        })()}</div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Description <span style="color:var(--text-dim);text-transform:none;font-weight:400;letter-spacing:0;">— editable, shown in lists and tooltips</span></label>
         <input id="agent-role" type="text" value="${_esc(agent.role || '')}" placeholder="Short description of this agent's role"
           style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
       </div>
@@ -860,6 +910,25 @@ function agentsShowDetail(agent) {
         <textarea id="agent-prompt" rows="10"
           style="width:100%;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;font-family:monospace;outline:none;resize:vertical;box-sizing:border-box;">${_esc(agent.system_prompt || '')}</textarea>
       </div>
+
+      ${isLocal && agent.tier !== 'human' ? `
+      <!-- M10: runtime controls for local agents -->
+      <div style="margin-bottom:14px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:color-mix(in srgb,var(--accent) 3%,var(--card));">
+        <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Runtime Controls</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;">
+          <label style="display:flex;align-items:center;gap:4px;">Keep-warm (sec)
+            <input id="agent-keepalive-seconds" type="number" min="0" max="86400" value="${Number.isFinite(Number(agent.keep_alive)) ? Number(agent.keep_alive) : 300}"
+              style="width:80px;padding:4px 6px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;outline:none;box-sizing:border-box;">
+          </label>
+          <button id="agent-keepalive-apply" type="button"
+            style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">Apply</button>
+          <button id="agent-unload-btn" type="button"
+            style="background:transparent;border:1px solid #f7b84b66;color:#f7b84b;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">Unload</button>
+          <button id="agent-hard-kill-btn" type="button" title="Unload immediately (keep_alive=0)"
+            style="background:transparent;border:1px solid #f4433666;color:#f77;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">Hard-Kill</button>
+          <div id="agent-runtime-status" style="font-size:11px;color:var(--text-dim);"></div>
+        </div>
+      </div>` : ''}
 
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <button id="agent-save-btn"
@@ -871,8 +940,7 @@ function agentsShowDetail(agent) {
           Reset
         </button>
         <div id="agent-save-status" style="font-size:11px;color:var(--text-dim);"></div>
-        <div style="flex:1;"></div>
-        ${agent.enabled == 0 ? `
+        <div style="flex:1;"></div>        ${agent.enabled == 0 ? `
         <span style="font-size:10px;color:#ffb366;border:1px solid #ffb36644;border-radius:10px;padding:2px 10px;">DECOMMISSIONED</span>
         <button id="agent-reactivate-btn"
           style="background:var(--card);border:1px solid #72e6a666;color:#72e6a6;border-radius:5px;padding:7px 14px;cursor:pointer;font-size:11px;">
@@ -899,6 +967,52 @@ function agentsShowDetail(agent) {
   const saveBtn = el.querySelector('#agent-save-btn');
   if (saveBtn) {
     saveBtn.addEventListener('click', () => agentsSave(agent.name));
+  }
+  // M10: runtime controls for local agents
+  const keepaliveBtn = el.querySelector('#agent-keepalive-apply');
+  if (keepaliveBtn) {
+    keepaliveBtn.addEventListener('click', async () => {
+      const input = el.querySelector('#agent-keepalive-seconds');
+      const statusEl = el.querySelector('#agent-runtime-status');
+      const seconds = Math.max(0, Math.min(86400, parseInt(input?.value || '300', 10) || 300));
+      if (statusEl) statusEl.textContent = 'Applying…';
+      try {
+        const r = await fetch('/api/ollama/keepalive', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ model: agent.model || '', seconds }) });
+        const j = await r.json();
+        if (statusEl) statusEl.textContent = j.ok ? `Keep-alive set to ${seconds}s` : `Error: ${j.error || 'unknown'}`;
+      } catch (err) {
+        if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+      }
+    });
+  }
+  const unloadBtn = el.querySelector('#agent-unload-btn');
+  if (unloadBtn) {
+    unloadBtn.addEventListener('click', async () => {
+      const statusEl = el.querySelector('#agent-runtime-status');
+      if (statusEl) statusEl.textContent = 'Unloading…';
+      try {
+        const r = await fetch('/api/ollama/unload', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ model: agent.model || '' }) });
+        const j = await r.json();
+        if (statusEl) statusEl.textContent = j.ok ? `Unloaded ${agent.model}` : `Error: ${j.error || 'unknown'}`;
+      } catch (err) {
+        if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+      }
+    });
+  }
+  const hardKillBtn = el.querySelector('#agent-hard-kill-btn');
+  if (hardKillBtn) {
+    hardKillBtn.addEventListener('click', async () => {
+      const statusEl = el.querySelector('#agent-runtime-status');
+      if (!confirm(`Hard-kill ${agent.model}? This will forcibly unload the model from RAM.`)) return;
+      if (statusEl) statusEl.textContent = 'Hard-killing…';
+      try {
+        const r = await fetch('/api/ollama/unload', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ model: agent.model || '' }) });
+        const j = await r.json();
+        if (statusEl) statusEl.textContent = j.ok ? `✓ ${agent.model} killed` : `Error: ${j.error || 'unknown'}`;
+      } catch (err) {
+        if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+      }
+    });
   }
   const saveKeyBtn = el.querySelector('#agent-save-key-btn');
   if (saveKeyBtn) {

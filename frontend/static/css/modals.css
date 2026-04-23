@@ -224,11 +224,28 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   width: 90%;
-  max-width: 450px;
-  max-height: 80vh;
-  overflow-y: auto;
+  max-width: 720px;
+  min-width: 360px;
+  min-height: 280px;
+  max-height: 90vh;
+  overflow: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   padding: 24px;
+  resize: both;
+  /* When free-positioned by the drag handler these kick in: */
+}
+#settings-box.dragging,
+#settings-box.free {
+  position: absolute;
+  margin: 0;
+}
+#settings-modal.free {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+#settings-box h2 {
+  cursor: move;
+  user-select: none;
 }
 /* ─────────────────────────────────────────────────────────────────────────
    TIMEZONE PICKER MODAL

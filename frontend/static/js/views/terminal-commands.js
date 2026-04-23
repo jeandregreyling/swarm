@@ -178,9 +178,9 @@ async function _renderTerminalResultCard(cmd, output, statusEl, startTime) {
     : '';
 
   return `
-    <div class="terminal-result-card" data-terminal-entry-id="${_escHtml(entryId)}" data-terminal-command="${_escHtml(cmd)}" data-terminal-output="${_escHtml((output||'').slice(0,2000))}" style="margin-top:0;">
-      <pre style="margin:0;padding:2px 0 2px;font-family:'SF Mono','Courier New',monospace;font-size:12px;white-space:pre;overflow-x:auto;line-height:1.45;color:${ok ? 'var(--text, #0f9)' : 'var(--danger, #f77)'};">${_terminalFormatOutput(displayOutput)}</pre>
-      <div style="display:flex;align-items:center;gap:8px;padding:2px 0 4px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text-dim);">
+    <div class="terminal-result-card" data-terminal-entry-id="${_escHtml(entryId)}" data-terminal-command="${_escHtml(cmd)}" data-terminal-output="${_escHtml((output||'').slice(0,2000))}" style="margin:0;">
+      <pre style="margin:0;padding:0;font-family:'SF Mono','Courier New',monospace;font-size:12px;white-space:pre;overflow-x:auto;line-height:1.4;color:${ok ? 'var(--text, #0f9)' : 'var(--danger, #f77)'};user-select:text;">${_terminalFormatOutput(displayOutput)}</pre>
+      <div style="display:flex;align-items:center;gap:8px;padding:1px 0 2px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text-dim);user-select:none;">
         <span style="color:${statusColor};font-weight:600;">${statusLabel}</span>
         <span>${Math.round(elapsed * 100) / 100}s</span>
         <span>${lines} line${lines === 1 ? '' : 's'}${truncated ? ' · truncated' : ''}</span>
@@ -215,8 +215,8 @@ async function _runTerminalCommandStream(cmd, outputEl, entryEl, startTime, prop
   // git log, journalctl tables) instead of mangling ASCII columns with
   // mid-word wrapping. Long lines horizontally scroll per-entry.
   liveWrap.innerHTML = `
-    <pre style="margin:0;padding:2px 0 2px;font-family:'SF Mono','Courier New',monospace;font-size:12px;white-space:pre;overflow-x:auto;line-height:1.45;color:var(--text, #0f9);min-height:1.4em;"></pre>
-    <div style="font-size:10px;color:var(--accent, #f7b84b);padding:2px 0 4px;">● running…</div>
+    <pre style="margin:0;padding:0;font-family:'SF Mono','Courier New',monospace;font-size:12px;white-space:pre;overflow-x:auto;line-height:1.4;color:var(--text, #0f9);min-height:1.4em;user-select:text;"></pre>
+    <div style="font-size:10px;color:var(--accent, #f7b84b);padding:1px 0 2px;user-select:none;">● running…</div>
   `;
   (entryEl || outputEl).appendChild(liveWrap);
   const pre = liveWrap.querySelector('pre');

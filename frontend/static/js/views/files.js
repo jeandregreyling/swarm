@@ -1,4 +1,22 @@
 // Files view — file browser, preview, edit, diff, code ops
+
+// P4-S33 — view-mode CSS (injected once)
+(function _filesInjectViewCss() {
+  if (document.getElementById('files-view-css')) return;
+  const s = document.createElement('style');
+  s.id = 'files-view-css';
+  s.textContent = `
+    #files-list[data-files-view="grid"] { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:6px; padding:10px; align-content:start; }
+    #files-list[data-files-view="grid"] > div { flex-direction:column !important; align-items:flex-start !important; padding:10px 8px !important; border:1px solid var(--border) !important; border-radius:8px; min-height:80px; }
+    #files-list[data-files-view="grid"] > div > span:nth-child(2) { font-size:10.5px; word-break:break-word; white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+    #files-list[data-files-view="grid"] > div > span:nth-child(3) { font-size:9px; }
+    #files-list[data-files-view="grid"] > div > span:last-child { margin-top:auto; }
+    #files-list[data-files-view="compact"] > div { padding:3px 10px !important; font-size:10.5px !important; }
+    #files-list[data-files-view="compact"] > div svg { width:11px !important; height:11px !important; }
+  `;
+  document.head.appendChild(s);
+})();
+
 // Extracted from terminal_base.html
 
 function loadFilesData(win) {
@@ -71,6 +89,43 @@ function loadFilesData(win) {
   
   // Load default path
   filesNavigateTo('');
+
+  // P4-S33 / S35 — restore persisted view-mode + breadcrumb state
+  try {
+    const v = localStorage.getItem('fridays-files-view') || 'list';
+    filesSetView(v);
+    const bc = localStorage.getItem('fridays-files-breadcrumb-open');
+    if (bc === '1') filesToggleBreadcrumb(true);
+  } catch (_) {}
+}
+
+// P4-S33 — switch list / grid / compact view-modes
+function filesSetView(mode) {
+  if (!['list', 'grid', 'compact'].includes(mode)) mode = 'list';
+  const root = window.__filesWin?.el || document;
+  const list = root.querySelector('#files-list');
+  if (list) list.setAttribute('data-files-view', mode);
+  root.querySelectorAll('#files-view-toggle [data-files-view]').forEach(b => {
+    const active = b.getAttribute('data-files-view') === mode;
+    b.style.background = active ? 'var(--accent)' : 'var(--card)';
+    b.style.color = active ? '#000' : 'var(--text-dim)';
+  });
+  try { localStorage.setItem('fridays-files-view', mode); } catch (_) {}
+}
+
+// P4-S35 — collapse/expand the breadcrumb (duplicate of path input)
+function filesToggleBreadcrumb(force) {
+  const root = window.__filesWin?.el || document;
+  const bc = root.querySelector('#files-breadcrumb');
+  const btn = root.querySelector('#files-breadcrumb-toggle');
+  if (!bc) return;
+  const isOpen = typeof force === 'boolean' ? force : bc.style.display === 'none';
+  bc.style.display = isOpen ? 'block' : 'none';
+  if (btn) {
+    btn.style.background = isOpen ? 'var(--accent)' : 'none';
+    btn.style.color = isOpen ? '#000' : 'var(--text-dim)';
+  }
+  try { localStorage.setItem('fridays-files-breadcrumb-open', isOpen ? '1' : '0'); } catch (_) {}
 }
 
 function filesNavigateTo(path) {
@@ -397,7 +452,7 @@ function filesPreviewFile(entry) {
   previewEl.style.display = 'flex';
   if (splitterEl) splitterEl.style.display = 'block';
   
-  fetch(`/api/workspace/file?path=${encodeURIComponent(entry.path)}&max_bytes=10000`)
+  fetch(`/api/workspace/file?path=${encodeURIComponent(entry.path)}&max_bytes=200000`)
     .then(r => r.json())
     .then(data => {
       if (!data.ok) {
@@ -455,7 +510,7 @@ function filesRenderPreview() {
           </div>
           <div style="display:flex;gap:6px;align-items:center;">${truncatedBadge}<button onclick="filesOpenFull()" title="Open full document in new window" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><path d="M9 2h5v5M14 2L8 8M6 3H3v10h10v-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Full</button><button onclick="filesStartEdit()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;">Edit</button></div>
         </div>
-        <pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);font-family:monospace;font-size:11px;line-height:1.45;max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:rgba(0,0,0,0.15);">${_escHtml(content)}${state.truncated ? '\n\n[…file truncated, showing first 10KB]' : ''}</pre>
+        <pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);font-family:monospace;font-size:11px;line-height:1.45;max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:rgba(0,0,0,0.15);">${_escHtml(content)}${state.truncated ? '\n\n[…file truncated, showing first 200KB — click Full to open the rest]' : ''}</pre>
       </div>`;
     return;
   }
@@ -479,14 +534,60 @@ function filesRenderPreview() {
 function filesOpenFull() {
   const state = window.__filesPreviewState;
   if (!state || !state.path) return;
-  fetch(`/api/workspace/file?path=${encodeURIComponent(state.path)}`)
+  // P4-S34: pop-out viewer is now editable. Pulls full file (up to backend cap)
+  // and lets user save back via /api/workspace/file PUT.
+  fetch(`/api/workspace/file?path=${encodeURIComponent(state.path)}&max_bytes=2000000`)
     .then(r => r.json())
     .then(data => {
       if (!data.ok) { showToast(data.error || 'Failed to load full file', 'error'); return; }
-      const win = winManager.create(`file-full-${Date.now()}`, state.path.split('/').pop(), '', { width: 620, height: 480 });
+      const fileName = state.path.split('/').pop();
+      const win = winManager.create(`file-full-${Date.now()}`, fileName, '', { width: 760, height: 560 });
       if (!win?.el) return;
       const c = win.el.querySelector('.window-content') || win.el;
-      c.innerHTML = `<pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);font-family:monospace;font-size:11px;line-height:1.45;padding:10px;overflow:auto;height:100%;background:rgba(0,0,0,0.15);">${_escHtml(data.content || '')}</pre>`;
+      const truncatedNote = data.truncated
+        ? `<div style="padding:4px 8px;background:rgba(247,184,75,0.12);border-bottom:1px solid #f7b84b88;color:#f7b84b;font-size:10.5px;">File &gt; 2 MB — only the first 2 MB are shown. Edit at your own risk; saving will rewrite the whole file with what you see here.</div>`
+        : '';
+      c.innerHTML = `
+        <div style="display:flex;flex-direction:column;height:100%;background:var(--card);">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--window-header);">
+            <span style="font-size:11px;color:var(--text-dim);flex:1;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(data.path)}</span>
+            <span style="font-size:10px;color:var(--text-dim);">${Math.max(1, Math.round((data.size||0)/1024))} KB</span>
+            <button id="files-full-save-btn" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:11px;font-weight:700;">Save</button>
+            <span id="files-full-status" style="font-size:10px;color:var(--text-dim);min-width:60px;"></span>
+          </div>
+          ${truncatedNote}
+          <textarea id="files-full-editor" spellcheck="false" style="flex:1;width:100%;border:none;outline:none;padding:10px;background:rgba(0,0,0,0.18);color:var(--text);font-family:monospace;font-size:11.5px;line-height:1.45;resize:none;box-sizing:border-box;">${_escHtml(data.content || '')}</textarea>
+        </div>`;
+      const ta = c.querySelector('#files-full-editor');
+      const saveBtn = c.querySelector('#files-full-save-btn');
+      const status = c.querySelector('#files-full-status');
+      if (saveBtn && ta) {
+        saveBtn.addEventListener('click', async () => {
+          if (status) status.textContent = 'Saving…';
+          saveBtn.disabled = true;
+          try {
+            const r = await fetch('/api/workspace/file', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ path: data.path, content: ta.value }),
+            });
+            const j = await r.json();
+            if (j.ok) {
+              if (status) status.textContent = 'Saved';
+              showToast('File saved', 'success');
+            } else {
+              if (status) status.textContent = 'Error';
+              showToast(j.error || 'Save failed', 'error');
+            }
+          } catch (err) {
+            if (status) status.textContent = 'Error';
+            showToast(String(err), 'error');
+          } finally {
+            saveBtn.disabled = false;
+            setTimeout(() => { if (status) status.textContent = ''; }, 2500);
+          }
+        });
+      }
     })
     .catch(() => showToast('Failed to load full file', 'error'));
 }
@@ -495,7 +596,10 @@ function filesStartEdit() {
   const state = window.__filesPreviewState;
   if (!state) return;
   if (state.truncated) {
-    showToast('File preview is truncated; open in terminal for full edits', 'error');
+    // P4-S34: instead of blocking, redirect to the editable popout (which loads
+    // up to 2 MB and supports Save).
+    showToast('File is large — opening editable full view', 'info');
+    filesOpenFull();
     return;
   }
   state.editing = true;

@@ -108,18 +108,31 @@ async function localaiRefreshModelCatalog(silent) {
 
 function _renderOllamaPullCatalog() {
   const datalist = document.getElementById('ollama-pull-datalist');
-  const input = document.getElementById('ollama-pull-select');
-  if (!datalist) return;
+  const select = document.getElementById('ollama-pull-select');
   if (!_ollamaPullCatalog.length) {
-    datalist.innerHTML = '';
-    if (input) input.placeholder = 'No catalog models available';
+    if (datalist) datalist.innerHTML = '';
+    if (select && select.tagName === 'SELECT') select.innerHTML = '<option value="">(catalog unavailable)</option>';
     return;
   }
-  datalist.innerHTML = _ollamaPullCatalog.map(name => {
+  // Build safe options list once
+  const installed = new Set((_ollamaInventory || []).map(m => m.name).filter(Boolean));
+  const options = _ollamaPullCatalog.map(name => {
     const safe = _escapeHtml(name);
-    return `<option value="${safe}">`;
-  }).join('');
-  if (input) input.placeholder = 'Type to search models…';
+    const tag = installed.has(name) ? ' (installed)' : '';
+    return { name, safe, tag };
+  });
+  // Legacy datalist path (if still present in another view)
+  if (datalist) datalist.innerHTML = options.map(o => `<option value="${o.safe}">`).join('');
+  if (select) {
+    if (select.tagName === 'SELECT') {
+      const prev = select.value;
+      select.innerHTML = '<option value="">— Pick a model —</option>' +
+        options.map(o => `<option value="${o.safe}">${o.safe}${o.tag}</option>`).join('');
+      if (prev) select.value = prev;
+    } else {
+      select.placeholder = 'Type to search models…';
+    }
+  }
 }
 
 function localaiRefresh() {

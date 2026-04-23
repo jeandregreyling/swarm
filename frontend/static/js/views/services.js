@@ -9,9 +9,18 @@ function toggleServicesDropdown() {
     menu.style.display = 'none';
     return;
   }
-  // Position relative to viewport so it clears any overflow:hidden parent
+  // P4-S32: button now lives in the bottom-right env-switcher, so open
+  // the menu UPWARD instead of below.
   const rect = btn.getBoundingClientRect();
-  menu.style.top  = (rect.bottom + 6) + 'px';
+  // If button is in the lower half of the screen, open upward; else downward
+  const openUp = rect.top > window.innerHeight / 2;
+  if (openUp) {
+    menu.style.top = '';
+    menu.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+  } else {
+    menu.style.bottom = '';
+    menu.style.top = (rect.bottom + 6) + 'px';
+  }
   menu.style.right = (window.innerWidth - rect.right) + 'px';
   menu.style.display = 'block';
   loadServicesPanel();
