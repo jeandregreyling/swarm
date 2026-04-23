@@ -89,6 +89,9 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.testlab_bp',     'testlab_bp'),
     ('blueprints.spine_bp',       'spine_bp'),
     ('blueprints.knowledge_bp',   'knowledge_bp'),
+    ('blueprints.coding_bible',   'coding_bible_bp'),
+    ('blueprints.voice',          'voice_bp'),
+    ('blueprints.fan',            'fan_bp'),
     ('blueprints.health',         'health_bp'),    ('blueprints.health_bp',       'health_digest_bp'),    ('blueprints.council_bp',     'council_bp'),
 ]
 
@@ -240,6 +243,13 @@ def create_app():
     def fridays_ui():
         from flask import render_template
         return render_template("terminal_base.html", theme_css="")
+
+    # Hive Nodes standalone popout (B21) — minimal page, 20 most recently
+    # touched library sources, rendered with the same library-graph engine.
+    @app.route("/hive-nodes", methods=["GET"])
+    def hive_nodes_page():
+        from flask import render_template
+        return render_template("hive_nodes.html")
 
     # Convenience redirects — deep-link views directly
     @app.route("/library", methods=["GET"])

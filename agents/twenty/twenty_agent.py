@@ -45,6 +45,11 @@ def chat(message, conversation_history=None, stage_cb=None):
     const_mod = __import__('config', fromlist=['TWENTY_SYSTEM_PROMPT'])
     system_prompt = getattr(const_mod, 'TWENTY_SYSTEM_PROMPT',
                             'You are Twenty, Qwen3.6 - a sharp local reasoning agent in the Swarm.')
+    try:
+        from coding_bible import inject as _bible_inject
+        system_prompt = _bible_inject(system_prompt)
+    except Exception:
+        pass
 
     _emit('loading context')
     context = _build_context(message)

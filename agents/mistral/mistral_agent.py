@@ -74,10 +74,14 @@ def chat(message, conversation_history=None, stage_cb=None):
     from core import llm as _llm
 
     from config import MISTRAL_SYSTEM_PROMPT
+    try:
+        from coding_bible import inject as _bible_inject
+    except Exception:
+        _bible_inject = lambda p: p
 
     _emit('loading context')
     context = _build_context(message)
-    system  = MISTRAL_SYSTEM_PROMPT + f'\n\n{context}'
+    system  = _bible_inject(MISTRAL_SYSTEM_PROMPT) + f'\n\n{context}'
 
     messages = [{'role': 'system', 'content': system}]
     if conversation_history:

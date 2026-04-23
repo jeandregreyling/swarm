@@ -724,6 +724,44 @@
   50% { opacity: 0.5; }
 }
 
+/* Voice mic button (shared by home-chat + spotlight) */
+.voice-mic-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--window-header);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.voice-mic-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.voice-mic-btn.voice-recording {
+  color: #fff;
+  background: #d9534f;
+  border-color: #d9534f;
+  animation: voicePulse 1s ease-in-out infinite;
+}
+.voice-mic-btn.voice-busy {
+  opacity: 0.6;
+  cursor: progress;
+}
+.voice-mic-btn.voice-error {
+  color: #d9534f;
+  border-color: #d9534f;
+}
+@keyframes voicePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.6); }
+  50%      { box-shadow: 0 0 0 8px rgba(217, 83, 79, 0); }
+}
+
 #home-chat-meta {
   display: flex;
   justify-content: space-between;

@@ -160,12 +160,19 @@ def save_chunks(source_id, chunks_with_embeddings):
         conn.close()
 
 
-def list_sources(status='active', category=None, subcategory=None):
+def list_sources(status='active', category=None, subcategory=None,
+                 order='created', limit=None):
+    """List knowledge sources.
+
+    order: 'created' (default — newest first by created_at) or
+           'updated' (most recently touched first by updated_at).
+    limit: optional integer cap on the number of rows returned.
+    """
     ensure_schema()
     conn = _conn()
     try:
         sql = """SELECT source_id, title, source_type, source_ref, domain_tags,
-                        status, added_by, chunk_count, created_at,
+                        status, added_by, chunk_count, created_at, updated_at,
                         category, subcategory
                  FROM knowledge_sources
                  WHERE status=?"""
@@ -176,7 +183,12 @@ def list_sources(status='active', category=None, subcategory=None):
         if subcategory:
             sql += " AND subcategory=?"
             params.append(subcategory)
-        sql += " ORDER BY created_at DESC"
+        if order == 'updated':
+            sql += " ORDER BY updated_at DESC"
+        else:
+            sql += " ORDER BY created_at DESC"
+        if isinstance(limit, int) and limit > 0:
+            sql += f" LIMIT {int(limit)}"
         rows = conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
     finally:

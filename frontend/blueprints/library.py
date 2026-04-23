@@ -49,8 +49,25 @@ def api_library_sources():
         status      = request.args.get('status', 'active')
         category    = request.args.get('category') or None
         subcategory = request.args.get('subcategory') or None
+        order       = request.args.get('order', 'created')
+        # `recent` is shorthand for "?order=updated&limit=N"
+        recent_raw  = request.args.get('recent')
+        limit_raw   = request.args.get('limit')
+        limit = None
+        if recent_raw:
+            try:
+                limit = max(1, min(int(recent_raw), 200))
+                order = 'updated'
+            except ValueError:
+                limit = None
+        elif limit_raw:
+            try:
+                limit = max(1, min(int(limit_raw), 1000))
+            except ValueError:
+                limit = None
         sources = list_sources(status=status, category=category,
-                               subcategory=subcategory)
+                               subcategory=subcategory, order=order,
+                               limit=limit)
         stats   = source_stats()
         return jsonify({'ok': True, 'sources': sources, 'stats': stats,
                         'tags': _SAP_TAGS})
