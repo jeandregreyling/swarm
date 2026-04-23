@@ -285,8 +285,97 @@ function updateChatStatusPills() {
   document.querySelectorAll('[id="chat-dictionary-inline"]').forEach(dictInline => {
     const size = Array.from(window.__fridaysChatCustomDictionary || []).length;
     dictInline.textContent = 'Dictionary: ' + size;
+    if (!dictInline.dataset.dictBound) {
+      dictInline.dataset.dictBound = '1';
+      dictInline.style.cursor = 'pointer';
+      dictInline.title = 'Click to manage custom dictionary';
+      dictInline.addEventListener('click', () => openDictionaryManager());
+    }
   });
 }
+
+function openDictionaryManager() {
+  let modal = document.getElementById('dictionary-manager-modal');
+  if (modal) modal.remove();
+  modal = document.createElement('div');
+  modal.id = 'dictionary-manager-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(560px,92vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 14px 40px rgba(0,0,0,.4);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:14px;font-weight:700;">📖 Custom Dictionary</div>
+        <button onclick="document.getElementById('dictionary-manager-modal').remove()" style="background:transparent;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">×</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
+        Words here are treated as correct spellings and preferred vocabulary. They suppress spell-check suggestions and are considered when the classifier interprets your messages.
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <input id="dict-add-input" type="text" placeholder="Add a word (e.g. fridays, vortex, seven)"
+          style="flex:1;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;"
+          onkeydown="if(event.key==='Enter'){ dictionaryAddFromInput(); }">
+        <button onclick="dictionaryAddFromInput()" style="padding:7px 14px;background:var(--accent);color:#000;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Add</button>
+      </div>
+      <div id="dict-list" style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg);"></div>
+      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <span id="dict-count" style="font-size:11px;color:var(--text-dim);"></span>
+        <button onclick="dictionaryExport()" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">Export JSON</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  _renderDictionaryList();
+  setTimeout(() => { const i = document.getElementById('dict-add-input'); if (i) i.focus(); }, 30);
+}
+
+function _renderDictionaryList() {
+  const list = document.getElementById('dict-list');
+  const countEl = document.getElementById('dict-count');
+  if (!list) return;
+  const words = Array.from(window.__fridaysChatCustomDictionary || []).sort();
+  if (countEl) countEl.textContent = `${words.length} word${words.length === 1 ? '' : 's'}`;
+  if (!words.length) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:11px;text-align:center;padding:24px;">No custom words yet. Add one above.</div>';
+    return;
+  }
+  list.innerHTML = words.map(w => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-bottom:1px solid color-mix(in srgb,var(--border) 40%,transparent);font-size:12px;">
+      <span style="color:var(--text);font-family:monospace;">${w}</span>
+      <button onclick="dictionaryRemove('${w.replace(/'/g, "\\'")}')" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">Remove</button>
+    </div>`).join('');
+}
+
+function dictionaryAddFromInput() {
+  const input = document.getElementById('dict-add-input');
+  if (!input) return;
+  const v = input.value;
+  const added = addWordToCustomDictionary(v);
+  if (added) {
+    input.value = '';
+    _renderDictionaryList();
+  }
+  input.focus();
+}
+
+function dictionaryRemove(word) {
+  removeWordFromCustomDictionary(word);
+  _renderDictionaryList();
+}
+
+function dictionaryExport() {
+  const words = Array.from(window.__fridaysChatCustomDictionary || []).sort();
+  const blob = new Blob([JSON.stringify(words, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'fridays-custom-dictionary.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+window.openDictionaryManager = openDictionaryManager;
+window.dictionaryAddFromInput = dictionaryAddFromInput;
+window.dictionaryRemove = dictionaryRemove;
+window.dictionaryExport = dictionaryExport;
 
 function updateChatMiniSystemStats(cpuPercent, ramPercent) {
   const cpu = Number(cpuPercent);
@@ -1347,6 +1436,30 @@ function setChatUiScale(scale) {
   localStorage.setItem(CHAT_UI_SCALE_KEY, String(next));
   _applyChatDockLayoutState();
 }
+
+// ── Console title row collapse (saves vertical space) ──────────────────────
+const CHAT_TOPBAR_COLLAPSED_KEY = 'fridays_chat_topbar_collapsed';
+function chatTopbarToggle() {
+  const col = document.getElementById('chat-topbar-title-col');
+  if (!col) return;
+  const collapsed = col.dataset.collapsed === '1' ? '0' : '1';
+  col.dataset.collapsed = collapsed;
+  const sub = document.getElementById('chat-topbar-subtitle');
+  const caret = document.getElementById('chat-topbar-caret');
+  if (sub) sub.style.display = collapsed === '1' ? 'none' : '';
+  if (caret) caret.textContent = collapsed === '1' ? '▸' : '▾';
+  localStorage.setItem(CHAT_TOPBAR_COLLAPSED_KEY, collapsed);
+}
+window.chatTopbarToggle = chatTopbarToggle;
+// Restore on load
+try {
+  if (localStorage.getItem(CHAT_TOPBAR_COLLAPSED_KEY) === '1') {
+    document.addEventListener('DOMContentLoaded', () => {
+      const col = document.getElementById('chat-topbar-title-col');
+      if (col && col.dataset.collapsed !== '1') chatTopbarToggle();
+    });
+  }
+} catch(_){}
 
 function startChatDockResize(event) {
   if (window.__fridaysChatDockCollapsed) return;
@@ -3769,8 +3882,6 @@ function _appendChatBubble(sender, text, opts = {}) {
     : '';
   const actionRow = isUser ? userActionRow : `
     <div class="chat-actions">
-      <button class="chat-action-btn" onclick="reactToMessage('${msgId}','👍')">👍</button>
-      <button class="chat-action-btn" onclick="reactToMessage('${msgId}','🤔')">🤔</button>
       <button class="chat-action-btn" data-reply-sender="${safeSender}" data-reply-preview="${_escapeHtml(text).slice(0, 120)}" data-reply-msgid="${_escapeHtml(String(opts.messageId || ''))}" onclick="setReplyTarget(this.dataset.replySender, this.dataset.replyPreview, this.dataset.replyMsgid)">Reply</button>
       <button class="chat-action-btn" data-suggest-sender="${safeSender}" data-suggest-preview="${_escapeHtml(text).slice(0, 160)}" onclick="showAgentPickerDropdown(this, this.dataset.suggestSender, this.dataset.suggestPreview)">Ask another</button>
       <button class="chat-action-btn" data-agent="${_escapeHtml(senderIdentity.key)}" data-text="${replayText}" data-msgid="${_escapeHtml(String(msgId))}" onclick="reprocessAgentMessage(this.dataset.agent, this.dataset.text, this.dataset.msgid)">Reprocess</button>
@@ -3784,7 +3895,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   const _tsDate = _now.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   const _tsToday = new Date().toDateString() === _now.toDateString();
   const _tsLabel = _tsTime + (_tsToday ? '' : ' · ' + _tsDate);
-  const _tokCount = !isUser ? (Number(opts.tokens || 0).toLocaleString() + ' tok') : '';
+  const _tokCount = !isUser ? (Number(opts.tokens || 0).toLocaleString() + ' Tokens') : '';
   const _traceItems = (!isUser && Array.isArray(opts.stageTrace) && opts.stageTrace.length) ? opts.stageTrace : null;
   const traceHtml = _traceItems
     ? `<details class="chat-bubble-trace"><summary>Trace &middot; ${_traceItems.length} step${_traceItems.length !== 1 ? 's' : ''}</summary><div class="chat-bubble-trace-body">${_traceItems.map((s, i) => `<div class="chat-bubble-trace-step"><span class="chat-bubble-trace-num">${i + 1}</span><span class="chat-bubble-trace-text">${_escapeHtml(String(s && s.text != null ? s.text : s))}</span></div>`).join('')}</div></details>`
@@ -4046,14 +4157,12 @@ function setReplyTarget(sender, preview, messageId) {
     updateChatStatusPills();
   }
 
+  // Reply target is conveyed via the banner above the input + the
+  // __fridaysReplyTargets payload sent with the message. We no longer dump
+  // "@agent\n> [agent] preview" jargon into the textarea — that polluted the
+  // user's draft and made it look like a quote-style reply, not a true reply.
   const input = document.getElementById('question-input');
-  if (input && !String(input.value || '').trim()) {
-    const tags = next.map(t => '@' + _chatAgentLabel(t.sender)).join(' ');
-    const quotes = next.map(t => `> [${_chatAgentLabel(t.sender)}] ${t.preview}`).join('\n');
-    input.value = `${tags}\n${quotes}\n\n`;
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
-  }
+  if (input) input.focus();
 
   renderReplyBanner();
   _applyReplyTargetHighlights();

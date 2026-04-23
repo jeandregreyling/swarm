@@ -147,10 +147,10 @@ body.orb-dragging * {
 .bg-hive-clusters span:nth-child(5) { top: 74%; right: 16%; animation-delay: -11s; }
 .bg-hive-clusters span:nth-child(6) { top: 34%; left: 44%; animation-delay: -7s; }
 
-body[data-foundation="light"] .bg-hive-lattice { opacity: 0.04; }
-body[data-foundation="dark"] .bg-hive-lattice { opacity: 0.12; }
-body[data-foundation="light"] .bg-hive-clusters span { opacity: 0.04; }
-body[data-foundation="dark"] .bg-hive-clusters span { opacity: 0.1; }
+body[data-foundation="light"] .bg-hive-lattice { opacity: 0.18; }
+body[data-foundation="dark"] .bg-hive-lattice { opacity: 0.32; }
+body[data-foundation="light"] .bg-hive-clusters span { opacity: 0.14; }
+body[data-foundation="dark"] .bg-hive-clusters span { opacity: 0.22; }
 body[data-scene-lattice="off"] .bg-hive-lattice { display: none; }
 body[data-scene-clusters="off"] .bg-hive-clusters { display: none; }
 
@@ -551,7 +551,7 @@ body.theme-solar {
   left: 0;
   width: 100%;
   height: 100%;
-  background: color-mix(in srgb, var(--bg) 84%, transparent 16%);
+  background: color-mix(in srgb, var(--bg) 40%, transparent 60%);
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -659,8 +659,31 @@ body.theme-solar {
 #tdet-body::-webkit-scrollbar,
 #mem-det-body::-webkit-scrollbar,
 #doc-det-body::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
+  width: 28px;
+  height: 28px;
+}
+#home-content::-webkit-scrollbar-thumb,
+#activity-log::-webkit-scrollbar-thumb,
+#ticket-queue::-webkit-scrollbar-thumb,
+#chat-messages::-webkit-scrollbar-thumb,
+.window-content::-webkit-scrollbar-thumb,
+#studio-content::-webkit-scrollbar-thumb,
+#docs-content::-webkit-scrollbar-thumb,
+#skills-content::-webkit-scrollbar-thumb,
+#tickets-content::-webkit-scrollbar-thumb,
+#monitor-content::-webkit-scrollbar-thumb,
+#terminal-output::-webkit-scrollbar-thumb,
+#world-clocks::-webkit-scrollbar-thumb,
+#tw-timeline::-webkit-scrollbar-thumb,
+#pdet-body::-webkit-scrollbar-thumb,
+#tdet-body::-webkit-scrollbar-thumb,
+#mem-det-body::-webkit-scrollbar-thumb,
+#doc-det-body::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 14px;
+  border: 6px solid transparent;
+  background-clip: padding-box;
+  min-height: 60px;
 }
 
 #home-content::-webkit-scrollbar-track,

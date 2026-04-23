@@ -401,6 +401,16 @@ function _emailToggleCompose() {
   const drawer = document.getElementById('email-compose-drawer');
   if (!drawer) return;
   drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+  if (drawer.style.display === 'block' && !drawer.dataset.kbBound) {
+    drawer.dataset.kbBound = '1';
+    // Ctrl+Enter (or Cmd+Enter on Mac) anywhere in the compose drawer = send.
+    drawer.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        _emailSendCompose();
+      }
+    });
+  }
 }
 
 async function _emailSendCompose() {

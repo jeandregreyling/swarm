@@ -820,10 +820,7 @@
         <!-- Git merged into Studio (7F): Ctrl+G opens Studio > Git tab -->
         <!-- Library merged into Knowledge (Tier 1.1) -->
         <!-- Local AI merged into Agents tile (7E) -->
-        <div class="home-card" data-win-id="vpn" data-win-title="VPN" data-win-template="view-vpn">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v3M3 8h3M10 8h3M5 4l2 2M11 4l-2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="10" r="3.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 8.5v2M7 10.5h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>VPN</span></div>
-          <div class="card-desc">Tailscale network status</div>
-        </div>
+        <!-- VPN moved into Access view header -->
         <div class="home-card" data-win-id="trace" data-win-title="Trace" data-win-template="view-trace">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Trace</span></div>
           <div class="card-desc">End-to-end message tracing</div>
@@ -833,10 +830,7 @@
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span>Feeds</span></div>
           <div class="card-desc">Social &amp; developer feeds</div>
         </div>
-        <div class="home-card" data-win-id="tasker" data-win-title="Tasker" data-win-template="view-tasker">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 3v3l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Tasker</span></div>
-          <div class="card-desc">Scheduled tasks &amp; automation</div>
-        </div>
+        <!-- Tasker moved into Knowledge view header -->
         <!-- + Add New tile -->
         <div class="home-card home-card-add" id="add-new-tile" title="Create a proposal for new functionality">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 2"/><path d="M8 5.5v5M5.5 8h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span><span>Add New</span></div>
@@ -896,9 +890,9 @@
         <div id="chat-topbar">
           <div>
             <div class="chat-topbar-row">
-              <div class="chat-topbar-title-col">
-                <div class="chat-title">Fridays Chat Console</div>
-                <div class="chat-subtitle">Multi-agent conversation with live orchestration <span class="chat-mini-system">CPU --% · RAM --%</span></div>
+              <div class="chat-topbar-title-col" id="chat-topbar-title-col" data-collapsed="0">
+                <div class="chat-title" onclick="chatTopbarToggle()" title="Click to collapse" style="cursor:pointer;user-select:none;"><span id="chat-topbar-caret" style="display:inline-block;width:10px;color:var(--text-dim);font-size:10px;">▾</span> Fridays Chat Console</div>
+                <div class="chat-subtitle" id="chat-topbar-subtitle">Multi-agent conversation with live orchestration <span class="chat-mini-system">CPU --% · RAM --%</span></div>
               </div>
               <div class="chat-topbar-font-col">
                 <span class="chat-topbar-font-label">Font Size</span>
@@ -1412,6 +1406,9 @@
     </div>
     <div id="kn-quick-query-results" style="margin:0 10px 8px;display:none;"></div>
     <div id="knowledge-tab-bar" class="knowledge-tab-bar"></div>
+    <div style="margin:0 10px 6px;display:flex;gap:6px;">
+      <button onclick="openWindow('tasker','Tasker','view-tasker')" title="Scheduled tasks &amp; automation" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text-dim);font-size:10px;cursor:pointer;">⏱ Tasker — scheduled tasks</button>
+    </div>
     <div id="kn-panel-files" style="flex:1;min-height:0;display:flex;flex-direction:column;"></div>
     <div id="kn-panel-docs" style="flex:1;min-height:0;display:flex;flex-direction:column;display:none;"></div>
     <div id="kn-panel-library" style="flex:1;min-height:0;overflow-y:auto;display:none;"></div>
@@ -1559,6 +1556,10 @@
           onclick="studioSetTab('testlab')"
           title="Test Lab — run the 7-tier audit hierarchy + any registered test script against a change"
           style="padding:5px 14px;border-radius:4px;border:1px solid var(--info);background:color-mix(in srgb, var(--info) 18%, transparent);color:var(--info);font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb, var(--info) 30%, transparent);">🧪 Test Lab</button>
+        <button id="studio-btn-governance"
+          onclick="openGovernancePanel()"
+          title="Governance controls — pause/resume enforcement, view ALM status"
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--warning);background:color-mix(in srgb, var(--warning) 14%, transparent);color:var(--warning);font-size:11px;font-weight:700;cursor:pointer;">🛡 Governance</button>
         <button onclick="studioSetTab(window._studioTab || 'pending')"
           style="margin-left:4px;background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">&#8635;</button>
       </div>
@@ -1717,33 +1718,36 @@
 
 <template id="view-time-wizard">
   <div class="content-view" style="display: flex; flex-direction: column;">
-    <div style="padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--window-header);">
+    <div style="padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--window-header);">
       <div style="display:flex;align-items:center;gap:8px;">
-        <h3 style="margin:0;font-size:12px;flex:1;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Vortex — Decision Timeline</h3>
+        <h3 style="margin:0;font-size:13px;flex:1;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-1px"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Vortex — Time Machine</h3>
+        <button onclick="openGovernancePanel()" title="Pause / resume Vortex + governance"
+          style="padding:4px 10px;border-radius:6px;border:1px solid var(--warning);background:color-mix(in srgb, var(--warning) 14%, transparent);color:var(--warning);font-size:10px;font-weight:700;cursor:pointer;">⏸ Controls</button>
         <button onclick="openSpotlight()" title="Search proposals, decisions &amp; more (Ctrl+Space)"
-          style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:10px;cursor:pointer;">
+          style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:10px;cursor:pointer;">
           <svg viewBox="0 0 20 20" width="11" height="11" fill="none" style="color:var(--accent);"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           Ctrl+Space
         </button>
         <button onclick="twOpenInfo()" title="What is Vortex?"
-          style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;padding:0;">
+          style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;padding:0;">
           <svg viewBox="0 0 16 16" width="11" height="11" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 5.2h0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </button>
       </div>
-      <div style="font-size: 9px; color: var(--text-dim);margin-top:4px;">All architectural decisions, checkpoints, and state transitions</div>
+      <div style="font-size: 11px; color: var(--text-dim);margin-top:6px;line-height:1.5;">Save a restore point, preview a rollback, then apply it if it looks right. Everything is auditable.</div>
     </div>
-    <div style="padding: 10px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); display: flex; flex-direction: column; gap: 10px;">
-      <div id="tw-summary" style="font-size: 9px; color: var(--text-dim);">Loading Vortex status...</div>
+    <div style="padding: 12px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); display: flex; flex-direction: column; gap: 12px;">
+      <div id="tw-summary" style="font-size: 10px; color: var(--text-dim);">Loading Vortex status...</div>
       <div style="display: flex; gap: 10px; align-items: center;">
-        <input type="range" id="tw-slider" min="0" max="0" value="0" step="1" style="flex: 1; accent-color: var(--accent); cursor: pointer;" title="Drag to inspect any checkpoint in the timeline.">
-        <div id="tw-slider-label" style="min-width: 220px; text-align: right; font-size: 9px; color: var(--text); font-family: monospace;">No checkpoints</div>
+        <span style="font-size:10px;color:var(--text-dim);white-space:nowrap;">Restore point:</span>
+        <input type="range" id="tw-slider" min="0" max="0" value="0" step="1" style="flex: 1; accent-color: var(--accent); cursor: pointer;" title="Drag to pick which restore point to inspect.">
+        <div id="tw-slider-label" style="min-width: 220px; text-align: right; font-size: 10px; color: var(--text); font-family: monospace;">No restore points yet</div>
       </div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button onclick="createTwCheckpoint()" title="Snapshot the current swarm state (DB + key files) so you can roll back to it later." style="padding: 5px 10px; background: var(--accent); border: none; border-radius: 4px; color: #000; font-size: 9px; font-weight: 700; cursor: pointer;">Capture Checkpoint</button>
-        <button onclick="previewTwCheckpoint(true)" title="Show what would change if you rolled back to the selected checkpoint — no actual changes made." style="padding: 5px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 9px; cursor: pointer;">Dry Run Step-Back</button>
-        <button onclick="applyTwRestore()" title="Apply the step-back: restore DB and files from the selected checkpoint. Irreversible without another checkpoint." style="padding: 5px 10px; background: var(--warning-dim); border: 1px solid color-mix(in srgb, var(--warning) 33%, transparent); border-radius: 4px; color: var(--warning); font-size: 9px; font-weight: 700; cursor: pointer;">Apply Step-Back</button>
+        <button onclick="createTwCheckpoint()" title="Take a snapshot of the swarm now so you can return to this state later." style="padding: 6px 12px; background: var(--accent); border: none; border-radius: 6px; color: #000; font-size: 11px; font-weight: 700; cursor: pointer;">💾 Save restore point</button>
+        <button onclick="previewTwCheckpoint(true)" title="Show what rolling back would change — safe, nothing is written." style="padding: 6px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 11px; cursor: pointer;">🔍 Preview rollback</button>
+        <button onclick="applyTwRestore()" title="Actually roll back to the selected restore point. Not reversible without another restore point." style="padding: 6px 12px; background: var(--warning-dim); border: 1px solid color-mix(in srgb, var(--warning) 33%, transparent); border-radius: 6px; color: var(--warning); font-size: 11px; font-weight: 700; cursor: pointer;">⏪ Roll back now</button>
       </div>
-      <div id="tw-restore-preview" style="background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 9px; color: var(--text-dim); min-height: 72px;">Drag the slider to inspect a checkpoint. Dry run preview will appear here.</div>
+      <div id="tw-restore-preview" style="background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 10px; color: var(--text-dim); min-height: 72px;">Drag the slider to pick a restore point, then click <strong>Preview rollback</strong> to see what would change.</div>
     </div>
     <!-- Horizontal visual timeline strip -->
     <div id="tw-visual-timeline" style="padding:8px 10px;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden;min-height:52px;background:rgba(255,255,255,0.015);display:flex;align-items:center;gap:0;scrollbar-width:thin;">
@@ -1803,6 +1807,7 @@
         <div style="font-size:9px;color:var(--text-dim);">Trusted senders, ignored addresses, skill permissions</div>
       </div>
       <button onclick="loadAccessData(window._accessWin)" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:9px;cursor:pointer;">↻ Refresh</button>
+      <button onclick="openWindow('vpn','VPN','view-vpn')" title="Open VPN / Tailscale network status" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:9px;cursor:pointer;margin-left:6px;">🔐 VPN</button>
     </div>
     <div style="flex:1;overflow-y:auto;padding:0;">
 
@@ -2341,13 +2346,13 @@
 <script src="/static/js/views/skills.js"></script>
 <script src="/static/js/views/tasker.js"></script>
 <script src="/static/js/views/tickets.js"></script>
-<script src="/static/js/views/email.js?v=29"></script>
+<script src="/static/js/views/email.js?v=30"></script>
 <script src="/static/js/views/studio.js?v=30r1"></script>
 <script src="/static/js/views/studio-testlab.js?v=30"></script>
 <script src="/static/js/views/projects.js?v=30"></script>
 <script src="/static/js/views/traced.js?v=29"></script>
 <script src="/static/js/core/trace-bus.js?v=29"></script>
-<script src="/static/js/views/chat.js?v=30m1"></script>
+<script src="/static/js/views/chat.js?v=35"></script>
 <script src="/static/js/views/services.js"></script>
 <script src="/static/js/views/ollama.js"></script>
 <script src="/static/js/views/time-wizard.js?v=29"></script>
@@ -2368,8 +2373,9 @@
 <script src="/static/js/friday-auth.js?v=27"></script>
 <!-- Init (must be last — depends on all above) -->
 <script src="/static/js/core/sse-client.js"></script>
-<script src="/static/js/core/init.js?v=30"></script>
-<script src="/static/js/views/orbs.js?v=33"></script>
+<script src="/static/js/core/init.js?v=31"></script>
+<script src="/static/js/core/scene-sprites.js?v=1"></script>
+<script src="/static/js/views/orbs.js?v=34"></script>
 
 </body>
 </html>

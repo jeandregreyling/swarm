@@ -348,14 +348,14 @@
   scrollbar-width: auto;
   scrollbar-color: var(--accent) transparent;
 }
-#home-chat-messages::-webkit-scrollbar { width: 14px; }
+#home-chat-messages::-webkit-scrollbar { width: 28px; }
 #home-chat-messages::-webkit-scrollbar-track { background: transparent; }
 #home-chat-messages::-webkit-scrollbar-thumb {
   background: var(--accent);
   border-radius: 999px;
-  border: 3px solid transparent;
+  border: 6px solid transparent;
   background-clip: padding-box;
-  min-height: 40px;
+  min-height: 60px;
 }
 
 /* Welcome state */
