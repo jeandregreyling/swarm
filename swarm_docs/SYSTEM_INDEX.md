@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-23 18:27*
+*Auto-generated: 2026-04-23 18:28*
 
 
 ## Python Modules
@@ -259,30 +259,30 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 36470 |
+| `activity_log` | 36508 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 613 |
+| `approval_tokens` | 616 |
 | `audit_results` | 36 |
-| `change_runs` | 3 |
+| `change_runs` | 4 |
 | `chat_jobs` | 599 |
 | `claude_log` | 1 |
 | `conv_timeline` | 2251 |
 | `conversations` | 2 |
-| `council_output` | 1945 |
+| `council_output` | 1949 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 11004 |
+| `decisions` | 11035 |
 | `deferred_items` | 0 |
-| `duck_log` | 867 |
+| `duck_log` | 869 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4337 |
+| `ghost_circle` | 4339 |
 | `governance_log` | 406 |
 | `knowledge_chunks` | 638 |
 | `knowledge_sources` | 51 |
@@ -315,7 +315,7 @@
 | `projects` | 28 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 2 |
-| `queue` | 1582 |
+| `queue` | 1586 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 506 |
@@ -337,14 +337,14 @@
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 1 |
 | `test_runs` | 60 |
-| `ticket_notes` | 621 |
-| `tickets` | 629 |
-| `time_checkpoints` | 4712 |
-| `time_events` | 97300 |
-| `time_journal` | 91266 |
-| `time_machine` | 6077 |
+| `ticket_notes` | 623 |
+| `tickets` | 631 |
+| `time_checkpoints` | 4729 |
+| `time_events` | 97325 |
+| `time_journal` | 91274 |
+| `time_machine` | 6081 |
 | `tool_builds` | 0 |
-| `trace_events` | 254 |
+| `trace_events` | 270 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_interests` | 13 |
