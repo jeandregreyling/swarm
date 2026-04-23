@@ -110,6 +110,8 @@ window.__fridaysChatConversationId = window.__fridaysChatConversationId || null;
 window.__fridaysChatEnabledAgents = window.__fridaysChatEnabledAgents || {};
 window.__fridaysReplyTargets = Array.isArray(window.__fridaysReplyTargets) ? window.__fridaysReplyTargets : [];
 window.__fridaysChatForceNewThread = window.__fridaysChatForceNewThread ?? true;
+// Refresh contract: F5/reload always starts with no active thread. Stale key wipe.
+try { localStorage.removeItem('fridays-chat-active-thread'); } catch (e) {}
 window.__fridaysChatPendingJobIds = window.__fridaysChatPendingJobIds || [];
 window.__fridaysChatPendingConversationId = window.__fridaysChatPendingConversationId || null;
 window.__fridaysChatPendingPollTimer = window.__fridaysChatPendingPollTimer || null;
@@ -1366,8 +1368,72 @@ function resetThemeAndFontDefaults() {
   if (typeof applyScene === 'function') applyScene('beach');
   document.documentElement.style.setProperty('--glass-opacity', '0.95');
   setChatUiScale(CHAT_UI_SCALE_DEFAULT);
+  // P4-M30: also reset font family back to Open Sans Light default
+  if (typeof setUiFontFamily === 'function') setUiFontFamily(UI_FONT_DEFAULT);
   showToast('Atmosphere and font reset to system defaults', 'success');
 }
+
+// ── P4-M30: UI font-family picker ────────────────────────────────────────────
+const UI_FONT_DEFAULT = '"Open Sans", "Open Sans Light", system-ui, sans-serif';
+const UI_FONT_KEY = 'fridays-ui-font-family';
+const UI_FONT_CUSTOM_KEY = 'fridays-ui-font-custom-list';
+
+function setUiFontFamily(value) {
+  if (!value) value = UI_FONT_DEFAULT;
+  try { localStorage.setItem(UI_FONT_KEY, value); } catch (_) {}
+  document.documentElement.style.setProperty('--ui-font-family', value);
+  document.body.style.fontFamily = value;
+  const sel = document.getElementById('theme-font-family-select');
+  if (sel && sel.value !== value) {
+    // If the value is a custom one, ensure an option exists
+    let opt = Array.from(sel.options).find(o => o.value === value);
+    if (!opt) {
+      opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = value.split(',')[0].replace(/['"]/g, '').trim() + ' (custom)';
+      sel.appendChild(opt);
+    }
+    sel.value = value;
+  }
+}
+
+function addCustomUiFont() {
+  const family = (prompt('Add a font family (CSS value, e.g. "Source Sans 3", system-ui, sans-serif):') || '').trim();
+  if (!family) return;
+  // Persist into a small custom list so it survives reloads
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(UI_FONT_CUSTOM_KEY) || '[]'); } catch (_) {}
+  if (!list.includes(family)) {
+    list.push(family);
+    try { localStorage.setItem(UI_FONT_CUSTOM_KEY, JSON.stringify(list)); } catch (_) {}
+  }
+  setUiFontFamily(family);
+  if (typeof showToast === 'function') showToast('Font added — applied');
+}
+
+(function _initUiFontFamily() {
+  function _apply() {
+    let saved = '';
+    try { saved = localStorage.getItem(UI_FONT_KEY) || ''; } catch (_) {}
+    // Re-attach any custom fonts added in previous sessions
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem(UI_FONT_CUSTOM_KEY) || '[]'); } catch (_) {}
+    const sel = document.getElementById('theme-font-family-select');
+    if (sel) {
+      list.forEach(family => {
+        if (!Array.from(sel.options).find(o => o.value === family)) {
+          const o = document.createElement('option');
+          o.value = family;
+          o.textContent = family.split(',')[0].replace(/['"]/g, '').trim() + ' (custom)';
+          sel.appendChild(o);
+        }
+      });
+    }
+    setUiFontFamily(saved || UI_FONT_DEFAULT);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _apply);
+  else _apply();
+})();
 
 function _applyChatDockLayoutState() {
   const threadCollapsed = !!window.__fridaysChatThreadCollapsed;
@@ -3837,14 +3903,31 @@ function _appendChatBubble(sender, text, opts = {}) {
     .replace(/[^a-z0-9_-]/g, '');
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble' + (isUser ? ' user' : '') + ' sender-' + senderKey;
+  // B17: Reply-as-true-thread — when replying to a specific message, render the
+  // new bubble indented under the parent and expose a "jump to parent" affordance.
+  const quotedArr = Array.isArray(opts.quoted) ? opts.quoted : (opts.quoted ? [opts.quoted] : []);
+  const _parentMsgId = (quotedArr.find(q => q && (q.msgId || q.messageId)) || {});
+  const _parentKey = _parentMsgId.msgId || _parentMsgId.messageId || opts.parentMsgId || '';
+  if (_parentKey) {
+    bubble.classList.add('chat-bubble-threaded');
+    bubble.style.marginLeft = '28px';
+    bubble.style.borderLeft = '2px solid var(--accent)';
+    bubble.style.paddingLeft = '10px';
+    bubble.dataset.parentMsgId = String(_parentKey);
+  }
   const safeSender = _escapeHtml(sender);
   const senderMetaHtml = isUser ? 'you' : _chatAgentIdentityHtml(sender, true);
   const msgId = opts.msgId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
-  const quotedItems = Array.isArray(opts.quoted)
-    ? opts.quoted
-    : (opts.quoted ? [opts.quoted] : []);
+  const quotedItems = quotedArr;
   const quoted = quotedItems.length
-    ? `<div class="chat-meta">${quotedItems.map(q => `↳ replying to ${_escapeHtml(q.sender)}: ${_escapeHtml(q.preview)}`).join('<br>')}</div>`
+    ? `<div class="chat-meta">${quotedItems.map(q => {
+        const jumpKey = q && (q.msgId || q.messageId) ? String(q.msgId || q.messageId) : '';
+        const jumpSel = jumpKey ? `[data-message-id="${jumpKey}"],#chat-bubble-${jumpKey.replace(/[^a-zA-Z0-9_-]/g, '')}` : '';
+        const arrow = jumpSel
+          ? `<a href="javascript:void(0)" onclick="var n=document.querySelector('${jumpSel.replace(/'/g, '\\\'')}');if(n){n.scrollIntoView({behavior:'smooth',block:'center'});n.style.outline='2px solid var(--accent)';setTimeout(function(){n.style.outline='';},1200);}" style="text-decoration:none;color:var(--accent);cursor:pointer;" title="Jump to replied message">↳</a>`
+          : '↳';
+        return `${arrow} replying to ${_escapeHtml(q.sender)}: ${_escapeHtml(q.preview)}`;
+      }).join('<br>')}</div>`
     : '';
   const extracted = _extractAttachmentsFromMessage(text);
   const parsedSkill = isUser ? { text: extracted.text, events: [] } : _parseSkillEvents(extracted.text);

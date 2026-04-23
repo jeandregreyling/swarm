@@ -337,3 +337,158 @@ def api_case_update_status(case_id: str):
     if not ok:
         return jsonify({'ok': False, 'error': 'case not found'}), 404
     return jsonify({'ok': True})
+
+
+# ── Phase 3 — Project / Step / Case edit + delete + per-step test scoping ─
+
+@knowledge_bp.route('/api/knowledge/projects/<project_id>', methods=['DELETE'])
+def api_projects_delete(project_id: str):
+    ok = _kc_projects.delete_project(project_id)
+    if not ok:
+        return jsonify({'ok': False, 'error': 'project not found'}), 404
+    return jsonify({'ok': True})
+
+
+@knowledge_bp.route('/api/knowledge/steps/<step_id>', methods=['DELETE'])
+def api_step_delete(step_id: str):
+    ok = _kc_projects.delete_step(step_id)
+    if not ok:
+        return jsonify({'ok': False, 'error': 'step not found'}), 404
+    return jsonify({'ok': True})
+
+
+@knowledge_bp.route('/api/knowledge/steps/<step_id>/edit', methods=['PATCH'])
+def api_step_edit(step_id: str):
+    """Edit a step's title/description/owner (separate from status PATCH)."""
+    body = request.get_json(silent=True) or {}
+    try:
+        ok = _kc_projects.update_step(
+            step_id,
+            title=body.get('title'),
+            description=body.get('description'),
+            owner=body.get('owner'),
+        )
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    if not ok:
+        return jsonify({'ok': False, 'error': 'step not found or no fields'}), 404
+    return jsonify({'ok': True})
+
+
+@knowledge_bp.route('/api/knowledge/cases/<case_id>', methods=['DELETE'])
+def api_case_delete(case_id: str):
+    ok = _kc_projects.delete_test_case(case_id)
+    if not ok:
+        return jsonify({'ok': False, 'error': 'case not found'}), 404
+    return jsonify({'ok': True})
+
+
+@knowledge_bp.route('/api/knowledge/cases/<case_id>/edit', methods=['PATCH'])
+def api_case_edit(case_id: str):
+    body = request.get_json(silent=True) or {}
+    try:
+        ok = _kc_projects.update_test_case(
+            case_id,
+            title=body.get('title'),
+            script_id=body.get('script_id'),
+            step_id=body.get('step_id'),
+            owner=body.get('owner'),
+        )
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    if not ok:
+        return jsonify({'ok': False, 'error': 'case not found or no fields'}), 404
+    return jsonify({'ok': True})
+
+
+@knowledge_bp.route('/api/knowledge/steps/<step_id>/test-scripts', methods=['GET'])
+def api_step_test_scripts(step_id: str):
+    """Return the Test Lab script_ids tied to this step's cases.
+
+    This is the "only run relevant tests after each step" primitive — the
+    UI posts the returned ``script_ids`` to ``/api/studio/testlab/resolve``
+    to obtain shell commands, then executes them through the existing
+    Test Lab runner.
+    """
+    cases = _kc_projects.scripts_for_step(step_id)
+    return jsonify({
+        'ok': True,
+        'step_id': step_id,
+        'cases': cases,
+        'script_ids': [c['script_id'] for c in cases if c.get('script_id')],
+    })
+
+
+@knowledge_bp.route('/api/knowledge/steps/<step_id>/complete', methods=['POST'])
+def api_step_complete(step_id: str):
+    """Mark a step done AND auto-write a Knowledge Center doc summarising it.
+
+    Body (optional): {summary, files_changed: [..], tests_run: [..]}
+
+    The KB doc is tagged ``auto,step,<project_id>`` so Seven's KC reader
+    picks it up next chat turn.
+    """
+    body = request.get_json(silent=True) or {}
+    try:
+        ok = _kc_projects.update_step_status(step_id, 'done', owner=body.get('owner') or None)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    if not ok:
+        return jsonify({'ok': False, 'error': 'step not found'}), 404
+
+    # Best-effort auto-doc into project_docs (Knowledge Center).
+    doc_id = None
+    try:
+        import time as _t
+        from utils.db._connection import get_connection as _gc
+        # Find the project that owns this step (for tags + title context).
+        conn = _gc()
+        try:
+            row = conn.execute(
+                "SELECT s.title AS step_title, s.project_id, p.name AS proj_name "
+                "FROM project_steps s LEFT JOIN projects p ON p.project_id=s.project_id "
+                "WHERE s.step_id=?",
+                (step_id,),
+            ).fetchone()
+            if row:
+                step_title = row['step_title'] or step_id
+                project_id = row['project_id'] or ''
+                proj_name = row['proj_name'] or project_id
+                summary = str(body.get('summary') or '').strip() or \
+                    f"Step '{step_title}' completed."
+                files = body.get('files_changed') or []
+                tests = body.get('tests_run') or []
+                lines = [
+                    f"# {step_title}",
+                    "",
+                    f"**Project:** {proj_name} (`{project_id}`)  ",
+                    f"**Step:** `{step_id}`  ",
+                    f"**Completed:** {_t.strftime('%Y-%m-%d %H:%M:%S')}",
+                    "",
+                    "## Summary",
+                    summary,
+                ]
+                if files:
+                    lines += ["", "## Files changed", *[f"- `{f}`" for f in files]]
+                if tests:
+                    lines += ["", "## Tests run", *[f"- `{t}`" for t in tests]]
+                content = "\n".join(lines)
+                doc_name = f"auto:step:{step_id}"
+                tags = ",".join(filter(None, ['auto', 'step', project_id]))
+                conn.execute(
+                    "INSERT INTO project_docs (doc_name, content, tags) VALUES (?,?,?)",
+                    (doc_name, content, tags),
+                )
+                conn.commit()
+                got = conn.execute(
+                    "SELECT id FROM project_docs WHERE doc_name=? ORDER BY id DESC LIMIT 1",
+                    (doc_name,),
+                ).fetchone()
+                if got:
+                    doc_id = got['id']
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+    return jsonify({'ok': True, 'kb_doc_id': doc_id})

@@ -7,6 +7,31 @@ _Last updated: 2026-04-22 by Copilot (Session 29)_
 
 ---
 
+## Phase 4 — UX/Platform batch (2026-04-10) — SHIPPED
+
+### SMALL (S32–S38)
+- [x] **S32** — Services dropdown moved from top-right to bottom-right (sits in `#env-switcher`); menu opens upward when anchored low.
+- [x] **S33** — Files view-mode toggle (list / grid / compact) + collapsible breadcrumb; both persisted in `localStorage`.
+- [x] **S34** — Editable popout for Files; `/api/workspace/file` raised to **2 MB** max, default 200 KB; truncation now opens the editable popout instead of erroring.
+- [x] **S35** — Library "duplicate paths" collapsed inside `<details>`.
+- [x] **S36** — Knowledge unified search row; RAG result cards selectable with **Open / Send to chat / Copy path**.
+- [x] **S37** — Interests strip pulled forward in Knowledge Center; auto-refreshes after seed save.
+- [x] **S38** — Library 5 emoji glyphs replaced with inline SVG.
+
+### MEDIUM (M22–M31)
+- [x] **M22** — Linux download speed diagnosis ticket → root cause: `enp0s31f6` no-carrier, machine on wifi (`docs/audits/2026-04-10-download-speed.md`).
+- [x] **M23** — Tauri desktop wrapper rewired (schema v2, `src/main.rs`, `build.rs`, `tauri-plugin-shell`, README rewritten).
+- [x] **M24** — Mac remote-access doc (`docs/MAC_REMOTE_ACCESS.md`) — Tailscale + voice path with Whisper / Piper.
+- [x] **M25** — Agent role reset: Gemma defanged from SAP-router → general decision maker; Mistral → quick coder; Eleven → short-and-honest; Twenty (Qwen3.6) → big coder. DB roles + `utils/config.py` system prompts updated.
+- [x] **M26** — Agents tile dynamic layout (`clamp()` sidebar, fills tile, very-narrow rule).
+- [x] **M27** — Agent number replaced with slot dropdown showing current occupants.
+- [x] **M28** — Hardcoded slot role readout above the editable description field.
+- [x] **M29** — Sidebar pills now show agent number badge; HTML5 drag-and-drop reorder persisted.
+- [x] **M30** — Global font picker (Open Sans Light default + Apple-style font list + "+ Add font").
+- [x] **M31** — Hive Grid creao-style parallax (first pass): GPU-only mouse-tracked tilt with `prefers-reduced-motion` opt-out.
+
+---
+
 ## Session 29.2 — UX polish + Knowledge Center foundation (SHIPPED)
 
 - [x] **Main chat sidebar too dominant** — Fixed. Thread rail now collapsed by default; topbar `#chat-thread-select` dropdown is primary.

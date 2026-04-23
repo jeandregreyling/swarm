@@ -125,6 +125,12 @@
           <div style="font-size:9px;color:var(--text-dim);font-family:monospace;">${_esc(p.project_id)} · methodology: <b>${_esc(p.methodology)}</b> · owner: <b>${_esc(p.owner || 'seven')}</b> · status: ${_esc(p.status)}</div>
           ${p.description ? `<div style="margin-top:6px;color:var(--text-dim);font-size:11px;white-space:pre-wrap;">${_esc(p.description)}</div>` : ''}
         </div>
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button onclick="projectsRename('${_esc(p.project_id)}')" title="Rename project"
+            style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">✎ Rename</button>
+          <button onclick="projectsDelete('${_esc(p.project_id)}','${_esc((p.name||'').replace(/'/g, '&#39;'))}')" title="Delete project"
+            style="background:none;border:1px solid var(--danger,#f77);color:var(--danger,#f77);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">🗑 Delete</button>
+        </div>
       </div>
 
       <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:var(--card);">
@@ -136,15 +142,25 @@
           </div>
         </div>
         ${steps.length ? steps.map((s, i) => `
-          <div style="display:grid;grid-template-columns:24px 1fr 90px 100px 70px;gap:6px;padding:5px 6px;border-top:1px solid var(--border);align-items:center;font-size:10px;">
+          <div style="display:grid;grid-template-columns:24px 1fr 80px 100px 64px 130px;gap:6px;padding:5px 6px;border-top:1px solid var(--border);align-items:center;font-size:10px;">
             <span style="color:var(--text-dim);font-family:monospace;">${i + 1}.</span>
-            <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(s.title)}</span>
-            <span style="color:var(--text-dim);font-size:9px;">owner: ${_esc(s.owner || 'seven')}</span>
+            <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_esc(s.title)}">${_esc(s.title)}</span>
+            <span style="color:var(--text-dim);font-size:9px;">${_esc(s.owner || 'seven')}</span>
             <select onchange="projectsSetStepStatus('${_esc(s.step_id)}', this.value)"
               style="background:var(--window-header);border:1px solid var(--border);color:var(--text);border-radius:3px;padding:2px;font-size:9px;">
               ${['todo','doing','blocked','done','skipped'].map(x => `<option value="${x}"${x === s.status ? ' selected' : ''}>${x}</option>`).join('')}
             </select>
             <span style="font-size:8px;color:${_stepStatusColor(s.status)};font-weight:700;text-transform:uppercase;text-align:right;">${_esc(s.status)}</span>
+            <span style="display:flex;gap:2px;justify-content:flex-end;">
+              <button onclick="projectsRunStepTests('${_esc(s.step_id)}')" title="Run only this step's tests"
+                style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">▶</button>
+              <button onclick="projectsCompleteStep('${_esc(s.step_id)}')" title="Mark done + auto-write KC doc"
+                style="background:none;border:1px solid var(--border);color:#4caf50;border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">✓</button>
+              <button onclick="projectsEditStep('${_esc(s.step_id)}','${_esc((s.title||'').replace(/'/g, '&#39;'))}')" title="Rename step"
+                style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">✎</button>
+              <button onclick="projectsDeleteStep('${_esc(s.step_id)}','${_esc((s.title||'').replace(/'/g, '&#39;'))}')" title="Delete step"
+                style="background:none;border:1px solid var(--border);color:var(--danger,#f77);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">🗑</button>
+            </span>
           </div>
         `).join('') : '<div style="padding:6px;color:var(--text-dim);font-size:10px;">No steps yet. Add one to start the plan.</div>'}
       </div>
@@ -159,11 +175,16 @@
           </div>
         </div>
         ${cases.length ? cases.map(c => `
-          <div style="display:grid;grid-template-columns:1fr 160px 80px 70px;gap:6px;padding:5px 6px;border-top:1px solid var(--border);align-items:center;font-size:10px;">
-            <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(c.title)}</span>
+          <div style="display:grid;grid-template-columns:1fr 150px 70px 70px;gap:6px;padding:5px 6px;border-top:1px solid var(--border);align-items:center;font-size:10px;">
+            <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_esc(c.title)}">${_esc(c.title)}</span>
             <span style="color:var(--text-dim);font-family:monospace;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(c.script_id || '—')}</span>
-            <span style="color:var(--text-dim);font-size:9px;">owner: ${_esc(c.owner || 'seven')}</span>
             <span style="font-size:8px;color:var(--accent);font-weight:700;text-transform:uppercase;text-align:right;">${_esc(c.status)}</span>
+            <span style="display:flex;gap:2px;justify-content:flex-end;">
+              <button onclick="projectsEditCase('${_esc(c.case_id)}','${_esc((c.title||'').replace(/'/g, '&#39;'))}','${_esc(c.script_id||'')}')" title="Edit"
+                style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">✎</button>
+              <button onclick="projectsDeleteCase('${_esc(c.case_id)}','${_esc((c.title||'').replace(/'/g, '&#39;'))}')" title="Delete"
+                style="background:none;border:1px solid var(--border);color:var(--danger,#f77);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">🗑</button>
+            </span>
           </div>
         `).join('') : '<div style="padding:6px;color:var(--text-dim);font-size:10px;">No test cases yet. Add a case tied to a Test Lab script_id to track pass/fail per run.</div>'}
       </div>
@@ -255,6 +276,155 @@
   function _runStatusColor(s) {
     return ({ pass: '#4caf50', fail: '#f44336', error: '#ff9800', running: '#29b6f6', aborted: '#888' })[s] || '#888';
   }
+
+  // ── Phase 3: delete / rename / run-step-tests / complete-step ──────────
+
+  window.projectsDelete = function (pid, name) {
+    if (!pid) return;
+    if (!confirm(`Delete project "${name || pid}"?\n\nThis removes the project, its steps, test cases and proposal links. Test runs keep their history.`)) return;
+    fetch('/api/knowledge/projects/' + encodeURIComponent(pid), { method: 'DELETE' })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'delete failed');
+        _selectedId = '';
+        localStorage.removeItem(LS_SELECTED);
+        projectsRefresh();
+      })
+      .catch(err => alert('Delete project failed: ' + (err.message || err)));
+  };
+
+  window.projectsRename = function (pid) {
+    const current = (_projects.find(p => p.project_id === pid) || {}).name || '';
+    const next = prompt('Rename project:', current);
+    if (next === null) return;
+    const trimmed = (next || '').trim();
+    if (!trimmed || trimmed === current) return;
+    fetch('/api/knowledge/projects/' + encodeURIComponent(pid), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: trimmed }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'rename failed');
+        projectsRefresh();
+      })
+      .catch(err => alert('Rename failed: ' + (err.message || err)));
+  };
+
+  window.projectsDeleteStep = function (stepId, title) {
+    if (!stepId) return;
+    if (!confirm(`Delete step "${title || stepId}"?\n\nTest cases tied to it will be unlinked but kept.`)) return;
+    fetch('/api/knowledge/steps/' + encodeURIComponent(stepId), { method: 'DELETE' })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'delete failed');
+        if (_selectedId) _loadDetail(_selectedId);
+      })
+      .catch(err => alert('Delete step failed: ' + (err.message || err)));
+  };
+
+  window.projectsEditStep = function (stepId, currentTitle) {
+    const next = prompt('Rename step:', currentTitle || '');
+    if (next === null) return;
+    const trimmed = (next || '').trim();
+    if (!trimmed || trimmed === currentTitle) return;
+    fetch('/api/knowledge/steps/' + encodeURIComponent(stepId) + '/edit', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: trimmed }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'edit failed');
+        if (_selectedId) _loadDetail(_selectedId);
+      })
+      .catch(err => alert('Rename step failed: ' + (err.message || err)));
+  };
+
+  window.projectsDeleteCase = function (caseId, title) {
+    if (!caseId) return;
+    if (!confirm(`Delete test case "${title || caseId}"?`)) return;
+    fetch('/api/knowledge/cases/' + encodeURIComponent(caseId), { method: 'DELETE' })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'delete failed');
+        if (_selectedId) _loadDetail(_selectedId);
+      })
+      .catch(err => alert('Delete case failed: ' + (err.message || err)));
+  };
+
+  window.projectsEditCase = function (caseId, currentTitle, currentScript) {
+    const nextTitle = prompt('Case title:', currentTitle || '');
+    if (nextTitle === null) return;
+    const nextScript = prompt('Test Lab script_id (blank to clear):', currentScript || '');
+    if (nextScript === null) return;
+    const body = {};
+    const t = (nextTitle || '').trim();
+    if (t && t !== currentTitle) body.title = t;
+    if (nextScript !== currentScript) body.script_id = (nextScript || '').trim();
+    if (!Object.keys(body).length) return;
+    fetch('/api/knowledge/cases/' + encodeURIComponent(caseId) + '/edit', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'edit failed');
+        if (_selectedId) _loadDetail(_selectedId);
+      })
+      .catch(err => alert('Edit case failed: ' + (err.message || err)));
+  };
+
+  window.projectsRunStepTests = function (stepId) {
+    if (!stepId) return;
+    fetch('/api/knowledge/steps/' + encodeURIComponent(stepId) + '/test-scripts')
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'lookup failed');
+        const ids = data.script_ids || [];
+        if (!ids.length) {
+          alert('This step has no test cases with a Test Lab script_id attached.\n\nAdd a test case with a script_id, then click ▶ again.');
+          return;
+        }
+        // Hand off to the existing Test Lab runner when present; otherwise
+        // at least surface the resolved commands to the user.
+        if (typeof window.testLabRunScripts === 'function') {
+          window.testLabRunScripts(ids, { step_id: stepId, project_id: _selectedId || null });
+        } else {
+          return fetch('/api/studio/testlab/resolve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ script_ids: ids }),
+          })
+            .then(r => r.json())
+            .then(res => {
+              const lines = (res && res.items || []).map(i => `• ${i.id}: ${i.command}`);
+              alert(`Step tests (${ids.length}):\n\n` + (lines.join('\n') || '(no commands resolved)'));
+            });
+        }
+      })
+      .catch(err => alert('Run step tests failed: ' + (err.message || err)));
+  };
+
+  window.projectsCompleteStep = function (stepId) {
+    if (!stepId) return;
+    const summary = prompt('One-line summary of what this step delivered (goes into Knowledge Center):', '');
+    if (summary === null) return;
+    fetch('/api/knowledge/steps/' + encodeURIComponent(stepId) + '/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary: (summary || '').trim() }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'complete failed');
+        if (_selectedId) _loadDetail(_selectedId);
+      })
+      .catch(err => alert('Complete step failed: ' + (err.message || err)));
+  };
+
   function _esc(v) {
     if (window.SwarmChat && typeof window.SwarmChat.esc === 'function') return window.SwarmChat.esc(v);
     return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));

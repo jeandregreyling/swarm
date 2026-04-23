@@ -1,4 +1,41 @@
 // Boot sequence — DOMContentLoaded, intervals, SSE
+
+// ── Settings modal: drag by h2, resize by CSS `resize: both` ─────────────
+function _initSettingsDragResize() {
+  const box = document.getElementById('settings-box');
+  const modal = document.getElementById('settings-modal');
+  if (!box || !modal) return;
+  const handle = box.querySelector('h2');
+  if (!handle) return;
+  let active = false, startX = 0, startY = 0, startL = 0, startT = 0;
+  handle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    active = true;
+    modal.classList.add('free');
+    box.classList.add('free');
+    const rect = box.getBoundingClientRect();
+    if (!box.style.left) box.style.left = rect.left + 'px';
+    if (!box.style.top) box.style.top = rect.top + 'px';
+    startX = e.clientX; startY = e.clientY;
+    startL = parseFloat(box.style.left) || rect.left;
+    startT = parseFloat(box.style.top) || rect.top;
+    box.classList.add('dragging');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!active) return;
+    const nx = Math.max(0, Math.min(window.innerWidth - 80, startL + (e.clientX - startX)));
+    const ny = Math.max(0, Math.min(window.innerHeight - 60, startT + (e.clientY - startY)));
+    box.style.left = nx + 'px';
+    box.style.top = ny + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!active) return;
+    active = false;
+    box.classList.remove('dragging');
+  });
+}
+
 // Extracted from terminal_base.html
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -100,6 +137,60 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('troubleshoot-clear-btn')?.addEventListener('click', () => clearTroubleshootLogs());
   document.getElementById('troubleshoot-copy-btn')?.addEventListener('click', () => copyTroubleshootLogs());
   _initTroubleshootDrag();
+  _initSettingsDragResize();
+
+  // Follow-up #5: per-tile hover ? buttons pull from single-source manual.
+  // Injects a small help glyph into every .home-card[data-win-id]. Clicking
+  // calls openWindowHelp(winId), which fetches /api/manual/<winId>.
+  try {
+    const _injectTileHelp = () => {
+      document.querySelectorAll('.home-card[data-win-id]').forEach(card => {
+        if (card.__tileHelpInjected) return;
+        card.__tileHelpInjected = true;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'home-card-help-btn';
+        btn.title = 'What is this?';
+        btn.textContent = '?';
+        btn.style.cssText = 'position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text-dim);font-size:10px;font-weight:700;cursor:pointer;opacity:0;transition:opacity .15s;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;z-index:2;';
+        btn.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
+        btn.addEventListener('mouseleave', () => { btn.style.opacity = '0.5'; });
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const winId = card.getAttribute('data-win-id');
+          if (winId && typeof openWindowHelp === 'function') openWindowHelp(winId);
+        });
+        if (getComputedStyle(card).position === 'static') card.style.position = 'relative';
+        card.appendChild(btn);
+        card.addEventListener('mouseenter', () => { btn.style.opacity = '0.5'; });
+        card.addEventListener('mouseleave', () => { btn.style.opacity = '0'; });
+      });
+    };
+    _injectTileHelp();
+    // Re-run when new cards are added (Add-Tile flow)
+    const _homeGrid = document.getElementById('home-tiles-grid') || document.querySelector('.home-tiles');
+    if (_homeGrid && typeof MutationObserver === 'function') {
+      new MutationObserver(_injectTileHelp).observe(_homeGrid, { childList: true });
+    }
+  } catch (_) { /* non-fatal */ }
+
+  // Welcome modal: show-at-startup wiring
+  try {
+    const cb = document.getElementById('welcome-show-at-startup');
+    const pref = localStorage.getItem('fridays-welcome-at-startup');
+    // First-visit default: ON. Once user unticks, remember 'never'.
+    const shouldShow = (pref === null) || pref === '1';
+    if (cb) cb.checked = shouldShow;
+    if (shouldShow) {
+      setTimeout(() => {
+        const m = document.getElementById('shortcuts-help-modal');
+        if (m) m.classList.add('open');
+        // First visit: persist so next boot knows user has seen it.
+        if (pref === null) { try { localStorage.setItem('fridays-welcome-at-startup', '1'); } catch (e) {} }
+      }, 600);
+    }
+  } catch (e) {}
 
   // Clicking empty home background should minimize open windows to taskbar.
   document.addEventListener('click', (event) => {

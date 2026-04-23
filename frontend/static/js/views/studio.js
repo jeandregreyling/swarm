@@ -1244,6 +1244,8 @@ function addCustomCard() {
 }
 
 function openWindowHelp(windowId) {
+  // B15: Single-source manual — fetch from /api/manual/<key>; fall back to
+  // the inline dict below if the fetch fails (offline, route missing, etc).
   const helpText = {
     home: {
       title: 'Fridays Home',
@@ -1329,12 +1331,31 @@ function openWindowHelp(windowId) {
 
   document.getElementById('win-help-title').textContent = `❓ ${data.title}`;
   document.getElementById('win-help-body').innerHTML = `
-    <div style="margin-bottom:12px;color:var(--text);">${_escHtml(data.body)}</div>
+    <div style="margin-bottom:12px;color:var(--text);white-space:pre-wrap;">${_escHtml(data.body)}</div>
     <div style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;color:var(--text-dim);">
       Header controls: ? Help · ⬚ Maximize · _ Minimize · Pin · ⛶ Fullscreen · ✕ Close
     </div>
     ${relayTipsHtml}`;
   modal.classList.add('open');
+
+  // B15: refresh from single-source manual endpoint
+  fetch(`/api/manual/${encodeURIComponent(windowId)}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      if (!j || !j.ok) return;
+      const titleEl = document.getElementById('win-help-title');
+      const bodyEl = document.getElementById('win-help-body');
+      if (titleEl && j.title) titleEl.textContent = `❓ ${j.title}`;
+      if (bodyEl && j.body) {
+        bodyEl.innerHTML = `
+          <div style="margin-bottom:12px;color:var(--text);white-space:pre-wrap;">${_escHtml(j.body)}</div>
+          <div style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;color:var(--text-dim);">
+            Header controls: ? Help · ⬚ Maximize · _ Minimize · Pin · ⛶ Fullscreen · ✕ Close
+          </div>
+          ${relayTipsHtml}`;
+      }
+    })
+    .catch(() => { /* keep fallback render */ });
 }
 
 function closeTopModal() {

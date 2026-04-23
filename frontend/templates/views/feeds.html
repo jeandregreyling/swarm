@@ -119,22 +119,136 @@
   </style>
 
   <script>
-    // Wire tile clicks honestly — connectors aren't built yet, but the tiles
-    // should acknowledge the click instead of appearing dead. When a real
-    // connector ships, replace this handler with the per-provider flow.
+    // M13: Add/manage local feed subscriptions. Real OAuth connectors are
+    // out of scope here — this persists user intent + custom RSS URLs in
+    // localStorage so the swarm can pick them up later.
     (function(){
-      const labels = [];
+      const STORAGE_KEY = 'fridays-feeds-subscriptions';
+      const loadSubs = () => {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; }
+        catch { return {}; }
+      };
+      const saveSubs = (subs) => {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(subs)); } catch {}
+        // Follow-up #3: mirror to backend so Scholar/Librarian can ingest
+        try {
+          fetch('/api/feeds', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ feeds: subs }),
+          }).catch(() => {});
+        } catch (_) {}
+      };
+      const toast = (msg, kind='info') => {
+        if (typeof showToast === 'function') showToast(msg, kind);
+        else if (typeof window.showToast === 'function') window.showToast(msg, kind);
+      };
+
+      const applyStatus = (el, name, subs) => {
+        const entry = subs[name];
+        let badge = el.querySelector('.feed-status-badge');
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'feed-status-badge';
+          badge.style.cssText = 'display:inline-block;margin-top:6px;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;';
+          el.appendChild(badge);
+        }
+        if (entry && entry.status === 'connected') {
+          badge.textContent = 'tracked';
+          badge.style.background = '#4caf5020';
+          badge.style.color = '#4caf50';
+          badge.style.border = '1px solid #4caf5060';
+        } else {
+          badge.textContent = 'click to add';
+          badge.style.background = 'var(--bg)';
+          badge.style.color = 'var(--text-dim)';
+          badge.style.border = '1px solid var(--border)';
+        }
+      };
+
+      const renderCustomList = () => {
+        const subs = loadSubs();
+        let host = document.getElementById('feeds-custom-list');
+        if (!host) return;
+        const rss = Object.entries(subs).filter(([, v]) => v && v.type === 'rss');
+        if (!rss.length) {
+          host.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:8px;">No custom feeds added yet.</div>';
+          return;
+        }
+        host.innerHTML = rss.map(([key, v]) =>
+          `<div style="padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;gap:10px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:600;color:var(--text);">${(v.label||key).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
+              <div style="font-size:10px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(v.url||'').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
+            </div>
+            <button data-remove-feed="${key}" style="background:transparent;border:1px solid #f44336aa;color:#f44336;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:11px;">Remove</button>
+          </div>`
+        ).join('');
+        host.querySelectorAll('[data-remove-feed]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const k = btn.dataset.removeFeed;
+            const s = loadSubs();
+            delete s[k];
+            saveSubs(s);
+            renderCustomList();
+            toast('Feed removed');
+          });
+        });
+      };
+
+      // Inject Manage/Custom section once
+      const viewRoot = document.querySelector('#view-feeds, .content-view');
+      if (viewRoot && !document.getElementById('feeds-custom-list')) {
+        const section = document.createElement('div');
+        section.style.cssText = 'margin-bottom:20px;';
+        section.innerHTML =
+          '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">Custom Feeds <button id="feeds-add-btn" style="margin-left:auto;background:var(--accent);color:#fff;border:none;border-radius:5px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;">+ Add RSS</button></div>' +
+          '<div id="feeds-custom-list" style="display:flex;flex-direction:column;gap:6px;"></div>';
+        const availHeader = Array.from(viewRoot.querySelectorAll('div')).find(d => d.textContent.trim() === 'Available Feeds');
+        if (availHeader && availHeader.parentElement) availHeader.parentElement.parentElement.insertBefore(section, availHeader.parentElement);
+        else viewRoot.querySelector('div').appendChild(section);
+        renderCustomList();
+        document.getElementById('feeds-add-btn')?.addEventListener('click', () => {
+          const url = prompt('RSS or Atom feed URL:');
+          if (!url || !/^https?:\/\//i.test(url)) { if (url) toast('Invalid URL', 'error'); return; }
+          const label = prompt('Label for this feed:', url) || url;
+          const subs = loadSubs();
+          const key = 'rss:' + url;
+          subs[key] = { type: 'rss', url, label, status: 'connected', added: Date.now() };
+          saveSubs(subs);
+          renderCustomList();
+          toast('Feed added: ' + label, 'success');
+        });
+      }
+
+      // Wire provider tiles to toggle tracked state
+      const subs = loadSubs();
       document.querySelectorAll('#view-feeds .feed-option, .feed-option').forEach(el => {
         if (el.__fridaysFeedsWired) return;
         el.__fridaysFeedsWired = true;
+        const nameEl = el.querySelector('span[style*="font-weight:600"]');
+        const name = (nameEl?.textContent || 'feed').trim();
+        if (name === 'RSS / Custom') {
+          // Click acts as shortcut to add RSS
+          el.addEventListener('click', () => {
+            document.getElementById('feeds-add-btn')?.click();
+          });
+          return;
+        }
+        applyStatus(el, name, subs);
         el.addEventListener('click', () => {
-          const name = (el.querySelector('span[style*="font-weight:600"]')?.textContent || 'this feed').trim();
-          const msg = name === 'RSS / Custom'
-            ? 'RSS/Custom feed connector is not wired yet — coming soon.'
-            : `${name} connector is not wired yet — coming soon.`;
-          if (typeof showToast === 'function') showToast(msg, 'info');
-          else if (typeof window.showToast === 'function') window.showToast(msg, 'info');
-          else console.info('[Feeds]', msg);
+          const s = loadSubs();
+          if (s[name] && s[name].status === 'connected') {
+            delete s[name];
+            saveSubs(s);
+            applyStatus(el, name, s);
+            toast(name + ' untracked', 'info');
+          } else {
+            s[name] = { type: 'provider', status: 'connected', added: Date.now() };
+            saveSubs(s);
+            applyStatus(el, name, s);
+            toast(name + ' added — connector pending', 'success');
+          }
         });
       });
     })();

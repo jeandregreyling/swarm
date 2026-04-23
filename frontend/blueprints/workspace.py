@@ -95,7 +95,7 @@ def api_workspace_file():
     Read a file from the workspace.
     Query params:
     - path: file path relative to SWARM_ROOT (required)
-    - max_bytes: max size to read (default: 100000, max: 500000)
+    - max_bytes: max size to read (default: 200000, max: 2000000)
     
     Returns: {ok, path, content, size, mime_type}
     """
@@ -106,10 +106,10 @@ def api_workspace_file():
         return jsonify({'ok': False, 'error': 'path required'}), 400
     
     try:
-        max_bytes = int(request.args.get('max_bytes', 100000) or 100000)
+        max_bytes = int(request.args.get('max_bytes', 200000) or 200000)
     except ValueError:
-        max_bytes = 100000
-    max_bytes = max(1024, min(max_bytes, 500000))  # 1KB min, 500KB max
+        max_bytes = 200000
+    max_bytes = max(1024, min(max_bytes, 2000000))  # 1KB min, 2MB max
     
     try:
         swarm_root = Path(_SWARM_ROOT).resolve()
