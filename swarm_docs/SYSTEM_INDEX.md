@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-23 00:13*
+*Auto-generated: 2026-04-23 18:27*
 
 
 ## Python Modules
@@ -105,7 +105,7 @@
 | `agents/qwen/qwen_agent.py` | agents/qwen/qwen_agent.py — Qwen (local Ollama) |
 | `agents/scholar/scholar_agent.py` | # LINKED TO: utils/config.py — imports SCHOLAR_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/seeker/seeker_agent.py` | # LINKED TO: utils/config.py — imports SEEKER_SYSTEM_PROMPT (edit prompts there, not here) |
-| `agents/seven/seven_agent.py` | agents/seven/seven_agent.py — Seven (local-algorithm) |
+| `agents/seven/seven_agent.py` | agents/seven/seven_agent.py — Seven |
 | `agents/ten/copilot_agent.py` | # LINKED TO: utils/config.py — imports TEN_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/thirteen/thirteen_agent.py` | # LINKED TO: utils/config.py — imports THIRTEEN_SYSTEM_PROMPT (edit prompts there, not here) |
 | `agents/twelve/twelve_agent.py` | # LINKED TO: utils/config.py — imports TWELVE_SYSTEM_PROMPT (edit prompts there, not here) |
@@ -174,7 +174,7 @@
 | `council_bp` | 2 | Council API blueprint — serves Agent 20 output to the frontend. |
 | `debates` | 5 | debates.py — Debates routes |
 | `decisions` | 3 | decisions.py — Decisions & Timeline routes |
-| `diamond` | 3 | frontend/blueprints/diamond.py — Diamond Layer governance API. |
+| `diamond` | 5 | frontend/blueprints/diamond.py — Diamond Layer governance API. |
 | `docs` | 14 | docs.py — Docs & Project Files routes |
 | `email_bp` | 5 | blueprints/email_bp.py — Email tile API |
 | `exec_bp` | 4 | exec_bp.py — Ghost Exec routes |
@@ -185,16 +185,16 @@
 | `interests_bp` | 3 | Interests engine — derives user interests from conversations + system memory. |
 | `kb` | 7 | kb.py — Knowledge Base routes |
 | `killswitch` | 6 | killswitch.py — Kill Switches routes |
-| `knowledge_bp` | 19 | Knowledge Center blueprint. |
+| `knowledge_bp` | 26 | Knowledge Center blueprint. |
 | `legacy` | 3 | legacy.py — Legacy Pipeline & Approval routes |
-| `library` | 11 | frontend/blueprints/library.py — Knowledge Library API routes. |
+| `library` | 22 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
 | `login_bp` | 14 | login_bp.py — User login, registration, session management, and approval. |
 | `memory` | 8 | memory.py — Memory routes |
 | `metrics` | 2 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
 | `nine` | 4 | nine.py — Agent Nine routes |
 | `node` | 11 | frontend/blueprints/node.py — Node registration + federation endpoints (A.4.5 + A.5) |
-| `ollama` | 11 | ollama.py — Ollama Models routes |
+| `ollama` | 12 | ollama.py — Ollama Models routes |
 | `onboarding` | 2 | frontend/blueprints/onboarding.py — Onboarding wizard API |
 | `patterns_bp` | 2 | patterns_bp.py — Pattern learning API (Tier 4.2). |
 | `personality_bp` | 4 | personality_bp.py — Agent personality + diary system (Tier 4.4). |
@@ -219,36 +219,36 @@
 
 | Module | Size |
 |--------|------|
-| `access.js` | 96.5 KB |
-| `chat.js` | 252.9 KB |
+| `access.js` | 103.5 KB |
+| `chat.js` | 266.1 KB |
 | `conversations.js` | 14.5 KB |
-| `diamond.js` | 26.9 KB |
+| `diamond.js` | 28.3 KB |
 | `docs.js` | 24.6 KB |
-| `email.js` | 26.1 KB |
-| `files.js` | 42.0 KB |
+| `email.js` | 26.5 KB |
+| `files.js` | 47.6 KB |
 | `git.js` | 24.1 KB |
 | `guide.js` | 7.9 KB |
 | `health-digest.js` | 8.2 KB |
-| `home-chat.js` | 50.0 KB |
-| `knowledge.js` | 17.3 KB |
+| `home-chat.js` | 56.1 KB |
+| `knowledge.js` | 22.0 KB |
 | `library-graph.js` | 12.4 KB |
-| `library.js` | 26.8 KB |
-| `localai.js` | 25.7 KB |
+| `library.js` | 43.7 KB |
+| `localai.js` | 26.3 KB |
 | `memory-landscape.js` | 9.6 KB |
 | `memory.js` | 30.3 KB |
 | `monitor.js` | 18.1 KB |
 | `ollama.js` | 4.1 KB |
 | `onboarding.js` | 16.9 KB |
-| `orbs.js` | 63.0 KB |
-| `projects.js` | 15.5 KB |
-| `services.js` | 4.7 KB |
+| `orbs.js` | 83.1 KB |
+| `projects.js` | 24.4 KB |
+| `services.js` | 5.0 KB |
 | `skills.js` | 26.2 KB |
 | `spotlight.js` | 14.6 KB |
 | `studio-testlab.js` | 25.3 KB |
-| `studio.js` | 86.3 KB |
+| `studio.js` | 86.4 KB |
 | `tasker.js` | 11.0 KB |
 | `terminal-commands.js` | 17.6 KB |
-| `terminal.js` | 43.6 KB |
+| `terminal.js` | 43.5 KB |
 | `tickets.js` | 6.0 KB |
 | `time-wizard.js` | 43.4 KB |
 | `trace.js` | 22.6 KB |
@@ -259,50 +259,50 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 35328 |
+| `activity_log` | 36470 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 610 |
-| `audit_results` | 35 |
-| `change_runs` | 2 |
-| `chat_jobs` | 585 |
+| `approval_tokens` | 613 |
+| `audit_results` | 36 |
+| `change_runs` | 3 |
+| `chat_jobs` | 599 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2192 |
-| `conversations` | 0 |
-| `council_output` | 1275 |
+| `conv_timeline` | 2251 |
+| `conversations` | 2 |
+| `council_output` | 1945 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 7665 |
+| `decisions` | 11004 |
 | `deferred_items` | 0 |
-| `duck_log` | 861 |
+| `duck_log` | 867 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4324 |
-| `governance_log` | 387 |
+| `ghost_circle` | 4337 |
+| `governance_log` | 406 |
 | `knowledge_chunks` | 638 |
-| `knowledge_sources` | 50 |
-| `memory` | 106 |
+| `knowledge_sources` | 51 |
+| `memory` | 108 |
 | `memory_eight` | 1 |
-| `memory_gemma` | 22 |
+| `memory_gemma` | 24 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
-| `memory_llama` | 1 |
+| `memory_llama` | 2 |
 | `memory_mistral` | 0 |
 | `memory_nine` | 0 |
 | `memory_qwen` | 1 |
 | `memory_scholar` | 0 |
 | `memory_seeker` | 0 |
 | `memory_sonic` | 0 |
-| `memory_ten` | 59 |
+| `memory_ten` | 62 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 375 |
-| `messages` | 0 |
+| `messages` | 12 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -310,50 +310,50 @@
 | `pending_emails` | 8 |
 | `project_doc_versions` | 56 |
 | `project_docs` | 74 |
-| `project_steps` | 32 |
-| `project_test_cases` | 34 |
-| `projects` | 21 |
+| `project_steps` | 102 |
+| `project_test_cases` | 54 |
+| `projects` | 28 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 2 |
-| `queue` | 1570 |
+| `queue` | 1582 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 506 |
-| `scheduled_tasks` | 51 |
+| `scheduled_tasks` | 1298 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
-| `sqlite_sequence` | 68 |
+| `sqlite_sequence` | 69 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 387 |
+| `swarm_bus` | 406 |
 | `swarm_event_acks` | 24 |
 | `swarm_events` | 2 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7253 |
-| `task_run_log` | 0 |
+| `system_stats` | 7474 |
+| `task_run_log` | 1 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 1 |
-| `test_runs` | 37 |
-| `ticket_notes` | 615 |
-| `tickets` | 623 |
-| `time_checkpoints` | 4617 |
-| `time_events` | 96233 |
-| `time_journal` | 90297 |
-| `time_machine` | 5918 |
+| `test_runs` | 60 |
+| `ticket_notes` | 621 |
+| `tickets` | 629 |
+| `time_checkpoints` | 4712 |
+| `time_events` | 97300 |
+| `time_journal` | 91266 |
+| `time_machine` | 6077 |
 | `tool_builds` | 0 |
-| `trace_events` | 136 |
+| `trace_events` | 254 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
-| `user_interests` | 3 |
+| `user_interests` | 13 |
 | `user_patterns` | 3 |
 | `user_profiles` | 23 |
 | `user_sessions` | 3 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 2 |
+| `work_proposals` | 4 |
 
 ## Agents
 
@@ -367,7 +367,6 @@
 | `qwen` | qwen2.5:latest | local | Deep Analyst — specialist depth, multilingual reasoning | ✅ |
 | `librarian` | qwen:latest | local | Gatekeeper + Vortex — tags, queues, closes, checkpoints | ✅ |
 | `duck` | qwen2.5:latest | local | Sanity checker — YES/NO after every ticket | ✅ |
-| `sniffles` | deepseek-r1:7b | local | Inspector — memory auditor, read only, chain-of-thought | ✅ |
 | `seven` | local-algorithm | local | Personal companion — loyal, thinks out loud | ✅ |
 | `eight` | gemma4:26b | local | SAP specialist — three-voice debate (Functional/Technical/Devil) | ✅ |
 | `nine` | llama-3.3-70b-versatile | paid | Developer Agent — system architect, proposals, Ghost One-directed execution | ✅ |
@@ -381,6 +380,7 @@
 | `ghost_coder` | gpt-5 | paid | Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays | ✅ |
 | `nineteen` | o4-mini | paid | developer | ✅ |
 | `twenty` | Qwen3.6:latest | local | Nervous system — observes, deliberates, suggests (no LLM) | ✅ |
+| `sniffles` | deepseek-r1:7b | local | Inspector — memory auditor, read only, chain-of-thought | ✅ |
 
 ## Skills
 
