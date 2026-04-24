@@ -28,6 +28,18 @@ def api_circuit_breaker_reset(agent):
         return jsonify({'error': 'circuit_breaker module not available'}), 501
 
 
+@system_bp.route('/api/platform', methods=['GET'])
+def api_platform():
+    """V7C-R16 runtime platform probe. Reports OS + capability matrix so the
+    UI can render "Linux primary / fan supported / tauri absent" instead of
+    guessing. Safe — each probe is wrapped; never raises."""
+    try:
+        from core.platform import summary
+        return jsonify(summary())
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'platform probe failed: {e}'}), 500
+
+
 # NOTE: '/' is owned by frontend/terminal.py (root_status JSON). UI is at /ui.
 
 

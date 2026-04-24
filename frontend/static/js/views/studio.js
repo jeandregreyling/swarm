@@ -13,7 +13,7 @@
 function loadStudioData(win) {
   // Ensure the global handler is bound (template calls it from onclick).
   window.createNewProposalFromStudio = createNewProposalFromStudio;
-  window._studioTab = window._studioTab || 'pending';
+  window._studioTab = window._studioTab || 'projects';
   studioSetTab(window._studioTab);
 }
 

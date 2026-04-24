@@ -144,6 +144,7 @@ function loadMonitorData(win) {
             <div style="font-weight:600;margin-bottom:6px;">Service Health</div>
             <div style="font-size:11px;color:var(--text-dim);">Loading...</div>
           </div>
+          <div id="monitor-fan-operator" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;display:none;"></div>
           <div id="monitor-activity" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
             <div style="font-weight:600;margin-bottom:6px;">System Activity</div>
             <div id="mn-activity-body" style="max-height:200px;overflow-y:auto;">
@@ -156,6 +157,7 @@ function loadMonitorData(win) {
       renderMonitorAlm();
       _renderMonitorServices(win);
       _renderMonitorActivity(win);
+      _renderMonitorFanOperator(win);
     }
 
     // ── Every tick: update only the live-changing values in place ───────────
@@ -286,6 +288,55 @@ function _renderMonitorServices(win) {
     .catch(() => {
       el.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">Service Health</div><div style="font-size:11px;color:#f77;">Failed to load</div>';
     });
+}
+
+// V7C-A05 Fan operator — gated by system-modifications toggle.
+// Rendered once per window open (NOT polled). User clicks a mode to apply.
+function _renderMonitorFanOperator(win) {
+  if (typeof window.getSysmodEnabled === 'function' && !window.getSysmodEnabled()) {
+    return; // sysmod disabled → fan operator hidden entirely
+  }
+  const host = win.el.querySelector('#monitor-fan-operator');
+  if (!host) return;
+  host.style.display = '';
+  host.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">Fan Operator</div><div style="font-size:11px;color:var(--text-dim);">Loading…</div>';
+  fetch('/api/fan/status')
+    .then(r => r.json())
+    .then(d => {
+      if (!d || !d.ok) {
+        host.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">Fan Operator</div><div style="font-size:11px;color:#f77;">Unavailable</div>';
+        return;
+      }
+      const installed = !!d.helper_installed;
+      const mode = _escHtml(d.mode || 'unknown');
+      const cpu  = (d.cpu_c != null) ? `${d.cpu_c}°C` : 'n/a';
+      const hint = installed
+        ? ''
+        : '<div style="font-size:10px;color:#ffb366;margin-top:4px;">Helper not installed. Mode changes are read-only.</div>';
+      host.innerHTML = `
+        <div style="font-weight:600;margin-bottom:6px;">Fan Operator</div>
+        <div style="font-size:11px;margin-bottom:6px;">CPU: <strong>${cpu}</strong> · Mode: <strong>${mode}</strong></div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="monitorFanSetMode('auto')"  ${installed ? '' : 'disabled'} style="flex:1;padding:5px 8px;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:${installed ? 'pointer' : 'not-allowed'};">Auto</button>
+          <button onclick="monitorFanSetMode('boost')" ${installed ? '' : 'disabled'} style="flex:1;padding:5px 8px;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:${installed ? 'pointer' : 'not-allowed'};">Boost</button>
+        </div>${hint}`;
+    })
+    .catch(() => {
+      host.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">Fan Operator</div><div style="font-size:11px;color:#f77;">Failed to load</div>';
+    });
+}
+
+function monitorFanSetMode(mode) {
+  fetch('/api/fan/mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode }) })
+    .then(r => r.json())
+    .then(d => {
+      const win = window.__monitorWin;
+      if (win) _renderMonitorFanOperator(win);
+      if (!d || !d.ok) {
+        alert('Fan mode change failed: ' + (d && d.reason ? d.reason : 'unknown'));
+      }
+    })
+    .catch(e => alert('Fan mode change failed: ' + String(e)));
 }
 
 function _renderMonitorActivity(win) {

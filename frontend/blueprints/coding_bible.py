@@ -45,3 +45,15 @@ def get_json():
         'full': full_text(),
         'quick': quick_card(),
     })
+
+
+@coding_bible_bp.route('/api/coding-bible/probe', methods=['GET'])
+def get_probe():
+    """V7C-R15 runtime probe — is the Bible actually prefixed on every coder
+    agent's in-memory system prompt right now? Proves rollout rather than
+    asserting source-file strings."""
+    try:
+        from core.coding_bible_probe import probe
+        return jsonify(probe())
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'probe failed: {e}'}), 500

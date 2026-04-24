@@ -148,7 +148,7 @@
             <span style="color:var(--text-dim);font-size:9px;">${_esc(s.owner || 'seven')}</span>
             <select onchange="projectsSetStepStatus('${_esc(s.step_id)}', this.value)"
               style="background:var(--window-header);border:1px solid var(--border);color:var(--text);border-radius:3px;padding:2px;font-size:9px;">
-              ${['todo','doing','blocked','done','skipped'].map(x => `<option value="${x}"${x === s.status ? ' selected' : ''}>${x}</option>`).join('')}
+              ${['todo','doing','blocked','partial','done','skipped'].map(x => `<option value="${x}"${x === s.status ? ' selected' : ''}>${x}</option>`).join('')}
             </select>
             <span style="font-size:8px;color:${_stepStatusColor(s.status)};font-weight:700;text-transform:uppercase;text-align:right;">${_esc(s.status)}</span>
             <span style="display:flex;gap:2px;justify-content:flex-end;">
@@ -271,7 +271,7 @@
   };
 
   function _stepStatusColor(s) {
-    return ({ todo: '#888', doing: '#29b6f6', blocked: '#f44336', done: '#4caf50', skipped: '#aaa' })[s] || '#888';
+    return ({ todo: '#888', doing: '#29b6f6', blocked: '#f44336', partial: '#ffb74d', done: '#4caf50', skipped: '#aaa' })[s] || '#888';
   }
   function _runStatusColor(s) {
     return ({ pass: '#4caf50', fail: '#f44336', error: '#ff9800', running: '#29b6f6', aborted: '#888' })[s] || '#888';

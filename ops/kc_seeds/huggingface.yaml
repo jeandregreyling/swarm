@@ -1,0 +1,30 @@
+topic_id: huggingface
+title: Hugging Face ecosystem
+cadence: weekly
+tags: [ml, models, datasets, transformers, diffusers, peft, quantisation]
+sources:
+  - kind: url
+    url: https://huggingface.co/docs
+    selector: main
+  - kind: url
+    url: https://huggingface.co/docs/transformers/index
+  - kind: url
+    url: https://huggingface.co/docs/datasets/index
+  - kind: url
+    url: https://huggingface.co/docs/diffusers/index
+  - kind: url
+    url: https://huggingface.co/docs/peft/index
+  - kind: url
+    url: https://huggingface.co/docs/optimum/index
+  - kind: url
+    url: https://huggingface.co/docs/hub/spaces
+  - kind: prompt
+    title: Quantisation quickref
+    text: |
+      When do I pick Q4_K_M vs Q5_K_M vs Q8_0 for a 7B model on 16 GB RAM?
+      Expected answer covers ctx, VRAM vs RAM, eval loss tradeoff.
+  - kind: prompt
+    title: PEFT/LoRA summary
+    text: |
+      What are rank, alpha, dropout, target-modules in PEFT LoRA? When do I
+      tune them? Give a Transformers training-loop skeleton.

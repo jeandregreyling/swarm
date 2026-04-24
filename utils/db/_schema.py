@@ -1349,6 +1349,11 @@ def _migrate_schema(conn=None):
             conn.execute("ALTER TABLE user_profiles ADD COLUMN approved INTEGER DEFAULT 0")
         if 'email' not in up_cols:
             conn.execute("ALTER TABLE user_profiles ADD COLUMN email TEXT DEFAULT ''")
+        # Enforce unique non-empty email (partial index allows blanks).
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_email_unique "
+            "ON user_profiles(email) WHERE email != ''"
+        )
 
     conn.commit()
 

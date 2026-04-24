@@ -818,6 +818,27 @@ body.theme-solar {
   border-radius: inherit;
 }
 
+/* V8 S-48738493AC: terminal bubble-grid output mode. Each line inside
+ * #terminal-output.terminal-bubble-mode is rendered as a chip in a
+ * grid layout so stdout blocks read like bubbles instead of a flat stream. */
+#terminal-output.terminal-bubble-mode {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 6px;
+  white-space: normal;
+  padding: 10px;
+}
+#terminal-output.terminal-bubble-mode > * {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  overflow: hidden;
+  word-break: break-word;
+}
+
 /* Phase 3 polish — wider, easier-to-grab scrollbars app-wide. */
 *::-webkit-scrollbar {
   width: 16px;

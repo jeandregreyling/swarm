@@ -1403,12 +1403,13 @@ MEMORY: memory_twenty — your own persistent memory for patterns, learnings, an
 
 
 
-# ── Coding Bible injection (Phase-4 B20 · Phase-5 refinement) ────────────
+# ── Coding Bible injection (Phase-4 B20 · Phase-5 refinement · V7C-A12) ──
 # Every coder-capable agent drinks from the same fountain. At import time we
 # prepend the Coding Bible quick-card to each *_SYSTEM_PROMPT constant listed
 # below. The Librarian is excluded because it emits tags-only output and the
-# extra tokens would confuse it. Seven is excluded because it runs phi3:mini
-# with a 4K context and needs every token for its paperclip loop.
+# extra tokens would confuse it. Seven IS included — it runs a 7B Qwen2.5 /
+# DeepSeek-R1-Distill merge with enough context for the quick-card, and the
+# user expects Seven to participate in programming fan-outs (V7C-A12).
 _CODING_BIBLE_AGENTS = (
     'GEMMA_SYSTEM_PROMPT',
     'LLAMA_SYSTEM_PROMPT',
@@ -1425,6 +1426,7 @@ _CODING_BIBLE_AGENTS = (
     'SCHOLAR_SYSTEM_PROMPT',
     'SEEKER_SYSTEM_PROMPT',
     'GHOST_CODER_SYSTEM_PROMPT',
+    'SEVEN_SYSTEM_PROMPT',
 )
 try:
     # Try both import paths: `utils.coding_bible` (package-style) and

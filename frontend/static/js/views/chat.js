@@ -1409,6 +1409,11 @@ function resetThemeAndFontDefaults() {
   applyTimeTheme('auto');
   if (typeof applyScene === 'function') applyScene('beach');
   document.documentElement.style.setProperty('--glass-opacity', '0.95');
+  // Sync the transparency dropdown to its default (5% = Light Glass)
+  const opacitySelect = document.getElementById('opacity-slider');
+  if (opacitySelect) opacitySelect.value = '5';
+  const opacityReadout = document.getElementById('opacity-value');
+  if (opacityReadout) opacityReadout.textContent = '5%';
   setChatUiScale(CHAT_UI_SCALE_DEFAULT);
   // P4-M30: also reset font family back to Open Sans Light default
   if (typeof setUiFontFamily === 'function') setUiFontFamily(UI_FONT_DEFAULT);
