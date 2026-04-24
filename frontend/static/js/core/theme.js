@@ -5,12 +5,29 @@
 // TIME-OF-DAY & SETTINGS MANAGER
 // ═══════════════════════════════════════════════════════════════════════════
 
+// V8 S-0566553752 — 00-06 band now tips into early-morning colours instead of
+// a flat night block. Hours 03-05 are treated as 'morning' (pre-dawn warming)
+// while 22-02 stays in 'night'. The full 24-hour mapping is expressed as a
+// single-source array so UI surfaces can display it without re-deriving it.
+const FRIDAYS_HOUR_PHASE_MAP = Object.freeze([
+  'night',    'night',    'night',       // 00, 01, 02
+  'morning',  'morning',  'morning',     // 03, 04, 05 (pre-dawn warming)
+  'morning',  'morning',  'morning',     // 06, 07, 08
+  'morning',  'morning',  'morning',     // 09, 10, 11
+  'afternoon','afternoon','afternoon',   // 12, 13, 14
+  'afternoon','afternoon','afternoon',   // 15, 16, 17
+  'evening',  'evening',  'evening',     // 18, 19, 20
+  'evening',                              // 21
+  'night',    'night',                    // 22, 23
+]);
+
+function fridaysHourToPhase(hour) {
+  const h = ((Number(hour) | 0) % 24 + 24) % 24;
+  return FRIDAYS_HOUR_PHASE_MAP[h];
+}
+
 function getTimeOfDay() {
-  const hour = new Date().getHours();
-  if (hour >= 6 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 18) return 'afternoon';
-  if (hour >= 18 && hour < 22) return 'evening';
-  return 'night';
+  return fridaysHourToPhase(new Date().getHours());
 }
 
 const FRIDAYS_THEME_MODE_KEY = 'fridays_theme_mode';
@@ -660,6 +677,19 @@ function onGlowSliderInput(value) {
   const currentMode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
   const currentAtmosphereValue = _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38);
   applyTimeTheme(currentMode, currentMode === 'manual' ? currentAtmosphereValue : null);
+}
+
+// Transparency dropdown — live apply (was previously only applied on Done).
+function onOpacitySliderInput(value) {
+  const transparency = _clampTransparencyValue(value || '5');
+  document.documentElement.style.setProperty('--glass-opacity', (100 - transparency) / 100);
+  const readout = document.getElementById('opacity-value');
+  if (readout) readout.textContent = transparency + '%';
+  try {
+    const settings = JSON.parse(localStorage.getItem('fridays-settings') || '{}');
+    settings.opacity = transparency;
+    localStorage.setItem('fridays-settings', JSON.stringify(settings));
+  } catch (_) {}
 }
 
 function _syncAccentControls(value) {
@@ -1681,10 +1711,121 @@ function saveSettings() {
   closeSettings();
 }
 
+const FRIDAYS_SETTINGS_WINDOW_ID = 'settings';
+const FRIDAYS_SETTINGS_WINDOW_TEMPLATE_ID = 'view-settings-window-host';
+
+function _ensureSettingsWindowTemplate() {
+  let template = document.getElementById(FRIDAYS_SETTINGS_WINDOW_TEMPLATE_ID);
+  if (template) return template;
+
+  template = document.createElement('template');
+  template.id = FRIDAYS_SETTINGS_WINDOW_TEMPLATE_ID;
+  template.innerHTML = '<div id="settings-window-host" style="height:100%;"></div>';
+  document.body.appendChild(template);
+  return template;
+}
+
+function _resetSettingsBoxInlineLayout(box) {
+  if (!box) return;
+  box.style.position = 'relative';
+  box.style.left = '';
+  box.style.top = '';
+  box.style.maxWidth = '100%';
+  box.style.width = '100%';
+  box.style.height = 'auto';
+  box.style.margin = '0';
+}
+
+function _restoreSettingsBoxToModal() {
+  const modal = document.getElementById('settings-modal');
+  const box = document.getElementById('settings-box');
+  if (!modal || !box || box.parentElement === modal) return;
+  modal.appendChild(box);
+  _resetSettingsBoxInlineLayout(box);
+}
+
+function loadSettingsWindowData(win) {
+  const box = document.getElementById('settings-box');
+  const host = win?.el?.querySelector('#settings-window-host');
+  if (!box || !host) return;
+
+  _resetSettingsBoxInlineLayout(box);
+  host.replaceWith(box);
+  if (win) {
+    win.beforeClose = _restoreSettingsBoxToModal;
+  }
+
+  loadSettings();
+}
+
 function toggleSettings() {
-  document.getElementById('settings-modal').classList.toggle('open');
+  const existing = winManager?.windows?.get(FRIDAYS_SETTINGS_WINDOW_ID);
+  if (existing) {
+    closeSettings();
+    return;
+  }
+
+  const modal = document.getElementById('settings-modal');
+  if (!winManager || typeof openWindow !== 'function' || !modal) {
+    modal?.classList.toggle('open');
+    return;
+  }
+
+  modal.classList.remove('open');
+  _ensureSettingsWindowTemplate();
+  openWindow(FRIDAYS_SETTINGS_WINDOW_ID, 'Settings', FRIDAYS_SETTINGS_WINDOW_TEMPLATE_ID, {
+    width: 560,
+    height: Math.min(760, Math.max(640, Math.round(window.innerHeight * 0.82))),
+    x: 96,
+    y: 56,
+  });
 }
 
 function closeSettings() {
-  document.getElementById('settings-modal').classList.remove('open');
+  if (winManager?.windows?.has(FRIDAYS_SETTINGS_WINDOW_ID)) {
+    winManager.close(FRIDAYS_SETTINGS_WINDOW_ID);
+    return;
+  }
+
+  _restoreSettingsBoxToModal();
+  document.getElementById('settings-modal')?.classList.remove('open');
 }
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// System modifications toggle (Phase-6 S-B4B7DC89E2)
+// ═════════════════════════════════════════════════════════════════════════
+const SYSMOD_KEY = 'fridays-sysmod-enabled';
+
+function getSysmodEnabled() {
+  try { return localStorage.getItem(SYSMOD_KEY) === '1'; } catch (_) { return false; }
+}
+
+function setSysmodEnabled(on) {
+  try { localStorage.setItem(SYSMOD_KEY, on ? '1' : '0'); } catch (_) {}
+  const lbl = document.getElementById('sysmod-enable-label');
+  if (lbl) lbl.textContent = on ? 'On' : 'Off';
+  const input = document.getElementById('sysmod-enable-input');
+  if (input && input.checked !== !!on) input.checked = !!on;
+  try {
+    fetch('/api/settings/sysmod', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: !!on }),
+    }).catch(() => {});
+  } catch (_) {}
+  if (typeof showToast === 'function') {
+    showToast(`System modifications ${on ? 'enabled' : 'disabled'}`, on ? 'warning' : 'info');
+  }
+}
+
+function _initSysmodToggle() {
+  const input = document.getElementById('sysmod-enable-input');
+  if (!input) return;
+  input.checked = getSysmodEnabled();
+  const lbl = document.getElementById('sysmod-enable-label');
+  if (lbl) lbl.textContent = input.checked ? 'On' : 'Off';
+}
+
+document.addEventListener('DOMContentLoaded', _initSysmodToggle);
+window.setSysmodEnabled = setSysmodEnabled;
+window.getSysmodEnabled = getSysmodEnabled;

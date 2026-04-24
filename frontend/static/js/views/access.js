@@ -905,6 +905,24 @@ function agentsShowDetail(agent) {
           style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
       </div>
 
+      <!-- V8 S-FAFF08FF9A: per-agent temperature gauge moved here from Chat right-menu.
+           Chat retains a quick slider for live tuning, but Agents detail is now the
+           canonical edit surface. Posts to /api/agents/<name>/temperature. -->
+      <div id="agent-temp-block" style="margin-bottom:14px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:color-mix(in srgb,var(--accent) 3%,var(--card));">
+        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Temperature <span style="color:var(--text-dim);text-transform:none;font-weight:400;letter-spacing:0;">— response variability (0 = deterministic, 1 = creative)</span></label>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input id="agent-temperature" type="range" min="0" max="1" step="0.05"
+            value="${Number.isFinite(Number(agent.temperature)) ? Number(agent.temperature).toFixed(2) : '0.70'}"
+            oninput="document.getElementById('agent-temperature-readout').textContent=Number(this.value).toFixed(2)"
+            style="flex:1;accent-color:var(--accent);cursor:pointer;">
+          <span id="agent-temperature-readout" style="font-family:monospace;font-size:12px;color:var(--text);min-width:42px;text-align:right;">${Number.isFinite(Number(agent.temperature)) ? Number(agent.temperature).toFixed(2) : '0.70'}</span>
+          <button id="agent-temperature-apply" type="button"
+            onclick="(function(){var v=parseFloat(document.getElementById('agent-temperature').value);fetch('/api/agents/'+encodeURIComponent('${_esc(agent.name)}')+'/temperature',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({temperature:v})}).then(function(r){return r.json();}).then(function(){window.__agentTemps=window.__agentTemps||{};window.__agentTemps['${_esc(agent.name)}'.toLowerCase()]=v;if(typeof renderChatAgentToggles==='function')renderChatAgentToggles();var st=document.getElementById('agent-temperature-status');if(st)st.textContent='Saved at '+new Date().toLocaleTimeString();}).catch(function(){var st=document.getElementById('agent-temperature-status');if(st)st.textContent='Save failed';});})()"
+            style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;white-space:nowrap;">Apply</button>
+        </div>
+        <div id="agent-temperature-status" style="font-size:10px;color:var(--text-dim);margin-top:4px;min-height:12px;"></div>
+      </div>
+
       <div style="margin-bottom:18px;">
         <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">System Prompt</label>
         <textarea id="agent-prompt" rows="10"

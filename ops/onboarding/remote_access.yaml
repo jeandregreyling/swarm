@@ -1,0 +1,41 @@
+pack_id: remote_access
+title: Remote access (public domain + 2FA)
+description: |
+  Opt-in. Let the Swarm reach the public internet through your own domain
+  protected by TOTP 2FA. Choose between Caddy (VPS with public IP) and
+  Cloudflare Tunnel (no port-forward required). You can change or disable
+  this later.
+
+required: false
+default: skip
+
+steps:
+  - id: choose_host
+    prompt: Pick a hosting mode.
+    type: choice
+    options:
+      - id: tailscale
+        label: Stay on Tailscale (default)
+      - id: caddy
+        label: Caddy reverse-proxy on my own domain
+      - id: cloudflared
+        label: Cloudflare Tunnel (no port-forward)
+      - id: skip
+        label: Not now
+  - id: domain
+    prompt: Domain or subdomain (e.g. swarm.example.com)
+    type: text
+    only_if:
+      choose_host_in: [caddy, cloudflared]
+  - id: enroll_2fa
+    prompt: Scan the QR in an authenticator app to finish 2FA.
+    type: totp_enroll
+    only_if:
+      choose_host_in: [caddy, cloudflared]
+    api:
+      enroll:   /api/auth/2fa/enroll
+      verify:   /api/auth/2fa/verify
+  - id: write_config
+    prompt: Render reverse-proxy / tunnel config into ops/ and show next steps.
+    type: action
+    action: remote_access.write_config

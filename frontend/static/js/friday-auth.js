@@ -89,6 +89,31 @@
     if (overlay) overlay.remove();
   }
 
+  // Wrap a <input type="password"> with a show/hide eye toggle button.
+  // Idempotent: skips if already wrapped. Call after innerHTML is set.
+  function _wireEyeToggle(input) {
+    if (!input || input.dataset.eyeWired === '1') return;
+    input.dataset.eyeWired = '1';
+    const wrap = document.createElement('div');
+    wrap.className = 'friday-auth-eye-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'friday-auth-eye-btn';
+    btn.setAttribute('aria-label', 'Show password');
+    btn.tabIndex = -1;
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    wrap.appendChild(btn);
+    btn.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.classList.toggle('active', show);
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      input.focus();
+    });
+  }
+
   // ── First-time setup ───────────────────────────────────────────────────
   function _showSetup() {
     const overlay = _getOrCreateOverlay();
@@ -118,6 +143,8 @@
     const pass2 = overlay.querySelector('#setup-pass2');
     const display = overlay.querySelector('#setup-display');
     const msg = overlay.querySelector('#setup-msg');
+    _wireEyeToggle(pass);
+    _wireEyeToggle(pass2);
 
     btn.addEventListener('click', () => {
       const p = pass.value.trim();
@@ -218,6 +245,8 @@
     const loginPass = overlay.querySelector('#login-pass');
     const loginRemember = overlay.querySelector('#login-remember');
     const loginMsg = overlay.querySelector('#login-msg');
+    _wireEyeToggle(loginPass);
+    _wireEyeToggle(overlay.querySelector('#reg-pass'));
     loginBtn.addEventListener('click', () => {
       const u = loginUser.value.trim().toLowerCase();
       const p = loginPass.value.trim();
@@ -256,7 +285,9 @@
         loginBtn.textContent = 'Sign In';
       });
     });
-    loginPass.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
+    [loginUser, loginPass].forEach(el => {
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); loginBtn.click(); } });
+    });
 
     // Register
     const regBtn = overlay.querySelector('#reg-btn');
@@ -294,7 +325,9 @@
         regBtn.textContent = 'Request Access';
       });
     });
-    regPass.addEventListener('keydown', e => { if (e.key === 'Enter') regBtn.click(); });
+    [regUser, regDisplay, regPass].forEach(el => {
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); regBtn.click(); } });
+    });
   }
 
   // ── User badge in header ─────────────────────────────────────────────

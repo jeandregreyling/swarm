@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-23 20:31",
+  "generated_at": "2026-04-24 14:01",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -192,6 +192,11 @@
       "description": "utils/node_discovery.py \u2014 Node discovery + heartbeat + event relay (A.5.1, D.2, D.3)"
     },
     {
+      "path": "utils/password.py",
+      "group": "Utils",
+      "description": "utils.password \u2014 shared password hashing helpers."
+    },
+    {
       "path": "utils/platform_compat.py",
       "group": "Utils",
       "description": "utils/platform_compat.py \u2014 Cross-platform guard helpers."
@@ -277,14 +282,34 @@
       "description": "vs_tools.py \u2014 VS tab file read/memory tools for Nine"
     },
     {
+      "path": "core/auth_2fa.py",
+      "group": "Core",
+      "description": "core/auth_2fa.py \u2014 TOTP 2-factor authentication primitives."
+    },
+    {
+      "path": "core/auth_rate_limit.py",
+      "group": "Core",
+      "description": "core/auth_rate_limit.py \u2014 in-process rate limiter + audit log for /api/auth."
+    },
+    {
       "path": "core/chat_actions.py",
       "group": "Core",
       "description": "core/chat_actions.py \u2014 Pure-rules chat action detector (\"Siri-but-better\")."
     },
     {
+      "path": "core/coding_bible_probe.py",
+      "group": "Core",
+      "description": "core.coding_bible_probe \u2014 runtime verification of Coding Bible fan-out."
+    },
+    {
       "path": "core/fan_controller.py",
       "group": "Core",
       "description": "core/fan_controller.py \u2014 read-only fan / temperature monitor."
+    },
+    {
+      "path": "core/feeds.py",
+      "group": "Core",
+      "description": "core.feeds \u2014 server-side feed subscription store + RSS fetcher."
     },
     {
       "path": "core/kill_switch.py",
@@ -295,6 +320,11 @@
       "path": "core/knowledge/__init__.py",
       "group": "Core",
       "description": "core.knowledge \u2014 Knowledge Center package."
+    },
+    {
+      "path": "core/knowledge/close_out.py",
+      "group": "Core",
+      "description": "core.knowledge.close_out \u2014 ALM close-out report builder."
     },
     {
       "path": "core/knowledge/projects.py",
@@ -347,9 +377,54 @@
       "description": "ticket.py \u2014 Seven's Swarm"
     },
     {
+      "path": "core/platform.py",
+      "group": "Core",
+      "description": "core.platform \u2014 runtime capability detection for the swarm."
+    },
+    {
       "path": "core/routing.py",
       "group": "Core",
       "description": "core/routing.py \u2014 Deterministic routing brain for Seven's Swarm."
+    },
+    {
+      "path": "core/seven_llm/__init__.py",
+      "group": "Core",
+      "description": "core.seven_llm \u2014 Seven Runtime model orchestration layer."
+    },
+    {
+      "path": "core/seven_llm/driver_base.py",
+      "group": "Core",
+      "description": "core/llm/driver_base.py \u2014 Driver ABC."
+    },
+    {
+      "path": "core/seven_llm/driver_llamacpp.py",
+      "group": "Core",
+      "description": "core/llm/driver_llamacpp.py \u2014 in-process llama-cpp-python driver."
+    },
+    {
+      "path": "core/seven_llm/driver_lmstudio.py",
+      "group": "Core",
+      "description": "core/llm/driver_lmstudio.py \u2014 LM Studio HTTP driver (OpenAI-compatible)."
+    },
+    {
+      "path": "core/seven_llm/driver_ollama.py",
+      "group": "Core",
+      "description": "core/llm/driver_ollama.py \u2014 Ollama driver (feature-flagged SCOUT peer)."
+    },
+    {
+      "path": "core/seven_llm/driver_openai.py",
+      "group": "Core",
+      "description": "core/llm/driver_openai.py \u2014 OpenAI / Azure OpenAI / any OpenAI-compatible"
+    },
+    {
+      "path": "core/seven_llm/pool.py",
+      "group": "Core",
+      "description": "core/llm/pool.py \u2014 warm-pool with TTL, RAM ceiling, LRU eviction."
+    },
+    {
+      "path": "core/seven_llm/registry.py",
+      "group": "Core",
+      "description": "core/llm/registry.py \u2014 Seven's own model catalogue."
     },
     {
       "path": "core/spine.py",
@@ -975,9 +1050,27 @@
           "methods": [
             "POST"
           ]
+        },
+        {
+          "path": "/api/auth/2fa/enroll",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/2fa/verify",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/auth/2fa/status",
+          "methods": [
+            "GET"
+          ]
         }
       ],
-      "route_count": 12
+      "route_count": 15
     },
     {
       "name": "auto_audit",
@@ -1093,9 +1186,15 @@
           "methods": [
             "GET"
           ]
+        },
+        {
+          "path": "/api/coding-bible/probe",
+          "methods": [
+            "GET"
+          ]
         }
       ],
-      "route_count": 3
+      "route_count": 4
     },
     {
       "name": "conversations",
@@ -1405,6 +1504,31 @@
       "route_count": 5
     },
     {
+      "name": "enrollment",
+      "description": "frontend/blueprints/enrollment.py \u2014 user-account enrolment endpoints.",
+      "routes": [
+        {
+          "path": "/api/enrollment/status",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/enrollment/create",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/enrollment/invite",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 3
+    },
+    {
       "name": "exec_bp",
       "description": "exec_bp.py \u2014 Ghost Exec routes",
       "routes": [
@@ -1455,6 +1579,43 @@
       "route_count": 2
     },
     {
+      "name": "feeds_bp",
+      "description": "blueprints/feeds_bp.py \u2014 Feeds subscription CRUD + poll.",
+      "routes": [
+        {
+          "path": "/api/feeds/subscriptions",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/feeds/subscriptions",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/feeds/subscriptions/<sub_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/feeds/subscriptions/<sub_id>",
+          "methods": [
+            "DELETE"
+          ]
+        },
+        {
+          "path": "/api/feeds/subscriptions/<sub_id>/poll",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 5
+    },
+    {
       "name": "git",
       "description": "git.py \u2014 Git Operations routes",
       "routes": [
@@ -1496,6 +1657,25 @@
         }
       ],
       "route_count": 6
+    },
+    {
+      "name": "gmail_labels",
+      "description": "frontend/blueprints/gmail_labels.py \u2014 Gmail label sync for Email folders.",
+      "routes": [
+        {
+          "path": "/api/email/gmail/labels",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/email/gmail/labels/sync",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 2
     },
     {
       "name": "health",
@@ -1842,9 +2022,21 @@
           "methods": [
             "POST"
           ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>/close-out",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/steps/<step_id>/probe",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 26
+      "route_count": 28
     },
     {
       "name": "legacy",
@@ -2809,6 +3001,25 @@
       "route_count": 1
     },
     {
+      "name": "sysmod",
+      "description": "frontend/blueprints/sysmod.py \u2014 settings-surface for the sysmod pack.",
+      "routes": [
+        {
+          "path": "/api/settings/sysmod",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/settings/sysmod",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 2
+    },
+    {
       "name": "system",
       "description": "system.py \u2014 System & Monitoring routes",
       "routes": [
@@ -2822,6 +3033,12 @@
           "path": "/api/circuit-breaker/<agent>/reset",
           "methods": [
             "POST"
+          ]
+        },
+        {
+          "path": "/api/platform",
+          "methods": [
+            "GET"
           ]
         },
         {
@@ -2909,7 +3126,7 @@
           ]
         }
       ],
-      "route_count": 16
+      "route_count": 17
     },
     {
       "name": "tasker_bp",
@@ -3296,11 +3513,11 @@
   "js_views": [
     {
       "name": "access.js",
-      "size_kb": 103.5
+      "size_kb": 106.1
     },
     {
       "name": "chat.js",
-      "size_kb": 268.4
+      "size_kb": 268.7
     },
     {
       "name": "conversations.js",
@@ -3316,7 +3533,7 @@
     },
     {
       "name": "email.js",
-      "size_kb": 26.5
+      "size_kb": 32.8
     },
     {
       "name": "files.js",
@@ -3368,7 +3585,7 @@
     },
     {
       "name": "monitor.js",
-      "size_kb": 18.1
+      "size_kb": 20.9
     },
     {
       "name": "ollama.js",
@@ -3380,11 +3597,11 @@
     },
     {
       "name": "orbs.js",
-      "size_kb": 83.1
+      "size_kb": 83.8
     },
     {
       "name": "projects.js",
-      "size_kb": 24.4
+      "size_kb": 24.5
     },
     {
       "name": "services.js",
@@ -3442,7 +3659,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 37155
+      "rows": 38666
     },
     {
       "name": "agent_capabilities",
@@ -3462,19 +3679,19 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 646
+      "rows": 664
     },
     {
       "name": "audit_results",
-      "rows": 36
+      "rows": 37
     },
     {
       "name": "change_runs",
-      "rows": 14
+      "rows": 19
     },
     {
       "name": "chat_jobs",
-      "rows": 608
+      "rows": 649
     },
     {
       "name": "claude_log",
@@ -3482,15 +3699,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2260
+      "rows": 2301
     },
     {
       "name": "conversations",
-      "rows": 38
+      "rows": 191
     },
     {
       "name": "council_output",
-      "rows": 2101
+      "rows": 2797
     },
     {
       "name": "daily_checkpoint",
@@ -3510,7 +3727,7 @@
     },
     {
       "name": "decisions",
-      "rows": 12878
+      "rows": 15103
     },
     {
       "name": "deferred_items",
@@ -3518,7 +3735,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 889
+      "rows": 929
     },
     {
       "name": "file_versions",
@@ -3534,11 +3751,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4402
+      "rows": 4611
     },
     {
       "name": "governance_log",
-      "rows": 410
+      "rows": 412
     },
     {
       "name": "knowledge_chunks",
@@ -3550,7 +3767,7 @@
     },
     {
       "name": "memory",
-      "rows": 112
+      "rows": 127
     },
     {
       "name": "memory_eight",
@@ -3570,7 +3787,7 @@
     },
     {
       "name": "memory_llama",
-      "rows": 2
+      "rows": 1
     },
     {
       "name": "memory_mistral",
@@ -3610,11 +3827,11 @@
     },
     {
       "name": "memory_twenty",
-      "rows": 430
+      "rows": 464
     },
     {
       "name": "messages",
-      "rows": 81
+      "rows": 382
     },
     {
       "name": "moderators",
@@ -3646,15 +3863,15 @@
     },
     {
       "name": "project_steps",
-      "rows": 152
+      "rows": 209
     },
     {
       "name": "project_test_cases",
-      "rows": 54
+      "rows": 130
     },
     {
       "name": "projects",
-      "rows": 28
+      "rows": 30
     },
     {
       "name": "proposal_attachments",
@@ -3666,7 +3883,7 @@
     },
     {
       "name": "queue",
-      "rows": 1626
+      "rows": 1706
     },
     {
       "name": "research_evidence",
@@ -3678,7 +3895,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 514
+      "rows": 548
     },
     {
       "name": "scheduled_tasks",
@@ -3710,7 +3927,7 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 410
+      "rows": 412
     },
     {
       "name": "swarm_event_acks",
@@ -3734,7 +3951,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 7499
+      "rows": 7709
     },
     {
       "name": "task_run_log",
@@ -3746,35 +3963,35 @@
     },
     {
       "name": "test_run_artifacts",
-      "rows": 1
+      "rows": 54
     },
     {
       "name": "test_runs",
-      "rows": 60
+      "rows": 162
     },
     {
       "name": "ticket_notes",
-      "rows": 643
+      "rows": 683
     },
     {
       "name": "tickets",
-      "rows": 651
+      "rows": 691
     },
     {
       "name": "time_checkpoints",
-      "rows": 4908
+      "rows": 5203
     },
     {
       "name": "time_events",
-      "rows": 98804
+      "rows": 99472
     },
     {
       "name": "time_journal",
-      "rows": 92424
+      "rows": 92797
     },
     {
       "name": "time_machine",
-      "rows": 6173
+      "rows": 6178
     },
     {
       "name": "tool_builds",
@@ -3782,7 +3999,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 444
+      "rows": 680
     },
     {
       "name": "trusted_domains",
@@ -3806,7 +4023,7 @@
     },
     {
       "name": "user_sessions",
-      "rows": 3
+      "rows": 28
     },
     {
       "name": "user_skill_permissions",
@@ -3818,7 +4035,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 6
+      "rows": 7
     }
   ],
   "agents": [
@@ -4312,6 +4529,10 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "spotlight-tip",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "auth-user-pill",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -4329,6 +4550,10 @@
     },
     {
       "id": "services-dropdown-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "quick-access-add-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4413,6 +4638,10 @@
     },
     {
       "id": "terminal-fav-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "terminal-bubble-toggle",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -4726,6 +4955,14 @@
     {
       "id": "memory-bulk-delete-btn",
       "file": "frontend/templates/views/memory.html"
+    },
+    {
+      "id": "tw-help-btn",
+      "file": "frontend/templates/views/time-wizard.html"
+    },
+    {
+      "id": "tw-toggle-history",
+      "file": "frontend/templates/views/time-wizard.html"
     },
     {
       "id": "ob-node-discover-btn",
@@ -5296,6 +5533,10 @@
       "file": "frontend/static/js/views/email.js"
     },
     {
+      "id": "email-accounts-modal",
+      "file": "frontend/static/js/views/email.js"
+    },
+    {
       "id": "ollama-action-status",
       "file": "frontend/static/js/views/localai.js"
     },
@@ -5796,6 +6037,18 @@
       "file": "frontend/static/js/views/access.js"
     },
     {
+      "id": "agent-temperature-readout",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-temperature",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-temperature-status",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
       "id": "agent-local-status",
       "file": "frontend/static/js/views/access.js"
     },
@@ -6101,6 +6354,14 @@
     },
     {
       "id": "theme-font-size-select",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "opacity-slider",
+      "file": "frontend/static/js/views/chat.js"
+    },
+    {
+      "id": "opacity-value",
       "file": "frontend/static/js/views/chat.js"
     },
     {

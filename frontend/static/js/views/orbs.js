@@ -1761,11 +1761,25 @@
     const hit=orbAt(e.clientX,e.clientY);
     if(!hit) { lastClickOrb = null; lastClickTS = 0; return; }
 
-    // Double-click detection: two quick taps on the same orb → carry mode
+    // Double-click detection: two quick taps on the same orb.
+    //   • If the orb has a custom home (was placed before) → rebase: clear
+    //     custom home so it roosts at its natural base again.
+    //   • Otherwise → start carry mode so the next click sets a new home.
     const now = performance.now();
     if (lastClickOrb === hit && (now - lastClickTS) < 320) {
       lastClickOrb = null; lastClickTS = 0;
-      startCarry(hit);
+      if (hit.customHomeX != null || hit.customHomeY != null) {
+        hit.customHomeX = null;
+        hit.customHomeY = null;
+        const idx = orbs.indexOf(hit);
+        if (idx >= 0) updateRoost(hit, idx);
+        hit.placedTimer = 0;
+        hit.settled = 0;
+        burst(hit.x, hit.y, 10, 0.55);
+        if (typeof showToast === 'function') showToast(ROLE_NAMES[hit.role] + ' returning home', 'info');
+      } else {
+        startCarry(hit);
+      }
       e.preventDefault(); e.stopPropagation();
       return;
     }
