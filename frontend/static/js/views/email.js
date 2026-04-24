@@ -2,12 +2,28 @@
 // Shows swarm-processed emails with agent handling audit trail.
 
 const _EMAIL_ACCOUNTS = ['sevenpotato9@gmail.com', 'ninepotato7@gmail.com'];
+// V8 S-C505B1DB76: folder structure. Gmail label sync lives under the BIG
+// step (S-5695672E4C); this SMALL step introduces the client-side folder
+// dimension so the UI can route messages by folder without waiting for the
+// backend rewrite.
+const _EMAIL_FOLDERS = [
+  { key: 'inbox',  label: 'Inbox',  icon: '📥' },
+  { key: 'sent',   label: 'Sent',   icon: '📤' },
+  { key: 'drafts', label: 'Drafts', icon: '📝' },
+  { key: 'trash',  label: 'Trash',  icon: '🗑' },
+];
+let _emailActiveFolder = 'inbox';
 let _emailActiveAccount = '';   // '' = all
 let _emailCurrentThread = null; // ticket_number of open thread
 
 function loadEmailData(win) {
   const content = win.el.querySelector('#email-content');
   if (!content) return;
+  // V8 S-C505B1DB76: restore persisted folder selection.
+  try {
+    const saved = localStorage.getItem('fridays-email-folder');
+    if (saved && _EMAIL_FOLDERS.some(f => f.key === saved)) _emailActiveFolder = saved;
+  } catch (e) {}
   _renderEmailShell(win);
   _loadEmailInbox('');
 }
@@ -31,12 +47,26 @@ function _renderEmailShell(win) {
           style="padding:8px 14px;font-size:11px;background:transparent;color:var(--text-dim);border:none;border-left:1px solid var(--border);cursor:pointer;">⟳ Live</button>
         <button onclick="_loadEmailStats()"
           style="padding:8px 14px;font-size:11px;background:transparent;color:var(--text-dim);border:none;border-left:1px solid var(--border);cursor:pointer;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M3 3h10v10H3z" stroke="currentColor" stroke-width="1.3"/><path d="M6 8h4M8 3v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Stats</button>
+        <button id="email-manage-accounts" onclick="_emailOpenAccountManager()"
+          title="Manage email accounts (add / remove / change)"
+          style="padding:8px 14px;font-size:11px;background:transparent;color:var(--text-dim);border:none;border-left:1px solid var(--border);cursor:pointer;">⚙ Accounts</button>
         <button onclick="_emailToggleCompose()"
           style="padding:8px 14px;font-size:11px;background:var(--accent);color:#fff;border:none;border-left:1px solid var(--border);cursor:pointer;font-weight:700;">+ Compose</button>
       </div>
 
-      <!-- Split: list + thread -->
+      <!-- Split: folder sidebar + list + thread -->
       <div style="display:flex;flex:1;min-height:0;">
+
+        <!-- V8 S-C505B1DB76: Folder sidebar (Inbox / Sent / Drafts / Trash) -->
+        <nav id="email-folder-nav" style="width:130px;flex-shrink:0;border-right:1px solid var(--border);padding:8px 0;background:var(--card);overflow-y:auto;">
+          ${_EMAIL_FOLDERS.map(f => `
+            <button id="email-folder-${f.key}" data-email-folder="${f.key}"
+              onclick="_emailSetFolder('${f.key}')"
+              style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;background:${f.key===_emailActiveFolder?'var(--accent)':'transparent'};color:${f.key===_emailActiveFolder?'#fff':'var(--text)'};border:none;border-left:3px solid ${f.key===_emailActiveFolder?'var(--accent)':'transparent'};cursor:pointer;font-size:12px;text-align:left;font-family:inherit;">
+              <span style="font-size:14px;">${f.icon}</span>
+              <span>${f.label}</span>
+            </button>`).join('')}
+        </nav>
 
         <!-- Email list -->
         <div id="email-list-panel" style="width:45%;min-width:220px;border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;">
@@ -98,12 +128,27 @@ function _emailSetAccount(account) {
   _loadEmailInbox(account);
 }
 
+// V8 S-C505B1DB76: folder selector. Persists choice to localStorage so it
+// survives reloads while the backend label sync is still under construction.
+function _emailSetFolder(folder) {
+  if (!_EMAIL_FOLDERS.some(f => f.key === folder)) return;
+  _emailActiveFolder = folder;
+  try { localStorage.setItem('fridays-email-folder', folder); } catch (e) {}
+  document.querySelectorAll('[data-email-folder]').forEach(btn => {
+    const active = btn.dataset.emailFolder === folder;
+    btn.style.background = active ? 'var(--accent)' : 'transparent';
+    btn.style.color = active ? '#fff' : 'var(--text)';
+    btn.style.borderLeft = '3px solid ' + (active ? 'var(--accent)' : 'transparent');
+  });
+  _loadEmailInbox(_emailActiveAccount);
+}
+
 async function _loadEmailInbox(account) {
   const inner = document.getElementById('email-list-inner');
   if (!inner) return;
   inner.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:20px;text-align:center;">Loading…</div>';
 
-  const url = `/api/email/inbox?limit=80${account ? '&account='+encodeURIComponent(account) : ''}`;
+  const url = `/api/email/inbox?limit=80${account ? '&account='+encodeURIComponent(account) : ''}${_emailActiveFolder ? '&folder='+encodeURIComponent(_emailActiveFolder) : ''}`;
   try {
     const resp = await fetch(url);
     const data = await resp.json();
@@ -450,3 +495,56 @@ async function _emailSendCompose() {
     if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
   }
 }
+
+// V7C-A09: Account management modal. Read-only discovery for now (backend
+// account list lives in utils/config.py + swarm-sniffles.service credentials).
+// Lets the user see which accounts are active, flag one for removal, and
+// request an addition via a Settings deep-link. No silent writes.
+function _emailOpenAccountManager() {
+  let modal = document.getElementById('email-accounts-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'email-accounts-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);';
+    modal.addEventListener('mousedown', (ev) => { if (ev.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+  }
+  const rows = _EMAIL_ACCOUNTS.map(a => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtml(a)}</div>
+        <div style="font-size:10px;color:var(--text-dim);">Active · managed by swarm config</div>
+      </div>
+      <button onclick="_emailRequestAccountRemove('${_escAttr(a)}')" title="Request removal (requires host edit)"
+        style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--danger);padding:4px 8px;font-size:10px;cursor:pointer;">Request removal</button>
+    </div>`).join('');
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px 12px;width:min(520px, 94vw);display:flex;flex-direction:column;gap:10px;box-shadow:0 14px 44px rgba(0,0,0,0.45);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+        <div>
+          <div style="font-size:13px;font-weight:700;">Email Accounts</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Add/remove/change accounts live in <code>utils/config.py</code> and <code>swarm-sniffles.service</code>. This panel shows the current set and lets you request changes.</div>
+        </div>
+        <button onclick="document.getElementById('email-accounts-modal')?.remove()"
+          style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;width:24px;height:24px;flex:0 0 auto;line-height:1;">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">${rows}</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="_emailRequestAccountAdd()"
+          style="flex:1;background:var(--window-header);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:11px;font-weight:600;cursor:pointer;">+ Request new account</button>
+      </div>
+    </div>`;
+  modal.style.display = 'flex';
+}
+
+function _emailRequestAccountAdd() {
+  if (typeof showToast === 'function') showToast('Account add-requests are manual: edit utils/config.py _EMAIL_ACCOUNTS, then restart sniffles.', 'info');
+}
+
+function _emailRequestAccountRemove(addr) {
+  if (typeof showToast === 'function') showToast(`Removal of ${addr} requires a config edit. Flagged in Vortex.`, 'info');
+}
+
+window._emailOpenAccountManager = _emailOpenAccountManager;
+window._emailRequestAccountAdd = _emailRequestAccountAdd;
+window._emailRequestAccountRemove = _emailRequestAccountRemove;

@@ -93,6 +93,10 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.voice',          'voice_bp'),
     ('blueprints.fan',            'fan_bp'),
     ('blueprints.health',         'health_bp'),    ('blueprints.health_bp',       'health_digest_bp'),    ('blueprints.council_bp',     'council_bp'),
+    ('blueprints.sysmod',         'sysmod_bp'),
+    ('blueprints.enrollment',     'enrollment_bp'),
+    ('blueprints.gmail_labels',   'gmail_labels_bp'),
+    ('blueprints.feeds_bp',       'feeds_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)

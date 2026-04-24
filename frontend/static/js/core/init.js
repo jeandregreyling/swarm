@@ -2,38 +2,8 @@
 
 // ── Settings modal: drag by h2, resize by CSS `resize: both` ─────────────
 function _initSettingsDragResize() {
-  const box = document.getElementById('settings-box');
-  const modal = document.getElementById('settings-modal');
-  if (!box || !modal) return;
-  const handle = box.querySelector('h2');
-  if (!handle) return;
-  let active = false, startX = 0, startY = 0, startL = 0, startT = 0;
-  handle.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    active = true;
-    modal.classList.add('free');
-    box.classList.add('free');
-    const rect = box.getBoundingClientRect();
-    if (!box.style.left) box.style.left = rect.left + 'px';
-    if (!box.style.top) box.style.top = rect.top + 'px';
-    startX = e.clientX; startY = e.clientY;
-    startL = parseFloat(box.style.left) || rect.left;
-    startT = parseFloat(box.style.top) || rect.top;
-    box.classList.add('dragging');
-    e.preventDefault();
-  });
-  document.addEventListener('mousemove', (e) => {
-    if (!active) return;
-    const nx = Math.max(0, Math.min(window.innerWidth - 80, startL + (e.clientX - startX)));
-    const ny = Math.max(0, Math.min(window.innerHeight - 60, startT + (e.clientY - startY)));
-    box.style.left = nx + 'px';
-    box.style.top = ny + 'px';
-  });
-  document.addEventListener('mouseup', () => {
-    if (!active) return;
-    active = false;
-    box.classList.remove('dragging');
-  });
+  // Legacy modal dragging is disabled now that Settings opens through the
+  // shared floating-window manager.
 }
 
 // Extracted from terminal_base.html
@@ -269,12 +239,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   
-  document.getElementById('opacity-slider').addEventListener('input', (e) => {
+  const opacityControl = document.getElementById('opacity-slider');
+  const handleOpacityControl = (e) => {
     const transparency = Math.max(0, Math.min(30, parseInt(e.target.value || '5', 10)));
     const actualOpacity = (100 - transparency) / 100;
     document.getElementById('opacity-value').textContent = transparency + '%';
     document.documentElement.style.setProperty('--glass-opacity', actualOpacity);
-  });
+  };
+  opacityControl.addEventListener('input', handleOpacityControl);
+  opacityControl.addEventListener('change', handleOpacityControl);
   
   // (time-slider removed — themes are now applied directly from buttons)
 

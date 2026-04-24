@@ -1,0 +1,47 @@
+#!/bin/bash
+# seven.sh — launcher for the Seven Linux app (.desktop entry points here).
+# Strategy: wait for the swarm-terminal service, then open the UI in Firefox
+# with a dedicated profile so it behaves like a standalone app window.
+
+set -u
+URL="${SEVEN_URL:-http://127.0.0.1:5050/}"
+HEALTH="${SEVEN_HEALTH:-http://127.0.0.1:5050/_health}"
+PROFILE_DIR="${SEVEN_FIREFOX_PROFILE:-$HOME/.seven-firefox}"
+LOG="${SEVEN_LAUNCH_LOG:-$HOME/.cache/seven-launch.log}"
+mkdir -p "$(dirname "$LOG")"
+exec >> "$LOG" 2>&1
+echo "=== $(date -Iseconds) seven.sh launch ==="
+
+# 1. Start service if dormant (user allowed sudo-less systemctl? fall back to no-op).
+if command -v systemctl >/dev/null 2>&1; then
+  if ! systemctl is-active --quiet swarm-terminal 2>/dev/null; then
+    echo "swarm-terminal not active — attempting user systemctl start (non-fatal)"
+    systemctl --user start swarm-terminal 2>/dev/null || true
+  fi
+fi
+
+# 2. Wait up to 25s for /_health to return 200.
+for i in $(seq 1 25); do
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 "$HEALTH" 2>/dev/null || echo 000)
+  if [ "$code" = "200" ]; then
+    echo "health ok after ${i}s"
+    break
+  fi
+  sleep 1
+done
+
+# 3. Ensure dedicated Firefox profile exists (silent, one-time).
+if [ ! -d "$PROFILE_DIR" ]; then
+  echo "creating firefox profile at $PROFILE_DIR"
+  mkdir -p "$PROFILE_DIR"
+  firefox --headless --CreateProfile "seven-app $PROFILE_DIR" >/dev/null 2>&1 || true
+fi
+
+# 4. Launch Firefox in its own window tied to that profile. --class sets WM_CLASS
+#    to "Seven" so the .desktop StartupWMClass=Seven groups it correctly in the dock.
+exec firefox \
+  --profile "$PROFILE_DIR" \
+  --no-remote \
+  --new-window "$URL" \
+  --class Seven \
+  --name Seven

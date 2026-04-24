@@ -36,7 +36,10 @@ __all__ = [
 ]
 
 METHODOLOGIES = ('agile', 'waterfall', 'prince2', 'mixed')
-STEP_STATUSES = ('todo', 'doing', 'blocked', 'done', 'skipped')
+# 'partial' — shipped with acknowledged scope cuts; description must carry
+# the explicit deferral list. Separates "honest half-done" from "done" so the
+# ALM stops lying when V-closeouts hide cuts behind a green tick.
+STEP_STATUSES = ('todo', 'doing', 'blocked', 'partial', 'done', 'skipped')
 CASE_STATUSES = ('draft', 'ready', 'passed', 'failed', 'blocked', 'obsolete')
 PROJECT_STATUSES = ('active', 'archived', 'on_hold')
 DEFAULT_OWNER = 'seven'

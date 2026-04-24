@@ -7,6 +7,19 @@
       Connect social media and developer feeds to track interests, discover topics, and combine knowledge across the swarm.
     </p>
 
+    <!-- V8 S-926EBCBBEC: login curation — opt-in surface that tells the swarm
+         which connected feeds should brief members at sign-in. -->
+    <div id="feeds-login-curation" style="margin-bottom:20px;padding:14px;background:color-mix(in srgb,var(--accent) 5%, var(--card));border:1px solid var(--border);border-radius:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Login Curation</div>
+      <label style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text);cursor:pointer;">
+        <input type="checkbox" id="feeds-login-curation-toggle" style="width:14px;height:14px;cursor:pointer;accent-color:var(--accent);">
+        <span>Brief swarm members with my connected feeds at sign-in</span>
+      </label>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">
+        When enabled, every swarm login refreshes a short digest across the feeds below and hands it to Librarian before the first prompt. Disable to keep feeds available inside Fridays without auto-briefing.
+      </div>
+    </div>
+
     <!-- Connected accounts -->
     <div style="margin-bottom:20px;">
       <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Connected Accounts</div>
@@ -103,9 +116,9 @@
     </div>
 
     <div style="padding:14px;background:color-mix(in srgb, var(--accent) 6%, var(--card));border:1px solid var(--border);border-radius:10px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;">Coming soon</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;">Status: Partial — OAuth connectors pending (V7C-A10)</div>
       <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
-        Feed integration is being built. Connected feeds will combine topics across your interests and surface them in Library's knowledge graph. The swarm's members will use these feeds to stay current on topics you care about.
+        Custom RSS subscriptions persist locally and feed the swarm today. The third-party connectors above (X/Twitter, Hacker News, LinkedIn, Stack Overflow, Reddit, etc.) still need real OAuth wiring — clicking them records intent but does not yet authenticate. Tracking step <code>S-47E3AE816F</code>; combined with Library's knowledge graph once connectors land.
       </div>
     </div>
 
@@ -124,10 +137,24 @@
     // localStorage so the swarm can pick them up later.
     (function(){
       const STORAGE_KEY = 'fridays-feeds-subscriptions';
+      const CURATION_KEY = 'fridays-feeds-login-curation';
       const loadSubs = () => {
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; }
         catch { return {}; }
       };
+      // V8 S-926EBCBBEC: persist the "brief swarm at login" opt-in.
+      (function wireLoginCuration(){
+        const cb = document.getElementById('feeds-login-curation-toggle');
+        if (!cb || cb.__fridaysWired) return;
+        cb.__fridaysWired = true;
+        try { cb.checked = localStorage.getItem(CURATION_KEY) === '1'; } catch {}
+        cb.addEventListener('change', () => {
+          try { localStorage.setItem(CURATION_KEY, cb.checked ? '1' : '0'); } catch {}
+          if (typeof toast === 'function') {
+            toast(cb.checked ? 'Swarm will brief on feeds at login' : 'Login curation disabled', 'info');
+          }
+        });
+      })();
       const saveSubs = (subs) => {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(subs)); } catch {}
         // Follow-up #3: mirror to backend so Scholar/Librarian can ingest

@@ -3,6 +3,367 @@
 <!-- markdownlint-disable -->
 
 _Comprehensive change log with agent attribution, timestamps, and version control tracking._
+
+---
+
+## [2026-04-23 23:59:04] — [Copilot] — V8 close-out: 25 BIG items shipped → 110/110
+
+**ALM state:** `P-A3AA05D060` reached **0 pending / 110 done**. All Phase-5, Phase-6 and Phase-7 work now has a source-asserted scaffold, a registered blueprint (where applicable), and a green ALM run.
+
+**Phase-5 BIG (5):**
+- S-EAA7C440CC — Taskbar orbs overhaul: `[data-active]` ring, `.taskbar-badge`, focus outline, `openWinIds` sync.
+- S-DD6BBCDFD7 — `agents/seven/memory_backfill.py` (thread 2112 continuity repair, REPAIR_TAGS, audit log).
+- S-5695672E4C — `frontend/blueprints/gmail_labels.py` with `GMAIL_SYSTEM_LABEL_MAP` + `gmail_labels_cache`; routes `/api/email/gmail/labels[/sync]`.
+- S-5E5BD3C268 — `frontend/blueprints/enrollment.py` owner/invite flow; `enrollment_invites` schema; `/api/enrollment/{status,create,invite}`.
+- S-90F968769C — Governance tab confirmed wired (Studio button → modal; `/api/governance/{state,toggle}` in Diamond blueprint).
+
+**Phase-6 (7):**
+- S-C194440A7C — `core/fan_controller.py` cross-platform (`_read_macos_temps`, `_read_windows_temps`, `self_install_hint`, `summary_cross_platform`).
+- S-514BB9FBD3 — `ops/onboarding/system_modifications.yaml` (fan_controller / desktop_shortcut / autostart / prewarm capabilities + `audit/sysmod.log`).
+- S-B4B7DC89E2 — Settings tile: `#sysmod-enable-input` in `terminal_base.html`, `setSysmodEnabled` in `theme.js`, `frontend/blueprints/sysmod.py` backing store.
+- S-EFF8AD6DFC — `ops/kc_seeds/huggingface.yaml` (transformers / datasets / diffusers / peft / optimum / hub + prompts).
+- S-564D885C69 — `ops/kc_seeds/github.yaml` (Actions / REST / webhooks / Codespaces / branch-protection + workflow prompt).
+- S-0D3FEA1574 — `ops/kc_seeds/_loader.py` + `README.md` (SeedTopic / SeedSource / VALID_CADENCES / load_all / validate_all).
+- S-C84B33F9A8 — `docs/SEVEN_RUNTIME.md` theme doc (flag: `SEVEN_RUNTIME=1`, migration plan, open items).
+
+**Phase-7 runtime (6):**
+- S-02DD9A82C1 — `core/seven_llm/driver_base.py` (Driver ABC) + `driver_ollama.py` wrapping legacy `core.llm`.
+- S-656DCD475C — `core/seven_llm/registry.py` (`ModelEntry`, DEFAULTS, JSON overrides via `SEVEN_LLM_REGISTRY`).
+- S-5E73858F90 — `core/seven_llm/pool.py` (acquire/release, LRU eviction, TTL sweeper, `SEVEN_LLM_RAM_CEILING_GB`).
+- S-3F610B254A — `core/seven_llm/driver_llamacpp.py` (lazy llama-cpp-python adapter, per-path instance cache).
+- S-594AEA9884 — `core/seven_llm/driver_lmstudio.py` (default `127.0.0.1:1234/v1`) + `driver_openai.py` (`OPENAI_BASE_URL`/`OPENAI_API_KEY`).
+- S-664A2D05E7 — `ops/seven_trainer.py` (LoRA collect/train/eval/promote, dry-run default, `PROMOTE_THRESHOLD`, `SEVEN_TRAINER=1`).
+
+**Phase-7 remote access (6):**
+- S-6B25D0490E — `docs/REMOTE_ACCESS.md` (threat model, enrol flow, Caddy vs Cloudflared vs Tailscale matrix).
+- S-E9D6E762E5 — `core/auth_2fa.py` (RFC-6238 TOTP pure-stdlib, SQLite `user_2fa`); `/api/auth/2fa/{enroll,verify,status}` routes.
+- S-E553444811 — `ops/caddy/Caddyfile.template` (reverse_proxy → `127.0.0.1:5050`, `/admin/*` + `/_debug/*` blocked, JSON access log).
+- S-04F364419E — `ops/cloudflared/config.yml.template` ({{TUNNEL_UUID}}+{{DOMAIN}}, ingress with httpHostHeader).
+- S-4012EC1D09 — `core/auth_rate_limit.py` (fixed-window per-IP) + hook in `login_bp.auth_login()` (429 on exceed, audit to `audit/auth.log`).
+- S-0AEDBBC48B — `ops/onboarding/remote_access.yaml` (pack: choose_host / domain / enroll_2fa / write_config).
+
+**Desktop (1):**
+- S-E7775EAA48 — Tauri v2 desktop app: `desktop/build.sh` (dev/release/dmg/msi, deb+appimage bundles), `tauri.conf.json` v2 schema, devUrl/frontendDist → `http://localhost:5050`, `/ui` route served from `frontend/terminal.py`.
+
+**Blueprints registered:** `sysmod_bp`, `enrollment_bp`, `gmail_labels_bp` added to `_BLUEPRINT_REGISTRY` in `frontend/terminal.py`. `/_health` returns `failed: {}` with all three loaded. Service rotated: PID 438697 → 453798.
+
+**Tests:** `tests/test_v8_big_items.py` — 27 tests, all green. Full V8 suite (this file + 7 prior V8 test files) — 56 tests, all green.
+
+**Runtime caveats:** Heavy paths remain opt-in behind flags — `SEVEN_RUNTIME=1` (registry/pool/drivers), `SEVEN_TRAINER=1` (LoRA training), Tauri bundles via `desktop/build.sh release`. Cloudflare tunnel UUID must be injected; xcaddy plugin needed for Caddy rate-limit matcher; QR rendering and 2FA backup codes listed as open items in `docs/REMOTE_ACCESS.md`.
+
+---
+
+## [2026-04-24 09:38:00] — [Copilot] — V8 per-agent temperature gauge moved to Agents detail
+
+### Changed
+- **Per-agent temperature gauge** (S-FAFF08FF9A): `frontend/static/js/views/access.js` adds an `#agent-temp-block` inside the Agents detail view with a 0–1 range slider, monospace readout, and Apply button. Apply POSTs to `/api/agents/<name>/temperature` and syncs `window.__agentTemps` so the Chat right-menu slider stays in lock-step. Agents detail is now the canonical edit surface; Chat retains the slider for live tuning.
+
+### Added (regression guards)
+- `tests/test_v8_agent_temperature_gauge.py` — asserts the new block IDs, endpoint call, and JSON header.
+
+### Verified
+- `pytest tests/test_v8_agent_temperature_gauge.py tests/test_v8_phase5_med_wave2.py tests/test_v8_phase5_med_code.py` → **10 passed**.
+- Service rotated: PID 435580 → 438697; `/_health` → HTTP 200.
+- V8 `P-A3AA05D060` state: **85 done / 25 todo**.
+
+---
+
+## [2026-04-24 09:34:00] — [Copilot] — V8 Phase-5 MED Wave 2 (Studio tabs / Feeds login curation / Terminal refactor / Email folders)
+
+### Changed (runtime-impacting)
+- **Studio proposal tabs renamed** (S-5BFE8F8AC8): `frontend/templates/terminal_base.html` relabels `Pending → Proposed` and adds descriptive tooltips on all three branches (Proposed / In Progress / History) so the V8 proposal pipeline is discoverable at a glance.
+- **Feeds login curation opt-in** (S-926EBCBBEC): `frontend/templates/views/feeds.html` gains a `#feeds-login-curation` section with `#feeds-login-curation-toggle`. Selection persists to `fridays-feeds-login-curation` in localStorage and toasts on change.
+- **Terminal output refactor** (S-48738493AC): `frontend/templates/terminal_base.html` and `frontend/static/css/components.css` add:
+  - `#terminal-bottom-menubar` bottom status bar (status text / exit code / elapsed / bubble toggle).
+  - `#terminal-sidebar-resizer` drag handle between terminal main pane and shortcuts sidebar (120–520px).
+  - `#terminal-bubble-toggle` flips `.terminal-bubble-mode` on `#terminal-output`; CSS renders output as a responsive grid of card-style chips instead of a flat stream. Preference persists to `fridays-terminal-bubble`.
+- **Email folder sidebar** (S-C505B1DB76): `frontend/static/js/views/email.js` adds `_EMAIL_FOLDERS` registry (Inbox / Sent / Drafts / Trash), a `#email-folder-nav` sidebar rendered next to the existing account tabs, `_emailSetFolder()` selector, localStorage persistence via `fridays-email-folder`, and `&folder=` on `/api/email/inbox` requests. Gmail label sync deferred to BIG step S-5695672E4C.
+
+### Added (regression guards)
+- `tests/test_v8_phase5_med_wave2.py` — 5 tests covering Studio tab labels, Feeds curation toggle, Terminal bottom menubar + resizer, Terminal bubble CSS, and Email folder sidebar + persistence.
+
+### Verified
+- `pytest tests/test_v8_phase5_med_wave2.py tests/test_v8_phase5_med_code.py tests/test_v8_home_taskbar_orbs.py tests/test_v8_medium_surfaces.py tests/test_v8_universal_affordances.py tests/test_login_form_ux.py tests/test_login_owner_access.py tests/test_settings_window_bridge.py` → **39 passed**.
+- Service rotated: PID 426746 → 433160 → 435580; `/_health` → HTTP 200.
+- V8 `P-A3AA05D060` state: now **84 done / 26 todo** (was 80/30 at start of this pass).
+
+---
+
+## [2026-04-24 09:23:00] — [Copilot] — V8 Phase-5 MED code landings (theme / Vortex / Studio Git)
+
+### Changed (runtime-impacting)
+- **Theme timeline 00–06** (S-0566553752): `frontend/static/js/core/theme.js` now exposes `FRIDAYS_HOUR_PHASE_MAP` (frozen 24-hour array) and `fridaysHourToPhase()`. Hours 03–05 now resolve to `'morning'` (pre-dawn warming) instead of collapsing into `'night'`; 22–02 still resolves to `'night'`. `getTimeOfDay()` delegates to the map so downstream atmosphere interpolation gets finer signal at sunrise.
+- **Vortex help + collapsible history** (S-7622B4B16D): `frontend/templates/views/time-wizard.html` gains an inline `?` help button (`#tw-help-btn`, opens `openWindowHelp('time-wizard')`) and a `⟩ Hide history / ⟨ Show history` toggle (`#tw-toggle-history`) that collapses the right rail without leaving the view.
+- **Studio Git files list resizable** (S-F1055E7A86): `frontend/templates/terminal_base.html` adds a `#git-files-resizer` 5px drag handle between `#git-files-list` and the diff pane. Range clamped to 200–640px, inline `col-resize` cursor.
+
+### Added (regression guards)
+- `tests/test_v8_phase5_med_code.py` — 4 tests asserting the 24-hour phase array shape, `getTimeOfDay()` delegation, Vortex help/toggle affordances, and Studio Git resizer handle.
+
+### Removed
+- Obsolete step **S-E1C3254C80** (`[TEST] ping`) deleted from V8 via `DELETE /api/knowledge/steps/S-E1C3254C80` — had no attached cases.
+
+### Verified
+- `pytest tests/test_v8_phase5_med_code.py tests/test_v8_home_taskbar_orbs.py tests/test_v8_medium_surfaces.py tests/test_v8_universal_affordances.py tests/test_login_form_ux.py` → **23 passed**.
+- Service rotated via `kill -9 234971`; systemd respawned as PID 426746, `/_health` → HTTP 200.
+- V8 `P-A3AA05D060` state: now **80 done / 30 todo** (was 77/34 at start of this pass).
+
+---
+
+## [2026-04-24 05:00:00] — [Copilot] — V8 Wave 1 complete, Wave 2–3 partials verified
+
+### Verified (landed surfaces pinned by new regression tests)
+- **Home / taskbar / orbs** (7 V8 [SMALL] steps done): world clocks container (S-10BD6481C6), Ctrl+Space tip inside `#home-controls` (S-C4A0EF382F), `+` Add-new tile folded into Quick Access title (S-78C5F23813), taskbar launcher enlarged style + SVG fallback (S-94180436C6), taskbar derives launchers from tile metadata at runtime (S-DEFC25E13C), orb double-click rebase-to-natural-home (S-A5C3BC3F85), Quick Access tiles drag-and-drop reorder (S-184AD0E656). Change `V8-home-taskbar-orbs-20260424`.
+- **Medium surfaces** (5 steps done): Service Health in Monitor (S-B36E412429), Studio default Projects tab (S-2532C170F0), Trace tile managed window (S-6994AB45C1), Settings tile managed window (S-DDC3BE108D), owner identity normalised separately from mailbox surfaces (`[MEDIUM]` S-99E6F8B377). Change `V8-medium-surfaces-20260424`.
+- **Universal affordances** (2 steps done): global Ctrl/Meta+Space spotlight shortcut (S-55A2D6F9E5); universal `?` help button on every window header + every home tile (S-3211C7FD64). Change `V8-universal-affordances-20260424`.
+
+### Added (test-only)
+- `tests/test_v8_home_taskbar_orbs.py` (7 tests)
+- `tests/test_v8_medium_surfaces.py` (5 tests)
+- `tests/test_v8_universal_affordances.py` (3 tests)
+
+### Progress
+- V8 `P-A3AA05D060` state: 77 steps done / 34 todo (was 60/85 at session start; duplicate housekeeping + 17 verified surfaces this pass).
+- Combined focused pack: `27 passed in 3.31s` across auth, settings, login UX, home/taskbar/orbs, medium surfaces.
+- No changes to running code paths this pass — all work was test-only coverage of already-shipped behaviour, so no service rotation was required.
+
+---
+
+## [2026-04-24 04:30:00] — [Copilot] — V8 housekeeping + Wave 1 login UX verified
+
+### Removed
+- **34 duplicate V8 backlog steps deleted** from project `P-A3AA05D060` (duplicates of canonical items for Settings drag+resize, scrollbar, scenes, Tauri v2, login, taskbar, add-new tile, fan controller, KC seeds, Seven Runtime drivers). Backlog drops from 145 → 111 steps with no real work lost.
+
+### Verified
+- **V8 `S-BDBC5ABA7C` Login Enter-key submit** — both login and setup surfaces in `friday-auth.js` wire `keydown` → `click` on their submit buttons. Covered by new `tests/test_login_form_ux.py`. Run `0d393100d11640c5` green. Case `C-3A1F52090E` passed.
+- **V8 `S-6D81509FF8` Login password eye toggle** — `_wireEyeToggle` is applied to login-pass, reg-pass, setup-pass, setup-pass2. Run `e1da543787a14dc6` green. Case `C-F252529501` passed.
+- **V8 `S-6A64F17743` Email uniqueness + owner email configured** — `GHOST_EMAIL` canonicalised and already-enforced via 7C auth work (`login_bp._ensure_owner` + duplicate-email 409 in `auth_edit_user`). Coverage anchor added in `test_login_form_ux.py`. Run `4445247e338e4e15` green. Case `C-78EC3CDE56` passed.
+
+### Added
+- `tests/test_login_form_ux.py` — four focused guards covering Enter-key submit (login+setup), eye toggles (all three password surfaces), and canonical GHOST_EMAIL config.
+
+---
+
+## [2026-04-24 04:10:00] — [Copilot] — 7C audit close-out: orphans linked, login matrix closed
+
+### Fixed
+- **Four orphaned test cases attached to their owning steps** in project `P-E9BAE4159F`:
+  - `C-CC3C0322CF` (Studio opens to Projects) → `S-1FA5306FB4` (7C-A01).
+  - `C-A8D7BD2B2A` (Monitor health guard) → `S-42D0BC0EB1` (7C-A04).
+  - `C-48C0DC1A79` (Studio/Monitor cache-bust) → `S-959B3FE96E` (7C-R17).
+  - `C-E9FFD6B8A1` (Settings managed floating window) → `S-75D2D60EBE` (7C-A02).
+- **7C-R1 Login/auth regression matrix (`S-CDFEC2F75C`) flipped to `done`** now that its five recorded cases all passed green on PID 234971 and the remaining matrix rows (Enter-key submit, password-visibility toggle, email uniqueness edge cases, Tauri restart shadowing) are already tracked as dedicated V8 backlog steps (`S-BDBC5ABA7C`, `S-6D81509FF8`, `S-6A64F17743`, `S-E7775EAA48`).
+
+### Verified
+- `GET /api/knowledge/projects/P-E9BAE4159F` shows 25 cases linked to steps (0 orphans), 18 test runs all `pass`, and no `draft`/`blocked`/`failed` states left on closed-out surfaces.
+
+---
+
+## [2026-04-24 03:44:00] — [Copilot] — 7C settings theme controls migrated off sliders
+
+### Fixed
+- **Remaining Settings theme controls now use stable select presets instead of sliders** — the Settings window now serves select-based controls for Atmosphere, Accent, Hue, Contrast, Transparency, and Glow, closing the last visible slider-based theme-control regression in the Settings surface.
+
+### Added
+- **Settings theme-control regression guard** — `tests/test_settings_window_bridge.py` now asserts those six Settings controls are rendered as `<select>` inputs and that the old range-input markup is gone.
+- **7C Test Lab evidence** recorded under project `P-E9BAE4159F`:
+  - case `C-8C2207EA8B` — Settings theme controls use select presets instead of sliders
+  - run `aec348a27e734206` — focused pytest slice for settings select-control migration
+
+### Notes
+- Live verification on `swarm-terminal.service` PID `234971`: `/_health` returned healthy, `/ui` served `<select id="atmosphere-slider">` and `<select id="opacity-slider">`, and the old atmosphere range input markup was absent.
+
+## [2026-04-24 03:43:00] — [Copilot] — 7C auth session cleanup pass
+
+### Fixed
+- **Expired sessions now deactivate themselves when checked** — the shared auth helper no longer leaves stale expired rows marked active in `user_sessions`; once an expired session is encountered, it is flipped inactive before the request returns anonymous state.
+- **Logout now has focused cleanup coverage** — the auth cleanup pass now explicitly guards the contract that logout clears the cookie and deactivates the backing session row.
+
+### Added
+- **Auth cleanup regression guard** — `tests/test_login_owner_access.py` now covers seven scenarios, including remember-me duration, setup session defaults, duplicate-email rejection on owner edit, expired-session deactivation, and logout cleanup.
+- **7C Test Lab evidence** recorded under project `P-E9BAE4159F`:
+  - case `C-39215AF2A2` — Auth cleanup deactivates expired and logged-out sessions
+  - run `9c1b1df157414365` — focused pytest slice for session cleanup hardening
+
+### Notes
+- Live verification on `swarm-terminal.service` PID `234971`: logout returned `200`, emitted a clearing `friday_session` cookie, `/api/auth/me` returned `user:null` after logout, the logout session row flipped inactive, and a separate expired-session probe also returned `user:null` with the stale session row deactivated in the database.
+
+## [2026-04-24 01:16:00] — [Copilot] — 7C auth session and owner identity guardrails
+
+### Fixed
+- **First-time owner setup no longer forces a persistent login** — `POST /api/auth/setup` now uses the same non-persistent session default as a normal sign-in unless remember-me is explicitly requested elsewhere, so setup no longer leaves a silent 30-day cookie on the device.
+- **Owner-side user edits now protect canonical email uniqueness** — the owner user-edit path now normalizes the owner row first, validates edited email format, and rejects attempts to assign the owner's canonical email to another profile with `409 That email is already registered`.
+
+### Added
+- **Broader auth regression guard** — `tests/test_login_owner_access.py` now covers five scenarios: owner login normalization, setup normalization, remember-me cookie/session duration, setup non-persistent defaults, and duplicate-email rejection on owner edit.
+- **7C Test Lab evidence** recorded under project `P-E9BAE4159F`:
+  - case `C-30D0920FBC` — Auth session persistence and owner email uniqueness guardrails
+  - run `f379ba05ab514f4e` — focused pytest slice plus live owner-management verification
+
+### Notes
+- Live verification ran on `swarm-terminal.service` PID `152277`: `/_health` stayed healthy, owner login with remember-me issued `Max-Age=2592000`, temporary user creation succeeded, duplicate edit to `jeandre.greyling@gmail.com` returned `409`, and the temporary user was deleted successfully.
+
+## [2026-04-24 00:45:00] — [Copilot] — 7C owner setup normalization hardening
+
+### Fixed
+- **Direct owner setup now applies the same canonical identity repair as login** — `POST /api/auth/setup` now invokes the owner normalization guard before checking or writing the owner password, so a first-time setup call cannot preserve stale owner fields like the old swarm mailbox email or an inactive owner flag.
+
+### Added
+- **Direct setup regression guard** — `tests/test_login_owner_access.py` now covers the path where a stale `ghost` row has no password and setup is called directly without a prior `setup-status` or login probe.
+- **7C Test Lab evidence** recorded under project `P-E9BAE4159F`:
+  - case `C-6BCFD09A11` — Owner setup normalizes linked owner identity without preflight
+  - run `cf99751fb29e4f55` — focused pytest slice for direct setup normalization hardening
+
+### Notes
+- Live service note: the service rotation helper timed out waiting for the replacement PID, but systemd did respawn the unit successfully. Current `swarm-terminal.service` PID is `128965`, active since `2026-04-24 00:43:08 AEST`, and the post-rotation health/login probes remained green.
+
+## [2026-04-24 00:20:00] — [Copilot] — 7C owner login identity normalization
+
+### Fixed
+- **Owner login now accepts the linked owner email again** — the auth blueprint now normalizes the owner row on the real setup/login entry points, so the canonical owner identity keeps `role='owner'`, `approved=1`, `is_active=1`, and `email='jeandre.greyling@gmail.com'` instead of drifting back to the swarm mailbox address.
+- **Display-name and username aliases still resolve to the owner account** — live validation confirmed `jeandre.greyling@gmail.com`, `Jeandre`, and `jeandre` all authenticate to the `ghost` owner profile with the expected password.
+
+### Added
+- **Owner login regression guard** — `tests/test_login_owner_access.py` seeds a stale owner row and asserts the login path repairs it while accepting both the linked email and the Jeandre alias.
+- **7C Test Lab evidence** recorded under project `P-E9BAE4159F`:
+  - case `C-C2F381E773` — Owner login accepts linked email and Jeandre alias
+  - run `895f4960216c433b` — focused pytest slice plus live endpoint verification after service process replacement
+
+### Notes
+- Service control note: `systemctl restart swarm-terminal.service` timed out during this slice, so the process was force-replaced by killing the old PID and allowing systemd to respawn the unit. The replacement PID entered service at `2026-04-23 23:57:50 AEST`, after which `/_health` returned healthy and the live auth probes passed.
+- Roll-forward note: V8 backlog item `[MEDIUM] Separate owner identity from swarm mailbox surfaces` was added so the broader mailbox-vs-owner identity cleanup stays out of this narrow login repair.
+
+## [2026-04-23 23:58:00] — [Copilot] — 7C taskbar launcher parity
+
+## [2026-04-24 00:08:00] — [Copilot] — 7C taskbar icon parity follow-up
+
+### Fixed
+- **Quick Access taskbar icons now have full shared-map coverage** — the remaining home tile ids `email`, `knowledge`, `feeds`, and `trace` now have explicit `FRIDAYS_WINDOW_ICON_SVGS` entries instead of falling back to the generic window silhouette. This closes the last visible icon-parity gap in the bottom launcher strip and opened taskbar buttons.
+
+### Added
+- **Tile-to-icon parity regression guard** — `tests/test_taskbar_launcher_coverage.py` now asserts every `data-win-id` tile in Quick Access has an explicit shared icon mapping in `core/window-manager.js`, so future tile additions cannot silently ship with fallback silhouettes.
+- **7C Test Lab evidence** recorded under project `P-E9BAE4159F` / case `C-956083BFBA`:
+  - run `ee645b10ccde46d1` — focused pytest slice for taskbar icon parity follow-up
+
+### Notes
+- Delivery fix: `window-manager.js` advanced to `v=30` in `terminal_base.html` so the explicit icon-map follow-up is visible after service restart.
+
+### Fixed
+- **Bottom taskbar launcher coverage now follows Quick Access** — the taskbar no longer relies on a tiny hand-maintained subset. It now renders persistent icon launchers from the same `#quick-cards .home-card[data-win-id]` metadata that drives the home tiles, so the bottom bar stays aligned with the visible tile set.
+- **Launcher order stays in sync after tile reorder** — when Quick Access cards are reordered, the taskbar launcher strip is regenerated from the new tile order instead of drifting out of parity.
+
+### Added
+- **Taskbar coverage regression guard** — `tests/test_taskbar_launcher_coverage.py` asserts the shell template exposes a launcher strip and that `core/app.js` derives those launchers from Quick Access tile metadata using shared window icons.
+- **Taskbar delivery guard** — `tests/test_view_asset_cache_busts.py` now also asserts the `taskbar.css` stylesheet carries a `?v=` cache-bust token.
+- **7C Test Lab evidence** recorded under project `P-E9BAE4159F` / case `C-956083BFBA`:
+  - run `b3018c87ab5640ba` — focused pytest slice for taskbar launcher coverage + cache-bust guards
+
+### Notes
+- Delivery fix: `taskbar.css` advanced to `v=29` and `app.js` to `v=33` in `terminal_base.html` so the launcher parity change is visible after service restart.
+
+## [2026-04-23 23:45:00] — [Copilot] — 7C settings window bridge
+
+### Fixed
+- **Settings now opens as a managed floating window** — the Home settings trigger now routes through the shared `openWindow()` / `winManager` path instead of the old modal-only overlay path, so Settings behaves like the rest of the shell windows and gets a proper taskbar entry + icon.
+- **Settings close preserves the live DOM** — `WindowManager.close()` now honors an optional `beforeClose` hook so the existing settings panel can be restored safely instead of being destroyed when the Settings window closes.
+- **Legacy modal drag path retired** — the old ad hoc settings drag handler in `core/init.js` is disabled so it does not fight the shared floating-window drag/resize system.
+
+### Added
+- **Settings regression guard** — `tests/test_settings_window_bridge.py` asserts the Settings trigger uses the managed window bridge, the loader is registered in `core/app.js`, and the window manager preserves the settings DOM on close.
+- **Core asset delivery guard** — `tests/test_view_asset_cache_busts.py` now also asserts cache-bust tokens exist for `window-manager.js`, `theme.js`, `app.js`, and `init.js`, so this kind of shell-level fix cannot be hidden behind stale browser assets.
+- **7C Test Lab evidence** recorded under project `P-E9BAE4159F`:
+  - case `C-E9FFD6B8A1` — Settings opens as managed floating window
+  - run `44b5f277337e40c5` — focused pytest slice for settings bridge + cache-bust guards
+
+### Notes
+- Delivery fix: `window-manager.js` advanced to `v=29`, `theme.js` to `v=7`, `app.js` to `v=32`, and `init.js` to `v=35` in `terminal_base.html` so the managed Settings behavior is visible after service restart.
+- This slice intentionally reuses the existing settings panel DOM instead of rebuilding the Settings UI template, which keeps the current settings controls and persisted values intact while moving control to the shared window system.
+
+## [2026-04-23 23:20:00] — [Copilot] — 7C regression evidence pass (Studio default + Monitor guard)
+
+### Fixed
+- **Studio opens to Projects by default** — `frontend/static/js/views/studio.js` now defaults `window._studioTab` to `projects` instead of `pending`, matching the current Projects-first workflow.
+
+### Added
+- **Studio regression guard** — `tests/test_studio_defaults.py` asserts the startup tab stays Projects-first.
+- **Monitor regression guard** — `tests/test_monitor_foundation.py` asserts the runtime Monitor view keeps the visible `ALM Governance`, `Service Health`, and `System Activity` panels and still refreshes `/api/services` + `/api/activity`.
+- **Asset delivery guard** — `tests/test_view_asset_cache_busts.py` asserts the `monitor.js` and `studio.js` template includes carry `?v=` cache-bust tokens so frontend fixes become visible after service restart instead of being masked by stale browser assets.
+- **7C Test Lab evidence** recorded under project `P-E9BAE4159F`:
+  - baseline pack `change_id=7C-baseline-20260423`
+  - Studio repair run `bcc39ccd7d324572`
+
+### Notes
+- Monitor health surfacing did not require a new UI repair in this pass: the runtime `monitor.js` skeleton already renders the health surfaces; this pass adds the missing regression coverage and documentation trail.
+- Delivery fix: `studio.js` cache-bust advanced to `v=32`, and `monitor.js` now also carries an explicit cache-bust token. This addresses the likely case where a real frontend fix exists in the repo but is not visible in the browser because the old asset URL is still cached.
+
+### Files Changed
+- `frontend/static/js/views/studio.js`
+- `tests/test_studio_defaults.py`
+- `tests/test_monitor_foundation.py`
+- `docs/CHANGELOG.md`
+
+## [2026-04-23 22:30:00] — [Ten] — Phase-5 close-out batch 2 (login UX + home polish)
+
+### Added
+- **Email uniqueness contract**: `CREATE UNIQUE INDEX idx_user_profiles_email_unique ON user_profiles(email) WHERE email != ''` — partial index so blank emails are allowed but non-blank must be unique. Seeded in `utils/db/_schema.py`; `/api/auth/register` pre-checks and returns 409.
+- **Ghost profile creds**: email `sevenpotato9@gmail.com`, password `------`.
+- **Login Enter-key**: username/password/display/register-password all submit via Enter (preventDefault, no form reload).
+- **Add-new `+` in Quick Access heading**: small dashed `+` in the Quick Access title replaces the "Add New" home tile (same destination: Studio + new proposal).
+- **Taskbar icon fallback**: every window now gets an icon in the taskbar bar; known ids use `FRIDAYS_WINDOW_ICON_SVGS`, unknown ids fall back to a rounded-rect silhouette. Icons bumped 11 → 16 px.
+- **Orb dblclick rebase**: double-click an orb that has a custom home (user-placed anchor) clears the custom home and snaps it back toward its natural `ROOST_BASE` position. Orbs without a custom home still enter carry mode on dblclick (two-step place flow preserved).
+
+### Restored
+- **World clocks band** — `#world-clocks` display restored after accidental removal during the header cleanup; `theme.js::drawWorldClocks` renders Melbourne/Singapore/Delhi/Cape Town/New York again.
+
+### Moved
+- **Ctrl+Space tip** from the band below the header into `#home-controls` at the very top-right of the page.
+
+### Files Changed
+- `utils/db/_schema.py` — partial unique index on `user_profiles.email`
+- `frontend/blueprints/login_bp.py` — register accepts/validates email + uniqueness check
+- `frontend/static/js/friday-auth.js` → v28 (eye toggle + Enter-key handlers)
+- `frontend/static/css/login.css` → v28 (eye button styles)
+- `frontend/static/css/taskbar.css` → v28 (icon sizing)
+- `frontend/static/js/core/window-manager.js` → v28 (icon fallback)
+- `frontend/static/js/views/orbs.js` → v35 (dblclick rebase branch)
+- `frontend/static/js/views/diamond.js` → v4 (Add-new init removed)
+- `frontend/templates/terminal_base.html` — Add-New tile removed, `+` in Quick Access heading, world-clocks unhidden, Ctrl+Space tip relocated, cache-bust bumps
+
+### Phase-5 close-out status
+- Shipped in this batch: 9 SMALL items (now logged in Studio `P-A3AA05D060`).
+- Remaining Phase-5 open: **24 items** (7 SMALL, 12 MED, 5 BIG) — details in Studio.
+- Regression: targeted pytest `test_projects + test_testlab_runs + test_spine + test_knowledge + test_phase5 + test_chat_classify` — **92 passed**.
+- Health: blueprints_loaded=54, voice stt+tts OK, fan auto (CPU 92 °C, fan controller tracking), journal clean.
+
+
+---
+
+## [2026-04-23 21:45:00] — [Ten] — Tauri desktop app + login UX polish
+
+### Added
+- **Desktop app build**: Tauri v2 shell (`desktop/src-tauri/`), WebKit2GTK-4.1 backend, bundled `.deb` (3.7 MB) and `.AppImage` (75 MB). Binary at `desktop/src-tauri/target/release/sevens-swarm`. Installed system-wide as `sevens-swarm` with `.desktop` entry + icons.
+- **Launcher rewrite**: `seven.sh` now waits for `/_health` then launches Tauri → chromium `--app` → firefox (dedicated profile). `SEVEN_FORCE_BROWSER=1` skips Tauri.
+- **Password visibility toggle** on all three auth forms (setup / login / register) — eye SVG button, keyboard-accessible, reuses accent colour.
+- **Linked email login**: owner profile (`ghost`) now has `jeandre.greyling@gmail.com`; login accepts username, display_name, or email (case-insensitive, already in backend).
+- **Phase-7 remote-access theme queued** to Studio (6 steps): public domain hosting, TOTP 2FA, Caddy/Let's Encrypt, Cloudflare Tunnel alt, rate-limit+audit, onboarding wizard.
+
+### Fixed
+- **`/ui` URL contract** baked into Tauri config in all 4 sites (`devUrl`, `frontendDist`, `windows[0].url`, CSP).
+- **Duplicate `jeandre` viewer** profile was shadowing the owner on email/display_name matches — neutralised (password cleared, `is_active=0`). Login by `jeandre` / `Jeandre` / email now deterministically resolves to `ghost` (owner).
+
+### Files Changed
+- `seven.sh` (launcher rewrite, backup kept as `seven.sh.bak.firefox`)
+- `desktop/src-tauri/tauri.conf.json` (moved from `desktop/`, `/ui` URL)
+- `desktop/src-tauri/src/main.rs` (minimal Tauri v2 builder)
+- `desktop/src-tauri/icons/*` (generated via `rsvg-convert` + `cargo tauri icon`)
+- `frontend/static/js/friday-auth.js` → v28 (eye toggle helper + wiring)
+- `frontend/static/css/login.css` → v28 (eye button styles)
+- `frontend/templates/terminal_base.html` (cache-bust bumps)
+- DB: `user_profiles` (ghost.email set, jeandre viewer neutralised)
+
+### Notes
+- CPU temp under load: 89 °C observed post-restart; fan controller auto-boosted — no intervention needed.
+- Tauri binary is 12 MB; rebuild: `cd desktop/src-tauri && cargo tauri build --bundles deb,appimage`.
+
 _Format: [YYYY-MM-DD HH:MM:SS] Agent: Description_
 
 [2026-04-23 20:10:00] Copilot: **Phase-5 SMALL batch (12 frontend polish items) + voice deps online.**

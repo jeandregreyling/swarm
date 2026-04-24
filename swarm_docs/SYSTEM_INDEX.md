@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-23 20:31*
+*Auto-generated: 2026-04-24 14:01*
 
 
 ## Python Modules
@@ -48,6 +48,7 @@
 | `utils/load_project_docs.py` | load_project_docs.py — Seven's Swarm |
 | `utils/model_selector.py` | Model selector for agentic chat routing (Phase 8.0 — Chunk 8E). |
 | `utils/node_discovery.py` | utils/node_discovery.py — Node discovery + heartbeat + event relay (A.5.1, D.2, D.3) |
+| `utils/password.py` | utils.password — shared password hashing helpers. |
 | `utils/platform_compat.py` | utils/platform_compat.py — Cross-platform guard helpers. |
 | `utils/proposal_review.py` | proposal_review.py — Duck's proposal sanity-check + chat-thread notification. |
 | `utils/rate_limiter.py` | utils/rate_limiter.py — Token-bucket rate limiter middleware (E.1.2) |
@@ -70,10 +71,15 @@
 
 | File | Description |
 |------|-------------|
+| `core/auth_2fa.py` | core/auth_2fa.py — TOTP 2-factor authentication primitives. |
+| `core/auth_rate_limit.py` | core/auth_rate_limit.py — in-process rate limiter + audit log for /api/auth. |
 | `core/chat_actions.py` | core/chat_actions.py — Pure-rules chat action detector ("Siri-but-better"). |
+| `core/coding_bible_probe.py` | core.coding_bible_probe — runtime verification of Coding Bible fan-out. |
 | `core/fan_controller.py` | core/fan_controller.py — read-only fan / temperature monitor. |
+| `core/feeds.py` | core.feeds — server-side feed subscription store + RSS fetcher. |
 | `core/kill_switch.py` | KILL SWITCHES — Emergency control agents via Telegram/Discord |
 | `core/knowledge/__init__.py` | core.knowledge — Knowledge Center package. |
+| `core/knowledge/close_out.py` | core.knowledge.close_out — ALM close-out report builder. |
 | `core/knowledge/projects.py` | core.knowledge.projects — Session 30.1: Projects, Steps, Test Cases. |
 | `core/knowledge/scripts.py` | core.knowledge.scripts — Knowledge Center's test-lab script registry. |
 | `core/knowledge/test_runs.py` | core.knowledge.test_runs — Session 30: ALM-style test run history. |
@@ -84,7 +90,16 @@
 | `core/pipeline/orchestrator.py` | — |
 | `core/pipeline/queue_manager.py` | queue_manager.py — Seven's Swarm |
 | `core/pipeline/ticket.py` | ticket.py — Seven's Swarm |
+| `core/platform.py` | core.platform — runtime capability detection for the swarm. |
 | `core/routing.py` | core/routing.py — Deterministic routing brain for Seven's Swarm. |
+| `core/seven_llm/__init__.py` | core.seven_llm — Seven Runtime model orchestration layer. |
+| `core/seven_llm/driver_base.py` | core/llm/driver_base.py — Driver ABC. |
+| `core/seven_llm/driver_llamacpp.py` | core/llm/driver_llamacpp.py — in-process llama-cpp-python driver. |
+| `core/seven_llm/driver_lmstudio.py` | core/llm/driver_lmstudio.py — LM Studio HTTP driver (OpenAI-compatible). |
+| `core/seven_llm/driver_ollama.py` | core/llm/driver_ollama.py — Ollama driver (feature-flagged SCOUT peer). |
+| `core/seven_llm/driver_openai.py` | core/llm/driver_openai.py — OpenAI / Azure OpenAI / any OpenAI-compatible |
+| `core/seven_llm/pool.py` | core/llm/pool.py — warm-pool with TTL, RAM ceiling, LRU eviction. |
+| `core/seven_llm/registry.py` | core/llm/registry.py — Seven's own model catalogue. |
 | `core/spine.py` | core/spine.py — Session 29: Seven-as-spine. |
 | `core/testlab_registry.py` | core/testlab_registry.py — Session 28 Studio Test Lab |
 | `core/time_machine.py` | TIME MACHINE — Agent Twelve's Core Capability |
@@ -168,11 +183,11 @@
 |-----------|--------|-------------|
 | `agent_api` | 10 | agent_api.py — Agent Self-Service API routes |
 | `agents` | 28 | — |
-| `auth` | 12 | auth.py — Auth & Senders routes |
+| `auth` | 15 | auth.py — Auth & Senders routes |
 | `auto_audit` | 2 | auto_audit.py — Periodic self-audit: pytest + basic lint checks. |
 | `brief` | 3 | brief.py — Ghost Brief routes |
 | `chat` | 8 | chat.py — Chat Engine routes |
-| `coding_bible` | 3 | blueprints/coding_bible.py — Coding Bible retrieval API. |
+| `coding_bible` | 4 | blueprints/coding_bible.py — Coding Bible retrieval API. |
 | `conversations` | 9 | conversations.py — Conversations routes |
 | `council_bp` | 2 | Council API blueprint — serves Agent 20 output to the frontend. |
 | `debates` | 5 | debates.py — Debates routes |
@@ -180,16 +195,19 @@
 | `diamond` | 5 | frontend/blueprints/diamond.py — Diamond Layer governance API. |
 | `docs` | 14 | docs.py — Docs & Project Files routes |
 | `email_bp` | 5 | blueprints/email_bp.py — Email tile API |
+| `enrollment` | 3 | frontend/blueprints/enrollment.py — user-account enrolment endpoints. |
 | `exec_bp` | 4 | exec_bp.py — Ghost Exec routes |
 | `fan` | 2 | blueprints/fan.py — CPU temperature + fan mode API. |
+| `feeds_bp` | 5 | blueprints/feeds_bp.py — Feeds subscription CRUD + poll. |
 | `git` | 6 | git.py — Git Operations routes |
+| `gmail_labels` | 2 | frontend/blueprints/gmail_labels.py — Gmail label sync for Email folders. |
 | `health` | 2 | — |
 | `health_bp` | 3 | Health digest API blueprint — one-stop-shop system visibility. |
 | `idle_mgmt_bp` | 3 | idle_mgmt_bp.py — Idle-time self-management (Tier 4.5). |
 | `interests_bp` | 3 | Interests engine — derives user interests from conversations + system memory. |
 | `kb` | 7 | kb.py — Knowledge Base routes |
 | `killswitch` | 6 | killswitch.py — Kill Switches routes |
-| `knowledge_bp` | 26 | Knowledge Center blueprint. |
+| `knowledge_bp` | 28 | Knowledge Center blueprint. |
 | `legacy` | 3 | legacy.py — Legacy Pipeline & Approval routes |
 | `library` | 22 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
@@ -209,7 +227,8 @@
 | `shell` | 18 | shell.py — Shell & Terminal routes |
 | `spine_bp` | 3 | blueprints/spine_bp.py — Session 29: spine events API. |
 | `sse` | 1 | frontend/blueprints/sse.py — Server-Sent Events stream (R.2) |
-| `system` | 16 | system.py — System & Monitoring routes |
+| `sysmod` | 2 | frontend/blueprints/sysmod.py — settings-surface for the sysmod pack. |
+| `system` | 17 | system.py — System & Monitoring routes |
 | `tasker_bp` | 8 | tasker_bp.py — Scheduled tasks CRUD API for the Tasker UI. |
 | `testlab_bp` | 2 | blueprints/testlab_bp.py — Studio Test Lab API (Session 28) |
 | `tickets` | 11 | tickets.py — Tickets routes |
@@ -224,12 +243,12 @@
 
 | Module | Size |
 |--------|------|
-| `access.js` | 103.5 KB |
-| `chat.js` | 268.4 KB |
+| `access.js` | 106.1 KB |
+| `chat.js` | 268.7 KB |
 | `conversations.js` | 14.5 KB |
 | `diamond.js` | 28.6 KB |
 | `docs.js` | 24.6 KB |
-| `email.js` | 26.5 KB |
+| `email.js` | 32.8 KB |
 | `files.js` | 47.6 KB |
 | `git.js` | 24.1 KB |
 | `guide.js` | 7.9 KB |
@@ -242,11 +261,11 @@
 | `localai.js` | 26.3 KB |
 | `memory-landscape.js` | 9.6 KB |
 | `memory.js` | 30.3 KB |
-| `monitor.js` | 18.1 KB |
+| `monitor.js` | 20.9 KB |
 | `ollama.js` | 4.1 KB |
 | `onboarding.js` | 18.0 KB |
-| `orbs.js` | 83.1 KB |
-| `projects.js` | 24.4 KB |
+| `orbs.js` | 83.8 KB |
+| `projects.js` | 24.5 KB |
 | `services.js` | 5.0 KB |
 | `skills.js` | 26.2 KB |
 | `spotlight.js` | 14.6 KB |
@@ -265,39 +284,39 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 37155 |
+| `activity_log` | 38666 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 646 |
-| `audit_results` | 36 |
-| `change_runs` | 14 |
-| `chat_jobs` | 608 |
+| `approval_tokens` | 664 |
+| `audit_results` | 37 |
+| `change_runs` | 19 |
+| `chat_jobs` | 649 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2260 |
-| `conversations` | 38 |
-| `council_output` | 2101 |
+| `conv_timeline` | 2301 |
+| `conversations` | 191 |
+| `council_output` | 2797 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 12878 |
+| `decisions` | 15103 |
 | `deferred_items` | 0 |
-| `duck_log` | 889 |
+| `duck_log` | 929 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4402 |
-| `governance_log` | 410 |
+| `ghost_circle` | 4611 |
+| `governance_log` | 412 |
 | `knowledge_chunks` | 638 |
 | `knowledge_sources` | 51 |
-| `memory` | 112 |
+| `memory` | 127 |
 | `memory_eight` | 1 |
 | `memory_gemma` | 24 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
-| `memory_llama` | 2 |
+| `memory_llama` | 1 |
 | `memory_mistral` | 0 |
 | `memory_nine` | 0 |
 | `memory_qwen` | 1 |
@@ -307,8 +326,8 @@
 | `memory_ten` | 62 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `memory_twenty` | 430 |
-| `messages` | 81 |
+| `memory_twenty` | 464 |
+| `messages` | 382 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -316,15 +335,15 @@
 | `pending_emails` | 8 |
 | `project_doc_versions` | 56 |
 | `project_docs` | 74 |
-| `project_steps` | 152 |
-| `project_test_cases` | 54 |
-| `projects` | 28 |
+| `project_steps` | 209 |
+| `project_test_cases` | 130 |
+| `projects` | 30 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 2 |
-| `queue` | 1626 |
+| `queue` | 1706 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
-| `sandpit_log` | 514 |
+| `sandpit_log` | 548 |
 | `scheduled_tasks` | 1298 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
@@ -332,34 +351,34 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 69 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 410 |
+| `swarm_bus` | 412 |
 | `swarm_event_acks` | 24 |
 | `swarm_events` | 2 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7499 |
+| `system_stats` | 7709 |
 | `task_run_log` | 1 |
 | `terminal_shortcuts` | 16 |
-| `test_run_artifacts` | 1 |
-| `test_runs` | 60 |
-| `ticket_notes` | 643 |
-| `tickets` | 651 |
-| `time_checkpoints` | 4908 |
-| `time_events` | 98804 |
-| `time_journal` | 92424 |
-| `time_machine` | 6173 |
+| `test_run_artifacts` | 54 |
+| `test_runs` | 162 |
+| `ticket_notes` | 683 |
+| `tickets` | 691 |
+| `time_checkpoints` | 5203 |
+| `time_events` | 99472 |
+| `time_journal` | 92797 |
+| `time_machine` | 6178 |
 | `tool_builds` | 0 |
-| `trace_events` | 444 |
+| `trace_events` | 680 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_interests` | 13 |
 | `user_patterns` | 3 |
 | `user_profiles` | 23 |
-| `user_sessions` | 3 |
+| `user_sessions` | 28 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 6 |
+| `work_proposals` | 7 |
 
 ## Agents
 

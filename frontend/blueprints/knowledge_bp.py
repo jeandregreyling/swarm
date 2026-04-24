@@ -18,6 +18,7 @@ from flask import Blueprint, jsonify, request
 from core.knowledge import scripts as _kc_scripts
 from core.knowledge import test_runs as _kc_runs
 from core.knowledge import projects as _kc_projects
+from core.knowledge import close_out as _kc_closeout
 
 knowledge_bp = Blueprint('knowledge_bp', __name__)
 
@@ -492,3 +493,32 @@ def api_step_complete(step_id: str):
         pass
 
     return jsonify({'ok': True, 'kb_doc_id': doc_id})
+
+
+# ── V7C-R17 / A16 — Close-out report + live step probe ─────────────────
+
+@knowledge_bp.route('/api/knowledge/projects/<project_id>/close-out', methods=['GET'])
+def api_project_close_out(project_id: str):
+    """Return a close-out report: every step, its locked test file(s),
+    its latest test-run verdict, and a rolled-up verdict per step."""
+    rep = _kc_closeout.build_report(project_id)
+    if not rep.get('ok'):
+        return jsonify(rep), 404
+    return jsonify(rep)
+
+
+@knowledge_bp.route('/api/knowledge/steps/<step_id>/probe', methods=['POST'])
+def api_step_probe(step_id: str):
+    """V7C-A16 — replay a step's locked pytest file(s) on demand.
+
+    Body (optional): {"timeout": seconds}. Default 60s, capped at 180.
+    Returns parsed pass/fail counts and a short tail of output.
+    """
+    body = request.get_json(silent=True) or {}
+    try:
+        timeout = float(body.get('timeout') or 60.0)
+    except (TypeError, ValueError):
+        timeout = 60.0
+    timeout = max(5.0, min(timeout, 180.0))
+    rep = _kc_closeout.run_step_probe(step_id, timeout=timeout)
+    return jsonify(rep)

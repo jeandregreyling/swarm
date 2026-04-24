@@ -1,0 +1,27 @@
+topic_id: github
+title: GitHub platform (Actions, Octokit, Codespaces, webhooks)
+cadence: weekly
+tags: [devops, ci, automation, webhooks, octokit, codespaces]
+sources:
+  - kind: url
+    url: https://docs.github.com/en/actions
+  - kind: url
+    url: https://docs.github.com/en/rest
+  - kind: url
+    url: https://docs.github.com/en/webhooks
+  - kind: url
+    url: https://docs.github.com/en/codespaces
+  - kind: url
+    url: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
+  - kind: url
+    url: https://docs.github.com/en/gist
+  - kind: prompt
+    title: Actions workflow skeleton
+    text: |
+      Give a minimal GitHub Actions workflow that runs pytest on push and PR,
+      caches pip, and uses matrix for Python 3.10/3.11/3.12.
+  - kind: prompt
+    title: Branch protection policy
+    text: |
+      What branch-protection rules should a small team enable on `main` to
+      prevent accidental force-push while keeping solo devs productive?
