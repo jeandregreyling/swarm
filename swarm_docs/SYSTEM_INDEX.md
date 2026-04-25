@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-25 00:09*
+*Auto-generated: 2026-04-26 00:08*
 
 
 ## Python Modules
@@ -84,6 +84,8 @@
 | `core/knowledge/scripts.py` | core.knowledge.scripts — Knowledge Center's test-lab script registry. |
 | `core/knowledge/test_runs.py` | core.knowledge.test_runs — Session 30: ALM-style test run history. |
 | `core/llm.py` | core/llm.py — Single Ollama gateway for the entire swarm. |
+| `core/media_center/__init__.py` | — |
+| `core/media_center/framework.py` | Media Center framework helpers. |
 | `core/notifications.py` | core/notifications.py — Shared notification formatter. |
 | `core/pipeline/debate.py` | — |
 | `core/pipeline/listener.py` | listener.py — Seven's Swarm |
@@ -212,6 +214,7 @@
 | `library` | 22 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
 | `login_bp` | 14 | login_bp.py — User login, registration, session management, and approval. |
+| `media_center` | 5 | Media Center API blueprint. |
 | `memory` | 8 | memory.py — Memory routes |
 | `metrics` | 2 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
 | `nine` | 4 | nine.py — Agent Nine routes |
@@ -246,7 +249,7 @@
 | `access.js` | 106.1 KB |
 | `chat.js` | 268.7 KB |
 | `conversations.js` | 14.5 KB |
-| `diamond.js` | 28.6 KB |
+| `diamond.js` | 28.7 KB |
 | `docs.js` | 24.6 KB |
 | `email.js` | 32.8 KB |
 | `files.js` | 47.6 KB |
@@ -259,6 +262,7 @@
 | `library-graph.js` | 12.4 KB |
 | `library.js` | 43.7 KB |
 | `localai.js` | 26.3 KB |
+| `media-center.js` | 12.9 KB |
 | `memory-landscape.js` | 9.6 KB |
 | `memory.js` | 30.3 KB |
 | `monitor.js` | 20.9 KB |
@@ -268,9 +272,10 @@
 | `projects.js` | 24.5 KB |
 | `services.js` | 5.0 KB |
 | `skills.js` | 26.2 KB |
-| `spotlight.js` | 14.6 KB |
+| `spotlight.js` | 15.1 KB |
+| `studio-media.js` | 6.6 KB |
 | `studio-testlab.js` | 25.3 KB |
-| `studio.js` | 86.4 KB |
+| `studio.js` | 87.2 KB |
 | `tasker.js` | 11.0 KB |
 | `terminal-commands.js` | 17.6 KB |
 | `terminal.js` | 50.8 KB |
@@ -284,31 +289,32 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 39161 |
+| `activity_log` | 40147 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
 | `approval_tokens` | 670 |
-| `audit_results` | 37 |
-| `change_runs` | 21 |
-| `chat_jobs` | 652 |
+| `audit_results` | 38 |
+| `change_runs` | 22 |
+| `chat_jobs` | 664 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2305 |
-| `conversations` | 200 |
-| `council_output` | 2961 |
+| `conv_timeline` | 2405 |
+| `conversations` | 202 |
+| `council_output` | 3581 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 16125 |
+| `decisions` | 18724 |
 | `deferred_items` | 0 |
 | `duck_log` | 933 |
+| `feed_subscriptions` | 0 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4630 |
-| `governance_log` | 413 |
+| `ghost_circle` | 4665 |
+| `governance_log` | 416 |
 | `knowledge_chunks` | 638 |
 | `knowledge_sources` | 51 |
 | `memory` | 129 |
@@ -317,17 +323,17 @@
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
 | `memory_llama` | 0 |
-| `memory_mistral` | 0 |
+| `memory_mistral` | 1 |
 | `memory_nine` | 0 |
-| `memory_qwen` | 1 |
+| `memory_qwen` | 0 |
 | `memory_scholar` | 0 |
 | `memory_seeker` | 0 |
 | `memory_sonic` | 0 |
-| `memory_ten` | 62 |
+| `memory_ten` | 63 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 464 |
-| `messages` | 403 |
+| `messages` | 435 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -335,12 +341,12 @@
 | `pending_emails` | 8 |
 | `project_doc_versions` | 56 |
 | `project_docs` | 74 |
-| `project_steps` | 209 |
-| `project_test_cases` | 130 |
-| `projects` | 30 |
+| `project_steps` | 212 |
+| `project_test_cases` | 133 |
+| `projects` | 32 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 2 |
-| `queue` | 1715 |
+| `queue` | 1717 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 550 |
@@ -351,34 +357,34 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 69 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 413 |
-| `swarm_event_acks` | 24 |
+| `swarm_bus` | 416 |
+| `swarm_event_acks` | 28 |
 | `swarm_events` | 2 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 7831 |
+| `system_stats` | 8118 |
 | `task_run_log` | 1 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 54 |
-| `test_runs` | 164 |
+| `test_runs` | 165 |
 | `ticket_notes` | 687 |
 | `tickets` | 695 |
-| `time_checkpoints` | 5241 |
-| `time_events` | 99511 |
-| `time_journal` | 92798 |
-| `time_machine` | 6828 |
+| `time_checkpoints` | 5245 |
+| `time_events` | 101738 |
+| `time_journal` | 95020 |
+| `time_machine` | 6839 |
 | `tool_builds` | 0 |
-| `trace_events` | 719 |
+| `trace_events` | 739 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
-| `user_interests` | 13 |
+| `user_interests` | 21 |
 | `user_patterns` | 3 |
 | `user_profiles` | 23 |
 | `user_sessions` | 28 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 8 |
+| `work_proposals` | 10 |
 
 ## Agents
 

@@ -23,6 +23,7 @@ const FRIDAYS_WINDOW_ICON_SVGS = {
   'agents-config': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
   email: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   feeds: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  'media-center': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 3v10M11 6.2c0 1.6-1.2 3.1-3 3.6V6.2c1.8.5 3 2 3 3.6Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   git: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 4.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm6 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM5 7.5v2c0 .8.7 1.5 1.5 1.5H9.5M9.5 5H11v3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 

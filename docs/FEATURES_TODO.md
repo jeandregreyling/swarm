@@ -3,7 +3,18 @@
 <!-- markdownlint-disable -->
 
 _Comprehensive list of all planned features, organized by phase and priority._
-_Last updated: 2026-04-23 by Copilot (Phase-5 kickoff — Ghost feedback dump)._
+_Last updated: 2026-04-25 by Codex (Media Center Studio/feeds/interests/spine integration)._
+
+---
+
+## Media Center — Current state
+
+- [x] **Media Center tile scaffold** — home tile, taskbar launcher, spotlight entry, floating window template, JS/CSS shell, and API blueprint landed.
+- [x] **Framework-only pipeline** — persisted media projects, presets, queued jobs, runtime scan, and simulated compile/generation flow landed.
+- [x] **Studio integration** — Media Center projects/jobs are surfaced through a dedicated Studio Media panel, with linked Studio project ids exposed back to the tile.
+- [x] **Interests / feeds / spine linkage** — media projects now contribute to interests, surface feed context/suggestions, and emit spine events so the feature lives inside the wider system loop.
+- [ ] **Real local runners** — wire MusicGen / Stable Audio / ffmpeg / video graph execution into the queued job system.
+- [ ] **Artifact execution tests** — add fuller end-to-end tests once real local runners are attached.
 
 ---
 
