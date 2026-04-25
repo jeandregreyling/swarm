@@ -3659,7 +3659,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 39122
+      "rows": 39161
     },
     {
       "name": "agent_capabilities",
@@ -3679,7 +3679,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 667
+      "rows": 670
     },
     {
       "name": "audit_results",
@@ -3707,7 +3707,7 @@
     },
     {
       "name": "council_output",
-      "rows": 2960
+      "rows": 2961
     },
     {
       "name": "daily_checkpoint",
@@ -3727,7 +3727,7 @@
     },
     {
       "name": "decisions",
-      "rows": 16101
+      "rows": 16125
     },
     {
       "name": "deferred_items",
@@ -3735,7 +3735,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 931
+      "rows": 933
     },
     {
       "name": "file_versions",
@@ -3751,7 +3751,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4628
+      "rows": 4630
     },
     {
       "name": "governance_log",
@@ -3883,7 +3883,7 @@
     },
     {
       "name": "queue",
-      "rows": 1711
+      "rows": 1715
     },
     {
       "name": "research_evidence",
@@ -3971,19 +3971,19 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 685
+      "rows": 687
     },
     {
       "name": "tickets",
-      "rows": 693
+      "rows": 695
     },
     {
       "name": "time_checkpoints",
-      "rows": 5223
+      "rows": 5241
     },
     {
       "name": "time_events",
-      "rows": 99493
+      "rows": 99511
     },
     {
       "name": "time_journal",
@@ -3991,7 +3991,7 @@
     },
     {
       "name": "time_machine",
-      "rows": 6824
+      "rows": 6828
     },
     {
       "name": "tool_builds",
@@ -3999,7 +3999,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 708
+      "rows": 719
     },
     {
       "name": "trusted_domains",
