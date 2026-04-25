@@ -70,6 +70,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.workspace',      'workspace_bp'),
     ('blueprints.library',        'library_bp'),
     ('blueprints.localai',        'localai_bp'),
+    ('blueprints.media_center',   'media_center_bp'),
     ('blueprints.node',           'node_bp'),
     ('blueprints.research',       'research_bp'),
     ('blueprints.tools',          'tools_bp'),
@@ -255,7 +256,21 @@ def create_app():
         from flask import render_template
         return render_template("hive_nodes.html")
 
-    # Convenience redirects — deep-link views directly
+
+    # ── Register blueprints (only those that loaded) ──────────────────────────
+    for _attr, _bp in _loaded_blueprints:
+        try:
+            app.register_blueprint(_bp)
+        except Exception as _reg_err:
+            print(f"[Terminal] Blueprint register failed — {_attr}: {_reg_err}")
+
+    # Dedicated Media Center UI route (must be after blueprints to avoid shadowing)
+    @app.route("/media-center", methods=["GET"])
+    def media_center_ui():
+        from flask import render_template
+        return render_template("views/media-center.html")
+
+    # Convenience redirects — deep-link views directly (except media-center)
     @app.route("/library", methods=["GET"])
     @app.route("/studio", methods=["GET"])
     @app.route("/chat", methods=["GET"])

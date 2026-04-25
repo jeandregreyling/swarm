@@ -15,9 +15,16 @@ def test_taskbar_launcher_strip_exists_in_shell_template():
 def test_taskbar_launchers_are_derived_from_quick_access_tiles():
     src = APP_JS.read_text()
     assert "function syncTaskbarLaunchers() {" in src
+    assert "const PINNED_LAUNCHERS = ['chat', 'terminal', 'knowledge', 'studio', 'media-center'];" in src
     assert "document.querySelectorAll('#quick-cards .home-card[data-win-id]')" in src
     assert "if (!winId || !winTitle || winId === 'email') return;" in src
     assert "btn.innerHTML = fridaysWindowIconMarkup(winId);" in src
+
+
+def test_media_center_tile_is_not_allowed_to_hide():
+    src = (ROOT / 'frontend' / 'static' / 'js' / 'views' / 'diamond.js').read_text()
+    assert "winId === 'localai' || winId === 'media-center'" in src
+    assert "id !== 'localai' && id !== 'media-center'" in src
 
 
 def test_taskbar_launcher_order_resyncs_after_tile_reorder():

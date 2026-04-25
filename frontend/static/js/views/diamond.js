@@ -383,9 +383,10 @@ function _initTileHoverTips() {
 /* ── Hidden Tiles ─────────────────────────────────────────────────────────── */
 
 function _hideTile(winId) {
-  // Keep Local AI discoverable; users rely on this tile to manage Ollama health.
-  if (winId === 'localai') {
-    if (typeof showToast === 'function') showToast('Local AI tile cannot be hidden.', 'info');
+  // Keep core runtime tiles discoverable; users rely on these to reach
+  // essential local tooling even when old localStorage state is present.
+  if (winId === 'localai' || winId === 'media-center') {
+    if (typeof showToast === 'function') showToast((winId === 'media-center' ? 'Media Center' : 'Local AI') + ' tile cannot be hidden.', 'info');
     return;
   }
   const card = document.querySelector('.home-card[data-win-id="' + winId + '"]');
@@ -431,7 +432,7 @@ function _applyHiddenTiles() {
   hidden = hidden
     .map(id => id === 'ollama' ? 'localai' : id)
     .filter((id, idx, arr) => !!id && arr.indexOf(id) === idx)
-    .filter(id => id !== 'localai');
+    .filter(id => id !== 'localai' && id !== 'media-center');
 
   localStorage.setItem('fridays_hidden_tiles', JSON.stringify(hidden));
 

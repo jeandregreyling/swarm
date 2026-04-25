@@ -1,0 +1,126 @@
+{
+  "created_at": "2026-04-25T00:00:00+00:00",
+  "projects": [
+    {
+      "id": "media-demo",
+      "name": "Swarm Launch Teaser",
+      "medium": "audio-video",
+      "status": "draft",
+      "prompt": "Build a cinematic teaser with percussive pulse, luminous pads, and fast-cut system visuals.",
+      "style": "future pulse / high-energy",
+      "engine_mode": "local-first",
+      "duration_sec": 45,
+      "updated_at": "2026-04-25T00:00:00+00:00",
+      "tracks": [
+        {
+          "id": "trk-score",
+          "name": "Score Bed",
+          "role": "music",
+          "model_hint": "musicgen-small"
+        },
+        {
+          "id": "trk-fx",
+          "name": "Texture / FX",
+          "role": "audio-design",
+          "model_hint": "stable-audio-open"
+        }
+      ],
+      "scenes": [
+        {
+          "id": "scn-1",
+          "name": "Intro",
+          "duration_sec": 8,
+          "goal": "Establish the mood and pulse."
+        },
+        {
+          "id": "scn-2",
+          "name": "Lift",
+          "duration_sec": 12,
+          "goal": "Build momentum for the main hook."
+        }
+      ],
+      "deliverables": [
+        {
+          "id": "dlv-1",
+          "type": "audio",
+          "format": "wav",
+          "target": "master stem"
+        },
+        {
+          "id": "dlv-2",
+          "type": "video",
+          "format": "mp4",
+          "target": "preview reel"
+        }
+      ],
+      "studio_project_id": "P-1BAD468675"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "job-demo",
+      "project_id": "media-demo",
+      "project_name": "Swarm Launch Teaser",
+      "job_type": "compile-preview",
+      "mode": "simulate",
+      "status": "ready",
+      "engine": "local-ffmpeg-placeholder",
+      "notes": "Framework stub ready for model wiring.",
+      "created_at": "2026-04-25T00:00:00+00:00",
+      "updated_at": "2026-04-25T00:00:00+00:00",
+      "artifacts": [
+        {
+          "label": "Storyboard",
+          "path": "sandpits/shared/media_center_storyboard.md",
+          "status": "planned"
+        },
+        {
+          "label": "Preview MP4",
+          "path": "exports/media-demo-preview.mp4",
+          "status": "planned"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "id": "pulse-trailer",
+      "name": "Pulse Trailer",
+      "medium": "audio-video",
+      "summary": "Aggressive teaser flow for short promos and launch videos.",
+      "music_models": [
+        "musicgen-small",
+        "stable-audio-open"
+      ],
+      "video_models": [
+        "comfyui",
+        "wan-local",
+        "ffmpeg-comp"
+      ]
+    },
+    {
+      "id": "ambient-score",
+      "name": "Ambient Score",
+      "medium": "music",
+      "summary": "Long-form beds, intros, and atmospheric stems.",
+      "music_models": [
+        "musicgen-medium",
+        "riffusion",
+        "stable-audio-open"
+      ],
+      "video_models": []
+    },
+    {
+      "id": "visualizer-pack",
+      "name": "Visualizer Pack",
+      "medium": "video",
+      "summary": "Loops, waveform overlays, caption bars, and assembly-only outputs.",
+      "music_models": [],
+      "video_models": [
+        "ffmpeg-comp",
+        "comfyui",
+        "animatediff-local"
+      ]
+    }
+  ]
+}
