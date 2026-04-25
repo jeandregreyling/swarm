@@ -64,14 +64,21 @@ function studioSetTab(tab) {
   const isGit = (tab === 'git');
   const isTestLab = (tab === 'testlab');
   const isProjects = (tab === 'projects');
+  const isMedia = (tab === 'media');
 
   // Style proposal tab buttons
-  ['pending','in_progress','all','projects','git','testlab'].forEach(t => {
+  ['pending','in_progress','all','projects','media','git','testlab'].forEach(t => {
     const btn = document.getElementById('studio-tab-' + t);
     if (!btn) return;
     const on = tab === t;
     // Test Lab tab gets a distinct "info-tinted" identity so it's visually
     // discoverable among the row of proposal tabs (Seven reported missing it).
+    if (t === 'media') {
+      btn.style.cssText = btn.style.cssText.replace(/background[^;]+;|color[^;]+;|border-color[^;]+;|box-shadow[^;]+;/g,'') +
+        (on ? 'background:color-mix(in srgb, var(--accent) 88%, black 12%);color:var(--text-on-accent, #fff);border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);'
+            : 'background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--accent);border-color:color-mix(in srgb, var(--accent) 35%, var(--border));');
+      return;
+    }
     if (t === 'testlab') {
       btn.style.cssText = btn.style.cssText.replace(/background[^;]+;|color[^;]+;|border-color[^;]+;|box-shadow[^;]+;/g,'') +
         (on ? 'background:var(--info);color:#fff;border-color:var(--info);box-shadow:0 0 0 2px color-mix(in srgb, var(--info) 40%, transparent);'
@@ -88,10 +95,12 @@ function studioSetTab(tab) {
   const gitPanel   = document.getElementById('studio-git-panel');
   const testLabPanel = document.getElementById('studio-testlab-panel');
   const projectsPanel = document.getElementById('studio-projects-panel');
-  if (container)      container.style.display      = (isGit || isTestLab || isProjects) ? 'none' : '';
+  const mediaPanel = document.getElementById('studio-media-panel');
+  if (container)      container.style.display      = (isGit || isTestLab || isProjects || isMedia) ? 'none' : '';
   if (gitPanel)       gitPanel.style.display       = isGit       ? 'flex' : 'none';
   if (testLabPanel)   testLabPanel.style.display   = isTestLab   ? 'flex' : 'none';
   if (projectsPanel)  projectsPanel.style.display  = isProjects  ? 'flex' : 'none';
+  if (mediaPanel)     mediaPanel.style.display     = isMedia     ? 'flex' : 'none';
 
   if (isGit) {
     const fakeWin = {
@@ -105,6 +114,8 @@ function studioSetTab(tab) {
     if (typeof loadStudioTestLabPanel === 'function') loadStudioTestLabPanel();
   } else if (isProjects) {
     if (typeof loadStudioProjectsPanel === 'function') loadStudioProjectsPanel();
+  } else if (isMedia) {
+    if (typeof loadStudioMediaPanel === 'function') loadStudioMediaPanel();
   } else {
     if (container) loadProposals(container, tab);
   }

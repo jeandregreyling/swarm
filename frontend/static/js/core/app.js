@@ -50,6 +50,7 @@ function _launchHomeNode(node) {
 function syncTaskbarLaunchers() {
     const strip = document.getElementById('taskbar-launchers');
     if (!strip) return;
+    const PINNED_LAUNCHERS = ['chat', 'terminal', 'knowledge', 'studio', 'media-center'];
 
     // V8 Orbs overhaul (S-EAA7C440CC): mark active windows with a ring +
     // underline, support a data-badge count on the source home card for
@@ -66,7 +67,17 @@ function syncTaskbarLaunchers() {
 
     strip.innerHTML = '';
     const launchNodes = Array.from(document.querySelectorAll('#quick-cards .home-card[data-win-id]'));
+    const launchNodeMap = new Map(launchNodes.map((node) => [String(node.dataset.winId || '').trim(), node]));
+    const orderedNodes = [];
+    PINNED_LAUNCHERS.forEach((winId) => {
+        const node = launchNodeMap.get(winId);
+        if (node) orderedNodes.push(node);
+    });
     launchNodes.forEach((node) => {
+        if (!orderedNodes.includes(node)) orderedNodes.push(node);
+    });
+
+    orderedNodes.forEach((node) => {
         const winId = String(node.dataset.winId || '').trim();
         const winTitle = String(node.dataset.winTitle || '').trim();
         if (!winId || !winTitle || winId === 'email') return;
@@ -177,6 +188,7 @@ function openWindow(id, title, templateId, options = {}) {
             else if (id === 'access') loadAccessData && loadAccessData(win);
             else if (id === 'agents-config') loadAgentsConfigData && loadAgentsConfigData(win);
             else if (id === 'localai') initializeLocalAiPanel && initializeLocalAiPanel();
+            else if (id === 'media-center') initMediaCenter && initMediaCenter(win);
             else if (id === 'trace') initTraceView && initTraceView(win);
             else if (id === 'onboarding') _initOnboarding && _initOnboarding();
             else if (id === 'knowledge') loadKnowledgeData && loadKnowledgeData(win);

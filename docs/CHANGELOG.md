@@ -6,6 +6,39 @@ _Comprehensive change log with agent attribution, timestamps, and version contro
 
 ---
 
+## [2026-04-25 16:38:00] — [Codex] — Media Center Studio + signal integration
+
+### Changed
+- **Studio integration landed** — `frontend/templates/terminal_base.html` now adds a dedicated `Media` tab and panel inside Studio, `frontend/static/js/views/studio.js` knows how to switch into that surface, and `frontend/static/js/views/studio-media.js` renders Media Center state directly inside Studio.
+- **Media projects now attach to the operating spine** — `core/media_center/framework.py` now syncs Media Center projects into the Knowledge/Studio project model, seeds baseline steps/tests, emits Spine events for project and job activity, and exposes linked Studio project ids back to the UI.
+- **Interests + feeds linkage** — Media Center state now carries media-relevant interests, feed subscriptions, and feed suggestions so the tile can work as part of the wider discovery loop instead of as an isolated runner shell.
+- **Media Center UI enriched** — `frontend/static/js/views/media-center.js` now shows linked Studio projects plus interests/feeds/spine context, and can jump from a media project straight into the Studio Projects surface.
+- **Feeds cross-link** — `frontend/templates/views/feeds.html` now calls out the Media Center relationship explicitly and offers a direct open action back into the Media Center window.
+
+### Added
+- `tests/test_media_center_integration.py` — regression coverage for the Studio Media tab/panel wiring and the enriched `/api/media-center/state` payload shape.
+
+### Verified
+- `python3 -m py_compile core/media_center/framework.py frontend/blueprints/media_center.py frontend/terminal.py tests/test_media_center_integration.py`
+- `pytest tests/test_media_center_integration.py tests/test_taskbar_launcher_coverage.py` → **8 passed**
+- PROD `/_health` on `http://127.0.0.1:5050/_health` shows `env: "PROD"` and `media_center_bp` loaded.
+
+---
+
+## [2026-04-25 10:40:00] — [Codex] — Media Center visibility hardening
+
+### Fixed
+- **Media Center tile discoverability** — the new `Media Center` home tile is now protected from stale hidden-tile localStorage state in `frontend/static/js/views/diamond.js`, matching the existing Local AI safety behavior.
+- **Taskbar launcher visibility** — `frontend/static/js/core/app.js` now pins `media-center` into the launcher strip order alongside the core Home launchers, so it appears consistently in the taskbar instead of relying on incidental tile order.
+
+### Added
+- `tests/test_taskbar_launcher_coverage.py` now guards both the pinned Media Center launcher and the "cannot be hidden" rule.
+
+### Verified
+- `pytest tests/test_taskbar_launcher_coverage.py` planned in-session alongside Media Center API smoke checks.
+
+---
+
 ## [2026-04-23 23:59:04] — [Copilot] — V8 close-out: 25 BIG items shipped → 110/110
 
 **ALM state:** `P-A3AA05D060` reached **0 pending / 110 done**. All Phase-5, Phase-6 and Phase-7 work now has a source-asserted scaffold, a registered blueprint (where applicable), and a green ALM run.
