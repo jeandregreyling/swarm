@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-26 00:08*
+*Auto-generated: 2026-04-27 00:07*
 
 
 ## Python Modules
@@ -289,37 +289,37 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 40147 |
+| `activity_log` | 41144 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 670 |
-| `audit_results` | 38 |
-| `change_runs` | 22 |
+| `approval_tokens` | 673 |
+| `audit_results` | 39 |
+| `change_runs` | 23 |
 | `chat_jobs` | 664 |
 | `claude_log` | 1 |
 | `conv_timeline` | 2405 |
 | `conversations` | 202 |
-| `council_output` | 3581 |
+| `council_output` | 4070 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 18724 |
+| `decisions` | 21720 |
 | `deferred_items` | 0 |
-| `duck_log` | 933 |
+| `duck_log` | 935 |
 | `feed_subscriptions` | 0 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4665 |
+| `ghost_circle` | 4667 |
 | `governance_log` | 416 |
 | `knowledge_chunks` | 638 |
 | `knowledge_sources` | 51 |
 | `memory` | 129 |
 | `memory_eight` | 1 |
-| `memory_gemma` | 3 |
+| `memory_gemma` | 2 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
 | `memory_llama` | 0 |
@@ -346,7 +346,7 @@
 | `projects` | 32 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 2 |
-| `queue` | 1717 |
+| `queue` | 1721 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 550 |
@@ -363,19 +363,19 @@
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 2 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 8118 |
+| `system_stats` | 8404 |
 | `task_run_log` | 1 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 54 |
-| `test_runs` | 165 |
-| `ticket_notes` | 687 |
-| `tickets` | 695 |
-| `time_checkpoints` | 5245 |
-| `time_events` | 101738 |
-| `time_journal` | 95020 |
-| `time_machine` | 6839 |
+| `test_runs` | 166 |
+| `ticket_notes` | 689 |
+| `tickets` | 697 |
+| `time_checkpoints` | 5264 |
+| `time_events` | 109602 |
+| `time_journal` | 102865 |
+| `time_machine` | 6864 |
 | `tool_builds` | 0 |
-| `trace_events` | 739 |
+| `trace_events` | 757 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_interests` | 21 |

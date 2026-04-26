@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-26 00:08",
+  "generated_at": "2026-04-27 00:07",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -3714,7 +3714,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 40147
+      "rows": 41144
     },
     {
       "name": "agent_capabilities",
@@ -3734,15 +3734,15 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 670
+      "rows": 673
     },
     {
       "name": "audit_results",
-      "rows": 38
+      "rows": 39
     },
     {
       "name": "change_runs",
-      "rows": 22
+      "rows": 23
     },
     {
       "name": "chat_jobs",
@@ -3762,7 +3762,7 @@
     },
     {
       "name": "council_output",
-      "rows": 3581
+      "rows": 4070
     },
     {
       "name": "daily_checkpoint",
@@ -3782,7 +3782,7 @@
     },
     {
       "name": "decisions",
-      "rows": 18724
+      "rows": 21720
     },
     {
       "name": "deferred_items",
@@ -3790,7 +3790,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 933
+      "rows": 935
     },
     {
       "name": "feed_subscriptions",
@@ -3810,7 +3810,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4665
+      "rows": 4667
     },
     {
       "name": "governance_log",
@@ -3834,7 +3834,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 3
+      "rows": 2
     },
     {
       "name": "memory_ghost_coder",
@@ -3942,7 +3942,7 @@
     },
     {
       "name": "queue",
-      "rows": 1717
+      "rows": 1721
     },
     {
       "name": "research_evidence",
@@ -4010,7 +4010,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 8118
+      "rows": 8404
     },
     {
       "name": "task_run_log",
@@ -4026,31 +4026,31 @@
     },
     {
       "name": "test_runs",
-      "rows": 165
+      "rows": 166
     },
     {
       "name": "ticket_notes",
-      "rows": 687
+      "rows": 689
     },
     {
       "name": "tickets",
-      "rows": 695
+      "rows": 697
     },
     {
       "name": "time_checkpoints",
-      "rows": 5245
+      "rows": 5264
     },
     {
       "name": "time_events",
-      "rows": 101738
+      "rows": 109602
     },
     {
       "name": "time_journal",
-      "rows": 95020
+      "rows": 102865
     },
     {
       "name": "time_machine",
-      "rows": 6839
+      "rows": 6864
     },
     {
       "name": "tool_builds",
@@ -4058,7 +4058,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 739
+      "rows": 757
     },
     {
       "name": "trusted_domains",
