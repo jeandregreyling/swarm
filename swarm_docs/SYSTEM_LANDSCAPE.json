@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-27 00:07",
+  "generated_at": "2026-04-27 00:08",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -3714,7 +3714,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 41144
+      "rows": 41184
     },
     {
       "name": "agent_capabilities",
@@ -3734,7 +3734,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 673
+      "rows": 676
     },
     {
       "name": "audit_results",
@@ -3762,7 +3762,7 @@
     },
     {
       "name": "council_output",
-      "rows": 4070
+      "rows": 4086
     },
     {
       "name": "daily_checkpoint",
@@ -3782,7 +3782,7 @@
     },
     {
       "name": "decisions",
-      "rows": 21720
+      "rows": 21764
     },
     {
       "name": "deferred_items",
@@ -3790,7 +3790,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 935
+      "rows": 937
     },
     {
       "name": "feed_subscriptions",
@@ -3810,7 +3810,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4667
+      "rows": 4669
     },
     {
       "name": "governance_log",
@@ -3942,7 +3942,7 @@
     },
     {
       "name": "queue",
-      "rows": 1721
+      "rows": 1725
     },
     {
       "name": "research_evidence",
@@ -4010,7 +4010,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 8404
+      "rows": 8405
     },
     {
       "name": "task_run_log",
@@ -4030,27 +4030,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 689
+      "rows": 691
     },
     {
       "name": "tickets",
-      "rows": 697
+      "rows": 699
     },
     {
       "name": "time_checkpoints",
-      "rows": 5264
+      "rows": 5283
     },
     {
       "name": "time_events",
-      "rows": 109602
+      "rows": 109626
     },
     {
       "name": "time_journal",
-      "rows": 102865
+      "rows": 102870
     },
     {
       "name": "time_machine",
-      "rows": 6864
+      "rows": 6869
     },
     {
       "name": "tool_builds",
@@ -4058,7 +4058,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 757
+      "rows": 769
     },
     {
       "name": "trusted_domains",
