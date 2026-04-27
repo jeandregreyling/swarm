@@ -17,6 +17,11 @@ def test_studio_template_contains_media_tab_and_panel():
     assert "studio-media-panel" in html
     assert "Open Media Center" in html
     assert "media-center-resizer" in html
+    assert "media-center-transport" in html
+    assert "media-editor-shell" in html
+    assert "media-center-editor-stage" in html
+    assert "media-center-research-body" in html
+    assert "media-center-bottom-body" in html
 
 
 def test_studio_js_knows_media_tab():
@@ -39,28 +44,49 @@ def test_media_center_has_resizable_layout_contract():
     assert ".media-center-resizer" in css
     assert "_mediaCenterWireResizer" in js
     assert "fridays.mediaCenter.sidebarWidth" in js
+    assert "mediaCenterTogglePanel" in js
+    assert "mediaCenterExpandAll" in js
+    assert "mediaCenterCollapseToFocus" in js
+    assert "mediaCenterOpenReviewPlan" in js
+    assert ".media-panel.is-collapsed .media-panel-body" in css
+    assert "position: sticky;" in css
+    assert ".media-editor-shell" in css
+    assert ".media-composer-surface" in css
+    assert ".media-right-dock" in css
+    assert "media-bottom-dock" in html_or_css(css)
+
+
+def html_or_css(css: str) -> str:
+    return css + TEMPLATE.read_text()
 
 
 def test_media_center_context_surfaces_models_swarms_and_chat():
     js = (ROOT / "frontend/static/js/views/media-center.js").read_text()
-    assert "Projects Tracker" in js
-    assert "Chat Actions" in js
-    assert "Model Candidates" in js
-    assert "Linked Swarms" in js
-    assert "recent passes" in js
-    assert "Editor Timeline" in js
-    assert "mediaCenterAddClip" in js
-    assert "Synth Registry" in js
-    assert "mediaCenterCreateSynthTake" in js
-    assert "Media Accounts" in js
-    assert "Knowledge Index" in js
-    assert "Media References" in js
-    assert "mediaCenterAddReference" in js
+    html = TEMPLATE.read_text()
+    assert "Open review plan" in html
+    assert "Focus mode" in html
+    assert "Expand all" in html
+    assert "Open Project Plan" in html
+    assert "Queue Audio" in html
+    assert "Queue Video" in html
+    assert "Render/Compile" in html
+    assert "Research Center" in html
+    assert "Composer Timeline" in js
     assert "Model / Swarm Routing" in js
+    assert "Assistive Advisors" in js
+    assert "Linked Swarms" in js
+    assert "Studio Review Plan" in js
+    assert "mediaCenterAddClip" in js
+    assert "mediaCenterCreateSynthTake" in js
+    assert "Linked Accounts" in js
+    assert "Knowledge Docs" in js
+    assert "Project References" in js
+    assert "mediaCenterAddReference" in js
     assert "mediaCenterUpdateRouting" in js
     assert "mediaCenterLinkAccount" in js
     assert "Handoff Manifest" in js
     assert "mediaCenterCopyHandoff" in js
+    assert "mediaCenterMarkScene" in js
 
 
 def test_feeds_template_is_server_synced_and_conflict_free():
@@ -90,6 +116,7 @@ def test_media_center_state_exposes_studio_interests_feeds_and_spine():
     assert "accounts" in payload
     assert "knowledge" in payload
     assert "routing" in payload
+    assert "advisors" in payload
     assert "linked_projects" in payload["studio"]
     assert "tracking_project_id" in payload["studio"]
     assert "progress" in payload["tracking"]
@@ -103,7 +130,48 @@ def test_media_center_state_exposes_studio_interests_feeds_and_spine():
     assert payload["synths"]["registry"]
     assert payload["accounts"]["registry"]
     assert "references" in payload["knowledge"]
+    assert payload["knowledge"]["project_docs"]
+    assert payload["advisors"]["roles"]
     assert payload["routing"]["default_mode"] == "local-first"
+
+
+def test_media_center_state_seeds_fridays_music_and_video_knowledge_docs():
+    app = create_app()
+    with app.test_client() as client:
+        response = client.get("/api/media-center/state")
+        assert response.status_code == 200
+
+    from utils.db._connection import get_connection
+
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT doc_name, tags, content FROM project_docs "
+            "WHERE doc_name IN ("
+            "'FRIDAYS_COMPOSITION_HEURISTICS.md', "
+            "'FRIDAYS_MUSIC_WORKFLOW.md', "
+            "'FRIDAYS_RENDER_HANDOFF.md', "
+            "'FRIDAYS_VIDEO_WORKFLOW.md'"
+            ") "
+            "ORDER BY doc_name ASC"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    assert [row["doc_name"] for row in rows] == [
+        "FRIDAYS_COMPOSITION_HEURISTICS.md",
+        "FRIDAYS_MUSIC_WORKFLOW.md",
+        "FRIDAYS_RENDER_HANDOFF.md",
+        "FRIDAYS_VIDEO_WORKFLOW.md",
+    ]
+    assert "composition" in rows[0]["tags"]
+    assert "Start with sections before sound design" in rows[0]["content"]
+    assert "music" in rows[1]["tags"]
+    assert "Media Center" in rows[1]["content"]
+    assert "render" in rows[2]["tags"]
+    assert "Save routing before delegating" in rows[2]["content"]
+    assert "video" in rows[3]["tags"]
+    assert "Studio Projects" in rows[3]["content"]
 
 
 def test_media_center_adds_timeline_clip_through_api():
@@ -266,8 +334,26 @@ def test_media_center_internal_project_is_logged_in_projects_section():
     assert tree["project"]["name"] == "Media Center + Studio Integration"
     step_titles = {step["title"] for step in tree["steps"]}
     case_titles = {case["title"] for case in tree["test_cases"]}
-    assert "Project tracking + test harness" in step_titles
-    assert "Chat integration" in step_titles
-    assert "Swarm and model federation" in step_titles
+    assert "DAW-first workspace review" in step_titles
+    assert "Research dock usefulness review" in step_titles
+    assert "Bottom review dock review" in step_titles
+    assert "Knowledge Center composition seeding" in step_titles
+    assert "Advisor workflow review" in step_titles
+    assert "Chat and local-agent flow checks" in step_titles
+    assert "Media Center opens as a DAW-first editor with a dominant composer surface" in case_titles
+    assert "Research Center renders references, accounts, feeds, knowledge docs, routing, and advisor roles as dock tabs" in case_titles
+    assert "Advisor roles 10, 17, and 19 are exposed for composition, production, and critique guidance" in case_titles
+    assert "Media Center review plan is visible inside Studio Projects tracking" in case_titles
     assert "Chat action intents can open Media Center and Studio Projects" in case_titles
     assert "Remote swarms and enabled models are visible to the media pipeline" in case_titles
+
+
+def test_media_center_advisors_are_seeded_for_10_17_and_19():
+    app = create_app()
+    with app.test_client() as client:
+        payload = client.get("/api/media-center/state").get_json()
+    roles = {item["agent_id"]: item for item in payload["advisors"]["roles"]}
+    assert {"10", "17", "19"} <= set(roles)
+    assert "composition" in roles["10"]["role"]
+    assert "production" in roles["17"]["role"]
+    assert "critique" in roles["19"]["role"]

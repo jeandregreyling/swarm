@@ -6,6 +6,26 @@ _Comprehensive change log with agent attribution, timestamps, and version contro
 
 ---
 
+## [2026-04-27 17:05:00] — [Codex] — Media Center review pass + Studio Projects plan
+
+### Changed
+- **Media Center review flow tightened** — `frontend/static/js/views/media-center.js`, `frontend/static/css/views/media-center.css`, and `frontend/templates/terminal_base.html` now present Media Center as a stacked review workflow instead of a dense multi-column wall. Main sections and inner project/detail sections can collapse independently, and the header now exposes `Focus mode` plus `Expand all`.
+- **Built-in workflow explanation** — Media Center now includes a short architecture strip explaining the intended flow: `Project -> Graph -> Queue -> Routing -> Signals`, so the workspace is understandable without reading code or backend structures first.
+- **Studio Projects plan upgraded** — `core/media_center/framework.py` now seeds the internal `Media Center + Studio Integration` project with explicit review steps for information architecture, layout/accordion behavior, resizing/density review, and the Studio walkthrough itself.
+- **Test Lab coverage expanded** — `core/testlab_registry.py` now includes Media Center-specific review scripts for pytest and JS syntax checks so the Test Lab can run the exact suite relevant to this surface.
+
+### Added
+- `tests/test_media_center_integration.py` now asserts the stronger review-plan seeding and accordion/layout contract.
+- `tests/test_testlab.py` now guards the new Media Center review scripts in the Test Lab registry.
+
+### Verified
+- `.venv/bin/python -m pytest -q tests/test_media_center_integration.py`
+- `.venv/bin/python -m pytest -q tests/test_taskbar_launcher_coverage.py tests/test_projects.py tests/test_chat_actions.py tests/test_v7c_a01_studio_default.py tests/test_v7c_r13_studio.py tests/test_testlab.py tests/test_knowledge.py`
+- `node --check frontend/static/js/views/media-center.js`
+- `node --check frontend/static/js/views/studio-media.js`
+
+---
+
 ## [2026-04-25 16:38:00] — [Codex] — Media Center Studio + signal integration
 
 ### Changed

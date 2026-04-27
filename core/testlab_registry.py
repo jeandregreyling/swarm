@@ -98,6 +98,58 @@ REGISTRY: List[Dict[str, object]] = [
         'change_aware': True,
         'default_on': False,
     },
+    {
+        'id': 'pytest-media-center-review',
+        'group': 'Pytest',
+        'label': 'Media Center review suite',
+        'description': 'Covers Media Center layout, Studio Projects tracking integration, routing, references, and accordion/resizer contracts.',
+        'command': 'python -m pytest -q tests/test_media_center_integration.py',
+        'change_aware': True,
+        'default_on': False,
+    },
+    {
+        'id': 'pytest-media-center-projects-chat',
+        'group': 'Pytest',
+        'label': 'Media Center + Projects + chat intents',
+        'description': 'Checks Studio Projects defaults, Media Center window routing, and chat actions that open Media Center or Studio Projects.',
+        'command': (
+            'python -m pytest -q '
+            'tests/test_projects.py '
+            'tests/test_chat_actions.py '
+            'tests/test_v7c_a01_studio_default.py '
+            'tests/test_v7c_r13_studio.py'
+        ),
+        'change_aware': True,
+        'default_on': False,
+    },
+    {
+        'id': 'pytest-media-center-daw-workspace',
+        'group': 'Pytest',
+        'label': 'Media Center DAW workspace',
+        'description': 'Covers the DAW-first layout contract, research/right dock behavior, review/bottom dock behavior, and advisor/Knowledge surfacing.',
+        'command': (
+            'python -m pytest -q '
+            'tests/test_media_center_integration.py '
+            'tests/test_chat_actions.py '
+            '-k "media_center or open_media_center or open_music_editor or projects_section"'
+        ),
+        'change_aware': True,
+        'default_on': False,
+    },
+    {
+        'id': 'pytest-local-agent-runtime-fixes',
+        'group': 'Pytest',
+        'label': 'Local agent runtime fixes',
+        'description': 'Guards the Twenty model alias repair, Eight local-runtime path, and Fridays music/video knowledge seeding.',
+        'command': (
+            'python -m pytest -q '
+            'tests/test_local_agent_runtime_fixes.py '
+            'tests/test_media_center_integration.py '
+            '-k "local_agent_runtime_fixes or knowledge_docs"'
+        ),
+        'change_aware': True,
+        'default_on': False,
+    },
 
     # ── JS / static checks ───────────────────────────────────────────────
     {
@@ -113,6 +165,19 @@ REGISTRY: List[Dict[str, object]] = [
         ),
         'change_aware': True,
         'default_on': True,
+    },
+    {
+        'id': 'js-syntax-media-center',
+        'group': 'JS',
+        'label': 'node --check (Media Center views)',
+        'description': 'Syntax-checks the Media Center and Studio media bridge files after layout or workflow edits.',
+        'command': (
+            'node --check frontend/static/js/views/media-center.js && '
+            'node --check frontend/static/js/views/studio-media.js && '
+            'echo OK'
+        ),
+        'change_aware': True,
+        'default_on': False,
     },
     {
         'id': 'js-syntax-all-views',

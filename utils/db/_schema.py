@@ -1384,7 +1384,7 @@ def _seed_agents():
         (13,  'thirteen',  'HuggingFace', 'meta-llama/Llama-3.3-70B-Instruct',  0.5,  'Developer Agent — HuggingFace specialist (testing)'),
         (17,  'ghost_coder', 'Ghost Coder', 'claude-sonnet-4-20250514',        0.3,  'Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays'),
         ( 7,  'seven',      'Seven',      'local-algorithm',                 0.0,  'Personal companion — loyal, thinks out loud'),
-        (21,  'twenty',     'Qwen3.6',    'qwen3:latest',                    0.8,  'Nervous system — observes, deliberates, suggests (no LLM)'),
+        (21,  'twenty',     'Qwen3.6',    'qwen3.6:latest',                  0.8,  'Nervous system — observes, deliberates, suggests (no LLM)'),
     ]
     conn = get_connection()
     for number, name, label, model, temp, role in roster:
@@ -1410,6 +1410,12 @@ def _seed_agents():
             "UPDATE agents SET number=-1, label='Retired', role=? WHERE name=?",
             (retired_note, retired_name)
         )
+    # Self-heal runtime drift from the earlier Twenty alias bug. Existing DBs
+    # may still hold qwen3:latest, which causes chat-time 404s against Ollama.
+    conn.execute(
+        "UPDATE agents SET model='qwen3.6:latest' "
+        "WHERE name='twenty' AND lower(trim(COALESCE(model,''))) IN ('qwen3:latest','qwen3')"
+    )
 
     # ── proposal_attachments table (ALM file attachments) ─────────────────────
     try:
