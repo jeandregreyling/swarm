@@ -19,8 +19,12 @@ from uuid import uuid4
 import requests
 
 from core.knowledge import projects as _kc_projects
+from core.knowledge import test_runs as _kc_runs
 from core import feeds as _feeds
 from core import spine as _spine
+from utils.db import knowledge as _knowledge
+from utils.db import nodes as _nodes
+from utils.db import registry as _registry
 from utils.swarm_root import SWARM_ROOT
 from utils.db import trace_log as _trace_log
 from utils.db._connection import get_connection
@@ -33,6 +37,55 @@ _MEDIA_STOP_WORDS = {
     "have", "just", "will", "then", "them", "high", "short", "long",
 }
 
+_TRACKING_PROJECT_NAME = "Media Center + Studio Integration"
+_TRACKING_PROJECT_DESCRIPTION = (
+    "Internal Fridays project for Media Center becoming a Studio-linked music/video "
+    "workspace with chat actions, project tracking, test cases, AI synthesizers, "
+    "linked accounts, feeds, Knowledge indexing, models, and swarm federation."
+)
+
+_TRACKING_STEPS = [
+    (
+        "Project tracking + test harness",
+        "Keep Media Center work visible in Studio Projects with plan steps, test cases, and Test Lab run linkage.",
+    ),
+    (
+        "Chat integration",
+        "Expose Media Center and project-tracking actions through chat intents and relay-friendly context.",
+    ),
+    (
+        "Music editor foundation",
+        "Add timeline lanes for stems, synth takes, prompts, bounces, lyrics, and cue metadata.",
+    ),
+    (
+        "Video editor foundation",
+        "Add timeline lanes for clips, generated visuals, captions, overlays, audio beds, and render profiles.",
+    ),
+    (
+        "AI synthesizer registry",
+        "Connect audio, voice, MIDI, visual, and video generation runners through one manifest contract.",
+    ),
+    (
+        "Accounts, feeds, and Knowledge indexing",
+        "Link media accounts and feeds, then index imported/generated assets with provenance and interest signals.",
+    ),
+    (
+        "Swarm and model federation",
+        "Advertise which local models, remote swarms, and connected agents can contribute to the media pipeline.",
+    ),
+]
+
+_TRACKING_CASES = [
+    ("Media Center state exposes Projects, Chat, model, swarm, feeds, interests, and spine context", "pytest:media-center-state"),
+    ("Media project creates and updates linked Studio project tracking", "pytest:media-center-project-sync"),
+    ("Media Center panes remain resizable and persist user sizing", "pytest:media-center-resize"),
+    ("Chat action intents can open Media Center and Studio Projects", "pytest:chat-actions-media-projects"),
+    ("Media project timeline lanes and clips can be edited through the API", "pytest:media-center-editor"),
+    ("Synth and render runners persist artifacts and run history", "pytest:media-center-runners"),
+    ("Linked feeds/accounts preserve source provenance for Knowledge indexing", "pytest:media-center-knowledge-provenance"),
+    ("Remote swarms and enabled models are visible to the media pipeline", "pytest:media-center-federation"),
+]
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -40,6 +93,40 @@ def _now_iso() -> str:
 
 def _default_project_blueprint() -> dict[str, Any]:
     return {
+        "timeline": {
+            "tempo_bpm": 120,
+            "time_signature": "4/4",
+            "lanes": [
+                {"id": "lane-music", "name": "Music Bed", "kind": "audio", "role": "stem"},
+                {"id": "lane-synth", "name": "AI Synth Takes", "kind": "audio", "role": "generated"},
+                {"id": "lane-video", "name": "Video Clips", "kind": "video", "role": "clip"},
+                {"id": "lane-captions", "name": "Captions", "kind": "caption", "role": "text"},
+            ],
+            "clips": [
+                {
+                    "id": "clip-intro-bed",
+                    "lane_id": "lane-music",
+                    "name": "Intro score bed",
+                    "kind": "audio",
+                    "start_sec": 0,
+                    "duration_sec": 8,
+                    "source": "planned",
+                    "prompt": "Percussive pulse with luminous pads.",
+                    "status": "planned",
+                },
+                {
+                    "id": "clip-intro-visual",
+                    "lane_id": "lane-video",
+                    "name": "Intro visual pass",
+                    "kind": "video",
+                    "start_sec": 0,
+                    "duration_sec": 8,
+                    "source": "planned",
+                    "prompt": "Fast-cut system visuals with bright UI motion.",
+                    "status": "planned",
+                },
+            ],
+        },
         "tracks": [
             {"id": "trk-score", "name": "Score Bed", "role": "music", "model_hint": "musicgen-small"},
             {"id": "trk-fx", "name": "Texture / FX", "role": "audio-design", "model_hint": "stable-audio-open"},
@@ -90,6 +177,8 @@ def _default_state() -> dict[str, Any]:
             }
         ],
         "presets": list_presets(),
+        "synth_registry": list_synths(),
+        "media_accounts": list_media_accounts(),
     }
 
 
@@ -108,8 +197,12 @@ def load_state() -> dict[str, Any]:
         raw.setdefault("projects", [])
         raw.setdefault("jobs", [])
         raw.setdefault("presets", list_presets())
+        raw.setdefault("synth_registry", list_synths())
+        raw.setdefault("media_accounts", list_media_accounts())
         changed = False
         for project in raw["projects"]:
+            if _ensure_project_editor_defaults(project):
+                changed = True
             if _sync_project_integrations(project):
                 changed = True
         if changed:
@@ -124,6 +217,156 @@ def load_state() -> dict[str, Any]:
 def save_state(state: dict[str, Any]) -> None:
     _ensure_state_file()
     _STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+
+def _ensure_project_editor_defaults(project: dict[str, Any]) -> bool:
+    changed = False
+    blueprint = _default_project_blueprint()
+    for key in ("tracks", "scenes", "deliverables"):
+        if not isinstance(project.get(key), list):
+            project[key] = copy.deepcopy(blueprint[key])
+            changed = True
+    timeline = project.get("timeline")
+    if not isinstance(timeline, dict):
+        project["timeline"] = copy.deepcopy(blueprint["timeline"])
+        return True
+    if not isinstance(timeline.get("lanes"), list) or not timeline.get("lanes"):
+        timeline["lanes"] = copy.deepcopy(blueprint["timeline"]["lanes"])
+        changed = True
+    if not isinstance(timeline.get("clips"), list):
+        timeline["clips"] = copy.deepcopy(blueprint["timeline"]["clips"])
+        changed = True
+    timeline.setdefault("tempo_bpm", blueprint["timeline"]["tempo_bpm"])
+    timeline.setdefault("time_signature", blueprint["timeline"]["time_signature"])
+    if not isinstance(project.get("synth_runs"), list):
+        project["synth_runs"] = []
+        changed = True
+    if not isinstance(project.get("media_refs"), list):
+        project["media_refs"] = []
+        changed = True
+    if not isinstance(project.get("routing"), dict):
+        project["routing"] = {
+            "music_agent": "",
+            "video_agent": "",
+            "swarm_node_id": "",
+            "handoff_mode": "local-first",
+        }
+        changed = True
+    return changed
+
+
+def list_media_accounts() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "youtube",
+            "name": "YouTube",
+            "kind": "video",
+            "status": "available",
+            "feed_kind": "youtube",
+            "provenance": ["channel", "playlist", "video_url"],
+        },
+        {
+            "id": "youtube-music",
+            "name": "YouTube Music",
+            "kind": "music",
+            "status": "available",
+            "feed_kind": "youtube",
+            "provenance": ["artist", "album", "track_url"],
+        },
+        {
+            "id": "spotify",
+            "name": "Spotify",
+            "kind": "music",
+            "status": "pending_auth",
+            "feed_kind": "rss",
+            "provenance": ["artist", "playlist", "track_url"],
+        },
+        {
+            "id": "apple-music",
+            "name": "Apple Music",
+            "kind": "music",
+            "status": "pending_auth",
+            "feed_kind": "rss",
+            "provenance": ["artist", "playlist", "track_url"],
+        },
+        {
+            "id": "soundcloud",
+            "name": "SoundCloud",
+            "kind": "music",
+            "status": "available",
+            "feed_kind": "rss",
+            "provenance": ["creator", "track_url"],
+        },
+        {
+            "id": "bandcamp",
+            "name": "Bandcamp",
+            "kind": "music",
+            "status": "available",
+            "feed_kind": "rss",
+            "provenance": ["artist", "release", "track_url"],
+        },
+        {
+            "id": "custom-feed",
+            "name": "Custom RSS / Feed",
+            "kind": "feed",
+            "status": "available",
+            "feed_kind": "rss",
+            "provenance": ["feed_url", "item_url"],
+        },
+        {
+            "id": "local-folder",
+            "name": "Local Folder",
+            "kind": "local",
+            "status": "local",
+            "feed_kind": "filesystem",
+            "provenance": ["path", "mtime", "checksum"],
+        },
+    ]
+
+
+def list_synths() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "local-tone",
+            "name": "Local Tone Synth",
+            "kind": "audio",
+            "lane_kind": "audio",
+            "runner_key": "local_synth_audio_runner",
+            "status": "available",
+            "capabilities": ["tone", "placeholder", "wav"],
+            "model_hint": "python-wave",
+        },
+        {
+            "id": "ffmpeg-visualizer",
+            "name": "FFmpeg Visualizer",
+            "kind": "video",
+            "lane_kind": "video",
+            "runner_key": "local_ffmpeg_video_runner",
+            "status": "available" if shutil.which("ffmpeg") else "needs_ffmpeg",
+            "capabilities": ["testsrc", "sine", "mp4"],
+            "model_hint": "ffmpeg",
+        },
+        {
+            "id": "lmstudio-prompt",
+            "name": "LM Studio Prompt Synth",
+            "kind": "prompt",
+            "lane_kind": "audio",
+            "runner_key": "lmstudio_prompt_synth",
+            "status": "available" if _service_up("http://127.0.0.1:1234/v1/models") else "offline",
+            "capabilities": ["prompt", "lyrics", "arrangement"],
+            "model_hint": "lmstudio",
+        },
+        {
+            "id": "remote-swarm-render",
+            "name": "Remote Swarm Render",
+            "kind": "federated",
+            "lane_kind": "video",
+            "runner_key": "remote_swarm_render",
+            "status": "ready_when_linked",
+            "capabilities": ["delegate", "render", "model"],
+            "model_hint": "node-registry",
+        },
+    ]
 
 
 def list_presets() -> list[dict[str, Any]]:
@@ -230,6 +473,406 @@ def update_project(project_id: str, payload: dict[str, Any]) -> dict[str, Any] |
     return None
 
 
+def add_timeline_clip(project_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+    state = load_state()
+    for project in state["projects"]:
+        if project.get("id") != project_id:
+            continue
+        _ensure_project_editor_defaults(project)
+        timeline = project.setdefault("timeline", {})
+        lanes = timeline.setdefault("lanes", [])
+        clips = timeline.setdefault("clips", [])
+        lane_id = str(payload.get("lane_id") or "").strip()
+        if not lane_id or not any(lane.get("id") == lane_id for lane in lanes):
+            lane_id = lanes[0]["id"] if lanes else "lane-music"
+        lane = next((item for item in lanes if item.get("id") == lane_id), {})
+        try:
+            start_sec = max(0.0, float(payload.get("start_sec") or 0))
+        except Exception:
+            start_sec = 0.0
+        try:
+            duration_sec = max(0.25, float(payload.get("duration_sec") or 4))
+        except Exception:
+            duration_sec = 4.0
+        clip = {
+            "id": f"clip-{uuid4().hex[:10]}",
+            "lane_id": lane_id,
+            "name": str(payload.get("name") or "Untitled clip").strip()[:120],
+            "kind": str(payload.get("kind") or lane.get("kind") or "audio").strip()[:40],
+            "start_sec": round(start_sec, 3),
+            "duration_sec": round(duration_sec, 3),
+            "source": str(payload.get("source") or "manual").strip()[:80],
+            "prompt": str(payload.get("prompt") or "").strip()[:1000],
+            "status": str(payload.get("status") or "planned").strip()[:40],
+            "created_at": _now_iso(),
+            "updated_at": _now_iso(),
+        }
+        clips.append(clip)
+        clips.sort(key=lambda item: (float(item.get("start_sec") or 0), str(item.get("lane_id") or "")))
+        project["status"] = "editing"
+        project["updated_at"] = _now_iso()
+        _sync_project_integrations(project)
+        save_state(state)
+        _spine.log(
+            kind=_spine.EventKind.CHECKPOINT,
+            message=f"Media timeline clip added: {clip['name']}",
+            source="media_center",
+            change_id=project_id,
+            payload={"project_id": project_id, "clip_id": clip["id"], "lane_id": lane_id},
+        )
+        return clip
+    return None
+
+
+def create_synth_take(project_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+    state = load_state()
+    synths = state.get("synth_registry") or list_synths()
+    synth_id = str(payload.get("synth_id") or "local-tone").strip()
+    synth = next((item for item in synths if item.get("id") == synth_id), None) or synths[0]
+    for project in state["projects"]:
+        if project.get("id") != project_id:
+            continue
+        _ensure_project_editor_defaults(project)
+        timeline = project.setdefault("timeline", {})
+        lanes = timeline.setdefault("lanes", [])
+        target_kind = synth.get("lane_kind") or synth.get("kind") or "audio"
+        lane_id = str(payload.get("lane_id") or "").strip()
+        if not lane_id:
+            lane = next((item for item in lanes if item.get("kind") == target_kind and item.get("role") == "generated"), None)
+            lane = lane or next((item for item in lanes if item.get("kind") == target_kind), None)
+            lane_id = (lane or lanes[0]).get("id") if lanes else "lane-synth"
+        prompt = str(payload.get("prompt") or project.get("prompt") or "").strip()
+        take_id = f"take-{uuid4().hex[:10]}"
+        try:
+            start_sec = max(0.0, float(payload.get("start_sec") or 0))
+        except Exception:
+            start_sec = 0.0
+        try:
+            duration_sec = max(0.25, float(payload.get("duration_sec") or min(8, project.get("duration_sec") or 8)))
+        except Exception:
+            duration_sec = 8.0
+        take = {
+            "id": take_id,
+            "synth_id": synth.get("id"),
+            "synth_name": synth.get("name"),
+            "runner_key": synth.get("runner_key"),
+            "prompt": prompt[:1000],
+            "status": "planned" if synth.get("status") not in {"available", "ready_when_linked"} else "generated",
+            "lane_id": lane_id,
+            "start_sec": round(start_sec, 3),
+            "duration_sec": round(duration_sec, 3),
+            "created_at": _now_iso(),
+            "artifact_path": "",
+        }
+        project.setdefault("synth_runs", []).insert(0, take)
+        clip = _clip_from_take(take, synth)
+        timeline.setdefault("clips", []).append(clip)
+        timeline["clips"].sort(key=lambda item: (float(item.get("start_sec") or 0), str(item.get("lane_id") or "")))
+        project["status"] = "editing"
+        project["updated_at"] = _now_iso()
+        job = {
+            "id": f"job-{uuid4().hex[:10]}",
+            "project_id": project_id,
+            "project_name": project.get("name"),
+            "job_type": f"synth:{synth.get('id')}",
+            "mode": "manifest",
+            "status": take["status"],
+            "engine": str(synth.get("runner_key") or synth.get("name") or "synth"),
+            "notes": prompt[:500] or f"Queued {synth.get('name')} take.",
+            "created_at": _now_iso(),
+            "updated_at": _now_iso(),
+            "artifacts": [{"label": "Timeline take", "path": clip["id"], "status": take["status"]}],
+        }
+        state.setdefault("jobs", []).insert(0, job)
+        _sync_project_integrations(project)
+        save_state(state)
+        _spine.log(
+            kind=_spine.EventKind.TESTLAB,
+            message=f"Media synth take created: {synth.get('name')}",
+            source="media_center",
+            change_id=project_id,
+            payload={"project_id": project_id, "take_id": take_id, "synth_id": synth.get("id"), "clip_id": clip["id"]},
+        )
+        result = dict(take)
+        result["clip"] = clip
+        result["job"] = job
+        return result
+    return None
+
+
+def add_media_reference(project_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+    state = load_state()
+    accounts = state.get("media_accounts") or list_media_accounts()
+    account_id = str(payload.get("account_id") or payload.get("provider") or "custom-feed").strip()
+    account = next((item for item in accounts if item.get("id") == account_id), None)
+    if not account:
+        account = next((item for item in accounts if item.get("id") == "custom-feed"), accounts[0])
+        account_id = str(account.get("id") or "custom-feed")
+    for project in state["projects"]:
+        if project.get("id") != project_id:
+            continue
+        _ensure_project_editor_defaults(project)
+        title = str(payload.get("title") or "Untitled media reference").strip()[:160]
+        url = str(payload.get("url") or payload.get("link") or "").strip()[:1000]
+        media_type = str(payload.get("media_type") or account.get("kind") or "media").strip()[:40]
+        notes = str(payload.get("notes") or payload.get("summary") or "").strip()[:2000]
+        tags = _normalize_tags(payload.get("tags"), project)
+        reference = {
+            "id": f"ref-{uuid4().hex[:10]}",
+            "title": title,
+            "account_id": account_id,
+            "account_name": account.get("name") or account_id,
+            "media_type": media_type,
+            "url": url,
+            "notes": notes,
+            "tags": tags,
+            "status": "indexed",
+            "provenance": {
+                "source": "media_center",
+                "provider": account_id,
+                "feed_kind": account.get("feed_kind"),
+                "linked_account_status": account.get("status"),
+            },
+            "created_at": _now_iso(),
+            "updated_at": _now_iso(),
+        }
+        project.setdefault("media_refs", []).insert(0, reference)
+        project["updated_at"] = _now_iso()
+        _write_media_reference_knowledge(project, reference)
+        _sync_project_integrations(project)
+        save_state(state)
+        _spine.log(
+            kind=_spine.EventKind.CHECKPOINT,
+            message=f"Media reference indexed: {reference['title']}",
+            source="media_center",
+            change_id=project_id,
+            payload={"project_id": project_id, "reference_id": reference["id"], "provider": account_id},
+        )
+        return reference
+    return None
+
+
+def link_media_account(account_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    payload = payload or {}
+    state = load_state()
+    accounts = state.setdefault("media_accounts", list_media_accounts())
+    account = next((item for item in accounts if item.get("id") == account_id), None)
+    if not account:
+        return None
+    feed_kind = str(account.get("feed_kind") or "rss")
+    url = str(payload.get("url") or payload.get("handle") or f"account://{account_id}").strip()
+    title = str(payload.get("title") or account.get("name") or account_id).strip()
+    if feed_kind == "filesystem":
+        account["status"] = "local"
+        account["linked_at"] = _now_iso()
+        account["source"] = url
+        sub_id = ""
+    else:
+        try:
+            sub_id = _feeds.add_subscription(
+                feed_kind,
+                url,
+                title=title,
+                owner="seven",
+                status="pending" if feed_kind not in {"rss", "atom"} else "pending",
+            )
+        except Exception:
+            sub_id = ""
+        account["status"] = "linked" if sub_id else "pending_auth"
+        account["subscription_id"] = sub_id
+        account["source"] = url
+        account["linked_at"] = _now_iso()
+    state["updated_at"] = _now_iso()
+    save_state(state)
+    _spine.log(
+        kind=_spine.EventKind.CHECKPOINT,
+        message=f"Media account linked: {account.get('name')}",
+        source="media_center",
+        change_id=account_id,
+        payload={"account_id": account_id, "subscription_id": sub_id, "feed_kind": feed_kind},
+    )
+    return dict(account)
+
+
+def update_project_routing(project_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+    state = load_state()
+    model_names = {item.get("agent") for item in _media_model_context().get("agents", [])}
+    node_ids = {item.get("node_id") for item in _media_swarm_context().get("nodes", [])}
+    for project in state["projects"]:
+        if project.get("id") != project_id:
+            continue
+        _ensure_project_editor_defaults(project)
+        routing = project.setdefault("routing", {})
+        for key in ("music_agent", "video_agent"):
+            if key in payload:
+                value = str(payload.get(key) or "").strip()
+                routing[key] = value if not value or value in model_names else routing.get(key, "")
+        if "swarm_node_id" in payload:
+            value = str(payload.get("swarm_node_id") or "").strip()
+            routing["swarm_node_id"] = value if not value or value in node_ids else routing.get("swarm_node_id", "")
+        if "handoff_mode" in payload:
+            mode = str(payload.get("handoff_mode") or "local-first").strip()
+            if mode in {"local-first", "swarm-assisted", "model-directed"}:
+                routing["handoff_mode"] = mode
+        routing["updated_at"] = _now_iso()
+        project["updated_at"] = _now_iso()
+        _sync_project_integrations(project)
+        save_state(state)
+        _spine.log(
+            kind=_spine.EventKind.CHECKPOINT,
+            message=f"Media routing updated: {project.get('name')}",
+            source="media_center",
+            change_id=project_id,
+            payload={"project_id": project_id, "routing": routing},
+        )
+        return routing
+    return None
+
+
+def project_handoff_manifest(project_id: str) -> dict[str, Any] | None:
+    state = load_state()
+    payload = public_state()
+    project = next((item for item in payload.get("projects", []) if item.get("id") == project_id), None)
+    if not project:
+        return None
+    timeline = project.get("timeline") or {}
+    routing = project.get("routing") or {}
+    refs = project.get("media_refs") or []
+    synth_runs = project.get("synth_runs") or []
+    manifest = {
+        "schema": "fridays.media_center.handoff.v1",
+        "generated_at": _now_iso(),
+        "project": {
+            "id": project.get("id"),
+            "name": project.get("name"),
+            "medium": project.get("medium"),
+            "status": project.get("status"),
+            "style": project.get("style"),
+            "duration_sec": project.get("duration_sec"),
+            "prompt": project.get("prompt"),
+            "studio_project_id": project.get("studio_project_id"),
+        },
+        "routing": {
+            "handoff_mode": routing.get("handoff_mode") or "local-first",
+            "music_agent": routing.get("music_agent") or "",
+            "video_agent": routing.get("video_agent") or "",
+            "swarm_node_id": routing.get("swarm_node_id") or "",
+        },
+        "timeline": {
+            "tempo_bpm": timeline.get("tempo_bpm"),
+            "time_signature": timeline.get("time_signature"),
+            "lanes": timeline.get("lanes") or [],
+            "clips": timeline.get("clips") or [],
+        },
+        "inputs": {
+            "references": [
+                {
+                    "id": ref.get("id"),
+                    "title": ref.get("title"),
+                    "account_id": ref.get("account_id"),
+                    "media_type": ref.get("media_type"),
+                    "url": ref.get("url"),
+                    "tags": ref.get("tags") or [],
+                    "knowledge_status": ref.get("knowledge_status") or ref.get("status"),
+                }
+                for ref in refs[:20]
+            ],
+            "interests": payload.get("interests", {}).get("project_topics", []),
+            "feeds": [
+                {
+                    "sub_id": feed.get("sub_id"),
+                    "kind": feed.get("kind"),
+                    "title": feed.get("title"),
+                    "url": feed.get("url"),
+                    "status": feed.get("status"),
+                }
+                for feed in payload.get("feeds", {}).get("subscriptions", [])[:20]
+            ],
+        },
+        "generation": {
+            "synth_registry": payload.get("synths", {}).get("registry", []),
+            "recent_takes": synth_runs[:12],
+            "jobs": [
+                job for job in state.get("jobs", [])
+                if job.get("project_id") == project_id
+            ][:12],
+        },
+        "federation": {
+            "models": payload.get("models", {}).get("agents", []),
+            "linked_swarms": payload.get("linked_swarms", {}).get("nodes", []),
+        },
+        "instructions": [
+            "Preserve provenance for imported references and generated clips.",
+            "Use the routing block to choose local model, remote swarm, or model-directed handoff.",
+            "Write generated outputs back as timeline clips, synth takes, jobs, and Knowledge-indexed references.",
+        ],
+    }
+    return manifest
+
+
+def _clip_from_take(take: dict[str, Any], synth: dict[str, Any]) -> dict[str, Any]:
+    kind = str(synth.get("lane_kind") or synth.get("kind") or "audio")
+    return {
+        "id": f"clip-{take['id']}",
+        "lane_id": take.get("lane_id") or "lane-synth",
+        "name": f"{synth.get('name') or 'Synth'} take",
+        "kind": "audio" if kind == "prompt" else kind,
+        "start_sec": take.get("start_sec") or 0,
+        "duration_sec": take.get("duration_sec") or 4,
+        "source": f"synth:{synth.get('id')}",
+        "prompt": take.get("prompt") or "",
+        "status": take.get("status") or "planned",
+        "take_id": take.get("id"),
+        "created_at": take.get("created_at") or _now_iso(),
+        "updated_at": take.get("created_at") or _now_iso(),
+    }
+
+
+def _normalize_tags(raw_tags: Any, project: dict[str, Any]) -> list[str]:
+    tags: list[str] = []
+    if isinstance(raw_tags, str):
+        pieces = re.split(r"[,#\s]+", raw_tags)
+    elif isinstance(raw_tags, list):
+        pieces = [str(item) for item in raw_tags]
+    else:
+        pieces = []
+    pieces.extend(_extract_topics(project)[:4])
+    for piece in pieces:
+        tag = re.sub(r"[^a-zA-Z0-9_-]+", "-", str(piece).strip().lower()).strip("-")
+        if len(tag) >= 2 and tag not in tags:
+            tags.append(tag[:40])
+    for fallback in ("media", str(project.get("medium") or "creative").lower()):
+        if fallback and fallback not in tags:
+            tags.append(fallback[:40])
+    return tags[:10]
+
+
+def _write_media_reference_knowledge(project: dict[str, Any], reference: dict[str, Any]) -> None:
+    try:
+        content = (
+            f"Media reference indexed for project: {project.get('name')}\n"
+            f"Reference: {reference.get('title')}\n"
+            f"Provider: {reference.get('account_name')} ({reference.get('account_id')})\n"
+            f"Type: {reference.get('media_type')}\n"
+            f"URL: {reference.get('url') or 'n/a'}\n"
+            f"Tags: {', '.join(reference.get('tags') or [])}\n\n"
+            f"{reference.get('notes') or ''}"
+        ).strip()
+        key = f"media-ref-{project.get('id')}-{reference.get('id')}"
+        _knowledge.write_knowledge(
+            key,
+            content,
+            "media-center",
+            source_proposal_id=str(project.get("studio_project_id") or project.get("id") or ""),
+            category="fact",
+            importance=7,
+        )
+    except Exception:
+        reference["knowledge_status"] = "write_failed"
+    else:
+        reference["knowledge_status"] = "indexed"
+
+
 def create_job(project_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
     state = load_state()
     project = next((p for p in state["projects"] if p.get("id") == project_id), None)
@@ -321,18 +964,149 @@ def _default_artifacts(project_id: str, job_type: str) -> list[dict[str, str]]:
 
 def public_state() -> dict[str, Any]:
     state = load_state()
+    tracking_project_id = _ensure_tracking_project(state)
     payload = copy.deepcopy(state)
     payload["runtime"] = summarize_runtime()
     payload["interests"] = _media_interest_context(payload.get("projects", []))
     payload["feeds"] = _media_feed_context(payload["interests"])
     payload["spine"] = _media_spine_context()
-    payload["studio"] = _media_studio_context(payload.get("projects", []))
+    payload["studio"] = _media_studio_context(payload.get("projects", []), tracking_project_id)
+    payload["tracking"] = _media_tracking_context(tracking_project_id)
+    payload["chat"] = _media_chat_context(payload.get("projects", []))
+    payload["models"] = _media_model_context()
+    payload["linked_swarms"] = _media_swarm_context()
+    payload["synths"] = _media_synth_context(payload)
+    payload["accounts"] = _media_accounts_context(payload)
+    payload["knowledge"] = _media_knowledge_context(payload)
+    payload["routing"] = _media_routing_context(payload)
     payload["counts"] = {
         "projects": len(payload.get("projects", [])),
         "queued_jobs": sum(1 for job in payload.get("jobs", []) if job.get("status") == "queued"),
         "completed_jobs": sum(1 for job in payload.get("jobs", []) if job.get("status") == "completed"),
     }
     return payload
+
+
+def _media_accounts_context(payload: dict[str, Any]) -> dict[str, Any]:
+    registry = payload.get("media_accounts") or list_media_accounts()
+    linked = [item for item in registry if item.get("status") in {"linked", "available", "local"}]
+    auth_needed = [item for item in registry if item.get("status") == "pending_auth"]
+    refs_by_provider: dict[str, int] = {}
+    for project in payload.get("projects") or []:
+        for ref in project.get("media_refs") or []:
+            provider = str(ref.get("account_id") or "custom-feed")
+            refs_by_provider[provider] = refs_by_provider.get(provider, 0) + 1
+    return {
+        "registry": registry,
+        "linked": linked,
+        "auth_needed": auth_needed,
+        "references_by_provider": refs_by_provider,
+    }
+
+
+def _media_routing_context(payload: dict[str, Any]) -> dict[str, Any]:
+    routes = []
+    for project in payload.get("projects") or []:
+        routing = project.get("routing") or {}
+        if any(routing.get(key) for key in ("music_agent", "video_agent", "swarm_node_id")):
+            routes.append({
+                "project_id": project.get("id"),
+                "project_name": project.get("name"),
+                "music_agent": routing.get("music_agent") or "",
+                "video_agent": routing.get("video_agent") or "",
+                "swarm_node_id": routing.get("swarm_node_id") or "",
+                "handoff_mode": routing.get("handoff_mode") or "local-first",
+            })
+    return {
+        "active_routes": routes[:12],
+        "default_mode": "local-first",
+    }
+
+
+def _media_knowledge_context(payload: dict[str, Any]) -> dict[str, Any]:
+    references = []
+    for project in payload.get("projects") or []:
+        for ref in (project.get("media_refs") or [])[:8]:
+            item = dict(ref)
+            item["project_id"] = project.get("id")
+            item["project_name"] = project.get("name")
+            references.append(item)
+    recent_entries = []
+    try:
+        recent_entries = _knowledge.search_knowledge("media-ref-", category="fact", limit=8)
+    except Exception:
+        recent_entries = []
+    return {
+        "references": references[:16],
+        "indexed_count": sum(1 for item in references if item.get("knowledge_status") == "indexed"),
+        "recent_entries": [
+            {
+                "key": item.get("key"),
+                "category": item.get("category"),
+                "source_agent": item.get("source_agent"),
+                "importance": item.get("importance"),
+            }
+            for item in recent_entries
+        ],
+    }
+
+
+def _media_synth_context(payload: dict[str, Any]) -> dict[str, Any]:
+    registry = payload.get("synth_registry") or list_synths()
+    projects = payload.get("projects") or []
+    recent_takes = []
+    for project in projects[:6]:
+        for take in (project.get("synth_runs") or [])[:4]:
+            item = dict(take)
+            item["project_id"] = project.get("id")
+            item["project_name"] = project.get("name")
+            recent_takes.append(item)
+    return {
+        "registry": registry,
+        "available": [item for item in registry if item.get("status") in {"available", "ready_when_linked"}],
+        "recent_takes": recent_takes[:12],
+    }
+
+
+def _ensure_tracking_project(state: dict[str, Any]) -> str:
+    project_id = str(state.get("tracking_project_id") or "").strip()
+    existing = _kc_projects.get_project(project_id) if project_id else None
+    if not existing:
+        for project in _kc_projects.list_projects(limit=250):
+            if str(project.get("name") or "") == _TRACKING_PROJECT_NAME:
+                project_id = str(project.get("project_id") or "")
+                existing = _kc_projects.get_project(project_id)
+                break
+    if not existing:
+        project_id = _kc_projects.create_project(
+            _TRACKING_PROJECT_NAME,
+            description=_TRACKING_PROJECT_DESCRIPTION,
+            methodology="mixed",
+            owner="seven",
+        ) or ""
+    if project_id:
+        _kc_projects.update_project(
+            project_id,
+            name=_TRACKING_PROJECT_NAME,
+            description=_TRACKING_PROJECT_DESCRIPTION,
+            methodology="mixed",
+            owner="seven",
+            status="active",
+        )
+        _seed_studio_project(project_id, {
+            "name": _TRACKING_PROJECT_NAME,
+            "medium": "audio-video",
+            "style": "internal roadmap",
+            "duration_sec": 0,
+            "prompt": _TRACKING_PROJECT_DESCRIPTION,
+            "scenes": [],
+            "deliverables": [],
+        })
+    if project_id and state.get("tracking_project_id") != project_id:
+        state["tracking_project_id"] = project_id
+        state["updated_at"] = _now_iso()
+        save_state(state)
+    return project_id
 
 
 def _sync_project_integrations(project: dict[str, Any]) -> bool:
@@ -355,6 +1129,7 @@ def _sync_project_integrations(project: dict[str, Any]) -> bool:
             description=_studio_project_description(project),
             owner="seven",
         )
+        _seed_studio_project(project["studio_project_id"], project)
     if _sync_interests(project):
         changed = True
     return changed
@@ -376,18 +1151,52 @@ def _studio_project_description(project: dict[str, Any]) -> str:
 
 def _seed_studio_project(project_id: str, media_project: dict[str, Any]) -> None:
     try:
-        for scene in media_project.get("scenes", [])[:6]:
+        existing = _kc_projects.get_project(project_id) or {}
+        existing_steps = {
+            str(step.get("title") or "")
+            for step in existing.get("steps", [])
+        }
+        existing_cases = {
+            str(case.get("title") or "")
+            for case in existing.get("test_cases", [])
+        }
+        for idx, (title, description) in enumerate(_TRACKING_STEPS):
+            if title in existing_steps:
+                continue
             _kc_projects.add_step(
                 project_id,
-                f"Scene: {scene.get('name') or 'Untitled'}",
+                title,
+                description=description,
+                owner="seven",
+                order_idx=idx,
+            )
+        for scene in media_project.get("scenes", [])[:6]:
+            title = f"Scene: {scene.get('name') or 'Untitled'}"
+            if title in existing_steps:
+                continue
+            _kc_projects.add_step(
+                project_id,
+                title,
                 description=(scene.get("goal") or "")[:1000],
                 owner="seven",
             )
         for deliverable in media_project.get("deliverables", [])[:6]:
+            title = f"Deliverable: {deliverable.get('type') or 'asset'} {deliverable.get('format') or ''}".strip()
+            if title in existing_cases:
+                continue
             _kc_projects.add_test_case(
                 project_id,
-                f"Deliverable: {deliverable.get('type') or 'asset'} {deliverable.get('format') or ''}".strip(),
+                title,
                 script_id="media_center_simulation",
+                owner="seven",
+            )
+        for title, script_id in _TRACKING_CASES:
+            if title in existing_cases:
+                continue
+            _kc_projects.add_test_case(
+                project_id,
+                title,
+                script_id=script_id,
                 owner="seven",
             )
     except Exception:
@@ -523,7 +1332,7 @@ def _media_spine_context() -> dict[str, Any]:
     return {"items": media_items[:8]}
 
 
-def _media_studio_context(projects: list[dict[str, Any]]) -> dict[str, Any]:
+def _media_studio_context(projects: list[dict[str, Any]], tracking_project_id: str = "") -> dict[str, Any]:
     project_links = []
     for project in projects[:10]:
         project_links.append({
@@ -532,4 +1341,159 @@ def _media_studio_context(projects: list[dict[str, Any]]) -> dict[str, Any]:
             "studio_project_id": project.get("studio_project_id"),
             "status": project.get("status"),
         })
-    return {"linked_projects": project_links}
+    return {
+        "tracking_project_id": tracking_project_id,
+        "tracking_project_name": _TRACKING_PROJECT_NAME if tracking_project_id else "",
+        "linked_projects": project_links,
+    }
+
+
+def _media_chat_context(projects: list[dict[str, Any]]) -> dict[str, Any]:
+    active = projects[0] if projects else {}
+    project_name = active.get("name") or "Media Center"
+    return {
+        "actions": [
+            {
+                "phrase": "open media center",
+                "intent": "open_window",
+                "view": "media-center",
+                "template": "view-media-center",
+            },
+            {
+                "phrase": "open projects section",
+                "intent": "open_window",
+                "view": "studio",
+                "template": "view-studio",
+            },
+            {
+                "phrase": "show music editor",
+                "intent": "open_window",
+                "view": "media-center",
+                "template": "view-media-center",
+            },
+        ],
+        "context_hint": (
+            f"Media Center active project: {project_name}. "
+            "Use Studio Projects for tracking/tests and Media Center for music/video generation."
+        ),
+    }
+
+
+def _media_tracking_context(project_id: str) -> dict[str, Any]:
+    if not project_id:
+        return {"project_id": "", "steps": [], "test_cases": [], "recent_runs": [], "progress": {}}
+    tree = _kc_projects.get_project(project_id) or {}
+    project = tree.get("project") or {}
+    steps = tree.get("steps") or []
+    cases = tree.get("test_cases") or []
+    runs = _kc_runs.list_runs(project_id=project_id, limit=8)
+    done = sum(1 for step in steps if step.get("status") == "done")
+    partial = sum(1 for step in steps if step.get("status") == "partial")
+    blocked = sum(1 for step in steps if step.get("status") == "blocked")
+    passed = sum(1 for run in runs if run.get("status") == _kc_runs.STATUS_PASS)
+    failed = sum(1 for run in runs if run.get("status") in {_kc_runs.STATUS_FAIL, _kc_runs.STATUS_ERROR})
+    return {
+        "project_id": project_id,
+        "name": project.get("name") or _TRACKING_PROJECT_NAME,
+        "status": project.get("status") or "active",
+        "steps": [
+            {
+                "step_id": step.get("step_id"),
+                "title": step.get("title"),
+                "status": step.get("status"),
+                "owner": step.get("owner"),
+            }
+            for step in steps
+        ],
+        "test_cases": [
+            {
+                "case_id": case.get("case_id"),
+                "title": case.get("title"),
+                "script_id": case.get("script_id"),
+                "status": case.get("status"),
+            }
+            for case in cases
+        ],
+        "recent_runs": [
+            {
+                "run_id": run.get("run_id"),
+                "script_id": run.get("script_id"),
+                "status": run.get("status"),
+                "duration_ms": run.get("duration_ms"),
+                "case_id": run.get("case_id"),
+                "step_id": run.get("step_id"),
+            }
+            for run in runs
+        ],
+        "progress": {
+            "step_count": len(steps),
+            "done_steps": done,
+            "partial_steps": partial,
+            "blocked_steps": blocked,
+            "case_count": len(cases),
+            "recent_passes": passed,
+            "recent_failures": failed,
+        },
+    }
+
+
+def _media_model_context() -> dict[str, Any]:
+    try:
+        models = _registry.get_agent_models()
+        roster = _registry.get_agent_roster()
+    except Exception:
+        models = {}
+        roster = []
+    media_candidates = []
+    for agent in roster:
+        name = str(agent.get("name") or "")
+        role = str(agent.get("role") or "").lower()
+        model = str(agent.get("model") or models.get(name) or "")
+        haystack = f"{name} {role} {model}".lower()
+        if any(term in haystack for term in ("media", "audio", "video", "music", "vision", "local", "lmstudio", "ollama")):
+            media_candidates.append({
+                "agent": name,
+                "label": agent.get("label") or name,
+                "model": model,
+                "role": agent.get("role") or "",
+            })
+    return {
+        "enabled_count": len(models),
+        "agents": media_candidates[:12],
+        "registry_source": "utils.db.registry",
+    }
+
+
+def _media_swarm_context() -> dict[str, Any]:
+    try:
+        nodes = _nodes.list_nodes()
+    except Exception:
+        nodes = []
+    linked = []
+    for node in nodes[:12]:
+        try:
+            capabilities = json.loads(node.get("capabilities") or "[]")
+        except Exception:
+            capabilities = []
+        try:
+            agents = json.loads(node.get("agents_json") or "[]")
+        except Exception:
+            agents = []
+        linked.append({
+            "node_id": node.get("node_id"),
+            "name": node.get("name"),
+            "url": node.get("url"),
+            "role": node.get("role"),
+            "capabilities": capabilities,
+            "agents": agents,
+            "last_seen": node.get("last_seen"),
+            "media_relevant": any(
+                str(item).lower() in {"media", "audio", "video", "music", "render", "ffmpeg", "model"}
+                for item in capabilities
+            ),
+        })
+    return {
+        "local_node_id": _nodes.get_local_node_id(),
+        "nodes": linked,
+        "count": len(linked),
+    }

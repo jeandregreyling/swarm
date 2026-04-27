@@ -65,6 +65,6 @@ def delete_sub(sub_id: str):
 def poll_sub(sub_id: str):
     rep = _feeds.poll_once(sub_id, owner=_owner())
     if not rep.get('ok'):
-        code = 200 if rep.get('kind') in ('x', 'hn', 'linkedin', 'stackoverflow', 'reddit') else 502
+        code = 502 if rep.get('kind') in ('rss', 'atom') else 200
         return jsonify(rep), code
     return jsonify(rep)

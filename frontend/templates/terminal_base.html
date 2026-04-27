@@ -892,7 +892,6 @@
       </div>
     </div>
 
-
   </div>
 </div>
 
@@ -2302,7 +2301,7 @@
       </div>
     </section>
 
-    <div class="media-center-grid">
+    <div class="media-center-grid" id="media-center-grid">
       <aside class="media-sidebar">
         <section class="media-panel">
           <div class="media-panel-head">
@@ -2345,6 +2344,8 @@
           </div>
         </section>
       </aside>
+
+      <div class="media-center-resizer" id="media-center-resizer" title="Drag to resize project rack" role="separator" aria-orientation="vertical" tabindex="0"></div>
 
       <main class="media-main">
         <section class="media-panel">
@@ -2494,6 +2495,10 @@
   {% include 'views/feeds.html' %}
 </template>
 
+<template id="view-media">
+  {% include 'views/media.html' %}
+</template>
+
 <template id="view-trace">
   <div class="content-view" id="trace-view" style="display:flex;flex-direction:column;height:100%;">
     <!-- Toolbar -->
@@ -2582,6 +2587,7 @@
 <script src="/static/js/views/hive-nodes.js?v=1"></script>
 <script src="/static/js/voice.js?v=1"></script>
 <script src="/static/js/views/knowledge.js?v=3"></script>
+<script src="/static/js/views/media.js?v=1"></script>
 <script src="/static/js/views/spotlight.js"></script>
 <script src="/static/js/views/guide.js"></script>
 <script src="/static/js/views/vpn.js"></script>
