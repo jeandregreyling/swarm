@@ -40,7 +40,11 @@ __all__ = [
     "fetch_rss", "poll_once", "KINDS", "STATUSES",
 ]
 
-KINDS = ("rss", "atom", "x", "hn", "linkedin", "stackoverflow", "reddit", "github", "gmail")
+KINDS = (
+    "rss", "atom", "x", "hn", "linkedin", "stackoverflow", "reddit",
+    "github", "gmail", "youtube", "youtube-music", "spotify",
+    "apple-music", "soundcloud", "bandcamp", "npm", "pypi",
+)
 STATUSES = ("connected", "pending", "error", "disabled")
 
 
