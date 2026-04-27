@@ -160,8 +160,11 @@ def run_task_now(task_id):
 
         try:
             if action_type.upper() == 'PYTHON':
+                parts = shlex.split(action_data.strip())
+                task_name = parts[0] if parts else ''
+                task_args = ' '.join(shlex.quote(p) for p in parts[1:])
                 from fridays.task_runner import run_task
-                success, output = run_task(action_data.strip())
+                success, output = run_task(task_name, args=task_args)
                 if not success:
                     return jsonify({'ok': False, 'error': output}), 500
             elif action_type.upper() in ('SHELL', 'BRIEF'):
@@ -218,6 +221,8 @@ def bootstrap_tasks():
         ('proposals_check', 'interval 30m',      'PYTHON', 'proposals_check'),
         ('landscape_refresh','weekly Mon 04:00',  'PYTHON', 'landscape_refresh'),
         ('knowledge_seed',  'monthly 1 03:00',   'PYTHON', 'knowledge_seed'),
+        ('sap_payroll_au_watch', 'daily 06:30', 'PYTHON',
+         'interest_research_update topic="SAP payroll Australia" depth=standard agent=eight email=ghost'),
     ]
     added = 0
     for name, schedule, action_type, action_data in defaults:

@@ -1517,6 +1517,8 @@ def run_forever(interval=60):
             # Swarm tasks every 5 min
             if time.time() - _last_task_check > 300:
                 try:
+                    from fridays.scheduler import check_due
+                    check_due()
                     from swarm_tasks import check_snoozed, check_sla, check_proposals
                     check_snoozed()
                     check_sla(hours=4)
