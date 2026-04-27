@@ -205,7 +205,10 @@ def check_due():
                 print(f'[Scheduler] Fired SHELL task #{task_id}: {action_data[:60]}')
             elif action_type.upper() == 'PYTHON':
                 from fridays.task_runner import run_task
-                success, output = run_task(action_data.strip())
+                parts = shlex.split(action_data.strip())
+                task_name = parts[0] if parts else ''
+                task_args = ' '.join(shlex.quote(p) for p in parts[1:])
+                success, output = run_task(task_name, args=task_args)
                 status = '✓' if success else '✗'
                 print(f'[Scheduler] {status} PYTHON task #{task_id} ({name}): {output[:80]}')
             elif action_type.upper() in ('QUESTION', 'BRIEF'):
