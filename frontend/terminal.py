@@ -280,13 +280,6 @@ def create_app():
         from flask import redirect
         return redirect("/ui")
 
-    # ── Register blueprints (only those that loaded) ──────────────────────────
-    for _attr, _bp in _loaded_blueprints:
-        try:
-            app.register_blueprint(_bp)
-        except Exception as _reg_err:
-            print(f"[Terminal] Blueprint register failed — {_attr}: {_reg_err}")
-
     # R.5: Register /api/v1/* versioned aliases
     try:
         from utils.api_versioning import register_versioned_routes

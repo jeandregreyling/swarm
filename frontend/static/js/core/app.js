@@ -51,6 +51,13 @@ function syncTaskbarLaunchers() {
     const strip = document.getElementById('taskbar-launchers');
     if (!strip) return;
     const PINNED_LAUNCHERS = ['chat', 'terminal', 'knowledge', 'studio', 'media-center'];
+    const PINNED_LAUNCHER_META = {
+        'chat':         { title: 'Chat',         template: 'view-chat' },
+        'terminal':     { title: 'Terminal',     template: 'view-terminal' },
+        'knowledge':    { title: 'Knowledge',    template: 'view-knowledge' },
+        'studio':       { title: 'Studio',       template: 'view-studio' },
+        'media-center': { title: 'Media Center', template: 'view-media-center' },
+    };
 
     // V8 Orbs overhaul (S-EAA7C440CC): mark active windows with a ring +
     // underline, support a data-badge count on the source home card for
@@ -71,7 +78,20 @@ function syncTaskbarLaunchers() {
     const orderedNodes = [];
     PINNED_LAUNCHERS.forEach((winId) => {
         const node = launchNodeMap.get(winId);
-        if (node) orderedNodes.push(node);
+        if (node) {
+            orderedNodes.push(node);
+            return;
+        }
+        const meta = PINNED_LAUNCHER_META[winId];
+        if (meta) {
+            orderedNodes.push({
+                dataset: {
+                    winId,
+                    winTitle: meta.title,
+                    winTemplate: meta.template,
+                },
+            });
+        }
     });
     launchNodes.forEach((node) => {
         if (!orderedNodes.includes(node)) orderedNodes.push(node);
@@ -97,10 +117,14 @@ function syncTaskbarLaunchers() {
             btn.appendChild(badge);
         }
         btn.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
+                event.preventDefault();
+                event.stopPropagation();
             try {
-                _launchHomeNode(node);
+                if (node instanceof HTMLElement) {
+                    _launchHomeNode(node);
+                } else {
+                    openWindow(winId, winTitle, String(node?.dataset?.winTemplate || `view-${winId}`));
+                }
             } catch (err) {
                 _troubleshootLog && _troubleshootLog('error', 'Taskbar launcher failed', String(err?.message || err));
                 showToast && showToast('Open window failed: ' + (err?.message || err), 'error');

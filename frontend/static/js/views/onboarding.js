@@ -8,6 +8,40 @@
   const _totalSteps = 5;
   let _status = null; // cached /api/onboarding/status response
 
+  function _shouldReopenEveryLaunch() {
+    try {
+      const value = localStorage.getItem('swarm_onboarding_reopen_every_launch');
+      return value === null ? true : value === '1';
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function _persistLaunchPreference(reopen) {
+    try {
+      localStorage.setItem('swarm_onboarding_reopen_every_launch', reopen ? '1' : '0');
+      if (reopen) {
+        localStorage.removeItem('swarm_onboarding_complete');
+      } else {
+        localStorage.setItem('swarm_onboarding_complete', '1');
+      }
+    } catch (e) {}
+  }
+
+  function _syncLaunchPreferenceCheckbox() {
+    const cb = document.getElementById('ob-reopen-every-launch');
+    if (cb) cb.checked = _shouldReopenEveryLaunch();
+  }
+
+  function _bindLaunchPreferenceCheckbox() {
+    const cb = document.getElementById('ob-reopen-every-launch');
+    if (!cb || cb.dataset.bound === '1') return;
+    cb.dataset.bound = '1';
+    cb.addEventListener('change', () => {
+      _persistLaunchPreference(!!cb.checked);
+    });
+  }
+
   // ── Navigation ──────────────────────────────────────────────────────────
 
   function obNext() {
@@ -288,19 +322,8 @@
   }
 
   function obFinish() {
-    // Phase-5 SMALL: respect the "open every launch" tick. If checked, we
-    // DON'T mark onboarding as complete — the auto-launcher will reopen it
-    // on the next page load.
     const reopenTick = document.getElementById('ob-reopen-every-launch');
-    const reopen = !!(reopenTick && reopenTick.checked);
-    try {
-      localStorage.setItem('swarm_onboarding_reopen_every_launch', reopen ? '1' : '0');
-      if (reopen) {
-        localStorage.removeItem('swarm_onboarding_complete');
-      } else {
-        localStorage.setItem('swarm_onboarding_complete', '1');
-      }
-    } catch (e) {}
+    _persistLaunchPreference(!!(reopenTick && reopenTick.checked));
     // Close the enrollment window and open Chat
     if (typeof winManager !== 'undefined' && winManager.close) {
       winManager.close('onboarding');
@@ -342,6 +365,8 @@
     } catch (e) {
       _status = { local_ai: { ollama: { running: false }, lmstudio: { running: false }, ready: false }, cloud_agents: [], cloud_agents_configured: 0, cloud_agents_total: 0, cloud_nodes: 0, complete: false };
     }
+    _syncLaunchPreferenceCheckbox();
+    _bindLaunchPreferenceCheckbox();
     _step = 0;
     _renderStep();
   }
@@ -350,24 +375,16 @@
 
   function _maybeAutoLaunch() {
     try {
-      // Phase-5 SMALL: "Open every launch" tick overrides the "complete" flag.
-      const reopen = localStorage.getItem('swarm_onboarding_reopen_every_launch') === '1';
-      if (!reopen && localStorage.getItem('swarm_onboarding_complete') === '1') return;
+      // "Open every launch" defaults to on until the user unticks it.
+      const reopen = _shouldReopenEveryLaunch();
+      if (!reopen) return;
+      if (localStorage.getItem('swarm_onboarding_complete') === '1') return;
     } catch (e) { return; }
     // Auto-open enrollment after a short delay to let the home page render
     setTimeout(() => {
       if (typeof openWindow === 'function') {
         openWindow('onboarding', 'Enrollment', 'view-onboarding');
       }
-      // Pre-tick the checkbox so users can see/confirm the setting after the window loads.
-      setTimeout(() => {
-        try {
-          const cb = document.getElementById('ob-reopen-every-launch');
-          if (cb && localStorage.getItem('swarm_onboarding_reopen_every_launch') === '1') {
-            cb.checked = true;
-          }
-        } catch (e) {}
-      }, 300);
     }, 800);
   }
 

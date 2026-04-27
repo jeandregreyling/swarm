@@ -188,6 +188,15 @@ def test_enrollment_blueprint():
     assert "/api/enrollment/create" in src and "/api/enrollment/invite" in src
 
 
+def test_onboarding_launch_toggle_is_visible_and_persists_immediately():
+    html = (ROOT / "frontend" / "templates" / "views" / "onboarding.html").read_text()
+    js = (ROOT / "frontend" / "static" / "js" / "views" / "onboarding.js").read_text()
+    assert 'id="ob-reopen-every-launch"' in html
+    assert "_persistLaunchPreference" in js
+    assert "addEventListener('change'" in js
+    assert "if (!reopen) return;" in js
+
+
 def test_governance_tab_wired():
     # S-90F968769C: Studio's Governance button opens the modal, state+toggle
     # endpoints exist in the Diamond blueprint, and init.js renders pause

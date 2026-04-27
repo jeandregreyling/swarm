@@ -91,7 +91,7 @@
 <link rel="stylesheet" href="/static/css/diamond.css?v=2">
 <link rel="stylesheet" href="/static/css/views/knowledge.css?v=1">
 <link rel="stylesheet" href="/static/css/views/localai.css?v=1">
-<link rel="stylesheet" href="/static/css/views/media-center.css?v=1">
+<link rel="stylesheet" href="/static/css/views/media-center.css?v=6">
 <link rel="stylesheet" href="/static/css/responsive.css">
 <link rel="stylesheet" href="/static/css/home-chat.css?v=28">
 <link rel="stylesheet" href="/static/css/login.css?v=28">
@@ -2292,22 +2292,43 @@
     <section class="media-center-header">
       <div>
         <div class="media-center-title">Media Center</div>
-        <div class="media-center-subtitle">Local-first framework for music generation, video assembly, stem management, and compile graphs. The runners are intentionally stubbed for now, but the tile already persists projects, queues jobs, and simulates end-to-end pipeline execution.</div>
+        <div class="media-center-subtitle">Composer-first workspace for music generation, video assembly, stem management, and research routing. Media Center now opens like an editor: timeline in the middle, research dock on the right, review/runtime on the bottom, and Studio + Knowledge wired into the same flow.</div>
+        <div class="media-center-explainer">
+          The working loop is: compose in the center timeline, pull references and Knowledge into the right dock, queue or route work from the transport bar, then review outputs and tracking in the bottom dock.
+        </div>
         <div class="media-topline" id="media-center-topline"></div>
       </div>
       <div class="media-center-actions">
         <span class="media-pill" id="media-center-status">framework</span>
+        <button class="media-action-btn" onclick="mediaCenterOpenReviewPlan()">Open review plan</button>
+        <button class="media-action-btn" onclick="mediaCenterCollapseToFocus()">Focus mode</button>
+        <button class="media-action-btn" onclick="mediaCenterExpandAll()">Expand all</button>
         <button class="media-action-btn" onclick="mediaCenterRefresh()">Refresh</button>
       </div>
     </section>
 
-    <div class="media-center-grid" id="media-center-grid">
-      <aside class="media-sidebar">
-        <section class="media-panel">
+    <section class="media-transport-bar" id="media-center-transport">
+      <button class="media-action-btn media-action-btn-primary" onclick="mediaCenterCreateProject()">New Project</button>
+      <button class="media-action-btn" onclick="mediaCenterOpenResearch('references')">Research</button>
+      <button class="media-action-btn" onclick="mediaCenterQueueSelected('generate-audio')">Queue Audio</button>
+      <button class="media-action-btn" onclick="mediaCenterQueueSelected('generate-video')">Queue Video</button>
+      <button class="media-action-btn" onclick="mediaCenterQueueSelected('compile-preview')">Render/Compile</button>
+      <button class="media-action-btn" onclick="mediaCenterOpenResearch('routing')">Route</button>
+      <button class="media-action-btn" onclick="mediaCenterCopyHandoff()">Save Handoff</button>
+      <button class="media-action-btn" onclick="mediaCenterOpenReviewPlan()">Open Project Plan</button>
+    </section>
+
+    <div class="media-editor-shell" id="media-center-grid">
+      <aside class="media-left-dock media-sidebar">
+        <section class="media-panel" data-panel-key="new-project">
           <div class="media-panel-head">
-            <div class="media-panel-title">New Project</div>
+            <div>
+              <div class="media-panel-title">New Project</div>
+              <div class="media-panel-summary">Create a brief without leaving the workspace.</div>
+            </div>
+            <button class="media-panel-toggle" type="button" aria-label="Toggle New Project" aria-expanded="true" onclick="mediaCenterTogglePanel('new-project')"></button>
           </div>
-          <div class="media-panel-body">
+          <div class="media-panel-body" data-panel-body>
             <div class="media-form">
               <label>Project name
                 <input id="media-center-project-name" type="text" placeholder="Neon trailer, ambient loop pack, launch teaser...">
@@ -2335,66 +2356,79 @@
           </div>
         </section>
 
-        <section class="media-panel media-scroll">
+        <section class="media-panel media-scroll" data-panel-key="project-rack">
           <div class="media-panel-head">
-            <div class="media-panel-title">Project Rack</div>
+            <div>
+              <div class="media-panel-title">Project Rack</div>
+              <div class="media-panel-summary">Pick the active composition and jump back into its plan.</div>
+            </div>
+            <button class="media-panel-toggle" type="button" aria-label="Toggle Project Rack" aria-expanded="true" onclick="mediaCenterTogglePanel('project-rack')"></button>
           </div>
-          <div class="media-panel-body media-project-list" id="media-center-project-list">
+          <div class="media-panel-body media-project-list" id="media-center-project-list" data-panel-body>
             <div class="media-empty">Loading projects...</div>
+          </div>
+        </section>
+
+        <section class="media-panel media-scroll" data-panel-key="composer-outline">
+          <div class="media-panel-head">
+            <div>
+              <div class="media-panel-title">Composer Outline</div>
+              <div class="media-panel-summary">Scenes, tracks, and deliverables stay visible while you edit.</div>
+            </div>
+            <button class="media-panel-toggle" type="button" aria-label="Toggle Composer Outline" aria-expanded="true" onclick="mediaCenterTogglePanel('composer-outline')"></button>
+          </div>
+          <div class="media-panel-body" id="media-center-structure-dock" data-panel-body>
+            <div class="media-empty">Loading structure...</div>
           </div>
         </section>
       </aside>
 
       <div class="media-center-resizer" id="media-center-resizer" title="Drag to resize project rack" role="separator" aria-orientation="vertical" tabindex="0"></div>
 
-      <main class="media-main">
-        <section class="media-panel">
-          <div class="media-panel-head">
-            <div class="media-panel-title">Runtime Scan</div>
-          </div>
-          <div class="media-panel-body">
-            <div class="media-runtime-grid" id="media-center-runtime-grid"></div>
-          </div>
+      <div class="media-main">
+        <section class="media-editor-stage" id="media-center-editor-stage">
+          <div class="media-empty">Loading composer...</div>
         </section>
 
-        <section class="media-panel media-scroll">
+        <section class="media-bottom-dock media-panel" data-panel-key="bottom-dock">
           <div class="media-panel-head">
-            <div class="media-panel-title">Active Project Graph</div>
-          </div>
-          <div class="media-panel-body" id="media-center-project-detail">
-            <div class="media-empty">Loading project graph...</div>
-          </div>
-        </section>
-
-        <section class="media-panel media-scroll">
-          <div class="media-panel-head">
-            <div class="media-panel-title">Queue</div>
-          </div>
-          <div class="media-panel-body media-job-list" id="media-center-job-list">
-            <div class="media-empty">Loading queued jobs...</div>
-          </div>
-        </section>
-
-        <section class="media-panel media-scroll">
-          <div class="media-panel-head">
-            <div class="media-panel-title">Pipeline Presets</div>
-          </div>
-          <div class="media-panel-body media-preset-list" id="media-center-preset-list">
-            <div class="media-empty">Loading presets...</div>
-          </div>
-        </section>
-
-        <section class="media-panel media-scroll">
-          <div class="media-panel-head">
-            <div class="media-panel-title">Signals & Inputs</div>
-          </div>
-          <div class="media-panel-body">
-            <div class="media-detail-grid" id="media-center-context-grid">
-              <div class="media-empty">Loading interests, feeds, and spine trail...</div>
+            <div>
+              <div class="media-panel-title">Review Dock</div>
+              <div class="media-panel-summary">Queue, review plan, runtime, and handoff visibility stay under the editor.</div>
+            </div>
+            <div class="media-dock-tab-strip" id="media-center-bottom-tabs">
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetBottomTab('queue')">Queue</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetBottomTab('review')">Review</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetBottomTab('runtime')">Runtime</button>
             </div>
           </div>
+          <div class="media-panel-body" id="media-center-bottom-body" data-panel-body>
+            <div class="media-empty">Loading queue and review state...</div>
+          </div>
         </section>
-      </main>
+      </div>
+
+      <aside class="media-right-dock">
+        <section class="media-panel media-scroll" data-panel-key="research-center">
+          <div class="media-panel-head">
+            <div>
+              <div class="media-panel-title">Research Center</div>
+              <div class="media-panel-summary">References, Knowledge, routing, and advisor guidance stay one click from the editor.</div>
+            </div>
+            <div class="media-dock-tab-strip" id="media-center-research-tabs">
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('references')">References</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('accounts')">Accounts</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('feeds')">Feeds</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('knowledge')">Knowledge</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('routing')">Routing</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('advisors')">Advisors</button>
+            </div>
+          </div>
+          <div class="media-panel-body" id="media-center-research-body" data-panel-body>
+            <div class="media-empty">Loading research context...</div>
+          </div>
+        </section>
+      </aside>
     </div>
   </div>
 </template>
@@ -2592,7 +2626,7 @@
 <script src="/static/js/views/guide.js"></script>
 <script src="/static/js/views/vpn.js"></script>
 <script src="/static/js/views/localai.js?v=2"></script>
-<script src="/static/js/views/media-center.js?v=1"></script>
+<script src="/static/js/views/media-center.js?v=6"></script>
 <script src="/static/js/views/trace.js"></script>
 <script src="/static/js/views/onboarding.js?v=2"></script>
 <script src="/static/js/views/diamond.js?v=4"></script>

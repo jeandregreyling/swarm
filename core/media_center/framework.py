@@ -39,51 +39,163 @@ _MEDIA_STOP_WORDS = {
 
 _TRACKING_PROJECT_NAME = "Media Center + Studio Integration"
 _TRACKING_PROJECT_DESCRIPTION = (
-    "Internal Fridays project for Media Center becoming a Studio-linked music/video "
-    "workspace with chat actions, project tracking, test cases, AI synthesizers, "
-    "linked accounts, feeds, Knowledge indexing, models, and swarm federation."
+    "Internal Fridays project for Media Center becoming a Studio-linked DAW-first "
+    "music/video editor with research docks, Knowledge Center memory, reviewable layout, "
+    "chat actions, project tracking, test cases, advisor roles, linked accounts, feeds, "
+    "models, and swarm federation."
 )
 
 _TRACKING_STEPS = [
     (
-        "Project tracking + test harness",
-        "Keep Media Center work visible in Studio Projects with plan steps, test cases, and Test Lab run linkage.",
+        "DAW-first workspace review",
+        "Keep the composer/editor surface as the dominant default view and push research, review, runtime, and routing into supporting docks.",
     ),
     (
-        "Chat integration",
-        "Expose Media Center and project-tracking actions through chat intents and relay-friendly context.",
+        "Transport and command bar review",
+        "Make sure New Project, Research, Queue Audio, Queue Video, Render/Compile, Route, Save Handoff, and Open Project Plan stay reachable without hunting.",
     ),
     (
-        "Music editor foundation",
-        "Add timeline lanes for stems, synth takes, prompts, bounces, lyrics, and cue metadata.",
+        "Research dock usefulness review",
+        "Check that references, accounts, feeds, knowledge docs, routing, and advisor roles are all one click away without overpowering the editor.",
     ),
     (
-        "Video editor foundation",
-        "Add timeline lanes for clips, generated visuals, captions, overlays, audio beds, and render profiles.",
+        "Bottom review dock review",
+        "Keep queue, Studio review plan, runtime scan, and handoff visibility beneath the editor so the workflow reads compose -> research -> queue -> route -> review -> handoff.",
     ),
     (
-        "AI synthesizer registry",
-        "Connect audio, voice, MIDI, visual, and video generation runners through one manifest contract.",
+        "Composition and scene workflow",
+        "Verify that clips, scene markers, synth takes, and references can all be staged from the editor surface.",
     ),
     (
-        "Accounts, feeds, and Knowledge indexing",
+        "Knowledge Center composition seeding",
+        "Seed Fridays composition and render handoff guidance so the right dock and Knowledge Center teach music/video workflow instead of just storing artifacts.",
+    ),
+    (
+        "Advisor workflow review",
+        "Expose agents 10, 17, and 19 as assistive advisors for composition structure, production workflow, and critique/review loops.",
+    ),
+    (
+        "Studio project linkage",
+        "Keep every media project linked to Studio Projects so review steps, test cases, and verification runs stay attached to the editor workspace.",
+    ),
+    (
+        "Knowledge provenance and feeds",
         "Link media accounts and feeds, then index imported/generated assets with provenance and interest signals.",
     ),
     (
-        "Swarm and model federation",
-        "Advertise which local models, remote swarms, and connected agents can contribute to the media pipeline.",
+        "Routing and federation readiness",
+        "Advertise which local models, remote swarms, and connected agents can contribute to the media pipeline without taking over the composer.",
+    ),
+    (
+        "Chat and local-agent flow checks",
+        "Keep media chat intents, local-agent dispatch, and sequential media workflows readable and stable during editor-driven use.",
     ),
 ]
 
 _TRACKING_CASES = [
-    ("Media Center state exposes Projects, Chat, model, swarm, feeds, interests, and spine context", "pytest:media-center-state"),
+    ("Media Center opens as a DAW-first editor with a dominant composer surface", "pytest:media-center-daw-layout"),
+    ("Transport bar exposes New Project, Research, Queue Audio, Queue Video, Render/Compile, Route, Save Handoff, and Open Project Plan", "pytest:media-center-transport"),
+    ("Research Center renders references, accounts, feeds, knowledge docs, routing, and advisor roles as dock tabs", "pytest:media-center-research-dock"),
+    ("Bottom review dock keeps queue, Studio review plan, runtime, and handoff visible beneath the editor", "pytest:media-center-review-dock"),
+    ("Media Center review plan is visible inside Studio Projects tracking", "pytest:media-center-studio-review"),
+    ("Media Center state exposes Projects, Chat, model, swarm, feeds, interests, spine, advisors, and Knowledge project docs", "pytest:media-center-state"),
     ("Media project creates and updates linked Studio project tracking", "pytest:media-center-project-sync"),
     ("Media Center panes remain resizable and persist user sizing", "pytest:media-center-resize"),
     ("Chat action intents can open Media Center and Studio Projects", "pytest:chat-actions-media-projects"),
-    ("Media project timeline lanes and clips can be edited through the API", "pytest:media-center-editor"),
-    ("Synth and render runners persist artifacts and run history", "pytest:media-center-runners"),
+    ("Media project timeline lanes, clips, and synth takes can be edited through the API", "pytest:media-center-editor"),
     ("Linked feeds/accounts preserve source provenance for Knowledge indexing", "pytest:media-center-knowledge-provenance"),
+    ("Advisor roles 10, 17, and 19 are exposed for composition, production, and critique guidance", "pytest:media-center-advisors"),
     ("Remote swarms and enabled models are visible to the media pipeline", "pytest:media-center-federation"),
+]
+
+_FRIDAYS_KNOWLEDGE_DOCS = [
+    (
+        "FRIDAYS_MUSIC_WORKFLOW.md",
+        "media,knowledge,fridays,music",
+        """# Fridays music workflow
+
+Fridays creates music in Media Center through a project-first flow.
+
+1. Open Media Center and create or select a project.
+2. Set the prompt, style, duration, and medium. Use `Music only` or `Audio + video` when the track is part of a larger teaser.
+3. Build the structure in `Active Project Graph`:
+- scenes define the arc
+- audio lanes define stems and synth takes
+- deliverables define the final WAV or preview target
+4. Review `Model / Swarm Routing` to decide whether music should stay local or be handed to a specific agent or linked swarm.
+5. Queue the work from the graph instead of freehand chatting the runner:
+- `Queue audio` for stems, beds, or synth passes
+- `Queue compile` when the project is ready to render a joined output
+6. Use `Signals & Inputs` to attach references, feeds, and linked accounts so provenance is preserved in Knowledge Center.
+7. Review the linked Studio Project for open tasks, test cases, and tracking before promotion.
+
+Mental model:
+brief -> graph -> queue -> route -> review -> export
+""",
+    ),
+    (
+        "FRIDAYS_VIDEO_WORKFLOW.md",
+        "media,knowledge,fridays,video",
+        """# Fridays video workflow
+
+Fridays builds video projects in the same workspace as music so timing, references, and provenance stay connected.
+
+1. Create a Media Center project and choose `Video only` or `Audio + video`.
+2. Add scenes for the story beats you want to cover.
+3. Use the timeline lanes for clips, overlays, captions, and generated visuals.
+4. Add media references in `Signals & Inputs` so source links and notes get indexed into Knowledge Center.
+5. Review `Model / Swarm Routing`:
+- choose a video agent if one should own the generation
+- choose a linked swarm if the work should move off-node
+- keep `local-first` when ffmpeg/local tools should stay in charge
+6. Queue `video` or `compile` jobs from Media Center so the run is tracked in Studio Projects and Test Lab.
+7. Check Studio Projects for the linked review plan and test cases before treating the output as done.
+
+Use Media Center for creation and arrangement, Studio Projects for planning and verification, and Knowledge Center for the reusable how-to/reference layer.
+""",
+    ),
+    (
+        "FRIDAYS_COMPOSITION_HEURISTICS.md",
+        "media,knowledge,fridays,music,composition",
+        """# Fridays composition heuristics
+
+Use this when shaping music inside Media Center.
+
+1. Start with sections before sound design.
+- intro: what is the mood and what should the first 4 to 8 seconds promise
+- lift: where does the energy rise or the harmony widen
+- hook: what is the memorable moment
+- release: how do you let the track breathe or resolve
+2. Give each lane one clear job.
+- music stems carry harmony, pulse, bass, or texture
+- synth takes are experiments or alternates
+- reference markers tell the team why a move exists
+- video/cut markers protect timing against visual edits
+3. Write prompts that mention:
+- tempo / pacing
+- instrumentation or texture
+- emotional arc
+- transition or arrangement intent
+4. Keep references attached to the project so provenance stays visible in Knowledge Center.
+5. Route only when needed. Stay local-first when the work is still exploratory.
+6. Review in Studio Projects before treating a render as final.
+""",
+    ),
+    (
+        "FRIDAYS_RENDER_HANDOFF.md",
+        "media,knowledge,fridays,video,render,handoff",
+        """# Fridays render and handoff guidance
+
+Media Center should hand work off cleanly.
+
+1. Compose first, then queue.
+2. Make sure scenes, lanes, clips, synth takes, and references describe the project clearly.
+3. Save routing before delegating.
+4. Use the handoff manifest when another agent or swarm node needs the project state.
+5. Keep Studio Project steps and test cases attached so review is not lost during delegation.
+6. Index important references and outputs into Knowledge Center with provenance notes.
+""",
+    ),
 ]
 
 
@@ -97,12 +209,25 @@ def _default_project_blueprint() -> dict[str, Any]:
             "tempo_bpm": 120,
             "time_signature": "4/4",
             "lanes": [
-                {"id": "lane-music", "name": "Music Bed", "kind": "audio", "role": "stem"},
-                {"id": "lane-synth", "name": "AI Synth Takes", "kind": "audio", "role": "generated"},
-                {"id": "lane-video", "name": "Video Clips", "kind": "video", "role": "clip"},
+                {"id": "lane-scenes", "name": "Scenes / Sections", "kind": "marker", "role": "scene"},
+                {"id": "lane-music", "name": "Music Stems", "kind": "audio", "role": "stem"},
+                {"id": "lane-synth", "name": "Synth Takes", "kind": "audio", "role": "generated"},
+                {"id": "lane-references", "name": "Reference Markers", "kind": "marker", "role": "reference"},
+                {"id": "lane-video", "name": "Video / Cut Markers", "kind": "video", "role": "cut"},
                 {"id": "lane-captions", "name": "Captions", "kind": "caption", "role": "text"},
             ],
             "clips": [
+                {
+                    "id": "clip-intro-scene",
+                    "lane_id": "lane-scenes",
+                    "name": "Intro section",
+                    "kind": "marker",
+                    "start_sec": 0,
+                    "duration_sec": 8,
+                    "source": "planned",
+                    "prompt": "Set the emotional and visual premise.",
+                    "status": "planned",
+                },
                 {
                     "id": "clip-intro-bed",
                     "lane_id": "lane-music",
@@ -190,6 +315,7 @@ def _ensure_state_file() -> None:
 
 def load_state() -> dict[str, Any]:
     _ensure_state_file()
+    _seed_media_center_knowledge_docs()
     try:
         raw = json.loads(_STATE_PATH.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
@@ -219,6 +345,42 @@ def save_state(state: dict[str, Any]) -> None:
     _STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
+def _seed_media_center_knowledge_docs() -> None:
+    """Keep Fridays music/video how-to docs visible in Knowledge Center."""
+    conn = get_connection()
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS project_docs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doc_name TEXT NOT NULL,
+                content TEXT DEFAULT '',
+                tags TEXT DEFAULT 'all',
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            )
+            """
+        )
+        for doc_name, tags, content in _FRIDAYS_KNOWLEDGE_DOCS:
+            row = conn.execute(
+                "SELECT id FROM project_docs WHERE doc_name=?",
+                (doc_name,),
+            ).fetchone()
+            if row:
+                conn.execute(
+                    "UPDATE project_docs SET content=?, tags=?, updated_at=datetime('now') WHERE id=?",
+                    (content, tags, row["id"]),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO project_docs (doc_name, content, tags) VALUES (?,?,?)",
+                    (doc_name, content, tags),
+                )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _ensure_project_editor_defaults(project: dict[str, Any]) -> bool:
     changed = False
     blueprint = _default_project_blueprint()
@@ -238,6 +400,12 @@ def _ensure_project_editor_defaults(project: dict[str, Any]) -> bool:
         changed = True
     timeline.setdefault("tempo_bpm", blueprint["timeline"]["tempo_bpm"])
     timeline.setdefault("time_signature", blueprint["timeline"]["time_signature"])
+    existing_ids = {str(item.get("id") or "") for item in timeline.get("lanes", [])}
+    for lane in blueprint["timeline"]["lanes"]:
+        lane_id = str(lane.get("id") or "")
+        if lane_id and lane_id not in existing_ids:
+            timeline["lanes"].append(copy.deepcopy(lane))
+            changed = True
     if not isinstance(project.get("synth_runs"), list):
         project["synth_runs"] = []
         changed = True
@@ -979,6 +1147,7 @@ def public_state() -> dict[str, Any]:
     payload["accounts"] = _media_accounts_context(payload)
     payload["knowledge"] = _media_knowledge_context(payload)
     payload["routing"] = _media_routing_context(payload)
+    payload["advisors"] = _media_advisor_context(payload)
     payload["counts"] = {
         "projects": len(payload.get("projects", [])),
         "queued_jobs": sum(1 for job in payload.get("jobs", []) if job.get("status") == "queued"),
@@ -1036,9 +1205,23 @@ def _media_knowledge_context(payload: dict[str, Any]) -> dict[str, Any]:
         recent_entries = _knowledge.search_knowledge("media-ref-", category="fact", limit=8)
     except Exception:
         recent_entries = []
+    docs: list[dict[str, Any]] = []
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT doc_name, tags FROM project_docs "
+            "WHERE doc_name LIKE 'FRIDAYS_%' "
+            "ORDER BY doc_name ASC"
+        ).fetchall()
+        docs = [{"doc_name": row["doc_name"], "tags": row["tags"], "source": "project_docs"} for row in rows]
+    except Exception:
+        docs = []
+    finally:
+        conn.close()
     return {
         "references": references[:16],
         "indexed_count": sum(1 for item in references if item.get("knowledge_status") == "indexed"),
+        "project_docs": docs,
         "recent_entries": [
             {
                 "key": item.get("key"),
@@ -1374,7 +1557,7 @@ def _media_chat_context(projects: list[dict[str, Any]]) -> dict[str, Any]:
         ],
         "context_hint": (
             f"Media Center active project: {project_name}. "
-            "Use Studio Projects for tracking/tests and Media Center for music/video generation."
+            "Use Media Center as the composer/editor, Research Center for references and Knowledge, and Studio Projects for tracking/tests."
         ),
     }
 
@@ -1462,6 +1645,40 @@ def _media_model_context() -> dict[str, Any]:
         "agents": media_candidates[:12],
         "registry_source": "utils.db.registry",
     }
+
+
+def _media_advisor_context(payload: dict[str, Any]) -> dict[str, Any]:
+    model_agents = {str(item.get("agent") or ""): item for item in payload.get("models", {}).get("agents", [])}
+    roles = [
+        {
+            "agent_id": "10",
+            "title": "Composition Advisor",
+            "role": "structure / composition",
+            "focus": "Helps shape sections, pacing, arrangement, hooks, and transitions for music-driven projects.",
+            "how_to_use": "Use 10 when the track needs form, momentum, or a clearer musical arc before routing generation work.",
+        },
+        {
+            "agent_id": "17",
+            "title": "Production Workflow Advisor",
+            "role": "implementation / production",
+            "focus": "Helps turn scenes, references, and prompts into an executable music/video workflow with lanes, jobs, and handoffs.",
+            "how_to_use": "Use 17 when you need help structuring clips, synth takes, queue order, or render handoff decisions.",
+        },
+        {
+            "agent_id": "19",
+            "title": "Critique and Review Advisor",
+            "role": "critique / next-step refinement",
+            "focus": "Helps review what is missing, what clashes, and which next edits would most improve the piece.",
+            "how_to_use": "Use 19 after a draft pass when you want critique, revision suggestions, or a stronger review loop.",
+        },
+    ]
+    for role in roles:
+        match = model_agents.get(role["agent_id"]) or {}
+        role["availability"] = "advertised" if match else "seeded"
+        role["model"] = match.get("model") or ""
+        role["label"] = match.get("label") or role["title"]
+        role["surfaces"] = "Media Center, Studio Projects, Knowledge Center"
+    return {"roles": roles}
 
 
 def _media_swarm_context() -> dict[str, Any]:
