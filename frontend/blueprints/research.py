@@ -28,10 +28,6 @@ def api_research_start():
 
     agent = data.get('agent', 'user')
 
-    # Run research in a background thread so the request returns immediately
-    from utils.db.research import create_session
-    session_id = create_session(topic, depth=depth, requesting_agent=agent)
-
     def _run():
         try:
             from fridays.research_workflow import run_research
@@ -46,10 +42,19 @@ def api_research_start():
             _sid, summary = run_research(topic, depth=depth, requesting_agent=agent)
             return jsonify({'ok': True, 'session_id': _sid, 'summary': summary})
         except Exception as e:
-            return jsonify({'ok': False, 'session_id': session_id,
-                            'error': str(e)}), 500
+            return jsonify({'ok': False, 'error': str(e)}), 500
     else:
-        t = threading.Thread(target=_run, daemon=True)
+        from utils.db.research import create_session
+        session_id = create_session(topic, depth=depth, requesting_agent=agent)
+
+        def _resume_placeholder():
+            try:
+                from fridays.research_workflow import resume_research
+                resume_research(session_id)
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_resume_placeholder, daemon=True)
         t.start()
         return jsonify({'ok': True, 'session_id': session_id,
                         'status': 'started', 'depth': depth})

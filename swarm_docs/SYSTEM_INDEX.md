@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-28 00:10*
+*Auto-generated: 2026-04-28 07:24*
 
 
 ## Python Modules
@@ -291,37 +291,37 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 42130 |
+| `activity_log` | 42460 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 679 |
-| `audit_results` | 40 |
-| `change_runs` | 32 |
+| `approval_tokens` | 682 |
+| `audit_results` | 41 |
+| `change_runs` | 33 |
 | `chat_jobs` | 670 |
 | `claude_log` | 1 |
 | `conv_timeline` | 2439 |
 | `conversations` | 207 |
-| `council_output` | 4604 |
+| `council_output` | 4746 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 24341 |
+| `decisions` | 25227 |
 | `deferred_items` | 0 |
-| `duck_log` | 939 |
-| `feed_subscriptions` | 15 |
+| `duck_log` | 941 |
+| `feed_subscriptions` | 16 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4703 |
+| `ghost_circle` | 4705 |
 | `governance_log` | 418 |
 | `knowledge_chunks` | 638 |
 | `knowledge_sources` | 50 |
 | `media_items` | 1 |
 | `media_providers` | 7 |
-| `media_runs` | 28 |
+| `media_runs` | 30 |
 | `memory` | 129 |
 | `memory_eight` | 1 |
 | `memory_gemma` | 2 |
@@ -351,11 +351,11 @@
 | `projects` | 33 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 2 |
-| `queue` | 1731 |
+| `queue` | 1735 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 550 |
-| `scheduled_tasks` | 1298 |
+| `scheduled_tasks` | 11 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
@@ -364,23 +364,23 @@
 | `sudo_command_whitelist` | 5 |
 | `swarm_bus` | 418 |
 | `swarm_event_acks` | 93 |
-| `swarm_events` | 19 |
+| `swarm_events` | 20 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 19 |
+| `swarm_knowledge` | 20 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 8673 |
+| `system_stats` | 8759 |
 | `task_run_log` | 1 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
-| `test_runs` | 178 |
-| `ticket_notes` | 693 |
-| `tickets` | 701 |
-| `time_checkpoints` | 5302 |
-| `time_events` | 112763 |
+| `test_runs` | 179 |
+| `ticket_notes` | 695 |
+| `tickets` | 703 |
+| `time_checkpoints` | 5319 |
+| `time_events` | 112780 |
 | `time_journal` | 105988 |
-| `time_machine` | 6928 |
+| `time_machine` | 6938 |
 | `tool_builds` | 0 |
-| `trace_events` | 901 |
+| `trace_events` | 922 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_interests` | 21 |
