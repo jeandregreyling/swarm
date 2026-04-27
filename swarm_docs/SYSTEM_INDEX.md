@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-27 00:08*
+*Auto-generated: 2026-04-28 00:09*
 
 
 ## Python Modules
@@ -214,7 +214,8 @@
 | `library` | 22 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
 | `login_bp` | 14 | login_bp.py — User login, registration, session management, and approval. |
-| `media_center` | 5 | Media Center API blueprint. |
+| `media_bp` | 6 | Media Center API — consume/produce media with local runners. |
+| `media_center` | 11 | Media Center API blueprint. |
 | `memory` | 8 | memory.py — Memory routes |
 | `metrics` | 2 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
 | `nine` | 4 | nine.py — Agent Nine routes |
@@ -262,18 +263,19 @@
 | `library-graph.js` | 12.4 KB |
 | `library.js` | 43.7 KB |
 | `localai.js` | 26.3 KB |
-| `media-center.js` | 12.9 KB |
+| `media-center.js` | 45.7 KB |
+| `media.js` | 9.8 KB |
 | `memory-landscape.js` | 9.6 KB |
 | `memory.js` | 30.3 KB |
 | `monitor.js` | 20.9 KB |
 | `ollama.js` | 4.1 KB |
-| `onboarding.js` | 18.0 KB |
+| `onboarding.js` | 18.2 KB |
 | `orbs.js` | 83.8 KB |
 | `projects.js` | 24.5 KB |
 | `services.js` | 5.0 KB |
 | `skills.js` | 26.2 KB |
 | `spotlight.js` | 15.1 KB |
-| `studio-media.js` | 6.6 KB |
+| `studio-media.js` | 9.0 KB |
 | `studio-testlab.js` | 25.3 KB |
 | `studio.js` | 87.2 KB |
 | `tasker.js` | 11.0 KB |
@@ -289,64 +291,67 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 41184 |
+| `activity_log` | 42090 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
 | `approval_tokens` | 676 |
-| `audit_results` | 39 |
-| `change_runs` | 23 |
-| `chat_jobs` | 664 |
+| `audit_results` | 40 |
+| `change_runs` | 32 |
+| `chat_jobs` | 670 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2405 |
-| `conversations` | 202 |
-| `council_output` | 4086 |
+| `conv_timeline` | 2439 |
+| `conversations` | 207 |
+| `council_output` | 4603 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 21764 |
+| `decisions` | 24317 |
 | `deferred_items` | 0 |
 | `duck_log` | 937 |
-| `feed_subscriptions` | 0 |
+| `feed_subscriptions` | 14 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4669 |
-| `governance_log` | 416 |
+| `ghost_circle` | 4701 |
+| `governance_log` | 418 |
 | `knowledge_chunks` | 638 |
-| `knowledge_sources` | 51 |
+| `knowledge_sources` | 50 |
+| `media_items` | 1 |
+| `media_providers` | 7 |
+| `media_runs` | 26 |
 | `memory` | 129 |
 | `memory_eight` | 1 |
 | `memory_gemma` | 2 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
-| `memory_llama` | 0 |
+| `memory_llama` | 1 |
 | `memory_mistral` | 1 |
 | `memory_nine` | 0 |
 | `memory_qwen` | 0 |
 | `memory_scholar` | 0 |
 | `memory_seeker` | 0 |
 | `memory_sonic` | 0 |
-| `memory_ten` | 63 |
+| `memory_ten` | 64 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 464 |
-| `messages` | 435 |
+| `messages` | 457 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
 | `notification_senders` | 8 |
 | `pending_emails` | 8 |
 | `project_doc_versions` | 56 |
-| `project_docs` | 74 |
-| `project_steps` | 212 |
-| `project_test_cases` | 133 |
-| `projects` | 32 |
+| `project_docs` | 79 |
+| `project_steps` | 256 |
+| `project_test_cases` | 169 |
+| `projects` | 33 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 2 |
-| `queue` | 1725 |
+| `queue` | 1727 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 550 |
@@ -357,25 +362,25 @@
 | `snoozed_tickets` | 0 |
 | `sqlite_sequence` | 69 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 416 |
-| `swarm_event_acks` | 28 |
-| `swarm_events` | 2 |
+| `swarm_bus` | 418 |
+| `swarm_event_acks` | 93 |
+| `swarm_events` | 18 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 2 |
+| `swarm_knowledge` | 18 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 8405 |
+| `system_stats` | 8673 |
 | `task_run_log` | 1 |
 | `terminal_shortcuts` | 16 |
-| `test_run_artifacts` | 54 |
-| `test_runs` | 166 |
+| `test_run_artifacts` | 61 |
+| `test_runs` | 178 |
 | `ticket_notes` | 691 |
 | `tickets` | 699 |
 | `time_checkpoints` | 5283 |
-| `time_events` | 109626 |
-| `time_journal` | 102870 |
-| `time_machine` | 6869 |
+| `time_events` | 112744 |
+| `time_journal` | 105988 |
+| `time_machine` | 6923 |
 | `tool_builds` | 0 |
-| `trace_events` | 769 |
+| `trace_events` | 884 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_interests` | 21 |
@@ -384,7 +389,7 @@
 | `user_sessions` | 28 |
 | `user_skill_permissions` | 3 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 10 |
+| `work_proposals` | 12 |
 
 ## Agents
 
@@ -410,7 +415,7 @@
 | `duck_ddg` | duckduckgo | service | Web Search · DuckDuckGo (no key) | ✅ |
 | `ghost_coder` | gpt-5 | paid | Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays | ✅ |
 | `nineteen` | o4-mini | paid | developer | ✅ |
-| `twenty` | Qwen3.6:latest | local | Nervous system — observes, deliberates, suggests (no LLM) | ✅ |
+| `twenty` | qwen3.6:latest | local | Nervous system — observes, deliberates, suggests (no LLM) | ✅ |
 | `sniffles` | deepseek-r1:7b | local | Inspector — memory auditor, read only, chain-of-thought | ✅ |
 
 ## Skills
