@@ -57,6 +57,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.killswitch',     'killswitch_bp'),
     ('blueprints.legacy',         'legacy_bp'),
     ('blueprints.memory',         'memory_bp'),
+    ('blueprints.media_bp',       'media_bp'),
     ('blueprints.nine',           'nine_bp'),
     ('blueprints.ollama',         'ollama_bp'),
     ('blueprints.email_bp',       'email_bp'),

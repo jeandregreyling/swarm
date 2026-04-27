@@ -76,6 +76,33 @@ def test_open_tickets():
     assert intent['args']['view'] == 'tickets'
 
 
+def test_open_media_center_from_chat():
+    intent = detect_action('open media center')
+    assert intent is not None
+    assert intent['id'] == 'open_window'
+    assert intent['args']['view'] == 'media-center'
+    assert intent['args']['template'] == 'view-media-center'
+
+
+def test_open_music_editor_from_chat():
+    intent = detect_action('show music editor')
+    assert intent is not None
+    assert intent['args']['view'] == 'media-center'
+
+
+def test_open_media_handoff_manifest_from_chat():
+    intent = detect_action('open media handoff')
+    assert intent is not None
+    assert intent['id'] == 'open_window'
+    assert intent['args']['view'] == 'media-center'
+
+
+def test_open_projects_section_routes_to_studio_projects():
+    intent = detect_action('open projects section')
+    assert intent is not None
+    assert intent['args']['view'] == 'studio'
+
+
 def test_unrelated_chat_returns_none():
     assert detect_action("hey, how's it going?") is None
     assert detect_action('can you explain how relays work') is None

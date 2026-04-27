@@ -22,10 +22,31 @@
 
       if (summary) {
         summary.innerHTML = `${data.counts?.projects || 0} media projects linked into Studio · `
+          + `${data.studio?.tracking_project_id ? 'tracking project ready · ' : ''}`
           + `${data.interests?.relevant?.length || 0} relevant interests · `
           + `${data.feeds?.subscriptions?.length || 0} connected feeds · `
           + `${data.spine?.items?.length || 0} recent spine events`;
       }
+
+      const trackingProjectId = data.studio?.tracking_project_id || '';
+      const trackingProgress = data.tracking?.progress || {};
+      const trackingProject = trackingProjectId ? `
+        <section style="border:1px solid color-mix(in srgb,var(--accent) 38%, var(--border));border-radius:10px;background:color-mix(in srgb,var(--accent) 7%, var(--card));padding:12px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+            <div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Internal Tracking Project</div>
+              <div style="font-size:13px;font-weight:800;color:var(--text);">${esc(data.studio?.tracking_project_name || 'Media Center + Studio Integration')}</div>
+              <div style="font-size:10px;color:var(--text-dim);font-family:monospace;margin-top:4px;">${esc(trackingProjectId)}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+                <span style="font-size:10px;padding:3px 7px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--text);">${trackingProgress.done_steps || 0}/${trackingProgress.step_count || 0} steps done</span>
+                <span style="font-size:10px;padding:3px 7px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--text);">${trackingProgress.case_count || 0} cases</span>
+                <span style="font-size:10px;padding:3px 7px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--text);">${trackingProgress.recent_passes || 0} recent passes</span>
+              </div>
+            </div>
+            <button onclick="studioMediaOpenProject('${esc(trackingProjectId)}')" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:7px;padding:7px 11px;font-size:11px;font-weight:700;cursor:pointer;">Open in Projects</button>
+          </div>
+        </section>
+      ` : '';
 
       const linkedProjects = (data.studio?.linked_projects || []).map(project => `
         <div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
@@ -72,6 +93,7 @@
       `).join('') || '<div style="color:var(--text-dim);">No media spine events yet.</div>';
 
       body.innerHTML = `
+        ${trackingProject}
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
           <section style="border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px;">
             <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Linked Studio Projects</div>
@@ -98,5 +120,13 @@
     } catch (err) {
       body.innerHTML = `<div style="color:var(--danger,#f77);">Media panel failed to load: ${esc(err.message || err)}</div>`;
     }
+  };
+
+  window.studioMediaOpenProject = function (projectId) {
+    if (!projectId) return;
+    if (typeof studioSetTab === 'function') studioSetTab('projects');
+    setTimeout(() => {
+      if (typeof projectsSelect === 'function') projectsSelect(projectId);
+    }, 120);
   };
 })();

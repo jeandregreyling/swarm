@@ -5,12 +5,12 @@
       "id": "media-demo",
       "name": "Swarm Launch Teaser",
       "medium": "audio-video",
-      "status": "draft",
+      "status": "editing",
       "prompt": "Build a cinematic teaser with percussive pulse, luminous pads, and fast-cut system visuals.",
       "style": "future pulse / high-energy",
       "engine_mode": "local-first",
       "duration_sec": 45,
-      "updated_at": "2026-04-25T00:00:00+00:00",
+      "updated_at": "2026-04-27T01:49:49+00:00",
       "tracks": [
         {
           "id": "trk-score",
@@ -53,10 +53,577 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-1BAD468675"
+      "studio_project_id": "P-1BAD468675",
+      "timeline": {
+        "tempo_bpm": 120,
+        "time_signature": "4/4",
+        "lanes": [
+          {
+            "id": "lane-music",
+            "name": "Music Bed",
+            "kind": "audio",
+            "role": "stem"
+          },
+          {
+            "id": "lane-synth",
+            "name": "AI Synth Takes",
+            "kind": "audio",
+            "role": "generated"
+          },
+          {
+            "id": "lane-video",
+            "name": "Video Clips",
+            "kind": "video",
+            "role": "clip"
+          },
+          {
+            "id": "lane-captions",
+            "name": "Captions",
+            "kind": "caption",
+            "role": "text"
+          }
+        ],
+        "clips": [
+          {
+            "id": "clip-intro-bed",
+            "lane_id": "lane-music",
+            "name": "Intro score bed",
+            "kind": "audio",
+            "start_sec": 0,
+            "duration_sec": 8,
+            "source": "planned",
+            "prompt": "Percussive pulse with luminous pads.",
+            "status": "planned"
+          },
+          {
+            "id": "clip-intro-visual",
+            "lane_id": "lane-video",
+            "name": "Intro visual pass",
+            "kind": "video",
+            "start_sec": 0,
+            "duration_sec": 8,
+            "source": "planned",
+            "prompt": "Fast-cut system visuals with bright UI motion.",
+            "status": "planned"
+          },
+          {
+            "id": "clip-f53afade70",
+            "lane_id": "lane-music",
+            "name": "pytest editor clip",
+            "kind": "audio",
+            "start_sec": 1.5,
+            "duration_sec": 3.25,
+            "source": "manual",
+            "prompt": "clip created by integration test",
+            "status": "planned",
+            "created_at": "2026-04-27T01:30:07+00:00",
+            "updated_at": "2026-04-27T01:30:07+00:00"
+          },
+          {
+            "id": "clip-069517ac71",
+            "lane_id": "lane-music",
+            "name": "pytest editor clip",
+            "kind": "audio",
+            "start_sec": 1.5,
+            "duration_sec": 3.25,
+            "source": "manual",
+            "prompt": "clip created by integration test",
+            "status": "planned",
+            "created_at": "2026-04-27T01:33:41+00:00",
+            "updated_at": "2026-04-27T01:33:41+00:00"
+          },
+          {
+            "id": "clip-43e8cbc630",
+            "lane_id": "lane-music",
+            "name": "pytest editor clip",
+            "kind": "audio",
+            "start_sec": 1.5,
+            "duration_sec": 3.25,
+            "source": "manual",
+            "prompt": "clip created by integration test",
+            "status": "planned",
+            "created_at": "2026-04-27T01:39:39+00:00",
+            "updated_at": "2026-04-27T01:39:39+00:00"
+          },
+          {
+            "id": "clip-ea4333511f",
+            "lane_id": "lane-music",
+            "name": "pytest editor clip",
+            "kind": "audio",
+            "start_sec": 1.5,
+            "duration_sec": 3.25,
+            "source": "manual",
+            "prompt": "clip created by integration test",
+            "status": "planned",
+            "created_at": "2026-04-27T01:41:31+00:00",
+            "updated_at": "2026-04-27T01:41:31+00:00"
+          },
+          {
+            "id": "clip-8deeeb92f5",
+            "lane_id": "lane-music",
+            "name": "pytest editor clip",
+            "kind": "audio",
+            "start_sec": 1.5,
+            "duration_sec": 3.25,
+            "source": "manual",
+            "prompt": "clip created by integration test",
+            "status": "planned",
+            "created_at": "2026-04-27T01:44:51+00:00",
+            "updated_at": "2026-04-27T01:44:51+00:00"
+          },
+          {
+            "id": "clip-387d3392d0",
+            "lane_id": "lane-music",
+            "name": "pytest editor clip",
+            "kind": "audio",
+            "start_sec": 1.5,
+            "duration_sec": 3.25,
+            "source": "manual",
+            "prompt": "clip created by integration test",
+            "status": "planned",
+            "created_at": "2026-04-27T01:45:12+00:00",
+            "updated_at": "2026-04-27T01:45:12+00:00"
+          },
+          {
+            "id": "clip-96693ea8c9",
+            "lane_id": "lane-music",
+            "name": "pytest editor clip",
+            "kind": "audio",
+            "start_sec": 1.5,
+            "duration_sec": 3.25,
+            "source": "manual",
+            "prompt": "clip created by integration test",
+            "status": "planned",
+            "created_at": "2026-04-27T01:49:48+00:00",
+            "updated_at": "2026-04-27T01:49:48+00:00"
+          },
+          {
+            "id": "clip-take-c1f0ab53e6",
+            "lane_id": "lane-synth",
+            "name": "Local Tone Synth take",
+            "kind": "audio",
+            "start_sec": 2.0,
+            "duration_sec": 5.0,
+            "source": "synth:local-tone",
+            "prompt": "pytest synth take",
+            "status": "generated",
+            "take_id": "take-c1f0ab53e6",
+            "created_at": "2026-04-27T01:33:41+00:00",
+            "updated_at": "2026-04-27T01:33:41+00:00"
+          },
+          {
+            "id": "clip-take-19416e730a",
+            "lane_id": "lane-synth",
+            "name": "Local Tone Synth take",
+            "kind": "audio",
+            "start_sec": 2.0,
+            "duration_sec": 5.0,
+            "source": "synth:local-tone",
+            "prompt": "pytest synth take",
+            "status": "generated",
+            "take_id": "take-19416e730a",
+            "created_at": "2026-04-27T01:39:39+00:00",
+            "updated_at": "2026-04-27T01:39:39+00:00"
+          },
+          {
+            "id": "clip-take-c4956c29e2",
+            "lane_id": "lane-synth",
+            "name": "Local Tone Synth take",
+            "kind": "audio",
+            "start_sec": 2.0,
+            "duration_sec": 5.0,
+            "source": "synth:local-tone",
+            "prompt": "pytest synth take",
+            "status": "generated",
+            "take_id": "take-c4956c29e2",
+            "created_at": "2026-04-27T01:41:31+00:00",
+            "updated_at": "2026-04-27T01:41:31+00:00"
+          },
+          {
+            "id": "clip-take-4cd71adfc7",
+            "lane_id": "lane-synth",
+            "name": "Local Tone Synth take",
+            "kind": "audio",
+            "start_sec": 2.0,
+            "duration_sec": 5.0,
+            "source": "synth:local-tone",
+            "prompt": "pytest synth take",
+            "status": "generated",
+            "take_id": "take-4cd71adfc7",
+            "created_at": "2026-04-27T01:44:52+00:00",
+            "updated_at": "2026-04-27T01:44:52+00:00"
+          },
+          {
+            "id": "clip-take-f68cb9ecaf",
+            "lane_id": "lane-synth",
+            "name": "Local Tone Synth take",
+            "kind": "audio",
+            "start_sec": 2.0,
+            "duration_sec": 5.0,
+            "source": "synth:local-tone",
+            "prompt": "pytest synth take",
+            "status": "generated",
+            "take_id": "take-f68cb9ecaf",
+            "created_at": "2026-04-27T01:45:13+00:00",
+            "updated_at": "2026-04-27T01:45:13+00:00"
+          },
+          {
+            "id": "clip-take-94d76c92e5",
+            "lane_id": "lane-synth",
+            "name": "Local Tone Synth take",
+            "kind": "audio",
+            "start_sec": 2.0,
+            "duration_sec": 5.0,
+            "source": "synth:local-tone",
+            "prompt": "pytest synth take",
+            "status": "generated",
+            "take_id": "take-94d76c92e5",
+            "created_at": "2026-04-27T01:49:48+00:00",
+            "updated_at": "2026-04-27T01:49:48+00:00"
+          }
+        ]
+      },
+      "synth_runs": [
+        {
+          "id": "take-94d76c92e5",
+          "synth_id": "local-tone",
+          "synth_name": "Local Tone Synth",
+          "runner_key": "local_synth_audio_runner",
+          "prompt": "pytest synth take",
+          "status": "generated",
+          "lane_id": "lane-synth",
+          "start_sec": 2.0,
+          "duration_sec": 5.0,
+          "created_at": "2026-04-27T01:49:48+00:00",
+          "artifact_path": ""
+        },
+        {
+          "id": "take-f68cb9ecaf",
+          "synth_id": "local-tone",
+          "synth_name": "Local Tone Synth",
+          "runner_key": "local_synth_audio_runner",
+          "prompt": "pytest synth take",
+          "status": "generated",
+          "lane_id": "lane-synth",
+          "start_sec": 2.0,
+          "duration_sec": 5.0,
+          "created_at": "2026-04-27T01:45:13+00:00",
+          "artifact_path": ""
+        },
+        {
+          "id": "take-4cd71adfc7",
+          "synth_id": "local-tone",
+          "synth_name": "Local Tone Synth",
+          "runner_key": "local_synth_audio_runner",
+          "prompt": "pytest synth take",
+          "status": "generated",
+          "lane_id": "lane-synth",
+          "start_sec": 2.0,
+          "duration_sec": 5.0,
+          "created_at": "2026-04-27T01:44:52+00:00",
+          "artifact_path": ""
+        },
+        {
+          "id": "take-c4956c29e2",
+          "synth_id": "local-tone",
+          "synth_name": "Local Tone Synth",
+          "runner_key": "local_synth_audio_runner",
+          "prompt": "pytest synth take",
+          "status": "generated",
+          "lane_id": "lane-synth",
+          "start_sec": 2.0,
+          "duration_sec": 5.0,
+          "created_at": "2026-04-27T01:41:31+00:00",
+          "artifact_path": ""
+        },
+        {
+          "id": "take-19416e730a",
+          "synth_id": "local-tone",
+          "synth_name": "Local Tone Synth",
+          "runner_key": "local_synth_audio_runner",
+          "prompt": "pytest synth take",
+          "status": "generated",
+          "lane_id": "lane-synth",
+          "start_sec": 2.0,
+          "duration_sec": 5.0,
+          "created_at": "2026-04-27T01:39:39+00:00",
+          "artifact_path": ""
+        },
+        {
+          "id": "take-c1f0ab53e6",
+          "synth_id": "local-tone",
+          "synth_name": "Local Tone Synth",
+          "runner_key": "local_synth_audio_runner",
+          "prompt": "pytest synth take",
+          "status": "generated",
+          "lane_id": "lane-synth",
+          "start_sec": 2.0,
+          "duration_sec": 5.0,
+          "created_at": "2026-04-27T01:33:41+00:00",
+          "artifact_path": ""
+        }
+      ],
+      "media_refs": [
+        {
+          "id": "ref-280de65589",
+          "title": "pytest indexed reference",
+          "account_id": "youtube",
+          "account_name": "YouTube",
+          "media_type": "video",
+          "url": "https://example.invalid/media-ref",
+          "notes": "reference created by integration test",
+          "tags": [
+            "swarm",
+            "launch",
+            "teaser",
+            "cinematic",
+            "media",
+            "audio-video"
+          ],
+          "status": "indexed",
+          "provenance": {
+            "source": "media_center",
+            "provider": "youtube",
+            "feed_kind": "youtube",
+            "linked_account_status": "linked"
+          },
+          "created_at": "2026-04-27T01:49:49+00:00",
+          "updated_at": "2026-04-27T01:49:49+00:00",
+          "knowledge_status": "indexed"
+        },
+        {
+          "id": "ref-ad72e490be",
+          "title": "pytest indexed reference",
+          "account_id": "youtube",
+          "account_name": "YouTube",
+          "media_type": "video",
+          "url": "https://example.invalid/media-ref",
+          "notes": "reference created by integration test",
+          "tags": [
+            "swarm",
+            "launch",
+            "teaser",
+            "cinematic",
+            "media",
+            "audio-video"
+          ],
+          "status": "indexed",
+          "provenance": {
+            "source": "media_center",
+            "provider": "youtube",
+            "feed_kind": "youtube",
+            "linked_account_status": "linked"
+          },
+          "created_at": "2026-04-27T01:45:13+00:00",
+          "updated_at": "2026-04-27T01:45:13+00:00",
+          "knowledge_status": "indexed"
+        },
+        {
+          "id": "ref-01a16d1ee9",
+          "title": "pytest indexed reference",
+          "account_id": "youtube",
+          "account_name": "YouTube",
+          "media_type": "video",
+          "url": "https://example.invalid/media-ref",
+          "notes": "reference created by integration test",
+          "tags": [
+            "swarm",
+            "launch",
+            "teaser",
+            "cinematic",
+            "media",
+            "audio-video"
+          ],
+          "status": "indexed",
+          "provenance": {
+            "source": "media_center",
+            "provider": "youtube",
+            "feed_kind": "youtube",
+            "linked_account_status": "available"
+          },
+          "created_at": "2026-04-27T01:44:52+00:00",
+          "updated_at": "2026-04-27T01:44:52+00:00",
+          "knowledge_status": "indexed"
+        },
+        {
+          "id": "ref-85ed952c7a",
+          "title": "pytest indexed reference",
+          "account_id": "youtube",
+          "account_name": "YouTube",
+          "media_type": "video",
+          "url": "https://example.invalid/media-ref",
+          "notes": "reference created by integration test",
+          "tags": [
+            "swarm",
+            "launch",
+            "teaser",
+            "cinematic",
+            "media",
+            "audio-video"
+          ],
+          "status": "indexed",
+          "provenance": {
+            "source": "media_center",
+            "provider": "youtube",
+            "feed_kind": "youtube",
+            "linked_account_status": "available"
+          },
+          "created_at": "2026-04-27T01:41:32+00:00",
+          "updated_at": "2026-04-27T01:41:32+00:00",
+          "knowledge_status": "indexed"
+        },
+        {
+          "id": "ref-6090508b59",
+          "title": "pytest indexed reference",
+          "account_id": "youtube",
+          "account_name": "YouTube",
+          "media_type": "video",
+          "url": "https://example.invalid/media-ref",
+          "notes": "reference created by integration test",
+          "tags": [
+            "swarm",
+            "launch",
+            "teaser",
+            "cinematic",
+            "media",
+            "audio-video"
+          ],
+          "status": "indexed",
+          "provenance": {
+            "source": "media_center",
+            "provider": "youtube",
+            "feed_kind": "youtube",
+            "linked_account_status": "available"
+          },
+          "created_at": "2026-04-27T01:39:40+00:00",
+          "updated_at": "2026-04-27T01:39:40+00:00",
+          "knowledge_status": "indexed"
+        }
+      ],
+      "routing": {
+        "music_agent": "",
+        "video_agent": "",
+        "swarm_node_id": "",
+        "handoff_mode": "swarm-assisted",
+        "updated_at": "2026-04-27T01:49:49+00:00"
+      }
     }
   ],
   "jobs": [
+    {
+      "id": "job-31cc293a55",
+      "project_id": "media-demo",
+      "project_name": "Swarm Launch Teaser",
+      "job_type": "synth:local-tone",
+      "mode": "manifest",
+      "status": "generated",
+      "engine": "local_synth_audio_runner",
+      "notes": "pytest synth take",
+      "created_at": "2026-04-27T01:49:48+00:00",
+      "updated_at": "2026-04-27T01:49:48+00:00",
+      "artifacts": [
+        {
+          "label": "Timeline take",
+          "path": "clip-take-94d76c92e5",
+          "status": "generated"
+        }
+      ]
+    },
+    {
+      "id": "job-635a8b1425",
+      "project_id": "media-demo",
+      "project_name": "Swarm Launch Teaser",
+      "job_type": "synth:local-tone",
+      "mode": "manifest",
+      "status": "generated",
+      "engine": "local_synth_audio_runner",
+      "notes": "pytest synth take",
+      "created_at": "2026-04-27T01:45:13+00:00",
+      "updated_at": "2026-04-27T01:45:13+00:00",
+      "artifacts": [
+        {
+          "label": "Timeline take",
+          "path": "clip-take-f68cb9ecaf",
+          "status": "generated"
+        }
+      ]
+    },
+    {
+      "id": "job-153653042f",
+      "project_id": "media-demo",
+      "project_name": "Swarm Launch Teaser",
+      "job_type": "synth:local-tone",
+      "mode": "manifest",
+      "status": "generated",
+      "engine": "local_synth_audio_runner",
+      "notes": "pytest synth take",
+      "created_at": "2026-04-27T01:44:52+00:00",
+      "updated_at": "2026-04-27T01:44:52+00:00",
+      "artifacts": [
+        {
+          "label": "Timeline take",
+          "path": "clip-take-4cd71adfc7",
+          "status": "generated"
+        }
+      ]
+    },
+    {
+      "id": "job-2e16778b70",
+      "project_id": "media-demo",
+      "project_name": "Swarm Launch Teaser",
+      "job_type": "synth:local-tone",
+      "mode": "manifest",
+      "status": "generated",
+      "engine": "local_synth_audio_runner",
+      "notes": "pytest synth take",
+      "created_at": "2026-04-27T01:41:31+00:00",
+      "updated_at": "2026-04-27T01:41:31+00:00",
+      "artifacts": [
+        {
+          "label": "Timeline take",
+          "path": "clip-take-c4956c29e2",
+          "status": "generated"
+        }
+      ]
+    },
+    {
+      "id": "job-b87e9c1dbd",
+      "project_id": "media-demo",
+      "project_name": "Swarm Launch Teaser",
+      "job_type": "synth:local-tone",
+      "mode": "manifest",
+      "status": "generated",
+      "engine": "local_synth_audio_runner",
+      "notes": "pytest synth take",
+      "created_at": "2026-04-27T01:39:39+00:00",
+      "updated_at": "2026-04-27T01:39:39+00:00",
+      "artifacts": [
+        {
+          "label": "Timeline take",
+          "path": "clip-take-19416e730a",
+          "status": "generated"
+        }
+      ]
+    },
+    {
+      "id": "job-dc83d58590",
+      "project_id": "media-demo",
+      "project_name": "Swarm Launch Teaser",
+      "job_type": "synth:local-tone",
+      "mode": "manifest",
+      "status": "generated",
+      "engine": "local_synth_audio_runner",
+      "notes": "pytest synth take",
+      "created_at": "2026-04-27T01:33:41+00:00",
+      "updated_at": "2026-04-27T01:33:41+00:00",
+      "artifacts": [
+        {
+          "label": "Timeline take",
+          "path": "clip-take-c1f0ab53e6",
+          "status": "generated"
+        }
+      ]
+    },
     {
       "id": "job-demo",
       "project_id": "media-demo",
@@ -120,6 +687,165 @@
         "ffmpeg-comp",
         "comfyui",
         "animatediff-local"
+      ]
+    }
+  ],
+  "tracking_project_id": "P-10F93B5799",
+  "updated_at": "2026-04-27T01:49:50+00:00",
+  "synth_registry": [
+    {
+      "id": "local-tone",
+      "name": "Local Tone Synth",
+      "kind": "audio",
+      "lane_kind": "audio",
+      "runner_key": "local_synth_audio_runner",
+      "status": "available",
+      "capabilities": [
+        "tone",
+        "placeholder",
+        "wav"
+      ],
+      "model_hint": "python-wave"
+    },
+    {
+      "id": "ffmpeg-visualizer",
+      "name": "FFmpeg Visualizer",
+      "kind": "video",
+      "lane_kind": "video",
+      "runner_key": "local_ffmpeg_video_runner",
+      "status": "needs_ffmpeg",
+      "capabilities": [
+        "testsrc",
+        "sine",
+        "mp4"
+      ],
+      "model_hint": "ffmpeg"
+    },
+    {
+      "id": "lmstudio-prompt",
+      "name": "LM Studio Prompt Synth",
+      "kind": "prompt",
+      "lane_kind": "audio",
+      "runner_key": "lmstudio_prompt_synth",
+      "status": "offline",
+      "capabilities": [
+        "prompt",
+        "lyrics",
+        "arrangement"
+      ],
+      "model_hint": "lmstudio"
+    },
+    {
+      "id": "remote-swarm-render",
+      "name": "Remote Swarm Render",
+      "kind": "federated",
+      "lane_kind": "video",
+      "runner_key": "remote_swarm_render",
+      "status": "ready_when_linked",
+      "capabilities": [
+        "delegate",
+        "render",
+        "model"
+      ],
+      "model_hint": "node-registry"
+    }
+  ],
+  "media_accounts": [
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "kind": "video",
+      "status": "linked",
+      "feed_kind": "youtube",
+      "provenance": [
+        "channel",
+        "playlist",
+        "video_url"
+      ],
+      "subscription_id": "F-7E4EC5FD00",
+      "source": "https://www.youtube.com/@pytest",
+      "linked_at": "2026-04-27T01:49:50+00:00"
+    },
+    {
+      "id": "youtube-music",
+      "name": "YouTube Music",
+      "kind": "music",
+      "status": "available",
+      "feed_kind": "youtube",
+      "provenance": [
+        "artist",
+        "album",
+        "track_url"
+      ]
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "kind": "music",
+      "status": "pending_auth",
+      "feed_kind": "rss",
+      "provenance": [
+        "artist",
+        "playlist",
+        "track_url"
+      ]
+    },
+    {
+      "id": "apple-music",
+      "name": "Apple Music",
+      "kind": "music",
+      "status": "pending_auth",
+      "feed_kind": "rss",
+      "provenance": [
+        "artist",
+        "playlist",
+        "track_url"
+      ]
+    },
+    {
+      "id": "soundcloud",
+      "name": "SoundCloud",
+      "kind": "music",
+      "status": "available",
+      "feed_kind": "rss",
+      "provenance": [
+        "creator",
+        "track_url"
+      ]
+    },
+    {
+      "id": "bandcamp",
+      "name": "Bandcamp",
+      "kind": "music",
+      "status": "available",
+      "feed_kind": "rss",
+      "provenance": [
+        "artist",
+        "release",
+        "track_url"
+      ]
+    },
+    {
+      "id": "custom-feed",
+      "name": "Custom RSS / Feed",
+      "kind": "feed",
+      "status": "available",
+      "feed_kind": "rss",
+      "provenance": [
+        "feed_url",
+        "item_url"
+      ]
+    },
+    {
+      "id": "local-folder",
+      "name": "Local Folder",
+      "kind": "local",
+      "status": "local",
+      "feed_kind": "filesystem",
+      "provenance": [
+        "path",
+        "mtime",
+        "checksum"
       ]
     }
   ]
