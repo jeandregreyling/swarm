@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-27 00:08",
+  "generated_at": "2026-04-28 00:09",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2341,6 +2341,49 @@
       "route_count": 14
     },
     {
+      "name": "media_bp",
+      "description": "Media Center API \u2014 consume/produce media with local runners.",
+      "routes": [
+        {
+          "path": "/api/media/state",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/media/providers",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/media/items",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/media/seed-song",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/media/screenshot",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/media/produce",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 6
+    },
+    {
       "name": "media_center",
       "description": "Media Center API blueprint.",
       "routes": [
@@ -2354,6 +2397,42 @@
           "path": "/api/media-center/projects",
           "methods": [
             "POST"
+          ]
+        },
+        {
+          "path": "/api/media-center/projects/<project_id>/clips",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/media-center/projects/<project_id>/synth-takes",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/media-center/projects/<project_id>/references",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/media-center/accounts/<account_id>/link",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/media-center/projects/<project_id>/routing",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
+          "path": "/api/media-center/projects/<project_id>/handoff",
+          "methods": [
+            "GET"
           ]
         },
         {
@@ -2375,7 +2454,7 @@
           ]
         }
       ],
-      "route_count": 5
+      "route_count": 11
     },
     {
       "name": "memory",
@@ -3624,7 +3703,11 @@
     },
     {
       "name": "media-center.js",
-      "size_kb": 12.9
+      "size_kb": 45.7
+    },
+    {
+      "name": "media.js",
+      "size_kb": 9.8
     },
     {
       "name": "memory-landscape.js",
@@ -3644,7 +3727,7 @@
     },
     {
       "name": "onboarding.js",
-      "size_kb": 18.0
+      "size_kb": 18.2
     },
     {
       "name": "orbs.js",
@@ -3668,7 +3751,7 @@
     },
     {
       "name": "studio-media.js",
-      "size_kb": 6.6
+      "size_kb": 9.0
     },
     {
       "name": "studio-testlab.js",
@@ -3714,7 +3797,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 41184
+      "rows": 42090
     },
     {
       "name": "agent_capabilities",
@@ -3738,15 +3821,15 @@
     },
     {
       "name": "audit_results",
-      "rows": 39
+      "rows": 40
     },
     {
       "name": "change_runs",
-      "rows": 23
+      "rows": 32
     },
     {
       "name": "chat_jobs",
-      "rows": 664
+      "rows": 670
     },
     {
       "name": "claude_log",
@@ -3754,15 +3837,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2405
+      "rows": 2439
     },
     {
       "name": "conversations",
-      "rows": 202
+      "rows": 207
     },
     {
       "name": "council_output",
-      "rows": 4086
+      "rows": 4603
     },
     {
       "name": "daily_checkpoint",
@@ -3782,7 +3865,7 @@
     },
     {
       "name": "decisions",
-      "rows": 21764
+      "rows": 24317
     },
     {
       "name": "deferred_items",
@@ -3794,7 +3877,7 @@
     },
     {
       "name": "feed_subscriptions",
-      "rows": 0
+      "rows": 14
     },
     {
       "name": "file_versions",
@@ -3810,11 +3893,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4669
+      "rows": 4701
     },
     {
       "name": "governance_log",
-      "rows": 416
+      "rows": 418
     },
     {
       "name": "knowledge_chunks",
@@ -3822,7 +3905,19 @@
     },
     {
       "name": "knowledge_sources",
-      "rows": 51
+      "rows": 50
+    },
+    {
+      "name": "media_items",
+      "rows": 1
+    },
+    {
+      "name": "media_providers",
+      "rows": 7
+    },
+    {
+      "name": "media_runs",
+      "rows": 26
     },
     {
       "name": "memory",
@@ -3846,7 +3941,7 @@
     },
     {
       "name": "memory_llama",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "memory_mistral",
@@ -3874,7 +3969,7 @@
     },
     {
       "name": "memory_ten",
-      "rows": 63
+      "rows": 64
     },
     {
       "name": "memory_thirteen",
@@ -3890,7 +3985,7 @@
     },
     {
       "name": "messages",
-      "rows": 435
+      "rows": 457
     },
     {
       "name": "moderators",
@@ -3918,19 +4013,19 @@
     },
     {
       "name": "project_docs",
-      "rows": 74
+      "rows": 79
     },
     {
       "name": "project_steps",
-      "rows": 212
+      "rows": 256
     },
     {
       "name": "project_test_cases",
-      "rows": 133
+      "rows": 169
     },
     {
       "name": "projects",
-      "rows": 32
+      "rows": 33
     },
     {
       "name": "proposal_attachments",
@@ -3942,7 +4037,7 @@
     },
     {
       "name": "queue",
-      "rows": 1725
+      "rows": 1727
     },
     {
       "name": "research_evidence",
@@ -3986,15 +4081,15 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 416
+      "rows": 418
     },
     {
       "name": "swarm_event_acks",
-      "rows": 28
+      "rows": 93
     },
     {
       "name": "swarm_events",
-      "rows": 2
+      "rows": 18
     },
     {
       "name": "swarm_globals",
@@ -4002,7 +4097,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 2
+      "rows": 18
     },
     {
       "name": "swarm_nodes",
@@ -4010,7 +4105,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 8405
+      "rows": 8673
     },
     {
       "name": "task_run_log",
@@ -4022,11 +4117,11 @@
     },
     {
       "name": "test_run_artifacts",
-      "rows": 54
+      "rows": 61
     },
     {
       "name": "test_runs",
-      "rows": 166
+      "rows": 178
     },
     {
       "name": "ticket_notes",
@@ -4042,15 +4137,15 @@
     },
     {
       "name": "time_events",
-      "rows": 109626
+      "rows": 112744
     },
     {
       "name": "time_journal",
-      "rows": 102870
+      "rows": 105988
     },
     {
       "name": "time_machine",
-      "rows": 6869
+      "rows": 6923
     },
     {
       "name": "tool_builds",
@@ -4058,7 +4153,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 769
+      "rows": 884
     },
     {
       "name": "trusted_domains",
@@ -4094,7 +4189,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 10
+      "rows": 12
     }
   ],
   "agents": [
@@ -4240,7 +4335,7 @@
     },
     {
       "name": "twenty",
-      "model": "Qwen3.6:latest",
+      "model": "qwen3.6:latest",
       "role": "Nervous system \u2014 observes, deliberates, suggests (no LLM)",
       "tier": "local",
       "enabled": 1
@@ -4972,7 +5067,19 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "class": "media-action-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "media-panel-toggle",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "class": "media-action-btn media-action-btn-primary",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "media-dock-tab",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -5852,27 +5959,27 @@
       "file": "frontend/static/js/views/media-center.js"
     },
     {
-      "id": "media-center-runtime-grid",
-      "file": "frontend/static/js/views/media-center.js"
-    },
-    {
       "id": "media-center-project-list",
       "file": "frontend/static/js/views/media-center.js"
     },
     {
-      "id": "media-center-project-detail",
+      "id": "media-center-structure-dock",
       "file": "frontend/static/js/views/media-center.js"
     },
     {
-      "id": "media-center-job-list",
+      "id": "media-center-editor-stage",
       "file": "frontend/static/js/views/media-center.js"
     },
     {
-      "id": "media-center-preset-list",
+      "id": "media-center-research-body",
       "file": "frontend/static/js/views/media-center.js"
     },
     {
-      "id": "media-center-context-grid",
+      "id": "media-center-bottom-body",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-view",
       "file": "frontend/static/js/views/media-center.js"
     },
     {
@@ -5893,6 +6000,106 @@
     },
     {
       "id": "media-center-project-duration",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-clip-name",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-clip-lane",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-clip-start",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-clip-duration",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-clip-prompt",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-scene-name",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-scene-start",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-scene-duration",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-scene-goal",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-synth-prompt",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-synth-id",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-synth-lane",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-synth-start",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-synth-duration",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-ref-title",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-ref-account",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-ref-type",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-ref-url",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-ref-notes",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-route-music",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-route-video",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-route-swarm",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-route-mode",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-grid",
+      "file": "frontend/static/js/views/media-center.js"
+    },
+    {
+      "id": "media-center-resizer",
       "file": "frontend/static/js/views/media-center.js"
     },
     {
@@ -6332,6 +6539,10 @@
       "file": "frontend/static/js/views/access.js"
     },
     {
+      "id": "ob-reopen-every-launch",
+      "file": "frontend/static/js/views/onboarding.js"
+    },
+    {
       "id": "ob-ollama-icon",
       "file": "frontend/static/js/views/onboarding.js"
     },
@@ -6369,10 +6580,6 @@
     },
     {
       "id": "ob-summary",
-      "file": "frontend/static/js/views/onboarding.js"
-    },
-    {
-      "id": "ob-reopen-every-launch",
       "file": "frontend/static/js/views/onboarding.js"
     },
     {
@@ -6434,6 +6641,54 @@
     {
       "id": "trace-job-id",
       "file": "frontend/static/js/views/trace.js"
+    },
+    {
+      "id": "media-run-status",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-providers",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-items",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-runs",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-provider-name",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-item-title",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-item-artist",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-item-url",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-prompt",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-layout",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-consume-panel",
+      "file": "frontend/static/js/views/media.js"
+    },
+    {
+      "id": "media-resizer",
+      "file": "frontend/static/js/views/media.js"
     },
     {
       "id": "guide-css",
