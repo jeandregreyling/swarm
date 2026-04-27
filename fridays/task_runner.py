@@ -184,6 +184,135 @@ def _task_idle_research(**kwargs):
     return f'Started research session {sid} on {topic!r} (depth={opts["depth"]})'
 
 
+@register('interest_research_update', 'Research one watched topic and email Ghost when new evidence appears', 'knowledge')
+def _task_interest_research_update(**kwargs):
+    """
+    Topic watch research.
+
+    Args are shell-style key/value pairs:
+      topic="SAP payroll Australia" depth=standard agent=eight email=ghost
+
+    The task compares evidence fingerprints from earlier sessions for the same
+    topic. It sends email only when the new run finds unseen URLs/snippets.
+    """
+    import shlex
+    from utils.db._connection import get_connection
+
+    opts = {
+        'topic': '',
+        'depth': 'standard',
+        'agent': 'eight',
+        'email': 'ghost',
+    }
+    for tok in shlex.split(kwargs.get('args') or ''):
+        if '=' not in tok:
+            continue
+        k, v = tok.split('=', 1)
+        k = k.strip().lower()
+        if k in opts:
+            opts[k] = v.strip()
+
+    topic = opts['topic']
+    if not topic:
+        return 'No topic supplied. Use: interest_research_update topic="SAP payroll Australia"'
+    if opts['depth'] not in ('quick', 'standard', 'deep'):
+        opts['depth'] = 'standard'
+
+    before = _evidence_fingerprints_for_topic(topic)
+
+    from fridays.research_workflow import run_research
+    sid, summary = run_research(topic, depth=opts['depth'], requesting_agent=opts['agent'])
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            """SELECT title, source_url, snippet, snippet_hash
+               FROM research_evidence
+               WHERE session_id=?
+               ORDER BY id ASC""",
+            (sid,),
+        ).fetchall()
+
+    novel = []
+    for row in rows:
+        fingerprint = _evidence_fingerprint(row['source_url'], row['snippet_hash'])
+        if fingerprint not in before:
+            novel.append(row)
+
+    if not novel:
+        return f'Research session {sid} found no new evidence for {topic!r}; no email sent.'
+
+    sent = _email_research_update(
+        topic=topic,
+        session_id=sid,
+        summary=summary,
+        evidence=novel,
+        recipient=opts['email'],
+        agent=opts['agent'],
+    )
+    status = 'email sent' if sent else 'email failed'
+    return f'Research session {sid} found {len(novel)} new evidence item(s) for {topic!r}; {status}.'
+
+
+def _evidence_fingerprints_for_topic(topic):
+    """Return evidence fingerprints from completed earlier sessions for topic."""
+    from utils.db._connection import get_connection
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            """SELECT e.source_url, e.snippet_hash
+               FROM research_evidence e
+               JOIN research_sessions s ON s.id=e.session_id
+               WHERE lower(s.topic)=lower(?)""",
+            (topic,),
+        ).fetchall()
+    return {
+        _evidence_fingerprint(row['source_url'], row['snippet_hash'])
+        for row in rows
+    }
+
+
+def _evidence_fingerprint(source_url, snippet_hash):
+    """Prefer stable source URLs; fall back to snippet hash for URL-less results."""
+    source_url = (source_url or '').strip().lower()
+    if source_url:
+        return f'url:{source_url}'
+    return f'snippet:{(snippet_hash or "").strip()}'
+
+
+def _email_research_update(*, topic, session_id, summary, evidence, recipient, agent):
+    """Send a concise research update email. Returns True/False."""
+    try:
+        from config import GHOST_EMAIL
+        to_address = GHOST_EMAIL if recipient in ('', 'ghost') else recipient
+        lines = [
+            f'Watched topic: {topic}',
+            f'Research session: {session_id}',
+            f'Collecting agent: {agent}',
+            '',
+            'New evidence:',
+        ]
+        for i, row in enumerate(evidence[:10], 1):
+            title = (row['title'] or 'Untitled').strip()
+            url = (row['source_url'] or '').strip()
+            snippet = (row['snippet'] or '').strip().replace('\n', ' ')[:300]
+            lines.append(f'{i}. {title}')
+            if url:
+                lines.append(f'   {url}')
+            if snippet:
+                lines.append(f'   {snippet}')
+        lines.extend(['', 'Summary:', (summary or '').strip()[:3000]])
+
+        from lib.email.email_handler import send_reply
+        return bool(send_reply(
+            to_address=to_address,
+            subject=f'[Swarm Research] New findings: {topic}',
+            body='\n'.join(lines),
+        ))
+    except Exception as e:
+        logger.warning(f'[interest_research_update] email failed: {e}')
+        return False
+
+
 @register('landscape_refresh', 'Regenerate system index and landscape JSON', 'maintenance')
 def _task_landscape_refresh(**kwargs):
     try:
