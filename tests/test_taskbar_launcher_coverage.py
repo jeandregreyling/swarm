@@ -16,9 +16,11 @@ def test_taskbar_launchers_are_derived_from_quick_access_tiles():
     src = APP_JS.read_text()
     assert "function syncTaskbarLaunchers() {" in src
     assert "const PINNED_LAUNCHERS = ['chat', 'terminal', 'knowledge', 'studio', 'media-center'];" in src
+    assert "'media-center': { title: 'Media Center', template: 'view-media-center' }" in src
     assert "document.querySelectorAll('#quick-cards .home-card[data-win-id]')" in src
     assert "if (!winId || !winTitle || winId === 'email') return;" in src
     assert "btn.innerHTML = fridaysWindowIconMarkup(winId);" in src
+    assert "openWindow(winId, winTitle, String(node?.dataset?.winTemplate || `view-${winId}`));" in src
 
 
 def test_media_center_tile_is_not_allowed_to_hide():

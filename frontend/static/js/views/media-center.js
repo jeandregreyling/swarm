@@ -1,7 +1,66 @@
-/* media-center.js — Media Center tile framework */
+/* media-center.js — DAW-first Media Center workspace */
 
 let _mediaCenterState = null;
 let _mediaCenterSelectedProjectId = null;
+const _mediaCenterPanelDefaults = {
+  'new-project': true,
+  'project-rack': false,
+  'composer-outline': false,
+  'research-center': false,
+  'bottom-dock': false,
+};
+
+function _mediaCenterPanelKey(key) {
+  return `fridays.mediaCenter.v3.panel.${key}`;
+}
+
+function _mediaCenterTabKey(kind) {
+  return `fridays.mediaCenter.v3.tab.${kind}`;
+}
+
+function _mediaCenterPanelCollapsed(key) {
+  try {
+    const saved = localStorage.getItem(_mediaCenterPanelKey(key));
+    if (saved == null) return !!_mediaCenterPanelDefaults[key];
+    return saved === '1';
+  } catch (e) {
+    return !!_mediaCenterPanelDefaults[key];
+  }
+}
+
+function _mediaCenterSetPanelCollapsed(key, collapsed) {
+  try {
+    localStorage.setItem(_mediaCenterPanelKey(key), collapsed ? '1' : '0');
+  } catch (e) {}
+}
+
+function _mediaCenterGetTab(kind, fallback) {
+  try {
+    return localStorage.getItem(_mediaCenterTabKey(kind)) || fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function _mediaCenterSetTab(kind, value) {
+  try {
+    localStorage.setItem(_mediaCenterTabKey(kind), value);
+  } catch (e) {}
+}
+
+function _mediaCenterFocusModeEnabled() {
+  try {
+    return localStorage.getItem('fridays.mediaCenter.v3.focusMode') === '1';
+  } catch (e) {
+    return false;
+  }
+}
+
+function _mediaCenterSetFocusMode(enabled) {
+  try {
+    localStorage.setItem('fridays.mediaCenter.v3.focusMode', enabled ? '1' : '0');
+  } catch (e) {}
+}
 
 function initMediaCenter() {
   _mediaCenterWireResizer();
@@ -37,174 +96,233 @@ function _mediaCenterRuntimeBadge(runtime) {
 
 function _renderMediaCenter() {
   const state = _mediaCenterState || {};
-  const project = (state.projects || []).find(p => p.id === _mediaCenterSelectedProjectId) || state.projects?.[0] || null;
+  const projects = state.projects || [];
+  const project = projects.find((item) => item.id === _mediaCenterSelectedProjectId) || projects[0] || null;
   if (project) _mediaCenterSelectedProjectId = project.id;
 
   const counts = state.counts || {};
-  const pills = document.getElementById('media-center-topline');
-  if (pills) {
-    pills.innerHTML = `
+  const topline = document.getElementById('media-center-topline');
+  if (topline) {
+    topline.innerHTML = `
       <span class="media-pill">${counts.projects || 0} projects</span>
       <span class="media-pill">${counts.queued_jobs || 0} queued</span>
       <span class="media-pill">${counts.completed_jobs || 0} completed</span>
+      <span class="media-pill">${state.knowledge?.indexed_count || 0} indexed refs</span>
+      <span class="media-pill">${state.tracking?.progress?.done_steps || 0}/${state.tracking?.progress?.step_count || 0} plan steps</span>
     `;
-  }
-
-  const runtime = document.getElementById('media-center-runtime-grid');
-  if (runtime) {
-    runtime.innerHTML = _mediaCenterRuntimeCards(state.runtime || {});
   }
 
   const projectList = document.getElementById('media-center-project-list');
   if (projectList) {
-    const projects = state.projects || [];
-    projectList.innerHTML = projects.length ? projects.map(project => {
-      const active = project.id === _mediaCenterSelectedProjectId ? ' is-active' : '';
-      return `<button class="media-project-card${active}" onclick="mediaCenterSelectProject(${JSON.stringify(project.id)})">
-        <div class="media-project-title">${_mcEsc(project.name)}</div>
-        <div class="media-project-meta">${_mcEsc(project.medium)} · ${_mcEsc(project.status)} · ${project.duration_sec || 0}s</div>
-        <div class="media-project-prompt">${_mcEsc(project.prompt || 'No prompt yet')}</div>
-      </button>`;
-    }).join('') : '<div class="media-empty">No projects yet. Create one on the left to start the pipeline.</div>';
+    projectList.innerHTML = projects.length
+      ? projects.map((item) => {
+        const active = item.id === _mediaCenterSelectedProjectId ? ' is-active' : '';
+        return `<button class="media-project-card${active}" onclick="mediaCenterSelectProject(${JSON.stringify(item.id)})">
+          <div class="media-project-title">${_mcEsc(item.name)}</div>
+          <div class="media-project-meta">${_mcEsc(item.medium)} · ${_mcEsc(item.status)} · ${item.duration_sec || 0}s</div>
+          <div class="media-project-prompt">${_mcEsc(item.prompt || 'No prompt yet')}</div>
+        </button>`;
+      }).join('')
+      : '<div class="media-empty">No projects yet. Create one to start the editor.</div>';
   }
 
-  const detail = document.getElementById('media-center-project-detail');
-  if (detail) {
-    detail.innerHTML = project ? _mediaCenterProjectDetail(project) : '<div class="media-empty">Pick or create a project to inspect its media graph.</div>';
+  const structureDock = document.getElementById('media-center-structure-dock');
+  if (structureDock) {
+    structureDock.innerHTML = project ? _mediaCenterStructureDock(project) : '<div class="media-empty">Pick a project to see its composition outline.</div>';
   }
 
-  const jobs = document.getElementById('media-center-job-list');
-  if (jobs) {
-    const rows = state.jobs || [];
-    jobs.innerHTML = rows.length ? rows.map(job => {
-      const action = job.status === 'queued' || job.status === 'ready'
-        ? `<button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterSimulateJob(${JSON.stringify(job.id)})">Simulate run</button>`
-        : '<span class="media-inline-hint">ready for real runner</span>';
-      return `<div class="media-job-row">
-        <div class="media-job-main">
-          <div class="media-job-title">${_mcEsc(job.project_name || job.project_id)} <span class="media-job-type">${_mcEsc(job.job_type)}</span></div>
-          <div class="media-job-meta">${_mcEsc(job.status)} · ${_mcEsc(job.engine)} · ${_mcEsc(job.mode)}</div>
-          <div class="media-job-notes">${_mcEsc(job.notes || '')}</div>
-        </div>
-        <div class="media-job-actions">${action}</div>
-      </div>`;
-    }).join('') : '<div class="media-empty">No queued jobs yet.</div>';
+  const editor = document.getElementById('media-center-editor-stage');
+  if (editor) {
+    editor.innerHTML = project ? _mediaCenterEditorStage(project) : '<div class="media-empty">Create or select a project to open the composer.</div>';
   }
 
-  const presets = document.getElementById('media-center-preset-list');
-  if (presets) {
-    presets.innerHTML = (state.presets || []).map(preset => `
-      <div class="media-preset-card">
-        <div class="media-preset-title">${_mcEsc(preset.name)}</div>
-        <div class="media-preset-summary">${_mcEsc(preset.summary)}</div>
-        <div class="media-preset-meta">${_mcEsc((preset.music_models || []).join(', ') || 'No music model')} | ${_mcEsc((preset.video_models || []).join(', ') || 'No video model')}</div>
-      </div>
-    `).join('');
+  const research = document.getElementById('media-center-research-body');
+  if (research) {
+    research.innerHTML = project ? _mediaCenterResearchDock(state, project) : '<div class="media-empty">Research Center loads once a project is selected.</div>';
   }
 
-  const context = document.getElementById('media-center-context-grid');
-  if (context) {
-    context.innerHTML = _mediaCenterContextPanels(state);
+  const bottom = document.getElementById('media-center-bottom-body');
+  if (bottom) {
+    bottom.innerHTML = project ? _mediaCenterBottomDock(state, project) : '<div class="media-empty">Review Dock loads once a project is selected.</div>';
   }
+
+  _mediaCenterApplyPanelState();
+  _mediaCenterApplyFocusMode();
+  _mediaCenterApplyDockTabState();
 }
 
-function _mediaCenterRuntimeCards(runtime) {
-  const rows = [
-    ['Audio stack', runtime.audio, ['ffmpeg', 'ollama', 'lmstudio']],
-    ['Video stack', runtime.video, ['ffmpeg', 'python', 'comfyui_hint']],
-  ];
-  return rows.map(([label, block, keys]) => `
-    <div class="media-runtime-card">
-      <div class="media-runtime-label">${label}</div>
-      <div class="media-runtime-grid-mini">
-        ${keys.map(key => {
-          const on = !!block?.[key];
-          return `<span class="media-runtime-chip ${on ? 'is-on' : ''}">${_mcEsc(key.replace(/_/g, ' '))}: ${on ? 'on' : 'off'}</span>`;
-        }).join('')}
-      </div>
+function _mediaCenterApplyPanelState() {
+  document.querySelectorAll('#media-center-view [data-panel-key]').forEach((panel) => {
+    const key = String(panel.dataset.panelKey || '').trim();
+    if (!key) return;
+    const collapsed = _mediaCenterPanelCollapsed(key);
+    panel.classList.toggle('is-collapsed', collapsed);
+    const toggle = panel.querySelector('.media-panel-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  });
+}
+
+function _mediaCenterApplyFocusMode() {
+  const root = document.getElementById('media-center-view');
+  if (!root) return;
+  root.classList.toggle('is-focus-mode', _mediaCenterFocusModeEnabled());
+}
+
+function _mediaCenterApplyDockTabState() {
+  const researchTab = _mediaCenterGetTab('research', 'references');
+  const bottomTab = _mediaCenterGetTab('bottom', 'queue');
+  document.querySelectorAll('#media-center-research-tabs .media-dock-tab').forEach((button) => {
+    button.classList.toggle('is-active', button.textContent?.trim().toLowerCase() === researchTab);
+  });
+  document.querySelectorAll('#media-center-bottom-tabs .media-dock-tab').forEach((button) => {
+    button.classList.toggle('is-active', button.textContent?.trim().toLowerCase() === bottomTab);
+  });
+}
+
+function mediaCenterTogglePanel(key) {
+  if (!key) return;
+  _mediaCenterSetPanelCollapsed(key, !_mediaCenterPanelCollapsed(key));
+  _mediaCenterApplyPanelState();
+}
+
+function mediaCenterExpandAll() {
+  Object.keys(_mediaCenterPanelDefaults).forEach((key) => _mediaCenterSetPanelCollapsed(key, false));
+  _mediaCenterSetFocusMode(false);
+  _mediaCenterApplyPanelState();
+  _mediaCenterApplyFocusMode();
+}
+
+function mediaCenterCollapseToFocus() {
+  _mediaCenterSetPanelCollapsed('new-project', true);
+  _mediaCenterSetPanelCollapsed('project-rack', false);
+  _mediaCenterSetPanelCollapsed('composer-outline', false);
+  _mediaCenterSetPanelCollapsed('research-center', false);
+  _mediaCenterSetPanelCollapsed('bottom-dock', false);
+  _mediaCenterSetFocusMode(true);
+  _mediaCenterApplyPanelState();
+  _mediaCenterApplyFocusMode();
+}
+
+function mediaCenterSetResearchTab(tab) {
+  _mediaCenterSetTab('research', tab);
+  _renderMediaCenter();
+}
+
+function mediaCenterOpenResearch(tab) {
+  _mediaCenterSetPanelCollapsed('research-center', false);
+  if (tab) _mediaCenterSetTab('research', tab);
+  _renderMediaCenter();
+}
+
+function mediaCenterSetBottomTab(tab) {
+  _mediaCenterSetTab('bottom', tab);
+  _renderMediaCenter();
+}
+
+function _mediaCenterStructureDock(project) {
+  const scenes = (project.scenes || []).map((scene) => `
+    <div class="media-mini-row"><strong>${_mcEsc(scene.name)}</strong><span>${_mcEsc(scene.duration_sec)}s</span><span>${_mcEsc(scene.goal)}</span></div>
+  `).join('') || '<div class="media-empty">No scenes yet.</div>';
+  const tracks = (project.tracks || []).map((track) => `
+    <div class="media-mini-row"><strong>${_mcEsc(track.name)}</strong><span>${_mcEsc(track.role)}</span><span>${_mcEsc(track.model_hint)}</span></div>
+  `).join('') || '<div class="media-empty">No tracks yet.</div>';
+  const deliverables = (project.deliverables || []).map((item) => `
+    <div class="media-mini-row"><strong>${_mcEsc(item.type)}</strong><span>${_mcEsc(item.format)}</span><span>${_mcEsc(item.target)}</span></div>
+  `).join('') || '<div class="media-empty">No deliverables yet.</div>';
+  return `
+    <div class="media-outline-card">
+      <div class="media-outline-title">Scene / Section Map</div>
+      ${scenes}
     </div>
-  `).join('');
+    <div class="media-outline-card">
+      <div class="media-outline-title">Track Roles</div>
+      ${tracks}
+    </div>
+    <div class="media-outline-card">
+      <div class="media-outline-title">Deliverables</div>
+      ${deliverables}
+    </div>
+  `;
 }
 
-function _mediaCenterProjectDetail(project) {
-  const studioLink = project.studio_project_id
-    ? `<button class="media-inline-btn" onclick="mediaCenterOpenStudioProject(${JSON.stringify(project.studio_project_id)})">Open in Studio</button>`
-    : '';
-  const scenes = (project.scenes || []).map(scene => `<div class="media-mini-row"><strong>${_mcEsc(scene.name)}</strong><span>${scene.duration_sec}s</span><span>${_mcEsc(scene.goal)}</span></div>`).join('');
-  const tracks = (project.tracks || []).map(track => `<div class="media-mini-row"><strong>${_mcEsc(track.name)}</strong><span>${_mcEsc(track.role)}</span><span>${_mcEsc(track.model_hint)}</span></div>`).join('');
-  const deliverables = (project.deliverables || []).map(item => `<div class="media-mini-row"><strong>${_mcEsc(item.type)}</strong><span>${_mcEsc(item.format)}</span><span>${_mcEsc(item.target)}</span></div>`).join('');
+function _mediaCenterEditorStage(project) {
   const lanes = project.timeline?.lanes || [];
   const clips = project.timeline?.clips || [];
   const synths = _mediaCenterState?.synths?.registry || [];
-  const accounts = _mediaCenterState?.accounts?.registry || _mediaCenterState?.media_accounts || [];
-  const agents = _mediaCenterState?.models?.agents || [];
-  const swarms = _mediaCenterState?.linked_swarms?.nodes || [];
-  const laneOptions = lanes.map(lane => `<option value="${_mcEsc(lane.id)}">${_mcEsc(lane.name)} · ${_mcEsc(lane.kind)}</option>`).join('');
-  const synthOptions = synths.map(synth => `<option value="${_mcEsc(synth.id)}">${_mcEsc(synth.name)} · ${_mcEsc(synth.status)}</option>`).join('');
-  const accountOptions = accounts.map(account => `<option value="${_mcEsc(account.id)}">${_mcEsc(account.name)} · ${_mcEsc(account.status)}</option>`).join('');
-  const agentOptions = '<option value="">auto</option>' + agents.map(agent => `<option value="${_mcEsc(agent.agent)}">${_mcEsc(agent.label || agent.agent)} · ${_mcEsc(agent.model || 'model')}</option>`).join('');
-  const swarmOptions = '<option value="">local</option>' + swarms.map(node => `<option value="${_mcEsc(node.node_id)}">${_mcEsc(node.name || node.node_id)} · ${node.media_relevant ? 'media-ready' : _mcEsc(node.role || 'node')}</option>`).join('');
-  const clipRows = clips.map(clip => {
-    const lane = lanes.find(item => item.id === clip.lane_id);
-    const width = Math.max(6, Math.min(100, ((Number(clip.duration_sec) || 1) / Math.max(1, Number(project.duration_sec) || 30)) * 100));
-    const offset = Math.max(0, Math.min(92, ((Number(clip.start_sec) || 0) / Math.max(1, Number(project.duration_sec) || 30)) * 100));
-    return `<div class="media-timeline-clip">
-      <div class="media-mini-row"><strong>${_mcEsc(clip.name)}</strong><span>${_mcEsc(lane?.name || clip.lane_id)}</span><span>${_mcEsc(clip.kind)} · ${_mcEsc(clip.status)}</span></div>
-      <div class="media-timeline-track"><span style="left:${offset}%;width:${width}%;"></span></div>
-      ${clip.prompt ? `<div class="media-project-prompt">${_mcEsc(clip.prompt)}</div>` : ''}
-    </div>`;
+  const laneOptions = lanes.map((lane) => `<option value="${_mcEsc(lane.id)}">${_mcEsc(lane.name)} · ${_mcEsc(lane.kind)}</option>`).join('');
+  const synthOptions = synths.map((synth) => `<option value="${_mcEsc(synth.id)}">${_mcEsc(synth.name)} · ${_mcEsc(synth.status)}</option>`).join('');
+  const rulerMarks = Array.from({ length: Math.max(4, Math.min(16, Math.ceil((project.duration_sec || 30) / 4))) }).map((_, index) => {
+    const sec = Math.round(((project.duration_sec || 30) / Math.max(1, Math.max(4, Math.min(16, Math.ceil((project.duration_sec || 30) / 4))))) * index);
+    return `<span>${sec}s</span>`;
   }).join('');
-  const synthRows = (project.synth_runs || []).slice(0, 5).map(take => `
-    <div class="media-mini-row"><strong>${_mcEsc(take.synth_name || take.synth_id)}</strong><span>${_mcEsc(take.status)}</span><span>${_mcEsc(take.duration_sec)}s</span></div>
-  `).join('');
-  const referenceRows = (project.media_refs || []).slice(0, 6).map(ref => `
-    <div class="media-mini-row"><strong>${_mcEsc(ref.title)}</strong><span>${_mcEsc(ref.account_name || ref.account_id)}</span><span>${_mcEsc(ref.knowledge_status || ref.status)}</span></div>
-  `).join('');
-
+  const timelineLanes = lanes.map((lane) => {
+    const laneClips = clips.filter((clip) => clip.lane_id === lane.id);
+    const clipBlocks = laneClips.map((clip) => {
+      const width = Math.max(6, Math.min(100, ((Number(clip.duration_sec) || 1) / Math.max(1, Number(project.duration_sec) || 30)) * 100));
+      const offset = Math.max(0, Math.min(94, ((Number(clip.start_sec) || 0) / Math.max(1, Number(project.duration_sec) || 30)) * 100));
+      return `<button class="media-clip-block media-clip-kind-${_mcEsc(clip.kind || lane.kind || 'audio')}" type="button" style="left:${offset}%;width:${width}%;">
+        <span class="media-clip-title">${_mcEsc(clip.name)}</span>
+        <span class="media-clip-meta">${_mcEsc(clip.status || 'planned')}</span>
+      </button>`;
+    }).join('');
+    return `
+      <div class="media-lane-row">
+        <div class="media-lane-label">
+          <strong>${_mcEsc(lane.name)}</strong>
+          <span>${_mcEsc(lane.kind)} · ${_mcEsc(lane.role || 'lane')}</span>
+        </div>
+        <div class="media-lane-track">
+          ${clipBlocks || '<div class="media-lane-empty">No clips yet on this lane.</div>'}
+        </div>
+      </div>
+    `;
+  }).join('');
   return `
-    <div class="media-detail-head">
+    <div class="media-editor-header">
       <div>
         <div class="media-detail-title">${_mcEsc(project.name)}</div>
-        <div class="media-detail-meta">${_mcEsc(project.medium)} · ${_mcEsc(project.style || 'style not set')} · ${project.duration_sec || 0}s · studio ${_mcEsc(project.studio_project_id || 'pending')}</div>
+        <div class="media-detail-meta">${_mcEsc(project.medium)} · ${_mcEsc(project.style || 'style not set')} · ${project.duration_sec || 0}s · ${_mcEsc(project.timeline?.tempo_bpm || 120)} bpm · ${_mcEsc(project.timeline?.time_signature || '4/4')}</div>
       </div>
       <div class="media-detail-actions">
-        ${studioLink}
-        <button class="media-inline-btn" onclick="mediaCenterCopyHandoff()">Copy handoff</button>
-        <button class="media-inline-btn" onclick="mediaCenterQueueSelected('generate-audio')">Queue audio</button>
-        <button class="media-inline-btn" onclick="mediaCenterQueueSelected('generate-video')">Queue video</button>
-        <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterQueueSelected('compile-preview')">Queue compile</button>
+        <button class="media-inline-btn" onclick="mediaCenterOpenStudioProject(${JSON.stringify(project.studio_project_id || '')})">Open in Studio</button>
+        <button class="media-inline-btn" onclick="mediaCenterOpenResearch('knowledge')">Open Knowledge</button>
+        <button class="media-inline-btn" onclick="mediaCenterOpenResearch('advisors')">Ask Advisors</button>
       </div>
     </div>
     <div class="media-detail-prompt">${_mcEsc(project.prompt || '')}</div>
-    <div class="media-detail-grid">
-      <section class="media-detail-panel">
-        <div class="media-panel-title">Scene Map</div>
-        ${scenes || '<div class="media-empty">No scenes yet.</div>'}
-      </section>
-      <section class="media-detail-panel">
-        <div class="media-panel-title">Audio Lanes</div>
-        ${tracks || '<div class="media-empty">No tracks yet.</div>'}
-      </section>
-      <section class="media-detail-panel">
-        <div class="media-panel-title">Deliverables</div>
-        ${deliverables || '<div class="media-empty">No deliverables yet.</div>'}
-      </section>
-      <section class="media-detail-panel">
-        <div class="media-panel-title">Editor Timeline</div>
-        <div class="media-project-meta">${_mcEsc(project.timeline?.tempo_bpm || 120)} bpm · ${_mcEsc(project.timeline?.time_signature || '4/4')} · ${clips.length} clips</div>
-        ${clipRows || '<div class="media-empty">No clips yet.</div>'}
+    <div class="media-architecture-strip">
+      <div class="media-architecture-step"><strong>Compose</strong><span>The editor is the main screen. Scenes, stems, synths, references, and video cuts all live here.</span></div>
+      <div class="media-architecture-step"><strong>Research</strong><span>References, accounts, feeds, Knowledge docs, and advisor roles stay in the right dock.</span></div>
+      <div class="media-architecture-step"><strong>Queue</strong><span>Audio, video, and compile jobs move through the bottom dock instead of competing with the editor.</span></div>
+      <div class="media-architecture-step"><strong>Route</strong><span>Models and swarms decide ownership without taking over the composer.</span></div>
+      <div class="media-architecture-step"><strong>Review</strong><span>Studio plan, tests, and handoff are attached to the same project.</span></div>
+    </div>
+    <section class="media-editor-card media-composer-surface">
+      <div class="media-composer-head">
+        <div>
+          <div class="media-panel-title">Composer Timeline</div>
+          <div class="media-panel-summary">DAW-first layout: scenes, stems, synth takes, references, and cuts stay visible as horizontal lanes.</div>
+        </div>
+      </div>
+      <div class="media-ruler">${rulerMarks}</div>
+      <div class="media-lane-stack">${timelineLanes || '<div class="media-empty">No lanes yet.</div>'}</div>
+    </section>
+    <div class="media-editor-tools">
+      <section class="media-editor-card">
+        <div class="media-panel-title">Add Clip</div>
+        <div class="media-panel-summary">Stage a clip, stem, cue, caption, or reference marker directly into the timeline.</div>
         <div class="media-timeline-form">
           <select id="media-center-clip-lane">${laneOptions}</select>
-          <input id="media-center-clip-name" placeholder="Clip/take name">
+          <input id="media-center-clip-name" placeholder="Clip / cue name">
           <input id="media-center-clip-start" type="number" min="0" step="0.25" value="0" title="Start seconds">
           <input id="media-center-clip-duration" type="number" min="0.25" step="0.25" value="4" title="Duration seconds">
           <input id="media-center-clip-prompt" placeholder="Prompt / source note">
           <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterAddClip()">Add clip</button>
         </div>
       </section>
-      <section class="media-detail-panel">
-        <div class="media-panel-title">AI Synth Takes</div>
-        ${synthRows || '<div class="media-empty">No synth takes yet.</div>'}
+      <section class="media-editor-card">
+        <div class="media-panel-title">Create Synth Take</div>
+        <div class="media-panel-summary">Generate a music or video take and attach it to a lane/clip in the editor.</div>
         <div class="media-timeline-form">
           <select id="media-center-synth-id">${synthOptions}</select>
           <select id="media-center-synth-lane">${laneOptions}</select>
@@ -214,9 +332,62 @@ function _mediaCenterProjectDetail(project) {
           <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterCreateSynthTake()">Create take</button>
         </div>
       </section>
-      <section class="media-detail-panel">
-        <div class="media-panel-title">Media References</div>
-        ${referenceRows || '<div class="media-empty">No account imports or feed references yet.</div>'}
+      <section class="media-editor-card">
+        <div class="media-panel-title">Mark Scene</div>
+        <div class="media-panel-summary">Drop a scene / section marker without leaving the main workspace.</div>
+        <div class="media-timeline-form">
+          <input id="media-center-scene-name" placeholder="Scene / section name">
+          <input id="media-center-scene-start" type="number" min="0" step="0.25" value="0" title="Start seconds">
+          <input id="media-center-scene-duration" type="number" min="0.25" step="0.25" value="8" title="Duration seconds">
+          <input id="media-center-scene-goal" placeholder="Goal / transition note">
+          <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterMarkScene()">Mark scene</button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function _mediaCenterResearchDock(state, project) {
+  const tab = _mediaCenterGetTab('research', 'references');
+  const accounts = state.accounts?.registry || [];
+  const accountOptions = accounts.map((account) => `<option value="${_mcEsc(account.id)}">${_mcEsc(account.name)} · ${_mcEsc(account.status)}</option>`).join('');
+  const activeProjectReferences = (project.media_refs || []).slice(0, 12).map((ref) => `
+    <div class="media-mini-row"><strong>${_mcEsc(ref.title)}</strong><span>${_mcEsc(ref.account_name || ref.account_id)}</span><span>${_mcEsc(ref.knowledge_status || ref.status)}</span></div>
+  `).join('');
+  const accountRows = accounts.map((account) => `
+    <div class="media-mini-row"><strong>${_mcEsc(account.name)}</strong><span>${_mcEsc(account.kind)}</span><span>${_mcEsc(account.status)}</span><button class="media-inline-btn" onclick="mediaCenterLinkAccount(${JSON.stringify(account.id)})">Link</button></div>
+  `).join('');
+  const feedRows = (state.feeds?.subscriptions || []).map((feed) => `
+    <div class="media-mini-row"><strong>${_mcEsc(feed.title || feed.kind)}</strong><span>${_mcEsc(feed.kind)}</span><span>${_mcEsc(feed.status || 'pending')}</span></div>
+  `).join('');
+  const knowledgeDocs = (state.knowledge?.project_docs || []).map((doc) => `
+    <div class="media-mini-row"><strong>${_mcEsc(doc.doc_name)}</strong><span>${_mcEsc(doc.tags || '')}</span><span>${_mcEsc(doc.source || 'knowledge')}</span></div>
+  `).join('');
+  const knowledgeRefs = (state.knowledge?.references || []).slice(0, 8).map((ref) => `
+    <div class="media-mini-row"><strong>${_mcEsc(ref.title)}</strong><span>${_mcEsc(ref.project_name || ref.project_id)}</span><span>${_mcEsc(ref.account_name || ref.account_id)}</span></div>
+  `).join('');
+  const agents = state.models?.agents || [];
+  const swarms = state.linked_swarms?.nodes || [];
+  const agentOptions = '<option value="">auto</option>' + agents.map((agent) => `<option value="${_mcEsc(agent.agent)}">${_mcEsc(agent.label || agent.agent)} · ${_mcEsc(agent.model || 'model')}</option>`).join('');
+  const swarmOptions = '<option value="">local</option>' + swarms.map((node) => `<option value="${_mcEsc(node.node_id)}">${_mcEsc(node.name || node.node_id)} · ${node.media_relevant ? 'media-ready' : _mcEsc(node.role || 'node')}</option>`).join('');
+  const advisors = (state.advisors?.roles || []).map((advisor) => `
+    <div class="media-advisor-card">
+      <div class="media-advisor-head"><strong>${_mcEsc(advisor.agent_id)}</strong><span>${_mcEsc(advisor.title)}</span></div>
+      <div class="media-project-prompt">${_mcEsc(advisor.focus)}</div>
+      <div class="media-runtime-grid-mini">
+        <span class="media-runtime-chip is-on">${_mcEsc(advisor.role)}</span>
+        <span class="media-runtime-chip">${_mcEsc(advisor.availability || 'unknown')}</span>
+        <span class="media-runtime-chip">${_mcEsc(advisor.surfaces || 'Media Center')}</span>
+      </div>
+      <div class="media-panel-summary">${_mcEsc(advisor.how_to_use)}</div>
+    </div>
+  `).join('');
+  if (tab === 'references') {
+    return `
+      <div class="media-dock-section">
+        <div class="media-panel-title">Project References</div>
+        <div class="media-panel-summary">Attach source tracks, clips, notes, and URLs. The right dock keeps research close without taking over the editor.</div>
+        ${activeProjectReferences || '<div class="media-empty">No references attached yet.</div>'}
         <div class="media-timeline-form">
           <select id="media-center-ref-account">${accountOptions}</select>
           <select id="media-center-ref-type">
@@ -228,11 +399,48 @@ function _mediaCenterProjectDetail(project) {
           <input id="media-center-ref-title" placeholder="Reference title">
           <input id="media-center-ref-url" placeholder="URL or local path">
           <input id="media-center-ref-notes" placeholder="Notes / indexing hint">
-          <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterAddReference()">Index</button>
+          <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterAddReference()">Attach reference</button>
         </div>
-      </section>
-      <section class="media-detail-panel">
+      </div>
+    `;
+  }
+  if (tab === 'accounts') {
+    return `<div class="media-dock-section"><div class="media-panel-title">Linked Accounts</div><div class="media-panel-summary">Accounts can become feed inputs and provenance anchors.</div>${accountRows || '<div class="media-empty">No accounts available.</div>'}</div>`;
+  }
+  if (tab === 'feeds') {
+    const suggestions = (state.feeds?.suggestions || []).map((item) => `
+      <div class="media-mini-row"><strong>${_mcEsc(item.title)}</strong><span>${_mcEsc(item.kind)}</span><span>${_mcEsc(item.reason)}</span></div>
+    `).join('');
+    return `
+      <div class="media-dock-section">
+        <div class="media-panel-title">Connected Feeds</div>
+        <div class="media-panel-summary">Research feeds and taste signals stay docked, not center-stage.</div>
+        ${feedRows || '<div class="media-empty">No connected feeds yet.</div>'}
+        <div class="media-outline-card">
+          <div class="media-outline-title">Feed Suggestions</div>
+          ${suggestions || '<div class="media-empty">No feed suggestions yet.</div>'}
+        </div>
+      </div>
+    `;
+  }
+  if (tab === 'knowledge') {
+    return `
+      <div class="media-dock-section">
+        <div class="media-panel-title">Knowledge Docs</div>
+        <div class="media-panel-summary">Fridays composition and video guidance is seeded into Knowledge Center and surfaced here.</div>
+        ${knowledgeDocs || '<div class="media-empty">No Fridays docs discovered yet.</div>'}
+        <div class="media-outline-card">
+          <div class="media-outline-title">Indexed References</div>
+          ${knowledgeRefs || '<div class="media-empty">No indexed references yet.</div>'}
+        </div>
+      </div>
+    `;
+  }
+  if (tab === 'routing') {
+    return `
+      <div class="media-dock-section">
         <div class="media-panel-title">Model / Swarm Routing</div>
+        <div class="media-panel-summary">Set ownership without forcing routing tools into the main composer.</div>
         <div class="media-project-meta">music ${_mcEsc(project.routing?.music_agent || 'auto')} · video ${_mcEsc(project.routing?.video_agent || 'auto')} · ${_mcEsc(project.routing?.handoff_mode || 'local-first')}</div>
         <div class="media-timeline-form">
           <select id="media-center-route-music">${agentOptions}</select>
@@ -245,141 +453,139 @@ function _mediaCenterProjectDetail(project) {
           </select>
           <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterUpdateRouting()">Save route</button>
         </div>
-      </section>
+      </div>
+    `;
+  }
+  return `
+    <div class="media-dock-section">
+      <div class="media-panel-title">Assistive Advisors</div>
+      <div class="media-panel-summary">Agents 10, 17, and 19 help with composition, production workflow, and critique without becoming permanent editor lanes.</div>
+      <div class="media-advisor-grid">${advisors || '<div class="media-empty">No advisor roles advertised yet.</div>'}</div>
     </div>
   `;
 }
 
-function _mediaCenterContextPanels(state) {
+function _mediaCenterBottomDock(state, project) {
+  const tab = _mediaCenterGetTab('bottom', 'queue');
+  if (tab === 'queue') {
+    const rows = (state.jobs || []).filter((job) => job.project_id === project.id).map((job) => {
+      const action = job.status === 'queued' || job.status === 'ready'
+        ? `<button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterSimulateJob(${JSON.stringify(job.id)})">Simulate run</button>`
+        : '<span class="media-inline-hint">ready for real runner</span>';
+      return `<div class="media-job-row">
+        <div class="media-job-main">
+          <div class="media-job-title">${_mcEsc(job.project_name || job.project_id)} <span class="media-job-type">${_mcEsc(job.job_type)}</span></div>
+          <div class="media-job-meta">${_mcEsc(job.status)} · ${_mcEsc(job.engine)} · ${_mcEsc(job.mode)}</div>
+          <div class="media-job-notes">${_mcEsc(job.notes || '')}</div>
+        </div>
+        <div class="media-job-actions">${action}</div>
+      </div>`;
+    }).join('');
+    return rows || '<div class="media-empty">No queued jobs yet for this project.</div>';
+  }
+  if (tab === 'runtime') {
+    const runtimeCards = _mediaCenterRuntimeCards(state.runtime || {});
+    const presets = (state.presets || []).map((preset) => `
+      <div class="media-preset-card">
+        <div class="media-preset-title">${_mcEsc(preset.name)}</div>
+        <div class="media-preset-summary">${_mcEsc(preset.summary)}</div>
+        <div class="media-preset-meta">${_mcEsc((preset.music_models || []).join(', ') || 'No music model')} | ${_mcEsc((preset.video_models || []).join(', ') || 'No video model')}</div>
+      </div>
+    `).join('');
+    const synthRows = (state.synths?.registry || []).slice(0, 6).map((synth) => `
+      <div class="media-mini-row"><strong>${_mcEsc(synth.name)}</strong><span>${_mcEsc(synth.kind)}</span><span>${_mcEsc(synth.status)}</span></div>
+    `).join('');
+    const spine = (state.spine?.items || []).slice(0, 6).map((item) => `
+      <div class="media-mini-row"><strong>${_mcEsc(item.kind || 'event')}</strong><span>${_mcEsc(item.severity || 'info')}</span><span>${_mcEsc(item.message || '')}</span></div>
+    `).join('');
+    return `
+      <div class="media-bottom-grid">
+        <div class="media-outline-card">
+          <div class="media-outline-title">Runtime Scan</div>
+          <div class="media-runtime-grid">${runtimeCards}</div>
+        </div>
+        <div class="media-outline-card">
+          <div class="media-outline-title">Pipeline Presets</div>
+          <div class="media-preset-list">${presets}</div>
+        </div>
+        <div class="media-outline-card">
+          <div class="media-outline-title">Synth Registry</div>
+          ${synthRows || '<div class="media-empty">No synth registry loaded yet.</div>'}
+        </div>
+        <div class="media-outline-card">
+          <div class="media-outline-title">Spine Trail</div>
+          ${spine || '<div class="media-empty">No media spine events yet.</div>'}
+        </div>
+      </div>
+    `;
+  }
   const trackingProjectId = state.studio?.tracking_project_id || '';
   const trackingProgress = state.tracking?.progress || {};
-  const trackingSteps = (state.tracking?.steps || []).slice(0, 8).map(step => `
+  const trackingSteps = (state.tracking?.steps || []).slice(0, 10).map((step) => `
     <div class="media-mini-row"><strong>${_mcEsc(step.title)}</strong><span>${_mcEsc(step.owner || 'seven')}</span><span>${_mcEsc(step.status || 'todo')}</span></div>
   `).join('');
-  const trackingRuns = (state.tracking?.recent_runs || []).slice(0, 5).map(run => `
+  const trackingRuns = (state.tracking?.recent_runs || []).slice(0, 6).map((run) => `
     <div class="media-mini-row"><strong>${_mcEsc(run.status || 'run')}</strong><span>${_mcEsc(run.script_id || '')}</span><span>${_mcEsc(run.duration_ms != null ? run.duration_ms + 'ms' : run.run_id)}</span></div>
   `).join('');
-  const tracking = trackingProjectId ? `
-    <div class="media-runtime-grid-mini">
-      <span class="media-runtime-chip is-on">${trackingProgress.done_steps || 0}/${trackingProgress.step_count || 0} steps done</span>
-      <span class="media-runtime-chip">${trackingProgress.case_count || 0} cases</span>
-      <span class="media-runtime-chip">${trackingProgress.recent_passes || 0} recent passes</span>
-      <span class="media-runtime-chip">${trackingProgress.recent_failures || 0} recent failures</span>
-    </div>
-    <div class="media-mini-row">
-      <strong>${_mcEsc(state.studio?.tracking_project_name || 'Media Center + Studio Integration')}</strong>
-      <span>${_mcEsc(trackingProjectId)}</span>
-      <button class="media-inline-btn" onclick="mediaCenterOpenStudioProject(${JSON.stringify(trackingProjectId)})">Open</button>
-    </div>
-    <div style="margin-top:8px;">${trackingSteps || '<div class="media-empty">No tracking steps yet.</div>'}</div>
-    <div style="margin-top:8px;">${trackingRuns || '<div class="media-empty">No verification runs recorded yet.</div>'}</div>
-  ` : '<div class="media-empty">Tracking project has not been seeded yet.</div>';
-
-  const chatActions = (state.chat?.actions || []).map(action => `
-    <span class="media-runtime-chip is-on">${_mcEsc(action.phrase)}</span>
-  `).join('') || '<div class="media-empty">No chat actions advertised yet.</div>';
-
-  const modelRows = (state.models?.agents || []).slice(0, 8).map(agent => `
+  const modelRows = (state.models?.agents || []).slice(0, 6).map((agent) => `
     <div class="media-mini-row"><strong>${_mcEsc(agent.label || agent.agent)}</strong><span>${_mcEsc(agent.agent)}</span><span>${_mcEsc(agent.model || 'model pending')}</span></div>
-  `).join('') || '<div class="media-empty">No media-relevant model candidates found yet.</div>';
-
-  const synthRows = (state.synths?.registry || []).slice(0, 8).map(synth => `
-    <div class="media-mini-row"><strong>${_mcEsc(synth.name)}</strong><span>${_mcEsc(synth.kind)}</span><span>${_mcEsc(synth.status)}</span></div>
-  `).join('') || '<div class="media-empty">No synth registry loaded yet.</div>';
-
-  const takeRows = (state.synths?.recent_takes || []).slice(0, 6).map(take => `
-    <div class="media-mini-row"><strong>${_mcEsc(take.synth_name || take.synth_id)}</strong><span>${_mcEsc(take.project_name || take.project_id)}</span><span>${_mcEsc(take.status)}</span></div>
-  `).join('') || '<div class="media-empty">No synth takes yet.</div>';
-
-  const swarmRows = (state.linked_swarms?.nodes || []).slice(0, 8).map(node => `
+  `).join('');
+  const swarmRows = (state.linked_swarms?.nodes || []).slice(0, 6).map((node) => `
     <div class="media-mini-row"><strong>${_mcEsc(node.name || node.node_id)}</strong><span>${_mcEsc(node.role || 'node')}</span><span>${node.media_relevant ? 'media-ready' : _mcEsc((node.capabilities || []).join(', ') || 'registered')}</span></div>
-  `).join('') || '<div class="media-empty">No linked swarms registered yet.</div>';
-
-  const routeRows = (state.routing?.active_routes || []).slice(0, 8).map(route => `
-    <div class="media-mini-row"><strong>${_mcEsc(route.project_name || route.project_id)}</strong><span>${_mcEsc(route.handoff_mode)}</span><span>${_mcEsc(route.music_agent || route.video_agent || route.swarm_node_id)}</span></div>
-  `).join('') || '<div class="media-empty">No project-specific media routes saved yet.</div>';
-  const activeProject = (state.projects || []).find(project => project.id === _mediaCenterSelectedProjectId) || (state.projects || [])[0] || {};
-
-  const interests = (state.interests?.relevant || []).map(item => `
-    <span class="media-runtime-chip is-on">${_mcEsc(item.topic)} · ${_mcEsc(item.category || 'general')}</span>
-  `).join('') || '<div class="media-empty">No media-linked interests yet.</div>';
-
-  const feeds = (state.feeds?.subscriptions || []).map(feed => `
-    <div class="media-mini-row"><strong>${_mcEsc(feed.title || feed.kind)}</strong><span>${_mcEsc(feed.kind)}</span><span>${_mcEsc(feed.status || 'pending')}</span></div>
-  `).join('') || '<div class="media-empty">No connected feeds yet.</div>';
-
-  const accountRows = (state.accounts?.registry || []).map(account => `
-    <div class="media-mini-row"><strong>${_mcEsc(account.name)}</strong><span>${_mcEsc(account.kind)}</span><span>${_mcEsc(account.status)}</span><button class="media-inline-btn" onclick="mediaCenterLinkAccount(${JSON.stringify(account.id)})">Link</button></div>
-  `).join('') || '<div class="media-empty">No media account manifests loaded yet.</div>';
-
-  const knowledgeRows = (state.knowledge?.references || []).slice(0, 8).map(ref => `
-    <div class="media-mini-row"><strong>${_mcEsc(ref.title)}</strong><span>${_mcEsc(ref.project_name || ref.project_id)}</span><span>${_mcEsc(ref.account_name || ref.account_id)}</span></div>
-  `).join('') || '<div class="media-empty">No indexed media references yet.</div>';
-
-  const suggestions = (state.feeds?.suggestions || []).map(item => `
-    <div class="media-mini-row"><strong>${_mcEsc(item.title)}</strong><span>${_mcEsc(item.kind)}</span><span>${_mcEsc(item.reason)}</span></div>
-  `).join('') || '<div class="media-empty">No feed suggestions yet.</div>';
-
-  const spine = (state.spine?.items || []).map(item => `
-    <div class="media-mini-row"><strong>${_mcEsc(item.kind || 'event')}</strong><span>${_mcEsc(item.severity || 'info')}</span><span>${_mcEsc(item.message || '')}</span></div>
-  `).join('') || '<div class="media-empty">No media spine events yet.</div>';
-
+  `).join('');
+  const chatActions = (state.chat?.actions || []).map((action) => `
+    <span class="media-runtime-chip is-on">${_mcEsc(action.phrase)}</span>
+  `).join('');
   return `
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Projects Tracker</div>
-      ${tracking}
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Chat Actions</div>
-      <div class="media-runtime-grid-mini">${chatActions}</div>
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Model Candidates</div>
-      ${modelRows}
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Synth Registry</div>
-      ${synthRows}
-      <div style="margin-top:8px;">${takeRows}</div>
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Linked Swarms</div>
-      ${swarmRows}
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Saved Routes</div>
-      ${routeRows}
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Handoff Manifest</div>
-      <div class="media-mini-row"><strong>${_mcEsc(activeProject.name || 'No project')}</strong><span>${_mcEsc(activeProject.medium || '')}</span><span>${_mcEsc(activeProject.routing?.handoff_mode || 'local-first')}</span></div>
-      <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterCopyHandoff()">Copy manifest</button>
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Interest Signals</div>
-      <div class="media-runtime-grid-mini">${interests}</div>
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Connected Feeds</div>
-      ${feeds}
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Media Accounts</div>
-      ${accountRows}
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Knowledge Index</div>
-      ${knowledgeRows}
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Feed Suggestions</div>
-      ${suggestions}
-    </section>
-    <section class="media-detail-panel">
-      <div class="media-panel-title">Spine Trail</div>
-      ${spine}
-    </section>
+    <div class="media-bottom-grid">
+      <div class="media-outline-card">
+        <div class="media-outline-title">Studio Review Plan</div>
+        <div class="media-runtime-grid-mini">
+          <span class="media-runtime-chip is-on">${trackingProgress.done_steps || 0}/${trackingProgress.step_count || 0} steps done</span>
+          <span class="media-runtime-chip">${trackingProgress.case_count || 0} cases</span>
+          <span class="media-runtime-chip">${trackingProgress.recent_passes || 0} recent passes</span>
+          <span class="media-runtime-chip">${trackingProgress.recent_failures || 0} recent failures</span>
+        </div>
+        <div class="media-mini-row"><strong>${_mcEsc(state.studio?.tracking_project_name || 'Media Center + Studio Integration')}</strong><span>${_mcEsc(trackingProjectId)}</span><button class="media-inline-btn" onclick="mediaCenterOpenStudioProject(${JSON.stringify(trackingProjectId)})">Open</button></div>
+        ${trackingSteps || '<div class="media-empty">No tracking steps yet.</div>'}
+        <div class="media-outline-title media-outline-title-gap">Recent verification</div>
+        ${trackingRuns || '<div class="media-empty">No verification runs recorded yet.</div>'}
+      </div>
+      <div class="media-outline-card">
+        <div class="media-outline-title">Handoff Manifest</div>
+        <div class="media-mini-row"><strong>${_mcEsc(project.name || 'No project')}</strong><span>${_mcEsc(project.medium || '')}</span><span>${_mcEsc(project.routing?.handoff_mode || 'local-first')}</span></div>
+        <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterCopyHandoff()">Copy manifest</button>
+        <div class="media-outline-title media-outline-title-gap">Chat Actions</div>
+        <div class="media-runtime-grid-mini">${chatActions || '<span class="media-runtime-chip">No actions</span>'}</div>
+      </div>
+      <div class="media-outline-card">
+        <div class="media-outline-title">Model Candidates</div>
+        ${modelRows || '<div class="media-empty">No media-relevant model candidates found yet.</div>'}
+      </div>
+      <div class="media-outline-card">
+        <div class="media-outline-title">Linked Swarms</div>
+        ${swarmRows || '<div class="media-empty">No linked swarms registered yet.</div>'}
+      </div>
+    </div>
   `;
+}
+
+function _mediaCenterRuntimeCards(runtime) {
+  const rows = [
+    ['Audio stack', runtime.audio, ['ffmpeg', 'ollama', 'lmstudio']],
+    ['Video stack', runtime.video, ['ffmpeg', 'python', 'comfyui_hint']],
+  ];
+  return rows.map(([label, block, keys]) => `
+    <div class="media-runtime-card">
+      <div class="media-runtime-label">${label}</div>
+      <div class="media-runtime-grid-mini">
+        ${keys.map((key) => {
+          const on = !!block?.[key];
+          return `<span class="media-runtime-chip ${on ? 'is-on' : ''}">${_mcEsc(key.replace(/_/g, ' '))}: ${on ? 'on' : 'off'}</span>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
 }
 
 function mediaCenterSelectProject(projectId) {
@@ -462,6 +668,44 @@ async function mediaCenterAddClip() {
     return;
   }
   if (typeof showToast === 'function') showToast('Timeline clip added.', 'success');
+  mediaCenterRefresh();
+}
+
+async function mediaCenterMarkScene() {
+  if (!_mediaCenterSelectedProjectId) {
+    if (typeof showToast === 'function') showToast('Choose a project first.', 'info');
+    return;
+  }
+  const project = (_mediaCenterState?.projects || []).find((item) => item.id === _mediaCenterSelectedProjectId);
+  const name = document.getElementById('media-center-scene-name')?.value?.trim();
+  if (!name) {
+    document.getElementById('media-center-scene-name')?.focus();
+    return;
+  }
+  const laneId = _mediaCenterFindLane(project, ['scene', 'section'], 'marker')?.id || project?.timeline?.lanes?.[0]?.id || '';
+  const startSec = parseFloat(document.getElementById('media-center-scene-start')?.value || '0');
+  const durationSec = parseFloat(document.getElementById('media-center-scene-duration')?.value || '8');
+  const prompt = document.getElementById('media-center-scene-goal')?.value?.trim() || '';
+  const response = await fetch(`/api/media-center/projects/${encodeURIComponent(_mediaCenterSelectedProjectId)}/clips`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      lane_id: laneId,
+      start_sec: startSec,
+      duration_sec: durationSec,
+      prompt,
+      kind: 'marker',
+      source: 'scene-marker',
+      status: 'planned',
+    }),
+  });
+  const data = await response.json();
+  if (!data.ok) {
+    if (typeof showToast === 'function') showToast(data.error || 'Scene marker failed.', 'error');
+    return;
+  }
+  if (typeof showToast === 'function') showToast('Scene marker added to the composer.', 'success');
   mediaCenterRefresh();
 }
 
@@ -604,6 +848,15 @@ function mediaCenterOpenStudioProject(projectId) {
   }, 180);
 }
 
+function mediaCenterOpenReviewPlan() {
+  const trackingProjectId = _mediaCenterState?.studio?.tracking_project_id || '';
+  if (!trackingProjectId) {
+    if (typeof showToast === 'function') showToast('Review plan not ready yet. Try Refresh once Media Center state loads.', 'info');
+    return;
+  }
+  mediaCenterOpenStudioProject(trackingProjectId);
+}
+
 function _mediaCenterWireResizer() {
   const grid = document.getElementById('media-center-grid');
   const sidebar = document.querySelector('#media-center-view .media-sidebar');
@@ -660,6 +913,23 @@ function _mediaCenterWireResizer() {
     const next = event.key === 'Home' ? 340 : current + (event.key === 'ArrowRight' ? 24 : -24);
     localStorage.setItem(storageKey, String(applyWidth(next)));
   });
+}
+
+window.mediaCenterTogglePanel = mediaCenterTogglePanel;
+window.mediaCenterExpandAll = mediaCenterExpandAll;
+window.mediaCenterCollapseToFocus = mediaCenterCollapseToFocus;
+window.mediaCenterOpenReviewPlan = mediaCenterOpenReviewPlan;
+window.mediaCenterSetResearchTab = mediaCenterSetResearchTab;
+window.mediaCenterOpenResearch = mediaCenterOpenResearch;
+window.mediaCenterSetBottomTab = mediaCenterSetBottomTab;
+window.mediaCenterMarkScene = mediaCenterMarkScene;
+
+function _mediaCenterFindLane(project, roleHints, kindHint) {
+  const lanes = project?.timeline?.lanes || [];
+  return lanes.find((lane) => roleHints.includes(String(lane.role || '').toLowerCase()))
+    || lanes.find((lane) => String(lane.kind || '').toLowerCase() === String(kindHint || '').toLowerCase())
+    || lanes[0]
+    || null;
 }
 
 function _mcEsc(value) {

@@ -1347,7 +1347,11 @@ def api_chat():
         # always fan out to all of them — sequential stalling only applies
         # to relay-chain scenarios, not multi-agent fan-out.
         _sequential_stalled = False
-        _multi_agent_fanout = len(runnable_agents) > 1
+        # Sequential mode is the safe default for local workers. If the first
+        # local agent goes pending, stop and let the operator continue from the
+        # live thread instead of fanning out more local jobs into the resource
+        # gate and creating predictable "system busy" failures.
+        _multi_agent_fanout = bool(parallel_mode) and len(runnable_agents) > 1
 
         for selected_agent in runnable_agents:
             if _sequential_stalled and not _multi_agent_fanout:
@@ -1844,5 +1848,4 @@ def api_chat_action_intent():
     except Exception as exc:  # pragma: no cover - defensive
         return jsonify({'ok': False, 'error': str(exc)[:160]}), 500
     return jsonify({'ok': True, 'intent': intent})
-
 
