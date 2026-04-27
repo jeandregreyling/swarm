@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-28 00:10",
+  "generated_at": "2026-04-28 07:24",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -3797,7 +3797,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 42130
+      "rows": 42460
     },
     {
       "name": "agent_capabilities",
@@ -3817,15 +3817,15 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 679
+      "rows": 682
     },
     {
       "name": "audit_results",
-      "rows": 40
+      "rows": 41
     },
     {
       "name": "change_runs",
-      "rows": 32
+      "rows": 33
     },
     {
       "name": "chat_jobs",
@@ -3845,7 +3845,7 @@
     },
     {
       "name": "council_output",
-      "rows": 4604
+      "rows": 4746
     },
     {
       "name": "daily_checkpoint",
@@ -3865,7 +3865,7 @@
     },
     {
       "name": "decisions",
-      "rows": 24341
+      "rows": 25227
     },
     {
       "name": "deferred_items",
@@ -3873,11 +3873,11 @@
     },
     {
       "name": "duck_log",
-      "rows": 939
+      "rows": 941
     },
     {
       "name": "feed_subscriptions",
-      "rows": 15
+      "rows": 16
     },
     {
       "name": "file_versions",
@@ -3893,7 +3893,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4703
+      "rows": 4705
     },
     {
       "name": "governance_log",
@@ -3917,7 +3917,7 @@
     },
     {
       "name": "media_runs",
-      "rows": 28
+      "rows": 30
     },
     {
       "name": "memory",
@@ -4037,7 +4037,7 @@
     },
     {
       "name": "queue",
-      "rows": 1731
+      "rows": 1735
     },
     {
       "name": "research_evidence",
@@ -4053,7 +4053,7 @@
     },
     {
       "name": "scheduled_tasks",
-      "rows": 1298
+      "rows": 11
     },
     {
       "name": "skills",
@@ -4089,7 +4089,7 @@
     },
     {
       "name": "swarm_events",
-      "rows": 19
+      "rows": 20
     },
     {
       "name": "swarm_globals",
@@ -4097,7 +4097,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 19
+      "rows": 20
     },
     {
       "name": "swarm_nodes",
@@ -4105,7 +4105,7 @@
     },
     {
       "name": "system_stats",
-      "rows": 8673
+      "rows": 8759
     },
     {
       "name": "task_run_log",
@@ -4121,23 +4121,23 @@
     },
     {
       "name": "test_runs",
-      "rows": 178
+      "rows": 179
     },
     {
       "name": "ticket_notes",
-      "rows": 693
+      "rows": 695
     },
     {
       "name": "tickets",
-      "rows": 701
+      "rows": 703
     },
     {
       "name": "time_checkpoints",
-      "rows": 5302
+      "rows": 5319
     },
     {
       "name": "time_events",
-      "rows": 112763
+      "rows": 112780
     },
     {
       "name": "time_journal",
@@ -4145,7 +4145,7 @@
     },
     {
       "name": "time_machine",
-      "rows": 6928
+      "rows": 6938
     },
     {
       "name": "tool_builds",
@@ -4153,7 +4153,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 901
+      "rows": 922
     },
     {
       "name": "trusted_domains",
