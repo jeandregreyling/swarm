@@ -23,6 +23,20 @@ CREATE TABLE IF NOT EXISTS agents (
     roles TEXT, -- JSON array of roles for multi-role support
     created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS agent_capability_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL,
+    capability TEXT NOT NULL,
+    score REAL DEFAULT 0.5,
+    confidence REAL DEFAULT 0.5,
+    evidence_count INTEGER DEFAULT 0,
+    source TEXT DEFAULT 'seed',
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(agent, capability)
+);
+CREATE INDEX IF NOT EXISTS idx_agent_capability_scores_capability ON agent_capability_scores (capability, score DESC);
 CREATE TABLE IF NOT EXISTS conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT,
@@ -692,6 +706,34 @@ CREATE TABLE IF NOT EXISTS research_evidence (
 CREATE INDEX IF NOT EXISTS idx_research_evidence_session ON research_evidence (session_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_research_evidence_dedup ON research_evidence (session_id, source_url, snippet_hash);
 
+-- Watched-topic evidence scoring for Tasker research updates
+CREATE TABLE IF NOT EXISTS watched_topic_evidence (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic_key           TEXT NOT NULL,
+    topic               TEXT NOT NULL,
+    evidence_fingerprint TEXT NOT NULL,
+    session_id          INTEGER DEFAULT 0,
+    source_url          TEXT DEFAULT '',
+    title               TEXT DEFAULT '',
+    snippet             TEXT DEFAULT '',
+    quality_score       REAL DEFAULT 0,
+    novelty_score       REAL DEFAULT 0,
+    combined_score      REAL DEFAULT 0,
+    qualified           INTEGER DEFAULT 0,
+    notified            INTEGER DEFAULT 0,
+    review_status       TEXT DEFAULT '',
+    review_note         TEXT DEFAULT '',
+    evidence_date       TEXT DEFAULT '',
+    recency_score       REAL DEFAULT 0,
+    recency_label       TEXT DEFAULT '',
+    is_historical       INTEGER DEFAULT 0,
+    reason              TEXT DEFAULT '',
+    created_at          TEXT DEFAULT (datetime('now')),
+    updated_at          TEXT DEFAULT (datetime('now')),
+    UNIQUE(topic_key, evidence_fingerprint)
+);
+CREATE INDEX IF NOT EXISTS idx_watched_topic_evidence_topic ON watched_topic_evidence (topic_key, updated_at);
+
 -- Tool builds (C.1.1)
 CREATE TABLE IF NOT EXISTS tool_builds (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -890,12 +932,18 @@ def _migrate_schema(conn=None):
         ('task_run_log', 'CREATE TABLE IF NOT EXISTS task_run_log (id INTEGER PRIMARY KEY AUTOINCREMENT, task_name TEXT NOT NULL, status TEXT NOT NULL DEFAULT "ok", output TEXT DEFAULT "", run_at TEXT NOT NULL)'),
         ('work_proposals', 'CREATE TABLE IF NOT EXISTS work_proposals (id INTEGER PRIMARY KEY AUTOINCREMENT, proposal_id TEXT UNIQUE NOT NULL, agent TEXT NOT NULL, title TEXT NOT NULL, description TEXT DEFAULT "", status TEXT DEFAULT "pending", proposal_file TEXT DEFAULT "", ticket_number TEXT DEFAULT "", queue_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
         ('agent_capabilities', 'CREATE TABLE IF NOT EXISTS agent_capabilities (id INTEGER PRIMARY KEY AUTOINCREMENT, agent_name TEXT NOT NULL, capability TEXT NOT NULL, granted INTEGER DEFAULT 0, trust_level INTEGER DEFAULT 0, granted_by TEXT DEFAULT "system", proposal_id TEXT DEFAULT "", notes TEXT DEFAULT "", granted_at TEXT, created_at TEXT DEFAULT (datetime("now")), UNIQUE(agent_name, capability))'),
+        ('agent_capability_scores', 'CREATE TABLE IF NOT EXISTS agent_capability_scores (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL, capability TEXT NOT NULL, score REAL DEFAULT 0.5, confidence REAL DEFAULT 0.5, evidence_count INTEGER DEFAULT 0, source TEXT DEFAULT "seed", notes TEXT DEFAULT "", created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")), UNIQUE(agent, capability))'),
         ('chat_jobs', 'CREATE TABLE IF NOT EXISTS chat_jobs (job_id TEXT PRIMARY KEY, conversation_id INTEGER DEFAULT 0, agent TEXT DEFAULT "", status TEXT DEFAULT "running", runtime_class TEXT DEFAULT "", stage TEXT DEFAULT "", eta_seconds INTEGER DEFAULT 60, elapsed_ms INTEGER DEFAULT 0, tokens INTEGER DEFAULT 0, error TEXT DEFAULT "", stage_trace_json TEXT DEFAULT "[]", started_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
         ('chat_relay_recoveries', 'CREATE TABLE IF NOT EXISTS chat_relay_recoveries (recovery_id TEXT PRIMARY KEY, conversation_id INTEGER DEFAULT 0, job_id TEXT UNIQUE NOT NULL, stalled_agent TEXT DEFAULT "", status TEXT DEFAULT "open", recovery_agents_json TEXT DEFAULT "[]", relay_context_json TEXT DEFAULT "{}", summary TEXT DEFAULT "", lease_owner TEXT DEFAULT "", lease_until TEXT DEFAULT "", created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
     ]:
         if tbl not in tables:
             conn.execute(ddl)
             conn.commit()
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_agent_capability_scores_capability "
+        "ON agent_capability_scores (capability, score DESC)"
+    )
+    conn.commit()
 
     # Add number + label columns to agents table (idempotent — ALTER TABLE ignored if column exists)
     for col_ddl in [
@@ -1264,6 +1312,49 @@ def _migrate_schema(conn=None):
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_research_evidence_session ON research_evidence (session_id)")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_research_evidence_dedup ON research_evidence (session_id, source_url, snippet_hash)")
+    conn.commit()
+
+    # watched_topic_evidence — scoring memory for Tasker watched-topic emails
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS watched_topic_evidence (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic_key           TEXT NOT NULL,
+            topic               TEXT NOT NULL,
+            evidence_fingerprint TEXT NOT NULL,
+            session_id          INTEGER DEFAULT 0,
+            source_url          TEXT DEFAULT '',
+            title               TEXT DEFAULT '',
+            snippet             TEXT DEFAULT '',
+            quality_score       REAL DEFAULT 0,
+            novelty_score       REAL DEFAULT 0,
+            combined_score      REAL DEFAULT 0,
+            qualified           INTEGER DEFAULT 0,
+            notified            INTEGER DEFAULT 0,
+            review_status       TEXT DEFAULT '',
+            review_note         TEXT DEFAULT '',
+            evidence_date       TEXT DEFAULT '',
+            recency_score       REAL DEFAULT 0,
+            recency_label       TEXT DEFAULT '',
+            is_historical       INTEGER DEFAULT 0,
+            reason              TEXT DEFAULT '',
+            created_at          TEXT DEFAULT (datetime('now')),
+            updated_at          TEXT DEFAULT (datetime('now')),
+            UNIQUE(topic_key, evidence_fingerprint)
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_watched_topic_evidence_topic ON watched_topic_evidence (topic_key, updated_at)")
+    for col_ddl in [
+        "ALTER TABLE watched_topic_evidence ADD COLUMN review_status TEXT DEFAULT ''",
+        "ALTER TABLE watched_topic_evidence ADD COLUMN review_note TEXT DEFAULT ''",
+        "ALTER TABLE watched_topic_evidence ADD COLUMN evidence_date TEXT DEFAULT ''",
+        "ALTER TABLE watched_topic_evidence ADD COLUMN recency_score REAL DEFAULT 0",
+        "ALTER TABLE watched_topic_evidence ADD COLUMN recency_label TEXT DEFAULT ''",
+        "ALTER TABLE watched_topic_evidence ADD COLUMN is_historical INTEGER DEFAULT 0",
+    ]:
+        try:
+            conn.execute(col_ddl)
+        except Exception:
+            pass
     conn.commit()
 
     # tool_builds (C.1.1) — migration for existing DBs
