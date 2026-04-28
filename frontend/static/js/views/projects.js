@@ -117,6 +117,7 @@
   function _renderDetail(p, runs) {
     const steps = p.steps || [];
     const cases = p.test_cases || [];
+    const blackboard = p.blackboard_notes || [];
     const proposals = p.proposals || [];
     return `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px;">
@@ -126,11 +127,50 @@
           ${p.description ? `<div style="margin-top:6px;color:var(--text-dim);font-size:11px;white-space:pre-wrap;">${_esc(p.description)}</div>` : ''}
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button onclick="projectsPreviewContext('${_esc(p.project_id)}')" title="Preview the local-agent context pack"
+            style="background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Preview Context</button>
           <button onclick="projectsRename('${_esc(p.project_id)}')" title="Rename project"
             style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">✎ Rename</button>
           <button onclick="projectsDelete('${_esc(p.project_id)}','${_esc((p.name||'').replace(/'/g, '&#39;'))}')" title="Delete project"
             style="background:none;border:1px solid var(--danger,#f77);color:var(--danger,#f77);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">🗑 Delete</button>
         </div>
+      </div>
+
+      <div id="pd-context-preview" style="display:none;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));border-radius:5px;padding:10px;margin-bottom:12px;background:color-mix(in srgb,var(--accent) 7%,var(--card));">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);font-weight:800;">Agent Context Preview</div>
+          <button onclick="projectsHideContextPreview()" style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:1px 6px;font-size:9px;cursor:pointer;">Close</button>
+        </div>
+        <pre id="pd-context-preview-body" style="white-space:pre-wrap;margin:0;color:var(--text);font-size:10px;line-height:1.45;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;max-height:360px;overflow:auto;"></pre>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--card) 92%,var(--accent) 8%),var(--card));">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;">Project Blackboard (${blackboard.length})</div>
+            <div style="font-size:9px;color:var(--text-dim);margin-top:2px;">Visible handoff notes for agents: decisions, risks, tests, research, and next steps.</div>
+          </div>
+          <div style="display:grid;grid-template-columns:92px minmax(180px,1fr) auto;gap:4px;align-items:start;max-width:620px;flex:1;">
+            <select id="pd-blackboard-kind" style="padding:4px 6px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;">
+              ${['note','handoff','decision','risk','test','research'].map(x => `<option value="${x}">${x}</option>`).join('')}
+            </select>
+            <textarea id="pd-blackboard-content" rows="2" placeholder="Leave a compact visible handoff note for the next agent…" style="padding:5px 7px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;outline:none;resize:vertical;min-height:34px;"></textarea>
+            <button onclick="projectsAddBlackboardNote('${_esc(p.project_id)}')" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Note</button>
+          </div>
+        </div>
+        ${blackboard.length ? blackboard.map(note => `
+          <div style="display:grid;grid-template-columns:86px 76px 1fr 112px;gap:6px;padding:6px;border-top:1px solid var(--border);align-items:start;font-size:10px;">
+            <span style="font-size:8px;color:var(--accent);font-weight:800;text-transform:uppercase;letter-spacing:0.4px;">${_esc(note.kind || 'note')}</span>
+            <span style="color:var(--text-dim);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_esc(note.author || 'agent')}">${_esc(note.author || 'agent')}</span>
+            <span style="color:var(--text);white-space:pre-wrap;line-height:1.35;">${_esc(note.content || '')}</span>
+            <span style="display:flex;gap:3px;justify-content:flex-end;">
+              <button onclick="projectsSetBlackboardStatus('${_esc(note.note_id)}','resolved')" title="Mark resolved"
+                style="background:none;border:1px solid var(--border);color:#4caf50;border-radius:3px;padding:2px 6px;font-size:9px;cursor:pointer;">Resolve</button>
+              <button onclick="projectsSetBlackboardStatus('${_esc(note.note_id)}','archived')" title="Archive note"
+                style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:2px 6px;font-size:9px;cursor:pointer;">Archive</button>
+            </span>
+          </div>
+        `).join('') : '<div style="padding:6px;color:var(--text-dim);font-size:10px;border-top:1px solid var(--border);">No blackboard notes yet. Add the first handoff note so the next agent starts warm instead of cold.</div>'}
       </div>
 
       <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:var(--card);">
@@ -268,6 +308,67 @@
         _loadDetail(pid);
       })
       .catch(err => alert('Add case failed: ' + (err.message || err)));
+  };
+
+  window.projectsAddBlackboardNote = function (pid) {
+    const kindEl = document.getElementById('pd-blackboard-kind');
+    const contentEl = document.getElementById('pd-blackboard-content');
+    if (!contentEl) return;
+    const content = (contentEl.value || '').trim();
+    if (!content) { contentEl.focus(); return; }
+    fetch('/api/knowledge/projects/' + encodeURIComponent(pid) + '/blackboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        kind: (kindEl && kindEl.value) || 'note',
+        content: content,
+        author: 'seven',
+      }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'failed');
+        contentEl.value = '';
+        _loadDetail(pid);
+      })
+      .catch(err => alert('Add blackboard note failed: ' + (err.message || err)));
+  };
+
+  window.projectsSetBlackboardStatus = function (noteId, status) {
+    if (!noteId || !status) return;
+    fetch('/api/knowledge/blackboard/' + encodeURIComponent(noteId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: status }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'failed');
+        if (_selectedId) _loadDetail(_selectedId);
+      })
+      .catch(err => alert('Update blackboard note failed: ' + (err.message || err)));
+  };
+
+  window.projectsPreviewContext = function (pid) {
+    const box = document.getElementById('pd-context-preview');
+    const body = document.getElementById('pd-context-preview-body');
+    if (!box || !body) return;
+    box.style.display = 'block';
+    body.textContent = 'Building project context...';
+    fetch('/api/knowledge/projects/' + encodeURIComponent(pid) + '/context-preview')
+      .then(r => r.json().then(data => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok || !data.ok) throw new Error((data && data.error) || 'preview failed');
+        body.textContent = data.context || '(empty context)';
+      })
+      .catch(err => {
+        body.textContent = 'Context preview failed: ' + (err.message || err);
+      });
+  };
+
+  window.projectsHideContextPreview = function () {
+    const box = document.getElementById('pd-context-preview');
+    if (box) box.style.display = 'none';
   };
 
   function _stepStatusColor(s) {

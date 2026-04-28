@@ -17,6 +17,11 @@ import subprocess
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
 from utils.db.registry import get_agent_roster as _reg_roster, get_single_task_locals as _reg_stl
+from utils.db.chat import (
+    ensure_chat_relay_recovery,
+    get_open_chat_relay_recoveries,
+    update_chat_relay_recovery_status,
+)
 from utils.db.timeline import timeline_append as _trace
 try:
     from utils.circuit_breaker import check as _cb_check, record_success as _cb_ok, record_failure as _cb_fail, health_probe as _cb_probe
@@ -204,11 +209,36 @@ def _build_knowledge_broadcast_block(agent_name):
     except Exception:
         return ''
 
+
+def _normalize_project_context_text(value):
+    from core.knowledge import context_packs as _context_packs
+    return _context_packs.normalize_project_context_text(value)
+
+
+def _resolve_project_context_id(text):
+    from core.knowledge import context_packs as _context_packs
+    return _context_packs.resolve_project_context_id(text)
+
+
+def _project_context_doc_rows(project_id, project_name, limit=3):
+    from core.knowledge import context_packs as _context_packs
+    return _context_packs.project_context_doc_rows(project_id, project_name, limit)
+
+
+def _build_project_context_block(text):
+    from core.knowledge import context_packs as _context_packs
+    return _context_packs.build_project_context_block(
+        text,
+        doc_loader=_project_context_doc_rows,
+    )
+
+
 def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, reply_context):
     memory_block = _build_local_memory_block(selected_agent, latest_message)
     knowledge_block = _build_knowledge_broadcast_block(selected_agent)
     handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
-    base_prompt = handoff_block + threaded_prompt + memory_block + knowledge_block
+    project_block = _build_project_context_block(f'{latest_message}\n{threaded_prompt[-4000:]}')
+    base_prompt = handoff_block + threaded_prompt + project_block + memory_block + knowledge_block
     if selected_agent in {'duck', 'sniffles'}:
         return (
             '=== Audit mode ===\n'
@@ -1566,6 +1596,7 @@ def api_chat_jobs_status():
 
     # Persist + best-effort hard-kill outside the lock. Failures are tolerated:
     # the in-memory state already shows stalled, so the UI is not blocked.
+    recoveries = []
     for _s in _stalled:
         try:
             update_chat_job_db(
@@ -1584,6 +1615,30 @@ def api_chat_jobs_status():
         try:
             _sse_chat(_s.get('conversation_id'), _s.get('agent'), 'failed',
                       job_id=_s.get('job_id'), error=_s.get('error'))
+        except Exception:
+            pass
+        try:
+            recovery_result = ensure_chat_relay_recovery(
+                job_id=_s.get('job_id'),
+                conversation_id=_s.get('conversation_id'),
+                stalled_agent=_s.get('agent'),
+                reason=_s.get('error'),
+                stage_trace=_s.get('stage_trace') or [],
+            )
+            recovery = recovery_result.get('recovery') if isinstance(recovery_result, dict) else None
+            if recovery:
+                recoveries.append(recovery)
+                if recovery_result.get('created'):
+                    log_activity(
+                        'vortex',
+                        'relay_recovery_checkpoint',
+                        f"job_id={_s.get('job_id')} agent={_s.get('agent')} conversation={_s.get('conversation_id')}",
+                    )
+                    log_activity(
+                        'terminal',
+                        'relay_recovery_created',
+                        f"job_id={_s.get('job_id')} recovery={recovery.get('recovery_id')}",
+                    )
         except Exception:
             pass
 
@@ -1617,8 +1672,51 @@ def api_chat_jobs_status():
                     'stage_trace': _db_trace,
                 })
 
+    if conv_id_int is not None:
+        try:
+            existing_ids = {str(r.get('recovery_id') or '') for r in recoveries}
+            for recovery in get_open_chat_relay_recoveries(conv_id_int, limit=10):
+                rid = str(recovery.get('recovery_id') or '')
+                if rid and rid not in existing_ids:
+                    recoveries.append(recovery)
+                    existing_ids.add(rid)
+        except Exception:
+            pass
+
     jobs.sort(key=lambda j: (j.get('status') != 'running', j.get('agent') or ''))
-    return jsonify({'ok': True, 'jobs': jobs})
+    return jsonify({'ok': True, 'jobs': jobs, 'recoveries': recoveries})
+
+
+@chat_bp.route('/api/chat/recoveries/<recovery_id>/status', methods=['POST'])
+def api_chat_recovery_status(recovery_id):
+    """Update a relay recovery card from the runtime panel or agent tooling."""
+    data = request.get_json(silent=True) or {}
+    status = str(data.get('status') or '').strip().lower()
+    if status not in {'open', 'reviewed', 'ignored', 'escalated'}:
+        return jsonify({
+            'ok': False,
+            'error': 'status must be one of: open, reviewed, ignored, escalated',
+        }), 400
+
+    actor = str(data.get('actor') or 'chat').strip()[:80] or 'chat'
+    summary = str(data.get('summary') or '').strip()
+    if not summary:
+        summary = f'Relay recovery marked {status} by {actor}.'
+
+    ok = update_chat_relay_recovery_status(recovery_id, status, summary=summary)
+    if not ok:
+        return jsonify({'ok': False, 'error': 'recovery not found'}), 404
+
+    try:
+        log_activity(
+            'terminal',
+            'relay_recovery_status',
+            f'recovery={recovery_id} status={status} actor={actor}',
+        )
+    except Exception:
+        pass
+
+    return jsonify({'ok': True, 'recovery_id': recovery_id, 'status': status})
 
 
 @chat_bp.route('/api/chat/agents/health')
@@ -1848,4 +1946,3 @@ def api_chat_action_intent():
     except Exception as exc:  # pragma: no cover - defensive
         return jsonify({'ok': False, 'error': str(exc)[:160]}), 500
     return jsonify({'ok': True, 'intent': intent})
-

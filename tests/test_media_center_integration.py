@@ -33,6 +33,9 @@ def test_studio_js_knows_media_tab():
 def test_studio_media_panel_links_tracking_project():
     src = (ROOT / "frontend/static/js/views/studio-media.js").read_text()
     assert "Internal Tracking Project" in src
+    assert "Remix Lab" in src
+    assert "studioMediaCreateRemix" in src
+    assert "/api/media/mix-songs" in src
     assert "studioMediaOpenProject" in src
     assert "tracking_project_id" in src
 

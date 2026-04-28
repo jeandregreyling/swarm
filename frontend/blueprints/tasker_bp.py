@@ -223,6 +223,7 @@ def bootstrap_tasks():
         ('knowledge_seed',  'monthly 1 03:00',   'PYTHON', 'knowledge_seed'),
         ('sap_payroll_au_watch', 'daily 06:30', 'PYTHON',
          'interest_research_update topic="SAP payroll Australia" depth=standard agent=eight email=ghost'),
+        ('relay_recovery_sweep', 'interval 30m', 'PYTHON', 'relay_recovery_sweep limit=3'),
     ]
     added = 0
     for name, schedule, action_type, action_data in defaults:
