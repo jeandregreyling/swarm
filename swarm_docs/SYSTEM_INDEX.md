@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-28 07:24*
+*Auto-generated: 2026-04-29 00:07*
 
 
 ## Python Modules
@@ -80,6 +80,7 @@
 | `core/kill_switch.py` | KILL SWITCHES — Emergency control agents via Telegram/Discord |
 | `core/knowledge/__init__.py` | core.knowledge — Knowledge Center package. |
 | `core/knowledge/close_out.py` | core.knowledge.close_out — ALM close-out report builder. |
+| `core/knowledge/context_packs.py` | Compact project context packs for local agents and Studio previews. |
 | `core/knowledge/projects.py` | core.knowledge.projects — Session 30.1: Projects, Steps, Test Cases. |
 | `core/knowledge/scripts.py` | core.knowledge.scripts — Knowledge Center's test-lab script registry. |
 | `core/knowledge/test_runs.py` | core.knowledge.test_runs — Session 30: ALM-style test run history. |
@@ -188,7 +189,7 @@
 | `auth` | 15 | auth.py — Auth & Senders routes |
 | `auto_audit` | 2 | auto_audit.py — Periodic self-audit: pytest + basic lint checks. |
 | `brief` | 3 | brief.py — Ghost Brief routes |
-| `chat` | 8 | chat.py — Chat Engine routes |
+| `chat` | 9 | chat.py — Chat Engine routes |
 | `coding_bible` | 4 | blueprints/coding_bible.py — Coding Bible retrieval API. |
 | `conversations` | 9 | conversations.py — Conversations routes |
 | `council_bp` | 2 | Council API blueprint — serves Agent 20 output to the frontend. |
@@ -209,12 +210,12 @@
 | `interests_bp` | 3 | Interests engine — derives user interests from conversations + system memory. |
 | `kb` | 7 | kb.py — Knowledge Base routes |
 | `killswitch` | 6 | killswitch.py — Kill Switches routes |
-| `knowledge_bp` | 28 | Knowledge Center blueprint. |
+| `knowledge_bp` | 32 | Knowledge Center blueprint. |
 | `legacy` | 3 | legacy.py — Legacy Pipeline & Approval routes |
 | `library` | 22 | frontend/blueprints/library.py — Knowledge Library API routes. |
 | `localai` | 5 | blueprints/localai.py — Local AI status and proxy API |
 | `login_bp` | 14 | login_bp.py — User login, registration, session management, and approval. |
-| `media_bp` | 6 | Media Center API — consume/produce media with local runners. |
+| `media_bp` | 9 | Media Center API — consume/produce media with local runners. |
 | `media_center` | 11 | Media Center API blueprint. |
 | `memory` | 8 | memory.py — Memory routes |
 | `metrics` | 2 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
@@ -248,7 +249,7 @@
 | Module | Size |
 |--------|------|
 | `access.js` | 106.1 KB |
-| `chat.js` | 268.7 KB |
+| `chat.js` | 271.7 KB |
 | `conversations.js` | 14.5 KB |
 | `diamond.js` | 28.7 KB |
 | `docs.js` | 24.6 KB |
@@ -271,11 +272,11 @@
 | `ollama.js` | 4.1 KB |
 | `onboarding.js` | 18.2 KB |
 | `orbs.js` | 83.8 KB |
-| `projects.js` | 24.5 KB |
+| `projects.js` | 31.4 KB |
 | `services.js` | 5.0 KB |
 | `skills.js` | 26.2 KB |
 | `spotlight.js` | 15.1 KB |
-| `studio-media.js` | 9.0 KB |
+| `studio-media.js` | 18.4 KB |
 | `studio-testlab.js` | 25.3 KB |
 | `studio.js` | 87.2 KB |
 | `tasker.js` | 11.0 KB |
@@ -291,14 +292,14 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 42460 |
+| `activity_log` | 43071 |
 | `agent_capabilities` | 169 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 682 |
+| `approval_tokens` | 685 |
 | `audit_results` | 41 |
-| `change_runs` | 33 |
+| `change_runs` | 35 |
 | `chat_jobs` | 670 |
 | `claude_log` | 1 |
 | `conv_timeline` | 2439 |
@@ -308,23 +309,23 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 25227 |
+| `decisions` | 26939 |
 | `deferred_items` | 0 |
-| `duck_log` | 941 |
-| `feed_subscriptions` | 16 |
+| `duck_log` | 943 |
+| `feed_subscriptions` | 21 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4705 |
+| `ghost_circle` | 4707 |
 | `governance_log` | 418 |
 | `knowledge_chunks` | 638 |
 | `knowledge_sources` | 50 |
 | `media_items` | 1 |
 | `media_providers` | 7 |
-| `media_runs` | 30 |
+| `media_runs` | 45 |
 | `memory` | 129 |
 | `memory_eight` | 1 |
-| `memory_gemma` | 2 |
+| `memory_gemma` | 1 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
 | `memory_llama` | 1 |
@@ -344,18 +345,19 @@
 | `node_skills` | 0 |
 | `notification_senders` | 8 |
 | `pending_emails` | 8 |
+| `project_blackboard_notes` | 1 |
 | `project_doc_versions` | 56 |
-| `project_docs` | 79 |
-| `project_steps` | 256 |
-| `project_test_cases` | 169 |
-| `projects` | 33 |
+| `project_docs` | 80 |
+| `project_steps` | 392 |
+| `project_test_cases` | 195 |
+| `projects` | 34 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 2 |
-| `queue` | 1735 |
+| `queue` | 1739 |
 | `research_evidence` | 0 |
 | `research_sessions` | 0 |
 | `sandpit_log` | 550 |
-| `scheduled_tasks` | 11 |
+| `scheduled_tasks` | 12 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
@@ -364,23 +366,23 @@
 | `sudo_command_whitelist` | 5 |
 | `swarm_bus` | 418 |
 | `swarm_event_acks` | 93 |
-| `swarm_events` | 20 |
+| `swarm_events` | 25 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 20 |
+| `swarm_knowledge` | 25 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 8759 |
-| `task_run_log` | 1 |
+| `system_stats` | 8959 |
+| `task_run_log` | 113 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
-| `test_runs` | 179 |
-| `ticket_notes` | 695 |
-| `tickets` | 703 |
-| `time_checkpoints` | 5319 |
-| `time_events` | 112780 |
+| `test_runs` | 181 |
+| `ticket_notes` | 697 |
+| `tickets` | 705 |
+| `time_checkpoints` | 5337 |
+| `time_events` | 112798 |
 | `time_journal` | 105988 |
-| `time_machine` | 6938 |
+| `time_machine` | 6948 |
 | `tool_builds` | 0 |
-| `trace_events` | 922 |
+| `trace_events` | 915 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_interests` | 21 |

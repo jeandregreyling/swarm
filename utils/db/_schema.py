@@ -41,6 +41,20 @@ CREATE TABLE IF NOT EXISTS messages (
     tokens_used INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS chat_relay_recoveries (
+    recovery_id TEXT PRIMARY KEY,
+    conversation_id INTEGER DEFAULT 0,
+    job_id TEXT UNIQUE NOT NULL,
+    stalled_agent TEXT DEFAULT '',
+    status TEXT DEFAULT 'open',
+    recovery_agents_json TEXT DEFAULT '[]',
+    relay_context_json TEXT DEFAULT '{}',
+    summary TEXT DEFAULT '',
+    lease_owner TEXT DEFAULT '',
+    lease_until TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS memory (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     agent TEXT DEFAULT 'unknown',
@@ -877,6 +891,7 @@ def _migrate_schema(conn=None):
         ('work_proposals', 'CREATE TABLE IF NOT EXISTS work_proposals (id INTEGER PRIMARY KEY AUTOINCREMENT, proposal_id TEXT UNIQUE NOT NULL, agent TEXT NOT NULL, title TEXT NOT NULL, description TEXT DEFAULT "", status TEXT DEFAULT "pending", proposal_file TEXT DEFAULT "", ticket_number TEXT DEFAULT "", queue_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
         ('agent_capabilities', 'CREATE TABLE IF NOT EXISTS agent_capabilities (id INTEGER PRIMARY KEY AUTOINCREMENT, agent_name TEXT NOT NULL, capability TEXT NOT NULL, granted INTEGER DEFAULT 0, trust_level INTEGER DEFAULT 0, granted_by TEXT DEFAULT "system", proposal_id TEXT DEFAULT "", notes TEXT DEFAULT "", granted_at TEXT, created_at TEXT DEFAULT (datetime("now")), UNIQUE(agent_name, capability))'),
         ('chat_jobs', 'CREATE TABLE IF NOT EXISTS chat_jobs (job_id TEXT PRIMARY KEY, conversation_id INTEGER DEFAULT 0, agent TEXT DEFAULT "", status TEXT DEFAULT "running", runtime_class TEXT DEFAULT "", stage TEXT DEFAULT "", eta_seconds INTEGER DEFAULT 60, elapsed_ms INTEGER DEFAULT 0, tokens INTEGER DEFAULT 0, error TEXT DEFAULT "", stage_trace_json TEXT DEFAULT "[]", started_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
+        ('chat_relay_recoveries', 'CREATE TABLE IF NOT EXISTS chat_relay_recoveries (recovery_id TEXT PRIMARY KEY, conversation_id INTEGER DEFAULT 0, job_id TEXT UNIQUE NOT NULL, stalled_agent TEXT DEFAULT "", status TEXT DEFAULT "open", recovery_agents_json TEXT DEFAULT "[]", relay_context_json TEXT DEFAULT "{}", summary TEXT DEFAULT "", lease_owner TEXT DEFAULT "", lease_until TEXT DEFAULT "", created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
     ]:
         if tbl not in tables:
             conn.execute(ddl)
@@ -887,6 +902,8 @@ def _migrate_schema(conn=None):
         "ALTER TABLE agents ADD COLUMN number INTEGER DEFAULT 0",
         "ALTER TABLE agents ADD COLUMN label  TEXT    DEFAULT ''",
         "ALTER TABLE chat_jobs ADD COLUMN stage_trace_json TEXT DEFAULT '[]'",
+        "ALTER TABLE chat_relay_recoveries ADD COLUMN lease_owner TEXT DEFAULT ''",
+        "ALTER TABLE chat_relay_recoveries ADD COLUMN lease_until TEXT DEFAULT ''",
     ]:
         try:
             conn.execute(col_ddl)

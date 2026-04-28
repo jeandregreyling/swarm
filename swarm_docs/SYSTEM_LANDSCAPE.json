@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-28 07:24",
+  "generated_at": "2026-04-29 00:07",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -325,6 +325,11 @@
       "path": "core/knowledge/close_out.py",
       "group": "Core",
       "description": "core.knowledge.close_out \u2014 ALM close-out report builder."
+    },
+    {
+      "path": "core/knowledge/context_packs.py",
+      "group": "Core",
+      "description": "Compact project context packs for local agents and Studio previews."
     },
     {
       "path": "core/knowledge/projects.py",
@@ -1143,6 +1148,12 @@
           ]
         },
         {
+          "path": "/api/chat/recoveries/<recovery_id>/status",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
           "path": "/api/chat/agents/health",
           "methods": [
             "GET"
@@ -1173,7 +1184,7 @@
           ]
         }
       ],
-      "route_count": 7
+      "route_count": 8
     },
     {
       "name": "coding_bible",
@@ -1980,6 +1991,30 @@
           ]
         },
         {
+          "path": "/api/knowledge/projects/<project_id>/blackboard",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>/context-preview",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/knowledge/projects/<project_id>/blackboard",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/knowledge/blackboard/<note_id>",
+          "methods": [
+            "PATCH"
+          ]
+        },
+        {
           "path": "/api/knowledge/projects/<project_id>/link-proposal",
           "methods": [
             "POST"
@@ -2046,7 +2081,7 @@
           ]
         }
       ],
-      "route_count": 28
+      "route_count": 32
     },
     {
       "name": "legacy",
@@ -2375,13 +2410,31 @@
           ]
         },
         {
+          "path": "/api/media/artifacts/<path:artifact_path>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/media/remix",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/media/mix-songs",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
           "path": "/api/media/produce",
           "methods": [
             "POST"
           ]
         }
       ],
-      "route_count": 6
+      "route_count": 9
     },
     {
       "name": "media_center",
@@ -3643,7 +3696,7 @@
     },
     {
       "name": "chat.js",
-      "size_kb": 268.7
+      "size_kb": 271.7
     },
     {
       "name": "conversations.js",
@@ -3735,7 +3788,7 @@
     },
     {
       "name": "projects.js",
-      "size_kb": 24.5
+      "size_kb": 31.4
     },
     {
       "name": "services.js",
@@ -3751,7 +3804,7 @@
     },
     {
       "name": "studio-media.js",
-      "size_kb": 9.0
+      "size_kb": 18.4
     },
     {
       "name": "studio-testlab.js",
@@ -3797,7 +3850,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 42460
+      "rows": 43071
     },
     {
       "name": "agent_capabilities",
@@ -3817,7 +3870,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 682
+      "rows": 685
     },
     {
       "name": "audit_results",
@@ -3825,7 +3878,7 @@
     },
     {
       "name": "change_runs",
-      "rows": 33
+      "rows": 35
     },
     {
       "name": "chat_jobs",
@@ -3865,7 +3918,7 @@
     },
     {
       "name": "decisions",
-      "rows": 25227
+      "rows": 26939
     },
     {
       "name": "deferred_items",
@@ -3873,11 +3926,11 @@
     },
     {
       "name": "duck_log",
-      "rows": 941
+      "rows": 943
     },
     {
       "name": "feed_subscriptions",
-      "rows": 16
+      "rows": 21
     },
     {
       "name": "file_versions",
@@ -3893,7 +3946,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4705
+      "rows": 4707
     },
     {
       "name": "governance_log",
@@ -3917,7 +3970,7 @@
     },
     {
       "name": "media_runs",
-      "rows": 30
+      "rows": 45
     },
     {
       "name": "memory",
@@ -3929,7 +3982,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 2
+      "rows": 1
     },
     {
       "name": "memory_ghost_coder",
@@ -4008,24 +4061,28 @@
       "rows": 8
     },
     {
+      "name": "project_blackboard_notes",
+      "rows": 1
+    },
+    {
       "name": "project_doc_versions",
       "rows": 56
     },
     {
       "name": "project_docs",
-      "rows": 79
+      "rows": 80
     },
     {
       "name": "project_steps",
-      "rows": 256
+      "rows": 392
     },
     {
       "name": "project_test_cases",
-      "rows": 169
+      "rows": 195
     },
     {
       "name": "projects",
-      "rows": 33
+      "rows": 34
     },
     {
       "name": "proposal_attachments",
@@ -4037,7 +4094,7 @@
     },
     {
       "name": "queue",
-      "rows": 1735
+      "rows": 1739
     },
     {
       "name": "research_evidence",
@@ -4053,7 +4110,7 @@
     },
     {
       "name": "scheduled_tasks",
-      "rows": 11
+      "rows": 12
     },
     {
       "name": "skills",
@@ -4089,7 +4146,7 @@
     },
     {
       "name": "swarm_events",
-      "rows": 20
+      "rows": 25
     },
     {
       "name": "swarm_globals",
@@ -4097,7 +4154,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 20
+      "rows": 25
     },
     {
       "name": "swarm_nodes",
@@ -4105,11 +4162,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 8759
+      "rows": 8959
     },
     {
       "name": "task_run_log",
-      "rows": 1
+      "rows": 113
     },
     {
       "name": "terminal_shortcuts",
@@ -4121,23 +4178,23 @@
     },
     {
       "name": "test_runs",
-      "rows": 179
+      "rows": 181
     },
     {
       "name": "ticket_notes",
-      "rows": 695
+      "rows": 697
     },
     {
       "name": "tickets",
-      "rows": 703
+      "rows": 705
     },
     {
       "name": "time_checkpoints",
-      "rows": 5319
+      "rows": 5337
     },
     {
       "name": "time_events",
-      "rows": 112780
+      "rows": 112798
     },
     {
       "name": "time_journal",
@@ -4145,7 +4202,7 @@
     },
     {
       "name": "time_machine",
-      "rows": 6938
+      "rows": 6948
     },
     {
       "name": "tool_builds",
@@ -4153,7 +4210,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 922
+      "rows": 915
     },
     {
       "name": "trusted_domains",
@@ -5823,6 +5880,18 @@
       "file": "frontend/static/js/views/studio-media.js"
     },
     {
+      "id": "studio-remix-result",
+      "file": "frontend/static/js/views/studio-media.js"
+    },
+    {
+      "id": "studio-remix-song-a-file",
+      "file": "frontend/static/js/views/studio-media.js"
+    },
+    {
+      "id": "studio-remix-song-b-file",
+      "file": "frontend/static/js/views/studio-media.js"
+    },
+    {
       "id": "files-view-css",
       "file": "frontend/static/js/views/files.js"
     },
@@ -6992,6 +7061,22 @@
     },
     {
       "id": "pd-case-script",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "pd-blackboard-kind",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "pd-blackboard-content",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "pd-context-preview",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "pd-context-preview-body",
       "file": "frontend/static/js/views/projects.js"
     },
     {

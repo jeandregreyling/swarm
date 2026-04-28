@@ -120,6 +120,90 @@ def test_tasker_run_skill_passes_arguments(monkeypatch):
     ]
 
 
+def test_relay_recovery_sweep_dry_run_reports_open_cards(monkeypatch):
+    import fridays.task_runner as task_runner
+    from utils.db import chat as db_chat
+
+    monkeypatch.setattr(db_chat, "get_open_chat_relay_recoveries", lambda limit=3: [
+        {"recovery_id": "recovery-a"},
+        {"recovery_id": "recovery-b"},
+    ])
+    monkeypatch.setattr(task_runner, "_log_run", lambda *a, **k: None)
+
+    ok, msg = task_runner.run_task("relay_recovery_sweep", args="limit=2")
+
+    assert ok is True
+    assert "2 open relay recoveries pending" in msg
+    assert "run_agents=1" in msg
+
+
+def test_relay_recovery_sweep_active_run_uses_leases(monkeypatch):
+    import json
+    import sys
+    import types
+
+    import fridays.task_runner as task_runner
+    from utils.db import chat as db_chat
+
+    leased = []
+    updates = []
+    messages = []
+
+    def fake_lease(owner, limit=3, lease_seconds=1800, conversation_id=None):
+        leased.append((owner, limit, lease_seconds, conversation_id))
+        return [{
+            "recovery_id": "recovery-active",
+            "conversation_id": 99,
+            "stalled_agent": "qwen",
+            "summary": "active recovery",
+            "relay_context_json": json.dumps({
+                "thread_tail": [{"from_agent": "user", "to_agent": "qwen", "content": "continue this"}],
+                "stage_trace": [{"text": "handoff stalled"}],
+            }),
+        }]
+
+    monkeypatch.setattr(db_chat, "lease_chat_relay_recoveries", fake_lease)
+    monkeypatch.setattr(
+        db_chat,
+        "update_chat_relay_recovery_status",
+        lambda rid, status, summary=None: updates.append((rid, status, summary)) or True,
+    )
+    monkeypatch.setattr(db_chat, "log_message", lambda *args, **kwargs: messages.append((args, kwargs)))
+    monkeypatch.setattr(task_runner, "_log_run", lambda *a, **k: None)
+    monkeypatch.setitem(
+        sys.modules,
+        "orchestrator",
+        types.SimpleNamespace(ask_agent=lambda agent, prompt: f"{agent} reviewed"),
+    )
+
+    ok, msg = task_runner.run_task("relay_recovery_sweep", args="limit=1 run_agents=1 lease_minutes=5 force=1")
+
+    assert ok is True
+    assert "Reviewed 1 relay recoveries: recovery-active" in msg
+    assert leased == [("tasker:relay_recovery_sweep", 1, 300, None)]
+    assert updates and updates[0][0] == "recovery-active"
+    assert updates[0][1] == "reviewed"
+    assert "librarian: librarian reviewed" in updates[0][2]
+    assert len(messages) == 2
+
+
+def test_relay_recovery_sweep_active_run_respects_idle_window(monkeypatch):
+    import fridays.task_runner as task_runner
+    from utils.db import chat as db_chat
+
+    leased = []
+    monkeypatch.setattr(db_chat, "lease_chat_relay_recoveries", lambda *a, **k: leased.append((a, k)) or [])
+    monkeypatch.setattr(task_runner, "_log_run", lambda *a, **k: None)
+    monkeypatch.setattr(task_runner, "_tasker_in_idle_window", lambda window: False)
+
+    ok, msg = task_runner.run_task("relay_recovery_sweep", args="limit=1 run_agents=1 idle_window=22:00-06:00")
+
+    assert ok is True
+    assert "deferred outside idle window 22:00-06:00" in msg
+    assert "force=1" in msg
+    assert leased == []
+
+
 def test_research_quick_api_creates_single_session(monkeypatch):
     from flask import Flask
 

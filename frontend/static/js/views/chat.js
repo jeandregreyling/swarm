@@ -474,7 +474,24 @@ function _renderThreadRuntimeChip(agent, state, statusClass, timeLabel) {
   `;
 }
 
-function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
+function _chatRecoveryLeaseLabel(item) {
+  if (!item || !item.lease_owner) return 'handoff';
+  return 'leased';
+}
+
+function _chatRecoveryActionsHtml(recoveryId) {
+  const rid = _escapeHtml(recoveryId || '');
+  if (!rid) return '';
+  return `
+    <div style="display:flex;gap:4px;justify-content:flex-end;">
+      <button class="chat-action-btn" data-recovery-id="${rid}" data-status="reviewed" onclick="updateRelayRecoveryStatus(this.dataset.recoveryId,this.dataset.status)" title="Mark this recovery handled">Done</button>
+      <button class="chat-action-btn" data-recovery-id="${rid}" data-status="ignored" onclick="updateRelayRecoveryStatus(this.dataset.recoveryId,this.dataset.status)" title="Dismiss this recovery card">Ignore</button>
+      <button class="chat-action-btn" data-recovery-id="${rid}" data-status="escalated" onclick="updateRelayRecoveryStatus(this.dataset.recoveryId,this.dataset.status)" title="Keep visible as escalated">Escalate</button>
+    </div>
+  `;
+}
+
+function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll', recoveries = []) {
   const hosts = Array.from(document.querySelectorAll('[id="chat-thread-runtime"]'));
   if (!hosts.length) return;
 
@@ -494,6 +511,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
   }
 
   const list = Array.isArray(jobs) ? jobs.slice() : [];
+  const recoveryList = Array.isArray(recoveries) ? recoveries.slice(0, 3) : [];
   list.sort((a, b) => {
     const d = _chatRuntimeSortWeight(a.status) - _chatRuntimeSortWeight(b.status);
     if (d !== 0) return d;
@@ -529,7 +547,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
     ? (running.length === 1 ? '1 agent running' : running.length + ' agents running')
     : (loadingAgents.length || hasPendingJobs
       ? 'Dispatching' + (loadingAgents.length ? ' · ' + loadingAgents.map(a => a).join(', ') : '') + '…'
-      : (failed.length ? ('Last run: ' + failed.length + ' failure' + (failed.length > 1 ? 's' : '')) : (cooldownActive ? 'Round complete' : (list.length ? 'Idle' : 'No jobs'))));
+      : (recoveryList.length ? 'Recovery open' : (failed.length ? ('Last run: ' + failed.length + ' failure' + (failed.length > 1 ? 's' : '')) : (cooldownActive ? 'Round complete' : (list.length ? 'Idle' : 'No jobs')))));
 
   // Bar is always visible — no open/close toggling needed.
   // (Previously: const shouldShow = true; host.classList.toggle('open', shouldShow))
@@ -559,6 +577,20 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
     chips.push(_renderThreadRuntimeChip(agent, 'queued', 'initializing', ''));
   });
 
+  const recoveryHtml = recoveryList.length ? `
+    <div class="chat-thread-runtime-grid" style="margin-top:6px;">
+      ${recoveryList.map(item => `
+        <div class="chat-thread-runtime-row failed" title="${_escapeHtml(item.summary || 'Relay recovery open')}">
+          <span class="chat-thread-runtime-light failed"></span>
+          <div class="chat-thread-runtime-row-agent">watchdog</div>
+          <div class="chat-thread-runtime-stage">${_escapeHtml(item.stalled_agent || 'agent')} recovery</div>
+          <div class="chat-thread-runtime-row-time">${_escapeHtml(_chatRecoveryLeaseLabel(item))}</div>
+          ${_chatRecoveryActionsHtml(item.recovery_id)}
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
   const panelHtml = `
     <div class="chat-thread-runtime-head">
       <div style="display:flex;align-items:center;gap:6px;min-width:0;">
@@ -568,6 +600,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
       <div class="chat-thread-runtime-meta">${_escapeHtml(sourceLabel)} · ${_escapeHtml(headline)}</div>
     </div>
     ${(chips.length || hasPendingJobs) ? `<div class="chat-thread-runtime-grid">${chips.join('')}</div>` : ''}
+    ${recoveryHtml}
   `;
   hosts.forEach(host => {
     host.innerHTML = panelHtml;
@@ -575,6 +608,34 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
 
   window.__fridaysThreadRuntimeSnapshot = { jobs: list, updatedAt: new Date().toISOString() };
   updateChatStatusPills();
+}
+
+function updateRelayRecoveryStatus(recoveryId, status) {
+  const rid = String(recoveryId || '').trim();
+  const nextStatus = String(status || '').trim().toLowerCase();
+  if (!rid || !nextStatus) return;
+  const labels = {
+    reviewed: 'Handled from chat runtime panel',
+    ignored: 'Dismissed from chat runtime panel',
+    escalated: 'Escalated from chat runtime panel',
+    open: 'Reopened from chat runtime panel'
+  };
+  fetch('/api/chat/recoveries/' + encodeURIComponent(rid) + '/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      status: nextStatus,
+      actor: 'chat-runtime-panel',
+      summary: labels[nextStatus] || ('Marked ' + nextStatus + ' from chat runtime panel')
+    })
+  })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (!ok || !data.ok) throw new Error(data.error || 'Recovery update failed');
+      showToast('Relay recovery marked ' + nextStatus, 'success');
+      pollActiveThreadRuntime(true);
+    })
+    .catch(e => showToast('Relay recovery update failed: ' + (e.message || e), 'error'));
 }
 
 function toggleRuntimePin() {
@@ -606,7 +667,7 @@ function pollActiveThreadRuntime(force = false) {
     .then(r => r.json())
     .then(data => {
       const jobs = (data && Array.isArray(data.jobs)) ? data.jobs : [];
-      _renderThreadRuntimePanel(jobs, force ? 'sync' : 'poll');
+      _renderThreadRuntimePanel(jobs, force ? 'sync' : 'poll', data.recoveries || []);
       _syncThinkingBubbles(jobs);
     })
     .catch(() => {
