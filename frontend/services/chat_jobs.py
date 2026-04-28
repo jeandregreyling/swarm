@@ -186,6 +186,7 @@ def _watchdog_mark_stalled_jobs_locked():
             'elapsed_ms': int(elapsed * 1000),
             'eta_seconds': int(job.get('eta_seconds') or 0),
             'error': error_msg,
+            'stage_trace': list(job.get('stage_trace') or []),
         })
         # Session 29 — spine emit. Best-effort; never break watchdog if spine is absent.
         try:
@@ -359,6 +360,7 @@ def _chat_job_public(job):
         'updated_at': job.get('updated_at'),
         'elapsed_ms': elapsed_ms,
         'error': job.get('error', ''),
+        'stalled': bool(job.get('stalled')),
         'response': job.get('response', ''),
         'stage_trace': job.get('stage_trace') or [],
     }

@@ -18,6 +18,7 @@ from flask import Blueprint, jsonify, request
 from core.knowledge import scripts as _kc_scripts
 from core.knowledge import test_runs as _kc_runs
 from core.knowledge import projects as _kc_projects
+from core.knowledge import context_packs as _kc_context_packs
 from core.knowledge import close_out as _kc_closeout
 
 knowledge_bp = Blueprint('knowledge_bp', __name__)
@@ -224,6 +225,7 @@ def api_projects_detail(project_id: str):
     flat = dict(proj.get('project') or {})
     flat['steps'] = proj.get('steps') or []
     flat['test_cases'] = proj.get('test_cases') or []
+    flat['blackboard_notes'] = proj.get('blackboard_notes') or []
     flat['proposals'] = proj.get('proposals') or []
     return jsonify({'ok': True, 'project': flat})
 
@@ -310,6 +312,66 @@ def api_project_list_cases(project_id: str):
         project_id,
         step_id=request.args.get('step_id') or None,
     )})
+
+
+@knowledge_bp.route('/api/knowledge/projects/<project_id>/blackboard', methods=['GET'])
+def api_project_blackboard_list(project_id: str):
+    try:
+        limit = max(1, min(int(request.args.get('limit', 20)), 100))
+        status = request.args.get('status')
+        if status == 'all':
+            status = None
+        elif not status:
+            status = 'active'
+        items = _kc_projects.list_blackboard_notes(project_id, status=status, limit=limit)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    return jsonify({'ok': True, 'items': items})
+
+
+@knowledge_bp.route('/api/knowledge/projects/<project_id>/context-preview', methods=['GET'])
+def api_project_context_preview(project_id: str):
+    context = _kc_context_packs.build_project_context_block(project_id=project_id)
+    if not context:
+        return jsonify({'ok': False, 'error': 'project not found or no context available'}), 404
+    return jsonify({
+        'ok': True,
+        'project_id': project_id,
+        'context': context.strip(),
+    })
+
+
+@knowledge_bp.route('/api/knowledge/projects/<project_id>/blackboard', methods=['POST'])
+def api_project_blackboard_add(project_id: str):
+    body = request.get_json(silent=True) or {}
+    content = str(body.get('content') or '').strip()
+    if not content:
+        return jsonify({'ok': False, 'error': 'content required'}), 400
+    try:
+        note_id = _kc_projects.add_blackboard_note(
+            project_id,
+            content,
+            author=str(body.get('author') or 'seven'),
+            kind=str(body.get('kind') or 'note'),
+        )
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    if not note_id:
+        return jsonify({'ok': False, 'error': 'could not add note'}), 500
+    return jsonify({'ok': True, 'note_id': note_id})
+
+
+@knowledge_bp.route('/api/knowledge/blackboard/<note_id>', methods=['PATCH'])
+def api_project_blackboard_status(note_id: str):
+    body = request.get_json(silent=True) or {}
+    status = str(body.get('status') or '').strip().lower()
+    try:
+        ok = _kc_projects.update_blackboard_note_status(note_id, status)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    if not ok:
+        return jsonify({'ok': False, 'error': 'note not found'}), 404
+    return jsonify({'ok': True})
 
 
 @knowledge_bp.route('/api/knowledge/projects/<project_id>/link-proposal', methods=['POST'])

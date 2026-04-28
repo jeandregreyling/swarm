@@ -31,8 +31,11 @@ __all__ = [
     'delete_step',
     'add_test_case', 'list_test_cases', 'update_case_status',
     'update_test_case', 'delete_test_case',
+    'add_blackboard_note', 'list_blackboard_notes',
+    'update_blackboard_note_status',
     'link_proposal', 'list_proposals_for_project',
     'METHODOLOGIES', 'STEP_STATUSES', 'CASE_STATUSES', 'PROJECT_STATUSES',
+    'BLACKBOARD_KINDS', 'BLACKBOARD_STATUSES',
 ]
 
 METHODOLOGIES = ('agile', 'waterfall', 'prince2', 'mixed')
@@ -42,6 +45,8 @@ METHODOLOGIES = ('agile', 'waterfall', 'prince2', 'mixed')
 STEP_STATUSES = ('todo', 'doing', 'blocked', 'partial', 'done', 'skipped')
 CASE_STATUSES = ('draft', 'ready', 'passed', 'failed', 'blocked', 'obsolete')
 PROJECT_STATUSES = ('active', 'archived', 'on_hold')
+BLACKBOARD_KINDS = ('note', 'handoff', 'decision', 'risk', 'test', 'research')
+BLACKBOARD_STATUSES = ('active', 'resolved', 'archived')
 DEFAULT_OWNER = 'seven'
 
 _SCHEMA_READY = False
@@ -118,6 +123,20 @@ def _emit_spine(summary: str, detail: Dict[str, Any], severity: str = 'info') ->
         pass
 
 
+def _ensure_blackboard_schema(conn) -> None:
+    conn.execute("""CREATE TABLE IF NOT EXISTS project_blackboard_notes (
+        note_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        author TEXT NOT NULL DEFAULT 'seven',
+        kind TEXT NOT NULL DEFAULT 'note',
+        content TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at REAL NOT NULL,
+        updated_at REAL
+    )""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_blackboard_project ON project_blackboard_notes(project_id, status, updated_at)")
+
+
 def _ensure_schema() -> None:
     global _SCHEMA_READY
     if _SCHEMA_READY:
@@ -164,6 +183,8 @@ def _ensure_schema() -> None:
             )""")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_cases_project ON project_test_cases(project_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_cases_step ON project_test_cases(step_id)")
+
+            _ensure_blackboard_schema(conn)
 
             conn.execute("""CREATE TABLE IF NOT EXISTS proposal_projects (
                 proposal_id TEXT NOT NULL,
@@ -245,12 +266,17 @@ def get_project(project_id: str) -> Optional[Dict[str, Any]]:
             if not row:
                 return None
             project = dict(row)
+            _ensure_blackboard_schema(conn)
             steps = [dict(r) for r in conn.execute(
                 "SELECT * FROM project_steps WHERE project_id=? ORDER BY order_idx ASC, created_at ASC",
                 (project_id,),
             ).fetchall()]
             test_cases = [dict(r) for r in conn.execute(
                 "SELECT * FROM project_test_cases WHERE project_id=? ORDER BY created_at ASC",
+                (project_id,),
+            ).fetchall()]
+            blackboard_notes = [dict(r) for r in conn.execute(
+                "SELECT * FROM project_blackboard_notes WHERE project_id=? AND status='active' ORDER BY updated_at DESC LIMIT 20",
                 (project_id,),
             ).fetchall()]
             proposals = [dict(r) for r in conn.execute(
@@ -261,6 +287,7 @@ def get_project(project_id: str) -> Optional[Dict[str, Any]]:
                 "project": project,
                 "steps": steps,
                 "test_cases": test_cases,
+                "blackboard_notes": blackboard_notes,
                 "proposals": proposals,
             }
         finally:
@@ -517,6 +544,129 @@ def update_case_status(case_id: str, status: str, *, owner: Optional[str] = None
     if ok:
         severity = 'warn' if status in ('failed', 'blocked') else 'info'
         _emit_spine(f"Case → {status}: {case_id}", {'case_id': case_id, 'status': status}, severity=severity)
+    return ok
+
+
+# ── Project blackboard ──────────────────────────────────────────────────────
+
+def add_blackboard_note(
+    project_id: str,
+    content: str,
+    *,
+    author: str = DEFAULT_OWNER,
+    kind: str = 'note',
+) -> Optional[str]:
+    """Add a structured, visible project handoff note.
+
+    Intended for agents to leave compact project context for one another:
+    decisions, risks, test notes, handoffs, and research findings. This is
+    visible continuity, not private chain-of-thought.
+    """
+    project_id = str(project_id or '').strip()
+    content = str(content or '').strip()
+    author = str(author or DEFAULT_OWNER).strip()[:64] or DEFAULT_OWNER
+    kind = str(kind or 'note').strip().lower()
+    if not project_id or not content:
+        return None
+    if kind not in BLACKBOARD_KINDS:
+        raise ValueError(f"kind must be one of {BLACKBOARD_KINDS}")
+    _ensure_schema()
+    if not _project_exists(project_id):
+        raise ValueError(f"unknown project_id: {project_id}")
+    note_id = 'B-' + uuid.uuid4().hex[:10].upper()
+    now = time.time()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            _ensure_blackboard_schema(conn)
+            conn.execute(
+                """INSERT INTO project_blackboard_notes
+                   (note_id, project_id, author, kind, content, status, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, 'active', ?, ?)""",
+                (note_id, project_id, author, kind, content[:4000], now, now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        return None
+    _emit_spine(
+        f"Project blackboard note: {project_id}",
+        {'project_id': project_id, 'note_id': note_id, 'kind': kind, 'author': author},
+    )
+    return note_id
+
+
+def list_blackboard_notes(
+    project_id: str,
+    *,
+    status: Optional[str] = 'active',
+    limit: int = 20,
+) -> List[Dict[str, Any]]:
+    project_id = str(project_id or '').strip()
+    if not project_id:
+        return []
+    if status is not None and status not in BLACKBOARD_STATUSES:
+        raise ValueError(f"status must be one of {BLACKBOARD_STATUSES}")
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            _ensure_blackboard_schema(conn)
+            capped = int(max(1, min(limit, 100)))
+            if status is None:
+                rows = conn.execute(
+                    """SELECT * FROM project_blackboard_notes
+                       WHERE project_id=?
+                       ORDER BY updated_at DESC
+                       LIMIT ?""",
+                    (project_id, capped),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """SELECT * FROM project_blackboard_notes
+                       WHERE project_id=? AND status=?
+                       ORDER BY updated_at DESC
+                       LIMIT ?""",
+                    (project_id, status, capped),
+                ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
+
+def update_blackboard_note_status(note_id: str, status: str) -> bool:
+    note_id = str(note_id or '').strip()
+    status = str(status or '').strip().lower()
+    if not note_id:
+        return False
+    if status not in BLACKBOARD_STATUSES:
+        raise ValueError(f"status must be one of {BLACKBOARD_STATUSES}")
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            _ensure_blackboard_schema(conn)
+            cur = conn.execute(
+                "UPDATE project_blackboard_notes SET status=?, updated_at=? WHERE note_id=?",
+                (status, time.time(), note_id),
+            )
+            conn.commit()
+            ok = cur.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
+    if ok:
+        _emit_spine(
+            f"Blackboard note → {status}: {note_id}",
+            {'note_id': note_id, 'status': status},
+        )
     return ok
 
 

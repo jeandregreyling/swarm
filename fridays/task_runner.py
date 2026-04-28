@@ -114,6 +114,179 @@ def _task_play_time(**kwargs):
     return 'Play time complete'
 
 
+@register('relay_recovery_sweep', 'Review stalled chat relay recovery cards with Librarian and Duck', 'agents')
+def _task_relay_recovery_sweep(**kwargs):
+    """
+    Sweep open chat relay recovery cards.
+
+    Args:
+      limit=3             max cards to inspect
+      run_agents=0        set to 1 to actually ask Librarian and Duck
+      agents=librarian,duck
+      lease_minutes=30    active-review lease duration
+      idle_window=22:00-06:00
+      force=0             set to 1 to override the idle window
+
+    Dry-run is the default so Tasker can safely surface pending recoveries.
+    """
+    import json
+    import shlex
+    from utils.db.chat import (
+        get_open_chat_relay_recoveries,
+        lease_chat_relay_recoveries,
+        log_message,
+        update_chat_relay_recovery_status,
+    )
+
+    opts = {
+        'limit': '3',
+        'run_agents': '0',
+        'agents': 'librarian,duck',
+        'lease_minutes': '30',
+        'idle_window': '22:00-06:00',
+        'force': '0',
+    }
+    for tok in shlex.split(kwargs.get('args') or ''):
+        if '=' not in tok:
+            continue
+        k, v = tok.split('=', 1)
+        if k.strip().lower() in opts:
+            opts[k.strip().lower()] = v.strip()
+
+    try:
+        limit = max(1, min(int(opts['limit']), 10))
+    except Exception:
+        limit = 3
+    run_agents = str(opts.get('run_agents') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    try:
+        lease_seconds = max(60, min(int(float(opts.get('lease_minutes') or 30) * 60), 7200))
+    except Exception:
+        lease_seconds = 1800
+    force = str(opts.get('force') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    agents = [
+        item.strip().lower()
+        for item in str(opts.get('agents') or '').split(',')
+        if item.strip().lower() in {'librarian', 'duck'}
+    ] or ['librarian', 'duck']
+
+    if not run_agents:
+        recoveries = get_open_chat_relay_recoveries(limit=limit)
+        if not recoveries:
+            return 'No open chat relay recoveries.'
+        ids = ', '.join(str(r.get('recovery_id') or '?') for r in recoveries)
+        return f'{len(recoveries)} open relay recoveries pending: {ids}. Re-run with run_agents=1 to ask Librarian/Duck.'
+
+    idle_window = str(opts.get('idle_window') or '22:00-06:00').strip()
+    if not force and not _tasker_in_idle_window(idle_window):
+        return (
+            f'Active relay recovery deferred outside idle window {idle_window}. '
+            'Re-run with force=1 to override.'
+        )
+
+    try:
+        import orchestrator
+    except Exception:
+        from core.pipeline import orchestrator
+
+    recoveries = lease_chat_relay_recoveries(
+        'tasker:relay_recovery_sweep',
+        limit=limit,
+        lease_seconds=lease_seconds,
+    )
+    if not recoveries:
+        return 'No unleased open chat relay recoveries.'
+
+    reviewed = []
+    for recovery in recoveries:
+        recovery_id = str(recovery.get('recovery_id') or '').strip()
+        conv_id = int(recovery.get('conversation_id') or 0)
+        context = {}
+        try:
+            context = json.loads(recovery.get('relay_context_json') or '{}')
+        except Exception:
+            context = {}
+        thread_tail = context.get('thread_tail') if isinstance(context, dict) else []
+        stage_trace = context.get('stage_trace') if isinstance(context, dict) else []
+        prompt = _relay_recovery_agent_prompt(recovery, thread_tail, stage_trace)
+
+        outputs = []
+        for agent in agents:
+            try:
+                answer = orchestrator.ask_agent(agent, prompt)
+            except Exception as exc:
+                answer = f'[{agent}] relay recovery review failed: {exc}'
+            outputs.append(f'{agent}: {str(answer or "").strip()[:1200]}')
+            if conv_id:
+                log_message(
+                    conv_id,
+                    agent,
+                    str(answer or '').strip() or f'[{agent}] no recovery review returned',
+                    to_agent='user',
+                    message_type='relay_recovery_review',
+                    tokens_used=0,
+                )
+
+        update_chat_relay_recovery_status(
+            recovery_id,
+            'reviewed',
+            summary='; '.join(outputs)[:1000],
+        )
+        reviewed.append(recovery_id)
+
+    return f'Reviewed {len(reviewed)} relay recoveries: {", ".join(reviewed)}'
+
+
+def _tasker_in_idle_window(window, now=None):
+    """Return whether local time is inside an HH:MM-HH:MM idle window."""
+    window = str(window or '').strip()
+    if not window or '-' not in window:
+        return True
+    start_raw, end_raw = [part.strip() for part in window.split('-', 1)]
+    try:
+        start_h, start_m = [int(part) for part in start_raw.split(':', 1)]
+        end_h, end_m = [int(part) for part in end_raw.split(':', 1)]
+        start = start_h * 60 + start_m
+        end = end_h * 60 + end_m
+    except Exception:
+        return True
+    if not (0 <= start < 1440 and 0 <= end < 1440):
+        return True
+    now = now or datetime.now()
+    minute = int(now.hour) * 60 + int(now.minute)
+    if start <= end:
+        return start <= minute <= end
+    return minute >= start or minute <= end
+
+
+def _relay_recovery_agent_prompt(recovery, thread_tail, stage_trace):
+    lines = [
+        'You are reviewing a stalled chat relay recovery card.',
+        f"Recovery ID: {recovery.get('recovery_id')}",
+        f"Conversation: #{recovery.get('conversation_id')}",
+        f"Stalled agent: {recovery.get('stalled_agent')}",
+        f"Summary: {recovery.get('summary')}",
+        '',
+        'Last stage trace:',
+    ]
+    for item in (stage_trace or [])[-6:]:
+        text = item.get('text') if isinstance(item, dict) else item
+        if text:
+            lines.append(f'- {str(text)[:180]}')
+    lines.append('')
+    lines.append('Thread tail:')
+    for msg in (thread_tail or [])[-6:]:
+        if not isinstance(msg, dict):
+            continue
+        sender = str(msg.get('from_agent') or 'unknown')
+        target = str(msg.get('to_agent') or '')
+        content = ' '.join(str(msg.get('content') or '').split())[:260]
+        if content:
+            lines.append(f'- {sender} -> {target}: {content}')
+    lines.append('')
+    lines.append('Return concise recovery notes: intended next step, risks, missing evidence, and who should continue. Do not expose private chain-of-thought.')
+    return '\n'.join(lines)
+
+
 @register('knowledge_seed', 'Seed knowledge library (args: collection name or "all")', 'knowledge')
 def _task_knowledge_seed(**kwargs):
     args = kwargs.get('args', 'all').strip() or 'all'
