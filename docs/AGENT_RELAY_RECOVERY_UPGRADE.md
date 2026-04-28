@@ -105,6 +105,193 @@ This means prompts like `sap_payroll_au_watch`, `SAP payroll Australia`, or
 `relay_recovery_sweep` can route to the right project context when the project
 contains enough matching evidence.
 
+## Watched Topic Novelty Gate
+
+Tasker watched-topic research now scores evidence before sending email updates.
+The `interest_research_update` task records each candidate finding in
+`watched_topic_evidence` with:
+
+- Stable evidence fingerprint.
+- Source-quality score.
+- Novelty score against prior watched-topic evidence and research snippets.
+- Evidence date, recency label, and recency score.
+- Historical-reference flag for older material.
+- Combined score.
+- Qualified/notified flags.
+- Compact reason string.
+
+Default email thresholds are:
+
+```text
+min_quality=0.45 min_novelty=0.35 min_score=0.50 max_items=10 historical_years=5
+```
+
+This means a watched topic such as `SAP payroll Australia` can keep researching
+on a schedule, but it only emails Ghost when a finding is both new and strong
+enough to act on. Weak new items are remembered and filtered; duplicates are
+remembered without re-alerting.
+
+The gate is now date-specific. Evidence from the current year, last year, or a
+recently aged source can still qualify if the source and novelty scores are
+strong. Evidence older than `historical_years` is retained in
+`watched_topic_evidence` as Knowledge/Studio reference but is not treated as a
+current update email. If an email has strong current findings and also sees
+older new material, the older item is shown separately as a short
+`Historical reference / fun fact from long ago` section.
+
+Watched-topic emails now include:
+
+- A Studio Tasker review link.
+- The reason the email was sent.
+- Current/relevant findings first.
+- Per-finding score, quality, novelty, recency, and date label.
+- A reminder that Studio can promote, ignore, mark emailed, or mark unemailed.
+
+## Agent Capability Scorecards
+
+The swarm now has a durable scorecard layer in `core.agent_scorecards` so
+routing can improve over time instead of relying only on fixed keyword maps.
+
+The scorecard tracks:
+
+- Agent name.
+- Capability, such as `coding`, `research`, `sap_payroll`, `audit`,
+  `orchestration`, `memory`, `recovery`, or `web_research`.
+- Score and confidence.
+- Evidence count.
+- Source and compact notes.
+
+Fridays proposal dispatch still starts from keyword matching, but now maps the
+keyword to a capability and asks the scorecard for the strongest candidate.
+For example, coding work routes to `ten`, SAP payroll work routes to `eight`,
+and audit/recovery work can prefer `duck` or `librarian` based on the stored
+scores.
+
+The shared local-agent context also includes a compact capability-scorecard
+block so agents can make better relay decisions when Auto Relay is enabled.
+
+## Scorecard Learning Hooks
+
+Tasker now has a best-effort learning hook after each run. It only records
+scorecard updates for known meaningful outcomes:
+
+- `interest_research_update` reinforces the collecting agent's `research`
+  score when a qualified watched-topic update is emailed.
+- `interest_research_update` also reinforces `sap_payroll` when the watched
+  topic is SAP/HCM/payroll-related.
+- `relay_recovery_sweep run_agents=1` reinforces `recovery` for the review
+  agents when recovery cards are actually reviewed.
+- Dry-runs, deferred sweeps, failed runs, and watched-topic runs with no
+  qualified email are ignored so the scorecard does not learn from noise.
+
+Each signal is stored through `core.agent_scorecards.record_task_outcome`,
+which updates score, confidence, evidence count, source, and notes.
+
+Additional scorecard learning hooks:
+
+- Duck proposal intake records an `audit` signal for Duck when it approves or
+  rejects a proposal.
+- Duck QA records an `audit` signal for Duck and a `coding` signal for the
+  builder agent based on pass/fail.
+- Duck execution/close records a positive `coding` signal for the builder agent.
+- Test Lab finish records `testing`, and coding-adjacent scripts also record
+  `coding`, when the run is linked to a proposal/change agent.
+
+## Watched Topic Studio Control
+
+Tasker now has a dedicated watched-topic creator instead of requiring manual
+editing of the `interest_research_update` action string.
+
+API:
+
+```text
+POST /api/tasker/watch-topic
+```
+
+Body fields:
+
+- `topic`
+- `schedule`
+- `depth`
+- `agent`
+- `email`
+- `min_quality`
+- `min_novelty`
+- `min_score`
+- `max_items`
+- `historical_years`
+
+The endpoint creates or refreshes both:
+
+- A `user_interests` row for the topic.
+- A `scheduled_tasks` row that runs `interest_research_update`.
+
+If a watched task already exists for the same topic, the endpoint reuses that
+task name instead of creating a duplicate. The Tasker Studio view now exposes a
+small watched-topic panel with the same fields.
+
+Studio also exposes a watched-evidence review panel backed by:
+
+```text
+GET /api/tasker/watch-topic/evidence?topic=SAP%20payroll%20Australia&status=all
+```
+
+Supported evidence statuses:
+
+- `all`
+- `qualified`
+- `filtered`
+- `historical`
+- `notified`
+- `unnotified`
+
+The response includes scored evidence rows and per-topic totals so Ghost can see
+official findings, weak findings, duplicates, and already-notified items even
+when no email is sent.
+
+Evidence rows can also be operator-reviewed:
+
+```text
+PATCH /api/tasker/watch-topic/evidence/<evidence_id>
+```
+
+Supported actions:
+
+- `promote`
+- `ignore`
+- `reset`
+- `mark_notified`
+- `mark_unnotified`
+
+Promote/ignore actions write `review_status` and `review_note` while keeping the
+original quality, novelty, and combined scores visible. This gives Ghost a
+manual override when the automatic gate is too strict or too loose.
+
+Studio now also has a `Run Topic Now` path for watched topics. It reuses the
+existing scheduled task, runs the same `interest_research_update` action
+immediately, refreshes `last_run`/`next_run`, and returns the latest scored
+evidence rows to the review panel. The `historical` evidence filter keeps
+old-but-useful reference material separate from current findings.
+
+Live SAP/SuccessFactors watcher status:
+
+```text
+sap_payroll_au_watch | daily 06:30 | PYTHON
+interest_research_update 'topic=SAP payroll Australia' depth=standard agent=eight email=ghost min_quality=0.45 min_novelty=0.35 min_score=0.50 max_items=10 historical_years=5
+
+successfactors_employee_central_au_watch | daily 06:45 | PYTHON
+interest_research_update 'topic=SuccessFactors Employee Central Australia' depth=standard agent=eight email=ghost min_quality=0.45 min_novelty=0.35 min_score=0.50 max_items=10 historical_years=5
+
+successfactors_ecp_au_watch | daily 07:00 | PYTHON
+interest_research_update 'topic=SuccessFactors Employee Central Payroll Australia' depth=standard agent=eight email=ghost min_quality=0.45 min_novelty=0.35 min_score=0.50 max_items=10 historical_years=5
+
+successfactors_onboarding_2_0_au_watch | daily 07:15 | PYTHON
+interest_research_update 'topic=SuccessFactors Onboarding 2.0 Australia' depth=standard agent=eight email=ghost min_quality=0.45 min_novelty=0.35 min_score=0.50 max_items=10 historical_years=5
+
+successfactors_new_home_page_watch | daily 07:30 | PYTHON
+interest_research_update 'topic=SAP SuccessFactors new home page' depth=standard agent=eight email=ghost min_quality=0.45 min_novelty=0.35 min_score=0.50 max_items=10 historical_years=5
+```
+
 ## Studio Project
 
 Primary project: `Integration Improvement Audit 2026-04-28`
@@ -164,9 +351,9 @@ relay_recovery_sweep limit=3 run_agents=1 force=1
 Focused checks for this iteration:
 
 ```bash
-pytest -q tests/test_chat_watchdog.py tests/test_tasker_research_integration_fixes.py
-python3 -m py_compile frontend/blueprints/chat.py frontend/services/chat_jobs.py utils/db/chat.py utils/db/_schema.py fridays/task_runner.py frontend/blueprints/tasker_bp.py
-node --check frontend/static/js/views/chat.js
+pytest -q tests/test_agent_scorecards.py tests/test_testlab_runs.py tests/test_chat_watchdog.py tests/test_tasker_research_integration_fixes.py
+python3 -m py_compile core/agent_scorecards.py core/knowledge/test_runs.py frontend/blueprints/chat.py frontend/services/chat_jobs.py utils/db/chat.py utils/db/_schema.py utils/proposal_review.py fridays/task_runner.py fridays/orchestrator.py frontend/blueprints/tasker_bp.py
+node --check frontend/static/js/views/chat.js && node --check frontend/static/js/views/projects.js && node --check frontend/static/js/views/tasker.js
 ```
 
 Broader integration checks should continue to include the existing Tasker,
@@ -174,5 +361,7 @@ spine, notification, and chat-action tests.
 
 ## Next Iterations
 
-- Add source-quality and novelty scoring to watched-interest updates before
-  email delivery.
+- Add Git PR/branch outcomes to capability scorecards once proposal branch
+  metadata is consistently present.
+- Add a run-now-and-review confirmation path that can optionally send a manual
+  email after Ghost promotes evidence.

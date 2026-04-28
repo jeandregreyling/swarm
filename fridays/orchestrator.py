@@ -104,6 +104,29 @@ DISPATCH_ROUTES = {
     'news':       'seeker',
 }
 
+DISPATCH_CAPABILITIES = {
+    'sap':        'sap_payroll',
+    'hcm':        'sap_payroll',
+    'payroll':    'sap_payroll',
+    'analysis':   'analysis',
+    'analyse':    'analysis',
+    'research':   'research',
+    'search':     'research',
+    'route':      'orchestration',
+    'synthesis':  'synthesis',
+    'coordinate': 'orchestration',
+    'audit':      'audit',
+    'memory':     'memory',
+    'architect':  'architecture',
+    'design':     'architecture',
+    'code':       'coding',
+    'implement':  'coding',
+    'reason':     'analysis',
+    'vision':     'research',
+    'web':        'web_research',
+    'news':       'web_research',
+}
+
 
 def _load_agent_key():
     """Load the AGENT_API_KEY from .env.agents file or environment."""
@@ -331,11 +354,24 @@ def agent_git_propose_and_execute(agent_id, action, paths=None, message='', prio
 def _naive_route(proposal):
     """
     Look at a proposal's title/description and decide which agent should handle it.
-    Uses keyword-based routing — same primitive Gemma uses, but local-only.
+    Uses keyword-based routing with capability scorecards when available.
     """
     text = (proposal.get('title', '') + ' ' + proposal.get('description', '')).lower()
     for keyword, agent in DISPATCH_ROUTES.items():
         if keyword in text:
+            capability = DISPATCH_CAPABILITIES.get(keyword)
+            if capability:
+                try:
+                    from core.agent_scorecards import best_agent_for_capability
+                    scored = best_agent_for_capability(
+                        capability,
+                        candidates=LOCAL_AGENTS + GHOST_LAYER_AGENTS,
+                        fallback=agent,
+                    )
+                    if scored:
+                        return scored
+                except Exception as exc:
+                    logger.debug(f'[Fridays] scorecard route failed for {keyword}: {exc}')
             return agent
     # Default: the agent that created it handles it
     return proposal.get('agent', 'gemma')

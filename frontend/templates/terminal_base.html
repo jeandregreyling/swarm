@@ -2481,6 +2481,60 @@
       <button class="tasker-btn-new" style="background:var(--accent-subtle,#2a4a5a)" onclick="bootstrapTasker()">⚡ Bootstrap</button>
     </div>
 
+    <!-- Watched topic quick creator -->
+    <div class="tasker-watch-panel">
+      <div class="tasker-watch-copy">
+        <div class="tasker-watch-title">Watched research topic</div>
+        <div class="tasker-watch-subtitle">Create a saved interest and schedule Agent Eight/Scholar-style research emails without hand-writing Tasker args.</div>
+      </div>
+      <div class="tasker-watch-grid">
+        <label>Topic<input type="text" id="tasker-watch-topic" placeholder="SAP payroll Australia"></label>
+        <label>Schedule<input type="text" id="tasker-watch-schedule" value="daily 06:30" placeholder="daily 06:30"></label>
+        <label>Depth
+          <select id="tasker-watch-depth">
+            <option value="quick">Quick</option>
+            <option value="standard" selected>Standard</option>
+            <option value="deep">Deep</option>
+          </select>
+        </label>
+        <label>Agent<input type="text" id="tasker-watch-agent" value="eight" placeholder="eight"></label>
+        <label>Email<input type="text" id="tasker-watch-email" value="ghost" placeholder="ghost or address"></label>
+        <label>Min Quality<input type="number" min="0" max="1" step="0.05" id="tasker-watch-min-quality" value="0.45"></label>
+        <label>Min Novelty<input type="number" min="0" max="1" step="0.05" id="tasker-watch-min-novelty" value="0.35"></label>
+        <label>Min Score<input type="number" min="0" max="1" step="0.05" id="tasker-watch-min-score" value="0.50"></label>
+        <label>Max Items<input type="number" min="1" max="25" step="1" id="tasker-watch-max-items" value="10"></label>
+        <label>Historical Years<input type="number" min="1" max="50" step="1" id="tasker-watch-historical-years" value="5"></label>
+      </div>
+      <div class="tasker-watch-actions">
+        <button class="tasker-form-save" type="button" onclick="createWatchedTopicTask()">Create Watch</button>
+      </div>
+    </div>
+
+    <!-- Watched evidence review -->
+    <div class="tasker-evidence-panel">
+      <div class="tasker-watch-copy">
+        <div class="tasker-watch-title">Watched evidence review</div>
+        <div class="tasker-watch-subtitle">See what watched-topic research found, including qualified emails, weak sources, duplicates, and unnotified findings.</div>
+      </div>
+      <div class="tasker-evidence-controls">
+        <input type="text" id="tasker-evidence-topic" value="SAP payroll Australia" placeholder="Topic filter">
+        <select id="tasker-evidence-status">
+          <option value="all">All findings</option>
+          <option value="qualified">Qualified</option>
+          <option value="filtered">Filtered</option>
+          <option value="historical">Historical</option>
+          <option value="notified">Notified</option>
+          <option value="unnotified">Unnotified</option>
+        </select>
+        <button class="tasker-form-cancel" type="button" onclick="loadWatchedTopicEvidence()">Refresh Evidence</button>
+        <button class="tasker-form-save" type="button" onclick="runWatchedTopicNow()">Run Topic Now</button>
+      </div>
+      <div class="tasker-evidence-summary" id="tasker-evidence-summary">No evidence loaded yet.</div>
+      <div class="tasker-evidence-list" id="tasker-evidence-list">
+        <div class="tasker-empty"><div class="tasker-empty-icon">⌕</div>Open Tasker or click Refresh Evidence to load watched findings.</div>
+      </div>
+    </div>
+
     <!-- Create/Edit form -->
     <div class="tasker-form" id="tasker-form">
       <div class="tasker-form-title" id="tasker-form-title">New Scheduled Task</div>

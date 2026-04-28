@@ -178,7 +178,9 @@ def finish_run(
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT started_at FROM test_runs WHERE run_id=?", (run_id,)
+                """SELECT started_at, script_id, change_id, triggered_by
+                   FROM test_runs WHERE run_id=?""",
+                (run_id,),
             ).fetchone()
             if not row:
                 return False
@@ -193,11 +195,29 @@ def finish_run(
                  tail, run_id),
             )
             conn.commit()
+            _record_scorecard_test_run_outcome(
+                conn=conn,
+                script_id=row['script_id'],
+                status=status,
+                change_id=row['change_id'] or '',
+                triggered_by=row['triggered_by'] or '',
+                exit_code=exit_code,
+                stdout_tail=tail,
+            )
             return True
         finally:
             conn.close()
     except Exception:
         return False
+
+
+def _record_scorecard_test_run_outcome(**kwargs) -> None:
+    """Best-effort scorecard learning from Test Lab run completion."""
+    try:
+        from core import agent_scorecards
+        agent_scorecards.record_test_run_outcome(**kwargs)
+    except Exception:
+        pass
 
 
 def abort_run(run_id: str, reason: str = '') -> bool:
