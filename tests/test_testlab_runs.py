@@ -50,6 +50,37 @@ def test_finish_run_sets_status_and_duration(isolated_db):
     assert "716 passed" in run["stdout_tail"]
 
 
+def test_finish_run_records_scorecard_for_linked_proposal(isolated_db):
+    from core import agent_scorecards
+    from core.knowledge import test_runs as tr
+    from utils.db._connection import get_connection
+
+    with get_connection() as conn:
+        conn.execute(
+            """CREATE TABLE work_proposals (
+                proposal_id TEXT PRIMARY KEY,
+                ticket_number TEXT DEFAULT '',
+                title TEXT DEFAULT '',
+                agent TEXT DEFAULT '',
+                updated_at TEXT DEFAULT (datetime('now'))
+            )"""
+        )
+        conn.execute(
+            """INSERT INTO work_proposals
+               (proposal_id, title, agent)
+               VALUES ('P-RUN-1', 'Implement integration upgrade', 'ten')"""
+        )
+        conn.commit()
+
+    run_id = tr.start_run("pytest:focused", change_id="P-RUN-1")
+    assert tr.finish_run(run_id, status=tr.STATUS_PASS, exit_code=0, stdout_tail="passed")
+
+    testing = agent_scorecards.list_scorecards(capability="testing", agents=["ten"], limit=1)[0]
+    coding = agent_scorecards.list_scorecards(capability="coding", agents=["ten"], limit=1)[0]
+    assert testing["source"] == "testlab:run"
+    assert coding["source"] == "testlab:run"
+
+
 def test_finish_run_unknown_status_coerces_to_fail(isolated_db):
     from core.knowledge import test_runs as tr
     run_id = tr.start_run("pytest:foo")

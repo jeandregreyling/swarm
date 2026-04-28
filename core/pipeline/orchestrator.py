@@ -363,6 +363,18 @@ def _swarm_awareness_block():
     if _SERPER_OK:  web_status.append('Gemma→Google/Serper')
     if _TAVILY_OK:  web_status.append('Mistral/Eight→Tavily')
     web_status.append('LLaMA→DuckDuckGo')
+    scorecards = ''
+    try:
+        from core.agent_scorecards import scorecard_context_block
+        scorecards = scorecard_context_block(
+            capabilities=(
+                'coding', 'research', 'sap_payroll', 'audit',
+                'orchestration', 'memory', 'recovery',
+            ),
+            limit=10,
+        )
+    except Exception:
+        scorecards = ''
     return (
         '=== Swarm roster ===\n'
         'Gemma     — orchestrator, routes all questions, synthesises final answers\n'
@@ -376,6 +388,7 @@ def _swarm_awareness_block():
         'Search engines active: ' + ', '.join(web_status) + '\n'
         'Developer Agents (online API): Nine (Groq, system architect), Ten (GPT, software engineer), Eleven (Grok, lateral thinker), Twelve (Claude Haiku, time wizard), Thirteen (HuggingFace \u2014 testing)\n'
         'Ghost Layer (human users): Ghost One (Jeandre, operator and approving authority)\n\n'
+        + scorecards +
         '=== Agent autonomy ===\n'
         'When you have been idle for 1+ hour with no active queue, you may draft an improvement proposal.\n'
         'Write your proposal to your sandpit. It will be audited by Sniffles before Ghost reviews it.\n'

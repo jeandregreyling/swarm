@@ -101,6 +101,13 @@ def duck_review_proposal(proposal_id: str, title: str, description: str,
             agent=agent,
         )
 
+    _record_duck_scorecard_outcome(
+        proposal_id=proposal_id,
+        title=title,
+        agent=agent,
+        phase='intake',
+        verdict=verdict,
+    )
     print(f'[Duck] {proposal_id} review → {verdict}')
 
 
@@ -197,6 +204,13 @@ def duck_check_done(proposal_id: str):
     if conv_id:
         _notify_done_check(int(conv_id), proposal_id, title, agent, verdict, feedback)
 
+    _record_duck_scorecard_outcome(
+        proposal_id=proposal_id,
+        title=title,
+        agent=agent,
+        phase='qa',
+        verdict=verdict,
+    )
     print(f'[Duck] {proposal_id} quality check → {verdict} → {new_status}')
 
 
@@ -287,6 +301,13 @@ def duck_execute_proposal(proposal_id: str, actor: str = 'duck'):
         )
         _post_to_thread(int(conv_id), msg, 'proposal_update')
 
+    _record_duck_scorecard_outcome(
+        proposal_id=proposal_id,
+        title=row['title'] or proposal_id,
+        agent=row['agent'] or 'unknown',
+        phase='execute',
+        verdict='closed',
+    )
     print(f'[Duck] {proposal_id} closed by {actor}')
     return True, f'Proposal {proposal_id} shipped and closed.'
 
@@ -387,3 +408,18 @@ def _post_to_thread(conv_id: int, msg: str, message_type: str = 'proposal_update
         log_message(conv_id, 'duck', msg, to_agent='user', message_type=message_type)
     except Exception as exc:
         print(f'[ProposalReview] _post_to_thread failed: {exc}')
+
+
+def _record_duck_scorecard_outcome(*, proposal_id: str, title: str, agent: str, phase: str, verdict: str):
+    """Best-effort scorecard learning from proposal/Duck lifecycle events."""
+    try:
+        from core import agent_scorecards
+        agent_scorecards.record_duck_proposal_outcome(
+            proposal_id=proposal_id,
+            title=title,
+            agent=agent,
+            phase=phase,
+            verdict=verdict,
+        )
+    except Exception as exc:
+        print(f'[ProposalReview] scorecard update failed: {exc}')
