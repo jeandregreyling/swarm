@@ -97,23 +97,43 @@ def test_watchdog_respects_min_floor_for_fast_agents(monkeypatch):
     assert stalled == []
 
 
-def test_watchdog_caps_at_15_minutes_even_with_high_eta(monkeypatch):
+def test_watchdog_caps_at_2000_second_handoff_deadline_with_high_eta(monkeypatch):
     _suppress_durable_spine_logs(monkeypatch)
     _fresh_state()
     now = time.time()
     # Even with a 10-minute ETA, 4× = 40min would be too lenient. The
-    # 15-minute hard ceiling kicks in instead.
+    # 2000-second handoff ceiling kicks in instead.
     cj._CHAT_JOBS['job-huge-eta'] = {
         'job_id': 'job-huge-eta',
         'agent': 'mistral',
         'status': 'running',
         'eta_seconds': 600,
-        'started_ts': now - 1000,   # 16+ minutes
-        'updated_ts': now - 1000,
+        'started_ts': now - 2100,
+        'updated_ts': now - 2100,
     }
     with cj._CHAT_JOB_LOCK:
         stalled = cj._watchdog_mark_stalled_jobs_locked()
     assert len(stalled) == 1
+
+
+def test_watchdog_uses_idle_time_not_total_runtime(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    _fresh_state()
+    now = time.time()
+    # Long total runtime is allowed when the model is still streaming progress.
+    cj._CHAT_JOBS['job-active'] = {
+        'job_id': 'job-active',
+        'agent': 'llama',
+        'status': 'running',
+        'eta_seconds': 60,
+        'started_ts': now - 2500,
+        'updated_ts': now - 10,
+        'stage_trace': [{'text': 'generating · partial answer', 'ts': now - 10}],
+    }
+    with cj._CHAT_JOB_LOCK:
+        stalled = cj._watchdog_mark_stalled_jobs_locked()
+    assert stalled == []
+    assert cj._CHAT_JOBS['job-active']['status'] == 'running'
 
 
 def test_health_snapshot_p50_p95_and_stall_count(monkeypatch):

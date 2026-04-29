@@ -1,12 +1,13 @@
 """frontend/blueprints/sysmod.py — settings-surface for the sysmod pack.
 
-Stores the "system modifications enabled" flag plus per-capability opt-ins
-in ``swarm.db``. The toggle surface in Settings calls these endpoints and
+Stores the "system modifications enabled" flag plus per-capability opt-ins in
+the central Swarm DB. The toggle surface in Settings calls these endpoints and
 operators see the resolved state in the onboarding wizard.
 """
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import time
 
@@ -34,9 +35,12 @@ _DEFAULT = {
 
 
 def _db() -> sqlite3.Connection:
-    import os
-    path = os.environ.get("SWARM_DB", os.path.join(os.path.dirname(__file__), "..", "..", "swarm.db"))
-    conn = sqlite3.connect(path)
+    override = os.environ.get("SWARM_DB")
+    if override:
+        conn = sqlite3.connect(override)
+    else:
+        from utils.db._connection import get_connection
+        conn = get_connection()
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     return conn

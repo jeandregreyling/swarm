@@ -213,6 +213,7 @@ def bootstrap_tasks():
         ('proposals_check', 'interval 30m',      'PYTHON', 'proposals_check'),
         ('landscape_refresh','weekly Mon 04:00',  'PYTHON', 'landscape_refresh'),
         ('knowledge_seed',  'monthly 1 03:00',   'PYTHON', 'knowledge_seed'),
+        ('documentation_governance_sweep', 'weekly Mon 03:40', 'PYTHON', 'documentation_governance_sweep'),
         ('relay_recovery_sweep', 'interval 30m', 'PYTHON', 'relay_recovery_sweep limit=3'),
     ]
     defaults.extend(_default_watched_topic_tasks())

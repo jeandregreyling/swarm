@@ -26,6 +26,24 @@ thread summaries. It does not ask agents to expose private chain-of-thought.
    background loops from reviewing the same stalled relay.
 8. Reviewed recoveries are marked `reviewed` with a compact summary.
 
+## Active Generation Handoff
+
+Thread 2319 exposed a false-stall case: a local agent could still be emitting
+visible `generating` updates, reach final synthesis, and then get marked as a
+timeout because the controller only watched total elapsed time.
+
+Chat now treats progress as a heartbeat:
+
+- Stage callbacks from local agents update both the visible thinking bubble and
+  the timeout heartbeat tracker.
+- The watchdog uses idle time since the last progress update, not total runtime,
+  when deciding whether a job is stalled.
+- If the 2000-second handoff deadline is reached while generation is still
+  active, Chat returns a partial `SELF-HANDOFF` answer and tries to stop the
+  local Ollama runner to free the model slot.
+- Active-generation handoff does not disable the agent. Only a true no-progress
+  timeout or token/context exhaustion takes the agent offline for Chat.
+
 ## Agent Context Packs
 
 Local chat agents now get a compact Studio project context pack when the chat
