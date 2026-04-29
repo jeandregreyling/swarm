@@ -738,10 +738,10 @@ function agentsRenderList(agents) {
     const tierBadge  = `<span style="${tierColor}border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">${tierLabel}</span>`;
     const isDecommissioned = a.enabled == 0;
     const statusDot = isDecommissioned
-      ? '<span style="color:#ffb366;font-size:10px;line-height:1;" title="Decommissioned">◌</span>'
+      ? '<span style="color:#ef4444;font-size:10px;line-height:1;" title="Offline: re-enable from Agents tile">●</span>'
       : '<span style="color:#4caf50;font-size:10px;line-height:1;">●</span>';
     const dcomBadge = isDecommissioned
-      ? '<span style="background:#3a2a00;color:#ffb366;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">OFF</span>'
+      ? '<span style="background:#3a1010;color:#ff8a8a;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">OFFLINE</span>'
       : '';
     return `<div class="agents-list-row" data-name="${_esc(a.name)}"
       style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px;transition:background 0.12s;${isDecommissioned ? 'opacity:0.6;' : ''}">
@@ -849,6 +849,16 @@ function agentsShowDetail(agent) {
         ${isLocal && agent.tier !== 'human' ? `
         <div id="agent-local-status" style="grid-column:span 2;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;color:var(--text-dim);">Checking local runtime availability...</div>
         ` : ''}
+        <div>
+          <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Chat ETA / Timer (sec)</label>
+          <input id="agent-eta-seconds" type="number" min="0" max="2000" value="${Number.isFinite(Number(agent.eta_seconds)) ? Number(agent.eta_seconds) : 60}"
+            style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Keep-Warm (sec)</label>
+          <input id="agent-keepalive-config" type="number" min="0" max="86400" value="${Number.isFinite(Number(agent.keep_alive)) ? Number(agent.keep_alive) : 300}"
+            style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
+        </div>
         <div style="grid-column:span 2;">
           <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">API Key</label>
           ${isLocal ? `<span style="font-size:11px;color:var(--text-dim);">— n/a for ${agent.tier} agents</span>` : `
@@ -1130,6 +1140,8 @@ function agentsSave(name) {
     role:          document.getElementById('agent-role')?.value     || '',
     system_prompt: document.getElementById('agent-prompt')?.value   || '',
     enabled:       document.getElementById('agent-enabled')?.checked !== false,
+    eta_seconds:   Number(document.getElementById('agent-eta-seconds')?.value || 60),
+    keep_alive:    Number(document.getElementById('agent-keepalive-config')?.value || 300),
   };
   const keyValue = (document.getElementById('agent-key-value')?.value || '').trim();
   const keyVar   = (document.getElementById('agent-key-var')?.value  || '').trim();
@@ -1968,4 +1980,3 @@ function agentsLocalAIRefresh() {
       if (ollamaBadge) { ollamaBadge.textContent = 'error'; ollamaBadge.style.color = 'var(--danger,#ff6b6b)'; }
     });
 }
-

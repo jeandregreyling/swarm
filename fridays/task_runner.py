@@ -312,6 +312,21 @@ def _task_knowledge_reindex(**kwargs):
     return f'Re-indexed {count}/{len(sources)} sources'
 
 
+@register('documentation_governance_sweep', 'Audit loose docs/data files and publish findings to Studio/KC', 'knowledge')
+def _task_documentation_governance_sweep(**kwargs):
+    from scripts.studio_data_governance import apply_governance
+    result = apply_governance()
+    counts = result.get('inventory_counts') or {}
+    project_id = result.get('project_id') or '?'
+    proposal_id = result.get('proposal_id') or '?'
+    return (
+        f"Governance sweep updated {project_id}/{proposal_id}: "
+        f"{counts.get('loose_document', 0)} loose docs, "
+        f"{counts.get('sandpit_working_note', 0)} sandpit notes, "
+        f"{counts.get('duplicate_or_legacy_db', 0)} legacy DBs"
+    )
+
+
 @register('idle_research', 'Pick an active topic from user_interests and run Scholar research on it', 'knowledge')
 def _task_idle_research(**kwargs):
     """

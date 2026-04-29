@@ -24,7 +24,6 @@ import urllib.parse
 from typing import Optional
 
 
-DB_PATH = os.environ.get("SWARM_2FA_DB", os.path.join(os.path.dirname(__file__), "..", "swarm.db"))
 ISSUER = os.environ.get("SWARM_2FA_ISSUER", "Swarm")
 
 
@@ -78,7 +77,12 @@ CREATE TABLE IF NOT EXISTS user_2fa (
 
 
 def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    override = os.environ.get("SWARM_2FA_DB")
+    if override:
+        conn = sqlite3.connect(override)
+    else:
+        from utils.db._connection import get_connection
+        conn = get_connection()
     conn.executescript(SCHEMA)
     return conn
 

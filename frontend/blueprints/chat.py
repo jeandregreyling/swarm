@@ -13,6 +13,7 @@ LINKED TO:
                               developer_agents set here must match that file.
 """
 import subprocess
+import time
 
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
@@ -40,6 +41,93 @@ def _sse_chat(conversation_id, agent, status, **extra):
         pass
 
 chat_bp = Blueprint('chat', __name__)
+
+_CHAT_LOCAL_HANDOFF_DEADLINE_SECONDS = 2000
+
+
+def _chat_agent_timeout_seconds(agent_name, persistent_mode=False):
+    """User-visible completion/handoff deadline for chat agent calls."""
+    agent = str(agent_name or '').strip().lower()
+    if persistent_mode:
+        if agent in {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'seven', 'librarian', 'duck', 'sniffles', 'phi3', 'deepseek_local', 'deepseek-local', 'lmstudio'}:
+            return _CHAT_LOCAL_HANDOFF_DEADLINE_SECONDS
+        return 240
+    if agent == 'sniffles':
+        return 35
+    if agent == 'duck':
+        return 18
+    if agent in {'llama', 'llama3'}:
+        return 90
+    if agent in {'phi3'}:
+        return 60
+    if agent in {'deepseek_local', 'deepseek-local', 'lmstudio', 'ghost_coder'}:
+        return 120
+    return 12
+
+
+def _chat_handoff_contract(agent_name, deadline_seconds):
+    return (
+        "\n\n=== FRIDAYS STUDIO HANDOFF TIMER ===\n"
+        f"You are running as {agent_name}. Your visible deadline is {int(deadline_seconds)} seconds.\n"
+        "Before that deadline, answer with the useful work you have completed so far. "
+        "If you cannot finish, end with a compact SELF-HANDOFF containing: current finding, "
+        "next action, files/tables touched, risks, and the exact prompt to continue in the next window. "
+        "Do not wait silently for perfect completion.\n"
+        "=== END TIMER CONTRACT ===\n"
+    )
+
+
+def _looks_like_token_exhaustion(text):
+    lower = str(text or '').lower()
+    cues = (
+        'context length',
+        'maximum context',
+        'max context',
+        'context window',
+        'token limit',
+        'tokens exceeded',
+        'out of tokens',
+        'maximum tokens',
+        'input is too long',
+        'prompt is too long',
+        'num_ctx',
+    )
+    return any(cue in lower for cue in cues)
+
+
+def _disable_agent_for_chat(agent_name, reason):
+    """Take an agent out of chat routing until re-enabled from Agents tile."""
+    name = str(agent_name or '').strip().lower()
+    if not name or name in {'ghost', 'user', 'fridays'}:
+        return False
+    try:
+        conn = get_connection()
+        try:
+            row = conn.execute("SELECT tier FROM agents WHERE name=?", (name,)).fetchone()
+            if not row:
+                return False
+            if (row['tier'] or '') == 'service':
+                return False
+            conn.execute("UPDATE agents SET enabled=0 WHERE name=?", (name,))
+            conn.commit()
+        finally:
+            conn.close()
+        try:
+            DISABLED_AGENTS.add(name)
+        except Exception:
+            pass
+        try:
+            from utils.db.registry import invalidate_cache as _inv
+            _inv()
+        except Exception:
+            pass
+        try:
+            log_activity('terminal', 'agent_auto_offline', f'{name}: {str(reason or "")[:500]}')
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
 
 
 # Ollama-agent helpers live in services.chat_agents and are re-exported through
@@ -708,15 +796,41 @@ def api_chat():
             return 'Duck quick sanity: ' + '; '.join(cues) + '.'
 
         def _stage(text, eta_seconds=None):
+            now = time.time()
+            text_s = str(text or '')
+            lower = text_s.lower()
+            active_cues = (
+                'generating',
+                'synthesizing',
+                'finalizing',
+                'writing',
+                'streaming',
+                'thinking',
+                'drafting',
+                'sending model request',
+            )
+            if any(cue in lower for cue in active_cues):
+                progress_state['last_progress_ts'] = now
+                progress_state['active_progress_seen'] = True
+            if 'generating' in lower and '·' in text_s:
+                snippet = text_s.split('·', 1)[1].strip()
+                if snippet:
+                    progress_state['snippets'].append(snippet[-900:])
+                    del progress_state['snippets'][:-8]
             if callable(stage_cb):
                 try:
-                    stage_cb(text, eta_seconds)
+                    stage_cb(text_s, eta_seconds)
                 except Exception:
                     pass
 
         response_text = None
         tokens_used = 0
         started_at = time.time()
+        progress_state = {
+            'last_progress_ts': started_at,
+            'active_progress_seen': False,
+            'snippets': [],
+        }
         executor = _CHAT_WORKER_EXECUTOR
         est_eta = _chat_eta_seconds(selected_agent)
 
@@ -751,7 +865,71 @@ def api_chat():
             except Exception:
                 pass  # coordination unavailable — proceed with original target
 
+        local_timeout = _chat_agent_timeout_seconds(selected_agent, persistent_mode)
+
+        def _partial_self_handoff(reason):
+            elapsed = int(time.time() - started_at)
+            snippets = [s for s in progress_state.get('snippets') or [] if s]
+            if snippets:
+                observed = '\n\n'.join(f'- {s}' for s in snippets[-4:])
+            else:
+                observed = '- The agent was still reporting active generation, but no safe partial text was captured.'
+            return (
+                f'[{selected_agent}] reached the handoff deadline after {elapsed}s while still showing active progress.\n\n'
+                'Partial output observed before handoff:\n'
+                f'{observed}\n\n'
+                'SELF-HANDOFF:\n'
+                f'- Current status: {reason}; active progress was observed, so this was not treated as a dead stall.\n'
+                '- Next action: continue from the partial output above and produce the final answer in the next chat window.\n'
+                '- Files/tables touched: none by the timeout controller.\n'
+                '- Risk: the previous local runner may have been stopped to free the model slot; verify any unfinished action before applying changes.\n'
+                f'- Continue prompt: Continue {selected_agent}\'s previous answer from thread #{conv_id}, using the partial output above as context, and finish with concise next steps.'
+            )
+
+        def _await_agent_future(future, *, text_only=False):
+            poll_seconds = 5.0
+            idle_stall_seconds = 300.0
+            while True:
+                try:
+                    return future.result(timeout=poll_seconds)
+                except FuturesTimeoutError:
+                    now = time.time()
+                    elapsed = now - started_at
+                    idle = now - float(progress_state.get('last_progress_ts') or started_at)
+                    if elapsed < float(local_timeout):
+                        continue
+                    active_recently = (
+                        bool(progress_state.get('active_progress_seen'))
+                        and idle <= idle_stall_seconds
+                    )
+                    if active_recently:
+                        _trace(
+                            conv_id,
+                            selected_agent,
+                            'handoff',
+                            f'active generation handoff after {int(elapsed)}s idle={int(idle)}s',
+                        )
+                        _stage('handoff deadline reached with active generation', 0)
+                        try:
+                            future.cancel()
+                        except Exception:
+                            pass
+                        try:
+                            if selected_agent in _local_ollama_chat_agents():
+                                _chat_try_hard_kill_local_agent(selected_agent)
+                        except Exception:
+                            pass
+                        handoff_text = _partial_self_handoff(
+                            f'deadline {int(local_timeout)}s reached with heartbeat idle {int(idle)}s'
+                        )
+                        return handoff_text if text_only else (handoff_text, 0)
+                    raise
+
+        def _agent_stage_cb(stage_text, eta_seconds=None):
+            _stage(stage_text, est_eta if eta_seconds is None else eta_seconds)
+
         effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
+        effective_prompt += _chat_handoff_contract(selected_agent, local_timeout)
         if not auto_relay:
             effective_prompt = (
                 '=== RELAY DISABLED — HARD RULE ===\n'
@@ -773,17 +951,6 @@ def api_chat():
                 + 'Do not ask for reconfirmation.'
             )
         _stage('queued', est_eta)
-        local_timeout = 12
-        if selected_agent == 'sniffles':
-            local_timeout = 35
-        elif selected_agent == 'duck':
-            local_timeout = 18
-        if persistent_mode:
-            if selected_agent in {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'seven', 'librarian', 'duck', 'sniffles'}:
-                local_timeout = 2000
-            else:
-                local_timeout = 240
-
         # Tavily web research for Mistral (same service Qwen used) — injected before model call
         if selected_agent == 'mistral' and _TAVILY_OK and _tavily_search:
             try:
@@ -821,8 +988,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[{selected_agent}] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(_mod.chat, effective_prompt, history, stage_cb)
-                    answer, tokens = future.result(timeout=local_timeout)
+                    future = executor.submit(_mod.chat, effective_prompt, history, _agent_stage_cb)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or f'[{selected_agent} unavailable]'
                     tokens_used = tokens or 0
             elif selected_agent in {'librarian', 'duck', 'sniffles'}:
@@ -834,7 +1001,7 @@ def api_chat():
                     _stage(f'preparing prompt · {_model_name}', est_eta)
                 future = executor.submit(orchestrator.ask_agent, selected_agent, effective_prompt)
                 _stage(f'generating · {_model_name}', est_eta)
-                response_text = future.result(timeout=local_timeout)
+                response_text = _await_agent_future(future, text_only=True)
                 tokens_used = orchestrator._LAST_EVAL_COUNT.get(selected_agent, 0)
                 _stage('writing to memory', 0)
                 _persist_local_agent_memory(selected_agent, message, response_text)
@@ -845,8 +1012,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[mistral] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(mistral_agent.chat, effective_prompt, history, stage_cb)
-                    answer, tokens = future.result(timeout=5000)
+                    future = executor.submit(mistral_agent.chat, effective_prompt, history, _agent_stage_cb)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[mistral] No response — check server logs.'
                     tokens_used = tokens or 0
             elif selected_agent == 'nine':
@@ -856,8 +1023,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[nine] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(nine_agent.chat, effective_prompt, history, stage_cb, conv_id)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    future = executor.submit(nine_agent.chat, effective_prompt, history, _agent_stage_cb, conv_id)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[nine unavailable]'
                     tokens_used = tokens or 0
             elif selected_agent == 'ten':
@@ -867,8 +1034,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[ten] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(copilot_agent.chat, effective_prompt, history, stage_cb, conv_id)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    future = executor.submit(copilot_agent.chat, effective_prompt, history, _agent_stage_cb, conv_id)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[ten] No response — check server logs.'
                     tokens_used = tokens or 0
             elif selected_agent == 'eleven':
@@ -878,8 +1045,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[eleven] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(grok_agent.chat, effective_prompt, history, stage_cb, conv_id)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    future = executor.submit(grok_agent.chat, effective_prompt, history, _agent_stage_cb, conv_id)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[eleven unavailable]'
                     tokens_used = tokens or 0
             elif selected_agent == 'twelve':
@@ -889,8 +1056,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[twelve] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(twelve_agent.chat, effective_prompt, history, stage_cb, conv_id)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    future = executor.submit(twelve_agent.chat, effective_prompt, history, _agent_stage_cb, conv_id)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[twelve unavailable]'
                     tokens_used = tokens or 0
             elif selected_agent == 'scholar':
@@ -900,8 +1067,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[scholar] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(scholar_agent.chat, effective_prompt, history, stage_cb)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    future = executor.submit(scholar_agent.chat, effective_prompt, history, _agent_stage_cb)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[scholar unavailable]'
                     tokens_used = tokens or 0
             elif selected_agent == 'seeker':
@@ -911,8 +1078,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[seeker] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(seeker_agent.chat, effective_prompt, history, stage_cb)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    future = executor.submit(seeker_agent.chat, effective_prompt, history, _agent_stage_cb)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[seeker unavailable]'
                     tokens_used = tokens or 0
             elif selected_agent in ('llama', 'llama3'):
@@ -922,8 +1089,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[llama] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(llama_agent.chat, effective_prompt, history, stage_cb)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 90)
+                    future = executor.submit(llama_agent.chat, effective_prompt, history, _agent_stage_cb)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[llama unavailable]'
                     tokens_used = tokens or 0
             elif selected_agent == 'phi3':
@@ -933,8 +1100,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[phi3] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(phi3_agent.chat, effective_prompt, history, stage_cb)
-                    answer, tokens = future.result(timeout=120 if persistent_mode else 60)
+                    future = executor.submit(phi3_agent.chat, effective_prompt, history, _agent_stage_cb)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[phi3 unavailable]'
                     tokens_used = tokens or 0
             elif selected_agent in ('deepseek_local', 'deepseek-local'):
@@ -944,8 +1111,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[deepseek-local] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(deepseek_local_agent.chat, effective_prompt, history, stage_cb)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 120)
+                    future = executor.submit(deepseek_local_agent.chat, effective_prompt, history, _agent_stage_cb)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[deepseek-local unavailable]'
                     tokens_used = tokens or 0
             elif selected_agent == 'lmstudio':
@@ -955,8 +1122,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[lmstudio] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(lmstudio_agent.chat, effective_prompt, history, stage_cb)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 120)
+                    future = executor.submit(lmstudio_agent.chat, effective_prompt, history, _agent_stage_cb)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[lmstudio unavailable — is LM Studio running?]'
                     tokens_used = tokens or 0
             elif selected_agent == 'ghost_coder':
@@ -966,8 +1133,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[ghost_coder] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(ghost_coder_agent.chat, effective_prompt, history, stage_cb, conv_id)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 120)
+                    future = executor.submit(ghost_coder_agent.chat, effective_prompt, history, _agent_stage_cb, conv_id)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[ghost_coder unavailable]'
                     tokens_used = tokens or 0
             elif selected_agent == 'nineteen':
@@ -977,8 +1144,8 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[nineteen] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(nineteen_agent.chat, effective_prompt, history, stage_cb, conv_id)
-                    answer, tokens = future.result(timeout=240 if persistent_mode else 20)
+                    future = executor.submit(nineteen_agent.chat, effective_prompt, history, _agent_stage_cb, conv_id)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or '[nineteen unavailable]'
                     tokens_used = tokens or 0
             else:
@@ -987,8 +1154,8 @@ def api_chat():
                 try:
                     mod = importlib.import_module(f'agents.{selected_agent}.{selected_agent}_agent')
                     _stage(f'dispatching to {selected_agent}', est_eta)
-                    future = executor.submit(mod.chat, effective_prompt, history, stage_cb)
-                    answer, tokens = future.result(timeout=120 if persistent_mode else 60)
+                    future = executor.submit(mod.chat, effective_prompt, history, _agent_stage_cb)
+                    answer, tokens = _await_agent_future(future)
                     response_text = answer or f'[{selected_agent} unavailable]'
                     tokens_used = tokens or 0
                 except ModuleNotFoundError:
@@ -996,12 +1163,20 @@ def api_chat():
                 except Exception as _dyn_err:
                     response_text = f'[{selected_agent}] error: {_dyn_err}'
             _stage('finalizing answer', 0)
+            if _looks_like_token_exhaustion(response_text):
+                _disable_agent_for_chat(selected_agent, 'token/context exhaustion detected in response')
+                response_text = (
+                    f'[{selected_agent}] was taken offline because it reported token/context exhaustion. '
+                    'Re-enable it from the Agents tile after reducing context or changing model settings.\n\n'
+                    + (response_text or '')
+                )
         except FuturesTimeoutError:
             _trace(conv_id, selected_agent, 'error', f'timeout after {local_timeout}s persistent={persistent_mode}')
             _stage('timed out waiting for completion', 0)
             if _CB_AVAILABLE:
                 _cb_fail(selected_agent, f'timeout after {local_timeout}s')
             if persistent_mode:
+                _disable_agent_for_chat(selected_agent, f'timed out after {local_timeout}s')
                 raise RuntimeError(f'{selected_agent} timed out after {local_timeout}s')
             if selected_agent == 'duck':
                 response_text = _duck_fast_check(message)
@@ -1287,12 +1462,20 @@ def api_chat():
                         pass
                 except Exception as exc:
                     err_text = str(exc or '').strip() or exc.__class__.__name__
+                    agent_taken_offline = False
+                    if 'timed out' in err_text.lower() or _looks_like_token_exhaustion(err_text):
+                        agent_taken_offline = _disable_agent_for_chat(selected_agent, err_text)
                     with _CHAT_JOB_LOCK:
                         existing = _CHAT_JOBS.get(job_id)
                         cancelled = bool(existing and existing.get('status') == 'cancelled')
                     if cancelled:
                         return
                     fail_msg = f'[{selected_agent}] background run failed: {err_text}'
+                    if agent_taken_offline:
+                        fail_msg += (
+                            '\n\nThis agent has been taken offline and removed from Chat routing. '
+                            'Re-enable it from the Agents tile after checking timeout/context settings.'
+                        )
                     try:
                         response_target = _gate_relay_target(
                             _resolve_chat_reply_target(selected_agent, fail_msg, reply_context),
@@ -1327,6 +1510,16 @@ def api_chat():
                                 pass
                     update_chat_job_db(job_id, status='failed', stage='failed', error=err_text,
                                        stage_trace_json=_trace_json_f)
+                    try:
+                        ensure_chat_relay_recovery(
+                            job_id=job_id,
+                            conversation_id=conv_id,
+                            stalled_agent=selected_agent,
+                            reason=err_text,
+                            stage_trace=_agent_stage_trace,
+                        )
+                    except Exception:
+                        pass
                     try:
                         _sse_chat(conv_id, selected_agent, 'failed', job_id=job_id, error=err_text)
                     except Exception:
@@ -1736,7 +1929,7 @@ def api_chat_agents_health():
         'watchdog': {
             'eta_multiplier': 4.0,
             'budget_min_seconds': 300,
-            'budget_max_seconds': 900,
+            'budget_max_seconds': _CHAT_LOCAL_HANDOFF_DEADLINE_SECONDS,
         },
     })
 

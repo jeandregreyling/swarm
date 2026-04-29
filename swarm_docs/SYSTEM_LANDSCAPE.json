@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-29 00:08",
+  "generated_at": "2026-04-30 00:11",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -262,6 +262,11 @@
       "description": "utils/structured_logger.py \u2014 JSON structured logging (E.3.1)"
     },
     {
+      "path": "utils/studio_intake.py",
+      "group": "Utils",
+      "description": "Studio intake helpers."
+    },
+    {
       "path": "utils/swarm_bus.py",
       "group": "Utils",
       "description": "utils/swarm_bus.py \u2014 Lightweight internal message bus (A.4.2)"
@@ -280,6 +285,11 @@
       "path": "utils/vs_tools.py",
       "group": "Utils",
       "description": "vs_tools.py \u2014 VS tab file read/memory tools for Nine"
+    },
+    {
+      "path": "core/agent_scorecards.py",
+      "group": "Core",
+      "description": "Durable capability scorecards for swarm agents."
     },
     {
       "path": "core/auth_2fa.py",
@@ -3358,9 +3368,33 @@
           "methods": [
             "POST"
           ]
+        },
+        {
+          "path": "/api/tasker/watch-topic",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tasker/watch-topic/run-now",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/tasker/watch-topic/evidence",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/tasker/watch-topic/evidence/<int:evidence_id>",
+          "methods": [
+            "PATCH"
+          ]
         }
       ],
-      "route_count": 8
+      "route_count": 12
     },
     {
       "name": "testlab_bp",
@@ -3692,11 +3726,11 @@
   "js_views": [
     {
       "name": "access.js",
-      "size_kb": 106.1
+      "size_kb": 107.3
     },
     {
       "name": "chat.js",
-      "size_kb": 271.7
+      "size_kb": 271.8
     },
     {
       "name": "conversations.js",
@@ -3816,7 +3850,7 @@
     },
     {
       "name": "tasker.js",
-      "size_kb": 11.0
+      "size_kb": 20.2
     },
     {
       "name": "terminal-commands.js",
@@ -3850,11 +3884,15 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 43112
+      "rows": 44078
     },
     {
       "name": "agent_capabilities",
       "rows": 169
+    },
+    {
+      "name": "agent_capability_scores",
+      "rows": 16
     },
     {
       "name": "agent_diary",
@@ -3874,19 +3912,19 @@
     },
     {
       "name": "audit_results",
-      "rows": 41
+      "rows": 42
     },
     {
       "name": "change_runs",
-      "rows": 35
+      "rows": 36
     },
     {
       "name": "chat_jobs",
-      "rows": 670
+      "rows": 677
     },
     {
       "name": "chat_relay_recoveries",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "claude_log",
@@ -3894,15 +3932,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2439
+      "rows": 2457
     },
     {
       "name": "conversations",
-      "rows": 207
+      "rows": 209
     },
     {
       "name": "council_output",
-      "rows": 4746
+      "rows": 6390
     },
     {
       "name": "daily_checkpoint",
@@ -3922,7 +3960,7 @@
     },
     {
       "name": "decisions",
-      "rows": 26962
+      "rows": 30957
     },
     {
       "name": "deferred_items",
@@ -3931,6 +3969,10 @@
     {
       "name": "duck_log",
       "rows": 945
+    },
+    {
+      "name": "enrollment_invites",
+      "rows": 0
     },
     {
       "name": "feed_subscriptions",
@@ -3950,7 +3992,11 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4709
+      "rows": 4739
+    },
+    {
+      "name": "gmail_labels_cache",
+      "rows": 0
     },
     {
       "name": "governance_log",
@@ -3998,7 +4044,7 @@
     },
     {
       "name": "memory_llama",
-      "rows": 1
+      "rows": 4
     },
     {
       "name": "memory_mistral",
@@ -4042,7 +4088,7 @@
     },
     {
       "name": "messages",
-      "rows": 457
+      "rows": 473
     },
     {
       "name": "moderators",
@@ -4066,27 +4112,27 @@
     },
     {
       "name": "project_blackboard_notes",
-      "rows": 1
+      "rows": 27
     },
     {
       "name": "project_doc_versions",
-      "rows": 56
+      "rows": 220
     },
     {
       "name": "project_docs",
-      "rows": 80
+      "rows": 171
     },
     {
       "name": "project_steps",
-      "rows": 392
+      "rows": 617
     },
     {
       "name": "project_test_cases",
-      "rows": 195
+      "rows": 217
     },
     {
       "name": "projects",
-      "rows": 34
+      "rows": 35
     },
     {
       "name": "proposal_attachments",
@@ -4094,7 +4140,7 @@
     },
     {
       "name": "proposal_projects",
-      "rows": 2
+      "rows": 10
     },
     {
       "name": "queue",
@@ -4102,11 +4148,11 @@
     },
     {
       "name": "research_evidence",
-      "rows": 0
+      "rows": 51
     },
     {
       "name": "research_sessions",
-      "rows": 0
+      "rows": 2
     },
     {
       "name": "sandpit_log",
@@ -4114,7 +4160,11 @@
     },
     {
       "name": "scheduled_tasks",
-      "rows": 12
+      "rows": 17
+    },
+    {
+      "name": "settings_sysmod",
+      "rows": 2
     },
     {
       "name": "skills",
@@ -4134,7 +4184,7 @@
     },
     {
       "name": "sqlite_sequence",
-      "rows": 69
+      "rows": 72
     },
     {
       "name": "sudo_command_whitelist",
@@ -4146,7 +4196,7 @@
     },
     {
       "name": "swarm_event_acks",
-      "rows": 93
+      "rows": 126
     },
     {
       "name": "swarm_events",
@@ -4166,11 +4216,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 8959
+      "rows": 9248
     },
     {
       "name": "task_run_log",
-      "rows": 113
+      "rows": 309
     },
     {
       "name": "terminal_shortcuts",
@@ -4182,7 +4232,7 @@
     },
     {
       "name": "test_runs",
-      "rows": 181
+      "rows": 182
     },
     {
       "name": "ticket_notes",
@@ -4198,15 +4248,15 @@
     },
     {
       "name": "time_events",
-      "rows": 112817
+      "rows": 118897
     },
     {
       "name": "time_journal",
-      "rows": 105988
+      "rows": 112068
     },
     {
       "name": "time_machine",
-      "rows": 6974
+      "rows": 6996
     },
     {
       "name": "tool_builds",
@@ -4214,7 +4264,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 930
+      "rows": 964
     },
     {
       "name": "trusted_domains",
@@ -4225,8 +4275,12 @@
       "rows": 10
     },
     {
+      "name": "user_2fa",
+      "rows": 3
+    },
+    {
       "name": "user_interests",
-      "rows": 21
+      "rows": 26
     },
     {
       "name": "user_patterns",
@@ -4245,12 +4299,16 @@
       "rows": 3
     },
     {
+      "name": "watched_topic_evidence",
+      "rows": 0
+    },
+    {
       "name": "work_proposal_notes",
       "rows": 5
     },
     {
       "name": "work_proposals",
-      "rows": 12
+      "rows": 15
     }
   ],
   "agents": [
@@ -5148,7 +5206,7 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
-      "class": "tasker-preset",
+      "class": "tasker-form-save",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -5156,7 +5214,7 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
-      "class": "tasker-form-save",
+      "class": "tasker-preset",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -5337,6 +5395,26 @@
     },
     {
       "id": "tasker-field-creator",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-evidence-topic",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-watch-topic",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-evidence-list",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-evidence-summary",
+      "file": "frontend/static/js/views/tasker.js"
+    },
+    {
+      "id": "tasker-evidence-status",
       "file": "frontend/static/js/views/tasker.js"
     },
     {
@@ -6497,6 +6575,14 @@
     },
     {
       "id": "agent-enabled",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-eta-seconds",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
+      "id": "agent-keepalive-config",
       "file": "frontend/static/js/views/access.js"
     },
     {

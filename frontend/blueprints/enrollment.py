@@ -8,6 +8,7 @@ columns stay consistent with regular logins.
 from __future__ import annotations
 
 import secrets
+import os
 import sqlite3
 import time
 from typing import Optional
@@ -29,9 +30,12 @@ CREATE TABLE IF NOT EXISTS enrollment_invites (
 
 
 def _db() -> sqlite3.Connection:
-    import os
-    path = os.environ.get("SWARM_DB", os.path.join(os.path.dirname(__file__), "..", "..", "swarm.db"))
-    conn = sqlite3.connect(path)
+    override = os.environ.get("SWARM_DB")
+    if override:
+        conn = sqlite3.connect(override)
+    else:
+        from utils.db._connection import get_connection
+        conn = get_connection()
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     return conn
