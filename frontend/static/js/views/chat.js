@@ -4638,7 +4638,10 @@ function _startLoadingTicker(panel, agents, estimateMs) {
         if (state) {
           const runtimeClass = j.runtime_class ? ('[' + j.runtime_class + '] ') : '';
           if (j.status === 'completed') state.textContent = 'alive · completed';
-          else if (j.status === 'failed') state.textContent = 'alive · failed';
+          else if (j.status === 'failed') {
+            state.textContent = 'offline · failed';
+            if (typeof _loadAgentRegistry === 'function') setTimeout(_loadAgentRegistry, 250);
+          }
           else {
             const etaSuffix = etaRemaining > 0 ? (' · ~' + etaRemaining + 's left') : '';
             state.textContent = 'alive · ' + runtimeClass + (j.stage || j.status || 'running') + etaSuffix;

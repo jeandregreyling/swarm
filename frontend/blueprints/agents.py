@@ -151,10 +151,10 @@ def api_agents_config_get():
     try:
         conn = get_connection()
         rows = conn.execute(
-             """SELECT number, name, label, model, role, roles, temperature,
-                    system_prompt, api_key_var, tier, enabled
+            """SELECT number, name, label, model, role, roles, temperature,
+                    system_prompt, api_key_var, tier, enabled, eta_seconds, keep_alive
                 FROM agents WHERE number >= 0 ORDER BY number ASC"""
-            ).fetchall()
+        ).fetchall()
         conn.close()
         result = []
         import json
@@ -205,7 +205,7 @@ def api_agents_config_put(name):
         return jsonify({'error': f'Agent {name} not found'}), 404
 
     import json
-    allowed = ['label', 'model', 'role', 'roles', 'temperature', 'system_prompt', 'tier', 'enabled', 'api_key_var', 'number']
+    allowed = ['label', 'model', 'role', 'roles', 'temperature', 'system_prompt', 'tier', 'enabled', 'api_key_var', 'number', 'eta_seconds', 'keep_alive']
     updates = {k: v for k, v in data.items() if k in allowed}
     if 'number' in updates:
         try:
@@ -227,6 +227,13 @@ def api_agents_config_put(name):
             current = conn.execute("SELECT number FROM agents WHERE name=?", (name,)).fetchone()
             current_number = int(current['number'] or 0) if current else 0
             conn.execute("UPDATE agents SET number=? WHERE name=?", (current_number, conflict['name']))
+    for int_field, max_value in (('eta_seconds', 2000), ('keep_alive', 86400)):
+        if int_field in updates:
+            try:
+                updates[int_field] = max(0, min(int(updates[int_field]), max_value))
+            except Exception:
+                conn.close()
+                return jsonify({'error': f'{int_field} must be an integer'}), 400
     # If roles is present and is a list, store as JSON
     if 'roles' in updates and isinstance(updates['roles'], list):
         updates['roles'] = json.dumps(updates['roles'])
@@ -258,6 +265,11 @@ def api_agents_config_put(name):
                 conn.commit()
         except Exception as e:
             print(f"[WARN] Could not archive memory for {name}: {e}")
+    try:
+        from utils.db.registry import invalidate_cache as _inv
+        _inv()
+    except Exception:
+        pass
     conn.commit()
     conn.close()
     return jsonify({'ok': True})
@@ -1931,4 +1943,3 @@ def api_agent_self(name):
         'recent_diary': diary,
         'system_prompt': system_prompt[:1000] if system_prompt else '',
     })
-

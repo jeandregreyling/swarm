@@ -936,6 +936,7 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
     try:
         from queue_manager import intake_internal
         queue_id, proposal_id = intake_internal(agent, title, description, priority=5)
+        linked_project_id = ''
 
         # Record the originating conversation so Duck can reply back to the thread
         if source_conv_id:
@@ -953,6 +954,16 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
             except Exception:
                 pass
 
+        try:
+            from utils.studio_intake import link_proposal_to_project
+            linked_project_id = link_proposal_to_project(
+                proposal_id,
+                title=title,
+                description=description,
+            )
+        except Exception:
+            linked_project_id = ''
+
         # Fire Duck review in background — Duck will post approval/rejection back to thread
         import threading as _threading
         def _duck_review():
@@ -965,7 +976,8 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
                 pass
         _threading.Thread(target=_duck_review, daemon=True).start()
 
-        return True, f'ALM proposal created: queue_id={queue_id}, proposal_id={proposal_id}'
+        project_msg = f', project_id={linked_project_id}' if linked_project_id else ''
+        return True, f'ALM proposal created: queue_id={queue_id}, proposal_id={proposal_id}{project_msg}'
     except Exception as e:
         return False, f'alm_create_proposal failed: {e}'
 

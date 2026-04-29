@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-04-29 00:08*
+*Auto-generated: 2026-04-30 00:11*
 
 
 ## Python Modules
@@ -62,6 +62,7 @@
 | `utils/simulate.py` | simulate.py — Seven's Swarm |
 | `utils/skills.py` | skills.py — Seven's Swarm Skills Framework |
 | `utils/structured_logger.py` | utils/structured_logger.py — JSON structured logging (E.3.1) |
+| `utils/studio_intake.py` | Studio intake helpers. |
 | `utils/swarm_bus.py` | utils/swarm_bus.py — Lightweight internal message bus (A.4.2) |
 | `utils/swarm_root.py` | utils/swarm_root.py — Central SWARM_ROOT resolution (A.6.3) |
 | `utils/swarm_tasks.py` | swarm_tasks.py — Seven's Swarm |
@@ -71,6 +72,7 @@
 
 | File | Description |
 |------|-------------|
+| `core/agent_scorecards.py` | Durable capability scorecards for swarm agents. |
 | `core/auth_2fa.py` | core/auth_2fa.py — TOTP 2-factor authentication primitives. |
 | `core/auth_rate_limit.py` | core/auth_rate_limit.py — in-process rate limiter + audit log for /api/auth. |
 | `core/chat_actions.py` | core/chat_actions.py — Pure-rules chat action detector ("Siri-but-better"). |
@@ -234,7 +236,7 @@
 | `sse` | 1 | frontend/blueprints/sse.py — Server-Sent Events stream (R.2) |
 | `sysmod` | 2 | frontend/blueprints/sysmod.py — settings-surface for the sysmod pack. |
 | `system` | 17 | system.py — System & Monitoring routes |
-| `tasker_bp` | 8 | tasker_bp.py — Scheduled tasks CRUD API for the Tasker UI. |
+| `tasker_bp` | 12 | tasker_bp.py — Scheduled tasks CRUD API for the Tasker UI. |
 | `testlab_bp` | 2 | blueprints/testlab_bp.py — Studio Test Lab API (Session 28) |
 | `tickets` | 11 | tickets.py — Tickets routes |
 | `time_wizard_bp` | 10 | time_wizard_bp.py — Time Wizard routes |
@@ -248,8 +250,8 @@
 
 | Module | Size |
 |--------|------|
-| `access.js` | 106.1 KB |
-| `chat.js` | 271.7 KB |
+| `access.js` | 107.3 KB |
+| `chat.js` | 271.8 KB |
 | `conversations.js` | 14.5 KB |
 | `diamond.js` | 28.7 KB |
 | `docs.js` | 24.6 KB |
@@ -279,7 +281,7 @@
 | `studio-media.js` | 18.4 KB |
 | `studio-testlab.js` | 25.3 KB |
 | `studio.js` | 87.2 KB |
-| `tasker.js` | 11.0 KB |
+| `tasker.js` | 20.2 KB |
 | `terminal-commands.js` | 17.6 KB |
 | `terminal.js` | 50.8 KB |
 | `tickets.js` | 6.0 KB |
@@ -292,32 +294,35 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 43112 |
+| `activity_log` | 44078 |
 | `agent_capabilities` | 169 |
+| `agent_capability_scores` | 16 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
 | `approval_tokens` | 688 |
-| `audit_results` | 41 |
-| `change_runs` | 35 |
-| `chat_jobs` | 670 |
-| `chat_relay_recoveries` | 0 |
+| `audit_results` | 42 |
+| `change_runs` | 36 |
+| `chat_jobs` | 677 |
+| `chat_relay_recoveries` | 1 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2439 |
-| `conversations` | 207 |
-| `council_output` | 4746 |
+| `conv_timeline` | 2457 |
+| `conversations` | 209 |
+| `council_output` | 6390 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 26962 |
+| `decisions` | 30957 |
 | `deferred_items` | 0 |
 | `duck_log` | 945 |
+| `enrollment_invites` | 0 |
 | `feed_subscriptions` | 22 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4709 |
+| `ghost_circle` | 4739 |
+| `gmail_labels_cache` | 0 |
 | `governance_log` | 418 |
 | `knowledge_chunks` | 638 |
 | `knowledge_sources` | 50 |
@@ -329,7 +334,7 @@
 | `memory_gemma` | 1 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
-| `memory_llama` | 1 |
+| `memory_llama` | 4 |
 | `memory_mistral` | 1 |
 | `memory_nine` | 0 |
 | `memory_qwen` | 0 |
@@ -340,59 +345,62 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 464 |
-| `messages` | 457 |
+| `messages` | 473 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
 | `notification_senders` | 8 |
 | `pending_emails` | 8 |
-| `project_blackboard_notes` | 1 |
-| `project_doc_versions` | 56 |
-| `project_docs` | 80 |
-| `project_steps` | 392 |
-| `project_test_cases` | 195 |
-| `projects` | 34 |
+| `project_blackboard_notes` | 27 |
+| `project_doc_versions` | 220 |
+| `project_docs` | 171 |
+| `project_steps` | 617 |
+| `project_test_cases` | 217 |
+| `projects` | 35 |
 | `proposal_attachments` | 0 |
-| `proposal_projects` | 2 |
+| `proposal_projects` | 10 |
 | `queue` | 1743 |
-| `research_evidence` | 0 |
-| `research_sessions` | 0 |
+| `research_evidence` | 51 |
+| `research_sessions` | 2 |
 | `sandpit_log` | 550 |
-| `scheduled_tasks` | 12 |
+| `scheduled_tasks` | 17 |
+| `settings_sysmod` | 2 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
-| `sqlite_sequence` | 69 |
+| `sqlite_sequence` | 72 |
 | `sudo_command_whitelist` | 5 |
 | `swarm_bus` | 418 |
-| `swarm_event_acks` | 93 |
+| `swarm_event_acks` | 126 |
 | `swarm_events` | 26 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 26 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 8959 |
-| `task_run_log` | 113 |
+| `system_stats` | 9248 |
+| `task_run_log` | 309 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
-| `test_runs` | 181 |
+| `test_runs` | 182 |
 | `ticket_notes` | 699 |
 | `tickets` | 707 |
 | `time_checkpoints` | 5356 |
-| `time_events` | 112817 |
-| `time_journal` | 105988 |
-| `time_machine` | 6974 |
+| `time_events` | 118897 |
+| `time_journal` | 112068 |
+| `time_machine` | 6996 |
 | `tool_builds` | 0 |
-| `trace_events` | 930 |
+| `trace_events` | 964 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
-| `user_interests` | 21 |
+| `user_2fa` | 3 |
+| `user_interests` | 26 |
 | `user_patterns` | 3 |
 | `user_profiles` | 23 |
 | `user_sessions` | 28 |
 | `user_skill_permissions` | 3 |
+| `watched_topic_evidence` | 0 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 12 |
+| `work_proposals` | 15 |
 
 ## Agents
 

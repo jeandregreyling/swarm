@@ -118,7 +118,18 @@ def intake():
                   (proposal_id, title, description, agent, "pending"))
         conn.commit()
         conn.close()
-        return jsonify({"ok": True, "proposal_id": proposal_id})
+        linked_project_id = ""
+        try:
+            from utils.studio_intake import link_proposal_to_project
+            linked_project_id = link_proposal_to_project(
+                proposal_id,
+                title=title,
+                description=description,
+                requested_project_id=data.get("project_id") or "",
+            )
+        except Exception:
+            linked_project_id = ""
+        return jsonify({"ok": True, "proposal_id": proposal_id, "project_id": linked_project_id})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 

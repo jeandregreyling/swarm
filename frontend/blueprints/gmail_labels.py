@@ -8,8 +8,8 @@ Design:
 - The Email tile calls ``GET /api/email/gmail/labels?account=<id>`` to list
   Gmail labels for a given account.
 - ``POST /api/email/gmail/labels/sync`` (with optional ``account`` body)
-  re-queries Gmail and writes the result to ``gmail_labels_cache`` in
-  ``swarm.db`` so the UI can render without a round-trip.
+  re-queries Gmail and writes the result to ``gmail_labels_cache`` in the
+  central Swarm DB so the UI can render without a round-trip.
 - Label mapping for system folders lives in ``GMAIL_SYSTEM_LABEL_MAP`` so
   tests can pin the relationships.
 
@@ -19,6 +19,7 @@ blueprint is the thin web surface the frontend needs.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import time
 from typing import Optional
@@ -57,9 +58,12 @@ CREATE TABLE IF NOT EXISTS gmail_labels_cache (
 
 
 def _db() -> sqlite3.Connection:
-    import os
-    path = os.environ.get("SWARM_DB", os.path.join(os.path.dirname(__file__), "..", "..", "swarm.db"))
-    conn = sqlite3.connect(path)
+    override = os.environ.get("SWARM_DB")
+    if override:
+        conn = sqlite3.connect(override)
+    else:
+        from utils.db._connection import get_connection
+        conn = get_connection()
     conn.row_factory = sqlite3.Row
     conn.executescript(CACHE_SCHEMA)
     return conn
