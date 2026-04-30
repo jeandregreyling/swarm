@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-05-01 00:10*
+*Auto-generated: 2026-04-30 00:13*
 
 
 ## Python Modules
@@ -89,7 +89,6 @@
 | `core/llm.py` | core/llm.py — Single Ollama gateway for the entire swarm. |
 | `core/media_center/__init__.py` | — |
 | `core/media_center/framework.py` | Media Center framework helpers. |
-| `core/model_runtime_gateway.py` | Fridays-owned local model runtime gateway. |
 | `core/notifications.py` | core/notifications.py — Shared notification formatter. |
 | `core/pipeline/debate.py` | — |
 | `core/pipeline/listener.py` | listener.py — Seven's Swarm |
@@ -224,7 +223,7 @@
 | `metrics` | 2 | frontend/blueprints/metrics.py — Observability metrics endpoint (E.3.2) |
 | `nine` | 4 | nine.py — Agent Nine routes |
 | `node` | 11 | frontend/blueprints/node.py — Node registration + federation endpoints (A.4.5 + A.5) |
-| `ollama` | 14 | ollama.py — Ollama Models routes |
+| `ollama` | 12 | ollama.py — Ollama Models routes |
 | `onboarding` | 2 | frontend/blueprints/onboarding.py — Onboarding wizard API |
 | `patterns_bp` | 2 | patterns_bp.py — Pattern learning API (Tier 4.2). |
 | `personality_bp` | 4 | personality_bp.py — Agent personality + diary system (Tier 4.4). |
@@ -282,7 +281,7 @@
 | `studio-media.js` | 18.4 KB |
 | `studio-testlab.js` | 25.3 KB |
 | `studio.js` | 87.2 KB |
-| `tasker.js` | 24.0 KB |
+| `tasker.js` | 20.2 KB |
 | `terminal-commands.js` | 17.6 KB |
 | `terminal.js` | 50.8 KB |
 | `tickets.js` | 6.0 KB |
@@ -295,26 +294,26 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 45083 |
+| `activity_log` | 44116 |
 | `agent_capabilities` | 169 |
-| `agent_capability_scores` | 17 |
+| `agent_capability_scores` | 16 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 694 |
-| `audit_results` | 43 |
-| `change_runs` | 37 |
-| `chat_jobs` | 682 |
+| `approval_tokens` | 691 |
+| `audit_results` | 42 |
+| `change_runs` | 36 |
+| `chat_jobs` | 677 |
 | `chat_relay_recoveries` | 1 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2468 |
-| `conversations` | 211 |
-| `council_output` | 6629 |
+| `conv_timeline` | 2457 |
+| `conversations` | 209 |
+| `council_output` | 6453 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 34024 |
+| `decisions` | 31042 |
 | `deferred_items` | 0 |
 | `duck_log` | 947 |
 | `enrollment_invites` | 0 |
@@ -322,20 +321,20 @@
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4771 |
+| `ghost_circle` | 4741 |
 | `gmail_labels_cache` | 0 |
-| `governance_log` | 419 |
-| `knowledge_chunks` | 1724 |
-| `knowledge_sources` | 132 |
+| `governance_log` | 418 |
+| `knowledge_chunks` | 638 |
+| `knowledge_sources` | 50 |
 | `media_items` | 1 |
 | `media_providers` | 7 |
-| `media_runs` | 91 |
+| `media_runs` | 53 |
 | `memory` | 129 |
-| `memory_eight` | 0 |
+| `memory_eight` | 1 |
 | `memory_gemma` | 1 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
-| `memory_llama` | 1 |
+| `memory_llama` | 4 |
 | `memory_mistral` | 1 |
 | `memory_nine` | 0 |
 | `memory_qwen` | 0 |
@@ -346,23 +345,23 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 464 |
-| `messages` | 484 |
+| `messages` | 473 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
 | `notification_senders` | 8 |
 | `pending_emails` | 8 |
-| `project_blackboard_notes` | 33 |
+| `project_blackboard_notes` | 27 |
 | `project_doc_versions` | 220 |
-| `project_docs` | 180 |
-| `project_steps` | 719 |
+| `project_docs` | 171 |
+| `project_steps` | 617 |
 | `project_test_cases` | 217 |
 | `projects` | 35 |
 | `proposal_attachments` | 0 |
-| `proposal_projects` | 11 |
-| `queue` | 1748 |
-| `research_evidence` | 161 |
-| `research_sessions` | 8 |
+| `proposal_projects` | 10 |
+| `queue` | 1747 |
+| `research_evidence` | 51 |
+| `research_sessions` | 2 |
 | `sandpit_log` | 550 |
 | `scheduled_tasks` | 17 |
 | `settings_sysmod` | 2 |
@@ -370,27 +369,27 @@
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
-| `sqlite_sequence` | 73 |
+| `sqlite_sequence` | 72 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 419 |
-| `swarm_event_acks` | 137 |
+| `swarm_bus` | 418 |
+| `swarm_event_acks` | 126 |
 | `swarm_events` | 27 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 27 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 9534 |
-| `task_run_log` | 525 |
+| `system_stats` | 9248 |
+| `task_run_log` | 309 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
 | `test_runs` | 182 |
 | `ticket_notes` | 701 |
 | `tickets` | 709 |
-| `time_checkpoints` | 5376 |
-| `time_events` | 120300 |
-| `time_journal` | 113449 |
-| `time_machine` | 7058 |
+| `time_checkpoints` | 5375 |
+| `time_events` | 118930 |
+| `time_journal` | 112082 |
+| `time_machine` | 7024 |
 | `tool_builds` | 0 |
-| `trace_events` | 995 |
+| `trace_events` | 979 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_2fa` | 3 |
@@ -399,9 +398,9 @@
 | `user_profiles` | 23 |
 | `user_sessions` | 28 |
 | `user_skill_permissions` | 3 |
-| `watched_topic_evidence` | 61 |
+| `watched_topic_evidence` | 0 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 16 |
+| `work_proposals` | 15 |
 
 ## Agents
 

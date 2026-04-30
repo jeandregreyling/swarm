@@ -2027,7 +2027,8 @@ def _trust_gate(skill_name, agent_name):
     return True, (
         f'Trust denied: {agent_name} (tier={tier}, max_trust={max_trust}) '
         f'cannot invoke {skill_name} (requires trust_level={required}). '
-        f'Grant override via user_skill_permissions or upgrade agent tier.'
+        f'Ask the operator to grant this permission in Agents access controls '
+        f'or upgrade the agent tier. Do not emit a user_skill_permissions skill.'
     )
 
 
