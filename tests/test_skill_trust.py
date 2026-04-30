@@ -106,6 +106,8 @@ class TestTrustEnforcement:
         assert blocked is True
         assert 'Trust denied' in reason
         assert 'tier=local' in reason
+        assert 'SKILL user_skill_permissions' not in reason
+        assert 'Do not emit a user_skill_permissions skill' in reason
 
     def test_local_agent_allowed_trust0_skill(self, mock_db):
         """Local tier can invoke trust_level=0 (read-only) skills."""

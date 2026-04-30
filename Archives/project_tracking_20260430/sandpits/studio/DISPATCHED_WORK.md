@@ -1,1072 +1,4 @@
 
-## [13:13] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:13] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:18] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:18] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:23] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:23] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:28] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:28] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:33] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:33] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:38] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:38] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:43] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:43] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:48] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:48] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:53] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:53] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:58] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [13:58] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:03] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:03] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:08] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:08] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:13] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:13] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:18] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:18] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:23] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:23] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:28] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:28] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:33] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:33] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:38] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:38] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:43] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:43] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:48] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:48] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:53] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:53] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:58] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [14:58] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:03] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:03] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:08] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:08] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:13] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:13] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:18] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:18] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:23] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:23] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:28] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:28] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:33] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:33] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:38] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:38] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:43] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:43] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:48] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:48] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:53] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:53] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:58] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [15:58] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:03] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:03] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:08] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:08] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:13] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:13] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:18] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:18] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:23] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:23] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:28] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:28] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:33] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:33] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:38] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:38] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:43] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:43] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:48] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:48] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:53] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:53] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:58] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [16:58] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:03] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:03] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:08] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:08] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:13] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:13] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:18] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:18] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:23] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:23] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:28] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:28] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:33] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:33] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:38] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:38] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:43] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:43] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:48] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:48] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:53] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:53] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:58] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [17:58] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:03] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:03] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:08] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:08] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:13] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:13] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:18] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:18] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:23] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:23] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:28] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:28] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:33] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:33] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:38] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:38] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:43] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:43] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:48] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:48] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:53] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:53] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:58] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [18:58] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:03] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:03] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:08] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:08] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:13] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:13] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:18] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:18] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:23] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:23] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:28] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:28] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:33] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:33] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:38] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:38] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:43] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:43] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:48] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:48] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:53] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:53] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:58] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [19:58] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:03] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:03] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:08] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:08] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:13] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:13] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:18] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:18] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:23] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:23] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:28] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:28] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:33] STUDIO-PROPOSALS-0002
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
-## [20:33] STUDIO-PROPOSALS-0001
-**Title**: Improve ALM/Studio Proposals UI
-**From**: studio
-**Description**: Make promote/approve/reject fully visible and actionable in Studio
-**Status**: dispatched
-
 ## [20:38] STUDIO-PROPOSALS-0002
 **Title**: Improve ALM/Studio Proposals UI
 **From**: studio
@@ -1578,6 +510,1878 @@
 **Status**: dispatched
 
 ## [00:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [00:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [01:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [02:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [03:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [04:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [05:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [06:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [07:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [08:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [09:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [10:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [11:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:08] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:13] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:13] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:18] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:18] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:23] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:23] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:28] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:28] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:33] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:33] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:38] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:38] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:43] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:43] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:48] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:48] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:53] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:53] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:58] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [12:58] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [13:03] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [13:03] STUDIO-PROPOSALS-0001
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [13:08] STUDIO-PROPOSALS-0002
+**Title**: Improve ALM/Studio Proposals UI
+**From**: studio
+**Description**: Make promote/approve/reject fully visible and actionable in Studio
+**Status**: dispatched
+
+## [13:08] STUDIO-PROPOSALS-0001
 **Title**: Improve ALM/Studio Proposals UI
 **From**: studio
 **Description**: Make promote/approve/reject fully visible and actionable in Studio
