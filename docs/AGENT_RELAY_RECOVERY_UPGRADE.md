@@ -41,6 +41,10 @@ Chat now treats progress as a heartbeat:
 - If the 2000-second handoff deadline is reached while generation is still
   active, Chat returns a partial `SELF-HANDOFF` answer and tries to stop the
   local Ollama runner to free the model slot.
+- If the 2000-second handoff deadline is reached with no fresh generation
+  heartbeat, local Chat still returns a visible `SELF-HANDOFF` instead of a
+  background timeout failure. The handoff says that no safe partial text was
+  captured and gives the next-window continuation prompt.
 - Active-generation handoff does not disable the agent. Only a true no-progress
   timeout or token/context exhaustion takes the agent offline for Chat.
 

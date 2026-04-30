@@ -3,6 +3,7 @@
 
 let _taskerAllTasks = [];
 let _taskerEditId = null;
+let _taskerCalendarCursor = null;
 
 function loadTaskerData(/* win */) {
   _taskerRefresh();
@@ -15,6 +16,7 @@ function _taskerRefresh() {
     .then(tasks => {
       _taskerAllTasks = Array.isArray(tasks) ? tasks : [];
       _taskerRenderStats();
+      _taskerRenderCalendar();
       _taskerRenderList();
     })
     .catch(e => {
@@ -58,6 +60,98 @@ function _taskerRelativeTime(dateStr) {
   } catch (_) {
     return dateStr;
   }
+}
+
+// ── Calendar ─────────────────────────────────────────────────────────────
+
+function shiftTaskerCalendar(days) {
+  const today = _taskerStartOfDay(new Date());
+  if (!_taskerCalendarCursor || days === 0) {
+    _taskerCalendarCursor = today;
+  } else {
+    _taskerCalendarCursor = new Date(_taskerCalendarCursor.getTime() + (days * 86400000));
+  }
+  _taskerRenderCalendar();
+}
+
+function _taskerRenderCalendar() {
+  const grid = document.getElementById('tasker-calendar-grid');
+  if (!grid) return;
+
+  const today = _taskerStartOfDay(new Date());
+  const cursor = _taskerCalendarCursor ? _taskerStartOfDay(_taskerCalendarCursor) : today;
+  _taskerCalendarCursor = cursor;
+  const weekStart = _taskerWeekStart(cursor);
+  const days = Array.from({ length: 7 }, (_, idx) => new Date(weekStart.getTime() + idx * 86400000));
+  const activeTasks = _taskerAllTasks.filter(t => t.enabled && t.next_run);
+
+  grid.innerHTML = days.map(day => {
+    const dateKey = _taskerDateKey(day);
+    const tasks = activeTasks
+      .filter(t => _taskerDateKey(_taskerParseDate(t.next_run)) === dateKey)
+      .sort((a, b) => String(a.next_run || '').localeCompare(String(b.next_run || '')));
+    const isToday = dateKey === _taskerDateKey(today);
+    const items = tasks.length ? tasks.map(t => _taskerCalendarItem(t)).join('') : '<div class="tasker-calendar-empty">No jobs</div>';
+    return `<section class="tasker-calendar-day${isToday ? ' is-today' : ''}">
+      <div class="tasker-calendar-date">
+        <span>${_escHtml(day.toLocaleDateString(undefined, { weekday: 'short' }))}</span>
+        <strong>${_escHtml(day.toLocaleDateString(undefined, { day: '2-digit', month: 'short' }))}</strong>
+      </div>
+      <div class="tasker-calendar-items">${items}</div>
+    </section>`;
+  }).join('');
+}
+
+function _taskerCalendarItem(task) {
+  const emailLinked = _taskerTaskHasEmail(task);
+  const time = _taskerFormatTime(task.next_run);
+  const type = String(task.action_type || '').toUpperCase();
+  return `<button type="button" class="tasker-calendar-item${emailLinked ? ' email-linked' : ''}" onclick="editTasker(${Number(task.id)})" title="${_escHtml(task.action_data || '')}">
+    <span class="tasker-calendar-time">${_escHtml(time)}</span>
+    <span class="tasker-calendar-name">${_escHtml(task.name || 'task')}</span>
+    <span class="tasker-calendar-type">${_escHtml(emailLinked ? 'email' : type.toLowerCase())}</span>
+  </button>`;
+}
+
+function _taskerTaskHasEmail(task) {
+  const haystack = `${task.action_type || ''} ${task.action_data || ''} ${task.name || ''}`.toLowerCase();
+  return task.action_type === 'BRIEF' ||
+    haystack.includes('email=') ||
+    haystack.includes('send_reply') ||
+    haystack.includes('daily_brief') ||
+    haystack.includes('interest_research_update');
+}
+
+function _taskerParseDate(value) {
+  if (!value) return null;
+  const d = new Date(String(value).replace(' ', 'T'));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function _taskerStartOfDay(date) {
+  const d = date instanceof Date && !Number.isNaN(date.getTime()) ? new Date(date) : new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function _taskerWeekStart(date) {
+  const d = _taskerStartOfDay(date);
+  const day = d.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + offset);
+  return d;
+}
+
+function _taskerDateKey(date) {
+  if (!date) return '';
+  const d = _taskerStartOfDay(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function _taskerFormatTime(value) {
+  const d = _taskerParseDate(value);
+  if (!d) return '--:--';
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
 // ── List ─────────────────────────────────────────────────────────────────
