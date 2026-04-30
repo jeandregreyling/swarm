@@ -158,6 +158,21 @@ def api_ollama_ps():
         return jsonify({'ok': True, 'models': [], 'count': 0, 'error': str(e)})
 
 
+@ollama_bp.route('/api/ollama/runtime/health')
+def api_ollama_runtime_health():
+    """Fridays runtime-gateway health snapshot for local models."""
+    from core.model_runtime_gateway import ollama_health
+    return jsonify(ollama_health())
+
+
+@ollama_bp.route('/api/ollama/runtime/json-normalize', methods=['POST'])
+def api_ollama_runtime_json_normalize():
+    """Normalize model JSON-ish text for downstream Studio/Media consumers."""
+    from core.model_runtime_gateway import normalize_model_json
+    data = request.get_json(silent=True) or {}
+    return jsonify(normalize_model_json(str(data.get('text') or '')))
+
+
 
 @ollama_bp.route('/api/ollama/show/<path:model>')
 def api_ollama_show(model):
@@ -320,6 +335,5 @@ def api_ollama_web_fetch():
         })
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
-
 
 

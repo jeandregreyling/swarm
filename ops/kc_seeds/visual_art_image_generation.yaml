@@ -1,0 +1,157 @@
+topic_id: visual_art_image_generation
+title: Visual art, image types, styles, periods, and prompt design
+cadence: monthly
+tags: [visual-art, image-generation, media-center, design, photography, art-history]
+sources:
+  - kind: prompt
+    title: Image-generation fundamentals for Media Center
+    text: |
+      Teach Fridays the working vocabulary needed to generate, critique, and
+      route images through Media Center.
+
+      Always specify:
+      - Subject: person, object, scene, environment, product, interface, symbol,
+        diagram, landscape, character, vehicle, architecture, or abstract form.
+      - Purpose: thumbnail, poster, concept art, storyboard frame, reference
+        board, album cover, UI mockup, product render, icon, texture, diagram,
+        slide, social asset, or production still.
+      - Composition: close-up, medium shot, wide shot, top-down, symmetrical,
+        rule of thirds, central subject, negative space, leading lines, frame
+        within frame, foreground/midground/background.
+      - Camera/lens: macro, portrait lens, wide angle, telephoto compression,
+        tilt-shift, orthographic, isometric, aerial, low angle, high angle.
+      - Lighting: softbox, rim light, backlight, natural window light, golden
+        hour, overcast, chiaroscuro, neon, practical light, volumetric haze.
+      - Color: monochrome, limited palette, complementary, analogous, warm/cool
+        contrast, high saturation, muted, pastel, earth tones, metallics.
+      - Material and texture: glass, chrome, paper, fabric, skin, stone, wood,
+        water, smoke, dust, grain, brushstroke, ink wash, halftone, pixel grid.
+      - Output: aspect ratio, resolution target, transparent background, safe
+        margins, text/no text, animation-ready layers, and provenance notes.
+
+      Media Center prompt pattern:
+      "Generate a [type] of [subject] for [purpose], composed as [composition],
+      in [style/period], with [lighting], [palette], [materials], [mood], and
+      [technical output requirements]. Preserve prompt, agent, model, run id,
+      reference notes, and reviewer decision in Knowledge Center."
+
+  - kind: prompt
+    title: Image types and production uses
+    text: |
+      Common image types Fridays should know:
+
+      - Photograph: realistic camera-based look; useful for products, people,
+        environments, documentary references, and social assets.
+      - Portrait: face or character identity; specify expression, pose, wardrobe,
+        age range, lighting, background, and lens.
+      - Landscape: natural or built environment; specify time of day, weather,
+        scale, atmospheric perspective, and focal point.
+      - Still life: arranged objects; specify surface, material, shadows, color
+        harmony, and product/story purpose.
+      - Product render: clean object visualization; specify material, angles,
+        background, scale, labels, and inspection needs.
+      - Concept art: exploratory world/character/object design; specify genre,
+        silhouette, function, mood, and production notes.
+      - Storyboard frame: clear action beat; specify shot size, camera movement,
+        characters, staging, and continuity.
+      - Matte painting: environment extension; specify horizon, depth, atmosphere,
+        light direction, and integration target.
+      - Illustration: stylized drawn image; specify medium, line weight, palette,
+        audience, and editorial purpose.
+      - Icon: simplified symbol; specify outline/filled, grid size, contrast,
+        recognizability, and UI context.
+      - Logo/mark exploration: brand symbol direction; specify shape language,
+        typography constraints, color, and usage, while avoiding imitation.
+      - Diagram: explanatory visual; specify labels, hierarchy, arrows, process,
+        and readability.
+      - Infographic: data/story visual; specify sections, scale, icon language,
+        and accessible contrast.
+      - Texture/material: tileable or reference surface; specify repeat, scale,
+        roughness, normal/depth cues, and material.
+      - Pattern: repeated motif; specify symmetry, density, colorway, and tile.
+      - UI mockup: interface state; specify platform, density, hierarchy, controls,
+        data realism, and responsive constraints.
+      - Album cover/poster/key art: single strong image; specify title safe area,
+        central metaphor, mood, genre fit, and typography plan.
+
+  - kind: prompt
+    title: Art history and style vocabulary
+    text: |
+      Use style and period words to guide visual language, but always add concrete
+      composition, material, and lighting instructions.
+
+      Periods and movements:
+      - Ancient/Egyptian/Greek/Roman: relief, fresco, marble, symmetry, mythic
+        figures, architectural order, mosaic.
+      - Byzantine: icon panels, gold ground, frontal figures, sacred geometry,
+        flattened space.
+      - Medieval/Gothic: illuminated manuscript, stained glass, pointed arches,
+        symbolic scale, ornate borders.
+      - Renaissance: linear perspective, balanced composition, anatomy, sfumato,
+        naturalism, classical architecture.
+      - Mannerism: elongated proportions, artificial color, complex poses,
+        stylized tension.
+      - Baroque: drama, chiaroscuro, motion, theatrical staging, diagonal energy,
+        deep shadow.
+      - Rococo: pastel color, ornament, playful elegance, soft curves, decorative
+        interiors.
+      - Neoclassical: restraint, clarity, heroic forms, clean line, classical
+        references.
+      - Romanticism: sublime nature, emotion, storm, ruin, dramatic scale,
+        expressive atmosphere.
+      - Realism: everyday subjects, grounded light, social observation, material
+        truth.
+      - Impressionism: broken color, visible brushwork, fleeting light, outdoor
+        scenes, soft edges.
+      - Post-Impressionism: expressive color, structure, pattern, symbolic
+        intensity.
+      - Art Nouveau: flowing organic line, floral forms, decorative poster style,
+        elegant curves.
+      - Cubism: fractured planes, multiple viewpoints, geometric abstraction,
+        muted palette.
+      - Futurism: speed, motion, machinery, dynamic diagonals, urban energy.
+      - Dada/Surrealism: absurd juxtaposition, dream logic, collage, uncanny
+        objects, symbolic spaces.
+      - Bauhaus/Constructivism: geometry, functional design, sans-serif type,
+        primary shapes, industrial clarity.
+      - Art Deco: symmetry, luxury, stepped forms, metallics, sunbursts, glamour.
+      - Abstract Expressionism: gesture, scale, energy, nonrepresentational mark.
+      - Pop Art: consumer imagery, bold color, halftone, graphic repetition,
+        comic language.
+      - Minimalism: reduction, geometry, sparse composition, material presence.
+      - Brutalism: raw concrete, heavy mass, exposed structure, stark light.
+      - Postmodern: quotation, irony, collage, hybrid style, bright contradiction.
+      - Contemporary digital art: 3D render, generative pattern, glitch, neural
+        texture, mixed media, cinematic lighting.
+
+      Medium/style terms:
+      oil painting, watercolor, gouache, acrylic, ink, charcoal, graphite,
+      pastel, linocut, woodcut, etching, lithograph, risograph, screenprint,
+      collage, photomontage, vector, pixel art, voxel, clay render, low-poly,
+      cel-shaded, anime, manga, comic panel, editorial illustration, technical
+      drawing, blueprint, architectural visualization, cinematic concept art.
+
+  - kind: prompt
+    title: Visual prompt and review checklist
+    text: |
+      Prompt checklist:
+      - Subject is explicit and inspectable.
+      - Style is supported by concrete visual traits, not only a movement name.
+      - Composition and camera angle are defined.
+      - Lighting and palette are defined.
+      - Background and negative space are intentional.
+      - Text requirements are clear: no text, placeholder text, or exact readable
+        text if the renderer supports it.
+      - Aspect ratio and output purpose are defined.
+      - Safety/provenance is clear: no living artist imitation, no protected
+        logo replication, no unlicensed character copy, references stored.
+
+      Review checklist:
+      - Does the image communicate the intended subject at thumbnail size?
+      - Are important details visible rather than hidden in darkness or blur?
+      - Is the composition usable for the target layout?
+      - Are hands, faces, text, logos, and perspective checked?
+      - Does the style match the domain: product, game, album art, UI, poster,
+        storyboard, technical diagram, or concept exploration?
+      - Is there a clear next action: accept, refine prompt, create variants,
+        animate, upscale, extract assets, or archive?

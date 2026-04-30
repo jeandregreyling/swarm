@@ -12,6 +12,7 @@ LINKED TO:
   frontend/blueprints/proposals.py — ALM gate creates/checks work_proposals;
                               developer_agents set here must match that file.
 """
+import os
 import subprocess
 import time
 
@@ -45,12 +46,20 @@ chat_bp = Blueprint('chat', __name__)
 _CHAT_LOCAL_HANDOFF_DEADLINE_SECONDS = 2000
 
 
+def _chat_local_handoff_deadline_seconds():
+    """Runtime-configurable local handoff deadline, defaulting to 2000s."""
+    try:
+        return max(5, int(os.environ.get('SWARM_CHAT_HANDOFF_DEADLINE_SECONDS') or _CHAT_LOCAL_HANDOFF_DEADLINE_SECONDS))
+    except Exception:
+        return _CHAT_LOCAL_HANDOFF_DEADLINE_SECONDS
+
+
 def _chat_agent_timeout_seconds(agent_name, persistent_mode=False):
     """User-visible completion/handoff deadline for chat agent calls."""
     agent = str(agent_name or '').strip().lower()
     if persistent_mode:
-        if agent in {'gemma', 'llama', 'mistral', 'qwen', 'eight', 'seven', 'librarian', 'duck', 'sniffles', 'phi3', 'deepseek_local', 'deepseek-local', 'lmstudio'}:
-            return _CHAT_LOCAL_HANDOFF_DEADLINE_SECONDS
+        if agent in {'gemma', 'llama', 'llama3', 'mistral', 'qwen', 'eight', 'seven', 'librarian', 'duck', 'sniffles', 'phi3', 'deepseek_local', 'deepseek-local', 'lmstudio'}:
+            return _chat_local_handoff_deadline_seconds()
         return 240
     if agent == 'sniffles':
         return 35
@@ -889,6 +898,7 @@ def api_chat():
         def _await_agent_future(future, *, text_only=False):
             poll_seconds = 5.0
             idle_stall_seconds = 300.0
+            local_runtime = selected_agent in _local_ollama_chat_agents()
             while True:
                 try:
                     return future.result(timeout=poll_seconds)
@@ -902,26 +912,35 @@ def api_chat():
                         bool(progress_state.get('active_progress_seen'))
                         and idle <= idle_stall_seconds
                     )
-                    if active_recently:
+                    should_handoff = bool(persistent_mode and local_runtime)
+                    if active_recently or should_handoff:
+                        if active_recently:
+                            handoff_stage = 'handoff deadline reached with active generation'
+                            handoff_reason = (
+                                f'deadline {int(local_timeout)}s reached with heartbeat idle {int(idle)}s'
+                            )
+                        else:
+                            handoff_stage = 'handoff deadline reached without fresh heartbeat'
+                            handoff_reason = (
+                                f'deadline {int(local_timeout)}s reached; no generation heartbeat for {int(idle)}s'
+                            )
                         _trace(
                             conv_id,
                             selected_agent,
                             'handoff',
-                            f'active generation handoff after {int(elapsed)}s idle={int(idle)}s',
+                            f'local handoff after {int(elapsed)}s idle={int(idle)}s active={active_recently}',
                         )
-                        _stage('handoff deadline reached with active generation', 0)
+                        _stage(handoff_stage, 0)
                         try:
                             future.cancel()
                         except Exception:
                             pass
                         try:
-                            if selected_agent in _local_ollama_chat_agents():
+                            if local_runtime:
                                 _chat_try_hard_kill_local_agent(selected_agent)
                         except Exception:
                             pass
-                        handoff_text = _partial_self_handoff(
-                            f'deadline {int(local_timeout)}s reached with heartbeat idle {int(idle)}s'
-                        )
+                        handoff_text = _partial_self_handoff(handoff_reason)
                         return handoff_text if text_only else (handoff_text, 0)
                     raise
 

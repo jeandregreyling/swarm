@@ -6,6 +6,7 @@ All symbols here are re-exported via services/__init__.py so that existing
 callers (via `from services import *`) continue to work unchanged.
 """
 import re
+import os
 import time
 import threading
 from datetime import datetime, timezone
@@ -31,7 +32,8 @@ _CHAT_JOB_TTL_SECONDS = 2 * 60 * 60
 # runtime alone is not a stall; streamed progress updates keep the job alive.
 _CHAT_WATCHDOG_ETA_MULT = 4.0
 _CHAT_WATCHDOG_MIN_SECONDS = 300   # 5 min floor even for fast agents
-_CHAT_WATCHDOG_MAX_SECONDS = 2000  # Ghost-visible handoff deadline ceiling
+_CHAT_WATCHDOG_MAX_SECONDS = int(os.environ.get('SWARM_CHAT_HANDOFF_DEADLINE_SECONDS') or 2000)  # Ghost-visible handoff deadline ceiling
+_CHAT_WATCHDOG_LOCAL_GRACE_SECONDS = 120
 
 # Ring buffer of recently finished jobs (per agent) for health metrics.
 # Newest first; capped to the last _CHAT_HEALTH_RING_MAX entries per agent.
@@ -145,7 +147,10 @@ def _watchdog_budget_seconds(job):
     except Exception:
         eta = 60.0
     budget = max(eta * _CHAT_WATCHDOG_ETA_MULT, float(_CHAT_WATCHDOG_MIN_SECONDS))
-    return min(budget, float(_CHAT_WATCHDOG_MAX_SECONDS))
+    budget = min(budget, float(_CHAT_WATCHDOG_MAX_SECONDS))
+    if str(job.get('runtime_class') or '').lower() == 'local':
+        return max(budget, float(_CHAT_WATCHDOG_MAX_SECONDS + _CHAT_WATCHDOG_LOCAL_GRACE_SECONDS))
+    return budget
 
 
 def _watchdog_mark_stalled_jobs_locked():

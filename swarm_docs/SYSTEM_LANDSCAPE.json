@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-30 00:11",
+  "generated_at": "2026-04-30 00:13",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -3884,7 +3884,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 44078
+      "rows": 44116
     },
     {
       "name": "agent_capabilities",
@@ -3908,7 +3908,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 688
+      "rows": 691
     },
     {
       "name": "audit_results",
@@ -3940,7 +3940,7 @@
     },
     {
       "name": "council_output",
-      "rows": 6390
+      "rows": 6453
     },
     {
       "name": "daily_checkpoint",
@@ -3960,7 +3960,7 @@
     },
     {
       "name": "decisions",
-      "rows": 30957
+      "rows": 31042
     },
     {
       "name": "deferred_items",
@@ -3968,7 +3968,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 945
+      "rows": 947
     },
     {
       "name": "enrollment_invites",
@@ -3976,7 +3976,7 @@
     },
     {
       "name": "feed_subscriptions",
-      "rows": 22
+      "rows": 23
     },
     {
       "name": "file_versions",
@@ -3992,7 +3992,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4739
+      "rows": 4741
     },
     {
       "name": "gmail_labels_cache",
@@ -4020,7 +4020,7 @@
     },
     {
       "name": "media_runs",
-      "rows": 49
+      "rows": 53
     },
     {
       "name": "memory",
@@ -4144,7 +4144,7 @@
     },
     {
       "name": "queue",
-      "rows": 1743
+      "rows": 1747
     },
     {
       "name": "research_evidence",
@@ -4200,7 +4200,7 @@
     },
     {
       "name": "swarm_events",
-      "rows": 26
+      "rows": 27
     },
     {
       "name": "swarm_globals",
@@ -4208,7 +4208,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 26
+      "rows": 27
     },
     {
       "name": "swarm_nodes",
@@ -4236,27 +4236,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 699
+      "rows": 701
     },
     {
       "name": "tickets",
-      "rows": 707
+      "rows": 709
     },
     {
       "name": "time_checkpoints",
-      "rows": 5356
+      "rows": 5375
     },
     {
       "name": "time_events",
-      "rows": 118897
+      "rows": 118930
     },
     {
       "name": "time_journal",
-      "rows": 112068
+      "rows": 112082
     },
     {
       "name": "time_machine",
-      "rows": 6996
+      "rows": 7024
     },
     {
       "name": "tool_builds",
@@ -4264,7 +4264,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 964
+      "rows": 979
     },
     {
       "name": "trusted_domains",
