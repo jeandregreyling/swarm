@@ -774,11 +774,37 @@ def _all_programming_docs():
     return docs
 
 
+def _all_kc_seed_prompt_docs():
+    """Collect prompt-based declarative KC seed topics as Library documents."""
+    docs = []
+    try:
+        from ops.kc_seeds import _loader as kc_loader
+        topics = kc_loader.load_all()
+    except Exception as exc:
+        logger.warning(f'[Seed] kc seed load skipped: {exc}')
+        return docs
+
+    for topic in topics:
+        for source in topic.sources:
+            if source.kind != 'prompt' or not source.text:
+                continue
+            title = source.title or topic.title
+            docs.append({
+                'title': f'{topic.title} — {title}',
+                'subcategory': topic.topic_id,
+                'tags': list(topic.tags or []) + ['kc_seed'],
+                'category': 'creative_media' if topic.topic_id in {'music_creation', 'visual_art_image_generation'} else 'reference',
+                'content': source.text,
+            })
+    return docs
+
+
 def seed_collection(collection='all'):
     """
     Seed the library with built-in knowledge documents.
     Returns (added_count, skipped_count).
-    Supports: 'sap_corner', 'programming', 'fridays', 'all'.
+    Supports: 'sap_corner', 'programming', 'fridays', 'kc_seeds',
+    'creative_media', 'all'.
     """
     from lib.knowledge.store import add_source, check_duplicate, ensure_schema
     from lib.knowledge.ingest import process_source
@@ -792,6 +818,13 @@ def seed_collection(collection='all'):
         docs.extend(_all_programming_docs())
     if collection in ('all', 'fridays'):
         docs.extend(_all_fridays_docs())
+    if collection in ('all', 'kc_seeds'):
+        docs.extend(_all_kc_seed_prompt_docs())
+    if collection == 'creative_media':
+        docs.extend([
+            doc for doc in _all_kc_seed_prompt_docs()
+            if doc.get('category') == 'creative_media'
+        ])
 
     added = 0
     skipped = 0

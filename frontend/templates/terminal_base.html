@@ -2481,6 +2481,24 @@
       <button class="tasker-btn-new" style="background:var(--accent-subtle,#2a4a5a)" onclick="bootstrapTasker()">⚡ Bootstrap</button>
     </div>
 
+    <!-- Calendar -->
+    <div class="tasker-calendar-panel">
+      <div class="tasker-calendar-head">
+        <div>
+          <div class="tasker-watch-title">Task calendar</div>
+          <div class="tasker-watch-subtitle">Scheduled jobs, watched-topic emails, briefs, and upcoming Tasker runs in one place.</div>
+        </div>
+        <div class="tasker-calendar-controls">
+          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(-7)" title="Previous week">‹</button>
+          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(0)" title="Today">Today</button>
+          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(7)" title="Next week">›</button>
+        </div>
+      </div>
+      <div class="tasker-calendar-grid" id="tasker-calendar-grid">
+        <div class="tasker-empty"><div class="tasker-empty-icon">⏱</div>Loading calendar...</div>
+      </div>
+    </div>
+
     <!-- Watched topic quick creator -->
     <div class="tasker-watch-panel">
       <div class="tasker-watch-copy">

@@ -136,6 +136,26 @@ def test_watchdog_uses_idle_time_not_total_runtime(monkeypatch):
     assert cj._CHAT_JOBS['job-active']['status'] == 'running'
 
 
+def test_watchdog_gives_local_jobs_full_handoff_window(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    _fresh_state()
+    now = time.time()
+    cj._CHAT_JOBS['job-local-waiting'] = {
+        'job_id': 'job-local-waiting',
+        'agent': 'gemma',
+        'status': 'running',
+        'runtime_class': 'local',
+        'eta_seconds': 60,
+        'started_ts': now - 1000,
+        'updated_ts': now - 1000,
+        'stage_trace': [{'text': 'sending model request', 'ts': now - 1000}],
+    }
+    with cj._CHAT_JOB_LOCK:
+        stalled = cj._watchdog_mark_stalled_jobs_locked()
+    assert stalled == []
+    assert cj._CHAT_JOBS['job-local-waiting']['status'] == 'running'
+
+
 def test_health_snapshot_p50_p95_and_stall_count(monkeypatch):
     _suppress_durable_spine_logs(monkeypatch)
     _fresh_state()

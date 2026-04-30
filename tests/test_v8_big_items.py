@@ -118,9 +118,19 @@ def test_kc_seeds_framework():
     from ops.kc_seeds import _loader as L  # type: ignore
     topics = L.load_all()
     ids = {t.topic_id for t in topics}
-    assert {"huggingface", "github"} <= ids
+    assert {"huggingface", "github", "music_creation", "visual_art_image_generation"} <= ids
     for t in topics:
         assert t.errors == [], f"{t.topic_id}: {t.errors}"
+
+
+def test_kc_seed_prompts_flow_into_library_seed_docs():
+    from lib.knowledge import seed
+
+    docs = seed._all_kc_seed_prompt_docs()
+    titles = {d["title"] for d in docs}
+    assert any("Music creation" in title for title in titles)
+    assert any("Visual art" in title for title in titles)
+    assert any(d.get("category") == "creative_media" for d in docs)
 
 
 def test_kc_seeds_readme():

@@ -7,6 +7,7 @@ import json
 import math
 import os
 import re
+import shutil
 import struct
 import subprocess
 import time
@@ -23,6 +24,11 @@ media_bp = Blueprint('media_bp', __name__)
 _MEDIA_ROOT = Path(os.environ.get('SWARM_ROOT', Path(__file__).resolve().parents[2]))
 _MEDIA_ARTIFACT_DIR = _MEDIA_ROOT / 'artifacts' / 'media_center'
 _REMIX_MODES = {'mashup', 'new', 'new_song', 'original'}
+_MEDIA_PROMPT_FIELDS = {
+    'image': ('image_prompt', 'visual_prompt', 'prompt'),
+    'video': ('video_prompt', 'motion_prompt', 'visual_prompt', 'prompt'),
+    'audio': ('audio_prompt', 'music_prompt', 'song_prompt', 'prompt'),
+}
 
 
 def _now_iso() -> str:
@@ -195,6 +201,193 @@ def _write_sine_wav(out_path: Path, seconds: float = 4.0, freq: float = 440.0) -
             frames.extend(struct.pack('<h', val))
         wav.writeframes(bytes(frames))
     return f'wrote {out_path.name} ({seconds:.1f}s @ {freq:.1f}Hz)'
+
+
+def _resolve_media_prompt(body: dict, media_type: str) -> tuple[str, dict]:
+    raw_prompt = str(body.get('prompt') or body.get('model_output') or '').strip()
+    prompt_info = {
+        'used_runtime_json_normalizer': False,
+        'shape': 'text',
+        'truncated': False,
+        'selected_field': 'prompt',
+        'raw_chars': len(raw_prompt),
+    }
+    if not raw_prompt:
+        return '', prompt_info
+
+    text = raw_prompt
+    stripped = raw_prompt.lstrip()
+    if stripped.startswith(('```', '{', '[')):
+        try:
+            from core.model_runtime_gateway import normalize_model_json
+            normalized = normalize_model_json(raw_prompt)
+            prompt_info.update({
+                'used_runtime_json_normalizer': True,
+                'shape': normalized.get('shape') or 'text',
+                'truncated': bool(normalized.get('truncated')),
+                'normalizer_ok': bool(normalized.get('ok')),
+            })
+            value = normalized.get('value') if isinstance(normalized, dict) else None
+            if isinstance(value, dict):
+                fields = _MEDIA_PROMPT_FIELDS.get(media_type, ('prompt',))
+                for field in fields:
+                    candidate = str(value.get(field) or '').strip()
+                    if candidate:
+                        text = candidate
+                        prompt_info['selected_field'] = field
+                        break
+        except Exception as exc:
+            prompt_info.update({
+                'used_runtime_json_normalizer': True,
+                'normalizer_ok': False,
+                'normalizer_error': str(exc)[:200],
+            })
+    return text, prompt_info
+
+
+def _wrap_prompt_lines(prompt: str, width: int = 38, max_lines: int = 6) -> list[str]:
+    words = re.findall(r'\S+', str(prompt or ''))
+    lines: list[str] = []
+    current = ''
+    for word in words:
+        candidate = f'{current} {word}'.strip()
+        if len(candidate) <= width:
+            current = candidate
+            continue
+        if current:
+            lines.append(current)
+        current = word[:width]
+        if len(lines) >= max_lines:
+            break
+    if current and len(lines) < max_lines:
+        lines.append(current)
+    return lines[:max_lines] or ['Fridays Studio local render']
+
+
+def _write_prompt_image(out_path: Path, prompt: str, agent: str = '') -> str:
+    from PIL import Image, ImageDraw, ImageFont
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    width, height = 1280, 720
+    seed = _stable_int(prompt, agent, out_path.name)
+    base = (
+        24 + (seed % 70),
+        34 + ((seed >> 8) % 70),
+        44 + ((seed >> 16) % 70),
+    )
+    accent = (
+        160 + ((seed >> 24) % 80),
+        120 + ((seed >> 32) % 100),
+        70 + ((seed >> 40) % 130),
+    )
+    image = Image.new('RGB', (width, height), base)
+    draw = ImageDraw.Draw(image)
+    for y in range(height):
+        blend = y / max(1, height - 1)
+        color = tuple(int(base[i] * (1 - blend) + accent[i] * blend * 0.65) for i in range(3))
+        draw.line([(0, y), (width, y)], fill=color)
+    for idx in range(9):
+        x = int((seed >> (idx * 5)) % width)
+        y = int((seed >> (idx * 7 + 3)) % height)
+        radius = 70 + int((seed >> (idx * 3 + 11)) % 170)
+        outline = tuple(min(255, c + 35) for c in accent)
+        draw.ellipse((x - radius, y - radius, x + radius, y + radius), outline=outline, width=3)
+
+    try:
+        title_font = ImageFont.truetype('DejaVuSans-Bold.ttf', 44)
+        body_font = ImageFont.truetype('DejaVuSans.ttf', 30)
+        meta_font = ImageFont.truetype('DejaVuSans.ttf', 22)
+    except Exception:
+        title_font = body_font = meta_font = ImageFont.load_default()
+
+    label = (agent or 'local agent').strip()
+    draw.rounded_rectangle((70, 70, width - 70, height - 70), radius=18, fill=(12, 16, 22), outline=(230, 230, 220), width=2)
+    draw.text((105, 105), f'{label} · Fridays Studio Image', fill=(245, 245, 238), font=title_font)
+    y = 190
+    for line in _wrap_prompt_lines(prompt, width=50, max_lines=7):
+        draw.text((105, y), line, fill=(220, 226, 232), font=body_font)
+        y += 42
+    draw.text((105, height - 125), 'local prompt-image runner · provenance kept in Media Center', fill=(170, 178, 188), font=meta_font)
+    image.save(out_path, 'PNG')
+    return f'wrote {out_path.name} prompt image ({width}x{height})'
+
+
+def _avi_chunk(tag: bytes, payload: bytes) -> bytes:
+    return tag + struct.pack('<I', len(payload)) + payload + (b'\0' if len(payload) % 2 else b'')
+
+
+def _avi_list(tag: bytes, payload: bytes) -> bytes:
+    body = tag + payload
+    return b'LIST' + struct.pack('<I', len(body)) + body + (b'\0' if len(body) % 2 else b'')
+
+
+def _write_prompt_avi(out_path: Path, prompt: str, agent: str = '', seconds: float = 5.0) -> str:
+    from PIL import Image, ImageDraw, ImageFont
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    width, height, fps = 640, 360, 8
+    total_frames = max(1, int(seconds * fps))
+    row_stride = ((width * 3 + 3) // 4) * 4
+    frame_size = row_stride * height
+    seed = _stable_int(prompt, agent, out_path.name)
+    lines = _wrap_prompt_lines(prompt, width=44, max_lines=5)
+    try:
+        title_font = ImageFont.truetype('DejaVuSans-Bold.ttf', 28)
+        body_font = ImageFont.truetype('DejaVuSans.ttf', 18)
+    except Exception:
+        title_font = body_font = ImageFont.load_default()
+
+    frames: list[bytes] = []
+    for frame_idx in range(total_frames):
+        t = frame_idx / max(1, total_frames - 1)
+        c1 = (20 + int((seed + frame_idx * 7) % 80), 35 + int((seed >> 9) % 70), 55 + int((seed >> 17) % 80))
+        c2 = (90 + int(100 * t), 80 + int((seed >> 25) % 120), 150 - int(70 * t))
+        image = Image.new('RGB', (width, height), c1)
+        draw = ImageDraw.Draw(image)
+        for y in range(height):
+            blend = y / max(1, height - 1)
+            color = tuple(int(c1[i] * (1 - blend) + c2[i] * blend) for i in range(3))
+            draw.line([(0, y), (width, y)], fill=color)
+        x = int(80 + t * (width - 180))
+        draw.rounded_rectangle((x - 45, 46, x + 45, 136), radius=20, fill=(245, 226, 140), outline=(255, 255, 255), width=2)
+        draw.rounded_rectangle((38, 178, width - 38, height - 32), radius=12, fill=(8, 10, 16), outline=(230, 235, 240), width=1)
+        draw.text((42, 30), f'{(agent or "local agent").strip()} · Studio video test', fill=(250, 250, 246), font=title_font)
+        y = 200
+        for line in lines:
+            draw.text((58, y), line, fill=(222, 228, 235), font=body_font)
+            y += 26
+        raw = image.tobytes('raw', 'BGR')
+        padded_rows = []
+        pad = b'\0' * (row_stride - width * 3)
+        for row in range(height - 1, -1, -1):
+            start = row * width * 3
+            padded_rows.append(raw[start:start + width * 3] + pad)
+        frames.append(b''.join(padded_rows))
+
+    avih = struct.pack(
+        '<IIIIIIIIII4I',
+        int(1_000_000 / fps), frame_size * fps, 0, 0x10, total_frames, 0, 1,
+        frame_size, width, height, 0, 0, 0, 0,
+    )
+    strh = (
+        b'vids' + b'DIB ' +
+        struct.pack('<IHHIIIIIIIIhhhh', 0, 0, 0, 0, 1, fps, 0, total_frames, frame_size, 0xFFFFFFFF, 0, 0, 0, width, height)
+    )
+    strf = struct.pack('<IiiHHIIiiII', 40, width, height, 1, 24, 0, frame_size, 0, 0, 0, 0)
+    hdrl = _avi_list(b'hdrl', _avi_chunk(b'avih', avih) + _avi_list(b'strl', _avi_chunk(b'strh', strh) + _avi_chunk(b'strf', strf)))
+
+    movi_payload = bytearray()
+    index_entries = []
+    for frame in frames:
+        offset = 4 + len(movi_payload)
+        chunk = _avi_chunk(b'00db', frame)
+        movi_payload.extend(chunk)
+        index_entries.append(struct.pack('<4sIII', b'00db', 0x10, offset, len(frame)))
+    movi = _avi_list(b'movi', bytes(movi_payload))
+    idx1 = _avi_chunk(b'idx1', b''.join(index_entries))
+    riff_body = b'AVI ' + hdrl + movi + idx1
+    out_path.write_bytes(b'RIFF' + struct.pack('<I', len(riff_body)) + riff_body)
+    return f'wrote {out_path.name} pure-python AVI fallback ({seconds:.1f}s @ {fps}fps)'
 
 
 def _clean_text(value, limit: int = 2000) -> str:
@@ -462,8 +655,11 @@ def _write_remix_wav(
     }
 
 
-def _run_ffmpeg_video(out_path: Path) -> str:
+def _run_ffmpeg_video(out_path: Path, prompt: str = '', agent: str = '') -> str:
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    if not shutil.which('ffmpeg'):
+        fallback = out_path.with_suffix('.avi')
+        return _write_prompt_avi(fallback, prompt, agent=agent)
     cmd = [
         'ffmpeg', '-y',
         '-f', 'lavfi', '-i', 'testsrc=size=1280x720:rate=30',
@@ -723,8 +919,10 @@ def api_media_remix():
 def api_media_produce():
     body = request.get_json(silent=True) or {}
     runner_key = str(body.get('runner_key') or 'local_synth_audio_runner').strip()
-    prompt = str(body.get('prompt') or '').strip()
-    media_type = str(body.get('media_type') or ('video' if 'video' in runner_key else 'audio')).strip().lower()
+    source_agent = str(body.get('source_agent') or body.get('agent') or '').strip()
+    default_media_type = 'image' if 'image' in runner_key else ('video' if 'video' in runner_key else 'audio')
+    media_type = str(body.get('media_type') or default_media_type).strip().lower()
+    prompt, prompt_info = _resolve_media_prompt(body, media_type)
 
     run_id = f"run-{uuid.uuid4().hex[:12]}"
     created_at = _now_iso()
@@ -739,9 +937,14 @@ def api_media_produce():
     try:
         _MEDIA_ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
         stamp = int(time.time())
-        if runner_key == 'local_ffmpeg_video_runner':
+        if runner_key == 'local_prompt_image_runner':
+            out_path = _MEDIA_ARTIFACT_DIR / f'{stamp}_{run_id}.png'
+            log_text = _write_prompt_image(out_path, prompt, agent=source_agent)
+        elif runner_key == 'local_ffmpeg_video_runner':
             out_path = _MEDIA_ARTIFACT_DIR / f'{stamp}_{run_id}.mp4'
-            log_text = _run_ffmpeg_video(out_path)
+            log_text = _run_ffmpeg_video(out_path, prompt, agent=source_agent)
+            if 'pure-python AVI fallback' in log_text:
+                out_path = out_path.with_suffix('.avi')
         else:
             out_path = _MEDIA_ARTIFACT_DIR / f'{stamp}_{run_id}.wav'
             log_text = _write_sine_wav(out_path, seconds=6.0, freq=392.0)
@@ -752,7 +955,13 @@ def api_media_produce():
         )
         conn.commit()
         conn.close()
-        return jsonify({'ok': True, 'run_id': run_id, 'output_path': str(out_path.relative_to(_MEDIA_ROOT)), 'log': log_text})
+        return jsonify({
+            'ok': True,
+            'run_id': run_id,
+            'output_path': str(out_path.relative_to(_MEDIA_ROOT)),
+            'log': log_text,
+            'prompt_info': prompt_info,
+        })
     except Exception as exc:
         conn.execute(
             "UPDATE media_runs SET status='failed', log_text=?, finished_at=? WHERE run_id=?",

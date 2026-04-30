@@ -37,6 +37,18 @@ def _wav_upload(freq=220.0):
     return buf
 
 
+def _latest_media_run(run_id):
+    from utils.db._connection import get_connection
+
+    with get_connection() as conn:
+        row = conn.execute(
+            'SELECT run_id, prompt FROM media_runs WHERE run_id=?',
+            (run_id,),
+        ).fetchone()
+    assert row is not None
+    return {'run_id': row[0], 'prompt': row[1]}
+
+
 def test_media_state_seeds_song_and_providers():
     app = _app()
     with app.test_client() as c:
@@ -67,6 +79,87 @@ def test_media_produce_audio_runner_writes_artifact():
     path = ROOT / out
     assert path.exists()
     assert path.stat().st_size > 1000
+
+
+def test_media_produce_image_runner_writes_png_artifact():
+    app = _app()
+    with app.test_client() as c:
+        resp = c.post('/api/media/produce', json={
+            'runner_key': 'local_prompt_image_runner',
+            'prompt': 'resilient studio agents with clear handoff lights',
+            'source_agent': 'gemma',
+        })
+        assert resp.status_code == 200
+        data = resp.get_json()
+
+    assert data.get('ok') is True
+    out = data.get('output_path') or ''
+    assert out.endswith('.png')
+    path = ROOT / out
+    assert path.exists()
+    assert path.stat().st_size > 1000
+
+
+def test_media_produce_image_runner_normalizes_fenced_model_json():
+    app = _app()
+    model_output = """```json
+    [{"image_prompt": "a bright Fridays Studio prompt card with green handoff lights",
+      "video_prompt": "ignore this video prompt"}]
+    ```"""
+    with app.test_client() as c:
+        resp = c.post('/api/media/produce', json={
+            'runner_key': 'local_prompt_image_runner',
+            'media_type': 'image',
+            'prompt': model_output,
+            'source_agent': 'gemma',
+        })
+        assert resp.status_code == 200
+        data = resp.get_json()
+
+    assert data.get('ok') is True
+    assert data.get('prompt_info', {}).get('used_runtime_json_normalizer') is True
+    assert data.get('prompt_info', {}).get('shape') == 'list'
+    assert data.get('prompt_info', {}).get('selected_field') == 'image_prompt'
+    row = _latest_media_run(data['run_id'])
+    assert 'bright Fridays Studio prompt card' in row['prompt']
+    assert 'ignore this video prompt' not in row['prompt']
+
+
+def test_media_produce_video_runner_writes_video_artifact_without_ffmpeg_requirement():
+    app = _app()
+    with app.test_client() as c:
+        resp = c.post('/api/media/produce', json={
+            'runner_key': 'local_ffmpeg_video_runner',
+            'prompt': 'five second resilient local agent motion card',
+            'source_agent': 'llama',
+        })
+        assert resp.status_code == 200
+        data = resp.get_json()
+
+    assert data.get('ok') is True
+    out = data.get('output_path') or ''
+    assert out.endswith(('.mp4', '.avi'))
+    path = ROOT / out
+    assert path.exists()
+    assert path.stat().st_size > 1000
+
+
+def test_media_produce_video_runner_selects_video_prompt_from_model_json():
+    app = _app()
+    with app.test_client() as c:
+        resp = c.post('/api/media/produce', json={
+            'runner_key': 'local_ffmpeg_video_runner',
+            'media_type': 'video',
+            'model_output': '{"image_prompt":"still frame only","video_prompt":"five second status light handoff animation"}',
+            'source_agent': 'llama',
+        })
+        assert resp.status_code == 200
+        data = resp.get_json()
+
+    assert data.get('ok') is True
+    assert data.get('prompt_info', {}).get('selected_field') == 'video_prompt'
+    row = _latest_media_run(data['run_id'])
+    assert row['prompt'] == 'five second status light handoff animation'
 
 
 def test_media_mix_songs_creates_remix_preview_and_manifest():
