@@ -1,10 +1,17 @@
 {
   "alive": true,
-  "started_at": 1777636416.457213,
-  "ts": 1777636416.4572136,
-  "processed": 0,
-  "last_eid": null,
-  "last_event": null,
-  "consolidations": 0,
+  "started_at": 1777631801.5752048,
+  "ts": 1777636455.2332833,
+  "processed": 25,
+  "last_eid": 8701,
+  "last_event": {
+    "action": "save",
+    "actor": "update_step_status",
+    "id": "S-DC32617399",
+    "kind": "step",
+    "path": "runtime/records/step/2026/05/S-DC32617399.json",
+    "ts": 1777636126.073956
+  },
+  "consolidations": 16,
   "errors": 0
 }
