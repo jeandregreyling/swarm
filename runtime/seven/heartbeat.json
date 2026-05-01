@@ -1,10 +1,17 @@
 {
   "alive": true,
-  "started_at": 1777640272.1849022,
-  "ts": 1777640273.1728733,
-  "processed": 0,
-  "last_eid": null,
-  "last_event": null,
+  "started_at": 1777640082.5611935,
+  "ts": 1777640275.0466974,
+  "processed": 18,
+  "last_eid": 9211,
+  "last_event": {
+    "action": "save",
+    "actor": "log_message",
+    "id": "2376",
+    "kind": "thread",
+    "path": "runtime/records/thread/2026/05/2376.json",
+    "ts": 1777640109.4605377
+  },
   "consolidations": 1,
   "errors": 0
 }
