@@ -7,10 +7,14 @@ import ast, pathlib, pytest
 
 BP_DIR = pathlib.Path(__file__).resolve().parent.parent / "frontend" / "blueprints"
 
-# Collect all blueprint module names (minus __init__)
+# Collect all blueprint module names (minus __init__ and shared _underscore utilities).
+# Modules whose name starts with '_' are private shared helpers (e.g. _pillar_store),
+# not blueprints, so importing them across pillar blueprints is allowed by design.
 _bp_modules = {
     p.stem for p in BP_DIR.glob("*.py")
-    if p.stem != "__init__" and not p.name.endswith((".bak", ".backup"))
+    if p.stem != "__init__"
+    and not p.stem.startswith("_")
+    and not p.name.endswith((".bak", ".backup"))
 }
 
 # Build the set of forbidden import sources
