@@ -1004,6 +1004,30 @@ def _task_landscape_refresh(**kwargs):
 
 # ── PACKET-10A: Backup & Trace Hardening ─────────────────────────────────────
 
+@register('vortex_heartbeat', 'PACKET-10A Vortex liveness: emit a workflow checkpoint so time_checkpoints stays fresh', 'maintenance')
+def _task_vortex_heartbeat(**kwargs):
+    """Periodic Vortex tick.
+
+    Vortex is otherwise event-driven (proposal transitions, alm actions).
+    On quiet days it can go silent for >24h, which makes 'has Vortex died?'
+    indistinguishable from 'is the swarm just idle?'. This task forces a
+    known cadence so the freshness invariant has real signal.
+    """
+    from core.time_machine import time_wizard
+    r = time_wizard.create_workflow_checkpoint(
+        label='heartbeat',
+        agent='tasker',
+        description='Periodic Vortex liveness checkpoint (PACKET-10A).',
+    )
+    counts = r.get('counts', {})
+    return (
+        f"vortex_heartbeat ok · {r.get('checkpoint_name')} · "
+        f"props={counts.get('work_proposals', '?')} "
+        f"decisions={counts.get('decisions', '?')} "
+        f"queue={counts.get('queue', '?')}"
+    )
+
+
 @register('swarm_backup', 'PACKET-10A backup: tarball to local + NTFS + USB (skips unreachable)', 'maintenance')
 def _task_swarm_backup(**kwargs):
     """Run scripts/backup_swarm.sh against one or all targets.
