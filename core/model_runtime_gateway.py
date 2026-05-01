@@ -174,6 +174,152 @@ def ollama_health(base_url: str = OLLAMA_BASE_URL, *, ps_payload: dict[str, Any]
     }
 
 
+def force_unload(
+    model: str,
+    *,
+    base_url: str = OLLAMA_BASE_URL,
+    poll_seconds: int = 10,
+    poll_interval_s: float = 1.0,
+    restart_cmds: list[list[str]] | None = None,
+    subprocess_runner: Any = None,
+) -> dict[str, Any]:
+    """Force a stuck Ollama runner to release a model.
+
+    Strategy (matches the failure mode logged in PACKET-05):
+      1. POST keep_alive=0 to nudge a clean unload.
+      2. Poll /api/ps; if the model disappears (or no longer reports
+         "stopping"), declare success.
+      3. If still stuck, escalate by attempting a service restart through the
+         provided commands (best-effort, no sudo prompt). Re-poll once.
+
+    Returns a structured snapshot so the UI can show what happened and what
+    next step the operator should take.
+    """
+    model = (model or "").strip()
+    if not model:
+        return {
+            "ok": False,
+            "model": "",
+            "stuck": False,
+            "action": "noop",
+            "attempted": [],
+            "message": "model name required",
+        }
+
+    attempted: list[dict[str, Any]] = []
+
+    # Step 1: polite unload
+    try:
+        requests.post(
+            f"{base_url}/api/generate",
+            json={"model": model, "prompt": " ", "keep_alive": 0},
+            timeout=15,
+        )
+        attempted.append({"step": "unload", "ok": True})
+    except Exception as exc:
+        attempted.append({"step": "unload", "ok": False, "error": str(exc)})
+
+    def _is_stuck() -> bool:
+        snap = ollama_health(base_url=base_url)
+        for entry in snap.get("models") or []:
+            if entry.get("name") == model and entry.get("state") == "stopping":
+                return True
+        return False
+
+    def _still_loaded() -> bool:
+        snap = ollama_health(base_url=base_url)
+        return any(entry.get("name") == model for entry in (snap.get("models") or []))
+
+    # Step 2: poll for unload completion
+    waited = 0.0
+    stuck = False
+    while waited < poll_seconds:
+        if not _still_loaded():
+            return {
+                "ok": True,
+                "model": model,
+                "stuck": False,
+                "action": "unloaded",
+                "attempted": attempted,
+                "message": f"{model} unloaded cleanly",
+            }
+        if _is_stuck():
+            stuck = True
+            break
+        time.sleep(poll_interval_s)
+        waited += poll_interval_s
+
+    if not stuck and _still_loaded() and _is_stuck():
+        stuck = True
+
+    if not stuck:
+        return {
+            "ok": True,
+            "model": model,
+            "stuck": False,
+            "action": "pending",
+            "attempted": attempted,
+            "message": f"{model} unload accepted; runner still draining",
+        }
+
+    # Step 3: escalate via restart command(s)
+    runner = subprocess_runner
+    if runner is None:
+        import subprocess as _subprocess
+
+        def runner(cmd: list[str]) -> tuple[int, str]:
+            try:
+                proc = _subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                    check=False,
+                )
+                return proc.returncode, (proc.stderr or proc.stdout or "").strip()
+            except Exception as exc:
+                return 1, str(exc)
+
+    cmds = restart_cmds or [
+        ["systemctl", "--user", "restart", "ollama"],
+        ["systemctl", "restart", "ollama"],
+    ]
+    restart_ok = False
+    for cmd in cmds:
+        try:
+            code, out = runner(cmd)
+        except Exception as exc:  # pragma: no cover - defensive
+            code, out = 1, str(exc)
+        attempted.append({"step": "restart", "cmd": " ".join(cmd), "code": code, "detail": out[:200]})
+        if code == 0:
+            restart_ok = True
+            break
+
+    if restart_ok:
+        # Give the daemon a beat to come back
+        time.sleep(min(2.0, poll_interval_s * 2))
+        return {
+            "ok": True,
+            "model": model,
+            "stuck": True,
+            "action": "restarted",
+            "attempted": attempted,
+            "message": f"{model} runner restarted via systemctl",
+        }
+
+    return {
+        "ok": False,
+        "model": model,
+        "stuck": True,
+        "action": "needs_operator",
+        "attempted": attempted,
+        "message": (
+            f"{model} runner is stuck in 'Stopping' and could not be restarted "
+            "without elevated permissions. Run: sudo systemctl restart ollama"
+        ),
+    }
+
+
 def chat(
     model: str,
     messages: list[dict[str, str]],
