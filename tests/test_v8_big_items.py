@@ -9,8 +9,32 @@ declared surface area so regressions in shape are caught.
 from __future__ import annotations
 
 import pathlib
+import sqlite3
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def _read_doc(rel_path: str) -> str:
+    """Read a doc preferring Studio (`project_docs.doc_name`) over disk.
+
+    PACKET-01 moved doc-class .md files into Studio; the disk file is now a
+    redirect stub starting with 'Moved into Studio'. Tests asserting content
+    must read from Studio first.
+    """
+    try:
+        con = sqlite3.connect(str(ROOT / "swarm_memory.db"))
+        try:
+            row = con.execute(
+                "SELECT content FROM project_docs WHERE doc_name = ?",
+                (rel_path,),
+            ).fetchone()
+        finally:
+            con.close()
+    except Exception:
+        row = None
+    if row and row[0] and "Moved into Studio" not in row[0][:200]:
+        return row[0]
+    return (ROOT / rel_path).read_text()
 
 
 # ── Phase-7 Seven Runtime (S-C84B33F9A8, S-656DCD475C, S-5E73858F90, ────────
@@ -50,7 +74,7 @@ def test_seven_runtime_driver_abc():
 
 
 def test_seven_runtime_theme_doc():
-    txt = (ROOT / "docs" / "SEVEN_RUNTIME.md").read_text()
+    txt = _read_doc("docs/SEVEN_RUNTIME.md")
     assert "Feature flag" in txt and "SEVEN_RUNTIME=1" in txt
 
 
@@ -100,7 +124,7 @@ def test_remote_access_onboarding_pack():
 
 
 def test_remote_access_theme_doc():
-    txt = (ROOT / "docs" / "REMOTE_ACCESS.md").read_text()
+    txt = _read_doc("docs/REMOTE_ACCESS.md")
     assert "/api/auth/2fa/enroll" in txt and "Caddy" in txt and "Cloudflare Tunnel" in txt
 
 
@@ -134,7 +158,7 @@ def test_kc_seed_prompts_flow_into_library_seed_docs():
 
 
 def test_kc_seeds_readme():
-    txt = (ROOT / "ops" / "kc_seeds" / "README.md").read_text()
+    txt = _read_doc("ops/kc_seeds/README.md")
     assert "topic_id" in txt and "cadence" in txt
 
 
