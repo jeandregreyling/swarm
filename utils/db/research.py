@@ -191,7 +191,12 @@ def add_evidence(session_id, *, source_url='', source_type='web', title='',
 
 
 def get_evidence_for_session(session_id, *, limit=100, conn=None):
-    """Return all evidence for a session."""
+    """Return all evidence for a session.
+
+    2026-05-02 (S-6E6CD8BA76) — each row is annotated with ``is_novel``:
+    True when this is the only session whose evidence carries this
+    ``snippet_hash``; False when an earlier session already saw it.
+    """
     own = conn is None
     if own:
         conn = get_connection()
@@ -203,7 +208,22 @@ def get_evidence_for_session(session_id, *, limit=100, conn=None):
         ).fetchall()
         cols = [d[0] for d in conn.execute(
             "SELECT * FROM research_evidence LIMIT 0").description]
-        return [dict(zip(cols, r)) for r in rows]
+        result = []
+        for r in rows:
+            d = dict(zip(cols, r))
+            shash = d.get('snippet_hash') or ''
+            if shash:
+                # Earlier rows (id < this one) with same snippet_hash → not novel.
+                prior = conn.execute(
+                    "SELECT 1 FROM research_evidence "
+                    "WHERE snippet_hash = ? AND id < ? LIMIT 1",
+                    (shash, d['id']),
+                ).fetchone()
+                d['is_novel'] = prior is None
+            else:
+                d['is_novel'] = True
+            result.append(d)
+        return result
     finally:
         if own:
             conn.close()

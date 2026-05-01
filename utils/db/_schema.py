@@ -1436,6 +1436,33 @@ def _migrate_schema(conn=None):
                  "WHERE status='pending'")
     conn.commit()
 
+    # 2026-05-02 (S-DB17B92842) — per-topic settings (digest mode lets a
+    # topic batch evidence into periodic summaries instead of per-hit emails).
+    # 2026-05-02 (S-F98ABAB164) — missed_run_policy controls how the
+    # scheduler treats a task whose previous run was skipped:
+    #   'skip'  — ignore missed runs (default, current behaviour)
+    #   'catchup' — fire once now to catch up
+    #   'queue' — fire once for every missed run
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS watched_topic_settings (
+            topic_key             TEXT PRIMARY KEY,
+            digest_mode           TEXT NOT NULL DEFAULT 'instant',
+            digest_period_hours   INTEGER NOT NULL DEFAULT 24,
+            last_digest_at        TEXT NOT NULL DEFAULT '',
+            updated_at            TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.commit()
+    try:
+        cols = {row[1] for row in conn.execute(
+            "PRAGMA table_info(scheduled_tasks)").fetchall()}
+        if 'missed_run_policy' not in cols:
+            conn.execute(
+                "ALTER TABLE scheduled_tasks ADD COLUMN missed_run_policy TEXT DEFAULT 'skip'")
+        conn.commit()
+    except Exception:
+        pass
+
     # watched_topic_evidence — scoring memory for Tasker watched-topic emails
     conn.execute("""
         CREATE TABLE IF NOT EXISTS watched_topic_evidence (

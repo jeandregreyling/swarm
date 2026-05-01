@@ -1138,11 +1138,34 @@ def run_task(name, args=''):
 
 
 def list_registered():
-    """Return list of registered tasks with metadata."""
-    return [
-        {'name': k, 'description': v['description'], 'category': v['category']}
-        for k, v in sorted(TASK_REGISTRY.items())
-    ]
+    """Return list of registered tasks with metadata.
+
+    2026-05-02 (S-4A136CB7F8) — each entry now includes the function's
+    inspectable parameters so the Tasker UI can show what `args=` is expected.
+    """
+    import inspect as _inspect
+    out = []
+    for name, v in sorted(TASK_REGISTRY.items()):
+        params = []
+        try:
+            sig = _inspect.signature(v['fn'])
+            for pname, p in sig.parameters.items():
+                params.append({
+                    'name': pname,
+                    'kind': str(p.kind),
+                    'default': (None if p.default is _inspect.Parameter.empty
+                                else repr(p.default)),
+                    'has_default': p.default is not _inspect.Parameter.empty,
+                })
+        except Exception:
+            params = []
+        out.append({
+            'name': name,
+            'description': v.get('description', ''),
+            'category': v.get('category', ''),
+            'params': params,
+        })
+    return out
 
 
 def _log_run(task_name, status, output, duration_ms=0, details=None):
