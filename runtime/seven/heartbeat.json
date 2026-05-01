@@ -1,17 +1,17 @@
 {
   "alive": true,
-  "started_at": 1777641121.1452143,
-  "ts": 1777641127.162377,
-  "processed": 2,
-  "last_eid": 9488,
+  "started_at": 1777631801.5752048,
+  "ts": 1777641127.5523815,
+  "processed": 323,
+  "last_eid": 9489,
   "last_event": {
     "action": "save",
-    "actor": "ticket_set_routing",
-    "id": "TEST-DRYRUN-1777641126",
+    "actor": "ticket_create",
+    "id": "TG-DRYRUN-1777641127",
     "kind": "ticket",
-    "path": "runtime/records/ticket/2026/05/TEST-DRYRUN-1777641126.json",
-    "ts": 1777641126.5339978
+    "path": "runtime/records/ticket/2026/05/TG-DRYRUN-1777641127.json",
+    "ts": 1777641127.326954
   },
-  "consolidations": 1,
-  "errors": 0
+  "consolidations": 32,
+  "errors": 1
 }
