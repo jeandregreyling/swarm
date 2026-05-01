@@ -42,9 +42,12 @@ EXEMPT_FILE_GLOBS = ('*.bak.*', '*.backup.*', 'swarm_memory.db.*', 'swarm.db.*')
 # Each rule: (rule_id, severity, file_glob, regex, human_message)
 # Severities: 'critical' (build red), 'warning' (yellow), 'info'.
 RULES = [
-    # Slop markers in shipped code
-    ('TODO_MARKER', 'warning', ('*.py', '*.js', '*.html', '*.md'),
-     re.compile(r'\b(TODO|FIXME|XXX|HACK)\b'),
+    # Slop markers in shipped code. Word-boundary, but skip lines that
+    # explicitly disclaim them (e.g. 'not a TODO'), the regex itself escaping
+    # the rule (a pipe-joined list like `TODO|FIXME` in a UI default), and
+    # the standard doc which *describes* these as forbidden.
+    ('TODO_MARKER', 'warning', ('*.py', '*.js', '*.html'),
+     re.compile(r'(?<![A-Za-z_])(?<!not a )(?<!Not a )(TODO|FIXME|XXX|HACK)(?![|A-Za-z0-9_])'),
      'Slop marker left in shipped code'),
 
     # Placeholder bodies
@@ -68,7 +71,7 @@ RULES = [
      'console.log in shipped JS (wrap in window.__SWARM_DEBUG)'),
 
     ('PY_PRINT_DEBUG', 'info', ('*.py',),
-     re.compile(r'print\(\s*[\'"]\s*(debug|test|here|wtf|hello)\b', re.IGNORECASE),
+     re.compile(r'(?<![A-Za-z_])print\(\s*[\'"]\s*(debug|test|here|wtf|hello)\b', re.IGNORECASE),
      'Debug print left in Python'),
 
     # Hard-coded localhost is informational by default — most hits are local
@@ -83,6 +86,18 @@ RULES = [
     ('CAPTURE_ONLY_REGRESSION', 'critical', ('terminal_base.html',),
      re.compile(r'data-wishlist-status\s*=\s*"capture-only"'),
      'Tile regressed to capture-only'),
+
+    # Wishlist regression: tile description still says "capture only" even
+    # though the tile is promoted. Catches the description-text mismatch the
+    # data-attr rule missed.
+    ('CAPTURE_ONLY_DESC', 'critical', ('terminal_base.html',),
+     re.compile(r'(?i)\bcapture[\s-]only\b'),
+     'Tile description still says "capture only" — promote or remove'),
+
+    # The Standard forbids vapor language in shipped UI/code.
+    ('VAPOR_LANGUAGE', 'warning', ('*.py', '*.js', '*.html'),
+     re.compile(r'(?i)coming soon|tbd\b|to be determined|placeholder text'),
+     'Vapor language in shipped surface (forbidden by The Standard)'),
 ]
 
 
@@ -181,8 +196,12 @@ def scan(root: Path | None = None, max_hits_per_rule: int = 200) -> dict:
                 # compute line number
                 line_no = text.count('\n', 0, match.start()) + 1
                 line_text = text.splitlines()[line_no - 1].strip() if line_no - 1 < len(text.splitlines()) else ''
-                # crude self-exemption: lines that contain a literal "# ok-bullshit" trailer are forgiven
-                if 'ok-bullshit' in line_text:
+                # Self-exemption: explicit per-line opt-outs. `ok-bullshit`
+                # (legacy) and `detector:ignore` (current) both forgive a
+                # single line. Use sparingly — the line must legitimately
+                # reference the marker (e.g. the rule itself, a UI default,
+                # or quality-check code that scans for the same word).
+                if 'ok-bullshit' in line_text or 'detector:ignore' in line_text:
                     continue
                 hits.append({
                     'rule': rule_id,

@@ -222,7 +222,7 @@ def _duck_quality_check(title: str, description: str) -> tuple[str, str]:
     combined = f'{(title or "").lower()} {(description or "").lower()}'
 
     # Fail: incomplete work signals
-    incomplete_signals = ['todo', 'tbd', 'placeholder', 'not yet', 'incomplete', 'wip']
+    incomplete_signals = ['todo', 'tbd', 'placeholder', 'not yet', 'incomplete', 'wip']  # detector:ignore
     for sig in incomplete_signals:
         if sig in combined:
             return 'fail', f'Duck found incomplete-work signal: "{sig}". Revise and re-complete.'
