@@ -517,6 +517,102 @@ def frontend_checks():
 
 
 # ────────────────────────────────────────────────────────────────────────
+# SECTION L — Seven the Witness
+# ────────────────────────────────────────────────────────────────────────
+def witness_checks():
+    section("L · Seven the Witness")
+
+    def import_ok():
+        from core import witness  # noqa: F401
+        return True, "core.witness imported"
+    _step("core.witness imports", import_ok)
+
+    def vapor_flag():
+        from core import witness
+        rep = witness.scan_text("This should work probably, I think.",
+                                kind='user', target='user')
+        rules = {c.rule for c in rep}
+        return ('VAPOR' in rules), f"rules={sorted(rules)}"
+    _step("scan_text flags VAPOR on hedgy text", vapor_flag)
+
+    def hedge_flag():
+        from core import witness
+        rep = witness.scan_text("Will fix later, placeholder TBD.",
+                                kind='user', target='user')
+        rules = {c.rule for c in rep}
+        return ('HEDGE' in rules), f"rules={sorted(rules)}"
+    _step("scan_text flags HEDGE on empty-promise text", hedge_flag)
+
+    def conviction_clean():
+        from core import witness
+        score = witness.conviction("Run the migration. The build is green.")
+        return (score >= 0.85), f"score={score:.2f}"
+    _step("conviction(clean) >= 0.85", conviction_clean)
+
+    def conviction_dirty():
+        from core import witness
+        score = witness.conviction("It should work, probably, maybe, I think it's fine.")
+        return (score < 0.7), f"score={score:.2f}"
+    _step("conviction(vapor-heavy) < 0.7", conviction_dirty)
+
+    def annotate_dirty():
+        from core import witness
+        rep = witness.review_seven_response(
+            "This should work probably, will fix later.",
+            user_msg="?", save=False)
+        out = witness.annotate(rep)
+        return (bool(out)), f"footer_len={len(out)}"
+    _step("annotate(dirty report) returns a footer", annotate_dirty)
+
+    def daily_brief_compose():
+        from agents.seven import daily_brief
+        out = daily_brief.compose_daily()
+        body = out.get('body', '')
+        ok = ("Seven's Daily Brief" in body and
+              '## Conviction' in body and
+              '## Bullshit ledger' in body)
+        return ok, f"path={out.get('path')!r} len={len(body)}"
+    _step("daily_brief.compose_daily() produces prose", daily_brief_compose)
+
+    def health_has_witness():
+        import urllib.request, json
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:5050/api/health", timeout=5) as r:
+                d = json.loads(r.read().decode('utf-8'))
+        except Exception as exc:
+            return False, f"http error: {exc}"
+        w = d.get('witness') or {}
+        ok = isinstance(w, dict) and 'enabled' in w and 'total' in w
+        return ok, f"witness_keys={sorted(w.keys())}"
+    _step("/api/health includes witness block", health_has_witness)
+
+    def chat_witness_list():
+        import urllib.request, json
+        body = json.dumps({"agent": "seven", "message": "/witness list"}).encode('utf-8')
+        try:
+            req = urllib.request.Request(
+                "http://127.0.0.1:5050/api/chat",
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method='POST')
+            with urllib.request.urlopen(req, timeout=10) as r:
+                d = json.loads(r.read().decode('utf-8'))
+        except Exception as exc:
+            return False, f"http error: {exc}"
+        msg = (d.get('response') or d.get('message') or d.get('answer') or '')
+        ok = ('Witness' in msg or 'callout' in msg.lower() or 'no callouts' in msg.lower())
+        return ok, f"reply[:80]={msg[:80]!r}"
+    _step("HTTP /api/chat seven /witness list works", chat_witness_list)
+
+    def friday_task_registered():
+        from fridays import task_runner
+        reg = getattr(task_runner, 'TASK_REGISTRY', None) or {}
+        ok = 'seven_daily_brief' in reg
+        return ok, f"present={ok} (n={len(reg)})"
+    _step("Friday task `seven_daily_brief` registered", friday_task_registered)
+
+
+# ────────────────────────────────────────────────────────────────────────
 # Report writer
 # ────────────────────────────────────────────────────────────────────────
 def write_report():
@@ -572,6 +668,7 @@ def main() -> int:
     test_sweep()
     doctor_check()
     fresh_db_e2e()
+    witness_checks()
 
     overall, total, passed, failed = write_report()
     print(f"\n{YEL}══ Summary ══{RST}")
