@@ -260,15 +260,56 @@ def task_history():
     """Return recent task execution history."""
     limit = min(int(request.args.get('limit', 50)), 200)
     with _get_conn() as conn:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(task_run_log)").fetchall()}
+        select_cols = 'id, task_name, status, output, run_at'
+        if 'duration_ms' in cols:
+            select_cols += ', duration_ms'
+        if 'details_json' in cols:
+            select_cols += ', details_json'
         rows = conn.execute(
-            'SELECT id, task_name, status, output, run_at FROM task_run_log ORDER BY id DESC LIMIT ?',
+            f'SELECT {select_cols} FROM task_run_log ORDER BY id DESC LIMIT ?',
             (limit,)
         ).fetchall()
-    history = [
-        {'id': r[0], 'task_name': r[1], 'status': r[2], 'output': r[3], 'run_at': r[4]}
-        for r in rows
-    ]
+    history = []
+    for r in rows:
+        item = {'id': r[0], 'task_name': r[1], 'status': r[2],
+                'output': r[3], 'run_at': r[4]}
+        idx = 5
+        if 'duration_ms' in cols:
+            item['duration_ms'] = r[idx] or 0
+            idx += 1
+        if 'details_json' in cols:
+            item['details_json'] = r[idx] or ''
+        history.append(item)
     return jsonify(history)
+
+
+@tasker_bp.route('/api/tasker/health')
+def tasker_health():
+    """2026-05-02 (S-F8A20353D0) — health metrics including duplicate task names.
+
+    Duplicates can silently steal each other's runs because schedulers may
+    fire either copy depending on iteration order. This endpoint exposes
+    them so they're visible in the UI."""
+    with _get_conn() as conn:
+        dup_rows = conn.execute(
+            "SELECT name, COUNT(*) c FROM scheduled_tasks "
+            "WHERE name != '' GROUP BY name HAVING c > 1 ORDER BY c DESC"
+        ).fetchall()
+        total = conn.execute("SELECT COUNT(*) FROM scheduled_tasks").fetchone()[0]
+        enabled = conn.execute("SELECT COUNT(*) FROM scheduled_tasks WHERE enabled=1").fetchone()[0]
+        recent_failures = conn.execute(
+            "SELECT COUNT(*) FROM task_run_log "
+            "WHERE status != 'ok' AND run_at > datetime('now','-24 hours')"
+        ).fetchone()[0]
+    return jsonify({
+        'ok': True,
+        'total_tasks': total,
+        'enabled_tasks': enabled,
+        'duplicate_count': len(dup_rows),
+        'duplicates': [{'name': r[0], 'count': r[1]} for r in dup_rows],
+        'failures_24h': recent_failures,
+    })
 
 
 @tasker_bp.route('/api/tasker/bootstrap', methods=['POST'])
