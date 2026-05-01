@@ -178,11 +178,23 @@
     const sel = document.getElementById('home-chat-thread-select');
     if (!sel) return;
     const current = _hcConvId;
+    const fmtTs = (s) => {
+      if (!s) return '';
+      try {
+        if (/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s) && !/[Z+]/.test(s.slice(-6))) s = s.replace(' ','T')+'Z';
+        const d = new Date(s);
+        if (isNaN(d)) return s.slice(0, 10);
+        return d.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit' }) + ' ' +
+               d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+      } catch (e) { return ''; }
+    };
     sel.innerHTML = '<option value="">New conversation</option>' +
       _hcConversations.slice(0, 30).map(c => {
-        const title = _hcEsc(c.title || '(untitled)').slice(0, 50);
-        const sel = c.id === current ? ' selected' : '';
-        return `<option value="${c.id}"${sel}>#${c.id} · ${title}</option>`;
+        const title = _hcEsc(String(c.title || '(untitled)')).slice(0, 44);
+        const ts = fmtTs(c.timestamp || c.created_at || c.updated_at || '');
+        const isSel = c.id === current ? ' selected' : '';
+        const tsBit = ts ? ' · ' + ts : '';
+        return `<option value="${c.id}"${isSel}>#${c.id} · ${title}${tsBit}</option>`;
       }).join('');
   }
 
@@ -309,6 +321,7 @@
     const div = document.createElement('div');
     div.className = `hc-bubble ${type}`;
     if (hasIds) div.dataset.messageId = msgId;
+    if (msg._placeholderId) div.dataset.ph = msg._placeholderId;
     div.innerHTML =
       `<div class="hc-bubble-header">` +
         `<span class="hc-bubble-sender">${_hcEsc(agentLabel)}</span>` +
@@ -611,6 +624,73 @@
     el.textContent = `${chars} c · ${words} w · ~${est} t`;
   }
 
+  // ── Seven Ask helper — leading "?" in chat short-circuits to /api/seven.
+  function _hcAskSeven(query) {
+    const trimmed = (query || '').trim();
+    let intent = 'status';
+    if (/\b(next|todo|what.*should|do.*now|start)\b/i.test(trimmed)) intent = 'next';
+    else if (/\b(remember|recall|remind|told)\b/i.test(trimmed))     intent = 'remember';
+    else if (/\b(status|state|how.*going|vital|pulse)\b/i.test(trimmed)) intent = 'status';
+    // Detect a record id token to set focus.
+    let focus = null;
+    const tokens = trimmed.split(/\s+/);
+    for (const tok of tokens) {
+      if (/^(B|S|P|PR|T|TC|TR|D|TH)-[0-9A-F]{4,}$/i.test(tok)) {
+        focus = tok.toUpperCase();
+        break;
+      }
+    }
+    const explainQs = focus ? '?focus=' + encodeURIComponent(focus) : '';
+    const decideQs = focus
+      ? '?intent=' + encodeURIComponent(intent) + '&focus=' + encodeURIComponent(focus)
+      : '?intent=' + encodeURIComponent(intent);
+    // Thinking placeholder.
+    const placeholderId = 'seven-think-' + Date.now();
+    _hcAppendBubble({
+      sender: 'seven', message_type: 'agent', agent: 'seven',
+      content: '_thinking…_', created_at: new Date().toISOString(),
+      _placeholderId: placeholderId
+    });
+    _hcScrollBottom();
+
+    Promise.all([
+      fetch('/api/seven/explain' + explainQs).then(r => r.json()).catch(() => ({})),
+      fetch('/api/seven/decide' + decideQs).then(r => r.json()).catch(() => ({})),
+    ]).then(([explainData, decideData]) => {
+      const lines = (explainData && explainData.lines) || [];
+      const proposals = (decideData && decideData.proposals) || [];
+      const partsBody = [];
+      if (lines.length) partsBody.push(lines.join('\n\n'));
+      if (proposals.length) {
+        partsBody.push('\n**Suggestions** _(propose-only)_');
+        proposals.slice(0, 3).forEach((p) => {
+          const t = p.target || null;
+          const tgt = t ? ` · \`${t.kind}:${t.id}\`` : '';
+          const conf = (typeof p.confidence === 'number')
+            ? ` · ${(p.confidence * 100) | 0}%` : '';
+          partsBody.push(`- **[${(p.action || 'review').toUpperCase()}]** ${p.label || ''}${tgt}${conf}\n  _${p.rationale || ''}_`);
+        });
+      }
+      if (decideData && decideData.refused) {
+        partsBody.push('\n_' + (decideData.refused_reason || 'propose-only') + '_');
+      }
+      const bodyText = partsBody.join('\n') ||
+        '_Seven has nothing to add yet — try `?status`, `?next`, or include a record id like `?S-7D7677C6E2`._';
+      // Replace placeholder with real bubble.
+      const msgs = document.getElementById('home-chat-messages');
+      if (msgs) {
+        const ph = msgs.querySelector('[data-ph="' + placeholderId + '"]');
+        if (ph) ph.remove();
+      }
+      _hcAppendBubble({
+        sender: 'seven', message_type: 'agent', agent: 'seven',
+        content: bodyText, created_at: new Date().toISOString(),
+        meta: { intent: intent, focus: focus, authority: 'propose-only' }
+      });
+      _hcScrollBottom();
+    });
+  }
+
   // ── Send message ─────────────────────────────────────────────────────────
   function _hcSend() {
     if (_hcSending) return;
@@ -619,6 +699,22 @@
     if (!input) return;
     const text = input.value.trim();
     if (!text) return;
+
+    // Seven Ask short-circuit — leading "?" routes to /api/seven/explain +
+    // /decide, renders a Seven assistant bubble inline, no agent fan-out.
+    if (text.charAt(0) === '?') {
+      // User bubble first.
+      _hcAppendBubble({
+        sender: 'user', message_type: 'user',
+        content: text, created_at: new Date().toISOString()
+      });
+      _hcScrollBottom();
+      input.value = '';
+      input.style.height = 'auto';
+      _hcUpdateTokenCount(input);
+      _hcAskSeven(text.replace(/^\?+\s*/, ''));
+      return;
+    }
 
     const isManual = localStorage.getItem(HC_MANUAL_KEY) === '1';
     const enabled = [];

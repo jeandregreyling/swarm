@@ -285,6 +285,213 @@ def api_step_update_status(step_id: str):
     return jsonify({'ok': True})
 
 
+@knowledge_bp.route('/api/knowledge/steps/<step_id>', methods=['GET'])
+def api_step_detail(step_id: str):
+    """ALM detail surface (PACKET-03): full step record with linked
+    test cases and recent test runs so the UI can open it."""
+    step = _kc_projects.get_step(step_id)
+    if not step:
+        return jsonify({'ok': False, 'error': 'step not found'}), 404
+    return jsonify({'ok': True, 'step': step})
+
+
+# ── Platinum layer record endpoints ────────────────────────────────────
+# (kind, id) is the universal address for every Studio record.
+
+@knowledge_bp.route('/api/records/_kinds', methods=['GET'])
+def api_records_kinds():
+    from core.records import KINDS
+    return jsonify({'ok': True, 'kinds': [k for k, *_ in KINDS]})
+
+
+@knowledge_bp.route('/api/records/<kind>', methods=['GET'])
+def api_records_list(kind: str):
+    from core.records import RECORDS_ROOT, KINDS
+    import json as _json
+    valid = {k for k, *_ in KINDS}
+    if kind not in valid:
+        return jsonify({'ok': False, 'error': f'unknown kind: {kind}'}), 404
+    base = RECORDS_ROOT / kind
+    items = []
+    if base.exists():
+        for path in base.rglob('*.json'):
+            try:
+                d = _json.loads(path.read_text(encoding='utf-8'))
+                data = d.get('data', {})
+                items.append({
+                    'id': d.get('id'),
+                    'title': data.get('title') or data.get('name') or data.get('subject') or data.get('doc_name'),
+                    'status': data.get('status'),
+                    'project_id': data.get('project_id'),
+                    'updated_at': data.get('updated_at') or data.get('created_at'),
+                    'path': str(path.relative_to(RECORDS_ROOT.parent.parent)),
+                })
+            except Exception:
+                continue
+    items.sort(key=lambda r: (r.get('updated_at') or 0), reverse=True)
+    q = (request.args.get('q') or '').lower()
+    if q:
+        items = [i for i in items if q in (i.get('title') or '').lower() or q in (i.get('id') or '').lower()]
+    return jsonify({'ok': True, 'kind': kind, 'count': len(items), 'items': items[:500]})
+
+
+@knowledge_bp.route('/api/records/<kind>/<rid>', methods=['GET'])
+def api_record_detail(kind: str, rid: str):
+    from core.records import load_record, record_path, record_md_path, RECORDS_ROOT
+    from core.records.links import neighbours
+    from core.records.promote import promotion_chain
+    payload = load_record(kind, rid)
+    if not payload:
+        return jsonify({'ok': False, 'error': 'record not found'}), 404
+    # Find the on-disk paths so the UI can show 'Open file' links.
+    json_path = None
+    md = None
+    base = RECORDS_ROOT / kind
+    if base.exists():
+        for p in base.rglob(f'{rid}.json'):
+            json_path = str(p.relative_to(RECORDS_ROOT.parent.parent))
+            md_p = p.with_suffix('.md')
+            if md_p.exists():
+                try:
+                    md = md_p.read_text(encoding='utf-8')
+                except Exception:
+                    md = None
+            break
+    return jsonify({
+        'ok': True,
+        'record': payload,
+        'json_path': json_path,
+        'markdown': md,
+        'links': neighbours(kind, rid),
+        'chain': [{'kind': k, 'id': i} for k, i in promotion_chain(kind, rid)],
+    })
+
+
+@knowledge_bp.route('/api/records/<kind>/<rid>/links', methods=['POST'])
+def api_record_link(kind: str, rid: str):
+    from core.records.links import link as _link
+    body = request.get_json(silent=True) or {}
+    rel = (body.get('rel') or '').strip()
+    dst_kind = (body.get('dst_kind') or '').strip()
+    dst_id = (body.get('dst_id') or '').strip()
+    if not (rel and dst_kind and dst_id):
+        return jsonify({'ok': False, 'error': 'rel, dst_kind, dst_id required'}), 400
+    _link((kind, rid), rel, (dst_kind, dst_id), actor=str(body.get('actor') or 'ui'))
+    return jsonify({'ok': True})
+
+
+@knowledge_bp.route('/api/records/<kind>/<rid>/promote', methods=['POST'])
+def api_record_promote(kind: str, rid: str):
+    from core.records.promote import promote as _promote
+    body = request.get_json(silent=True) or {}
+    dst_kind = (body.get('dst_kind') or '').strip()
+    if not dst_kind:
+        return jsonify({'ok': False, 'error': 'dst_kind required'}), 400
+    try:
+        new_kind, new_id = _promote(kind, rid, dst_kind,
+                                    overrides=body.get('overrides'),
+                                    actor=str(body.get('actor') or 'ui'))
+    except KeyError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    return jsonify({'ok': True, 'kind': new_kind, 'id': new_id})
+
+
+# ── Platinum: content-addressed attachments ────────────────────────────
+
+@knowledge_bp.route('/api/records/attachments', methods=['POST'])
+def api_attachments_upload():
+    """Accept either multipart form-data ('file') or raw bytes; return sha256."""
+    from core.records import attachments as _attach
+    blob = None
+    ext = None
+    f = request.files.get('file') if request.files else None
+    if f is not None:
+        blob = f.read()
+        fname = f.filename or ''
+        if '.' in fname:
+            ext = fname.rsplit('.', 1)[-1]
+    else:
+        blob = request.get_data() or b''
+        ext = (request.args.get('ext') or '').lstrip('.')
+    if not blob:
+        return jsonify({'ok': False, 'error': 'empty payload'}), 400
+    digest = _attach.put(blob, ext=ext or 'bin')
+    p = _attach.find(digest)
+    return jsonify({
+        'ok': True,
+        'sha256': digest,
+        'bytes': len(blob),
+        'path': str(p.relative_to(p.parents[2])) if p else None,
+    })
+
+
+@knowledge_bp.route('/api/records/attachments/<sha256>', methods=['GET'])
+def api_attachments_get(sha256: str):
+    """Stream the binary back. 404 if unknown."""
+    from core.records import attachments as _attach
+    from flask import send_file
+    import re as _re
+    if not _re.fullmatch(r'[0-9a-fA-F]{64}', sha256):
+        return jsonify({'ok': False, 'error': 'bad sha256'}), 400
+    p = _attach.find(sha256.lower())
+    if not p or not p.exists():
+        return jsonify({'ok': False, 'error': 'attachment not found'}), 404
+    return send_file(str(p),
+                     as_attachment=False,
+                     download_name=p.name,
+                     mimetype='application/octet-stream')
+
+
+@knowledge_bp.route('/api/records/_browse', methods=['GET'])
+def api_records_browse():
+    """Browser-style directory listing under runtime/records/ ONLY.
+
+    Used by the Files tile (Platinum slice 4). Hardened against path
+    traversal: any resolved path escaping RECORDS_ROOT is rejected.
+    """
+    from core.records import RECORDS_ROOT
+    from pathlib import Path as _P
+    rel = (request.args.get('path') or '').lstrip('/').strip()
+    base = RECORDS_ROOT
+    try:
+        target = (base / rel).resolve()
+        base_resolved = base.resolve()
+        if not str(target).startswith(str(base_resolved)):
+            return jsonify({'ok': False, 'error': 'path escapes runtime/records/'}), 400
+    except Exception as e:
+        return jsonify({'ok': False, 'error': f'bad path: {e}'}), 400
+    if not target.exists():
+        return jsonify({'ok': False, 'error': 'path not found'}), 404
+    if not target.is_dir():
+        return jsonify({'ok': False, 'error': 'not a directory'}), 400
+    entries = []
+    try:
+        for child in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+            stat = child.stat()
+            entries.append({
+                'name': child.name,
+                'is_dir': child.is_dir(),
+                'size': stat.st_size if child.is_file() else None,
+                'mtime': stat.st_mtime,
+                'rel': str(child.relative_to(base_resolved)),
+            })
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    parent = None
+    if rel:
+        parent_path = _P(rel).parent
+        parent = '' if str(parent_path) == '.' else str(parent_path)
+    return jsonify({
+        'ok': True,
+        'path': rel,
+        'parent': parent,
+        'count': len(entries),
+        'entries': entries,
+    })
+
+
 @knowledge_bp.route('/api/knowledge/projects/<project_id>/test-cases', methods=['POST'])
 def api_project_add_case(project_id: str):
     body = request.get_json(silent=True) or {}
@@ -400,6 +607,16 @@ def api_case_update_status(case_id: str):
     if not ok:
         return jsonify({'ok': False, 'error': 'case not found'}), 404
     return jsonify({'ok': True})
+
+
+@knowledge_bp.route('/api/knowledge/cases/<case_id>', methods=['GET'])
+def api_case_detail(case_id: str):
+    """ALM detail surface (PACKET-03): full test-case record with parent
+    step and recent test runs so the UI can open it."""
+    case = _kc_projects.get_test_case(case_id)
+    if not case:
+        return jsonify({'ok': False, 'error': 'case not found'}), 404
+    return jsonify({'ok': True, 'case': case})
 
 
 # ── Phase 3 — Project / Step / Case edit + delete + per-step test scoping ─

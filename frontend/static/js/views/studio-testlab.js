@@ -438,6 +438,13 @@
         </div>
       </div>`;
     modal.classList.add('open');
+    // Seven sees — propose-only insight panel.
+    try {
+      if (window.SevenPanel) {
+        const body = modal.querySelector('.modal-content > div[style*="overflow-y"]');
+        if (body) window.SevenPanel.mount(body, { kind: 'run', id: run.run_id });
+      }
+    } catch (e) { /* noop */ }
   }
 
   window.testLabAddNote = function (runId) {

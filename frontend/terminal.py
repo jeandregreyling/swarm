@@ -57,7 +57,6 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.killswitch',     'killswitch_bp'),
     ('blueprints.legacy',         'legacy_bp'),
     ('blueprints.memory',         'memory_bp'),
-    ('blueprints.media_bp',       'media_bp'),
     ('blueprints.nine',           'nine_bp'),
     ('blueprints.ollama',         'ollama_bp'),
     ('blueprints.email_bp',       'email_bp'),
@@ -99,6 +98,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.enrollment',     'enrollment_bp'),
     ('blueprints.gmail_labels',   'gmail_labels_bp'),
     ('blueprints.feeds_bp',       'feeds_bp'),
+    ('blueprints.seven_bp',       'seven_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
@@ -186,6 +186,15 @@ def create_app():
     except Exception as _a20_err:
         print(f'[Terminal] Agent 20 scheduler start warning: {_a20_err}')
 
+    # Seven — perception + memory + reasoning + continuous learner (PACKET-09 Phase 2)
+    try:
+        from core.seven import boot as _seven_boot
+        _seven_info = _seven_boot()
+        print(f'[Terminal] Seven brain online: {_seven_info}')
+    except Exception as _seven_err:
+        print(f'[Terminal] Seven brain start warning: {_seven_err}')
+        traceback.print_exc()
+
     # ── Routes ────────────────────────────────────────────────────────────────
 
     @app.route("/", methods=["GET"])
@@ -265,20 +274,22 @@ def create_app():
         except Exception as _reg_err:
             print(f"[Terminal] Blueprint register failed — {_attr}: {_reg_err}")
 
-    # Dedicated Media Center UI route (must be after blueprints to avoid shadowing)
+    # Convenience redirects — deep-link tile views into the master shell.
+    # /media-center previously rendered a standalone template that drifted
+    # to a raw test placeholder; route it through /ui so the real window
+    # template (terminal_base.html#view-media-center) is always used.
     @app.route("/media-center", methods=["GET"])
-    def media_center_ui():
-        from flask import render_template
-        return render_template("views/media-center.html")
-
-    # Convenience redirects — deep-link views directly (except media-center)
     @app.route("/library", methods=["GET"])
     @app.route("/studio", methods=["GET"])
     @app.route("/chat", methods=["GET"])
     @app.route("/monitor", methods=["GET"])
     def ui_redirect():
-        from flask import redirect
-        return redirect("/ui")
+        from flask import redirect, request
+        # preserve any query string and pass the tile id as a hash so
+        # window-manager can auto-open it on load.
+        target = request.path.lstrip("/") or "ui"
+        qs = ("?" + request.query_string.decode("utf-8")) if request.query_string else ""
+        return redirect(f"/ui{qs}#{target}")
 
     # R.5: Register /api/v1/* versioned aliases
     try:
