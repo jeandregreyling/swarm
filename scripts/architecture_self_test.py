@@ -23,6 +23,12 @@ from typing import Callable, List, Tuple
 ROOT = Path(__file__).resolve().parent.parent
 DB = ROOT / "swarm_memory.db"
 
+# Ensure the swarm root is importable so `from core...` works regardless of
+# where the script is invoked from. This used to silently mask three checks
+# (attachments, links, seven) as failures even when those modules were fine.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 
 # ── individual checks ───────────────────────────────────────────────────
 
@@ -484,6 +490,30 @@ def check_vortex_liveness() -> Tuple[bool, str]:
     return True, f"latest {age_s/3600:.1f}h ago · {last_name}"
 
 
+def check_curiosity_organ() -> Tuple[bool, str]:
+    """PACKET-10B: curiosity organ schema is queryable and ask/dismiss work."""
+    db = ROOT / "swarm_memory.db"
+    if not db.exists():
+        return False, f"no swarm DB at {db}"
+    try:
+        sys.path.insert(0, str(ROOT))
+        from core import curiosity  # noqa: WPS433 - intentional late import
+    except Exception as e:
+        return False, f"core.curiosity import failed: {type(e).__name__}: {e}"
+    try:
+        s = curiosity.stats()
+    except Exception as e:
+        return False, f"curiosity.stats() failed: {type(e).__name__}: {e}"
+    # Ensure required keys are present (table exists + counts are integers).
+    for k in ("open", "answered", "dismissed", "expired"):
+        if k not in s:
+            return False, f"curiosity.stats missing key: {k}"
+    return True, (
+        f"open={s['open']} answered={s['answered']} "
+        f"dismissed={s['dismissed']} expired={s['expired']}"
+    )
+
+
 CHECKS: List[Tuple[str, Callable[[], Tuple[bool, str]]]] = [
     ("PACKET-01 loose doc files redirected",        check_no_loose_doc_md),
     ("PACKET-01 doc registry seeded",               check_project_docs_registered),
@@ -503,6 +533,7 @@ CHECKS: List[Tuple[str, Callable[[], Tuple[bool, str]]]] = [
     ("Seven: brain online (memory + reasoning)",     check_seven_brain_online),
     ("PACKET-10A backup: last successful within 25h", check_backup_freshness),
     ("PACKET-10A Vortex: latest checkpoint within 25h", check_vortex_liveness),
+    ("PACKET-10B Curiosity: organ schema + stats queryable", check_curiosity_organ),
 ]
 
 

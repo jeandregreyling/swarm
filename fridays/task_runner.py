@@ -1002,6 +1002,35 @@ def _task_landscape_refresh(**kwargs):
         return f'Landscape refresh partial: {e}'
 
 
+# ── PACKET-10B: Curiosity organ ──────────────────────────────────────────────
+
+@register('curiosity_digest', 'PACKET-10B: prune old curiosity questions and summarise open ones', 'memory')
+def _task_curiosity_digest(**kwargs):
+    """Daily curiosity housekeeping.
+
+    1. Prune `open` questions older than 30 days → `expired`.
+    2. Return a single-line summary of the current open backlog.
+
+    No external delivery yet — the answer surface lives in chat / Studio.
+    Keeps the organ self-maintaining so the queue can't grow unbounded.
+    """
+    from core import curiosity
+    pruned = curiosity.prune(max_age_days=30)
+    s = curiosity.stats()
+    top = s.get('top_open') or []
+    head = ''
+    if top:
+        h0 = top[0]
+        head = f" · top: q#{h0['id']} ({h0['asked_by']}) sal={h0['salience']:.2f}"
+    return (
+        f"curiosity_digest ok · open={s.get('open', 0)} "
+        f"answered={s.get('answered', 0)} "
+        f"dismissed={s.get('dismissed', 0)} "
+        f"expired={s.get('expired', 0)} "
+        f"pruned={pruned}{head}"
+    )
+
+
 # ── PACKET-10A: Backup & Trace Hardening ─────────────────────────────────────
 
 @register('vortex_heartbeat', 'PACKET-10A Vortex liveness: emit a workflow checkpoint so time_checkpoints stays fresh', 'maintenance')
