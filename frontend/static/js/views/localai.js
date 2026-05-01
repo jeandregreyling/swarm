@@ -119,10 +119,19 @@ async function localaiRuntimeHealthRefresh(badgeId, warningsId) {
   }
   if (warnEl) {
     const ws = (snap && Array.isArray(snap.warnings)) ? snap.warnings : [];
-    if (ws.length) {
+    const stuck = (snap && Array.isArray(snap.models) ? snap.models : [])
+      .filter(m => m && m.state === 'stopping')
+      .map(m => m.name)
+      .filter(Boolean);
+    if (ws.length || stuck.length) {
       warnEl.style.display = '';
-      warnEl.innerHTML = ws.map(w => `⚠ ${_escapeHtml(w)}`).join('<br>')
-        + (status === 'down' ? '<br>Start Ollama with: <code>ollama serve</code>' : '');
+      const lines = ws.map(w => `⚠ ${_escapeHtml(w)}`);
+      if (status === 'down') lines.push('Start Ollama with: <code>ollama serve</code>');
+      stuck.forEach(name => {
+        const safe = _escapeHtml(name);
+        lines.push(`<button type="button" class="knowledge-btn" style="margin-top:4px;font-size:11px;padding:2px 8px;" onclick="localaiRuntimeForceUnload('${safe.replace(/'/g, "\\'")}', '${badgeId || ''}', '${warningsId || ''}')">Force unload ${safe}</button>`);
+      });
+      warnEl.innerHTML = lines.join('<br>');
     } else {
       warnEl.style.display = 'none';
       warnEl.innerHTML = '';
@@ -131,6 +140,33 @@ async function localaiRuntimeHealthRefresh(badgeId, warningsId) {
   return snap;
 }
 window.localaiRuntimeHealthRefresh = localaiRuntimeHealthRefresh;
+
+async function localaiRuntimeForceUnload(model, badgeId, warningsId) {
+  if (!model) return;
+  const warnEl = warningsId ? document.getElementById(warningsId) : null;
+  if (warnEl) {
+    warnEl.style.display = '';
+    warnEl.innerHTML = `⏳ Forcing unload of ${model}…`;
+  }
+  let snap = null;
+  try {
+    const r = await fetch('/api/ollama/runtime/force-unload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model }),
+    });
+    snap = await r.json();
+  } catch (e) {
+    snap = { ok: false, message: 'request failed: ' + (e && e.message ? e.message : e) };
+  }
+  if (warnEl) {
+    const sym = snap && snap.ok ? '✓' : '⚠';
+    warnEl.innerHTML = `${sym} ${(snap && snap.message) ? snap.message : 'no response'}`;
+  }
+  setTimeout(() => localaiRuntimeHealthRefresh(badgeId, warningsId), 1500);
+  return snap;
+}
+window.localaiRuntimeForceUnload = localaiRuntimeForceUnload;
 
 async function localaiRefreshModelCatalog(silent) {
   try {
