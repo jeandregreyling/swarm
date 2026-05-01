@@ -159,6 +159,15 @@ def test_chat_smoke_probe_handles_orchestrator_failure(monkeypatch, fresh_db):
         raise RuntimeError('llm offline')
     fake.ask_agent = _boom
     monkeypatch.setitem(_sys.modules, 'fridays.orchestrator', fake)
+    # If the parent package has been imported earlier in this test session,
+    # `from fridays import orchestrator` will resolve via getattr(fridays,
+    # 'orchestrator') and bypass our sys.modules override. Patch the
+    # attribute directly so the override survives test ordering.
+    try:
+        import fridays as _frpkg
+        monkeypatch.setattr(_frpkg, 'orchestrator', fake, raising=False)
+    except ImportError:
+        pass
 
     from fridays.task_runner import TASK_REGISTRY
     out = TASK_REGISTRY['chat_smoke_probe']['fn']()

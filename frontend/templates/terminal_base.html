@@ -797,6 +797,26 @@
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Tasker</span></div>
           <div class="card-desc">Schedule, calendar &amp; watched topics</div>
         </div>
+        <!-- ═══ Wishlist tiles (S-45064ED6C5) — capture-only placeholders ═══
+             These open stub views that read /api/wishlist/pillars/<slug>.
+             Marked with class home-card-wishlist so the UI/tests can
+             distinguish them from shipped surfaces. -->
+        <div class="home-card home-card-wishlist" data-win-id="wishlist-cyber" data-win-title="Cyber Security" data-win-template="view-wishlist-cyber" data-wishlist-pillar="cyber-security" data-wishlist-status="capture-only">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2l5 2v4c0 3-2 5-5 6-3-1-5-3-5-6V4l5-2zM6 8l1.5 1.5L11 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Cyber Security</span><span class="wishlist-badge">Wishlist</span></div>
+          <div class="card-desc">Diamond-tier governance · capture only</div>
+        </div>
+        <div class="home-card home-card-wishlist" data-win-id="wishlist-financial" data-win-title="Financial Analytics" data-win-template="view-wishlist-financial" data-wishlist-pillar="financial" data-wishlist-status="capture-only">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 12.5h11M4 11V7M7 11V4M10 11V8M13 11V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Financial</span><span class="wishlist-badge">Wishlist</span></div>
+          <div class="card-desc">Investment-banking analytics · capture only</div>
+        </div>
+        <div class="home-card home-card-wishlist" data-win-id="wishlist-trading" data-win-title="Online Trading" data-win-template="view-wishlist-trading" data-wishlist-pillar="trading" data-wishlist-status="capture-only">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 11l3.5-4 3 2 4.5-5M11 4h2.5v2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Trading</span><span class="wishlist-badge">Wishlist</span></div>
+          <div class="card-desc">Online trading / crypto · capture only</div>
+        </div>
+        <div class="home-card home-card-wishlist" data-win-id="wishlist-business" data-win-title="Business Centre" data-win-template="view-wishlist-business" data-wishlist-pillar="business" data-wishlist-status="capture-only">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 6h11v7h-11zM5 6V4h6v2M5 9h6M5 11h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Business</span><span class="wishlist-badge">Wishlist</span></div>
+          <div class="card-desc">Run-the-company toolkit · capture only</div>
+        </div>
       </div>
     </div>
 
@@ -2689,6 +2709,84 @@
 </template>
 
 <!-- ════════════════════════════════════════════════════════════════════════
+     WISHLIST PILLAR VIEWS (S-45064ED6C5) — capture-only placeholders.
+     These intentionally don't ship features. They render the pillar's
+     description + the underlying project_steps via /api/wishlist/pillars.
+     ════════════════════════════════════════════════════════════════════════ -->
+
+<template id="view-wishlist-cyber">
+  <div class="content-view wishlist-pillar-view" data-pillar-slug="cyber-security" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div class="wishlist-pillar-header" style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <strong style="font-size:14px;">Cyber Security</strong>
+        <span class="wishlist-badge" style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--accent);color:#000;font-weight:700;">WISHLIST</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Diamond-tier governance pillar</span>
+      </div>
+      <div class="wishlist-pillar-subtitle" style="font-size:11px;color:var(--text-dim);margin-top:4px;">Capture-only — not in active build queue</div>
+    </div>
+    <div class="wishlist-pillar-body" style="flex:1;overflow-y:auto;padding:14px 16px;">
+      <div class="wishlist-pillar-description" style="font-size:12px;line-height:1.5;color:var(--text);margin-bottom:14px;">Loading description…</div>
+      <h4 style="font-size:11px;color:var(--text-dim);margin:6px 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Underlying steps</h4>
+      <ul class="wishlist-pillar-steps" style="list-style:none;padding:0;margin:0;font-size:12px;"></ul>
+    </div>
+  </div>
+</template>
+
+<template id="view-wishlist-financial">
+  <div class="content-view wishlist-pillar-view" data-pillar-slug="financial" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div class="wishlist-pillar-header" style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <strong style="font-size:14px;">Financial Analytics</strong>
+        <span class="wishlist-badge" style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--accent);color:#000;font-weight:700;">WISHLIST</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Investment-banking oriented</span>
+      </div>
+      <div class="wishlist-pillar-subtitle" style="font-size:11px;color:var(--text-dim);margin-top:4px;">Capture-only — not consumer finance</div>
+    </div>
+    <div class="wishlist-pillar-body" style="flex:1;overflow-y:auto;padding:14px 16px;">
+      <div class="wishlist-pillar-description" style="font-size:12px;line-height:1.5;color:var(--text);margin-bottom:14px;">Loading description…</div>
+      <h4 style="font-size:11px;color:var(--text-dim);margin:6px 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Underlying steps</h4>
+      <ul class="wishlist-pillar-steps" style="list-style:none;padding:0;margin:0;font-size:12px;"></ul>
+    </div>
+  </div>
+</template>
+
+<template id="view-wishlist-trading">
+  <div class="content-view wishlist-pillar-view" data-pillar-slug="trading" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div class="wishlist-pillar-header" style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <strong style="font-size:14px;">Online Trading</strong>
+        <span class="wishlist-badge" style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--accent);color:#000;font-weight:700;">WISHLIST</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Crypto / market data placeholder</span>
+      </div>
+      <div class="wishlist-pillar-subtitle" style="font-size:11px;color:var(--text-dim);margin-top:4px;">Capture-only — framing: 'online trading'</div>
+    </div>
+    <div class="wishlist-pillar-body" style="flex:1;overflow-y:auto;padding:14px 16px;">
+      <div class="wishlist-pillar-description" style="font-size:12px;line-height:1.5;color:var(--text);margin-bottom:14px;">Loading description…</div>
+      <h4 style="font-size:11px;color:var(--text-dim);margin:6px 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Underlying steps</h4>
+      <ul class="wishlist-pillar-steps" style="list-style:none;padding:0;margin:0;font-size:12px;"></ul>
+    </div>
+  </div>
+</template>
+
+<template id="view-wishlist-business">
+  <div class="content-view wishlist-pillar-view" data-pillar-slug="business" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div class="wishlist-pillar-header" style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <strong style="font-size:14px;">Business Centre</strong>
+        <span class="wishlist-badge" style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--accent);color:#000;font-weight:700;">WISHLIST</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Run-the-company toolkit</span>
+      </div>
+      <div class="wishlist-pillar-subtitle" style="font-size:11px;color:var(--text-dim);margin-top:4px;">Capture-only — Accounting + Payroll is the spine</div>
+    </div>
+    <div class="wishlist-pillar-body" style="flex:1;overflow-y:auto;padding:14px 16px;">
+      <div class="wishlist-pillar-description" style="font-size:12px;line-height:1.5;color:var(--text);margin-bottom:14px;">Loading description…</div>
+      <h4 style="font-size:11px;color:var(--text-dim);margin:6px 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Underlying steps</h4>
+      <ul class="wishlist-pillar-steps" style="list-style:none;padding:0;margin:0;font-size:12px;"></ul>
+    </div>
+  </div>
+</template>
+
+<!-- ════════════════════════════════════════════════════════════════════════
      JAVASCRIPT
      ════════════════════════════════════════════════════════════════════════ -->
 
@@ -2752,6 +2850,7 @@
 <script src="/static/js/views/onboarding.js?v=2"></script>
 <script src="/static/js/views/diamond.js?v=6"></script>
 <script src="/static/js/views/health-digest.js"></script>
+<script src="/static/js/views/wishlist.js?v=1"></script>
 
 <script src="/static/js/views/home-chat.js?v=35"></script>
 <script src="/static/js/friday-auth.js?v=28"></script>
