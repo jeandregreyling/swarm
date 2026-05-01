@@ -1122,14 +1122,17 @@ def run_task(name, args=''):
         elapsed = time.time() - start
         output = f'{result} ({elapsed:.1f}s)'
         logger.info(f'[TaskRunner] {name}: {output}')
-        _log_run(name, 'ok', output)
+        _log_run(name, 'ok', output, duration_ms=int(elapsed * 1000),
+                 details={'category': entry.get('category', ''), 'args': args})
         _record_scorecard_outcome(name, args, True, output, entry.get('category', ''))
         return True, output
     except Exception as e:
         elapsed = time.time() - start
         output = f'Error: {e} ({elapsed:.1f}s)'
         logger.error(f'[TaskRunner] {name}: {output}')
-        _log_run(name, 'error', output)
+        _log_run(name, 'error', output, duration_ms=int(elapsed * 1000),
+                 details={'category': entry.get('category', ''), 'args': args,
+                          'exception': type(e).__name__})
         _record_scorecard_outcome(name, args, False, output, entry.get('category', ''))
         return False, output
 
@@ -1142,17 +1145,37 @@ def list_registered():
     ]
 
 
-def _log_run(task_name, status, output):
-    """Write task execution to task_run_log table."""
+def _log_run(task_name, status, output, duration_ms=0, details=None):
+    """Write task execution to task_run_log table.
+    duration_ms (S-5E508B5488) and details_json (S-15087BF900) are persisted
+    when the columns exist; older DBs gracefully ignore them."""
     try:
         from database import get_connection
+        import json as _json
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        details_str = ''
+        if details:
+            try:
+                details_str = _json.dumps(details, default=str)[:4000]
+            except Exception:
+                details_str = ''
         with get_connection() as conn:
-            conn.execute(
-                '''INSERT INTO task_run_log (task_name, status, output, run_at)
-                   VALUES (?, ?, ?, ?)''',
-                (task_name, status, output[:2000], now)
-            )
+            cols = {row[1] for row in conn.execute(
+                "PRAGMA table_info(task_run_log)").fetchall()}
+            if 'duration_ms' in cols and 'details_json' in cols:
+                conn.execute(
+                    'INSERT INTO task_run_log '
+                    '(task_name, status, output, run_at, duration_ms, details_json) '
+                    'VALUES (?, ?, ?, ?, ?, ?)',
+                    (task_name, status, output[:2000], now,
+                     int(duration_ms or 0), details_str)
+                )
+            else:
+                conn.execute(
+                    'INSERT INTO task_run_log (task_name, status, output, run_at) '
+                    'VALUES (?, ?, ?, ?)',
+                    (task_name, status, output[:2000], now)
+                )
     except Exception as e:
         logger.debug(f'[TaskRunner] log write failed: {e}')
 
