@@ -281,6 +281,115 @@ def _llm_chat(message, state, memories, history):
         return None, 0
 
 
+def _slash_command(text, emit=None):
+    """Handle /commands directly. Returns response string or None if not a slash command we know."""
+    parts = text.split(maxsplit=2)
+    cmd = parts[0].lower().lstrip('/')
+    arg1 = parts[1] if len(parts) > 1 else ''
+    rest = parts[2] if len(parts) > 2 else ''
+
+    if cmd in ('help', 'commands', '?'):
+        return (
+            "Slash commands:\n"
+            "  /curiosity                       — list open questions Seven is asking\n"
+            "  /curiosity stats                 — counts (open / answered / dismissed / expired)\n"
+            "  /curiosity answer <id> <text>    — answer a question (promotes to belief)\n"
+            "  /curiosity dismiss <id> [reason] — dismiss a question\n"
+            "  /curiosity ask <question>        — queue a manual question (asked_by=user)\n"
+            "  /identity                        — show Seven's bedrock identity beliefs\n"
+            "  /help                            — this list\n\n"
+            "Phone-friendly inbox: /curiosity (HTML) at the frontend port."
+        )
+
+    if cmd == 'curiosity':
+        try:
+            from core import curiosity
+        except Exception as exc:
+            return f"curiosity organ unavailable: {exc}"
+
+        sub = arg1.lower()
+
+        if not sub or sub in ('list', 'open'):
+            rows = curiosity.list_open(limit=20)
+            if not rows:
+                return "Curiosity inbox: empty. Seven knows what he needs to know."
+            lines = [f"Curiosity inbox · {len(rows)} open question(s):", ""]
+            for q in rows:
+                sal = q.get('salience') or 0
+                tag = '!!!' if sal >= 0.95 else '!! ' if sal >= 0.85 else '!  ' if sal >= 0.7 else '   '
+                lines.append(f"  #{q['id']}  {tag} sal={sal:.2f}  by={q['asked_by']}")
+                lines.append(f"     Q: {q['question']}")
+                if q.get('options'):
+                    for o in q['options']:
+                        lines.append(f"        • {o}")
+                lines.append("")
+            lines.append("Reply with: /curiosity answer <id> <your text>")
+            return '\n'.join(lines)
+
+        if sub == 'stats':
+            s = curiosity.stats()
+            return (
+                f"Curiosity stats:\n"
+                f"  open:      {s.get('open', 0)}\n"
+                f"  answered:  {s.get('answered', 0)}\n"
+                f"  dismissed: {s.get('dismissed', 0)}\n"
+                f"  expired:   {s.get('expired', 0)}"
+            )
+
+        if sub == 'answer':
+            ap = rest.split(maxsplit=1)
+            if len(ap) < 2:
+                return "usage: /curiosity answer <id> <answer text>"
+            try:
+                qid = int(ap[0])
+            except ValueError:
+                return f"bad id: {ap[0]!r}"
+            ok = curiosity.answer(qid, ap[1].strip(), answered_by='user')
+            return f"answered #{qid} ✓ (promoted to belief)" if ok else f"could not answer #{qid} (already answered or unknown)"
+
+        if sub == 'dismiss':
+            dp = rest.split(maxsplit=1) if rest else []
+            try:
+                qid = int(arg1) if arg1.isdigit() else int(dp[0])
+            except (ValueError, IndexError):
+                return "usage: /curiosity dismiss <id> [reason]"
+            reason = (dp[1] if len(dp) > 1 else None) or rest or None
+            ok = curiosity.dismiss(qid, reason=reason)
+            return f"dismissed #{qid}" if ok else f"could not dismiss #{qid}"
+
+        if sub == 'ask':
+            q = rest.strip() or arg1
+            if not q or q == sub:
+                return "usage: /curiosity ask <question>"
+            qid = curiosity.ask('user', q, salience=0.7, context_kind='manual')
+            return f"queued curiosity #{qid}" if qid else "rejected"
+
+        return f"unknown /curiosity subcommand: {sub} (try /help)"
+
+    if cmd == 'identity':
+        try:
+            import sqlite3
+            from pathlib import Path
+            db = Path(__file__).resolve().parent.parent.parent / 'swarm_memory.db'
+            con = sqlite3.connect(str(db))
+            con.row_factory = sqlite3.Row
+            rows = con.execute(
+                "SELECT predicate, object, confidence FROM seven_beliefs "
+                "WHERE subject='seven' ORDER BY confidence DESC, predicate"
+            ).fetchall()
+            con.close()
+            if not rows:
+                return "no identity beliefs seeded yet · run scripts/seed_seven_identity.py"
+            lines = [f"Seven · identity bedrock ({len(rows)} beliefs):", ""]
+            for r in rows:
+                lines.append(f"  · {r['predicate']:>30} = {r['object']}  (conf={r['confidence']:.2f})")
+            return '\n'.join(lines)
+        except Exception as exc:
+            return f"identity read failed: {exc}"
+
+    return None  # not a slash command we handle — fall through
+
+
 def chat(message, conversation_history=None, stage_cb=None):
     def _emit(t):
         if callable(stage_cb):
@@ -288,6 +397,13 @@ def chat(message, conversation_history=None, stage_cb=None):
                 stage_cb(t, None)
             except Exception:
                 pass
+
+    # ── Slash commands (fast deterministic, no LLM) ──────────────────────
+    msg_stripped = (message or '').strip()
+    if msg_stripped.startswith('/'):
+        handled = _slash_command(msg_stripped, _emit)
+        if handled is not None:
+            return handled, 0
 
     _emit('reading swarm state')
     state = _read_state()
