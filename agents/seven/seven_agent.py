@@ -271,6 +271,13 @@ def _llm_chat(message, state, memories, history):
         return text.strip(), tokens
     except Exception as exc:
         logger.warning(f"[Seven] ollama chat failed: {exc}")
+        # PACKET-10B Curiosity: rather than fail silently, ask a question.
+        # Dedup is built into curiosity.ask() so repeated outages don't spam.
+        try:
+            from core import curiosity
+            curiosity.from_llm_failure(AGENT_NAME, message, exc, salience=0.4)
+        except Exception:
+            pass
         return None, 0
 
 
