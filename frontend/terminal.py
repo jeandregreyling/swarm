@@ -91,6 +91,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.spine_bp',       'spine_bp'),
     ('blueprints.knowledge_bp',   'knowledge_bp'),
     ('blueprints.coding_bible',   'coding_bible_bp'),
+    ('blueprints.curiosity',      'curiosity_bp'),
     ('blueprints.voice',          'voice_bp'),
     ('blueprints.fan',            'fan_bp'),
     ('blueprints.health',         'health_bp'),    ('blueprints.health_bp',       'health_digest_bp'),    ('blueprints.council_bp',     'council_bp'),
