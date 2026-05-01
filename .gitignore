@@ -75,3 +75,19 @@ runtime/attachments/
 
 # Tauri desktop build artifacts (huge; rebuildable)
 desktop/src-tauri/target/
+
+# 2026-05-02 (S-2838647C35) — runtime/auto-generated artifacts that
+# regenerate on every boot/test run and don't belong in git history.
+# Vortex was sweeping these into commits.
+fridays/thinking_tree_log.json
+runtime/seven/heartbeat.json
+runtime/seven/ledger.offset
+runtime/backups/log.jsonl
+sandpits/shared/CURRENT_FOCUS.md
+sandpits/shared/STALE_PROPOSALS.md
+sandpits/shared/media_center_state.json
+sandpits/studio/DISPATCHED_WORK.md
+swarm_docs/SYSTEM_INDEX.md
+swarm_docs/SYSTEM_LANDSCAPE.json
+artifacts/media_center/
+
