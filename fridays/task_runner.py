@@ -1031,6 +1031,19 @@ def _task_curiosity_digest(**kwargs):
     )
 
 
+@register('seven_daily_brief', "Seven's daily prose narrative — beliefs, callouts, curiosity, hygiene", 'memory')
+def _task_seven_daily_brief(**kwargs):
+    """Compose a real prose narrative of Seven's day.
+
+    Pulls from seven_episodes, seven_beliefs, curiosity_questions,
+    seven_learnings, seven_callouts and the bullshit detector.
+    Writes audit/seven_daily_<date>.md and returns a one-line summary.
+    """
+    from agents.seven import daily_brief
+    out = daily_brief.compose_daily()
+    return f"seven_daily_brief ok · {out['date']} · {out['summary']} · path={out['path']}"
+
+
 # ── PACKET-10A: Backup & Trace Hardening ─────────────────────────────────────
 
 @register('vortex_heartbeat', 'PACKET-10A Vortex liveness: emit a workflow checkpoint so time_checkpoints stays fresh', 'maintenance')

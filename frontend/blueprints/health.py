@@ -36,6 +36,34 @@ def _learnings_summary():
         return {'ok': False, 'error': str(exc)}
 
 
+def _witness_summary():
+    """Seven the Witness: callouts ledger snapshot.
+
+    Returns enabled flag, total callouts, breakdown by target, last seen,
+    and a count of `callout`-severity hits in the last hour (used to nudge
+    the composite stamp toward AMBER if Seven is being noisy).
+    """
+    try:
+        from core import witness
+        s = witness.stats()
+        rows_last_hour = witness.list_callouts(limit=200,
+                                               since=time.time() - 3600)
+        critical = sum(1 for r in rows_last_hour if r['severity'] == 'callout')
+        return {
+            'ok': True,
+            'enabled': witness.is_enabled(),
+            'total': s.get('total', 0),
+            'by_target': s.get('by_target', {}),
+            'by_rule': s.get('by_rule', {}),
+            'last_ts': s.get('last_ts'),
+            'callouts_last_hour': len(rows_last_hour),
+            'critical_last_hour': critical,
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {'ok': False, 'error': str(exc), 'enabled': False,
+                'total': 0, 'critical_last_hour': 0}
+
+
 def _pillar_summaries():
     out = {}
     for slug, dotted in (
@@ -52,13 +80,17 @@ def _pillar_summaries():
     return out
 
 
-def _composite_stamp(detector_stamp: str, pillars: dict, blueprint_failures: int) -> str:
+def _composite_stamp(detector_stamp: str, pillars: dict, blueprint_failures: int,
+                     witness_block: dict | None = None) -> str:
     pillar_ok = all(p.get('ok', True) for p in pillars.values())
     if not pillar_ok or blueprint_failures > 0 or detector_stamp == 'RED':
         return 'RED'
-    if detector_stamp == 'AMBER':
+    base = 'AMBER' if detector_stamp == 'AMBER' else (
+        'GREEN' if detector_stamp == 'GREEN' else 'AMBER')
+    # Witness nudge: any critical callouts in the last hour → at least AMBER.
+    if witness_block and witness_block.get('critical_last_hour', 0) > 0 and base == 'GREEN':
         return 'AMBER'
-    return 'GREEN' if detector_stamp == 'GREEN' else 'AMBER'
+    return base
 
 
 @health_bp.route('/api/health', methods=['GET'])
@@ -67,11 +99,13 @@ def health_check():
     detector = _detector_summary()
     pillars = _pillar_summaries()
     learnings_block = _learnings_summary()
+    witness_block = _witness_summary()
     failed_bps = current_app.config.get('FAILED_BLUEPRINTS') or []
     composite = _composite_stamp(
         detector.get('stamp', 'UNKNOWN'),
         pillars,
         len(failed_bps),
+        witness_block,
     )
     return jsonify({
         'ok': composite != 'RED',
@@ -87,6 +121,7 @@ def health_check():
         },
         'pillars': pillars,
         'learnings': learnings_block,
+        'witness': witness_block,
         'blueprints_failed': [{'name': n, 'error': e} for n, e in failed_bps],
     })
 
