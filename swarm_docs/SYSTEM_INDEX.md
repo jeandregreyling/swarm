@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-05-01 23:11*
+*Auto-generated: 2026-05-02 00:08*
 
 
 ## Python Modules
@@ -210,6 +210,7 @@
 | `coding_bible` | 4 | blueprints/coding_bible.py — Coding Bible retrieval API. |
 | `conversations` | 9 | conversations.py — Conversations routes |
 | `council_bp` | 2 | Council API blueprint — serves Agent 20 output to the frontend. |
+| `curiosity` | 7 | blueprints/curiosity.py — Curiosity organ HTTP surface. |
 | `debates` | 5 | debates.py — Debates routes |
 | `decisions` | 3 | decisions.py — Decisions & Timeline routes |
 | `diamond` | 5 | frontend/blueprints/diamond.py — Diamond Layer governance API. |
@@ -312,7 +313,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 46397 |
+| `activity_log` | 46462 |
 | `agent_capabilities` | 169 |
 | `agent_capability_scores` | 17 |
 | `agent_diary` | 0 |
@@ -320,37 +321,37 @@
 | `agents` | 22 |
 | `approval_tokens` | 718 |
 | `audit_results` | 44 |
-| `change_runs` | 41 |
-| `chat_jobs` | 698 |
-| `chat_relay_recoveries` | 5 |
+| `change_runs` | 42 |
+| `chat_jobs` | 702 |
+| `chat_relay_recoveries` | 7 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2489 |
-| `conversations` | 284 |
-| `council_output` | 6661 |
-| `curiosity_questions` | 0 |
+| `conv_timeline` | 2511 |
+| `conversations` | 302 |
+| `council_output` | 6890 |
+| `curiosity_questions` | 5 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 38861 |
+| `decisions` | 39239 |
 | `deferred_items` | 0 |
-| `duck_log` | 965 |
+| `duck_log` | 967 |
 | `enrollment_invites` | 0 |
 | `feed_subscriptions` | 31 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4876 |
+| `ghost_circle` | 4891 |
 | `gmail_labels_cache` | 0 |
-| `governance_log` | 419 |
+| `governance_log` | 421 |
 | `knowledge_chunks` | 1728 |
 | `knowledge_sources` | 136 |
 | `media_items` | 1 |
 | `media_providers` | 7 |
 | `media_runs` | 159 |
-| `memory` | 136 |
+| `memory` | 138 |
 | `memory_eight` | 0 |
-| `memory_gemma` | 2 |
+| `memory_gemma` | 1 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
 | `memory_llama` | 1 |
@@ -364,7 +365,7 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 464 |
-| `messages` | 631 |
+| `messages` | 672 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -377,42 +378,42 @@
 | `project_test_cases` | 217 |
 | `projects` | 37 |
 | `proposal_attachments` | 0 |
-| `proposal_projects` | 11 |
-| `queue` | 1784 |
+| `proposal_projects` | 13 |
+| `queue` | 1790 |
 | `research_evidence` | 263 |
 | `research_sessions` | 14 |
-| `sandpit_log` | 566 |
+| `sandpit_log` | 568 |
 | `scheduled_tasks` | 21 |
 | `settings_sysmod` | 2 |
-| `seven_attention` | 1805 |
-| `seven_beliefs` | 3776 |
+| `seven_attention` | 1825 |
+| `seven_beliefs` | 3848 |
 | `seven_concepts` | 9 |
-| `seven_episodes` | 9485 |
+| `seven_episodes` | 9584 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
 | `snoozed_tickets` | 0 |
-| `sqlite_sequence` | 75 |
+| `sqlite_sequence` | 76 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 419 |
-| `swarm_event_acks` | 182 |
+| `swarm_bus` | 421 |
+| `swarm_event_acks` | 213 |
 | `swarm_events` | 35 |
 | `swarm_globals` | 3 |
 | `swarm_knowledge` | 35 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 9809 |
-| `task_run_log` | 733 |
+| `system_stats` | 9821 |
+| `task_run_log` | 742 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
-| `test_runs` | 186 |
-| `ticket_notes` | 719 |
-| `tickets` | 732 |
-| `time_checkpoints` | 5561 |
-| `time_events` | 123871 |
-| `time_journal` | 116835 |
-| `time_machine` | 7553 |
+| `test_runs` | 187 |
+| `ticket_notes` | 721 |
+| `tickets` | 734 |
+| `time_checkpoints` | 5564 |
+| `time_events` | 124391 |
+| `time_journal` | 117352 |
+| `time_machine` | 7585 |
 | `tool_builds` | 0 |
-| `trace_events` | 1178 |
+| `trace_events` | 1192 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_2fa` | 3 |
@@ -423,7 +424,7 @@
 | `user_skill_permissions` | 3 |
 | `watched_topic_evidence` | 82 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 18 |
+| `work_proposals` | 20 |
 
 ## Agents
 
