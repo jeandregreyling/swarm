@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-01 22:52",
+  "generated_at": "2026-05-01 22:59",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -4136,7 +4136,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 46253
+      "rows": 46303
     },
     {
       "name": "agent_capabilities",
@@ -4160,7 +4160,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 709
+      "rows": 712
     },
     {
       "name": "audit_results",
@@ -4168,15 +4168,15 @@
     },
     {
       "name": "change_runs",
-      "rows": 38
+      "rows": 39
     },
     {
       "name": "chat_jobs",
-      "rows": 692
+      "rows": 694
     },
     {
       "name": "chat_relay_recoveries",
-      "rows": 3
+      "rows": 4
     },
     {
       "name": "claude_log",
@@ -4184,11 +4184,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2480
+      "rows": 2482
     },
     {
       "name": "conversations",
-      "rows": 257
+      "rows": 266
     },
     {
       "name": "council_output",
@@ -4216,7 +4216,7 @@
     },
     {
       "name": "decisions",
-      "rows": 38794
+      "rows": 38815
     },
     {
       "name": "deferred_items",
@@ -4224,7 +4224,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 959
+      "rows": 961
     },
     {
       "name": "enrollment_invites",
@@ -4232,7 +4232,7 @@
     },
     {
       "name": "feed_subscriptions",
-      "rows": 28
+      "rows": 29
     },
     {
       "name": "file_versions",
@@ -4248,7 +4248,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4838
+      "rows": 4851
     },
     {
       "name": "gmail_labels_cache",
@@ -4276,11 +4276,11 @@
     },
     {
       "name": "media_runs",
-      "rows": 135
+      "rows": 143
     },
     {
       "name": "memory",
-      "rows": 133
+      "rows": 134
     },
     {
       "name": "memory_eight",
@@ -4344,7 +4344,7 @@
     },
     {
       "name": "messages",
-      "rows": 575
+      "rows": 594
     },
     {
       "name": "moderators",
@@ -4400,7 +4400,7 @@
     },
     {
       "name": "queue",
-      "rows": 1772
+      "rows": 1776
     },
     {
       "name": "research_evidence",
@@ -4412,7 +4412,7 @@
     },
     {
       "name": "sandpit_log",
-      "rows": 560
+      "rows": 562
     },
     {
       "name": "scheduled_tasks",
@@ -4424,11 +4424,11 @@
     },
     {
       "name": "seven_attention",
-      "rows": 1772
+      "rows": 1783
     },
     {
       "name": "seven_beliefs",
-      "rows": 3680
+      "rows": 3712
     },
     {
       "name": "seven_concepts",
@@ -4436,7 +4436,7 @@
     },
     {
       "name": "seven_episodes",
-      "rows": 9178
+      "rows": 9256
     },
     {
       "name": "skills",
@@ -4468,11 +4468,11 @@
     },
     {
       "name": "swarm_event_acks",
-      "rows": 168
+      "rows": 174
     },
     {
       "name": "swarm_events",
-      "rows": 32
+      "rows": 33
     },
     {
       "name": "swarm_globals",
@@ -4480,7 +4480,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 32
+      "rows": 33
     },
     {
       "name": "swarm_nodes",
@@ -4488,11 +4488,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 9806
+      "rows": 9807
     },
     {
       "name": "task_run_log",
-      "rows": 732
+      "rows": 733
     },
     {
       "name": "terminal_shortcuts",
@@ -4504,31 +4504,31 @@
     },
     {
       "name": "test_runs",
-      "rows": 183
+      "rows": 184
     },
     {
       "name": "ticket_notes",
-      "rows": 713
+      "rows": 715
     },
     {
       "name": "tickets",
-      "rows": 726
+      "rows": 728
     },
     {
       "name": "time_checkpoints",
-      "rows": 5502
+      "rows": 5522
     },
     {
       "name": "time_events",
-      "rows": 123676
+      "rows": 123747
     },
     {
       "name": "time_journal",
-      "rows": 116699
+      "rows": 116750
     },
     {
       "name": "time_machine",
-      "rows": 7477
+      "rows": 7503
     },
     {
       "name": "tool_builds",
@@ -4536,7 +4536,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 1109
+      "rows": 1132
     },
     {
       "name": "trusted_domains",
