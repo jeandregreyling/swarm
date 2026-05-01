@@ -53,11 +53,87 @@ def search_sap(query, max_results=5):
     """
     SAP-specific search — Eight uses this. Adds SAP context to the query
     to bias Tavily toward SAP Notes, SCN, SAP Help Portal, and community resources.
+
+    2026-05-02 (S-9D336883B1) — query expansion: when an SAP module is
+    mentioned, append a synonym group so Tavily sees richer terms.
     """
-    sap_query = query if any(
-        kw in query.lower() for kw in ['sap', 'abap', 'hcm', 'payroll schema', 'pcr', 'infotype']
-    ) else f'SAP HCM {query}'
-    return search(sap_query, max_results=max_results, search_depth='basic')
+    return search(expand_sap_query(query), max_results=max_results,
+                  search_depth='basic')
+
+
+# 2026-05-02 (S-9D336883B1) — SAP query expansion table
+_SAP_EXPANSIONS = {
+    'hcm': '"SAP HCM" payroll personnel administration',
+    'payroll': 'payroll schema PCR wagetypes',
+    'fi': '"SAP FI" finance general ledger',
+    'co': '"SAP CO" controlling cost center',
+    'mm': '"SAP MM" materials management procurement',
+    'sd': '"SAP SD" sales distribution',
+    'pp': '"SAP PP" production planning',
+    'qm': '"SAP QM" quality management',
+    'pm': '"SAP PM" plant maintenance',
+    'wm': '"SAP WM" warehouse management',
+    'btp': '"SAP BTP" business technology platform',
+    'cap': '"SAP CAP" cloud application programming',
+    'rap': '"ABAP RAP" restful application programming',
+    'fiori': 'SAP Fiori UI5 launchpad',
+    'abap': 'ABAP report function module',
+    'hana': '"SAP HANA" CDS view calculation view',
+    's/4': '"S/4HANA" embedded analytics',
+    's4': '"S/4HANA" embedded analytics',
+}
+
+
+def expand_sap_query(query):
+    """Return an expanded SAP-aware query string."""
+    q = (query or '').strip()
+    if not q:
+        return q
+    lower = q.lower()
+    is_sap = any(
+        kw in lower for kw in
+        ['sap', 'abap', 'hcm', 'payroll schema', 'pcr', 'infotype', 'fiori',
+         'hana', 's/4hana', 's4hana']
+    )
+    base = q if is_sap else f'SAP HCM {q}'
+    extras = []
+    for token, expansion in _SAP_EXPANSIONS.items():
+        # Match as a whole word; avoid 'pp' matching inside 'apple'
+        if f' {token} ' in f' {lower} ' or lower.startswith(f'{token} ') or lower.endswith(f' {token}'):
+            extras.append(expansion)
+    if extras:
+        base = f'{base} ({" OR ".join(extras)})'
+    return base
+
+
+# 2026-05-02 (S-B0460BB6BD) — official SAP source allowlist. Hits from these
+# domains are authoritative and should be ranked above community/forum content.
+_OFFICIAL_SAP_DOMAINS = (
+    'help.sap.com',
+    'support.sap.com',
+    'launchpad.support.sap.com',
+    'community.sap.com',
+    'developers.sap.com',
+    'learning.sap.com',
+    'training.sap.com',
+    'api.sap.com',
+    'blogs.sap.com',
+)
+
+
+def is_official_sap_source(url):
+    """Return True if ``url`` is hosted on a known official SAP domain.
+
+    Used by the SAP watcher and Eight's evidence ranking to mark sources
+    as authoritative."""
+    if not url:
+        return False
+    u = url.lower()
+    # cheap parse: pull host between "://" and the next "/" or query-string.
+    if '://' in u:
+        u = u.split('://', 1)[1]
+    host = u.split('/', 1)[0].split('?', 1)[0]
+    return any(host == d or host.endswith('.' + d) for d in _OFFICIAL_SAP_DOMAINS)
 
 
 def _format_results(data, query):

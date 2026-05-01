@@ -1110,6 +1110,10 @@ def run_task(name, args=''):
     """
     Execute a registered task by name.
     Returns (success: bool, output: str).
+
+    2026-05-02 (S-F4DC817B17) — if the calling scheduled_tasks row is
+    linked to a project step (project_id + project_step_id), an evidence
+    row is auto-created in project_step_evidence after the run.
     """
     entry = TASK_REGISTRY.get(name)
     if not entry:
@@ -1124,6 +1128,7 @@ def run_task(name, args=''):
         logger.info(f'[TaskRunner] {name}: {output}')
         _log_run(name, 'ok', output, duration_ms=int(elapsed * 1000),
                  details={'category': entry.get('category', ''), 'args': args})
+        _record_step_evidence(name, args, 'ok', output)
         _record_scorecard_outcome(name, args, True, output, entry.get('category', ''))
         return True, output
     except Exception as e:
@@ -1133,6 +1138,7 @@ def run_task(name, args=''):
         _log_run(name, 'error', output, duration_ms=int(elapsed * 1000),
                  details={'category': entry.get('category', ''), 'args': args,
                           'exception': type(e).__name__})
+        _record_step_evidence(name, args, 'error', output)
         _record_scorecard_outcome(name, args, False, output, entry.get('category', ''))
         return False, output
 
@@ -1201,6 +1207,51 @@ def _log_run(task_name, status, output, duration_ms=0, details=None):
                 )
     except Exception as e:
         logger.debug(f'[TaskRunner] log write failed: {e}')
+
+
+def _record_step_evidence(task_name, args, status, output):
+    """If the most recent matching scheduled_tasks row is linked to a
+    project step, write a project_step_evidence row.
+    Best-effort only; never raises into the caller.
+
+    2026-05-02 (S-F4DC817B17)."""
+    try:
+        try:
+            from utils.db._connection import get_connection
+        except Exception:
+            from database import get_connection
+        with get_connection() as conn:
+            cols = {row[1] for row in conn.execute(
+                "PRAGMA table_info(scheduled_tasks)").fetchall()}
+            if 'project_id' not in cols or 'project_step_id' not in cols:
+                return
+            row = conn.execute(
+                "SELECT project_id, project_step_id FROM scheduled_tasks "
+                "WHERE action_type='python' AND action_data=? AND project_id != '' "
+                "ORDER BY id DESC LIMIT 1",
+                (f'{task_name} {args}'.strip(),)
+            ).fetchone()
+            if not row and args:
+                row = conn.execute(
+                    "SELECT project_id, project_step_id FROM scheduled_tasks "
+                    "WHERE action_type='python' AND action_data LIKE ? "
+                    "AND project_id != '' ORDER BY id DESC LIMIT 1",
+                    (f'{task_name}%',)
+                ).fetchone()
+            if not row:
+                return
+            project_id, step_id = row
+            if not (project_id and step_id):
+                return
+            summary = (output or '')[:500]
+            conn.execute(
+                "INSERT INTO project_step_evidence "
+                "(project_id, step_id, source_type, source_ref, summary, status) "
+                "VALUES (?, ?, 'task', ?, ?, ?)",
+                (project_id, step_id, task_name, summary, status)
+            )
+    except Exception as e:
+        logger.debug(f'[TaskRunner] step evidence skipped: {e}')
 
 
 def _record_scorecard_outcome(task_name, args, success, output, category=''):
