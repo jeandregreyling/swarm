@@ -407,6 +407,34 @@ def _compose(message, state, memories):
             "to log a new entry; I'll see it on the next turn."
         ), 0
 
+    # Standard / audit / quality probes — deterministic answer from the
+    # bullshit detector. No vibes, no hallucination.
+    if _is_about(msg, ['up to standard', 'the standard', 'is this up to', 'audit yourself',
+                       'audit the build', 'any slop', 'any bullshit', 'is the build',
+                       'self check', 'selfcheck', 'self-check', 'quality check',
+                       'are we ready', 'product ready', 'production ready']):
+        try:
+            from agents.seven.self_awareness import audit_report
+            return f"{intro}\n\n{audit_report()}", 0
+        except Exception as exc:
+            return f"audit module raised: {exc}", 0
+
+    # Lessons probe
+    if _is_about(msg, ['what have you learned', 'what did you learn', 'your lessons',
+                       'show me lessons', 'show me learnings', 'what are your learnings',
+                       'self learning', 'self-learning']):
+        try:
+            from agents.seven import learnings
+            s = learnings.stats()
+            block = learnings.recent_lessons_block(limit=8)
+            return (
+                f"{intro}\n\n"
+                f"Self-learning loop: total={s['total']}  positive={s['positive']}  negative={s['negative']}\n\n"
+                f"{block}"
+            ), 0
+        except Exception as exc:
+            return f"learnings module raised: {exc}", 0
+
     # For anything else — signal to caller to route through the LLM.
     return None, 0
 
@@ -452,6 +480,14 @@ def _llm_chat(message, state, memories, history):
     # Wishlist pillars — Seven now reads live cyber/financial/trading/business state.
     pillars_block = _format_pillars_block(_load_pillars_context())
 
+    # Self-awareness: the standard, build quality (bullshit detector), recent
+    # lessons, recent commits. This is what lets Seven call out slop.
+    try:
+        from agents.seven.self_awareness import context_block as _sa_block
+        self_awareness_block = _sa_block(max_chars=2200)
+    except Exception:
+        self_awareness_block = '(self-awareness module unavailable)'
+
     system = (
         f"{SEVEN_SYSTEM_PROMPT}\n\n"
         f"WHO YOU ARE (bedrock beliefs from your own memory — these define you, not a script):\n"
@@ -461,10 +497,13 @@ def _llm_chat(message, state, memories, history):
         f"LIVE SWARM STATE (for your awareness — only mention if relevant):\n{state_block}\n"
         f"Local agents online: {agents}\n\n"
         f"WISHLIST PILLARS (live snapshot — the four domains the user is building out):\n{pillars_block}\n\n"
+        f"SELF-AWARENESS (the standard, build quality, lessons, ship history):\n{self_awareness_block}\n\n"
         f"RELEVANT MEMORY:\n{mem_block}\n\n"
         f"KNOWLEDGE CENTER (auto-maintained project/step docs — cite these when answering Fridays questions):\n{kc_block}\n\n"
         f"BEHAVIOUR: when uncertain, do NOT hallucinate. Either ask via curiosity (the user will see it) "
-        f"or answer with what you know and flag the gap. Never silent dead-end."
+        f"or answer with what you know and flag the gap. Never silent dead-end. "
+        f"If the user is shipping slop OR if the bullshit detector reports critical/RED, say so plainly. "
+        f"Hold the line on The Standard — a system that DOES, not a system that REPORTS."
     )
 
     msgs = [{'role': 'system', 'content': system}]
@@ -514,6 +553,10 @@ def _slash_command(text, emit=None):
             "  /curiosity ask <question>        — queue a manual question (asked_by=user)\n"
             "  /identity                        — show Seven's bedrock identity beliefs\n"
             "  /pillars                         — live snapshot of the four wishlist pillars\n"
+            "  /audit                           — run the bullshit detector and report stamp + score\n"
+            "  /standard                        — read out the contract Seven holds the build to\n"
+            "  /selfcheck                       — same as /audit (alias)\n"
+            "  /learnings                       — recent positive/negative lessons Seven has captured\n"
             "  /help                            — this list\n\n"
             "Phone-friendly inbox: /curiosity (HTML) at the frontend port."
         )
@@ -530,6 +573,35 @@ def _slash_command(text, emit=None):
             "  · /api/business/entries  /api/business/summary\n"
             "  · /api/wishlist/summary (aggregated)"
         )
+
+    if cmd in ('audit', 'selfcheck', 'self-check', 'self_check'):
+        try:
+            from agents.seven.self_awareness import audit_report
+            return audit_report()
+        except Exception as exc:
+            return f"audit failed: {exc}"
+
+    if cmd in ('standard', 'thestandard', 'the-standard'):
+        try:
+            from agents.seven.self_awareness import load_standard_excerpt
+            txt = load_standard_excerpt(max_chars=4000)
+            return "The Standard — the contract Seven holds the build to:\n\n" + txt
+        except Exception as exc:
+            return f"could not read the-standard.md: {exc}"
+
+    if cmd in ('learnings', 'lessons', 'learned'):
+        try:
+            from agents.seven import learnings
+            s = learnings.stats()
+            block = learnings.recent_lessons_block(limit=8)
+            return (
+                f"Seven · self-learning loop:\n"
+                f"  total lessons: {s['total']} (positive={s['positive']}, negative={s['negative']})\n\n"
+                f"{block}\n\n"
+                "Negatives bind harder — the more you correct me on a pattern, the louder it gets in my next turn."
+            )
+        except Exception as exc:
+            return f"learnings unavailable: {exc}"
 
     if cmd == 'curiosity':
         try:
@@ -634,6 +706,20 @@ def chat(message, conversation_history=None, stage_cb=None):
         handled = _slash_command(msg_stripped, _emit)
         if handled is not None:
             return handled, 0
+
+    # ── Self-learning: capture user reactions to the prior Seven turn ────
+    try:
+        from agents.seven import learnings
+        prior_seven = None
+        for h in reversed(conversation_history or []):
+            role = h.get('role') or h.get('sender') or ''
+            if role in ('assistant', 'seven', 'Seven'):
+                prior_seven = h.get('content') or h.get('message')
+                break
+        if prior_seven:
+            learnings.observe(message, prior_seven)
+    except Exception:
+        pass
 
     _emit('reading swarm state')
     state = _read_state()

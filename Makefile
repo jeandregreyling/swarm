@@ -1,4 +1,4 @@
-.PHONY: test lint fmt audit restart sync help wake-dev wake-uat sleep-dev sleep-uat sleep-all status
+.PHONY: test lint fmt audit restart sync help wake-dev wake-uat sleep-dev sleep-uat sleep-all status excellent bullshit seed
 
 PYTHON ?= python3
 
@@ -16,6 +16,22 @@ fmt:  ## Format with black
 
 audit:  ## Run full auto-audit (pytest + lint) and store result
 	$(PYTHON) -c "import sys; sys.path.insert(0,'.'); from frontend.blueprints.auto_audit import run_audit; r=run_audit(); print(r['summary'])"
+
+bullshit:  ## Run the bullshit detector (Seven's quality scanner)
+	@rm -f .swarm/bullshit_report.json
+	$(PYTHON) -m ops.bullshit_detector
+
+seed:  ## Seed the four pillars with a small demo dataset
+	$(PYTHON) -m ops.seed_demo
+
+excellent: bullshit  ## Bullshit detector + per-batch tests = the standard
+	@for f in tests/test_session28_batch*.py tests/test_tasker_dry_run.py tests/test_slash_commands.py ; do \
+		[ -f "$$f" ] || continue ; \
+		printf '%-50s ' "$$f" ; \
+		timeout 30 $(PYTHON) -m pytest "$$f" -q 2>&1 | tail -1 ; \
+	done
+	@echo
+	@echo "If every line above is green and the bullshit stamp is GREEN/AMBER, the build is up to standard."
 
 restart:  ## Restart PROD service
 	sudo systemctl restart swarm-terminal
