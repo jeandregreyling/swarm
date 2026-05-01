@@ -1,17 +1,17 @@
 {
   "alive": true,
-  "started_at": 1777631801.5752048,
-  "ts": 1777640087.1376448,
-  "processed": 215,
-  "last_eid": 9179,
+  "started_at": 1777640082.5611935,
+  "ts": 1777640088.955948,
+  "processed": 2,
+  "last_eid": 9182,
   "last_event": {
     "action": "save",
-    "actor": "log_message",
-    "id": "2366",
-    "kind": "thread",
-    "path": "runtime/records/thread/2026/05/2366.json",
-    "ts": 1777639991.4832988
+    "actor": "ticket_set_routing",
+    "id": "TEST-DRYRUN-1777640088",
+    "kind": "ticket",
+    "path": "runtime/records/ticket/2026/05/TEST-DRYRUN-1777640088.json",
+    "ts": 1777640088.365331
   },
-  "consolidations": 28,
+  "consolidations": 1,
   "errors": 0
 }
