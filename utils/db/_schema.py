@@ -1698,10 +1698,79 @@ def _migrate_schema(conn=None):
             "ON user_profiles(email) WHERE email != ''"
         )
 
+    # 2026-05-02 (S-642C4CC9B7) — startup hygiene for scheduled_tasks.
+    # On dirty production-like DBs we have seen:
+    #   * duplicate rows for the same task name (race during seed/migration)
+    #   * NULL next_run on enabled rows (scheduler skipped them silently)
+    # Both faults stop the scheduler from firing without raising errors, so
+    # we clean them up here. Idempotent: safe to run on every startup.
+    try:
+        _migrate_scheduled_tasks_hygiene(conn)
+    except Exception as exc:
+        # Hygiene must never break boot. Log to stderr only.
+        try:
+            import sys as _sys
+            print(f'[schema] scheduled_tasks hygiene skipped: {exc}', file=_sys.stderr)
+        except Exception:
+            pass
+
     conn.commit()
 
     if _close:
         conn.close()
+
+
+def _migrate_scheduled_tasks_hygiene(conn):
+    """Dedupe and repair scheduled_tasks. Returns dict with counts.
+
+    * Drops duplicates by name, keeping the lowest id (most recently created
+      tasks win the tie via the unique index already on the table) — actually
+      the unique partial index allows multiple rows when name='' so we
+      prefer the highest id (latest insert) for non-empty names.
+    * Fills NULL/empty next_run on enabled tasks with datetime('now') so the
+      scheduler picks them up on the next tick instead of skipping forever.
+    """
+    cols_present = {row[1] for row in conn.execute(
+        "PRAGMA table_info(scheduled_tasks)").fetchall()}
+    if 'name' not in cols_present or 'enabled' not in cols_present:
+        return {'duplicates_removed': 0, 'next_run_filled': 0}
+
+    # 1) Dedupe by name. Keep the row with the highest id (most recent).
+    dupes = conn.execute(
+        """
+        SELECT name, COUNT(*) AS n
+        FROM scheduled_tasks
+        WHERE name IS NOT NULL AND name != ''
+        GROUP BY name
+        HAVING n > 1
+        """
+    ).fetchall()
+    duplicates_removed = 0
+    for row in dupes:
+        name = row[0]
+        keep_id = conn.execute(
+            "SELECT MAX(id) FROM scheduled_tasks WHERE name = ?", (name,)
+        ).fetchone()[0]
+        cur = conn.execute(
+            "DELETE FROM scheduled_tasks WHERE name = ? AND id != ?",
+            (name, keep_id),
+        )
+        duplicates_removed += cur.rowcount or 0
+
+    # 2) Fill missing next_run on enabled rows.
+    cur = conn.execute(
+        "UPDATE scheduled_tasks "
+        "SET next_run = datetime('now') "
+        "WHERE enabled = 1 AND (next_run IS NULL OR next_run = '')"
+    )
+    next_run_filled = cur.rowcount or 0
+
+    if duplicates_removed or next_run_filled:
+        conn.commit()
+    return {
+        'duplicates_removed': int(duplicates_removed),
+        'next_run_filled': int(next_run_filled),
+    }
 
 
 def _seed_agents():
