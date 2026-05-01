@@ -12,6 +12,7 @@ Endpoints:
 from __future__ import annotations
 
 import os
+import sqlite3
 
 from flask import Blueprint, jsonify, request
 
@@ -271,6 +272,93 @@ def api_project_add_step(project_id: str):
 @knowledge_bp.route('/api/knowledge/projects/<project_id>/steps', methods=['GET'])
 def api_project_list_steps(project_id: str):
     return jsonify({'ok': True, 'items': _kc_projects.list_steps(project_id)})
+
+
+# ── Session 28 — bulk import + search (S-0F9BA7EF34, S-1DC62BD77B) ────────
+
+@knowledge_bp.route('/api/knowledge/projects/<project_id>/steps/bulk', methods=['POST'])
+def api_project_steps_bulk_import(project_id: str):
+    """Bulk-create backlog steps under one project.
+
+    Body: ``{"steps": [{"title": "...", "description": "...", "owner": "..."},
+                       ...]}``
+    The endpoint is idempotent on title within the same project: an existing
+    step with a matching title is reused and reported as ``skipped``.
+    Returns ``{"ok": true, "created": [...], "skipped": [...]}``.
+    """
+    body = request.get_json(silent=True) or {}
+    raw = body.get('steps')
+    if not isinstance(raw, list) or not raw:
+        return jsonify({'ok': False, 'error': 'steps array required'}), 400
+    if len(raw) > 500:
+        return jsonify({'ok': False, 'error': 'max 500 steps per request'}), 400
+    if not _kc_projects.get_project(project_id):
+        return jsonify({'ok': False, 'error': 'project not found'}), 404
+
+    existing_titles = {
+        (s.get('title') or '').strip().lower()
+        for s in _kc_projects.list_steps(project_id) or []
+    }
+    created, skipped = [], []
+    for i, item in enumerate(raw):
+        if not isinstance(item, dict):
+            skipped.append({'index': i, 'reason': 'not an object'})
+            continue
+        title = str(item.get('title') or '').strip()
+        if not title:
+            skipped.append({'index': i, 'reason': 'title required'})
+            continue
+        if title.lower() in existing_titles:
+            skipped.append({'index': i, 'title': title, 'reason': 'duplicate title'})
+            continue
+        try:
+            step_id = _kc_projects.add_step(
+                project_id, title,
+                description=str(item.get('description') or ''),
+                owner=str(item.get('owner') or 'seven'),
+            )
+        except ValueError as e:
+            skipped.append({'index': i, 'title': title, 'reason': str(e)})
+            continue
+        if step_id:
+            existing_titles.add(title.lower())
+            created.append({'index': i, 'step_id': step_id, 'title': title})
+        else:
+            skipped.append({'index': i, 'title': title, 'reason': 'add_step returned None'})
+
+    return jsonify({'ok': True, 'created': created, 'skipped': skipped,
+                    'created_count': len(created), 'skipped_count': len(skipped)})
+
+
+@knowledge_bp.route('/api/knowledge/projects/search', methods=['GET'])
+def api_projects_search():
+    """Search projects by name/description substring (case-insensitive).
+
+    Query params: ``q`` (required, min 2 chars), ``limit`` (default 25, max 100).
+    """
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 2:
+        return jsonify({'ok': False, 'error': 'q must be >= 2 chars'}), 400
+    try:
+        limit = max(1, min(int(request.args.get('limit', 25)), 100))
+    except (TypeError, ValueError):
+        limit = 25
+    try:
+        from utils.db._connection import get_connection as _get_conn
+        with _get_conn() as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                "SELECT project_id, name, description, status, methodology, owner, "
+                "COALESCE(priority, 0) AS priority, created_at, updated_at "
+                "FROM projects "
+                "WHERE LOWER(name) LIKE ? OR LOWER(IFNULL(description,'')) LIKE ? "
+                "ORDER BY priority DESC, updated_at DESC LIMIT ?",
+                (f'%{q.lower()}%', f'%{q.lower()}%', limit),
+            ).fetchall()
+        items = [dict(r) for r in rows]
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    return jsonify({'ok': True, 'q': q, 'items': items, 'count': len(items)})
 
 
 @knowledge_bp.route('/api/knowledge/steps/<step_id>', methods=['PATCH'])

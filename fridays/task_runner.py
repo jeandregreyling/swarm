@@ -1104,6 +1104,58 @@ def _task_swarm_backup_verify(**kwargs):
     return f'swarm_backup_verify FAILED rc={proc.returncode}\n{tail}'
 
 
+@register('chat_smoke_probe',
+          'Periodic chat+AI round-trip smoke probe (S-1D88D439EE05): pings the local LLM and verifies a non-empty reply',
+          'monitoring')
+def _task_chat_smoke_probe(**kwargs):
+    """Smoke-test the chat pipeline end-to-end without hitting Gmail.
+
+    Args (all optional):
+      prompt=...      override prompt (default: "ping; reply with the word OK only")
+      agent=llama     which agent to ping (default: llama)
+      timeout=15      seconds to wait for a reply
+    """
+    import time as _t
+
+    prompt = kwargs.get('prompt') or 'ping; reply with the word OK only'
+    agent = (kwargs.get('agent') or 'llama').strip().lower()
+    try:
+        timeout = max(2, min(int(kwargs.get('timeout', 15)), 120))
+    except (TypeError, ValueError):
+        timeout = 15
+
+    started = _t.time()
+    reply = ''
+    err = ''
+    try:
+        try:
+            from fridays import orchestrator as _orch
+        except ImportError:
+            from core.pipeline import orchestrator as _orch
+        reply = _orch.ask_agent(agent, prompt) or ''
+    except Exception as exc:
+        err = f'{type(exc).__name__}: {exc}'
+    elapsed_ms = int((_t.time() - started) * 1000)
+
+    ok = bool(reply.strip()) and not err
+    try:
+        from utils.db._connection import get_connection
+        with get_connection() as _c:
+            _c.execute(
+                "INSERT INTO task_run_log (task_name, status, output, run_at, duration_ms) "
+                "VALUES (?, ?, ?, datetime('now'), ?)",
+                ('chat_smoke_probe', 'ok' if ok else 'error',
+                 (reply or err)[:500], elapsed_ms),
+            )
+            _c.commit()
+    except Exception:
+        pass
+
+    if ok:
+        return f'chat_smoke_probe ok agent={agent} latency_ms={elapsed_ms} reply={reply[:80]!r}'
+    return f'chat_smoke_probe FAILED agent={agent} elapsed_ms={elapsed_ms} err={err or "empty reply"}'
+
+
 # ── Execution ─────────────────────────────────────────────────────────────────
 
 def run_task(name, args=''):
