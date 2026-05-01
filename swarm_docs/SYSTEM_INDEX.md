@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-05-01 22:47*
+*Auto-generated: 2026-05-01 22:52*
 
 
 ## Python Modules
@@ -312,43 +312,43 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 46205 |
+| `activity_log` | 46253 |
 | `agent_capabilities` | 169 |
 | `agent_capability_scores` | 17 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
-| `approval_tokens` | 706 |
+| `approval_tokens` | 709 |
 | `audit_results` | 44 |
 | `change_runs` | 38 |
-| `chat_jobs` | 690 |
+| `chat_jobs` | 692 |
 | `chat_relay_recoveries` | 3 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2478 |
-| `conversations` | 248 |
+| `conv_timeline` | 2480 |
+| `conversations` | 257 |
 | `council_output` | 6661 |
 | `curiosity_questions` | 0 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 38773 |
+| `decisions` | 38794 |
 | `deferred_items` | 0 |
-| `duck_log` | 957 |
+| `duck_log` | 959 |
 | `enrollment_invites` | 0 |
-| `feed_subscriptions` | 27 |
+| `feed_subscriptions` | 28 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 4826 |
+| `ghost_circle` | 4838 |
 | `gmail_labels_cache` | 0 |
 | `governance_log` | 419 |
 | `knowledge_chunks` | 1728 |
 | `knowledge_sources` | 136 |
 | `media_items` | 1 |
 | `media_providers` | 7 |
-| `media_runs` | 127 |
-| `memory` | 132 |
+| `media_runs` | 135 |
+| `memory` | 133 |
 | `memory_eight` | 0 |
 | `memory_gemma` | 2 |
 | `memory_ghost_coder` | 0 |
@@ -364,7 +364,7 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 464 |
-| `messages` | 558 |
+| `messages` | 575 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -378,16 +378,16 @@
 | `projects` | 37 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 11 |
-| `queue` | 1768 |
+| `queue` | 1772 |
 | `research_evidence` | 263 |
 | `research_sessions` | 14 |
-| `sandpit_log` | 558 |
+| `sandpit_log` | 560 |
 | `scheduled_tasks` | 21 |
 | `settings_sysmod` | 2 |
-| `seven_attention` | 1761 |
-| `seven_beliefs` | 3648 |
+| `seven_attention` | 1772 |
+| `seven_beliefs` | 3680 |
 | `seven_concepts` | 9 |
-| `seven_episodes` | 9070 |
+| `seven_episodes` | 9178 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
 | `sniffer_memory` | 0 |
@@ -395,24 +395,24 @@
 | `sqlite_sequence` | 75 |
 | `sudo_command_whitelist` | 5 |
 | `swarm_bus` | 419 |
-| `swarm_event_acks` | 161 |
-| `swarm_events` | 31 |
+| `swarm_event_acks` | 168 |
+| `swarm_events` | 32 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 31 |
+| `swarm_knowledge` | 32 |
 | `swarm_nodes` | 0 |
-| `system_stats` | 9805 |
+| `system_stats` | 9806 |
 | `task_run_log` | 732 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
 | `test_runs` | 183 |
-| `ticket_notes` | 711 |
-| `tickets` | 724 |
-| `time_checkpoints` | 5482 |
-| `time_events` | 123614 |
-| `time_journal` | 116657 |
-| `time_machine` | 7458 |
+| `ticket_notes` | 713 |
+| `tickets` | 726 |
+| `time_checkpoints` | 5502 |
+| `time_events` | 123677 |
+| `time_journal` | 116700 |
+| `time_machine` | 7477 |
 | `tool_builds` | 0 |
-| `trace_events` | 1089 |
+| `trace_events` | 1109 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
 | `user_2fa` | 3 |
