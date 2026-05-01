@@ -199,9 +199,11 @@ def test_wishlist_tile_present(template_html, win_id, template_id):
     assert ('<template id="' + template_id + '">') in template_html
 
 
-def test_all_wishlist_tiles_marked_capture_only(template_html):
-    matches = re.findall(r'home-card home-card-wishlist[^>]*data-wishlist-status="capture-only"', template_html)
-    assert len(matches) == 4, f"expected 4 wishlist tiles, found {len(matches)}"
+def test_all_wishlist_tiles_marked_active_v0(template_html):
+    """Tiles were promoted from capture-only to active-v0 in batch 14."""
+    matches = re.findall(r'home-card home-card-wishlist[^>]*data-wishlist-status="active-v0"', template_html)
+    assert len(matches) == 4, f"expected 4 active-v0 tiles, found {len(matches)}"
+    assert 'data-wishlist-status="capture-only"' not in template_html
 
 
 def test_wishlist_tiles_use_wishlist_badge(template_html):

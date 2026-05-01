@@ -101,6 +101,10 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.feeds_bp',       'feeds_bp'),
     ('blueprints.seven_bp',       'seven_bp'),
     ('blueprints.wishlist_bp',    'wishlist_bp'),
+    ('blueprints.cybersecurity_bp', 'cybersecurity_bp'),
+    ('blueprints.financial_bp',     'financial_bp'),
+    ('blueprints.trading_bp',       'trading_bp'),
+    ('blueprints.business_bp',      'business_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
