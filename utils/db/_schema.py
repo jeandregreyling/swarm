@@ -1459,9 +1459,39 @@ def _migrate_schema(conn=None):
         if 'missed_run_policy' not in cols:
             conn.execute(
                 "ALTER TABLE scheduled_tasks ADD COLUMN missed_run_policy TEXT DEFAULT 'skip'")
+        # 2026-05-02 (S-F02066C5FA) — link a scheduled task to a project step
+        # so each fire records evidence on that step.
+        if 'project_id' not in cols:
+            conn.execute(
+                "ALTER TABLE scheduled_tasks ADD COLUMN project_id TEXT DEFAULT ''")
+        if 'project_step_id' not in cols:
+            conn.execute(
+                "ALTER TABLE scheduled_tasks ADD COLUMN project_step_id TEXT DEFAULT ''")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_project "
+            "ON scheduled_tasks(project_id) WHERE project_id != ''")
         conn.commit()
     except Exception:
         pass
+
+    # 2026-05-02 (S-F4DC817B17) — auto-create evidence after a task run
+    # for tasks linked to a project step.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS project_step_evidence (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id    TEXT NOT NULL,
+            step_id       TEXT NOT NULL,
+            source_type   TEXT NOT NULL DEFAULT 'task',
+            source_ref    TEXT NOT NULL DEFAULT '',
+            summary       TEXT NOT NULL DEFAULT '',
+            status        TEXT NOT NULL DEFAULT 'ok',
+            created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_project_step_evidence_step "
+        "ON project_step_evidence(project_id, step_id, created_at)")
+    conn.commit()
 
     # watched_topic_evidence — scoring memory for Tasker watched-topic emails
     conn.execute("""
