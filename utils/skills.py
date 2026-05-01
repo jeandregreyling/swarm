@@ -42,7 +42,12 @@ def run_skill(skill_name, args=None):
             files = get_all_sandpit_files()
             return f"{len(files)} sandpit files found."
         else:
-            result = subprocess.check_output(cmd, shell=True, text=True, timeout=10)
+            # 2026-05-02 (S-A539F21C70) — drop shell=True. cmd comes from
+            # ALLOWED_COMMANDS allowlist (literal strings, no user input), so
+            # this was already safe, but shlex.split + shell=False removes the
+            # whole class of risk and silences the audit grep.
+            import shlex as _shlex
+            result = subprocess.check_output(_shlex.split(cmd), text=True, timeout=10)
             return result.strip()
     except Exception as e:
         return f"Skill error: {e}"
