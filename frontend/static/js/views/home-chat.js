@@ -221,11 +221,18 @@
           ? Number(rendered[rendered.length - 1].dataset.messageId || 0)
           : 0;
         const lastFetchedId = Number(msgs[msgs.length - 1].id || 0);
-        if (lastFetchedId > lastRenderedId) {
-          _hcClearMessages();
-          msgs.forEach(m => _hcAppendBubble(m));
-          _hcScrollBottom();
-        }
+        if (lastFetchedId <= lastRenderedId) return;
+
+        // Don't clobber locally-rendered bubbles that haven't been persisted
+        // yet (e.g. an agent reply just appended client-side while the DB row
+        // is still being written). If our local count is greater than what the
+        // DB returns, the in-flight append would vanish on a clobber-rebuild.
+        const totalRendered = container.querySelectorAll('.hc-bubble').length;
+        if (totalRendered > msgs.length) return;
+
+        _hcClearMessages();
+        msgs.forEach(m => _hcAppendBubble(m));
+        _hcScrollBottom();
       })
       .catch(() => {});
   }

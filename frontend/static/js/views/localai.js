@@ -86,6 +86,52 @@ function _fetchJson(url, fallback) {
     .catch(() => fallback);
 }
 
+// ── Runtime gateway health ──────────────────────────────────────────────────
+// Fetches /api/ollama/runtime/health and paints a small "runtime: <status>"
+// pill plus a warnings line. Shared between the Local AI tile and the Agents
+// → Local AI tab. Returns the health snapshot for callers that need it.
+function _runtimeHealthStyle(status) {
+  // status: 'healthy' | 'degraded' | 'down' | 'unknown'
+  if (status === 'healthy') return { c: '#22c55e', label: 'runtime: healthy' };
+  if (status === 'degraded') return { c: '#f59e0b', label: 'runtime: degraded' };
+  if (status === 'down')    return { c: '#ef4444', label: 'runtime: down' };
+  return { c: 'var(--text-dim)', label: 'runtime: —' };
+}
+
+async function localaiRuntimeHealthRefresh(badgeId, warningsId) {
+  const badge   = badgeId    ? document.getElementById(badgeId)    : null;
+  const warnEl  = warningsId ? document.getElementById(warningsId) : null;
+  let snap = null;
+  try {
+    const r = await fetch('/api/ollama/runtime/health');
+    snap = await r.json();
+  } catch (_) {
+    snap = { ok: false, status: 'down', warnings: ['runtime gateway unreachable'], models: [] };
+  }
+  const status = snap && snap.status ? String(snap.status) : 'unknown';
+  if (badge) {
+    const { c, label } = _runtimeHealthStyle(status);
+    badge.style.display = '';
+    badge.textContent = label;
+    badge.style.background = `color-mix(in srgb,${c} 15%,var(--card))`;
+    badge.style.color = c;
+    badge.style.border = `1px solid ${c}55`;
+  }
+  if (warnEl) {
+    const ws = (snap && Array.isArray(snap.warnings)) ? snap.warnings : [];
+    if (ws.length) {
+      warnEl.style.display = '';
+      warnEl.innerHTML = ws.map(w => `⚠ ${_escapeHtml(w)}`).join('<br>')
+        + (status === 'down' ? '<br>Start Ollama with: <code>ollama serve</code>' : '');
+    } else {
+      warnEl.style.display = 'none';
+      warnEl.innerHTML = '';
+    }
+  }
+  return snap;
+}
+window.localaiRuntimeHealthRefresh = localaiRuntimeHealthRefresh;
+
 async function localaiRefreshModelCatalog(silent) {
   try {
     const response = await fetch('/api/ollama/library');
@@ -182,6 +228,9 @@ function localaiRefresh() {
     _setOllamaStatus(data.ollama?.running
       ? `Ready · ${_formatCountLabel(_ollamaInventory.length, loaded.count || 0)}`
       : 'Ollama is offline. Start with: ollama serve', data.ollama?.running ? 'ok' : 'error');
+
+    // Runtime gateway health pill + warnings (Fridays-owned snapshot).
+    localaiRuntimeHealthRefresh('localai-runtime-badge', 'localai-runtime-warnings');
 
     if (_ollamaSelectedModel) {
       selectOllamaModel(_ollamaSelectedModel, true);
