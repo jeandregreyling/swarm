@@ -561,7 +561,31 @@ def _process_local_agent_git_queue(per_agent_limit=GIT_EXECUTE_PER_AGENT_PER_HEA
 
 
 def run_heartbeat():
-    """Execute one full heartbeat cycle. Returns a stats dict."""
+    """Execute one full heartbeat cycle. Returns a stats dict.
+
+    2026-05-02 (S-059100FE16) — scheduler awareness: if a scheduled task
+    fired the orchestrator within the last HEARTBEAT_SECONDS we skip our
+    own dispatch loop to avoid double-firing the same work."""
+    # Scheduler-awareness short-circuit: if the scheduler ran our task in
+    # the last cycle window, treat that as the heartbeat for this tick.
+    try:
+        from database import get_connection
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT MAX(run_at) FROM task_run_log "
+                "WHERE task_name='orchestrator_heartbeat' "
+                "AND run_at >= datetime('now', ?)",
+                (f'-{HEARTBEAT_SECONDS} seconds',)
+            ).fetchone()
+        if row and row[0]:
+            logger.info(f'[Fridays] Scheduler already ran orchestrator at {row[0]}; skipping organic tick')
+            return {'dispatched': 0, 'self_proposed': 0, 'escalated': 0,
+                    'git_auto_executed': 0, 'git_auto_failed': 0,
+                    'git_auto_skipped_cap': 0, 'active_agents': [],
+                    'skipped_reason': 'scheduler_ran_recently'}
+    except Exception:
+        pass
+
     stats = {
         'dispatched': 0,
         'self_proposed': 0,

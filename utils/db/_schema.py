@@ -1510,6 +1510,33 @@ def _migrate_schema(conn=None):
     """)
     conn.commit()
 
+    # 2026-05-02 (S-859446F555) — per-key notification channel preferences.
+    # Key can be a topic_key, ticket_kind, agent name, or any namespaced
+    # string the caller chooses. channels_json is a JSON array of channels
+    # like ["email","discord","telegram"].
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS notification_channel_prefs (
+            key            TEXT PRIMARY KEY,
+            channels_json  TEXT NOT NULL DEFAULT '["email"]',
+            muted          INTEGER NOT NULL DEFAULT 0,
+            updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.commit()
+
+    # 2026-05-02 (S-BFCDBE9631) — per-topic cadence override. When > 0 the
+    # watcher must wait at least N minutes between notifications for that topic.
+    try:
+        cols = {row[1] for row in conn.execute(
+            "PRAGMA table_info(watched_topic_settings)").fetchall()}
+        if 'cadence_minutes' not in cols:
+            conn.execute(
+                "ALTER TABLE watched_topic_settings ADD COLUMN cadence_minutes "
+                "INTEGER NOT NULL DEFAULT 0")
+            conn.commit()
+    except Exception:
+        pass
+
     # watched_topic_evidence — scoring memory for Tasker watched-topic emails
     conn.execute("""
         CREATE TABLE IF NOT EXISTS watched_topic_evidence (
