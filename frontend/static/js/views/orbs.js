@@ -137,6 +137,7 @@
       openWindows: 0, chatActive: false, hasErrors: false,
       agentsBusy: false, pendingMessages: 0, onHome: true,
       activeViewName: '', idleSeconds: 0, sessionMinutes: 0,
+      userBusy: false,
     },
     sessionStart: Date.now(),
     scanTimer: 0,
@@ -154,6 +155,17 @@
       // Name of most recently focused window
       const active = document.querySelector('.window-wrap[style*="z-index: 9"], .window-wrap');
       c.activeViewName = active ? (active.dataset.view || active.querySelector('.window-title')?.textContent?.trim() || '') : '';
+      // userBusy: roost when there's clearly user-driven work happening on screen.
+      // Otherwise the orbs are free to wander/explore. Mouse motion alone is
+      // weak signal — require either DOM busy-ness or recent typing.
+      const recentInput = (performance.now() - (window._lastUserInputTs || 0)) < 6000;
+      c.userBusy = (
+        c.agentsBusy ||
+        c.hasErrors ||
+        c.pendingMessages > 0 ||
+        c.openWindows >= 2 ||
+        recentInput
+      );
     },
 
     update(dt) {
@@ -236,6 +248,95 @@
   };
 
   // ══════════════════════════════════════════════════════════════════════════════
+  //  SEVEN LINK — pulls Seven's live beliefs / attention / curiosity and routes
+  //  one item per orb role so each orb's bubble reflects what Seven is
+  //  currently thinking about.
+  // ══════════════════════════════════════════════════════════════════════════════
+  const SevenLink = {
+    thoughts: {},          // role → { id, thought, kind }
+    enabled: false,
+    fetchTimer: 0,
+    INTERVAL: 25000,
+
+    _truncate(s, n=120) {
+      s = String(s || '').trim().replace(/\s+/g,' ');
+      return s.length > n ? s.slice(0, n-1) + '…' : s;
+    },
+
+    async fetch() {
+      // Pull a small bundle of Seven's current state. All endpoints are
+      // read-only and cheap. Failures are silently tolerated — orbs fall
+      // back to council/dialogue thoughts.
+      try {
+        const [bRes, aRes, cRes] = await Promise.all([
+          fetch('/api/seven/beliefs?limit=8').catch(() => null),
+          fetch('/api/seven/attention?limit=8').catch(() => null),
+          fetch('/api/curiosity/open?limit=8').catch(() => null),
+        ]);
+        const beliefs   = (bRes && bRes.ok) ? ((await bRes.json()).items || []) : [];
+        const attention = (aRes && aRes.ok) ? ((await aRes.json()).items || []) : [];
+        const curiosity = (cRes && cRes.ok) ? ((await cRes.json()).items || []) : [];
+        const next = {};
+        // THREAD = reasoning → top belief
+        if (beliefs[0]) {
+          const b = beliefs[0];
+          const txt = b.predicate ? `${b.subject} ${b.predicate} ${b.object || ''}`.trim()
+                                  : (b.statement || b.text || '');
+          next[THREAD] = { id: 'b'+(b.id||0), thought: this._truncate(txt), kind:'belief' };
+        }
+        // EYE = watching → attention/hot record
+        if (attention[0]) {
+          const a = attention[0];
+          const txt = a.title || a.summary || a.text || a.kind || '';
+          next[EYE] = { id: 'a'+(a.id||a.ref_id||0), thought: this._truncate(txt), kind:'attention' };
+        }
+        // PULSE = stirring → open curiosity question
+        if (curiosity[0]) {
+          const q = curiosity[0];
+          next[PULSE] = { id: 'q'+(q.id||0), thought: this._truncate(q.question || q.text || ''), kind:'question' };
+        }
+        // ECHO = recall → second belief or attention echo
+        if (beliefs[1]) {
+          const b = beliefs[1];
+          const txt = b.predicate ? `${b.subject} ${b.predicate} ${b.object || ''}`.trim()
+                                  : (b.statement || b.text || '');
+          next[ECHO] = { id: 'b'+(b.id||0), thought: this._truncate(txt), kind:'belief' };
+        } else if (attention[1]) {
+          const a = attention[1];
+          next[ECHO] = { id: 'a'+(a.id||a.ref_id||0), thought: this._truncate(a.title || a.summary || ''), kind:'attention' };
+        }
+        // VOICE = speaking → another curiosity or third belief
+        if (curiosity[1]) {
+          const q = curiosity[1];
+          next[VOICE] = { id: 'q'+(q.id||0), thought: this._truncate(q.question || ''), kind:'question' };
+        } else if (beliefs[2]) {
+          const b = beliefs[2];
+          const txt = b.predicate ? `${b.subject} ${b.predicate} ${b.object || ''}`.trim()
+                                  : (b.statement || b.text || '');
+          next[VOICE] = { id: 'b'+(b.id||0), thought: this._truncate(txt), kind:'belief' };
+        }
+        this.thoughts = next;
+        this.enabled = Object.keys(next).length > 0;
+      } catch (_) { /* silent */ }
+    },
+
+    update(dt) {
+      this.fetchTimer += dt;
+      if (this.fetchTimer >= this.INTERVAL) {
+        this.fetchTimer = 0;
+        this.fetch();
+      }
+    },
+
+    thoughtFor(role) { return this.thoughts[role] || null; },
+  };
+
+  // Track recent input so Brain.scan() can flip userBusy on/off.
+  ['keydown','wheel','touchstart'].forEach(ev => {
+    window.addEventListener(ev, () => { window._lastUserInputTs = performance.now(); }, {passive:true, capture:true});
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════════
   //  DIALOGUE — Five Voices speak to each other
   // ══════════════════════════════════════════════════════════════════════════════
   const VP = {
@@ -309,6 +410,10 @@
     },
 
     generate(o) {
+      // Prefer Seven's live thoughts (beliefs / attention / curiosity).
+      const seven = SevenLink.thoughtFor(o.role);
+      if (seven && seven.thought) { o._councilThoughtId = null; o._sevenThoughtId = seven.id; return seven.thought; }
+      o._sevenThoughtId = null;
       const council = CouncilLink.thoughtFor(o.role);
       if (council) { o._councilThoughtId = council.id; return council.thought; }
       o._councilThoughtId = null;
@@ -1084,6 +1189,9 @@
       o.settled = 0;
     }
     if (mouseStillPos && md > FLEE_R) {
+      // Only tug back to roost while the user is busy on screen. When idle,
+      // orbs are free to wander and explore.
+      if (!Brain.ctx.userBusy) return;
       const rd = dist(o.x, o.y, o.roostX, o.roostY);
       if (rd > 30) {
         const pull = Math.min(rd * 0.0006, 0.03);
@@ -1170,10 +1278,18 @@
     _applyFlee(o);
     o.driftPhase += dt * 0.0024;
     const rhythm = 0.0035 + (Brain.ctx.agentsBusy ? 0.0022 : 0);
-    const tx = o.roostX + Math.cos(o.driftPhase) * (o.baseR * 0.9);
-    const ty = o.roostY + Math.sin(o.driftPhase * 1.3) * (o.baseR * 0.55);
-    o.vx += (tx - o.x) * 0.0012;
-    o.vy += (ty - o.y) * 0.0012;
+    if (Brain.ctx.userBusy) {
+      const tx = o.roostX + Math.cos(o.driftPhase) * (o.baseR * 0.9);
+      const ty = o.roostY + Math.sin(o.driftPhase * 1.3) * (o.baseR * 0.55);
+      o.vx += (tx - o.x) * 0.0012;
+      o.vy += (ty - o.y) * 0.0012;
+    } else {
+      // Idle: roam in larger arcs across the screen instead of orbiting roost.
+      const rx = W * (0.5 + Math.cos(o.driftPhase * 0.7) * 0.32);
+      const ry = H * (0.5 + Math.sin(o.driftPhase * 0.5) * 0.32);
+      o.vx += (rx - o.x) * 0.0006;
+      o.vy += (ry - o.y) * 0.0006;
+    }
     o.vx += Math.cos(o.driftPhase * 2.1) * rhythm;
     o.vy += Math.sin(o.driftPhase * 1.8) * rhythm;
     o.state = Brain.ctx.agentsBusy || Brain.ctx.pendingMessages > 0 ? 'active' : 'steady';
@@ -1181,11 +1297,13 @@
 
   function behaviorVoice(o,dt){
     _applyFlee(o);
-    const anchorX = lerp(o.roostX, W * 0.58, 0.45);
-    const anchorY = lerp(o.roostY, H * 0.34, 0.45);
     const drift = o.ideaReady ? 0.0018 : 0.0011;
-    o.vx += (anchorX - o.x) * drift;
-    o.vy += (anchorY - o.y) * drift;
+    if (Brain.ctx.userBusy) {
+      const anchorX = lerp(o.roostX, W * 0.58, 0.45);
+      const anchorY = lerp(o.roostY, H * 0.34, 0.45);
+      o.vx += (anchorX - o.x) * drift;
+      o.vy += (anchorY - o.y) * drift;
+    }
     if (o.ideaReady) {
       o.state = 'speaking';
       o.vx += Math.cos(o.driftPhase + dt * 0.001) * 0.0042;
@@ -1193,8 +1311,10 @@
     } else {
       o.state = 'composing';
       if (Math.random() < 0.0012) o.driftAngle += rand(-0.35, 0.35);
-      o.vx += Math.cos(o.driftAngle) * 0.0030;
-      o.vy += Math.sin(o.driftAngle) * 0.0030;
+      // Wider wander when idle so VOICE drifts across the screen.
+      const wander = Brain.ctx.userBusy ? 0.0030 : 0.0050;
+      o.vx += Math.cos(o.driftAngle) * wander;
+      o.vy += Math.sin(o.driftAngle) * wander;
     }
   }
 
@@ -1335,7 +1455,10 @@
 
     // Fight tick (overrides normal behavior)
     if (o.fighting) { tickFight(o, dt); }
-    else if (!sleeping && o.placedTimer <= 0) {
+    // Skip the behavior tick (and its roost spring force) for ~thrownTimer ms
+    // after a release flick — otherwise the per-frame pull toward the roost
+    // out-muscles the throw velocity and the orb plops back next to its base.
+    else if (!sleeping && o.placedTimer <= 0 && !(o.thrownTimer > 0)) {
       switch(o.role){
         case EYE:    behaviorEye(o,dt);    break;
         case ECHO:   behaviorEcho(o,dt);   break;
@@ -1352,10 +1475,13 @@
         (o.role === VOICE  && (o.state === 'speaking' || o.ideaReady))
       );
       o.morphTarget = wantsAlt ? 1 : 0;
-      // Roost pull when drifting slowly
-      const spd0=Math.sqrt(o.vx*o.vx+o.vy*o.vy);
-      const pull=Math.max(0,0.42-spd0)*0.0015;
-      if(pull>0.0001){o.vx+=(o.roostX-o.x)*pull;o.vy+=(o.roostY-o.y)*pull;}
+      // Roost pull when drifting slowly \u2014 only while user is busy.
+      // When idle, orbs explore freely instead of being yanked back to base.
+      if (Brain.ctx.userBusy) {
+        const spd0=Math.sqrt(o.vx*o.vx+o.vy*o.vy);
+        const pull=Math.max(0,0.42-spd0)*0.0015;
+        if(pull>0.0001){o.vx+=(o.roostX-o.x)*pull;o.vy+=(o.roostY-o.y)*pull;}
+      }
     }
     if (o.placedTimer > 0) { o.placedTimer -= dt; o.vx *= 0.90; o.vy *= 0.90; }
 
@@ -1625,6 +1751,7 @@
 
     Brain.update(dt);
     CouncilLink.update(dt);
+    SevenLink.update(dt);
     heatTimer+=dt;
     if(heatTimer>4500){heatTimer=0;if(mouse.x>0){mouseHeat.push({x:mouse.x,y:mouse.y});if(mouseHeat.length>10)mouseHeat.shift();orbs.forEach((o,i)=>updateRoost(o,i));}}
 
@@ -1893,6 +2020,7 @@
   window.addEventListener('resize',resize);
   Brain.scan();
   CouncilLink.fetch();  // Initial council fetch
+  SevenLink.fetch();    // Initial Seven beliefs/attention/curiosity fetch
   sleepTimer=setTimeout(()=>{sleeping=true;},10000);
   // Sync orb visibility / quality controls once the settings panel exists.
   if (document.readyState === 'loading') {

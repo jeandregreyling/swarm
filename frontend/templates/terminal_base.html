@@ -1332,9 +1332,11 @@
           <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
             <span style="font-weight:600;font-size:13px;">Ollama</span>
             <span id="agents-ollama-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
+            <span id="agents-ollama-runtime" title="Fridays runtime gateway health" style="display:none;font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">runtime: —</span>
             <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:11434</span>
           </div>
           <div id="agents-ollama-models" style="padding:10px 14px;font-size:12px;color:var(--text-dim);min-height:40px;">—</div>
+          <div id="agents-ollama-warnings" style="display:none;padding:0 14px 10px;font-size:11px;color:#f59e0b;"></div>
         </div>
         <!-- LM Studio -->
         <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
@@ -2088,7 +2090,7 @@
           </div>
           <div id="library-graph-hint" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text-dim);pointer-events:none;opacity:.6;">Click a node · Scroll to zoom · Drag to pan</div>
           <button id="library-graph-popout" onclick="hiveNodesPopout()" title="Open Hive Nodes in its own window (20 most recently touched)" style="position:absolute;top:8px;right:10px;background:var(--window-header);border:1px solid var(--border);border-radius:5px;padding:4px 10px;font-size:10px;color:var(--text-dim);cursor:pointer;">Hive Nodes ↗</button>
-          <div id="library-graph-empty" style="display:none;position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-dim);">
+          <div id="library-graph-empty" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-dim);">
             <svg viewBox="0 0 24 24" width="40" height="40" fill="none"><circle cx="8" cy="8" r="4" stroke="currentColor" stroke-width="1.3"/><circle cx="18" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><circle cx="15" cy="17" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M11.5 9.5l3.5-2M12 11.5l2 4" stroke="currentColor" stroke-width="1.3"/></svg>
             <div style="font-size:12px;font-weight:600;">No sources yet</div>
             <div style="font-size:11px;opacity:.7;">Add sources or click Seed Knowledge to get started</div>
@@ -2218,8 +2220,10 @@
         <div class="localai-title-row">
           <span class="localai-title">Local AI</span>
           <span id="localai-overall-status" class="localai-badge">checking...</span>
+          <span id="localai-runtime-badge" class="localai-badge" title="Fridays runtime gateway health" style="display:none;">runtime: —</span>
         </div>
         <div class="localai-subtitle">Offline inference, model management, and runtime control for Ollama, LM Studio, and Picoclaw.</div>
+        <div id="localai-runtime-warnings" style="display:none;margin-top:6px;font-size:11px;color:#f59e0b;"></div>
       </div>
       <div class="localai-header-actions">
         <button onclick="localaiRefresh()" class="knowledge-btn">Refresh</button>

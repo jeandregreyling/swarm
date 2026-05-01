@@ -2020,4 +2020,9 @@ function agentsLocalAIRefresh() {
     .catch(() => {
       if (ollamaBadge) { ollamaBadge.textContent = 'error'; ollamaBadge.style.color = 'var(--danger,#ff6b6b)'; }
     });
+
+  // Runtime gateway health badge + warnings (Fridays runtime snapshot).
+  if (typeof localaiRuntimeHealthRefresh === 'function') {
+    localaiRuntimeHealthRefresh('agents-ollama-runtime', 'agents-ollama-warnings');
+  }
 }
