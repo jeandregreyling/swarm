@@ -943,6 +943,15 @@ def _migrate_schema(conn=None):
         "CREATE INDEX IF NOT EXISTS idx_agent_capability_scores_capability "
         "ON agent_capability_scores (capability, score DESC)"
     )
+    # 2026-05-02 (S-1C55C2826A) — scheduled task names must be unique.
+    # task_runner.upsert_task() uses name as the de-facto key but the column
+    # was historically NOT NULL only. Migration is safe because production has
+    # no duplicates today (verified). Partial index excludes legacy NULL/empty
+    # rows defensively.
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_scheduled_tasks_name_unique "
+        "ON scheduled_tasks(name) WHERE name IS NOT NULL AND name != ''"
+    )
     conn.commit()
 
     # Add number + label columns to agents table (idempotent — ALTER TABLE ignored if column exists)

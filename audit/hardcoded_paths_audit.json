@@ -1,0 +1,899 @@
+{
+  "total": 149,
+  "hits": [
+    {
+      "file": "scripts/_log_packet10a_milestone.py",
+      "line": 4,
+      "snippet": "sys.path.insert(0, \"/home/seven/swarm\")",
+      "bucket": "scripts"
+    },
+    {
+      "file": "scripts/backup_verify.py",
+      "line": 31,
+      "snippet": "REPO = Path(os.environ.get(\"SWARM_ROOT\", \"/home/seven/swarm\"))",
+      "bucket": "scripts"
+    },
+    {
+      "file": "scripts/_log_wishlist_milestone.py",
+      "line": 4,
+      "snippet": "sys.path.insert(0, \"/home/seven/swarm\")",
+      "bucket": "scripts"
+    },
+    {
+      "file": "utils/scheduler.py",
+      "line": 9,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "utils"
+    },
+    {
+      "file": "utils/seven_fridays.py",
+      "line": 10,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "utils"
+    },
+    {
+      "file": "utils/seven_fridays.py",
+      "line": 76,
+      "snippet": "os.path.join(\"/home/seven/swarm\", filename),",
+      "bucket": "utils"
+    },
+    {
+      "file": "utils/seven_fridays.py",
+      "line": 77,
+      "snippet": "os.path.join(\"/home/seven/swarm/sandpits/shared/proposals\", filename)",
+      "bucket": "utils"
+    },
+    {
+      "file": "utils/seven_fridays.py",
+      "line": 80,
+      "snippet": "search_paths.append(os.path.join(\"/home/seven/swarm/sandpits\", agent, filename))",
+      "bucket": "utils"
+    },
+    {
+      "file": "utils/seven_fridays.py",
+      "line": 121,
+      "snippet": "path = os.path.join(\"/home/seven/swarm/sandpits/grok\", filename)",
+      "bucket": "utils"
+    },
+    {
+      "file": "utils/seven_fridays.py",
+      "line": 171,
+      "snippet": "d = f\"/home/seven/swarm/sandpits/{agent}\"",
+      "bucket": "utils"
+    },
+    {
+      "file": "utils/sandpits.py",
+      "line": 18,
+      "snippet": "SANDPIT_BASE = os.environ.get('SANDPIT_BASE') or '/home/seven/swarm/sandpits'",
+      "bucket": "sandpit"
+    },
+    {
+      "file": "utils/app_launcher.py",
+      "line": 23,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "utils"
+    },
+    {
+      "file": "utils/coding_bible.py",
+      "line": 23,
+      "snippet": "'/home/seven/swarm/docs/CODING_BIBLE.md',",
+      "bucket": "utils"
+    },
+    {
+      "file": "utils/coding_bible.py",
+      "line": 27,
+      "snippet": "'/home/seven/swarm/swarm_memory.db',",
+      "bucket": "utils"
+    },
+    {
+      "file": "tests/test_skill_trust.py",
+      "line": 11,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_skill_trust.py",
+      "line": 12,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_triage_queue_dryrun.py",
+      "line": 21,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_triage_queue_dryrun.py",
+      "line": 22,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_triage_queue_dryrun.py",
+      "line": 23,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/core/pipeline')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_triage_queue_dryrun.py",
+      "line": 24,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/lib/email')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_triage_queue_dryrun.py",
+      "line": 25,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/lib/system')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_triage_queue_dryrun.py",
+      "line": 26,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents/ghost')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_phase5.py",
+      "line": 9,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_phase5.py",
+      "line": 10,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_chat_quality.py",
+      "line": 398,
+      "snippet": "ok = ('/home/seven/swarm' in text) and ('FAILED' not in text)",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_agent_skill_intent.py",
+      "line": 3,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/api_wide_probe.py",
+      "line": 43,
+      "snippet": "sys.path.insert(0, \"/home/seven/swarm\")",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_interests_wiring.py",
+      "line": 24,
+      "snippet": "assert \"sys.path.insert(0, '/home/seven/swarm')\" not in src",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_terminal_runtime_contract.py",
+      "line": 12,
+      "snippet": "assert \"/home/seven/swarm/.venv/bin/python3 /home/seven/swarm/frontend/terminal.py\" in service",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_telegram_trust.py",
+      "line": 17,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_telegram_trust.py",
+      "line": 18,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_telegram_trust.py",
+      "line": 19,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/core/pipeline')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_telegram_trust.py",
+      "line": 326,
+      "snippet": "DB_PATH       = '/home/seven/swarm/swarm_memory.db'",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_discord_notify_bridge.py",
+      "line": 5,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_discord_notify_bridge.py",
+      "line": 6,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/lib/system')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_direct_agent_commands.py",
+      "line": 13,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_direct_agent_commands.py",
+      "line": 14,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_direct_agent_commands.py",
+      "line": 15,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/core/pipeline')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_governance.py",
+      "line": 20,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_governance.py",
+      "line": 21,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_channel_smoke.py",
+      "line": 17,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_channel_smoke.py",
+      "line": 18,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "test"
+    },
+    {
+      "file": "tests/test_channel_smoke.py",
+      "line": 19,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/core/pipeline')",
+      "bucket": "test"
+    },
+    {
+      "file": "fridays/scheduler.py",
+      "line": 9,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/scheduler.py",
+      "line": 10,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/scheduler.py",
+      "line": 135,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/lib/email')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/scheduler.py",
+      "line": 257,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/core')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/browser_agent.py",
+      "line": 21,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/task_runner.py",
+      "line": 21,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/task_runner.py",
+      "line": 1078,
+      "snippet": "['/usr/bin/env', 'bash', '/home/seven/swarm/scripts/backup_swarm.sh', target],",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/task_runner.py",
+      "line": 1095,
+      "snippet": "['/usr/bin/env', 'python3', '/home/seven/swarm/scripts/backup_verify.py', 'extract'],",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/telegram_bot.py",
+      "line": 23,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/telegram_bot.py",
+      "line": 24,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/telegram_bot.py",
+      "line": 25,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/core/pipeline')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/telegram_bot.py",
+      "line": 26,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents/ghost')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/file_agent.py",
+      "line": 32,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/skills.py",
+      "line": 42,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents/specialists')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/skills.py",
+      "line": 913,
+      "snippet": "_sys2.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/skills.py",
+      "line": 945,
+      "snippet": "_sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/skills.py",
+      "line": 1830,
+      "snippet": "cwd='/home/seven/swarm',",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/discord_bot.py",
+      "line": 24,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/discord_bot.py",
+      "line": 25,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/discord_bot.py",
+      "line": 26,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/core')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/discord_bot.py",
+      "line": 27,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/core/pipeline')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/discord_bot.py",
+      "line": 28,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents/ghost')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/discord_bot.py",
+      "line": 56,
+      "snippet": "_spec = _ilu.spec_from_file_location('_tw_core', '/home/seven/swarm/core/time_machine.py')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "fridays/shell_agent.py",
+      "line": 37,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "fridays"
+    },
+    {
+      "file": "agents/deepseek_local/deepseek_local_agent.py",
+      "line": 7,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/deepseek_local/deepseek_local_agent.py",
+      "line": 8,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/thirteen/thirteen_agent.py",
+      "line": 9,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/thirteen/thirteen_agent.py",
+      "line": 10,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/frontend')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ten/copilot_agent.py",
+      "line": 13,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ten/copilot_agent.py",
+      "line": 14,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ten/copilot_agent.py",
+      "line": 118,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost/sniffer.py",
+      "line": 9,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost/sniffer.py",
+      "line": 10,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost/sniffer.py",
+      "line": 11,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/lib/system')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost/duck.py",
+      "line": 7,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost/duck.py",
+      "line": 8,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost/duck.py",
+      "line": 9,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/lib/system')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost/duck.py",
+      "line": 10,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/lib/email')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/nineteen/nineteen_agent.py",
+      "line": 13,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/nineteen/nineteen_agent.py",
+      "line": 14,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/nineteen/nineteen_agent.py",
+      "line": 117,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/specialists/agent_proposals.py",
+      "line": 19,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/specialists/agent_proposals.py",
+      "line": 97,
+      "snippet": "shared_path = '/home/seven/swarm/sandpits/shared'",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/specialists/agent_email_ghost.py",
+      "line": 14,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/specialists/eight_memory.py",
+      "line": 18,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/specialists/eight_memory.py",
+      "line": 19,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/specialists/eight_memory.py",
+      "line": 20,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/core/pipeline')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/specialists/eight_memory.py",
+      "line": 21,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/lib/system')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/specialists/eight.py",
+      "line": 13,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/llama/llama_agent.py",
+      "line": 6,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/llama/llama_agent.py",
+      "line": 7,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/llama/llama_agent.py",
+      "line": 63,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost_coder/ghost_coder_agent.py",
+      "line": 19,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost_coder/ghost_coder_agent.py",
+      "line": 20,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost_coder/ghost_coder_agent.py",
+      "line": 48,
+      "snippet": "cwd='/home/seven/swarm', timeout=5, text=True",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/ghost_coder/ghost_coder_agent.py",
+      "line": 57,
+      "snippet": "cwd='/home/seven/swarm', timeout=5, text=True",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/twenty/twenty_agent.py",
+      "line": 6,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/twenty/twenty_agent.py",
+      "line": 7,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/eight/eight_agent.py",
+      "line": 7,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/eight/eight_agent.py",
+      "line": 8,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/frontend')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/phi3/phi3_agent.py",
+      "line": 7,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/phi3/phi3_agent.py",
+      "line": 8,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/lmstudio/lmstudio_agent.py",
+      "line": 7,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/lmstudio/lmstudio_agent.py",
+      "line": 8,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/nine/nine_agent.py",
+      "line": 9,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/scholar/scholar_agent.py",
+      "line": 13,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/scholar/scholar_agent.py",
+      "line": 14,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/scholar/scholar_agent.py",
+      "line": 116,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/twelve/twelve_agent.py",
+      "line": 9,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/mistral/mistral_agent.py",
+      "line": 13,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/mistral/mistral_agent.py",
+      "line": 14,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/mistral/mistral_agent.py",
+      "line": 100,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/eleven/grok_agent.py",
+      "line": 9,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/qwen/qwen_agent.py",
+      "line": 6,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/qwen/qwen_agent.py",
+      "line": 7,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/qwen/qwen_agent.py",
+      "line": 63,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/gemma/gemma_agent.py",
+      "line": 6,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/gemma/gemma_agent.py",
+      "line": 7,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/gemma/gemma_agent.py",
+      "line": 65,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/agents')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/seven/seven_agent.py",
+      "line": 15,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/seven/seven_agent.py",
+      "line": 16,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/seeker/seeker_agent.py",
+      "line": 10,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm/utils')",
+      "bucket": "agent"
+    },
+    {
+      "file": "agents/seeker/seeker_agent.py",
+      "line": 11,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "agent"
+    },
+    {
+      "file": "frontend/blueprints/voice.py",
+      "line": 27,
+      "snippet": "_PIPER_VOICES_DIR = os.environ.get('PIPER_VOICES_DIR', '/home/seven/swarm/models/piper')",
+      "bucket": "frontend"
+    },
+    {
+      "file": "lib/system/system_clock.py",
+      "line": 33,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/contradiction_check.py",
+      "line": 3,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/logging_bridge.py",
+      "line": 23,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/time_machine.py",
+      "line": 18,
+      "snippet": "file_path='/home/seven/swarm/test.py',",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/time_machine.py",
+      "line": 32,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/file_versioning.py",
+      "line": 16,
+      "snippet": "file_path='/home/seven/swarm/test.py',",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/file_versioning.py",
+      "line": 24,
+      "snippet": "history = get_version_history('/home/seven/swarm/test.py', limit=10)",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/file_versioning.py",
+      "line": 27,
+      "snippet": "restore_to_date('/home/seven/swarm/test.py', date='2026-03-26')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/file_versioning.py",
+      "line": 37,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/file_versioning.py",
+      "line": 40,
+      "snippet": "VERSIONS_DIR = '/home/seven/swarm/.swarm_versions'",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/file_versioning.py",
+      "line": 41,
+      "snippet": "RESTORE_BIN_DIR = '/home/seven/swarm/.restore_bin'",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/system/monitor.py",
+      "line": 10,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/email/email_handler.py",
+      "line": 2,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/email/gmail_auth.py",
+      "line": 13,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/email/gmail_auth.py",
+      "line": 20,
+      "snippet": "CREDENTIALS_FILE = '/home/seven/swarm/lib/email/gmail_credentials.json'",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/email/gmail_auth.py",
+      "line": 21,
+      "snippet": "TOKEN_FILE       = '/home/seven/swarm/lib/email/gmail_token.json'",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/email/gmail_push.py",
+      "line": 30,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/email/gmail_push.py",
+      "line": 39,
+      "snippet": "TOKEN_FILE       = '/home/seven/swarm/lib/email/gmail_token.json'",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/email/gmail_push.py",
+      "line": 40,
+      "snippet": "WATCH_STATE_FILE = '/home/seven/swarm/lib/email/gmail_watch_state.json'",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/search/internet.py",
+      "line": 2,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/search/internet_serper.py",
+      "line": 12,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    },
+    {
+      "file": "lib/search/internet_tavily.py",
+      "line": 17,
+      "snippet": "sys.path.insert(0, '/home/seven/swarm')",
+      "bucket": "lib"
+    }
+  ]
+}
