@@ -32,6 +32,12 @@ from flask import Blueprint, jsonify
 
 wishlist_bp = Blueprint('wishlist_bp', __name__)
 
+# Status moved from 'capture-only' to 'active-v0' once each pillar shipped
+# a working backend (cybersecurity_bp, financial_bp, trading_bp, business_bp).
+# The view templates still call /api/wishlist/pillars/<slug> for the step
+# context, but they now ALSO render live data from the per-pillar APIs.
+PILLAR_STATUS = 'active-v0'
+
 
 # Pillar -> step IDs. Keep this as the single client-facing grouping.
 PILLARS: dict[str, dict] = {
@@ -159,6 +165,7 @@ def list_pillars():
     return jsonify({
         'ok': True,
         'epic_step_id': EPIC_STEP_ID,
+        'status': PILLAR_STATUS,
         'pillars': out,
         'count': len(out),
     })
@@ -172,8 +179,37 @@ def get_pillar(slug: str):
     return jsonify({
         'ok': True,
         'slug': slug,
+        'status': PILLAR_STATUS,
         'tile_title': meta['tile_title'],
         'tile_subtitle': meta['tile_subtitle'],
         'description': meta['description'],
         'steps': _fetch_steps(meta['step_ids']),
+    })
+
+
+@wishlist_bp.route('/api/wishlist/summary', methods=['GET'])
+def pillar_summary():
+    """Aggregate snapshot Seven uses to answer 'how are the pillars doing?'.
+
+    Imports each pillar's summary lazily so a missing/broken pillar module
+    never takes down the whole endpoint.
+    """
+    snapshots: dict[str, dict] = {}
+    loaders = (
+        ('cyber-security', 'blueprints.cybersecurity_bp'),
+        ('financial',      'blueprints.financial_bp'),
+        ('trading',        'blueprints.trading_bp'),
+        ('business',       'blueprints.business_bp'),
+    )
+    for slug, dotted in loaders:
+        try:
+            mod = __import__(dotted, fromlist=['summary_for_seven'])
+            snapshots[slug] = mod.summary_for_seven()
+        except Exception as exc:  # noqa: BLE001 - degrade, don't 500
+            snapshots[slug] = {'pillar': slug, 'ok': False, 'error': str(exc)}
+    return jsonify({
+        'ok': True,
+        'epic_step_id': EPIC_STEP_ID,
+        'status': PILLAR_STATUS,
+        'pillars': snapshots,
     })
