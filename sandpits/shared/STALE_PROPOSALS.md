@@ -802,3 +802,5 @@
 - [22:29] STUDIO-PROPOSALS-0001 (studio): Improve ALM/Studio Proposals UI
 - [22:34] STUDIO-PROPOSALS-0002 (studio): Improve ALM/Studio Proposals UI
 - [22:34] STUDIO-PROPOSALS-0001 (studio): Improve ALM/Studio Proposals UI
+- [22:39] STUDIO-PROPOSALS-0002 (studio): Improve ALM/Studio Proposals UI
+- [22:39] STUDIO-PROPOSALS-0001 (studio): Improve ALM/Studio Proposals UI
