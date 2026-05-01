@@ -1,17 +1,17 @@
 {
   "alive": true,
   "started_at": 1777631801.5752048,
-  "ts": 1777636455.2332833,
-  "processed": 25,
-  "last_eid": 8701,
+  "ts": 1777637811.2031207,
+  "processed": 34,
+  "last_eid": 8711,
   "last_event": {
     "action": "save",
-    "actor": "update_step_status",
-    "id": "S-DC32617399",
+    "actor": "add_step",
+    "id": "S-03A241D177",
     "kind": "step",
-    "path": "runtime/records/step/2026/05/S-DC32617399.json",
-    "ts": 1777636126.073956
+    "path": "runtime/records/step/2026/05/S-03A241D177.json",
+    "ts": 1777636766.305679
   },
-  "consolidations": 16,
+  "consolidations": 21,
   "errors": 0
 }

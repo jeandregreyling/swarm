@@ -72,3 +72,6 @@ sandpits_stage3/
 # PACKET-02/08 — file-per-record store, materialised from DB
 runtime/records/
 runtime/attachments/
+
+# Tauri desktop build artifacts (huge; rebuildable)
+desktop/src-tauri/target/
