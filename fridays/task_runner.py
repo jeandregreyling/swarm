@@ -1002,6 +1002,55 @@ def _task_landscape_refresh(**kwargs):
         return f'Landscape refresh partial: {e}'
 
 
+# ── PACKET-10A: Backup & Trace Hardening ─────────────────────────────────────
+
+@register('swarm_backup', 'PACKET-10A backup: tarball to local + NTFS + USB (skips unreachable)', 'maintenance')
+def _task_swarm_backup(**kwargs):
+    """Run scripts/backup_swarm.sh against one or all targets.
+
+    Args (whitespace-separated key=value):
+      target=all|local|ntfs|usb   (default: all)
+    """
+    import shlex
+    import subprocess
+
+    target = 'all'
+    for tok in shlex.split(kwargs.get('args') or ''):
+        if '=' in tok:
+            k, v = tok.split('=', 1)
+            if k.strip().lower() == 'target' and v.strip() in ('all', 'local', 'ntfs', 'usb'):
+                target = v.strip()
+
+    proc = subprocess.run(
+        ['/usr/bin/env', 'bash', '/home/seven/swarm/scripts/backup_swarm.sh', target],
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
+    out = (proc.stdout or '') + (proc.stderr or '')
+    tail = '\n'.join(out.strip().splitlines()[-12:])
+    if proc.returncode == 0:
+        return f'swarm_backup ok (target={target})\n{tail}'
+    return f'swarm_backup FAILED rc={proc.returncode} (target={target})\n{tail}'
+
+
+@register('swarm_backup_verify', 'PACKET-10A backup: verify newest local tarball (extract + integrity_check)', 'maintenance')
+def _task_swarm_backup_verify(**kwargs):
+    import subprocess
+
+    proc = subprocess.run(
+        ['/usr/bin/env', 'python3', '/home/seven/swarm/scripts/backup_verify.py', 'extract'],
+        capture_output=True,
+        text=True,
+        timeout=600,
+    )
+    out = (proc.stdout or '') + (proc.stderr or '')
+    tail = '\n'.join(out.strip().splitlines()[-10:])
+    if proc.returncode == 0:
+        return f'swarm_backup_verify ok\n{tail}'
+    return f'swarm_backup_verify FAILED rc={proc.returncode}\n{tail}'
+
+
 # ── Execution ─────────────────────────────────────────────────────────────────
 
 def run_task(name, args=''):

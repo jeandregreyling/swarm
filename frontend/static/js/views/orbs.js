@@ -478,6 +478,40 @@
     mkOrb(VOICE,  VOICE_STYLE[VOICE],  0.084, 0.60),
   ];
 
+  // ── Thought-bubble persistence (slice 5c) ─────────────────────────────────
+  // Save the most recent thought per orb to localStorage so reload keeps the
+  // bubble visible briefly instead of going blank for the full cooldown
+  // window. Keyed by role; expires after 5 minutes.
+  const _THOUGHT_KEY = 'fridays-orb-thoughts-v1';
+  const _THOUGHT_TTL = 5 * 60 * 1000;
+  function _persistThought(o) {
+    if (!o || !o.thought) return;
+    let store = {};
+    try { store = JSON.parse(localStorage.getItem(_THOUGHT_KEY) || '{}') || {}; } catch(_) {}
+    store[o.role] = { text: String(o.thought).slice(0, 240), ts: Date.now() };
+    try { localStorage.setItem(_THOUGHT_KEY, JSON.stringify(store)); } catch(_) {}
+  }
+  function _hydrateThoughts() {
+    let store = {};
+    try { store = JSON.parse(localStorage.getItem(_THOUGHT_KEY) || '{}') || {}; } catch(_) { return; }
+    const now = Date.now();
+    orbs.forEach(o => {
+      const rec = store[o.role];
+      if (!rec || !rec.text) return;
+      const age = now - (rec.ts || 0);
+      if (age > _THOUGHT_TTL) return;
+      o.thought = rec.text;
+      o.thoughtAlpha = 1;
+      o.thoughtPhase = 'hold';
+      // Show for a few seconds after hydration, then fade out.
+      o.thoughtHoldTimer = Math.max(1500, 4000 - Math.floor(age / 8));
+      // Push the next natural thought a touch later so we don't double-flash.
+      o.thoughtCooldown = rand(8000, 18000);
+    });
+  }
+  // Run hydration after orbs settle into their initial roost positions.
+  setTimeout(() => { try { _hydrateThoughts(); } catch(_) {} }, 700);
+
   // ── Resize ────────────────────────────────────────────────────────────────────
   function resize() {
     DPR = Math.min(window.devicePixelRatio||1, 2);
@@ -626,7 +660,10 @@
       }
     } else if (o.thoughtPhase === 'fadein') {
       o.thoughtAlpha = Math.min(1, o.thoughtAlpha + dt/400);
-      if (o.thoughtAlpha >= 1) o.thoughtPhase = 'hold';
+      if (o.thoughtAlpha >= 1) {
+        o.thoughtPhase = 'hold';
+        try { _persistThought(o); } catch(_) {}
+      }
     } else if (o.thoughtPhase === 'hold') {
       o.thoughtHoldTimer -= dt;
       if (o.thoughtHoldTimer <= 0) {

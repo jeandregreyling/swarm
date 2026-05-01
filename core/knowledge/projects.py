@@ -45,7 +45,7 @@ METHODOLOGIES = ('agile', 'waterfall', 'prince2', 'mixed')
 STEP_STATUSES = ('todo', 'doing', 'blocked', 'partial', 'done', 'skipped')
 CASE_STATUSES = ('draft', 'ready', 'passed', 'failed', 'blocked', 'obsolete')
 PROJECT_STATUSES = ('active', 'archived', 'on_hold')
-BLACKBOARD_KINDS = ('note', 'handoff', 'decision', 'risk', 'test', 'research')
+BLACKBOARD_KINDS = ('note', 'handoff', 'decision', 'risk', 'test', 'research', 'milestone')
 BLACKBOARD_STATUSES = ('active', 'resolved', 'archived')
 DEFAULT_OWNER = 'seven'
 
@@ -249,6 +249,11 @@ def create_project(
         f"Project created: {name}",
         {'project_id': project_id, 'methodology': methodology, 'owner': owner},
     )
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('project', project_id, actor='create_project')
+    except Exception:
+        pass
     return project_id
 
 
@@ -351,6 +356,11 @@ def update_project(project_id: str, **fields: Any) -> bool:
         return False
     if ok:
         _emit_spine(f"Project updated: {project_id}", {'project_id': project_id, 'fields': list(updates.keys())})
+        try:
+            from core.records import mirror as _records_mirror
+            _records_mirror('project', project_id, actor='update_project')
+        except Exception:
+            pass
     return ok
 
 
@@ -393,6 +403,11 @@ def add_step(
     except Exception:
         return None
     _emit_spine(f"Step added: {title}", {'project_id': project_id, 'step_id': step_id, 'owner': owner})
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('step', step_id, actor='add_step')
+    except Exception:
+        pass
     return step_id
 
 
@@ -413,6 +428,45 @@ def list_steps(project_id: str) -> List[Dict[str, Any]]:
             conn.close()
     except Exception:
         return []
+
+
+def get_step(step_id: str) -> Optional[Dict[str, Any]]:
+    """ALM detail surface — load one step with its linked test cases and
+    most recent test runs so a UI can render an openable record view."""
+    if not step_id:
+        return None
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT * FROM project_steps WHERE step_id=?", (step_id,)
+            ).fetchone()
+            if not row:
+                return None
+            step = dict(row)
+            try:
+                cases = conn.execute(
+                    "SELECT * FROM project_test_cases WHERE step_id=? ORDER BY created_at ASC",
+                    (step_id,),
+                ).fetchall()
+                step['test_cases'] = [dict(c) for c in cases]
+            except Exception:
+                step['test_cases'] = []
+            try:
+                runs = conn.execute(
+                    "SELECT * FROM test_runs WHERE step_id=? ORDER BY started_at DESC LIMIT 25",
+                    (step_id,),
+                ).fetchall()
+                step['test_runs'] = [dict(r) for r in runs]
+            except Exception:
+                step['test_runs'] = []
+            return step
+        finally:
+            conn.close()
+    except Exception:
+        return None
 
 
 def update_step_status(step_id: str, status: str, *, owner: Optional[str] = None) -> bool:
@@ -444,6 +498,11 @@ def update_step_status(step_id: str, status: str, *, owner: Optional[str] = None
     if ok:
         severity = 'warn' if status == 'blocked' else 'info'
         _emit_spine(f"Step → {status}: {step_id}", {'step_id': step_id, 'status': status}, severity=severity)
+        try:
+            from core.records import mirror as _records_mirror
+            _records_mirror('step', step_id, actor='update_step_status')
+        except Exception:
+            pass
     return ok
 
 
@@ -483,6 +542,11 @@ def add_test_case(
     except Exception:
         return None
     _emit_spine(f"Test case: {title}", {'project_id': project_id, 'case_id': case_id, 'script_id': script_id})
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('case', case_id, actor='add_test_case')
+    except Exception:
+        pass
     return case_id
 
 
@@ -515,6 +579,46 @@ def list_test_cases(
         return []
 
 
+def get_test_case(case_id: str) -> Optional[Dict[str, Any]]:
+    """ALM detail surface — load one test case with its parent step and
+    most recent test runs so a UI can render an openable record view."""
+    if not case_id:
+        return None
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT * FROM project_test_cases WHERE case_id=?", (case_id,)
+            ).fetchone()
+            if not row:
+                return None
+            case = dict(row)
+            if case.get('step_id'):
+                try:
+                    step = conn.execute(
+                        "SELECT step_id, title, status, owner FROM project_steps WHERE step_id=?",
+                        (case['step_id'],),
+                    ).fetchone()
+                    case['step'] = dict(step) if step else None
+                except Exception:
+                    case['step'] = None
+            try:
+                runs = conn.execute(
+                    "SELECT * FROM test_runs WHERE case_id=? ORDER BY started_at DESC LIMIT 25",
+                    (case_id,),
+                ).fetchall()
+                case['test_runs'] = [dict(r) for r in runs]
+            except Exception:
+                case['test_runs'] = []
+            return case
+        finally:
+            conn.close()
+    except Exception:
+        return None
+
+
 def update_case_status(case_id: str, status: str, *, owner: Optional[str] = None) -> bool:
     if not case_id:
         return False
@@ -544,6 +648,11 @@ def update_case_status(case_id: str, status: str, *, owner: Optional[str] = None
     if ok:
         severity = 'warn' if status in ('failed', 'blocked') else 'info'
         _emit_spine(f"Case → {status}: {case_id}", {'case_id': case_id, 'status': status}, severity=severity)
+        try:
+            from core.records import mirror as _records_mirror
+            _records_mirror('case', case_id, actor='update_case_status')
+        except Exception:
+            pass
     return ok
 
 
@@ -595,6 +704,11 @@ def add_blackboard_note(
         f"Project blackboard note: {project_id}",
         {'project_id': project_id, 'note_id': note_id, 'kind': kind, 'author': author},
     )
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('note', note_id, actor='add_blackboard_note')
+    except Exception:
+        pass
     return note_id
 
 

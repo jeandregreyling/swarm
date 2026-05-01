@@ -156,6 +156,11 @@ def start_run(
             conn.close()
     except Exception:
         return None
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('run', run_id, actor='start_run')
+    except Exception:
+        pass
     return run_id
 
 
@@ -204,6 +209,11 @@ def finish_run(
                 exit_code=exit_code,
                 stdout_tail=tail,
             )
+            try:
+                from core.records import mirror as _records_mirror
+                _records_mirror('run', run_id, actor='finish_run')
+            except Exception:
+                pass
             return True
         finally:
             conn.close()
@@ -239,6 +249,11 @@ def add_artifact(run_id: str, kind: str, body: str) -> bool:
                 (run_id, kind, (body or '')[:64 * 1024], time.time()),
             )
             conn.commit()
+            try:
+                from core.records import mirror as _records_mirror
+                _records_mirror('run', run_id, actor='add_artifact')
+            except Exception:
+                pass
             return True
         finally:
             conn.close()

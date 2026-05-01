@@ -13,7 +13,12 @@
 function loadStudioData(win) {
   // Ensure the global handler is bound (template calls it from onclick).
   window.createNewProposalFromStudio = createNewProposalFromStudio;
-  window._studioTab = window._studioTab || 'projects';
+  // Slice 5f: remember last-used tab across sessions instead of always
+  // landing on 'projects'. Falls back to 'projects' on first ever open.
+  if (!window._studioTab) {
+    try { window._studioTab = localStorage.getItem('studio_last_tab') || 'projects'; }
+    catch (_) { window._studioTab = 'projects'; }
+  }
   studioSetTab(window._studioTab);
 }
 
@@ -61,13 +66,16 @@ const _PROPOSAL_STATUS = {
 
 function studioSetTab(tab) {
   window._studioTab = tab;
+  // Slice 5f: persist for next session.
+  try { localStorage.setItem('studio_last_tab', tab); } catch (_) { /* private mode */ }
   const isGit = (tab === 'git');
   const isTestLab = (tab === 'testlab');
   const isProjects = (tab === 'projects');
   const isMedia = (tab === 'media');
+  const isRecords = (tab === 'records');
 
   // Style proposal tab buttons
-  ['pending','in_progress','all','projects','media','git','testlab'].forEach(t => {
+  ['pending','in_progress','all','projects','media','git','testlab','records'].forEach(t => {
     const btn = document.getElementById('studio-tab-' + t);
     if (!btn) return;
     const on = tab === t;
@@ -96,11 +104,13 @@ function studioSetTab(tab) {
   const testLabPanel = document.getElementById('studio-testlab-panel');
   const projectsPanel = document.getElementById('studio-projects-panel');
   const mediaPanel = document.getElementById('studio-media-panel');
-  if (container)      container.style.display      = (isGit || isTestLab || isProjects || isMedia) ? 'none' : '';
+  const recordsPanel = document.getElementById('studio-records-panel');
+  if (container)      container.style.display      = (isGit || isTestLab || isProjects || isMedia || isRecords) ? 'none' : '';
   if (gitPanel)       gitPanel.style.display       = isGit       ? 'flex' : 'none';
   if (testLabPanel)   testLabPanel.style.display   = isTestLab   ? 'flex' : 'none';
   if (projectsPanel)  projectsPanel.style.display  = isProjects  ? 'flex' : 'none';
   if (mediaPanel)     mediaPanel.style.display     = isMedia     ? 'flex' : 'none';
+  if (recordsPanel)   recordsPanel.style.display   = isRecords   ? 'flex' : 'none';
 
   if (isGit) {
     const fakeWin = {
@@ -116,6 +126,8 @@ function studioSetTab(tab) {
     if (typeof loadStudioProjectsPanel === 'function') loadStudioProjectsPanel();
   } else if (isMedia) {
     if (typeof loadStudioMediaPanel === 'function') loadStudioMediaPanel();
+  } else if (isRecords) {
+    if (typeof loadStudioRecordsPanel === 'function') loadStudioRecordsPanel();
   } else {
     if (container) loadProposals(container, tab);
   }
@@ -203,7 +215,9 @@ function _proposalCard(p) {
           color:${done||active?m.color:'var(--text-dim)'};
           border:1px solid ${done||active?m.border:'var(--border)'};">${done?'✓ ':''}${label}</div>`;
       }).join('<div style="color:var(--text-dim);font-size:9px;">›</div>')}
-    </div>` : '';
+    </div>
+    ${(status === 'done' || status === 'uat') && p.git_branch ? `<div style="margin-top:5px;font-size:9.5px;color:var(--text-dim);display:flex;gap:10px;flex-wrap:wrap;"><span title="Available from this state">Alternates:</span><span style="color:#ff8a8a;">↩ Revert</span>${status==='done'?`<span style="color:#ffa726;">→ UAT</span>`:''}${status==='uat'?`<span style="color:#66bb6a;">→ PROD</span>`:''}</div>` : ''}
+    ${status === 'rejected' ? `<div style="margin-top:8px;padding:5px 8px;background:#f4433611;border:1px dashed #f4433655;border-radius:4px;font-size:10px;color:#ff8a8a;">Rejected — re-open from action menu to revisit.</div>` : ''}` : '';
 
   // Promote button for DEV and UAT (only when status is 'done')
   let promoteBtn = '';
@@ -335,8 +349,14 @@ async function viewProposalDiff(proposalId) {
     overlay.style.cssText = 'position:fixed;inset:0;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;';
     document.body.appendChild(overlay);
 
-    const branch = data.git_branch ? `Branch: <code style="font-size:10px;">${data.git_branch}</code>` : '';
-    const commit = data.git_commit ? `Commit: <code style="font-size:10px;">${data.git_commit}</code>` : '';
+    // Slice 5f: tighten git chips into a single compact pill (icon + branch · commit).
+    const _bShort = data.git_branch || '';
+    const _cShort = data.git_commit ? String(data.git_commit).slice(0, 8) : '';
+    const _gitPill = (_bShort || _cShort)
+      ? `<span title="${_escapeHtml(_bShort)}${_cShort?(' @ '+_escapeHtml(_cShort)):''}" style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:10px;background:#2a2a2a;border:1px solid var(--border);font-size:10px;font-family:monospace;color:var(--text-dim);"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="flex:0 0 auto;"><circle cx="4" cy="4" r="1.6" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="12" r="1.6" stroke="currentColor" stroke-width="1.2"/><circle cx="4" cy="12" r="1.6" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.6v4.8M5.6 12h4.8M5.2 5.2l5.6 5.6" stroke="currentColor" stroke-width="1.2"/></svg>${_escapeHtml(_bShort || '(detached)')}${_cShort?` <span style="opacity:.6;">·</span> ${_escapeHtml(_cShort)}`:''}</span>`
+      : '';
+    const branch = _gitPill;
+    const commit = '';
     const envBadge = data.worktrees_active
       ? '<span style="background:#2e7d32;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">✓ Isolated — DEV only</span>'
       : '<span style="background:#c62828;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">⚠ No worktrees — changes are live</span>';
@@ -648,6 +668,8 @@ function _openProposalDetailRender(p) {
       ${p.ticket_number ? `<span onclick='openTicketDetail(${ticketJs})' style="padding:3px 10px;border-radius:12px;background:#2196f320;color:#2196f3;font-size:11px;cursor:pointer;border:1px solid #2196f340;">Ticket: ${safeTicketNumber}</span>` : ''}
       ${p.queue_id ? `<span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Queue: ${_escHtml(String(p.queue_id))}</span>` : ''}
       ${srcConvId ? `<span onclick='openConversation(${Number(srcConvId)})' style="padding:3px 10px;border-radius:12px;background:#4caf5020;color:#4caf50;font-size:11px;cursor:pointer;border:1px solid #4caf5040;"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><path d="M2.5 3h11a1 1 0 011 1v6a1 1 0 01-1 1h-3l-3 2.5V11h-5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> View in Chat</span>` : ''}
+      <span onclick='window.openRecord && window.openRecord("proposal", ${pidJs})' title="Open this proposal in Studio Records" style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;cursor:pointer;border:1px solid var(--border);">In Records</span>
+      <span onclick='window.revealInFiles && window.revealInFiles("proposal", ${pidJs})' title="Reveal this proposal in the Files tile" style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;cursor:pointer;border:1px solid var(--border);">In Files</span>
     </div>
 
     ${duckVerdict ? `<div style="margin-bottom:14px;padding:10px 14px;border-radius:6px;background:${duckVerdict==='approved'?'#4caf5015':'#f4433615'};border:1px solid ${duckVerdict==='approved'?'#4caf5040':'#f4433640'};">
@@ -771,6 +793,13 @@ function _openProposalDetailRender(p) {
   // Load attachments and agent notes asynchronously
   _pdetLoadAttachments(p.proposal_id);
   _pdetLoadAgentNotes(p.proposal_id);
+  // Seven sees — propose-only insight panel.
+  try {
+    if (window.SevenPanel) {
+      window.SevenPanel.mount(document.getElementById('pdet-body'),
+        { kind: 'proposal', id: p.proposal_id });
+    }
+  } catch (e) { /* noop */ }
 }
 
 async function sudoApproveRun(token, proposalId) {
@@ -1036,6 +1065,8 @@ function openTicketDetail(ticketNumber) {
           <span style="padding:3px 10px;border-radius:12px;background:${stColor}22;color:${stColor};font-size:11px;font-weight:700;border:1px solid ${stColor}44;">${_escHtml(t.status||'unknown')}</span>
           <span style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;">Priority: ${_escHtml(String(t.priority||5))}</span>
           ${t.snooze_count ? `<span style="padding:3px 10px;border-radius:12px;background:#ff980022;color:#ff9800;font-size:11px;"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" style="vertical-align:-1px;"><path d="M4 5h6L4 11h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> ${_escHtml(String(t.snooze_count))} snooze</span>` : ''}
+          <span onclick='window.openRecord && window.openRecord("ticket", ${tnJs})' title="Open this ticket in Studio Records" style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;cursor:pointer;border:1px solid var(--border);">In Records</span>
+          <span onclick='window.revealInFiles && window.revealInFiles("ticket", ${tnJs})' title="Reveal this ticket in the Files tile" style="padding:3px 10px;border-radius:12px;background:var(--card);color:var(--text-dim);font-size:11px;cursor:pointer;border:1px solid var(--border);">In Files</span>
         </div>
 
         <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px;">
@@ -1095,6 +1126,13 @@ function openTicketDetail(ticketNumber) {
           <button onclick="document.getElementById('ticket-detail-modal').classList.remove('open')"
                   style="padding:6px 14px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;cursor:pointer;">Close</button>
         </div>`;
+      // Seven sees — propose-only insight panel.
+      try {
+        if (window.SevenPanel) {
+          window.SevenPanel.mount(document.getElementById('tdet-body'),
+            { kind: 'ticket', id: ticketNumber });
+        }
+      } catch (e) { /* noop */ }
     })
     .catch(e => {
       document.getElementById('tdet-body').innerHTML = `<div style="color:#f77;padding:20px;">Error loading ticket: ${e.message}</div>`;

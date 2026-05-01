@@ -108,6 +108,12 @@
         const p = pd.project;
         const runs = (rd && rd.items) || [];
         det.innerHTML = _renderDetail(p, runs);
+        // Seven sees — propose-only insight panel.
+        try {
+          if (window.SevenPanel) {
+            window.SevenPanel.mount(det, { kind: 'project', id: p.project_id });
+          }
+        } catch (e) { /* noop */ }
       })
       .catch(err => {
         det.innerHTML = `<div style="color:var(--danger,#f77);">${_esc(err.message || err)}</div>`;
@@ -144,6 +150,7 @@
         <pre id="pd-context-preview-body" style="white-space:pre-wrap;margin:0;color:var(--text);font-size:10px;line-height:1.45;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;max-height:360px;overflow:auto;"></pre>
       </div>
 
+      ${_renderPacketRollup(p, steps)}
       <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--card) 92%,var(--accent) 8%),var(--card));">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
           <div>
@@ -175,13 +182,15 @@
 
       <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:var(--card);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;">Plan Steps (${steps.length})</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;">Plan Steps (${(_packetFilter ? steps.filter(s => _packetOf(s) === _packetFilter) : steps).length}${_packetFilter ? ' / ' + steps.length + ' — filtered to ' + _packetFilter : ''})</div>
           <div style="display:flex;gap:4px;">
             <input id="pd-step-title" placeholder="New step title…" style="padding:3px 8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;outline:none;">
             <button onclick="projectsAddStep('${_esc(p.project_id)}')" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;">+ Step</button>
           </div>
         </div>
-        ${steps.length ? steps.map((s, i) => `
+        ${(() => {
+          const visible = _packetFilter ? steps.filter(s => _packetOf(s) === _packetFilter) : steps;
+          return visible.length ? visible.map((s, i) => `
           <div style="display:grid;grid-template-columns:24px 1fr 80px 100px 64px 130px;gap:6px;padding:5px 6px;border-top:1px solid var(--border);align-items:center;font-size:10px;">
             <span style="color:var(--text-dim);font-family:monospace;">${i + 1}.</span>
             <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_esc(s.title)}">${_esc(s.title)}</span>
@@ -192,6 +201,8 @@
             </select>
             <span style="font-size:8px;color:${_stepStatusColor(s.status)};font-weight:700;text-transform:uppercase;text-align:right;">${_esc(s.status)}</span>
             <span style="display:flex;gap:2px;justify-content:flex-end;">
+              <button onclick="projectsOpenStep('${_esc(s.step_id)}')" title="Open step detail (ALM)"
+                style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">⤢</button>
               <button onclick="projectsRunStepTests('${_esc(s.step_id)}')" title="Run only this step's tests"
                 style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">▶</button>
               <button onclick="projectsCompleteStep('${_esc(s.step_id)}')" title="Mark done + auto-write KC doc"
@@ -202,7 +213,8 @@
                 style="background:none;border:1px solid var(--border);color:var(--danger,#f77);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">🗑</button>
             </span>
           </div>
-        `).join('') : '<div style="padding:6px;color:var(--text-dim);font-size:10px;">No steps yet. Add one to start the plan.</div>'}
+        `).join('') : `<div style="padding:6px;color:var(--text-dim);font-size:10px;">${_packetFilter ? 'No steps in ' + _esc(_packetFilter) + '. Click clear filter above.' : 'No steps yet. Add one to start the plan.'}</div>`;
+        })()}
       </div>
 
       <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:var(--card);">
@@ -220,6 +232,8 @@
             <span style="color:var(--text-dim);font-family:monospace;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(c.script_id || '—')}</span>
             <span style="font-size:8px;color:var(--accent);font-weight:700;text-transform:uppercase;text-align:right;">${_esc(c.status)}</span>
             <span style="display:flex;gap:2px;justify-content:flex-end;">
+              <button onclick="projectsOpenCase('${_esc(c.case_id)}')" title="Open case detail (ALM)"
+                style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">⤢</button>
               <button onclick="projectsEditCase('${_esc(c.case_id)}','${_esc((c.title||'').replace(/'/g, '&#39;'))}','${_esc(c.script_id||'')}')" title="Edit"
                 style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">✎</button>
               <button onclick="projectsDeleteCase('${_esc(c.case_id)}','${_esc((c.title||'').replace(/'/g, '&#39;'))}')" title="Delete"
@@ -530,4 +544,265 @@
     if (window.SwarmChat && typeof window.SwarmChat.esc === 'function') return window.SwarmChat.esc(v);
     return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
   }
+
+  // ── PACKET-04: Project overview surface (packet rollup) ────────────────
+  // Reads the parent-packet tag from each step's title (if it starts with
+  // [PACKET-XX]) or from the 'Packet: PACKET-XX' line at the head of its
+  // description (stamped by scripts/tag_backlog_packets.py). Renders a
+  // status-counted rollup with a one-click filter to focus the steps list
+  // below on a single packet.
+
+  const PACKET_DEFS = [
+    ['PACKET-01', 'Studio source of truth — md ingest + archive'],
+    ['PACKET-02', 'Per-record file model'],
+    ['PACKET-03', 'ALM detail surfaces'],
+    ['PACKET-04', 'Project overview surface'],
+    ['PACKET-05', 'System runs in itself — architecture lock'],
+    ['PACKET-06', 'Backlog dedupe + packetization'],
+    ['PACKET-07', 'Inter-tile improvement sweep'],
+    ['PACKET-08', 'Separate-file artifact path'],
+  ];
+
+  function _packetOf(step) {
+    const t = step.title || '';
+    let m = t.match(/^\[(PACKET-\d{2})\]/);
+    if (m) return m[1];
+    const d = step.description || '';
+    m = d.match(/^\s*Packet:\s*(PACKET-\d{2})/i);
+    if (m) return m[1].toUpperCase();
+    return null;
+  }
+
+  let _packetFilter = null;
+
+  function _renderPacketRollup(p, steps) {
+    const buckets = new Map();
+    PACKET_DEFS.forEach(([id]) => buckets.set(id, { todo:0, doing:0, blocked:0, partial:0, done:0, skipped:0, _epic:null }));
+    let untagged = 0;
+    steps.forEach(s => {
+      const pkt = _packetOf(s);
+      if (!pkt) { untagged++; return; }
+      let b = buckets.get(pkt);
+      if (!b) { b = { todo:0, doing:0, blocked:0, partial:0, done:0, skipped:0, _epic:null }; buckets.set(pkt, b); }
+      const st = s.status || 'todo';
+      if (b[st] != null) b[st]++; else b.todo++;
+      if ((s.title || '').startsWith(`[${pkt}]`)) b._epic = s;
+    });
+    const tile = ([id, label]) => {
+      const b = buckets.get(id) || { todo:0, doing:0, blocked:0, partial:0, done:0, skipped:0, _epic:null };
+      const total = b.todo + b.doing + b.blocked + b.partial + b.done + b.skipped;
+      const epicStatus = (b._epic && b._epic.status) || 'todo';
+      const isActive = _packetFilter === id;
+      const accent = (epicStatus === 'done') ? '#4caf50'
+                   : (epicStatus === 'doing') ? 'var(--accent)'
+                   : (epicStatus === 'blocked') ? '#f77'
+                   : 'var(--text-dim)';
+      return `
+        <div onclick="projectsFilterPacket('${id}')"
+             title="Click to filter the steps list to ${id}; click again to clear"
+             style="border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};
+                    border-radius:5px;padding:8px 10px;cursor:pointer;
+                    background:${isActive ? 'color-mix(in srgb,var(--accent) 12%,var(--card))' : 'var(--card)'};
+                    transition:background 0.12s;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;">
+            <span style="font-family:monospace;font-size:10px;font-weight:800;color:${accent};">${id}</span>
+            <span style="font-size:8px;text-transform:uppercase;letter-spacing:0.5px;color:${accent};font-weight:700;">${epicStatus}</span>
+          </div>
+          <div style="font-size:10px;color:var(--text);line-height:1.35;margin-bottom:6px;min-height:26px;">${_esc(label)}</div>
+          <div style="display:flex;gap:6px;font-size:9px;color:var(--text-dim);font-family:monospace;flex-wrap:wrap;">
+            <span title="todo">📋 ${b.todo}</span>
+            <span title="doing" style="color:var(--accent);">▶ ${b.doing}</span>
+            ${b.blocked ? `<span title="blocked" style="color:#f77;">⚠ ${b.blocked}</span>` : ''}
+            ${b.partial ? `<span title="partial" style="color:#fc0;">◐ ${b.partial}</span>` : ''}
+            <span title="done" style="color:#4caf50;">✓ ${b.done}</span>
+            <span title="total" style="margin-left:auto;">${total}</span>
+          </div>
+        </div>`;
+    };
+    const totalTagged = PACKET_DEFS.reduce((sum, [id]) => {
+      const b = buckets.get(id);
+      return sum + (b ? (b.todo + b.doing + b.blocked + b.partial + b.done + b.skipped) : 0);
+    }, 0);
+    return `
+      <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--card) 92%,var(--accent) 6%),var(--card));">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;">Packet Rollup</div>
+            <div style="font-size:9px;color:var(--text-dim);margin-top:2px;">Click a packet to filter the steps list. Tagged steps: ${totalTagged} · untagged: ${untagged}</div>
+          </div>
+          ${_packetFilter ? `<button onclick="projectsFilterPacket(null)"
+            style="background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">clear filter (${_esc(_packetFilter)})</button>` : ''}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;">
+          ${PACKET_DEFS.map(tile).join('')}
+        </div>
+      </div>`;
+  }
+
+  window.projectsFilterPacket = function (packetId) {
+    _packetFilter = (_packetFilter === packetId) ? null : packetId;
+    if (_selectedId) _loadDetail(_selectedId);
+    // After re-render, hide step rows that don't match the filter.
+    setTimeout(() => {
+      const det = document.getElementById('pd-detail');
+      if (!det) return;
+      const filter = _packetFilter;
+      // we cannot identify rows by step easily without data attrs — instead
+      // we keep this lightweight by just scrolling the steps section into
+      // view and letting the user use the rollup as the primary entry. The
+      // hard filter version comes when we re-render the steps list with a
+      // filter parameter (next slice).
+    }, 0);
+  };
+  // ── PACKET-03: ALM detail surfaces ─────────────────────────────────────
+  // openStep / openCase render a focused modal with the full record,
+  // owner, status, parent, linked test runs, and an evidence dock. They
+  // hit the new GET /api/knowledge/steps/<id> + /cases/<id> endpoints.
+
+  function _ensureDetailModal() {
+    let m = document.getElementById('alm-detail-modal');
+    if (m) return m;
+    m = document.createElement('div');
+    m.id = 'alm-detail-modal';
+    m.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;font-family:inherit;';
+    m.innerHTML = `
+      <div style="background:var(--card,#161616);border:1px solid var(--border,#333);border-radius:8px;
+                  width:min(720px,92vw);max-height:86vh;overflow:hidden;display:flex;flex-direction:column;
+                  box-shadow:0 12px 48px rgba(0,0,0,0.6);">
+        <div id="alm-detail-head" style="display:flex;justify-content:space-between;align-items:center;
+              padding:10px 14px;border-bottom:1px solid var(--border,#333);background:var(--window-header,#1d1d1d);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="alm-detail-kind" style="font-size:9px;text-transform:uppercase;letter-spacing:1px;
+                  padding:2px 6px;border:1px solid var(--accent);color:var(--accent);border-radius:3px;font-weight:700;">STEP</span>
+            <span id="alm-detail-id" style="font-family:monospace;font-size:10px;color:var(--text-dim);"></span>
+          </div>
+          <button onclick="document.getElementById('alm-detail-modal').style.display='none'"
+            style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:2px 8px;font-size:11px;cursor:pointer;">close</button>
+        </div>
+        <div id="alm-detail-body" style="padding:14px;overflow:auto;font-size:11px;color:var(--text);"></div>
+      </div>`;
+    document.body.appendChild(m);
+    m.addEventListener('click', (e) => { if (e.target === m) m.style.display = 'none'; });
+    return m;
+  }
+
+  function _renderRunsBlock(runs) {
+    if (!runs || !runs.length) {
+      return '<div style="color:var(--text-dim);font-size:10px;padding:6px 0;">No test runs recorded yet.</div>';
+    }
+    return runs.map(r => {
+      const t = r.started_at ? new Date(r.started_at * 1000) : null;
+      const tStr = t ? t.toLocaleString() : '—';
+      return `<div style="display:grid;grid-template-columns:60px 1fr 140px 70px;gap:6px;padding:4px 6px;
+                          border-top:1px solid var(--border);align-items:center;font-size:10px;">
+        <span style="color:${_runStatusColor(r.status)};font-weight:700;text-transform:uppercase;font-size:9px;">${_esc(r.status)}</span>
+        <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;">${_esc(r.script_id || r.run_id)}</span>
+        <span style="color:var(--text-dim);font-family:monospace;font-size:9px;">${_esc(tStr)}</span>
+        <button onclick="testLabOpenRun && testLabOpenRun('${_esc(r.run_id)}')"
+          style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:1px 6px;font-size:9px;cursor:pointer;">open</button>
+      </div>`;
+    }).join('');
+  }
+
+  function _kvRow(label, value) {
+    return `<div style="display:grid;grid-template-columns:120px 1fr;gap:8px;padding:3px 0;font-size:10px;">
+      <span style="color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;font-size:9px;">${_esc(label)}</span>
+      <span style="color:var(--text);font-family:${label === 'id' ? 'monospace' : 'inherit'};">${_esc(value ?? '—')}</span>
+    </div>`;
+  }
+
+  function _fmtTs(ts) {
+    if (!ts) return '—';
+    const t = new Date((typeof ts === 'number' ? ts * 1000 : Date.parse(ts)));
+    return isNaN(t.getTime()) ? String(ts) : t.toLocaleString();
+  }
+
+  window.projectsOpenStep = function (stepId) {
+    if (!stepId) return;
+    const m = _ensureDetailModal();
+    m.style.display = 'flex';
+    document.getElementById('alm-detail-kind').textContent = 'STEP';
+    document.getElementById('alm-detail-id').textContent = stepId;
+    const body = document.getElementById('alm-detail-body');
+    body.innerHTML = '<div style="color:var(--text-dim);">Loading…</div>';
+    fetch('/api/knowledge/steps/' + encodeURIComponent(stepId))
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'load failed');
+        const s = data.step || {};
+        const cases = s.test_cases || [];
+        const runs = s.test_runs || [];
+        body.innerHTML = `
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">${_esc(s.title || stepId)}</div>
+          <div style="border:1px solid var(--border);border-radius:5px;padding:8px;margin-bottom:10px;background:var(--window-header,#1a1a1a);">
+            ${_kvRow('id', s.step_id)}
+            ${_kvRow('project', s.project_id)}
+            ${_kvRow('status', s.status)}
+            ${_kvRow('owner', s.owner)}
+            ${_kvRow('order', s.order_idx)}
+            ${_kvRow('created', _fmtTs(s.created_at))}
+            ${_kvRow('updated', _fmtTs(s.updated_at))}
+          </div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;margin:6px 0 4px;">Description</div>
+          <div style="border:1px solid var(--border);border-radius:5px;padding:8px;margin-bottom:10px;white-space:pre-wrap;color:var(--text);font-size:11px;line-height:1.45;">${_esc(s.description || '(no description — use the rename/edit button to add one)')}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;margin:6px 0 4px;">Linked Test Cases (${cases.length})</div>
+          ${cases.length
+            ? cases.map(c => `<div style="display:grid;grid-template-columns:1fr 100px 60px 60px;gap:6px;padding:4px 6px;border-top:1px solid var(--border);align-items:center;font-size:10px;">
+                <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(c.title)}</span>
+                <span style="color:var(--text-dim);font-family:monospace;font-size:9px;">${_esc(c.script_id || '—')}</span>
+                <span style="font-size:8px;color:var(--accent);font-weight:700;text-transform:uppercase;">${_esc(c.status)}</span>
+                <button onclick="projectsOpenCase('${_esc(c.case_id)}')"
+                  style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">open</button>
+              </div>`).join('')
+            : '<div style="color:var(--text-dim);font-size:10px;padding:6px 0;">No cases linked to this step.</div>'}
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;margin:14px 0 4px;">Test Runs (${runs.length})</div>
+          ${_renderRunsBlock(runs)}
+        `;
+      })
+      .catch(err => {
+        body.innerHTML = `<div style="color:var(--danger,#f77);font-size:11px;">Open step failed: ${_esc(err.message || err)}</div>`;
+      });
+  };
+
+  window.projectsOpenCase = function (caseId) {
+    if (!caseId) return;
+    const m = _ensureDetailModal();
+    m.style.display = 'flex';
+    document.getElementById('alm-detail-kind').textContent = 'CASE';
+    document.getElementById('alm-detail-id').textContent = caseId;
+    const body = document.getElementById('alm-detail-body');
+    body.innerHTML = '<div style="color:var(--text-dim);">Loading…</div>';
+    fetch('/api/knowledge/cases/' + encodeURIComponent(caseId))
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok) throw new Error((data && data.error) || 'load failed');
+        const c = data.case || {};
+        const runs = c.test_runs || [];
+        const step = c.step || null;
+        body.innerHTML = `
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">${_esc(c.title || caseId)}</div>
+          <div style="border:1px solid var(--border);border-radius:5px;padding:8px;margin-bottom:10px;background:var(--window-header,#1a1a1a);">
+            ${_kvRow('id', c.case_id)}
+            ${_kvRow('project', c.project_id)}
+            ${_kvRow('parent step', step ? (step.title + '  —  ' + step.step_id) : (c.step_id || '—'))}
+            ${_kvRow('script_id', c.script_id)}
+            ${_kvRow('status', c.status)}
+            ${_kvRow('owner', c.owner)}
+            ${_kvRow('created', _fmtTs(c.created_at))}
+            ${_kvRow('updated', _fmtTs(c.updated_at))}
+          </div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;margin:6px 0 4px;">Description</div>
+          <div style="border:1px solid var(--border);border-radius:5px;padding:8px;margin-bottom:10px;white-space:pre-wrap;color:var(--text);font-size:11px;line-height:1.45;">${_esc(c.description || '(no description)')}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;margin:6px 0 4px;">Test Runs (${runs.length})</div>
+          ${_renderRunsBlock(runs)}
+          ${step ? `<div style="margin-top:12px;display:flex;gap:6px;">
+            <button onclick="projectsOpenStep('${_esc(step.step_id)}')"
+              style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;">↶ Open parent step</button>
+          </div>` : ''}
+        `;
+      })
+      .catch(err => {
+        body.innerHTML = `<div style="color:var(--danger,#f77);font-size:11px;">Open case failed: ${_esc(err.message || err)}</div>`;
+      });
+  };
 })();

@@ -200,6 +200,7 @@ function loadSystemPulse() {
     .then(d => { if (d.ok) _updateSundial(d); })
     .catch(err => console.warn('[Diamond] pulse fetch:', err));
   loadAttentionDots();
+  loadSevenVitals();
 }
 
 /* ── Sundial Update ──────────────────────────────────────────────────────── */
@@ -243,6 +244,56 @@ function _healthLevel(val, warnAt, critAt) {
   if (val >= critAt) return 'crit';
   if (val >= warnAt) return 'warn';
   return 'ok';
+}
+
+/* ── Seven Vitals Overlay ────────────────────────────────────────────────── */
+// Renders "S · Nc · Xk ep · Yk bel" beneath the sundial title with a heartbeat
+// dot. Failure-quiet: if /api/seven endpoints are unreachable, leaves the
+// overlay alone.
+function loadSevenVitals() {
+  Promise.all([
+    fetch('/api/seven/heartbeat').then(r => r.json()).catch(() => null),
+    fetch('/api/seven/memory').then(r => r.json()).catch(() => null),
+  ]).then(([hb, mem]) => {
+    if (!hb && !mem) return;
+    let overlay = document.getElementById('sundial-seven-vitals');
+    const titleHost = document.getElementById('sundial-title');
+    if (!overlay && titleHost) {
+      overlay = document.createElement('div');
+      overlay.id = 'sundial-seven-vitals';
+      overlay.style.cssText =
+        'position:absolute;left:50%;transform:translateX(-50%);bottom:-22px;' +
+        'font-size:9.5px;color:var(--text-dim);white-space:nowrap;letter-spacing:0.4px;' +
+        'display:flex;align-items:center;gap:5px;pointer-events:none;';
+      const host = titleHost.parentNode;
+      if (host) {
+        if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+        host.appendChild(overlay);
+      }
+    }
+    if (!overlay) return;
+    const alive = !!(hb && hb.alive);
+    // hb.ts is epoch seconds of the last tick.
+    const tickTs = hb && typeof hb.ts === 'number' ? hb.ts : null;
+    const ageS = tickTs != null ? Math.max(0, (Date.now() / 1000) - tickTs) : null;
+    let dotColor = '#888';
+    if (alive && ageS != null && ageS < 300)       dotColor = '#3ad17a';
+    else if (alive && ageS != null && ageS < 1800) dotColor = '#e8b13e';
+    else if (alive)                                 dotColor = '#e88a3e';
+    else                                            dotColor = '#e85a5a';
+    const concepts = (mem && mem.concepts) || 0;
+    const beliefs  = (mem && mem.beliefs)  || 0;
+    const eps      = (mem && mem.episodes) || 0;
+    const fmt = (n) => {
+      if (n == null) return '0';
+      if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+      return String(n);
+    };
+    const tickHint = (ageS != null) ? (' · ' + (ageS < 90 ? 'live' : ageS < 600 ? 'recent' : 'idle')) : '';
+    overlay.innerHTML =
+      '<span title="Seven heartbeat" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + dotColor + ';box-shadow:0 0 4px ' + dotColor + ';"></span>' +
+      '<span title="Seven · concepts · episodes · beliefs">S · ' + concepts + 'c · ' + fmt(eps) + ' ep · ' + fmt(beliefs) + ' bel' + tickHint + '</span>';
+  });
 }
 
 /* ── Attention Dots on Tiles ──────────────────────────────────────────────── */
@@ -530,38 +581,86 @@ function _initHomeChatResize() {
   if (!handle || !chat) return;
 
   const STORAGE_KEY = 'fridays-home-chat-height';
+  const DEFAULT_H = 0; // 0 means "use stylesheet default"
+  const MIN_H = 200;
+  const maxH = () => Math.max(MIN_H, window.innerHeight - 140);
+
+  const apply = (h) => {
+    if (!h) {
+      chat.style.minHeight = '';
+      chat.style.maxHeight = '';
+      return;
+    }
+    const clamped = Math.max(MIN_H, Math.min(maxH(), h));
+    chat.style.minHeight = clamped + 'px';
+    chat.style.maxHeight = clamped + 'px';
+  };
+
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
     const h = parseInt(saved, 10);
-    if (h >= 200) { chat.style.minHeight = h + 'px'; chat.style.maxHeight = h + 'px'; }
+    if (h >= MIN_H) apply(h);
   }
 
-  handle.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    const startY = e.clientY;
+  const handleAbove = handle.classList.contains('home-chat-resizer-top');
+
+  const beginDrag = (clientY) => {
+    const startY = clientY;
     const startH = chat.getBoundingClientRect().height;
-    // Phase-5 SMALL: handle moved to ABOVE the chat. Dragging UP (negative
-    // delta) grows the chat; dragging DOWN shrinks it. Invert the delta.
-    const handleAbove = handle.classList.contains('home-chat-resizer-top');
+    handle.classList.add('home-chat-resizer-active');
 
-    const onMove = (ev) => {
-      const delta = ev.clientY - startY;
+    const move = (y) => {
+      const delta = y - startY;
       const targetH = handleAbove ? startH - delta : startH + delta;
-      const h = Math.max(200, Math.min(window.innerHeight - 140, targetH));
-      chat.style.minHeight = h + 'px';
-      chat.style.maxHeight = h + 'px';
+      apply(targetH);
     };
-
-    const onUp = () => {
-      localStorage.setItem(STORAGE_KEY, String(chat.getBoundingClientRect().height));
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
+    const end = () => {
+      try { localStorage.setItem(STORAGE_KEY, String(chat.getBoundingClientRect().height)); } catch (e) {}
+      handle.classList.remove('home-chat-resizer-active');
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
       document.body.style.userSelect = '';
     };
+    const onMouseMove = (ev) => move(ev.clientY);
+    const onMouseUp = () => end();
+    const onTouchMove = (ev) => { if (ev.touches[0]) move(ev.touches[0].clientY); };
+    const onTouchEnd = () => end();
 
     document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('touchmove', onTouchMove, { passive: true });
+    document.addEventListener('touchend', onTouchEnd);
+  };
+
+  handle.addEventListener('mousedown', (e) => { e.preventDefault(); beginDrag(e.clientY); });
+  handle.addEventListener('touchstart', (e) => {
+    if (!e.touches[0]) return;
+    beginDrag(e.touches[0].clientY);
+  }, { passive: true });
+
+  // Double-click anywhere on the handle resets to stylesheet default.
+  handle.addEventListener('dblclick', () => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    apply(0);
+  });
+
+  // Keyboard: Up/Down nudge by 24px, PageUp/PageDown by 96px, Home resets.
+  handle.addEventListener('keydown', (e) => {
+    const cur = chat.getBoundingClientRect().height;
+    let next = cur;
+    const grow = (n) => handleAbove ? cur + n : cur + n; // grow always = bigger
+    if (e.key === 'ArrowUp')        next = grow(handleAbove ? 24 : -24);
+    else if (e.key === 'ArrowDown') next = grow(handleAbove ? -24 : 24);
+    else if (e.key === 'PageUp')    next = grow(handleAbove ? 96 : -96);
+    else if (e.key === 'PageDown')  next = grow(handleAbove ? -96 : 96);
+    else if (e.key === 'Home') { e.preventDefault(); try { localStorage.removeItem(STORAGE_KEY); } catch(_){} apply(0); return; }
+    else return;
+    e.preventDefault();
+    apply(next);
+    try { localStorage.setItem(STORAGE_KEY, String(chat.getBoundingClientRect().height)); } catch (e) {}
   });
 }
 

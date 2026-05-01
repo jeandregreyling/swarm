@@ -220,6 +220,7 @@ function openWindow(id, title, templateId, options = {}) {
             else if (id === 'tasker') loadTaskerData && loadTaskerData(win);
             else if (id === 'health-digest') loadHealthDigest && loadHealthDigest(win);
             else if (id === 'media') loadMediaData && loadMediaData(win);
+            else if (id === 'records-files') loadRecordsFilesData && loadRecordsFilesData(win);
             else if (id === 'users') _loadUsersWindowContent && _loadUsersWindowContent(win);
 
             _troubleshootLog && _troubleshootLog('info', 'Window opened', `id=${windowKey} base=${id}`);

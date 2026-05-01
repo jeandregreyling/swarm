@@ -53,6 +53,11 @@ def new_conversation(title, source='email', sender=''):
     conv_id = cursor.lastrowid
     conn.commit()
     conn.close()
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('thread', conv_id, actor='new_conversation')
+    except Exception:
+        pass
     return conv_id
 
 
@@ -64,6 +69,11 @@ def log_message(conv_id, from_agent, content, to_agent='', message_type='chat', 
     )
     conn.commit()
     conn.close()
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('thread', conv_id, actor='log_message')
+    except Exception:
+        pass
 
 
 def get_ghost_history(limit=10):
