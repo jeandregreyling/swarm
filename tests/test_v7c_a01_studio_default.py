@@ -20,8 +20,14 @@ TEMPLATE = ROOT / 'frontend' / 'templates' / 'terminal_base.html'
 # ── Reviewer 1: FUNCTIONAL — default tab is 'projects' ──────────────────────
 def test_r1_default_tab_is_projects():
     src = STUDIO_JS.read_text()
-    assert "window._studioTab = window._studioTab || 'projects';" in src, (
-        "Default tab must be 'projects' — not pending/proposals/git/testlab."
+    # Default may now flow through localStorage, but 'projects' must remain
+    # the fallback when nothing is stored.
+    assert (
+        "localStorage.getItem('studio_last_tab') || 'projects'" in src
+        or "window._studioTab = window._studioTab || 'projects';" in src
+    ), "Default tab must be 'projects' — not pending/proposals/git/testlab."
+    assert "window._studioTab = 'projects'" in src, (
+        "Catch-branch fallback must still be 'projects'."
     )
 
 

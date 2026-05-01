@@ -19,8 +19,12 @@ STUDIO = (ROOT / 'frontend' / 'static' / 'js' / 'views' / 'studio.js').read_text
 
 
 def test_r13_r1_default_tab_projects():
-    # A01 lock repeated — default must be projects.
-    assert "window._studioTab = window._studioTab || 'projects'" in STUDIO
+    # A01 lock repeated — default must be projects (now via localStorage path).
+    assert (
+        "localStorage.getItem('studio_last_tab') || 'projects'" in STUDIO
+        or "window._studioTab = window._studioTab || 'projects'" in STUDIO
+    )
+    assert "window._studioTab = 'projects'" in STUDIO
 
 
 def test_r13_r2_all_five_tabs_present():
