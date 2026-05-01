@@ -1,17 +1,17 @@
 {
   "alive": true,
-  "started_at": 1777638550.1612177,
-  "ts": 1777638741.591078,
-  "processed": 27,
-  "last_eid": 8742,
+  "started_at": 1777631801.5752048,
+  "ts": 1777638741.9070375,
+  "processed": 34,
+  "last_eid": 8711,
   "last_event": {
     "action": "save",
-    "actor": "log_message",
-    "id": "2331",
-    "kind": "thread",
-    "path": "runtime/records/thread/2026/05/2331.json",
-    "ts": 1777638580.5570383
+    "actor": "add_step",
+    "id": "S-03A241D177",
+    "kind": "step",
+    "path": "runtime/records/step/2026/05/S-03A241D177.json",
+    "ts": 1777636766.305679
   },
-  "consolidations": 1,
+  "consolidations": 24,
   "errors": 0
 }
