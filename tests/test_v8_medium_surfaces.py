@@ -32,7 +32,11 @@ def test_monitor_shows_service_health_panel():
 
 def test_studio_defaults_to_projects_tab():
     src = STUDIO_JS.read_text()
-    assert "window._studioTab = window._studioTab || 'projects';" in src
+    assert (
+        "localStorage.getItem('studio_last_tab') || 'projects'" in src
+        or "window._studioTab = window._studioTab || 'projects';" in src
+    )
+    assert "window._studioTab = 'projects'" in src
 
 
 def test_trace_tile_registered_as_managed_window_template():
