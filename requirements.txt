@@ -24,4 +24,7 @@ tavily-python
 # lxml
 # pytz
 # playwright
-# pywebviewPillow
+# pywebview
+
+# Image generation runner (frontend/blueprints/media_bp.py)
+Pillow
