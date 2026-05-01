@@ -18,19 +18,33 @@ VALID_DEPTHS = ('quick', 'standard', 'deep')
 
 
 def create_session(topic, *, depth='standard', requesting_agent='user',
-                   linked_proposal_id='', conn=None):
-    """Create a new research session. Returns the new session id."""
+                   linked_proposal_id='', idempotency_key='', conn=None):
+    """Create a new research session. Returns the new session id.
+
+    2026-05-02 (S-12E202F189) — when ``idempotency_key`` is non-empty and a
+    session already exists with that key, return its id instead of creating a
+    duplicate. The unique index `idx_research_sessions_idem` enforces this at
+    the DB layer; the lookup here just gives a clean response.
+    """
     if depth not in VALID_DEPTHS:
         raise ValueError(f"Invalid depth {depth!r}, must be one of {VALID_DEPTHS}")
     own = conn is None
     if own:
         conn = get_connection()
     try:
+        if idempotency_key:
+            row = conn.execute(
+                "SELECT id FROM research_sessions WHERE idempotency_key = ?",
+                (idempotency_key,),
+            ).fetchone()
+            if row is not None:
+                return row[0]
         cur = conn.execute(
             """INSERT INTO research_sessions
-               (topic, depth, status, phases_json, linked_proposal_id, requesting_agent)
-               VALUES (?, ?, 'planning', '[]', ?, ?)""",
-            (topic, depth, linked_proposal_id, requesting_agent),
+               (topic, depth, status, phases_json, linked_proposal_id,
+                requesting_agent, idempotency_key)
+               VALUES (?, ?, 'planning', '[]', ?, ?, ?)""",
+            (topic, depth, linked_proposal_id, requesting_agent, idempotency_key),
         )
         conn.commit()
         return cur.lastrowid
@@ -59,8 +73,12 @@ def get_session(session_id, *, conn=None):
 
 
 def update_session(session_id, *, status=None, phases_json=None,
-                   summary=None, conn=None):
-    """Update mutable fields on a session."""
+                   summary=None, last_error=None, conn=None):
+    """Update mutable fields on a session.
+
+    2026-05-02 (S-A43BF83EB7) — ``last_error`` makes background failures
+    visible instead of silently swallowing them.
+    """
     sets, vals = [], []
     if status is not None:
         if status not in VALID_STATUSES:
@@ -74,6 +92,9 @@ def update_session(session_id, *, status=None, phases_json=None,
     if summary is not None:
         sets.append("summary = ?")
         vals.append(summary)
+    if last_error is not None:
+        sets.append("last_error = ?")
+        vals.append(str(last_error)[:2000])
     if not sets:
         return
     sets.append("updated_at = datetime('now')")
