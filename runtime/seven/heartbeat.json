@@ -1,17 +1,10 @@
 {
   "alive": true,
-  "started_at": 1777631801.5752048,
-  "ts": 1777639372.0430443,
-  "processed": 139,
-  "last_eid": 8966,
-  "last_event": {
-    "action": "save",
-    "actor": "update_project",
-    "id": "P-10F93B5799",
-    "kind": "project",
-    "path": "runtime/records/project/2026/04/P-10F93B5799.json",
-    "ts": 1777639341.1814742
-  },
-  "consolidations": 26,
+  "started_at": 1777639534.9915185,
+  "ts": 1777639536.11618,
+  "processed": 0,
+  "last_eid": null,
+  "last_event": null,
+  "consolidations": 1,
   "errors": 0
 }
