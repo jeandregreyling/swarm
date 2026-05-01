@@ -24,4 +24,4 @@ tavily-python
 # lxml
 # pytz
 # playwright
-# pywebview
+# pywebviewPillow
