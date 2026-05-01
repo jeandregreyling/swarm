@@ -94,7 +94,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             buf.append(piece)
             if len(buf) % 15 == 0:
                 _emit(f'generating · {("".join(buf))[-300:]}')
-        return _llm.chat(MODEL, msgs, stream=True, temperature=0.6, on_chunk=_cb)
+        return _llm.chat_via_gateway(MODEL, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.6)
 
     try:
         sys.path.insert(0, '/home/seven/swarm/agents')
