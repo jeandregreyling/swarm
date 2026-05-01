@@ -1,17 +1,17 @@
 {
   "alive": true,
-  "started_at": 1777640082.5611935,
-  "ts": 1777640275.0466974,
-  "processed": 18,
-  "last_eid": 9211,
+  "started_at": 1777631801.5752048,
+  "ts": 1777640408.2045374,
+  "processed": 232,
+  "last_eid": 9256,
   "last_event": {
     "action": "save",
-    "actor": "log_message",
-    "id": "2376",
-    "kind": "thread",
-    "path": "runtime/records/thread/2026/05/2376.json",
-    "ts": 1777640109.4605377
+    "actor": "update_project",
+    "id": "P-10F93B5799",
+    "kind": "project",
+    "path": "runtime/records/project/2026/04/P-10F93B5799.json",
+    "ts": 1777640312.8015394
   },
-  "consolidations": 1,
+  "consolidations": 29,
   "errors": 0
 }
