@@ -1,4 +1,4 @@
-.PHONY: test lint fmt audit restart sync help wake-dev wake-uat sleep-dev sleep-uat sleep-all status excellent bullshit seed
+.PHONY: test lint fmt audit restart sync help wake-dev wake-uat sleep-dev sleep-uat sleep-all status excellent bullshit seed doctor health hooks
 
 PYTHON ?= python3
 
@@ -23,6 +23,15 @@ bullshit:  ## Run the bullshit detector (Seven's quality scanner)
 
 seed:  ## Seed the four pillars with a small demo dataset
 	$(PYTHON) -m ops.seed_demo
+
+doctor:  ## Single-shot health/readiness CLI (detector + tests + /api/health + DB)
+	$(PYTHON) -m ops.doctor
+
+health:  ## Curl the live aggregated /api/health endpoint
+	@curl -s http://localhost:5050/api/health | $(PYTHON) -m json.tool || echo 'server not running on :5050'
+
+hooks:  ## Install the pre-commit hook (detector aborts on RED)
+	@bash scripts/install-hooks.sh
 
 excellent: bullshit  ## Bullshit detector + per-batch tests = the standard
 	@for f in tests/test_session28_batch*.py tests/test_tasker_dry_run.py tests/test_slash_commands.py ; do \

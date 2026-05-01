@@ -735,6 +735,18 @@
 
     <!-- ═══ Quick Access tiles (Phase-5 SMALL: moved back above chat) ═══ -->
     <div class="home-section home-tiles-section">
+      <!-- First-run empty-state banner: shown when /api/wishlist/summary
+           reports zero entries across all four pillars and the user hasn't
+           dismissed it. Hidden by default; made visible by home_banner.js. -->
+      <div id="first-run-banner"
+           role="status"
+           style="display:none; margin:8px 0; padding:10px 14px; border:1px solid var(--accent); border-radius:6px; background:var(--bg-elev,#111); color:var(--text); font-size:13px;">
+        <strong>Welcome.</strong> The four pillars are empty.
+        Run <code>make seed</code> from your shell to load demo data, or click any tile to start capturing your own.
+        <button type="button" id="first-run-banner-dismiss"
+                aria-label="Dismiss welcome banner"
+                style="float:right;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;">×</button>
+      </div>
       <div class="home-section-title" id="quick-access-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.4 1.4M10.6 10.6L12 12M4 12l1.4-1.4M10.6 5.4L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/></svg></span> Quick Access
         <button id="quick-access-add-btn" onclick="event.stopPropagation(); if(typeof openWindow==='function'){openWindow('studio','Studio','view-studio'); setTimeout(()=>{const b=document.querySelector('#view-studio .proposal-new-btn, [onclick*=\"newProposal\"]'); if(b) b.click();},600);}"
           title="Propose a new tile or feature"
@@ -2857,6 +2869,7 @@
 <script src="/static/js/views/health-digest.js"></script>
 <script src="/static/js/views/wishlist.js?v=1"></script>
 <script src="/static/js/views/pillar_live.js?v=1"></script>
+<script src="/static/js/views/home_banner.js?v=1"></script>
 
 <script src="/static/js/views/home-chat.js?v=35"></script>
 <script src="/static/js/friday-auth.js?v=28"></script>
