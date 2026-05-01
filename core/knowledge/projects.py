@@ -157,6 +157,16 @@ def _ensure_schema() -> None:
             )""")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status)")
 
+            # 2026-05-02 (S-0474A4BE17) — priority column for ordering urgent projects
+            try:
+                _cols = {r[1] for r in conn.execute("PRAGMA table_info(projects)").fetchall()}
+                if 'priority' not in _cols:
+                    conn.execute(
+                        "ALTER TABLE projects ADD COLUMN priority "
+                        "INTEGER NOT NULL DEFAULT 0")
+            except Exception:
+                pass
+
             conn.execute("""CREATE TABLE IF NOT EXISTS project_steps (
                 step_id TEXT PRIMARY KEY,
                 project_id TEXT NOT NULL,
@@ -343,7 +353,7 @@ def list_projects(*, status: Optional[str] = None, limit: int = 100) -> List[Dic
                 f"(SELECT COUNT(*) FROM project_steps WHERE project_id=p.project_id) AS step_count, "
                 f"(SELECT COUNT(*) FROM project_test_cases WHERE project_id=p.project_id) AS case_count, "
                 f"(SELECT COUNT(*) FROM project_steps WHERE project_id=p.project_id AND status='done') AS steps_done "
-                f"FROM projects p {where} ORDER BY p.created_at DESC LIMIT ?",
+                f"FROM projects p {where} ORDER BY p.priority DESC, p.created_at DESC LIMIT ?",
                 params,
             ).fetchall()
             return [dict(r) for r in rows]
@@ -354,7 +364,7 @@ def list_projects(*, status: Optional[str] = None, limit: int = 100) -> List[Dic
 
 
 def update_project(project_id: str, **fields: Any) -> bool:
-    allowed = {'name', 'description', 'methodology', 'status', 'owner'}
+    allowed = {'name', 'description', 'methodology', 'status', 'owner', 'priority'}
     updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
     if not project_id or not updates:
         return False
@@ -362,6 +372,11 @@ def update_project(project_id: str, **fields: Any) -> bool:
         raise ValueError(f"methodology must be one of {METHODOLOGIES}")
     if 'status' in updates and updates['status'] not in PROJECT_STATUSES:
         raise ValueError(f"status must be one of {PROJECT_STATUSES}")
+    if 'priority' in updates:
+        try:
+            updates['priority'] = max(0, min(int(updates['priority']), 9))
+        except (TypeError, ValueError):
+            raise ValueError("priority must be an integer 0..9")
     _ensure_schema()
     try:
         from utils.db._connection import get_connection
