@@ -148,72 +148,35 @@ def test_slash_curiosity_ask(temp_db):
     assert 'queued' in out.lower()
 
 
-# ── /api/chat HTTP route — the path the real frontend hits ───────────────
+# ── /api/chat HTTP route — slash codes are NOT intercepted there ─────────
+# (PACKET-10B revision: dropped the secret-handshake API path. The frontend
+# now uses natural language → see tests/test_seven_training.py for the real
+# probes. The _slash_command() function is kept for CLI/HTTP inbox use.)
 
 
-def test_api_chat_slash_curiosity_short_circuits(temp_db, monkeypatch):
-    """Regression: /curiosity through /api/chat must NOT fall into the
-    Seven status-block path that produced 'Processing: Queue: 25 active...'.
+def test_api_chat_does_not_intercept_slash_messages(monkeypatch):
+    """Regression guard: /api/chat must NOT short-circuit on slash messages.
+    They should fall through to normal agent dispatch like any other prompt.
+    (Slash codes are confusing UX; natural language is the contract now.)
     """
-    # Build a minimal Flask app with just the chat blueprint
     from flask import Flask
-    app = Flask(__name__)
-    app.config['TESTING'] = True
-
-    # Monkey-patch identity resolver and queue dispatcher to no-op
     import frontend.blueprints.chat as chat_bp_mod
 
+    app = Flask(__name__)
+    app.config['TESTING'] = True
     monkeypatch.setattr(
         chat_bp_mod, '_resolve_identity_or_response',
-        lambda data: ({'identity': 'user'}, None),
+        lambda data: (None, (chat_bp_mod.jsonify({'sentinel': 'fell_through'}), 200)),
         raising=False,
     )
     app.register_blueprint(chat_bp_mod.chat_bp)
     client = app.test_client()
 
-    # Seed an open question
-    from core import curiosity
-    qid = curiosity.ask('seven', 'is the http path covered?', salience=0.9)
-    assert qid is not None
-
-    r = client.post('/api/chat', json={
-        'message': '/curiosity',
-        'agent': 'seven',
-    })
-    assert r.status_code == 200, r.get_data(as_text=True)
+    r = client.post('/api/chat', json={'message': '/curiosity', 'agent': 'seven'})
     body = r.get_json()
-    assert body.get('ok') is True
-    assert body.get('slash_command') is True
-    assert 'Curiosity inbox' in body['response']
-    assert f'#{qid}' in body['response']
-    assert 'Queue:' not in body['response']  # NOT the status block
-    assert 'Processing:' not in body['response']
-
-
-def test_api_chat_non_slash_message_is_not_intercepted(monkeypatch):
-    """Regression: ordinary chat messages must NOT trigger the slash path."""
-    from flask import Flask
-    import frontend.blueprints.chat as chat_bp_mod
-
-    app = Flask(__name__)
-    app.config['TESTING'] = True
-
-    # Force non-slash to fail closed (return early with a sentinel) so we know
-    # the slash branch wasn't taken.
-    monkeypatch.setattr(
-        chat_bp_mod, '_resolve_identity_or_response',
-        lambda data: (None, ('SENTINEL_FELL_THROUGH_TO_NORMAL_PATH', 200)),
-        raising=False,
-    )
-    app.register_blueprint(chat_bp_mod.chat_bp)
-    client = app.test_client()
-
-    r = client.post('/api/chat', json={'message': 'hello there', 'agent': 'seven'})
-    # Either it fell through to the sentinel OR the route raised — either way
-    # NOT our slash-handler JSON shape.
-    body = r.get_json() if r.is_json else None
-    if body is not None:
-        assert body.get('slash_command') is not True
+    # Either the sentinel response, or some other downstream handling — but NOT
+    # the old slash_command shape.
+    assert body.get('slash_command') is not True
 
 
 def test_slash_identity_lists_bedrock_beliefs(temp_db):
