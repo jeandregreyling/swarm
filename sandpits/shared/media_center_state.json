@@ -10,7 +10,7 @@
       "style": "future pulse / high-energy",
       "engine_mode": "local-first",
       "duration_sec": 45,
-      "updated_at": "2026-05-01T12:37:06+00:00",
+      "updated_at": "2026-05-01T12:42:17+00:00",
       "tracks": [
         {
           "id": "trk-score",
@@ -496,6 +496,19 @@
             "updated_at": "2026-05-01T12:37:02+00:00"
           },
           {
+            "id": "clip-3a6fa027ee",
+            "lane_id": "lane-music",
+            "name": "pytest editor clip",
+            "kind": "audio",
+            "start_sec": 1.5,
+            "duration_sec": 3.25,
+            "source": "manual",
+            "prompt": "clip created by integration test",
+            "status": "planned",
+            "created_at": "2026-05-01T12:42:13+00:00",
+            "updated_at": "2026-05-01T12:42:13+00:00"
+          },
+          {
             "id": "clip-take-c1f0ab53e6",
             "lane_id": "lane-synth",
             "name": "Local Tone Synth take",
@@ -886,10 +899,37 @@
             "take_id": "take-69af38e8ad",
             "created_at": "2026-05-01T12:37:03+00:00",
             "updated_at": "2026-05-01T12:37:03+00:00"
+          },
+          {
+            "id": "clip-take-d0c55ce9a7",
+            "lane_id": "lane-synth",
+            "name": "Local Tone Synth take",
+            "kind": "audio",
+            "start_sec": 2.0,
+            "duration_sec": 5.0,
+            "source": "synth:local-tone",
+            "prompt": "pytest synth take",
+            "status": "generated",
+            "take_id": "take-d0c55ce9a7",
+            "created_at": "2026-05-01T12:42:14+00:00",
+            "updated_at": "2026-05-01T12:42:14+00:00"
           }
         ]
       },
       "synth_runs": [
+        {
+          "id": "take-d0c55ce9a7",
+          "synth_id": "local-tone",
+          "synth_name": "Local Tone Synth",
+          "runner_key": "local_synth_audio_runner",
+          "prompt": "pytest synth take",
+          "status": "generated",
+          "lane_id": "lane-synth",
+          "start_sec": 2.0,
+          "duration_sec": 5.0,
+          "created_at": "2026-05-01T12:42:14+00:00",
+          "artifact_path": ""
+        },
         {
           "id": "take-69af38e8ad",
           "synth_id": "local-tone",
@@ -1256,6 +1296,33 @@
         }
       ],
       "media_refs": [
+        {
+          "id": "ref-fec9812e0c",
+          "title": "pytest indexed reference",
+          "account_id": "youtube",
+          "account_name": "YouTube",
+          "media_type": "video",
+          "url": "https://example.invalid/media-ref",
+          "notes": "reference created by integration test",
+          "tags": [
+            "swarm",
+            "launch",
+            "teaser",
+            "cinematic",
+            "media",
+            "audio-video"
+          ],
+          "status": "indexed",
+          "provenance": {
+            "source": "media_center",
+            "provider": "youtube",
+            "feed_kind": "youtube",
+            "linked_account_status": "linked"
+          },
+          "created_at": "2026-05-01T12:42:15+00:00",
+          "updated_at": "2026-05-01T12:42:15+00:00",
+          "knowledge_status": "indexed"
+        },
         {
           "id": "ref-1445a6d54a",
           "title": "pytest indexed reference",
@@ -1991,11 +2058,30 @@
         "video_agent": "",
         "swarm_node_id": "",
         "handoff_mode": "swarm-assisted",
-        "updated_at": "2026-05-01T12:37:06+00:00"
+        "updated_at": "2026-05-01T12:42:17+00:00"
       }
     }
   ],
   "jobs": [
+    {
+      "id": "job-7184382e39",
+      "project_id": "media-demo",
+      "project_name": "Swarm Launch Teaser",
+      "job_type": "synth:local-tone",
+      "mode": "manifest",
+      "status": "generated",
+      "engine": "local_synth_audio_runner",
+      "notes": "pytest synth take",
+      "created_at": "2026-05-01T12:42:14+00:00",
+      "updated_at": "2026-05-01T12:42:14+00:00",
+      "artifacts": [
+        {
+          "label": "Timeline take",
+          "path": "clip-take-d0c55ce9a7",
+          "status": "generated"
+        }
+      ]
+    },
     {
       "id": "job-c87a9e2898",
       "project_id": "media-demo",
@@ -2691,7 +2777,7 @@
     }
   ],
   "tracking_project_id": "P-10F93B5799",
-  "updated_at": "2026-05-01T12:37:07+00:00",
+  "updated_at": "2026-05-01T12:42:18+00:00",
   "synth_registry": [
     {
       "id": "local-tone",
@@ -2762,9 +2848,9 @@
         "playlist",
         "video_url"
       ],
-      "subscription_id": "F-F4E1AA388A",
+      "subscription_id": "F-7DE4A6F808",
       "source": "https://www.youtube.com/@pytest",
-      "linked_at": "2026-05-01T12:37:07+00:00"
+      "linked_at": "2026-05-01T12:42:18+00:00"
     },
     {
       "id": "youtube-music",
