@@ -823,7 +823,7 @@ async function mediaCenterCopyHandoff() {
     await navigator.clipboard.writeText(text);
     if (typeof showToast === 'function') showToast('Media handoff manifest copied.', 'success');
   } catch (_) {
-    console.log('Media handoff manifest', data.manifest);
+    if (window.__SWARM_DEBUG) console.debug('Media handoff manifest', data.manifest);
     if (typeof showToast === 'function') showToast('Clipboard unavailable; manifest printed to console.', 'info');
   }
 }

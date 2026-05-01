@@ -1541,7 +1541,7 @@ function createAnalogClockHTML(time) {
 function updateWorldClocks() {
   const container = document.getElementById('world-clocks');
   if (!container) {
-    console.log('ERROR: world-clocks container not found');
+    console.error('[clocks] world-clocks container not found');
     return;
   }
   
@@ -1571,7 +1571,7 @@ function updateWorldClocks() {
     
     container.innerHTML = html;
   } catch(e) {
-    console.log('ERROR in clocks:', e.message, e.stack);
+    console.error('[clocks] render failed:', e.message, e.stack);
   }
 }
 

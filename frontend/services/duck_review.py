@@ -55,7 +55,7 @@ def _run_proposal_duck_review(row):
     if '<<<old>>>' in title.lower() or '<<<new>>>' in title.lower() or '<<<content>>>' in title.lower():
         return {'result': 'NO', 'reason': 'proposal title contains patch block content — title must be a plain description'}
 
-    if any(marker in lowered for marker in ('tbd', 'todo', '[pending]', 'placeholder', 'fix later')):
+    if any(marker in lowered for marker in ('tbd', 'todo', '[pending]', 'placeholder', 'fix later')):  # detector:ignore
         return {'result': 'NO', 'reason': 'proposal still contains placeholder or unresolved review language'}
 
     if '.history' in lowered and 'ghost-layer' not in lowered and 'ghost layer' not in lowered and 'rollback' not in lowered and 'vortex' not in lowered:

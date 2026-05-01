@@ -577,8 +577,8 @@ function _taskerHost(url) {
 function _taskerToast(msg, level) {
   if (typeof showToast === 'function') {
     showToast(msg, level || 'ok');
-  } else {
-    console.log('[Tasker]', msg);
+  } else if (window.__SWARM_DEBUG) {
+    console.debug('[Tasker]', msg);
   }
 }
 
