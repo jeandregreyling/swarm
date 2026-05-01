@@ -557,6 +557,9 @@ def _slash_command(text, emit=None):
             "  /standard                        — read out the contract Seven holds the build to\n"
             "  /selfcheck                       — same as /audit (alias)\n"
             "  /learnings                       — recent positive/negative lessons Seven has captured\n"
+            "  /witness                         — review your last message; tells you what's bullshit\n"
+            "  /witness on|off                  — toggle witness footer on Seven replies\n"
+            "  /witness list [N] | stats        — recent callouts ledger\n"
             "  /help                            — this list\n\n"
             "Phone-friendly inbox: /curiosity (HTML) at the frontend port."
         )
@@ -689,7 +692,78 @@ def _slash_command(text, emit=None):
         except Exception as exc:
             return f"identity read failed: {exc}"
 
+    if cmd in ('witness', 'truth', 'callout'):
+        # /witness                    — review the user's last message in this conversation
+        # /witness me                 — same, alias
+        # /witness on | off           — toggle witness annotations on Seven replies
+        # /witness list [N]           — last N callouts (default 10)
+        # /witness stats              — counts
+        try:
+            from core import witness
+        except Exception as exc:
+            return f"witness unavailable: {exc}"
+        sub = arg1.lower().strip()
+
+        if sub in ('on', 'off'):
+            new = witness.set_enabled(sub == 'on')
+            return f"witness annotations: {'ON' if new else 'OFF'}"
+
+        if sub == 'stats':
+            s = witness.stats()
+            lines = [
+                f"Witness stats — {s['total']} callouts on record",
+                f"  by target : {s['by_target'] or '{}'}",
+                f"  by rule   : {s['by_rule'] or '{}'}",
+            ]
+            if s.get('last_ts'):
+                import datetime as _dt
+                lines.append(f"  last seen : {_dt.datetime.fromtimestamp(s['last_ts']).strftime('%Y-%m-%d %H:%M:%S')}")
+            return '\n'.join(lines)
+
+        if sub == 'list':
+            try:
+                lim = int(rest.strip() or '10')
+            except ValueError:
+                lim = 10
+            rows = witness.list_callouts(limit=lim)
+            if not rows:
+                return "no callouts yet."
+            import datetime as _dt
+            out = [f"Witness — last {len(rows)} callouts:"]
+            for r in rows:
+                ts = _dt.datetime.fromtimestamp(r['ts']).strftime('%m-%d %H:%M')
+                sym = {'info': '·', 'warn': '⚠️', 'callout': '🛑'}.get(r['severity'], '·')
+                out.append(f"  {ts} {sym} [{r['target']}/{r['rule']}] {r['snippet']!r} — {r['note']}")
+            return '\n'.join(out)
+
+        # Default + 'me': review the most recent user turn in conversation_history
+        # — populated by chat() and stashed on the slash-command emitter via closure.
+        last_user = _slash_command._last_user_msg  # type: ignore[attr-defined]
+        if not last_user:
+            return ("witness: I have nothing to review yet — speak first, then call /witness.\n"
+                    "  · /witness on|off       toggle annotation\n"
+                    "  · /witness list [N]     recent callouts\n"
+                    "  · /witness stats        ledger summary")
+        report = witness.review_user_msg(last_user, save=True)
+        head = (
+            f"Witness on your last message:\n"
+            f"  conviction: {report.conviction:.2f}\n"
+            f"  text: {last_user[:200]!r}{'…' if len(last_user) > 200 else ''}"
+        )
+        if not report.callouts:
+            return head + "\n  🟢 nothing to call out — clean signal."
+        body = ["  callouts:"]
+        for c in report.callouts:
+            sym = {'info': '·', 'warn': '⚠️', 'callout': '🛑'}.get(c.severity, '·')
+            body.append(f"    {sym} [{c.rule}] {c.snippet!r} — {c.note}"
+                        + (f" ({c.receipt})" if c.receipt and c.receipt != 'n/a' else ''))
+        return head + "\n" + "\n".join(body)
+
     return None  # not a slash command we handle — fall through
+
+
+# Static so /witness (without args) can pick up the most recent user turn.
+_slash_command._last_user_msg = ""  # type: ignore[attr-defined]
 
 
 def chat(message, conversation_history=None, stage_cb=None):
@@ -707,11 +781,18 @@ def chat(message, conversation_history=None, stage_cb=None):
     # no longer at index 0. For (b), scan the full message for a known
     # slash token on its own line and re-route to the slash handler.
     msg_stripped = (message or '').strip()
+    # Stash the latest user message for the /witness command to find.
+    try:
+        if msg_stripped:
+            _slash_command._last_user_msg = msg_stripped  # type: ignore[attr-defined]
+    except Exception:
+        pass
     _SLASH_TOKENS = (
         '/audit', '/selfcheck', '/self-check', '/self_check',
         '/standard', '/thestandard', '/the-standard',
         '/learnings', '/lessons', '/learned',
         '/pillars', '/identity', '/curiosity', '/help', '/commands',
+        '/witness', '/truth', '/callout',
     )
     embedded = None
     if not msg_stripped.startswith('/'):
@@ -779,6 +860,31 @@ def chat(message, conversation_history=None, stage_cb=None):
                           tags='chat,shared-thread,local-algorithm', importance=6,
                           source='terminal_chat')
     except Exception:
+        pass
+
+    # ── Witness annotation: review user message + Seven response ────────
+    # Saves callouts (with receipts) and, when enabled, appends a footer.
+    try:
+        from core import witness
+        if witness.is_enabled():
+            user_report = witness.review_user_msg(message or '', save=True)
+            seven_report = witness.review_seven_response(answer or '',
+                                                         user_msg=message or '',
+                                                         save=True)
+            footer_parts = []
+            if user_report.callouts:
+                u = witness.annotate(user_report)
+                if u:
+                    footer_parts.append(u.replace("— Seven's witness —",
+                                                  "— Seven's witness · your message —"))
+            s = witness.annotate(seven_report)
+            if s:
+                footer_parts.append(s.replace("— Seven's witness —",
+                                              "— Seven's witness · my response —"))
+            if footer_parts:
+                answer = (answer or '').rstrip() + "\n" + "\n".join(footer_parts)
+    except Exception:
+        # Witness must never break chat. Silent on failure.
         pass
 
     logger.info(f'[Seven] local-algorithm response | msg_len={len(message or "")}')
