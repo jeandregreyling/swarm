@@ -257,8 +257,29 @@ def list_registered_tasks():
 
 @tasker_bp.route('/api/tasker/history')
 def task_history():
-    """Return recent task execution history."""
+    """Return recent task execution history.
+
+    2026-05-02 (S-C75D565260) — supports filters:
+        ?task=name           filter by task_name (exact match)
+        ?status=ok|error     filter by status
+        ?since=ISO8601       only rows with run_at >= since
+        ?limit=N             cap rows (max 200)
+    """
     limit = min(int(request.args.get('limit', 50)), 200)
+    task_filter = (request.args.get('task') or '').strip()
+    status_filter = (request.args.get('status') or '').strip()
+    since_filter = (request.args.get('since') or '').strip()
+    where, vals = [], []
+    if task_filter:
+        where.append('task_name = ?')
+        vals.append(task_filter)
+    if status_filter and status_filter in ('ok', 'error'):
+        where.append('status = ?')
+        vals.append(status_filter)
+    if since_filter:
+        where.append('run_at >= ?')
+        vals.append(since_filter)
+    where_sql = (' WHERE ' + ' AND '.join(where)) if where else ''
     with _get_conn() as conn:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(task_run_log)").fetchall()}
         select_cols = 'id, task_name, status, output, run_at'
@@ -267,8 +288,9 @@ def task_history():
         if 'details_json' in cols:
             select_cols += ', details_json'
         rows = conn.execute(
-            f'SELECT {select_cols} FROM task_run_log ORDER BY id DESC LIMIT ?',
-            (limit,)
+            f'SELECT {select_cols} FROM task_run_log{where_sql} '
+            f'ORDER BY id DESC LIMIT ?',
+            (*vals, limit)
         ).fetchall()
     history = []
     for r in rows:
