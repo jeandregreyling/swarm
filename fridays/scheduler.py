@@ -212,17 +212,45 @@ def parse_schedule_command(line):
 
 
 def check_due():
-    """Check for scheduled tasks that are due and run them."""
+    """Check for scheduled tasks that are due and run them.
+
+    2026-05-02 (S-28178F1EF6) — Hardened against duplicate fires by acquiring
+    a short-lived lease on each due row before execution. Workers from other
+    processes will see ``lease_owner != ''`` and skip the row.
+    """
+    import os
     import shlex
     import subprocess
     from datetime import datetime
+    owner = f'sched-{os.getpid()}'
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     with get_connection() as conn:
-        rows = conn.execute(
-            """SELECT id, name, action_type, action_data FROM scheduled_tasks
-               WHERE enabled=1 AND (next_run IS NULL OR next_run <= ?)""",
-            (now_str,)
-        ).fetchall()
+        cols = {row[1] for row in conn.execute(
+            "PRAGMA table_info(scheduled_tasks)").fetchall()}
+        has_lease = 'lease_owner' in cols and 'lease_expires_at' in cols
+        if has_lease:
+            # Atomically claim due rows whose lease is empty or expired.
+            conn.execute(
+                """UPDATE scheduled_tasks
+                   SET lease_owner=?, lease_expires_at=datetime('now', '+5 minutes')
+                   WHERE enabled=1
+                     AND (next_run IS NULL OR next_run <= ?)
+                     AND (COALESCE(lease_owner,'')=''
+                          OR COALESCE(lease_expires_at,'') < ?)""",
+                (owner, now_str, now_str)
+            )
+            conn.commit()
+            rows = conn.execute(
+                """SELECT id, name, action_type, action_data FROM scheduled_tasks
+                   WHERE enabled=1 AND lease_owner=?""",
+                (owner,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT id, name, action_type, action_data FROM scheduled_tasks
+                   WHERE enabled=1 AND (next_run IS NULL OR next_run <= ?)""",
+                (now_str,)
+            ).fetchall()
 
     for row in rows:
         task_id, name, action_type, action_data = row[0], row[1], row[2], row[3]
@@ -246,6 +274,19 @@ def check_due():
             _advance_next_run(name)
         except Exception as e:
             print(f'[Scheduler] Task #{task_id} ({name}) error: {e}')
+        finally:
+            # Always release lease so the row is eligible for the next due cycle.
+            if has_lease:
+                try:
+                    with get_connection() as conn:
+                        conn.execute(
+                            "UPDATE scheduled_tasks SET lease_owner='', "
+                            "lease_expires_at='' WHERE id=? AND lease_owner=?",
+                            (task_id, owner)
+                        )
+                        conn.commit()
+                except Exception:
+                    pass
 
 
 def main_loop():

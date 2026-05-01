@@ -13,7 +13,8 @@ from ._connection import get_connection
 
 # ── Session CRUD ──────────────────────────────────────────────────────────
 
-VALID_STATUSES = ('planning', 'searching', 'analysing', 'synthesising', 'done', 'paused')
+VALID_STATUSES = ('planning', 'searching', 'analysing', 'synthesising',
+                  'done', 'paused', 'cancelled')
 VALID_DEPTHS = ('quick', 'standard', 'deep')
 
 
@@ -153,6 +154,60 @@ def list_sessions(*, status=None, limit=50, conn=None):
     finally:
         if own:
             conn.close()
+
+
+def cancel_session(session_id, *, reason='', conn=None):
+    """Cancel a running research session.
+
+    2026-05-02 (S-6F23DD5914) — gives the user a clean way to stop runaway
+    research without leaving the row in 'searching' forever."""
+    update_session(session_id, status='cancelled',
+                   last_error=(reason or 'cancelled by user'), conn=conn)
+
+
+def pause_session(session_id, *, conn=None):
+    """Pause a research session; resume by setting status back to its phase."""
+    update_session(session_id, status='paused', conn=conn)
+
+
+# ── Source quality scoring (S-8306533874) ─────────────────────────────────
+# Deliberately small + offline so it can be unit-tested without network.
+# Returns a 0..1 score that callers blend with novelty + confidence.
+
+_OFFICIAL_BONUS = 0.4   # official SAP/community/help domains
+_REPUTABLE_BONUS = 0.2  # well-known engineering / docs domains
+_PENALTY_THIN = 0.15    # very short snippets
+
+_REPUTABLE_DOMAINS = (
+    'github.com', 'stackoverflow.com', 'docs.microsoft.com',
+    'learn.microsoft.com', 'developer.mozilla.org',
+    'kubernetes.io', 'python.org', 'docs.python.org',
+    'cloud.google.com', 'aws.amazon.com', 'docs.aws.amazon.com',
+    'redhat.com', 'docs.oracle.com', 'ibm.com',
+)
+
+
+def score_source_quality(*, url='', snippet='', title=''):
+    """Heuristic 0..1 quality score for a research source."""
+    score = 0.4  # neutral baseline
+    try:
+        from lib.search.internet_tavily import is_official_sap_source
+        if url and is_official_sap_source(url):
+            score += _OFFICIAL_BONUS
+    except Exception:
+        pass
+    u = (url or '').lower()
+    host = u.split('://', 1)[-1].split('/', 1)[0] if '://' in u else u.split('/', 1)[0]
+    if any(host == d or host.endswith('.' + d) for d in _REPUTABLE_DOMAINS):
+        score += _REPUTABLE_BONUS
+    text = f'{title or ""} {snippet or ""}'.strip()
+    if len(text) < 60:
+        score -= _PENALTY_THIN
+    if score < 0.0:
+        score = 0.0
+    if score > 1.0:
+        score = 1.0
+    return round(score, 3)
 
 
 # ── Evidence CRUD ─────────────────────────────────────────────────────────
