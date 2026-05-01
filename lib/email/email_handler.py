@@ -137,6 +137,31 @@ def _record_delivery(to_address, cc_clean, subject, in_reply_to, status, attempt
         pass
 
 
+def _enqueue_retry(to_address, cc_clean, subject, body, html_body,
+                   in_reply_to, attempts, error):
+    """2026-05-02 (S-086BC371AD) — enqueue failed sends for later retry.
+    Failure to enqueue must NEVER crash the send path."""
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            conn.execute(
+                "INSERT INTO email_retry_queue "
+                "(to_address, cc, subject, body, html_body, in_reply_to, "
+                " attempts, attempts_remaining, last_error) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (to_address or '', ', '.join(cc_clean or []),
+                 (subject or '')[:300], body or '', html_body or '',
+                 in_reply_to or '', int(attempts), 3,
+                 str(error or '')[:1000]),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+
 def send_reply(to_address, subject, body, original_message_id=None, html_body=None, cc=None):
     """
     Send an email reply.
@@ -181,6 +206,8 @@ def send_reply(to_address, subject, body, original_message_id=None, html_body=No
     print(f"[Email] Send failed after {attempts} attempt(s): {last_error}")
     _record_delivery(to_address, cc_clean, subject,
                      original_message_id or '', 'failed', attempts, last_error)
+    _enqueue_retry(to_address, cc_clean, subject, body, html_body or '',
+                   original_message_id or '', attempts, last_error)
     return False
 
 def fetch_unread():

@@ -34,6 +34,7 @@ def api_research_start():
 
     agent = data.get('agent', 'user')
     idem = (data.get('idempotency_key') or '').strip()
+    project_id = (data.get('project_id') or '').strip()  # S-BFEE738F64
 
     def _run_bg(sid):
         try:
@@ -57,7 +58,8 @@ def api_research_start():
             # Honour idempotency for quick mode too — reuse the existing row.
             if idem:
                 _existing = create_session(topic, depth=depth, requesting_agent=agent,
-                                           idempotency_key=idem)
+                                           idempotency_key=idem,
+                                           project_id=project_id)
                 from utils.db.research import get_session
                 _row = get_session(_existing)
                 if _row and _row.get('status') == 'done':
@@ -72,7 +74,8 @@ def api_research_start():
     else:
         from utils.db.research import create_session, get_session
         session_id = create_session(topic, depth=depth, requesting_agent=agent,
-                                    idempotency_key=idem)
+                                    idempotency_key=idem,
+                                    project_id=project_id)
         # If idempotency hit returned an existing in-flight or finished session, don't relaunch.
         existing = get_session(session_id) if idem else None
         reused = bool(existing and existing.get('status') in ('done', 'searching', 'analysing', 'synthesising'))

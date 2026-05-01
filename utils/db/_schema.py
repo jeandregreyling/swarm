@@ -1383,6 +1383,59 @@ def _migrate_schema(conn=None):
     except Exception:
         pass
 
+    # 2026-05-02 (S-BFEE738F64) — research_sessions.project_id links a research
+    # run back to a Studio project so evidence shows up in project closeouts.
+    try:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(research_sessions)").fetchall()}
+        if 'project_id' not in cols:
+            conn.execute("ALTER TABLE research_sessions ADD COLUMN project_id TEXT DEFAULT ''")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_research_sessions_project "
+            "ON research_sessions(project_id) WHERE project_id != ''"
+        )
+        conn.commit()
+    except Exception:
+        pass
+
+    # 2026-05-02 (S-168F0F7D14) — per-topic last-seen tracker. Lets the
+    # watcher answer "when did we last see anything about X?" without
+    # scanning all evidence.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS watcher_topic_last_seen (
+            topic_key       TEXT PRIMARY KEY,
+            last_seen_at    TEXT NOT NULL DEFAULT (datetime('now')),
+            last_evidence_id INTEGER DEFAULT 0,
+            evidence_count  INTEGER DEFAULT 0,
+            updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.commit()
+
+    # 2026-05-02 (S-086BC371AD) — email retry queue. Failed sends sit here
+    # with next_attempt_at + attempts_remaining for a worker to pick up.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS email_retry_queue (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            to_address          TEXT NOT NULL,
+            cc                  TEXT NOT NULL DEFAULT '',
+            subject             TEXT NOT NULL DEFAULT '',
+            body                TEXT NOT NULL DEFAULT '',
+            html_body           TEXT NOT NULL DEFAULT '',
+            in_reply_to         TEXT NOT NULL DEFAULT '',
+            attempts            INTEGER NOT NULL DEFAULT 0,
+            attempts_remaining  INTEGER NOT NULL DEFAULT 3,
+            next_attempt_at     TEXT NOT NULL DEFAULT (datetime('now')),
+            last_error          TEXT NOT NULL DEFAULT '',
+            status              TEXT NOT NULL DEFAULT 'pending',
+            created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_retry_queue_pending "
+                 "ON email_retry_queue(status, next_attempt_at) "
+                 "WHERE status='pending'")
+    conn.commit()
+
     # watched_topic_evidence — scoring memory for Tasker watched-topic emails
     conn.execute("""
         CREATE TABLE IF NOT EXISTS watched_topic_evidence (

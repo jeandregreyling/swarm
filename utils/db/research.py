@@ -18,13 +18,17 @@ VALID_DEPTHS = ('quick', 'standard', 'deep')
 
 
 def create_session(topic, *, depth='standard', requesting_agent='user',
-                   linked_proposal_id='', idempotency_key='', conn=None):
+                   linked_proposal_id='', idempotency_key='',
+                   project_id='', conn=None):
     """Create a new research session. Returns the new session id.
 
     2026-05-02 (S-12E202F189) — when ``idempotency_key`` is non-empty and a
     session already exists with that key, return its id instead of creating a
     duplicate. The unique index `idx_research_sessions_idem` enforces this at
     the DB layer; the lookup here just gives a clean response.
+
+    2026-05-02 (S-BFEE738F64) — ``project_id`` optionally links this run to a
+    Studio project so evidence shows up in project closeouts.
     """
     if depth not in VALID_DEPTHS:
         raise ValueError(f"Invalid depth {depth!r}, must be one of {VALID_DEPTHS}")
@@ -39,13 +43,26 @@ def create_session(topic, *, depth='standard', requesting_agent='user',
             ).fetchone()
             if row is not None:
                 return row[0]
-        cur = conn.execute(
-            """INSERT INTO research_sessions
-               (topic, depth, status, phases_json, linked_proposal_id,
-                requesting_agent, idempotency_key)
-               VALUES (?, ?, 'planning', '[]', ?, ?, ?)""",
-            (topic, depth, linked_proposal_id, requesting_agent, idempotency_key),
-        )
+        cols = {r[1] for r in conn.execute(
+            "PRAGMA table_info(research_sessions)").fetchall()}
+        if 'project_id' in cols:
+            cur = conn.execute(
+                """INSERT INTO research_sessions
+                   (topic, depth, status, phases_json, linked_proposal_id,
+                    requesting_agent, idempotency_key, project_id)
+                   VALUES (?, ?, 'planning', '[]', ?, ?, ?, ?)""",
+                (topic, depth, linked_proposal_id, requesting_agent,
+                 idempotency_key, project_id),
+            )
+        else:
+            cur = conn.execute(
+                """INSERT INTO research_sessions
+                   (topic, depth, status, phases_json, linked_proposal_id,
+                    requesting_agent, idempotency_key)
+                   VALUES (?, ?, 'planning', '[]', ?, ?, ?)""",
+                (topic, depth, linked_proposal_id, requesting_agent,
+                 idempotency_key),
+            )
         conn.commit()
         return cur.lastrowid
     finally:
