@@ -20,7 +20,13 @@ import threading
 import time
 import logging
 
-sys.path.insert(0, '/home/seven/swarm')
+# S-7C7ED96F5B — derive SWARM_ROOT from this file's location (utils/ -> parent)
+_SWARM_ROOT = os.environ.get(
+    'SWARM_ROOT',
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+)
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
 
 # Silence Flask startup noise
 log = logging.getLogger('werkzeug')
