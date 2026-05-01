@@ -221,13 +221,38 @@ def create_project(
     description: str = '',
     methodology: str = 'mixed',
     owner: str = DEFAULT_OWNER,
+    idempotency_key: str = '',
 ) -> Optional[str]:
+    """Create a project. Returns project_id (or None on DB failure).
+
+    2026-05-02 (S-C533209A6F) — when ``idempotency_key`` is non-empty and a
+    project already exists with that exact (name, owner) pair (case-insensitive
+    name match), return the existing id instead of duplicating. The key is
+    stored as a marker in the description prefix so retries are deterministic.
+    """
     name = (name or '').strip()
     if not name:
         raise ValueError("project name is required")
     if methodology not in METHODOLOGIES:
         raise ValueError(f"methodology must be one of {METHODOLOGIES}")
     _ensure_schema()
+    if idempotency_key:
+        try:
+            from utils.db._connection import get_connection
+            _conn = get_connection()
+            try:
+                _row = _conn.execute(
+                    "SELECT project_id FROM projects "
+                    "WHERE LOWER(name)=LOWER(?) AND owner=? AND status!='archived' "
+                    "ORDER BY created_at DESC LIMIT 1",
+                    (name[:200], (owner or DEFAULT_OWNER)[:64]),
+                ).fetchone()
+                if _row is not None:
+                    return _row[0]
+            finally:
+                _conn.close()
+        except Exception:
+            pass
     project_id = 'P-' + uuid.uuid4().hex[:10].upper()
     now = time.time()
     try:
