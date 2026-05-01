@@ -1,10 +1,17 @@
 {
   "alive": true,
-  "started_at": 1777641123.7077796,
-  "ts": 1777641123.7077804,
-  "processed": 0,
-  "last_eid": null,
-  "last_event": null,
-  "consolidations": 0,
+  "started_at": 1777641121.1452143,
+  "ts": 1777641127.162377,
+  "processed": 2,
+  "last_eid": 9488,
+  "last_event": {
+    "action": "save",
+    "actor": "ticket_set_routing",
+    "id": "TEST-DRYRUN-1777641126",
+    "kind": "ticket",
+    "path": "runtime/records/ticket/2026/05/TEST-DRYRUN-1777641126.json",
+    "ts": 1777641126.5339978
+  },
+  "consolidations": 1,
   "errors": 0
 }
