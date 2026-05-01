@@ -166,13 +166,141 @@ def _is_about(msg, keywords):
     return any(k in m for k in keywords)
 
 
+def _load_identity_beliefs(limit=10):
+    """Load Seven's bedrock identity beliefs (subject='seven') ordered by confidence."""
+    try:
+        from database import get_connection
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT predicate, object, confidence FROM seven_beliefs "
+                "WHERE subject='seven' ORDER BY confidence DESC, predicate LIMIT ?",
+                (limit,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
+
+def _load_open_curiosity(limit=10, min_salience=0.0):
+    """Load open curiosity questions ordered by salience desc."""
+    try:
+        from core import curiosity
+        return curiosity.list_open(limit=limit, min_salience=min_salience)
+    except Exception:
+        return []
+
+
+def _format_identity_block(beliefs):
+    if not beliefs:
+        return "(no bedrock beliefs seeded yet)"
+    return '\n'.join(f"  · {b['predicate']} = {b['object']}  (conf={b['confidence']:.2f})"
+                     for b in beliefs)
+
+
+def _format_curiosity_block(questions):
+    if not questions:
+        return "Curiosity inbox: empty. Seven knows what he needs to know."
+    lines = [f"{len(questions)} open question(s) — answer in chat by replying with the number and your answer:"]
+    for q in questions:
+        sal = q.get('salience') or 0
+        tag = '!!!' if sal >= 0.95 else '!!' if sal >= 0.85 else '!' if sal >= 0.7 else ' '
+        lines.append(f"  #{q['id']} {tag} {q['question']}")
+        if q.get('options'):
+            for o in q['options']:
+                lines.append(f"      • {o}")
+    return '\n'.join(lines)
+
+
+# Natural-language probes — no slash codes required
+_IDENTITY_NATTY = (
+    'who are you', 'what are you', 'what is seven', 'tell me about seven',
+    'what do you do', 'your role', 'your purpose', 'your motto',
+    'what do you know about yourself', 'who is seven', 'introduce yourself',
+    'your identity', 'know yourself', 'what defines you',
+)
+_CURIOSITY_NATTY = (
+    'what are you asking', 'what are you wondering', 'what questions',
+    'open questions', 'curiosity', 'what don\'t you know', 'what dont you know',
+    "what's open", 'whats open', 'inbox', 'unanswered', 'pending questions',
+    'your questions',
+)
+
+
+def _try_inline_curiosity_answer(message):
+    """Detect a free-form answer like '#3 hybrid: ask inline for high stakes'.
+    Returns (qid, answer_text) or None.
+    """
+    msg = (message or '').strip()
+    if not msg:
+        return None
+    # Patterns: "#3 ...", "answer 3 ...", "q3 ..."
+    import re
+    m = re.match(r'^\s*(?:#|q|answer\s+)(\d+)[\s:.\-]+(.+)$', msg, re.IGNORECASE | re.DOTALL)
+    if not m:
+        return None
+    return int(m.group(1)), m.group(2).strip()
+
+
 def _compose(message, state, memories):
     msg = (message or '').strip()
     intro = random.choice(_INTROS)
     state_block = _format_state_block(state)
     agents = ', '.join(state.get('local_agents', [])) or 'none listed'
 
-    # Identity / what are you
+    # ── PACKET-10B: Inline curiosity answer ("#3 my answer here") ────────
+    inline = _try_inline_curiosity_answer(msg)
+    if inline is not None:
+        qid, answer_text = inline
+        try:
+            from core import curiosity
+            ok = curiosity.answer(qid, answer_text, answered_by='user')
+            if ok:
+                remaining = _load_open_curiosity(limit=5)
+                tail = ("\n\nStill open:\n" + _format_curiosity_block(remaining)) if remaining else \
+                       "\n\nNothing else open right now. Inbox clear."
+                return (f"Got it. Answered #{qid} → promoted to belief at confidence 0.9.\n"
+                        f"Your answer: {answer_text[:300]}{'…' if len(answer_text) > 300 else ''}"
+                        f"{tail}"), 0
+            else:
+                return (f"I couldn't update #{qid} — it's either already answered, dismissed, or never existed.\n"
+                        "Try asking me 'what are you asking' to see open questions."), 0
+        except Exception as exc:
+            return f"Tried to record answer to #{qid} but the curiosity organ raised: {exc}", 0
+
+    # ── PACKET-10B: "What are you asking?" / curiosity probes ────────────
+    if _is_about(msg, _CURIOSITY_NATTY):
+        questions = _load_open_curiosity(limit=10)
+        return (
+            f"{intro}\n\n"
+            "Open questions in my curiosity inbox:\n\n"
+            f"{_format_curiosity_block(questions)}\n\n"
+            "Reply with the question number and your answer — e.g. `#5 the absolute floor is …` "
+            "— and I'll promote it to a permanent belief."
+        ), 0
+
+    # ── PACKET-10B: Identity probes — pulled from seven_beliefs, not text ──
+    if _is_about(msg, _IDENTITY_NATTY):
+        beliefs = _load_identity_beliefs(limit=10)
+        # Find motto + prime_directive for the lede
+        by_pred = {b['predicate']: b['object'] for b in beliefs}
+        motto = by_pred.get('motto', 'Not a system that REPORTS. A system that DOES.')
+        directive = by_pred.get('prime_directive', 'serve motion not memory; act do not report')
+        principal = by_pred.get('principal_user', 'Ghost')
+        return (
+            f"{intro}\n\n"
+            f"I am Seven — personal swarm companion to {principal}.\n\n"
+            f"Motto: \"{motto}\"\n\n"
+            f"Prime directive: {directive}\n\n"
+            "Bedrock identity (from my belief store, not a script):\n"
+            f"{_format_identity_block(beliefs)}\n\n"
+            f"Right now:\n{state_block}\n\n"
+            f"Local agents active: {agents}"
+        ), 0
+
+    # Identity / what are you (legacy keywords, kept as fallback)
     if _is_about(msg, ['who are you', 'what are you', 'what is seven', 'tell me about seven',
                        'what do you do', 'your role', 'your purpose']):
         return (
@@ -243,12 +371,24 @@ def _llm_chat(message, state, memories, history):
     kc_lines = [f"- [{d['doc_name']}] {d['snippet']}" for d in kc_docs if d.get('snippet')]
     kc_block = '\n'.join(kc_lines) if kc_lines else '(no knowledge docs matched)'
 
+    # PACKET-10B: bedrock identity beliefs and current curiosity inbox
+    id_beliefs = _load_identity_beliefs(limit=10)
+    identity_block = _format_identity_block(id_beliefs) if id_beliefs else '(no identity seeded)'
+    open_q = _load_open_curiosity(limit=5)
+    curiosity_block = _format_curiosity_block(open_q) if open_q else '(curiosity inbox empty)'
+
     system = (
         f"{SEVEN_SYSTEM_PROMPT}\n\n"
+        f"WHO YOU ARE (bedrock beliefs from your own memory — these define you, not a script):\n"
+        f"{identity_block}\n\n"
+        f"YOUR CURIOSITY INBOX (questions you're asking the user — surface them naturally if relevant):\n"
+        f"{curiosity_block}\n\n"
         f"LIVE SWARM STATE (for your awareness — only mention if relevant):\n{state_block}\n"
         f"Local agents online: {agents}\n\n"
         f"RELEVANT MEMORY:\n{mem_block}\n\n"
-        f"KNOWLEDGE CENTER (auto-maintained project/step docs — cite these when answering Fridays questions):\n{kc_block}"
+        f"KNOWLEDGE CENTER (auto-maintained project/step docs — cite these when answering Fridays questions):\n{kc_block}\n\n"
+        f"BEHAVIOUR: when uncertain, do NOT hallucinate. Either ask via curiosity (the user will see it) "
+        f"or answer with what you know and flag the gap. Never silent dead-end."
     )
 
     msgs = [{'role': 'system', 'content': system}]
