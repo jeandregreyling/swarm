@@ -193,6 +193,65 @@ def _load_open_curiosity(limit=10, min_salience=0.0):
         return []
 
 
+def _load_pillars_context():
+    """Aggregate the four wishlist pillar summaries (cyber, financial, trading,
+    business) so Seven can answer 'what's open in trading?' or 'any cyber
+    issues?' from live data, not vibes. Each pillar lookup is wrapped — a
+    broken module never takes down the whole context.
+    """
+    out = {}
+    loaders = (
+        ('cyber-security', 'blueprints.cybersecurity_bp'),
+        ('financial',      'blueprints.financial_bp'),
+        ('trading',        'blueprints.trading_bp'),
+        ('business',       'blueprints.business_bp'),
+    )
+    for slug, dotted in loaders:
+        try:
+            mod = __import__(dotted, fromlist=['summary_for_seven'])
+            out[slug] = mod.summary_for_seven()
+        except Exception:
+            out[slug] = {'pillar': slug, 'ok': False}
+    return out
+
+
+def _format_pillars_block(pillars):
+    """Render the pillar snapshots into a tight LLM-friendly block."""
+    if not pillars:
+        return "(pillars unavailable)"
+    lines = []
+    cyb = pillars.get('cyber-security') or {}
+    if cyb.get('ok'):
+        sev = cyb.get('by_severity') or {}
+        lines.append(
+            f"  · Cyber Security: {cyb.get('open', 0)} open "
+            f"(crit={sev.get('critical', 0)}, high={sev.get('high', 0)}, "
+            f"med={sev.get('medium', 0)})"
+        )
+    fin = pillars.get('financial') or {}
+    if fin.get('ok'):
+        hi = len(fin.get('high_conviction') or [])
+        lines.append(
+            f"  · Financial (IB): {fin.get('open', 0)} live position(s), "
+            f"{hi} high-conviction"
+        )
+    trd = pillars.get('trading') or {}
+    if trd.get('ok'):
+        bs = trd.get('by_side') or {}
+        lines.append(
+            f"  · Trading: {trd.get('open', 0)} open "
+            f"(buy={bs.get('buy', 0)}, sell={bs.get('sell', 0)}); "
+            f"realised P&L = {trd.get('realised_pnl', 0)}"
+        )
+    biz = pillars.get('business') or {}
+    if biz.get('ok'):
+        lines.append(
+            f"  · Business Centre: {biz.get('unreconciled', 0)} unreconciled "
+            f"entry/entries; net by ccy = {biz.get('net_by_currency') or {}}"
+        )
+    return '\n'.join(lines) if lines else "(no pillar data yet)"
+
+
 def _format_identity_block(beliefs):
     if not beliefs:
         return "(no bedrock beliefs seeded yet)"
@@ -335,6 +394,19 @@ def _compose(message, state, memories):
             "I manage routing between all of them. Select any agent in this chat to speak directly with them."
         ), 0
 
+    # Pillars / wishlist — fast deterministic snapshot from live data
+    if _is_about(msg, ['pillar', 'pillars', 'wishlist', 'cyber security', 'cybersecurity',
+                       'trading', 'trades', 'positions', 'financial', 'finance', 'ledger',
+                       'business centre', 'business center']):
+        pillars_block = _format_pillars_block(_load_pillars_context())
+        return (
+            f"{intro}\n\n"
+            "Wishlist pillars — live snapshot:\n\n"
+            f"{pillars_block}\n\n"
+            "Tap a tile (Cyber Security · Financial Analytics · Online Trading · Business Centre) "
+            "to log a new entry; I'll see it on the next turn."
+        ), 0
+
     # For anything else — signal to caller to route through the LLM.
     return None, 0
 
@@ -377,6 +449,9 @@ def _llm_chat(message, state, memories, history):
     open_q = _load_open_curiosity(limit=5)
     curiosity_block = _format_curiosity_block(open_q) if open_q else '(curiosity inbox empty)'
 
+    # Wishlist pillars — Seven now reads live cyber/financial/trading/business state.
+    pillars_block = _format_pillars_block(_load_pillars_context())
+
     system = (
         f"{SEVEN_SYSTEM_PROMPT}\n\n"
         f"WHO YOU ARE (bedrock beliefs from your own memory — these define you, not a script):\n"
@@ -385,6 +460,7 @@ def _llm_chat(message, state, memories, history):
         f"{curiosity_block}\n\n"
         f"LIVE SWARM STATE (for your awareness — only mention if relevant):\n{state_block}\n"
         f"Local agents online: {agents}\n\n"
+        f"WISHLIST PILLARS (live snapshot — the four domains the user is building out):\n{pillars_block}\n\n"
         f"RELEVANT MEMORY:\n{mem_block}\n\n"
         f"KNOWLEDGE CENTER (auto-maintained project/step docs — cite these when answering Fridays questions):\n{kc_block}\n\n"
         f"BEHAVIOUR: when uncertain, do NOT hallucinate. Either ask via curiosity (the user will see it) "
@@ -437,8 +513,22 @@ def _slash_command(text, emit=None):
             "  /curiosity dismiss <id> [reason] — dismiss a question\n"
             "  /curiosity ask <question>        — queue a manual question (asked_by=user)\n"
             "  /identity                        — show Seven's bedrock identity beliefs\n"
+            "  /pillars                         — live snapshot of the four wishlist pillars\n"
             "  /help                            — this list\n\n"
             "Phone-friendly inbox: /curiosity (HTML) at the frontend port."
+        )
+
+    if cmd == 'pillars':
+        pillars_block = _format_pillars_block(_load_pillars_context())
+        return (
+            "Wishlist pillars — live snapshot:\n\n"
+            f"{pillars_block}\n\n"
+            "Endpoints:\n"
+            "  · /api/cyber/events   /api/cyber/summary\n"
+            "  · /api/financial/positions  /api/financial/summary\n"
+            "  · /api/trading/signals  /api/trading/summary\n"
+            "  · /api/business/entries  /api/business/summary\n"
+            "  · /api/wishlist/summary (aggregated)"
         )
 
     if cmd == 'curiosity':
