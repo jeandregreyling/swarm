@@ -1,4 +1,4 @@
-.PHONY: test lint fmt audit restart sync help wake-dev wake-uat sleep-dev sleep-uat sleep-all status excellent bullshit seed doctor health hooks
+.PHONY: test lint fmt audit restart sync help wake-dev wake-uat sleep-dev sleep-uat sleep-all status excellent bullshit seed doctor health hooks preflight integ-health log-summary
 
 PYTHON ?= python3
 
@@ -32,6 +32,26 @@ health:  ## Curl the live aggregated /api/health endpoint
 
 hooks:  ## Install the pre-commit hook (detector aborts on RED)
 	@bash scripts/install-hooks.sh
+
+preflight:  ## One-shot integration preflight (compile + node + focused pytest + integ-health)
+	@echo "→ python compile"
+	@find frontend/blueprints utils core fridays ops -name '*.py' -print0 | xargs -0 -n1 $(PYTHON) -m py_compile
+	@echo "→ node syntax (changed views)"
+	@for f in frontend/static/js/views/orbs.js frontend/static/js/views/home-chat.js frontend/static/js/views/localai.js frontend/static/js/views/access.js ; do \
+		[ -f "$$f" ] || continue ; \
+		node --check "$$f" || exit 1 ; \
+	done
+	@echo "→ focused pytest (runtime + scheduled_tasks)"
+	@$(PYTHON) -m pytest tests/test_runtime_health_badges.py tests/test_runtime_force_unload.py tests/test_chat_via_runtime_gateway.py tests/test_scheduled_tasks_hygiene.py -x -q --tb=line
+	@echo "→ integration health"
+	@$(PYTHON) -m ops.integration_health || echo '(integration_health reported issues — review above)'
+	@echo "preflight complete"
+
+integ-health:  ## Print swarm integration health (DB, scheduler, services, routes)
+	@$(PYTHON) -m ops.integration_health
+
+log-summary:  ## Summarize last hour of swarm-* journal errors
+	@$(PYTHON) -m ops.service_log_summary
 
 excellent: bullshit  ## Bullshit detector + per-batch tests = the standard
 	@for f in tests/test_session28_batch*.py tests/test_tasker_dry_run.py tests/test_slash_commands.py ; do \
