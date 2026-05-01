@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-02 00:08",
+  "generated_at": "2026-05-02 00:09",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -4185,7 +4185,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 46462
+      "rows": 46503
     },
     {
       "name": "agent_capabilities",
@@ -4209,7 +4209,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 718
+      "rows": 721
     },
     {
       "name": "audit_results",
@@ -4241,7 +4241,7 @@
     },
     {
       "name": "council_output",
-      "rows": 6890
+      "rows": 6902
     },
     {
       "name": "curiosity_questions",
@@ -4265,7 +4265,7 @@
     },
     {
       "name": "decisions",
-      "rows": 39239
+      "rows": 39271
     },
     {
       "name": "deferred_items",
@@ -4273,7 +4273,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 967
+      "rows": 969
     },
     {
       "name": "enrollment_invites",
@@ -4281,7 +4281,7 @@
     },
     {
       "name": "feed_subscriptions",
-      "rows": 31
+      "rows": 32
     },
     {
       "name": "file_versions",
@@ -4297,7 +4297,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4891
+      "rows": 4893
     },
     {
       "name": "gmail_labels_cache",
@@ -4325,7 +4325,7 @@
     },
     {
       "name": "media_runs",
-      "rows": 159
+      "rows": 167
     },
     {
       "name": "memory",
@@ -4449,7 +4449,7 @@
     },
     {
       "name": "queue",
-      "rows": 1790
+      "rows": 1792
     },
     {
       "name": "research_evidence",
@@ -4473,11 +4473,11 @@
     },
     {
       "name": "seven_attention",
-      "rows": 1825
+      "rows": 1827
     },
     {
       "name": "seven_beliefs",
-      "rows": 3848
+      "rows": 3853
     },
     {
       "name": "seven_concepts",
@@ -4485,7 +4485,7 @@
     },
     {
       "name": "seven_episodes",
-      "rows": 9584
+      "rows": 9642
     },
     {
       "name": "skills",
@@ -4521,7 +4521,7 @@
     },
     {
       "name": "swarm_events",
-      "rows": 35
+      "rows": 36
     },
     {
       "name": "swarm_globals",
@@ -4529,7 +4529,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 35
+      "rows": 36
     },
     {
       "name": "swarm_nodes",
@@ -4557,19 +4557,19 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 721
+      "rows": 723
     },
     {
       "name": "tickets",
-      "rows": 734
+      "rows": 736
     },
     {
       "name": "time_checkpoints",
-      "rows": 5564
+      "rows": 5583
     },
     {
       "name": "time_events",
-      "rows": 124391
+      "rows": 124410
     },
     {
       "name": "time_journal",
@@ -4577,7 +4577,7 @@
     },
     {
       "name": "time_machine",
-      "rows": 7585
+      "rows": 7598
     },
     {
       "name": "tool_builds",
@@ -4585,7 +4585,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 1192
+      "rows": 1207
     },
     {
       "name": "trusted_domains",
