@@ -1493,6 +1493,23 @@ def _migrate_schema(conn=None):
         "ON project_step_evidence(project_id, step_id, created_at)")
     conn.commit()
 
+    # 2026-05-02 (S-E056DBAD19, S-B1279A66EB) — service heartbeat:
+    # listener/terminal/scheduler write here on startup + every loop.
+    # Health endpoints can warn when a service hasn't beaten in N minutes
+    # or restart_count is climbing.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS service_heartbeat (
+            service_name      TEXT PRIMARY KEY,
+            code_version      TEXT NOT NULL DEFAULT '',
+            started_at        TEXT NOT NULL DEFAULT (datetime('now')),
+            last_beat_at      TEXT NOT NULL DEFAULT (datetime('now')),
+            pid               INTEGER DEFAULT 0,
+            restart_count     INTEGER DEFAULT 0,
+            last_restart_at   TEXT NOT NULL DEFAULT ''
+        )
+    """)
+    conn.commit()
+
     # watched_topic_evidence — scoring memory for Tasker watched-topic emails
     conn.execute("""
         CREATE TABLE IF NOT EXISTS watched_topic_evidence (
