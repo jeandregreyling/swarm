@@ -68,3 +68,7 @@ sandpits_stage2/
 sandpits_stage3/
 
 # Windows installer scripts ARE tracked (windows/ no longer ignored as of 2026-04-23)
+
+# PACKET-02/08 — file-per-record store, materialised from DB
+runtime/records/
+runtime/attachments/

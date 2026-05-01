@@ -108,8 +108,130 @@ function initTimeWizard() {
     };
   }
 
+  _initTwSectionToggles();
+  _initTwHistoryResize();
   setTwAutoRefresh(_twAutoRefreshEnabled);
   loadTimeWizardData();
+}
+
+// ── Slice 5d: collapsible side sections ────────────────────────────────────
+function _initTwSectionToggles() {
+  const KEY = 'vortex_section_collapsed';
+  let collapsed = {};
+  try { collapsed = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) {}
+  document.querySelectorAll('.tw-section-toggle').forEach(btn => {
+    const target = btn.getAttribute('data-target');
+    if (!target) return;
+    const tgt = document.getElementById(target);
+    const caret = btn.querySelector('.tw-toggle-caret');
+    const apply = (isCollapsed) => {
+      if (tgt) tgt.style.display = isCollapsed ? 'none' : '';
+      if (caret) caret.style.transform = isCollapsed ? 'rotate(-90deg)' : '';
+      btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    };
+    apply(!!collapsed[target]);
+    btn.onclick = () => {
+      collapsed[target] = !collapsed[target];
+      try { localStorage.setItem(KEY, JSON.stringify(collapsed)); } catch (_) {}
+      apply(!!collapsed[target]);
+    };
+  });
+}
+
+// ── Slice 5d: resizable history panel ──────────────────────────────────────
+function _initTwHistoryResize() {
+  const KEY = 'vortex_history_width';
+  const handle = document.getElementById('tw-history-resizer');
+  const panel = document.getElementById('tw-history-panel');
+  if (!handle || !panel) return;
+  const apply = (w) => {
+    if (!w) { panel.style.width = ''; return; }
+    const max = Math.floor(window.innerWidth * 0.6);
+    const clamped = Math.max(220, Math.min(max, w));
+    panel.style.width = clamped + 'px';
+  };
+  const saved = parseInt(localStorage.getItem(KEY) || '0', 10);
+  if (saved > 0) apply(saved);
+
+  let dragging = false;
+  const onMove = (e) => {
+    if (!dragging) return;
+    const x = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+    const rect = panel.getBoundingClientRect();
+    const newW = rect.right - x;
+    apply(newW);
+    try { localStorage.setItem(KEY, String(parseInt(panel.style.width, 10) || 0)); } catch (_) {}
+    e.preventDefault();
+  };
+  const onUp = () => {
+    dragging = false;
+    document.body.style.cursor = '';
+    handle.style.background = '';
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+  };
+  const onDown = (e) => {
+    dragging = true;
+    document.body.style.cursor = 'col-resize';
+    handle.style.background = 'var(--accent)';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
+    e.preventDefault();
+  };
+  handle.addEventListener('mousedown', onDown);
+  handle.addEventListener('touchstart', onDown, { passive: false });
+  handle.addEventListener('dblclick', () => {
+    try { localStorage.removeItem(KEY); } catch (_) {}
+    apply(0);
+  });
+  handle.addEventListener('keydown', (e) => {
+    const cur = parseInt(panel.getBoundingClientRect().width, 10) || 320;
+    if (e.key === 'ArrowLeft')  { apply(cur + 24); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { apply(cur - 24); e.preventDefault(); }
+    else if (e.key === 'Home')  { apply(0); try { localStorage.removeItem(KEY); } catch (_) {} e.preventDefault(); return; }
+    else return;
+    try { localStorage.setItem(KEY, String(parseInt(panel.style.width, 10) || 0)); } catch (_) {}
+  });
+}
+
+// ── Slice 5d: Vortex health pill ───────────────────────────────────────────
+function _renderTwHealth() {
+  const pill = document.querySelector('#tw-health-strip .tw-health-pill');
+  if (!pill) return;
+  const dot = pill.querySelector('.tw-health-dot');
+  const label = pill.querySelector('.tw-health-label');
+  const sessions = (_twSessions || []).length;
+  const checkpoints = (_twCheckpoints || []).length;
+  const events = (_twEvents || []).length;
+  const decisions = (_twDecisions || []).length;
+  let state = 'ok', text = '';
+  if (!sessions && !checkpoints && !events && !decisions) {
+    state = 'idle';
+    text = 'Vortex idle — no sessions or checkpoints yet';
+  } else if (!checkpoints) {
+    state = 'warn';
+    text = `Vortex live · ${events} events · 0 checkpoints (save one to enable rollback)`;
+  } else if (!sessions) {
+    state = 'warn';
+    text = `Vortex history present · ${checkpoints} checkpoints · session inactive`;
+  } else {
+    state = 'ok';
+    text = `Vortex healthy · ${sessions} session${sessions===1?'':'s'} · ${checkpoints} checkpoints · ${events} events`;
+  }
+  const palette = {
+    ok:    { bg:'#22c55e', fg:'#22c55e', border:'#22c55e55' },
+    warn:  { bg:'#f59e0b', fg:'#f59e0b', border:'#f59e0b55' },
+    idle:  { bg:'var(--text-dim)', fg:'var(--text-dim)', border:'var(--border)' },
+  }[state];
+  if (dot)   dot.style.background = palette.bg;
+  if (label) label.textContent = text;
+  pill.style.borderColor = palette.border;
+  pill.style.color = palette.fg;
+  pill.setAttribute('data-state', state);
 }
 
 async function loadTimeWizardData() {
@@ -161,6 +283,7 @@ function renderTwSummary() {
   slider.disabled = _twCheckpoints.length === 0;
   slider.max = Math.max(_twCheckpoints.length - 1, 0);
   if (Number(slider.value) > Number(slider.max)) slider.value = '0';
+  try { _renderTwHealth(); } catch (_) {}
 }
 
 function getSelectedTwCheckpoint() {
@@ -370,6 +493,23 @@ function renderTwTimeline(decisions) {
         <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">${_escHtml(d.date || d.proposed || d.timestamp || '')}</div>
       </div>`;
   }).join('');
+  // Top-of-Vortex Seven life-story summary — system-wide narrative.
+  try {
+    if (window.SevenPanel) {
+      const parent = container.parentNode;
+      let host = document.getElementById('tw-seven-life');
+      if (!host && parent) {
+        host = document.createElement('div');
+        host.id = 'tw-seven-life';
+        host.style.cssText = 'margin:0 0 10px 0;';
+        parent.insertBefore(host, container);
+      }
+      if (host && !host.dataset.mounted) {
+        host.dataset.mounted = '1';
+        window.SevenPanel.mount(host, { kind: 'system', id: 'vortex' });
+      }
+    }
+  } catch (e) { /* noop */ }
 }
 
 function twEventDisplayTitle(event) {
@@ -635,6 +775,19 @@ async function expandTwDecision(id) {
       wrapper.id = `tw-detail-${id}`;
       wrapper.innerHTML = detailHtml;
       timeline.parentNode.insertBefore(wrapper, timeline.nextSibling);
+      // Seven life-story panel — pulls /api/seven/related at depth 2 for
+      // this record id and renders a propose-only insight footer.
+      try {
+        if (window.SevenPanel) {
+          // Decision id may be a UUID, ticket number, or record id. SevenPanel
+          // tries to resolve via /api/seven/observe?focus=<id> and renders
+          // narrative + proposals; failure-quiet if not a record kind.
+          const inner = wrapper.querySelector(':scope > div');
+          if (inner) {
+            window.SevenPanel.mount(inner, { kind: 'decision', id: String(id) });
+          }
+        }
+      } catch (e) { /* noop */ }
     }
     
     showToast(`Loaded: ${d.title || d.status}`, 'success');

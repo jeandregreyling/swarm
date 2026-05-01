@@ -727,7 +727,15 @@ function agentsRenderList(agents) {
     el.innerHTML = '<div style="padding:20px;color:var(--text-dim);font-size:11px;">No agents found.</div>';
     return;
   }
-  el.innerHTML = agents.map(a => {
+  // Slice 5e: filter input + tier-grouped rows for faster scanning.
+  const groups = { human: [], local: [], service: [], api: [] };
+  agents.forEach(a => {
+    const isLocal = a.tier === 'local' || a.tier === 'human';
+    const isService = a.tier === 'service';
+    const key = a.tier === 'human' ? 'human' : (isService ? 'service' : (isLocal ? 'local' : 'api'));
+    (groups[key] || groups.api).push(a);
+  });
+  const renderRow = (a) => {
     const isLocal    = a.tier === 'local' || a.tier === 'human';
     const isService  = a.tier === 'service';
     const tierLabel  = a.tier === 'human' ? 'human' : isService ? 'service' : (isLocal ? 'local' : 'api');
@@ -743,7 +751,8 @@ function agentsRenderList(agents) {
     const dcomBadge = isDecommissioned
       ? '<span style="background:#3a1010;color:#ff8a8a;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">OFFLINE</span>'
       : '';
-    return `<div class="agents-list-row" data-name="${_esc(a.name)}"
+    const filterBlob = `${a.name||''} ${a.label||''} ${a.model||''} ${tierLabel}`.toLowerCase();
+    return `<div class="agents-list-row" data-name="${_esc(a.name)}" data-filter="${_esc(filterBlob)}"
       style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px;transition:background 0.12s;${isDecommissioned ? 'opacity:0.6;' : ''}">
       <div style="display:flex;align-items:center;gap:6px;">
         ${statusDot}
@@ -752,7 +761,34 @@ function agentsRenderList(agents) {
       </div>
       <div style="font-size:10px;color:var(--text-dim);padding-left:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(a.model || '')}</div>
     </div>`;
-  }).join('');
+  };
+  const groupBlock = (label, list) => {
+    if (!list.length) return '';
+    return `<div class="agents-group" data-group="${_esc(label)}">
+      <div class="agents-group-head" style="position:sticky;top:0;background:var(--window-header);padding:5px 14px;font-size:9.5px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);z-index:1;">${_esc(label)} <span style="opacity:.7;">(${list.length})</span></div>
+      ${list.map(renderRow).join('')}
+    </div>`;
+  };
+  const filterHtml = `<div style="position:sticky;top:0;background:var(--window-header);padding:8px 12px;border-bottom:1px solid var(--border);z-index:2;">
+    <input type="text" id="agents-list-filter" placeholder="Filter agents…" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:11px;font-family:inherit;outline:none;">
+  </div>`;
+  el.innerHTML = filterHtml + groupBlock('Human', groups.human) + groupBlock('Local', groups.local) + groupBlock('Service', groups.service) + groupBlock('API', groups.api);
+  // Filter wiring.
+  const flt = document.getElementById('agents-list-filter');
+  if (flt) {
+    flt.addEventListener('input', () => {
+      const q = flt.value.trim().toLowerCase();
+      el.querySelectorAll('.agents-list-row').forEach(r => {
+        r.style.display = (!q || (r.dataset.filter || '').includes(q)) ? '' : 'none';
+      });
+      // Hide group headers whose rows are all hidden.
+      el.querySelectorAll('.agents-group').forEach(g => {
+        const rows = g.querySelectorAll('.agents-list-row');
+        const visible = Array.from(rows).some(r => r.style.display !== 'none');
+        g.style.display = visible ? '' : 'none';
+      });
+    });
+  }
   // Attach click listeners after rendering — avoids double-quote conflicts with JSON.stringify in onclick attributes
   el.querySelectorAll('.agents-list-row').forEach(row => {
     row.addEventListener('click', () => {
@@ -1109,23 +1145,28 @@ async function _renderLocalAgentAvailability(agent) {
   if (!ollamaRunning) {
     statusEl.style.borderColor = '#ef444455';
     statusEl.innerHTML = `
-      <div style="color:#ef4444;font-weight:600;">Local agent unavailable: Ollama is offline.</div>
-      <div style="margin-top:4px;">Start Ollama, then return here. You can also pull missing models in Local AI.</div>
-      <div style="margin-top:8px;"><button onclick="openWindow('localai','Local AI','view-localai')" style="background:var(--card);border:1px solid #ef444455;color:var(--text);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;">Open Local AI</button></div>`;
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0;"></span>
+        <span style="color:#ef4444;font-weight:600;font-size:12px;">Ollama offline</span>
+        <button onclick="openWindow('localai','Local AI','view-localai')" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10.5px;">Local AI →</button>
+      </div>`;
     return;
   }
 
   if (!modelInstalled) {
     statusEl.style.borderColor = '#ef444455';
     statusEl.innerHTML = `
-      <div style="color:#ef4444;font-weight:600;">Local agent unavailable: model not installed.</div>
-      <div style="margin-top:4px;">Model <strong>${_esc(agent.model || 'unknown')}</strong> was not found in Ollama. Re-download it from Local AI.</div>
-      <div style="margin-top:8px;"><button onclick="openWindow('localai','Local AI','view-localai')" style="background:var(--card);border:1px solid #ef444455;color:var(--text);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;">Open Local AI</button></div>`;
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0;"></span>
+        <span style="color:#ef4444;font-weight:600;font-size:12px;">Model not installed</span>
+        <span style="color:var(--text-dim);font-size:11px;">${_esc(agent.model || 'unknown')}</span>
+        <button onclick="openWindow('localai','Local AI','view-localai')" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10.5px;">Local AI →</button>
+      </div>`;
     return;
   }
 
   statusEl.style.borderColor = '#22c55e55';
-  statusEl.innerHTML = `<div style="color:#22c55e;font-weight:600;">Local runtime ready.</div><div style="margin-top:4px;">Ollama is running and the assigned model is installed.</div>`;
+  statusEl.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0;"></span><span style="color:#22c55e;font-weight:600;font-size:12px;">Local runtime ready</span><span style="color:var(--text-dim);font-size:11px;">Ollama running · model installed</span></div>`;
 }
 
 function agentsSave(name) {

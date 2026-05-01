@@ -5567,7 +5567,10 @@ function refreshChatThreadList(preferredId = null) {
         opt.value = String(conv.id);
         const _rawTs2 = conv.timestamp || conv.created_at || '';
         const ts = _rawTs2 ? (function(s){ if (/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s) && !/[Z+]/.test(s.slice(-6))) s = s.replace(' ','T')+'Z'; const d = new Date(s); return isNaN(d) ? s.slice(0,16) : d.toLocaleDateString('en-AU',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'}); })(_rawTs2) : '';
-        opt.textContent = '#' + conv.id + ' · ' + (conv.title || '(untitled)') + (ts ? ' · ' + ts : '');
+        const rawTitle = String(conv.title || '(untitled)');
+        const title = rawTitle.length > 48 ? rawTitle.slice(0, 47) + '…' : rawTitle;
+        opt.textContent = '#' + conv.id + ' · ' + title + (ts ? ' · ' + ts : '');
+        opt.title = rawTitle + (ts ? '  ' + ts : '');
         threadSelect.appendChild(opt);
       });
 

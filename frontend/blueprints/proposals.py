@@ -118,6 +118,11 @@ def intake():
                   (proposal_id, title, description, agent, "pending"))
         conn.commit()
         conn.close()
+        try:
+            from core.records import mirror as _records_mirror
+            _records_mirror('proposal', proposal_id, actor='proposal_intake')
+        except Exception:
+            pass
         linked_project_id = ""
         try:
             from utils.studio_intake import link_proposal_to_project
@@ -166,6 +171,11 @@ def edit_proposal(proposal_id):
         c.execute(f"UPDATE work_proposals SET {', '.join(updates)} WHERE proposal_id = ?", values)
         conn.commit()
         conn.close()
+        try:
+            from core.records import mirror as _records_mirror
+            _records_mirror('proposal', proposal_id, actor='proposal_edit')
+        except Exception:
+            pass
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -232,6 +242,12 @@ def update_proposal_status(proposal_id):
                 args=(normalized_id, new_status, actor, note),
                 daemon=True
             ).start()
+        except Exception:
+            pass
+
+        try:
+            from core.records import mirror as _records_mirror
+            _records_mirror('proposal', normalized_id, actor='proposal_status')
         except Exception:
             pass
 

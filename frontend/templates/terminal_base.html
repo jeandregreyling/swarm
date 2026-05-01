@@ -93,7 +93,7 @@
 <link rel="stylesheet" href="/static/css/views/localai.css?v=1">
 <link rel="stylesheet" href="/static/css/views/media-center.css?v=6">
 <link rel="stylesheet" href="/static/css/responsive.css">
-<link rel="stylesheet" href="/static/css/home-chat.css?v=28">
+<link rel="stylesheet" href="/static/css/home-chat.css?v=29">
 <link rel="stylesheet" href="/static/css/login.css?v=28">
 <link rel="stylesheet" href="/static/css/skills.css?v=27">
 <link rel="stylesheet" href="/static/css/views/tasker.css?v=1">
@@ -167,14 +167,14 @@
 #spotlight-esc-hint{background:var(--window-header);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:10px;color:var(--text-dim);font-family:inherit;flex-shrink:0;}
 #spotlight-results{overflow-y:auto;max-height:calc(72vh - 110px);}
 #spotlight-results:empty{display:none;}
-.spotlight-section-header{padding:8px 18px 4px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;position:sticky;top:0;background:var(--card);z-index:1;}
-.spotlight-item{display:flex;align-items:center;gap:12px;padding:9px 18px;cursor:pointer;border-radius:0;transition:background .1s;}
+.spotlight-item{display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-radius:0;transition:background .1s;}
 .spotlight-item:hover,.spotlight-item.sp-active{background:color-mix(in srgb,var(--accent) 12%,transparent);}
-.spotlight-item-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:var(--window-header);border:1px solid var(--border);}
+.spotlight-item-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:var(--window-header);border:1px solid var(--border);}
 .spotlight-item-text{flex:1;min-width:0;}
-.spotlight-item-title{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.spotlight-item-sub{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.spotlight-item-title{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.spotlight-item-sub{font-size:10.5px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
 .spotlight-item-hint{font-size:10px;color:var(--text-dim);flex-shrink:0;opacity:.7;}
+.spotlight-section-header{padding:6px 14px 3px;font-size:9.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;position:sticky;top:0;background:var(--card);z-index:1;}
 #spotlight-footer{display:flex;gap:18px;padding:7px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--text-dim);background:var(--window-header);}
 </style>
 
@@ -789,12 +789,23 @@
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span>Feeds</span></div>
           <div class="card-desc">Social &amp; developer feeds</div>
         </div>
+        <div class="home-card" data-win-id="records-files" data-win-title="Files" data-win-template="view-records-files">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 8h6M6 10h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></span><span>Files</span></div>
+          <div class="card-desc">Browse runtime/records on disk</div>
+        </div>
+        <div class="home-card" data-win-id="tasker" data-win-title="Tasker" data-win-template="view-tasker">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Tasker</span></div>
+          <div class="card-desc">Schedule, calendar &amp; watched topics</div>
+        </div>
       </div>
     </div>
 
     <!-- Chat resize handle (Phase-5 SMALL: now sits ABOVE chat). Dragging up
-         grows chat, dragging down shrinks it — see _initHomeChatResize. -->
-    <div class="home-chat-resizer home-chat-resizer-top" id="home-chat-resizer" title="Drag to resize chat"></div>
+         grows chat, dragging down shrinks it — see _initHomeChatResize.
+         Double-click resets to the default height. Keyboard: Up/Down arrows. -->
+    <div class="home-chat-resizer home-chat-resizer-top" id="home-chat-resizer"
+         role="separator" aria-orientation="horizontal" aria-label="Resize chat (drag, double-click to reset, or use Up/Down arrows)"
+         tabindex="0" title="Drag (or arrows) to resize chat — double-click to reset"></div>
 
     <!-- ═══ Home Chat — primary interaction surface ═══ -->
     <div class="home-section home-chat-section home-chat-prominent">
@@ -855,7 +866,7 @@
           </div>
           <div id="home-chat-input-area">
             <div class="home-chat-compose">
-              <textarea id="home-chat-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
+              <textarea id="home-chat-input" placeholder="Ask Seven (start with ?) · or @duck @gemma @ten…" rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
               <button id="home-chat-mic-btn" class="voice-mic-btn" title="Hold to talk" onclick="voiceRecordToggle(this, (t)=>{const i=document.getElementById('home-chat-input'); if(i){i.value=(i.value? i.value+' ':'')+t; i.focus();}})">
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><rect x="6" y="2" width="4" height="8" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2M6 14h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
               </button>
@@ -1638,6 +1649,10 @@
           onclick="studioSetTab('testlab')"
           title="Test Lab — run the 7-tier audit hierarchy + any registered test script against a change"
           style="padding:5px 14px;border-radius:4px;border:1px solid var(--info);background:color-mix(in srgb, var(--info) 18%, transparent);color:var(--info);font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb, var(--info) 30%, transparent);">🧪 Test Lab</button>
+        <button id="studio-tab-records"
+          onclick="studioSetTab('records')"
+          title="Records — universal viewer for projects, steps, cases, runs, proposals, tickets, emails, notes, docs, threads (Platinum file layer)"
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Records</button>
         <button id="studio-btn-governance"
           onclick="openGovernancePanel()"
           title="Governance controls — pause/resume enforcement, view ALM status"
@@ -1800,6 +1815,9 @@
       </div>
     </div>
 
+    <!-- Records panel — populated by studio-records.js (PACKET-08 Platinum slice). -->
+    <div id="studio-records-panel" style="display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;"></div>
+
     <div id="studio-media-panel" style="display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;">
       <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
         <div>
@@ -1840,6 +1858,12 @@
         </button>
       </div>
       <div style="font-size: 11px; color: var(--text-dim);margin-top:6px;line-height:1.5;">Save a restore point, preview a rollback, then apply it if it looks right. Everything is auditable.</div>
+      <div id="tw-health-strip" style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:10px;flex-wrap:wrap;">
+        <span class="tw-health-pill" data-state="loading" style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);">
+          <span class="tw-health-dot" style="width:7px;height:7px;border-radius:50%;background:var(--text-dim);"></span>
+          <span class="tw-health-label">Vortex health: checking…</span>
+        </span>
+      </div>
     </div>
     <div style="padding: 12px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); display: flex; flex-direction: column; gap: 12px;">
       <div id="tw-summary" style="font-size: 10px; color: var(--text-dim);">Loading Vortex status...</div>
@@ -1874,10 +1898,11 @@
           <div style="color: var(--text-dim); font-size: 10px; text-align: center; padding: 24px 16px;">Loading decision timeline...</div>
         </div>
       </div>
-      <aside id="tw-history-panel" style="width: 320px; max-width: 46%; border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; background: rgba(255,255,255,0.01);">
+      <div id="tw-history-resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize Vortex history panel" style="width:4px;cursor:col-resize;background:var(--border);flex-shrink:0;align-self:stretch;outline:none;" title="Drag to resize · double-click to reset"></div>
+      <aside id="tw-history-panel" style="width: 320px; max-width: 60%; min-width: 220px; border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; background: rgba(255,255,255,0.01);">
         <div style="padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Vortex History</div>
+            <button class="tw-section-toggle" data-target="tw-history-list" aria-expanded="true" style="background:none;border:none;color:var(--text-dim);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;flex:1;text-align:left;"><span class="tw-toggle-caret" style="display:inline-block;transition:transform .15s;">▾</span>Vortex History</button>
             <button onclick="loadTimeWizardData()" style="padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 10px; cursor: pointer;">↻</button>
           </div>
           <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);cursor:pointer;">
@@ -1891,7 +1916,7 @@
         </div>
         <div style="border-top:1px solid var(--border);padding:10px 12px 6px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Spine Feed</div>
+            <button class="tw-section-toggle" data-target="tw-spine-feed" aria-expanded="true" style="background:none;border:none;color:var(--text-dim);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;flex:1;text-align:left;"><span class="tw-toggle-caret" style="display:inline-block;transition:transform .15s;">▾</span>Spine Feed</button>
             <button onclick="if(window.__trace)window.__trace.open({})" title="Open full Traced window" style="padding:2px 8px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:10px;cursor:pointer;">Open Traced</button>
           </div>
           <div style="font-size:9px;color:var(--text-dim);margin-bottom:6px;">Live events flowing through Seven's spine</div>
@@ -2462,6 +2487,24 @@
       <div class="tasker-stat"><div class="tasker-stat-value" id="tasker-stat-last">–</div><div class="tasker-stat-label">Last Fired</div></div>
     </div>
 
+    <!-- Calendar -->
+    <div class="tasker-calendar-panel">
+      <div class="tasker-calendar-head">
+        <div>
+          <div class="tasker-watch-title">Task calendar</div>
+          <div class="tasker-watch-subtitle">Scheduled jobs, watched-topic emails, briefs, and upcoming Tasker runs in one place.</div>
+        </div>
+        <div class="tasker-calendar-controls">
+          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(-7)" title="Previous week">‹</button>
+          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(0)" title="Today">Today</button>
+          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(7)" title="Next week">›</button>
+        </div>
+      </div>
+      <div class="tasker-calendar-grid" id="tasker-calendar-grid">
+        <div class="tasker-empty"><div class="tasker-empty-icon">⏱</div>Loading calendar...</div>
+      </div>
+    </div>
+
     <!-- Header -->
     <div class="tasker-header">
       <input class="tasker-search" type="text" id="tasker-search" placeholder="Search tasks..." oninput="filterTaskerList()">
@@ -2479,24 +2522,6 @@
       </select>
       <button class="tasker-btn-new" onclick="openTaskerForm()">+ New Task</button>
       <button class="tasker-btn-new" style="background:var(--accent-subtle,#2a4a5a)" onclick="bootstrapTasker()">⚡ Bootstrap</button>
-    </div>
-
-    <!-- Calendar -->
-    <div class="tasker-calendar-panel">
-      <div class="tasker-calendar-head">
-        <div>
-          <div class="tasker-watch-title">Task calendar</div>
-          <div class="tasker-watch-subtitle">Scheduled jobs, watched-topic emails, briefs, and upcoming Tasker runs in one place.</div>
-        </div>
-        <div class="tasker-calendar-controls">
-          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(-7)" title="Previous week">‹</button>
-          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(0)" title="Today">Today</button>
-          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(7)" title="Next week">›</button>
-        </div>
-      </div>
-      <div class="tasker-calendar-grid" id="tasker-calendar-grid">
-        <div class="tasker-empty"><div class="tasker-empty-icon">⏱</div>Loading calendar...</div>
-      </div>
     </div>
 
     <!-- Watched topic quick creator -->
@@ -2601,6 +2626,26 @@
   {% include 'views/feeds.html' %}
 </template>
 
+<template id="view-records-files">
+  <div class="content-view records-files-root" style="display:flex;flex-direction:column;height:100%;min-height:0;">
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <div style="font-size:13px;font-weight:700;">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-1px"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 8h6M6 10h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        Files
+      </div>
+      <button id="rfb-up" title="Up one folder" style="padding:4px 10px;border:1px solid var(--border);background:transparent;border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">↑ Up</button>
+      <div id="rfb-crumb" style="flex:1;font-size:11px;color:var(--text-dim);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+      <span id="rfb-count" style="font-size:10px;color:var(--text-dim);"></span>
+      <button id="rfb-refresh" style="padding:4px 10px;border:1px solid var(--border);background:transparent;border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">↻</button>
+    </div>
+    <div style="display:grid;grid-template-columns:24px 1fr 80px 130px;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">
+      <span></span><span>Name</span><span style="text-align:right;">Size</span><span>Modified</span>
+    </div>
+    <div id="rfb-list" style="flex:1;overflow:auto;min-height:0;"></div>
+    <div id="rfb-detail" style="display:none;border-top:1px solid var(--border);background:var(--bg);"></div>
+  </div>
+</template>
+
 <template id="view-media">
   {% include 'views/media.html' %}
 </template>
@@ -2656,11 +2701,13 @@
 <!-- DYNAMIC_SCRIPTS -->
 
 <!-- Core -->
-<script src="/static/js/core/window-manager.js?v=30"></script>
+<script src="/static/js/core/window-manager.js?v=31"></script>
 <script src="/static/js/core/theme.js?v=7"></script>
 <script src="/static/js/core/toast.js?v=2"></script>
 <script src="/static/js/core/icons.js"></script>
 <script src="/static/js/core/swarm-chat.js"></script>
+<script src="/static/js/core/seven-panel.js?v=1"></script>
+<script src="/static/js/core/record-shortcuts.js?v=1"></script>
 <script src="/static/js/core/app.js?v=33"></script>
 
 <!-- Views -->
@@ -2677,40 +2724,42 @@
 <script src="/static/js/views/tasker.js"></script>
 <script src="/static/js/views/tickets.js"></script>
 <script src="/static/js/views/email.js?v=30"></script>
-<script src="/static/js/views/studio.js?v=32"></script>
+<script src="/static/js/views/studio.js?v=35"></script>
 <script src="/static/js/views/studio-media.js?v=2"></script>
 <script src="/static/js/views/studio-testlab.js?v=30"></script>
+<script src="/static/js/views/studio-records.js?v=2"></script>
+<script src="/static/js/views/records-files.js?v=2"></script>
 <script src="/static/js/views/projects.js?v=33"></script>
 <script src="/static/js/views/traced.js?v=29"></script>
 <script src="/static/js/core/trace-bus.js?v=29"></script>
-<script src="/static/js/views/chat.js?v=39"></script>
+<script src="/static/js/views/chat.js?v=40"></script>
 <script src="/static/js/views/services.js?v=2"></script>
 <script src="/static/js/views/ollama.js"></script>
-<script src="/static/js/views/time-wizard.js?v=29"></script>
-<script src="/static/js/views/access.js?v=3"></script>
+<script src="/static/js/views/time-wizard.js?v=31"></script>
+<script src="/static/js/views/access.js?v=5"></script>
 <script src="/static/js/views/library-graph.js"></script>
 <script src="/static/js/views/library.js?v=32"></script>
 <script src="/static/js/views/hive-nodes.js?v=1"></script>
 <script src="/static/js/voice.js?v=1"></script>
 <script src="/static/js/views/knowledge.js?v=3"></script>
 <script src="/static/js/views/media.js?v=1"></script>
-<script src="/static/js/views/spotlight.js"></script>
+<script src="/static/js/views/spotlight.js?v=2"></script>
 <script src="/static/js/views/guide.js"></script>
 <script src="/static/js/views/vpn.js"></script>
 <script src="/static/js/views/localai.js?v=2"></script>
 <script src="/static/js/views/media-center.js?v=6"></script>
 <script src="/static/js/views/trace.js"></script>
 <script src="/static/js/views/onboarding.js?v=2"></script>
-<script src="/static/js/views/diamond.js?v=4"></script>
+<script src="/static/js/views/diamond.js?v=6"></script>
 <script src="/static/js/views/health-digest.js"></script>
 
-<script src="/static/js/views/home-chat.js?v=33"></script>
+<script src="/static/js/views/home-chat.js?v=35"></script>
 <script src="/static/js/friday-auth.js?v=28"></script>
 <!-- Init (must be last — depends on all above) -->
 <script src="/static/js/core/sse-client.js"></script>
 <script src="/static/js/core/init.js?v=35"></script>
 <script src="/static/js/core/scene-sprites.js?v=2"></script>
-<script src="/static/js/views/orbs.js?v=35"></script>
+<script src="/static/js/views/orbs.js?v=36"></script>
 
 </body>
 </html>

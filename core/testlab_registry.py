@@ -54,6 +54,15 @@ REGISTRY: List[Dict[str, object]] = [
         'change_aware': False,
         'default_on': False,
     },
+    {
+        'id': 'smoke-architecture-self-test',
+        'group': 'Smoke',
+        'label': 'Architecture self-test (PACKET-05)',
+        'description': 'Runs the system invariant gate: doc redirects, /media-center route, per-record file store, ALM detail endpoints, packet tagging, epic rows present. Exit 0 = all green.',
+        'command': 'python3 scripts/architecture_self_test.py',
+        'change_aware': False,
+        'default_on': True,
+    },
 
     # ── Pytest groups ────────────────────────────────────────────────────
     {
