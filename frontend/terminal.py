@@ -100,6 +100,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.gmail_labels',   'gmail_labels_bp'),
     ('blueprints.feeds_bp',       'feeds_bp'),
     ('blueprints.seven_bp',       'seven_bp'),
+    ('blueprints.wishlist_bp',    'wishlist_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
