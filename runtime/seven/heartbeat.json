@@ -1,10 +1,17 @@
 {
   "alive": true,
-  "started_at": 1777644493.1491375,
-  "ts": 1777644509.7106683,
-  "processed": 0,
-  "last_eid": null,
-  "last_event": null,
+  "started_at": 1777644406.5064468,
+  "ts": 1777644514.6080763,
+  "processed": 6,
+  "last_eid": 9587,
+  "last_event": {
+    "action": "save",
+    "actor": "ticket_create",
+    "id": "TG-DRYRUN-1777644499",
+    "kind": "ticket",
+    "path": "runtime/records/ticket/2026/05/TG-DRYRUN-1777644499.json",
+    "ts": 1777644499.778213
+  },
   "consolidations": 1,
   "errors": 0
 }
