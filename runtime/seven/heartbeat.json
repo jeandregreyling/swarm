@@ -1,16 +1,16 @@
 {
   "alive": true,
   "started_at": 1777631801.5752048,
-  "ts": 1777639122.0038786,
-  "processed": 80,
-  "last_eid": 8849,
+  "ts": 1777639295.2149808,
+  "processed": 105,
+  "last_eid": 8900,
   "last_event": {
     "action": "save",
-    "actor": "ticket_create",
-    "id": "TG-DRYRUN-1777639121",
-    "kind": "ticket",
-    "path": "runtime/records/ticket/2026/05/TG-DRYRUN-1777639121.json",
-    "ts": 1777639121.5542135
+    "actor": "log_message",
+    "id": "2349",
+    "kind": "thread",
+    "path": "runtime/records/thread/2026/05/2349.json",
+    "ts": 1777639141.2413495
   },
   "consolidations": 25,
   "errors": 0
