@@ -163,23 +163,37 @@
 
   function renderForm(conf) {
     return (
-      '<form class="wishlist-quickadd" style="margin-top:10px;display:flex;gap:6px;">'
-      + '<input type="text" name="quick" placeholder="' + escape(conf.form.placeholder) + '" '
-      + 'style="flex:1;padding:6px 8px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;" />'
-      + '<button type="submit" style="padding:6px 12px;font-size:11px;background:var(--accent);color:#000;border:none;border-radius:4px;font-weight:600;cursor:pointer;">Add</button>'
+      '<form class="wishlist-quickadd" style="margin-top:10px;display:flex;gap:6px;" novalidate>'
+      + '<label class="sr-only" for="wq-' + escape(conf.createUrl) + '" style="position:absolute;left:-9999px;">' + escape(conf.form.label) + '</label>'
+      + '<input id="wq-' + escape(conf.createUrl) + '" type="text" name="quick" autocomplete="off" '
+      +   'placeholder="' + escape(conf.form.placeholder) + '" aria-label="' + escape(conf.form.label) + '" '
+      +   'style="flex:1;padding:6px 8px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;" />'
+      + '<button type="submit" aria-label="Add entry" '
+      +   'style="padding:6px 12px;font-size:11px;background:var(--accent);color:#000;border:none;border-radius:4px;font-weight:600;cursor:pointer;">Add</button>'
       + '</form>'
-      + '<div class="wishlist-quickadd-status" style="font-size:10px;color:var(--text-dim);margin-top:4px;min-height:13px;"></div>'
+      + '<div class="wishlist-quickadd-status" role="status" aria-live="polite" style="font-size:10px;color:var(--text-dim);margin-top:4px;min-height:13px;"></div>'
     );
   }
 
   function paint(panel, summary, items, conf) {
     const headline = conf.headline(summary || {});
+    const slug = panel.dataset.liveSlug;
+    const populated = items && items.length;
+    panel.setAttribute('role', 'region');
+    panel.setAttribute('aria-label', slug + ' live snapshot');
     panel.innerHTML = (
       '<div style="border:1px solid var(--border);border-radius:6px;padding:10px 12px;background:var(--card);">'
-      + '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Live snapshot</div>'
+      + '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">'
+      +   '<span>Live snapshot</span>'
+      +   '<button type="button" class="wishlist-pillar-refresh" aria-label="Refresh ' + escape(slug) + ' snapshot" '
+      +     'style="font-size:10px;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:4px;padding:2px 8px;cursor:pointer;">refresh</button>'
+      + '</div>'
       + '<div>' + renderHeadline(headline) + '</div>'
       + '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 4px;">Recent</div>'
       + renderItems(items, conf)
+      + (populated ? '' :
+          '<div style="font-size:11px;color:var(--text-dim);padding:4px 0 0;">'
+          + 'No entries yet — use the form below to log the first one.</div>')
       + '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 4px;">' + escape(conf.form.label) + '</div>'
       + renderForm(conf)
       + '</div>'
@@ -187,11 +201,25 @@
 
     const form = panel.querySelector('.wishlist-quickadd');
     const status = panel.querySelector('.wishlist-quickadd-status');
+    const refresh = panel.querySelector('.wishlist-pillar-refresh');
+    if (refresh) {
+      refresh.addEventListener('click', function () {
+        panel.dataset.livePopulated = '';
+        populate(panel);
+      });
+    }
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
       const input = form.querySelector('input[name="quick"]');
+      const button = form.querySelector('button');
       const text = (input.value || '').trim();
-      if (!text) return;
+      if (!text) {
+        status.textContent = 'Type something first.';
+        input.focus();
+        return;
+      }
+      button.disabled = true;
+      button.style.opacity = '0.6';
       status.textContent = 'Saving…';
       fetch(conf.createUrl, {
         method: 'POST',
@@ -203,7 +231,6 @@
           if (res.ok && res.body && res.body.ok) {
             status.textContent = 'Saved.';
             input.value = '';
-            // Force a refresh on next observer scan.
             panel.dataset.livePopulated = '';
             populate(panel);
           } else {
@@ -211,8 +238,35 @@
             status.textContent = 'Error: ' + err;
           }
         })
-        .catch(function () { status.textContent = 'Error: network'; });
+        .catch(function (e) { status.textContent = 'Error: network'; })
+        .then(function () { button.disabled = false; button.style.opacity = '1'; });
     });
+  }
+
+  function paintError(panel, msg) {
+    const slug = panel.dataset.liveSlug;
+    panel.innerHTML = (
+      '<div role="alert" style="border:1px solid var(--accent,#e88);border-radius:6px;padding:10px 12px;background:var(--card);">'
+      + '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Live snapshot · error</div>'
+      + '<div style="font-size:11px;color:var(--text);">Could not load <strong>' + escape(slug) + '</strong>: ' + escape(msg) + '</div>'
+      + '<button type="button" class="wishlist-pillar-retry" '
+      +   'style="margin-top:8px;font-size:11px;background:var(--accent);color:#000;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:600;">Retry</button>'
+      + '</div>'
+    );
+    const btn = panel.querySelector('.wishlist-pillar-retry');
+    if (btn) btn.addEventListener('click', function () {
+      panel.dataset.livePopulated = '';
+      populate(panel);
+    });
+  }
+
+  function paintLoading(panel) {
+    panel.innerHTML = (
+      '<div role="status" aria-live="polite" style="border:1px solid var(--border);border-radius:6px;padding:10px 12px;background:var(--card);">'
+      + '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Live snapshot</div>'
+      + '<div style="font-size:11px;color:var(--text-dim);">Reading…</div>'
+      + '</div>'
+    );
   }
 
   function populate(panel) {
@@ -221,13 +275,16 @@
     const conf = PILLARS[slug];
     if (!conf) return;
     panel.dataset.livePopulated = '1';
+    paintLoading(panel);
     Promise.all([
-      fetch(conf.summaryUrl).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; }),
-      fetch(conf.listUrl).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; }),
+      fetch(conf.summaryUrl).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
+      fetch(conf.listUrl).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
     ]).then(function (results) {
       const summary = results[0] || {};
       const items = (results[1] && results[1][conf.itemsKey]) || [];
       paint(panel, summary, items, conf);
+    }).catch(function (err) {
+      paintError(panel, (err && err.message) || 'unknown');
     });
   }
 
