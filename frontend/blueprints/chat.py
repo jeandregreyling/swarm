@@ -524,24 +524,6 @@ def api_chat():
     if not message:
         return jsonify({'ok': False, 'response': 'Empty message'}), 400
 
-    # ── Slash command short-circuit (PACKET-10B) ─────────────────────────
-    # Catch /curiosity, /identity, /help BEFORE any preamble wrapping or
-    # agent dispatch so users get a deterministic, instant response.
-    if message.startswith('/'):
-        try:
-            from agents.seven.seven_agent import _slash_command  # type: ignore
-            slash_response = _slash_command(message)
-        except Exception as exc:
-            slash_response = f"slash command failed: {exc}"
-        if slash_response is not None:
-            return jsonify({
-                'ok': True,
-                'response': slash_response,
-                'agent': 'seven',
-                'tokens': 0,
-                'slash_command': True,
-            })
-
     # Force parallel dispatch when user explicitly selects multiple agents.
     # Sequential stalling is for relay chains, not multi-agent fan-out.
     if isinstance(requested_agents, list) and len(requested_agents) > 1:
