@@ -1323,6 +1323,41 @@ def _migrate_schema(conn=None):
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_research_evidence_dedup ON research_evidence (session_id, source_url, snippet_hash)")
     conn.commit()
 
+    # 2026-05-02 (S-12E202F189 + S-A43BF83EB7) — research idempotency_key
+    # and last_error visibility. ALTER guarded; safe on existing rows.
+    try:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(research_sessions)").fetchall()}
+        if 'idempotency_key' not in cols:
+            conn.execute("ALTER TABLE research_sessions ADD COLUMN idempotency_key TEXT DEFAULT ''")
+        if 'last_error' not in cols:
+            conn.execute("ALTER TABLE research_sessions ADD COLUMN last_error TEXT DEFAULT ''")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_research_sessions_idem "
+            "ON research_sessions(idempotency_key) WHERE idempotency_key != ''"
+        )
+        conn.commit()
+    except Exception:
+        pass
+
+    # 2026-05-02 (S-90C2B45FAF) — every outbound email is recorded for audit.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS email_delivery_log (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            to_address      TEXT NOT NULL,
+            cc              TEXT NOT NULL DEFAULT '',
+            subject         TEXT NOT NULL DEFAULT '',
+            in_reply_to     TEXT NOT NULL DEFAULT '',
+            sent_at         TEXT NOT NULL DEFAULT (datetime('now')),
+            status          TEXT NOT NULL DEFAULT 'ok',
+            attempts        INTEGER NOT NULL DEFAULT 1,
+            error           TEXT NOT NULL DEFAULT '',
+            sender          TEXT NOT NULL DEFAULT ''
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_delivery_log_to ON email_delivery_log(to_address, sent_at DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_delivery_log_status ON email_delivery_log(status, sent_at DESC)")
+    conn.commit()
+
     # watched_topic_evidence — scoring memory for Tasker watched-topic emails
     conn.execute("""
         CREATE TABLE IF NOT EXISTS watched_topic_evidence (
