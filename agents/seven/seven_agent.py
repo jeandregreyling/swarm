@@ -701,9 +701,34 @@ def chat(message, conversation_history=None, stage_cb=None):
                 pass
 
     # ── Slash commands (fast deterministic, no LLM) ──────────────────────
+    # Two paths: (a) the raw user message starts with '/' (direct module
+    # call, /help, etc.), and (b) the chat blueprint wraps the message in
+    # scaffolding lines like "[Auto Relay: ENABLED]\n..." so the slash is
+    # no longer at index 0. For (b), scan the full message for a known
+    # slash token on its own line and re-route to the slash handler.
     msg_stripped = (message or '').strip()
-    if msg_stripped.startswith('/'):
-        handled = _slash_command(msg_stripped, _emit)
+    _SLASH_TOKENS = (
+        '/audit', '/selfcheck', '/self-check', '/self_check',
+        '/standard', '/thestandard', '/the-standard',
+        '/learnings', '/lessons', '/learned',
+        '/pillars', '/identity', '/curiosity', '/help', '/commands',
+    )
+    embedded = None
+    if not msg_stripped.startswith('/'):
+        # Look for a known slash token on its own line (allows leading
+        # whitespace, optional arguments after).
+        for line in msg_stripped.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith('/'):
+                continue
+            head = stripped.split(maxsplit=1)[0].lower()
+            if head in _SLASH_TOKENS:
+                embedded = stripped
+                break
+
+    if msg_stripped.startswith('/') or embedded:
+        target = msg_stripped if msg_stripped.startswith('/') else embedded
+        handled = _slash_command(target, _emit)
         if handled is not None:
             return handled, 0
 

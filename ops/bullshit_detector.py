@@ -343,6 +343,7 @@ def summary_for_seven(cache_path: Path | None = None) -> dict:
         'critical': data['by_severity'].get('critical', 0),
         'warnings': data['by_severity'].get('warning', 0),
         'info': data['by_severity'].get('info', 0),
+        'files_scanned': data.get('files_scanned', 0),
         'pillar_findings': len(data.get('pillar_contract', {}).get('findings', [])),
         'top_hits': data['hits'][:5],
     }
