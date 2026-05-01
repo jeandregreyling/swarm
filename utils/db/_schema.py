@@ -1358,6 +1358,31 @@ def _migrate_schema(conn=None):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_email_delivery_log_status ON email_delivery_log(status, sent_at DESC)")
     conn.commit()
 
+    # 2026-05-02 (S-5E508B5488 + S-15087BF900) — task_run_log structured fields:
+    # duration_ms for performance, details_json for structured task output.
+    try:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(task_run_log)").fetchall()}
+        if 'duration_ms' not in cols:
+            conn.execute("ALTER TABLE task_run_log ADD COLUMN duration_ms INTEGER DEFAULT 0")
+        if 'details_json' not in cols:
+            conn.execute("ALTER TABLE task_run_log ADD COLUMN details_json TEXT DEFAULT ''")
+        conn.commit()
+    except Exception:
+        pass
+
+    # 2026-05-02 (S-B13B24A10F) — scheduled_tasks lease columns to prevent
+    # double-execution under concurrency. lease_expires_at is the cutoff;
+    # workers must clear/refresh before running.
+    try:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(scheduled_tasks)").fetchall()}
+        if 'lease_owner' not in cols:
+            conn.execute("ALTER TABLE scheduled_tasks ADD COLUMN lease_owner TEXT DEFAULT ''")
+        if 'lease_expires_at' not in cols:
+            conn.execute("ALTER TABLE scheduled_tasks ADD COLUMN lease_expires_at TEXT DEFAULT ''")
+        conn.commit()
+    except Exception:
+        pass
+
     # watched_topic_evidence — scoring memory for Tasker watched-topic emails
     conn.execute("""
         CREATE TABLE IF NOT EXISTS watched_topic_evidence (
