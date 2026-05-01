@@ -329,10 +329,30 @@ def chat(
     idle_timeout_s: int = 60,
     keep_alive: str | int = "60s",
     options: dict[str, Any] | None = None,
+    on_token: Any = None,
+    on_event: Any = None,
 ) -> RuntimeResult:
-    """Run an Ollama chat with structured events and idle/absolute clocks."""
+    """Run an Ollama chat with structured events and idle/absolute clocks.
+
+    Optional callbacks let callers stream the work into their own trace:
+      * on_token(piece: str): fired for every non-empty token chunk
+      * on_event(event_dict): fired for every RuntimeEvent appended (queued,
+        dispatch, first_token, token_heartbeat, completed, failed)
+    Both callbacks are best-effort — exceptions are swallowed so a noisy
+    consumer cannot break model output.
+    """
     started = _now()
-    events = [RuntimeEvent("queued", started)]
+    events: list[RuntimeEvent] = []
+
+    def _record(event: RuntimeEvent) -> None:
+        events.append(event)
+        if on_event is not None:
+            try:
+                on_event(event.as_dict())
+            except Exception:
+                pass
+
+    _record(RuntimeEvent("queued", started))
     content_parts: list[str] = []
     tokens = 0
     try:
@@ -344,6 +364,11 @@ def chat(
             "options": options or {},
         }
         events.append(RuntimeEvent("dispatch", _now(), f"absolute={absolute_timeout_s}s idle={idle_timeout_s}s"))
+        if on_event is not None:
+            try:
+                on_event(events[-1].as_dict())
+            except Exception:
+                pass
         with requests.post(
             f"{base_url}/api/chat",
             json=payload,
@@ -366,15 +391,20 @@ def chat(
                     content_parts.append(piece)
                     last_token_at = _now()
                     tokens += 1
+                    if on_token is not None:
+                        try:
+                            on_token(piece)
+                        except Exception:
+                            pass
                     if tokens == 1:
-                        events.append(RuntimeEvent("first_token", last_token_at, tokens=tokens))
+                        _record(RuntimeEvent("first_token", last_token_at, tokens=tokens))
                     elif tokens % 25 == 0:
-                        events.append(RuntimeEvent("token_heartbeat", last_token_at, tokens=tokens))
+                        _record(RuntimeEvent("token_heartbeat", last_token_at, tokens=tokens))
                 if data.get("done"):
                     tokens = int(data.get("eval_count") or tokens)
-                    events.append(RuntimeEvent("completed", _now(), tokens=tokens))
+                    _record(RuntimeEvent("completed", _now(), tokens=tokens))
                     break
         return RuntimeResult(True, model, "".join(content_parts), tokens, _now() - started, events=events)
     except Exception as exc:
-        events.append(RuntimeEvent("failed", _now(), str(exc), tokens=tokens))
+        _record(RuntimeEvent("failed", _now(), str(exc), tokens=tokens))
         return RuntimeResult(False, model, "".join(content_parts), tokens, _now() - started, error=str(exc), events=events)
