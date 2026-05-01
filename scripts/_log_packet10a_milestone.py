@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """Log PACKET-10A milestone via studio_milestone.log_milestone."""
+import os
 import sys
-sys.path.insert(0, "/home/seven/swarm")
+# S-7C7ED96F5B — resolve repo root relative to this file (override via SWARM_ROOT)
+_SWARM_ROOT = os.environ.get(
+    "SWARM_ROOT",
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+)
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
 from scripts.studio_milestone import log_milestone
 
 story = """\
