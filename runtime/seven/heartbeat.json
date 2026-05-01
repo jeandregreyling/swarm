@@ -1,10 +1,10 @@
 {
   "alive": true,
-  "started_at": 1777639037.330502,
-  "ts": 1777639037.3305027,
+  "started_at": 1777639117.2954404,
+  "ts": 1777639119.1448784,
   "processed": 0,
   "last_eid": null,
   "last_event": null,
-  "consolidations": 0,
+  "consolidations": 1,
   "errors": 0
 }
