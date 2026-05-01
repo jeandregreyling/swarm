@@ -173,6 +173,81 @@ def run_task_now(task_id):
     return jsonify({'ok': True, 'fired': name, 'output': output})
 
 
+@tasker_bp.route('/api/tasker/tasks/<int:task_id>/dry-run', methods=['POST'])
+def dry_run_task(task_id):
+    """Resolve a task to its concrete invocation WITHOUT executing it.
+
+    S-A4249B4159 — lets the user inspect what a scheduled task will actually
+    do (registered handler + parsed args + computed next_run) before firing
+    it for real. Side-effect free: does not call _execute_task_action and
+    does not touch last_run / next_run on the row.
+    """
+    with _get_conn() as conn:
+        row = conn.execute(
+            'SELECT id, name, action_type, action_data, schedule, last_run, next_run, enabled '
+            'FROM scheduled_tasks WHERE id=?',
+            (task_id,)
+        ).fetchone()
+    if not row:
+        return jsonify({'ok': False, 'error': 'Task not found'}), 404
+
+    _id, name, action_type, action_data, schedule, last_run, next_run, enabled = row
+    at = str(action_type or '').strip().upper()
+    resolved = {
+        'task_id': _id,
+        'name': name,
+        'action_type': at,
+        'schedule': schedule,
+        'enabled': bool(enabled),
+        'last_run': last_run,
+        'current_next_run': next_run,
+        'projected_next_run': _compute_next_run(schedule),
+    }
+
+    if at == 'PYTHON':
+        parts = shlex.split(str(action_data or '').strip())
+        task_name = parts[0] if parts else ''
+        task_args = parts[1:]
+        try:
+            from fridays.task_runner import list_registered
+            registered = {t.get('name'): t for t in (list_registered() or [])}
+        except Exception:
+            registered = {}
+        handler = registered.get(task_name) or {}
+        resolved['handler'] = {
+            'name': task_name,
+            'registered': bool(handler),
+            'callable': handler.get('callable') or handler.get('func') or None,
+            'description': handler.get('description') or handler.get('doc') or '',
+            'parsed_args': task_args,
+        }
+        resolved['would_execute'] = bool(handler)
+        if not handler:
+            resolved['warning'] = (
+                f'Python task "{task_name}" is NOT registered with task_runner. '
+                'Running this task would fail.'
+            )
+    elif at in ('SHELL', 'BRIEF'):
+        try:
+            argv = shlex.split(str(action_data or '').strip())
+        except ValueError as exc:
+            return jsonify({'ok': False, 'error': f'shlex parse error: {exc}'}), 400
+        resolved['handler'] = {
+            'argv': argv,
+            'argv_count': len(argv),
+            'binary': argv[0] if argv else None,
+        }
+        resolved['would_execute'] = bool(argv)
+        if not argv:
+            resolved['warning'] = 'Empty argv — nothing would be executed.'
+    else:
+        resolved['handler'] = {}
+        resolved['would_execute'] = False
+        resolved['warning'] = f'Unsupported action_type: {action_type!r}'
+
+    return jsonify({'ok': True, 'dry_run': True, 'resolved': resolved})
+
+
 @tasker_bp.route('/api/tasker/registered')
 def list_registered_tasks():
     """List all registered Python tasks from the task runner."""
