@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-01 00:11",
+  "generated_at": "2026-05-01 22:46",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -312,6 +312,11 @@
       "description": "core.coding_bible_probe \u2014 runtime verification of Coding Bible fan-out."
     },
     {
+      "path": "core/curiosity.py",
+      "group": "Core",
+      "description": "core/curiosity.py \u2014 PACKET-10B: Curiosity organ."
+    },
+    {
       "path": "core/fan_controller.py",
       "group": "Core",
       "description": "core/fan_controller.py \u2014 read-only fan / temperature monitor."
@@ -412,9 +417,74 @@
       "description": "core.platform \u2014 runtime capability detection for the swarm."
     },
     {
+      "path": "core/records/__init__.py",
+      "group": "Core",
+      "description": "core.records \u2014 Platinum layer per-record file storage + typed edges."
+    },
+    {
+      "path": "core/records/attachments.py",
+      "group": "Core",
+      "description": "Content-addressed binary attachment store."
+    },
+    {
+      "path": "core/records/links.py",
+      "group": "Core",
+      "description": "core.records.links \u2014 Platinum layer typed edges."
+    },
+    {
+      "path": "core/records/promote.py",
+      "group": "Core",
+      "description": "core.records.promote \u2014 Platinum layer record morphing."
+    },
+    {
+      "path": "core/records/store.py",
+      "group": "Core",
+      "description": "core.records.store \u2014 Platinum layer per-record file storage."
+    },
+    {
+      "path": "core/records/xref.py",
+      "group": "Core",
+      "description": "core.records.xref \u2014 Platinum layer cross-reference builder."
+    },
+    {
       "path": "core/routing.py",
       "group": "Core",
       "description": "core/routing.py \u2014 Deterministic routing brain for Seven's Swarm."
+    },
+    {
+      "path": "core/seven/__init__.py",
+      "group": "Core",
+      "description": "core.seven \u2014 Seven IS the system."
+    },
+    {
+      "path": "core/seven/concepts.py",
+      "group": "Core",
+      "description": "core.seven.concepts \u2014 load Seven's self-knowledge from ``docs/seven/*.md``."
+    },
+    {
+      "path": "core/seven/continuous.py",
+      "group": "Core",
+      "description": "core.seven.continuous \u2014 Seven's always-on learner."
+    },
+    {
+      "path": "core/seven/memory.py",
+      "group": "Core",
+      "description": "core.seven.memory \u2014 Seven's three memory stores."
+    },
+    {
+      "path": "core/seven/perception.py",
+      "group": "Core",
+      "description": "core.seven.perception \u2014 Seven's read-only view of the swarm."
+    },
+    {
+      "path": "core/seven/reasoning.py",
+      "group": "Core",
+      "description": "core.seven.reasoning \u2014 Seven's small deterministic mind."
+    },
+    {
+      "path": "core/seven/suggest.py",
+      "group": "Core",
+      "description": "core.seven.suggest \u2014 propose-only nudges built from a perception snapshot."
     },
     {
       "path": "core/seven_llm/__init__.py",
@@ -1994,6 +2064,60 @@
           ]
         },
         {
+          "path": "/api/knowledge/steps/<step_id>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/records/_kinds",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/records/<kind>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/records/<kind>/<rid>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/records/<kind>/<rid>/links",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/records/<kind>/<rid>/promote",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/records/attachments",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/records/attachments/<sha256>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/records/_browse",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
           "path": "/api/knowledge/projects/<project_id>/test-cases",
           "methods": [
             "POST"
@@ -2039,6 +2163,12 @@
           "path": "/api/knowledge/cases/<case_id>",
           "methods": [
             "PATCH"
+          ]
+        },
+        {
+          "path": "/api/knowledge/cases/<case_id>",
+          "methods": [
+            "GET"
           ]
         },
         {
@@ -2096,7 +2226,7 @@
           ]
         }
       ],
-      "route_count": 32
+      "route_count": 42
     },
     {
       "name": "legacy",
@@ -3053,6 +3183,103 @@
       "route_count": 5
     },
     {
+      "name": "seven_bp",
+      "description": "blueprints.seven_bp \u2014 HTTP surface for Seven (perception + brain).",
+      "routes": [
+        {
+          "path": "/api/seven/observe",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/related/<kind>/<rid>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/suggest",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/stats",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/episodes",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/beliefs",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/concepts",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/concepts/<slug>",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/attention",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/memory",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/explain",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/decide",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/heartbeat",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/seven/concepts/reload",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/seven/consolidate",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "route_count": 15
+    },
+    {
       "name": "shell",
       "description": "shell.py \u2014 Shell & Terminal routes",
       "routes": [
@@ -3743,19 +3970,19 @@
   "js_views": [
     {
       "name": "access.js",
-      "size_kb": 107.3
+      "size_kb": 109.9
     },
     {
       "name": "chat.js",
-      "size_kb": 271.8
+      "size_kb": 272.0
     },
     {
       "name": "conversations.js",
-      "size_kb": 14.5
+      "size_kb": 15.1
     },
     {
       "name": "diamond.js",
-      "size_kb": 28.7
+      "size_kb": 33.3
     },
     {
       "name": "docs.js",
@@ -3787,7 +4014,7 @@
     },
     {
       "name": "home-chat.js",
-      "size_kb": 56.1
+      "size_kb": 60.3
     },
     {
       "name": "knowledge.js",
@@ -3835,11 +4062,15 @@
     },
     {
       "name": "orbs.js",
-      "size_kb": 83.8
+      "size_kb": 85.4
     },
     {
       "name": "projects.js",
-      "size_kb": 31.4
+      "size_kb": 48.3
+    },
+    {
+      "name": "records-files.js",
+      "size_kb": 8.7
     },
     {
       "name": "services.js",
@@ -3851,19 +4082,23 @@
     },
     {
       "name": "spotlight.js",
-      "size_kb": 15.1
+      "size_kb": 26.0
     },
     {
       "name": "studio-media.js",
       "size_kb": 18.4
     },
     {
+      "name": "studio-records.js",
+      "size_kb": 15.3
+    },
+    {
       "name": "studio-testlab.js",
-      "size_kb": 25.3
+      "size_kb": 25.6
     },
     {
       "name": "studio.js",
-      "size_kb": 87.2
+      "size_kb": 91.1
     },
     {
       "name": "tasker.js",
@@ -3883,7 +4118,7 @@
     },
     {
       "name": "time-wizard.js",
-      "size_kb": 43.4
+      "size_kb": 49.9
     },
     {
       "name": "trace.js",
@@ -3901,7 +4136,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 45120
+      "rows": 46205
     },
     {
       "name": "agent_capabilities",
@@ -3925,23 +4160,23 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 697
+      "rows": 706
     },
     {
       "name": "audit_results",
-      "rows": 43
+      "rows": 44
     },
     {
       "name": "change_runs",
-      "rows": 37
+      "rows": 38
     },
     {
       "name": "chat_jobs",
-      "rows": 682
+      "rows": 690
     },
     {
       "name": "chat_relay_recoveries",
-      "rows": 1
+      "rows": 3
     },
     {
       "name": "claude_log",
@@ -3949,15 +4184,19 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2468
+      "rows": 2478
     },
     {
       "name": "conversations",
-      "rows": 211
+      "rows": 248
     },
     {
       "name": "council_output",
-      "rows": 6629
+      "rows": 6661
+    },
+    {
+      "name": "curiosity_questions",
+      "rows": 0
     },
     {
       "name": "daily_checkpoint",
@@ -3977,7 +4216,7 @@
     },
     {
       "name": "decisions",
-      "rows": 34048
+      "rows": 38773
     },
     {
       "name": "deferred_items",
@@ -3985,7 +4224,7 @@
     },
     {
       "name": "duck_log",
-      "rows": 949
+      "rows": 957
     },
     {
       "name": "enrollment_invites",
@@ -3993,7 +4232,7 @@
     },
     {
       "name": "feed_subscriptions",
-      "rows": 24
+      "rows": 27
     },
     {
       "name": "file_versions",
@@ -4009,7 +4248,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 4773
+      "rows": 4826
     },
     {
       "name": "gmail_labels_cache",
@@ -4021,11 +4260,11 @@
     },
     {
       "name": "knowledge_chunks",
-      "rows": 1724
+      "rows": 1728
     },
     {
       "name": "knowledge_sources",
-      "rows": 132
+      "rows": 136
     },
     {
       "name": "media_items",
@@ -4037,11 +4276,11 @@
     },
     {
       "name": "media_runs",
-      "rows": 99
+      "rows": 127
     },
     {
       "name": "memory",
-      "rows": 129
+      "rows": 132
     },
     {
       "name": "memory_eight",
@@ -4049,7 +4288,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 1
+      "rows": 2
     },
     {
       "name": "memory_ghost_coder",
@@ -4105,7 +4344,7 @@
     },
     {
       "name": "messages",
-      "rows": 484
+      "rows": 558
     },
     {
       "name": "moderators",
@@ -4129,19 +4368,19 @@
     },
     {
       "name": "project_blackboard_notes",
-      "rows": 33
+      "rows": 42
     },
     {
       "name": "project_doc_versions",
-      "rows": 220
+      "rows": 289
     },
     {
       "name": "project_docs",
-      "rows": 180
+      "rows": 249
     },
     {
       "name": "project_steps",
-      "rows": 719
+      "rows": 754
     },
     {
       "name": "project_test_cases",
@@ -4149,7 +4388,7 @@
     },
     {
       "name": "projects",
-      "rows": 35
+      "rows": 37
     },
     {
       "name": "proposal_attachments",
@@ -4161,27 +4400,43 @@
     },
     {
       "name": "queue",
-      "rows": 1752
+      "rows": 1768
     },
     {
       "name": "research_evidence",
-      "rows": 161
+      "rows": 263
     },
     {
       "name": "research_sessions",
-      "rows": 8
+      "rows": 14
     },
     {
       "name": "sandpit_log",
-      "rows": 550
+      "rows": 558
     },
     {
       "name": "scheduled_tasks",
-      "rows": 17
+      "rows": 21
     },
     {
       "name": "settings_sysmod",
       "rows": 2
+    },
+    {
+      "name": "seven_attention",
+      "rows": 1761
+    },
+    {
+      "name": "seven_beliefs",
+      "rows": 3648
+    },
+    {
+      "name": "seven_concepts",
+      "rows": 9
+    },
+    {
+      "name": "seven_episodes",
+      "rows": 9070
     },
     {
       "name": "skills",
@@ -4201,7 +4456,7 @@
     },
     {
       "name": "sqlite_sequence",
-      "rows": 73
+      "rows": 75
     },
     {
       "name": "sudo_command_whitelist",
@@ -4213,11 +4468,11 @@
     },
     {
       "name": "swarm_event_acks",
-      "rows": 137
+      "rows": 161
     },
     {
       "name": "swarm_events",
-      "rows": 28
+      "rows": 31
     },
     {
       "name": "swarm_globals",
@@ -4225,7 +4480,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 28
+      "rows": 31
     },
     {
       "name": "swarm_nodes",
@@ -4233,11 +4488,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 9534
+      "rows": 9805
     },
     {
       "name": "task_run_log",
-      "rows": 525
+      "rows": 732
     },
     {
       "name": "terminal_shortcuts",
@@ -4249,31 +4504,31 @@
     },
     {
       "name": "test_runs",
-      "rows": 182
+      "rows": 183
     },
     {
       "name": "ticket_notes",
-      "rows": 703
-    },
-    {
-      "name": "tickets",
       "rows": 711
     },
     {
+      "name": "tickets",
+      "rows": 724
+    },
+    {
       "name": "time_checkpoints",
-      "rows": 5394
+      "rows": 5482
     },
     {
       "name": "time_events",
-      "rows": 120318
+      "rows": 123614
     },
     {
       "name": "time_journal",
-      "rows": 113449
+      "rows": 116657
     },
     {
       "name": "time_machine",
-      "rows": 7216
+      "rows": 7458
     },
     {
       "name": "tool_builds",
@@ -4281,7 +4536,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 1009
+      "rows": 1089
     },
     {
       "name": "trusted_domains",
@@ -4309,7 +4564,7 @@
     },
     {
       "name": "user_sessions",
-      "rows": 28
+      "rows": 29
     },
     {
       "name": "user_skill_permissions",
@@ -4317,7 +4572,7 @@
     },
     {
       "name": "watched_topic_evidence",
-      "rows": 61
+      "rows": 82
     },
     {
       "name": "work_proposal_notes",
@@ -4325,7 +4580,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 16
+      "rows": 18
     }
   ],
   "agents": [
@@ -5027,6 +5282,10 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "studio-tab-records",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "studio-btn-governance",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -5088,6 +5347,14 @@
     },
     {
       "id": "pico-embed-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "rfb-up",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "rfb-refresh",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -5191,6 +5458,10 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "class": "tw-section-toggle",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "class": "lib-type-tab",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -5219,11 +5490,11 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
-      "class": "tasker-btn-new",
+      "class": "tasker-action-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
-      "class": "tasker-action-btn",
+      "class": "tasker-btn-new",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -5599,6 +5870,14 @@
       "file": "frontend/static/js/views/time-wizard.js"
     },
     {
+      "id": "tw-history-resizer",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-history-panel",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
       "id": "tw-timeline",
       "file": "frontend/static/js/views/time-wizard.js"
     },
@@ -5612,6 +5891,10 @@
     },
     {
       "id": "tw-restore-preview",
+      "file": "frontend/static/js/views/time-wizard.js"
+    },
+    {
+      "id": "tw-seven-life",
       "file": "frontend/static/js/views/time-wizard.js"
     },
     {
@@ -5713,6 +5996,14 @@
     {
       "id": "testlab-run-status",
       "file": "frontend/static/js/views/studio-testlab.js"
+    },
+    {
+      "id": "studio-records-panel",
+      "file": "frontend/static/js/views/studio-records.js"
+    },
+    {
+      "id": "studio-records-kind",
+      "file": "frontend/static/js/views/studio-records.js"
     },
     {
       "id": "home-chat-thread-select",
@@ -6551,6 +6842,10 @@
       "file": "frontend/static/js/views/access.js"
     },
     {
+      "id": "agents-list-filter",
+      "file": "frontend/static/js/views/access.js"
+    },
+    {
       "id": "agent-temperature-readout",
       "file": "frontend/static/js/views/access.js"
     },
@@ -7195,6 +7490,26 @@
       "file": "frontend/static/js/views/projects.js"
     },
     {
+      "id": "pd-detail",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "alm-detail-modal",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "alm-detail-kind",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "alm-detail-id",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "alm-detail-body",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
       "id": "sundial",
       "file": "frontend/static/js/views/diamond.js"
     },
@@ -7212,6 +7527,10 @@
     },
     {
       "id": "sundial-title",
+      "file": "frontend/static/js/views/diamond.js"
+    },
+    {
+      "id": "sundial-seven-vitals",
       "file": "frontend/static/js/views/diamond.js"
     },
     {
