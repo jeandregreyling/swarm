@@ -1,0 +1,89 @@
+{
+  "071_db_shim": {
+    "raw_sqlite3_files": 62,
+    "utils_db_files": 81,
+    "top_offenders": [
+      "scripts/tag_backlog_packets.py",
+      "scripts/ingest_loose_md.py",
+      "scripts/seed_seven_identity.py",
+      "scripts/architecture_self_test.py",
+      "scripts/studio_data_governance.py",
+      "scripts/generate_landscape_json.py",
+      "scripts/generate_system_index.py",
+      "scripts/setup_node.py",
+      "scripts/dedupe_backlog.py",
+      "scripts/backup_verify.py"
+    ]
+  },
+  "072_swallow_blueprints": {
+    "count": 2,
+    "sample": [
+      [
+        "frontend/blueprints/agents.py",
+        908,
+        "except Exception: pass"
+      ],
+      [
+        "frontend/blueprints/agents.py",
+        937,
+        "except Exception: pass"
+      ]
+    ]
+  },
+  "073_swallow_archive": {
+    "note": "Archives/ deleted in commit 4cb1d53; backlog item obsolete."
+  },
+  "074_print_vs_logger": {
+    "print_count": 1055,
+    "logger_count": 787,
+    "top_print_files": [
+      "utils/seven_fridays.py",
+      "core/pipeline/listener.py",
+      "agents/seven/llama.cpp/examples/model-conversion/scripts/utils/check-nmse.py",
+      "agents/seven/llama.cpp/examples/model-conversion/scripts/utils/semantic_check.py",
+      "agents/specialists/eight_memory.py",
+      "agents/seven/llama.cpp/tools/mtmd/tests/test-deepseek-ocr.py",
+      "utils/simulate.py",
+      "agents/seven/llama.cpp/examples/model-conversion/scripts/embedding/run-original-model.py",
+      "agents/seven/llama.cpp/examples/model-conversion/scripts/utils/common.py",
+      "agents/seven/llama.cpp/examples/model-conversion/scripts/causal/run-casual-gen-embeddings-org.py"
+    ]
+  },
+  "075_shell_safety": {
+    "shell_true": 2,
+    "os_system": 0,
+    "os_popen": 0,
+    "sample": [
+      [
+        "utils/skills.py",
+        45,
+        "result = subprocess.check_output(cmd, shell=True, text=True, timeout=10)"
+      ],
+      [
+        "agents/seven/llama.cpp/tools/server/bench/bench.py",
+        228,
+        "k6_completed = subprocess.run(args, shell=True, stdout=sys.stdout, stderr=sys.stderr)"
+      ]
+    ]
+  },
+  "076_systemd": {
+    "count": 5,
+    "units": [
+      "swarm-telegram.service",
+      "swarm-terminal.service",
+      "swarm-discord.service",
+      "swarm-fridays.service",
+      "swarm-prewarm.service"
+    ]
+  },
+  "077_test_isolation": {
+    "prod_db_files": 10,
+    "tmp_path_files": 26
+  },
+  "080_archive_noise": {
+    "note": "Resolved in commit 4cb1d53."
+  },
+  "081_dirty_runtime": {
+    "note": "Resolved in commit 4cb1d53 via S-2838647C35."
+  }
+}
