@@ -440,6 +440,50 @@ def check_backup_freshness() -> Tuple[bool, str]:
     return True, f"last ok {age_s/3600:.1f}h ago · target={last_target} · {last_archive}"
 
 
+def check_vortex_liveness() -> Tuple[bool, str]:
+    """PACKET-10A invariant: Vortex produced a checkpoint within 25h.
+
+    `time_checkpoints.created_at` is the canonical source of truth for Vortex
+    liveness. The vortex_heartbeat task runs every 6h, so a >25h gap means
+    either the scheduler isn't firing or `create_workflow_checkpoint` is
+    broken — both are tier-1 problems and must surface here.
+    """
+    db = ROOT / "swarm_memory.db"
+    if not db.exists():
+        return False, f"no swarm DB at {db}"
+    try:
+        con = sqlite3.connect(str(db))
+        try:
+            row = con.execute(
+                "SELECT created_at, checkpoint_name FROM time_checkpoints "
+                "ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+        finally:
+            con.close()
+    except Exception as e:
+        return False, f"time_checkpoints query failed: {type(e).__name__}: {e}"
+
+    if not row:
+        return False, "time_checkpoints is empty — Vortex never ran"
+
+    last_ts_str, last_name = row
+    from datetime import datetime as _dt, timezone as _tz
+    try:
+        # time_checkpoints stores naive UTC strings like '2026-05-01 11:53:39'.
+        # Force-attach UTC so .timestamp() doesn't reinterpret as local time.
+        dt = _dt.fromisoformat(last_ts_str)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=_tz.utc)
+        last_ts = dt.timestamp()
+    except Exception:
+        return False, f"unparseable created_at on latest checkpoint: {last_ts_str!r}"
+
+    age_s = time.time() - last_ts
+    if age_s > 25 * 3600:
+        return False, f"latest checkpoint {age_s/3600:.1f}h ago (max 25h) name={last_name}"
+    return True, f"latest {age_s/3600:.1f}h ago · {last_name}"
+
+
 CHECKS: List[Tuple[str, Callable[[], Tuple[bool, str]]]] = [
     ("PACKET-01 loose doc files redirected",        check_no_loose_doc_md),
     ("PACKET-01 doc registry seeded",               check_project_docs_registered),
@@ -458,6 +502,7 @@ CHECKS: List[Tuple[str, Callable[[], Tuple[bool, str]]]] = [
     ("Seven: perception layer live (core.seven)",   check_seven_perception_live),
     ("Seven: brain online (memory + reasoning)",     check_seven_brain_online),
     ("PACKET-10A backup: last successful within 25h", check_backup_freshness),
+    ("PACKET-10A Vortex: latest checkpoint within 25h", check_vortex_liveness),
 ]
 
 
