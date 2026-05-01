@@ -706,7 +706,7 @@ def api_agents_memories_query():
             
             if rows:
                 results[agent_key] = [dict(r) for r in rows]
-        except:
+        except sqlite3.OperationalError:
             pass  # Table might not exist, skip
     
     conn.close()

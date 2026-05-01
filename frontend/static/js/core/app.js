@@ -135,7 +135,7 @@ function syncTaskbarLaunchers() {
 }
 
 function bindHomeLaunchClicks() {
-    console.log('[App] bindHomeLaunchClicks called');
+    if (window.__SWARM_DEBUG) console.debug('[App] bindHomeLaunchClicks called');
     
     const launchNodes = Array.from(document.querySelectorAll('#quick-cards .home-card, #home-content .stat-card'));
     launchNodes.forEach((node) => {
@@ -260,7 +260,7 @@ function initHomeCardReorder() {
     _restoreQuickCardOrder(grid);
     syncTaskbarLaunchers();
     _initDragAndDrop(grid);
-    console.log('[App] initHomeCardReorder ready — drag enabled');
+    if (window.__SWARM_DEBUG) console.debug('[App] initHomeCardReorder ready — drag enabled');
 }
 
 function _initDragAndDrop(grid) {
@@ -416,4 +416,4 @@ window.initHomeCardReorder = initHomeCardReorder;
 window.syncTaskbarLaunchers = syncTaskbarLaunchers;
 
 // Log that app.js loaded cleanly
-console.log('[App.js] Core functions loaded successfully');
+if (window.__SWARM_DEBUG) console.debug('[App.js] Core functions loaded successfully');

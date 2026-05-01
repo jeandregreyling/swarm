@@ -22,7 +22,7 @@ def get_active_model():
         if running and hasattr(running, 'models') and running.models:
             return running.models[0].model
         return 'none'
-    except:
+    except Exception:
         return 'unknown'
 
 def get_consultations_today():
@@ -43,7 +43,7 @@ def record_stats():
         temps = psutil.sensors_temperatures()
         cpu_temp = temps.get('coretemp', temps.get('k10temp', []))
         cpu_temp = round(cpu_temp[0].current, 1) if cpu_temp else 0
-    except:
+    except Exception:
         cpu_temp = 0
     active = get_active_model()
     consult_count, last_consult = get_consultations_today()

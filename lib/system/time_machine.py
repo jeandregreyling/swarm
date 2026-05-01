@@ -134,7 +134,7 @@ def cleanup_old_backups(days=90):
                 try:
                     os.remove(file_path)
                     count += 1
-                except:
+                except OSError:
                     pass
     
     return count

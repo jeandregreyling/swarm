@@ -1247,32 +1247,53 @@ function openStudioSection(section) {
         studioContent.innerHTML = `<div style="padding: 16px; color: #f77;">Error loading agents: ${e.message}</div>`;
       });
   } else if (section === 'queue') {
-    studioContent.innerHTML = `
-      <div style="padding: 16px;">
-        <h4>Task Queue</h4>
-        <p style="font-size: 12px; color: var(--text-dim);">Queue management coming soon...</p>
-      </div>
-    `;
+    studioContent.innerHTML = `<div style="padding:16px;"><h4>Task Queue</h4><div id="studio-queue-body" style="font-size:12px;color:var(--text-dim);">Loading…</div></div>`;
+    fetch('/api/chat/jobs/status').then(r => r.json()).then(data => {
+      const jobs = (data && data.jobs) || [];
+      const body = document.getElementById('studio-queue-body');
+      if (!body) return;
+      if (!jobs.length) { body.textContent = 'No active jobs.'; return; }
+      body.innerHTML = jobs.map(j => `<div style="padding:4px 0;border-bottom:1px solid var(--border);">${j.agent || '?'} · ${j.status || '?'} · ${j.job_id || ''}</div>`).join('');
+    }).catch(e => {
+      const body = document.getElementById('studio-queue-body');
+      if (body) body.textContent = 'Queue unavailable: ' + (e && e.message || e);
+    });
   } else if (section === 'logs') {
-    studioContent.innerHTML = `
-      <div style="padding: 16px;">
-        <h4>Activity Logs</h4>
-        <p style="font-size: 12px; color: var(--text-dim);">Logs coming soon...</p>
-      </div>
-    `;
+    studioContent.innerHTML = `<div style="padding:16px;"><h4>Recent Episodes</h4><div id="studio-logs-body" style="font-size:12px;color:var(--text-dim);">Loading…</div></div>`;
+    fetch('/api/seven/episodes?limit=20').then(r => r.json()).then(data => {
+      const eps = (data && data.episodes) || [];
+      const body = document.getElementById('studio-logs-body');
+      if (!body) return;
+      if (!eps.length) { body.textContent = 'No episodes recorded yet.'; return; }
+      body.innerHTML = eps.map(e => `<div style="padding:4px 0;border-bottom:1px solid var(--border);">${e.ts || ''} · ${e.kind || ''} · ${(e.summary || e.text || '').slice(0,80)}</div>`).join('');
+    }).catch(e => {
+      const body = document.getElementById('studio-logs-body');
+      if (body) body.textContent = 'Episodes unavailable: ' + (e && e.message || e);
+    });
   } else if (section === 'config') {
-    studioContent.innerHTML = `
-      <div style="padding: 16px;">
-        <h4>Configuration</h4>
-        <p style="font-size: 12px; color: var(--text-dim);">Config management coming soon...</p>
-      </div>
-    `;
+    studioContent.innerHTML = `<div style="padding:16px;"><h4>Agent Health</h4><div id="studio-config-body" style="font-size:12px;color:var(--text-dim);">Loading…</div></div>`;
+    fetch('/api/chat/agents/health').then(r => r.json()).then(data => {
+      const agents = (data && data.agents) || {};
+      const names = Object.keys(agents);
+      const body = document.getElementById('studio-config-body');
+      if (!body) return;
+      if (!names.length) { body.textContent = 'No agents tracked yet.'; return; }
+      body.innerHTML = names.map(n => {
+        const a = agents[n] || {};
+        return `<div style="padding:4px 0;border-bottom:1px solid var(--border);">${n} · count=${a.count||0} · stalled=${a.stalled||0} · p95=${a.p95_ms||0}ms</div>`;
+      }).join('');
+    }).catch(e => {
+      const body = document.getElementById('studio-config-body');
+      if (body) body.textContent = 'Agent health unavailable: ' + (e && e.message || e);
+    });
   }
 }
 
 function showAgentDetails(agentName) {
-  console.log('Showing details for agent:', agentName);
-  // TODO: Open detailed agent info window
+  if (typeof openWindow === 'function') {
+    try { openWindow('agents-config', `Agent · ${agentName}`, 'view-agents-config', { multi: false }); return; } catch (_) { /* fall through */ }
+  }
+  if (typeof showToast === 'function') showToast(`Agent: ${agentName}`, 'info');
 }
 
 function addCustomCard() {
