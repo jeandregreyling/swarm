@@ -1537,6 +1537,18 @@ def _migrate_schema(conn=None):
     except Exception:
         pass
 
+    # 2026-05-02 (S-0474A4BE17) — projects priority. 0=normal, higher=urgent.
+    try:
+        cols = {row[1] for row in conn.execute(
+            "PRAGMA table_info(projects)").fetchall()}
+        if 'priority' not in cols:
+            conn.execute(
+                "ALTER TABLE projects ADD COLUMN priority "
+                "INTEGER NOT NULL DEFAULT 0")
+            conn.commit()
+    except Exception:
+        pass
+
     # watched_topic_evidence — scoring memory for Tasker watched-topic emails
     conn.execute("""
         CREATE TABLE IF NOT EXISTS watched_topic_evidence (
