@@ -125,6 +125,81 @@ def api_enrollment_create():
     return jsonify({"ok": True, "username": username, "role": role})
 
 
+@enrollment_bp.route("/api/enrollment/invite", methods=["GET", "POST"])
+def api_enrollment_invite():
+    """Issue or list invite tokens for non-owner enrolment.
+
+    POST {"role": "co_owner"|"assistant"|"member", "email": optional}
+    GET  → list of open (un-consumed) invites.
+
+    Y.52: filling the gap that was advertised by /api/enrollment/create
+    (which only consumed tokens). Owner must already exist before invites
+    can be issued; otherwise first-boot bootstrap is bypassed.
+    """
+    conn = _db()
+    try:
+        try:
+            owner_exists = conn.execute(
+                "SELECT 1 FROM user_profiles WHERE role='owner' LIMIT 1"
+            ).fetchone()
+        except sqlite3.OperationalError:
+            owner_exists = None
+
+        if request.method == "GET":
+            try:
+                rows = conn.execute(
+                    "SELECT token, role, email, created_at, consumed_at "
+                    "FROM enrollment_invites ORDER BY created_at DESC LIMIT 50"
+                ).fetchall()
+            except sqlite3.OperationalError:
+                rows = []
+            invites = [
+                {
+                    "token": r["token"],
+                    "role": r["role"],
+                    "email": r["email"],
+                    "created_at": r["created_at"],
+                    "consumed": r["consumed_at"] is not None,
+                }
+                for r in rows
+            ]
+            return jsonify({"ok": True, "invites": invites, "count": len(invites)})
+
+        # POST → create invite
+        if not owner_exists:
+            return jsonify({"ok": False, "error": "owner account must exist before issuing invites"}), 409
+
+        data = request.get_json(silent=True) or {}
+        raw_role = data.get("role")
+        if not isinstance(raw_role, str):
+            return jsonify({"ok": False, "error": "role must be a string"}), 400
+        role = raw_role.strip().lower()
+        _ALLOWED_INVITE_ROLES = {"co_owner", "assistant", "member"}
+        if role not in _ALLOWED_INVITE_ROLES:
+            return jsonify({
+                "ok": False,
+                "error": f"role must be one of {sorted(_ALLOWED_INVITE_ROLES)}",
+            }), 400
+
+        raw_email = data.get("email")
+        if raw_email is not None and not isinstance(raw_email, str):
+            return jsonify({"ok": False, "error": "email must be a string"}), 400
+        email: Optional[str] = (raw_email or "").strip().lower() or None
+        if email and ("@" not in email or len(email) > 254):
+            return jsonify({"ok": False, "error": "invalid email"}), 400
+
+        token = secrets.token_urlsafe(24)
+        conn.execute(
+            "INSERT INTO enrollment_invites (token, role, email, created_at) VALUES (?, ?, ?, ?)",
+            (token, role, email, time.time()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({"ok": True, "token": token, "role": role, "email": email})
+
+
 # ── MD-FEATURE-2F07F65F10F3 — system-email linkage ──────────────────────
 # When an enrolled user's email address matches a config-managed system
 # account (utils/config.SEVEN_EMAIL etc.) or an existing runtime registry
