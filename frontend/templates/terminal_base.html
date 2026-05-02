@@ -434,6 +434,10 @@
         <div id="sysmod-hint" style="font-size:10px;color:var(--text-dim);line-height:1.5;">
           Each capability is individually opt-in. See <a href="#" onclick="openWindowHelp && openWindowHelp('system-modifications'); return false;" style="color:var(--accent);">docs → system modifications</a>.
         </div>
+        <!-- MD-FEATURE-C6D59801C77C — per-helper inventory rendered by
+             refreshSysmodHelpers() in theme.js. Copy-only commands; the
+             UI never invokes sudo on the user's behalf. -->
+        <div id="sysmod-helpers" style="display:flex;flex-direction:column;"></div>
       </div>
     </div>
 
