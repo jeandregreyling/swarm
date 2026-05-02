@@ -75,6 +75,23 @@ def ensure_schema() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS ix_feed_subs_owner ON feed_subscriptions(owner)"
         )
+        # STEP-FEEDS-CONNECTORS-USER-LOGIN-KC-20260430 — additive migration.
+        # Each sub now optionally tracks the auth shape, an opaque credential
+        # id (resolves via core.secrets if/when wired), provenance (who added
+        # it from which login), and a KC topic for routing into interests.
+        for col, ddl in (
+            ("auth_kind",         "ALTER TABLE feed_subscriptions ADD COLUMN auth_kind TEXT"),
+            ("auth_cred_id",      "ALTER TABLE feed_subscriptions ADD COLUMN auth_cred_id TEXT"),
+            ("added_by_user",     "ALTER TABLE feed_subscriptions ADD COLUMN added_by_user TEXT"),
+            ("source_login",      "ALTER TABLE feed_subscriptions ADD COLUMN source_login TEXT"),
+            ("kc_topic",          "ALTER TABLE feed_subscriptions ADD COLUMN kc_topic TEXT"),
+            ("disconnect_url",    "ALTER TABLE feed_subscriptions ADD COLUMN disconnect_url TEXT"),
+        ):
+            try:
+                conn.execute(ddl)
+            except sqlite3.OperationalError:
+                # Column already exists.
+                pass
         conn.commit()
     finally:
         conn.close()
@@ -85,7 +102,8 @@ def list_subscriptions(owner: str = "seven") -> List[Dict[str, Any]]:
     conn = _conn()
     try:
         rows = conn.execute(
-            "SELECT sub_id, owner, kind, url, title, enabled, status, last_error, last_poll, created_at "
+            "SELECT sub_id, owner, kind, url, title, enabled, status, last_error, last_poll, created_at, "
+            "auth_kind, auth_cred_id, added_by_user, source_login, kc_topic, disconnect_url "
             "FROM feed_subscriptions WHERE owner=? ORDER BY created_at DESC",
             (owner,),
         ).fetchall()
@@ -93,12 +111,11 @@ def list_subscriptions(owner: str = "seven") -> List[Dict[str, Any]]:
         conn.close()
     out: List[Dict[str, Any]] = []
     for r in rows:
-        d = dict(r) if hasattr(r, "keys") else {
-            "sub_id": r[0], "owner": r[1], "kind": r[2], "url": r[3],
-            "title": r[4], "enabled": r[5], "status": r[6],
-            "last_error": r[7], "last_poll": r[8], "created_at": r[9],
-        }
+        d = dict(r) if hasattr(r, "keys") else {}
         d["enabled"] = bool(d.get("enabled"))
+        # Default auth_kind to 'none' so callers can rely on the field.
+        if not d.get("auth_kind"):
+            d["auth_kind"] = "none"
         out.append(d)
     return out
 
@@ -147,6 +164,9 @@ def remove_subscription(sub_id: str, owner: str = "seven") -> bool:
 def update_subscription(
     sub_id: str, *, enabled: Optional[bool] = None,
     title: Optional[str] = None, owner: str = "seven",
+    auth_kind: Optional[str] = None, auth_cred_id: Optional[str] = None,
+    added_by_user: Optional[str] = None, source_login: Optional[str] = None,
+    kc_topic: Optional[str] = None, disconnect_url: Optional[str] = None,
 ) -> bool:
     ensure_schema()
     sets: list[str] = []
@@ -157,6 +177,27 @@ def update_subscription(
     if title is not None:
         sets.append("title=?")
         params.append(title)
+    # STEP-FEEDS-CONNECTORS-USER-LOGIN-KC-20260430 — login + provenance + KC.
+    if auth_kind is not None:
+        if auth_kind not in {"none", "basic", "bearer", "oauth"}:
+            raise ValueError(f"unknown auth_kind: {auth_kind}")
+        sets.append("auth_kind=?")
+        params.append(auth_kind)
+    if auth_cred_id is not None:
+        sets.append("auth_cred_id=?")
+        params.append(auth_cred_id or None)
+    if added_by_user is not None:
+        sets.append("added_by_user=?")
+        params.append(added_by_user or None)
+    if source_login is not None:
+        sets.append("source_login=?")
+        params.append(source_login or None)
+    if kc_topic is not None:
+        sets.append("kc_topic=?")
+        params.append(kc_topic or None)
+    if disconnect_url is not None:
+        sets.append("disconnect_url=?")
+        params.append(disconnect_url or None)
     if not sets:
         return False
     params.extend([sub_id, owner])
