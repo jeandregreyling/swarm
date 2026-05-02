@@ -322,9 +322,16 @@ def start_build(project_id: str):
     c = _conn()
     try:
         _ensure_tables(c)
-        proj = c.execute('SELECT name FROM app_projects WHERE project_id=?', (project_id,)).fetchone()
+        proj = c.execute(
+            'SELECT name, status FROM app_projects WHERE project_id=?', (project_id,)
+        ).fetchone()
         if not proj:
             return jsonify(ok=False, error='project not found'), 404
+        # Y.50 bug-fix: archived projects must not accept new builds. Without
+        # this we'd silently queue and waste the build slot — surface a 409
+        # so the UI can prompt the user to unarchive first.
+        if proj['status'] == 'archived':
+            return jsonify(ok=False, error='project is archived; unarchive before building'), 409
         target_row = c.execute(
             'SELECT 1 FROM app_project_targets WHERE project_id=? AND target=?',
             (project_id, target),
@@ -367,6 +374,10 @@ def start_build(project_id: str):
 @app_center_bp.route('/api/app-center/projects/<project_id>/builds', methods=['GET'])
 def list_builds(project_id: str):
     target = (request.args.get('target') or '').strip().lower() or None
+    # Y.50 bug-fix: validate the target filter so a typo returns 400 instead
+    # of an empty list that looks like "no builds yet".
+    if target is not None and target not in _VALID_TARGETS:
+        return jsonify(ok=False, error=f'invalid target; valid={sorted(_VALID_TARGETS)}'), 400
     c = _conn()
     try:
         _ensure_tables(c)
@@ -390,9 +401,21 @@ def list_builds(project_id: str):
 @app_center_bp.route('/api/app-center/builds/<build_id>', methods=['PATCH'])
 def update_build(build_id: str):
     body = request.get_json(silent=True) or {}
-    status = (body.get('status') or '').strip().lower() or None
-    asset_id = (body.get('asset_id') or '').strip() or None
+    # Y.50 bug-fix: type-check inputs before .strip() so non-string payloads
+    # (e.g. {"status": 123}) return 400 instead of crashing with AttributeError.
+    raw_status = body.get('status')
+    raw_asset = body.get('asset_id')
+    if raw_status is not None and not isinstance(raw_status, str):
+        return jsonify(ok=False, error='status must be a string'), 400
+    if raw_asset is not None and not isinstance(raw_asset, str):
+        return jsonify(ok=False, error='asset_id must be a string'), 400
+    status = (raw_status or '').strip().lower() or None
+    asset_id = (raw_asset or '').strip() or None
+    if asset_id and len(asset_id) > 256:
+        return jsonify(ok=False, error='asset_id too long (max 256)'), 400
     error = body.get('error')
+    if error is not None and not isinstance(error, (str, int, float)):
+        return jsonify(ok=False, error='error must be a string or number'), 400
     if status and status not in _VALID_BUILD_STATUS:
         return jsonify(ok=False, error=f'invalid status; valid={sorted(_VALID_BUILD_STATUS)}'), 400
     if not (status or asset_id or error is not None):
