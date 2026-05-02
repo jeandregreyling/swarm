@@ -159,13 +159,23 @@ def api_library_ingest():
     try:
         _init()
         data        = request.get_json(silent=True) or {}
-        src_type    = str(data.get('type') or 'text').strip().lower()
-        title       = str(data.get('title') or '').strip()
-        content     = str(data.get('content') or '').strip()
+        # S-B6F548DCDD: reject non-string scalar fields rather than coerce.
+        # Stringifying a list/dict produces "[...]" / "{...}" that downstream
+        # parsers happily ingest, polluting the library.
+        for field in ('type', 'title', 'content', 'added_by', 'category', 'subcategory'):
+            v = data.get(field)
+            if v is not None and not isinstance(v, str):
+                return jsonify({'ok': False,
+                                'error': f'{field} must be a string'}), 400
+        if 'tags' in data and not isinstance(data.get('tags'), list):
+            return jsonify({'ok': False, 'error': 'tags must be an array'}), 400
+        src_type    = (data.get('type') or 'text').strip().lower()
+        title       = (data.get('title') or '').strip()
+        content     = (data.get('content') or '').strip()
         tags        = data.get('tags') or []
-        added_by    = str(data.get('added_by') or 'ghost').strip()
-        category    = str(data.get('category') or 'general').strip()
-        subcategory = str(data.get('subcategory') or '').strip() or None
+        added_by    = (data.get('added_by') or 'ghost').strip()
+        category    = (data.get('category') or 'general').strip()
+        subcategory = (data.get('subcategory') or '').strip() or None
 
         if not content:
             return jsonify({'ok': False, 'error': 'content is required'}), 400
