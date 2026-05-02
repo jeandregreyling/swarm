@@ -87,6 +87,12 @@ function studioSetTab(tab) {
             : 'background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--accent);border-color:color-mix(in srgb, var(--accent) 35%, var(--border));');
       return;
     }
+    if (t === 'projects') {
+      btn.style.cssText = btn.style.cssText.replace(/background[^;]+;|color[^;]+;|border-color[^;]+;|box-shadow[^;]+;/g,'') +
+        (on ? 'background:var(--accent);color:#000;border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent),0 0 12px 2px color-mix(in srgb, var(--accent) 55%, transparent);'
+            : 'background:color-mix(in srgb, var(--accent) 14%, transparent);color:var(--accent);border-color:color-mix(in srgb, var(--accent) 50%, var(--border));box-shadow:0 0 8px 1px color-mix(in srgb, var(--accent) 35%, transparent);');
+      return;
+    }
     if (t === 'testlab') {
       btn.style.cssText = btn.style.cssText.replace(/background[^;]+;|color[^;]+;|border-color[^;]+;|box-shadow[^;]+;/g,'') +
         (on ? 'background:var(--info);color:#fff;border-color:var(--info);box-shadow:0 0 0 2px color-mix(in srgb, var(--info) 40%, transparent);'

@@ -1655,10 +1655,18 @@
           style="padding:4px 14px 4px 12px;margin-right:2px;background:var(--info);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 0 0 2px color-mix(in srgb, var(--info) 53%, transparent),0 0 8px 2px color-mix(in srgb, var(--info) 60%, transparent);transition:box-shadow 0.2s;outline:none;">
           + New Proposal
         </button>
+        <button id="studio-tab-projects"
+          onclick="studioSetTab('projects')"
+          title="Projects — Agile / Waterfall / Prince2 plans with Seven as owner (default tab)"
+          style="padding:5px 14px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#000;font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent),0 0 12px 2px color-mix(in srgb, var(--accent) 55%, transparent);">Projects</button>
+        <button id="studio-tab-testlab"
+          onclick="studioSetTab('testlab')"
+          title="Test Lab — run the 7-tier audit hierarchy + any registered test script against a change"
+          style="padding:5px 14px;border-radius:4px;border:1px solid var(--info);background:color-mix(in srgb, var(--info) 18%, transparent);color:var(--info);font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb, var(--info) 30%, transparent);">🧪 Test Lab</button>
         <button id="studio-tab-pending"
           onclick="studioSetTab('pending')"
           title="Proposed — new proposals awaiting review"
-          style="padding:5px 12px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#000;font-size:11px;font-weight:600;cursor:pointer;">Proposed</button>
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Proposed</button>
         <button id="studio-tab-in_progress"
           onclick="studioSetTab('in_progress')"
           title="In Progress — approved, under UAT, or actively executing"
@@ -1667,10 +1675,6 @@
           onclick="studioSetTab('all')"
           title="History — rejected, closed, and done proposals"
           style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">History</button>
-        <button id="studio-tab-projects"
-          onclick="studioSetTab('projects')"
-          title="Projects — Agile / Waterfall / Prince2 plans with Seven as owner"
-          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Projects</button>
         <button id="studio-tab-media"
           onclick="studioSetTab('media')"
           title="Media — linked music/video production projects, interests, feeds, and spine activity"
@@ -1678,10 +1682,6 @@
         <button id="studio-tab-git"
           onclick="studioSetTab('git')"
           style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Git</button>
-        <button id="studio-tab-testlab"
-          onclick="studioSetTab('testlab')"
-          title="Test Lab — run the 7-tier audit hierarchy + any registered test script against a change"
-          style="padding:5px 14px;border-radius:4px;border:1px solid var(--info);background:color-mix(in srgb, var(--info) 18%, transparent);color:var(--info);font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb, var(--info) 30%, transparent);">🧪 Test Lab</button>
         <button id="studio-tab-records"
           onclick="studioSetTab('records')"
           title="Records — universal viewer for projects, steps, cases, runs, proposals, tickets, emails, notes, docs, threads (Platinum file layer)"
