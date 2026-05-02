@@ -100,18 +100,13 @@ def test_global_guard_handles_typeerror_on_api_with_body(client):
 def test_duplicate_checkpoint_label_returns_409(client, monkeypatch):
     """The blueprint maps SQLite UNIQUE violations on label collision to
     409 Conflict instead of bubbling as 500."""
-    # First call: real time_wizard — may or may not succeed depending on
-    # git/repo state, so monkey-patch create_workflow_checkpoint to raise
-    # the UNIQUE constraint error directly.
-    from frontend import services
-    class _Boom(Exception):
-        pass
+    from frontend.blueprints import time_wizard_bp as bp_mod
 
     def _raise_unique(*a, **kw):
         raise Exception("UNIQUE constraint failed: checkpoints.label")
 
     monkeypatch.setattr(
-        services.time_wizard, "create_workflow_checkpoint", _raise_unique,
+        bp_mod.time_wizard, "create_workflow_checkpoint", _raise_unique,
         raising=True,
     )
     r = client.post(
@@ -127,13 +122,13 @@ def test_duplicate_checkpoint_label_returns_409(client, monkeypatch):
 def test_other_checkpoint_errors_still_500(client, monkeypatch):
     """Errors that are NOT UNIQUE collisions must keep their 500 status
     so we don't mask real bugs as conflicts."""
-    from frontend import services
+    from frontend.blueprints import time_wizard_bp as bp_mod
 
     def _raise_other(*a, **kw):
         raise Exception("disk on fire")
 
     monkeypatch.setattr(
-        services.time_wizard, "create_workflow_checkpoint", _raise_other,
+        bp_mod.time_wizard, "create_workflow_checkpoint", _raise_other,
         raising=True,
     )
     r = client.post(
