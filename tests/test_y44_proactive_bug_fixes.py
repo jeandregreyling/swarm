@@ -29,11 +29,15 @@ def app_client(monkeypatch):
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
     tmp.close()
     monkeypatch.chdir(ROOT)
+    import sys as _sys
+    from frontend.terminal import create_app
+    app = create_app()
+    for mod_name in ('blueprints.synth_board', 'blueprints.video_editor'):
+        if mod_name in _sys.modules:
+            monkeypatch.setattr(_sys.modules[mod_name], '_DB_PATH', tmp.name)
     from frontend.blueprints import synth_board, video_editor
     monkeypatch.setattr(synth_board, '_DB_PATH', tmp.name)
     monkeypatch.setattr(video_editor, '_DB_PATH', tmp.name)
-    from frontend.terminal import create_app
-    app = create_app()
     app.config['TESTING'] = True
     with app.test_client() as c:
         yield app, c
