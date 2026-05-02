@@ -685,10 +685,19 @@ CREATE TABLE IF NOT EXISTS research_sessions (
     linked_proposal_id  TEXT DEFAULT '',
     requesting_agent    TEXT NOT NULL DEFAULT 'user',
     summary             TEXT DEFAULT '',
+    -- Columns originally added by _migrate_schema; mirrored here so fresh
+    -- DBs (and test fixtures that only run SCHEMA) have them too.
+    idempotency_key     TEXT DEFAULT '',
+    last_error          TEXT DEFAULT '',
+    project_id          TEXT DEFAULT '',
     created_at          TEXT DEFAULT (datetime('now')),
     updated_at          TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_research_sessions_status ON research_sessions (status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_research_sessions_idem
+    ON research_sessions(idempotency_key) WHERE idempotency_key != '';
+CREATE INDEX IF NOT EXISTS idx_research_sessions_project
+    ON research_sessions(project_id) WHERE project_id != '';
 
 -- Research evidence (B.1.1)
 CREATE TABLE IF NOT EXISTS research_evidence (
