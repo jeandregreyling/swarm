@@ -121,6 +121,21 @@ MANUAL: dict[str, dict[str, str]] = {
         'title': 'Tasker',
         'body': 'Scheduled jobs and recurring swarm tasks. Pause, resume, or trigger on demand.',
     },
+    'orientation': {
+        'title': 'First-run orientation',
+        'body': (
+            'Welcome to Fridays. Three things to find first:\n\n'
+            '1) Help (the "?" icon on every tile and window header) opens this manual '
+            'for the surface you are looking at. Same content, contextual entry.\n'
+            '2) The Spotlight search bar at the top of the home screen launches any '
+            'tile by name — type "chat", "studio", "media", "manual" and hit Enter.\n'
+            '3) The taskbar at the bottom shows pinned tools and your active windows; '
+            'click an orb to focus, drag tiles back from there.\n\n'
+            'Tip: the Manual tile (book icon) opens this entire manual for browsing. '
+            'You can dismiss this orientation card from the home tile and re-open it any '
+            'time via "?" → Orientation.'
+        ),
+    },
 }
 
 
