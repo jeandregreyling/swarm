@@ -952,3 +952,45 @@ async function libTopicsRunNow(id) {
     alert('Run failed: ' + String(e));
   }
 }
+
+// ── STEP-KC-TOPICS-HIVE-NAVIGATION-20260430 ─────────────────────────────────
+// Deep-link helpers so KC topics, sources, and documents all resolve to the
+// same Hive Nodes spine via the `/api/hive/resolve` endpoint. Exposed on
+// window so other views (knowledge.js, chat surfaces, top-bar dropdowns)
+// can call them without coupling to library.js internals.
+async function kcResolveHiveHref(kind, id) {
+  try {
+    const r = await fetch(`/api/hive/resolve?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`);
+    const d = await r.json();
+    if (d && d.ok && d.href) return d.href;
+  } catch (_) {}
+  return null;
+}
+
+async function kcOpenHive(kind, id) {
+  const href = await kcResolveHiveHref(kind, id);
+  if (href) {
+    if (typeof window.openWindow === 'function') {
+      window.openWindow('hive-nodes', 'Hive Nodes', 'view-hive-nodes', { url: href });
+    } else {
+      window.location.assign(href);
+    }
+    return true;
+  }
+  return false;
+}
+
+async function kcLoadHiveGraph(recent = 30) {
+  try {
+    const r = await fetch(`/api/hive/graph?recent=${encodeURIComponent(recent)}`);
+    const d = await r.json();
+    if (d && d.ok) return d;
+  } catch (_) {}
+  return { ok: false, nodes: [], edges: [], counts: { topics: 0, sources: 0, edges: 0 } };
+}
+
+if (typeof window !== 'undefined') {
+  window.kcResolveHiveHref = kcResolveHiveHref;
+  window.kcOpenHive = kcOpenHive;
+  window.kcLoadHiveGraph = kcLoadHiveGraph;
+}
