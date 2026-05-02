@@ -3976,10 +3976,26 @@ function _syncThinkingBubbles(jobs) {
   const list = Array.isArray(jobs) ? jobs : [];
   const active = list.filter(job => String(job.status || 'running') === 'running' && job.job_id);
   const wanted = new Set(active.map(job => String(job.job_id)));
+  // STEP-CHAT-THOUGHT-BUBBLES-PERSIST-TO-STUDIO-20260430:
+  // Build a lookup of every job we saw this tick (running OR finished) so
+  // we can freeze the bubble in-place when it transitions to a terminal
+  // status (failed / timeout / completed) instead of yanking it from the DOM.
+  const jobsByID = new Map();
+  list.forEach(job => { if (job && job.job_id) jobsByID.set(String(job.job_id), job); });
 
   messages.querySelectorAll('.chat-bubble[data-pending-job-id]').forEach(node => {
     const jobId = String(node.dataset.pendingJobId || '');
-    if (!wanted.has(jobId)) node.remove();
+    if (wanted.has(jobId)) return;
+    // Bubble's job is no longer running. If we have a final status, freeze
+    // the bubble; otherwise (job vanished from the queue with no terminal
+    // record), still freeze it as "stalled" rather than silently delete.
+    const finalJob = jobsByID.get(jobId) || {
+      job_id: jobId,
+      agent: node.dataset.thinkingAgent || 'agent',
+      status: 'stalled',
+      stage: 'stalled — no further updates',
+    };
+    _freezeThinkingBubble(node, finalJob);
   });
 
   const histories = _chatThinkingHistoryState();
@@ -3989,6 +4005,147 @@ function _syncThinkingBubbles(jobs) {
 
   active.forEach(_upsertThinkingBubble);
 }
+
+// ── STEP-CHAT-THOUGHT-BUBBLES-PERSIST-TO-STUDIO-20260430 ─────────────────
+// Keep verbose thinking/stage trace bubbles attached to chat threads + Studio
+// project evidence so timeouts and failed handoffs retain the useful partial
+// reasoning trail. Frozen bubbles are persisted to localStorage keyed by
+// thread id and replayed on view re-render.
+const _CHAT_FROZEN_BUBBLES_KEY = 'fridays_chat_frozen_thinking_bubbles_v1';
+
+function _chatFrozenBubbleStore() {
+  try {
+    const raw = localStorage.getItem(_CHAT_FROZEN_BUBBLES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (_) { return {}; }
+}
+
+function _chatFrozenBubbleSave(store) {
+  try { localStorage.setItem(_CHAT_FROZEN_BUBBLES_KEY, JSON.stringify(store)); } catch (_) {}
+}
+
+function _freezeThinkingBubble(node, job) {
+  if (!node || !job) return;
+  const histories = _chatThinkingHistoryState();
+  const history = Array.isArray(histories[job.job_id]) ? histories[job.job_id].slice() : [];
+  const status = String(job.status || 'stalled');
+  const finalJob = Object.assign({}, job, {
+    status: status === 'running' ? 'stalled' : status,
+    elapsed_ms: Number(job.elapsed_ms || 0),
+  });
+  // Re-render once with the terminal status so the dot + meta reflect it.
+  node.innerHTML = _renderThinkingBubble(finalJob, history);
+  // Add a quiet footer line so operators know it's a kept-around trail.
+  const tag = document.createElement('div');
+  tag.className = 'chat-pending-archived-tag';
+  tag.style.cssText = 'margin-top:6px;font-size:9px;color:var(--text-dim);opacity:0.7;display:flex;gap:6px;align-items:center;justify-content:space-between;';
+  const reason = (status === 'failed') ? 'failed — partial trail kept'
+              : (status === 'completed') ? 'finished — trail kept for reference'
+              : (status === 'stalled' ? 'stalled — last known stages kept'
+              : `${status} — trail kept`);
+  tag.innerHTML = `<span>${_escapeHtml(reason)}</span>` +
+                  `<button class="chat-action-btn" style="padding:1px 7px;font-size:9px;" onclick="_chatPinThinkingTrailToStudio('${_escapeHtml(String(job.job_id))}')">Pin to Studio</button>`;
+  node.appendChild(tag);
+  node.classList.remove('pending');
+  node.classList.add('thinking-archived');
+  node.removeAttribute('data-pending-job-id');
+  node.dataset.archivedJobId = String(job.job_id || '');
+
+  // Persist for thread-level replay across reloads.
+  const convId = Number(window.__fridaysChatConversationId || window.__fridaysChatPendingConversationId || 0);
+  if (convId) {
+    const store = _chatFrozenBubbleStore();
+    const list = Array.isArray(store[convId]) ? store[convId] : [];
+    list.push({
+      job_id: String(job.job_id || ''),
+      agent: String(job.agent || 'agent'),
+      status: status,
+      stage: String(job.stage || ''),
+      runtime_class: String(job.runtime_class || ''),
+      eta_seconds: Number(job.eta_seconds || 0),
+      elapsed_ms: Number(job.elapsed_ms || 0),
+      history: history,
+      ts: Date.now(),
+    });
+    // Keep last 30 per thread to avoid unbounded growth.
+    store[convId] = list.slice(-30);
+    _chatFrozenBubbleSave(store);
+  }
+}
+
+function _replayFrozenThinkingBubbles(convId) {
+  const messages = _chatMessagesEl();
+  if (!messages || !convId) return;
+  const store = _chatFrozenBubbleStore();
+  const list = Array.isArray(store[convId]) ? store[convId] : [];
+  if (!list.length) return;
+  list.forEach(rec => {
+    if (!rec || !rec.job_id) return;
+    if (messages.querySelector(`.chat-bubble[data-archived-job-id="${String(rec.job_id)}"]`)) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble thinking-archived';
+    bubble.dataset.archivedJobId = String(rec.job_id);
+    bubble.dataset.thinkingAgent = String(rec.agent || 'agent');
+    bubble.innerHTML = _renderThinkingBubble({
+      job_id: rec.job_id,
+      agent: rec.agent,
+      status: rec.status,
+      stage: rec.stage,
+      runtime_class: rec.runtime_class,
+      eta_seconds: rec.eta_seconds,
+      elapsed_ms: rec.elapsed_ms,
+    }, rec.history || []);
+    const tag = document.createElement('div');
+    tag.className = 'chat-pending-archived-tag';
+    tag.style.cssText = 'margin-top:6px;font-size:9px;color:var(--text-dim);opacity:0.7;display:flex;gap:6px;align-items:center;justify-content:space-between;';
+    const reason = (rec.status === 'failed') ? 'failed — partial trail kept'
+                : (rec.status === 'completed') ? 'finished — trail kept for reference'
+                : `${rec.status} — trail kept`;
+    tag.innerHTML = `<span>${_escapeHtml(reason)}</span>` +
+                    `<button class="chat-action-btn" style="padding:1px 7px;font-size:9px;" onclick="_chatPinThinkingTrailToStudio('${_escapeHtml(String(rec.job_id))}')">Pin to Studio</button>`;
+    bubble.appendChild(tag);
+    messages.appendChild(bubble);
+  });
+}
+
+function _chatPinThinkingTrailToStudio(jobId) {
+  if (!jobId) return;
+  const convId = Number(window.__fridaysChatConversationId || 0);
+  const store = _chatFrozenBubbleStore();
+  const list = Array.isArray(store[convId]) ? store[convId] : [];
+  const rec = list.find(r => String(r.job_id) === String(jobId));
+  if (!rec) {
+    if (typeof showToast === 'function') showToast('Trail no longer available', 'info');
+    return;
+  }
+  fetch('/api/studio/evidence/pin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      kind: 'thinking_trail',
+      conversation_id: convId,
+      job_id: rec.job_id,
+      agent: rec.agent,
+      status: rec.status,
+      stage: rec.stage,
+      history: rec.history || [],
+      ts: rec.ts,
+    }),
+  }).then(r => r.json()).then(d => {
+    if (d && d.ok) {
+      if (typeof showToast === 'function') showToast('Pinned trail to Studio', 'success');
+    } else {
+      if (typeof showToast === 'function') showToast('Studio evidence service unavailable', 'info');
+    }
+  }).catch(() => {
+    if (typeof showToast === 'function') showToast('Studio evidence service unavailable', 'info');
+  });
+}
+
+window._chatPinThinkingTrailToStudio = _chatPinThinkingTrailToStudio;
+window._replayFrozenThinkingBubbles = _replayFrozenThinkingBubbles;
 
 function _appendThinkingBubble(agent, runtimeClass, job = {}) {
   _upsertThinkingBubble({
@@ -5520,6 +5677,14 @@ function renderChatMessages(rows) {
     });
     window.__fridaysPendingBubbleTraces = {};
   }
+  // STEP-CHAT-THOUGHT-BUBBLES-PERSIST-TO-STUDIO-20260430:
+  // Replay any frozen thinking-trail bubbles that belong to this thread.
+  try {
+    const convId = Number(window.__fridaysChatConversationId || 0);
+    if (convId && typeof _replayFrozenThinkingBubbles === 'function') {
+      _replayFrozenThinkingBubbles(convId);
+    }
+  } catch (_) {}
   // Scroll to newest message
   requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; });
 }
