@@ -889,6 +889,9 @@
           <div id="home-chat-input-area">
             <div class="home-chat-compose">
               <textarea id="home-chat-input" placeholder="Ask Seven (start with ?) · or @duck @gemma @ten…" rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
+              <button id="home-chat-fav-btn" class="voice-mic-btn" title="Save current input as favourite shortcut" onclick="homeChatToggleFavourite()" aria-label="Favourites">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M8 2.5l1.7 3.5 3.8.5-2.8 2.7.7 3.8L8 11.2 4.6 13l.7-3.8L2.5 6.5l3.8-.5L8 2.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+              </button>
               <button id="home-chat-mic-btn" class="voice-mic-btn" title="Hold to talk" onclick="voiceRecordToggle(this, (t)=>{const i=document.getElementById('home-chat-input'); if(i){i.value=(i.value? i.value+' ':'')+t; i.focus();}})">
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><rect x="6" y="2" width="4" height="8" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2M6 14h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
               </button>
