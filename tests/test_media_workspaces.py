@@ -23,12 +23,18 @@ def client(monkeypatch):
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
     tmp.close()
     monkeypatch.chdir(ROOT)
-    # Patch _DB_PATH on each blueprint module to point at the temp file.
+    import sys as _sys
+    from frontend.terminal import create_app
+    app = create_app()
+    # The actual modules used by routes are 'blueprints.<name>' (see
+    # frontend/terminal.py sys.path injection). Patch both that and the
+    # 'frontend.blueprints.<name>' alias so writes go to the temp DB.
+    for mod_name in ('blueprints.synth_board', 'blueprints.video_editor'):
+        if mod_name in _sys.modules:
+            monkeypatch.setattr(_sys.modules[mod_name], '_DB_PATH', tmp.name)
     from frontend.blueprints import synth_board, video_editor
     monkeypatch.setattr(synth_board, '_DB_PATH', tmp.name)
     monkeypatch.setattr(video_editor, '_DB_PATH', tmp.name)
-    from frontend.terminal import create_app
-    app = create_app()
     app.config['TESTING'] = True
     with app.test_client() as c:
         yield c

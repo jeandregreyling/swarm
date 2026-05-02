@@ -32,7 +32,7 @@ from services import get_connection
 
 media_curriculum_bp = Blueprint('media_curriculum', __name__)
 
-_VALID_KINDS = {'music', 'image', 'video', 'style', 'genre', 'production'}
+_VALID_KINDS = {'music', 'image', 'video', 'style', 'genre', 'production', 'app', 'game'}
 
 
 def _ensure_schema(conn) -> None:
