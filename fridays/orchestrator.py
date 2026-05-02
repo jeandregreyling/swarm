@@ -491,10 +491,22 @@ def _update_focus_file(stats):
 
 
 def _check_stale_proposals(proposals):
-    """Find and escalate very old pending proposals."""
+    """Find and escalate very old pending proposals.
+
+    Writes one line per *new* stale proposal_id only (deduped against any
+    existing IDs already in STALE_PROPOSALS.md). This stops the file from
+    accumulating thousands of heartbeat duplicates.
+    """
     threshold = datetime.now(timezone.utc) - timedelta(minutes=STALE_MINUTES)
     escalated = []
-    
+
+    stale_file = SANDPIT_ROOT / 'shared' / 'STALE_PROPOSALS.md'
+    existing = stale_file.read_text() if stale_file.exists() else '# Stale Proposals\n'
+    # Cheap membership check — proposal_id is unique enough across the file
+    # body that substring matching is reliable in practice.
+    already = existing
+
+    new_lines = []
     for p in proposals:
         try:
             created = datetime.fromisoformat(p.get('created_at', '').replace(' ', 'T'))
@@ -502,16 +514,24 @@ def _check_stale_proposals(proposals):
                 created = created.replace(tzinfo=timezone.utc)
             if created < threshold:
                 escalated.append(p['proposal_id'])
-                # Write to shared log
-                stale_file = SANDPIT_ROOT / 'shared' / 'STALE_PROPOSALS.md'
-                existing = stale_file.read_text() if stale_file.exists() else '# Stale Proposals\n'
-                stale_file.write_text(
-                    existing +
-                    f"\n- [{datetime.now().strftime('%H:%M')}] {p['proposal_id']} ({p['agent']}): {p.get('title', '')[:80]}"
+                if p['proposal_id'] in already:
+                    continue  # already recorded, skip duplicate append
+                line = (
+                    f"\n- [{datetime.now().strftime('%H:%M')}] "
+                    f"{p['proposal_id']} ({p['agent']}): "
+                    f"{p.get('title', '')[:80]}"
                 )
+                new_lines.append(line)
+                already += line  # so two new same-id entries in this batch dedupe
         except Exception:
             pass
-    
+
+    if new_lines:
+        try:
+            stale_file.write_text(existing + ''.join(new_lines))
+        except Exception:
+            pass
+
     return escalated
 
 
