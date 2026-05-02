@@ -88,6 +88,9 @@ _ONBOARDING_CATEGORIES = [
 def get_interests():
     """Derive user interests from recent conversations and system memory."""
     limit = min(int(request.args.get('limit', 10)), 20)
+    # Y.52: honour ?username= for saved_interests (per-user table). The
+    # signal-mining queries below stay cross-user (system-wide observation).
+    username = (request.args.get('username') or 'seven').strip() or 'seven'
 
     conn = get_connection()
 
@@ -170,7 +173,9 @@ def get_interests():
     try:
         saved_rows = conn.execute(
             "SELECT topic, category, score, source, source_agent FROM user_interests "
-            "WHERE active = 1 ORDER BY score DESC, created_at DESC LIMIT 30"
+            "WHERE active = 1 AND username = ? "
+            "ORDER BY score DESC, created_at DESC LIMIT 30",
+            (username,)
         ).fetchall()
         saved_interests = [
             {
