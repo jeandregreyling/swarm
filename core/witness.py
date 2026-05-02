@@ -99,14 +99,14 @@ def _init() -> None:
 
 # ── Detection rules ─────────────────────────────────────────────────────
 VAPOR_RE = re.compile(
-    r"\b(should\s+(?:work|be\s+fine|do\s+it)|probably|maybe|i\s+think|"
-    r"i\s+guess|i\s+believe|kind\s+of|sort\s+of|might\s+work|hopefully)\b",
+    r"\b(should\s+(?:work|be\s+fine|do\s+it)|probably|maybe|i\s+think|"  # detector:ignore
+    r"i\s+guess|i\s+believe|kind\s+of|sort\s+of|might\s+work|hopefully)\b",  # detector:ignore
     re.IGNORECASE,
 )
 
 HEDGE_RE = re.compile(
-    r"\b(?:will\s+fix\s+(?:later|soon)|next\s+time|in\s+a\s+bit|tbd|to\s+be\s+(?:done|determined)|"
-    r"placeholder|coming\s+soon|wip|work\s+in\s+progress|stub(?:bed)?\s+out)\b",
+    r"\b(?:will\s+fix\s+(?:later|soon)|next\s+time|in\s+a\s+bit|tbd|to\s+be\s+(?:done|determined)|"  # detector:ignore
+    r"placeholder|coming\s+soon|wip|work\s+in\s+progress|stub(?:bed)?\s+out)\b",  # detector:ignore
     re.IGNORECASE,
 )
 
