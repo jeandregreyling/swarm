@@ -509,42 +509,128 @@ function _emailOpenAccountManager() {
     modal.addEventListener('mousedown', (ev) => { if (ev.target === modal) modal.remove(); });
     document.body.appendChild(modal);
   }
-  const rows = _EMAIL_ACCOUNTS.map(a => `
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtml(a)}</div>
-        <div style="font-size:10px;color:var(--text-dim);">Active · managed by swarm config</div>
-      </div>
-      <button onclick="_emailRequestAccountRemove('${_escAttr(a)}')" title="Request removal (requires host edit)"
-        style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--danger);padding:4px 8px;font-size:10px;cursor:pointer;">Request removal</button>
-    </div>`).join('');
+  // MD-FEATURE-1260A5EFA63E — pull live from /api/email/accounts so the
+  // modal reflects both config-managed and runtime accounts. Remove + add
+  // now persist to the runtime registry; the in-memory _EMAIL_ACCOUNTS list
+  // is updated so the inbox tab strip refreshes immediately.
   modal.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px 12px;width:min(520px, 94vw);display:flex;flex-direction:column;gap:10px;box-shadow:0 14px 44px rgba(0,0,0,0.45);">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px 12px;width:min(560px, 94vw);display:flex;flex-direction:column;gap:10px;box-shadow:0 14px 44px rgba(0,0,0,0.45);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
         <div>
-          <div style="font-size:13px;font-weight:700;">Email Accounts</div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Add/remove/change accounts live in <code>utils/config.py</code> and <code>swarm-sniffles.service</code>. This panel shows the current set and lets you request changes.</div>
+          <div style="font-size:13px;font-weight:700;">Email accounts</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Config-managed accounts come from <code>utils/config.py</code> and need a host edit to remove. Runtime accounts you add here persist to the swarm DB and the Email tile picks them up immediately. IMAP/SMTP credentials still live with sniffles.</div>
         </div>
         <button onclick="document.getElementById('email-accounts-modal')?.remove()"
           style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;width:24px;height:24px;flex:0 0 auto;line-height:1;">✕</button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;">${rows}</div>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <button onclick="_emailRequestAccountAdd()"
-          style="flex:1;background:var(--window-header);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:11px;font-weight:600;cursor:pointer;">+ Request new account</button>
+      <div id="email-accounts-rows" style="display:flex;flex-direction:column;gap:6px;min-height:60px;">
+        <div style="font-size:10px;color:var(--text-dim);text-align:center;padding:14px;">Loading accounts…</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);padding-top:8px;">
+        <div style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Add a runtime account</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input id="email-accounts-add-input" type="email" placeholder="user@example.com"
+            style="flex:1;padding:6px 9px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;outline:none;">
+          <button onclick="_emailAddAccountSubmit()"
+            style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">Add</button>
+        </div>
+        <div style="font-size:9px;color:var(--text-dim);">After adding, restart sniffles to start fetching mail for the new account.</div>
       </div>
     </div>`;
   modal.style.display = 'flex';
+  _emailRefreshAccountsList();
 }
 
-function _emailRequestAccountAdd() {
-  if (typeof showToast === 'function') showToast('Account add-requests are manual: edit utils/config.py _EMAIL_ACCOUNTS, then restart sniffles.', 'info');
+function _emailRefreshAccountsList() {
+  const host = document.getElementById('email-accounts-rows');
+  if (!host) return;
+  fetch('/api/email/accounts').then(r => r.json()).then(d => {
+    const list = (d && Array.isArray(d.accounts)) ? d.accounts : [];
+    if (!list.length) {
+      host.innerHTML = '<div style="font-size:10px;color:var(--text-dim);text-align:center;padding:14px;">No accounts configured.</div>';
+      return;
+    }
+    host.innerHTML = list.map(a => {
+      const safe = _escAttr(a.email || '');
+      const isConfig = (a.source === 'config');
+      const removeBtn = isConfig
+        ? `<span title="Edit utils/config.py to remove" style="font-size:10px;color:var(--text-dim);padding:4px 8px;">config-managed</span>`
+        : `<button onclick="_emailRemoveAccountReal('${safe}')" title="Remove from runtime registry"
+            style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--danger);padding:4px 8px;font-size:10px;cursor:pointer;">Remove</button>`;
+      const note = a.note ? `<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">${_escHtml(a.note)}</div>` : '';
+      const tag = isConfig
+        ? `<span style="font-size:9px;color:#7ad6c8;font-weight:700;">CONFIG</span>`
+        : `<span style="font-size:9px;color:#d8a032;font-weight:700;">RUNTIME</span>`;
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              ${tag}
+              <span style="font-size:12px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtml(a.email || '')}</span>
+            </div>
+            ${note}
+          </div>
+          ${removeBtn}
+        </div>`;
+    }).join('');
+  }).catch(() => {
+    host.innerHTML = '<div style="font-size:10px;color:#ef4444;">Could not load accounts.</div>';
+  });
 }
 
-function _emailRequestAccountRemove(addr) {
-  if (typeof showToast === 'function') showToast(`Removal of ${addr} requires a config edit. Flagged in Vortex.`, 'info');
+function _emailAddAccountSubmit() {
+  const input = document.getElementById('email-accounts-add-input');
+  const email = (input && input.value || '').trim().toLowerCase();
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    if (typeof showToast === 'function') showToast('Enter a valid email address', 'error');
+    return;
+  }
+  fetch('/api/email/accounts', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, note: 'added via Email tile' }),
+  }).then(r => r.json()).then(d => {
+    if (d && d.ok) {
+      if (typeof showToast === 'function') showToast(`Added ${email}`, 'success');
+      if (input) input.value = '';
+      _emailMergeRuntimeAccount(email);
+      _emailRefreshAccountsList();
+    } else {
+      if (typeof showToast === 'function') showToast(d && d.error || 'Add failed', 'error');
+    }
+  }).catch(() => {
+    if (typeof showToast === 'function') showToast('Add failed (network)', 'error');
+  });
 }
+
+function _emailRemoveAccountReal(email) {
+  if (!email) return;
+  if (typeof confirm === 'function' && !confirm(`Remove ${email} from the runtime registry?`)) return;
+  fetch(`/api/email/accounts/${encodeURIComponent(email)}`, { method: 'DELETE' })
+    .then(r => r.json()).then(d => {
+      if (d && d.ok) {
+        if (typeof showToast === 'function') showToast(`Removed ${email}`, 'success');
+        const idx = _EMAIL_ACCOUNTS.indexOf(email);
+        if (idx >= 0) _EMAIL_ACCOUNTS.splice(idx, 1);
+        _emailRefreshAccountsList();
+      } else {
+        if (typeof showToast === 'function') showToast(d && d.error || 'Remove failed', 'error');
+      }
+    }).catch(() => {
+      if (typeof showToast === 'function') showToast('Remove failed (network)', 'error');
+    });
+}
+
+function _emailMergeRuntimeAccount(email) {
+  if (!email || _EMAIL_ACCOUNTS.indexOf(email) >= 0) return;
+  _EMAIL_ACCOUNTS.push(email);
+}
+
+function _emailRequestAccountAdd() { _emailOpenAccountManager(); }
+function _emailRequestAccountRemove(addr) { _emailRemoveAccountReal(addr); }
 
 window._emailOpenAccountManager = _emailOpenAccountManager;
+window._emailRefreshAccountsList = _emailRefreshAccountsList;
+window._emailAddAccountSubmit = _emailAddAccountSubmit;
+window._emailRemoveAccountReal = _emailRemoveAccountReal;
 window._emailRequestAccountAdd = _emailRequestAccountAdd;
 window._emailRequestAccountRemove = _emailRequestAccountRemove;
