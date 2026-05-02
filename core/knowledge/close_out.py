@@ -152,6 +152,10 @@ def build_report(project_id: str) -> Dict[str, Any]:
     proj = _p.get_project(project_id)
     if not proj:
         return {"ok": False, "error": "project not found"}
+    # get_project() returns {'project': {...}, 'steps': [...], ...}; unwrap
+    # the project header so downstream consumers (closeout markdown export,
+    # cards, audit) can read project_name without re-fetching.
+    proj_header = proj.get('project') if isinstance(proj.get('project'), dict) else proj
     steps = _p.list_steps(project_id)
     test_idx = _index_tests_by_step_id()
 
@@ -183,7 +187,7 @@ def build_report(project_id: str) -> Dict[str, Any]:
     return {
         "ok": True,
         "project_id": project_id,
-        "project_name": proj.get("name"),
+        "project_name": proj_header.get("name"),
         "totals": {
             "steps": len(steps),
             **{k: totals.get(k, 0)
@@ -339,4 +343,79 @@ def _record_probe_run(step_id: str, files: List[str], return_code: int,
         conn.close()
 
 
-__all__ = ["build_report", "run_step_probe"]
+_VERDICT_BADGE = {
+    "green": "✅",
+    "red": "❌",
+    "partial": "🟡",
+    "unverified": "⚪",
+}
+
+
+def render_markdown(report: Dict[str, Any]) -> str:
+    """Render a build_report() payload as a human-readable markdown document.
+
+    S-4DB57C3A23 — closeout markdown export. Used by the API endpoint
+    ``GET /api/knowledge/projects/<pid>/close-out?format=md`` and by
+    ad-hoc CLI exporters.
+    """
+    if not report.get("ok"):
+        return f"# Close-out export failed\n\nError: {report.get('error', 'unknown')}\n"
+
+    lines: List[str] = []
+    name = report.get("project_name") or report.get("project_id")
+    lines.append(f"# Close-out — {name}")
+    lines.append("")
+    lines.append(f"**Project ID:** `{report.get('project_id')}`")
+    gen = report.get("generated_at")
+    if gen:
+        try:
+            from datetime import datetime, timezone
+            stamp = datetime.fromtimestamp(float(gen), tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+            lines.append(f"**Generated:** {stamp}")
+        except Exception:
+            pass
+    lines.append("")
+
+    totals = report.get("totals") or {}
+    if totals:
+        lines.append("## Totals")
+        lines.append("")
+        lines.append("| Bucket | Count |")
+        lines.append("|---|---:|")
+        for key in ("steps", "done", "partial", "doing", "blocked", "todo", "skipped"):
+            if key in totals:
+                lines.append(f"| {key} | {totals[key]} |")
+        lines.append("")
+
+    steps = report.get("steps") or []
+    lines.append(f"## Steps ({len(steps)})")
+    lines.append("")
+    for s in steps:
+        verdict = s.get("verdict") or "unverified"
+        badge = _VERDICT_BADGE.get(verdict, "⚪")
+        title = s.get("title") or "(untitled)"
+        lines.append(f"### {badge} {s.get('step_id')} — {title}")
+        lines.append("")
+        lines.append(f"- **Status:** `{s.get('status') or 'todo'}`")
+        lines.append(f"- **Verdict:** `{verdict}`")
+        owner = s.get("owner")
+        if owner:
+            lines.append(f"- **Owner:** {owner}")
+        tfiles = s.get("test_files") or []
+        if tfiles:
+            lines.append(f"- **Test files ({len(tfiles)}):**")
+            for tf in tfiles:
+                lines.append(f"  - `{tf}`")
+        cases = s.get("cases") or []
+        if cases:
+            lines.append(f"- **Cases ({len(cases)}):**")
+            for c in cases:
+                last = c.get("last_run") or {}
+                last_status = last.get("status") or "—"
+                lines.append(f"  - `{c.get('case_id')}` · {c.get('title') or ''} · last: {last_status}")
+        lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+__all__ = ["build_report", "run_step_probe", "render_markdown"]
