@@ -594,6 +594,88 @@ def api_library_topics_delete(topic_id):
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
 
+# ── STEP-KC-INTERESTS-GENERAL-KNOWLEDGE-SUGGESTIONS-20260430 ────────────────
+# Suggest optional general-knowledge additions based on the existing topic set.
+# Curated bidirectional adjacency map — kept deliberately small so suggestions
+# are useful context without "creepy personalisation". Each suggestion ships
+# with a `because` field so the UI can show *why* it was suggested.
+_TOPIC_ADJACENCY = {
+    # SAP / payroll
+    'sap':                ['payroll compliance australia', 'employee data privacy', 'ABAP fundamentals'],
+    'sap payroll':        ['ato single touch payroll', 'fair work act basics', 'payroll year-end checklist'],
+    'sap hcm':            ['workforce analytics', 'employee lifecycle management', 'PCR debugging patterns'],
+    'payroll':            ['ato single touch payroll', 'fair work act basics', 'superannuation guarantee'],
+    # Music / creative
+    'music creation':     ['music theory fundamentals', 'mixing & mastering basics', 'song structure patterns'],
+    'lo-fi':              ['music theory fundamentals', 'sample-clearance basics', 'side-chain compression'],
+    'synthwave':          ['analog synth signal flow', 'reverb & delay basics', '80s production techniques'],
+    'songwriting':        ['lyric structure (verse/chorus/bridge)', 'rhyme scheme catalog'],
+    # Visual art
+    'visual art':         ['colour theory primer', 'composition rules of thirds', 'lighting reference packs'],
+    'image generation':   ['prompt engineering for diffusion', 'colour theory primer', 'composition rules of thirds'],
+    # ML / dev
+    'huggingface':        ['transformer architectures explained', 'tokeniser tradeoffs', 'inference quantisation'],
+    'github':             ['conventional commits', 'semantic versioning', 'GitHub Actions cookbook'],
+    'python':             ['type hints & typing module', 'async/await basics', 'pytest fixtures cheat-sheet'],
+    'flask':              ['blueprints & app-factory pattern', 'request context lifecycle'],
+    # Personal productivity (only suggested if the user already opted in to one)
+    'productivity':       ['note-taking systems (zettelkasten / PARA)', 'pomodoro variants'],
+    'home automation':    ['mqtt fundamentals', 'home assistant addons primer'],
+}
+
+
+@library_bp.route('/api/library/topics/suggestions', methods=['GET'])
+def api_library_topics_suggestions():
+    """Return general-knowledge topic suggestions adjacent to the user's
+    existing topics.
+
+    Each suggestion is { topic, category, because } so the UI can render the
+    rationale alongside an Approve/Ignore action. Suggestions never include
+    PII or anything inferred from chat content — they're pure adjacency from
+    the curated _TOPIC_ADJACENCY map. Existing topics (active + paused) are
+    excluded so the list never re-suggests something already opted in.
+    """
+    try:
+        from database import get_connection
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT topic, category FROM user_interests WHERE username=?",
+                (_topics_owner(),),
+            ).fetchall()
+        finally:
+            conn.close()
+        existing = {str(r['topic'] or '').strip().lower() for r in rows}
+        out = []
+        seen = set()
+        for r in rows:
+            seed = str(r['topic'] or '').strip().lower()
+            adj = _TOPIC_ADJACENCY.get(seed)
+            if not adj:
+                # Loose match — substring contains/contained-by.
+                for key, vals in _TOPIC_ADJACENCY.items():
+                    if key in seed or seed in key:
+                        adj = vals
+                        break
+            if not adj:
+                continue
+            for s in adj:
+                key = s.lower()
+                if key in existing or key in seen:
+                    continue
+                seen.add(key)
+                out.append({
+                    'topic':    s,
+                    'category': str(r['category'] or 'general'),
+                    'because':  f'adjacent to your topic "{r["topic"]}"',
+                })
+        # Cap to 6 — keeps the strip tidy and avoids overwhelming the user.
+        return jsonify({'ok': True, 'suggestions': out[:6]})
+    except Exception as exc:
+        logger.exception('[Library] topic suggestions')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
 @library_bp.route('/api/library/topics/run/<int:topic_id>', methods=['POST'])
 def api_library_topics_run_now(topic_id):
     """Kick off an immediate research session for a single topic (background thread)."""
