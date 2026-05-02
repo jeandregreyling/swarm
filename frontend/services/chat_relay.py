@@ -150,6 +150,33 @@ def _parse_chat_skill_command(text):
     return skill_name, skill_args
 
 
+# Matches the literal "[Auto Relay: ENABLED]" / "[Auto Relay: DISABLED]" banner
+# that the orchestrator system prompt instructs models to acknowledge. Some
+# local agents (Gemma, LLaMA) echo it back at the top of their final answer
+# and leak it into creative output (songs, stories). It is never legitimate
+# user-facing content, so strip it unconditionally before display.
+_AUTO_RELAY_BANNER = re.compile(
+    r'^\s*\[\s*auto\s*relay\s*:\s*(?:enabled|disabled|on|off)\s*\]\s*\n?',
+    re.IGNORECASE,
+)
+
+
+def _strip_auto_relay_banner(text: str) -> str:
+    """Strip a leaked '[Auto Relay: ENABLED|DISABLED]' banner from a model
+    response. Always safe to call — the banner is a system-prompt artefact
+    and never carries user-visible meaning."""
+    if not text:
+        return text
+    cleaned = _AUTO_RELAY_BANNER.sub('', text, count=1)
+    # Also handle the case where the banner appears mid-text on its own line.
+    cleaned = re.sub(
+        r'(?im)^\s*\[\s*auto\s*relay\s*:\s*(?:enabled|disabled|on|off)\s*\]\s*$\n?',
+        '',
+        cleaned,
+    )
+    return cleaned.lstrip('\n') or text
+
+
 def _strip_relay_routing(text: str) -> str:
     """Remove agent-routing language from a response when auto_relay is OFF.
 
@@ -248,5 +275,6 @@ __all__ = [
     '_is_execution_confirmation',
     '_parse_chat_skill_command',
     '_resolve_chat_reply_target',
+    '_strip_auto_relay_banner',
     '_strip_relay_routing',
 ]
