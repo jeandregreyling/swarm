@@ -352,6 +352,78 @@ def mirror(kind: str, record_id: Any, *, actor: str = "mutation", db_path: Optio
 __all__ = [
     "RECORDS_ROOT", "LEDGER_PATH", "XREF_PATH", "LINKS_DB", "KINDS",
     "record_path", "record_md_path",
-    "save_record", "load_record", "snapshot_all", "mirror",
+    "save_record", "load_record", "restore_record", "snapshot_all", "mirror",
     "_render_markdown", "_extract_mentions", "_kind_meta",
 ]
+
+
+def restore_record(
+    kind: str,
+    record_id: str,
+    *,
+    conn: Optional[sqlite3.Connection] = None,
+    db_path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Re-import a record from its on-disk JSON file back into the DB.
+
+    Acceptance criterion for S-7221671DD4: deleting the row from the DB
+    and re-importing the file must restore the record byte-for-byte.
+
+    Returns a status dict::
+
+        {"ok": bool, "kind": str, "id": str, "data": dict | None,
+         "action": "inserted" | "updated" | "missing"}
+
+    Threads are not supported here (they fan out to a join table); the
+    caller should use snapshot_all() in reverse for those.
+    """
+    table, pk, _, _ = _kind_meta(kind)
+    if kind == "thread":
+        return {"ok": False, "kind": kind, "id": str(record_id),
+                "data": None, "action": "unsupported"}
+    payload = load_record(kind, record_id)
+    if payload is None:
+        return {"ok": False, "kind": kind, "id": str(record_id),
+                "data": None, "action": "missing"}
+    data = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(data, dict):
+        return {"ok": False, "kind": kind, "id": str(record_id),
+                "data": None, "action": "missing"}
+
+    own_conn = False
+    if conn is None:
+        db = Path(db_path) if db_path else (_SWARM_ROOT / "swarm_memory.db")
+        if not db.exists():
+            return {"ok": False, "kind": kind, "id": str(record_id),
+                    "data": data, "action": "no_db"}
+        conn = sqlite3.connect(db)
+        own_conn = True
+
+    try:
+        cols = list(data.keys())
+        placeholders = ",".join("?" for _ in cols)
+        col_list = ",".join(cols)
+        existing = conn.execute(
+            f"SELECT 1 FROM {table} WHERE {pk}=?", (data.get(pk),)
+        ).fetchone()
+        if existing:
+            assignments = ",".join(f"{c}=?" for c in cols if c != pk)
+            values = [data[c] for c in cols if c != pk]
+            values.append(data.get(pk))
+            conn.execute(
+                f"UPDATE {table} SET {assignments} WHERE {pk}=?",
+                values,
+            )
+            action = "updated"
+        else:
+            conn.execute(
+                f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})",
+                [data[c] for c in cols],
+            )
+            action = "inserted"
+        conn.commit()
+        return {"ok": True, "kind": kind, "id": str(record_id),
+                "data": data, "action": action}
+    finally:
+        if own_conn:
+            conn.close()
