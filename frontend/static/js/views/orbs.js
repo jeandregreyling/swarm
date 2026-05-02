@@ -2028,6 +2028,42 @@
   } else {
     _syncOrbControls();
   }
+
+  // ── MD-FEATURE-39B9FF065023 — Orbs behaviour overhaul ────────────────────
+  // 1. Respect prefers-reduced-motion: auto-snap to 'low' quality on first
+  //    load when no user preference has been recorded yet.
+  // 2. Expose orbsPause()/orbsResume()/orbsSetQuality() globally so other
+  //    surfaces (Tasker, Settings panel, focus-mode) can quiet the orbs
+  //    without unmounting them.
+  // 3. Pause when the document is hidden — saves battery on laptops that
+  //    background the tab.
+  let _orbsPaused = false;
+  try {
+    if (!localStorage.getItem(ORB_QUALITY_KEY)) {
+      const mq = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+      if (mq && mq.matches) {
+        setOrbQuality('low');
+      }
+    }
+  } catch (_) {}
+  document.addEventListener('visibilitychange', () => {
+    _orbsPaused = document.hidden;
+  });
+  window.orbsPause = function () { _orbsPaused = true; };
+  window.orbsResume = function () { _orbsPaused = false; requestAnimationFrame(draw); };
+  window.orbsSetQuality = setOrbQuality;
+  window.orbsIsPaused = function () { return !!_orbsPaused; };
+  // Wrap draw with a paused-frame guard. We rebind the rAF callback so the
+  // existing draw() function stays untouched.
+  const _origDraw = draw;
+  draw = function (t) {
+    if (_orbsPaused) {
+      requestAnimationFrame(draw);
+      return;
+    }
+    _origDraw(t);
+  };
+
   requestAnimationFrame(draw);
 
 })();
