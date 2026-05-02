@@ -9,11 +9,49 @@
   'use strict';
 
   const LS_SELECTED = 'fridays-studio-project-id-v1';
+  const LS_STATUS_FILTER = 'fridays-studio-project-status-filter-v1';
   let _projects = [];
   let _selectedId = '';
+  let _statusFilter = 'active'; // 'active' | 'all' | 'archived'
+
+  function _loadStatusFilter() {
+    try {
+      const v = localStorage.getItem(LS_STATUS_FILTER);
+      if (v === 'active' || v === 'all' || v === 'archived') _statusFilter = v;
+    } catch (e) { /* ignore */ }
+    const sel = document.getElementById('projects-status-filter');
+    if (sel) sel.value = _statusFilter;
+  }
+
+  function _filteredProjects() {
+    if (_statusFilter === 'all') return _projects.slice();
+    if (_statusFilter === 'archived') return _projects.filter(p => p.status === 'archived');
+    // 'active' mode → active + on_hold (anything not archived)
+    return _projects.filter(p => p.status !== 'archived');
+  }
+
+  window.projectsSetStatusFilter = function (v) {
+    if (v !== 'active' && v !== 'all' && v !== 'archived') v = 'active';
+    _statusFilter = v;
+    try { localStorage.setItem(LS_STATUS_FILTER, v); } catch (e) { /* ignore */ }
+    _renderList();
+    // If currently selected project is now hidden, fall back to first visible.
+    const visible = _filteredProjects();
+    if (_selectedId && !visible.some(p => p.project_id === _selectedId)) {
+      if (visible.length) {
+        _selectedId = visible[0].project_id;
+        try { localStorage.setItem(LS_SELECTED, _selectedId); } catch (e) {}
+        _loadDetail(_selectedId);
+      } else {
+        const det = document.getElementById('projects-detail');
+        if (det) det.innerHTML = '<div style="padding:14px;color:var(--text-dim);">No projects in this view. Switch the filter to <b>All</b> to see archived work.</div>';
+      }
+    }
+  };
 
   window.loadStudioProjectsPanel = function () {
     _selectedId = localStorage.getItem(LS_SELECTED) || '';
+    _loadStatusFilter();
     projectsRefresh();
   };
 
@@ -23,13 +61,14 @@
       .then(data => {
         _projects = (data && data.items) || [];
         _renderList();
-        if (_selectedId && _projects.some(p => p.project_id === _selectedId)) {
+        const visible = _filteredProjects();
+        if (_selectedId && visible.some(p => p.project_id === _selectedId)) {
           _loadDetail(_selectedId);
-        } else if (_projects.length) {
-          _loadDetail(_projects[0].project_id);
+        } else if (visible.length) {
+          _loadDetail(visible[0].project_id);
         } else {
           const det = document.getElementById('projects-detail');
-          if (det) det.innerHTML = '<div style="padding:14px;color:var(--text-dim);">No projects yet. Create one above to start linking proposals, plan steps and test cases.</div>';
+          if (det) det.innerHTML = '<div style="padding:14px;color:var(--text-dim);">No projects in this view. Use the filter above to switch to <b>All</b> or <b>Archived</b>.</div>';
         }
       })
       .catch(err => {
@@ -64,11 +103,15 @@
   function _renderList() {
     const list = document.getElementById('projects-list');
     if (!list) return;
-    if (!_projects.length) {
-      list.innerHTML = '<div style="color:var(--text-dim);font-size:11px;padding:12px;">No projects. Create one above.</div>';
+    const visible = _filteredProjects();
+    const archivedCount = _projects.filter(p => p.status === 'archived').length;
+    const activeCount = _projects.length - archivedCount;
+    const hint = `<div style="font-size:9px;color:var(--text-dim);padding:4px 6px 6px;">${_esc(_statusFilter)} view · ${visible.length} shown · ${activeCount} active / ${archivedCount} archived</div>`;
+    if (!visible.length) {
+      list.innerHTML = hint + '<div style="color:var(--text-dim);font-size:11px;padding:12px;">No projects match this filter.</div>';
       return;
     }
-    list.innerHTML = _projects.map(p => {
+    list.innerHTML = hint + visible.map(p => {
       const on = p.project_id === _selectedId;
       const pct = p.step_count ? Math.round((p.steps_done || 0) * 100 / p.step_count) : 0;
       const statusColor = p.status === 'active' ? '#4caf50' : '#888';
