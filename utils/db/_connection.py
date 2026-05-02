@@ -34,6 +34,14 @@ AGENT_POOL_MAP = {
     'thirteen': 'memory_thirteen',
     'scholar': 'memory_scholar', 'seeker': 'memory_seeker',
     'twenty': 'memory_twenty',
+    # STEP-MEMORIES-HIVE-KNOWLEDGE-SYNC-20260430 — restore writes for the
+    # agents that previously fell off the map (Seven herself plus the local
+    # runner agents and ghost workers). Where a dedicated table doesn't
+    # exist yet we route to the shared 'memory' pool so writes are no
+    # longer silently dropped.
+    'seven': 'memory', 'ghost': 'memory', 'ghost_coder': 'memory',
+    'phi3': 'memory', 'deepseek_local': 'memory', 'lmstudio': 'memory',
+    'nineteen': 'memory',
 }
 
 
