@@ -22,7 +22,41 @@ from __future__ import annotations
 
 import time
 import uuid
+import json as _json
 from typing import Any, Dict, List, Optional
+
+
+def _normalize_tags(value: Any) -> List[str]:
+    """Coerce caller-supplied tags into a clean, deduped list of slug-ish
+    strings. Accepts list/tuple, JSON string, or comma-separated string."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return []
+        if value.startswith('['):
+            try:
+                value = _json.loads(value)
+            except Exception:
+                value = [v.strip() for v in value.split(',')]
+        else:
+            value = [v.strip() for v in value.split(',')]
+    if not isinstance(value, (list, tuple)):
+        return []
+    out: List[str] = []
+    seen: set = set()
+    for raw in value:
+        s = str(raw or '').strip()
+        if not s:
+            continue
+        s = s.lower().replace(' ', '-')[:48]
+        if s not in seen:
+            seen.add(s)
+            out.append(s)
+        if len(out) >= 24:  # hard cap, prevents abuse
+            break
+    return out
 
 __all__ = [
     'create_project', 'list_projects', 'get_project', 'update_project',
@@ -164,6 +198,12 @@ def _ensure_schema() -> None:
                     conn.execute(
                         "ALTER TABLE projects ADD COLUMN priority "
                         "INTEGER NOT NULL DEFAULT 0")
+                if 'tags' not in _cols:
+                    # S-4BCE8CF667 — JSON-array of project tags. Stored as
+                    # TEXT so the value survives any SQLite version.
+                    conn.execute(
+                        "ALTER TABLE projects ADD COLUMN tags TEXT "
+                        "NOT NULL DEFAULT '[]'")
             except Exception:
                 pass
 
@@ -232,6 +272,7 @@ def create_project(
     methodology: str = 'mixed',
     owner: str = DEFAULT_OWNER,
     idempotency_key: str = '',
+    tags: Any = None,
 ) -> Optional[str]:
     """Create a project. Returns project_id (or None on DB failure).
 
@@ -265,15 +306,16 @@ def create_project(
             pass
     project_id = 'P-' + uuid.uuid4().hex[:10].upper()
     now = time.time()
+    tags_json = _json.dumps(_normalize_tags(tags))
     try:
         from utils.db._connection import get_connection
         conn = get_connection()
         try:
             conn.execute(
-                "INSERT INTO projects (project_id, name, description, methodology, status, owner, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, 'active', ?, ?, ?)",
+                "INSERT INTO projects (project_id, name, description, methodology, status, owner, created_at, updated_at, tags) "
+                "VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)",
                 (project_id, name[:200], (description or '')[:4000], methodology,
-                 (owner or DEFAULT_OWNER)[:64], now, now),
+                 (owner or DEFAULT_OWNER)[:64], now, now, tags_json),
             )
             conn.commit()
         finally:
@@ -306,6 +348,13 @@ def get_project(project_id: str) -> Optional[Dict[str, Any]]:
             if not row:
                 return None
             project = dict(row)
+            # Decode tags JSON for callers; tolerate legacy/invalid rows.
+            try:
+                project['tags'] = _json.loads(project.get('tags') or '[]')
+                if not isinstance(project['tags'], list):
+                    project['tags'] = []
+            except Exception:
+                project['tags'] = []
             _ensure_blackboard_schema(conn)
             steps = [dict(r) for r in conn.execute(
                 "SELECT * FROM project_steps WHERE project_id=? ORDER BY order_idx ASC, created_at ASC",
@@ -336,7 +385,8 @@ def get_project(project_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def list_projects(*, status: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
+def list_projects(*, status: Optional[str] = None, limit: int = 100,
+                  tag: Optional[str] = None) -> List[Dict[str, Any]]:
     _ensure_schema()
     try:
         from utils.db._connection import get_connection
@@ -346,6 +396,11 @@ def list_projects(*, status: Optional[str] = None, limit: int = 100) -> List[Dic
             params: List[Any] = []
             if status:
                 clauses.append("status=?"); params.append(status)
+            if tag:
+                # Tags are stored as a JSON array of slugs. SQLite LIKE with
+                # quoted match is sufficient for this lightweight surface.
+                clauses.append("tags LIKE ?")
+                params.append(f'%"{_normalize_tags([tag])[0] if _normalize_tags([tag]) else ""}"%')
             where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
             params.append(int(max(1, min(limit, 500))))
             rows = conn.execute(
@@ -356,7 +411,18 @@ def list_projects(*, status: Optional[str] = None, limit: int = 100) -> List[Dic
                 f"FROM projects p {where} ORDER BY p.priority DESC, p.created_at DESC LIMIT ?",
                 params,
             ).fetchall()
-            return [dict(r) for r in rows]
+            out = []
+            for r in rows:
+                d = dict(r)
+                # Decode tags JSON for callers; tolerate legacy/invalid rows.
+                try:
+                    d['tags'] = _json.loads(d.get('tags') or '[]')
+                    if not isinstance(d['tags'], list):
+                        d['tags'] = []
+                except Exception:
+                    d['tags'] = []
+                out.append(d)
+            return out
         finally:
             conn.close()
     except Exception:
@@ -364,7 +430,7 @@ def list_projects(*, status: Optional[str] = None, limit: int = 100) -> List[Dic
 
 
 def update_project(project_id: str, **fields: Any) -> bool:
-    allowed = {'name', 'description', 'methodology', 'status', 'owner', 'priority'}
+    allowed = {'name', 'description', 'methodology', 'status', 'owner', 'priority', 'tags'}
     updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
     if not project_id or not updates:
         return False
@@ -377,6 +443,8 @@ def update_project(project_id: str, **fields: Any) -> bool:
             updates['priority'] = max(0, min(int(updates['priority']), 9))
         except (TypeError, ValueError):
             raise ValueError("priority must be an integer 0..9")
+    if 'tags' in updates:
+        updates['tags'] = _json.dumps(_normalize_tags(updates['tags']))
     _ensure_schema()
     try:
         from utils.db._connection import get_connection
