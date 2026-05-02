@@ -70,6 +70,19 @@ def hb_db(tmp_path, monkeypatch):
     importlib.reload(conn_mod)
     new_get = lambda: sqlite3.connect(str(db))
     monkeypatch.setattr(conn_mod, 'get_connection', new_get)
+    # Other modules may have imported get_connection before this fixture
+    # ran (e.g. via frontend.terminal.create_app() in another test).
+    # Patch the bound names too so scheduler/database use our isolated DB.
+    try:
+        import database as _db
+        monkeypatch.setattr(_db, 'get_connection', new_get, raising=False)
+    except Exception:
+        pass
+    try:
+        import fridays.scheduler as _sched
+        monkeypatch.setattr(_sched, 'get_connection', new_get, raising=False)
+    except Exception:
+        pass
     return str(db)
 
 
