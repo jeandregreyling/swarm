@@ -15,8 +15,9 @@ def test_taskbar_launcher_strip_exists_in_shell_template():
 def test_taskbar_launchers_are_derived_from_quick_access_tiles():
     src = APP_JS.read_text()
     assert "function syncTaskbarLaunchers() {" in src
-    assert "const PINNED_LAUNCHERS = ['chat', 'terminal', 'knowledge', 'studio', 'media-center'];" in src
+    assert "const PINNED_LAUNCHERS = ['chat', 'terminal', 'knowledge', 'studio', 'media-center', 'tasker'];" in src
     assert "'media-center': { title: 'Media Center', template: 'view-media-center' }" in src
+    assert "'tasker':       { title: 'Tasker',       template: 'view-tasker' }" in src
     assert "document.querySelectorAll('#quick-cards .home-card[data-win-id]')" in src
     assert "if (!winId || !winTitle || winId === 'email') return;" in src
     assert "btn.innerHTML = fridaysWindowIconMarkup(winId);" in src
