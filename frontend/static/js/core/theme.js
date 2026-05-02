@@ -1828,8 +1828,82 @@ function _initSysmodToggle() {
   input.checked = getSysmodEnabled();
   const lbl = document.getElementById('sysmod-enable-label');
   if (lbl) lbl.textContent = input.checked ? 'On' : 'Off';
+  // MD-FEATURE-C6D59801C77C — render per-helper inventory beneath the master
+  // toggle so operators can see what is installed and copy enable/disable
+  // commands without needing to know the unit names.
+  refreshSysmodHelpers();
+}
+
+function refreshSysmodHelpers() {
+  const host = document.getElementById('sysmod-helpers');
+  if (!host) return;
+  host.innerHTML = '<div style="font-size:10px;color:var(--text-dim);">Loading helpers…</div>';
+  fetch('/api/settings/sysmod/helpers').then(r => r.json()).then(d => {
+    const helpers = (d && d.helpers) || [];
+    if (!helpers.length) {
+      host.innerHTML = '<div style="font-size:10px;color:var(--text-dim);">No installable helpers known yet.</div>';
+      return;
+    }
+    host.innerHTML = helpers.map(h => {
+      const stateLabel = h.installed
+        ? (h.active ? '<span style="color:#7ad6c8;font-weight:700;">running</span>'
+                    : '<span style="color:#d8a032;font-weight:700;">installed · stopped</span>')
+        : '<span style="color:var(--text-dim);font-weight:600;">not installed</span>';
+      const primaryCmd = h.installed ? (h.active ? h.disable_cmd : h.enable_cmd) : h.install_cmd;
+      const primaryLabel = h.installed ? (h.active ? 'Copy disable command' : 'Copy enable command') : 'Copy install command';
+      const safeId = String(h.id || '').replace(/[^a-z0-9_-]/gi, '_');
+      return `
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--bg);margin-top:8px;">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+            <div style="font-size:11px;font-weight:700;color:var(--text);">${_sysmodEsc(h.title)}</div>
+            <div style="font-size:10px;">${stateLabel}</div>
+          </div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;line-height:1.5;">${_sysmodEsc(h.description)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+            <button onclick="_sysmodCopyCmd('${safeId}-primary')" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;">${primaryLabel}</button>
+            <button onclick="_sysmodCopyCmd('${safeId}-status')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">Copy status command</button>
+          </div>
+          <input type="hidden" id="${safeId}-primary" value="${_sysmodEsc(primaryCmd)}">
+          <input type="hidden" id="${safeId}-status" value="${_sysmodEsc(h.status_cmd)}">
+        </div>`;
+    }).join('') +
+    '<div style="font-size:10px;color:var(--text-dim);margin-top:8px;line-height:1.55;">' +
+    'Helpers run as system services. Swarm never executes <code>sudo</code> on your behalf — copy the command, paste it in a terminal, and the OS will prompt for your password.' +
+    '</div>';
+  }).catch(() => {
+    host.innerHTML = '<div style="font-size:10px;color:#f44336;">Could not load helper inventory.</div>';
+  });
+}
+
+function _sysmodEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function _sysmodCopyCmd(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const txt = el.value || '';
+  if (!txt) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(() => {
+      if (typeof showToast === 'function') showToast('Command copied to clipboard', 'success');
+    }).catch(() => {
+      if (typeof showToast === 'function') showToast('Clipboard blocked — see browser permissions', 'error');
+    });
+  } else {
+    // Fallback: select via temp textarea
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); if (typeof showToast === 'function') showToast('Command copied', 'success'); }
+    catch (_) { if (typeof showToast === 'function') showToast('Clipboard unavailable', 'error'); }
+    document.body.removeChild(ta);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', _initSysmodToggle);
 window.setSysmodEnabled = setSysmodEnabled;
 window.getSysmodEnabled = getSysmodEnabled;
+window.refreshSysmodHelpers = refreshSysmodHelpers;
+window._sysmodCopyCmd = _sysmodCopyCmd;
