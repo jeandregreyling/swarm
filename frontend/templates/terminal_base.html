@@ -1336,6 +1336,7 @@
         <!-- Ollama -->
         <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
           <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+            <span class="agents-runner-light" id="agents-ollama-light" style="width:8px;height:8px;border-radius:99px;background:var(--text-dim);box-shadow:0 0 0 2px rgba(0,0,0,0.15);"></span>
             <span style="font-weight:600;font-size:13px;">Ollama</span>
             <span id="agents-ollama-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
             <span id="agents-ollama-runtime" title="Fridays runtime gateway health" style="display:none;font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">runtime: —</span>
@@ -1343,24 +1344,49 @@
           </div>
           <div id="agents-ollama-models" style="padding:10px 14px;font-size:12px;color:var(--text-dim);min-height:40px;">—</div>
           <div id="agents-ollama-warnings" style="display:none;padding:0 14px 10px;font-size:11px;color:#f59e0b;"></div>
+          <!-- STEP-AGENTS-TILE-UX-OPERATIONS-20260430 — explicit controls -->
+          <div style="padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--border);">
+            <button onclick="agentsOpenLogs('ollama')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Logs</button>
+            <button onclick="agentsCopyCmd('ollama-restart','sudo systemctl restart ollama')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Copy restart cmd</button>
+            <button onclick="agentsOllamaPullPrompt()" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Pull model…</button>
+          </div>
         </div>
         <!-- LM Studio -->
         <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
           <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+            <span class="agents-runner-light" id="agents-lmstudio-light" style="width:8px;height:8px;border-radius:99px;background:var(--text-dim);box-shadow:0 0 0 2px rgba(0,0,0,0.15);"></span>
             <span style="font-weight:600;font-size:13px;">LM Studio</span>
             <span id="agents-lmstudio-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
             <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:1234</span>
           </div>
           <div id="agents-lmstudio-info" style="padding:10px 14px;font-size:12px;color:var(--text-dim);min-height:40px;">—</div>
+          <div style="padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--border);">
+            <button onclick="agentsOpenLogs('lmstudio')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Logs</button>
+            <button onclick="agentsCopyCmd('lms-launch','open -a \\'LM Studio\\'  # macOS · run lms.exe on Windows · ./lmstudio --server on Linux')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Copy launch cmd</button>
+          </div>
         </div>
         <!-- Picoclaw -->
         <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
           <div style="padding:12px 14px;display:flex;align-items:center;gap:8px;">
+            <span class="agents-runner-light" id="agents-picoclaw-light" style="width:8px;height:8px;border-radius:99px;background:var(--text-dim);box-shadow:0 0 0 2px rgba(0,0,0,0.15);"></span>
             <span style="font-weight:600;font-size:13px;">Picoclaw</span>
             <span id="agents-picoclaw-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
             <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:18800</span>
           </div>
+          <div style="padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--border);">
+            <button onclick="agentsOpenLogs('picoclaw')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Logs</button>
+            <button onclick="agentsCopyCmd('pico-restart','sudo systemctl restart picoclaw  # if registered as a system service')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Copy restart cmd</button>
+          </div>
         </div>
+      </div>
+      <!-- STEP-AGENTS-TILE-UX-OPERATIONS-20260430 — disabled-agents panel -->
+      <div id="agents-disabled-panel" style="margin:0 16px 16px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Disabled agents</span>
+          <span id="agents-disabled-count" style="font-size:10px;padding:1px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">0</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Auto-disabled by chat router (timeouts / context overflow). Click ↻ to bring back online.</span>
+        </div>
+        <div id="agents-disabled-list" style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--text-dim);">No disabled agents.</div>
       </div>
       <div style="padding:0 16px 16px;display:flex;justify-content:flex-end;">
         <button onclick="agentsLocalAIRefresh()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;">↻ Refresh</button>
