@@ -198,11 +198,25 @@ def update_board(board_id: str):
                 (json.dumps(body['graph']), _now(), board_id),
             )
         for col in ('name', 'tempo', 'key', 'notes'):
-            if col in body:
-                c.execute(
-                    f'UPDATE synth_board_projects SET {col}=?, updated_at=? WHERE board_id=?',
-                    (body[col], _now(), board_id),
-                )
+            if col not in body:
+                continue
+            value = body[col]
+            if col in ('name', 'key', 'notes'):
+                if value is not None and not isinstance(value, str):
+                    return jsonify(ok=False, error=f'{col} must be a string'), 400
+                if col == 'name' and (value is None or not value.strip()):
+                    return jsonify(ok=False, error='name cannot be empty'), 400
+                if isinstance(value, str) and len(value) > 128:
+                    return jsonify(ok=False, error=f'{col} too long (max 128)'), 400
+            elif col == 'tempo':
+                if value is not None and not isinstance(value, (int, float)):
+                    return jsonify(ok=False, error='tempo must be a number'), 400
+                if isinstance(value, (int, float)) and (value < 0 or value > 600):
+                    return jsonify(ok=False, error='tempo out of range (0–600)'), 400
+            c.execute(
+                f'UPDATE synth_board_projects SET {col}=?, updated_at=? WHERE board_id=?',
+                (value, _now(), board_id),
+            )
         c.commit()
     finally:
         c.close()
