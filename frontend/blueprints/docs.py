@@ -802,3 +802,118 @@ def api_run_simulation():
 
 
 
+
+
+# ── STEP-DOCS-MANUAL-RELATABLE-UX-20260430 ──────────────────────────────────
+# Convert doc/manual UX feedback into a tracked project step instead of a
+# chat-only note. Posts land in a dedicated 'P-DOCS-UX' project so they don't
+# muddy the main burn-down list, and each note becomes its own step the team
+# can pick up in priority order. The endpoint is idempotent on (topic, doc):
+# repeated submissions for the same target append to the description rather
+# than spawning duplicate steps, so iterative feedback consolidates cleanly.
+
+import time as _time
+import uuid as _uuid
+
+_DOCS_UX_PROJECT = 'P-DOCS-UX'
+
+
+def _docs_ux_ensure_project(conn):
+    row = conn.execute(
+        "SELECT project_id FROM projects WHERE project_id=?",
+        (_DOCS_UX_PROJECT,),
+    ).fetchone()
+    if row:
+        return
+    now = _time.time()
+    conn.execute(
+        "INSERT INTO projects (project_id, name, description, methodology, status, owner, created_at, updated_at) "
+        "VALUES (?,?,?,?,?,?,?,?)",
+        (_DOCS_UX_PROJECT, 'Docs & Manual UX', 'Doc/manual UX feedback collected from the interactive manual.',
+         'mixed', 'active', 'seven', now, now),
+    )
+
+
+@docs_bp.route('/api/docs/feedback', methods=['POST'])
+def api_docs_feedback():
+    """Record doc/manual UX feedback as a project step.
+
+    Body: {topic: str, note: str, doc?: str, severity?: 'low'|'med'|'high'}
+    """
+    data = request.get_json(silent=True) or {}
+    topic = (data.get('topic') or '').strip()[:120]
+    note  = (data.get('note')  or '').strip()
+    doc   = (data.get('doc')   or '').strip()[:200]
+    severity = (data.get('severity') or 'med').strip().lower()
+    if severity not in {'low', 'med', 'high'}:
+        severity = 'med'
+    if not topic or not note:
+        return jsonify({'ok': False, 'error': 'topic and note are required'}), 400
+
+    note = note[:4000]
+    title = f'Docs UX · {topic}' if not doc else f'Docs UX · {topic} ({doc})'
+    now = _time.time()
+
+    conn = get_connection()
+    try:
+        _docs_ux_ensure_project(conn)
+        # Idempotent merge: same (topic, doc) → append.
+        existing = conn.execute(
+            "SELECT step_id, description FROM project_steps "
+            "WHERE project_id=? AND title=?",
+            (_DOCS_UX_PROJECT, title),
+        ).fetchone()
+        if existing:
+            step_id = existing['step_id'] if hasattr(existing, 'keys') else existing[0]
+            prev    = (existing['description'] if hasattr(existing, 'keys') else existing[1]) or ''
+            stamp   = _time.strftime('%Y-%m-%d %H:%M:%S')
+            new_desc = f"{prev}\n\n--- {stamp} [{severity}] ---\n{note}".strip()
+            conn.execute(
+                "UPDATE project_steps SET description=?, updated_at=? WHERE step_id=?",
+                (new_desc[:8000], now, step_id),
+            )
+            conn.commit()
+            return jsonify({'ok': True, 'step_id': step_id, 'merged': True,
+                            'project_id': _DOCS_UX_PROJECT})
+        step_id = f'STEP-DOCS-UX-{_uuid.uuid4().hex[:10].upper()}'
+        desc = f"[{severity}] {note}"
+        if doc:
+            desc = f"Doc: {doc}\n\n{desc}"
+        conn.execute(
+            "INSERT INTO project_steps (step_id, project_id, title, description, status, owner, order_idx, created_at, updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            (step_id, _DOCS_UX_PROJECT, title, desc[:8000], 'todo', 'seven', 0, now, now),
+        )
+        conn.commit()
+        return jsonify({'ok': True, 'step_id': step_id, 'merged': False,
+                        'project_id': _DOCS_UX_PROJECT})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    finally:
+        conn.close()
+
+
+@docs_bp.route('/api/docs/feedback', methods=['GET'])
+def api_docs_feedback_list():
+    """List doc UX feedback steps (todo first, newest first)."""
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT step_id, title, description, status, updated_at FROM project_steps "
+            "WHERE project_id=? ORDER BY (status='done'), updated_at DESC LIMIT 100",
+            (_DOCS_UX_PROJECT,),
+        ).fetchall()
+        out = []
+        for r in rows:
+            out.append({
+                'step_id': r['step_id'] if hasattr(r, 'keys') else r[0],
+                'title':   r['title']   if hasattr(r, 'keys') else r[1],
+                'description': (r['description'] if hasattr(r, 'keys') else r[2]) or '',
+                'status':  r['status']  if hasattr(r, 'keys') else r[3],
+                'updated_at': r['updated_at'] if hasattr(r, 'keys') else r[4],
+            })
+        return jsonify({'ok': True, 'project_id': _DOCS_UX_PROJECT, 'items': out})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    finally:
+        conn.close()
