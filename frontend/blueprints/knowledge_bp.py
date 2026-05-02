@@ -191,6 +191,7 @@ def api_projects_list():
         'ok': True,
         'items': _kc_projects.list_projects(
             status=request.args.get('status') or None,
+            tag=request.args.get('tag') or None,
             limit=limit,
         ),
     })
@@ -209,6 +210,7 @@ def api_projects_create():
             description=str(body.get('description') or ''),
             methodology=methodology,
             owner=str(body.get('owner') or 'seven'),
+            tags=body.get('tags'),
         )
     except ValueError as ve:
         return jsonify({'ok': False, 'error': str(ve)}), 400
