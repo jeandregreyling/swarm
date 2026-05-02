@@ -99,6 +99,7 @@ swarm_docs/SYSTEM_LANDSCAPE.json
 # bloats history. The whole artifacts/ tree is rebuildable; check in
 # specific assets only with `git add -f <path>` and a clear reason.
 artifacts/
+artifacts/media_center/
 # Sandpit per-agent session logs (rolling, regenerated each run).
 sandpits/*/session_*.log
 

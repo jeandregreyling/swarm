@@ -65,7 +65,8 @@ def isolated_db(tmp_path, monkeypatch):
             status TEXT NOT NULL DEFAULT 'active',
             owner TEXT NOT NULL DEFAULT 'seven',
             created_at REAL NOT NULL,
-            updated_at REAL
+            updated_at REAL,
+            tags TEXT DEFAULT ''
         );
 
         CREATE TABLE email_delivery_log (

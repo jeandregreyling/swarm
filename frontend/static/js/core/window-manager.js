@@ -28,6 +28,10 @@ const FRIDAYS_WINDOW_ICON_SVGS = {
   media: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="8" height="8" rx="1.4" stroke="currentColor" stroke-width="1.3"/><path d="M6 6.5v3l2.3-1.5L6 6.5Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M12 5v6M14 6v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
   'records-files': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 8h6M6 10h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
   tasker: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  'wishlist-cyber': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2l5 2v4c0 3-2 5-5 6-3-1-5-3-5-6V4l5-2zM6 8l1.5 1.5L11 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  'wishlist-financial': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 12.5h11M4 11V7M7 11V4M10 11V8M13 11V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  'wishlist-trading': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 11l3.5-4 3 2 4.5-5M11 4h2.5v2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  'wishlist-business': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 6h11v7h-11zM5 6V4h6v2M5 9h6M5 11h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 
 function fridaysCleanWindowTitle(title) {
