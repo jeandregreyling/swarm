@@ -33,6 +33,14 @@ CREATE TABLE IF NOT EXISTS settings_email_accounts (
     created_at REAL NOT NULL,
     updated_at REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS settings_email_account_prefs (
+    email TEXT PRIMARY KEY,
+    smtp_from TEXT,
+    default_folder TEXT,
+    signature TEXT,
+    auto_file_rules TEXT,
+    updated_at REAL NOT NULL
+);
 """
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -161,3 +169,97 @@ def api_email_accounts_note(email: str):
     finally:
         conn.close()
     return jsonify({"ok": True})
+
+
+# ── MD-FEATURE-95057B9D58B8 — per-account preferences ──────────────────────
+# SMTP-from override, default folder, signature, and auto-file rules. Each
+# account gets its own row in settings_email_account_prefs; the Email tile
+# reads these to drive compose defaults and inbox routing without forcing a
+# host edit. Auto-file rules are stored as a JSON array of
+# {match: 'subject:.*invoice', folder: 'inbox/finance'} objects.
+
+import json as _json
+
+_VALID_FOLDERS = {"inbox", "sent", "drafts", "trash"}
+
+
+def _load_prefs(email: str) -> dict:
+    conn = _db()
+    try:
+        row = conn.execute(
+            "SELECT email, smtp_from, default_folder, signature, auto_file_rules, "
+            "updated_at FROM settings_email_account_prefs WHERE email=?",
+            (email,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return {
+            "email": email, "smtp_from": "", "default_folder": "inbox",
+            "signature": "", "auto_file_rules": [], "updated_at": None,
+        }
+    try:
+        rules = _json.loads(row["auto_file_rules"]) if row["auto_file_rules"] else []
+        if not isinstance(rules, list):
+            rules = []
+    except (TypeError, ValueError):
+        rules = []
+    return {
+        "email": row["email"],
+        "smtp_from": row["smtp_from"] or "",
+        "default_folder": row["default_folder"] or "inbox",
+        "signature": row["signature"] or "",
+        "auto_file_rules": rules,
+        "updated_at": row["updated_at"],
+    }
+
+
+@email_accounts_bp.route("/api/email/accounts/<path:email>/prefs")
+def api_email_account_prefs_get(email: str):
+    email = (email or "").strip().lower()
+    if not _EMAIL_RE.match(email):
+        return jsonify({"ok": False, "error": "invalid email"}), 400
+    return jsonify({"ok": True, "prefs": _load_prefs(email)})
+
+
+@email_accounts_bp.route("/api/email/accounts/<path:email>/prefs", methods=["POST"])
+def api_email_account_prefs_set(email: str):
+    email = (email or "").strip().lower()
+    if not _EMAIL_RE.match(email):
+        return jsonify({"ok": False, "error": "invalid email"}), 400
+    data = request.get_json(silent=True) or {}
+    smtp_from = str(data.get("smtp_from") or "").strip()[:256]
+    if smtp_from and not _EMAIL_RE.match(smtp_from):
+        return jsonify({"ok": False, "error": "invalid smtp_from"}), 400
+    default_folder = str(data.get("default_folder") or "inbox").strip().lower()
+    if default_folder not in _VALID_FOLDERS:
+        default_folder = "inbox"
+    signature = str(data.get("signature") or "")[:2000]
+    rules_raw = data.get("auto_file_rules") or []
+    if not isinstance(rules_raw, list):
+        rules_raw = []
+    cleaned_rules = []
+    for r in rules_raw[:32]:
+        if not isinstance(r, dict):
+            continue
+        m = str(r.get("match") or "").strip()[:256]
+        f = str(r.get("folder") or "inbox").strip().lower()
+        if not m:
+            continue
+        if f not in _VALID_FOLDERS:
+            f = "inbox"
+        cleaned_rules.append({"match": m, "folder": f})
+    rules_blob = _json.dumps(cleaned_rules)
+    now = time.time()
+    conn = _db()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO settings_email_account_prefs "
+            "(email, smtp_from, default_folder, signature, auto_file_rules, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (email, smtp_from, default_folder, signature, rules_blob, now),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "prefs": _load_prefs(email)})
