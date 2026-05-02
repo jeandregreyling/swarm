@@ -28,7 +28,11 @@ def test_housekeeping_swarm_root_derived():
 def test_interests_api_returns_source_and_source_agent():
     """The /api/interests saved_interests rows now include provenance fields."""
     from frontend.terminal import create_app
-    from utils.db._connection import get_connection
+    # Bind the connection through the same module the blueprint uses, so the
+    # INSERT we do here lands in the same DB that /api/interests will read,
+    # even when other tests have monkey-patched the lower-level
+    # ``utils.db._connection.get_connection`` binding.
+    from database import get_connection
 
     # Insert one agent-sourced row so we can verify shape
     conn = get_connection()
