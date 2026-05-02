@@ -121,6 +121,49 @@ MANUAL: dict[str, dict[str, str]] = {
         'title': 'Tasker',
         'body': 'Scheduled jobs and recurring swarm tasks. Pause, resume, or trigger on demand.',
     },
+    'app-center': {
+        'title': 'App Center',
+        'body': (
+            'Build mobile, tablet, desktop, web, and game projects from one '
+            'place. Each project records its kind (mobile/tablet/desktop/web/'
+            'game), framework (flutter, react-native, tauri, electron, godot, '
+            'unity, etc.), and one or more build targets (ios, android, '
+            'windows, macos, linux, web, wasm, itch, steam).\n\n'
+            'How to use:\n'
+            '1) Click "New project", choose kind + framework, attach the '
+            'targets you want to ship to.\n'
+            '2) Hit "Build" on a target — the swarm queues a build via the '
+            'shared media-jobs pipeline (ghost_coder picks it up by default).\n'
+            '3) Per-target status updates as builds succeed or fail; the last '
+            'asset id is shown next to the target.\n\n'
+            'Archived projects do not accept new builds — set the project '
+            'back to active first if you need to ship.'
+        ),
+    },
+    'synth-board': {
+        'title': 'Synth Board',
+        'body': (
+            'Modular sound design surface. Drag oscillators, samplers, '
+            'filters, envelopes, LFOs, and effects (delay, reverb, eq, '
+            'compressor) onto the board and wire them together. Up to 256 '
+            'nodes and 1024 edges per board.\n\n'
+            'Each save creates a revision so you can roll back without '
+            'losing experimental routings. Boards plug into the same render '
+            'pipeline as Media Center, so anything you patch can be rendered '
+            'to a job and recorded as a Studio asset.'
+        ),
+    },
+    'video-editor': {
+        'title': 'Video Editor',
+        'body': (
+            'Multi-track timeline for video, audio, captions, effects, and '
+            'overlays. Build the cut, then click "Render" to queue an export '
+            'through the swarm media pipeline.\n\n'
+            'If a render fails to enqueue you will see a 502 with the failure '
+            'persisted as a render-job row — the job stays visible in the '
+            'render history so you can diagnose, rather than disappearing.'
+        ),
+    },
     'orientation': {
         'title': 'First-run orientation',
         'body': (
