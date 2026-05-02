@@ -217,6 +217,105 @@ __all__ = [
     "UX_COPY", "copy_for",
     "CONFIDENCE_BANDS", "confidence_band", "should_notify",
     "seed_baseline_for",
-    "SUMMARY_TEMPLATE", "render_summary",
+    "SUMMARY_TEMPLATE", "render_summary", "render_summary_html",
     "manual_run_payload",
 ]
+
+
+# ── STEP-SAP-NEWSLETTER-RICH-MEDIA-20260430 — rich HTML digest ───────────────
+# The plain-text render_summary stays the source of truth for email/Discord
+# fallbacks. This HTML variant adds source thumbnails, host badges, and a
+# card layout so the in-app SAP/watched-topic newsletter is readable at a
+# glance instead of a bare list of links.
+
+def _favicon_url(evidence_url: str) -> str:
+    if not evidence_url:
+        return ""
+    try:
+        from urllib.parse import urlparse
+        host = urlparse(evidence_url).netloc
+        if not host:
+            return ""
+        return f"https://www.google.com/s2/favicons?domain={host}&sz=64"
+    except Exception:
+        return ""
+
+
+def render_summary_html(
+    topic_key: str,
+    *,
+    since_human: str,
+    now_human: str,
+    hits: List[Dict[str, Any]],
+    new_count: int = 0,
+    updated_count: int = 0,
+    header_image: str = "",
+) -> str:
+    """Render a card-layout HTML digest for a watched topic.
+
+    ``header_image`` is an optional Media Center asset URL — when supplied
+    it becomes the digest banner. Each hit card shows its thumbnail (from
+    ``hit['thumbnail']`` / ``hit['image_url']`` / favicon fallback), title,
+    host, score badge, and an open-in-new-tab link.
+    """
+    import html as _html
+    if not hits:
+        return (
+            f"<div class='wt-digest wt-digest-empty'>"
+            f"<h3>{_html.escape(topic_key)}</h3>"
+            f"<p style='color:#888;'>No new evidence in window "
+            f"{_html.escape(since_human)} → {_html.escape(now_human)}.</p>"
+            f"</div>"
+        )
+    top_score = max(float(h.get("score") or 0.0) for h in hits)
+    band = confidence_band(top_score)
+    band_color = {"high": "#4caf50", "medium": "#f59e0b", "low": "#888"}.get(band, "#888")
+    cards: List[str] = []
+    for h in hits[:8]:
+        title = _html.escape((h.get("title") or h.get("evidence_url") or "(untitled)").strip())
+        url = _html.escape((h.get("evidence_url") or "").strip())
+        score = float(h.get("score") or 0.0)
+        thumb = (h.get("thumbnail") or h.get("image_url") or "").strip()
+        if not thumb:
+            thumb = _favicon_url(url)
+        try:
+            from urllib.parse import urlparse
+            host = urlparse(url).netloc if url else ""
+        except Exception:
+            host = ""
+        thumb_html = (
+            f"<img src='{_html.escape(thumb)}' alt='' loading='lazy' "
+            f"style='width:56px;height:56px;border-radius:6px;object-fit:cover;flex:0 0 56px;background:#222;'>"
+            if thumb else
+            "<div style='width:56px;height:56px;border-radius:6px;background:#222;flex:0 0 56px;'></div>"
+        )
+        cards.append(
+            f"<a href='{url}' target='_blank' rel='noopener' "
+            f"style='display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid #333;border-radius:8px;text-decoration:none;color:inherit;background:#15171b;'>"
+            f"{thumb_html}"
+            f"<div style='flex:1;min-width:0;'>"
+            f"<div style='font-weight:600;font-size:13px;color:#dde;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{title}</div>"
+            f"<div style='font-size:10px;color:#888;margin-top:2px;'>{_html.escape(host)} · score {score:.2f}</div>"
+            f"</div>"
+            f"</a>"
+        )
+    header = (
+        f"<img src='{_html.escape(header_image)}' alt='' "
+        f"style='width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-bottom:10px;'>"
+        if header_image else ""
+    )
+    return (
+        f"<div class='wt-digest' style='font-family:system-ui,sans-serif;color:#dde;max-width:680px;'>"
+        f"{header}"
+        f"<h3 style='margin:0 0 4px;'>{_html.escape(topic_key)}</h3>"
+        f"<div style='font-size:11px;color:#888;margin-bottom:10px;'>"
+        f"{_html.escape(since_human)} → {_html.escape(now_human)} · "
+        f"<span style='color:{band_color};font-weight:600;'>{band.upper()}</span> · "
+        f"hits {len(hits)} · new {new_count} · updated {updated_count}"
+        f"</div>"
+        f"<div style='display:flex;flex-direction:column;gap:6px;'>"
+        + "".join(cards)
+        + f"</div>"
+        f"<div style='margin-top:10px;font-size:10px;color:#666;'>— Seven</div>"
+        f"</div>"
+    )
