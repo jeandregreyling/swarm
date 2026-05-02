@@ -140,6 +140,9 @@ class TestOrchestratorDedup:
         (sandpit / 'shared').mkdir()
         from fridays import orchestrator as orch
         monkeypatch.setattr(orch, 'SANDPIT_ROOT', sandpit)
+        # STEP-STOP-MARKDOWN-TRACKER-RECREATION-20260430 — the legacy MD path is
+        # now opt-in. These dedup guards still run when an operator turns it on.
+        monkeypatch.setattr(orch, 'LEGACY_MD_TRACKERS', True)
 
         proposals = [_stale_proposal('STUDIO-PROPOSALS-0001')]
         orch._check_stale_proposals(proposals)
@@ -154,6 +157,7 @@ class TestOrchestratorDedup:
         (sandpit / 'shared').mkdir()
         from fridays import orchestrator as orch
         monkeypatch.setattr(orch, 'SANDPIT_ROOT', sandpit)
+        monkeypatch.setattr(orch, 'LEGACY_MD_TRACKERS', True)
 
         orch._check_stale_proposals([_stale_proposal('A-1')])
         orch._check_stale_proposals([_stale_proposal('A-1'), _stale_proposal('B-2')])

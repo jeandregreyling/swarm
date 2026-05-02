@@ -50,6 +50,13 @@ THINK_CYCLE_LIMIT = 3         # max new proposals per agent per heartbeat
 SANDPIT_ROOT      = SWARM_ROOT / 'sandpits'
 ENV_AGENTS_FILE   = SWARM_ROOT / '.env.agents'
 
+# STEP-STOP-MARKDOWN-TRACKER-RECREATION-20260430 — by default the heartbeat no
+# longer recreates the legacy loose Markdown trackers (CURRENT_FOCUS.md,
+# STALE_PROPOSALS.md, per-agent DISPATCHED_WORK.md). Studio + KC carry the
+# canonical record now. Set SWARM_LEGACY_MD_TRACKERS=1 to re-enable for
+# operators still grepping the old files locally.
+LEGACY_MD_TRACKERS = os.environ.get('SWARM_LEGACY_MD_TRACKERS', '0').strip() in ('1', 'true', 'yes', 'on')
+
 
 def _env_int(name, default, min_value=1):
     raw = os.environ.get(name, '').strip()
@@ -378,7 +385,15 @@ def _naive_route(proposal):
 
 
 def _write_dispatch(agent_name, proposal):
-    """Write a dispatch notice to the agent's sandpit for pickup on next think cycle."""
+    """Write a dispatch notice to the agent's sandpit for pickup on next think cycle.
+
+    Honours SWARM_LEGACY_MD_TRACKERS — when disabled (default) the loose
+    DISPATCHED_WORK.md is no longer recreated. Studio records (project_steps +
+    proposals tables) carry the same dispatch information.
+    """
+    if not LEGACY_MD_TRACKERS:
+        return
+
     sandpit = SANDPIT_ROOT / agent_name
     sandpit.mkdir(parents=True, exist_ok=True)
     
@@ -460,7 +475,24 @@ def _think_cycle(agent_name):
 
 
 def _update_focus_file(stats):
-    """Update shared/CURRENT_FOCUS.md with what the swarm is actively working on."""
+    """Update shared/CURRENT_FOCUS.md with what the swarm is actively working on.
+
+    Honours SWARM_LEGACY_MD_TRACKERS — when disabled (default) Studio's live
+    project view replaces this file. Heartbeat stats are still emitted via the
+    logger so the spine can ingest them.
+    """
+    if not LEGACY_MD_TRACKERS:
+        try:
+            logger.info(
+                '[heartbeat-stats] dispatched=%s self_proposed=%s escalated=%s git_auto_executed=%s git_auto_failed=%s',
+                stats.get('dispatched', 0), stats.get('self_proposed', 0),
+                stats.get('escalated', 0), stats.get('git_auto_executed', 0),
+                stats.get('git_auto_failed', 0),
+            )
+        except Exception:  # pragma: no cover — logger failures are non-fatal
+            pass
+        return
+
     focus_file = SANDPIT_ROOT / 'shared' / 'CURRENT_FOCUS.md'
     (SANDPIT_ROOT / 'shared').mkdir(parents=True, exist_ok=True)
     
@@ -499,6 +531,21 @@ def _check_stale_proposals(proposals):
     """
     threshold = datetime.now(timezone.utc) - timedelta(minutes=STALE_MINUTES)
     escalated = []
+
+    if not LEGACY_MD_TRACKERS:
+        # New path: just collect escalation IDs; Studio + ops/reconcile_stale_proposals
+        # consume the canonical record. The legacy STALE_PROPOSALS.md is no longer
+        # recreated.
+        for p in proposals:
+            try:
+                created = datetime.fromisoformat(p.get('created_at', '').replace(' ', 'T'))
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=timezone.utc)
+                if created < threshold:
+                    escalated.append(p['proposal_id'])
+            except Exception:
+                pass
+        return escalated
 
     stale_file = SANDPIT_ROOT / 'shared' / 'STALE_PROPOSALS.md'
     existing = stale_file.read_text() if stale_file.exists() else '# Stale Proposals\n'
