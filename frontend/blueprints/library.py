@@ -594,6 +594,138 @@ def api_library_topics_delete(topic_id):
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
 
+# ── STEP-KC-TOPICS-HIVE-NAVIGATION-20260430 ─────────────────────────────────
+# Unified hive-graph endpoint. Returns topics + recent library sources as
+# nodes and links them through their category. The Hive Nodes popout, KC
+# Library top-bar dropdowns, and Mind Map view can all pull from this one
+# endpoint instead of stitching graphs ad-hoc per surface.
+#
+# `/api/hive/resolve?kind=topic&id=42` returns the canonical hive-node anchor
+# (e.g. /hive-nodes#topic-42) the UI should navigate to so that document /
+# source / topic clicks all land on the same node spine.
+
+@library_bp.route('/api/hive/graph', methods=['GET'])
+def api_hive_graph():
+    """Return {nodes: [...], edges: [...]} merging topics and recent sources."""
+    try:
+        _init()
+        recent = max(1, min(int(request.args.get('recent', 30)), 200))
+        from lib.knowledge.store import list_sources
+        sources = list_sources(status='active', order='updated', limit=recent)
+        from database import get_connection
+        conn = get_connection()
+        try:
+            try:
+                topic_rows = conn.execute(
+                    "SELECT id, topic, category, score, active FROM user_interests "
+                    "WHERE owner=? ORDER BY active DESC, score DESC LIMIT 200",
+                    (_topics_owner(),),
+                ).fetchall()
+            except Exception:
+                topic_rows = []
+        finally:
+            conn.close()
+        nodes = []
+        edges = []
+        for t in topic_rows or []:
+            tid = t['id'] if hasattr(t, 'keys') else t[0]
+            topic = t['topic'] if hasattr(t, 'keys') else t[1]
+            category = (t['category'] if hasattr(t, 'keys') else t[2]) or 'general'
+            score = (t['score'] if hasattr(t, 'keys') else t[3]) or 0
+            active = (t['active'] if hasattr(t, 'keys') else t[4])
+            nodes.append({
+                'id': f'topic-{tid}',
+                'kind': 'topic',
+                'label': topic,
+                'category': category,
+                'score': float(score or 0),
+                'active': bool(active),
+                'href': f'/hive-nodes#topic-{tid}',
+            })
+        for s in sources or []:
+            sid = s.get('source_id') or s.get('id')
+            cat = s.get('category') or 'general'
+            label = (s.get('title') or s.get('source_ref') or s.get('url') or f'source-{sid}')[:80]
+            nodes.append({
+                'id': f'source-{sid}',
+                'kind': 'source',
+                'label': label,
+                'category': cat,
+                'href': f'/hive-nodes#source-{sid}',
+            })
+            # Edge each source -> any topic with the same category.
+            for t in topic_rows or []:
+                tcat = (t['category'] if hasattr(t, 'keys') else t[2]) or 'general'
+                if tcat and tcat == cat:
+                    tid = t['id'] if hasattr(t, 'keys') else t[0]
+                    edges.append({'from': f'source-{sid}', 'to': f'topic-{tid}', 'kind': 'category'})
+        return jsonify({'ok': True, 'nodes': nodes, 'edges': edges,
+                        'counts': {'topics': sum(1 for n in nodes if n['kind'] == 'topic'),
+                                   'sources': sum(1 for n in nodes if n['kind'] == 'source'),
+                                   'edges': len(edges)}})
+    except Exception as exc:
+        logger.exception('[Library] hive graph')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/hive/resolve', methods=['GET'])
+def api_hive_resolve():
+    """Map (kind, id) → canonical hive node href + label.
+
+    kind ∈ {topic, source, document}. document is treated as an alias for
+    source for now since library_sources already covers ingested documents.
+    """
+    kind = (request.args.get('kind') or '').strip().lower()
+    raw_id = (request.args.get('id') or '').strip()
+    if kind == 'document':
+        kind = 'source'
+    if kind not in {'topic', 'source'}:
+        return jsonify({'ok': False, 'error': 'invalid kind'}), 400
+    try:
+        nid = int(raw_id)
+    except ValueError:
+        return jsonify({'ok': False, 'error': 'invalid id'}), 400
+    try:
+        from database import get_connection
+        conn = get_connection()
+        try:
+            if kind == 'topic':
+                row = conn.execute(
+                    "SELECT id, topic, category FROM user_interests WHERE id=?",
+                    (nid,),
+                ).fetchone()
+                if not row:
+                    return jsonify({'ok': False, 'error': 'topic not found'}), 404
+                return jsonify({
+                    'ok': True,
+                    'kind': 'topic',
+                    'id': nid,
+                    'label': row['topic'] if hasattr(row, 'keys') else row[1],
+                    'category': (row['category'] if hasattr(row, 'keys') else row[2]) or 'general',
+                    'href': f'/hive-nodes#topic-{nid}',
+                })
+            row = conn.execute(
+                "SELECT source_id, title, source_ref, category FROM knowledge_sources WHERE source_id=?",
+                (nid,),
+            ).fetchone()
+            if not row:
+                return jsonify({'ok': False, 'error': 'source not found'}), 404
+            return jsonify({
+                'ok': True,
+                'kind': 'source',
+                'id': nid,
+                'label': (row['title'] if hasattr(row, 'keys') else row[1]) or
+                         (row['source_ref'] if hasattr(row, 'keys') else row[2]) or f'source-{nid}',
+                'category': (row['category'] if hasattr(row, 'keys') else row[3]) or 'general',
+                'href': f'/hive-nodes#source-{nid}',
+            })
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.exception('[Library] hive resolve')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
 # ── STEP-KC-INTERESTS-GENERAL-KNOWLEDGE-SUGGESTIONS-20260430 ────────────────
 # Suggest optional general-knowledge additions based on the existing topic set.
 # Curated bidirectional adjacency map — kept deliberately small so suggestions
