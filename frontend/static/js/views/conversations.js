@@ -1,5 +1,18 @@
 // Conversations — load chat data, conversation detail, rename/delete
 // Extracted from terminal_base.html
+//
+// Hard-refresh behaviour summary (MD-FEATURE-32DFD66D8BA4 / -9792296AF505 /
+// -A138E31DED58):
+//   * On hard refresh, friday-auth.js fires `_authCheck()` from
+//     DOMContentLoaded → GET /api/auth/me. If the session cookie is valid the
+//     login overlay is suppressed (correct & intentional — see the
+//     "Hard refresh: no login prompt" investigation note in
+//     docs/FEATURES_TODO.md).
+//   * The chat tile does NOT auto-restore on hard refresh (no window
+//     persistence layer yet). When the user opens the Chat tile,
+//     loadChatData() runs below and ALWAYS defaults to a fresh thread unless
+//     the caller explicitly handed us `__fridaysChatOpenWithConvId`.
+//   * Locked by tests/test_hard_refresh_behavior.py.
 
 function loadChatData(win) {
   const messages = win.el.querySelector('#chat-messages');
