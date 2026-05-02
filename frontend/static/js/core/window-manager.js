@@ -122,8 +122,24 @@ class WindowManager {
     contentDiv.className = 'window-content';
     contentDiv.appendChild(content);
 
+    // MD-FEATURE-CCD996631130 — Spotlight launch shortcut on every window
+    // bottom-bar. A small floating chip sits at the bottom-right inside the
+    // window frame so the operator can pop Spotlight without leaving the tile.
+    const spotlightBar = document.createElement('button');
+    spotlightBar.className = 'window-spotlight-launch';
+    spotlightBar.type = 'button';
+    spotlightBar.title = 'Open Spotlight (Ctrl+Space)';
+    spotlightBar.setAttribute('aria-label', 'Open Spotlight');
+    spotlightBar.innerHTML = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.2" stroke="currentColor" stroke-width="1.4"/><path d="M10.4 10.4l3.1 3.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+    spotlightBar.addEventListener('click', (e) => {
+      e.stopPropagation();
+      try { if (typeof window.openSpotlight === 'function') window.openSpotlight(); }
+      catch (_err) { /* spotlight not yet ready */ }
+    });
+
     win.appendChild(header);
     win.appendChild(contentDiv);
+    win.appendChild(spotlightBar);
     handles.forEach(h => win.appendChild(h));
 
     // Events
