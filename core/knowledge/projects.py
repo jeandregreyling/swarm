@@ -70,6 +70,7 @@ __all__ = [
     'link_proposal', 'list_proposals_for_project',
     'add_step_dependency', 'remove_step_dependency',
     'list_step_dependencies', 'list_step_blockers',
+    'bulk_add_steps',
     'METHODOLOGIES', 'STEP_STATUSES', 'CASE_STATUSES', 'PROJECT_STATUSES',
     'BLACKBOARD_KINDS', 'BLACKBOARD_STATUSES',
 ]
@@ -1268,3 +1269,122 @@ def list_step_blockers(step_id: str) -> List[Dict[str, Any]]:
             conn.close()
     except Exception:
         return []
+
+
+def bulk_add_steps(
+    project_id: str,
+    items: List[Dict[str, Any]],
+    *,
+    atomic: bool = True,
+) -> Dict[str, Any]:
+    """Insert many steps under one project in a single transaction.
+
+    S-EECAFCA218 — rollback safety for bulk project import.
+
+    Behaviour:
+      * Validates the project exists; otherwise ``{"ok": False, "error": ...}``.
+      * Iterates *items* in order. Each item is ``{"title", "description", "owner"}``.
+      * Skips duplicates by case-insensitive title within the project.
+      * If ``atomic=True`` (default) and any insert raises, the whole
+        transaction is rolled back and **no** steps are persisted; the
+        return payload reports ``rolled_back=True`` and a ``failed`` entry
+        identifying the offending item.
+      * If ``atomic=False``, behaves like the legacy per-item commit.
+
+    Returns ``{"ok": bool, "created": [...], "skipped": [...],
+              "failed": Optional[dict], "rolled_back": bool}``.
+    """
+    if not project_id:
+        return {"ok": False, "error": "project_id required",
+                "created": [], "skipped": [], "failed": None,
+                "rolled_back": False}
+    if not isinstance(items, list):
+        return {"ok": False, "error": "items must be a list",
+                "created": [], "skipped": [], "failed": None,
+                "rolled_back": False}
+    _ensure_schema()
+    if not _project_exists(project_id):
+        return {"ok": False, "error": f"unknown project_id: {project_id}",
+                "created": [], "skipped": [], "failed": None,
+                "rolled_back": False}
+
+    from utils.db._connection import get_connection
+    conn = get_connection()
+    created: List[Dict[str, Any]] = []
+    skipped: List[Dict[str, Any]] = []
+    failed: Optional[Dict[str, Any]] = None
+    try:
+        existing_titles = {
+            (r['title'] or '').strip().lower()
+            for r in conn.execute(
+                "SELECT title FROM project_steps WHERE project_id=?",
+                (project_id,),
+            ).fetchall()
+        }
+        next_idx_row = conn.execute(
+            "SELECT COALESCE(MAX(order_idx), -1) AS m FROM project_steps WHERE project_id=?",
+            (project_id,),
+        ).fetchone()
+        next_idx = int(next_idx_row['m']) + 1 if next_idx_row else 0
+
+        if atomic:
+            conn.execute("SAVEPOINT bulk_add_steps")
+
+        try:
+            for i, item in enumerate(items):
+                if not isinstance(item, dict):
+                    skipped.append({"index": i, "reason": "not an object"})
+                    continue
+                title = str(item.get('title') or '').strip()
+                if not title:
+                    skipped.append({"index": i, "reason": "title required"})
+                    continue
+                if title.lower() in existing_titles:
+                    skipped.append({"index": i, "title": title,
+                                    "reason": "duplicate title"})
+                    continue
+                step_id = 'S-' + uuid.uuid4().hex[:10].upper()
+                now = time.time()
+                conn.execute(
+                    "INSERT INTO project_steps (step_id, project_id, title, description, status, owner, order_idx, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, 'todo', ?, ?, ?, ?)",
+                    (step_id, project_id, title[:200],
+                     str(item.get('description') or '')[:4000],
+                     str(item.get('owner') or DEFAULT_OWNER)[:64],
+                     int(next_idx), now, now),
+                )
+                created.append({"index": i, "step_id": step_id, "title": title})
+                existing_titles.add(title.lower())
+                next_idx += 1
+        except Exception as e:
+            failed = {"index": len(created) + len(skipped),
+                      "reason": str(e) or e.__class__.__name__}
+            if atomic:
+                conn.execute("ROLLBACK TO SAVEPOINT bulk_add_steps")
+                conn.execute("RELEASE SAVEPOINT bulk_add_steps")
+                conn.commit()
+                return {"ok": False, "created": [], "skipped": skipped,
+                        "failed": failed, "rolled_back": True}
+            # non-atomic: just stop
+            conn.commit()
+            return {"ok": False, "created": created, "skipped": skipped,
+                    "failed": failed, "rolled_back": False}
+
+        if atomic:
+            conn.execute("RELEASE SAVEPOINT bulk_add_steps")
+        conn.commit()
+    finally:
+        conn.close()
+
+    # Mirror records outside the lock (best effort; never block success).
+    for c in created:
+        try:
+            from core.records import mirror as _records_mirror
+            _records_mirror('step', c['step_id'], actor='bulk_add_steps')
+        except Exception:
+            pass
+        _emit_spine(f"Step added (bulk): {c['title']}",
+                    {'project_id': project_id, 'step_id': c['step_id']})
+
+    return {"ok": True, "created": created, "skipped": skipped,
+            "failed": None, "rolled_back": False}
