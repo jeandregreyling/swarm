@@ -577,6 +577,10 @@ def _load_env_key(name):
     return ''
 
 HF_API_TOKEN           = _load_env_key('HF_API_TOKEN')
+# OpenAI key: kept here so the top-level `config` shim AND any test that
+# puts `utils/` directly on sys.path (loading utils/config.py as `config`)
+# both expose `OPENAI_API_KEY` consistently.
+OPENAI_API_KEY         = _load_env_key('OPENAI_API_KEY')
 XAI_API_KEY            = _load_env_key('XAI_API_KEY')
 XAI_MODEL              = 'grok-3'
 
@@ -1445,3 +1449,13 @@ try:
 except Exception:
     # Bible is best-effort; never block config import.
     pass
+
+# Public surface used by `from config import *` (via the top-level shim) and
+# by tests that load this file directly as the `config` module after putting
+# `utils/` on sys.path. Built dynamically from current module globals so we
+# never have to maintain it by hand.
+__all__ = [
+    _n for _n in list(globals())
+    if not _n.startswith('_') and _n not in ('annotations',)
+]
+
