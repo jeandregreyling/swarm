@@ -570,6 +570,8 @@ function _emailRefreshAccountsList() {
             </div>
             ${note}
           </div>
+          <button onclick="_emailOpenAccountPrefs('${safe}')" title="Per-account prefs (SMTP-from, signature, default folder, auto-file rules)"
+            style="background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);padding:4px 8px;font-size:10px;cursor:pointer;">⚙ Prefs</button>
           ${removeBtn}
         </div>`;
     }).join('');
@@ -634,3 +636,176 @@ window._emailAddAccountSubmit = _emailAddAccountSubmit;
 window._emailRemoveAccountReal = _emailRemoveAccountReal;
 window._emailRequestAccountAdd = _emailRequestAccountAdd;
 window._emailRequestAccountRemove = _emailRequestAccountRemove;
+
+// MD-FEATURE-95057B9D58B8 — per-account prefs modal (SMTP-from, default
+// folder, signature, auto-file rules). Backed by /api/email/accounts/<e>/prefs.
+function _emailOpenAccountPrefs(email) {
+  if (!email) return;
+  let modal = document.getElementById('email-account-prefs-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'email-account-prefs-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99991;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);';
+    modal.addEventListener('mousedown', (ev) => { if (ev.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px 12px;width:min(560px, 94vw);max-height:88vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;box-shadow:0 14px 44px rgba(0,0,0,0.45);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+        <div>
+          <div style="font-size:13px;font-weight:700;">Account preferences · ${_escHtml(email)}</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">SMTP-from override, default folder, signature, and auto-file rules. These drive compose defaults and inbox routing — IMAP/SMTP credentials still belong to sniffles.</div>
+        </div>
+        <button onclick="document.getElementById('email-account-prefs-modal')?.remove()"
+          style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;width:24px;height:24px;flex:0 0 auto;line-height:1;">✕</button>
+      </div>
+      <div id="email-account-prefs-body" style="font-size:11px;color:var(--text-dim);">Loading…</div>
+    </div>`;
+  modal.style.display = 'flex';
+  fetch(`/api/email/accounts/${encodeURIComponent(email)}/prefs`).then(r => r.json()).then(d => {
+    const p = (d && d.prefs) || {};
+    _emailRenderAccountPrefsForm(email, p);
+  }).catch(() => {
+    const body = document.getElementById('email-account-prefs-body');
+    if (body) body.innerHTML = '<div style="color:#ef4444;">Could not load prefs.</div>';
+  });
+}
+
+function _emailRenderAccountPrefsForm(email, prefs) {
+  const body = document.getElementById('email-account-prefs-body');
+  if (!body) return;
+  const folders = ['inbox', 'sent', 'drafts', 'trash'];
+  const rules = (prefs.auto_file_rules || []).map((r, i) => `
+    <div style="display:flex;gap:6px;align-items:center;" data-rule-row="${i}">
+      <input class="email-prefs-rule-match" data-i="${i}" type="text" placeholder="match (e.g. subject:.*invoice)" value="${_escAttr(r.match || '')}"
+        style="flex:1;padding:5px 8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;outline:none;">
+      <select class="email-prefs-rule-folder" data-i="${i}"
+        style="padding:5px 8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;outline:none;">
+        ${folders.map(f => `<option value="${f}" ${r.folder === f ? 'selected' : ''}>${f}</option>`).join('')}
+      </select>
+      <button onclick="_emailRemoveRuleRow(${i})" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--danger);padding:5px 8px;font-size:10px;cursor:pointer;">✕</button>
+    </div>`).join('');
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <label style="display:flex;flex-direction:column;gap:4px;">
+        <span style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">SMTP-from override</span>
+        <input id="email-prefs-smtp-from" type="email" placeholder="${_escAttr(email)}" value="${_escAttr(prefs.smtp_from || '')}"
+          style="padding:6px 9px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;outline:none;">
+        <span style="font-size:9px;color:var(--text-dim);">Leave blank to send From: the account address itself.</span>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">
+        <span style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Default folder</span>
+        <select id="email-prefs-default-folder"
+          style="padding:6px 9px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;outline:none;">
+          ${folders.map(f => `<option value="${f}" ${prefs.default_folder === f ? 'selected' : ''}>${f}</option>`).join('')}
+        </select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;">
+        <span style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Signature</span>
+        <textarea id="email-prefs-signature" rows="4"
+          style="padding:7px 9px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;outline:none;font-family:inherit;resize:vertical;"
+          placeholder="-- &#10;Seven · sevenpotato9@gmail.com">${_escHtml(prefs.signature || '')}</textarea>
+      </label>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <span style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Auto-file rules</span>
+        <div id="email-prefs-rules" style="display:flex;flex-direction:column;gap:5px;">
+          ${rules || '<div style="font-size:10px;color:var(--text-dim);opacity:0.7;">No rules. Add one below.</div>'}
+        </div>
+        <button onclick="_emailAddRuleRow()" style="align-self:flex-start;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 10px;font-size:10px;cursor:pointer;">+ Add rule</button>
+        <span style="font-size:9px;color:var(--text-dim);">Match strings are matched as regex against subject/from/body — see KC manual for full syntax.</span>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:6px;border-top:1px solid var(--border);padding-top:10px;">
+        <button onclick="document.getElementById('email-account-prefs-modal')?.remove()"
+          style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;">Cancel</button>
+        <button onclick="_emailSaveAccountPrefs('${_escAttr(email)}')"
+          style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">Save</button>
+      </div>
+    </div>`;
+  // stash current rules array on the modal for add/remove operations
+  document.getElementById('email-account-prefs-modal')._rules = (prefs.auto_file_rules || []).slice();
+}
+
+function _emailAddRuleRow() {
+  const modal = document.getElementById('email-account-prefs-modal');
+  if (!modal) return;
+  const rules = (modal._rules || []).slice();
+  rules.push({ match: '', folder: 'inbox' });
+  modal._rules = rules;
+  // Snapshot current input values then re-render
+  _emailSnapshotRules(modal);
+  _emailRenderRulesOnly(modal);
+}
+
+function _emailRemoveRuleRow(i) {
+  const modal = document.getElementById('email-account-prefs-modal');
+  if (!modal) return;
+  _emailSnapshotRules(modal);
+  const rules = (modal._rules || []).slice();
+  rules.splice(i, 1);
+  modal._rules = rules;
+  _emailRenderRulesOnly(modal);
+}
+
+function _emailSnapshotRules(modal) {
+  const matches = modal.querySelectorAll('.email-prefs-rule-match');
+  const folders = modal.querySelectorAll('.email-prefs-rule-folder');
+  const out = [];
+  matches.forEach((m, i) => {
+    out.push({ match: (m.value || '').trim(), folder: (folders[i] && folders[i].value) || 'inbox' });
+  });
+  modal._rules = out;
+}
+
+function _emailRenderRulesOnly(modal) {
+  const host = modal.querySelector('#email-prefs-rules');
+  if (!host) return;
+  const folders = ['inbox', 'sent', 'drafts', 'trash'];
+  const rules = modal._rules || [];
+  if (!rules.length) {
+    host.innerHTML = '<div style="font-size:10px;color:var(--text-dim);opacity:0.7;">No rules. Add one below.</div>';
+    return;
+  }
+  host.innerHTML = rules.map((r, i) => `
+    <div style="display:flex;gap:6px;align-items:center;" data-rule-row="${i}">
+      <input class="email-prefs-rule-match" data-i="${i}" type="text" placeholder="match (e.g. subject:.*invoice)" value="${_escAttr(r.match || '')}"
+        style="flex:1;padding:5px 8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;outline:none;">
+      <select class="email-prefs-rule-folder" data-i="${i}"
+        style="padding:5px 8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;outline:none;">
+        ${folders.map(f => `<option value="${f}" ${r.folder === f ? 'selected' : ''}>${f}</option>`).join('')}
+      </select>
+      <button onclick="_emailRemoveRuleRow(${i})" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--danger);padding:5px 8px;font-size:10px;cursor:pointer;">✕</button>
+    </div>`).join('');
+}
+
+function _emailSaveAccountPrefs(email) {
+  const modal = document.getElementById('email-account-prefs-modal');
+  if (!modal) return;
+  _emailSnapshotRules(modal);
+  const smtpFrom = (document.getElementById('email-prefs-smtp-from') || {}).value || '';
+  const defaultFolder = (document.getElementById('email-prefs-default-folder') || {}).value || 'inbox';
+  const signature = (document.getElementById('email-prefs-signature') || {}).value || '';
+  const rules = (modal._rules || []).filter(r => r && r.match);
+  fetch(`/api/email/accounts/${encodeURIComponent(email)}/prefs`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      smtp_from: smtpFrom.trim(),
+      default_folder: defaultFolder,
+      signature: signature,
+      auto_file_rules: rules,
+    }),
+  }).then(r => r.json()).then(d => {
+    if (d && d.ok) {
+      if (typeof showToast === 'function') showToast('Account prefs saved', 'success');
+      modal.remove();
+    } else {
+      if (typeof showToast === 'function') showToast(d && d.error || 'Save failed', 'error');
+    }
+  }).catch(() => {
+    if (typeof showToast === 'function') showToast('Save failed (network)', 'error');
+  });
+}
+
+window._emailOpenAccountPrefs = _emailOpenAccountPrefs;
+window._emailAddRuleRow = _emailAddRuleRow;
+window._emailRemoveRuleRow = _emailRemoveRuleRow;
+window._emailSaveAccountPrefs = _emailSaveAccountPrefs;
