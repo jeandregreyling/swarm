@@ -253,7 +253,7 @@ def queue_render(timeline_id: str):
         c.commit()
     finally:
         c.close()
-    code = 201 if status != 'failed' else 202
+    code = 201 if status != 'failed' else 502
     return jsonify(ok=status != 'failed', render_id=render_id,
                    media_job_id=media_job_id, status=status, error=error), code
 
