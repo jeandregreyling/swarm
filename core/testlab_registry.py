@@ -33,17 +33,41 @@ REGISTRY: List[Dict[str, object]] = [
     {
         'id': 'smoke-endpoints',
         'group': 'Smoke',
-        'label': 'HTTP smoke (5 endpoints)',
-        'description': 'GETs /api/health, /api/pulse, /api/chat/jobs/status, /api/auth/me, /api/chat/agents/health and asserts every response is 200.',
+        'label': 'HTTP smoke (7 endpoints)',
+        'description': 'GETs 7 core read-only endpoints and asserts every response is 200.',
         'command': (
             "for ep in /api/health /api/pulse /api/chat/jobs/status "
-            "/api/auth/me /api/chat/agents/health; do "
+            "/api/auth/me /api/chat/agents/health "
+            "/api/knowledge/runs/feed /api/knowledge/testlab/scripts; do "
             "code=$(curl -s -o /dev/null -w '%{http_code}' "
             "http://127.0.0.1:5050$ep); echo \"$code $ep\"; "
             "[[ \"$code\" == \"200\" ]] || exit 1; done"
         ),
         'change_aware': False,
         'default_on': True,
+    },
+    {
+        'id': 'smoke-change-run-lifecycle',
+        'group': 'Smoke',
+        'label': 'Change-run lifecycle (start → finish → fetch)',
+        'description': 'Starts a test run for change SMOKE, finishes it ok, then asserts the run shows up in the change timeline. Validates the full POST/PATCH/GET path.',
+        'command': (
+            "set -e; BASE=http://127.0.0.1:5050; "
+            "RID=$(curl -s -XPOST $BASE/api/knowledge/test-runs "
+            "-H 'Content-Type: application/json' "
+            "-d '{\"script_id\":\"smoke-endpoints\",\"change_id\":\"SMOKE\"}' "
+            "| python -c 'import sys,json; print(json.load(sys.stdin)[\"run_id\"])'); "
+            "echo \"started run $RID\"; "
+            "curl -s -XPATCH $BASE/api/knowledge/test-runs/$RID "
+            "-H 'Content-Type: application/json' "
+            "-d '{\"status\":\"pass\",\"exit_code\":0}' >/dev/null; "
+            "curl -s $BASE/api/knowledge/changes/SMOKE/timeline "
+            "| python -c 'import sys,json; data=json.load(sys.stdin); "
+            "assert data[\"ok\"], data; assert any(i[\"kind\"]==\"test_run\" for i in data[\"items\"]), data'; "
+            "echo OK"
+        ),
+        'change_aware': False,
+        'default_on': False,
     },
     {
         'id': 'smoke-agents-health',
@@ -73,6 +97,24 @@ REGISTRY: List[Dict[str, object]] = [
         'command': 'python -m pytest --ignore=tests/test_chat_quality.py -q',
         'change_aware': False,
         'default_on': True,
+    },
+    {
+        'id': 'pytest-targeted-knowledge-spine-testlab',
+        'group': 'Pytest',
+        'label': 'Targeted: knowledge + spine + testlab',
+        'description': 'Fast targeted run for the Session 30 surface — Knowledge Center, spine event ring, and Test Lab. Use during KC/testlab work to skip the full suite.',
+        'command': (
+            'python -m pytest -q '
+            'tests/test_knowledge.py '
+            'tests/test_knowledge_batch_t.py '
+            'tests/test_testlab.py '
+            'tests/test_testlab_suites.py '
+            'tests/test_spine.py '
+            'tests/test_chat_smoke_probe_spine.py '
+            '-k "not chat_quality"'
+        ),
+        'change_aware': False,
+        'default_on': False,
     },
     {
         'id': 'pytest-chat-core',
