@@ -41,6 +41,7 @@ archive/
 swarm_memory.db.backup.*
 swarm.db.backup.*
 swarm.db.empty.backup.*
+swarm.db.retired.*
 
 # Temp/Build
 /build/
