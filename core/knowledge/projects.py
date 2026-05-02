@@ -273,6 +273,22 @@ def _ensure_schema() -> None:
                 "CREATE INDEX IF NOT EXISTS idx_step_deps_blocker ON project_step_deps(depends_on)"
             )
 
+            # S-64552DDFEA — residual_risk on project_steps. Free-form short
+            # note about residual exposure when status='partial' or 'done'.
+            # Capped at 240 chars by the writer; nullable to keep legacy
+            # rows intact.
+            try:
+                _step_cols = {r[1] for r in conn.execute("PRAGMA table_info(project_steps)").fetchall()}
+                if 'residual_risk' not in _step_cols:
+                    conn.execute("ALTER TABLE project_steps ADD COLUMN residual_risk TEXT")
+                if 'owner_route' not in _step_cols:
+                    # S-58C4823367 — explicit owner_route slug for routing
+                    # work to a specific agent/team independent of the
+                    # 'owner' display column.
+                    conn.execute("ALTER TABLE project_steps ADD COLUMN owner_route TEXT")
+            except Exception:
+                pass
+
             conn.commit()
         finally:
             conn.close()
@@ -629,7 +645,51 @@ def update_step_status(step_id: str, status: str, *, owner: Optional[str] = None
             _records_mirror('step', step_id, actor='update_step_status')
         except Exception:
             pass
+        # S-7BA9955A6D — project status automation. When the last open
+        # step closes (all done/skipped), nudge the project to 'archived'.
+        # Only flips active→archived; never reopens a manual archive.
+        try:
+            _maybe_auto_archive_project(step_id)
+        except Exception:
+            pass
     return ok
+
+
+def _maybe_auto_archive_project(step_id: str) -> None:
+    """If every step under the parent project is done/skipped and the
+    project is still 'active', flip the project to 'archived'.
+    S-7BA9955A6D — keeps closed work from cluttering active dashboards.
+    """
+    from utils.db._connection import get_connection
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT project_id FROM project_steps WHERE step_id=?",
+            (step_id,),
+        ).fetchone()
+        if not row:
+            return
+        pid = row['project_id']
+        proj = conn.execute(
+            "SELECT status FROM projects WHERE project_id=?", (pid,),
+        ).fetchone()
+        if not proj or proj['status'] != 'active':
+            return
+        rows = conn.execute(
+            "SELECT status FROM project_steps WHERE project_id=?", (pid,),
+        ).fetchall()
+        if not rows:
+            return
+        if any(r['status'] not in ('done', 'skipped') for r in rows):
+            return
+        conn.execute(
+            "UPDATE projects SET status=?, updated_at=? WHERE project_id=?",
+            ('archived', time.time(), pid),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    _emit_spine(f"Project auto-archived: {pid}", {'project_id': pid}, severity='info')
 
 
 # ── Test cases ──────────────────────────────────────────────────────────────
@@ -991,9 +1051,19 @@ def update_step(
     title: Optional[str] = None,
     description: Optional[str] = None,
     owner: Optional[str] = None,
+    residual_risk: Optional[str] = None,
+    owner_route: Optional[str] = None,
 ) -> bool:
     """Rename / re-describe / re-assign a step. Status changes go through
-    ``update_step_status`` which already emits spine events per transition."""
+    ``update_step_status`` which already emits spine events per transition.
+
+    S-64552DDFEA: ``residual_risk`` accepts ``None`` (unchanged), ``""``
+    (clear), or up to 240 chars of text describing exposure left after a
+    partial/done close-out.
+    S-58C4823367: ``owner_route`` accepts a short slug used by routing
+    rules to dispatch the step to a specific agent/team. Independent of
+    the user-facing ``owner`` column.
+    """
     if not step_id:
         return False
     updates: Dict[str, Any] = {}
@@ -1008,6 +1078,18 @@ def update_step(
         o = owner.strip()
         if o:
             updates['owner'] = o[:64]
+    if residual_risk is not None:
+        rr = (residual_risk or '').strip()
+        updates['residual_risk'] = rr[:240] if rr else None
+    if owner_route is not None:
+        route = (owner_route or '').strip().lower()
+        # slug: replace whitespace + slashes with underscores, drop other
+        # non-alnum/dash chars, collapse repeats, max 48 chars.
+        import re as _re
+        route = _re.sub(r'[\s/\\]+', '_', route)
+        route = ''.join(c for c in route if c.isalnum() or c in ('-', '_'))
+        route = _re.sub(r'_+', '_', route).strip('_-')
+        updates['owner_route'] = route[:48] if route else None
     if not updates:
         return False
     _ensure_schema()
