@@ -204,8 +204,12 @@ const ACCENT_KEYFRAMES = [
 
 const SCENE_PALETTE_STRIPS = {
   off: {
-    gradient: 'linear-gradient(90deg,#ff8fbe 0%,#ffcc9f 18%,#bde9ff 42%,#ffab63 70%,#775ac0 84%,#334253 100%)',
-    labels: ['Pink Dawn', 'Blue Noon', 'Amber Dusk', 'Grey Night'],
+    // MD-FEATURE-4FAB4C5137B2 — fill the 00:00-06:00 gap and widen the colour range
+    // beyond white/dark. The strip now carries a deep-night gradient (indigo →
+    // violet → magenta) that bridges grey-night back to pink-dawn instead of
+    // collapsing to flat dark.
+    gradient: 'linear-gradient(90deg,#ff8fbe 0%,#ffcc9f 16%,#bde9ff 38%,#7ad6c8 52%,#ffab63 68%,#775ac0 80%,#3a2f6b 88%,#1f1840 94%,#334253 100%)',
+    labels: ['Pink Dawn', 'Blue Noon', 'Amber Dusk', 'Indigo Midnight'],
   },
   beach: {
     gradient: 'linear-gradient(90deg,#0f3c78 0%,#1b5db0 22%,#2c8fd6 46%,#ff9a3d 74%,#ffbf6f 100%)',
