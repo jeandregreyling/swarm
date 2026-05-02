@@ -1493,4 +1493,80 @@
     if (welcome) observer.observe(welcome, { attributes: true, attributeFilter: ['style'] });
   }
 
+  // ── MD-FEATURE-060FE8D72E64 — Favourites star next to chat input ────────
+  // Stores user-curated quick prompts in localStorage. Click the star to save
+  // the current input; if the input is empty, the star opens a picker so the
+  // user can paste a saved prompt back into the textarea.
+  const HC_FAVOURITES_KEY = 'fridays-chat-favourites';
+  function _hcLoadFavs() {
+    try { return JSON.parse(localStorage.getItem(HC_FAVOURITES_KEY) || '[]'); }
+    catch (_e) { return []; }
+  }
+  function _hcSaveFavs(list) {
+    localStorage.setItem(HC_FAVOURITES_KEY, JSON.stringify(list.slice(0, 50)));
+  }
+  function homeChatToggleFavourite() {
+    const input = document.getElementById('home-chat-input');
+    const text = (input && input.value || '').trim();
+    if (text) {
+      const favs = _hcLoadFavs();
+      if (!favs.includes(text)) {
+        favs.unshift(text);
+        _hcSaveFavs(favs);
+        if (typeof window.showToast === 'function') window.showToast('Saved to favourites', 'success');
+      } else {
+        if (typeof window.showToast === 'function') window.showToast('Already in favourites', 'info');
+      }
+      return;
+    }
+    _hcShowFavouritesPicker();
+  }
+  function _hcShowFavouritesPicker() {
+    const favs = _hcLoadFavs();
+    let modal = document.getElementById('home-chat-favs-modal');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'home-chat-favs-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
+    const items = favs.length
+      ? favs.map((f, i) => `
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+            <button data-fav-idx="${i}" class="hc-fav-use" style="flex:1;text-align:left;background:transparent;border:none;color:var(--text);font-size:12px;cursor:pointer;">${(f || '').replace(/[<>]/g, '').slice(0, 140)}</button>
+            <button data-fav-del="${i}" class="hc-fav-del" title="Remove" style="background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:11px;cursor:pointer;padding:2px 6px;">×</button>
+          </div>`).join('')
+      : '<div style="font-size:11px;color:var(--text-dim);padding:6px 0;">No favourites yet. Type something into the chat input and click the star to save it.</div>';
+    modal.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(520px,90vw);max-height:70vh;overflow:auto;box-shadow:0 14px 40px rgba(0,0,0,.4);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);">Chat favourites</div>
+          <button onclick="document.getElementById('home-chat-favs-modal').remove()" aria-label="Close" style="background:transparent;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">×</button>
+        </div>
+        <div>${items}</div>
+      </div>`;
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) { modal.remove(); return; }
+      const useIdx = e.target.closest('[data-fav-idx]')?.getAttribute('data-fav-idx');
+      const delIdx = e.target.closest('[data-fav-del]')?.getAttribute('data-fav-del');
+      if (useIdx !== undefined && useIdx !== null) {
+        const list = _hcLoadFavs();
+        const v = list[Number(useIdx)];
+        if (v) {
+          const input = document.getElementById('home-chat-input');
+          if (input) { input.value = v; input.focus(); }
+        }
+        modal.remove();
+      } else if (delIdx !== undefined && delIdx !== null) {
+        const list = _hcLoadFavs();
+        list.splice(Number(delIdx), 1);
+        _hcSaveFavs(list);
+        modal.remove();
+        _hcShowFavouritesPicker();
+      }
+    });
+    const escH = (e) => { if (e.key === 'Escape') { const m = document.getElementById('home-chat-favs-modal'); if (m) m.remove(); document.removeEventListener('keydown', escH); } };
+    document.addEventListener('keydown', escH);
+    document.body.appendChild(modal);
+  }
+  window.homeChatToggleFavourite = homeChatToggleFavourite;
+
 })();
