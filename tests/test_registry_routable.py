@@ -4,14 +4,33 @@ Phase 1 of the rewire plan (22 April 2026) introduced a single routable-view
 accessor that chat, relay, queue, and agent-awareness all consult. These tests
 lock in the three filters that view must enforce.
 """
+import importlib
+
 import pytest
 
 from utils.db import registry
 
 
 def _reset_provider():
-    """Clear any cached runtime-disabled provider between tests."""
+    """Clear any cached runtime-disabled provider and force a fresh DB read.
+
+    Some other test fixtures monkey-patch ``utils.db._connection.get_connection``
+    or populate ``registry._cache`` from a temp DB.  Even after their teardown
+    the cached rows can survive in this module's globals.  Drop both the
+    runtime-disable lambda and the cached rows, and rebind the module's
+    ``get_connection`` to the canonical one so the next ``_load_rows`` call
+    really hits the production DB.
+    """
     registry.set_runtime_disabled_provider(None)
+    # Hard reset the cache (not just the stamp) so a stale-DB-failure path
+    # in _load_rows can't keep returning poisoned rows.
+    registry._cache['rows'] = []
+    registry._cache['stamp'] = 0.0
+    # Re-resolve get_connection from the canonical module in case anything
+    # rebound it in this process.
+    from utils.db import _connection as _conn_mod
+    importlib.reload(_conn_mod)
+    registry.get_connection = _conn_mod.get_connection
     registry.invalidate_cache()
 
 
