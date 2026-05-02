@@ -140,6 +140,16 @@ function loadMonitorData(win) {
             <div style="font-weight:600;margin-bottom:4px;">ALM Governance</div>
             <div style="font-size:11px;color:var(--text-dim);">Loading...</div>
           </div>
+          <div id="monitor-health-check" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <div style="font-weight:600;">Health Check</div>
+              <span id="monitor-health-badge" style="font-size:9px;color:var(--text-dim);">scanning…</span>
+            </div>
+            <div id="monitor-health-detail" style="font-size:11px;color:var(--text-dim);margin-top:6px;">Agent 20 health digest result appears here.</div>
+            <div style="margin-top:6px;display:flex;gap:6px;">
+              <button onclick="openWindow('health-digest','Health Digest','view-health-digest')" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:9px;cursor:pointer;">Open digest →</button>
+            </div>
+          </div>
           <div id="monitor-services" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
             <div style="font-weight:600;margin-bottom:6px;">Service Health</div>
             <div style="font-size:11px;color:var(--text-dim);">Loading...</div>
@@ -155,6 +165,7 @@ function loadMonitorData(win) {
         </div>`;
       // Trigger the slow-refresh sections once immediately after skeleton is ready
       renderMonitorAlm();
+      _renderMonitorHealthCheck(win);
       _renderMonitorServices(win);
       _renderMonitorActivity(win);
       _renderMonitorFanOperator(win);
@@ -230,6 +241,43 @@ function loadMonitorData(win) {
     _renderMonitorServices(win);
     _renderMonitorActivity(win);
   }, 30000);
+  if (win._monitorHealthTimer) clearInterval(win._monitorHealthTimer);
+  win._monitorHealthTimer = setInterval(() => {
+    if (!winManager.windows.has(win.id)) { clearInterval(win._monitorHealthTimer); return; }
+    _renderMonitorHealthCheck(win);
+  }, 60000);
+}
+
+function _renderMonitorHealthCheck(win) {
+  const detailEl = win.el.querySelector('#monitor-health-detail');
+  const badgeEl  = win.el.querySelector('#monitor-health-badge');
+  if (!detailEl || !badgeEl) return;
+  fetch('/api/health/digest').then(r => r.json()).then(d => {
+    if (d && d.error) {
+      badgeEl.innerHTML = '<span style="padding:2px 8px;border-radius:10px;background:#f4433620;color:#f44336;border:1px solid #f4433660;font-size:10px;font-weight:700;">ERROR</span>';
+      detailEl.textContent = String(d.error).slice(0, 240);
+      return;
+    }
+    const status = String(d?.overall_status || 'unknown').toLowerCase();
+    const palette = {
+      healthy:  { bg: '#4caf5020', fg: '#4caf50', bd: '#4caf5060', label: 'HEALTHY' },
+      degraded: { bg: '#ffa50022', fg: '#ffa500', bd: '#ffa50055', label: 'DEGRADED' },
+      error:    { bg: '#f4433620', fg: '#f44336', bd: '#f4433660', label: 'ERROR' },
+      critical: { bg: '#f4433620', fg: '#f44336', bd: '#f4433660', label: 'CRITICAL' },
+      unknown:  { bg: '#78909c22', fg: '#78909c', bd: '#78909c55', label: 'UNKNOWN' },
+    }[status] || { bg: '#78909c22', fg: '#78909c', bd: '#78909c55', label: status.toUpperCase() };
+    badgeEl.innerHTML = '<span style="padding:2px 8px;border-radius:10px;background:' + palette.bg + ';color:' + palette.fg + ';border:1px solid ' + palette.bd + ';font-size:10px;font-weight:700;">' + palette.label + '</span>';
+    const scanned = d?.scanned_at || '';
+    const summary = d?.summary || d?.headline || '';
+    const issues  = (d?.issues || d?.findings || []);
+    const issueCount = Array.isArray(issues) ? issues.length : 0;
+    detailEl.innerHTML = (summary ? _escHtml(summary) + '<br>' : '') +
+      'Scanned: <strong>' + _escHtml(scanned || 'just now') + '</strong>' +
+      (issueCount ? ' · <strong>' + issueCount + '</strong> issue' + (issueCount === 1 ? '' : 's') + ' open' : '');
+  }).catch(() => {
+    badgeEl.innerHTML = '<span style="padding:2px 8px;border-radius:10px;background:#78909c22;color:#78909c;border:1px solid #78909c55;font-size:10px;font-weight:700;">OFFLINE</span>';
+    detailEl.textContent = 'Health digest endpoint unreachable.';
+  });
 }
 
 function monitorManualRefresh() {
