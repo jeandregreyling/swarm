@@ -1989,6 +1989,16 @@ function agentsLocalAIRefresh() {
   fetch('/api/localai/status')
     .then(r => r.json())
     .then(data => {
+      const _light = (id, ok) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.background = ok ? '#22c55e' : '#ef4444';
+        el.style.boxShadow = `0 0 0 2px ${ok ? '#22c55e22' : '#ef444422'}, 0 0 6px ${ok ? '#22c55e' : '#ef4444'}`;
+        el.title = ok ? 'online' : 'offline · red light';
+      };
+      _light('agents-ollama-light',   !!data.ollama?.running);
+      _light('agents-lmstudio-light', !!data.lmstudio?.running);
+      _light('agents-picoclaw-light', !!data.picoclaw?.running);
       if (ollamaBadge) {
         const ok  = data.ollama?.running;
         const cnt = (data.ollama?.models || []).length;
@@ -2025,4 +2035,98 @@ function agentsLocalAIRefresh() {
   if (typeof localaiRuntimeHealthRefresh === 'function') {
     localaiRuntimeHealthRefresh('agents-ollama-runtime', 'agents-ollama-warnings');
   }
+
+  // STEP-AGENTS-TILE-UX-OPERATIONS-20260430 — refresh disabled-agents panel
+  agentsRefreshDisabledPanel();
 }
+
+// ── STEP-AGENTS-TILE-UX-OPERATIONS-20260430 ─────────────────────────────
+// Per-runner controls + disabled-agents quick re-enable panel.
+
+function agentsCopyCmd(_id, cmd) {
+  if (!cmd) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(cmd).then(() => {
+      if (typeof showToast === 'function') showToast('Command copied to clipboard', 'success');
+    }).catch(() => {
+      if (typeof showToast === 'function') showToast('Clipboard blocked — see browser permissions', 'error');
+    });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = cmd; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); if (typeof showToast === 'function') showToast('Command copied', 'success'); } catch (_) {}
+    document.body.removeChild(ta);
+  }
+}
+
+function agentsOpenLogs(runner) {
+  // Prefer opening the Logs tile if present, otherwise fall back to a
+  // toast that points the user at the journal command.
+  try {
+    if (typeof openWindow === 'function') {
+      openWindow('logs-' + runner, 'Logs · ' + runner, 'view-logs');
+      return;
+    }
+  } catch (_) {}
+  const cmd = (runner === 'ollama') ? 'journalctl -u ollama -f -n 200'
+             : (runner === 'lmstudio') ? 'tail -f ~/.cache/lm-studio/server.log'
+             : 'journalctl -u picoclaw -f -n 200';
+  agentsCopyCmd(runner + '-logs', cmd);
+}
+
+function agentsOllamaPullPrompt() {
+  const tag = (typeof prompt === 'function') ? prompt('Model tag to pull (e.g. gemma3:4b)', 'gemma3:4b') : '';
+  if (!tag) return;
+  const safe = String(tag).replace(/[^a-zA-Z0-9._:\/-]/g, '');
+  if (!safe) return;
+  agentsCopyCmd('ollama-pull', `ollama pull ${safe}`);
+}
+
+function agentsRefreshDisabledPanel() {
+  const list = document.getElementById('agents-disabled-list');
+  const count = document.getElementById('agents-disabled-count');
+  if (!list) return;
+  fetch('/api/agents').then(r => r.json()).then(d => {
+    const arr = (d && Array.isArray(d.agents)) ? d.agents : (Array.isArray(d) ? d : []);
+    const disabled = arr.filter(a => a && a.enabled === 0);
+    if (count) count.textContent = String(disabled.length);
+    if (!disabled.length) {
+      list.innerHTML = '<div style="opacity:0.6;">No disabled agents.</div>';
+      return;
+    }
+    list.innerHTML = disabled.map(a => {
+      const safe = _esc(a.name || '');
+      const label = _esc(a.label || a.name || '');
+      const role = _esc(a.role || '');
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+          <span style="width:6px;height:6px;border-radius:99px;background:#ef4444;box-shadow:0 0 4px #ef4444;"></span>
+          <span style="font-weight:600;color:var(--text);">${label}</span>
+          <span style="font-size:10px;opacity:0.6;">${role}</span>
+          <button onclick="agentsReEnable('${safe}')" style="margin-left:auto;background:var(--accent);border:none;color:#000;border-radius:4px;padding:2px 9px;font-size:10px;font-weight:700;cursor:pointer;">↻ Re-enable</button>
+        </div>`;
+    }).join('');
+  }).catch(() => {
+    list.innerHTML = '<div style="color:#ef4444;">Could not load agents.</div>';
+  });
+}
+
+function agentsReEnable(name) {
+  if (!name) return;
+  fetch(`/api/agents/${encodeURIComponent(name)}/toggle`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: true }),
+  }).then(r => r.json()).then(() => {
+    if (typeof showToast === 'function') showToast(`${name} re-enabled`, 'success');
+    agentsRefreshDisabledPanel();
+    if (typeof agentsRefresh === 'function') agentsRefresh();
+  }).catch(() => {
+    if (typeof showToast === 'function') showToast('Re-enable failed', 'error');
+  });
+}
+
+window.agentsCopyCmd = agentsCopyCmd;
+window.agentsOpenLogs = agentsOpenLogs;
+window.agentsOllamaPullPrompt = agentsOllamaPullPrompt;
+window.agentsRefreshDisabledPanel = agentsRefreshDisabledPanel;
+window.agentsReEnable = agentsReEnable;
