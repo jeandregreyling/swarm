@@ -39,6 +39,22 @@ def client(app):
     return app.test_client()
 
 
+@pytest.fixture(autouse=True)
+def _no_vortex_git(monkeypatch):
+    """Stop POST /api/time/checkpoints from creating real git commits/tags
+    during the test sweep — it pollutes history and races the user's
+    pending commit message."""
+    try:
+        from frontend.blueprints import time_wizard_bp as bp_mod
+    except Exception:
+        return
+    monkeypatch.setattr(
+        bp_mod.time_wizard, "create_workflow_checkpoint",
+        lambda *a, **kw: {"checkpoint_id": 0, "checkpoint_name": "test-noop"},
+        raising=True,
+    )
+
+
 # ── S-B6F548DCDD: surgical coercion on node_register ────────────────────────
 
 @pytest.mark.parametrize("payload", [
