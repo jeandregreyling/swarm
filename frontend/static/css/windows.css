@@ -168,3 +168,20 @@
   opacity: 0.5;
 }
 .floating-window:hover .window-resize-handle { opacity: 1; }
+
+/* MD-FEATURE-CCD996631130 — Spotlight launch chip pinned to every window's
+   bottom-right inside the frame. Hidden when the window is minimised. */
+.floating-window .window-spotlight-launch{
+  position:absolute;right:10px;bottom:8px;z-index:5;
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb, var(--card) 86%, transparent);
+  border:1px solid var(--border);color:var(--text-dim);
+  cursor:pointer;opacity:.55;transition:opacity .15s, color .15s, border-color .15s, transform .12s;
+  padding:0;
+}
+.floating-window .window-spotlight-launch:hover{
+  opacity:1;color:var(--accent);border-color:var(--accent);transform:scale(1.05);
+}
+.floating-window.minimized .window-spotlight-launch,
+.floating-window.docked-right .window-spotlight-launch{display:none;}
