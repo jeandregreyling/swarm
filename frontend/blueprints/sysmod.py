@@ -94,3 +94,79 @@ def api_sysmod_set():
             continue
         _store(f"cap:{name}", bool(on))
     return jsonify({"ok": True, **_load()})
+
+
+# ── MD-FEATURE-C6D59801C77C — per-helper Settings panel ─────────────────────
+# Inventory of installable system helpers. Once installed, operators can flip
+# each one on/off from Settings. The endpoint returns:
+#   - installed: service unit file present under /etc/systemd/system
+#   - active:    systemctl is-active reports active (best-effort, no sudo)
+#   - install_cmd / enable_cmd / disable_cmd: copy-pasteable shell commands
+# Actual systemctl calls require sudo and live in the operator's terminal —
+# the UI is read-only + clipboard helpers, never pretends to flip services.
+_HELPERS = [
+    {
+        "id": "swarm-fanctl",
+        "title": "Fan controller helper",
+        "description": "Runs as root, exposes /run/swarm-fanctl.sock so Swarm can read temps and switch the CPU fan between auto and boost without per-call sudo.",
+        "unit": "swarm-fanctl.service",
+        "source": "ops/swarm-fanctl.service",
+        "capability_key": "fan_controller",
+    },
+    {
+        "id": "swarm-prewarm",
+        "title": "Prewarm helper",
+        "description": "Boots local model runners (Ollama, LM Studio) on system start so the first chat after a reboot doesn't pay the cold-start tax.",
+        "unit": "swarm-prewarm.service",
+        "source": "swarm-prewarm.service",
+        "capability_key": "prewarm",
+    },
+]
+
+
+def _systemctl_state(unit: str) -> dict:
+    """Best-effort, no-sudo lookup of unit installation + activity."""
+    repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    installed_path = os.path.join("/etc/systemd/system", unit)
+    installed = os.path.exists(installed_path)
+    active = False
+    if installed:
+        try:
+            import subprocess
+            res = subprocess.run(
+                ["systemctl", "is-active", unit],
+                capture_output=True, text=True, timeout=2,
+            )
+            active = (res.stdout.strip() == "active")
+        except Exception:
+            active = False
+    return {
+        "installed": installed,
+        "active": active,
+        "install_cmd": (
+            f"sudo cp {repo}/ops/{unit} /etc/systemd/system/ && "
+            f"sudo systemctl daemon-reload && "
+            f"sudo systemctl enable --now {unit}"
+        ),
+        "enable_cmd": f"sudo systemctl enable --now {unit}",
+        "disable_cmd": f"sudo systemctl disable --now {unit}",
+        "status_cmd": f"systemctl status {unit}",
+    }
+
+
+@sysmod_bp.route("/api/settings/sysmod/helpers")
+def api_sysmod_helpers():
+    state = _load()
+    out = []
+    for h in _HELPERS:
+        s = _systemctl_state(h["unit"])
+        out.append({
+            **h,
+            **s,
+            "capability_on": bool(state.get("capabilities", {}).get(h["capability_key"])),
+        })
+    return jsonify({
+        "ok": True,
+        "sysmod_enabled": bool(state.get("enabled")),
+        "helpers": out,
+    })
