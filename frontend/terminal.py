@@ -113,6 +113,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.video_editor',     'video_editor_bp'),
     ('blueprints.app_center',       'app_center_bp'),
     ('blueprints.kc_overview',      'kc_overview_bp'),
+    ('blueprints.orientation',      'orientation_bp'),
     ('blueprints.wishlist_registry','wishlist_registry_bp'),
 ]
 

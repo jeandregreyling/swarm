@@ -736,6 +736,30 @@
 
     <!-- ═══ Quick Access tiles (Phase-5 SMALL: moved back above chat) ═══ -->
     <div class="home-section home-tiles-section">
+      <!-- Y.49: First-run orientation card. Hidden by default; orientation_card.js
+           shows it when /api/orientation/seen returns seen=false. Points the user
+           at Help (?), Spotlight search, and the Manual tile so they aren't lost
+           on first launch. STEP-DOCS-UX-BC3D33C260. -->
+      <div id="orientation-card"
+           role="status"
+           aria-label="First-run orientation"
+           style="display:none; margin:8px 0; padding:12px 14px; border:1px solid var(--accent); border-radius:8px; background:var(--bg-elev,#111); color:var(--text); font-size:13px; line-height:1.5;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+          <strong style="font-size:14px;">Welcome — three things to find first</strong>
+          <button type="button" id="orientation-card-dismiss"
+                  aria-label="Dismiss orientation card"
+                  style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;">×</button>
+        </div>
+        <ol style="margin:6px 0 0 18px; padding:0;">
+          <li><strong>Help</strong> — the <code>?</code> icon on every tile and window header opens the contextual manual.</li>
+          <li><strong>Spotlight</strong> — the search bar at the top launches any tile by name (try "chat", "studio", "manual").</li>
+          <li><strong>Manual tile</strong> — the book icon opens the full manual for browsing.</li>
+        </ol>
+        <div style="margin-top:6px;">
+          <a href="#" id="orientation-card-open-manual"
+             style="color:var(--accent); text-decoration:underline; font-size:12px;">Open the orientation manual entry →</a>
+        </div>
+      </div>
       <!-- First-run empty-state banner: shown when /api/wishlist/summary
            reports zero entries across all four pillars and the user hasn't
            dismissed it. Hidden by default; made visible by home_banner.js. -->
@@ -2924,6 +2948,7 @@
 <script src="/static/js/views/wishlist.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/pillar_live.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/home_banner.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/orientation_card.js?v={{ ASSET_VERSION }}"></script>
 
 <script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/friday-auth.js?v=28"></script>
