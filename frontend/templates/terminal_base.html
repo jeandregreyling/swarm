@@ -1692,6 +1692,9 @@
           style="padding:5px 12px;border-radius:4px;border:1px solid var(--warning);background:color-mix(in srgb, var(--warning) 14%, transparent);color:var(--warning);font-size:11px;font-weight:700;cursor:pointer;">🛡 Governance</button>
         <button onclick="studioSetTab(window._studioTab || 'pending')"
           style="margin-left:4px;background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">&#8635;</button>
+        <button onclick="studioShowTabHelp()" title="What does this tab do? — opens KC manual page"
+          aria-label="Tab help"
+          style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 9px;color:var(--text-dim);font-size:11px;font-weight:700;cursor:pointer;">?</button>
       </div>
     </div>
     <div id="studio-content" style="flex: 1; overflow-y: auto; padding: 0;">
@@ -1941,6 +1944,7 @@
         <div style="padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
             <button class="tw-section-toggle" data-target="tw-history-list" aria-expanded="true" style="background:none;border:none;color:var(--text-dim);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;flex:1;text-align:left;"><span class="tw-toggle-caret" style="display:inline-block;transition:transform .15s;">▾</span>Vortex History</button>
+            <button onclick="twShowSectionHelp('history')" title="What does Vortex History show?" aria-label="Section help" style="padding:3px 7px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:10px;font-weight:700;cursor:pointer;">?</button>
             <button onclick="loadTimeWizardData()" style="padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 10px; cursor: pointer;">↻</button>
           </div>
           <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);cursor:pointer;">
@@ -1955,6 +1959,7 @@
         <div style="border-top:1px solid var(--border);padding:10px 12px 6px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
             <button class="tw-section-toggle" data-target="tw-spine-feed" aria-expanded="true" style="background:none;border:none;color:var(--text-dim);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;flex:1;text-align:left;"><span class="tw-toggle-caret" style="display:inline-block;transition:transform .15s;">▾</span>Spine Feed</button>
+            <button onclick="twShowSectionHelp('spine')" title="What is the Spine Feed?" aria-label="Section help" style="padding:2px 7px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:10px;font-weight:700;cursor:pointer;">?</button>
             <button onclick="if(window.__trace)window.__trace.open({})" title="Open full Traced window" style="padding:2px 8px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:10px;cursor:pointer;">Open Traced</button>
           </div>
           <div style="font-size:9px;color:var(--text-dim);margin-bottom:6px;">Live events flowing through Seven's spine</div>

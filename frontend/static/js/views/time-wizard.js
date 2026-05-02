@@ -6,6 +6,44 @@ function renderVortexHistory() {
     (_twCheckpoints.length ? _twCheckpoints.map(c => `<div style="font-size:11px;padding:6px 0;border-bottom:1px solid var(--border);"><b>${_escHtml(c.checkpoint_name || c.name || 'checkpoint')}</b> <span style="color:var(--text-dim);">@ ${_escHtml(c.timestamp || c.created_at || '')}</span></div>`).join('') : '<div style="color:var(--text-dim);font-size:11px;">No checkpoints yet.</div>');
 }
 
+// MD-FEATURE-FBB9A817653C / MD-FEATURE-485CDCA789E8 — per-section "?" help popover
+// for the Vortex side rail. Each section explains what it shows + offers a KC link.
+const _TW_SECTION_HELP = {
+  history: { title: 'Vortex History', blurb: 'Snapshot checkpoints captured by the Vortex (formerly Time Wizard). Every agent tool action ships a [vortex] commit so you can roll the workspace back step-by-step. Select a checkpoint to inspect or restore.', kc: '/knowledge?topic=vortex-history' },
+  spine:   { title: 'Spine Feed', blurb: 'Live event stream from Seven\'s spine — every routing decision, queued ticket, and agent emit. The Open Traced button widens this into the full Traced window for filtering and audit.', kc: '/knowledge?topic=spine-feed' },
+};
+function twShowSectionHelp(key) {
+  const meta = _TW_SECTION_HELP[key] || { title: key, blurb: 'No help blurb registered for this section yet.', kc: '/knowledge' };
+  let modal = document.getElementById('tw-section-help-modal');
+  if (modal) modal.remove();
+  modal = document.createElement('div');
+  modal.id = 'tw-section-help-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
+  const safeTitle = (meta.title || key).replace(/[<>]/g, '');
+  const safeBlurb = (meta.blurb || '').replace(/[<>]/g, '');
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(420px,90vw);box-shadow:0 14px 40px rgba(0,0,0,.4);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px;color:var(--accent);">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:color-mix(in srgb,var(--accent) 18%,transparent);border:1px solid var(--accent);font-size:13px;">?</span>
+          <span>Vortex — ${safeTitle}</span>
+        </div>
+        <button onclick="document.getElementById('tw-section-help-modal').remove()" aria-label="Close" style="background:transparent;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">×</button>
+      </div>
+      <div style="font-size:12px;line-height:1.55;color:var(--text);margin-bottom:12px;">${safeBlurb}</div>
+      <div style="display:flex;gap:6px;justify-content:flex-end;">
+        <a href="${meta.kc}" onclick="event.preventDefault();openWindow('knowledge','Knowledge','view-knowledge');document.getElementById('tw-section-help-modal').remove();" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;">Open KC manual →</a>
+        <button onclick="document.getElementById('tw-section-help-modal').remove()" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--text-dim);font-size:11px;cursor:pointer;">Close</button>
+      </div>
+      <div style="margin-top:10px;font-size:9px;color:var(--text-dim);text-align:right;">Press <kbd style="padding:0 5px;border:1px solid var(--border);border-radius:3px;background:var(--bg);">Esc</kbd> to close</div>
+    </div>`;
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  const escH = (e) => { if (e.key === 'Escape') { const m = document.getElementById('tw-section-help-modal'); if (m) m.remove(); document.removeEventListener('keydown', escH); } };
+  document.addEventListener('keydown', escH);
+  document.body.appendChild(modal);
+}
+window.twShowSectionHelp = twShowSectionHelp;
+
 // Vortex explainer popover — what is this thing, how do checkpoints differ from git,
 // what step-back actually does. Surfaced via the (i) button in the header.
 function twOpenInfo() {

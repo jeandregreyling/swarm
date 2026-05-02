@@ -1544,3 +1544,49 @@ function openConversation(convId) {
 // TEMPORARY INTAKE FIX - added 2026-04-09 for manual pipeline test
 // This makes /api/queue work even if the backend intake_internal is missing
 window.tempIntakeFix = true;
+
+// MD-FEATURE-485CDCA789E8 — universal "?" tab help.
+// Maps each studio tab to a short blurb + KC manual link. The button in the
+// toolbar reads window._studioTab and surfaces a small modal anchored to the
+// active tab so users can learn what each tab does without leaving Studio.
+const _STUDIO_TAB_HELP = {
+  projects:    { title: 'Projects', blurb: 'Agile / Waterfall / Prince2 plans with Seven as owner. Shows steps, packets, evidence, and the active filter (Active / All / Archived).', kc: '/knowledge?topic=studio-projects' },
+  testlab:     { title: 'Test Lab', blurb: 'Run the 7-tier audit hierarchy + any registered test script against a change. Captures runs in the Records tab.', kc: '/knowledge?topic=studio-testlab' },
+  pending:     { title: 'Proposed', blurb: 'New proposals awaiting review. Approve / reject / request-changes routes through the governance ALM.', kc: '/knowledge?topic=studio-proposals' },
+  in_progress: { title: 'In Progress', blurb: 'Approved proposals under UAT or actively executing. Tracks queue depth and per-proposal stage.', kc: '/knowledge?topic=studio-proposals' },
+  all:         { title: 'History', blurb: 'Rejected, closed, and done proposals. Read-only audit trail for governance review.', kc: '/knowledge?topic=studio-proposals' },
+  media:       { title: 'Media', blurb: 'Linked music/video production projects, interests, feeds, and spine activity.', kc: '/knowledge?topic=studio-media' },
+  git:         { title: 'Git', blurb: 'Git proposal queue — branch/diff/checks for ghost-coder and other agent-authored PRs.', kc: '/knowledge?topic=studio-git' },
+  records:     { title: 'Records', blurb: 'Universal viewer for projects, steps, cases, runs, proposals, tickets, emails, notes, docs, threads (Platinum file layer).', kc: '/knowledge?topic=studio-records' },
+};
+
+function studioShowTabHelp() {
+  const tab = window._studioTab || 'projects';
+  const meta = _STUDIO_TAB_HELP[tab] || { title: tab, blurb: 'No help blurb registered for this tab yet.', kc: '/knowledge' };
+  let modal = document.getElementById('studio-tab-help-modal');
+  if (modal) modal.remove();
+  modal = document.createElement('div');
+  modal.id = 'studio-tab-help-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(440px,90vw);box-shadow:0 14px 40px rgba(0,0,0,.4);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px;color:var(--accent);">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:color-mix(in srgb,var(--accent) 18%,transparent);border:1px solid var(--accent);font-size:13px;">?</span>
+          <span>Studio — ${(meta.title || tab).replace(/[<>]/g,'')}</span>
+        </div>
+        <button onclick="document.getElementById('studio-tab-help-modal').remove()" aria-label="Close" style="background:transparent;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">×</button>
+      </div>
+      <div style="font-size:12px;line-height:1.55;color:var(--text);margin-bottom:12px;">${(meta.blurb || '').replace(/[<>]/g,'')}</div>
+      <div style="display:flex;gap:6px;justify-content:flex-end;">
+        <a href="${meta.kc}" onclick="event.preventDefault();openWindow('knowledge','Knowledge','view-knowledge');document.getElementById('studio-tab-help-modal').remove();" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;">Open KC manual →</a>
+        <button onclick="document.getElementById('studio-tab-help-modal').remove()" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--text-dim);font-size:11px;cursor:pointer;">Close</button>
+      </div>
+      <div style="margin-top:10px;font-size:9px;color:var(--text-dim);text-align:right;">Press <kbd style="padding:0 5px;border:1px solid var(--border);border-radius:3px;background:var(--bg);">Esc</kbd> to close</div>
+    </div>`;
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  const escH = (e) => { if (e.key === 'Escape') { const m = document.getElementById('studio-tab-help-modal'); if (m) m.remove(); document.removeEventListener('keydown', escH); } };
+  document.addEventListener('keydown', escH);
+  document.body.appendChild(modal);
+}
+window.studioShowTabHelp = studioShowTabHelp;
