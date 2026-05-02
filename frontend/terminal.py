@@ -128,6 +128,32 @@ else:
     print(f"[Terminal] All {len(_loaded_blueprints)} blueprints loaded OK.")
 
 
+def _compute_asset_version() -> str:
+    """Asset cache-bust token (S-CAAD1B6D9C).
+
+    Order of preference: SWARM_ASSET_VERSION env var (CI/deploy can pin),
+    short git sha if a .git tree is reachable, else the current epoch
+    second so devs always see fresh assets after a restart.
+    """
+    forced = os.environ.get('SWARM_ASSET_VERSION', '').strip()
+    if forced:
+        return forced
+    try:
+        import subprocess
+        out = subprocess.run(
+            ['git', '-C', str(Path(__file__).resolve().parent.parent),
+             'rev-parse', '--short=10', 'HEAD'],
+            capture_output=True, text=True, timeout=2,
+        )
+        sha = out.stdout.strip()
+        if sha:
+            return sha
+    except Exception:
+        pass
+    import time as _t
+    return str(int(_t.time()))
+
+
 def create_app():
     app = Flask(__name__)
 
@@ -145,11 +171,16 @@ def create_app():
     except Exception as _sec_err:
         print(f'[Terminal] security middleware warning: {_sec_err}')
 
-    # Inject ENV_STAGE into all templates for environment banner
+    # Inject ENV_STAGE + ASSET_VERSION into all templates.
+    # ASSET_VERSION (S-CAAD1B6D9C) is appended as a query string to every
+    # /static/js/views/*.js include in terminal_base.html so a deploy
+    # invalidates the browser cache without manual ?v=N bumps.
+    _asset_version = _compute_asset_version()
+
     @app.context_processor
     def inject_env_stage():
         stage = os.environ.get('STAGE', os.environ.get('SWARM_ENV', 'PROD' if PORT == 5050 else 'unknown')).upper()
-        return dict(ENV_STAGE=stage)
+        return dict(ENV_STAGE=stage, ASSET_VERSION=_asset_version)
 
     # Ensure schema/migrations are present before serving APIs.
     try:
