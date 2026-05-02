@@ -111,6 +111,8 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.media_jobs',       'media_jobs_bp'),
     ('blueprints.synth_board',      'synth_board_bp'),
     ('blueprints.video_editor',     'video_editor_bp'),
+    ('blueprints.app_center',       'app_center_bp'),
+    ('blueprints.kc_overview',      'kc_overview_bp'),
     ('blueprints.wishlist_registry','wishlist_registry_bp'),
 ]
 
