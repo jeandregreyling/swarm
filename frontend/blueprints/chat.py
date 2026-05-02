@@ -1221,6 +1221,11 @@ def api_chat():
         if not auto_relay:
             response_text = _strip_relay_routing(response_text)
 
+        # Always strip the leaked '[Auto Relay: ENABLED|DISABLED]' banner —
+        # it is a system-prompt artefact echoed back by some local agents
+        # (Gemma, LLaMA) and bleeds into creative output. Never user-facing.
+        response_text = _strip_auto_relay_banner(response_text)
+
         elapsed_ms = int((time.time() - started_at) * 1000)
         if _CB_AVAILABLE:
             _cb_ok(selected_agent)
