@@ -692,13 +692,10 @@
     <div id="world-clocks"></div>
     <div id="time-display" style="display:none;"></div>
     <div id="home-controls">
-      <button id="spotlight-tip" onclick="openSpotlight()" title="Open Spotlight search (Ctrl+Space)"
-        style="height:32px;border-radius:16px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));background:color-mix(in srgb,var(--accent) 9%,var(--card));color:var(--text);cursor:pointer;font-size:11px;display:flex;align-items:center;gap:6px;padding:0 10px;transition:background .15s,border-color .15s;">
-        <svg viewBox="0 0 20 20" width="13" height="13" fill="none" style="color:var(--accent);flex-shrink:0;"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <span><strong>Tip:</strong>
-          <kbd style="background:var(--window-header);border:1px solid var(--border);border-radius:3px;padding:1px 4px;font-size:10px;font-family:inherit;">Ctrl</kbd>+<kbd style="background:var(--window-header);border:1px solid var(--border);border-radius:3px;padding:1px 4px;font-size:10px;font-family:inherit;">Space</kbd>
-          to search
-        </span>
+      <button id="spotlight-tip" onclick="openSpotlight()" title="Spotlight search — Ctrl+Space"
+        aria-label="Spotlight search (Ctrl+Space)"
+        style="width:32px;height:32px;border-radius:50%;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));background:color-mix(in srgb,var(--accent) 9%,var(--card));color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s;">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" style="color:var(--accent);flex-shrink:0;" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>
       <button id="auth-user-pill" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Identity & proxy user">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span id="auth-user-pill-label">ghost</span>
@@ -1835,6 +1832,11 @@
               <option value="prince2">Prince2</option>
             </select>
             <button onclick="projectsCreate()" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:5px;padding:5px 14px;cursor:pointer;font-size:11px;font-weight:700;">Create</button>
+            <select id="projects-status-filter" onchange="projectsSetStatusFilter(this.value)" title="Show active/archived projects" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;">
+              <option value="active">Active</option>
+              <option value="all">All</option>
+              <option value="archived">Archived</option>
+            </select>
             <button onclick="projectsRefresh()" style="background:transparent;border:1px solid var(--border);border-radius:5px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">&#8635;</button>
           </div>
         </div>
