@@ -829,13 +829,6 @@
       </div>
     </div>
 
-    <!-- Chat resize handle (Phase-5 SMALL: now sits ABOVE chat). Dragging up
-         grows chat, dragging down shrinks it — see _initHomeChatResize.
-         Double-click resets to the default height. Keyboard: Up/Down arrows. -->
-    <div class="home-chat-resizer home-chat-resizer-top" id="home-chat-resizer"
-         role="separator" aria-orientation="horizontal" aria-label="Resize chat (drag, double-click to reset, or use Up/Down arrows)"
-         tabindex="0" title="Drag (or arrows) to resize chat — double-click to reset"></div>
-
     <!-- ═══ Home Chat — primary interaction surface ═══ -->
     <div class="home-section home-chat-section home-chat-prominent">
       <div id="home-chat-body">
@@ -931,6 +924,15 @@
         </aside>
       </div>
     </div>
+
+    <!-- Chat resize handle (PACKET-07: now sits BELOW chat). Dragging up
+         shrinks chat, dragging down grows it — see _initHomeChatResize.
+         The handle no longer carries the home-chat-resizer-top class so
+         the drag math falls back to the natural below-chat orientation.
+         Double-click resets to the default height. Keyboard: Up/Down arrows. -->
+    <div class="home-chat-resizer" id="home-chat-resizer"
+         role="separator" aria-orientation="horizontal" aria-label="Resize chat (drag, double-click to reset, or use Up/Down arrows)"
+         tabindex="0" title="Drag (or arrows) to resize chat — double-click to reset"></div>
 
   </div>
 </div>
