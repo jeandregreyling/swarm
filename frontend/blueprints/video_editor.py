@@ -199,11 +199,25 @@ def update_timeline(timeline_id: str):
                 (json.dumps(body['timeline']), _now(), timeline_id),
             )
         for col in ('name', 'duration_seconds', 'fps', 'resolution', 'notes', 'project_id'):
-            if col in body:
-                c.execute(
-                    f'UPDATE video_timelines SET {col}=?, updated_at=? WHERE timeline_id=?',
-                    (body[col], _now(), timeline_id),
-                )
+            if col not in body:
+                continue
+            value = body[col]
+            if col in ('name', 'resolution', 'notes', 'project_id'):
+                if value is not None and not isinstance(value, str):
+                    return jsonify(ok=False, error=f'{col} must be a string'), 400
+                if col == 'name' and (value is None or not value.strip()):
+                    return jsonify(ok=False, error='name cannot be empty'), 400
+                if isinstance(value, str) and len(value) > 128:
+                    return jsonify(ok=False, error=f'{col} too long (max 128)'), 400
+            elif col in ('duration_seconds', 'fps'):
+                if value is not None and not isinstance(value, (int, float)):
+                    return jsonify(ok=False, error=f'{col} must be a number'), 400
+                if isinstance(value, (int, float)) and value < 0:
+                    return jsonify(ok=False, error=f'{col} cannot be negative'), 400
+            c.execute(
+                f'UPDATE video_timelines SET {col}=?, updated_at=? WHERE timeline_id=?',
+                (value, _now(), timeline_id),
+            )
         c.commit()
     finally:
         c.close()
