@@ -54,21 +54,21 @@ def test_delete_curriculum_unknown_row_returns_404(app_client):
 
 def test_delete_curriculum_existing_row_returns_count(app_client):
     _app, client = app_client
+    import uuid
+    topic = f'lo-fi-beats-{uuid.uuid4().hex[:8]}'
     add = client.post('/api/kc/media/curriculum', json={
-        'topic': 'lo-fi beats',
+        'topic': topic,
         'kind': 'music',
         'tool': 'musicgen',
         'notes': 'baseline',
     })
     assert add.status_code == 200
-    # find the new row id
     listing = client.get('/api/kc/media/curriculum?kind=music').get_json()
-    new = next(r for r in listing['items'] if r['topic'] == 'lo-fi beats')
+    new = next(r for r in listing['items'] if r['topic'] == topic)
     rid = new['id']
     d = client.delete(f'/api/kc/media/curriculum/{rid}')
     assert d.status_code == 200
     assert d.get_json()['deleted'] == 1
-    # second delete returns 404
     d2 = client.delete(f'/api/kc/media/curriculum/{rid}')
     assert d2.status_code == 404
 
@@ -90,16 +90,18 @@ def test_add_curriculum_only_catches_integrity_error(app_client):
 def test_add_curriculum_merge_path_works(app_client):
     """Adding the same (topic, kind, tool) twice must merge notes via the IntegrityError branch."""
     _app, client = app_client
+    import uuid
+    topic = f'cinematic-strings-{uuid.uuid4().hex[:8]}'
     a = client.post('/api/kc/media/curriculum', json={
-        'topic': 'cinematic strings', 'kind': 'music', 'tool': 'audio_ldm', 'notes': 'first',
+        'topic': topic, 'kind': 'music', 'tool': 'audio_ldm', 'notes': 'first',
     })
     assert a.status_code == 200 and a.get_json()['merged'] is False
     b = client.post('/api/kc/media/curriculum', json={
-        'topic': 'cinematic strings', 'kind': 'music', 'tool': 'audio_ldm', 'notes': 'second',
+        'topic': topic, 'kind': 'music', 'tool': 'audio_ldm', 'notes': 'second',
     })
     assert b.status_code == 200 and b.get_json()['merged'] is True
     listing = client.get('/api/kc/media/curriculum?kind=music').get_json()
-    rows = [r for r in listing['items'] if r['topic'] == 'cinematic strings']
+    rows = [r for r in listing['items'] if r['topic'] == topic]
     assert len(rows) == 1
     assert rows[0]['notes'] == 'second'
 
