@@ -125,7 +125,66 @@ def api_enrollment_create():
     return jsonify({"ok": True, "username": username, "role": role})
 
 
-@enrollment_bp.route("/api/enrollment/invite", methods=["POST"])
+# ── MD-FEATURE-2F07F65F10F3 — system-email linkage ──────────────────────
+# When an enrolled user's email address matches a config-managed system
+# account (utils/config.SEVEN_EMAIL etc.) or an existing runtime registry
+# entry, we surface the linkage so the Email tile and inbox routing can
+# treat that user's mailbox as the canonical system mailbox. This is a
+# read-only probe — it does not mutate either side; the registry stays
+# the source of truth for accounts.
+
+def _system_email_pool() -> set[str]:
+    pool: set[str] = set()
+    try:
+        from utils import config as _cfg
+        for attr in ("SEVEN_EMAIL", "NINE_EMAIL", "GHOST_EMAIL", "GMAIL_ADDRESS"):
+            val = getattr(_cfg, attr, None)
+            if isinstance(val, str) and "@" in val:
+                pool.add(val.strip().lower())
+        bulk = getattr(_cfg, "_EMAIL_ACCOUNTS", None) or []
+        for v in bulk:
+            if isinstance(v, str) and "@" in v:
+                pool.add(v.strip().lower())
+    except Exception:
+        pass
+    return pool
+
+
+@enrollment_bp.route("/api/enrollment/email-link/<path:username>")
+def api_enrollment_email_link(username: str):
+    """Return whether the given user's email matches a system account."""
+    username = (username or "").strip().lower()
+    conn = _db()
+    try:
+        try:
+            row = conn.execute(
+                "SELECT username, email, role FROM user_profiles WHERE username=?",
+                (username,),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            row = None
+        runtime_emails: set[str] = set()
+        try:
+            for r in conn.execute("SELECT email FROM settings_email_accounts").fetchall():
+                if r and r[0]:
+                    runtime_emails.add(str(r[0]).strip().lower())
+        except sqlite3.OperationalError:
+            pass
+    finally:
+        conn.close()
+    if not row:
+        return jsonify({"ok": False, "error": "user not found"}), 404
+    email = (row["email"] or "").strip().lower()
+    pool_config = _system_email_pool()
+    linked = bool(email and (email in pool_config or email in runtime_emails))
+    return jsonify({
+        "ok": True,
+        "username": row["username"],
+        "email": email,
+        "linked": linked,
+        "source": "config" if email in pool_config else ("runtime" if email in runtime_emails else None),
+        "role": row["role"],
+    })
 def api_enrollment_invite():
     """Owner issues a new invite token for a co-owner / assistant."""
     data = request.get_json(silent=True) or {}

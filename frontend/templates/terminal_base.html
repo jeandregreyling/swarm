@@ -1351,6 +1351,12 @@
             <button onclick="agentsOllamaPullPrompt()" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Pull model…</button>
           </div>
         </div>
+        <!-- MD-FEATURE-2F07F65F10F3 — picoclaw + lmstudio kept in system but
+             tucked behind an Advanced runners disclosure so the default Local AI
+             panel stays focused on Ollama. Backend wiring is unchanged. -->
+        <details style="grid-column:1/-1;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-dim);">Advanced runners (LM Studio · Picoclaw)</summary>
+          <div style="padding:0 14px 12px;display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:12px;">
         <!-- LM Studio -->
         <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
           <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
@@ -1378,6 +1384,8 @@
             <button onclick="agentsCopyCmd('pico-restart','sudo systemctl restart picoclaw  # if registered as a system service')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Copy restart cmd</button>
           </div>
         </div>
+          </div>
+        </details>
       </div>
       <!-- STEP-AGENTS-TILE-UX-OPERATIONS-20260430 — disabled-agents panel -->
       <div id="agents-disabled-panel" style="margin:0 16px 16px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
