@@ -68,6 +68,8 @@ __all__ = [
     'add_blackboard_note', 'list_blackboard_notes',
     'update_blackboard_note_status',
     'link_proposal', 'list_proposals_for_project',
+    'add_step_dependency', 'remove_step_dependency',
+    'list_step_dependencies', 'list_step_blockers',
     'METHODOLOGIES', 'STEP_STATUSES', 'CASE_STATUSES', 'PROJECT_STATUSES',
     'BLACKBOARD_KINDS', 'BLACKBOARD_STATUSES',
 ]
@@ -254,6 +256,21 @@ def _ensure_schema() -> None:
                     conn.execute(col_ddl)
                 except Exception:
                     pass  # column already exists
+
+            # S-98FA0FAEFE — explicit step dependencies. Many-to-many table
+            # so a step can declare zero or more prerequisite steps.
+            conn.execute("""CREATE TABLE IF NOT EXISTS project_step_deps (
+                step_id      TEXT NOT NULL,
+                depends_on   TEXT NOT NULL,
+                created_at   REAL NOT NULL,
+                PRIMARY KEY (step_id, depends_on)
+            )""")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_step_deps_step ON project_step_deps(step_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_step_deps_blocker ON project_step_deps(depends_on)"
+            )
 
             conn.commit()
         finally:
@@ -1127,6 +1144,123 @@ def scripts_for_step(step_id: str) -> List[Dict[str, Any]]:
                 "SELECT case_id, title, script_id, status FROM project_test_cases "
                 "WHERE step_id=? AND script_id IS NOT NULL AND script_id != '' "
                 "ORDER BY created_at ASC",
+                (step_id,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
+
+# ── Step dependencies (S-98FA0FAEFE) ────────────────────────────────────────
+
+def add_step_dependency(step_id: str, depends_on: str) -> bool:
+    """Declare that ``step_id`` cannot start until ``depends_on`` is done.
+
+    Both step_ids must exist. Self-loops and direct cycles (A→B and B→A)
+    are rejected. Idempotent: re-adding the same edge returns True.
+    """
+    sid, dep = (step_id or '').strip(), (depends_on or '').strip()
+    if not sid or not dep:
+        return False
+    if sid == dep:
+        raise ValueError("a step cannot depend on itself")
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            for x in (sid, dep):
+                if conn.execute(
+                    "SELECT 1 FROM project_steps WHERE step_id=?", (x,)
+                ).fetchone() is None:
+                    raise ValueError(f"unknown step_id: {x}")
+            # Reject the simple A↔B cycle. Deeper cycles are rare and the
+            # caller can run a topological check on top.
+            inverse = conn.execute(
+                "SELECT 1 FROM project_step_deps WHERE step_id=? AND depends_on=?",
+                (dep, sid),
+            ).fetchone()
+            if inverse:
+                raise ValueError(
+                    f"adding {sid} → {dep} would create a cycle with the "
+                    f"existing {dep} → {sid} dependency")
+            conn.execute(
+                "INSERT OR IGNORE INTO project_step_deps (step_id, depends_on, created_at) "
+                "VALUES (?, ?, ?)",
+                (sid, dep, time.time()),
+            )
+            conn.commit()
+            return True
+        finally:
+            conn.close()
+    except ValueError:
+        raise
+    except Exception:
+        return False
+
+
+def remove_step_dependency(step_id: str, depends_on: str) -> bool:
+    sid, dep = (step_id or '').strip(), (depends_on or '').strip()
+    if not sid or not dep:
+        return False
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            cur = conn.execute(
+                "DELETE FROM project_step_deps WHERE step_id=? AND depends_on=?",
+                (sid, dep),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
+
+
+def list_step_dependencies(step_id: str) -> List[Dict[str, Any]]:
+    """Return the steps that *step_id* depends on (its prerequisites)."""
+    if not step_id:
+        return []
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT s.step_id, s.title, s.status "
+                "FROM project_step_deps d "
+                "JOIN project_steps s ON s.step_id = d.depends_on "
+                "WHERE d.step_id=? "
+                "ORDER BY s.order_idx ASC, s.created_at ASC",
+                (step_id,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
+
+def list_step_blockers(step_id: str) -> List[Dict[str, Any]]:
+    """Return the steps that depend on *step_id* (downstream consumers)."""
+    if not step_id:
+        return []
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT s.step_id, s.title, s.status "
+                "FROM project_step_deps d "
+                "JOIN project_steps s ON s.step_id = d.step_id "
+                "WHERE d.depends_on=? "
+                "ORDER BY s.order_idx ASC, s.created_at ASC",
                 (step_id,),
             ).fetchall()
             return [dict(r) for r in rows]

@@ -745,6 +745,39 @@ def api_step_edit(step_id: str):
     return jsonify({'ok': True})
 
 
+# ── Step dependencies (S-98FA0FAEFE) ────────────────────────────────────────
+
+@knowledge_bp.route('/api/knowledge/steps/<step_id>/dependencies', methods=['GET'])
+def api_step_deps_list(step_id: str):
+    return jsonify({
+        'ok': True,
+        'depends_on': _kc_projects.list_step_dependencies(step_id),
+        'blocks':     _kc_projects.list_step_blockers(step_id),
+    })
+
+
+@knowledge_bp.route('/api/knowledge/steps/<step_id>/dependencies', methods=['POST'])
+def api_step_deps_add(step_id: str):
+    body = request.get_json(silent=True) or {}
+    dep = str(body.get('depends_on') or '').strip()
+    if not dep:
+        return jsonify({'ok': False, 'error': 'depends_on required'}), 400
+    try:
+        ok = _kc_projects.add_step_dependency(step_id, dep)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    if not ok:
+        return jsonify({'ok': False, 'error': 'could not add dependency'}), 500
+    return jsonify({'ok': True})
+
+
+@knowledge_bp.route('/api/knowledge/steps/<step_id>/dependencies/<depends_on>', methods=['DELETE'])
+def api_step_deps_remove(step_id: str, depends_on: str):
+    if _kc_projects.remove_step_dependency(step_id, depends_on):
+        return jsonify({'ok': True})
+    return jsonify({'ok': False, 'error': 'dependency not found'}), 404
+
+
 @knowledge_bp.route('/api/knowledge/cases/<case_id>', methods=['DELETE'])
 def api_case_delete(case_id: str):
     ok = _kc_projects.delete_test_case(case_id)
