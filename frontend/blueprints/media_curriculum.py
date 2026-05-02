@@ -22,6 +22,7 @@ Both tables are created idempotently on first call to `_ensure_schema()`.
 from __future__ import annotations
 
 import json
+import sqlite3
 import time
 import uuid
 
@@ -118,8 +119,8 @@ def add_curriculum():
             )
             conn.commit()
             return jsonify({'ok': True, 'merged': False})
-        except Exception:
-            # Unique conflict → update notes only.
+        except sqlite3.IntegrityError:
+            # Unique conflict on (topic, kind, tool) → update notes only.
             conn.execute(
                 "UPDATE kc_media_curriculum SET notes=? WHERE topic=? AND kind=? AND tool=?",
                 (notes, topic, kind, tool),
@@ -135,9 +136,11 @@ def delete_curriculum(row_id: int):
     conn = get_connection()
     try:
         _ensure_schema(conn)
-        conn.execute("DELETE FROM kc_media_curriculum WHERE id=?", (row_id,))
+        cur = conn.execute("DELETE FROM kc_media_curriculum WHERE id=?", (row_id,))
         conn.commit()
-        return jsonify({'ok': True})
+        if cur.rowcount == 0:
+            return jsonify({'ok': False, 'error': 'not found'}), 404
+        return jsonify({'ok': True, 'deleted': cur.rowcount})
     finally:
         conn.close()
 

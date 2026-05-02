@@ -28,3 +28,9 @@
 **From**: mistral
 **Description**: kind=musicgen job_id=MJOB-B7BB4E21B8C0 params={"duration": 30, "prompt": "lo-fi piano"}
 **Status**: dispatched
+
+## [08:49] INTERNAL-MISTRAL-2318
+**Title**: Media job · musicgen
+**From**: mistral
+**Description**: kind=musicgen job_id=MJOB-B7BB4E21B8C0 params={"duration": 30, "prompt": "lo-fi piano"}
+**Status**: dispatched
