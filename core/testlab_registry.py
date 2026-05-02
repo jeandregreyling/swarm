@@ -339,6 +339,50 @@ REGISTRY: List[Dict[str, object]] = [
         'change_aware': False,
         'default_on': False,
     },
+
+    # ── Test Lab suites (P-00221285D1) ───────────────────────────────────
+    {
+        'id': 'suite-tasker',
+        'group': 'Suites',
+        'label': 'Tasker suite (S-53B7D03A12)',
+        'description': 'Runs the Tasker dry-run, calendar-static, and research integration tests as one suite.',
+        'command': (
+            'python -m pytest -q --tb=line '
+            'tests/test_tasker_dry_run.py '
+            'tests/test_tasker_calendar_static.py '
+            'tests/test_tasker_research_integration_fixes.py'
+        ),
+        'change_aware': False,
+        'default_on': False,
+    },
+    {
+        'id': 'suite-research-watcher',
+        'group': 'Suites',
+        'label': 'Research watcher suite (S-2E9343FB8F)',
+        'description': 'Runs the Research watcher tests plus the Tasker↔Research integration fixes as one suite.',
+        'command': (
+            'python -m pytest -q --tb=line '
+            'tests/test_research.py '
+            'tests/test_tasker_research_integration_fixes.py'
+        ),
+        'change_aware': False,
+        'default_on': False,
+    },
+    {
+        'id': 'suite-studio-projects',
+        'group': 'Suites',
+        'label': 'Studio projects suite (S-F7FB61FF05)',
+        'description': 'Runs the Studio Projects API contract suite plus tags, step-deps, case-rollup, and closeout tests.',
+        'command': (
+            'python -m pytest -q --tb=line '
+            'tests/test_knowledge_projects_api.py '
+            'tests/test_project_tags.py '
+            'tests/test_step_deps_and_case_rollup.py '
+            'tests/test_frontend_smokes_and_routes.py'
+        ),
+        'change_aware': False,
+        'default_on': False,
+    },
 ]
 
 
