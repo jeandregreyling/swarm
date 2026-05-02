@@ -902,8 +902,17 @@ def api_step_complete(step_id: str):
 @knowledge_bp.route('/api/knowledge/projects/<project_id>/close-out', methods=['GET'])
 def api_project_close_out(project_id: str):
     """Return a close-out report: every step, its locked test file(s),
-    its latest test-run verdict, and a rolled-up verdict per step."""
+    its latest test-run verdict, and a rolled-up verdict per step.
+
+    Query string: ``format=md`` returns text/markdown instead of JSON
+    (S-4DB57C3A23 — closeout markdown export).
+    """
     rep = _kc_closeout.build_report(project_id)
+    fmt = (request.args.get('format') or '').strip().lower()
+    if fmt in ('md', 'markdown'):
+        body = _kc_closeout.render_markdown(rep)
+        status = 200 if rep.get('ok') else 404
+        return body, status, {'Content-Type': 'text/markdown; charset=utf-8'}
     if not rep.get('ok'):
         return jsonify(rep), 404
     return jsonify(rep)
