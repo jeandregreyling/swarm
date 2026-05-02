@@ -153,6 +153,21 @@ def route_imports() -> dict[str, Any]:
     # resolve when frontend/ is on sys.path (terminal.py adds it). Mirror that
     # here so this check exercises the real import surface, not a stricter one.
     sys.path.insert(0, os.path.join(SWARM_ROOT, "frontend"))
+    # Y.52: when this runs inside a long pytest session, earlier tests may have
+    # cached partial / namespace-package versions of `services` or `database`
+    # in sys.modules (e.g. an implicit namespace because frontend/ wasn't on
+    # sys.path yet at the first import). Evict those so we re-resolve against
+    # the path order we just established.
+    for stale in (
+        "services", "services.proposal_helpers", "services.identity",
+        "services.chat_jobs", "services.chat_relay", "services.chat_history",
+        "services.chat_agents", "services.duck_review", "services.alm",
+        "services.auth", "services.queue_wrappers",
+        "database",
+    ):
+        mod = sys.modules.get(stale)
+        if mod is not None and getattr(mod, "__file__", None) is None:
+            sys.modules.pop(stale, None)
     out = {"ok": True, "modules": 0, "failed": []}
     try:
         bp_pkg = importlib.import_module("frontend.blueprints")
