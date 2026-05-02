@@ -174,6 +174,7 @@
           <div style="font-size:14px;font-weight:700;color:var(--text);">${_esc(p.name)}</div>
           <div style="font-size:9px;color:var(--text-dim);font-family:monospace;">${_esc(p.project_id)} · methodology: <b>${_esc(p.methodology)}</b> · owner: <b>${_esc(p.owner || 'seven')}</b> · status: ${_esc(p.status)}</div>
           ${p.description ? `<div style="margin-top:6px;color:var(--text-dim);font-size:11px;white-space:pre-wrap;">${_esc(p.description)}</div>` : ''}
+          ${_renderProjectTypeRow(p)}
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
           <button onclick="projectsPreviewContext('${_esc(p.project_id)}')" title="Preview the local-agent context pack"
@@ -586,6 +587,56 @@
   function _esc(v) {
     if (window.SwarmChat && typeof window.SwarmChat.esc === 'function') return window.SwarmChat.esc(v);
     return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+  }
+
+  // STEP-PROJECT-TYPE-ROUTING-STUDIO-MEDIA-PROGRAMMING-20260430 — projects
+  // remain ALM-tracked, but each one can be tagged as Media or Programming so
+  // the detail panel surfaces routing buttons into the right tooling. Tag is
+  // persisted in localStorage keyed by project_id; falls back to a heuristic
+  // that scans name/description for media keywords.
+  const PROJECT_TYPE_KEY = 'swarm-project-type';
+  const _MEDIA_KEYWORDS = /(media|music|video|audio|synth|track|song|film|photo|render|image|art|design|newsletter)/i;
+  function _projectTypeOverrides() {
+    try { return JSON.parse(localStorage.getItem(PROJECT_TYPE_KEY) || '{}') || {}; }
+    catch (_e) { return {}; }
+  }
+  function _saveProjectTypeOverrides(map) {
+    localStorage.setItem(PROJECT_TYPE_KEY, JSON.stringify(map));
+  }
+  function _projectTypeFor(p) {
+    const map = _projectTypeOverrides();
+    if (map[p.project_id]) return map[p.project_id];
+    const blob = `${p.name || ''} ${p.description || ''}`;
+    if (_MEDIA_KEYWORDS.test(blob)) return 'media';
+    return 'programming';
+  }
+  window.projectsSetType = function (pid, type) {
+    const map = _projectTypeOverrides();
+    if (type === 'auto' || !type) { delete map[pid]; }
+    else { map[pid] = type; }
+    _saveProjectTypeOverrides(map);
+    if (typeof window.loadProjectsData === 'function') window.loadProjectsData();
+  };
+  function _renderProjectTypeRow(p) {
+    const t = _projectTypeFor(p);
+    const accent = t === 'media' ? '#ff8fbe' : '#7ad6c8';
+    const label = t === 'media' ? 'Media' : 'Programming';
+    const mediaBtn = `<button onclick="openWindow('media-center','Media Center','view-media-center')" style="background:none;border:1px solid ${accent};color:${accent};border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;">→ Media Center</button>`;
+    const codeBtn = `<button onclick="studioSetTab && studioSetTab('git')" style="background:none;border:1px solid ${accent};color:${accent};border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;">→ Studio Git</button>`;
+    const testBtn = `<button onclick="studioSetTab && studioSetTab('testlab')" style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;">→ Test Lab</button>`;
+    const route = t === 'media' ? mediaBtn + testBtn : codeBtn + testBtn;
+    return `
+      <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:10px;">
+        <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);">Type:</span>
+        <span style="padding:1px 7px;border-radius:8px;background:color-mix(in srgb, ${accent} 18%, transparent);color:${accent};border:1px solid ${accent};font-weight:700;">${label}</span>
+        <select onchange="projectsSetType('${_esc(p.project_id)}', this.value)" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:1px 4px;font-size:10px;">
+          <option value="auto">auto</option>
+          <option value="programming" ${t==='programming'?'selected':''}>programming</option>
+          <option value="media" ${t==='media'?'selected':''}>media</option>
+        </select>
+        <span style="margin-left:6px;color:var(--text-dim);">Route:</span>
+        ${route}
+      </div>`;
   }
 
   // ── PACKET-04: Project overview surface (packet rollup) ────────────────
