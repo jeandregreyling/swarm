@@ -108,6 +108,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.trading_bp',       'trading_bp'),
     ('blueprints.business_bp',      'business_bp'),
     ('blueprints.media_curriculum', 'media_curriculum_bp'),
+    ('blueprints.media_jobs',       'media_jobs_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
