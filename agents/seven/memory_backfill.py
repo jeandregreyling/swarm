@@ -36,14 +36,23 @@ REPAIR_TAGS = "backfill,thread_repair"
 
 
 def _iter_gap_threads(conn, agent: str = "seven") -> Iterable[tuple[int, int, int]]:
-    """Yield (thread_id, queue_count, memory_count) for threads where counts disagree."""
+    """Yield (thread_id, queue_count, memory_count) for threads where counts disagree.
+
+    Uses a correlated subquery for the per-thread memory count rather than a
+    LEFT JOIN, because the LEFT JOIN produced a row-multiplication bug —
+    each queue row matched the same memory row via ``LIKE``, so memory_count
+    came out equal to queue_count and the gap was masked. (This is the bug
+    that originally hid thread 2112 from the repair sweep.)
+    """
     rows = conn.execute(
         """
         SELECT q.thread_id AS thread_id,
                COUNT(DISTINCT q.id) AS queue_count,
-               SUM(CASE WHEN m.agent=? THEN 1 ELSE 0 END) AS memory_count
+               (SELECT COUNT(*) FROM agent_memory m
+                  WHERE m.agent = ?
+                    AND m.context LIKE ('%thread_' || q.thread_id || '%')
+               ) AS memory_count
         FROM queue q
-        LEFT JOIN agent_memory m ON m.context LIKE ('%thread_' || q.thread_id || '%')
         WHERE q.thread_id IS NOT NULL
         GROUP BY q.thread_id
         HAVING memory_count < queue_count
