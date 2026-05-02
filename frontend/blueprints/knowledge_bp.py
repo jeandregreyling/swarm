@@ -79,6 +79,69 @@ def api_knowledge_change_runs_for_change(change_id: str):
     })
 
 
+# ── Session 30 — Step-through timeline (MD-SESSION30-CB0CE94C6B60) ────────
+
+
+@knowledge_bp.route('/api/knowledge/changes/<change_id>/timeline', methods=['GET'])
+def api_knowledge_change_timeline(change_id: str):
+    """Stitch change_runs + test_runs for a change into a single timeline."""
+    try:
+        limit = max(1, min(int(request.args.get('limit', 200)), 1000))
+    except (TypeError, ValueError):
+        limit = 200
+    return jsonify({
+        'ok': True,
+        'change_id': change_id,
+        'items': _kc_scripts.timeline_for_change(change_id, limit=limit),
+    })
+
+
+# ── Session 30 — Knowledge Center tile feed (MD-SESSION30-FF20242F3F3D) ──
+
+
+@knowledge_bp.route('/api/knowledge/runs/feed', methods=['GET'])
+def api_knowledge_runs_feed():
+    """Combined feed of recent change_runs + test_runs for the KC tile.
+
+    Optional ?limit (default 50, max 200). Items are ordered newest-first
+    and tagged with ``kind`` so the tile can render heterogeneously.
+    """
+    try:
+        limit = max(1, min(int(request.args.get('limit', 50)), 200))
+    except (TypeError, ValueError):
+        limit = 50
+
+    items = []
+    try:
+        for cr in _kc_scripts.list_change_runs(limit=limit):
+            items.append({
+                'kind': 'change_run',
+                'ts': cr.get('created_at'),
+                'change_run_id': cr.get('id'),
+                'change_id': cr.get('change_id'),
+                'script_ids': cr.get('script_ids') or [],
+            })
+    except Exception:
+        pass
+    try:
+        for tr in _kc_runs.list_runs(limit=limit) or []:
+            items.append({
+                'kind': 'test_run',
+                'ts': tr.get('started_at') or tr.get('created_at') or 0,
+                'run_id': tr.get('id') or tr.get('run_id'),
+                'script_id': tr.get('script_id'),
+                'change_id': tr.get('change_id'),
+                'status': tr.get('status'),
+                'finished_at': tr.get('finished_at'),
+                'exit_code': tr.get('exit_code'),
+                'triggered_by': tr.get('triggered_by'),
+            })
+    except Exception:
+        pass
+    items.sort(key=lambda x: (x.get('ts') or 0), reverse=True)
+    return jsonify({'ok': True, 'count': len(items[:limit]), 'items': items[:limit]})
+
+
 # ── Session 30 — Test Run history (ALM-style) ─────────────────────────────
 
 @knowledge_bp.route('/api/knowledge/test-runs', methods=['POST'])
@@ -92,12 +155,23 @@ def api_knowledge_test_run_start():
     script_id = str(body.get('script_id') or '').strip()
     if not script_id:
         return jsonify({'ok': False, 'error': 'script_id required'}), 400
+    # Session 30 — auto-tag triggered_by=change:<id> when a change_id is
+    # supplied but no explicit triggered_by was passed. (MD-SESSION30-ECA581250AF5)
+    raw_change_id = body.get('change_id') or None
+    raw_triggered_by = body.get('triggered_by')
+    if raw_triggered_by is None or str(raw_triggered_by).strip() == '':
+        if raw_change_id:
+            triggered_by = f'change:{str(raw_change_id).strip()}'
+        else:
+            triggered_by = 'manual'
+    else:
+        triggered_by = str(raw_triggered_by)
     try:
         run_id = _kc_runs.start_run(
             script_id,
-            change_id=body.get('change_id') or None,
+            change_id=raw_change_id,
             command=body.get('command') or None,
-            triggered_by=str(body.get('triggered_by') or 'manual'),
+            triggered_by=triggered_by,
             project_id=body.get('project_id') or None,
             step_id=body.get('step_id') or None,
             case_id=body.get('case_id') or None,
