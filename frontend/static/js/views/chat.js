@@ -1847,19 +1847,75 @@ function _renderGuardianNarrator(data) {
   const conf = Math.round((g.confidence || 0) * 100) / 100;
   const orig = _escHtml(origTarget);
   const rationale = _escHtml(g.rationale || '');
+  // MD-FEATURE-B74D902738AB — full inline narrator card with a "Why?"
+  // explainer that cites the spine GUARDIAN event behind the intercept.
+  card.style.cssText = 'margin-top:6px;padding:10px 12px;border-left:3px solid #d8a032;background:#d8a03216;border-radius:4px;font-size:11px;color:var(--text);display:flex;flex-direction:column;gap:6px;';
   card.innerHTML = `
-    <span style="font-size:14px;">🛡</span>
-    <span style="flex:1;">
-      <strong>Seven stepped in.</strong>
-      Router suggested <code style="color:#d8a032;">${orig}</code> at confidence
-      <code style="color:#d8a032;">${conf}</code> — below Seven's guardian threshold (0.6),
-      so Seven is taking this one.
-      ${rationale ? `<span style="color:var(--text-dim);"> · ${rationale}</span>` : ''}
-    </span>
-    <button onclick="_hideGuardianNarrator()" title="Dismiss"
-      style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;line-height:1;">✕</button>`;
+    <div style="display:flex;align-items:flex-start;gap:8px;">
+      <span style="font-size:14px;line-height:1;">🛡</span>
+      <span style="flex:1;line-height:1.45;">
+        <strong>Seven stepped in.</strong>
+        <code style="color:#d8a032;">${orig}</code> was at
+        <code style="color:#d8a032;">${conf}</code> confidence — below Seven's
+        guardian threshold (<code style="color:#d8a032;">0.60</code>), so
+        Seven took this one instead.
+        ${rationale ? `<span style="color:var(--text-dim);"> · ${rationale}</span>` : ''}
+      </span>
+      <button type="button" onclick="_toggleGuardianNarratorWhy(event)" title="Show the spine GUARDIAN event behind this intercept"
+        style="background:#d8a03222;border:1px solid #d8a03255;color:#d8a032;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:600;">Why?</button>
+      <button type="button" onclick="_hideGuardianNarrator()" title="Dismiss"
+        style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;line-height:1;padding:0 2px;">✕</button>
+    </div>
+    <div id="chat-guardian-narrator-why" style="display:none;padding:8px 10px;margin-top:2px;background:rgba(0,0,0,0.18);border:1px solid #d8a03244;border-radius:3px;font-size:10.5px;color:var(--text-dim);line-height:1.55;">
+      <div style="color:var(--text);font-weight:600;margin-bottom:4px;">From the spine</div>
+      <div id="chat-guardian-narrator-why-body" style="font-family:var(--font-mono,monospace);">Loading GUARDIAN event…</div>
+      <div style="margin-top:6px;">
+        <a href="#" onclick="event.preventDefault();_hideGuardianNarrator();openWindow('traced','Traced','view-traced');"
+          style="color:#d8a032;text-decoration:none;font-weight:600;">Open Traced timeline →</a>
+      </div>
+    </div>`;
   card.style.display = '';
 }
+
+function _toggleGuardianNarratorWhy(ev) {
+  if (ev) ev.stopPropagation();
+  const why = document.getElementById('chat-guardian-narrator-why');
+  if (!why) return;
+  const willShow = why.style.display === 'none' || why.style.display === '';
+  why.style.display = willShow ? 'block' : 'none';
+  if (!willShow) return;
+  const body = document.getElementById('chat-guardian-narrator-why-body');
+  if (!body) return;
+  // Pull the most recent GUARDIAN spine event so the user can see the literal
+  // log line behind the intercept (cites severity/source/agent/payload).
+  fetch('/api/spine/events?kinds=guardian&limit=1', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      const evs = j && (j.events || j.data || (Array.isArray(j) ? j : null));
+      const e = evs && evs[0];
+      if (!e) { body.textContent = 'No GUARDIAN event in the spine yet.'; return; }
+      const ts = _escHtml(String(e.created_at || e.timestamp || e.ts || ''));
+      const msg = _escHtml(String(e.message || ''));
+      const src = _escHtml(String(e.source || 'spine.route'));
+      const agent = _escHtml(String(e.agent || 'seven'));
+      let payload = '';
+      try {
+        const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : (e.payload || {});
+        if (p && Object.keys(p).length) {
+          const orig = _escHtml(String(p.original_target || ''));
+          const cat = _escHtml(String(p.category || ''));
+          const cnf = (typeof p.confidence === 'number') ? p.confidence.toFixed(2) : _escHtml(String(p.confidence || ''));
+          payload = `<div style="margin-top:4px;color:var(--text-dim);">original_target=<code>${orig}</code> · category=<code>${cat}</code> · confidence=<code>${cnf}</code></div>`;
+        }
+      } catch (_) { /* ignore */ }
+      body.innerHTML = `
+        <div style="color:var(--text);"><code>[${ts}]</code> <code style="color:#d8a032;">GUARDIAN</code> ${msg}</div>
+        <div style="color:var(--text-dim);margin-top:2px;font-size:9.5px;">source=<code>${src}</code> · agent=<code>${agent}</code></div>
+        ${payload}`;
+    })
+    .catch(() => { body.textContent = 'Could not load GUARDIAN event.'; });
+}
+window._toggleGuardianNarratorWhy = _toggleGuardianNarratorWhy;
 
 function _hideGuardianNarrator() {
   const card = document.getElementById('chat-guardian-narrator');
