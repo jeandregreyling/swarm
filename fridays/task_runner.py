@@ -1164,6 +1164,27 @@ def _task_chat_smoke_probe(**kwargs):
     except Exception:
         pass
 
+    # Emit a CHAT spine event so Traced surfaces historical latency at a glance
+    # (MD-FEATURE-B13F80E2C988). Best-effort; never blocks the probe result.
+    try:
+        from core import spine as _spine
+        _spine.log(
+            _spine.EventKind.CHAT,
+            f'chat_smoke_probe {"ok" if ok else "FAILED"} agent={agent} {elapsed_ms}ms',
+            severity=_spine.Severity.INFO if ok else _spine.Severity.WARN,
+            source='chat_smoke_probe',
+            agent=agent,
+            payload={
+                'ok': bool(ok),
+                'agent': agent,
+                'latency_ms': elapsed_ms,
+                'reply_len': len(reply or ''),
+                'err': (err or '')[:200],
+            },
+        )
+    except Exception:
+        pass
+
     if ok:
         return f'chat_smoke_probe ok agent={agent} latency_ms={elapsed_ms} reply={reply[:80]!r}'
     return f'chat_smoke_probe FAILED agent={agent} elapsed_ms={elapsed_ms} err={err or "empty reply"}'
