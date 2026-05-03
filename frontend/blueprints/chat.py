@@ -511,7 +511,12 @@ def api_chat():
     """Send a chat message to one or more agents on a shared conversation thread."""
     data = request.get_json() or {}
     message = (data.get('message') or '').strip()
-    agent = (data.get('agent') or 'gemma').strip().lower()
+    # Default agent: 'nine' (Groq). On this CPU-only host local gemma3:4b
+    # takes 90-250s to first token; defaulting to a fast cloud agent makes
+    # the chat actually responsive. Eleven (xAI), Ten (GitHub Models), and
+    # Twelve (Anthropic) currently 401/429 — Nine/Groq is the live cloud
+    # agent as of 2026-05-03. Users can still pick any agent explicitly.
+    agent = (data.get('agent') or 'nine').strip().lower()
     requested_agents = data.get('agents')
     requested_conv_id = data.get('conversation_id')
     force_new_thread = bool(data.get('new_thread'))

@@ -1294,3 +1294,159 @@
 **From**: user_seven
 **Description**: 
 **Status**: dispatched
+
+## [19:52] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [19:52] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [19:57] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [19:57] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:02] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:02] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:07] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:07] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:12] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:12] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:17] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:17] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:22] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:22] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:27] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:27] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:32] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:32] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:37] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:37] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:42] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:42] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:47] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:47] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:52] MANUAL-20260503-104559
+**Title**: [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main terminal
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:52] MANUAL-20260503-104558
+**Title**: [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed in KC + tasker NASDAQ/ASX + investment-banking research
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
