@@ -68,6 +68,11 @@ def api_enrollment_status():
 def api_enrollment_create():
     """Create the owner account (first-boot) or a new member account via invite."""
     data = request.get_json(silent=True) or {}
+    # Y.56: type-check before .strip() (Y.50 class).
+    for col in ("username", "password", "display_name", "email", "role", "invite"):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({"ok": False, "error": f"{col} must be a string"}), 400
     username = (data.get("username") or "").strip().lower()
     password = (data.get("password") or "").strip()
     display_name = (data.get("display_name") or username).strip()

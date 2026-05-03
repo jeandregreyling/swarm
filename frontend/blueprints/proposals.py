@@ -96,6 +96,11 @@ def get_proposal_detail(proposal_id):
 @proposals_bp.route("/api/queue", methods=["POST"])
 def intake():
     data = request.get_json(silent=True) or {}
+    # Y.56: type-check before .strip() (Y.50 class).
+    for col in ("agent", "title"):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({"ok": False, "error": f"{col} must be a string"}), 400
     agent = data.get("agent", "manual_test")
     title = (data.get("title") or "").strip()
     description = data.get("description", "") or ""
@@ -489,6 +494,11 @@ def list_proposal_notes(proposal_id):
 def add_proposal_note(proposal_id):
     """Add a note to a proposal. Used by Duck, agents, and Ghost."""
     data = request.get_json() or {}
+    # Y.56: type-check before .strip() (Y.50 class).
+    for col in ("content", "author"):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({"ok": False, "error": f"{col} must be a string"}), 400
     content = (data.get("content") or "").strip()
     author  = (data.get("author") or "ghost").strip()
     if not content:
