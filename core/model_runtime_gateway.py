@@ -325,8 +325,10 @@ def chat(
     messages: list[dict[str, str]],
     *,
     base_url: str = OLLAMA_BASE_URL,
-    absolute_timeout_s: int = 300,
-    idle_timeout_s: int = 60,
+    # CPU-only first-token can take 90-120s on a cold model; old 60s/300s
+    # defaults caused chat to fail with read-timeouts. See chat_via_gateway.
+    absolute_timeout_s: int = 600,
+    idle_timeout_s: int = 240,
     keep_alive: str | int = "60s",
     options: dict[str, Any] | None = None,
     on_token: Any = None,
