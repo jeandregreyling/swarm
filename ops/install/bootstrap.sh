@@ -38,7 +38,16 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 case "$(uname -s)" in
-    Linux*)   PLATFORM="linux"   ;;
+    Linux*)
+        # Termux on Android sets $PREFIX to /data/data/com.termux/files/usr.
+        # Detect it before falling through to plain Linux so we can pick
+        # the no-systemd installer path.
+        if [[ -n "${PREFIX:-}" && "$PREFIX" == */com.termux/* ]]; then
+            PLATFORM="termux"
+        else
+            PLATFORM="linux"
+        fi
+        ;;
     Darwin*)  PLATFORM="macos"   ;;
     *)        echo "[bootstrap] unsupported platform: $(uname -s) — for Windows use install_windows.ps1" >&2
               exit 4 ;;
@@ -51,14 +60,24 @@ mkdir -p "$STAGE_DIR/ops/install"
 
 echo "[bootstrap] leader=$LEADER platform=$PLATFORM stage=$STAGE_DIR"
 
+# 1) Agent + platform installer.
 curl -fsSL "$LEADER/api/hive/install/agent.py"             -o "$STAGE_DIR/ops/hive_agent.py"
 curl -fsSL "$LEADER/api/hive/install/install_${PLATFORM}.sh" -o "$STAGE_DIR/ops/install/install_${PLATFORM}.sh"
 chmod +x "$STAGE_DIR/ops/hive_agent.py" "$STAGE_DIR/ops/install/install_${PLATFORM}.sh"
 
+# 2) Runtime Python deps for the agent (core/hive tree). Fetched as a
+# small built-on-demand tarball so we don't need a git clone.
+echo "[bootstrap] fetching core/hive runtime ..."
+curl -fsSL "$LEADER/api/hive/install/core_hive.tar.gz" -o "$STAGE_DIR/core_hive.tar.gz"
+tar -xzf "$STAGE_DIR/core_hive.tar.gz" -C "$STAGE_DIR"
+rm -f "$STAGE_DIR/core_hive.tar.gz"
+
 # Run the platform installer from the stage dir. The installer locates
-# the agent relative to itself (../hive_agent.py).
+# the agent relative to itself (../hive_agent.py) and adds the stage
+# dir to PYTHONPATH so ``import core.hive`` works.
 SWARM_HIVE_LEADER="$LEADER" \
     SWARM_HIVE_PYTHON="$PY" \
+    SWARM_HIVE_STAGE="$STAGE_DIR" \
     "$STAGE_DIR/ops/install/install_${PLATFORM}.sh"
 
 echo
