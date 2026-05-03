@@ -509,7 +509,7 @@ function monitorHiveStartAutoRefresh() {
 // Builds copy-paste install commands per platform pointing at THIS leader.
 // Reads window.location.origin so the displayed command auto-fills.
 
-let _hiveAddTab = 'linux';
+let _hiveAddTab = 'clickthrough';
 
 function monitorHiveAddCommand(platform) {
   const origin = (window.location && window.location.origin) || '';
@@ -522,15 +522,28 @@ function monitorHiveAddCommand(platform) {
 
 function monitorHiveAddTab(platform) {
   _hiveAddTab = platform;
-  const code = document.getElementById('monitor-hive-cmd');
-  if (code) code.textContent = monitorHiveAddCommand(platform);
-  ['linux', 'macos', 'windows'].forEach((p) => {
+  const clickPane    = document.getElementById('monitor-hive-clickthrough');
+  const oneLinerPane = document.getElementById('monitor-hive-oneliner');
+  const code         = document.getElementById('monitor-hive-cmd');
+  if (platform === 'clickthrough') {
+    if (clickPane)    clickPane.style.display = 'block';
+    if (oneLinerPane) oneLinerPane.style.display = 'none';
+  } else {
+    if (clickPane)    clickPane.style.display = 'none';
+    if (oneLinerPane) oneLinerPane.style.display = 'block';
+    if (code)         code.textContent = monitorHiveAddCommand(platform);
+  }
+  ['clickthrough', 'linux', 'macos', 'windows'].forEach((p) => {
     const btn = document.getElementById('monitor-hive-tab-' + p);
     if (!btn) return;
     btn.style.background = (p === platform) ? 'var(--accent, #444)' : 'transparent';
   });
   const status = document.getElementById('monitor-hive-cmd-status');
   if (status) status.textContent = '';
+  // Update the installer download link to use absolute origin so the
+  // download keeps working when the page is opened over a tunnel.
+  const link = document.getElementById('monitor-hive-installer-link');
+  if (link) link.href = ((window.location && window.location.origin) || '') + '/api/hive/install/hive_installer_gui.py';
 }
 
 function monitorHiveCopyCmd() {
