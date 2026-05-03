@@ -71,7 +71,10 @@ function _initSundial() {
   if (!wrap) return;
   const svg = document.getElementById('sundial-rays');
   const count = SUNDIAL_METRICS.length;
-  const cx = 60, cy = 60, radius = 44;
+  // Y.58c — dial bumped to 150x150 so 8 metrics sit on a 58px ring without
+  // overlapping each other or the centre title. Keep cx/cy in sync with
+  // the CSS #sundial width/height.
+  const cx = 75, cy = 75, radius = 58;
 
   if (svg) {
     // Outer dial ring
@@ -85,7 +88,7 @@ function _initSundial() {
 
     // Centre backdrop so text is readable
     const bd = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    bd.setAttribute('cx', cx);  bd.setAttribute('cy', cy);  bd.setAttribute('r', '22');
+    bd.setAttribute('cx', cx);  bd.setAttribute('cy', cy);  bd.setAttribute('r', '28');
     bd.setAttribute('fill', 'var(--card)');
     bd.setAttribute('opacity', '0.6');
     svg.appendChild(bd);
