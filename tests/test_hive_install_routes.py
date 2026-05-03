@@ -114,3 +114,32 @@ def test_install_one_liner_uses_request_host(client):
     body = rv.get_json()
     assert 'leader.example:5050' in body['one_liners']['linux_macos']
     assert 'leader.example:5050' in body['one_liners']['windows']
+
+
+def test_install_manifest_advertises_click_through(client):
+    rv = client.get('/api/hive/install/')
+    body = rv.get_json()
+    assert 'click_through' in body
+    ct = body['click_through']
+    assert 'gui_installer' in ct
+    assert ct['gui_installer'].endswith('/api/hive/install/hive_installer_gui.py')
+    assert 'instructions' in ct
+    names = {f['name'] for f in body['files']}
+    assert 'hive_installer_gui.py' in names
+    assert 'hive_installer_core.py' in names
+
+
+def test_install_serves_gui_installer(client):
+    rv = client.get('/api/hive/install/hive_installer_gui.py')
+    assert rv.status_code == 200
+    body = rv.get_data(as_text=True)
+    assert 'class InstallerApp' in body
+    assert "if __name__ ==" in body  # has a main entrypoint
+
+
+def test_install_serves_installer_core(client):
+    rv = client.get('/api/hive/install/hive_installer_core.py')
+    assert rv.status_code == 200
+    body = rv.get_data(as_text=True)
+    assert 'def probe_leader' in body
+    assert 'def plan_install' in body

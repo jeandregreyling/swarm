@@ -47,9 +47,22 @@ curl -s -X POST http://localhost:5050/api/chat \
 ## Add a device to the Hive (30 seconds)
 
 Once a leader is running, any other Linux/macOS/Windows host on the
-network can enrol with a single command — no git clone required. The
-leader serves the agent and per-platform installers from
-`/api/hive/install/`.
+network can enrol. There are two paths.
+
+### Click-through (recommended)
+
+1. Open the leader's web UI → Monitor view → **Add a device** → click
+   **⬇ Download installer (.py)**.
+2. On the new device, double-click the downloaded
+   `hive_installer_gui.py` (Python 3.10+ required; Tkinter ships with
+   Python by default).
+3. Click Next → paste the leader URL → Install. Done.
+
+The wizard never asks the user to open a terminal. It downloads the
+agent, registers a background service so it survives reboot, and
+sends the first telemetry sample.
+
+### Terminal one-liners (advanced / scripted)
 
 Linux / macOS:
 
@@ -65,10 +78,10 @@ $env:SWARM_HIVE_LEADER='http://<leader>:5050'
 irm $env:SWARM_HIVE_LEADER/api/hive/install/bootstrap.ps1 | iex
 ```
 
-The Monitor view in the leader UI also shows a copy-paste box (Linux /
-macOS / Windows tabs) under **Hive · Thermal & Performance**, with the
-leader URL pre-filled. The full manifest of served files is at
-`/api/hive/install/`.
+The full manifest of artefacts the leader will serve is at
+`/api/hive/install/`. The road from this alpha to a shippable product
+is documented in [docs/HIVE_PRODUCTION_PLAN.md](docs/HIVE_PRODUCTION_PLAN.md)
+— including the in-house WireGuard mesh that will replace Tailscale.
 
 ## Slash commands (Seven)
 
