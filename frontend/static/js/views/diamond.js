@@ -144,6 +144,34 @@ function _showSundialTip(metric, node) {
     tip.addEventListener('mouseenter', () => { tip._hover = true; });
     tip.addEventListener('mouseleave', () => { tip._hover = false; tip.style.display = 'none'; });
     tip.addEventListener('click', async (e) => {
+      const fanBtn = e.target.closest('.stip-fan-btn');
+      if (fanBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const mode = fanBtn.dataset.mode || 'auto';
+        const status = tip.querySelector('.stip-fan-status');
+        if (status) status.textContent = (mode === 'boost' ? 'boosting…' : 'auto…');
+        try {
+          const r = await fetch('/api/fan/mode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (status) {
+            if (r.ok && j.ok !== false) {
+              status.textContent = (mode === 'boost' ? 'boost on' : 'auto on');
+              status.style.color = '#5cb85c';
+            } else {
+              status.textContent = (j.error || 'fanctl not installed');
+              status.style.color = '#d9534f';
+            }
+          }
+        } catch (_) {
+          if (status) { status.textContent = 'unreachable'; status.style.color = '#d9534f'; }
+        }
+        return;
+      }
       const btn = e.target.closest('.stip-unload-btn');
       if (!btn) return;
       e.preventDefault();
@@ -166,11 +194,23 @@ function _showSundialTip(metric, node) {
   const hLabel = health === 'crit' ? 'Critical' : health === 'warn' ? 'Warning' : 'Normal';
   const hClass = 'stip-h-' + health;
   const iconSvg = SUNDIAL_ICONS[metric.key] || '';
+  // Y.58 — temperature node: surface fan-boost controls in the tooltip so the
+  // user can spin the DELL fan up to bring temps back to ~50°C without
+  // hunting for the Monitor tile.
+  const fanBoostHtml = (metric.key === 'temp')
+    ? '<div class="stip-fanboost" style="margin-top:6px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;">'
+      + '<span style="font-size:9px;color:var(--text-dim);">Fan:</span>'
+      + '<button class="stip-fan-btn" data-mode="auto" style="font-size:9px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;">Auto</button>'
+      + '<button class="stip-fan-btn" data-mode="boost" style="font-size:9px;padding:2px 8px;border-radius:4px;border:1px solid #f7b84b66;background:rgba(247,184,75,0.08);color:#f7b84b;cursor:pointer;font-weight:700;">Boost · target 50°C</button>'
+      + '<span class="stip-fan-status" style="font-size:9px;color:var(--text-dim);margin-left:auto;"></span>'
+      + '</div>'
+    : '';
   tip.innerHTML =
     '<div class="stip-header"><span class="stip-icon">' + iconSvg + '</span> ' + metric.label + '</div>' +
     '<div class="stip-desc">' + metric.tip + '</div>' +
     '<div class="stip-val">' + (valEl ? valEl.textContent : '\u2014') + '</div>' +
     '<div class="stip-health ' + hClass + '"><span class="stip-dot"></span> ' + hLabel + '</div>' +
+    fanBoostHtml +
     _sundialResidencyHtml(metric.key);
   tip.style.display = 'block';
 
