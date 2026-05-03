@@ -1743,6 +1743,8 @@ function _resetSettingsBoxInlineLayout(box) {
 function _restoreSettingsBoxToModal() {
   const modal = document.getElementById('settings-modal');
   const box = document.getElementById('settings-box');
+  // Y.58 — always clear the windowed flag so the modal-mode CSS comes back.
+  document.body.removeAttribute('data-settings-windowed');
   if (!modal || !box || box.parentElement === modal) return;
   modal.appendChild(box);
   _resetSettingsBoxInlineLayout(box);
@@ -1754,6 +1756,9 @@ function loadSettingsWindowData(win) {
   if (!box || !host) return;
 
   _resetSettingsBoxInlineLayout(box);
+  // Y.58 — mark body so the .window-content scoped CSS in modals.css wins
+  // against any inline styles still on #settings-box.
+  document.body.setAttribute('data-settings-windowed', '1');
   host.replaceWith(box);
   if (win) {
     win.beforeClose = _restoreSettingsBoxToModal;
@@ -1811,27 +1816,92 @@ function setSysmodEnabled(on) {
   if (lbl) lbl.textContent = on ? 'On' : 'Off';
   const input = document.getElementById('sysmod-enable-input');
   if (input && input.checked !== !!on) input.checked = !!on;
+  // Y.58 — visibly disable the per-capability + helper area when master is
+  // off so the toggle isn't "doing fuck all".
+  _sysmodApplyMasterState(!!on);
   try {
     fetch('/api/settings/sysmod', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled: !!on }),
-    }).catch(() => {});
+    }).then(() => refreshSysmodHelpers()).catch(() => {});
   } catch (_) {}
   if (typeof showToast === 'function') {
     showToast(`System modifications ${on ? 'enabled' : 'disabled'}`, on ? 'warning' : 'info');
   }
 }
 
+function _sysmodApplyMasterState(on) {
+  const host = document.getElementById('sysmod-helpers');
+  const caps = document.getElementById('sysmod-capabilities');
+  [host, caps].forEach((el) => {
+    if (!el) return;
+    el.style.opacity = on ? '1' : '0.45';
+    el.style.pointerEvents = on ? 'auto' : 'none';
+  });
+}
+
+function setSysmodCapability(name, on) {
+  fetch('/api/settings/sysmod', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ capabilities: { [name]: !!on } }),
+  }).then(() => refreshSysmodHelpers()).catch(() => {});
+  if (typeof showToast === 'function') {
+    showToast(`${name.replace(/_/g, ' ')} ${on ? 'enabled' : 'disabled'}`, 'info');
+  }
+}
+
 function _initSysmodToggle() {
   const input = document.getElementById('sysmod-enable-input');
   if (!input) return;
-  input.checked = getSysmodEnabled();
-  const lbl = document.getElementById('sysmod-enable-label');
-  if (lbl) lbl.textContent = input.checked ? 'On' : 'Off';
-  // MD-FEATURE-C6D59801C77C — render per-helper inventory beneath the master
-  // toggle so operators can see what is installed and copy enable/disable
-  // commands without needing to know the unit names.
+  // Y.58 — pull live server state so toggle reflects what the backend
+  // actually has stored, not just what localStorage thinks.
+  fetch('/api/settings/sysmod').then((r) => r.json()).then((d) => {
+    if (!d || d.ok !== true) return;
+    const enabled = !!d.enabled;
+    input.checked = enabled;
+    try { localStorage.setItem(SYSMOD_KEY, enabled ? '1' : '0'); } catch (_) {}
+    const lbl = document.getElementById('sysmod-enable-label');
+    if (lbl) lbl.textContent = enabled ? 'On' : 'Off';
+    _sysmodRenderCapabilities(d.capabilities || {});
+    _sysmodApplyMasterState(enabled);
+  }).catch(() => {
+    // Fall back to local cache.
+    input.checked = getSysmodEnabled();
+    const lbl = document.getElementById('sysmod-enable-label');
+    if (lbl) lbl.textContent = input.checked ? 'On' : 'Off';
+    _sysmodApplyMasterState(input.checked);
+  });
   refreshSysmodHelpers();
+}
+
+function _sysmodRenderCapabilities(caps) {
+  // Render directly above #sysmod-helpers if a host element exists.
+  let host = document.getElementById('sysmod-capabilities');
+  if (!host) {
+    const helpers = document.getElementById('sysmod-helpers');
+    if (!helpers) return;
+    host = document.createElement('div');
+    host.id = 'sysmod-capabilities';
+    host.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:6px;';
+    helpers.parentNode.insertBefore(host, helpers);
+  }
+  const items = [
+    ['fan_controller',  'Fan controller',   'Boost the DELL fan when temps climb.'],
+    ['prewarm',         'Prewarm helper',   'Boot local model runners on system start.'],
+    ['desktop_shortcut','Desktop launcher', 'Add a desktop shortcut for the terminal.'],
+    ['autostart',       'Autostart on login', 'Launch Swarm when the OS logs in.'],
+  ];
+  host.innerHTML = items.map(([k, label, desc]) => {
+    const on = !!caps[k];
+    return `
+      <label style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;">
+        <input type="checkbox" ${on ? 'checked' : ''} onchange="setSysmodCapability('${k}', this.checked)" style="margin-top:2px;">
+        <span style="flex:1;">
+          <span style="font-size:11px;font-weight:700;color:var(--text);">${label}</span>
+          <span style="display:block;font-size:10px;color:var(--text-dim);margin-top:1px;">${desc}</span>
+        </span>
+      </label>`;
+  }).join('');
 }
 
 function refreshSysmodHelpers() {
