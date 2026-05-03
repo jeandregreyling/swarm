@@ -161,7 +161,11 @@ function _showSundialTip(metric, node) {
     tip.addEventListener('mouseleave', () => {
       tip._hover = false;
       if (tip._hideTimer) clearTimeout(tip._hideTimer);
-      tip._hideTimer = setTimeout(() => { tip.style.display = 'none'; tip._hideTimer = null; }, 120);
+      tip._hideTimer = setTimeout(() => {
+        tip.style.display = 'none';
+        tip._hideTimer = null;
+        if (tip._statusPoll) { clearInterval(tip._statusPoll); tip._statusPoll = null; }
+      }, 120);
     });
     tip.addEventListener('click', async (e) => {
       const fanBtn = e.target.closest('.stip-fan-btn');
@@ -186,6 +190,34 @@ function _showSundialTip(metric, node) {
               status.textContent = (j.error || 'fanctl not installed');
               status.style.color = '#d9534f';
             }
+          }
+          // Y.58f-2 — once boost is on, poll real status every 2s so the
+          // user sees CPU temp dropping toward the 50°C exit target. The
+          // helper auto-reverts to 'auto' once it hits the floor.
+          if (tip._statusPoll) { clearInterval(tip._statusPoll); tip._statusPoll = null; }
+          if (status && r.ok && j.ok !== false) {
+            const exitT = 50;
+            const tick = async () => {
+              try {
+                const sr = await fetch('/api/fan/status');
+                const sj = await sr.json().catch(() => ({}));
+                const hs = (sj && sj.helper_state) || {};
+                const cur = hs.mode || sj.mode;
+                const cpuC = (typeof hs.cpu_peak_c === 'number') ? hs.cpu_peak_c
+                           : (typeof sj.cpu_c === 'number' ? sj.cpu_c : null);
+                if (cur === 'boost') {
+                  const cpuTxt = cpuC != null ? `${Math.round(cpuC)}°C → ${exitT}°C` : 'cooling…';
+                  status.textContent = `boost · ${cpuTxt}`;
+                  status.style.color = '#f7b84b';
+                } else {
+                  status.textContent = `auto · ${cpuC != null ? Math.round(cpuC)+'°C' : 'on'}`;
+                  status.style.color = '#5cb85c';
+                  if (tip._statusPoll) { clearInterval(tip._statusPoll); tip._statusPoll = null; }
+                }
+              } catch (_) { /* keep last text */ }
+            };
+            tick();
+            tip._statusPoll = setInterval(tick, 2000);
           }
         } catch (_) {
           if (status) { status.textContent = 'unreachable'; status.style.color = '#d9534f'; }
