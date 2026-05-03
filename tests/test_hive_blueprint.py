@@ -16,7 +16,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv('SWARM_HIVE_TOKENS', str(tmp_path / 'tokens.jsonl'))
     # Reset registry singleton so the env-var takes effect.
     import core.hive.registry as reg_mod
-    reg_mod._SINGLETON = None
+    reg_mod.reset_singleton()
 
     from flask import Flask
     from frontend.blueprints.hive import hive_bp
