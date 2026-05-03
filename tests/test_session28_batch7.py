@@ -54,6 +54,57 @@ def test_is_official_sap_source_rejects_non_official():
     assert not is_official_sap_source('https://sap-fake.example.com/help.sap.com')
 
 
+# 2026-05-03 — Tavily 400-char query limit guard ---------------------------
+
+def test_truncate_query_under_limit_unchanged():
+    from lib.search.internet_tavily import _truncate_query
+    q = 'SAP HCM payroll PCR debugging'
+    assert _truncate_query(q) == q
+
+
+def test_truncate_query_over_limit_cuts_on_word_boundary():
+    from lib.search.internet_tavily import _truncate_query
+    q = ('lorem ipsum ' * 60).strip()  # ~720 chars
+    out = _truncate_query(q, limit=380)
+    assert len(out) <= 380
+    # Did not split mid-word.
+    assert not out.endswith('lor') and not out.endswith('ipsu')
+
+
+def test_truncate_query_handles_no_whitespace():
+    from lib.search.internet_tavily import _truncate_query
+    q = 'x' * 1000
+    out = _truncate_query(q, limit=380)
+    assert len(out) == 380
+
+
+def test_distil_question_strips_html_and_picks_question_sentence():
+    from lib.search.internet_tavily import _distil_question
+    # Pad with filler so total > 300 chars and the sentence-picking branch
+    # fires. The actual question must surface from the noise.
+    filler = '<p>boilerplate footer text to push past the threshold. </p>' * 10
+    blob = (
+        '<!doctype html><html><body><p>Hello there.</p>'
+        '<p>How do I configure SAP HCM payroll PCR for retroactive accounting?</p>'
+        + filler +
+        '</body></html>'
+    )
+    out = _distil_question(blob)
+    assert '<' not in out
+    assert 'PCR' in out and out.endswith('?')
+
+
+def test_distil_question_short_input_passthrough():
+    from lib.search.internet_tavily import _distil_question
+    assert _distil_question('SAP HCM payroll question') == 'SAP HCM payroll question'
+
+
+def test_distil_question_empty_safe():
+    from lib.search.internet_tavily import _distil_question
+    assert _distil_question('') == ''
+    assert _distil_question(None) == ''
+
+
 # S-F02066C5FA / S-F4DC817B17 ---------------------------------------------
 
 @pytest.fixture()
