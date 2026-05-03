@@ -438,6 +438,9 @@ function _renderHiveCard(node) {
   const th = t.thermal || {};
   const m = t.memory || {};
   const p = t.power || {};
+  const platform = (node.platform || '').toLowerCase();
+  const isAndroid = platform === 'android' || platform.startsWith('android');
+  const isMobile  = isAndroid || platform.includes('ios');
   const ramPct = (m.ram_total_mb && m.ram_free_mb != null)
     ? Math.round(100 - (100 * m.ram_free_mb / m.ram_total_mb))
     : null;
@@ -452,12 +455,50 @@ function _renderHiveCard(node) {
   const stale = ageS != null && ageS > 120;
   const pressure = p.thermal_pressure || 'nominal';
   const pColor = _hivePressureColor(pressure);
+  const platIcon = isAndroid ? '📱'
+    : platform.includes('darwin') || platform.includes('mac') ? '🍎'
+    : platform.includes('win') ? '🪟'
+    : '🖥';
+  const ramTotalStr = m.ram_total_mb
+    ? (m.ram_total_mb >= 1024 ? (m.ram_total_mb/1024).toFixed(1) + ' GB' : m.ram_total_mb + ' MB')
+    : '—';
+
+  // Mobile/Android layout: emphasise CPU load, RAM, battery (the data we
+  // have); de-emphasise fan/temp (which are sandbox-null on stock Android).
+  if (isMobile) {
+    const battStr = p.battery_pct != null
+      ? `${Math.round(p.battery_pct)}% ${p.on_battery ? '🔋' : '⚡'}`
+      : (p.on_battery ? 'on battery 🔋' : '—');
+    const cpuLoadStr = c.cpu_load_pct != null ? Math.round(c.cpu_load_pct) + '%' : '—';
+    const swapStr = m.swap_used_mb != null && m.swap_used_mb > 0
+      ? ` · swap ${Math.round(m.swap_used_mb)} MB` : '';
+    const tempStr = c.cpu_peak_temp_c != null ? c.cpu_peak_temp_c + '°C' : null;
+    return `
+      <div style="background:var(--card);border:1px solid ${stale ? '#f4433655' : 'var(--border)'};
+                  border-radius:6px;padding:10px;font-size:10px;line-height:1.5;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${pColor};"></span>
+          <strong style="font-size:11px;color:var(--text);">${platIcon} ${_hiveEsc(node.label || node.node_id)}</strong>
+        </div>
+        <div style="color:var(--text-dim);font-size:9px;margin-bottom:6px;">
+          ${_hiveEsc(node.platform || '')} · ${ageStr}
+        </div>
+        <div>CPU load: <strong>${cpuLoadStr}</strong>${tempStr ? ` · ${tempStr}` : ''}</div>
+        <div>RAM: <strong>${ramPct != null ? ramPct + '%' : '—'}</strong>
+          ${m.ram_total_mb ? ` of ${ramTotalStr}` : ''}${swapStr}</div>
+        <div>Battery: <strong>${battStr}</strong></div>
+        <div>Pressure: <span style="color:${pColor};font-weight:600;">${_hiveEsc(pressure)}</span></div>
+      </div>
+    `;
+  }
+
+  // Desktop layout (unchanged behaviour).
   return `
     <div style="background:var(--card);border:1px solid ${stale ? '#f4433655' : 'var(--border)'};
                 border-radius:6px;padding:10px;font-size:10px;line-height:1.5;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
         <span style="width:8px;height:8px;border-radius:50%;background:${pColor};"></span>
-        <strong style="font-size:11px;color:var(--text);">${_hiveEsc(node.label || node.node_id)}</strong>
+        <strong style="font-size:11px;color:var(--text);">${platIcon} ${_hiveEsc(node.label || node.node_id)}</strong>
       </div>
       <div style="color:var(--text-dim);font-size:9px;margin-bottom:6px;">
         ${_hiveEsc(node.platform || '')} · ${ageStr}
@@ -469,7 +510,7 @@ function _renderHiveCard(node) {
         ${th.fan_mode && th.fan_mode !== 'unknown' ? ` · ${_hiveEsc(th.fan_mode)}` : ''}
         ${th.controllable ? '' : ' <span style="color:var(--text-dim)">(read-only)</span>'}</div>
       <div>RAM: <strong>${ramPct != null ? ramPct + '%' : '—'}</strong>
-        ${m.ram_total_mb ? ` of ${Math.round(m.ram_total_mb/1024)} GB` : ''}</div>
+        ${m.ram_total_mb ? ` of ${ramTotalStr}` : ''}</div>
       <div>Pressure: <span style="color:${pColor};font-weight:600;">${_hiveEsc(pressure)}</span>
         ${p.on_battery ? ' · on battery' : ''}
         ${p.battery_pct != null ? ` ${Math.round(p.battery_pct)}%` : ''}</div>
