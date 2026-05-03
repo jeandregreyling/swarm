@@ -44,6 +44,32 @@ curl -s -X POST http://localhost:5050/api/chat \
   -d '{"agent":"seven","message":"/audit"}'
 ```
 
+## Add a device to the Hive (30 seconds)
+
+Once a leader is running, any other Linux/macOS/Windows host on the
+network can enrol with a single command — no git clone required. The
+leader serves the agent and per-platform installers from
+`/api/hive/install/`.
+
+Linux / macOS:
+
+```bash
+curl -fsSL http://<leader>:5050/api/hive/install/bootstrap.sh \
+  | SWARM_HIVE_LEADER=http://<leader>:5050 bash
+```
+
+Windows (PowerShell):
+
+```powershell
+$env:SWARM_HIVE_LEADER='http://<leader>:5050'
+irm $env:SWARM_HIVE_LEADER/api/hive/install/bootstrap.ps1 | iex
+```
+
+The Monitor view in the leader UI also shows a copy-paste box (Linux /
+macOS / Windows tabs) under **Hive · Thermal & Performance**, with the
+leader URL pre-filled. The full manifest of served files is at
+`/api/hive/install/`.
+
 ## Slash commands (Seven)
 
 | Command | What it does |
