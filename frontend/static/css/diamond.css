@@ -6,8 +6,8 @@
 
 #sundial {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 150px;
+  height: 150px;
   flex-shrink: 0;
 }
 
@@ -94,8 +94,8 @@
 }
 
 .sundial-dot {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: flex;
   align-items: center;

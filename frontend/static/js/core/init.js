@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: 'Chat', onclick: 'openWindow("chat", "Chat", "view-chat")', hint: 'Ctrl+J' },
       { label: 'Terminal', onclick: 'openWindow("terminal", "Terminal", "view-terminal")', hint: '' },
       { label: 'Knowledge', onclick: 'openWindow("knowledge", "Knowledge", "view-knowledge")', hint: 'Ctrl+B' },
-      { label: 'Files', onclick: 'openWindow("files", "Files", "view-files")', hint: '' },
+      { label: 'Files', onclick: 'openWindow("knowledge", "Knowledge", "view-knowledge"); setTimeout(()=>{ if (typeof knowledgeSetTab==="function") knowledgeSetTab("files"); }, 150)', hint: '' },
       { label: 'Git', onclick: 'openWindow("studio","Studio","view-studio"); setTimeout(()=>studioSetTab("git"),120)', hint: 'Ctrl+G' },
       { label: 'Memory', onclick: 'openWindow("memory", "Memory", "view-memory")', hint: '' },
       { label: 'Monitor', onclick: 'openWindow("monitor", "Monitor", "view-monitor")', hint: '' },
