@@ -142,6 +142,11 @@ def list_entries():
 @business_bp.route('/api/business/entries', methods=['POST'])
 def create_entry():
     body = request.get_json(silent=True) or {}
+    # Y.55: type-check before .strip()/.lower() (Y.50 class).
+    for col in ('kind', 'currency', 'counterparty', 'category', 'notes'):
+        v = body.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'ok': False, 'error': f'{col} must be a string'}), 400
     kind = (body.get('kind') or 'expense').lower()
     if kind not in KINDS:
         return jsonify({'ok': False, 'error': f'kind must be one of {KINDS}'}), 400
