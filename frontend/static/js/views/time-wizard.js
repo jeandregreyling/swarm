@@ -273,6 +273,8 @@ function _renderTwHealth() {
 }
 
 async function loadTimeWizardData() {
+  // Y.58 — install Cyber + VPN tabs alongside the timeline. Idempotent.
+  twInstallTabs();
   const container = document.getElementById('tw-timeline');
   if (!container) return;
   try {
@@ -1041,3 +1043,110 @@ async function loadBriefById(id) {}
     return r;
   };
 })();
+
+/* ───────────────────────────────────────────────────────────────────────
+ * Y.58 — Vortex tabs (Timeline / Cyber / VPN). Cyber + VPN panes were
+ * promoted from standalone home tiles into Vortex per user request.
+ * ─────────────────────────────────────────────────────────────────────── */
+function twInstallTabs() {
+  // Find the Vortex root: any open window whose content includes #tw-timeline
+  const tlNode = document.getElementById('tw-timeline');
+  if (!tlNode) return;
+  const root = tlNode.closest('.content-view');
+  if (!root || root.dataset.twTabsInstalled === '1') return;
+  root.dataset.twTabsInstalled = '1';
+
+  // Locate the header (first child div with border-bottom). Safer: the div
+  // containing the <h3> with "Vortex".
+  let header = null;
+  root.querySelectorAll('div').forEach((d) => {
+    if (!header && d.querySelector && d.querySelector('h3') && /Vortex/i.test(d.textContent || '')) header = d;
+  });
+  if (!header) return;
+
+  // Build a tab-bar and insert it directly after the header.
+  const tabBar = document.createElement('div');
+  tabBar.id = 'tw-tabbar';
+  tabBar.style.cssText = 'display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;';
+  tabBar.innerHTML = `
+    <button type="button" class="tw-tab-btn" data-tw-tab="timeline" style="padding:8px 14px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:11px;font-weight:700;cursor:pointer;">Timeline</button>
+    <button type="button" class="tw-tab-btn" data-tw-tab="cyber" style="padding:8px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">🛡 Cyber Security</button>
+    <button type="button" class="tw-tab-btn" data-tw-tab="vpn" style="padding:8px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">🔐 VPN / Tailscale</button>
+  `;
+  header.insertAdjacentElement('afterend', tabBar);
+
+  // Wrap everything after the tabBar inside a #tw-pane-timeline div so we
+  // can hide it as a unit when switching tabs.
+  const timelinePane = document.createElement('div');
+  timelinePane.id = 'tw-pane-timeline';
+  timelinePane.style.cssText = 'display:flex;flex-direction:column;flex:1;min-height:0;';
+  let nxt = tabBar.nextSibling;
+  while (nxt) {
+    const after = nxt.nextSibling;
+    timelinePane.appendChild(nxt);
+    nxt = after;
+  }
+  root.appendChild(timelinePane);
+
+  // Cyber pane (clones the wishlist-cyber template).
+  const cyberPane = document.createElement('div');
+  cyberPane.id = 'tw-pane-cyber';
+  cyberPane.style.cssText = 'display:none;flex:1;min-height:0;overflow:hidden;';
+  root.appendChild(cyberPane);
+
+  // VPN pane (clones the view-vpn template).
+  const vpnPane = document.createElement('div');
+  vpnPane.id = 'tw-pane-vpn';
+  vpnPane.style.cssText = 'display:none;flex:1;min-height:0;overflow:hidden;';
+  root.appendChild(vpnPane);
+
+  let cyberLoaded = false;
+  let vpnLoaded = false;
+
+  tabBar.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('.tw-tab-btn');
+    if (!btn) return;
+    const tab = btn.dataset.twTab;
+    tabBar.querySelectorAll('.tw-tab-btn').forEach((b) => {
+      const on = b === btn;
+      b.style.borderBottomColor = on ? 'var(--accent)' : 'transparent';
+      b.style.color = on ? 'var(--text)' : 'var(--text-dim)';
+      b.style.fontWeight = on ? '700' : '600';
+    });
+    timelinePane.style.display = tab === 'timeline' ? 'flex' : 'none';
+    cyberPane.style.display = tab === 'cyber' ? 'flex' : 'none';
+    vpnPane.style.display = tab === 'vpn' ? 'flex' : 'none';
+
+    if (tab === 'cyber' && !cyberLoaded) {
+      cyberLoaded = true;
+      const tpl = document.getElementById('view-wishlist-cyber');
+      if (tpl) {
+        cyberPane.appendChild(tpl.content.cloneNode(true));
+        // Trigger the existing pillar live-loader if available.
+        try {
+          if (typeof window.loadWishlistPillar === 'function') {
+            window.loadWishlistPillar({ el: cyberPane }, 'cyber-security');
+          } else if (typeof window.pillarLiveInit === 'function') {
+            window.pillarLiveInit(cyberPane, 'cyber-security');
+          }
+        } catch (_) {}
+      } else {
+        cyberPane.innerHTML = '<div style="padding:14px;color:var(--text-dim);font-size:11px;">Cyber pillar template not found.</div>';
+      }
+    }
+    if (tab === 'vpn' && !vpnLoaded) {
+      vpnLoaded = true;
+      const tpl = document.getElementById('view-vpn');
+      if (tpl) {
+        vpnPane.appendChild(tpl.content.cloneNode(true));
+        try {
+          if (typeof window.loadVpnData === 'function') {
+            window.loadVpnData({ el: vpnPane });
+          }
+        } catch (_) {}
+      } else {
+        vpnPane.innerHTML = '<div style="padding:14px;color:var(--text-dim);font-size:11px;">VPN template not found.</div>';
+      }
+    }
+  });
+}

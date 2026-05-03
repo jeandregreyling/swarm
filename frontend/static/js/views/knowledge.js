@@ -38,12 +38,13 @@ const _KN_TABS = [
   { id: 'docs',    label: 'Docs',    icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M4 3.5h7.5v9H4a1.5 1.5 0 0 0 0-3h7.5M4 3.5a1.5 1.5 0 0 0 0 3M4 6.5h7.5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
   { id: 'memory',  label: 'Memory',  icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
   { id: 'library', label: 'Library', icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
+  { id: 'tasker',  label: 'Tasker',  icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
   { id: 'guide',   label: 'Guide',   icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M3 2.5h10v11H3zM5.5 6h5M5.5 8.5h5M5.5 11h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
 ];
 
 function loadKnowledgeData(win) {
   _knowledgeWin = win;
-  _knowledgeLoaded = { files: false, docs: false, memory: false, library: false, guide: false };
+  _knowledgeLoaded = { files: false, docs: false, memory: false, library: false, tasker: false, guide: false };
 
   const root = win.el.querySelector('#knowledge-root');
   if (!root) return;
@@ -420,6 +421,18 @@ function _knLoadSubView(tab) {
     }
     if (typeof libInit === 'function') libInit();
     setTimeout(() => _knClassifyItems(panel), 500);
+  }
+  else if (tab === 'tasker') {
+    const panel = document.getElementById('kn-panel-tasker');
+    if (!panel) return;
+    const tpl = document.getElementById('view-tasker');
+    if (tpl) {
+      const clone = tpl.content.cloneNode(true);
+      panel.innerHTML = '';
+      panel.appendChild(clone);
+    }
+    const mockWin = { el: panel };
+    if (typeof loadTaskerData === 'function') loadTaskerData(mockWin);
   }
   else if (tab === 'guide') {
     const panel = document.getElementById('kn-panel-guide');

@@ -221,3 +221,23 @@ def delete_signal(signal_id: str):
 @trading_bp.route('/api/trading/summary', methods=['GET'])
 def get_summary():
     return jsonify(summary_for_seven())
+
+
+# Y.58 — Pattern detection stub. Logs a request to scan known symbols for
+# breakout / mean-reversion / divergence patterns. Real implementation will
+# consume Tasker output once markets-watch job lands.
+@trading_bp.route('/api/trading/scan-patterns', methods=['POST'])
+def scan_patterns():
+    from flask import request as _req  # local import to avoid module-load order issues
+    payload = _req.get_json(silent=True) or {}
+    symbols = payload.get('symbols') if isinstance(payload, dict) else None
+    queued = 0
+    try:
+        with connect() as conn:
+            _init(conn)
+            cur = conn.execute(f"SELECT DISTINCT symbol FROM {TABLE} LIMIT 200")
+            rows = [r[0] for r in cur.fetchall() if r and r[0]]
+            queued = len(symbols) if isinstance(symbols, list) else len(rows)
+    except sqlite3.Error:
+        queued = 0
+    return jsonify({'ok': True, 'queued': queued, 'note': 'pattern scan accepted; real scan runs via Tasker markets-watch.'})

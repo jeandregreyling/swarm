@@ -448,6 +448,39 @@ input[type="range"]::-moz-range-thumb:hover {
 #close-settings:hover {
   background: var(--accent-hover);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Y.58 — Settings inside a floating-window: strip box chrome so it doesn't
+   look like a window-in-a-window, and shrink the close affordance buttons.
+   ───────────────────────────────────────────────────────────────────────── */
+.window .window-content #settings-box {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 14px 16px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  resize: none;
+  border-radius: 0;
+}
+.window .window-content #settings-box > button[onclick="closeSettings()"] {
+  /* Hide the inline ✕ — the floating-window header already has its own close. */
+  display: none !important;
+}
+.window .window-content #close-settings {
+  width: auto;
+  padding: 6px 14px;
+  font-size: 12px;
+  margin-top: 16px;
+}
+.window .window-content #settings-box h2 {
+  /* Window header already shows "Settings" — drop the redundant title. */
+  display: none;
+}
 /* ─────────────────────────────────────────────────────────────────────────
    TOAST NOTIFICATIONS
    ───────────────────────────────────────────────────────────────────────── */
