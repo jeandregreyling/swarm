@@ -343,6 +343,23 @@ def _handle(conn: socket.socket):
             }
         elif cmd == 'set_mode':
             resp = _apply_mode((req.get('payload') or {}).get('mode', ''))
+        elif cmd == 'contract':
+            # Y.59 — emit a Hive contract-v0-shaped thermal subtree so the
+            # node provider can pull a single canonical reading. Caller
+            # wraps this into a full telemetry envelope; we stay narrow
+            # to the slice this helper actually owns.
+            resp = {
+                'ok': True,
+                'contract': 'node.fanctl/v0',
+                'thermal': {
+                    'fan_pwm': _readback_pwm(),
+                    'fan_mode': STATE['mode'],
+                    'controllable': True,
+                },
+                'compute': {
+                    'cpu_peak_temp_c': _peak_cpu_temp_c(),
+                },
+            }
         else:
             resp = {'ok': False, 'error': f'unknown cmd: {cmd}'}
         conn.sendall((json.dumps(resp) + '\n').encode())
