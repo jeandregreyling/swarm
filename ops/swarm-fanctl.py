@@ -46,8 +46,25 @@ STATE = {'mode': 'auto'}
 WATCHDOG_INTERVAL_S = float(os.environ.get('SWARM_FANCTL_WATCHDOG_S', '0.3'))
 BOOST_PERF_CAP      = int(os.environ.get('SWARM_FANCTL_BOOST_PERF_CAP', '40'))   # %
 AUTO_PERF_CAP       = int(os.environ.get('SWARM_FANCTL_AUTO_PERF_CAP', '100'))  # %
+# Y.58f-2 — boost holds until the package CPU temp drops to BOOST_EXIT_TEMP,
+# then the helper auto-reverts to 'auto'. Matches the user's verbatim ask:
+# "boost power to 100% until temp goes to 50". Temp probe runs at the
+# watchdog cadence; we require the temp to stay below the floor for
+# BOOST_EXIT_HOLD_S before flipping, so we don't bounce on a single dip.
+BOOST_EXIT_TEMP     = float(os.environ.get('SWARM_FANCTL_BOOST_EXIT_TEMP', '50'))   # °C
+BOOST_EXIT_HOLD_S   = float(os.environ.get('SWARM_FANCTL_BOOST_EXIT_HOLD_S', '5'))  # s
+# Y.58f-3 — adaptive cap ratchet. If boost is on and CPU stays above the
+# exit target for TIGHTEN_AFTER_S, drop max_perf_pct by TIGHTEN_STEP_PCT,
+# floored at TIGHTEN_FLOOR_PCT. Guarantees the contract "hold boost until
+# temp goes to 50°C" even when a userland process is pinned at 100% CPU.
+TIGHTEN_AFTER_S     = float(os.environ.get('SWARM_FANCTL_TIGHTEN_AFTER_S', '8'))
+TIGHTEN_STEP_PCT    = int(os.environ.get('SWARM_FANCTL_TIGHTEN_STEP_PCT', '5'))
+TIGHTEN_FLOOR_PCT   = int(os.environ.get('SWARM_FANCTL_TIGHTEN_FLOOR_PCT', '20'))
 _WATCHDOG_STOP = threading.Event()
 _WATCHDOG_THREAD: 'threading.Thread | None' = None
+_BOOST_BELOW_SINCE: 'float | None' = None
+_BOOST_HOT_SINCE: 'float | None' = None
+_CURRENT_PERF_CAP: int = 100
 
 
 def _write_platform_profile(profile: str) -> bool:
@@ -163,14 +180,71 @@ def _push_pwm_max() -> list:
 
 
 def _watchdog_loop():
-    """While in boost mode, keep re-writing pwm1=255 to fight BIOS reverts."""
+    """While in boost mode, keep re-writing pwm1=255 to fight BIOS reverts,
+    ratchet the perf cap downward if temp stays above target, and auto-revert
+    to 'auto' once CPU temp has stayed below BOOST_EXIT_TEMP for
+    BOOST_EXIT_HOLD_S seconds (the 'until temp goes to 50' contract)."""
+    global _BOOST_BELOW_SINCE, _BOOST_HOT_SINCE, _CURRENT_PERF_CAP
     while not _WATCHDOG_STOP.is_set():
         if STATE.get('mode') == 'boost':
             try:
                 _push_pwm_max()
             except Exception:
                 pass
+            cpu_c = _peak_cpu_temp_c()
+            now = time.monotonic()
+            if cpu_c is not None and cpu_c <= BOOST_EXIT_TEMP:
+                _BOOST_HOT_SINCE = None
+                if _BOOST_BELOW_SINCE is None:
+                    _BOOST_BELOW_SINCE = now
+                elif now - _BOOST_BELOW_SINCE >= BOOST_EXIT_HOLD_S:
+                    try:
+                        _apply_mode('auto')
+                    except Exception:
+                        pass
+                    _BOOST_BELOW_SINCE = None
+            else:
+                _BOOST_BELOW_SINCE = None
+                # Adaptive cap: if temp has been above target for
+                # TIGHTEN_AFTER_S, ratchet the cap down one step.
+                if cpu_c is not None:
+                    if _BOOST_HOT_SINCE is None:
+                        _BOOST_HOT_SINCE = now
+                    elif now - _BOOST_HOT_SINCE >= TIGHTEN_AFTER_S:
+                        new_cap = max(TIGHTEN_FLOOR_PCT,
+                                      _CURRENT_PERF_CAP - TIGHTEN_STEP_PCT)
+                        if new_cap != _CURRENT_PERF_CAP:
+                            if _write_perf_cap(new_cap):
+                                _CURRENT_PERF_CAP = new_cap
+                        _BOOST_HOT_SINCE = now  # restart timer for next step
+        else:
+            _BOOST_BELOW_SINCE = None
+            _BOOST_HOT_SINCE = None
         _WATCHDOG_STOP.wait(WATCHDOG_INTERVAL_S)
+
+
+def _peak_cpu_temp_c() -> 'float | None':
+    """Return the hottest CPU-related temp sensor in °C, or None."""
+    candidates = []
+    for hwmon in glob.glob('/sys/class/hwmon/hwmon*'):
+        try:
+            with open(os.path.join(hwmon, 'name')) as f:
+                name = f.read().strip().lower()
+        except OSError:
+            continue
+        if name not in ('coretemp', 'k10temp', 'zenpower', 'dell_smm'):
+            continue
+        # coretemp/k10temp/zenpower: every temp*_input is CPU.
+        # dell_smm: temp1 is CPU package on OptiPlex/Latitude.
+        inputs = sorted(glob.glob(os.path.join(hwmon, 'temp*_input')))
+        if name == 'dell_smm':
+            inputs = [p for p in inputs if p.endswith('temp1_input')]
+        for p in inputs:
+            v = _read_int(p)
+            if v is None or v <= 0:
+                continue
+            candidates.append(v / 1000.0)
+    return max(candidates) if candidates else None
 
 
 def _start_watchdog():
@@ -184,6 +258,7 @@ def _start_watchdog():
 
 
 def _apply_mode(mode: str) -> dict:
+    global _CURRENT_PERF_CAP
     applied = []
     if mode == 'auto':
         if _write_platform_profile('balanced'):
@@ -206,6 +281,7 @@ def _apply_mode(mode: str) -> dict:
         # Restore CPU performance + turbo.
         if _write_perf_cap(AUTO_PERF_CAP):
             applied.append(f'max_perf_pct={AUTO_PERF_CAP}')
+            _CURRENT_PERF_CAP = AUTO_PERF_CAP
         if _set_turbo(True):
             applied.append('turbo=on')
         STATE['mode'] = 'auto'
@@ -221,6 +297,7 @@ def _apply_mode(mode: str) -> dict:
         # BOOST_PERF_CAP% (default 60%) and disables Intel turbo.
         if _write_perf_cap(BOOST_PERF_CAP):
             applied.append(f'max_perf_pct={BOOST_PERF_CAP}')
+            _CURRENT_PERF_CAP = BOOST_PERF_CAP
         if _set_turbo(False):
             applied.append('turbo=off')
         STATE['mode'] = 'boost'
@@ -259,6 +336,10 @@ def _handle(conn: socket.socket):
                 'max_perf_pct': max_perf,
                 'watchdog_alive': bool(_WATCHDOG_THREAD and _WATCHDOG_THREAD.is_alive()),
                 'boost_perf_cap': BOOST_PERF_CAP,
+                'boost_exit_temp': BOOST_EXIT_TEMP,
+                'cpu_peak_c': _peak_cpu_temp_c(),
+                'current_perf_cap': _CURRENT_PERF_CAP,
+                'tighten_floor_pct': TIGHTEN_FLOOR_PCT,
             }
         elif cmd == 'set_mode':
             resp = _apply_mode((req.get('payload') or {}).get('mode', ''))

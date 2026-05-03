@@ -80,6 +80,8 @@ def summary() -> dict:
             'max_perf_pct': status.get('max_perf_pct'),
             'watchdog_alive': status.get('watchdog_alive'),
             'boost_perf_cap': status.get('boost_perf_cap'),
+            'boost_exit_temp': status.get('boost_exit_temp'),
+            'cpu_peak_c': status.get('cpu_peak_c'),
         }
     else:
         mode_raw = _query_helper('mode') if helper_up else None
