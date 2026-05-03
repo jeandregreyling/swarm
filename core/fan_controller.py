@@ -67,14 +67,30 @@ def summary() -> dict:
     if cpu is None and temps:
         cpu = max(t['c'] for t in temps)
     helper_up = os.path.exists(FANCTL_SOCK)
-    mode_raw = _query_helper('mode') if helper_up else None
-    # The helper returns {"ok":true,"mode":"auto"}; surface just the string.
-    mode = mode_raw.get('mode') if isinstance(mode_raw, dict) else mode_raw
+    # Y.58f — pull the richer 'status' response if the helper supports it
+    # (mode, pwm_readback, turbo_disabled, max_perf_pct, watchdog_alive).
+    # Fall back to the legacy 'mode' command if 'status' isn't recognised.
+    status = _query_helper('status') if helper_up else None
+    if isinstance(status, dict) and status.get('ok'):
+        mode = status.get('mode')
+        helper_state = {
+            'mode': mode,
+            'pwm_readback': status.get('pwm_readback') or [],
+            'turbo_disabled': status.get('turbo_disabled'),
+            'max_perf_pct': status.get('max_perf_pct'),
+            'watchdog_alive': status.get('watchdog_alive'),
+            'boost_perf_cap': status.get('boost_perf_cap'),
+        }
+    else:
+        mode_raw = _query_helper('mode') if helper_up else None
+        mode = mode_raw.get('mode') if isinstance(mode_raw, dict) else mode_raw
+        helper_state = {'mode': mode}
     return {
         'cpu_c': cpu,
         'temps': temps,
         'helper_installed': helper_up,
         'mode': mode,
+        'helper_state': helper_state,
         'targets': {'auto': [56, 60], 'boost': [40, 40]},
     }
 

@@ -35,6 +35,20 @@ import time
 SOCK_PATH = '/run/swarm-fanctl.sock'
 STATE = {'mode': 'auto'}
 
+# Y.58f — Dell OptiPlex 7090 BIOS reverts pwm1=255 back to ~128 within
+# milliseconds because firmware owns the fan curve. Two coping strategies:
+#   1. Watchdog thread re-writes pwm1=255 every WATCHDOG_INTERVAL_S while in
+#      boost. Sometimes wins the race against BIOS.
+#   2. Thermal cap via intel_pstate: drop max_perf_pct to BOOST_PERF_CAP so
+#      the CPU produces less heat → temp drops to ~50°C even if the BIOS
+#      keeps the fan slow. The user wanted '50°C target', this is the
+#      deterministic lever.
+WATCHDOG_INTERVAL_S = float(os.environ.get('SWARM_FANCTL_WATCHDOG_S', '0.3'))
+BOOST_PERF_CAP      = int(os.environ.get('SWARM_FANCTL_BOOST_PERF_CAP', '40'))   # %
+AUTO_PERF_CAP       = int(os.environ.get('SWARM_FANCTL_AUTO_PERF_CAP', '100'))  # %
+_WATCHDOG_STOP = threading.Event()
+_WATCHDOG_THREAD: 'threading.Thread | None' = None
+
 
 def _write_platform_profile(profile: str) -> bool:
     path = '/sys/firmware/acpi/platform_profile'
@@ -74,6 +88,101 @@ def _pwm_paths() -> list:
 AUTO_PWM_FALLBACK = int(os.environ.get('SWARM_FANCTL_AUTO_PWM', '128'))
 
 
+def _read_int(path: str) -> 'int | None':
+    try:
+        with open(path) as f:
+            return int(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def _write_perf_cap(pct: int) -> bool:
+    """Cap CPU max performance via intel_pstate / cpufreq. Used as the
+    deterministic 'cool to 50C' lever when BIOS won't let us boost the fan.
+    Returns True if at least one cap was written."""
+    pct = max(10, min(100, int(pct)))
+    wrote = False
+    # Intel pstate driver — single global knob (preferred).
+    try:
+        with open('/sys/devices/system/cpu/intel_pstate/max_perf_pct', 'w') as f:
+            f.write(str(pct))
+        wrote = True
+    except OSError:
+        pass
+    # Per-CPU cpufreq governor cap as a fallback (best-effort).
+    if not wrote:
+        try:
+            cpus = sorted(glob.glob('/sys/devices/system/cpu/cpu[0-9]*/cpufreq'))
+            for c in cpus:
+                try:
+                    cpuinfo_max = _read_int(os.path.join(c, 'cpuinfo_max_freq'))
+                    if cpuinfo_max is None:
+                        continue
+                    target = int(cpuinfo_max * pct / 100.0)
+                    with open(os.path.join(c, 'scaling_max_freq'), 'w') as f:
+                        f.write(str(target))
+                    wrote = True
+                except OSError:
+                    continue
+        except OSError:
+            pass
+    return wrote
+
+
+def _set_turbo(enabled: bool) -> bool:
+    """Toggle Intel turbo. Disabling drops thermal load fast."""
+    val = '0' if enabled else '1'   # no_turbo flag is inverted
+    try:
+        with open('/sys/devices/system/cpu/intel_pstate/no_turbo', 'w') as f:
+            f.write(val)
+        return True
+    except OSError:
+        return False
+
+
+def _readback_pwm() -> list:
+    out = []
+    for pwm, _ in _pwm_paths():
+        v = _read_int(pwm)
+        out.append({'path': pwm, 'value': v})
+    return out
+
+
+def _push_pwm_max() -> list:
+    """Best-effort write pwm1..N=255. Returns the read-back values."""
+    for pwm, enable in _pwm_paths():
+        try:
+            if enable is not None:
+                with open(enable, 'w') as f:
+                    f.write('1')
+            with open(pwm, 'w') as f:
+                f.write('255')
+        except OSError:
+            continue
+    return _readback_pwm()
+
+
+def _watchdog_loop():
+    """While in boost mode, keep re-writing pwm1=255 to fight BIOS reverts."""
+    while not _WATCHDOG_STOP.is_set():
+        if STATE.get('mode') == 'boost':
+            try:
+                _push_pwm_max()
+            except Exception:
+                pass
+        _WATCHDOG_STOP.wait(WATCHDOG_INTERVAL_S)
+
+
+def _start_watchdog():
+    global _WATCHDOG_THREAD
+    if _WATCHDOG_THREAD and _WATCHDOG_THREAD.is_alive():
+        return
+    _WATCHDOG_STOP.clear()
+    _WATCHDOG_THREAD = threading.Thread(target=_watchdog_loop, daemon=True,
+                                        name='fanctl-boost-watchdog')
+    _WATCHDOG_THREAD.start()
+
+
 def _apply_mode(mode: str) -> dict:
     applied = []
     if mode == 'auto':
@@ -94,24 +203,32 @@ def _apply_mode(mode: str) -> dict:
                     applied.append(f'{pwm}={AUTO_PWM_FALLBACK}')
             except OSError as exc:
                 applied.append(f'{pwm}:err:{exc.errno}')
+        # Restore CPU performance + turbo.
+        if _write_perf_cap(AUTO_PERF_CAP):
+            applied.append(f'max_perf_pct={AUTO_PERF_CAP}')
+        if _set_turbo(True):
+            applied.append('turbo=on')
         STATE['mode'] = 'auto'
     elif mode == 'boost':
         if _write_platform_profile('performance'):
             applied.append('platform_profile=performance')
-        for pwm, enable in _pwm_paths():
-            try:
-                if enable is not None:
-                    with open(enable, 'w') as f:
-                        f.write('1')
-                with open(pwm, 'w') as f:
-                    f.write('255')
-                applied.append(f'{pwm}=255')
-            except OSError as exc:
-                applied.append(f'{pwm}:err:{exc.errno}')
+        # Push pwm to max (BIOS may revert; watchdog keeps re-writing).
+        readback = _push_pwm_max()
+        for r in readback:
+            applied.append(f"{r['path']}=255 (readback={r['value']})")
+        # Thermal cap — the deterministic lever to actually reach ~50°C
+        # when the BIOS owns the fan curve. Cuts CPU max performance to
+        # BOOST_PERF_CAP% (default 60%) and disables Intel turbo.
+        if _write_perf_cap(BOOST_PERF_CAP):
+            applied.append(f'max_perf_pct={BOOST_PERF_CAP}')
+        if _set_turbo(False):
+            applied.append('turbo=off')
         STATE['mode'] = 'boost'
+        _start_watchdog()
     else:
         return {'ok': False, 'error': 'invalid mode'}
-    return {'ok': True, 'mode': STATE['mode'], 'applied': applied}
+    return {'ok': True, 'mode': STATE['mode'], 'applied': applied,
+            'pwm_readback': _readback_pwm()}
 
 
 def _handle(conn: socket.socket):
@@ -126,6 +243,23 @@ def _handle(conn: socket.socket):
         cmd = req.get('cmd')
         if cmd == 'mode':
             resp = {'ok': True, 'mode': STATE['mode']}
+        elif cmd == 'status':
+            # Y.58f — surface real applied state so the UI can show whether
+            # the BIOS is reverting our PWM writes (i.e. honest state).
+            try:
+                no_turbo = _read_int('/sys/devices/system/cpu/intel_pstate/no_turbo')
+                max_perf = _read_int('/sys/devices/system/cpu/intel_pstate/max_perf_pct')
+            except Exception:
+                no_turbo, max_perf = None, None
+            resp = {
+                'ok': True,
+                'mode': STATE['mode'],
+                'pwm_readback': _readback_pwm(),
+                'turbo_disabled': bool(no_turbo) if no_turbo is not None else None,
+                'max_perf_pct': max_perf,
+                'watchdog_alive': bool(_WATCHDOG_THREAD and _WATCHDOG_THREAD.is_alive()),
+                'boost_perf_cap': BOOST_PERF_CAP,
+            }
         elif cmd == 'set_mode':
             resp = _apply_mode((req.get('payload') or {}).get('mode', ''))
         else:
