@@ -327,13 +327,16 @@ def get_registry(db_path: str | None = None) -> HiveRegistry:
     """Return a process-wide registry singleton.
 
     Tests pass a path to override; production code calls without args.
+    Re-reads ``$SWARM_HIVE_DB`` at call time so test fixtures can
+    redirect the registry without re-importing the module.
     """
     global _SINGLETON
     if db_path is not None:
         return HiveRegistry(db_path)
     with _SINGLETON_LOCK:
         if _SINGLETON is None:
-            _SINGLETON = HiveRegistry()
+            env_path = os.environ.get('SWARM_HIVE_DB') or DEFAULT_DB
+            _SINGLETON = HiveRegistry(env_path)
     return _SINGLETON
 
 
