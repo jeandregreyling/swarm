@@ -154,6 +154,21 @@
   }
 
   // ── Load threads ─────────────────────────────────────────────────────────
+  // Y.58 fix: split into two paths. The init/refresh path wipes the active
+  // thread and clears messages so we land on a fresh canvas. The list-only
+  // path simply refreshes the dropdown without touching messages — used
+  // after sending the first message in a new thread, where wiping bubbles
+  // is exactly the bug the user has been seeing ("Hi disappears").
+  function _hcLoadThreadsListOnly() {
+    return fetch('/api/conversations')
+      .then(r => r.json())
+      .then(data => {
+        _hcConversations = Array.isArray(data) ? data : [];
+        _hcRenderThreadSelect();
+      })
+      .catch(() => {});
+  }
+
   function _hcLoadThreads() {
     fetch('/api/conversations')
       .then(r => r.json())
@@ -161,8 +176,8 @@
         _hcConversations = Array.isArray(data) ? data : [];
         _hcRenderThreadSelect();
 
-        // Refresh = always fresh thread. User can switch from the dropdown.
-        // Wipe any stale active-thread marker so floating chat doesn't latch onto it.
+        // Init/refresh path only: do NOT call this from inside _hcSend after
+        // a successful turn — that wipes the just-rendered user/agent bubbles.
         try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
         window.__fridaysChatConversationId = null;
         _hcConvId = null;
@@ -797,8 +812,9 @@
           localStorage.setItem(HC_ACTIVE_THREAD_KEY, String(_hcConvId));
           window.__fridaysChatConversationId = _hcConvId;
           _hcSaveEnabledAgents();
-          // Refresh thread list to show the new thread
-          _hcLoadThreads();
+          // Refresh thread dropdown only — must NOT reset _hcConvId or wipe
+          // messages here (Y.58 fix for the "Hi disappears" race).
+          _hcLoadThreadsListOnly();
           // Session 28: notify other chat surfaces.
           try {
             window.dispatchEvent(new CustomEvent('swarm:conversation-changed', {
@@ -832,7 +848,7 @@
             _hcAppendBubble({
               sender: resp.agent || 'agent',
               message_type: 'agent',
-              content: resp.response || resp.text || '(no response)',
+              content: resp.response || resp.text || '(empty response)',
               created_at: new Date().toISOString()
             });
           });
@@ -841,6 +857,16 @@
             sender: data.agent || 'agent',
             message_type: 'agent',
             content: data.response,
+            created_at: new Date().toISOString()
+          });
+        } else if (!pendingAcks.length && !pendingJobIds.length) {
+          // Y.58 safety net: backend returned no responses, no pending jobs,
+          // and no top-level response. Surface SOMETHING instead of leaving the
+          // user staring at a blank chat (\"Hi disappears\" symptom).
+          _hcAppendBubble({
+            sender: 'system',
+            message_type: 'system',
+            content: data.error || data.response_error || 'No response from agent. Try again or pick a different agent.',
             created_at: new Date().toISOString()
           });
         }
