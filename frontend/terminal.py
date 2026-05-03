@@ -393,6 +393,15 @@ def create_app():
     app.register_error_handler(TypeError, _bad_input_type)
     app.register_error_handler(AttributeError, _bad_input_type)
 
+    # Hive — start the self-sampler so the leader's own telemetry shows
+    # up in /api/hive/nodes without an external agent. Disabled by
+    # $SWARM_HIVE_DISABLE_SELF_SAMPLER for tests / headless workers.
+    try:
+        from core.hive import self_sampler as _hive_self_sampler
+        _hive_self_sampler.start()
+    except Exception as _hss_err:
+        print(f'[Terminal] hive self-sampler warning: {_hss_err}')
+
     return app
 
 
