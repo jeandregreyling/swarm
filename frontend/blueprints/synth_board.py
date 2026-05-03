@@ -106,9 +106,20 @@ def _validate_graph(graph: Any) -> tuple[bool, str]:
 @synth_board_bp.route('/api/media/synth-board/projects', methods=['POST'])
 def create_board():
     body = request.get_json(silent=True) or {}
+    # Y.53: type-check string fields before .strip() to avoid 500 on
+    # non-string input (same class of bug as Y.50 fixed in app_center).
+    for col in ('name', 'owner', 'key', 'notes'):
+        v = body.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify(ok=False, error=f'{col} must be a string'), 400
     name = (body.get('name') or '').strip()
     if not name or len(name) > 128:
         return jsonify(ok=False, error='name required (≤128)'), 400
+    tempo_raw = body.get('tempo')
+    if tempo_raw is not None and not isinstance(tempo_raw, (int, float)):
+        return jsonify(ok=False, error='tempo must be a number'), 400
+    if isinstance(tempo_raw, (int, float)) and (tempo_raw < 0 or tempo_raw > 600):
+        return jsonify(ok=False, error='tempo out of range (0–600)'), 400
     graph = body.get('graph') or {'nodes': [], 'edges': []}
     ok, why = _validate_graph(graph)
     if not ok:
@@ -127,7 +138,7 @@ def create_board():
                 name,
                 (body.get('owner') or '').strip() or None,
                 json.dumps(graph),
-                float(body.get('tempo')) if body.get('tempo') is not None else None,
+                float(tempo_raw) if tempo_raw is not None else None,
                 (body.get('key') or '').strip() or None,
                 (body.get('notes') or '').strip() or None,
                 now,
