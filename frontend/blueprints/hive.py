@@ -211,6 +211,7 @@ _INSTALL_FILES: dict[str, tuple[str, str]] = {
     'bootstrap.ps1':             ('ops/install/bootstrap.ps1',               'text/plain'),
     'hive_installer_core.py':    ('ops/install/hive_installer_core.py',      'text/x-python'),
     'hive_installer_gui.py':     ('ops/install/hive_installer_gui.py',       'text/x-python'),
+    'swarm-hive.apk':            ('ops/install/android/swarm-hive.apk',      'application/vnd.android.package-archive'),
     'README.md':                 ('ops/install/README.md',                   'text/markdown'),
 }
 
