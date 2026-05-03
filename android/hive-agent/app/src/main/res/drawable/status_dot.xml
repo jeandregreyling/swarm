@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  status_dot.xml — circular dot used inside the status pill. The colour
+  is overridden at runtime via setColorFilter so the same drawable
+  serves all four states.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/status_idle" />
+    <size android:width="10dp" android:height="10dp" />
+</shape>

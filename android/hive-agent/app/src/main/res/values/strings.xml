@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Swarm Hive</string>
+
+    <string name="header_title">Swarm Hive</string>
+    <string name="header_tagline">Pool this device into your private compute swarm.\nOne tap. Always-on. Yours.</string>
+
+    <string name="label_leader">Leader</string>
+    <string name="label_leader_hint">The address of the machine running the Swarm.</string>
+    <string name="hint_leader">http://100.87.66.45:5050</string>
+
+    <string name="label_node_id">Node name</string>
+    <string name="label_node_id_hint">How this device shows up in the Hive. Optional — leave the suggestion if you like it.</string>
+    <string name="hint_node_id">android-…</string>
+
+    <string name="btn_connect">Join the Swarm</string>
+    <string name="btn_stop">Stop sharing</string>
+
+    <string name="footer_hint">Open the Swarm dashboard on your computer.\nThe Leader address is shown in the Monitor view.</string>
+
+    <string name="toast_leader_required">Add the Leader address first.</string>
+
+    <string name="status_idle">Idle</string>
+    <string name="status_enrolling">Enrolling…</string>
+    <string name="status_enrol_failed">Could not reach the Leader. Check the address and your network.</string>
+    <string name="status_configured">Configured: %1$s</string>
+    <string name="status_needs_enrol">Configured · tap Join the Swarm</string>
+    <string name="status_running">Live · %1$s</string>
+    <string name="status_stopped">Stopped</string>
+</resources>

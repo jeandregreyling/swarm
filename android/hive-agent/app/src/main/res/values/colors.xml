@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand palette. Amber pulled forward from the swarm hex glyph;
+         deep ink as the canvas. Surface tones derive from these. -->
+    <color name="brand_amber">#F5B400</color>
+    <color name="brand_amber_dim">#C99000</color>
+    <color name="brand_ink">#0E1116</color>
+    <color name="brand_ink_card">#161B22</color>
+    <color name="brand_ink_field">#1F262F</color>
+    <color name="brand_text">#F2F4F7</color>
+    <color name="brand_text_dim">#9BA3AE</color>
+    <color name="brand_border">#2A313B</color>
+
+    <color name="status_ok">#3DD68C</color>
+    <color name="status_warn">#F5B400</color>
+    <color name="status_err">#F5594E</color>
+    <color name="status_idle">#6B7280</color>
+</resources>
