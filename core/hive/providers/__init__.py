@@ -21,6 +21,11 @@ from .generic import GenericProvider
 def detect_provider() -> Provider:
     """Return the best provider for the current platform."""
     sysname = _platform.system().lower()
+    # Termux on Android may report system=='android' OR system=='linux'
+    # depending on Python build; detect via env/filesystem markers first.
+    from .android import AndroidProvider, is_android
+    if sysname == 'android' or is_android():
+        return AndroidProvider()
     if sysname == 'linux':
         from .linux import LinuxProvider
         return LinuxProvider()

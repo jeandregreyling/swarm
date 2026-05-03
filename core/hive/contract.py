@@ -49,7 +49,7 @@ KNOWN_CAPABILITIES = frozenset({
     'sensors.imu',
 })
 
-FAN_MODES = ('auto', 'boost', 'manual', 'silent', 'unknown')
+FAN_MODES = ('auto', 'boost', 'manual', 'passive', 'silent', 'unknown')
 
 
 class ContractError(ValueError):

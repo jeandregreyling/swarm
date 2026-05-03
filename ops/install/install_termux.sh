@@ -74,7 +74,7 @@ if command -v sv >/dev/null 2>&1 && [[ -d "$SVDIR" ]]; then
 exec 2>&1
 export SWARM_HIVE_LEADER="$LEADER"
 export PYTHONPATH="$STAGE_PY_PATH"
-${NODE_ID:+export SWARM_NODE_ID="$NODE_ID"}
+if [ -n "$NODE_ID" ]; then export SWARM_NODE_ID="$NODE_ID"; fi
 exec "$PY" "$AGENT" --run --interval "$INTERVAL"
 RUN
     cat >"$SERVICE_DIR/log/run" <<LOGRUN
@@ -87,9 +87,11 @@ LOGRUN
     echo "[install_termux] tail logs with: tail -f $LOG_DIR/current"
 else
     LOG_FILE="$LOG_DIR/agent.log"
+    # ${NODE_ID:+VAR=val} cannot act as a bash env-prefix (the assignment
+    # must be literal at parse time), so export it explicitly first.
+    if [ -n "$NODE_ID" ]; then export SWARM_NODE_ID="$NODE_ID"; fi
     SWARM_HIVE_LEADER="$LEADER" \
         PYTHONPATH="$STAGE_PY_PATH" \
-        ${NODE_ID:+SWARM_NODE_ID="$NODE_ID"} \
         nohup "$PY" "$AGENT" --run --interval "$INTERVAL" \
         >>"$LOG_FILE" 2>&1 &
     echo $! >"$PID_FILE"
