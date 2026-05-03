@@ -73,7 +73,7 @@ def chat(message, conversation_history=None, stage_cb=None):
         needs_skills = message_likely_needs_skills(message)
         answer, tokens = run_skill_loop(
             agent_name=AGENT_NAME, call_fn=_api_call,
-            messages=messages, emit_fn=_emit, max_passes=5, nudge_if_no_skills=needs_skills,
+            messages=messages, emit_fn=_emit, max_passes=2, nudge_if_no_skills=needs_skills,
         )
     except Exception as e:
         return f'[gemma] error: {e}', 0

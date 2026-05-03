@@ -68,7 +68,7 @@ def chat(message, conversation_history=None, stage_cb=None):
     try:
         answer, tokens = run_skill_loop(
             agent_name=AGENT_NAME, call_fn=_api_call,
-            messages=messages, emit_fn=_emit, max_passes=5, nudge_if_no_skills=True,
+            messages=messages, emit_fn=_emit, max_passes=2, nudge_if_no_skills=True,
         )
     except Exception as e:
         return f'[qwen] error: {e}', 0
