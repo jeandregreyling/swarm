@@ -8,6 +8,8 @@ Endpoints:
     POST   /api/hive/policy               — executive sets policy on a node
     DELETE /api/hive/node/<node_id>       — deregister a node
     GET    /api/hive/local                — telemetry for THIS host (debug)
+    GET    /api/hive/install/<filename>   — serve agent + installer scripts
+    GET    /api/hive/install/             — JSON manifest of available installers
 
 Auth model: enrolment tokens land in a later iteration. For now we
 accept telemetry from any local-network caller so the Linux node can
@@ -17,9 +19,10 @@ guards make the surface safe against malformed input.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_from_directory, url_for
 
 from core.hive import (
     HiveRegistry,
@@ -184,3 +187,80 @@ def _check_token_for_telemetry(payload: dict) -> tuple[bool, str | None]:
     if not verify_token(node_id, token):
         return False, 'invalid or missing X-Hive-Token'
     return True, None
+
+
+# ---- install surface ------------------------------------------------------
+#
+# Lets a fresh device enrol with a single curl/irm one-liner instead of
+# requiring a git clone. We serve a small, fixed set of files from the
+# repo's ops/ tree — the agent itself plus the per-platform installers
+# and their bootstrap shims — and reject anything else.
+
+_INSTALL_FILES: dict[str, tuple[str, str]] = {
+    # filename                  -> (path relative to repo root, mime type)
+    'agent.py':              ('ops/hive_agent.py',                 'text/x-python'),
+    'hive_agent.py':         ('ops/hive_agent.py',                 'text/x-python'),
+    'install_linux.sh':      ('ops/install/install_linux.sh',      'text/x-shellscript'),
+    'install_macos.sh':      ('ops/install/install_macos.sh',      'text/x-shellscript'),
+    'install_windows.ps1':   ('ops/install/install_windows.ps1',   'text/plain'),
+    'bootstrap.sh':          ('ops/install/bootstrap.sh',          'text/x-shellscript'),
+    'bootstrap.ps1':         ('ops/install/bootstrap.ps1',         'text/plain'),
+    'README.md':             ('ops/install/README.md',             'text/markdown'),
+}
+
+
+def _repo_root() -> Path:
+    # frontend/blueprints/hive.py -> repo root is two parents up.
+    return Path(__file__).resolve().parents[2]
+
+
+@hive_bp.get('/install/')
+@hive_bp.get('/install')
+def install_manifest():
+    """List the installer artefacts the leader is willing to serve."""
+    leader = request.host_url.rstrip('/')
+    files = []
+    root = _repo_root()
+    for name, (rel, mime) in _INSTALL_FILES.items():
+        p = root / rel
+        files.append({
+            'name': name,
+            'mime': mime,
+            'size': p.stat().st_size if p.exists() else None,
+            'available': p.exists(),
+            'url': f'{leader}/api/hive/install/{name}',
+        })
+    return jsonify({
+        'ok': True,
+        'leader': leader,
+        'one_liners': {
+            'linux_macos': (
+                f"curl -fsSL {leader}/api/hive/install/bootstrap.sh "
+                f"| SWARM_HIVE_LEADER={leader} bash"
+            ),
+            'windows': (
+                f"$env:SWARM_HIVE_LEADER='{leader}'; "
+                f"irm {leader}/api/hive/install/bootstrap.ps1 | iex"
+            ),
+        },
+        'files': files,
+    })
+
+
+@hive_bp.get('/install/<path:filename>')
+def install_file(filename: str):
+    """Serve a single installer artefact from the repo's ops/ tree."""
+    entry = _INSTALL_FILES.get(filename)
+    if entry is None:
+        return _err(f'unknown install asset {filename!r}', 404)
+    rel, mime = entry
+    p = _repo_root() / rel
+    if not p.exists():
+        return _err(f'install asset missing on leader: {filename!r}', 503)
+    return send_from_directory(
+        directory=str(p.parent),
+        path=p.name,
+        mimetype=mime,
+        as_attachment=False,
+        download_name=filename,
+    )
