@@ -27,7 +27,53 @@
   border-bottom: none !important;
   margin-bottom: 0 !important;
   padding-bottom: 0 !important;
+  /* Y.59 — needed so the edge handles can pin to the section's outer edges. */
+  position: relative;
 }
+
+/* Y.59 — direct top/bottom edge resize strips. Span the full width of the
+   chat section so the user can grab anywhere along the edge instead of
+   hunting for a tiny dragger. ns-resize cursor over the whole strip,
+   visible accent line on hover/active so it doesn't feel invisible. */
+.home-chat-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  z-index: 4;
+  background: transparent;
+  transition: background 0.18s;
+}
+.home-chat-edge-top    { top: -4px; }
+.home-chat-edge-bottom { bottom: -4px; }
+.home-chat-edge::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+  transition: background 0.18s, width 0.18s;
+}
+.home-chat-edge:hover::after,
+.home-chat-edge:focus-visible::after,
+.home-chat-edge.home-chat-edge-active::after {
+  background: var(--accent);
+  width: 96px;
+}
+.home-chat-edge:focus { outline: none; }
+.home-chat-edge:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 40%, transparent 60%);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Legacy standalone resizer is hidden — kept for back-compat selectors only. */
+.home-chat-resizer.home-chat-resizer-legacy { display: none !important; }
 
 /* Prominent mode — chat first, takes more space */
 .home-chat-prominent {
