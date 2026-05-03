@@ -22,7 +22,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from flask import Blueprint, jsonify, request, send_from_directory, url_for
+import io
+import tarfile
+
+from flask import Blueprint, Response, jsonify, request, send_from_directory, url_for
 
 from core.hive import (
     HiveRegistry,
@@ -202,6 +205,7 @@ _INSTALL_FILES: dict[str, tuple[str, str]] = {
     'hive_agent.py':             ('ops/hive_agent.py',                       'text/x-python'),
     'install_linux.sh':          ('ops/install/install_linux.sh',            'text/x-shellscript'),
     'install_macos.sh':          ('ops/install/install_macos.sh',            'text/x-shellscript'),
+    'install_termux.sh':         ('ops/install/install_termux.sh',           'text/x-shellscript'),
     'install_windows.ps1':       ('ops/install/install_windows.ps1',         'text/plain'),
     'bootstrap.sh':              ('ops/install/bootstrap.sh',                'text/x-shellscript'),
     'bootstrap.ps1':             ('ops/install/bootstrap.ps1',               'text/plain'),
@@ -232,6 +236,17 @@ def install_manifest():
             'available': p.exists(),
             'url': f'{leader}/api/hive/install/{name}',
         })
+    # Synthetic asset built on demand from the live core/hive/ tree.
+    core_hive_dir = root / 'core' / 'hive'
+    files.append({
+        'name': 'core_hive.tar.gz',
+        'mime': 'application/gzip',
+        'size': None,
+        'available': core_hive_dir.is_dir(),
+        'url': f'{leader}/api/hive/install/core_hive.tar.gz',
+        'note': 'built-on-demand tar.gz of core/hive runtime',
+        'built_on_demand': True,
+    })
     return jsonify({
         'ok': True,
         'leader': leader,
@@ -258,7 +273,17 @@ def install_manifest():
 
 @hive_bp.get('/install/<path:filename>')
 def install_file(filename: str):
-    """Serve a single installer artefact from the repo's ops/ tree."""
+    """Serve a single installer artefact from the repo's ops/ tree.
+
+    Special case: ``core_hive.tar.gz`` is built on the fly from the live
+    ``core/hive/`` tree so the bootstrap script can stage the agent's
+    Python dependencies on a fresh host (Termux, Linux, macOS) without a
+    git clone. The tarball strips ``__pycache__`` and contains a
+    top-level ``core/hive/`` path so it extracts cleanly into a stage
+    dir.
+    """
+    if filename == 'core_hive.tar.gz':
+        return _serve_core_hive_tarball()
     entry = _INSTALL_FILES.get(filename)
     if entry is None:
         return _err(f'unknown install asset {filename!r}', 404)
@@ -272,4 +297,34 @@ def install_file(filename: str):
         mimetype=mime,
         as_attachment=False,
         download_name=filename,
+    )
+
+
+def _serve_core_hive_tarball() -> Response:
+    """Build and stream a tar.gz of the runtime ``core/hive/`` tree.
+
+    Built fresh per request — small (<50 KB) and rare. We deliberately
+    do not cache: the leader is the source of truth and node operators
+    need the latest contract files.
+    """
+    src = _repo_root() / 'core' / 'hive'
+    if not src.is_dir():
+        return _err('core/hive/ not present on leader', 503)
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode='w:gz') as tar:
+        for path in sorted(src.rglob('*')):
+            if '__pycache__' in path.parts:
+                continue
+            if path.suffix in {'.pyc', '.pyo'}:
+                continue
+            arcname = 'core/hive/' + str(path.relative_to(src)).replace('\\', '/')
+            tar.add(str(path), arcname=arcname, recursive=False)
+    data = buf.getvalue()
+    return Response(
+        data,
+        mimetype='application/gzip',
+        headers={
+            'Content-Disposition': 'attachment; filename="core_hive.tar.gz"',
+            'Content-Length': str(len(data)),
+        },
     )

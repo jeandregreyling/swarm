@@ -22,6 +22,12 @@ PY="${SWARM_HIVE_PYTHON:-python3}"
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 AGENT="$REPO_ROOT/ops/hive_agent.py"
 
+# When invoked from bootstrap.sh, REPO_ROOT *is* the stage dir and
+# already contains core/hive/ from the tarball. When invoked from a
+# checkout, the repo root provides core/hive/ natively. Either way,
+# adding REPO_ROOT to PYTHONPATH makes ``import core.hive`` work.
+STAGE_PY_PATH="${SWARM_HIVE_STAGE:-$REPO_ROOT}"
+
 if [[ ! -f "$AGENT" ]]; then
     echo "[install_linux] agent not found at $AGENT" >&2
     exit 2
@@ -36,7 +42,8 @@ UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UNIT_FILE="$UNIT_DIR/swarm-hive-agent.service"
 mkdir -p "$UNIT_DIR"
 
-ENV_LINES="Environment=SWARM_HIVE_LEADER=$LEADER"
+ENV_LINES="Environment=SWARM_HIVE_LEADER=$LEADER
+Environment=PYTHONPATH=$STAGE_PY_PATH"
 if [[ -n "$NODE_ID" ]]; then
     ENV_LINES+=$'\n'"Environment=SWARM_NODE_ID=$NODE_ID"
 fi
@@ -64,7 +71,7 @@ echo "[install_linux] wrote $UNIT_FILE"
 
 systemctl --user daemon-reload
 echo "[install_linux] enrolling with leader=$LEADER ..."
-"$PY" "$AGENT" --enrol --leader "$LEADER" ${NODE_ID:+--node-id "$NODE_ID"}
+PYTHONPATH="$STAGE_PY_PATH" "$PY" "$AGENT" --enrol --leader "$LEADER" ${NODE_ID:+--node-id "$NODE_ID"}
 systemctl --user enable --now swarm-hive-agent.service
 sleep 1
 systemctl --user --no-pager status swarm-hive-agent.service | head -20 || true
