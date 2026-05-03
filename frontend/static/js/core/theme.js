@@ -1838,7 +1838,14 @@ function refreshSysmodHelpers() {
   const host = document.getElementById('sysmod-helpers');
   if (!host) return;
   host.innerHTML = '<div style="font-size:10px;color:var(--text-dim);">Loading helpers…</div>';
-  fetch('/api/settings/sysmod/helpers').then(r => r.json()).then(d => {
+  fetch('/api/settings/sysmod/helpers').then(r => {
+    if (r.status === 404) {
+      // Y.58 — route exists in source but not in the running server. Surface
+      // a clearer message instead of a silent failure ("does nothing").
+      throw new Error('helpers-route-missing');
+    }
+    return r.json();
+  }).then(d => {
     const helpers = (d && d.helpers) || [];
     if (!helpers.length) {
       host.innerHTML = '<div style="font-size:10px;color:var(--text-dim);">No installable helpers known yet.</div>';
@@ -1870,7 +1877,11 @@ function refreshSysmodHelpers() {
     '<div style="font-size:10px;color:var(--text-dim);margin-top:8px;line-height:1.55;">' +
     'Helpers run as system services. Swarm never executes <code>sudo</code> on your behalf — copy the command, paste it in a terminal, and the OS will prompt for your password.' +
     '</div>';
-  }).catch(() => {
+  }).catch((err) => {
+    if (err && err.message === 'helpers-route-missing') {
+      host.innerHTML = '<div style="font-size:11px;color:#d8a032;line-height:1.55;">System Modifications helper inventory is not available on this build. Restart <code>swarm-terminal.service</code> (or the dev server) to pick up the helpers route.</div>';
+      return;
+    }
     host.innerHTML = '<div style="font-size:10px;color:#f44336;">Could not load helper inventory.</div>';
   });
 }

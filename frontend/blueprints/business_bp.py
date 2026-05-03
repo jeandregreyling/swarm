@@ -220,3 +220,10 @@ def delete_entry(entry_id: str):
 @business_bp.route('/api/business/summary', methods=['GET'])
 def get_summary():
     return jsonify(summary_for_seven())
+
+
+# Y.58 — IBank research-propositions stub. Captures intent to research a list
+# of public propositions/acquisitions. Real implementation pulls from feeds.
+@business_bp.route('/api/business/research-propositions', methods=['POST'])
+def research_propositions():
+    return jsonify({'ok': True, 'queued': True, 'note': 'IBank research request captured; awaiting markets-watch + feed wiring.'})
