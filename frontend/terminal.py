@@ -192,6 +192,23 @@ def create_app():
         stage = os.environ.get('STAGE', os.environ.get('SWARM_ENV', 'PROD' if PORT == 5050 else 'unknown')).upper()
         return dict(ENV_STAGE=stage, ASSET_VERSION=_asset_version)
 
+    # Y.58c — never let the browser serve a stale HTML shell. The shell
+    # routes the entire SPA so a cached copy makes new tile layouts
+    # (Y.58 Files-into-KC, Cyber-into-Vortex, Money-Hub merge, etc.)
+    # invisible until the user manually hard-refreshes. Static assets keep
+    # their per-deploy ?v=ASSET_VERSION cache-bust untouched.
+    @app.after_request
+    def _no_cache_html(resp):  # noqa: ANN001
+        try:
+            ctype = (resp.headers.get('Content-Type') or '').lower()
+            if 'text/html' in ctype:
+                resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                resp.headers['Pragma'] = 'no-cache'
+                resp.headers['Expires'] = '0'
+        except Exception:
+            pass
+        return resp
+
     # Ensure schema/migrations are present before serving APIs.
     try:
         initialise_database()

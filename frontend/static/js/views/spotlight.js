@@ -60,7 +60,7 @@ const _SP_COMMANDS = [
   { label: 'Chat',              icon: _SP_SVG.chat,      hint: 'Ctrl+J',     action: () => openWindow('chat','Chat','view-chat') },
   { label: 'Knowledge Center',  icon: _SP_SVG.knowledge, hint: 'Ctrl+B',     action: () => openWindow('knowledge','Knowledge','view-knowledge') },
   { label: 'Terminal',          icon: _SP_SVG.terminal,  hint: '',           action: () => openWindow('terminal','Terminal','view-terminal') },
-  { label: 'Files',             icon: _SP_SVG.files,     hint: '',           action: () => openWindow('files','Files','view-files') },
+  { label: 'Files',             icon: _SP_SVG.files,     hint: 'in Knowledge', action: () => { openWindow('knowledge','Knowledge','view-knowledge'); setTimeout(() => { if (typeof knowledgeSetTab === 'function') knowledgeSetTab('files'); }, 150); } },
   { label: 'Studio / Proposals',icon: _SP_SVG.studio,    hint: 'Ctrl+P',     action: () => openWindow('studio','Studio','view-studio') },
   { label: 'Git',               icon: _SP_SVG.git,       hint: 'Ctrl+G',     action: () => { openWindow('studio','Studio','view-studio'); setTimeout(()=>{ if(typeof studioSetTab==='function') studioSetTab('git'); },120); } },
   { label: 'Tickets',           icon: _SP_SVG.tickets,   hint: 'Ctrl+T',     action: () => openWindow('tickets','Tickets','view-tickets') },
