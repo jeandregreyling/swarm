@@ -101,6 +101,17 @@ def _validate_timeline(tl: Any) -> tuple[bool, str]:
 @video_editor_bp.route('/api/media/video/timelines', methods=['POST'])
 def create_timeline():
     body = request.get_json(silent=True) or {}
+    # Y.53: type-check string + numeric fields before unsafe ops.
+    for col in ('name', 'owner', 'project_id', 'resolution', 'notes'):
+        v = body.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify(ok=False, error=f'{col} must be a string'), 400
+    for col in ('duration_seconds', 'fps'):
+        v = body.get(col)
+        if v is not None and not isinstance(v, (int, float)):
+            return jsonify(ok=False, error=f'{col} must be a number'), 400
+        if isinstance(v, (int, float)) and v < 0:
+            return jsonify(ok=False, error=f'{col} must be >= 0'), 400
     name = (body.get('name') or '').strip()
     if not name or len(name) > 128:
         return jsonify(ok=False, error='name required (≤128)'), 400
@@ -232,6 +243,9 @@ def queue_render(timeline_id: str):
     actually executes (kind='video_graph').
     """
     body = request.get_json(silent=True) or {}
+    raw_agent = body.get('agent')
+    if raw_agent is not None and not isinstance(raw_agent, str):
+        return jsonify(ok=False, error='agent must be a string'), 400
     c = _conn()
     try:
         _ensure_tables(c)
