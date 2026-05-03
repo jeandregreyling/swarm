@@ -36,7 +36,9 @@ def test_install_manifest_has_required_keys(client):
     # Every advertised file must actually exist on the leader.
     for entry in body['files']:
         assert entry['available'] is True, f"{entry['name']} not available"
-        assert entry['size'] and entry['size'] > 0
+        # Built-on-demand entries (e.g. core_hive.tar.gz) report size=None.
+        if not entry.get('built_on_demand'):
+            assert entry['size'] and entry['size'] > 0
 
 
 def test_install_manifest_no_trailing_slash_works(client):
@@ -143,3 +145,64 @@ def test_install_serves_installer_core(client):
     body = rv.get_data(as_text=True)
     assert 'def probe_leader' in body
     assert 'def plan_install' in body
+
+
+# ---- Termux / core_hive tarball (Android bring-up) ------------------------
+
+
+def test_install_serves_termux_installer(client):
+    rv = client.get('/api/hive/install/install_termux.sh')
+    assert rv.status_code == 200
+    body = rv.get_data(as_text=True)
+    assert 'install_termux' in body
+    # No systemd on Android Termux: must not call systemctl.
+    assert 'systemctl' not in body
+    # Must support both termux-services (sv) and nohup fallbacks.
+    assert 'termux-services' in body
+    assert 'nohup' in body
+
+
+def test_install_manifest_lists_termux_and_core_hive(client):
+    rv = client.get('/api/hive/install/')
+    assert rv.status_code == 200
+    body = rv.get_json()
+    names = {f['name'] for f in body['files']}
+    assert 'install_termux.sh' in names
+    assert 'core_hive.tar.gz' in names
+    core_entry = next(f for f in body['files'] if f['name'] == 'core_hive.tar.gz')
+    assert core_entry['available'] is True
+    assert core_entry['mime'] == 'application/gzip'
+
+
+def test_install_serves_core_hive_tarball(client):
+    import io
+    import tarfile
+    rv = client.get('/api/hive/install/core_hive.tar.gz')
+    assert rv.status_code == 200
+    assert rv.mimetype == 'application/gzip'
+    data = rv.get_data()
+    assert len(data) > 0
+    with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as tar:
+        names = tar.getnames()
+    # The agent imports these at runtime; if any goes missing the
+    # remote node will crash on first sample.
+    assert 'core/hive/__init__.py' in names
+    assert 'core/hive/local_node.py' in names
+    assert 'core/hive/contract.py' in names
+    assert 'core/hive/providers/__init__.py' in names
+    assert 'core/hive/providers/linux.py' in names
+    # No bytecode or cache pollution.
+    assert not any('__pycache__' in n for n in names)
+    assert not any(n.endswith('.pyc') for n in names)
+
+
+def test_bootstrap_sh_detects_termux(client):
+    rv = client.get('/api/hive/install/bootstrap.sh')
+    assert rv.status_code == 200
+    body = rv.get_data(as_text=True)
+    # Must branch to Termux when $PREFIX points at the Termux prefix.
+    assert 'com.termux' in body
+    assert 'PLATFORM="termux"' in body
+    # Must fetch and extract the core/hive runtime tarball.
+    assert 'core_hive.tar.gz' in body
+    assert 'tar -xzf' in body
