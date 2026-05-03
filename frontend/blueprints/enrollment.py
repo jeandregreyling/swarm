@@ -265,21 +265,11 @@ def api_enrollment_email_link(username: str):
         "source": "config" if email in pool_config else ("runtime" if email in runtime_emails else None),
         "role": row["role"],
     })
-def api_enrollment_invite():
-    """Owner issues a new invite token for a co-owner / assistant."""
-    data = request.get_json(silent=True) or {}
-    role = (data.get("role") or "assistant").strip().lower()
-    email = (data.get("email") or "").strip().lower() or None
-    if role not in {"assistant", "coowner", "guest"}:
-        return jsonify({"ok": False, "error": f"role '{role}' not allowed"}), 400
-    token = secrets.token_urlsafe(18)
-    conn = _db()
-    try:
-        conn.execute(
-            "INSERT INTO enrollment_invites (token, role, email, created_at) VALUES (?, ?, ?, ?)",
-            (token, role, email, time.time()),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-    return jsonify({"ok": True, "token": token, "role": role, "email": email})
+
+
+# Bug fix 2026-05-03: an orphan second copy of `api_enrollment_invite`
+# (no @route decorator) was redefining the symbol with stale role
+# validation ({assistant, coowner, guest} vs the live route's
+# {co_owner, assistant, member}). The orphan never served traffic but
+# its presence was confusing — and any future code that called the
+# function by name would have hit the wrong validation. Removed.
