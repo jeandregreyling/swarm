@@ -412,3 +412,110 @@ function _renderMonitorActivity(win) {
 }
 
 
+
+/* ── Y.59 Hive · Thermal & Performance panel ────────────────────────────── */
+
+let _hiveTimer = null;
+
+function _hiveEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+function _hivePressureColor(level) {
+  return ({
+    nominal:  '#4caf50',
+    fair:     '#9ccc65',
+    serious:  '#ffa500',
+    critical: '#f44336',
+  })[level] || 'var(--text-dim)';
+}
+
+function _renderHiveCard(node) {
+  const t = node.telemetry || {};
+  const c = t.compute || {};
+  const th = t.thermal || {};
+  const m = t.memory || {};
+  const p = t.power || {};
+  const ramPct = (m.ram_total_mb && m.ram_free_mb != null)
+    ? Math.round(100 - (100 * m.ram_free_mb / m.ram_total_mb))
+    : null;
+  const fanPct = (th.fan_pwm != null) ? Math.round((th.fan_pwm / 255) * 100) : null;
+  const ageS = node.last_seen_ts
+    ? Math.max(0, Math.floor(Date.now()/1000 - node.last_seen_ts))
+    : null;
+  const ageStr = ageS == null ? '—'
+    : ageS < 60 ? `${ageS}s ago`
+    : ageS < 3600 ? `${Math.floor(ageS/60)}m ago`
+    : `${Math.floor(ageS/3600)}h ago`;
+  const stale = ageS != null && ageS > 120;
+  const pressure = p.thermal_pressure || 'nominal';
+  const pColor = _hivePressureColor(pressure);
+  return `
+    <div style="background:var(--card);border:1px solid ${stale ? '#f4433655' : 'var(--border)'};
+                border-radius:6px;padding:10px;font-size:10px;line-height:1.5;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${pColor};"></span>
+        <strong style="font-size:11px;color:var(--text);">${_hiveEsc(node.label || node.node_id)}</strong>
+      </div>
+      <div style="color:var(--text-dim);font-size:9px;margin-bottom:6px;">
+        ${_hiveEsc(node.platform || '')} · ${ageStr}
+      </div>
+      <div>CPU temp: <strong>${c.cpu_peak_temp_c != null ? c.cpu_peak_temp_c + '°C' : '—'}</strong>
+        ${c.cpu_throttled ? '<span style="color:#ffa500"> · throttled</span>' : ''}</div>
+      <div>Fan: <strong>${th.fan_rpm != null ? th.fan_rpm + ' rpm' : '—'}</strong>
+        ${fanPct != null ? ` · ${fanPct}% PWM` : ''}
+        ${th.fan_mode && th.fan_mode !== 'unknown' ? ` · ${_hiveEsc(th.fan_mode)}` : ''}
+        ${th.controllable ? '' : ' <span style="color:var(--text-dim)">(read-only)</span>'}</div>
+      <div>RAM: <strong>${ramPct != null ? ramPct + '%' : '—'}</strong>
+        ${m.ram_total_mb ? ` of ${Math.round(m.ram_total_mb/1024)} GB` : ''}</div>
+      <div>Pressure: <span style="color:${pColor};font-weight:600;">${_hiveEsc(pressure)}</span>
+        ${p.on_battery ? ' · on battery' : ''}
+        ${p.battery_pct != null ? ` ${Math.round(p.battery_pct)}%` : ''}</div>
+    </div>
+  `;
+}
+
+function monitorHiveRefresh() {
+  const grid = document.getElementById('monitor-hive-grid');
+  const meta = document.getElementById('monitor-hive-meta');
+  if (!grid) return;
+  fetch('/api/hive/nodes')
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(j => {
+      if (!j || !j.ok) throw new Error('not ok');
+      const nodes = j.nodes || [];
+      if (meta) meta.textContent = `${nodes.length} node${nodes.length===1?'':'s'}`;
+      if (!nodes.length) {
+        grid.innerHTML = '<div style="color:var(--text-dim);font-size:10px;">No nodes enrolled yet — start a local sample with <code>POST /api/hive/telemetry</code> or hit <code>GET /api/hive/local</code>.</div>';
+        return;
+      }
+      grid.innerHTML = nodes.map(_renderHiveCard).join('');
+    })
+    .catch(err => {
+      grid.innerHTML = `<div style="color:#f77;font-size:10px;">Hive unreachable: ${_hiveEsc(err)}</div>`;
+    });
+}
+
+function monitorHiveStartAutoRefresh() {
+  monitorHiveRefresh();
+  if (_hiveTimer) clearInterval(_hiveTimer);
+  _hiveTimer = setInterval(monitorHiveRefresh, 20000);
+}
+
+// Auto-start when monitor view is visible.
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('monitor-hive-grid')) {
+    monitorHiveStartAutoRefresh();
+  } else {
+    // Mounted lazily via window-manager; poll briefly.
+    let tries = 0;
+    const probe = setInterval(() => {
+      if (document.getElementById('monitor-hive-grid') || ++tries > 20) {
+        clearInterval(probe);
+        if (document.getElementById('monitor-hive-grid')) monitorHiveStartAutoRefresh();
+      }
+    }, 500);
+  }
+});
