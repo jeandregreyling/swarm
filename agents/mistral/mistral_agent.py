@@ -108,7 +108,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             call_fn=_api_call,
             messages=messages,
             emit_fn=_emit,
-            max_passes=5,
+            max_passes=2,
             nudge_if_no_skills=True,
         )
     except Exception as e:
