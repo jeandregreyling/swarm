@@ -504,17 +504,68 @@ function monitorHiveStartAutoRefresh() {
   _hiveTimer = setInterval(monitorHiveRefresh, 20000);
 }
 
+// ---- Add Device panel ----------------------------------------------------
+//
+// Builds copy-paste install commands per platform pointing at THIS leader.
+// Reads window.location.origin so the displayed command auto-fills.
+
+let _hiveAddTab = 'linux';
+
+function monitorHiveAddCommand(platform) {
+  const origin = (window.location && window.location.origin) || '';
+  if (platform === 'windows') {
+    return `$env:SWARM_HIVE_LEADER='${origin}'; irm ${origin}/api/hive/install/bootstrap.ps1 | iex`;
+  }
+  // linux + macos share the same shell one-liner; bootstrap.sh detects uname.
+  return `curl -fsSL ${origin}/api/hive/install/bootstrap.sh | SWARM_HIVE_LEADER=${origin} bash`;
+}
+
+function monitorHiveAddTab(platform) {
+  _hiveAddTab = platform;
+  const code = document.getElementById('monitor-hive-cmd');
+  if (code) code.textContent = monitorHiveAddCommand(platform);
+  ['linux', 'macos', 'windows'].forEach((p) => {
+    const btn = document.getElementById('monitor-hive-tab-' + p);
+    if (!btn) return;
+    btn.style.background = (p === platform) ? 'var(--accent, #444)' : 'transparent';
+  });
+  const status = document.getElementById('monitor-hive-cmd-status');
+  if (status) status.textContent = '';
+}
+
+function monitorHiveCopyCmd() {
+  const code = document.getElementById('monitor-hive-cmd');
+  const status = document.getElementById('monitor-hive-cmd-status');
+  if (!code) return;
+  const text = code.textContent || '';
+  const done = (msg) => { if (status) { status.textContent = msg; setTimeout(() => { if (status) status.textContent = ''; }, 2500); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => done('Copied.'), () => done('Copy failed; select manually.'));
+  } else {
+    done('Clipboard unavailable; select the command manually.');
+  }
+}
+
+function monitorHiveAddInit() {
+  if (!document.getElementById('monitor-hive-cmd')) return;
+  monitorHiveAddTab(_hiveAddTab);
+}
+
 // Auto-start when monitor view is visible.
 document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('monitor-hive-grid')) {
     monitorHiveStartAutoRefresh();
+    monitorHiveAddInit();
   } else {
     // Mounted lazily via window-manager; poll briefly.
     let tries = 0;
     const probe = setInterval(() => {
       if (document.getElementById('monitor-hive-grid') || ++tries > 20) {
         clearInterval(probe);
-        if (document.getElementById('monitor-hive-grid')) monitorHiveStartAutoRefresh();
+        if (document.getElementById('monitor-hive-grid')) {
+          monitorHiveStartAutoRefresh();
+          monitorHiveAddInit();
+        }
       }
     }, 500);
   }
