@@ -134,6 +134,11 @@ def list_positions():
 @financial_bp.route('/api/financial/positions', methods=['POST'])
 def create_position():
     body = request.get_json(silent=True) or {}
+    # Y.55: type-check before .strip()/.lower() (Y.50 class).
+    for col in ('ticker', 'asset_class', 'conviction', 'currency', 'thesis'):
+        v = body.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'ok': False, 'error': f'{col} must be a string'}), 400
     ticker = (body.get('ticker') or '').strip()
     if not ticker:
         return jsonify({'ok': False, 'error': 'ticker required'}), 400

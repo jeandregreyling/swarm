@@ -100,6 +100,11 @@ def list_curriculum():
 @media_curriculum_bp.route('/api/kc/media/curriculum', methods=['POST'])
 def add_curriculum():
     data  = request.get_json(silent=True) or {}
+    # Y.55: type-check before .strip() (Y.50 class).
+    for col in ('topic', 'kind', 'tool', 'notes'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'ok': False, 'error': f'{col} must be a string'}), 400
     topic = (data.get('topic') or '').strip()[:120]
     kind  = (data.get('kind')  or '').strip().lower()
     tool  = (data.get('tool')  or '').strip()[:120]
@@ -148,6 +153,11 @@ def delete_curriculum(row_id: int):
 @media_curriculum_bp.route('/api/kc/media/trace', methods=['POST'])
 def add_trace():
     data = request.get_json(silent=True) or {}
+    # Y.55: type-check before .strip().
+    for col in ('asset_id', 'project_id', 'agent'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'ok': False, 'error': f'{col} must be a string'}), 400
     asset_id   = (data.get('asset_id') or '').strip()[:120]
     project_id = (data.get('project_id') or '').strip()[:120] or None
     topics     = data.get('topics') or []

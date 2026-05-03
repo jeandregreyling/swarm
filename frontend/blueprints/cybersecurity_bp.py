@@ -117,6 +117,11 @@ def list_events():
 @cybersecurity_bp.route('/api/cyber/events', methods=['POST'])
 def create_event():
     body = request.get_json(silent=True) or {}
+    # Y.55: type-check before .strip()/.lower() (Y.50 class).
+    for col in ('summary', 'severity', 'source', 'detail'):
+        v = body.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'ok': False, 'error': f'{col} must be a string'}), 400
     summary = (body.get('summary') or '').strip()
     if not summary:
         return jsonify({'ok': False, 'error': 'summary required'}), 400
