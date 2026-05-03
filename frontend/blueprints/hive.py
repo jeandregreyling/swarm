@@ -198,14 +198,16 @@ def _check_token_for_telemetry(payload: dict) -> tuple[bool, str | None]:
 
 _INSTALL_FILES: dict[str, tuple[str, str]] = {
     # filename                  -> (path relative to repo root, mime type)
-    'agent.py':              ('ops/hive_agent.py',                 'text/x-python'),
-    'hive_agent.py':         ('ops/hive_agent.py',                 'text/x-python'),
-    'install_linux.sh':      ('ops/install/install_linux.sh',      'text/x-shellscript'),
-    'install_macos.sh':      ('ops/install/install_macos.sh',      'text/x-shellscript'),
-    'install_windows.ps1':   ('ops/install/install_windows.ps1',   'text/plain'),
-    'bootstrap.sh':          ('ops/install/bootstrap.sh',          'text/x-shellscript'),
-    'bootstrap.ps1':         ('ops/install/bootstrap.ps1',         'text/plain'),
-    'README.md':             ('ops/install/README.md',             'text/markdown'),
+    'agent.py':                  ('ops/hive_agent.py',                       'text/x-python'),
+    'hive_agent.py':             ('ops/hive_agent.py',                       'text/x-python'),
+    'install_linux.sh':          ('ops/install/install_linux.sh',            'text/x-shellscript'),
+    'install_macos.sh':          ('ops/install/install_macos.sh',            'text/x-shellscript'),
+    'install_windows.ps1':       ('ops/install/install_windows.ps1',         'text/plain'),
+    'bootstrap.sh':              ('ops/install/bootstrap.sh',                'text/x-shellscript'),
+    'bootstrap.ps1':             ('ops/install/bootstrap.ps1',               'text/plain'),
+    'hive_installer_core.py':    ('ops/install/hive_installer_core.py',      'text/x-python'),
+    'hive_installer_gui.py':     ('ops/install/hive_installer_gui.py',       'text/x-python'),
+    'README.md':                 ('ops/install/README.md',                   'text/markdown'),
 }
 
 
@@ -241,6 +243,13 @@ def install_manifest():
             'windows': (
                 f"$env:SWARM_HIVE_LEADER='{leader}'; "
                 f"irm {leader}/api/hive/install/bootstrap.ps1 | iex"
+            ),
+        },
+        'click_through': {
+            'gui_installer': f'{leader}/api/hive/install/hive_installer_gui.py',
+            'instructions': (
+                'Save the file, then double-click it (Python 3.10+ required). '
+                'A wizard opens — click Next, paste the leader URL above, click Install.'
             ),
         },
         'files': files,
