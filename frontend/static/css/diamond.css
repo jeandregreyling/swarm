@@ -160,7 +160,11 @@
   min-width: 140px;
   max-width: 220px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-  pointer-events: none;
+  /* Y.58e — was pointer-events:none which made the entire tip (and every
+     button inside it: Auto, Boost, Unload) inert. mouseenter / click events
+     never fired, so the user could see the buttons but clicking 'did nothing'.
+     The tip needs pointer-events:auto so its handlers actually run. */
+  pointer-events: auto;
   display: none;
   animation: stip-in 0.15s ease-out;
 }
