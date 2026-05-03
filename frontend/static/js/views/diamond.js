@@ -674,15 +674,19 @@ function _toggleHiddenPanel() {
   if (grid) grid.before(panel);
 }
 
-/* ── Home chat vertical resize ────────────────────────────────────────────── */
+/* ── Home chat vertical resize ──────────────────────────────────────────────
+   Y.59 — the chat section now exposes two direct edge handles
+   (.home-chat-edge-top / .home-chat-edge-bottom) anchored to its outer
+   edges. The legacy standalone #home-chat-resizer is still bound for
+   back-compat but hidden in CSS. Both edges write to the same storage
+   key so the size sticks regardless of which edge the user dragged.
+   Top-edge drag DOWN shrinks the chat; bottom-edge drag DOWN grows it. */
 
 function _initHomeChatResize() {
-  const handle = document.getElementById('home-chat-resizer');
   const chat = document.querySelector('.home-chat-section');
-  if (!handle || !chat) return;
+  if (!chat) return;
 
   const STORAGE_KEY = 'fridays-home-chat-height';
-  const DEFAULT_H = 0; // 0 means "use stylesheet default"
   const MIN_H = 200;
   const maxH = () => Math.max(MIN_H, window.innerHeight - 140);
 
@@ -703,66 +707,93 @@ function _initHomeChatResize() {
     if (h >= MIN_H) apply(h);
   }
 
-  const handleAbove = handle.classList.contains('home-chat-resizer-top');
+  const bindHandle = (handle, edge) => {
+    if (!handle) return;
+    // edge: 'top' | 'bottom'. Top edge: dragging up grows (delta inverted).
+    const handleAbove = edge === 'top';
 
-  const beginDrag = (clientY) => {
-    const startY = clientY;
-    const startH = chat.getBoundingClientRect().height;
-    handle.classList.add('home-chat-resizer-active');
+    const beginDrag = (clientY) => {
+      const startY = clientY;
+      const startH = chat.getBoundingClientRect().height;
+      handle.classList.add('home-chat-edge-active');
+      handle.classList.add('home-chat-resizer-active'); // legacy class
 
-    const move = (y) => {
-      const delta = y - startY;
-      const targetH = handleAbove ? startH - delta : startH + delta;
-      apply(targetH);
+      const move = (y) => {
+        const delta = y - startY;
+        const targetH = handleAbove ? startH - delta : startH + delta;
+        apply(targetH);
+      };
+      const end = () => {
+        try {
+          localStorage.setItem(STORAGE_KEY,
+            String(chat.getBoundingClientRect().height));
+        } catch (e) {}
+        handle.classList.remove('home-chat-edge-active');
+        handle.classList.remove('home-chat-resizer-active');
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener('touchmove', onTouchMove);
+        document.removeEventListener('touchend', onTouchEnd);
+        document.body.style.userSelect = '';
+      };
+      const onMouseMove = (ev) => move(ev.clientY);
+      const onMouseUp = () => end();
+      const onTouchMove = (ev) => { if (ev.touches[0]) move(ev.touches[0].clientY); };
+      const onTouchEnd = () => end();
+
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+      document.addEventListener('touchmove', onTouchMove, { passive: true });
+      document.addEventListener('touchend', onTouchEnd);
     };
-    const end = () => {
-      try { localStorage.setItem(STORAGE_KEY, String(chat.getBoundingClientRect().height)); } catch (e) {}
-      handle.classList.remove('home-chat-resizer-active');
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onTouchEnd);
-      document.body.style.userSelect = '';
-    };
-    const onMouseMove = (ev) => move(ev.clientY);
-    const onMouseUp = () => end();
-    const onTouchMove = (ev) => { if (ev.touches[0]) move(ev.touches[0].clientY); };
-    const onTouchEnd = () => end();
 
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-    document.addEventListener('touchmove', onTouchMove, { passive: true });
-    document.addEventListener('touchend', onTouchEnd);
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      beginDrag(e.clientY);
+    });
+    handle.addEventListener('touchstart', (e) => {
+      if (!e.touches[0]) return;
+      beginDrag(e.touches[0].clientY);
+    }, { passive: true });
+
+    handle.addEventListener('dblclick', () => {
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      apply(0);
+    });
+
+    handle.addEventListener('keydown', (e) => {
+      const cur = chat.getBoundingClientRect().height;
+      let next = cur;
+      if (e.key === 'ArrowUp')        next = handleAbove ? cur + 24 : cur - 24;
+      else if (e.key === 'ArrowDown') next = handleAbove ? cur - 24 : cur + 24;
+      else if (e.key === 'PageUp')    next = handleAbove ? cur + 96 : cur - 96;
+      else if (e.key === 'PageDown')  next = handleAbove ? cur - 96 : cur + 96;
+      else if (e.key === 'Home') {
+        e.preventDefault();
+        try { localStorage.removeItem(STORAGE_KEY); } catch(_){}
+        apply(0);
+        return;
+      } else return;
+      e.preventDefault();
+      apply(next);
+      try {
+        localStorage.setItem(STORAGE_KEY,
+          String(chat.getBoundingClientRect().height));
+      } catch (e) {}
+    });
   };
 
-  handle.addEventListener('mousedown', (e) => { e.preventDefault(); beginDrag(e.clientY); });
-  handle.addEventListener('touchstart', (e) => {
-    if (!e.touches[0]) return;
-    beginDrag(e.touches[0].clientY);
-  }, { passive: true });
+  bindHandle(chat.querySelector('.home-chat-edge-top'), 'top');
+  bindHandle(chat.querySelector('.home-chat-edge-bottom'), 'bottom');
 
-  // Double-click anywhere on the handle resets to stylesheet default.
-  handle.addEventListener('dblclick', () => {
-    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-    apply(0);
-  });
-
-  // Keyboard: Up/Down nudge by 24px, PageUp/PageDown by 96px, Home resets.
-  handle.addEventListener('keydown', (e) => {
-    const cur = chat.getBoundingClientRect().height;
-    let next = cur;
-    const grow = (n) => handleAbove ? cur + n : cur + n; // grow always = bigger
-    if (e.key === 'ArrowUp')        next = grow(handleAbove ? 24 : -24);
-    else if (e.key === 'ArrowDown') next = grow(handleAbove ? -24 : 24);
-    else if (e.key === 'PageUp')    next = grow(handleAbove ? 96 : -96);
-    else if (e.key === 'PageDown')  next = grow(handleAbove ? -96 : 96);
-    else if (e.key === 'Home') { e.preventDefault(); try { localStorage.removeItem(STORAGE_KEY); } catch(_){} apply(0); return; }
-    else return;
-    e.preventDefault();
-    apply(next);
-    try { localStorage.setItem(STORAGE_KEY, String(chat.getBoundingClientRect().height)); } catch (e) {}
-  });
+  // Legacy standalone handle — hidden in CSS but bound for back-compat.
+  // Treated as a 'bottom' handle (drag down = grow).
+  const legacy = document.getElementById('home-chat-resizer');
+  if (legacy && !legacy.classList.contains('home-chat-resizer-legacy-bound')) {
+    legacy.classList.add('home-chat-resizer-legacy-bound');
+    bindHandle(legacy, 'bottom');
+  }
 }
 
 /* ── Init ─────────────────────────────────────────────────────────────────── */
