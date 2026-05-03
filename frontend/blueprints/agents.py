@@ -280,6 +280,11 @@ def api_agents_config_put(name):
 def api_agents_config_post():
     """Add a new agent."""
     data  = request.get_json() or {}
+    # Y.57: type-check before .strip() (Y.50 class).
+    for col in ('name', 'label', 'model', 'role', 'system_prompt', 'api_key_var', 'tier'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'error': f'{col} must be a string'}), 400
     name  = (data.get('name') or '').strip().lower()
     label = (data.get('label') or '').strip()
     model = (data.get('model') or '').strip()
@@ -312,6 +317,11 @@ def api_agents_key_put(name):
     """Write an API key to .env.agents for the named agent."""
     import re as _re
     data    = request.get_json() or {}
+    # Y.57: type-check before .strip() (Y.50 class).
+    for col in ('key_var', 'value'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'error': f'{col} must be a string'}), 400
     key_var = (data.get('key_var') or '').strip()
     value   = (data.get('value')   or '').strip()
 
@@ -594,6 +604,11 @@ def api_agent_memory(agent):
 def api_agent_memory_write(agent):
     """Write to an agent's memory pool. Body: {content, tags?, importance?} for memory_twelve style"""
     data = request.get_json() or {}
+    # Y.57: type-check before .strip() (Y.50 class).
+    for col in ('content', 'tags', 'type', 'subject'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'error': f'{col} must be a string'}), 400
     content = (data.get('content') or '').strip()
     tags = (data.get('tags') or '').strip()
     importance = int(data.get('importance', 5))
@@ -726,6 +741,11 @@ def api_agents_bootstrap():
     from datetime import datetime, timezone
 
     data = request.get_json() or {}
+    # Y.57: type-check before .strip() (Y.50 class).
+    for col in ('name',):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'error': f'{col} must be a string'}), 400
     name = (data.get('name') or '').strip().lower()
     if not name:
         return jsonify({'error': 'name required'}), 400
@@ -1656,6 +1676,11 @@ def api_agents_hot_swap():
     Proposals are re-assigned but remain tied to their original ticket/request.
     """
     data = request.get_json() or {}
+    # Y.57: type-check before .strip() (Y.50 class).
+    for col in ('from_agent', 'to_agent'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'error': f'{col} must be a string'}), 400
     from_name = (data.get('from_agent') or '').strip().lower()
     to_name   = (data.get('to_agent') or '').strip().lower()
     if not from_name or not to_name:
