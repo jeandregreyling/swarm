@@ -56,10 +56,22 @@ def _ensure_schema(conn) -> None:
 @media_jobs_bp.route('/api/media/jobs', methods=['POST'])
 def submit_job():
     data   = request.get_json(silent=True) or {}
-    kind   = (data.get('kind') or '').strip().lower()
+    # Y.54: type-check before .strip()/lower/int (same class as Y.50/Y.53).
+    raw_kind = data.get('kind')
+    if raw_kind is not None and not isinstance(raw_kind, str):
+        return jsonify({'ok': False, 'error': 'kind must be a string'}), 400
+    raw_agent = data.get('agent')
+    if raw_agent is not None and not isinstance(raw_agent, str):
+        return jsonify({'ok': False, 'error': 'agent must be a string'}), 400
+    raw_prio = data.get('priority')
+    if raw_prio is not None and not isinstance(raw_prio, (int, float)):
+        return jsonify({'ok': False, 'error': 'priority must be a number'}), 400
+    kind   = (raw_kind or '').strip().lower()
     params = data.get('params') or {}
-    agent  = (data.get('agent') or '').strip().lower() or _DEFAULT_AGENT_FOR_KIND.get(kind, 'mistral')
-    priority = int(data.get('priority') or 5)
+    agent  = (raw_agent or '').strip().lower() or _DEFAULT_AGENT_FOR_KIND.get(kind, 'mistral')
+    priority = int(raw_prio if raw_prio is not None else 5)
+    if priority < 0 or priority > 10:
+        return jsonify({'ok': False, 'error': 'priority must be in 0..10'}), 400
     if kind not in _VALID_KINDS:
         return jsonify({'ok': False, 'error': f'invalid kind: {kind}',
                         'valid': sorted(_VALID_KINDS)}), 400
@@ -165,8 +177,13 @@ def list_jobs():
 def update_job(job_id):
     """Update job status / asset_id / error. Used by workers + the UI."""
     data = request.get_json(silent=True) or {}
+    # Y.54: type-check before .strip() to avoid 500 on non-string input.
+    for col in ('status', 'asset_id', 'error'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'ok': False, 'error': f'{col} must be a string'}), 400
     status = (data.get('status') or '').strip().lower() or None
-    asset_id = (data.get('asset_id') or '').strip() or None
+    asset_id = (data.get('asset_id') or '').strip()[:256] or None
     error = (data.get('error') or '').strip() or None
     if status and status not in {'queued', 'running', 'done', 'failed', 'cancelled'}:
         return jsonify({'ok': False, 'error': f'invalid status: {status}'}), 400
