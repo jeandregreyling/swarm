@@ -99,11 +99,17 @@ function _initSundial() {
     const nx = cx + radius * Math.cos(angle);
     const ny = cy + radius * Math.sin(angle);
 
-    // Ray from centre to node
+    // Ray from centre disc edge to dot edge (Y.58d — was going through both,
+    // which made the dial look tangled / 'el-fucked'). Backdrop disc r=28,
+    // dot half-width ≈11 ⇒ leave a clean line between them.
     if (svg) {
+      const RAY_INNER = 30;                 // just outside centre backdrop
+      const RAY_OUTER = radius - 12;        // just inside the dot
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', cx);  line.setAttribute('y1', cy);
-      line.setAttribute('x2', nx);  line.setAttribute('y2', ny);
+      line.setAttribute('x1', cx + RAY_INNER * Math.cos(angle));
+      line.setAttribute('y1', cy + RAY_INNER * Math.sin(angle));
+      line.setAttribute('x2', cx + RAY_OUTER * Math.cos(angle));
+      line.setAttribute('y2', cy + RAY_OUTER * Math.sin(angle));
       line.classList.add('sundial-ray');
       line.dataset.metric = m.key;
       svg.appendChild(line);
@@ -143,9 +149,20 @@ function _showSundialTip(metric, node) {
     tip.id = 'sundial-tip';
     tip.className = 'sundial-tooltip';
     document.body.appendChild(tip);
-    // M11: keep tip open when hovering into it (so Unload buttons are clickable)
-    tip.addEventListener('mouseenter', () => { tip._hover = true; });
-    tip.addEventListener('mouseleave', () => { tip._hover = false; tip.style.display = 'none'; });
+    // Y.58d — keep the tip open while the cursor is anywhere inside it OR
+    // travelling between node and tip. The previous version used a fixed
+    // 180ms hide timer that the buttons (Auto / Boost / Unload) couldn't
+    // out-race — the tip vanished before the click registered. Now any
+    // mouseenter on the tip cancels the pending hide.
+    tip.addEventListener('mouseenter', () => {
+      tip._hover = true;
+      if (tip._hideTimer) { clearTimeout(tip._hideTimer); tip._hideTimer = null; }
+    });
+    tip.addEventListener('mouseleave', () => {
+      tip._hover = false;
+      if (tip._hideTimer) clearTimeout(tip._hideTimer);
+      tip._hideTimer = setTimeout(() => { tip.style.display = 'none'; tip._hideTimer = null; }, 120);
+    });
     tip.addEventListener('click', async (e) => {
       const fanBtn = e.target.closest('.stip-fan-btn');
       if (fanBtn) {
@@ -221,8 +238,10 @@ function _showSundialTip(metric, node) {
   const tipW = tip.offsetWidth || 160;
   const tipH = tip.offsetHeight || 80;
   let left = Math.max(8, rect.left + rect.width / 2 - tipW / 2);
-  let top  = rect.top - tipH - 8;
-  if (top < 8) top = rect.bottom + 8;                       // flip below if off-screen
+  // Y.58d — overlap the tip with the node by 4px so the cursor never crosses
+  // a dead zone on its way to the Auto / Boost / Unload buttons. Was -8px gap.
+  let top  = rect.top - tipH + 4;
+  if (top < 8) top = rect.bottom - 4;                       // flip below if off-screen
   if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
   tip.style.left = left + 'px';
   tip.style.top  = top  + 'px';
@@ -231,8 +250,15 @@ function _showSundialTip(metric, node) {
 function _hideSundialTip() {
   const tip = document.getElementById('sundial-tip');
   if (!tip) return;
-  // M11: delay hide so user can move into the tooltip to click unload buttons
-  setTimeout(() => { if (!tip._hover) tip.style.display = 'none'; }, 180);
+  // Y.58d — track the timer so tip mouseenter can cancel it. Grace bumped
+  // to 320ms so a slow cursor traversing the 4px overlap zone between the
+  // node and the tip can land on Auto / Boost / Unload buttons without the
+  // tip vanishing mid-click.
+  if (tip._hideTimer) clearTimeout(tip._hideTimer);
+  tip._hideTimer = setTimeout(() => {
+    if (!tip._hover) tip.style.display = 'none';
+    tip._hideTimer = null;
+  }, 320);
 }
 
 /* ── System Pulse Fetch ──────────────────────────────────────────────────── */
