@@ -206,8 +206,13 @@ def chat_via_gateway(
     *,
     stage_cb: Optional[Callable[..., None]] = None,
     on_chunk: Optional[Callable[[str], None]] = None,
-    idle_timeout_s: int = 60,
-    absolute_timeout_s: int = 300,
+    # CPU-only inference cold-loads (e.g. gemma3:4b without GPU) routinely take
+    # 90-120s before the first token streams. The previous 60s default aborted
+    # every cold turn with `Read timed out` and surfaced as `[gemma unavailable]`
+    # in the chat UI ("Hi disappears"). 240s gives cold loads room while still
+    # letting the absolute clock cap stuck inferences.
+    idle_timeout_s: int = 240,
+    absolute_timeout_s: int = 600,
     keep_alive: Any = None,
     options: Optional[dict] = None,
     temperature: Optional[float] = None,
