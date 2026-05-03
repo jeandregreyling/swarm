@@ -115,6 +115,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.kc_overview',      'kc_overview_bp'),
     ('blueprints.orientation',      'orientation_bp'),
     ('blueprints.wishlist_registry','wishlist_registry_bp'),
+    ('blueprints.hive',             'hive_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
