@@ -1450,3 +1450,75 @@
 **From**: user_seven
 **Description**: 
 **Status**: dispatched
+
+## [20:57] MANUAL-20260503-104555
+**Title**: [VOICE] Cybersecurity + VPN: relocate into Vortex as tabs (security+privacy unified)
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [20:57] MANUAL-20260503-104550
+**Title**: [VOICE] Settings: window-in-window + huge buttons + dud System Modifications button
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [21:02] MANUAL-20260503-104555
+**Title**: [VOICE] Cybersecurity + VPN: relocate into Vortex as tabs (security+privacy unified)
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [21:02] MANUAL-20260503-104550
+**Title**: [VOICE] Settings: window-in-window + huge buttons + dud System Modifications button
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [21:07] MANUAL-20260503-104555
+**Title**: [VOICE] Cybersecurity + VPN: relocate into Vortex as tabs (security+privacy unified)
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [21:07] MANUAL-20260503-104550
+**Title**: [VOICE] Settings: window-in-window + huge buttons + dud System Modifications button
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [21:12] MANUAL-20260503-104555
+**Title**: [VOICE] Cybersecurity + VPN: relocate into Vortex as tabs (security+privacy unified)
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [21:12] MANUAL-20260503-104550
+**Title**: [VOICE] Settings: window-in-window + huge buttons + dud System Modifications button
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [21:17] MANUAL-20260503-104555
+**Title**: [VOICE] Cybersecurity + VPN: relocate into Vortex as tabs (security+privacy unified)
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [21:17] MANUAL-20260503-104550
+**Title**: [VOICE] Settings: window-in-window + huge buttons + dud System Modifications button
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [21:22] MANUAL-20260503-104555
+**Title**: [VOICE] Cybersecurity + VPN: relocate into Vortex as tabs (security+privacy unified)
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
+
+## [21:22] MANUAL-20260503-104550
+**Title**: [VOICE] Settings: window-in-window + huge buttons + dud System Modifications button
+**From**: user_seven
+**Description**: 
+**Status**: dispatched
