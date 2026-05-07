@@ -754,6 +754,13 @@
   font-weight: 800;
 }
 
+.media-reference-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .media-reference-tags {
   display: flex;
   flex-wrap: wrap;
