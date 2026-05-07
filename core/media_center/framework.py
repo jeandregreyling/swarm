@@ -828,6 +828,7 @@ def add_media_reference(project_id: str, payload: dict[str, Any]) -> dict[str, A
         project.setdefault("media_refs", []).insert(0, reference)
         project["updated_at"] = _now_iso()
         _write_media_reference_knowledge(project, reference)
+        _write_studio_reference_evidence(project, reference)
         _sync_project_integrations(project)
         save_state(state)
         _spine.log(
@@ -1149,6 +1150,11 @@ def create_job(project_id: str, payload: dict[str, Any]) -> dict[str, Any] | Non
         return None
     job_type = str(payload.get("job_type") or "generate-audio").strip()
     mode = str(payload.get("mode") or "real-local").strip()
+    input_reference_id = str(payload.get("reference_id") or payload.get("input_reference_id") or "").strip()
+    input_reference = next(
+        (ref for ref in project.get("media_refs", []) if ref.get("id") == input_reference_id),
+        None,
+    )
     job = {
         "id": f"job-{uuid4().hex[:10]}",
         "project_id": project_id,
@@ -1158,6 +1164,9 @@ def create_job(project_id: str, payload: dict[str, Any]) -> dict[str, Any] | Non
         "status": "queued",
         "engine": _job_engine_hint(job_type),
         "notes": str(payload.get("notes") or "Queued from Media Center UI.").strip(),
+        "input_reference_id": input_reference_id,
+        "input_reference_title": (input_reference or {}).get("title", ""),
+        "input_reference_url": (input_reference or {}).get("canonical_url") or (input_reference or {}).get("url", ""),
         "created_at": _now_iso(),
         "updated_at": _now_iso(),
         "artifacts": _default_artifacts(project_id, job_type),
@@ -1197,6 +1206,10 @@ def run_job_real(job_id: str) -> dict[str, Any] | None:
     wav_path = artifact_dir / "preview.wav"
     manifest_path = artifact_dir / "manifest.json"
     _render_tone_preview(wav_path, project, job)
+    input_reference = next(
+        (ref for ref in project.get("media_refs", []) if ref.get("id") == job.get("input_reference_id")),
+        None,
+    )
     manifest = {
         "schema": "fridays.media_center.artifact.v1",
         "generated_at": _now_iso(),
@@ -1208,6 +1221,7 @@ def run_job_real(job_id: str) -> dict[str, Any] | None:
         "source": "real-local-runner",
         "prompt": project.get("prompt") or "",
         "notes": job.get("notes") or "",
+        "input_reference": input_reference or {},
         "artifacts": ["preview.wav", "manifest.json"],
     }
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -1277,7 +1291,11 @@ def run_job_simulation(job_id: str) -> dict[str, Any] | None:
 def _render_tone_preview(path: Path, project: dict[str, Any], job: dict[str, Any]) -> None:
     sample_rate = 44100
     duration = min(12.0, max(2.0, float(project.get("duration_sec") or 6) / 12.0))
-    prompt = f"{project.get('name') or ''} {project.get('prompt') or ''} {job.get('job_type') or ''}"
+    prompt = (
+        f"{project.get('name') or ''} {project.get('prompt') or ''} "
+        f"{job.get('job_type') or ''} {job.get('input_reference_title') or ''} "
+        f"{job.get('input_reference_url') or ''}"
+    )
     seed = sum(ord(ch) for ch in prompt)
     base_freq = 196 + (seed % 220)
     mod_freq = base_freq * (1.25 if "video" in str(job.get("job_type") or "") else 1.5)
@@ -1330,6 +1348,46 @@ def _write_media_artifact_knowledge(project: dict[str, Any], job: dict[str, Any]
             category="artifact",
             importance=8,
         )
+    except Exception:
+        pass
+
+
+def _write_studio_reference_evidence(project: dict[str, Any], reference: dict[str, Any]) -> None:
+    studio_project_id = str(project.get("studio_project_id") or "").strip()
+    if not studio_project_id:
+        return
+    try:
+        studio = _kc_projects.get_project(studio_project_id) or {}
+        steps = studio.get("steps") or []
+        step_id = ""
+        for step in steps:
+            title = str(step.get("title") or "")
+            if title in {"Knowledge provenance and feeds", "Studio project linkage"}:
+                step_id = str(step.get("step_id") or "")
+                break
+        if not step_id and steps:
+            step_id = str(steps[0].get("step_id") or "")
+        if not step_id:
+            return
+        conn = get_connection()
+        try:
+            conn.execute(
+                "INSERT INTO project_step_evidence "
+                "(project_id, step_id, source_type, source_ref, summary, status) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    studio_project_id,
+                    step_id,
+                    "media_center_reference",
+                    str(reference.get("id") or ""),
+                    "Media reference indexed: "
+                    + str(reference.get("title") or reference.get("url") or reference.get("canonical_url") or ""),
+                    "ok",
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
     except Exception:
         pass
 

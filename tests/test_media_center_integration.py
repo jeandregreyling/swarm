@@ -87,6 +87,7 @@ def test_media_center_context_surfaces_models_swarms_and_chat():
     assert "Project References" in js
     assert "auto-detect" in js
     assert "mediaCenterReferenceCard" in js
+    assert "Make preview from this" in js
     assert "mediaCenterAddReference" in js
     assert "mediaCenterUpdateRouting" in js
     assert "mediaCenterLinkAccount" in js
@@ -314,6 +315,60 @@ def test_media_center_indexes_media_reference_into_knowledge():
 
     matches = search_knowledge("pytest indexed reference", category="fact", limit=5)
     assert any(item["key"].startswith(f"media-ref-{project_id}-") for item in matches)
+
+    from utils.db._connection import get_connection
+
+    conn = get_connection()
+    try:
+        evidence = conn.execute(
+            "SELECT COUNT(*) AS n FROM project_step_evidence "
+            "WHERE project_id=? AND source_type='media_center_reference' AND source_ref=?",
+            (project["studio_project_id"], data["reference"]["id"]),
+        ).fetchone()["n"]
+    finally:
+        conn.close()
+    assert evidence >= 1
+
+
+def test_media_center_real_local_run_can_use_input_reference():
+    app = create_app()
+    with app.test_client() as client:
+        created = client.post(
+            "/api/media-center/projects",
+            json={
+                "name": "pytest reference render",
+                "prompt": "render from selected reference",
+                "medium": "audio",
+                "duration_sec": 12,
+            },
+        )
+        project = created.get_json()["project"]
+        ref_response = client.post(
+            f"/api/media-center/projects/{project['id']}/references",
+            json={
+                "url": "https://music.apple.com/us/song/1887536621",
+                "notes": "reference for render",
+            },
+        )
+        ref = ref_response.get_json()["reference"]
+        queued = client.post(
+            f"/api/media-center/projects/{project['id']}/jobs",
+            json={
+                "job_type": "generate-audio",
+                "mode": "real-local",
+                "reference_id": ref["id"],
+            },
+        )
+        job = queued.get_json()["job"]
+        assert job["input_reference_id"] == ref["id"]
+        assert job["input_reference_url"] == ref["canonical_url"]
+        run = client.post(f"/api/media-center/jobs/{job['id']}/run")
+        data = run.get_json()
+        manifest = next(a for a in data["job"]["artifacts"] if a["mime_type"] == "application/json")
+        manifest_response = client.get(manifest["url"])
+        assert manifest_response.status_code == 200
+        manifest_data = manifest_response.get_json()
+        assert manifest_data["input_reference"]["id"] == ref["id"]
 
 
 def test_media_center_auto_detects_embeddable_media_reference():
