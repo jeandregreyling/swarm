@@ -66,15 +66,16 @@ def html_or_css(css: str) -> str:
 def test_media_center_context_surfaces_models_swarms_and_chat():
     js = (ROOT / "frontend/static/js/views/media-center.js").read_text()
     html = TEMPLATE.read_text()
-    assert "Open review plan" in html
-    assert "Focus mode" in html
+    assert "Make playable preview" in html
+    assert "Add song or clip" in html
+    assert "Play outputs" in html
     assert "Expand all" in html
-    assert "Open Project Plan" in html
-    assert "Queue Audio" in html
-    assert "Queue Video" in html
-    assert "Render/Compile" in html
+    assert "Studio trail" in html
+    assert "Queue audio only" in html
+    assert "Queue video only" in html
     assert "Research Center" in html
-    assert "Composer Timeline" in js
+    assert "Start here" in js
+    assert "mediaCenterMakePreview" in js
     assert "Model / Swarm Routing" in js
     assert "Assistive Advisors" in js
     assert "Linked Swarms" in js
@@ -84,6 +85,8 @@ def test_media_center_context_surfaces_models_swarms_and_chat():
     assert "Linked Accounts" in js
     assert "Knowledge Docs" in js
     assert "Project References" in js
+    assert "auto-detect" in js
+    assert "mediaCenterReferenceCard" in js
     assert "mediaCenterAddReference" in js
     assert "mediaCenterUpdateRouting" in js
     assert "mediaCenterLinkAccount" in js
@@ -311,6 +314,35 @@ def test_media_center_indexes_media_reference_into_knowledge():
 
     matches = search_knowledge("pytest indexed reference", category="fact", limit=5)
     assert any(item["key"].startswith(f"media-ref-{project_id}-") for item in matches)
+
+
+def test_media_center_auto_detects_embeddable_media_reference():
+    app = create_app()
+    with app.test_client() as client:
+        state = client.get("/api/media-center/state").get_json()
+        project_id = state["projects"][0]["id"]
+        response = client.post(
+            f"/api/media-center/projects/{project_id}/references",
+            json={
+                "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "notes": "auto-detected reference test",
+            },
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["ok"] is True
+        ref = data["reference"]
+        assert ref["account_id"] == "youtube"
+        assert ref["media_type"] == "video"
+        assert ref["preview_kind"] == "embed"
+        assert ref["source_id"] == "dQw4w9WgXcQ"
+        assert ref["embed_url"] == "https://www.youtube.com/embed/dQw4w9WgXcQ"
+        refreshed = client.get("/api/media-center/state").get_json()
+
+    project = next(item for item in refreshed["projects"] if item["id"] == project_id)
+    saved = next(item for item in project["media_refs"] if item["id"] == ref["id"])
+    assert saved["canonical_url"] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    assert "youtube" in saved["tags"]
 
 
 def test_media_center_saves_project_model_swarm_route():

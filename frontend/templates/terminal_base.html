@@ -2429,30 +2429,32 @@
     <section class="media-center-header">
       <div>
         <div class="media-center-title">Media Center</div>
-        <div class="media-center-subtitle">Composer-first workspace for music generation, video assembly, stem management, and research routing. Media Center now opens like an editor: timeline in the middle, research dock on the right, review/runtime on the bottom, and Studio + Knowledge wired into the same flow.</div>
-        <div class="media-center-explainer">
-          The working loop is: compose in the center timeline, pull references and Knowledge into the right dock, queue or route work from the transport bar, then review outputs and tracking in the bottom dock.
+        <div class="media-center-subtitle">A working table for media: add a song or clip, make a playable preview, then keep the output attached to Studio and Knowledge.</div>
+        <div class="media-center-flow" aria-label="Media Center workflow">
+          <span class="is-active">1 Pick project</span>
+          <span>2 Add reference</span>
+          <span>3 Make preview</span>
+          <span>4 Play output</span>
         </div>
         <div class="media-topline" id="media-center-topline"></div>
       </div>
       <div class="media-center-actions">
         <span class="media-pill" id="media-center-status">framework</span>
-        <button class="media-action-btn" onclick="mediaCenterOpenReviewPlan()">Open review plan</button>
-        <button class="media-action-btn" onclick="mediaCenterCollapseToFocus()">Focus mode</button>
+        <button class="media-action-btn media-action-btn-primary" onclick="mediaCenterMakePreview()">Make playable preview</button>
+        <button class="media-action-btn" onclick="mediaCenterOpenResearch('references')">Add reference</button>
         <button class="media-action-btn" onclick="mediaCenterExpandAll()">Expand all</button>
         <button class="media-action-btn" onclick="mediaCenterRefresh()">Refresh</button>
       </div>
     </section>
 
     <section class="media-transport-bar" id="media-center-transport">
-      <button class="media-action-btn media-action-btn-primary" onclick="mediaCenterCreateProject()">New Project</button>
-      <button class="media-action-btn" onclick="mediaCenterOpenResearch('references')">Research</button>
-      <button class="media-action-btn" onclick="mediaCenterQueueSelected('generate-audio')">Queue Audio</button>
-      <button class="media-action-btn" onclick="mediaCenterQueueSelected('generate-video')">Queue Video</button>
-      <button class="media-action-btn" onclick="mediaCenterQueueSelected('compile-preview')">Render/Compile</button>
-      <button class="media-action-btn" onclick="mediaCenterOpenResearch('routing')">Route</button>
-      <button class="media-action-btn" onclick="mediaCenterCopyHandoff()">Save Handoff</button>
-      <button class="media-action-btn" onclick="mediaCenterOpenReviewPlan()">Open Project Plan</button>
+      <button class="media-action-btn media-action-btn-primary" onclick="mediaCenterMakePreview()">Make playable preview</button>
+      <button class="media-action-btn" onclick="mediaCenterOpenResearch('references')">Add song or clip</button>
+      <button class="media-action-btn" onclick="mediaCenterSetBottomTab('queue')">Play outputs</button>
+      <button class="media-action-btn" onclick="mediaCenterQueueSelected('generate-audio')">Queue audio only</button>
+      <button class="media-action-btn" onclick="mediaCenterQueueSelected('generate-video')">Queue video only</button>
+      <button class="media-action-btn" onclick="mediaCenterOpenReviewPlan()">Studio trail</button>
+      <button class="media-action-btn" onclick="mediaCenterOpenResearch('routing')">Advanced routing</button>
     </section>
 
     <div class="media-editor-shell" id="media-center-grid">
