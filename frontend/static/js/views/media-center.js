@@ -249,6 +249,7 @@ function _mediaCenterEditorStage(project) {
   const lanes = project.timeline?.lanes || [];
   const clips = project.timeline?.clips || [];
   const synths = _mediaCenterState?.synths?.registry || [];
+  const latestArtifact = _mediaCenterLatestPlayableArtifact(project);
   const laneOptions = lanes.map((lane) => `<option value="${_mcEsc(lane.id)}">${_mcEsc(lane.name)} · ${_mcEsc(lane.kind)}</option>`).join('');
   const synthOptions = synths.map((synth) => `<option value="${_mcEsc(synth.id)}">${_mcEsc(synth.name)} · ${_mcEsc(synth.status)}</option>`).join('');
   const rulerMarks = Array.from({ length: Math.max(4, Math.min(16, Math.ceil((project.duration_sec || 30) / 4))) }).map((_, index) => {
@@ -284,24 +285,29 @@ function _mediaCenterEditorStage(project) {
         <div class="media-detail-meta">${_mcEsc(project.medium)} · ${_mcEsc(project.style || 'style not set')} · ${project.duration_sec || 0}s · ${_mcEsc(project.timeline?.tempo_bpm || 120)} bpm · ${_mcEsc(project.timeline?.time_signature || '4/4')}</div>
       </div>
       <div class="media-detail-actions">
-        <button class="media-inline-btn" onclick="mediaCenterOpenStudioProject(${JSON.stringify(project.studio_project_id || '')})">Open in Studio</button>
-        <button class="media-inline-btn" onclick="mediaCenterOpenResearch('knowledge')">Open Knowledge</button>
-        <button class="media-inline-btn" onclick="mediaCenterOpenResearch('advisors')">Ask Advisors</button>
+        <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterMakePreview()">Make playable preview</button>
+        <button class="media-inline-btn" onclick="mediaCenterOpenResearch('references')">Add reference</button>
+        <button class="media-inline-btn" onclick="mediaCenterSetBottomTab('queue')">Outputs</button>
       </div>
     </div>
     <div class="media-detail-prompt">${_mcEsc(project.prompt || '')}</div>
-    <div class="media-architecture-strip">
-      <div class="media-architecture-step"><strong>Compose</strong><span>The editor is the main screen. Scenes, stems, synths, references, and video cuts all live here.</span></div>
-      <div class="media-architecture-step"><strong>Research</strong><span>References, accounts, feeds, Knowledge docs, and advisor roles stay in the right dock.</span></div>
-      <div class="media-architecture-step"><strong>Queue</strong><span>Audio, video, and compile jobs move through the bottom dock instead of competing with the editor.</span></div>
-      <div class="media-architecture-step"><strong>Route</strong><span>Models and swarms decide ownership without taking over the composer.</span></div>
-      <div class="media-architecture-step"><strong>Review</strong><span>Studio plan, tests, and handoff are attached to the same project.</span></div>
+    <div class="media-now-panel">
+      <div class="media-now-copy">
+        <strong>Start here</strong>
+        <span>${latestArtifact ? 'A playable output exists. Listen, then make another pass when you want a new take.' : 'This project is ready for a first pass. Make a playable preview and it will appear below with a Studio evidence trail.'}</span>
+      </div>
+      <div class="media-now-actions">
+        <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterMakePreview()">Make playable preview</button>
+        <button class="media-inline-btn" onclick="mediaCenterOpenResearch('references')">Add song or clip</button>
+        <button class="media-inline-btn" onclick="mediaCenterOpenStudioProject(${JSON.stringify(project.studio_project_id || '')})">Studio trail</button>
+      </div>
+      ${latestArtifact ? `<div class="media-now-player">${_mediaCenterArtifactView(latestArtifact)}</div>` : ''}
     </div>
     <section class="media-editor-card media-composer-surface">
       <div class="media-composer-head">
         <div>
-          <div class="media-panel-title">Composer Timeline</div>
-          <div class="media-panel-summary">DAW-first layout: scenes, stems, synth takes, references, and cuts stay visible as horizontal lanes.</div>
+          <div class="media-panel-title">Timeline</div>
+          <div class="media-panel-summary">Use this when you need timing. The preview button above is enough for a quick first pass.</div>
         </div>
       </div>
       <div class="media-ruler">${rulerMarks}</div>
@@ -310,7 +316,7 @@ function _mediaCenterEditorStage(project) {
     <div class="media-editor-tools">
       <section class="media-editor-card">
         <div class="media-panel-title">Add Clip</div>
-        <div class="media-panel-summary">Stage a clip, stem, cue, caption, or reference marker directly into the timeline.</div>
+        <div class="media-panel-summary">Place a cue, section, clip, caption, or reference marker on the timeline.</div>
         <div class="media-timeline-form">
           <select id="media-center-clip-lane">${laneOptions}</select>
           <input id="media-center-clip-name" placeholder="Clip / cue name">
@@ -322,7 +328,7 @@ function _mediaCenterEditorStage(project) {
       </section>
       <section class="media-editor-card">
         <div class="media-panel-title">Create Synth Take</div>
-        <div class="media-panel-summary">Generate a music or video take and attach it to a lane/clip in the editor.</div>
+        <div class="media-panel-summary">Advanced: create a take on a specific lane instead of using the one-click preview.</div>
         <div class="media-timeline-form">
           <select id="media-center-synth-id">${synthOptions}</select>
           <select id="media-center-synth-lane">${laneOptions}</select>
@@ -351,9 +357,7 @@ function _mediaCenterResearchDock(state, project) {
   const tab = _mediaCenterGetTab('research', 'references');
   const accounts = state.accounts?.registry || [];
   const accountOptions = accounts.map((account) => `<option value="${_mcEsc(account.id)}">${_mcEsc(account.name)} · ${_mcEsc(account.status)}</option>`).join('');
-  const activeProjectReferences = (project.media_refs || []).slice(0, 12).map((ref) => `
-    <div class="media-mini-row"><strong>${_mcEsc(ref.title)}</strong><span>${_mcEsc(ref.account_name || ref.account_id)}</span><span>${_mcEsc(ref.knowledge_status || ref.status)}</span></div>
-  `).join('');
+  const activeProjectReferences = (project.media_refs || []).slice(0, 12).map((ref) => _mediaCenterReferenceCard(ref)).join('');
   const accountRows = accounts.map((account) => `
     <div class="media-mini-row"><strong>${_mcEsc(account.name)}</strong><span>${_mcEsc(account.kind)}</span><span>${_mcEsc(account.status)}</span><button class="media-inline-btn" onclick="mediaCenterLinkAccount(${JSON.stringify(account.id)})">Link</button></div>
   `).join('');
@@ -386,20 +390,21 @@ function _mediaCenterResearchDock(state, project) {
     return `
       <div class="media-dock-section">
         <div class="media-panel-title">Project References</div>
-        <div class="media-panel-summary">Attach source tracks, clips, notes, and URLs. The right dock keeps research close without taking over the editor.</div>
+        <div class="media-panel-summary">Paste a YouTube, Apple Music, Spotify, SoundCloud, or plain media link. Media Center will identify it and keep it in Knowledge.</div>
         ${activeProjectReferences || '<div class="media-empty">No references attached yet.</div>'}
         <div class="media-timeline-form">
-          <select id="media-center-ref-account">${accountOptions}</select>
+          <select id="media-center-ref-account"><option value="">auto-detect</option>${accountOptions}</select>
           <select id="media-center-ref-type">
+            <option value="">auto</option>
             <option value="music">music</option>
             <option value="video">video</option>
             <option value="feed">feed</option>
             <option value="local">local</option>
           </select>
-          <input id="media-center-ref-title" placeholder="Reference title">
-          <input id="media-center-ref-url" placeholder="URL or local path">
-          <input id="media-center-ref-notes" placeholder="Notes / indexing hint">
-          <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterAddReference()">Attach reference</button>
+          <input id="media-center-ref-url" placeholder="Paste media URL">
+          <input id="media-center-ref-title" placeholder="Optional title">
+          <input id="media-center-ref-notes" placeholder="Why this matters">
+          <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterAddReference()">Add to project</button>
         </div>
       </div>
     `;
@@ -613,6 +618,46 @@ function _mediaCenterArtifactView(artifact) {
   return `<div class="media-artifact-row"><span>${label}</span><span>${_mcEsc(artifact.status || 'planned')}</span></div>`;
 }
 
+function _mediaCenterReferenceCard(ref) {
+  const title = _mcEsc(ref.title || 'Media reference');
+  const provider = _mcEsc(ref.account_name || ref.account_id || 'source');
+  const status = _mcEsc(ref.knowledge_status || ref.status || 'indexed');
+  const url = ref.url || ref.canonical_url || '';
+  const embed = ref.embed_url || '';
+  let preview = '';
+  if (embed && ref.preview_kind === 'embed') {
+    preview = `<iframe class="media-reference-embed" src="${_mcEsc(embed)}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+  } else if (url) {
+    preview = `<a class="media-reference-link" href="${_mcEsc(url)}" target="_blank" rel="noreferrer">Open source</a>`;
+  }
+  const tags = (ref.tags || []).slice(0, 4).map((tag) => `<span>${_mcEsc(tag)}</span>`).join('');
+  return `
+    <div class="media-reference-card">
+      <div class="media-reference-head">
+        <strong>${title}</strong>
+        <span>${provider} · ${status}</span>
+      </div>
+      ${preview}
+      ${ref.notes ? `<div class="media-reference-notes">${_mcEsc(ref.notes)}</div>` : ''}
+      ${tags ? `<div class="media-reference-tags">${tags}</div>` : ''}
+    </div>
+  `;
+}
+
+function _mediaCenterLatestPlayableArtifact(project) {
+  const projectJobs = (_mediaCenterState?.jobs || [])
+    .filter((job) => job.project_id === project?.id)
+    .sort((a, b) => String(b.updated_at || b.created_at || '').localeCompare(String(a.updated_at || a.created_at || '')));
+  for (const job of projectJobs) {
+    const artifact = (job.artifacts || []).find((item) => {
+      const mime = item.mime_type || '';
+      return item.url && (mime.startsWith('audio/') || mime.startsWith('video/'));
+    });
+    if (artifact) return artifact;
+  }
+  return (project?.artifacts || []).find((item) => item.url && String(item.mime_type || '').startsWith('audio/')) || null;
+}
+
 function mediaCenterSelectProject(projectId) {
   _mediaCenterSelectedProjectId = projectId;
   _renderMediaCenter();
@@ -665,6 +710,37 @@ async function mediaCenterQueueSelected(jobType) {
     return;
   }
   if (typeof showToast === 'function') showToast(jobType + ' queued.', 'success');
+  mediaCenterRefresh();
+}
+
+async function mediaCenterMakePreview() {
+  if (!_mediaCenterSelectedProjectId) {
+    if (typeof showToast === 'function') showToast('Choose a project first.', 'info');
+    return;
+  }
+  if (typeof showToast === 'function') showToast('Making a playable preview...', 'info');
+  const queued = await fetch(`/api/media-center/projects/${encodeURIComponent(_mediaCenterSelectedProjectId)}/jobs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      job_type: 'generate-audio',
+      mode: 'real-local',
+      notes: 'One-click playable preview from Media Center.',
+    }),
+  });
+  const queueData = await queued.json();
+  if (!queueData.ok) {
+    if (typeof showToast === 'function') showToast(queueData.error || 'Preview queue failed.', 'error');
+    return;
+  }
+  const run = await fetch(`/api/media-center/jobs/${encodeURIComponent(queueData.job.id)}/run`, { method: 'POST' });
+  const runData = await run.json();
+  if (!runData.ok) {
+    if (typeof showToast === 'function') showToast(runData.error || 'Preview render failed.', 'error');
+    return;
+  }
+  _mediaCenterSetTab('bottom', 'queue');
+  if (typeof showToast === 'function') showToast('Playable preview ready.', 'success');
   mediaCenterRefresh();
 }
 
@@ -767,14 +843,14 @@ async function mediaCenterAddReference() {
     if (typeof showToast === 'function') showToast('Choose a project first.', 'info');
     return;
   }
-  const title = document.getElementById('media-center-ref-title')?.value?.trim();
-  if (!title) {
-    document.getElementById('media-center-ref-title')?.focus();
+  const title = document.getElementById('media-center-ref-title')?.value?.trim() || '';
+  const url = document.getElementById('media-center-ref-url')?.value?.trim() || '';
+  if (!title && !url) {
+    document.getElementById('media-center-ref-url')?.focus();
     return;
   }
-  const accountId = document.getElementById('media-center-ref-account')?.value || 'custom-feed';
-  const mediaType = document.getElementById('media-center-ref-type')?.value || 'media';
-  const url = document.getElementById('media-center-ref-url')?.value?.trim() || '';
+  const accountId = document.getElementById('media-center-ref-account')?.value || '';
+  const mediaType = document.getElementById('media-center-ref-type')?.value || '';
   const notes = document.getElementById('media-center-ref-notes')?.value?.trim() || '';
   const response = await fetch(`/api/media-center/projects/${encodeURIComponent(_mediaCenterSelectedProjectId)}/references`, {
     method: 'POST',
@@ -787,6 +863,10 @@ async function mediaCenterAddReference() {
     return;
   }
   if (typeof showToast === 'function') showToast('Media reference indexed into Knowledge.', 'success');
+  ['media-center-ref-title', 'media-center-ref-url', 'media-center-ref-notes'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   mediaCenterRefresh();
 }
 
