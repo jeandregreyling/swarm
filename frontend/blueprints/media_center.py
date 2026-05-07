@@ -1,6 +1,8 @@
 """Media Center API blueprint."""
 
-from flask import Blueprint, jsonify, request
+from pathlib import Path
+
+from flask import Blueprint, jsonify, request, send_file
 
 from core.media_center.framework import (
     add_media_reference,
@@ -11,10 +13,12 @@ from core.media_center.framework import (
     link_media_account,
     project_handoff_manifest,
     public_state,
+    run_job_real,
     run_job_simulation,
     update_project,
     update_project_routing,
 )
+from utils.swarm_root import SWARM_ROOT
 
 media_center_bp = Blueprint("media_center", __name__)
 
@@ -119,3 +123,22 @@ def media_center_simulate_job(job_id: str):
     if not job:
         return jsonify({"ok": False, "error": "job not found"}), 404
     return jsonify({"ok": True, "job": job})
+
+
+@media_center_bp.route("/api/media-center/jobs/<job_id>/run", methods=["POST"])
+def media_center_run_job(job_id: str):
+    job = run_job_real(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    return jsonify({"ok": True, "job": job})
+
+
+@media_center_bp.route("/api/media-center/artifacts/<path:artifact_path>", methods=["GET"])
+def media_center_artifact(artifact_path: str):
+    root = (Path(SWARM_ROOT) / "artifacts" / "media_center").resolve()
+    target = (Path(SWARM_ROOT) / artifact_path).resolve()
+    if root not in target.parents and target != root:
+        return jsonify({"ok": False, "error": "artifact outside media center root"}), 404
+    if not target.exists() or not target.is_file():
+        return jsonify({"ok": False, "error": "artifact not found"}), 404
+    return send_file(target)
