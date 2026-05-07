@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import re
 import shutil
+import wave
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -30,6 +32,7 @@ from utils.db import trace_log as _trace_log
 from utils.db._connection import get_connection
 
 _STATE_PATH = Path(SWARM_ROOT) / "sandpits" / "shared" / "media_center_state.json"
+_ARTIFACT_ROOT = Path(SWARM_ROOT) / "artifacts" / "media_center"
 _LOCAL_TIMEOUT = 1.5
 _MEDIA_STOP_WORDS = {
     "the", "and", "with", "into", "from", "that", "this", "build", "make",
@@ -409,8 +412,11 @@ def _ensure_project_editor_defaults(project: dict[str, Any]) -> bool:
     if not isinstance(project.get("synth_runs"), list):
         project["synth_runs"] = []
         changed = True
-    if not isinstance(project.get("media_refs"), list):
-        project["media_refs"] = []
+        if not isinstance(project.get("media_refs"), list):
+            project["media_refs"] = []
+            changed = True
+    if not isinstance(project.get("artifacts"), list):
+        project["artifacts"] = []
         changed = True
     if not isinstance(project.get("routing"), dict):
         project["routing"] = {
@@ -1047,7 +1053,7 @@ def create_job(project_id: str, payload: dict[str, Any]) -> dict[str, Any] | Non
     if not project:
         return None
     job_type = str(payload.get("job_type") or "generate-audio").strip()
-    mode = str(payload.get("mode") or "simulate").strip()
+    mode = str(payload.get("mode") or "real-local").strip()
     job = {
         "id": f"job-{uuid4().hex[:10]}",
         "project_id": project_id,
@@ -1071,6 +1077,77 @@ def create_job(project_id: str, payload: dict[str, Any]) -> dict[str, Any] | Non
         source="media_center",
         change_id=project_id,
         payload={"job_id": job["id"], "project_id": project_id, "mode": mode},
+    )
+    return job
+
+
+def run_job_real(job_id: str) -> dict[str, Any] | None:
+    """Run the first real local Media Center action.
+
+    This intentionally starts small: it renders a playable WAV preview and a
+    manifest with only the Python standard library. Rich engines can replace
+    this adapter later, but the user-facing loop is already real: queue -> run
+    -> artifact -> playback URL -> Studio evidence.
+    """
+    state = load_state()
+    job = next((j for j in state["jobs"] if j.get("id") == job_id), None)
+    if not job:
+        return None
+    project = next((p for p in state["projects"] if p.get("id") == job.get("project_id")), None)
+    if not project:
+        return None
+
+    artifact_dir = _ARTIFACT_ROOT / str(project.get("id")) / str(job_id)
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    wav_path = artifact_dir / "preview.wav"
+    manifest_path = artifact_dir / "manifest.json"
+    _render_tone_preview(wav_path, project, job)
+    manifest = {
+        "schema": "fridays.media_center.artifact.v1",
+        "generated_at": _now_iso(),
+        "project_id": project.get("id"),
+        "studio_project_id": project.get("studio_project_id"),
+        "job_id": job_id,
+        "job_type": job.get("job_type"),
+        "engine": "python-wave-local-preview",
+        "source": "real-local-runner",
+        "prompt": project.get("prompt") or "",
+        "notes": job.get("notes") or "",
+        "artifacts": ["preview.wav", "manifest.json"],
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    artifacts = [
+        _artifact_payload("Audio Preview", wav_path, "audio/wav"),
+        _artifact_payload("Run Manifest", manifest_path, "application/json"),
+    ]
+    job["status"] = "completed"
+    job["mode"] = "real-local"
+    job["engine"] = "python-wave-local-preview"
+    job["updated_at"] = _now_iso()
+    job["notes"] = "Real local preview rendered. This is a playable artifact, not a simulated completion."
+    job["artifacts"] = artifacts
+    project["status"] = "ready"
+    project["updated_at"] = _now_iso()
+    project.setdefault("artifacts", []).insert(0, {
+        "id": f"artifact-{uuid4().hex[:10]}",
+        "job_id": job_id,
+        "label": "Audio Preview",
+        "path": str(wav_path.relative_to(SWARM_ROOT)),
+        "url": artifacts[0]["url"],
+        "mime_type": "audio/wav",
+        "status": "ready",
+        "created_at": _now_iso(),
+    })
+    _write_media_artifact_knowledge(project, job, artifacts[0])
+    _write_studio_artifact_evidence(project, job, artifacts)
+    save_state(state)
+    _spine.log(
+        kind=_spine.EventKind.CHECKPOINT,
+        message=f"Media real local run complete: {job.get('project_name') or job.get('project_id')}",
+        source="media_center",
+        change_id=job.get("project_id"),
+        payload={"job_id": job_id, "artifacts": artifacts},
     )
     return job
 
@@ -1100,6 +1177,110 @@ def run_job_simulation(job_id: str) -> dict[str, Any] | None:
         payload={"job_id": job_id, "artifacts": job.get("artifacts", [])},
     )
     return job
+
+
+def _render_tone_preview(path: Path, project: dict[str, Any], job: dict[str, Any]) -> None:
+    sample_rate = 44100
+    duration = min(12.0, max(2.0, float(project.get("duration_sec") or 6) / 12.0))
+    prompt = f"{project.get('name') or ''} {project.get('prompt') or ''} {job.get('job_type') or ''}"
+    seed = sum(ord(ch) for ch in prompt)
+    base_freq = 196 + (seed % 220)
+    mod_freq = base_freq * (1.25 if "video" in str(job.get("job_type") or "") else 1.5)
+    total = int(sample_rate * duration)
+    with wave.open(str(path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(sample_rate)
+        frames = bytearray()
+        for idx in range(total):
+            t = idx / sample_rate
+            envelope = min(1.0, idx / (sample_rate * 0.08), (total - idx) / (sample_rate * 0.16))
+            pulse = 0.62 * math.sin(2 * math.pi * base_freq * t)
+            shimmer = 0.28 * math.sin(2 * math.pi * mod_freq * t)
+            beat = 0.10 * math.sin(2 * math.pi * 2.0 * t)
+            sample = int(max(-1.0, min(1.0, (pulse + shimmer + beat) * envelope * 0.38)) * 32767)
+            frames.extend(sample.to_bytes(2, byteorder="little", signed=True))
+        wav.writeframes(bytes(frames))
+
+
+def _artifact_payload(label: str, path: Path, mime_type: str) -> dict[str, str]:
+    rel = path.relative_to(SWARM_ROOT)
+    return {
+        "label": label,
+        "path": str(rel),
+        "url": f"/api/media-center/artifacts/{rel.as_posix()}",
+        "mime_type": mime_type,
+        "status": "ready",
+    }
+
+
+def _write_media_artifact_knowledge(project: dict[str, Any], job: dict[str, Any], artifact: dict[str, str]) -> None:
+    try:
+        content = (
+            f"Media artifact produced for project: {project.get('name')}\n"
+            f"Project ID: {project.get('id')}\n"
+            f"Studio project: {project.get('studio_project_id') or 'n/a'}\n"
+            f"Job: {job.get('id')} ({job.get('job_type')})\n"
+            f"Artifact: {artifact.get('label')} — {artifact.get('path')}\n"
+            f"Playback URL: {artifact.get('url')}\n\n"
+            f"Prompt: {project.get('prompt') or ''}\n"
+            f"Notes: {job.get('notes') or ''}"
+        ).strip()
+        key = f"media-artifact-{project.get('id')}-{job.get('id')}"
+        _knowledge.write_knowledge(
+            key,
+            content,
+            "media-center",
+            source_proposal_id=str(project.get("studio_project_id") or project.get("id") or ""),
+            category="artifact",
+            importance=8,
+        )
+    except Exception:
+        pass
+
+
+def _write_studio_artifact_evidence(
+    project: dict[str, Any],
+    job: dict[str, Any],
+    artifacts: list[dict[str, str]],
+) -> None:
+    studio_project_id = str(project.get("studio_project_id") or "").strip()
+    if not studio_project_id:
+        return
+    try:
+        studio = _kc_projects.get_project(studio_project_id) or {}
+        steps = studio.get("steps") or []
+        step_id = ""
+        for step in steps:
+            title = str(step.get("title") or "")
+            if title.startswith("Deliverable:") or title == "Studio project linkage":
+                step_id = str(step.get("step_id") or "")
+                break
+        if not step_id and steps:
+            step_id = str(steps[0].get("step_id") or "")
+        if not step_id:
+            return
+        conn = get_connection()
+        try:
+            conn.execute(
+                "INSERT INTO project_step_evidence "
+                "(project_id, step_id, source_type, source_ref, summary, status) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    studio_project_id,
+                    step_id,
+                    "media_center_artifact",
+                    str(job.get("id") or ""),
+                    "Real Media Center artifact produced: "
+                    + ", ".join(str(a.get("path") or a.get("label") or "") for a in artifacts),
+                    "ok",
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
 
 
 def _job_engine_hint(job_type: str) -> str:

@@ -470,13 +470,16 @@ function _mediaCenterBottomDock(state, project) {
   if (tab === 'queue') {
     const rows = (state.jobs || []).filter((job) => job.project_id === project.id).map((job) => {
       const action = job.status === 'queued' || job.status === 'ready'
-        ? `<button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterSimulateJob(${JSON.stringify(job.id)})">Simulate run</button>`
-        : '<span class="media-inline-hint">ready for real runner</span>';
+        ? `<button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterRunJob(${JSON.stringify(job.id)})">Run local</button>
+           <button class="media-inline-btn" onclick="mediaCenterSimulateJob(${JSON.stringify(job.id)})">Simulate</button>`
+        : '<span class="media-inline-hint">artifact ready</span>';
+      const artifacts = (job.artifacts || []).map((artifact) => _mediaCenterArtifactView(artifact)).join('');
       return `<div class="media-job-row">
         <div class="media-job-main">
           <div class="media-job-title">${_mcEsc(job.project_name || job.project_id)} <span class="media-job-type">${_mcEsc(job.job_type)}</span></div>
           <div class="media-job-meta">${_mcEsc(job.status)} · ${_mcEsc(job.engine)} · ${_mcEsc(job.mode)}</div>
           <div class="media-job-notes">${_mcEsc(job.notes || '')}</div>
+          ${artifacts ? `<div class="media-artifact-list">${artifacts}</div>` : ''}
         </div>
         <div class="media-job-actions">${action}</div>
       </div>`;
@@ -588,6 +591,28 @@ function _mediaCenterRuntimeCards(runtime) {
   `).join('');
 }
 
+function _mediaCenterArtifactView(artifact) {
+  const label = _mcEsc(artifact.label || artifact.path || 'Artifact');
+  const url = artifact.url || '';
+  const mime = artifact.mime_type || '';
+  if (url && mime.startsWith('audio/')) {
+    return `<div class="media-artifact-row">
+      <span>${label}</span>
+      <audio controls preload="none" src="${_mcEsc(url)}"></audio>
+    </div>`;
+  }
+  if (url && mime.startsWith('video/')) {
+    return `<div class="media-artifact-row">
+      <span>${label}</span>
+      <video controls preload="metadata" src="${_mcEsc(url)}"></video>
+    </div>`;
+  }
+  if (url) {
+    return `<div class="media-artifact-row"><span>${label}</span><a href="${_mcEsc(url)}" target="_blank" rel="noreferrer">Open</a></div>`;
+  }
+  return `<div class="media-artifact-row"><span>${label}</span><span>${_mcEsc(artifact.status || 'planned')}</span></div>`;
+}
+
 function mediaCenterSelectProject(projectId) {
   _mediaCenterSelectedProjectId = projectId;
   _renderMediaCenter();
@@ -632,7 +657,7 @@ async function mediaCenterQueueSelected(jobType) {
   const response = await fetch(`/api/media-center/projects/${encodeURIComponent(_mediaCenterSelectedProjectId)}/jobs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ job_type: jobType, mode: 'simulate', notes: 'Queued from Media Center shell.' }),
+    body: JSON.stringify({ job_type: jobType, mode: 'real-local', notes: 'Queued from Media Center shell.' }),
   });
   const data = await response.json();
   if (!data.ok) {
@@ -836,6 +861,17 @@ async function mediaCenterSimulateJob(jobId) {
     return;
   }
   if (typeof showToast === 'function') showToast('Simulated local pipeline run complete.', 'success');
+  mediaCenterRefresh();
+}
+
+async function mediaCenterRunJob(jobId) {
+  const response = await fetch(`/api/media-center/jobs/${encodeURIComponent(jobId)}/run`, { method: 'POST' });
+  const data = await response.json();
+  if (!data.ok) {
+    if (typeof showToast === 'function') showToast(data.error || 'Local run failed.', 'error');
+    return;
+  }
+  if (typeof showToast === 'function') showToast('Real local artifact rendered.', 'success');
   mediaCenterRefresh();
 }
 
