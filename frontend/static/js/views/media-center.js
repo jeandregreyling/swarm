@@ -639,6 +639,10 @@ function _mediaCenterReferenceCard(ref) {
       </div>
       ${preview}
       ${ref.notes ? `<div class="media-reference-notes">${_mcEsc(ref.notes)}</div>` : ''}
+      <div class="media-reference-actions">
+        <button class="media-inline-btn media-inline-btn-primary" onclick="mediaCenterMakePreview(${JSON.stringify(ref.id || '')})">Make preview from this</button>
+        ${url ? `<a class="media-reference-link" href="${_mcEsc(url)}" target="_blank" rel="noreferrer">Open source</a>` : ''}
+      </div>
       ${tags ? `<div class="media-reference-tags">${tags}</div>` : ''}
     </div>
   `;
@@ -713,11 +717,13 @@ async function mediaCenterQueueSelected(jobType) {
   mediaCenterRefresh();
 }
 
-async function mediaCenterMakePreview() {
+async function mediaCenterMakePreview(referenceId) {
   if (!_mediaCenterSelectedProjectId) {
     if (typeof showToast === 'function') showToast('Choose a project first.', 'info');
     return;
   }
+  const project = (_mediaCenterState?.projects || []).find((item) => item.id === _mediaCenterSelectedProjectId);
+  const ref = (project?.media_refs || []).find((item) => item.id === referenceId);
   if (typeof showToast === 'function') showToast('Making a playable preview...', 'info');
   const queued = await fetch(`/api/media-center/projects/${encodeURIComponent(_mediaCenterSelectedProjectId)}/jobs`, {
     method: 'POST',
@@ -725,7 +731,8 @@ async function mediaCenterMakePreview() {
     body: JSON.stringify({
       job_type: 'generate-audio',
       mode: 'real-local',
-      notes: 'One-click playable preview from Media Center.',
+      reference_id: referenceId || '',
+      notes: ref ? `One-click playable preview from reference: ${ref.title || ref.url || ref.id}` : 'One-click playable preview from Media Center.',
     }),
   });
   const queueData = await queued.json();
