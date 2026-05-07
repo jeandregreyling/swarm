@@ -16,6 +16,7 @@ import wave
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, quote_plus, urlparse
 from uuid import uuid4
 
 import requests
@@ -777,7 +778,13 @@ def create_synth_take(project_id: str, payload: dict[str, Any]) -> dict[str, Any
 def add_media_reference(project_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
     state = load_state()
     accounts = state.get("media_accounts") or list_media_accounts()
-    account_id = str(payload.get("account_id") or payload.get("provider") or "custom-feed").strip()
+    detected = _detect_media_reference(payload)
+    account_id = str(
+        payload.get("account_id")
+        or payload.get("provider")
+        or detected.get("account_id")
+        or "custom-feed"
+    ).strip()
     account = next((item for item in accounts if item.get("id") == account_id), None)
     if not account:
         account = next((item for item in accounts if item.get("id") == "custom-feed"), accounts[0])
@@ -786,11 +793,14 @@ def add_media_reference(project_id: str, payload: dict[str, Any]) -> dict[str, A
         if project.get("id") != project_id:
             continue
         _ensure_project_editor_defaults(project)
-        title = str(payload.get("title") or "Untitled media reference").strip()[:160]
+        title = str(payload.get("title") or detected.get("title") or "Untitled media reference").strip()[:160]
         url = str(payload.get("url") or payload.get("link") or "").strip()[:1000]
-        media_type = str(payload.get("media_type") or account.get("kind") or "media").strip()[:40]
+        media_type = str(payload.get("media_type") or detected.get("media_type") or account.get("kind") or "media").strip()[:40]
         notes = str(payload.get("notes") or payload.get("summary") or "").strip()[:2000]
         tags = _normalize_tags(payload.get("tags"), project)
+        for tag in detected.get("tags") or []:
+            if tag not in tags:
+                tags.append(tag)
         reference = {
             "id": f"ref-{uuid4().hex[:10]}",
             "title": title,
@@ -798,14 +808,19 @@ def add_media_reference(project_id: str, payload: dict[str, Any]) -> dict[str, A
             "account_name": account.get("name") or account_id,
             "media_type": media_type,
             "url": url,
+            "embed_url": detected.get("embed_url") or "",
+            "preview_kind": detected.get("preview_kind") or "link",
+            "source_id": detected.get("source_id") or "",
+            "canonical_url": detected.get("canonical_url") or url,
             "notes": notes,
-            "tags": tags,
+            "tags": tags[:10],
             "status": "indexed",
             "provenance": {
                 "source": "media_center",
                 "provider": account_id,
                 "feed_kind": account.get("feed_kind"),
                 "linked_account_status": account.get("status"),
+                "detected_provider": detected.get("account_id") or "",
             },
             "created_at": _now_iso(),
             "updated_at": _now_iso(),
@@ -824,6 +839,84 @@ def add_media_reference(project_id: str, payload: dict[str, Any]) -> dict[str, A
         )
         return reference
     return None
+
+
+def _detect_media_reference(payload: dict[str, Any]) -> dict[str, Any]:
+    url = str(payload.get("url") or payload.get("link") or "").strip()
+    if not url:
+        return {}
+    parsed = urlparse(url)
+    host = parsed.netloc.lower().removeprefix("www.")
+    path = parsed.path.strip("/")
+    title = str(payload.get("title") or "").strip()
+
+    if host in {"youtu.be", "youtube.com", "m.youtube.com", "music.youtube.com"}:
+        video_id = path.split("/", 1)[0] if host == "youtu.be" else ""
+        if not video_id:
+            if path.startswith("watch"):
+                video_id = parse_qs(parsed.query).get("v", [""])[0]
+            elif path.startswith(("shorts/", "embed/")):
+                video_id = path.split("/", 1)[1].split("/", 1)[0]
+        if video_id:
+            return {
+                "account_id": "youtube",
+                "media_type": "video",
+                "preview_kind": "embed",
+                "source_id": video_id,
+                "embed_url": f"https://www.youtube.com/embed/{video_id}",
+                "canonical_url": f"https://www.youtube.com/watch?v={video_id}",
+                "title": title or "YouTube reference",
+                "tags": ["youtube", "video"],
+            }
+
+    if host == "music.apple.com":
+        embed_path = parsed.path
+        return {
+            "account_id": "apple-music",
+            "media_type": "music",
+            "preview_kind": "embed",
+            "source_id": path.rsplit("/", 1)[-1],
+            "embed_url": f"https://embed.music.apple.com{embed_path}",
+            "canonical_url": url,
+            "title": title or "Apple Music reference",
+            "tags": ["apple-music", "music"],
+        }
+
+    if host == "open.spotify.com":
+        parts = [p for p in path.split("/") if p]
+        if len(parts) >= 2:
+            kind, source_id = parts[0], parts[1]
+            return {
+                "account_id": "spotify",
+                "media_type": "music",
+                "preview_kind": "embed",
+                "source_id": source_id,
+                "embed_url": f"https://open.spotify.com/embed/{kind}/{source_id}",
+                "canonical_url": url,
+                "title": title or "Spotify reference",
+                "tags": ["spotify", kind],
+            }
+
+    if host.endswith("soundcloud.com"):
+        return {
+            "account_id": "soundcloud",
+            "media_type": "music",
+            "preview_kind": "embed",
+            "source_id": path,
+            "embed_url": "https://w.soundcloud.com/player/?url=" + quote_plus(url),
+            "canonical_url": url,
+            "title": title or "SoundCloud reference",
+            "tags": ["soundcloud", "music"],
+        }
+
+    return {
+        "account_id": "custom-feed",
+        "media_type": "media",
+        "preview_kind": "link",
+        "canonical_url": url,
+        "title": title or parsed.netloc or "Media reference",
+        "tags": ["media-link"],
+    }
 
 
 def link_media_account(account_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any] | None:
@@ -1029,6 +1122,8 @@ def _write_media_reference_knowledge(project: dict[str, Any], reference: dict[st
             f"Provider: {reference.get('account_name')} ({reference.get('account_id')})\n"
             f"Type: {reference.get('media_type')}\n"
             f"URL: {reference.get('url') or 'n/a'}\n"
+            f"Embed: {reference.get('embed_url') or 'n/a'}\n"
+            f"Preview: {reference.get('preview_kind') or 'link'}\n"
             f"Tags: {', '.join(reference.get('tags') or [])}\n\n"
             f"{reference.get('notes') or ''}"
         ).strip()

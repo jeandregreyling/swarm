@@ -69,8 +69,9 @@ def media_center_create_synth_take(project_id: str):
 def media_center_add_reference(project_id: str):
     data = request.get_json(silent=True) or {}
     title = str(data.get("title") or "").strip()
-    if not title:
-        return jsonify({"ok": False, "error": "title is required"}), 400
+    url = str(data.get("url") or data.get("link") or "").strip()
+    if not title and not url:
+        return jsonify({"ok": False, "error": "title or URL is required"}), 400
     reference = add_media_reference(project_id, data)
     if not reference:
         return jsonify({"ok": False, "error": "project not found"}), 404
