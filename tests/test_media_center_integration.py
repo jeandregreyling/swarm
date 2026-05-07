@@ -87,6 +87,9 @@ def test_media_center_context_surfaces_models_swarms_and_chat():
     assert "mediaCenterAddReference" in js
     assert "mediaCenterUpdateRouting" in js
     assert "mediaCenterLinkAccount" in js
+    assert "mediaCenterRunJob" in js
+    assert "Run local" in js
+    assert "<audio controls" in js
     assert "Handoff Manifest" in js
     assert "mediaCenterCopyHandoff" in js
     assert "mediaCenterMarkScene" in js
@@ -201,6 +204,51 @@ def test_media_center_adds_timeline_clip_through_api():
 
     project = next(item for item in refreshed["projects"] if item["id"] == project_id)
     assert any(clip["id"] == data["clip"]["id"] for clip in project["timeline"]["clips"])
+
+
+def test_media_center_real_local_run_creates_playable_artifact_and_evidence():
+    app = create_app()
+    with app.test_client() as client:
+        created = client.post(
+            "/api/media-center/projects",
+            json={
+                "name": "pytest real local render",
+                "prompt": "render a short usable audio preview",
+                "medium": "audio",
+                "duration_sec": 12,
+            },
+        )
+        assert created.status_code == 200
+        project = created.get_json()["project"]
+        queued = client.post(
+            f"/api/media-center/projects/{project['id']}/jobs",
+            json={"job_type": "generate-audio", "mode": "real-local"},
+        )
+        assert queued.status_code == 200
+        job = queued.get_json()["job"]
+        run = client.post(f"/api/media-center/jobs/{job['id']}/run")
+        assert run.status_code == 200
+        data = run.get_json()
+        assert data["ok"] is True
+        assert data["job"]["status"] == "completed"
+        audio = next(a for a in data["job"]["artifacts"] if a["mime_type"] == "audio/wav")
+        assert audio["url"].startswith("/api/media-center/artifacts/artifacts/media_center/")
+        artifact_response = client.get(audio["url"])
+        assert artifact_response.status_code == 200
+        assert artifact_response.data[:4] == b"RIFF"
+
+    from utils.db._connection import get_connection
+
+    conn = get_connection()
+    try:
+        evidence = conn.execute(
+            "SELECT COUNT(*) AS n FROM project_step_evidence "
+            "WHERE project_id=? AND source_type='media_center_artifact' AND source_ref=?",
+            (project["studio_project_id"], job["id"]),
+        ).fetchone()["n"]
+    finally:
+        conn.close()
+    assert evidence >= 1
 
 
 def test_media_center_creates_synth_take_on_timeline():
