@@ -41,6 +41,15 @@ def api_conversation_messages(conv_id):
            FROM messages WHERE conversation_id=? ORDER BY id ASC""",
         (conv_id,)
     ).fetchall()
+    job_rows = conn.execute(
+        """SELECT job_id, conversation_id, agent, status, runtime_class,
+                  stage, eta_seconds, elapsed_ms, tokens, error,
+                  stage_trace_json, started_at, updated_at
+           FROM chat_jobs
+           WHERE conversation_id=?
+           ORDER BY started_at ASC""",
+        (conv_id,),
+    ).fetchall()
     # Look up any linked ticket for this conversation
     ticket_info = None
     try:
@@ -82,10 +91,22 @@ def api_conversation_messages(conv_id):
     except Exception:
         pass
 
+    import json as _json
+    jobs = []
+    for row in job_rows:
+        item = dict(row)
+        try:
+            item['stage_trace'] = _json.loads(item.pop('stage_trace_json') or '[]')
+        except Exception:
+            item.pop('stage_trace_json', None)
+            item['stage_trace'] = []
+        jobs.append(item)
+
     conn.close()
     return jsonify({
         'conv': dict(conv),
         'messages': [dict(r) for r in rows],
+        'jobs': jobs,
         'ticket': ticket_info,
         'proposals': linked_proposals,
     })
@@ -324,6 +345,5 @@ def api_trace_conversation(conv_id):
     except Exception as e:
         conn.close()
         return jsonify({'error': str(e)}), 500
-
 
 

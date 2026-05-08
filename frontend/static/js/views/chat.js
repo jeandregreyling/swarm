@@ -4110,6 +4110,49 @@ function _replayFrozenThinkingBubbles(convId) {
   });
 }
 
+function _replayServerThinkingBubbles(convId, jobs) {
+  const messages = _chatMessagesEl();
+  if (!messages || !convId || !Array.isArray(jobs) || !jobs.length) return;
+  jobs.forEach(job => {
+    if (!job || !job.job_id) return;
+    const jobId = String(job.job_id || '');
+    if (messages.querySelector(`.chat-bubble[data-archived-job-id="${jobId}"],.chat-bubble[data-pending-job-id="${jobId}"]`)) return;
+    const status = String(job.status || '').toLowerCase();
+    if (!['completed', 'failed', 'cancelled', 'stalled'].includes(status)) return;
+    const trace = Array.isArray(job.stage_trace) ? job.stage_trace : [];
+    const history = trace
+      .map(step => String(step && step.text != null ? step.text : step || '').trim())
+      .filter(Boolean)
+      .slice(-16);
+    if (!history.length && !String(job.error || '').trim()) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble thinking-archived';
+    bubble.dataset.archivedJobId = jobId;
+    bubble.dataset.thinkingAgent = String(job.agent || 'agent');
+    bubble.innerHTML = _renderThinkingBubble({
+      job_id: jobId,
+      agent: job.agent || 'agent',
+      status: status,
+      stage: job.stage || (status + ' job'),
+      runtime_class: job.runtime_class || '',
+      eta_seconds: Number(job.eta_seconds || 0),
+      elapsed_ms: Number(job.elapsed_ms || 0),
+    }, history);
+    const tag = document.createElement('div');
+    tag.className = 'chat-pending-archived-tag';
+    tag.style.cssText = 'margin-top:6px;font-size:9px;color:var(--text-dim);opacity:0.7;display:flex;gap:6px;align-items:center;justify-content:space-between;';
+    const err = String(job.error || '').trim();
+    const reason = status === 'failed' ? 'failed - server trace kept'
+      : status === 'cancelled' ? 'cancelled - server trace kept'
+      : status === 'completed' ? 'finished - server trace kept'
+      : `${status} - server trace kept`;
+    tag.innerHTML = `<span>${_escapeHtml(err ? `${reason}: ${err.slice(0, 180)}` : reason)}</span>` +
+                    `<button class="chat-action-btn" style="padding:1px 7px;font-size:9px;" onclick="_chatPinThinkingTrailToStudio('${_escapeHtml(jobId)}')">Pin to Studio</button>`;
+    bubble.appendChild(tag);
+    messages.appendChild(bubble);
+  });
+}
+
 function _chatPinThinkingTrailToStudio(jobId) {
   if (!jobId) return;
   const convId = Number(window.__fridaysChatConversationId || 0);
@@ -4146,6 +4189,7 @@ function _chatPinThinkingTrailToStudio(jobId) {
 
 window._chatPinThinkingTrailToStudio = _chatPinThinkingTrailToStudio;
 window._replayFrozenThinkingBubbles = _replayFrozenThinkingBubbles;
+window._replayServerThinkingBubbles = _replayServerThinkingBubbles;
 
 function _appendThinkingBubble(agent, runtimeClass, job = {}) {
   _upsertThinkingBubble({
@@ -5582,7 +5626,7 @@ async function _performDeleteThread(convId) {
   }
 }
 
-function renderChatMessages(rows) {
+function renderChatMessages(rows, jobs = null) {
   const messages = _chatMessagesEl();
   if (!messages) return;
   if (!rows || !rows.length) {
@@ -5633,7 +5677,8 @@ function renderChatMessages(rows) {
   const snapshotJobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs)
     ? window.__fridaysThreadRuntimeSnapshot.jobs
     : [];
-  _syncThinkingBubbles(snapshotJobs);
+  const serverJobs = Array.isArray(jobs) ? jobs : [];
+  _syncThinkingBubbles(snapshotJobs.length ? snapshotJobs : serverJobs);
 
   // Inject Route-to buttons on the last agent bubble rendered from history.
   // _appendChatBubble skips relay extraction when fromHistory=true, so we do it here.
@@ -5681,6 +5726,9 @@ function renderChatMessages(rows) {
   // Replay any frozen thinking-trail bubbles that belong to this thread.
   try {
     const convId = Number(window.__fridaysChatConversationId || 0);
+    if (convId && typeof _replayServerThinkingBubbles === 'function') {
+      _replayServerThinkingBubbles(convId, serverJobs);
+    }
     if (convId && typeof _replayFrozenThinkingBubbles === 'function') {
       _replayFrozenThinkingBubbles(convId);
     }
@@ -5697,6 +5745,22 @@ function _chatRowsSignature(rows) {
   const sender = String(last.sender || '').toLowerCase().trim();
   const len = String(last.content || '').length;
   return `${list.length}:${lastId}:${sender}:${len}`;
+}
+
+function _chatJobsSignature(jobs) {
+  const list = Array.isArray(jobs) ? jobs : [];
+  if (!list.length) return 'nojobs';
+  const last = list[list.length - 1] || {};
+  const traceLen = Array.isArray(last.stage_trace) ? last.stage_trace.length : 0;
+  return [
+    list.length,
+    String(last.job_id || ''),
+    String(last.status || ''),
+    String(last.stage || ''),
+    Number(last.elapsed_ms || 0),
+    traceLen,
+    String(last.error || '').length,
+  ].join(':');
 }
 
 function loadConversationMessages(convId, options = {}) {
@@ -5716,7 +5780,8 @@ function loadConversationMessages(convId, options = {}) {
         return false;
       }
       const rows = data.messages || [];
-      const nextSig = `${requestedConvId}:${_chatRowsSignature(rows)}`;
+      const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+      const nextSig = `${requestedConvId}:${_chatRowsSignature(rows)}:${_chatJobsSignature(jobs)}`;
       if (!force && window.__fridaysChatLastRenderSig === nextSig) {
         if (options.syncLastResponder) {
           const lastAgent = _lastReplyingAgent(rows);
@@ -5729,7 +5794,7 @@ function loadConversationMessages(convId, options = {}) {
         return false;
       }
       window.__fridaysChatLastRenderSig = nextSig;
-      renderChatMessages(rows);
+      renderChatMessages(rows, jobs);
       if (options.syncLastResponder) {
         const lastAgent = _lastReplyingAgent(rows);
         _applySingleThreadAgent(lastAgent, requestedConvId);
