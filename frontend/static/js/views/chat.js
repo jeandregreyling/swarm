@@ -110,6 +110,8 @@ window.__fridaysChatConversationId = window.__fridaysChatConversationId || null;
 window.__fridaysChatEnabledAgents = window.__fridaysChatEnabledAgents || {};
 window.__fridaysReplyTargets = Array.isArray(window.__fridaysReplyTargets) ? window.__fridaysReplyTargets : [];
 window.__fridaysChatForceNewThread = window.__fridaysChatForceNewThread ?? true;
+// Refresh contract: F5/reload always starts with no active thread. Stale key wipe.
+try { localStorage.removeItem('fridays-chat-active-thread'); } catch (e) {}
 window.__fridaysChatPendingJobIds = window.__fridaysChatPendingJobIds || [];
 window.__fridaysChatPendingConversationId = window.__fridaysChatPendingConversationId || null;
 window.__fridaysChatPendingPollTimer = window.__fridaysChatPendingPollTimer || null;
@@ -284,9 +286,140 @@ function _setActiveThreadId(convId) {
 function updateChatStatusPills() {
   document.querySelectorAll('[id="chat-dictionary-inline"]').forEach(dictInline => {
     const size = Array.from(window.__fridaysChatCustomDictionary || []).length;
-    dictInline.textContent = 'Dictionary: ' + size;
+    // Phase-5 small polish: render as a proper button with SVG book icon.
+    dictInline.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      <span>Dictionary: ${size}</span>`;
+    if (!dictInline.dataset.dictBound) {
+      dictInline.dataset.dictBound = '1';
+      dictInline.style.cursor = 'pointer';
+      dictInline.style.display = 'inline-flex';
+      dictInline.style.alignItems = 'center';
+      dictInline.style.gap = '5px';
+      dictInline.style.padding = '3px 9px';
+      dictInline.style.border = '1px solid var(--border)';
+      dictInline.style.borderRadius = '12px';
+      dictInline.style.background = 'color-mix(in srgb,var(--card) 60%,transparent)';
+      dictInline.style.transition = 'background .15s, border-color .15s';
+      dictInline.setAttribute('role', 'button');
+      dictInline.setAttribute('tabindex', '0');
+      dictInline.title = 'Click to manage custom dictionary';
+      dictInline.addEventListener('mouseenter', () => {
+        dictInline.style.background = 'var(--card)';
+        dictInline.style.borderColor = 'var(--accent)';
+      });
+      dictInline.addEventListener('mouseleave', () => {
+        dictInline.style.background = 'color-mix(in srgb,var(--card) 60%,transparent)';
+        dictInline.style.borderColor = 'var(--border)';
+      });
+      dictInline.addEventListener('click', () => openDictionaryManager());
+      dictInline.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDictionaryManager(); }
+      });
+    }
   });
 }
+
+function openDictionaryManager() {
+  let modal = document.getElementById('dictionary-manager-modal');
+  if (modal) modal.remove();
+  modal = document.createElement('div');
+  modal.id = 'dictionary-manager-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(560px,92vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 14px 40px rgba(0,0,0,.4);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          <span>Custom Dictionary</span>
+        </div>
+        <button onclick="document.getElementById('dictionary-manager-modal').remove()" aria-label="Close" style="background:transparent;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">×</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
+        Words here are treated as correct spellings and preferred vocabulary. They suppress spell-check suggestions and are considered when the classifier interprets your messages. Press <kbd style="padding:1px 5px;border:1px solid var(--border);border-radius:3px;background:var(--bg);">Esc</kbd> to close.
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <input id="dict-add-input" type="text" placeholder="Add a word (e.g. fridays, vortex, seven)"
+          style="flex:1;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;"
+          onkeydown="if(event.key==='Enter'){ dictionaryAddFromInput(); }">
+        <button onclick="dictionaryAddFromInput()" style="padding:7px 14px;background:var(--accent);color:#000;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Add</button>
+      </div>
+      <div id="dict-list" style="flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg);"></div>
+      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <span id="dict-count" style="font-size:11px;color:var(--text-dim);"></span>
+        <button onclick="dictionaryExport()" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">Export JSON</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  // Phase-5: Esc-close + cleanup.
+  const escHandler = (e) => {
+    if (e.key === 'Escape') {
+      const m = document.getElementById('dictionary-manager-modal');
+      if (m) m.remove();
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
+  _renderDictionaryList();
+  setTimeout(() => { const i = document.getElementById('dict-add-input'); if (i) i.focus(); }, 30);
+}
+
+function _renderDictionaryList() {
+  const list = document.getElementById('dict-list');
+  const countEl = document.getElementById('dict-count');
+  if (!list) return;
+  const words = Array.from(window.__fridaysChatCustomDictionary || []).sort();
+  if (countEl) countEl.textContent = `${words.length} word${words.length === 1 ? '' : 's'}`;
+  if (!words.length) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:11px;text-align:center;padding:24px;">No custom words yet. Add one above.</div>';
+    return;
+  }
+  list.innerHTML = words.map(w => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-bottom:1px solid color-mix(in srgb,var(--border) 40%,transparent);font-size:12px;">
+      <span style="color:var(--text);font-family:monospace;">${w}</span>
+      <button onclick="dictionaryRemove('${w.replace(/'/g, "\\'")}')" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">Remove</button>
+    </div>`).join('');
+}
+
+function dictionaryAddFromInput() {
+  const input = document.getElementById('dict-add-input');
+  if (!input) return;
+  const v = input.value;
+  const added = addWordToCustomDictionary(v);
+  if (added) {
+    input.value = '';
+    _renderDictionaryList();
+  }
+  input.focus();
+}
+
+function dictionaryRemove(word) {
+  removeWordFromCustomDictionary(word);
+  _renderDictionaryList();
+}
+
+function dictionaryExport() {
+  const words = Array.from(window.__fridaysChatCustomDictionary || []).sort();
+  const blob = new Blob([JSON.stringify(words, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'fridays-custom-dictionary.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+window.openDictionaryManager = openDictionaryManager;
+window.dictionaryAddFromInput = dictionaryAddFromInput;
+window.dictionaryRemove = dictionaryRemove;
+window.dictionaryExport = dictionaryExport;
 
 function updateChatMiniSystemStats(cpuPercent, ramPercent) {
   const cpu = Number(cpuPercent);
@@ -341,7 +474,24 @@ function _renderThreadRuntimeChip(agent, state, statusClass, timeLabel) {
   `;
 }
 
-function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
+function _chatRecoveryLeaseLabel(item) {
+  if (!item || !item.lease_owner) return 'handoff';
+  return 'leased';
+}
+
+function _chatRecoveryActionsHtml(recoveryId) {
+  const rid = _escapeHtml(recoveryId || '');
+  if (!rid) return '';
+  return `
+    <div style="display:flex;gap:4px;justify-content:flex-end;">
+      <button class="chat-action-btn" data-recovery-id="${rid}" data-status="reviewed" onclick="updateRelayRecoveryStatus(this.dataset.recoveryId,this.dataset.status)" title="Mark this recovery handled">Done</button>
+      <button class="chat-action-btn" data-recovery-id="${rid}" data-status="ignored" onclick="updateRelayRecoveryStatus(this.dataset.recoveryId,this.dataset.status)" title="Dismiss this recovery card">Ignore</button>
+      <button class="chat-action-btn" data-recovery-id="${rid}" data-status="escalated" onclick="updateRelayRecoveryStatus(this.dataset.recoveryId,this.dataset.status)" title="Keep visible as escalated">Escalate</button>
+    </div>
+  `;
+}
+
+function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll', recoveries = []) {
   const hosts = Array.from(document.querySelectorAll('[id="chat-thread-runtime"]'));
   if (!hosts.length) return;
 
@@ -361,6 +511,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
   }
 
   const list = Array.isArray(jobs) ? jobs.slice() : [];
+  const recoveryList = Array.isArray(recoveries) ? recoveries.slice(0, 3) : [];
   list.sort((a, b) => {
     const d = _chatRuntimeSortWeight(a.status) - _chatRuntimeSortWeight(b.status);
     if (d !== 0) return d;
@@ -396,7 +547,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
     ? (running.length === 1 ? '1 agent running' : running.length + ' agents running')
     : (loadingAgents.length || hasPendingJobs
       ? 'Dispatching' + (loadingAgents.length ? ' · ' + loadingAgents.map(a => a).join(', ') : '') + '…'
-      : (failed.length ? ('Last run: ' + failed.length + ' failure' + (failed.length > 1 ? 's' : '')) : (cooldownActive ? 'Round complete' : (list.length ? 'Idle' : 'No jobs'))));
+      : (recoveryList.length ? 'Recovery open' : (failed.length ? ('Last run: ' + failed.length + ' failure' + (failed.length > 1 ? 's' : '')) : (cooldownActive ? 'Round complete' : (list.length ? 'Idle' : 'No jobs')))));
 
   // Bar is always visible — no open/close toggling needed.
   // (Previously: const shouldShow = true; host.classList.toggle('open', shouldShow))
@@ -426,6 +577,20 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
     chips.push(_renderThreadRuntimeChip(agent, 'queued', 'initializing', ''));
   });
 
+  const recoveryHtml = recoveryList.length ? `
+    <div class="chat-thread-runtime-grid" style="margin-top:6px;">
+      ${recoveryList.map(item => `
+        <div class="chat-thread-runtime-row failed" title="${_escapeHtml(item.summary || 'Relay recovery open')}">
+          <span class="chat-thread-runtime-light failed"></span>
+          <div class="chat-thread-runtime-row-agent">watchdog</div>
+          <div class="chat-thread-runtime-stage">${_escapeHtml(item.stalled_agent || 'agent')} recovery</div>
+          <div class="chat-thread-runtime-row-time">${_escapeHtml(_chatRecoveryLeaseLabel(item))}</div>
+          ${_chatRecoveryActionsHtml(item.recovery_id)}
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
   const panelHtml = `
     <div class="chat-thread-runtime-head">
       <div style="display:flex;align-items:center;gap:6px;min-width:0;">
@@ -435,6 +600,7 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
       <div class="chat-thread-runtime-meta">${_escapeHtml(sourceLabel)} · ${_escapeHtml(headline)}</div>
     </div>
     ${(chips.length || hasPendingJobs) ? `<div class="chat-thread-runtime-grid">${chips.join('')}</div>` : ''}
+    ${recoveryHtml}
   `;
   hosts.forEach(host => {
     host.innerHTML = panelHtml;
@@ -442,6 +608,34 @@ function _renderThreadRuntimePanel(jobs, sourceLabel = 'poll') {
 
   window.__fridaysThreadRuntimeSnapshot = { jobs: list, updatedAt: new Date().toISOString() };
   updateChatStatusPills();
+}
+
+function updateRelayRecoveryStatus(recoveryId, status) {
+  const rid = String(recoveryId || '').trim();
+  const nextStatus = String(status || '').trim().toLowerCase();
+  if (!rid || !nextStatus) return;
+  const labels = {
+    reviewed: 'Handled from chat runtime panel',
+    ignored: 'Dismissed from chat runtime panel',
+    escalated: 'Escalated from chat runtime panel',
+    open: 'Reopened from chat runtime panel'
+  };
+  fetch('/api/chat/recoveries/' + encodeURIComponent(rid) + '/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      status: nextStatus,
+      actor: 'chat-runtime-panel',
+      summary: labels[nextStatus] || ('Marked ' + nextStatus + ' from chat runtime panel')
+    })
+  })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (!ok || !data.ok) throw new Error(data.error || 'Recovery update failed');
+      showToast('Relay recovery marked ' + nextStatus, 'success');
+      pollActiveThreadRuntime(true);
+    })
+    .catch(e => showToast('Relay recovery update failed: ' + (e.message || e), 'error'));
 }
 
 function toggleRuntimePin() {
@@ -473,7 +667,7 @@ function pollActiveThreadRuntime(force = false) {
     .then(r => r.json())
     .then(data => {
       const jobs = (data && Array.isArray(data.jobs)) ? data.jobs : [];
-      _renderThreadRuntimePanel(jobs, force ? 'sync' : 'poll');
+      _renderThreadRuntimePanel(jobs, force ? 'sync' : 'poll', data.recoveries || []);
       _syncThinkingBubbles(jobs);
     })
     .catch(() => {
@@ -1276,9 +1470,78 @@ function resetThemeAndFontDefaults() {
   applyTimeTheme('auto');
   if (typeof applyScene === 'function') applyScene('beach');
   document.documentElement.style.setProperty('--glass-opacity', '0.95');
+  // Sync the transparency dropdown to its default (5% = Light Glass)
+  const opacitySelect = document.getElementById('opacity-slider');
+  if (opacitySelect) opacitySelect.value = '5';
+  const opacityReadout = document.getElementById('opacity-value');
+  if (opacityReadout) opacityReadout.textContent = '5%';
   setChatUiScale(CHAT_UI_SCALE_DEFAULT);
+  // P4-M30: also reset font family back to Open Sans Light default
+  if (typeof setUiFontFamily === 'function') setUiFontFamily(UI_FONT_DEFAULT);
   showToast('Atmosphere and font reset to system defaults', 'success');
 }
+
+// ── P4-M30: UI font-family picker ────────────────────────────────────────────
+const UI_FONT_DEFAULT = '"Open Sans", "Open Sans Light", system-ui, sans-serif';
+const UI_FONT_KEY = 'fridays-ui-font-family';
+const UI_FONT_CUSTOM_KEY = 'fridays-ui-font-custom-list';
+
+function setUiFontFamily(value) {
+  if (!value) value = UI_FONT_DEFAULT;
+  try { localStorage.setItem(UI_FONT_KEY, value); } catch (_) {}
+  document.documentElement.style.setProperty('--ui-font-family', value);
+  document.body.style.fontFamily = value;
+  const sel = document.getElementById('theme-font-family-select');
+  if (sel && sel.value !== value) {
+    // If the value is a custom one, ensure an option exists
+    let opt = Array.from(sel.options).find(o => o.value === value);
+    if (!opt) {
+      opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = value.split(',')[0].replace(/['"]/g, '').trim() + ' (custom)';
+      sel.appendChild(opt);
+    }
+    sel.value = value;
+  }
+}
+
+function addCustomUiFont() {
+  const family = (prompt('Add a font family (CSS value, e.g. "Source Sans 3", system-ui, sans-serif):') || '').trim();
+  if (!family) return;
+  // Persist into a small custom list so it survives reloads
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(UI_FONT_CUSTOM_KEY) || '[]'); } catch (_) {}
+  if (!list.includes(family)) {
+    list.push(family);
+    try { localStorage.setItem(UI_FONT_CUSTOM_KEY, JSON.stringify(list)); } catch (_) {}
+  }
+  setUiFontFamily(family);
+  if (typeof showToast === 'function') showToast('Font added — applied');
+}
+
+(function _initUiFontFamily() {
+  function _apply() {
+    let saved = '';
+    try { saved = localStorage.getItem(UI_FONT_KEY) || ''; } catch (_) {}
+    // Re-attach any custom fonts added in previous sessions
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem(UI_FONT_CUSTOM_KEY) || '[]'); } catch (_) {}
+    const sel = document.getElementById('theme-font-family-select');
+    if (sel) {
+      list.forEach(family => {
+        if (!Array.from(sel.options).find(o => o.value === family)) {
+          const o = document.createElement('option');
+          o.value = family;
+          o.textContent = family.split(',')[0].replace(/['"]/g, '').trim() + ' (custom)';
+          sel.appendChild(o);
+        }
+      });
+    }
+    setUiFontFamily(saved || UI_FONT_DEFAULT);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _apply);
+  else _apply();
+})();
 
 function _applyChatDockLayoutState() {
   const threadCollapsed = !!window.__fridaysChatThreadCollapsed;
@@ -1347,6 +1610,30 @@ function setChatUiScale(scale) {
   localStorage.setItem(CHAT_UI_SCALE_KEY, String(next));
   _applyChatDockLayoutState();
 }
+
+// ── Console title row collapse (saves vertical space) ──────────────────────
+const CHAT_TOPBAR_COLLAPSED_KEY = 'fridays_chat_topbar_collapsed';
+function chatTopbarToggle() {
+  const col = document.getElementById('chat-topbar-title-col');
+  if (!col) return;
+  const collapsed = col.dataset.collapsed === '1' ? '0' : '1';
+  col.dataset.collapsed = collapsed;
+  const sub = document.getElementById('chat-topbar-subtitle');
+  const caret = document.getElementById('chat-topbar-caret');
+  if (sub) sub.style.display = collapsed === '1' ? 'none' : '';
+  if (caret) caret.textContent = collapsed === '1' ? '▸' : '▾';
+  localStorage.setItem(CHAT_TOPBAR_COLLAPSED_KEY, collapsed);
+}
+window.chatTopbarToggle = chatTopbarToggle;
+// Restore on load
+try {
+  if (localStorage.getItem(CHAT_TOPBAR_COLLAPSED_KEY) === '1') {
+    document.addEventListener('DOMContentLoaded', () => {
+      const col = document.getElementById('chat-topbar-title-col');
+      if (col && col.dataset.collapsed !== '1') chatTopbarToggle();
+    });
+  }
+} catch(_){}
 
 function startChatDockResize(event) {
   if (window.__fridaysChatDockCollapsed) return;
@@ -1560,19 +1847,75 @@ function _renderGuardianNarrator(data) {
   const conf = Math.round((g.confidence || 0) * 100) / 100;
   const orig = _escHtml(origTarget);
   const rationale = _escHtml(g.rationale || '');
+  // MD-FEATURE-B74D902738AB — full inline narrator card with a "Why?"
+  // explainer that cites the spine GUARDIAN event behind the intercept.
+  card.style.cssText = 'margin-top:6px;padding:10px 12px;border-left:3px solid #d8a032;background:#d8a03216;border-radius:4px;font-size:11px;color:var(--text);display:flex;flex-direction:column;gap:6px;';
   card.innerHTML = `
-    <span style="font-size:14px;">🛡</span>
-    <span style="flex:1;">
-      <strong>Seven stepped in.</strong>
-      Router suggested <code style="color:#d8a032;">${orig}</code> at confidence
-      <code style="color:#d8a032;">${conf}</code> — below Seven's guardian threshold (0.6),
-      so Seven is taking this one.
-      ${rationale ? `<span style="color:var(--text-dim);"> · ${rationale}</span>` : ''}
-    </span>
-    <button onclick="_hideGuardianNarrator()" title="Dismiss"
-      style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;line-height:1;">✕</button>`;
+    <div style="display:flex;align-items:flex-start;gap:8px;">
+      <span style="font-size:14px;line-height:1;">🛡</span>
+      <span style="flex:1;line-height:1.45;">
+        <strong>Seven stepped in.</strong>
+        <code style="color:#d8a032;">${orig}</code> was at
+        <code style="color:#d8a032;">${conf}</code> confidence — below Seven's
+        guardian threshold (<code style="color:#d8a032;">0.60</code>), so
+        Seven took this one instead.
+        ${rationale ? `<span style="color:var(--text-dim);"> · ${rationale}</span>` : ''}
+      </span>
+      <button type="button" onclick="_toggleGuardianNarratorWhy(event)" title="Show the spine GUARDIAN event behind this intercept"
+        style="background:#d8a03222;border:1px solid #d8a03255;color:#d8a032;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:600;">Why?</button>
+      <button type="button" onclick="_hideGuardianNarrator()" title="Dismiss"
+        style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;line-height:1;padding:0 2px;">✕</button>
+    </div>
+    <div id="chat-guardian-narrator-why" style="display:none;padding:8px 10px;margin-top:2px;background:rgba(0,0,0,0.18);border:1px solid #d8a03244;border-radius:3px;font-size:10.5px;color:var(--text-dim);line-height:1.55;">
+      <div style="color:var(--text);font-weight:600;margin-bottom:4px;">From the spine</div>
+      <div id="chat-guardian-narrator-why-body" style="font-family:var(--font-mono,monospace);">Loading GUARDIAN event…</div>
+      <div style="margin-top:6px;">
+        <a href="#" onclick="event.preventDefault();_hideGuardianNarrator();openWindow('traced','Traced','view-traced');"
+          style="color:#d8a032;text-decoration:none;font-weight:600;">Open Traced timeline →</a>
+      </div>
+    </div>`;
   card.style.display = '';
 }
+
+function _toggleGuardianNarratorWhy(ev) {
+  if (ev) ev.stopPropagation();
+  const why = document.getElementById('chat-guardian-narrator-why');
+  if (!why) return;
+  const willShow = why.style.display === 'none' || why.style.display === '';
+  why.style.display = willShow ? 'block' : 'none';
+  if (!willShow) return;
+  const body = document.getElementById('chat-guardian-narrator-why-body');
+  if (!body) return;
+  // Pull the most recent GUARDIAN spine event so the user can see the literal
+  // log line behind the intercept (cites severity/source/agent/payload).
+  fetch('/api/spine/events?kinds=guardian&limit=1', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      const evs = j && (j.events || j.data || (Array.isArray(j) ? j : null));
+      const e = evs && evs[0];
+      if (!e) { body.textContent = 'No GUARDIAN event in the spine yet.'; return; }
+      const ts = _escHtml(String(e.created_at || e.timestamp || e.ts || ''));
+      const msg = _escHtml(String(e.message || ''));
+      const src = _escHtml(String(e.source || 'spine.route'));
+      const agent = _escHtml(String(e.agent || 'seven'));
+      let payload = '';
+      try {
+        const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : (e.payload || {});
+        if (p && Object.keys(p).length) {
+          const orig = _escHtml(String(p.original_target || ''));
+          const cat = _escHtml(String(p.category || ''));
+          const cnf = (typeof p.confidence === 'number') ? p.confidence.toFixed(2) : _escHtml(String(p.confidence || ''));
+          payload = `<div style="margin-top:4px;color:var(--text-dim);">original_target=<code>${orig}</code> · category=<code>${cat}</code> · confidence=<code>${cnf}</code></div>`;
+        }
+      } catch (_) { /* ignore */ }
+      body.innerHTML = `
+        <div style="color:var(--text);"><code>[${ts}]</code> <code style="color:#d8a032;">GUARDIAN</code> ${msg}</div>
+        <div style="color:var(--text-dim);margin-top:2px;font-size:9.5px;">source=<code>${src}</code> · agent=<code>${agent}</code></div>
+        ${payload}`;
+    })
+    .catch(() => { body.textContent = 'Could not load GUARDIAN event.'; });
+}
+window._toggleGuardianNarratorWhy = _toggleGuardianNarratorWhy;
 
 function _hideGuardianNarrator() {
   const card = document.getElementById('chat-guardian-narrator');
@@ -3633,10 +3976,26 @@ function _syncThinkingBubbles(jobs) {
   const list = Array.isArray(jobs) ? jobs : [];
   const active = list.filter(job => String(job.status || 'running') === 'running' && job.job_id);
   const wanted = new Set(active.map(job => String(job.job_id)));
+  // STEP-CHAT-THOUGHT-BUBBLES-PERSIST-TO-STUDIO-20260430:
+  // Build a lookup of every job we saw this tick (running OR finished) so
+  // we can freeze the bubble in-place when it transitions to a terminal
+  // status (failed / timeout / completed) instead of yanking it from the DOM.
+  const jobsByID = new Map();
+  list.forEach(job => { if (job && job.job_id) jobsByID.set(String(job.job_id), job); });
 
   messages.querySelectorAll('.chat-bubble[data-pending-job-id]').forEach(node => {
     const jobId = String(node.dataset.pendingJobId || '');
-    if (!wanted.has(jobId)) node.remove();
+    if (wanted.has(jobId)) return;
+    // Bubble's job is no longer running. If we have a final status, freeze
+    // the bubble; otherwise (job vanished from the queue with no terminal
+    // record), still freeze it as "stalled" rather than silently delete.
+    const finalJob = jobsByID.get(jobId) || {
+      job_id: jobId,
+      agent: node.dataset.thinkingAgent || 'agent',
+      status: 'stalled',
+      stage: 'stalled — no further updates',
+    };
+    _freezeThinkingBubble(node, finalJob);
   });
 
   const histories = _chatThinkingHistoryState();
@@ -3646,6 +4005,191 @@ function _syncThinkingBubbles(jobs) {
 
   active.forEach(_upsertThinkingBubble);
 }
+
+// ── STEP-CHAT-THOUGHT-BUBBLES-PERSIST-TO-STUDIO-20260430 ─────────────────
+// Keep verbose thinking/stage trace bubbles attached to chat threads + Studio
+// project evidence so timeouts and failed handoffs retain the useful partial
+// reasoning trail. Frozen bubbles are persisted to localStorage keyed by
+// thread id and replayed on view re-render.
+const _CHAT_FROZEN_BUBBLES_KEY = 'fridays_chat_frozen_thinking_bubbles_v1';
+
+function _chatFrozenBubbleStore() {
+  try {
+    const raw = localStorage.getItem(_CHAT_FROZEN_BUBBLES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (_) { return {}; }
+}
+
+function _chatFrozenBubbleSave(store) {
+  try { localStorage.setItem(_CHAT_FROZEN_BUBBLES_KEY, JSON.stringify(store)); } catch (_) {}
+}
+
+function _freezeThinkingBubble(node, job) {
+  if (!node || !job) return;
+  const histories = _chatThinkingHistoryState();
+  const history = Array.isArray(histories[job.job_id]) ? histories[job.job_id].slice() : [];
+  const status = String(job.status || 'stalled');
+  const finalJob = Object.assign({}, job, {
+    status: status === 'running' ? 'stalled' : status,
+    elapsed_ms: Number(job.elapsed_ms || 0),
+  });
+  // Re-render once with the terminal status so the dot + meta reflect it.
+  node.innerHTML = _renderThinkingBubble(finalJob, history);
+  // Add a quiet footer line so operators know it's a kept-around trail.
+  const tag = document.createElement('div');
+  tag.className = 'chat-pending-archived-tag';
+  tag.style.cssText = 'margin-top:6px;font-size:9px;color:var(--text-dim);opacity:0.7;display:flex;gap:6px;align-items:center;justify-content:space-between;';
+  const reason = (status === 'failed') ? 'failed — partial trail kept'
+              : (status === 'completed') ? 'finished — trail kept for reference'
+              : (status === 'stalled' ? 'stalled — last known stages kept'
+              : `${status} — trail kept`);
+  tag.innerHTML = `<span>${_escapeHtml(reason)}</span>` +
+                  `<button class="chat-action-btn" style="padding:1px 7px;font-size:9px;" onclick="_chatPinThinkingTrailToStudio('${_escapeHtml(String(job.job_id))}')">Pin to Studio</button>`;
+  node.appendChild(tag);
+  node.classList.remove('pending');
+  node.classList.add('thinking-archived');
+  node.removeAttribute('data-pending-job-id');
+  node.dataset.archivedJobId = String(job.job_id || '');
+
+  // Persist for thread-level replay across reloads.
+  const convId = Number(window.__fridaysChatConversationId || window.__fridaysChatPendingConversationId || 0);
+  if (convId) {
+    const store = _chatFrozenBubbleStore();
+    const list = Array.isArray(store[convId]) ? store[convId] : [];
+    list.push({
+      job_id: String(job.job_id || ''),
+      agent: String(job.agent || 'agent'),
+      status: status,
+      stage: String(job.stage || ''),
+      runtime_class: String(job.runtime_class || ''),
+      eta_seconds: Number(job.eta_seconds || 0),
+      elapsed_ms: Number(job.elapsed_ms || 0),
+      history: history,
+      ts: Date.now(),
+    });
+    // Keep last 30 per thread to avoid unbounded growth.
+    store[convId] = list.slice(-30);
+    _chatFrozenBubbleSave(store);
+  }
+}
+
+function _replayFrozenThinkingBubbles(convId) {
+  const messages = _chatMessagesEl();
+  if (!messages || !convId) return;
+  const store = _chatFrozenBubbleStore();
+  const list = Array.isArray(store[convId]) ? store[convId] : [];
+  if (!list.length) return;
+  list.forEach(rec => {
+    if (!rec || !rec.job_id) return;
+    if (messages.querySelector(`.chat-bubble[data-archived-job-id="${String(rec.job_id)}"]`)) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble thinking-archived';
+    bubble.dataset.archivedJobId = String(rec.job_id);
+    bubble.dataset.thinkingAgent = String(rec.agent || 'agent');
+    bubble.innerHTML = _renderThinkingBubble({
+      job_id: rec.job_id,
+      agent: rec.agent,
+      status: rec.status,
+      stage: rec.stage,
+      runtime_class: rec.runtime_class,
+      eta_seconds: rec.eta_seconds,
+      elapsed_ms: rec.elapsed_ms,
+    }, rec.history || []);
+    const tag = document.createElement('div');
+    tag.className = 'chat-pending-archived-tag';
+    tag.style.cssText = 'margin-top:6px;font-size:9px;color:var(--text-dim);opacity:0.7;display:flex;gap:6px;align-items:center;justify-content:space-between;';
+    const reason = (rec.status === 'failed') ? 'failed — partial trail kept'
+                : (rec.status === 'completed') ? 'finished — trail kept for reference'
+                : `${rec.status} — trail kept`;
+    tag.innerHTML = `<span>${_escapeHtml(reason)}</span>` +
+                    `<button class="chat-action-btn" style="padding:1px 7px;font-size:9px;" onclick="_chatPinThinkingTrailToStudio('${_escapeHtml(String(rec.job_id))}')">Pin to Studio</button>`;
+    bubble.appendChild(tag);
+    messages.appendChild(bubble);
+  });
+}
+
+function _replayServerThinkingBubbles(convId, jobs) {
+  const messages = _chatMessagesEl();
+  if (!messages || !convId || !Array.isArray(jobs) || !jobs.length) return;
+  jobs.forEach(job => {
+    if (!job || !job.job_id) return;
+    const jobId = String(job.job_id || '');
+    if (messages.querySelector(`.chat-bubble[data-archived-job-id="${jobId}"],.chat-bubble[data-pending-job-id="${jobId}"]`)) return;
+    const status = String(job.status || '').toLowerCase();
+    if (!['completed', 'failed', 'cancelled', 'stalled'].includes(status)) return;
+    const trace = Array.isArray(job.stage_trace) ? job.stage_trace : [];
+    const history = trace
+      .map(step => String(step && step.text != null ? step.text : step || '').trim())
+      .filter(Boolean)
+      .slice(-16);
+    if (!history.length && !String(job.error || '').trim()) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble thinking-archived';
+    bubble.dataset.archivedJobId = jobId;
+    bubble.dataset.thinkingAgent = String(job.agent || 'agent');
+    bubble.innerHTML = _renderThinkingBubble({
+      job_id: jobId,
+      agent: job.agent || 'agent',
+      status: status,
+      stage: job.stage || (status + ' job'),
+      runtime_class: job.runtime_class || '',
+      eta_seconds: Number(job.eta_seconds || 0),
+      elapsed_ms: Number(job.elapsed_ms || 0),
+    }, history);
+    const tag = document.createElement('div');
+    tag.className = 'chat-pending-archived-tag';
+    tag.style.cssText = 'margin-top:6px;font-size:9px;color:var(--text-dim);opacity:0.7;display:flex;gap:6px;align-items:center;justify-content:space-between;';
+    const err = String(job.error || '').trim();
+    const reason = status === 'failed' ? 'failed - server trace kept'
+      : status === 'cancelled' ? 'cancelled - server trace kept'
+      : status === 'completed' ? 'finished - server trace kept'
+      : `${status} - server trace kept`;
+    tag.innerHTML = `<span>${_escapeHtml(err ? `${reason}: ${err.slice(0, 180)}` : reason)}</span>` +
+                    `<button class="chat-action-btn" style="padding:1px 7px;font-size:9px;" onclick="_chatPinThinkingTrailToStudio('${_escapeHtml(jobId)}')">Pin to Studio</button>`;
+    bubble.appendChild(tag);
+    messages.appendChild(bubble);
+  });
+}
+
+function _chatPinThinkingTrailToStudio(jobId) {
+  if (!jobId) return;
+  const convId = Number(window.__fridaysChatConversationId || 0);
+  const store = _chatFrozenBubbleStore();
+  const list = Array.isArray(store[convId]) ? store[convId] : [];
+  const rec = list.find(r => String(r.job_id) === String(jobId));
+  if (!rec) {
+    if (typeof showToast === 'function') showToast('Trail no longer available', 'info');
+    return;
+  }
+  fetch('/api/studio/evidence/pin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      kind: 'thinking_trail',
+      conversation_id: convId,
+      job_id: rec.job_id,
+      agent: rec.agent,
+      status: rec.status,
+      stage: rec.stage,
+      history: rec.history || [],
+      ts: rec.ts,
+    }),
+  }).then(r => r.json()).then(d => {
+    if (d && d.ok) {
+      if (typeof showToast === 'function') showToast('Pinned trail to Studio', 'success');
+    } else {
+      if (typeof showToast === 'function') showToast('Studio evidence service unavailable', 'info');
+    }
+  }).catch(() => {
+    if (typeof showToast === 'function') showToast('Studio evidence service unavailable', 'info');
+  });
+}
+
+window._chatPinThinkingTrailToStudio = _chatPinThinkingTrailToStudio;
+window._replayFrozenThinkingBubbles = _replayFrozenThinkingBubbles;
+window._replayServerThinkingBubbles = _replayServerThinkingBubbles;
 
 function _appendThinkingBubble(agent, runtimeClass, job = {}) {
   _upsertThinkingBubble({
@@ -3724,14 +4268,31 @@ function _appendChatBubble(sender, text, opts = {}) {
     .replace(/[^a-z0-9_-]/g, '');
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble' + (isUser ? ' user' : '') + ' sender-' + senderKey;
+  // B17: Reply-as-true-thread — when replying to a specific message, render the
+  // new bubble indented under the parent and expose a "jump to parent" affordance.
+  const quotedArr = Array.isArray(opts.quoted) ? opts.quoted : (opts.quoted ? [opts.quoted] : []);
+  const _parentMsgId = (quotedArr.find(q => q && (q.msgId || q.messageId)) || {});
+  const _parentKey = _parentMsgId.msgId || _parentMsgId.messageId || opts.parentMsgId || '';
+  if (_parentKey) {
+    bubble.classList.add('chat-bubble-threaded');
+    bubble.style.marginLeft = '28px';
+    bubble.style.borderLeft = '2px solid var(--accent)';
+    bubble.style.paddingLeft = '10px';
+    bubble.dataset.parentMsgId = String(_parentKey);
+  }
   const safeSender = _escapeHtml(sender);
   const senderMetaHtml = isUser ? 'you' : _chatAgentIdentityHtml(sender, true);
   const msgId = opts.msgId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
-  const quotedItems = Array.isArray(opts.quoted)
-    ? opts.quoted
-    : (opts.quoted ? [opts.quoted] : []);
+  const quotedItems = quotedArr;
   const quoted = quotedItems.length
-    ? `<div class="chat-meta">${quotedItems.map(q => `↳ replying to ${_escapeHtml(q.sender)}: ${_escapeHtml(q.preview)}`).join('<br>')}</div>`
+    ? `<div class="chat-meta">${quotedItems.map(q => {
+        const jumpKey = q && (q.msgId || q.messageId) ? String(q.msgId || q.messageId) : '';
+        const jumpSel = jumpKey ? `[data-message-id="${jumpKey}"],#chat-bubble-${jumpKey.replace(/[^a-zA-Z0-9_-]/g, '')}` : '';
+        const arrow = jumpSel
+          ? `<a href="javascript:void(0)" onclick="var n=document.querySelector('${jumpSel.replace(/'/g, '\\\'')}');if(n){n.scrollIntoView({behavior:'smooth',block:'center'});n.style.outline='2px solid var(--accent)';setTimeout(function(){n.style.outline='';},1200);}" style="text-decoration:none;color:var(--accent);cursor:pointer;" title="Jump to replied message">↳</a>`
+          : '↳';
+        return `${arrow} replying to ${_escapeHtml(q.sender)}: ${_escapeHtml(q.preview)}`;
+      }).join('<br>')}</div>`
     : '';
   const extracted = _extractAttachmentsFromMessage(text);
   const parsedSkill = isUser ? { text: extracted.text, events: [] } : _parseSkillEvents(extracted.text);
@@ -3769,8 +4330,6 @@ function _appendChatBubble(sender, text, opts = {}) {
     : '';
   const actionRow = isUser ? userActionRow : `
     <div class="chat-actions">
-      <button class="chat-action-btn" onclick="reactToMessage('${msgId}','👍')">👍</button>
-      <button class="chat-action-btn" onclick="reactToMessage('${msgId}','🤔')">🤔</button>
       <button class="chat-action-btn" data-reply-sender="${safeSender}" data-reply-preview="${_escapeHtml(text).slice(0, 120)}" data-reply-msgid="${_escapeHtml(String(opts.messageId || ''))}" onclick="setReplyTarget(this.dataset.replySender, this.dataset.replyPreview, this.dataset.replyMsgid)">Reply</button>
       <button class="chat-action-btn" data-suggest-sender="${safeSender}" data-suggest-preview="${_escapeHtml(text).slice(0, 160)}" onclick="showAgentPickerDropdown(this, this.dataset.suggestSender, this.dataset.suggestPreview)">Ask another</button>
       <button class="chat-action-btn" data-agent="${_escapeHtml(senderIdentity.key)}" data-text="${replayText}" data-msgid="${_escapeHtml(String(msgId))}" onclick="reprocessAgentMessage(this.dataset.agent, this.dataset.text, this.dataset.msgid)">Reprocess</button>
@@ -3784,7 +4343,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   const _tsDate = _now.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   const _tsToday = new Date().toDateString() === _now.toDateString();
   const _tsLabel = _tsTime + (_tsToday ? '' : ' · ' + _tsDate);
-  const _tokCount = !isUser ? (Number(opts.tokens || 0).toLocaleString() + ' tok') : '';
+  const _tokCount = !isUser ? (Number(opts.tokens || 0).toLocaleString() + ' Tokens') : '';
   const _traceItems = (!isUser && Array.isArray(opts.stageTrace) && opts.stageTrace.length) ? opts.stageTrace : null;
   const traceHtml = _traceItems
     ? `<details class="chat-bubble-trace"><summary>Trace &middot; ${_traceItems.length} step${_traceItems.length !== 1 ? 's' : ''}</summary><div class="chat-bubble-trace-body">${_traceItems.map((s, i) => `<div class="chat-bubble-trace-step"><span class="chat-bubble-trace-num">${i + 1}</span><span class="chat-bubble-trace-text">${_escapeHtml(String(s && s.text != null ? s.text : s))}</span></div>`).join('')}</div></details>`
@@ -4046,14 +4605,12 @@ function setReplyTarget(sender, preview, messageId) {
     updateChatStatusPills();
   }
 
+  // Reply target is conveyed via the banner above the input + the
+  // __fridaysReplyTargets payload sent with the message. We no longer dump
+  // "@agent\n> [agent] preview" jargon into the textarea — that polluted the
+  // user's draft and made it look like a quote-style reply, not a true reply.
   const input = document.getElementById('question-input');
-  if (input && !String(input.value || '').trim()) {
-    const tags = next.map(t => '@' + _chatAgentLabel(t.sender)).join(' ');
-    const quotes = next.map(t => `> [${_chatAgentLabel(t.sender)}] ${t.preview}`).join('\n');
-    input.value = `${tags}\n${quotes}\n\n`;
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
-  }
+  if (input) input.focus();
 
   renderReplyBanner();
   _applyReplyTargetHighlights();
@@ -4338,7 +4895,10 @@ function _startLoadingTicker(panel, agents, estimateMs) {
         if (state) {
           const runtimeClass = j.runtime_class ? ('[' + j.runtime_class + '] ') : '';
           if (j.status === 'completed') state.textContent = 'alive · completed';
-          else if (j.status === 'failed') state.textContent = 'alive · failed';
+          else if (j.status === 'failed') {
+            state.textContent = 'offline · failed';
+            if (typeof _loadAgentRegistry === 'function') setTimeout(_loadAgentRegistry, 250);
+          }
           else {
             const etaSuffix = etaRemaining > 0 ? (' · ~' + etaRemaining + 's left') : '';
             state.textContent = 'alive · ' + runtimeClass + (j.stage || j.status || 'running') + etaSuffix;
@@ -5066,7 +5626,7 @@ async function _performDeleteThread(convId) {
   }
 }
 
-function renderChatMessages(rows) {
+function renderChatMessages(rows, jobs = null) {
   const messages = _chatMessagesEl();
   if (!messages) return;
   if (!rows || !rows.length) {
@@ -5117,7 +5677,8 @@ function renderChatMessages(rows) {
   const snapshotJobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs)
     ? window.__fridaysThreadRuntimeSnapshot.jobs
     : [];
-  _syncThinkingBubbles(snapshotJobs);
+  const serverJobs = Array.isArray(jobs) ? jobs : [];
+  _syncThinkingBubbles(snapshotJobs.length ? snapshotJobs : serverJobs);
 
   // Inject Route-to buttons on the last agent bubble rendered from history.
   // _appendChatBubble skips relay extraction when fromHistory=true, so we do it here.
@@ -5161,6 +5722,17 @@ function renderChatMessages(rows) {
     });
     window.__fridaysPendingBubbleTraces = {};
   }
+  // STEP-CHAT-THOUGHT-BUBBLES-PERSIST-TO-STUDIO-20260430:
+  // Replay any frozen thinking-trail bubbles that belong to this thread.
+  try {
+    const convId = Number(window.__fridaysChatConversationId || 0);
+    if (convId && typeof _replayServerThinkingBubbles === 'function') {
+      _replayServerThinkingBubbles(convId, serverJobs);
+    }
+    if (convId && typeof _replayFrozenThinkingBubbles === 'function') {
+      _replayFrozenThinkingBubbles(convId);
+    }
+  } catch (_) {}
   // Scroll to newest message
   requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; });
 }
@@ -5173,6 +5745,22 @@ function _chatRowsSignature(rows) {
   const sender = String(last.sender || '').toLowerCase().trim();
   const len = String(last.content || '').length;
   return `${list.length}:${lastId}:${sender}:${len}`;
+}
+
+function _chatJobsSignature(jobs) {
+  const list = Array.isArray(jobs) ? jobs : [];
+  if (!list.length) return 'nojobs';
+  const last = list[list.length - 1] || {};
+  const traceLen = Array.isArray(last.stage_trace) ? last.stage_trace.length : 0;
+  return [
+    list.length,
+    String(last.job_id || ''),
+    String(last.status || ''),
+    String(last.stage || ''),
+    Number(last.elapsed_ms || 0),
+    traceLen,
+    String(last.error || '').length,
+  ].join(':');
 }
 
 function loadConversationMessages(convId, options = {}) {
@@ -5192,7 +5780,8 @@ function loadConversationMessages(convId, options = {}) {
         return false;
       }
       const rows = data.messages || [];
-      const nextSig = `${requestedConvId}:${_chatRowsSignature(rows)}`;
+      const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+      const nextSig = `${requestedConvId}:${_chatRowsSignature(rows)}:${_chatJobsSignature(jobs)}`;
       if (!force && window.__fridaysChatLastRenderSig === nextSig) {
         if (options.syncLastResponder) {
           const lastAgent = _lastReplyingAgent(rows);
@@ -5205,7 +5794,7 @@ function loadConversationMessages(convId, options = {}) {
         return false;
       }
       window.__fridaysChatLastRenderSig = nextSig;
-      renderChatMessages(rows);
+      renderChatMessages(rows, jobs);
       if (options.syncLastResponder) {
         const lastAgent = _lastReplyingAgent(rows);
         _applySingleThreadAgent(lastAgent, requestedConvId);
@@ -5264,7 +5853,10 @@ function refreshChatThreadList(preferredId = null) {
         opt.value = String(conv.id);
         const _rawTs2 = conv.timestamp || conv.created_at || '';
         const ts = _rawTs2 ? (function(s){ if (/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s) && !/[Z+]/.test(s.slice(-6))) s = s.replace(' ','T')+'Z'; const d = new Date(s); return isNaN(d) ? s.slice(0,16) : d.toLocaleDateString('en-AU',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'}); })(_rawTs2) : '';
-        opt.textContent = '#' + conv.id + ' · ' + (conv.title || '(untitled)') + (ts ? ' · ' + ts : '');
+        const rawTitle = String(conv.title || '(untitled)');
+        const title = rawTitle.length > 48 ? rawTitle.slice(0, 47) + '…' : rawTitle;
+        opt.textContent = '#' + conv.id + ' · ' + title + (ts ? ' · ' + ts : '');
+        opt.title = rawTitle + (ts ? '  ' + ts : '');
         threadSelect.appendChild(opt);
       });
 

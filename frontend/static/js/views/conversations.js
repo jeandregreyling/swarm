@@ -1,5 +1,18 @@
 // Conversations — load chat data, conversation detail, rename/delete
 // Extracted from terminal_base.html
+//
+// Hard-refresh behaviour summary (MD-FEATURE-32DFD66D8BA4 / -9792296AF505 /
+// -A138E31DED58):
+//   * On hard refresh, friday-auth.js fires `_authCheck()` from
+//     DOMContentLoaded → GET /api/auth/me. If the session cookie is valid the
+//     login overlay is suppressed (correct & intentional — see the
+//     "Hard refresh: no login prompt" investigation note in
+//     docs/FEATURES_TODO.md).
+//   * The chat tile does NOT auto-restore on hard refresh (no window
+//     persistence layer yet). When the user opens the Chat tile,
+//     loadChatData() runs below and ALWAYS defaults to a fresh thread unless
+//     the caller explicitly handed us `__fridaysChatOpenWithConvId`.
+//   * Locked by tests/test_hard_refresh_behavior.py.
 
 function loadChatData(win) {
   const messages = win.el.querySelector('#chat-messages');
@@ -108,6 +121,8 @@ function openConversationDetail(convId) {
           style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">Timeline</button>
         <button onclick="renameConversation(${conv.id})" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;">Edit Title</button>
         <button onclick="deleteConversation(${conv.id}, event)" style="padding:6px 10px;background:#f4433620;border:1px solid #f4433660;border-radius:4px;color:#f44336;font-size:11px;cursor:pointer;">Delete</button>
+        <button onclick="window.openRecord && window.openRecord('thread', ${conv.id})" title="Open this thread in Studio Records" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">In Records</button>
+        <button onclick="window.revealInFiles && window.revealInFiles('thread', ${conv.id})" title="Reveal this thread in the Files tile" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">In Files</button>
         ${proposalBadges}
         <span style="margin-left:auto;color:var(--text-dim);font-size:11px;">${(function(s){ if(!s)return''; if(/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s)&&!/[Z+]/.test(s.slice(-6))) s=s.replace(' ','T')+'Z'; const d=new Date(s); return isNaN(d)?s.slice(0,16):d.toLocaleString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); })(conv.created_at||'')} · ${(conv.source || 'unknown')}</span>
       `;

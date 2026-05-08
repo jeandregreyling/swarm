@@ -68,13 +68,17 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
         return None, 0
 
     from config import XAI_API_KEY, XAI_MODEL, ELEVEN_SYSTEM_PROMPT
+    try:
+        from coding_bible import inject as _bible_inject
+    except Exception:
+        _bible_inject = lambda p: p
     if not XAI_API_KEY:
         logger.error('[Eleven] XAI_API_KEY not configured')
         return None, 0
 
     _emit('loading context')
     context = _build_context(message)
-    system = ELEVEN_SYSTEM_PROMPT + f'\n\n{context}'
+    system = _bible_inject(ELEVEN_SYSTEM_PROMPT) + f'\n\n{context}'
 
     messages = [{'role': 'system', 'content': system}]
     if conversation_history:

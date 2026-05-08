@@ -1,0 +1,185 @@
+topic_id: music_creation
+title: Music creation, listening, performance, and song-building
+cadence: monthly
+tags: [music, composition, songwriting, arrangement, production, media-center, audio]
+sources:
+  - kind: prompt
+    title: Music fundamentals for Media Center
+    text: |
+      Teach Fridays the working vocabulary of music so agents can plan, critique,
+      and generate audio through Media Center.
+
+      Core elements:
+      - Rhythm: pulse, tempo, meter, groove, syncopation, swing, subdivision,
+        backbeat, downbeat, upbeat, polyrhythm, and rhythmic motif.
+      - Melody: contour, range, phrase, motif, repetition, sequence, call and
+        response, hook, topline, ornament, register, and melodic tension.
+      - Harmony: chord, triad, seventh chord, extension, inversion, cadence,
+        progression, tonic, dominant, subdominant, modulation, key change,
+        borrowed chord, pedal point, drone, and harmonic rhythm.
+      - Timbre: instrument tone, synthesis type, envelope, brightness, warmth,
+        grit, breath, resonance, attack, decay, sustain, release, texture, and
+        density.
+      - Dynamics: loudness, accent, crescendo, diminuendo, contrast, drop, lift,
+        silence, and energy curve.
+      - Form: section order, repetition, variation, transition, contrast, climax,
+        release, outro, and reprise.
+
+      When generating music, always separate:
+      1. Intent: mood, audience, use case, duration, and delivery format.
+      2. Structure: sections and approximate timestamps.
+      3. Palette: instruments, sound design, tempo, key, and mix aesthetic.
+      4. Performance: groove, vocal style, articulation, human feel, and phrasing.
+      5. Production: arrangement density, stereo image, effects, transitions,
+         loudness target, and export requirements.
+      6. Provenance: references, prompt, agent, model, run id, and review notes.
+
+  - kind: prompt
+    title: How to build a song
+    text: |
+      A practical song-building workflow for Fridays:
+
+      1. Brief
+      - Define the purpose: background bed, theme song, trailer cue, hook demo,
+        full song, remix, sting, transition, or sound logo.
+      - Define constraints: duration, tempo range, mood, language, vocal/no vocal,
+        genre, allowed references, and destination platform.
+
+      2. Foundation
+      - Pick tempo and meter.
+      - Choose key or modal center.
+      - Sketch a chord loop or drone.
+      - Establish the rhythmic identity: straight, swung, syncopated, sparse,
+        driving, shuffled, broken, or rubato.
+
+      3. Hook
+      - Create one memorable phrase: melodic hook, rhythmic hook, lyric hook,
+        bass motif, synth riff, drum pattern, or texture.
+      - Repeat it enough to become recognizable, then vary it slightly.
+
+      4. Sections
+      Common pop/electronic form:
+      - Intro: establish palette.
+      - Verse: lower density, story or setup.
+      - Pre-chorus/build: rising tension.
+      - Chorus/drop/hook: highest identity and memorability.
+      - Verse 2: variation.
+      - Bridge/breakdown: contrast.
+      - Final chorus/drop: payoff.
+      - Outro: release or loopable ending.
+
+      Other useful forms:
+      - AABA: statement, restatement, bridge, return.
+      - Through-composed: continuous development, useful for cinematic scoring.
+      - Loop-based: evolving repetition, useful for ambient, house, techno, hip-hop.
+      - Theme and variations: one idea transformed across sections.
+      - Cue form: hit points aligned to scenes.
+
+      5. Arrangement
+      - Add one element at a time: drums, bass, harmony, melody, texture, vocal.
+      - Use contrast between sections: density, octave, register, rhythm, silence.
+      - Keep each lane's job clear: kick anchors, bass supports, chords color,
+        lead identifies, percussion moves, pads glue, effects transition.
+
+      6. Lyrics and vocals
+      - Decide speaker, audience, tense, emotional arc, and title phrase.
+      - Write verses with concrete imagery and choruses with simple repeatable
+        language.
+      - Mark syllable stress and phrase length before generating a vocal guide.
+
+      7. Mix and review
+      - Balance kick, bass, vocal/lead, harmony, and ambience.
+      - Check intro impact, hook clarity, transition strength, low-end control,
+        harshness, stereo width, and ending.
+      - Store prompt, references, agent notes, render path, and reviewer outcome
+        in Knowledge Center.
+
+  - kind: prompt
+    title: Genre map for prompt writing
+    text: |
+      Use genres as bundles of rhythm, instrumentation, production style, and
+      cultural expectation. Avoid treating genre as a single sound.
+
+      Broad families and prompt cues:
+      - Classical: orchestra, chamber ensemble, piano, strings, counterpoint,
+        sonata, fugue, symphony, concerto, theme development, dynamic notation.
+      - Baroque: basso continuo, harpsichord, ornamentation, sequence, terraced
+        dynamics, contrapuntal motion.
+      - Romantic: expressive rubato, rich harmony, lyrical melody, dramatic
+        orchestration, large dynamic range.
+      - Jazz: swing, walking bass, ii-V-I, extended harmony, improvisation,
+        comping, blue notes, syncopation, brushes, horns.
+      - Blues: 12-bar form, call and response, shuffle, dominant sevenths,
+        bent notes, guitar/voice dialogue.
+      - Rock: drums, bass, electric guitar, riffs, verse/chorus, power chords,
+        drive, distortion, anthemic hooks.
+      - Punk: fast tempo, short form, raw guitars, simple changes, shouted vocal,
+        urgent energy.
+      - Metal: palm-muted riffs, double-kick drums, dense guitars, modal darkness,
+        growls or operatic vocals, breakdowns.
+      - Folk: acoustic instruments, narrative lyric, simple harmony, intimate
+        performance, regional rhythm and storytelling.
+      - Country: acoustic/electric guitar, pedal steel, fiddle, plainspoken lyric,
+        two-step or ballad feel, chorus storytelling.
+      - Hip-hop: beat, sample, loop, bass, rap flow, bars, hook, 808s, boom-bap,
+        trap hats, swing, ad-libs.
+      - R&B and soul: groove, warm harmony, expressive vocal, call and response,
+        bass pocket, lush chords.
+      - Funk: syncopated bass, tight drums, stabs, wah guitar, one-chord vamp,
+        rhythmic interlock.
+      - Reggae/dub: offbeat skank, one-drop drums, bass emphasis, delay throws,
+        space, spring reverb.
+      - House: four-on-the-floor, 120-128 BPM, piano/stab/bass groove, build,
+        drop, sidechain, club mix.
+      - Techno: repetitive pulse, machine rhythm, evolving filter movement,
+        minimal harmony, industrial or hypnotic texture.
+      - Trance: arpeggios, supersaw, long builds, breakdown, euphoric release,
+        130-140 BPM.
+      - Drum and bass: fast breakbeats, sub bass, 160-180 BPM, chopped drums,
+        tension, rolling energy.
+      - Ambient: slow evolution, drones, pads, field recordings, sparse melody,
+        low rhythmic pressure.
+      - Cinematic: orchestral/electronic hybrid, hit points, risers, impacts,
+        tension beds, emotional arc.
+      - Lo-fi: dusty drums, tape noise, soft keys, mellow samples, relaxed swing,
+        intimate imperfections.
+      - Pop: concise structure, strong hook, clear vocal, polished production,
+        memorable title phrase.
+      - Experimental: unusual timbre, nonstandard form, noise, chance, extended
+        technique, collage, generative systems.
+
+      Prompt pattern:
+      "Create a [duration] [genre/use case] at [tempo] with [instrument palette],
+      [rhythmic feel], [section arc], [mix aesthetic], and [reference-safe mood].
+      Preserve [hook/scene/provenance] for Studio review."
+
+  - kind: prompt
+    title: Music performance and listening guide
+    text: |
+      Fridays should understand music as performance, not just file output.
+
+      Playing music:
+      - Practice pulse first: clap, count, tap subdivisions, and feel the downbeat.
+      - Learn phrases, not isolated notes. A phrase has breath, direction, and
+        arrival.
+      - Slow practice reveals rhythm and fingering problems.
+      - Dynamics and articulation make generated parts sound intentional.
+      - Ensemble playing requires listening for time, tuning, balance, and space.
+      - Improvisation starts with constraints: scale, chord tones, rhythm cells,
+        call and response, and motif variation.
+
+      Listening analysis:
+      - First pass: emotional impression and energy curve.
+      - Second pass: section map with timestamps.
+      - Third pass: instruments and frequency roles.
+      - Fourth pass: hook, lyric, transition, and mix notes.
+      - Fifth pass: what to copy structurally without copying protected melody,
+        lyric, or distinctive arrangement.
+
+      Review checklist:
+      - Does the first 5 seconds tell the listener what world they are in?
+      - Is the hook identifiable after one listen?
+      - Do sections change for a reason?
+      - Is the low end controlled?
+      - Are vocals or lead elements intelligible?
+      - Does the ending support the destination: loop, cut, sting, or full close?

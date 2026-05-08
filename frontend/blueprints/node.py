@@ -89,12 +89,21 @@ def node_register():
     """Register a remote node. Requires name, url, api_key."""
     try:
         data = request.get_json(silent=True) or {}
-        name = str(data.get('name') or '').strip()
-        url = str(data.get('url') or '').strip()
-        api_key = str(data.get('api_key') or '').strip()
-        role = str(data.get('role') or 'contributor').strip()
+        # S-B6F548DCDD: surgical coercion — reject non-string scalar fields
+        # outright instead of stringifying lists/dicts (which would silently
+        # register nodes with junk names like "[1, 2, 3]").
+        for field in ('name', 'url', 'api_key', 'role'):
+            v = data.get(field)
+            if v is not None and not isinstance(v, str):
+                return jsonify({'error': f'{field} must be a string'}), 400
+        name = (data.get('name') or '').strip()
+        url = (data.get('url') or '').strip()
+        api_key = (data.get('api_key') or '').strip()
+        role = (data.get('role') or 'contributor').strip()
         agents = data.get('agents', [])
         capabilities = data.get('capabilities', [])
+        if not isinstance(agents, list) or not isinstance(capabilities, list):
+            return jsonify({'error': 'agents and capabilities must be arrays'}), 400
 
         if not name or not url or not api_key:
             return jsonify({'error': 'name, url, and api_key are required'}), 400
@@ -132,9 +141,14 @@ def node_discover():
     """Discover and register a remote node by URL. Requires url + api_key."""
     try:
         data = request.get_json(silent=True) or {}
-        url = str(data.get('url') or '').strip()
-        api_key = str(data.get('api_key') or '').strip()
-        name = str(data.get('name') or '').strip() or None
+        # S-B6F548DCDD: reject non-string fields rather than coerce.
+        for field in ('url', 'api_key', 'name'):
+            v = data.get(field)
+            if v is not None and not isinstance(v, str):
+                return jsonify({'error': f'{field} must be a string'}), 400
+        url = (data.get('url') or '').strip()
+        api_key = (data.get('api_key') or '').strip()
+        name = (data.get('name') or '').strip() or None
 
         if not url or not api_key:
             return jsonify({'error': 'url and api_key are required'}), 400

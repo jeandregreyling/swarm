@@ -6,8 +6,8 @@
 
 #sundial {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 150px;
+  height: 150px;
   flex-shrink: 0;
 }
 
@@ -94,8 +94,8 @@
 }
 
 .sundial-dot {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -160,7 +160,11 @@
   min-width: 140px;
   max-width: 220px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-  pointer-events: none;
+  /* Y.58e — was pointer-events:none which made the entire tip (and every
+     button inside it: Auto, Boost, Unload) inert. mouseenter / click events
+     never fired, so the user could see the buttons but clicking 'did nothing'.
+     The tip needs pointer-events:auto so its handlers actually run. */
+  pointer-events: auto;
   display: none;
   animation: stip-in 0.15s ease-out;
 }
@@ -318,6 +322,25 @@
 /* ── Tile Hover Tip ───────────────────────────────────────────────────────── */
 
 .home-card { position: relative; }
+
+/* ── P4-M31: Hive Grid creao.ai-style parallax (minimal first pass) ─────── */
+/* Subtle 3D tilt + depth on hover, mouse-tracked translation, GPU-only.    */
+/* Disabled when prefers-reduced-motion is requested.                       */
+.home-card {
+  transform: translate3d(0,0,0) rotateX(var(--hc-rx,0deg)) rotateY(var(--hc-ry,0deg));
+  transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease;
+  will-change: transform;
+  transform-style: preserve-3d;
+}
+.home-card:hover {
+  transform: translate3d(0,-4px,0) rotateX(var(--hc-rx,0deg)) rotateY(var(--hc-ry,0deg)) scale(1.018);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.34), 0 4px 12px rgba(0,0,0,0.18);
+  z-index: 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-card { transition: none !important; transform: none !important; }
+  .home-card:hover { transform: none !important; }
+}
 
 .tile-hover-tip {
   position: fixed;

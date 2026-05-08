@@ -340,7 +340,7 @@ function _renderSourcesList() {
           <button class="lib-source-btn" onclick="libOpenSource(${s.source_id})" title="Open full text">⤢</button>
           <button class="lib-source-btn" onclick="libReclassifyPrompt(${s.source_id}, event)" title="Reclassify / retag">⇄</button>
           <button class="lib-source-btn" onclick="libReprocess(${s.source_id}, this)" title="Re-embed">↻</button>
-          <button class="lib-source-btn danger" onclick="libDeleteSource(${s.source_id}, this)" title="Delete">✕</button>
+          <button class="lib-source-btn danger" onclick="libDeleteSource(${s.source_id}, this)" title="Delete"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
         </div>
       </div>`;
   }).join('');
@@ -686,7 +686,7 @@ function _libShowSourceModal(src) {
     <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 22px;max-width:820px;width:94%;max-height:88vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 14px 44px rgba(0,0,0,0.45);">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
         <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;">Library Document #${src.source_id}</div>
-        <button onclick="_libCloseSourceModal()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;width:26px;height:26px;">✕</button>
+        <button onclick="_libCloseSourceModal()" title="Close" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
 
       <input id="lib-modal-title" class="lib-form-input" value="${_esc(src.title || '')}" placeholder="Title"
@@ -809,7 +809,7 @@ async function libOpenTopicsManager() {
           <div style="font-size:13px;font-weight:700;color:var(--text);">Research Topics</div>
           <div style="font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.35;">Scholar &amp; Seeker run idle research on active topics overnight. Paused topics stay in the list but are skipped.</div>
         </div>
-        <button onclick="_libCloseTopicsModal()" title="Close (Esc)" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;width:24px;height:24px;flex:0 0 auto;line-height:1;">✕</button>
+        <button onclick="_libCloseTopicsModal()" title="Close (Esc)" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;width:24px;height:24px;flex:0 0 auto;line-height:1;display:inline-flex;align-items:center;justify-content:center;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
 
       <form onsubmit="event.preventDefault(); libTopicsAdd();" style="display:flex;gap:6px;align-items:center;flex:0 0 auto;">
@@ -894,8 +894,8 @@ async function libTopicsReload() {
             </div>
           </div>
           <button onclick="libTopicsRunNow(${t.id})" title="Run now" style="background:none;border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;color:var(--accent);cursor:pointer;" ${paused ? 'disabled' : ''}>▶</button>
-          <button onclick="libTopicsToggle(${t.id}, ${paused ? 1 : 0})" title="${paused ? 'Resume' : 'Pause'}" style="background:none;border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;color:var(--text-dim);cursor:pointer;">${paused ? '▶ Resume' : '⏸ Pause'}</button>
-          <button onclick="libTopicsDelete(${t.id})" title="Delete" style="background:none;border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;color:var(--danger);cursor:pointer;">✕</button>
+          <button onclick="libTopicsToggle(${t.id}, ${paused ? 1 : 0})" title="${paused ? 'Resume' : 'Pause'}" style="background:none;border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;color:var(--text-dim);cursor:pointer;display:inline-flex;align-items:center;gap:4px;">${paused ? '<svg viewBox="0 0 16 16" width="9" height="9" fill="currentColor" aria-hidden="true"><path d="M4 3l9 5-9 5z"/></svg> Resume' : '<svg viewBox="0 0 16 16" width="9" height="9" fill="currentColor" aria-hidden="true"><rect x="4" y="3" width="3" height="10"/><rect x="9" y="3" width="3" height="10"/></svg> Pause'}</button>
+          <button onclick="libTopicsDelete(${t.id})" title="Delete" style="background:none;border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;color:var(--danger);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
         </div>`;
     }).join('');
   } catch (e) {
@@ -951,4 +951,46 @@ async function libTopicsRunNow(id) {
   } catch (e) {
     alert('Run failed: ' + String(e));
   }
+}
+
+// ── STEP-KC-TOPICS-HIVE-NAVIGATION-20260430 ─────────────────────────────────
+// Deep-link helpers so KC topics, sources, and documents all resolve to the
+// same Hive Nodes spine via the `/api/hive/resolve` endpoint. Exposed on
+// window so other views (knowledge.js, chat surfaces, top-bar dropdowns)
+// can call them without coupling to library.js internals.
+async function kcResolveHiveHref(kind, id) {
+  try {
+    const r = await fetch(`/api/hive/resolve?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`);
+    const d = await r.json();
+    if (d && d.ok && d.href) return d.href;
+  } catch (_) {}
+  return null;
+}
+
+async function kcOpenHive(kind, id) {
+  const href = await kcResolveHiveHref(kind, id);
+  if (href) {
+    if (typeof window.openWindow === 'function') {
+      window.openWindow('hive-nodes', 'Hive Nodes', 'view-hive-nodes', { url: href });
+    } else {
+      window.location.assign(href);
+    }
+    return true;
+  }
+  return false;
+}
+
+async function kcLoadHiveGraph(recent = 30) {
+  try {
+    const r = await fetch(`/api/hive/graph?recent=${encodeURIComponent(recent)}`);
+    const d = await r.json();
+    if (d && d.ok) return d;
+  } catch (_) {}
+  return { ok: false, nodes: [], edges: [], counts: { topics: 0, sources: 0, edges: 0 } };
+}
+
+if (typeof window !== 'undefined') {
+  window.kcResolveHiveHref = kcResolveHiveHref;
+  window.kcOpenHive = kcOpenHive;
+  window.kcLoadHiveGraph = kcLoadHiveGraph;
 }

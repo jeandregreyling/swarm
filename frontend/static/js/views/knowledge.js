@@ -36,13 +36,15 @@ let _knowledgeLoaded = { files: false, docs: false, library: false, guide: false
 const _KN_TABS = [
   { id: 'files',   label: 'Files',   icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
   { id: 'docs',    label: 'Docs',    icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M4 3.5h7.5v9H4a1.5 1.5 0 0 0 0-3h7.5M4 3.5a1.5 1.5 0 0 0 0 3M4 6.5h7.5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
+  { id: 'memory',  label: 'Memory',  icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
   { id: 'library', label: 'Library', icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
+  { id: 'tasker',  label: 'Tasker',  icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
   { id: 'guide',   label: 'Guide',   icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M3 2.5h10v11H3zM5.5 6h5M5.5 8.5h5M5.5 11h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
 ];
 
 function loadKnowledgeData(win) {
   _knowledgeWin = win;
-  _knowledgeLoaded = { files: false, docs: false, library: false };
+  _knowledgeLoaded = { files: false, docs: false, memory: false, library: false, tasker: false, guide: false };
 
   const root = win.el.querySelector('#knowledge-root');
   if (!root) return;
@@ -62,9 +64,99 @@ function loadKnowledgeData(win) {
     tabBar.innerHTML = tabsHtml + infoHtml;
   }
 
+  // P4-S37: refresh interests strip whenever Knowledge opens
+  knowledgeRefreshInterestStrip();
+
   // Show initial tab
   knowledgeSetTab(_knowledgeTab);
 }
+
+// P4-S37 — populate the interests strip in the Knowledge header
+function knowledgeRefreshInterestStrip() {
+  const list = document.getElementById('kn-interests-list');
+  if (!list) return;
+  fetch('/api/interests').then(r => r.json()).then(d => {
+    const items = (d && (d.interests || d.topics || d.items)) || [];
+    if (!Array.isArray(items) || !items.length) {
+      list.textContent = 'no topics yet — click "Edit interests" to add a few.';
+      return;
+    }
+    const labels = items.slice(0, 10).map(it => typeof it === 'string' ? it : (it.topic || it.label || it.name)).filter(Boolean);
+    list.innerHTML = labels.map(l =>
+      `<span style="display:inline-block;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:1px 8px;margin-right:4px;color:var(--text);font-style:normal;font-size:10.5px;">${_knEsc(l)}</span>`
+    ).join('') + (items.length > labels.length ? `<span style="color:var(--text-dim);">+${items.length - labels.length} more</span>` : '');
+  }).catch(() => { list.textContent = '(unable to load)'; });
+  // STEP-KC-INTERESTS-GENERAL-KNOWLEDGE-SUGGESTIONS-20260430 — render
+  // adjacency-based suggestions next to the existing topics so the user can
+  // approve/ignore optional general-knowledge additions with a one-click
+  // surface. Each suggestion shows *why* it was suggested.
+  knowledgeRefreshSuggestions();
+}
+
+function knowledgeRefreshSuggestions() {
+  const strip = document.getElementById('kn-interests-strip');
+  if (!strip) return;
+  // Mount/replace a sibling row inside the strip for suggestions.
+  let row = document.getElementById('kn-interests-suggestions');
+  if (!row) {
+    row = document.createElement('div');
+    row.id = 'kn-interests-suggestions';
+    row.style.cssText = 'flex-basis:100%;display:none;margin-top:6px;padding-top:6px;border-top:1px dashed color-mix(in srgb,var(--accent) 25%,var(--border));font-size:10.5px;color:var(--text-dim);';
+    strip.appendChild(row);
+  }
+  let dismissed;
+  try { dismissed = new Set(JSON.parse(localStorage.getItem('swarm_kc_suggestions_dismissed') || '[]')); }
+  catch (_) { dismissed = new Set(); }
+  fetch('/api/library/topics/suggestions').then(r => r.json()).then(d => {
+    const sugs = (d && d.suggestions) || [];
+    const active = sugs.filter(s => !dismissed.has((s.topic || '').toLowerCase()));
+    if (!active.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
+    row.style.display = '';
+    row.innerHTML =
+      '<span style="color:var(--text);font-weight:600;margin-right:6px;">You might also like</span>' +
+      active.map(s => {
+        const t = _knEsc(s.topic);
+        const why = _knEsc(s.because || '');
+        const cat = _knEsc(s.category || 'general');
+        return `<span style="display:inline-flex;align-items:center;gap:4px;background:color-mix(in srgb,var(--accent) 7%,var(--card));border:1px solid var(--border);border-radius:999px;padding:2px 4px 2px 10px;margin:2px 4px 2px 0;">
+          <span title="${why}" style="color:var(--text);">${t}</span>
+          <button onclick="knowledgeApproveSuggestion('${t.replace(/'/g, "\\'")}','${cat}')" title="Add to your topics — ${why}" style="background:var(--accent);color:#000;border:none;border-radius:999px;padding:1px 8px;font-size:9.5px;font-weight:700;cursor:pointer;">+ Add</button>
+          <button onclick="knowledgeIgnoreSuggestion('${t.replace(/'/g, "\\'")}')" title="Hide this suggestion" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;line-height:1;padding:0 4px;">✕</button>
+        </span>`;
+      }).join('') +
+      '<span style="color:var(--text-dim);margin-left:4px;">— suggestions are based on adjacency to topics you already added, never on chat content.</span>';
+  }).catch(() => { row.style.display = 'none'; });
+}
+
+function knowledgeApproveSuggestion(topic, category) {
+  fetch('/api/library/topics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ topic, category: category || 'general', source: 'suggestion' }),
+  }).then(r => r.json()).then(d => {
+    if (d && d.ok) {
+      if (typeof showToast === 'function') showToast(`Added "${topic}" to your topics`, 'success');
+      knowledgeRefreshInterestStrip();
+    } else if (typeof showToast === 'function') {
+      showToast('Could not add topic: ' + ((d && d.error) || 'unknown'), 'error');
+    }
+  }).catch(() => {
+    if (typeof showToast === 'function') showToast('Network error adding topic', 'error');
+  });
+}
+
+function knowledgeIgnoreSuggestion(topic) {
+  let dismissed;
+  try { dismissed = new Set(JSON.parse(localStorage.getItem('swarm_kc_suggestions_dismissed') || '[]')); }
+  catch (_) { dismissed = new Set(); }
+  dismissed.add(String(topic || '').toLowerCase());
+  try { localStorage.setItem('swarm_kc_suggestions_dismissed', JSON.stringify(Array.from(dismissed))); } catch (_) {}
+  knowledgeRefreshSuggestions();
+}
+
+window.knowledgeRefreshSuggestions = knowledgeRefreshSuggestions;
+window.knowledgeApproveSuggestion = knowledgeApproveSuggestion;
+window.knowledgeIgnoreSuggestion = knowledgeIgnoreSuggestion;
 
 /* Info popover: describes Knowledge Center + how Ctrl+Space plugs into it */
 function knowledgeOpenInfo() {
@@ -143,6 +235,8 @@ async function knowledgeSeedInterests() {
       if (status) status.textContent = `Saved ${d.count || 0} topic${d.count === 1 ? '' : 's'}.`;
       ta.value = '';
       if (typeof showToast === 'function') showToast('Interests saved — Librarian will keep an eye out.');
+      // P4-S37: refresh the in-page strip immediately
+      try { knowledgeRefreshInterestStrip(); } catch (_) {}
     } else {
       if (status) status.textContent = `Error: ${(d && d.error) || 'failed'}`;
     }
@@ -178,15 +272,25 @@ async function knowledgeRunQuery() {
       <span><strong style="color:var(--text);">${results.length}</strong> chunks retrieved for "${_knEsc(q)}"</span>
       <span>Top result: <strong style="color:var(--text);">${Math.round((results[0].score || 0) * 100)}% match</strong></span>
     </div>`;
-    const rows = results.map(r => {
+    const rows = results.map((r, idx) => {
       const scorePct = Math.round((r.score || 0) * 100);
       const excerpt = _knEsc((r.chunk_text || '').slice(0, 240));
-      return `<div style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);margin-bottom:6px;">
+      const title = _knEsc(r.title || 'Untitled');
+      const sourceType = _knEsc(r.source_type || 'source');
+      const path = _knEsc(r.path || r.source_path || r.url || '');
+      // P4-S36: every result is selectable — Open / Send to chat / Copy.
+      return `<div data-kn-result-idx="${idx}" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);margin-bottom:6px;">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:4px;">
-          <div style="font-size:11.5px;font-weight:700;color:var(--text);">${_knEsc(r.title || 'Untitled')}</div>
-          <div style="font-size:10px;color:var(--text-dim);white-space:nowrap;">${_knEsc(r.source_type || 'source')} · ${scorePct}%</div>
+          <div style="font-size:11.5px;font-weight:700;color:var(--text);flex:1;min-width:0;">${title}</div>
+          <div style="font-size:10px;color:var(--text-dim);white-space:nowrap;">${sourceType} · ${scorePct}%</div>
         </div>
-        <div style="font-size:11px;color:var(--text-dim);line-height:1.55;">${excerpt}…</div>
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.55;margin-bottom:6px;">${excerpt}…</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          ${path ? `<button onclick="knowledgeOpenResult('${path.replace(/'/g, "\\'")}')" style="background:var(--accent);color:#000;border:none;border-radius:5px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;">Open</button>` : ''}
+          <button onclick="knowledgeSendResultToChat('${title.replace(/'/g, "\\'")}', '${path.replace(/'/g, "\\'")}')" style="background:var(--window-header);border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--text);cursor:pointer;">Send to chat</button>
+          ${path ? `<button onclick="knowledgeCopyResultPath('${path.replace(/'/g, "\\'")}')" style="background:transparent;border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--text-dim);cursor:pointer;">Copy path</button>` : ''}
+          ${path ? `<span style="font-size:10px;color:var(--text-dim);font-family:monospace;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%;">${path}</span>` : ''}
+        </div>
       </div>`;
     }).join('');
     out.innerHTML = header + rows;
@@ -206,6 +310,42 @@ function knowledgeClearQuery() {
 
 function _knEsc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// P4-S36 — actions on selectable RAG results
+function knowledgeOpenResult(path) {
+  if (!path) return;
+  if (/^https?:\/\//i.test(path)) { window.open(path, '_blank', 'noopener'); return; }
+  // Open via Files window if available
+  if (typeof openWindow === 'function') {
+    openWindow('files', 'Files', 'view-files');
+    setTimeout(() => {
+      if (typeof filesPreviewFileByPath === 'function') filesPreviewFileByPath(path);
+      else if (typeof filesNavigateTo === 'function') {
+        const dir = path.includes('/') ? path.split('/').slice(0, -1).join('/') : '';
+        filesNavigateTo(dir);
+      }
+    }, 250);
+  }
+}
+
+function knowledgeSendResultToChat(title, path) {
+  const text = path ? `Reference: ${title} — ${path}` : `Reference: ${title}`;
+  if (typeof openWindow === 'function') openWindow('chat', 'Chat', 'view-chat');
+  setTimeout(() => {
+    const inp = document.getElementById('chat-input') || document.querySelector('textarea[id*="chat"]');
+    if (inp) {
+      inp.value = (inp.value ? inp.value + '\n' : '') + text;
+      inp.focus();
+      if (typeof showToast === 'function') showToast('Reference dropped into chat input');
+    }
+  }, 250);
+}
+
+function knowledgeCopyResultPath(path) {
+  if (!path) return;
+  try { navigator.clipboard.writeText(path); if (typeof showToast === 'function') showToast('Path copied'); }
+  catch (_) {}
 }
 
 function knowledgeSetTab(tab) {
@@ -258,6 +398,18 @@ function _knLoadSubView(tab) {
     if (typeof loadDocsData === 'function') loadDocsData(mockWin);
     setTimeout(() => _knClassifyItems(panel), 500);
   }
+  else if (tab === 'memory') {
+    const panel = document.getElementById('kn-panel-memory');
+    if (!panel) return;
+    const tpl = document.getElementById('view-memory');
+    if (tpl) {
+      const clone = tpl.content.cloneNode(true);
+      panel.innerHTML = '';
+      panel.appendChild(clone);
+    }
+    const mockWin = { el: panel };
+    if (typeof loadMemoryData === 'function') loadMemoryData(mockWin);
+  }
   else if (tab === 'library') {
     const panel = document.getElementById('kn-panel-library');
     if (!panel) return;
@@ -269,6 +421,18 @@ function _knLoadSubView(tab) {
     }
     if (typeof libInit === 'function') libInit();
     setTimeout(() => _knClassifyItems(panel), 500);
+  }
+  else if (tab === 'tasker') {
+    const panel = document.getElementById('kn-panel-tasker');
+    if (!panel) return;
+    const tpl = document.getElementById('view-tasker');
+    if (tpl) {
+      const clone = tpl.content.cloneNode(true);
+      panel.innerHTML = '';
+      panel.appendChild(clone);
+    }
+    const mockWin = { el: panel };
+    if (typeof loadTaskerData === 'function') loadTaskerData(mockWin);
   }
   else if (tab === 'guide') {
     const panel = document.getElementById('kn-panel-guide');

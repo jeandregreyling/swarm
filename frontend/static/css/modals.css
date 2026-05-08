@@ -224,11 +224,28 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   width: 90%;
-  max-width: 450px;
-  max-height: 80vh;
-  overflow-y: auto;
+  max-width: 720px;
+  min-width: 360px;
+  min-height: 280px;
+  max-height: 90vh;
+  overflow: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   padding: 24px;
+  resize: both;
+  /* When free-positioned by the drag handler these kick in: */
+}
+#settings-box.dragging,
+#settings-box.free {
+  position: absolute;
+  margin: 0;
+}
+#settings-modal.free {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+#settings-box h2 {
+  cursor: move;
+  user-select: none;
 }
 /* ─────────────────────────────────────────────────────────────────────────
    TIMEZONE PICKER MODAL
@@ -431,6 +448,49 @@ input[type="range"]::-moz-range-thumb:hover {
 #close-settings:hover {
   background: var(--accent-hover);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Y.58 — Settings inside a floating-window: strip box chrome so it doesn't
+   look like a window-in-a-window, and shrink the close affordance buttons.
+   The window class is `.floating-window` (window-manager.js); body wrapper
+   is `.window-content`. We also key off body[data-settings-windowed="1"]
+   that loadSettingsWindowData sets so the rules win against inline styles.
+   ───────────────────────────────────────────────────────────────────────── */
+.floating-window .window-content #settings-box,
+body[data-settings-windowed="1"] #settings-box {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 14px 16px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  resize: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+/* Hide the inline ✕ — the floating-window header already has its own close. */
+.floating-window .window-content #settings-box > button[onclick="closeSettings()"],
+body[data-settings-windowed="1"] #settings-box > button[onclick="closeSettings()"] {
+  display: none !important;
+}
+/* Shrink the bottom Done button so it isn't a giant full-width slab. */
+.floating-window .window-content #close-settings,
+body[data-settings-windowed="1"] #close-settings {
+  width: auto !important;
+  padding: 6px 14px !important;
+  font-size: 12px !important;
+  margin-top: 16px !important;
+  display: inline-block !important;
+}
+/* Window header already shows "Settings" — drop the redundant h2. */
+.floating-window .window-content #settings-box h2,
+body[data-settings-windowed="1"] #settings-box h2 {
+  display: none !important;
+}
 /* ─────────────────────────────────────────────────────────────────────────
    TOAST NOTIFICATIONS
    ───────────────────────────────────────────────────────────────────────── */
@@ -513,4 +573,163 @@ input[type="range"]::-moz-range-thumb:hover {
   .card-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
   #home-content { padding: 16px; }
   #home-header { padding: 16px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   V8C — ELEGANT ATMOSPHERE SLIDERS (scoped to #settings-box)
+   Goals: glossy track, accent-fill on the left, macOS-ish thumb, focus
+   ring, works identically in light + dark via color-mix.
+   ───────────────────────────────────────────────────────────────────────── */
+#settings-box input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 26px;                 /* generous hit target */
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  accent-color: var(--accent);  /* native fill where supported */
+  margin: 2px 0;
+}
+#settings-box input[type="range"]:focus-visible {
+  outline: none;
+}
+#settings-box input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent 78%),
+    0 2px 6px rgba(0,0,0,0.18);
+}
+#settings-box input[type="range"]:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent 78%),
+    0 2px 6px rgba(0,0,0,0.18);
+}
+
+/* WebKit track — glossy rail with subtle inset */
+#settings-box input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--border) 90%, black 10%) 0%,
+    color-mix(in srgb, var(--border) 65%, transparent 35%) 100%
+  );
+  box-shadow:
+    inset 0 1px 2px rgba(0,0,0,0.18),
+    inset 0 -1px 0 color-mix(in srgb, white 16%, transparent 84%);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent 40%);
+}
+
+/* WebKit thumb — macOS-style puck */
+#settings-box input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in srgb, var(--accent) 55%, white 45%) 0%,
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 78%, black 22%) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, black 30%);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.28),
+    0 0 0 2px color-mix(in srgb, var(--card) 80%, transparent 20%),
+    inset 0 1px 0 color-mix(in srgb, white 38%, transparent 62%);
+  transition: transform .14s ease, box-shadow .14s ease;
+}
+#settings-box input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.08);
+  box-shadow:
+    0 2px 8px color-mix(in srgb, var(--accent) 45%, transparent 55%),
+    0 0 0 2px color-mix(in srgb, var(--card) 80%, transparent 20%),
+    inset 0 1px 0 color-mix(in srgb, white 38%, transparent 62%);
+}
+#settings-box input[type="range"]:active::-webkit-slider-thumb {
+  transform: scale(0.96);
+}
+
+/* Firefox track + progress */
+#settings-box input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 85%, transparent 15%);
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent 45%);
+}
+#settings-box input[type="range"]::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 70%, transparent 30%) 0%,
+    var(--accent) 100%
+  );
+}
+#settings-box input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in srgb, var(--accent) 55%, white 45%) 0%,
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 78%, black 22%) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, black 30%);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.28),
+    0 0 0 2px color-mix(in srgb, var(--card) 80%, transparent 20%);
+  transition: transform .14s ease;
+}
+#settings-box input[type="range"]:hover::-moz-range-thumb {
+  transform: scale(1.08);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   V8C — ELEGANT <select> inside #settings-box (font size + font family)
+   Removes the raw-OS look, matches the card surfaces around it.
+   ───────────────────────────────────────────────────────────────────────── */
+#settings-box select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding: 7px 30px 7px 12px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent 25%);
+  background-color: color-mix(in srgb, var(--card) 92%, white 8%);
+  /* chevron glyph */
+  background-image:
+    linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--text-dim) 70%, transparent 30%) 50%),
+    linear-gradient(-45deg, transparent 50%, color-mix(in srgb, var(--text-dim) 70%, transparent 30%) 50%);
+  background-position:
+    calc(100% - 14px) 14px,
+    calc(100% - 9px) 14px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 14%, transparent 86%),
+    0 1px 2px rgba(0,0,0,0.06);
+  outline: none;
+}
+#settings-box select:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
+  background-color: color-mix(in srgb, var(--card) 86%, white 14%);
+}
+#settings-box select:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border) 30%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 14%, transparent 86%),
+    0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent 78%);
+}
+body.mode-dark #settings-box select {
+  background-color: color-mix(in srgb, var(--card) 88%, black 12%);
 }

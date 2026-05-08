@@ -96,6 +96,11 @@ def get_proposal_detail(proposal_id):
 @proposals_bp.route("/api/queue", methods=["POST"])
 def intake():
     data = request.get_json(silent=True) or {}
+    # Y.56: type-check before .strip() (Y.50 class).
+    for col in ("agent", "title"):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({"ok": False, "error": f"{col} must be a string"}), 400
     agent = data.get("agent", "manual_test")
     title = (data.get("title") or "").strip()
     description = data.get("description", "") or ""
@@ -118,7 +123,23 @@ def intake():
                   (proposal_id, title, description, agent, "pending"))
         conn.commit()
         conn.close()
-        return jsonify({"ok": True, "proposal_id": proposal_id})
+        try:
+            from core.records import mirror as _records_mirror
+            _records_mirror('proposal', proposal_id, actor='proposal_intake')
+        except Exception:
+            pass
+        linked_project_id = ""
+        try:
+            from utils.studio_intake import link_proposal_to_project
+            linked_project_id = link_proposal_to_project(
+                proposal_id,
+                title=title,
+                description=description,
+                requested_project_id=data.get("project_id") or "",
+            )
+        except Exception:
+            linked_project_id = ""
+        return jsonify({"ok": True, "proposal_id": proposal_id, "project_id": linked_project_id})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
@@ -155,6 +176,11 @@ def edit_proposal(proposal_id):
         c.execute(f"UPDATE work_proposals SET {', '.join(updates)} WHERE proposal_id = ?", values)
         conn.commit()
         conn.close()
+        try:
+            from core.records import mirror as _records_mirror
+            _records_mirror('proposal', proposal_id, actor='proposal_edit')
+        except Exception:
+            pass
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -221,6 +247,12 @@ def update_proposal_status(proposal_id):
                 args=(normalized_id, new_status, actor, note),
                 daemon=True
             ).start()
+        except Exception:
+            pass
+
+        try:
+            from core.records import mirror as _records_mirror
+            _records_mirror('proposal', normalized_id, actor='proposal_status')
         except Exception:
             pass
 
@@ -462,6 +494,11 @@ def list_proposal_notes(proposal_id):
 def add_proposal_note(proposal_id):
     """Add a note to a proposal. Used by Duck, agents, and Ghost."""
     data = request.get_json() or {}
+    # Y.56: type-check before .strip() (Y.50 class).
+    for col in ("content", "author"):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({"ok": False, "error": f"{col} must be a string"}), 400
     content = (data.get("content") or "").strip()
     author  = (data.get("author") or "ghost").strip()
     if not content:

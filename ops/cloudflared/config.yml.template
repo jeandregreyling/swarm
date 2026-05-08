@@ -1,0 +1,30 @@
+# Cloudflare Tunnel config for remote Swarm access without port-forwarding.
+#
+# Setup:
+#   1. cloudflared tunnel login
+#   2. cloudflared tunnel create swarm
+#   3. Copy the tunnel UUID into this file and into ~/.cloudflared/ credentials.
+#   4. cloudflared tunnel route dns swarm {{DOMAIN}}
+#   5. Copy this file (after substitution) to /etc/cloudflared/config.yml
+#   6. systemctl enable --now cloudflared
+#
+# No public port is ever opened on the Swarm host — all traffic egresses to
+# Cloudflare over HTTPS/QUIC. 2FA on /api/auth/2fa/* remains mandatory.
+
+tunnel: {{TUNNEL_UUID}}
+credentials-file: /etc/cloudflared/{{TUNNEL_UUID}}.json
+
+# Preserve inbound request Host header so Flask sees the public domain.
+originRequest:
+  connectTimeout: 30s
+  noTLSVerify: false
+
+ingress:
+  - hostname: {{DOMAIN}}
+    service: http://127.0.0.1:5050
+    originRequest:
+      httpHostHeader: {{DOMAIN}}
+      # Disable the Cloudflare-side admin surface at the tunnel edge.
+      noHappyEyeballs: true
+  # Catch-all required by cloudflared.
+  - service: http_status:404

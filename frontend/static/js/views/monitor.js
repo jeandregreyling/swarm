@@ -140,10 +140,21 @@ function loadMonitorData(win) {
             <div style="font-weight:600;margin-bottom:4px;">ALM Governance</div>
             <div style="font-size:11px;color:var(--text-dim);">Loading...</div>
           </div>
+          <div id="monitor-health-check" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <div style="font-weight:600;">Health Check</div>
+              <span id="monitor-health-badge" style="font-size:9px;color:var(--text-dim);">scanning…</span>
+            </div>
+            <div id="monitor-health-detail" style="font-size:11px;color:var(--text-dim);margin-top:6px;">Agent 20 health digest result appears here.</div>
+            <div style="margin-top:6px;display:flex;gap:6px;">
+              <button onclick="openWindow('health-digest','Health Digest','view-health-digest')" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:9px;cursor:pointer;">Open digest →</button>
+            </div>
+          </div>
           <div id="monitor-services" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
             <div style="font-weight:600;margin-bottom:6px;">Service Health</div>
             <div style="font-size:11px;color:var(--text-dim);">Loading...</div>
           </div>
+          <div id="monitor-fan-operator" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;display:none;"></div>
           <div id="monitor-activity" style="margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;">
             <div style="font-weight:600;margin-bottom:6px;">System Activity</div>
             <div id="mn-activity-body" style="max-height:200px;overflow-y:auto;">
@@ -154,8 +165,10 @@ function loadMonitorData(win) {
         </div>`;
       // Trigger the slow-refresh sections once immediately after skeleton is ready
       renderMonitorAlm();
+      _renderMonitorHealthCheck(win);
       _renderMonitorServices(win);
       _renderMonitorActivity(win);
+      _renderMonitorFanOperator(win);
     }
 
     // ── Every tick: update only the live-changing values in place ───────────
@@ -228,6 +241,43 @@ function loadMonitorData(win) {
     _renderMonitorServices(win);
     _renderMonitorActivity(win);
   }, 30000);
+  if (win._monitorHealthTimer) clearInterval(win._monitorHealthTimer);
+  win._monitorHealthTimer = setInterval(() => {
+    if (!winManager.windows.has(win.id)) { clearInterval(win._monitorHealthTimer); return; }
+    _renderMonitorHealthCheck(win);
+  }, 60000);
+}
+
+function _renderMonitorHealthCheck(win) {
+  const detailEl = win.el.querySelector('#monitor-health-detail');
+  const badgeEl  = win.el.querySelector('#monitor-health-badge');
+  if (!detailEl || !badgeEl) return;
+  fetch('/api/health/digest').then(r => r.json()).then(d => {
+    if (d && d.error) {
+      badgeEl.innerHTML = '<span style="padding:2px 8px;border-radius:10px;background:#f4433620;color:#f44336;border:1px solid #f4433660;font-size:10px;font-weight:700;">ERROR</span>';
+      detailEl.textContent = String(d.error).slice(0, 240);
+      return;
+    }
+    const status = String(d?.overall_status || 'unknown').toLowerCase();
+    const palette = {
+      healthy:  { bg: '#4caf5020', fg: '#4caf50', bd: '#4caf5060', label: 'HEALTHY' },
+      degraded: { bg: '#ffa50022', fg: '#ffa500', bd: '#ffa50055', label: 'DEGRADED' },
+      error:    { bg: '#f4433620', fg: '#f44336', bd: '#f4433660', label: 'ERROR' },
+      critical: { bg: '#f4433620', fg: '#f44336', bd: '#f4433660', label: 'CRITICAL' },
+      unknown:  { bg: '#78909c22', fg: '#78909c', bd: '#78909c55', label: 'UNKNOWN' },
+    }[status] || { bg: '#78909c22', fg: '#78909c', bd: '#78909c55', label: status.toUpperCase() };
+    badgeEl.innerHTML = '<span style="padding:2px 8px;border-radius:10px;background:' + palette.bg + ';color:' + palette.fg + ';border:1px solid ' + palette.bd + ';font-size:10px;font-weight:700;">' + palette.label + '</span>';
+    const scanned = d?.scanned_at || '';
+    const summary = d?.summary || d?.headline || '';
+    const issues  = (d?.issues || d?.findings || []);
+    const issueCount = Array.isArray(issues) ? issues.length : 0;
+    detailEl.innerHTML = (summary ? _escHtml(summary) + '<br>' : '') +
+      'Scanned: <strong>' + _escHtml(scanned || 'just now') + '</strong>' +
+      (issueCount ? ' · <strong>' + issueCount + '</strong> issue' + (issueCount === 1 ? '' : 's') + ' open' : '');
+  }).catch(() => {
+    badgeEl.innerHTML = '<span style="padding:2px 8px;border-radius:10px;background:#78909c22;color:#78909c;border:1px solid #78909c55;font-size:10px;font-weight:700;">OFFLINE</span>';
+    detailEl.textContent = 'Health digest endpoint unreachable.';
+  });
 }
 
 function monitorManualRefresh() {
@@ -288,6 +338,55 @@ function _renderMonitorServices(win) {
     });
 }
 
+// V7C-A05 Fan operator — gated by system-modifications toggle.
+// Rendered once per window open (NOT polled). User clicks a mode to apply.
+function _renderMonitorFanOperator(win) {
+  if (typeof window.getSysmodEnabled === 'function' && !window.getSysmodEnabled()) {
+    return; // sysmod disabled → fan operator hidden entirely
+  }
+  const host = win.el.querySelector('#monitor-fan-operator');
+  if (!host) return;
+  host.style.display = '';
+  host.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">Fan Operator</div><div style="font-size:11px;color:var(--text-dim);">Loading…</div>';
+  fetch('/api/fan/status')
+    .then(r => r.json())
+    .then(d => {
+      if (!d || !d.ok) {
+        host.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">Fan Operator</div><div style="font-size:11px;color:#f77;">Unavailable</div>';
+        return;
+      }
+      const installed = !!d.helper_installed;
+      const mode = _escHtml(d.mode || 'unknown');
+      const cpu  = (d.cpu_c != null) ? `${d.cpu_c}°C` : 'n/a';
+      const hint = installed
+        ? ''
+        : '<div style="font-size:10px;color:#ffb366;margin-top:4px;">Helper not installed. Mode changes are read-only.</div>';
+      host.innerHTML = `
+        <div style="font-weight:600;margin-bottom:6px;">Fan Operator</div>
+        <div style="font-size:11px;margin-bottom:6px;">CPU: <strong>${cpu}</strong> · Mode: <strong>${mode}</strong></div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="monitorFanSetMode('auto')"  ${installed ? '' : 'disabled'} style="flex:1;padding:5px 8px;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:${installed ? 'pointer' : 'not-allowed'};">Auto</button>
+          <button onclick="monitorFanSetMode('boost')" ${installed ? '' : 'disabled'} style="flex:1;padding:5px 8px;font-size:11px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:${installed ? 'pointer' : 'not-allowed'};">Boost</button>
+        </div>${hint}`;
+    })
+    .catch(() => {
+      host.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">Fan Operator</div><div style="font-size:11px;color:#f77;">Failed to load</div>';
+    });
+}
+
+function monitorFanSetMode(mode) {
+  fetch('/api/fan/mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode }) })
+    .then(r => r.json())
+    .then(d => {
+      const win = window.__monitorWin;
+      if (win) _renderMonitorFanOperator(win);
+      if (!d || !d.ok) {
+        alert('Fan mode change failed: ' + (d && d.reason ? d.reason : 'unknown'));
+      }
+    })
+    .catch(e => alert('Fan mode change failed: ' + String(e)));
+}
+
 function _renderMonitorActivity(win) {
   const body = win.el.querySelector('#mn-activity-body');
   if (!body) return;
@@ -313,3 +412,215 @@ function _renderMonitorActivity(win) {
 }
 
 
+
+/* ── Y.59 Hive · Thermal & Performance panel ────────────────────────────── */
+
+let _hiveTimer = null;
+
+function _hiveEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+function _hivePressureColor(level) {
+  return ({
+    nominal:  '#4caf50',
+    fair:     '#9ccc65',
+    serious:  '#ffa500',
+    critical: '#f44336',
+  })[level] || 'var(--text-dim)';
+}
+
+function _renderHiveCard(node) {
+  const t = node.telemetry || {};
+  const c = t.compute || {};
+  const th = t.thermal || {};
+  const m = t.memory || {};
+  const p = t.power || {};
+  const platform = (node.platform || '').toLowerCase();
+  const isAndroid = platform === 'android' || platform.startsWith('android');
+  const isMobile  = isAndroid || platform.includes('ios');
+  const ramPct = (m.ram_total_mb && m.ram_free_mb != null)
+    ? Math.round(100 - (100 * m.ram_free_mb / m.ram_total_mb))
+    : null;
+  const fanPct = (th.fan_pwm != null) ? Math.round((th.fan_pwm / 255) * 100) : null;
+  const ageS = node.last_seen_ts
+    ? Math.max(0, Math.floor(Date.now()/1000 - node.last_seen_ts))
+    : null;
+  const ageStr = ageS == null ? '—'
+    : ageS < 60 ? `${ageS}s ago`
+    : ageS < 3600 ? `${Math.floor(ageS/60)}m ago`
+    : `${Math.floor(ageS/3600)}h ago`;
+  const stale = ageS != null && ageS > 120;
+  const pressure = p.thermal_pressure || 'nominal';
+  const pColor = _hivePressureColor(pressure);
+  const platIcon = isAndroid ? '📱'
+    : platform.includes('darwin') || platform.includes('mac') ? '🍎'
+    : platform.includes('win') ? '🪟'
+    : '🖥';
+  const ramTotalStr = m.ram_total_mb
+    ? (m.ram_total_mb >= 1024 ? (m.ram_total_mb/1024).toFixed(1) + ' GB' : m.ram_total_mb + ' MB')
+    : '—';
+
+  // Mobile/Android layout: emphasise CPU load, RAM, battery (the data we
+  // have); de-emphasise fan/temp (which are sandbox-null on stock Android).
+  if (isMobile) {
+    const battStr = p.battery_pct != null
+      ? `${Math.round(p.battery_pct)}% ${p.on_battery ? '🔋' : '⚡'}`
+      : (p.on_battery ? 'on battery 🔋' : '—');
+    const cpuLoadStr = c.cpu_load_pct != null ? Math.round(c.cpu_load_pct) + '%' : '—';
+    const swapStr = m.swap_used_mb != null && m.swap_used_mb > 0
+      ? ` · swap ${Math.round(m.swap_used_mb)} MB` : '';
+    const tempStr = c.cpu_peak_temp_c != null ? c.cpu_peak_temp_c + '°C' : null;
+    return `
+      <div style="background:var(--card);border:1px solid ${stale ? '#f4433655' : 'var(--border)'};
+                  border-radius:6px;padding:10px;font-size:10px;line-height:1.5;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${pColor};"></span>
+          <strong style="font-size:11px;color:var(--text);">${platIcon} ${_hiveEsc(node.label || node.node_id)}</strong>
+        </div>
+        <div style="color:var(--text-dim);font-size:9px;margin-bottom:6px;">
+          ${_hiveEsc(node.platform || '')} · ${ageStr}
+        </div>
+        <div>CPU load: <strong>${cpuLoadStr}</strong>${tempStr ? ` · ${tempStr}` : ''}</div>
+        <div>RAM: <strong>${ramPct != null ? ramPct + '%' : '—'}</strong>
+          ${m.ram_total_mb ? ` of ${ramTotalStr}` : ''}${swapStr}</div>
+        <div>Battery: <strong>${battStr}</strong></div>
+        <div>Pressure: <span style="color:${pColor};font-weight:600;">${_hiveEsc(pressure)}</span></div>
+      </div>
+    `;
+  }
+
+  // Desktop layout (unchanged behaviour).
+  return `
+    <div style="background:var(--card);border:1px solid ${stale ? '#f4433655' : 'var(--border)'};
+                border-radius:6px;padding:10px;font-size:10px;line-height:1.5;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${pColor};"></span>
+        <strong style="font-size:11px;color:var(--text);">${platIcon} ${_hiveEsc(node.label || node.node_id)}</strong>
+      </div>
+      <div style="color:var(--text-dim);font-size:9px;margin-bottom:6px;">
+        ${_hiveEsc(node.platform || '')} · ${ageStr}
+      </div>
+      <div>CPU temp: <strong>${c.cpu_peak_temp_c != null ? c.cpu_peak_temp_c + '°C' : '—'}</strong>
+        ${c.cpu_throttled ? '<span style="color:#ffa500"> · throttled</span>' : ''}</div>
+      <div>Fan: <strong>${th.fan_rpm != null ? th.fan_rpm + ' rpm' : '—'}</strong>
+        ${fanPct != null ? ` · ${fanPct}% PWM` : ''}
+        ${th.fan_mode && th.fan_mode !== 'unknown' ? ` · ${_hiveEsc(th.fan_mode)}` : ''}
+        ${th.controllable ? '' : ' <span style="color:var(--text-dim)">(read-only)</span>'}</div>
+      <div>RAM: <strong>${ramPct != null ? ramPct + '%' : '—'}</strong>
+        ${m.ram_total_mb ? ` of ${ramTotalStr}` : ''}</div>
+      <div>Pressure: <span style="color:${pColor};font-weight:600;">${_hiveEsc(pressure)}</span>
+        ${p.on_battery ? ' · on battery' : ''}
+        ${p.battery_pct != null ? ` ${Math.round(p.battery_pct)}%` : ''}</div>
+    </div>
+  `;
+}
+
+function monitorHiveRefresh() {
+  const grid = document.getElementById('monitor-hive-grid');
+  const meta = document.getElementById('monitor-hive-meta');
+  if (!grid) return;
+  fetch('/api/hive/nodes')
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(j => {
+      if (!j || !j.ok) throw new Error('not ok');
+      const nodes = j.nodes || [];
+      if (meta) meta.textContent = `${nodes.length} node${nodes.length===1?'':'s'}`;
+      if (!nodes.length) {
+        grid.innerHTML = '<div style="color:var(--text-dim);font-size:10px;">No nodes enrolled yet — start a local sample with <code>POST /api/hive/telemetry</code> or hit <code>GET /api/hive/local</code>.</div>';
+        return;
+      }
+      grid.innerHTML = nodes.map(_renderHiveCard).join('');
+    })
+    .catch(err => {
+      grid.innerHTML = `<div style="color:#f77;font-size:10px;">Hive unreachable: ${_hiveEsc(err)}</div>`;
+    });
+}
+
+function monitorHiveStartAutoRefresh() {
+  monitorHiveRefresh();
+  if (_hiveTimer) clearInterval(_hiveTimer);
+  _hiveTimer = setInterval(monitorHiveRefresh, 20000);
+}
+
+// ---- Add Device panel ----------------------------------------------------
+//
+// Builds copy-paste install commands per platform pointing at THIS leader.
+// Reads window.location.origin so the displayed command auto-fills.
+
+let _hiveAddTab = 'clickthrough';
+
+function monitorHiveAddCommand(platform) {
+  const origin = (window.location && window.location.origin) || '';
+  if (platform === 'windows') {
+    return `$env:SWARM_HIVE_LEADER='${origin}'; irm ${origin}/api/hive/install/bootstrap.ps1 | iex`;
+  }
+  // linux + macos share the same shell one-liner; bootstrap.sh detects uname.
+  return `curl -fsSL ${origin}/api/hive/install/bootstrap.sh | SWARM_HIVE_LEADER=${origin} bash`;
+}
+
+function monitorHiveAddTab(platform) {
+  _hiveAddTab = platform;
+  const clickPane    = document.getElementById('monitor-hive-clickthrough');
+  const oneLinerPane = document.getElementById('monitor-hive-oneliner');
+  const code         = document.getElementById('monitor-hive-cmd');
+  if (platform === 'clickthrough') {
+    if (clickPane)    clickPane.style.display = 'block';
+    if (oneLinerPane) oneLinerPane.style.display = 'none';
+  } else {
+    if (clickPane)    clickPane.style.display = 'none';
+    if (oneLinerPane) oneLinerPane.style.display = 'block';
+    if (code)         code.textContent = monitorHiveAddCommand(platform);
+  }
+  ['clickthrough', 'linux', 'macos', 'windows'].forEach((p) => {
+    const btn = document.getElementById('monitor-hive-tab-' + p);
+    if (!btn) return;
+    btn.style.background = (p === platform) ? 'var(--accent, #444)' : 'transparent';
+  });
+  const status = document.getElementById('monitor-hive-cmd-status');
+  if (status) status.textContent = '';
+  // Update the installer download link to use absolute origin so the
+  // download keeps working when the page is opened over a tunnel.
+  const link = document.getElementById('monitor-hive-installer-link');
+  if (link) link.href = ((window.location && window.location.origin) || '') + '/api/hive/install/hive_installer_gui.py';
+}
+
+function monitorHiveCopyCmd() {
+  const code = document.getElementById('monitor-hive-cmd');
+  const status = document.getElementById('monitor-hive-cmd-status');
+  if (!code) return;
+  const text = code.textContent || '';
+  const done = (msg) => { if (status) { status.textContent = msg; setTimeout(() => { if (status) status.textContent = ''; }, 2500); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => done('Copied.'), () => done('Copy failed; select manually.'));
+  } else {
+    done('Clipboard unavailable; select the command manually.');
+  }
+}
+
+function monitorHiveAddInit() {
+  if (!document.getElementById('monitor-hive-cmd')) return;
+  monitorHiveAddTab(_hiveAddTab);
+}
+
+// Auto-start when monitor view is visible.
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('monitor-hive-grid')) {
+    monitorHiveStartAutoRefresh();
+    monitorHiveAddInit();
+  } else {
+    // Mounted lazily via window-manager; poll briefly.
+    let tries = 0;
+    const probe = setInterval(() => {
+      if (document.getElementById('monitor-hive-grid') || ++tries > 20) {
+        clearInterval(probe);
+        if (document.getElementById('monitor-hive-grid')) {
+          monitorHiveStartAutoRefresh();
+          monitorHiveAddInit();
+        }
+      }
+    }, 500);
+  }
+});

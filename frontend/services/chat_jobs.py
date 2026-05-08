@@ -6,6 +6,7 @@ All symbols here are re-exported via services/__init__.py so that existing
 callers (via `from services import *`) continue to work unchanged.
 """
 import re
+import os
 import time
 import threading
 from datetime import datetime, timezone
@@ -25,12 +26,14 @@ _CHAT_JOBS = {}
 _CHAT_JOB_TTL_SECONDS = 2 * 60 * 60
 
 # Watchdog: Thread #2104 (Gemma) hung for 12+ minutes in April 2026. Any job
-# still 'running' past max(ETA × WATCHDOG_ETA_MULT, WATCHDOG_MIN_SECONDS) is
-# marked failed with a user-visible stall reason so the chat surface doesn't
-# freeze behind a thinking bubble forever.
+# still 'running' with no fresh progress past max(ETA × WATCHDOG_ETA_MULT,
+# WATCHDOG_MIN_SECONDS) is marked failed with a user-visible stall reason so
+# the chat surface doesn't freeze behind a thinking bubble forever. Total
+# runtime alone is not a stall; streamed progress updates keep the job alive.
 _CHAT_WATCHDOG_ETA_MULT = 4.0
 _CHAT_WATCHDOG_MIN_SECONDS = 300   # 5 min floor even for fast agents
-_CHAT_WATCHDOG_MAX_SECONDS = 900   # 15 min hard ceiling regardless of ETA
+_CHAT_WATCHDOG_MAX_SECONDS = int(os.environ.get('SWARM_CHAT_HANDOFF_DEADLINE_SECONDS') or 2000)  # Ghost-visible handoff deadline ceiling
+_CHAT_WATCHDOG_LOCAL_GRACE_SECONDS = 120
 
 # Ring buffer of recently finished jobs (per agent) for health metrics.
 # Newest first; capped to the last _CHAT_HEALTH_RING_MAX entries per agent.
@@ -136,20 +139,22 @@ def _watchdog_budget_seconds(job):
     """Per-job timeout ceiling. Scales with agent ETA, clamped to sane bounds.
 
     Rationale: expected local ETA is ~60s (Gemma), so a 4× multiplier gives a
-    4-min soft budget; the 5-min floor protects very fast agents; the 15-min
-    cap is the hard "something is definitely stuck" limit proven by the
-    Thread #2104 incident.
+    4-min soft budget; the 5-min floor protects very fast agents; the
+    2000-second cap is the visible handoff ceiling for very slow local runs.
     """
     try:
         eta = float(job.get('eta_seconds') or 60.0)
     except Exception:
         eta = 60.0
     budget = max(eta * _CHAT_WATCHDOG_ETA_MULT, float(_CHAT_WATCHDOG_MIN_SECONDS))
-    return min(budget, float(_CHAT_WATCHDOG_MAX_SECONDS))
+    budget = min(budget, float(_CHAT_WATCHDOG_MAX_SECONDS))
+    if str(job.get('runtime_class') or '').lower() == 'local':
+        return max(budget, float(_CHAT_WATCHDOG_MAX_SECONDS + _CHAT_WATCHDOG_LOCAL_GRACE_SECONDS))
+    return budget
 
 
 def _watchdog_mark_stalled_jobs_locked():
-    """Fail any 'running' job that has exceeded its watchdog budget.
+    """Fail any 'running' job that has exceeded its idle watchdog budget.
 
     Must be called with _CHAT_JOB_LOCK held. Returns the list of job ids that
     were marked failed so the caller can persist + kill + emit SSE outside the
@@ -162,13 +167,15 @@ def _watchdog_mark_stalled_jobs_locked():
             continue
         started = float(job.get('started_ts') or now)
         elapsed = now - started
+        updated = float(job.get('updated_ts') or started)
+        idle = now - updated
         budget = _watchdog_budget_seconds(job)
-        if elapsed <= budget:
+        if idle <= budget:
             continue
         agent = job.get('agent') or 'agent'
         error_msg = (
-            f'Watchdog: {agent} exceeded {int(budget)}s budget '
-            f'(elapsed {int(elapsed)}s). Automatic stall detection.'
+            f'Watchdog: {agent} had no progress for {int(idle)}s '
+            f'(budget {int(budget)}s, elapsed {int(elapsed)}s). Automatic stall detection.'
         )
         job.update({
             'status': 'failed',
@@ -184,8 +191,10 @@ def _watchdog_mark_stalled_jobs_locked():
             'agent': agent,
             'conversation_id': job.get('conversation_id'),
             'elapsed_ms': int(elapsed * 1000),
+            'idle_ms': int(idle * 1000),
             'eta_seconds': int(job.get('eta_seconds') or 0),
             'error': error_msg,
+            'stage_trace': list(job.get('stage_trace') or []),
         })
         # Session 29 — spine emit. Best-effort; never break watchdog if spine is absent.
         try:
@@ -200,6 +209,7 @@ def _watchdog_mark_stalled_jobs_locked():
                 payload={
                     'job_id': jid,
                     'elapsed_ms': int(elapsed * 1000),
+                    'idle_ms': int(idle * 1000),
                     'budget_s': int(budget),
                     'eta_s': int(job.get('eta_seconds') or 0),
                 },
@@ -359,6 +369,7 @@ def _chat_job_public(job):
         'updated_at': job.get('updated_at'),
         'elapsed_ms': elapsed_ms,
         'error': job.get('error', ''),
+        'stalled': bool(job.get('stalled')),
         'response': job.get('response', ''),
         'stage_trace': job.get('stage_trace') or [],
     }

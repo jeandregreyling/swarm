@@ -156,6 +156,11 @@ def start_run(
             conn.close()
     except Exception:
         return None
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('run', run_id, actor='start_run')
+    except Exception:
+        pass
     return run_id
 
 
@@ -178,7 +183,9 @@ def finish_run(
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT started_at FROM test_runs WHERE run_id=?", (run_id,)
+                """SELECT started_at, script_id, change_id, triggered_by, case_id
+                   FROM test_runs WHERE run_id=?""",
+                (run_id,),
             ).fetchone()
             if not row:
                 return False
@@ -193,11 +200,91 @@ def finish_run(
                  tail, run_id),
             )
             conn.commit()
+            _record_scorecard_test_run_outcome(
+                conn=conn,
+                script_id=row['script_id'],
+                status=status,
+                change_id=row['change_id'] or '',
+                triggered_by=row['triggered_by'] or '',
+                exit_code=exit_code,
+                stdout_tail=tail,
+            )
+            # S-D12CB0E012 — Test-case result rollup. When a run completes
+            # against a linked test case, lift the run outcome onto the
+            # test case so the Studio backlog reflects the latest verdict.
+            try:
+                _rollup_case_status(conn, row['case_id'], status)
+            except Exception:
+                pass
+            try:
+                from core.records import mirror as _records_mirror
+                _records_mirror('run', run_id, actor='finish_run')
+            except Exception:
+                pass
             return True
         finally:
             conn.close()
     except Exception:
         return False
+
+
+def _record_scorecard_test_run_outcome(**kwargs) -> None:
+    """Best-effort scorecard learning from Test Lab run completion."""
+    try:
+        from core import agent_scorecards
+        agent_scorecards.record_test_run_outcome(**kwargs)
+    except Exception:
+        pass
+
+
+# S-D12CB0E012 — map run outcome → test case status. Only states that have
+# a meaningful case-level equivalent are propagated; "running" never lands
+# here because finish_run normalises to a terminal status before calling.
+_RUN_TO_CASE_STATUS = {
+    STATUS_PASS: 'passed',
+    STATUS_FAIL: 'failed',
+    STATUS_ERROR: 'failed',
+    STATUS_ABORTED: 'blocked',
+}
+
+
+def _rollup_case_status(conn, case_id: Optional[str], run_status: str) -> bool:
+    """Update the linked test case's status from the just-finished run.
+
+    Skipped silently when case_id is empty, when the run status doesn't map,
+    or when the case has been retired (status='obsolete'). Returns True on
+    a successful update.
+    """
+    if not case_id:
+        return False
+    target = _RUN_TO_CASE_STATUS.get(run_status)
+    if not target:
+        return False
+    try:
+        cur = conn.execute(
+            "SELECT status FROM project_test_cases WHERE case_id=?",
+            (str(case_id),),
+        ).fetchone()
+    except Exception:
+        return False
+    if not cur:
+        return False
+    if (cur['status'] or '').lower() == 'obsolete':
+        return False
+    try:
+        conn.execute(
+            "UPDATE project_test_cases SET status=?, updated_at=? WHERE case_id=?",
+            (target, time.time(), str(case_id)),
+        )
+        conn.commit()
+    except Exception:
+        return False
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('case', str(case_id), actor='test_run_rollup')
+    except Exception:
+        pass
+    return True
 
 
 def abort_run(run_id: str, reason: str = '') -> bool:
@@ -219,6 +306,11 @@ def add_artifact(run_id: str, kind: str, body: str) -> bool:
                 (run_id, kind, (body or '')[:64 * 1024], time.time()),
             )
             conn.commit()
+            try:
+                from core.records import mirror as _records_mirror
+                _records_mirror('run', run_id, actor='add_artifact')
+            except Exception:
+                pass
             return True
         finally:
             conn.close()

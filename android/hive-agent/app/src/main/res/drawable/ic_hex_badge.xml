@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ic_hex_badge.xml — large hex/honeycomb badge for the welcome header.
+  Two stroked hexagons stacked, amber on dark.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="80dp"
+    android:height="80dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- Outer ring -->
+    <path
+        android:strokeColor="#F5B400"
+        android:strokeWidth="3"
+        android:fillColor="#00000000"
+        android:pathData="M50,10 L86,30 L86,70 L50,90 L14,70 L14,30 Z" />
+    <!-- Inner glyph -->
+    <path
+        android:fillColor="#F5B400"
+        android:pathData="M50,32 L68,42 L68,58 L50,68 L32,58 L32,42 Z M50,40 L40,46 L40,54 L50,60 L60,54 L60,46 Z" />
+</vector>

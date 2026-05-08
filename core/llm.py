@@ -198,3 +198,114 @@ def embeddings(model: str, prompt: str) -> list[float]:
 def pull(model: str, stream: bool = True) -> Iterable[dict]:
     """Pull (or update) a model; yields progress dicts when stream=True."""
     return _get_ollama().pull(model, stream=stream)
+
+
+def chat_via_gateway(
+    model: str,
+    messages: list[dict],
+    *,
+    stage_cb: Optional[Callable[..., None]] = None,
+    on_chunk: Optional[Callable[[str], None]] = None,
+    # CPU-only inference cold-loads (e.g. gemma3:4b without GPU) routinely take
+    # 90-120s before the first token streams. The previous 60s default aborted
+    # every cold turn with `Read timed out` and surfaced as `[gemma unavailable]`
+    # in the chat UI ("Hi disappears"). 240s gives cold loads room while still
+    # letting the absolute clock cap stuck inferences.
+    idle_timeout_s: int = 240,
+    absolute_timeout_s: int = 600,
+    keep_alive: Any = None,
+    options: Optional[dict] = None,
+    temperature: Optional[float] = None,
+) -> tuple[str, int]:
+    """Stream a local Ollama chat through the Fridays runtime gateway.
+
+    Returns the same `(content, tokens)` tuple as `chat()` so callers can swap
+    in this helper without touching their downstream code, but every
+    structured RuntimeEvent (queued / dispatch / first_token / token_heartbeat
+    / completed / failed) is forwarded to `stage_cb` as a human-readable
+    label. That gives the chat job stage_trace real idle/no-token clocks
+    instead of the time-based heuristic.
+
+    `stage_cb` is the same callback shape local agents already pass:
+    `stage_cb(text, optional_extra)`. We tolerate either single-arg or
+    two-arg implementations.
+    """
+    from core import model_runtime_gateway as _gw
+
+    keep_alive_val = _sanitize_keep_alive(keep_alive if keep_alive is not None else DEFAULT_KEEP_ALIVE)
+    if isinstance(keep_alive_val, str):
+        keep_alive_arg: Any = keep_alive_val
+        keep_alive_log = keep_alive_val
+    else:
+        keep_alive_arg = f"{int(keep_alive_val)}s"
+        keep_alive_log = int(keep_alive_val)
+
+    opts: dict = dict(options or {})
+    if temperature is not None and 'temperature' not in opts:
+        opts['temperature'] = temperature
+
+    def _emit(text: str) -> None:
+        if not callable(stage_cb):
+            return
+        try:
+            stage_cb(text, None)
+        except TypeError:
+            try:
+                stage_cb(text)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _on_event(event: dict) -> None:
+        stage = str(event.get('stage') or '').strip()
+        if not stage:
+            return
+        toks = int(event.get('tokens') or 0)
+        detail = str(event.get('detail') or '')
+        if stage == 'queued':
+            _emit('gateway: queued')
+        elif stage == 'dispatch':
+            _emit(f'gateway: dispatch ({detail})' if detail else 'gateway: dispatch')
+        elif stage == 'first_token':
+            _emit(f'gateway: first token ({toks}t)')
+        elif stage == 'token_heartbeat':
+            _emit(f'gateway: heartbeat {toks}t')
+        elif stage == 'completed':
+            _emit(f'gateway: completed {toks}t')
+        elif stage == 'failed':
+            _emit(f'gateway: failed — {detail}' if detail else 'gateway: failed')
+        else:
+            _emit(f'gateway: {stage}')
+
+    sem = _lock_for(model)
+    sem.acquire()
+    t0 = time.monotonic()
+    error: Optional[str] = None
+    result = None
+    try:
+        result = _gw.chat(
+            model,
+            messages,
+            absolute_timeout_s=absolute_timeout_s,
+            idle_timeout_s=idle_timeout_s,
+            keep_alive=keep_alive_arg,
+            options=opts,
+            on_token=on_chunk,
+            on_event=_on_event,
+        )
+        if not result.ok and not result.content:
+            error = result.error or 'gateway error'
+        return result.content or '', int(result.tokens or 0)
+    finally:
+        elapsed = time.monotonic() - t0
+        sem.release()
+        logger.info(
+            '[llm.gateway] model=%s elapsed=%.2fs tokens=%d chars=%d keep_alive=%s%s',
+            model,
+            elapsed,
+            int(getattr(result, 'tokens', 0) or 0),
+            len(getattr(result, 'content', '') or ''),
+            keep_alive_log,
+            f' error={error}' if error else '',
+        )

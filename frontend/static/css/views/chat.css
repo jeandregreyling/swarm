@@ -352,6 +352,34 @@
   color: var(--text-dim);
   font-size: 11px;
 }
+/* Phase-5 SMALL: group the U/D caret and L/R rail-collapse button on the same row
+   next to the "Threads" label, with consistent spacing + alignment. */
+.chat-section-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chat-rail-collapse {
+  margin-left: 0;
+  padding: 2px 5px;
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.chat-rail-collapse:hover {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--accent);
+}
 .chat-section-content {
   padding: 6px 8px 10px;
 }
@@ -696,12 +724,13 @@
 .terminal-prompt-line {
   color: var(--accent, #5c9bd6);
   font-size: 12px;
-  line-height: 1.45;
-  padding: 4px 0 1px;
+  line-height: 1.4;
+  padding: 0;
+  margin: 0;
 }
 .terminal-result-card {
-  margin-top: 2px;
-  margin-bottom: 2px;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 .terminal-system-line {
   color: var(--text-dim);

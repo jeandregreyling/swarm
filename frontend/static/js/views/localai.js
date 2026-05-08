@@ -86,6 +86,88 @@ function _fetchJson(url, fallback) {
     .catch(() => fallback);
 }
 
+// ── Runtime gateway health ──────────────────────────────────────────────────
+// Fetches /api/ollama/runtime/health and paints a small "runtime: <status>"
+// pill plus a warnings line. Shared between the Local AI tile and the Agents
+// → Local AI tab. Returns the health snapshot for callers that need it.
+function _runtimeHealthStyle(status) {
+  // status: 'healthy' | 'degraded' | 'down' | 'unknown'
+  if (status === 'healthy') return { c: '#22c55e', label: 'runtime: healthy' };
+  if (status === 'degraded') return { c: '#f59e0b', label: 'runtime: degraded' };
+  if (status === 'down')    return { c: '#ef4444', label: 'runtime: down' };
+  return { c: 'var(--text-dim)', label: 'runtime: —' };
+}
+
+async function localaiRuntimeHealthRefresh(badgeId, warningsId) {
+  const badge   = badgeId    ? document.getElementById(badgeId)    : null;
+  const warnEl  = warningsId ? document.getElementById(warningsId) : null;
+  let snap = null;
+  try {
+    const r = await fetch('/api/ollama/runtime/health');
+    snap = await r.json();
+  } catch (_) {
+    snap = { ok: false, status: 'down', warnings: ['runtime gateway unreachable'], models: [] };
+  }
+  const status = snap && snap.status ? String(snap.status) : 'unknown';
+  if (badge) {
+    const { c, label } = _runtimeHealthStyle(status);
+    badge.style.display = '';
+    badge.textContent = label;
+    badge.style.background = `color-mix(in srgb,${c} 15%,var(--card))`;
+    badge.style.color = c;
+    badge.style.border = `1px solid ${c}55`;
+  }
+  if (warnEl) {
+    const ws = (snap && Array.isArray(snap.warnings)) ? snap.warnings : [];
+    const stuck = (snap && Array.isArray(snap.models) ? snap.models : [])
+      .filter(m => m && m.state === 'stopping')
+      .map(m => m.name)
+      .filter(Boolean);
+    if (ws.length || stuck.length) {
+      warnEl.style.display = '';
+      const lines = ws.map(w => `⚠ ${_escapeHtml(w)}`);
+      if (status === 'down') lines.push('Start Ollama with: <code>ollama serve</code>');
+      stuck.forEach(name => {
+        const safe = _escapeHtml(name);
+        lines.push(`<button type="button" class="knowledge-btn" style="margin-top:4px;font-size:11px;padding:2px 8px;" onclick="localaiRuntimeForceUnload('${safe.replace(/'/g, "\\'")}', '${badgeId || ''}', '${warningsId || ''}')">Force unload ${safe}</button>`);
+      });
+      warnEl.innerHTML = lines.join('<br>');
+    } else {
+      warnEl.style.display = 'none';
+      warnEl.innerHTML = '';
+    }
+  }
+  return snap;
+}
+window.localaiRuntimeHealthRefresh = localaiRuntimeHealthRefresh;
+
+async function localaiRuntimeForceUnload(model, badgeId, warningsId) {
+  if (!model) return;
+  const warnEl = warningsId ? document.getElementById(warningsId) : null;
+  if (warnEl) {
+    warnEl.style.display = '';
+    warnEl.innerHTML = `⏳ Forcing unload of ${model}…`;
+  }
+  let snap = null;
+  try {
+    const r = await fetch('/api/ollama/runtime/force-unload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model }),
+    });
+    snap = await r.json();
+  } catch (e) {
+    snap = { ok: false, message: 'request failed: ' + (e && e.message ? e.message : e) };
+  }
+  if (warnEl) {
+    const sym = snap && snap.ok ? '✓' : '⚠';
+    warnEl.innerHTML = `${sym} ${(snap && snap.message) ? snap.message : 'no response'}`;
+  }
+  setTimeout(() => localaiRuntimeHealthRefresh(badgeId, warningsId), 1500);
+  return snap;
+}
+window.localaiRuntimeForceUnload = localaiRuntimeForceUnload;
+
 async function localaiRefreshModelCatalog(silent) {
   try {
     const response = await fetch('/api/ollama/library');
@@ -108,18 +190,31 @@ async function localaiRefreshModelCatalog(silent) {
 
 function _renderOllamaPullCatalog() {
   const datalist = document.getElementById('ollama-pull-datalist');
-  const input = document.getElementById('ollama-pull-select');
-  if (!datalist) return;
+  const select = document.getElementById('ollama-pull-select');
   if (!_ollamaPullCatalog.length) {
-    datalist.innerHTML = '';
-    if (input) input.placeholder = 'No catalog models available';
+    if (datalist) datalist.innerHTML = '';
+    if (select && select.tagName === 'SELECT') select.innerHTML = '<option value="">(catalog unavailable)</option>';
     return;
   }
-  datalist.innerHTML = _ollamaPullCatalog.map(name => {
+  // Build safe options list once
+  const installed = new Set((_ollamaInventory || []).map(m => m.name).filter(Boolean));
+  const options = _ollamaPullCatalog.map(name => {
     const safe = _escapeHtml(name);
-    return `<option value="${safe}">`;
-  }).join('');
-  if (input) input.placeholder = 'Type to search models…';
+    const tag = installed.has(name) ? ' (installed)' : '';
+    return { name, safe, tag };
+  });
+  // Legacy datalist path (if still present in another view)
+  if (datalist) datalist.innerHTML = options.map(o => `<option value="${o.safe}">`).join('');
+  if (select) {
+    if (select.tagName === 'SELECT') {
+      const prev = select.value;
+      select.innerHTML = '<option value="">— Pick a model —</option>' +
+        options.map(o => `<option value="${o.safe}">${o.safe}${o.tag}</option>`).join('');
+      if (prev) select.value = prev;
+    } else {
+      select.placeholder = 'Type to search models…';
+    }
+  }
 }
 
 function localaiRefresh() {
@@ -169,6 +264,9 @@ function localaiRefresh() {
     _setOllamaStatus(data.ollama?.running
       ? `Ready · ${_formatCountLabel(_ollamaInventory.length, loaded.count || 0)}`
       : 'Ollama is offline. Start with: ollama serve', data.ollama?.running ? 'ok' : 'error');
+
+    // Runtime gateway health pill + warnings (Fridays-owned snapshot).
+    localaiRuntimeHealthRefresh('localai-runtime-badge', 'localai-runtime-warnings');
 
     if (_ollamaSelectedModel) {
       selectOllamaModel(_ollamaSelectedModel, true);

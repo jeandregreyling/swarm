@@ -43,10 +43,84 @@ _eh.send_reply = _fake_send
 
 # ── Now import everything else ─────────────────────────────────────────────
 import random
+import signal
 from database import new_conversation, log_message
 from queue_manager import intake as queue_intake, get_queue_depth
 from ticket import create as ticket_create, librarian_close
 from orchestrator import consult_stage1, consult_stage2, consult_stage_eight
+
+# ── BUG-025 fix: deterministic stub mode + hard per-stage timeout ──────────
+# When SWARM_SIMULATE_STUB=1 the live model calls in consult_stage1/2/eight
+# are replaced with cheap deterministic returns so a "full dry" run completes
+# in seconds, not minutes. The timeout guard wraps each stage with SIGALRM
+# so a single hung model call never sinks the whole simulation.
+STUB_MODE = os.environ.get('SWARM_SIMULATE_STUB', '').strip() in ('1', 'true', 'yes', 'on')
+try:
+    STAGE_TIMEOUT_SECONDS = max(1, int(os.environ.get('SWARM_SIMULATE_STAGE_TIMEOUT', '60')))
+except ValueError:
+    STAGE_TIMEOUT_SECONDS = 60
+
+
+class StageTimeout(Exception):
+    """Raised when a single simulate stage exceeds STAGE_TIMEOUT_SECONDS."""
+
+
+def _stub_stage1(question):
+    return (
+        [{'title': '[stub] result', 'url': 'https://example.invalid', 'snippet': 'stub'}],
+        f'[stub LLaMA] {question[:60]}',
+        {'history': [], 'memory': []},
+        {
+            'needs_web': False,
+            'agents': ['llama', 'qwen'],
+            'is_sap': 'sap' in question.lower(),
+            'is_system': 'ram' in question.lower() or 'cpu' in question.lower(),
+            'is_identity': False,
+            'mode': 'stub',
+            'search_engines': [],
+        },
+    )
+
+
+def _stub_stage2(question, web, llama_answer, shared, conv_id, routing):
+    return (
+        f'[stub Qwen] {question[:60]}',
+        f'[stub Gemma final] {question[:60]}',
+        {'fired': False, 'llama_r2': '', 'rounds': 0},
+    )
+
+
+def _stub_stage_eight(question, web, shared, conv_id):
+    return {
+        'functional': '[stub Eight functional]',
+        'technical': '[stub Eight technical]',
+        'devil': '[stub Eight devil]',
+        'gemma_verdict': f'[stub Eight verdict] {question[:60]}',
+    }
+
+
+if STUB_MODE:
+    consult_stage1 = _stub_stage1
+    consult_stage2 = _stub_stage2
+    consult_stage_eight = _stub_stage_eight
+
+
+def _with_timeout(label, fn, *args, **kwargs):
+    """Run fn under a SIGALRM-based timeout. Falls back to a plain call on
+    platforms (Windows) that don't support SIGALRM."""
+    if not hasattr(signal, 'SIGALRM'):
+        return fn(*args, **kwargs)
+
+    def _handler(signum, frame):
+        raise StageTimeout(f'{label} exceeded {STAGE_TIMEOUT_SECONDS}s')
+
+    prev = signal.signal(signal.SIGALRM, _handler)
+    signal.alarm(STAGE_TIMEOUT_SECONDS)
+    try:
+        return fn(*args, **kwargs)
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, prev)
 
 FAKE_SENDER = 'ghost@sevenpotato.local'
 
@@ -120,7 +194,9 @@ def run_ticket(i, ticket):
 
     # ── Stage 1: Gemma routes + LLaMA fast response ───────────────────────
     print(f'\n[Listener] Stage 1 — Gemma routing...')
-    web_results, llama_answer, shared_context, routing = consult_stage1(question)
+    web_results, llama_answer, shared_context, routing = _with_timeout(
+        'consult_stage1', consult_stage1, question
+    )
     print(f'[Routing] web={routing.get("needs_web")} agents={routing.get("agents")} '
           f'sap={routing.get("is_sap")} system={routing.get("is_system")} '
           f'identity={routing.get("is_identity")} mode={routing.get("mode")} '
@@ -150,7 +226,10 @@ def run_ticket(i, ticket):
     # ── Stage 2: Eight (SAP) or Qwen + Gemma (standard) ──────────────────
     if routing.get('is_sap'):
         print('\n[Listener] IS_SAP — Eight specialist pipeline...')
-        eight_result = consult_stage_eight(question, web_results, shared_context, conv_id)
+        eight_result = _with_timeout(
+            'consult_stage_eight', consult_stage_eight,
+            question, web_results, shared_context, conv_id,
+        )
         gemma_answer = eight_result['gemma_verdict']
         email2 = (
             'Eight has finished deliberating.\r\n\r\n'
@@ -164,8 +243,9 @@ def run_ticket(i, ticket):
         )
     else:
         print('\n[Listener] Stage 2 — full swarm...')
-        qwen_answer, gemma_answer, debate = consult_stage2(
-            question, web_results, llama_answer, shared_context, conv_id, routing
+        qwen_answer, gemma_answer, debate = _with_timeout(
+            'consult_stage2', consult_stage2,
+            question, web_results, llama_answer, shared_context, conv_id, routing,
         )
         if debate['fired']:
             print(f'\n[Debate] Challenge round fired — LLaMA R2: {debate["llama_r2"][:80]}...')

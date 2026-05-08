@@ -23,7 +23,9 @@ const windowIcons = {
   'email':         '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><rect x="2" y="4" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 6l6 4 6-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   'library':       '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   'localai':       '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M4 8h8M8 4v8M5.2 5.2l5.6 5.6M10.8 5.2l-5.6 5.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  'media-center':  '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><rect x="2.5" y="4" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 3v10M11 6.2c0 1.6-1.2 3.1-3 3.6V6.2c1.8.5 3 2 3 3.6Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   'trace':         '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   'feeds':         '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M3 11.5a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8a5 5 0 0 1 5 5M3 4.5a8.5 8.5 0 0 1 8.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  'records-files': '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 8h6M6 10h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
+  'tasker':        '<svg viewBox="0 0 16 16" width="14" height="14" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
 };
-

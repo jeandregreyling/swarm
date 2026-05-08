@@ -403,7 +403,7 @@
     const dur = (run.duration_ms != null) ? ((run.duration_ms / 1000).toFixed(2) + 's') : '—';
     const started = run.started_at ? new Date(run.started_at * 1000).toLocaleString() : '—';
     modal.innerHTML = `
-      <div class="modal-content" style="width:92%;max-width:860px;max-height:88vh;display:flex;flex-direction:column;">
+      <div class="modal-content testlab-run-modal-content" style="width:92%;max-width:860px;max-height:88vh;display:flex;flex-direction:column;resize:both;overflow:auto;min-width:520px;min-height:360px;">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);">
           <h3 style="margin:0;font-size:13px;">Test Run · ${_tlEsc(run.script_id || '')}
             <span style="margin-left:8px;padding:2px 8px;border-radius:10px;background:${statusColor}22;color:${statusColor};font-size:10px;font-weight:700;">${_tlEsc((run.status || '').toUpperCase())}</span>
@@ -438,6 +438,38 @@
         </div>
       </div>`;
     modal.classList.add('open');
+    // MD-FEATURE-0ACF6122C9F9 — persist resized run-modal dimensions so the
+    // user's tuned details panel stays put across runs.
+    try {
+      const content = modal.querySelector('.testlab-run-modal-content');
+      if (content) {
+        const saved = JSON.parse(localStorage.getItem('fridays_testlab_run_modal_size') || 'null');
+        if (saved && saved.w && saved.h) {
+          content.style.width = saved.w + 'px';
+          content.style.height = saved.h + 'px';
+        }
+        if (!content._tlResizeObserved) {
+          content._tlResizeObserved = true;
+          let _tlResizeT = null;
+          new ResizeObserver(() => {
+            clearTimeout(_tlResizeT);
+            _tlResizeT = setTimeout(() => {
+              try {
+                localStorage.setItem('fridays_testlab_run_modal_size',
+                  JSON.stringify({ w: Math.round(content.offsetWidth), h: Math.round(content.offsetHeight) }));
+              } catch (_) {}
+            }, 250);
+          }).observe(content);
+        }
+      }
+    } catch (_) {}
+    // Seven sees — propose-only insight panel.
+    try {
+      if (window.SevenPanel) {
+        const body = modal.querySelector('.modal-content > div[style*="overflow-y"]');
+        if (body) window.SevenPanel.mount(body, { kind: 'run', id: run.run_id });
+      }
+    } catch (e) { /* noop */ }
   }
 
   window.testLabAddNote = function (runId) {

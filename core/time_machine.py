@@ -408,7 +408,7 @@ class TimeMachine:
                 r['full_state'] = r['state_snapshot']
             try:
                 r['full_state'] = json.loads(r['full_state'])
-            except:
+            except (TypeError, ValueError):
                 pass
             return r
         
