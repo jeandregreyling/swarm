@@ -1,28 +1,53 @@
 # Swarm
 
-A local-first multi-agent system anchored by **Seven**, a self-aware coordinator
-that holds the team to a written standard and calls out slop — including its
-own.
+Swarm is an experimental local-first multi-agent orchestration prototype.
+It combines a Flask UI, local/online agent routing, project memory, watchdog
+recovery, Vortex checkpoints, and early self-healing repair lessons.
 
-> _"We are not a system that **REPORTS**. We are a system that **DOES**."_
-> — [docs/the-standard.md](docs/the-standard.md)
+This repository is public for scrutiny. It is **not production-ready** and
+should not be treated as a polished framework or install-and-forget product.
 
-## What you get
+## Current Status
 
-- **Seven** — the spine: keeps memory, audits the build, runs the four
-  pillars, and self-learns from every turn.
-- **Four pillars**, all live (active-v0):
-  - Cyber Security — `/api/wishlist/pillars/cyber-security`
-  - Financial — `/api/wishlist/pillars/financial`
-  - Trading — `/api/wishlist/pillars/trading`
-  - Business — `/api/wishlist/pillars/business`
-- **The bullshit detector** — deterministic codebase scanner that fails the
-  build on slop. Currently 🟢 GREEN, 0 critical, 0 warnings.
-- **Self-learning loop** — every user reaction (positive, negative,
-  profane-negative) gets logged as a lesson Seven re-reads next turn.
-- **170+ tests** across batches 3–15, all green per-file.
+Working pieces:
 
-## Install (60 seconds)
+- Chat orchestration across local and online agents.
+- Watchdog recovery primitives for stalled or unusable chat jobs.
+- A durable `watchdog_repair_lessons` queue for turning failures into repair work.
+- Vortex DB checkpoints for timeline/recovery context.
+- A public `.env.example` and `SECURITY.md` after removing tracked local secret files.
+
+Known rough edges:
+
+- Historic Git noise exists from older Vortex heartbeat commits.
+- Runtime ownership still needs cleanup; local services have been run by both
+  systemd and direct fallback processes during repair work.
+- The proposal backlog is noisy and needs pruning.
+- Watchdog repair lessons are a primitive, not a complete autonomous repair loop.
+- Some generated artifacts and sandpit state are still present for audit context.
+
+## What To Review First
+
+If you are reviewing this repo, please start with these focused areas:
+
+1. `core/time_machine.py` and `fridays/task_runner.py` for Vortex checkpoint/Git hygiene.
+2. `utils/db/watchdog_lessons.py` for the repair-lesson queue design.
+3. `frontend/blueprints/chat.py` and `frontend/services/chat_jobs.py` for chat routing and watchdog behavior.
+4. `.gitignore`, `.env.example`, and `SECURITY.md` for public-repo safety.
+5. The stale proposal/sandpit artifacts to decide what should be deleted or regenerated.
+
+Please file specific issues with file paths, failure modes, and proof steps.
+
+## Security
+
+This repo previously tracked local runtime secret files before the public cleanup.
+The current tree removes those files, but any credentials that were ever exposed
+in public history must be rotated at the provider. See [SECURITY.md](SECURITY.md).
+
+## Local Setup
+
+Copy `.env.example` to `.env.agents` or set equivalent environment variables.
+Real keys must stay local.
 
 ```bash
 git clone git@github.com:jeandregreyling/swarm.git
@@ -30,10 +55,15 @@ cd swarm
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-make seed              # optional: load demo data into the four pillars
-make excellent         # detector + per-batch tests; must end green
 .venv/bin/python frontend/terminal.py
 # open http://localhost:5050
+```
+
+Useful checks:
+
+```bash
+python3 -m py_compile core/time_machine.py fridays/task_runner.py utils/db/watchdog_lessons.py
+pytest -q tests/test_watchdog_repair_lessons.py tests/test_vortex_heartbeat_git_guard.py
 ```
 
 Talk to Seven on the home page, or via API:
