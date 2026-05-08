@@ -255,10 +255,58 @@ def _chat_runtime_stop_trace(result):
     return ' - '.join(bits)
 
 
-def _chat_apply_runtime_stop_to_job(job_id, agent_name, reason, *, elapsed_ms=0, stage_trace=None):
+def _chat_log_watchdog_ollama_event(conversation_id, job_id, agent_name, action, result, message):
+    payload = {
+        'action': str(action or ''),
+        'job_id': str(job_id or ''),
+        'agent': str(agent_name or ''),
+        'ok': bool((result or {}).get('ok')),
+        'configured_model': (result or {}).get('configured_model') or '',
+        'models': (result or {}).get('models') or [],
+        'before_models': (result or {}).get('before_models') or [],
+        'after_models': (result or {}).get('after_models') or [],
+        'detail': (result or {}).get('detail') or '',
+    }
+    try:
+        if conversation_id:
+            _trace(
+                conversation_id,
+                'watchdog',
+                'ollama_control',
+                payload,
+                job_id=job_id,
+            )
+    except Exception:
+        pass
+    try:
+        from core import spine as _spine
+        _spine.log(
+            _spine.EventKind.WATCHDOG,
+            message,
+            severity=_spine.Severity.INFO if payload['ok'] else _spine.Severity.WARN,
+            source='watchdog_ollama',
+            agent=str(agent_name or '') or None,
+            thread_id=str(conversation_id or '') or None,
+            payload=payload,
+        )
+    except Exception:
+        pass
+
+
+def _chat_apply_runtime_stop_to_job(
+    job_id,
+    agent_name,
+    reason,
+    *,
+    elapsed_ms=0,
+    stage_trace=None,
+    conversation_id=None,
+    action='watchdog_stop',
+):
     result = _chat_try_hard_kill_local_agent(agent_name)
     trace = list(stage_trace or [])
-    trace.append({'text': _chat_runtime_stop_trace(result), 'ts': time.time()})
+    stop_text = _chat_runtime_stop_trace(result)
+    trace.append({'text': stop_text, 'ts': time.time()})
     error = str(reason or '').strip()
     detail = str(result.get('detail') or '').strip()
     if detail:
@@ -274,7 +322,74 @@ def _chat_apply_runtime_stop_to_job(job_id, agent_name, reason, *, elapsed_ms=0,
         )
     except Exception:
         pass
+    _chat_log_watchdog_ollama_event(
+        conversation_id,
+        job_id,
+        agent_name,
+        action,
+        result,
+        stop_text,
+    )
     return result, trace, error
+
+
+def _chat_active_local_agents_from_db():
+    try:
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                """
+                SELECT DISTINCT agent
+                FROM chat_jobs
+                WHERE status IN ('running', 'dispatched', 'processing')
+                  AND runtime_class='local'
+                """
+            ).fetchall()
+            return {
+                _normalize_chat_participant(row['agent'])
+                for row in rows
+                if str(row['agent'] or '').strip()
+            }
+        finally:
+            conn.close()
+    except Exception:
+        return set()
+
+
+def _chat_reconcile_unowned_ollama_runners(conversation_id=None):
+    """Stop local Ollama models that no live Fridays chat job owns.
+
+    This is the bridge step while Ollama remains an external wrapper: Fridays
+    treats the DB/runtime job table as ownership truth and unloads matching
+    chat-agent models when no active job exists for that agent.
+    """
+    active_agents = _chat_active_local_agents_from_db()
+    running_models = _chat_running_ollama_models()
+    if not running_models:
+        return []
+
+    stopped = []
+    for agent_name in sorted(_local_ollama_chat_agents()):
+        agent = _normalize_chat_participant(agent_name)
+        if not agent or agent in active_agents:
+            continue
+        configured_model = _chat_agent_configured_model(agent)
+        aliases = _chat_model_aliases(configured_model)
+        if not configured_model or not aliases:
+            continue
+        if not any(aliases & _chat_model_aliases(model) for model in running_models):
+            continue
+        result = _chat_try_hard_kill_local_agent(agent)
+        stopped.append(result)
+        _chat_log_watchdog_ollama_event(
+            conversation_id,
+            '',
+            agent,
+            'watchdog_unowned_runner_stop',
+            result,
+            _chat_runtime_stop_trace(result),
+        )
+    return stopped
 
 # Thread/history helpers live in services.chat_history and are re-exported
 # through services/__init__.py. Names available here via `from services import *`:
@@ -1884,6 +1999,8 @@ def api_chat_jobs_status():
                 _s.get('error'),
                 elapsed_ms=int(_s.get('elapsed_ms') or 0),
                 stage_trace=stop_trace,
+                conversation_id=_s.get('conversation_id'),
+                action='watchdog_stall_stop',
             )
         except Exception:
             try:
@@ -1953,6 +2070,8 @@ def api_chat_jobs_status():
                             error,
                             elapsed_ms=elapsed,
                             stage_trace=_db_trace,
+                            conversation_id=row.get('conversation_id'),
+                            action='watchdog_orphan_stop',
                         )
                     except Exception:
                         try:
@@ -2005,6 +2124,7 @@ def api_chat_jobs_status():
         try:
             has_running = any(str(j.get('status') or '') == 'running' for j in jobs)
             if not has_running:
+                _chat_reconcile_unowned_ollama_runners(conv_id_int)
                 silent_result = ensure_silent_chat_thread_recovery(
                     conv_id_int,
                     reason=(
@@ -2180,6 +2300,17 @@ def api_chat_jobs_cancel():
                     stage='cancelled by user',
                     error=error,
                     stage_trace_json=json.dumps(trace),
+                )
+            except Exception:
+                pass
+            try:
+                _chat_log_watchdog_ollama_event(
+                    conv_id_int,
+                    item['job_id'],
+                    agent_name,
+                    'user_cancel_stop',
+                    stop_result,
+                    _chat_runtime_stop_trace(stop_result),
                 )
             except Exception:
                 pass
