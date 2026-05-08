@@ -1875,23 +1875,30 @@ def api_chat_jobs_status():
     # the in-memory state already shows stalled, so the UI is not blocked.
     recoveries = []
     for _s in _stalled:
+        stop_trace = _s.get('stage_trace') or []
+        stop_error = _s.get('error')
         try:
-            update_chat_job_db(
-                _s['job_id'],
-                status='failed',
-                stage='stalled',
-                error=_s['error'],
+            _stop_result, stop_trace, stop_error = _chat_apply_runtime_stop_to_job(
+                _s.get('job_id'),
+                _s.get('agent') or '',
+                _s.get('error'),
                 elapsed_ms=int(_s.get('elapsed_ms') or 0),
+                stage_trace=stop_trace,
             )
         except Exception:
-            pass
-        try:
-            _chat_try_hard_kill_local_agent(_s.get('agent') or '')
-        except Exception:
-            pass
+            try:
+                update_chat_job_db(
+                    _s['job_id'],
+                    status='failed',
+                    stage='stalled',
+                    error=_s['error'],
+                    elapsed_ms=int(_s.get('elapsed_ms') or 0),
+                )
+            except Exception:
+                pass
         try:
             _sse_chat(_s.get('conversation_id'), _s.get('agent'), 'failed',
-                      job_id=_s.get('job_id'), error=_s.get('error'))
+                      job_id=_s.get('job_id'), error=stop_error)
         except Exception:
             pass
         try:
@@ -1899,8 +1906,8 @@ def api_chat_jobs_status():
                 job_id=_s.get('job_id'),
                 conversation_id=_s.get('conversation_id'),
                 stalled_agent=_s.get('agent'),
-                reason=_s.get('error'),
-                stage_trace=_s.get('stage_trace') or [],
+                reason=stop_error,
+                stage_trace=stop_trace,
             )
             recovery = recovery_result.get('recovery') if isinstance(recovery_result, dict) else None
             if recovery:
@@ -1940,20 +1947,25 @@ def api_chat_jobs_status():
                     )
                     _db_trace.append({'text': 'orphaned runtime job (watchdog)', 'ts': time.time()})
                     try:
-                        update_chat_job_db(
+                        _stop_result, _db_trace, error = _chat_apply_runtime_stop_to_job(
                             row.get('job_id'),
-                            status='failed',
-                            stage='stalled',
-                            error=error,
+                            row.get('agent') or '',
+                            error,
                             elapsed_ms=elapsed,
-                            stage_trace_json=json.dumps(_db_trace),
+                            stage_trace=_db_trace,
                         )
                     except Exception:
-                        pass
-                    try:
-                        _chat_try_hard_kill_local_agent(row.get('agent') or '')
-                    except Exception:
-                        pass
+                        try:
+                            update_chat_job_db(
+                                row.get('job_id'),
+                                status='failed',
+                                stage='stalled',
+                                error=error,
+                                elapsed_ms=elapsed,
+                                stage_trace_json=json.dumps(_db_trace),
+                            )
+                        except Exception:
+                            pass
                     try:
                         recovery_result = ensure_chat_relay_recovery(
                             job_id=row.get('job_id'),
@@ -2144,13 +2156,33 @@ def api_chat_jobs_cancel():
             cancelled.append({'job_id': job_id, 'agent': job.get('agent'), 'cancel_signal_sent': cancel_signal_sent})
 
     hard_kill_results = []
+    hard_kill_by_agent = {}
     if hard_kill and local_agents_to_kill:
         for agent_name in sorted(a for a in local_agents_to_kill if a):
             result = _chat_try_hard_kill_local_agent(agent_name)
             hard_kill_results.append(result)
+            hard_kill_by_agent[agent_name] = result
             log_activity('terminal', 'chat_job_hard_kill', f"agent={agent_name} ok={result.get('ok')} detail={result.get('detail', '')[:120]}")
 
     for item in cancelled:
+        agent_name = str(item.get('agent') or '').strip().lower()
+        stop_result = hard_kill_by_agent.get(agent_name)
+        if stop_result:
+            trace = [{'text': 'cancelled by user', 'ts': time.time()}, {'text': _chat_runtime_stop_trace(stop_result), 'ts': time.time()}]
+            error = 'cancelled by user'
+            detail = str(stop_result.get('detail') or '').strip()
+            if detail:
+                error += f'; ollama stop: {detail}'
+            try:
+                update_chat_job_db(
+                    item['job_id'],
+                    status='cancelled',
+                    stage='cancelled by user',
+                    error=error,
+                    stage_trace_json=json.dumps(trace),
+                )
+            except Exception:
+                pass
         log_activity('terminal', 'chat_job_cancelled', f"job_id={item['job_id']} agent={item.get('agent')}")
 
     return jsonify({
