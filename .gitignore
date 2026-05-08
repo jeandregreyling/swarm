@@ -2,6 +2,7 @@
 config.py
 .env
 .env.*
+!.env.example
 .env.agents
 .env.local
 *_credentials.json
