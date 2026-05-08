@@ -1399,6 +1399,32 @@ def _ensure_digest_scheduled():
                      f'python3 {os.path.join(SWARM_ROOT, "utils/brief_engine.py")} daily',
                      created_by='system')
             print('[Listener] Daily Ghost Brief scheduled at 07:05.')
+        # Periodic chat+AI round-trip smoke probe (MD-FEATURE-CE649CA367EC /
+        # MD-SESSION30-D931A65A7F6D). The probe pings the local LLM, asserts a
+        # non-empty reply, and emits a spine CHAT event. Default cadence: 30
+        # minutes. Override with FRIDAYS_CHAT_SMOKE_PROBE_INTERVAL (minutes).
+        if not any(
+            (t.get('name') or '').lower() == 'chat_smoke_probe'
+            for t in tasks
+        ):
+            try:
+                interval_min = max(
+                    5,
+                    int(os.environ.get('FRIDAYS_CHAT_SMOKE_PROBE_INTERVAL', '30')),
+                )
+            except (TypeError, ValueError):
+                interval_min = 30
+            add_task(
+                'chat_smoke_probe',
+                f'interval {interval_min}m',
+                'PYTHON',
+                'chat_smoke_probe',
+                created_by='system',
+            )
+            print(
+                f'[Listener] Periodic chat smoke probe scheduled '
+                f'(every {interval_min}m).'
+            )
     except Exception as e:
         print(f'[Listener] Could not schedule digest: {e}')
 
@@ -1517,6 +1543,8 @@ def run_forever(interval=60):
             # Swarm tasks every 5 min
             if time.time() - _last_task_check > 300:
                 try:
+                    from fridays.scheduler import check_due
+                    check_due()
                     from swarm_tasks import check_snoozed, check_sla, check_proposals
                     check_snoozed()
                     check_sla(hours=4)

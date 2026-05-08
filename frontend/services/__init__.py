@@ -256,6 +256,7 @@ from .chat_relay import (
     _is_execution_confirmation,
     _parse_chat_skill_command,
     _resolve_chat_reply_target,
+    _strip_auto_relay_banner,
     _strip_relay_routing,
 )
 
@@ -373,6 +374,7 @@ __all__ = [
     '_safe_time_event',
     '_safe_workflow_checkpoint',
     '_streams',
+    '_strip_auto_relay_banner',
     '_strip_relay_routing',
     '_tavily_search',
     '_thread_transcript_from_rows',

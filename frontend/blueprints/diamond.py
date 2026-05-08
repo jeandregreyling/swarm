@@ -540,3 +540,47 @@ def _get_governance_status():
         }
     except Exception:
         return {'vortex_active': False, 'sniffles_enabled': False, 'alm_status': 'standby'}
+
+
+# ── Governance pause/resume ──────────────────────────────────────────────────
+# A file-based flag that the UI can read and toggle. Governance transition
+# enforcement can consult this flag to downgrade blocking checks to warnings
+# when an operator has temporarily paused the state machine.
+_GOV_FLAG = _SWARM_ROOT / '.governance_paused'
+_VORTEX_FLAG = _SWARM_ROOT / '.vortex_paused'
+
+
+def _read_flag(path):
+    try:
+        return path.exists()
+    except Exception:
+        return False
+
+
+@diamond_bp.route('/api/governance/state', methods=['GET'])
+def api_governance_state():
+    try:
+        status = _get_governance_status()
+        status['paused'] = _read_flag(_GOV_FLAG)
+        status['vortex_paused'] = _read_flag(_VORTEX_FLAG)
+        return jsonify({'ok': True, **status})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@diamond_bp.route('/api/governance/toggle', methods=['POST'])
+def api_governance_toggle():
+    try:
+        from flask import request
+        data = request.get_json(silent=True) or {}
+        target = data.get('target', 'governance')
+        flag = _VORTEX_FLAG if target == 'vortex' else _GOV_FLAG
+        if flag.exists():
+            flag.unlink()
+            paused = False
+        else:
+            flag.write_text(datetime.now(timezone.utc).isoformat())
+            paused = True
+        return jsonify({'ok': True, 'target': target, 'paused': paused})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500

@@ -6,6 +6,44 @@ function renderVortexHistory() {
     (_twCheckpoints.length ? _twCheckpoints.map(c => `<div style="font-size:11px;padding:6px 0;border-bottom:1px solid var(--border);"><b>${_escHtml(c.checkpoint_name || c.name || 'checkpoint')}</b> <span style="color:var(--text-dim);">@ ${_escHtml(c.timestamp || c.created_at || '')}</span></div>`).join('') : '<div style="color:var(--text-dim);font-size:11px;">No checkpoints yet.</div>');
 }
 
+// MD-FEATURE-FBB9A817653C / MD-FEATURE-485CDCA789E8 — per-section "?" help popover
+// for the Vortex side rail. Each section explains what it shows + offers a KC link.
+const _TW_SECTION_HELP = {
+  history: { title: 'Vortex History', blurb: 'Snapshot checkpoints captured by the Vortex (formerly Time Wizard). Every agent tool action ships a [vortex] commit so you can roll the workspace back step-by-step. Select a checkpoint to inspect or restore.', kc: '/knowledge?topic=vortex-history' },
+  spine:   { title: 'Spine Feed', blurb: 'Live event stream from Seven\'s spine — every routing decision, queued ticket, and agent emit. The Open Traced button widens this into the full Traced window for filtering and audit.', kc: '/knowledge?topic=spine-feed' },
+};
+function twShowSectionHelp(key) {
+  const meta = _TW_SECTION_HELP[key] || { title: key, blurb: 'No help blurb registered for this section yet.', kc: '/knowledge' };
+  let modal = document.getElementById('tw-section-help-modal');
+  if (modal) modal.remove();
+  modal = document.createElement('div');
+  modal.id = 'tw-section-help-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
+  const safeTitle = (meta.title || key).replace(/[<>]/g, '');
+  const safeBlurb = (meta.blurb || '').replace(/[<>]/g, '');
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(420px,90vw);box-shadow:0 14px 40px rgba(0,0,0,.4);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px;color:var(--accent);">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:color-mix(in srgb,var(--accent) 18%,transparent);border:1px solid var(--accent);font-size:13px;">?</span>
+          <span>Vortex — ${safeTitle}</span>
+        </div>
+        <button onclick="document.getElementById('tw-section-help-modal').remove()" aria-label="Close" style="background:transparent;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">×</button>
+      </div>
+      <div style="font-size:12px;line-height:1.55;color:var(--text);margin-bottom:12px;">${safeBlurb}</div>
+      <div style="display:flex;gap:6px;justify-content:flex-end;">
+        <a href="${meta.kc}" onclick="event.preventDefault();openWindow('knowledge','Knowledge','view-knowledge');document.getElementById('tw-section-help-modal').remove();" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;">Open KC manual →</a>
+        <button onclick="document.getElementById('tw-section-help-modal').remove()" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--text-dim);font-size:11px;cursor:pointer;">Close</button>
+      </div>
+      <div style="margin-top:10px;font-size:9px;color:var(--text-dim);text-align:right;">Press <kbd style="padding:0 5px;border:1px solid var(--border);border-radius:3px;background:var(--bg);">Esc</kbd> to close</div>
+    </div>`;
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  const escH = (e) => { if (e.key === 'Escape') { const m = document.getElementById('tw-section-help-modal'); if (m) m.remove(); document.removeEventListener('keydown', escH); } };
+  document.addEventListener('keydown', escH);
+  document.body.appendChild(modal);
+}
+window.twShowSectionHelp = twShowSectionHelp;
+
 // Vortex explainer popover — what is this thing, how do checkpoints differ from git,
 // what step-back actually does. Surfaced via the (i) button in the header.
 function twOpenInfo() {
@@ -108,11 +146,135 @@ function initTimeWizard() {
     };
   }
 
+  _initTwSectionToggles();
+  _initTwHistoryResize();
   setTwAutoRefresh(_twAutoRefreshEnabled);
   loadTimeWizardData();
 }
 
+// ── Slice 5d: collapsible side sections ────────────────────────────────────
+function _initTwSectionToggles() {
+  const KEY = 'vortex_section_collapsed';
+  let collapsed = {};
+  try { collapsed = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) {}
+  document.querySelectorAll('.tw-section-toggle').forEach(btn => {
+    const target = btn.getAttribute('data-target');
+    if (!target) return;
+    const tgt = document.getElementById(target);
+    const caret = btn.querySelector('.tw-toggle-caret');
+    const apply = (isCollapsed) => {
+      if (tgt) tgt.style.display = isCollapsed ? 'none' : '';
+      if (caret) caret.style.transform = isCollapsed ? 'rotate(-90deg)' : '';
+      btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    };
+    apply(!!collapsed[target]);
+    btn.onclick = () => {
+      collapsed[target] = !collapsed[target];
+      try { localStorage.setItem(KEY, JSON.stringify(collapsed)); } catch (_) {}
+      apply(!!collapsed[target]);
+    };
+  });
+}
+
+// ── Slice 5d: resizable history panel ──────────────────────────────────────
+function _initTwHistoryResize() {
+  const KEY = 'vortex_history_width';
+  const handle = document.getElementById('tw-history-resizer');
+  const panel = document.getElementById('tw-history-panel');
+  if (!handle || !panel) return;
+  const apply = (w) => {
+    if (!w) { panel.style.width = ''; return; }
+    const max = Math.floor(window.innerWidth * 0.6);
+    const clamped = Math.max(220, Math.min(max, w));
+    panel.style.width = clamped + 'px';
+  };
+  const saved = parseInt(localStorage.getItem(KEY) || '0', 10);
+  if (saved > 0) apply(saved);
+
+  let dragging = false;
+  const onMove = (e) => {
+    if (!dragging) return;
+    const x = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+    const rect = panel.getBoundingClientRect();
+    const newW = rect.right - x;
+    apply(newW);
+    try { localStorage.setItem(KEY, String(parseInt(panel.style.width, 10) || 0)); } catch (_) {}
+    e.preventDefault();
+  };
+  const onUp = () => {
+    dragging = false;
+    document.body.style.cursor = '';
+    handle.style.background = '';
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+  };
+  const onDown = (e) => {
+    dragging = true;
+    document.body.style.cursor = 'col-resize';
+    handle.style.background = 'var(--accent)';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
+    e.preventDefault();
+  };
+  handle.addEventListener('mousedown', onDown);
+  handle.addEventListener('touchstart', onDown, { passive: false });
+  handle.addEventListener('dblclick', () => {
+    try { localStorage.removeItem(KEY); } catch (_) {}
+    apply(0);
+  });
+  handle.addEventListener('keydown', (e) => {
+    const cur = parseInt(panel.getBoundingClientRect().width, 10) || 320;
+    if (e.key === 'ArrowLeft')  { apply(cur + 24); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { apply(cur - 24); e.preventDefault(); }
+    else if (e.key === 'Home')  { apply(0); try { localStorage.removeItem(KEY); } catch (_) {} e.preventDefault(); return; }
+    else return;
+    try { localStorage.setItem(KEY, String(parseInt(panel.style.width, 10) || 0)); } catch (_) {}
+  });
+}
+
+// ── Slice 5d: Vortex health pill ───────────────────────────────────────────
+function _renderTwHealth() {
+  const pill = document.querySelector('#tw-health-strip .tw-health-pill');
+  if (!pill) return;
+  const dot = pill.querySelector('.tw-health-dot');
+  const label = pill.querySelector('.tw-health-label');
+  const sessions = (_twSessions || []).length;
+  const checkpoints = (_twCheckpoints || []).length;
+  const events = (_twEvents || []).length;
+  const decisions = (_twDecisions || []).length;
+  let state = 'ok', text = '';
+  if (!sessions && !checkpoints && !events && !decisions) {
+    state = 'idle';
+    text = 'Vortex idle — no sessions or checkpoints yet';
+  } else if (!checkpoints) {
+    state = 'warn';
+    text = `Vortex live · ${events} events · 0 checkpoints (save one to enable rollback)`;
+  } else if (!sessions) {
+    state = 'warn';
+    text = `Vortex history present · ${checkpoints} checkpoints · session inactive`;
+  } else {
+    state = 'ok';
+    text = `Vortex healthy · ${sessions} session${sessions===1?'':'s'} · ${checkpoints} checkpoints · ${events} events`;
+  }
+  const palette = {
+    ok:    { bg:'#22c55e', fg:'#22c55e', border:'#22c55e55' },
+    warn:  { bg:'#f59e0b', fg:'#f59e0b', border:'#f59e0b55' },
+    idle:  { bg:'var(--text-dim)', fg:'var(--text-dim)', border:'var(--border)' },
+  }[state];
+  if (dot)   dot.style.background = palette.bg;
+  if (label) label.textContent = text;
+  pill.style.borderColor = palette.border;
+  pill.style.color = palette.fg;
+  pill.setAttribute('data-state', state);
+}
+
 async function loadTimeWizardData() {
+  // Y.58 — install Cyber + VPN tabs alongside the timeline. Idempotent.
+  twInstallTabs();
   const container = document.getElementById('tw-timeline');
   if (!container) return;
   try {
@@ -161,6 +323,7 @@ function renderTwSummary() {
   slider.disabled = _twCheckpoints.length === 0;
   slider.max = Math.max(_twCheckpoints.length - 1, 0);
   if (Number(slider.value) > Number(slider.max)) slider.value = '0';
+  try { _renderTwHealth(); } catch (_) {}
 }
 
 function getSelectedTwCheckpoint() {
@@ -370,6 +533,23 @@ function renderTwTimeline(decisions) {
         <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">${_escHtml(d.date || d.proposed || d.timestamp || '')}</div>
       </div>`;
   }).join('');
+  // Top-of-Vortex Seven life-story summary — system-wide narrative.
+  try {
+    if (window.SevenPanel) {
+      const parent = container.parentNode;
+      let host = document.getElementById('tw-seven-life');
+      if (!host && parent) {
+        host = document.createElement('div');
+        host.id = 'tw-seven-life';
+        host.style.cssText = 'margin:0 0 10px 0;';
+        parent.insertBefore(host, container);
+      }
+      if (host && !host.dataset.mounted) {
+        host.dataset.mounted = '1';
+        window.SevenPanel.mount(host, { kind: 'system', id: 'vortex' });
+      }
+    }
+  } catch (e) { /* noop */ }
 }
 
 function twEventDisplayTitle(event) {
@@ -635,6 +815,19 @@ async function expandTwDecision(id) {
       wrapper.id = `tw-detail-${id}`;
       wrapper.innerHTML = detailHtml;
       timeline.parentNode.insertBefore(wrapper, timeline.nextSibling);
+      // Seven life-story panel — pulls /api/seven/related at depth 2 for
+      // this record id and renders a propose-only insight footer.
+      try {
+        if (window.SevenPanel) {
+          // Decision id may be a UUID, ticket number, or record id. SevenPanel
+          // tries to resolve via /api/seven/observe?focus=<id> and renders
+          // narrative + proposals; failure-quiet if not a record kind.
+          const inner = wrapper.querySelector(':scope > div');
+          if (inner) {
+            window.SevenPanel.mount(inner, { kind: 'decision', id: String(id) });
+          }
+        }
+      } catch (e) { /* noop */ }
     }
     
     showToast(`Loaded: ${d.title || d.status}`, 'success');
@@ -850,3 +1043,110 @@ async function loadBriefById(id) {}
     return r;
   };
 })();
+
+/* ───────────────────────────────────────────────────────────────────────
+ * Y.58 — Vortex tabs (Timeline / Cyber / VPN). Cyber + VPN panes were
+ * promoted from standalone home tiles into Vortex per user request.
+ * ─────────────────────────────────────────────────────────────────────── */
+function twInstallTabs() {
+  // Find the Vortex root: any open window whose content includes #tw-timeline
+  const tlNode = document.getElementById('tw-timeline');
+  if (!tlNode) return;
+  const root = tlNode.closest('.content-view');
+  if (!root || root.dataset.twTabsInstalled === '1') return;
+  root.dataset.twTabsInstalled = '1';
+
+  // Locate the header (first child div with border-bottom). Safer: the div
+  // containing the <h3> with "Vortex".
+  let header = null;
+  root.querySelectorAll('div').forEach((d) => {
+    if (!header && d.querySelector && d.querySelector('h3') && /Vortex/i.test(d.textContent || '')) header = d;
+  });
+  if (!header) return;
+
+  // Build a tab-bar and insert it directly after the header.
+  const tabBar = document.createElement('div');
+  tabBar.id = 'tw-tabbar';
+  tabBar.style.cssText = 'display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;';
+  tabBar.innerHTML = `
+    <button type="button" class="tw-tab-btn" data-tw-tab="timeline" style="padding:8px 14px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:11px;font-weight:700;cursor:pointer;">Timeline</button>
+    <button type="button" class="tw-tab-btn" data-tw-tab="cyber" style="padding:8px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">🛡 Cyber Security</button>
+    <button type="button" class="tw-tab-btn" data-tw-tab="vpn" style="padding:8px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">🔐 VPN / Tailscale</button>
+  `;
+  header.insertAdjacentElement('afterend', tabBar);
+
+  // Wrap everything after the tabBar inside a #tw-pane-timeline div so we
+  // can hide it as a unit when switching tabs.
+  const timelinePane = document.createElement('div');
+  timelinePane.id = 'tw-pane-timeline';
+  timelinePane.style.cssText = 'display:flex;flex-direction:column;flex:1;min-height:0;';
+  let nxt = tabBar.nextSibling;
+  while (nxt) {
+    const after = nxt.nextSibling;
+    timelinePane.appendChild(nxt);
+    nxt = after;
+  }
+  root.appendChild(timelinePane);
+
+  // Cyber pane (clones the wishlist-cyber template).
+  const cyberPane = document.createElement('div');
+  cyberPane.id = 'tw-pane-cyber';
+  cyberPane.style.cssText = 'display:none;flex:1;min-height:0;overflow:hidden;';
+  root.appendChild(cyberPane);
+
+  // VPN pane (clones the view-vpn template).
+  const vpnPane = document.createElement('div');
+  vpnPane.id = 'tw-pane-vpn';
+  vpnPane.style.cssText = 'display:none;flex:1;min-height:0;overflow:hidden;';
+  root.appendChild(vpnPane);
+
+  let cyberLoaded = false;
+  let vpnLoaded = false;
+
+  tabBar.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('.tw-tab-btn');
+    if (!btn) return;
+    const tab = btn.dataset.twTab;
+    tabBar.querySelectorAll('.tw-tab-btn').forEach((b) => {
+      const on = b === btn;
+      b.style.borderBottomColor = on ? 'var(--accent)' : 'transparent';
+      b.style.color = on ? 'var(--text)' : 'var(--text-dim)';
+      b.style.fontWeight = on ? '700' : '600';
+    });
+    timelinePane.style.display = tab === 'timeline' ? 'flex' : 'none';
+    cyberPane.style.display = tab === 'cyber' ? 'flex' : 'none';
+    vpnPane.style.display = tab === 'vpn' ? 'flex' : 'none';
+
+    if (tab === 'cyber' && !cyberLoaded) {
+      cyberLoaded = true;
+      const tpl = document.getElementById('view-wishlist-cyber');
+      if (tpl) {
+        cyberPane.appendChild(tpl.content.cloneNode(true));
+        // Trigger the existing pillar live-loader if available.
+        try {
+          if (typeof window.loadWishlistPillar === 'function') {
+            window.loadWishlistPillar({ el: cyberPane }, 'cyber-security');
+          } else if (typeof window.pillarLiveInit === 'function') {
+            window.pillarLiveInit(cyberPane, 'cyber-security');
+          }
+        } catch (_) {}
+      } else {
+        cyberPane.innerHTML = '<div style="padding:14px;color:var(--text-dim);font-size:11px;">Cyber pillar template not found.</div>';
+      }
+    }
+    if (tab === 'vpn' && !vpnLoaded) {
+      vpnLoaded = true;
+      const tpl = document.getElementById('view-vpn');
+      if (tpl) {
+        vpnPane.appendChild(tpl.content.cloneNode(true));
+        try {
+          if (typeof window.loadVpnData === 'function') {
+            window.loadVpnData({ el: vpnPane });
+          }
+        } catch (_) {}
+      } else {
+        vpnPane.innerHTML = '<div style="padding:14px;color:var(--text-dim);font-size:11px;">VPN template not found.</div>';
+      }
+    }
+  });
+}

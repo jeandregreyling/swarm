@@ -39,7 +39,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             buf.append(piece)
             if len(buf) % 15 == 0:
                 _emit(f'reasoning · {("".join(buf))[-300:]}')
-        answer, tokens = _llm.chat(MODEL, messages, stream=True, temperature=0.6, on_chunk=_cb)
+        answer, tokens = _llm.chat_via_gateway(MODEL, messages, stage_cb=stage_cb, on_chunk=_cb, temperature=0.6)
     except Exception as exc:
         logger.warning(f'[DeepSeekLocal] stream error: {exc}')
         return f'[deepseek-local] error: {exc}', 0

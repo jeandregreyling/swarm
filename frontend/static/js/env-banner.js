@@ -99,6 +99,28 @@
 
   function _appendSwitcher() {
     document.body.appendChild(switcher);
+    // P4-S32: relocate the top-bar services dropdown into the bottom-right strip,
+    // immediately to the LEFT of Fridays. Keep the same DOM node so existing
+    // toggleServicesDropdown() / loadServicesPanel() bindings continue to work.
+    try {
+      const wrap = document.getElementById('services-dropdown-wrap');
+      if (wrap && wrap.parentNode !== switcher) {
+        // Strip top-bar styling that doesn't fit the bottom strip
+        wrap.style.position = 'static';
+        const btn = wrap.querySelector('#services-dropdown-btn');
+        if (btn) {
+          btn.style.height = '24px';
+          btn.style.borderRadius = '6px';
+          btn.style.padding = '0 10px';
+          btn.style.fontSize = '11px';
+          btn.style.fontWeight = '600';
+          btn.style.background = 'transparent';
+          btn.style.border = '1px solid transparent';
+          btn.style.color = 'var(--text-dim,#617590)';
+        }
+        switcher.insertBefore(wrap, switcher.firstChild);
+      }
+    } catch (_) { /* non-fatal */ }
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _appendSwitcher);

@@ -59,8 +59,11 @@ def promote_to_verified(subject, content, tags=''):
 def save_agent_memory(agent_name, subject, content, tags='', importance=5, source='learned'):
     table = AGENT_POOL_MAP.get(agent_name.lower())
     if not table:
-        logger.warning(f"No personal pool for agent: {agent_name}")
-        return False
+        # STEP-MEMORIES-HIVE-KNOWLEDGE-SYNC-20260430 — never silently drop
+        # an agent memory write. Unknown agents fall back to the shared
+        # 'memory' pool with the agent name preserved in the agent column.
+        logger.warning(f"No personal pool for agent: {agent_name} — falling back to shared memory pool")
+        table = 'memory'
     conn = get_connection()
     # All dedicated agent tables have a 'source' column; only the legacy shared 'memory'
     # table (librarian/duck/sniffles) doesn't. Check by table name.

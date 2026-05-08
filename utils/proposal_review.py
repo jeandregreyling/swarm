@@ -10,6 +10,7 @@ Pipeline:
 import os
 import sys
 import time
+import re
 
 _SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +44,39 @@ def _duck_verdict(title: str, description: str, agent: str) -> tuple[str, str]:
 
     if len((title or '').strip()) < 5:
         return 'rejected', 'Title too short — please provide a clear proposal title.'
+
+    informational_patterns = (
+        r'\bstatus update\b',
+        r'\bprovide (a )?status\b',
+        r'\bcurrent status\b',
+        r'\breport\b',
+        r'\bsummar(y|ize)\b',
+        r'\btell (me|us)\b',
+        r'\bshow (me|us)\b',
+    )
+    change_patterns = (
+        r'\bfix\b',
+        r'\bbuild\b',
+        r'\bimplement\b',
+        r'\bchange\b',
+        r'\bmodify\b',
+        r'\bpatch\b',
+        r'\bwrite\b',
+        r'\bcreate\b',
+        r'\bdelete\b',
+        r'\badd\b',
+        r'\bremove\b',
+        r'\bupdate (the )?(file|code|function|system|watchdog|duck|agent|agents)\b',
+    )
+    if (
+        any(re.search(pattern, combined) for pattern in informational_patterns)
+        and not any(re.search(pattern, combined) for pattern in change_patterns)
+    ):
+        return (
+            'rejected',
+            'Duck rejected this as an informational/status request, not a build proposal. '
+            'Ask Ghost "what do you mean?" or request an explicit system change before starting work.',
+        )
 
     note = (
         f'Duck reviewed this proposal from {agent}. '
@@ -101,6 +135,13 @@ def duck_review_proposal(proposal_id: str, title: str, description: str,
             agent=agent,
         )
 
+    _record_duck_scorecard_outcome(
+        proposal_id=proposal_id,
+        title=title,
+        agent=agent,
+        phase='intake',
+        verdict=verdict,
+    )
     print(f'[Duck] {proposal_id} review → {verdict}')
 
 
@@ -197,6 +238,13 @@ def duck_check_done(proposal_id: str):
     if conv_id:
         _notify_done_check(int(conv_id), proposal_id, title, agent, verdict, feedback)
 
+    _record_duck_scorecard_outcome(
+        proposal_id=proposal_id,
+        title=title,
+        agent=agent,
+        phase='qa',
+        verdict=verdict,
+    )
     print(f'[Duck] {proposal_id} quality check → {verdict} → {new_status}')
 
 
@@ -208,7 +256,7 @@ def _duck_quality_check(title: str, description: str) -> tuple[str, str]:
     combined = f'{(title or "").lower()} {(description or "").lower()}'
 
     # Fail: incomplete work signals
-    incomplete_signals = ['todo', 'tbd', 'placeholder', 'not yet', 'incomplete', 'wip']
+    incomplete_signals = ['todo', 'tbd', 'placeholder', 'not yet', 'incomplete', 'wip']  # detector:ignore
     for sig in incomplete_signals:
         if sig in combined:
             return 'fail', f'Duck found incomplete-work signal: "{sig}". Revise and re-complete.'
@@ -287,6 +335,13 @@ def duck_execute_proposal(proposal_id: str, actor: str = 'duck'):
         )
         _post_to_thread(int(conv_id), msg, 'proposal_update')
 
+    _record_duck_scorecard_outcome(
+        proposal_id=proposal_id,
+        title=row['title'] or proposal_id,
+        agent=row['agent'] or 'unknown',
+        phase='execute',
+        verdict='closed',
+    )
     print(f'[Duck] {proposal_id} closed by {actor}')
     return True, f'Proposal {proposal_id} shipped and closed.'
 
@@ -387,3 +442,18 @@ def _post_to_thread(conv_id: int, msg: str, message_type: str = 'proposal_update
         log_message(conv_id, 'duck', msg, to_agent='user', message_type=message_type)
     except Exception as exc:
         print(f'[ProposalReview] _post_to_thread failed: {exc}')
+
+
+def _record_duck_scorecard_outcome(*, proposal_id: str, title: str, agent: str, phase: str, verdict: str):
+    """Best-effort scorecard learning from proposal/Duck lifecycle events."""
+    try:
+        from core import agent_scorecards
+        agent_scorecards.record_duck_proposal_outcome(
+            proposal_id=proposal_id,
+            title=title,
+            agent=agent,
+            phase=phase,
+            verdict=verdict,
+        )
+    except Exception as exc:
+        print(f'[ProposalReview] scorecard update failed: {exc}')

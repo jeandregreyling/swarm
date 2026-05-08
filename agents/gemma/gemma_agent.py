@@ -57,20 +57,23 @@ def chat(message, conversation_history=None, stage_cb=None):
         buf = []
         def _cb(piece):
             buf.append(piece)
-            if len(buf) % 15 == 0:
+            if len(buf) == 1 or len(buf) % 15 == 0:
                 _emit(f'generating · {("".join(buf))[-300:]}')
-        return _llm.chat(MODEL, msgs, stream=True, temperature=0.7, on_chunk=_cb)
+        return _llm.chat_via_gateway(MODEL, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.7)
 
     try:
         sys.path.insert(0, '/home/seven/swarm/agents')
         from agents.skills_loop import run_skill_loop
+        from agents.skill_intent import message_likely_needs_skills
     except ImportError:
         from skills_loop import run_skill_loop
+        from skill_intent import message_likely_needs_skills
 
     try:
+        needs_skills = message_likely_needs_skills(message)
         answer, tokens = run_skill_loop(
             agent_name=AGENT_NAME, call_fn=_api_call,
-            messages=messages, emit_fn=_emit, max_passes=5, nudge_if_no_skills=True,
+            messages=messages, emit_fn=_emit, max_passes=2, nudge_if_no_skills=needs_skills,
         )
     except Exception as e:
         return f'[gemma] error: {e}', 0

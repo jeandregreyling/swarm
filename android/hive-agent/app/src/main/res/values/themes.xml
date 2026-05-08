@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Material3 dark theme. The Hive identity is dark+amber regardless
+         of system theme; light-mode users get the same canvas because the
+         app is utility, not a customer-facing surface. -->
+    <style name="Theme.HiveAgent" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_amber</item>
+        <item name="colorPrimaryVariant">@color/brand_amber_dim</item>
+        <item name="colorOnPrimary">@color/brand_ink</item>
+        <item name="colorSecondary">@color/brand_amber</item>
+        <item name="android:colorBackground">@color/brand_ink</item>
+        <item name="android:windowBackground">@color/brand_ink</item>
+        <item name="android:textColorPrimary">@color/brand_text</item>
+        <item name="android:textColorSecondary">@color/brand_text_dim</item>
+        <item name="android:statusBarColor">@color/brand_ink</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

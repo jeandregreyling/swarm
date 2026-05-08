@@ -13,6 +13,20 @@ from flask import request, jsonify
 from database import get_connection
 
 
+def _deactivate_session(token: str) -> None:
+    if not token:
+        return
+    conn = get_connection()
+    try:
+        conn.execute(
+            "UPDATE user_sessions SET is_active = 0 WHERE session_token = ?",
+            (token,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_current_user():
     """Look up the currently logged-in user from the session cookie.
     Returns a dict with profile info, or None if not logged in."""
@@ -35,6 +49,7 @@ def get_current_user():
     # String comparison works for ISO-like format since it sorts lexicographically
     now_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     if row['expires_at'] < now_str:
+        _deactivate_session(token)
         return None
     if not row['is_active'] or not row['approved']:
         return None

@@ -20,7 +20,19 @@ import threading
 import time
 import logging
 
-sys.path.insert(0, '/home/seven/swarm')
+# S-7C7ED96F5B — derive SWARM_ROOT from this file's location (utils/ -> parent)
+_SWARM_ROOT = os.environ.get(
+    'SWARM_ROOT',
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+)
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
+
+# Bug fix 2026-05-03: SwarmAPI methods called undefined `window`, and main()
+# called undefined `get_system_clock`. The clock helper lives in
+# lib.system.system_clock; the window has to be threaded into SwarmAPI as
+# an instance attribute so the API methods can reach it.
+from lib.system.system_clock import get_system_clock
 
 # Silence Flask startup noise
 log = logging.getLogger('werkzeug')
@@ -54,12 +66,26 @@ def _wait_for_flask(timeout=10):
 # ── Native API Bridge ──────────────────────────────────────────────────────────
 
 class SwarmAPI:
-    """Exposed to the JS frontend as window.pywebview.api"""
+    """Exposed to the JS frontend as window.pywebview.api
+
+    The pywebview window is set after creation via :meth:`attach_window`.
+    Calling toggle_fullscreen / minimize before that is a no-op rather
+    than a NameError (previously crashed because `window` was a free
+    variable).
+    """
+    def __init__(self):
+        self._window = None
+
+    def attach_window(self, window):
+        self._window = window
+
     def toggle_fullscreen(self):
-        window.toggle_fullscreen()
+        if self._window is not None:
+            self._window.toggle_fullscreen()
 
     def minimize(self):
-        window.minimize()
+        if self._window is not None:
+            self._window.minimize()
 
     def get_local_path(self):
         return os.getcwd()
@@ -92,6 +118,7 @@ def main():
         resizable   = True,
         text_select = True,
     )
+    api.attach_window(window)
 
     webview.start(debug=False)
     print(f'[{get_system_clock().timestamp_compact()}] Seven closed.')

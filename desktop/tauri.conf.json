@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/v1.4.7/tauri_app/src-tauri/tauri.conf.json",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "Seven's Swarm",
   "version": "4.0.0",
   "identifier": "com.seven.swarm",
@@ -7,13 +7,14 @@
     "beforeDevCommand": "",
     "devUrl": "http://localhost:5050",
     "beforeBuildCommand": "",
-    "frontendDist": "../frontend"
+    "frontendDist": "http://localhost:5050"
   },
   "app": {
-    "title": "Seven's Swarm",
     "windows": [
       {
+        "label": "main",
         "title": "Seven's Swarm",
+        "url": "http://localhost:5050",
         "width": 1400,
         "height": 900,
         "resizable": true,
@@ -24,12 +25,12 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://localhost:5050 ws://localhost:5050; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:"
+      "csp": "default-src 'self' http://localhost:5050; connect-src 'self' http://localhost:5050 ws://localhost:5050; script-src 'self' 'unsafe-inline' http://localhost:5050; style-src 'self' 'unsafe-inline' http://localhost:5050; img-src 'self' data: blob: http://localhost:5050"
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage", "msi"],
+    "targets": ["deb", "appimage"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

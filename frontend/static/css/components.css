@@ -147,10 +147,10 @@ body.orb-dragging * {
 .bg-hive-clusters span:nth-child(5) { top: 74%; right: 16%; animation-delay: -11s; }
 .bg-hive-clusters span:nth-child(6) { top: 34%; left: 44%; animation-delay: -7s; }
 
-body[data-foundation="light"] .bg-hive-lattice { opacity: 0.04; }
-body[data-foundation="dark"] .bg-hive-lattice { opacity: 0.12; }
-body[data-foundation="light"] .bg-hive-clusters span { opacity: 0.04; }
-body[data-foundation="dark"] .bg-hive-clusters span { opacity: 0.1; }
+body[data-foundation="light"] .bg-hive-lattice { opacity: 0.18; }
+body[data-foundation="dark"] .bg-hive-lattice { opacity: 0.32; }
+body[data-foundation="light"] .bg-hive-clusters span { opacity: 0.14; }
+body[data-foundation="dark"] .bg-hive-clusters span { opacity: 0.22; }
 body[data-scene-lattice="off"] .bg-hive-lattice { display: none; }
 body[data-scene-clusters="off"] .bg-hive-clusters { display: none; }
 
@@ -188,9 +188,77 @@ body[data-scene-clusters="off"] .bg-hive-clusters { display: none; }
 body[data-scene="beach"] #scene-beach,
 body[data-scene="off"] #scene-still,
 body[data-scene="forest"] #scene-forest,
-body[data-scene="rain"] #scene-rain {
+body[data-scene="rain"] #scene-rain,
+body[data-scene="solar"] #scene-solar,
+body[data-scene="underwater"] #scene-underwater {
   opacity: 1;
   transform: scale(1);
+}
+
+/* ── Solar System scene ─────────────────────────────────────────────── */
+.scene-solar-deep {
+  background:
+    radial-gradient(180% 90% at 50% 100%, #1a0728 0%, #080414 50%, #000 100%),
+    radial-gradient(60% 40% at 20% 30%, rgba(138,26,43,0.40), transparent 60%),
+    radial-gradient(50% 35% at 78% 20%, rgba(226,75,44,0.32), transparent 65%);
+  opacity: 0.95;
+}
+.scene-solar-nebula {
+  background:
+    radial-gradient(40% 50% at 30% 70%, rgba(255,90,50,0.28), transparent 70%),
+    radial-gradient(35% 40% at 75% 60%, rgba(200,31,10,0.22), transparent 70%);
+  mix-blend-mode: screen;
+  animation: sceneFloatSlow 40s ease-in-out infinite alternate;
+}
+.scene-solar-sun {
+  position: absolute;
+  inset: auto 6% 60% auto;
+  width: 22vmin; height: 22vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #fff0b8 0%, #ff9a3a 40%, #e24b2c 70%, rgba(200,31,10,0) 100%);
+  filter: blur(1px) drop-shadow(0 0 80px rgba(255,90,50,0.65));
+  opacity: 0.9;
+  animation: sceneFloatSlow 30s ease-in-out infinite alternate;
+}
+.scene-solar-mars {
+  position: absolute;
+  left: 18%; top: 38%;
+  width: 8vmin; height: 8vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff8a5a 0%, #c8381a 60%, #6a1008 100%);
+  box-shadow: 0 0 40px rgba(226,75,44,0.35);
+  opacity: 0.85;
+}
+
+/* ── Underwater scene ───────────────────────────────────────────────── */
+.scene-underwater-deep {
+  background:
+    linear-gradient(180deg, #2e9fbf 0%, #0c5f88 30%, #05355b 65%, #031525 100%);
+}
+.scene-underwater-caustics {
+  background:
+    repeating-linear-gradient(115deg, rgba(255,255,255,0.06) 0 2px, transparent 2px 40px),
+    repeating-linear-gradient(65deg, rgba(210,236,246,0.05) 0 2px, transparent 2px 60px);
+  mix-blend-mode: screen;
+  animation: sceneFloatSlow 18s ease-in-out infinite alternate;
+}
+.scene-underwater-floor {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 22vh;
+  background:
+    linear-gradient(180deg, rgba(8,28,48,0) 0%, #041b30 70%, #020d1c 100%),
+    radial-gradient(60% 100% at 50% 100%, rgba(226,75,44,0.20), transparent 70%);
+}
+.scene-underwater-coral {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 14vh;
+  background:
+    radial-gradient(16% 120% at 18% 100%, rgba(255,90,50,0.35), transparent 70%),
+    radial-gradient(12% 100% at 42% 100%, rgba(255,120,80,0.30), transparent 70%),
+    radial-gradient(10% 90% at 72% 100%, rgba(226,75,44,0.28), transparent 70%),
+    radial-gradient(14% 120% at 88% 100%, rgba(255,140,90,0.32), transparent 70%);
 }
 .scene-still-reflection {
   background:
@@ -551,7 +619,7 @@ body.theme-solar {
   left: 0;
   width: 100%;
   height: 100%;
-  background: color-mix(in srgb, var(--bg) 84%, transparent 16%);
+  background: color-mix(in srgb, var(--bg) 40%, transparent 60%);
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -659,8 +727,31 @@ body.theme-solar {
 #tdet-body::-webkit-scrollbar,
 #mem-det-body::-webkit-scrollbar,
 #doc-det-body::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
+  width: 28px;
+  height: 28px;
+}
+#home-content::-webkit-scrollbar-thumb,
+#activity-log::-webkit-scrollbar-thumb,
+#ticket-queue::-webkit-scrollbar-thumb,
+#chat-messages::-webkit-scrollbar-thumb,
+.window-content::-webkit-scrollbar-thumb,
+#studio-content::-webkit-scrollbar-thumb,
+#docs-content::-webkit-scrollbar-thumb,
+#skills-content::-webkit-scrollbar-thumb,
+#tickets-content::-webkit-scrollbar-thumb,
+#monitor-content::-webkit-scrollbar-thumb,
+#terminal-output::-webkit-scrollbar-thumb,
+#world-clocks::-webkit-scrollbar-thumb,
+#tw-timeline::-webkit-scrollbar-thumb,
+#pdet-body::-webkit-scrollbar-thumb,
+#tdet-body::-webkit-scrollbar-thumb,
+#mem-det-body::-webkit-scrollbar-thumb,
+#doc-det-body::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 14px;
+  border: 6px solid transparent;
+  background-clip: padding-box;
+  min-height: 60px;
 }
 
 #home-content::-webkit-scrollbar-track,
@@ -705,9 +796,61 @@ body.theme-solar {
 #doc-det-body::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, var(--accent), var(--accent-hover));
   border-radius: 999px;
-  border: 2px solid color-mix(in srgb, var(--window-header) 88%, transparent);
-  min-height: 40px;
-  min-width: 40px;
+  border: 3px solid color-mix(in srgb, var(--window-header) 88%, transparent);
+  background-clip: padding-box;
+  min-height: 80px;
+  min-width: 80px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Phase 3 polish — clip any scrollable area to its parent's rounded corner
+   so the thumb doesn't bleed past the window frame. */
+.floating-window .window-content,
+.content-view,
+#home-content,
+#studio-content,
+#docs-content,
+#skills-content,
+#tickets-content,
+#monitor-content,
+#chat-messages,
+#terminal-output {
+  border-radius: inherit;
+}
+
+/* V8 S-48738493AC: terminal bubble-grid output mode. Each line inside
+ * #terminal-output.terminal-bubble-mode is rendered as a chip in a
+ * grid layout so stdout blocks read like bubbles instead of a flat stream. */
+#terminal-output.terminal-bubble-mode {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 6px;
+  white-space: normal;
+  padding: 10px;
+}
+#terminal-output.terminal-bubble-mode > * {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* Phase 3 polish — wider, easier-to-grab scrollbars app-wide. */
+*::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  min-height: 60px;
+  min-width: 60px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-hover, var(--accent));
 }
 
 #home-content::-webkit-scrollbar-thumb:hover,

@@ -49,8 +49,25 @@ def api_library_sources():
         status      = request.args.get('status', 'active')
         category    = request.args.get('category') or None
         subcategory = request.args.get('subcategory') or None
+        order       = request.args.get('order', 'created')
+        # `recent` is shorthand for "?order=updated&limit=N"
+        recent_raw  = request.args.get('recent')
+        limit_raw   = request.args.get('limit')
+        limit = None
+        if recent_raw:
+            try:
+                limit = max(1, min(int(recent_raw), 200))
+                order = 'updated'
+            except ValueError:
+                limit = None
+        elif limit_raw:
+            try:
+                limit = max(1, min(int(limit_raw), 1000))
+            except ValueError:
+                limit = None
         sources = list_sources(status=status, category=category,
-                               subcategory=subcategory)
+                               subcategory=subcategory, order=order,
+                               limit=limit)
         stats   = source_stats()
         return jsonify({'ok': True, 'sources': sources, 'stats': stats,
                         'tags': _SAP_TAGS})
@@ -142,13 +159,23 @@ def api_library_ingest():
     try:
         _init()
         data        = request.get_json(silent=True) or {}
-        src_type    = str(data.get('type') or 'text').strip().lower()
-        title       = str(data.get('title') or '').strip()
-        content     = str(data.get('content') or '').strip()
+        # S-B6F548DCDD: reject non-string scalar fields rather than coerce.
+        # Stringifying a list/dict produces "[...]" / "{...}" that downstream
+        # parsers happily ingest, polluting the library.
+        for field in ('type', 'title', 'content', 'added_by', 'category', 'subcategory'):
+            v = data.get(field)
+            if v is not None and not isinstance(v, str):
+                return jsonify({'ok': False,
+                                'error': f'{field} must be a string'}), 400
+        if 'tags' in data and not isinstance(data.get('tags'), list):
+            return jsonify({'ok': False, 'error': 'tags must be an array'}), 400
+        src_type    = (data.get('type') or 'text').strip().lower()
+        title       = (data.get('title') or '').strip()
+        content     = (data.get('content') or '').strip()
         tags        = data.get('tags') or []
-        added_by    = str(data.get('added_by') or 'ghost').strip()
-        category    = str(data.get('category') or 'general').strip()
-        subcategory = str(data.get('subcategory') or '').strip() or None
+        added_by    = (data.get('added_by') or 'ghost').strip()
+        category    = (data.get('category') or 'general').strip()
+        subcategory = (data.get('subcategory') or '').strip() or None
 
         if not content:
             return jsonify({'ok': False, 'error': 'content is required'}), 400
@@ -567,6 +594,220 @@ def api_library_topics_delete(topic_id):
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
 
+# ── STEP-KC-TOPICS-HIVE-NAVIGATION-20260430 ─────────────────────────────────
+# Unified hive-graph endpoint. Returns topics + recent library sources as
+# nodes and links them through their category. The Hive Nodes popout, KC
+# Library top-bar dropdowns, and Mind Map view can all pull from this one
+# endpoint instead of stitching graphs ad-hoc per surface.
+#
+# `/api/hive/resolve?kind=topic&id=42` returns the canonical hive-node anchor
+# (e.g. /hive-nodes#topic-42) the UI should navigate to so that document /
+# source / topic clicks all land on the same node spine.
+
+@library_bp.route('/api/hive/graph', methods=['GET'])
+def api_hive_graph():
+    """Return {nodes: [...], edges: [...]} merging topics and recent sources."""
+    try:
+        _init()
+        recent = max(1, min(int(request.args.get('recent', 30)), 200))
+        from lib.knowledge.store import list_sources
+        sources = list_sources(status='active', order='updated', limit=recent)
+        from database import get_connection
+        conn = get_connection()
+        try:
+            try:
+                topic_rows = conn.execute(
+                    "SELECT id, topic, category, score, active FROM user_interests "
+                    "WHERE owner=? ORDER BY active DESC, score DESC LIMIT 200",
+                    (_topics_owner(),),
+                ).fetchall()
+            except Exception:
+                topic_rows = []
+        finally:
+            conn.close()
+        nodes = []
+        edges = []
+        for t in topic_rows or []:
+            tid = t['id'] if hasattr(t, 'keys') else t[0]
+            topic = t['topic'] if hasattr(t, 'keys') else t[1]
+            category = (t['category'] if hasattr(t, 'keys') else t[2]) or 'general'
+            score = (t['score'] if hasattr(t, 'keys') else t[3]) or 0
+            active = (t['active'] if hasattr(t, 'keys') else t[4])
+            nodes.append({
+                'id': f'topic-{tid}',
+                'kind': 'topic',
+                'label': topic,
+                'category': category,
+                'score': float(score or 0),
+                'active': bool(active),
+                'href': f'/hive-nodes#topic-{tid}',
+            })
+        for s in sources or []:
+            sid = s.get('source_id') or s.get('id')
+            cat = s.get('category') or 'general'
+            label = (s.get('title') or s.get('source_ref') or s.get('url') or f'source-{sid}')[:80]
+            nodes.append({
+                'id': f'source-{sid}',
+                'kind': 'source',
+                'label': label,
+                'category': cat,
+                'href': f'/hive-nodes#source-{sid}',
+            })
+            # Edge each source -> any topic with the same category.
+            for t in topic_rows or []:
+                tcat = (t['category'] if hasattr(t, 'keys') else t[2]) or 'general'
+                if tcat and tcat == cat:
+                    tid = t['id'] if hasattr(t, 'keys') else t[0]
+                    edges.append({'from': f'source-{sid}', 'to': f'topic-{tid}', 'kind': 'category'})
+        return jsonify({'ok': True, 'nodes': nodes, 'edges': edges,
+                        'counts': {'topics': sum(1 for n in nodes if n['kind'] == 'topic'),
+                                   'sources': sum(1 for n in nodes if n['kind'] == 'source'),
+                                   'edges': len(edges)}})
+    except Exception as exc:
+        logger.exception('[Library] hive graph')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/hive/resolve', methods=['GET'])
+def api_hive_resolve():
+    """Map (kind, id) → canonical hive node href + label.
+
+    kind ∈ {topic, source, document}. document is treated as an alias for
+    source for now since library_sources already covers ingested documents.
+    """
+    kind = (request.args.get('kind') or '').strip().lower()
+    raw_id = (request.args.get('id') or '').strip()
+    if kind == 'document':
+        kind = 'source'
+    if kind not in {'topic', 'source'}:
+        return jsonify({'ok': False, 'error': 'invalid kind'}), 400
+    try:
+        nid = int(raw_id)
+    except ValueError:
+        return jsonify({'ok': False, 'error': 'invalid id'}), 400
+    try:
+        from database import get_connection
+        conn = get_connection()
+        try:
+            if kind == 'topic':
+                row = conn.execute(
+                    "SELECT id, topic, category FROM user_interests WHERE id=?",
+                    (nid,),
+                ).fetchone()
+                if not row:
+                    return jsonify({'ok': False, 'error': 'topic not found'}), 404
+                return jsonify({
+                    'ok': True,
+                    'kind': 'topic',
+                    'id': nid,
+                    'label': row['topic'] if hasattr(row, 'keys') else row[1],
+                    'category': (row['category'] if hasattr(row, 'keys') else row[2]) or 'general',
+                    'href': f'/hive-nodes#topic-{nid}',
+                })
+            row = conn.execute(
+                "SELECT source_id, title, source_ref, category FROM knowledge_sources WHERE source_id=?",
+                (nid,),
+            ).fetchone()
+            if not row:
+                return jsonify({'ok': False, 'error': 'source not found'}), 404
+            return jsonify({
+                'ok': True,
+                'kind': 'source',
+                'id': nid,
+                'label': (row['title'] if hasattr(row, 'keys') else row[1]) or
+                         (row['source_ref'] if hasattr(row, 'keys') else row[2]) or f'source-{nid}',
+                'category': (row['category'] if hasattr(row, 'keys') else row[3]) or 'general',
+                'href': f'/hive-nodes#source-{nid}',
+            })
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.exception('[Library] hive resolve')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+# ── STEP-KC-INTERESTS-GENERAL-KNOWLEDGE-SUGGESTIONS-20260430 ────────────────
+# Suggest optional general-knowledge additions based on the existing topic set.
+# Curated bidirectional adjacency map — kept deliberately small so suggestions
+# are useful context without "creepy personalisation". Each suggestion ships
+# with a `because` field so the UI can show *why* it was suggested.
+_TOPIC_ADJACENCY = {
+    # SAP / payroll
+    'sap':                ['payroll compliance australia', 'employee data privacy', 'ABAP fundamentals'],
+    'sap payroll':        ['ato single touch payroll', 'fair work act basics', 'payroll year-end checklist'],
+    'sap hcm':            ['workforce analytics', 'employee lifecycle management', 'PCR debugging patterns'],
+    'payroll':            ['ato single touch payroll', 'fair work act basics', 'superannuation guarantee'],
+    # Music / creative
+    'music creation':     ['music theory fundamentals', 'mixing & mastering basics', 'song structure patterns'],
+    'lo-fi':              ['music theory fundamentals', 'sample-clearance basics', 'side-chain compression'],
+    'synthwave':          ['analog synth signal flow', 'reverb & delay basics', '80s production techniques'],
+    'songwriting':        ['lyric structure (verse/chorus/bridge)', 'rhyme scheme catalog'],
+    # Visual art
+    'visual art':         ['colour theory primer', 'composition rules of thirds', 'lighting reference packs'],
+    'image generation':   ['prompt engineering for diffusion', 'colour theory primer', 'composition rules of thirds'],
+    # ML / dev
+    'huggingface':        ['transformer architectures explained', 'tokeniser tradeoffs', 'inference quantisation'],
+    'github':             ['conventional commits', 'semantic versioning', 'GitHub Actions cookbook'],
+    'python':             ['type hints & typing module', 'async/await basics', 'pytest fixtures cheat-sheet'],
+    'flask':              ['blueprints & app-factory pattern', 'request context lifecycle'],
+    # Personal productivity (only suggested if the user already opted in to one)
+    'productivity':       ['note-taking systems (zettelkasten / PARA)', 'pomodoro variants'],
+    'home automation':    ['mqtt fundamentals', 'home assistant addons primer'],
+}
+
+
+@library_bp.route('/api/library/topics/suggestions', methods=['GET'])
+def api_library_topics_suggestions():
+    """Return general-knowledge topic suggestions adjacent to the user's
+    existing topics.
+
+    Each suggestion is { topic, category, because } so the UI can render the
+    rationale alongside an Approve/Ignore action. Suggestions never include
+    PII or anything inferred from chat content — they're pure adjacency from
+    the curated _TOPIC_ADJACENCY map. Existing topics (active + paused) are
+    excluded so the list never re-suggests something already opted in.
+    """
+    try:
+        from database import get_connection
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT topic, category FROM user_interests WHERE username=?",
+                (_topics_owner(),),
+            ).fetchall()
+        finally:
+            conn.close()
+        existing = {str(r['topic'] or '').strip().lower() for r in rows}
+        out = []
+        seen = set()
+        for r in rows:
+            seed = str(r['topic'] or '').strip().lower()
+            adj = _TOPIC_ADJACENCY.get(seed)
+            if not adj:
+                # Loose match — substring contains/contained-by.
+                for key, vals in _TOPIC_ADJACENCY.items():
+                    if key in seed or seed in key:
+                        adj = vals
+                        break
+            if not adj:
+                continue
+            for s in adj:
+                key = s.lower()
+                if key in existing or key in seen:
+                    continue
+                seen.add(key)
+                out.append({
+                    'topic':    s,
+                    'category': str(r['category'] or 'general'),
+                    'because':  f'adjacent to your topic "{r["topic"]}"',
+                })
+        # Cap to 6 — keeps the strip tidy and avoids overwhelming the user.
+        return jsonify({'ok': True, 'suggestions': out[:6]})
+    except Exception as exc:
+        logger.exception('[Library] topic suggestions')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
 @library_bp.route('/api/library/topics/run/<int:topic_id>', methods=['POST'])
 def api_library_topics_run_now(topic_id):
     """Kick off an immediate research session for a single topic (background thread)."""
@@ -595,4 +836,84 @@ def api_library_topics_run_now(topic_id):
         return jsonify({'ok': True, 'queued': True, 'topic': topic_text})
     except Exception as exc:
         logger.exception('[Library] topics run')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+# ── Manual / Single-source help ───────────────────────────────────────────────
+# B15: every '?' tooltip pulls from `manual_content.MANUAL`. Update once → all
+# tiles update. Frontend calls /api/manual/<key> from openWindowHelp().
+
+@library_bp.route('/api/manual', methods=['GET'])
+def api_manual_list():
+    try:
+        from manual_content import list_manual_keys
+        return jsonify({'ok': True, 'keys': list_manual_keys()})
+    except Exception as exc:
+        logger.exception('[Manual] list')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/manual/<key>', methods=['GET'])
+def api_manual_get(key):
+    try:
+        from manual_content import get_manual
+        entry = get_manual(key)
+        if not entry:
+            return jsonify({'ok': False, 'error': 'not_found', 'key': key}), 404
+        return jsonify({'ok': True, 'key': key, 'title': entry.get('title', ''), 'body': entry.get('body', '')})
+    except Exception as exc:
+        logger.exception('[Manual] get')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+# ── Feeds (M13 follow-up) ─────────────────────────────────────────────────────
+# Lightweight per-user feed storage so Scholar/Librarian can ingest the same
+# list the UI shows. Persists JSON in sandpits/<user>/feeds.json.
+
+import json as _feeds_json
+from pathlib import Path as _FeedsPath
+
+
+def _feeds_path():
+    base = _FeedsPath(__file__).resolve().parents[2] / 'sandpits' / 'seven'
+    base.mkdir(parents=True, exist_ok=True)
+    return base / 'feeds.json'
+
+
+@library_bp.route('/api/feeds', methods=['GET'])
+def api_feeds_get():
+    try:
+        p = _feeds_path()
+        if not p.exists():
+            return jsonify({'ok': True, 'feeds': {}})
+        return jsonify({'ok': True, 'feeds': _feeds_json.loads(p.read_text() or '{}')})
+    except Exception as exc:
+        logger.exception('[Feeds] get')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@library_bp.route('/api/feeds', methods=['PUT'])
+def api_feeds_put():
+    try:
+        payload = request.get_json(silent=True) or {}
+        feeds = payload.get('feeds') or {}
+        if not isinstance(feeds, dict):
+            return jsonify({'ok': False, 'error': 'feeds must be an object'}), 400
+        # Basic shape validation
+        clean = {}
+        for key, v in list(feeds.items())[:200]:
+            if not isinstance(v, dict):
+                continue
+            clean[str(key)[:256]] = {
+                'type': str(v.get('type') or 'provider')[:32],
+                'url': str(v.get('url') or '')[:1024],
+                'label': str(v.get('label') or '')[:256],
+                'status': str(v.get('status') or 'connected')[:32],
+                'added': int(v.get('added') or 0),
+            }
+        p = _feeds_path()
+        p.write_text(_feeds_json.dumps(clean, indent=2))
+        return jsonify({'ok': True, 'count': len(clean)})
+    except Exception as exc:
+        logger.exception('[Feeds] put')
         return jsonify({'ok': False, 'error': str(exc)}), 500

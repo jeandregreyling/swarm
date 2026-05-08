@@ -1,0 +1,34 @@
+pack_id: system_modifications
+title: System modifications pack
+description: |
+  Opt-in. Let the Swarm manage host-level settings that normally require
+  sudo: fan controller, thermal profiles, desktop shortcut registration,
+  and a small set of systemd units. Everything here is reversible — the
+  Swarm logs each change to audit/sysmod.log and you can disable this pack
+  later from Settings → Advanced.
+
+required: false
+default: skip
+
+capabilities:
+  - id: fan_controller
+    label: Fan / thermal profile (auto, normal, boost)
+    service: swarm-fanctl.service
+    helper: ops/swarm-fanctl.py
+  - id: desktop_shortcut
+    label: Install desktop launcher + .desktop entry
+    writes:
+      - ~/.local/share/applications/swarm.desktop
+  - id: autostart
+    label: Launch Swarm at login
+    writes:
+      - ~/.config/systemd/user/swarm-terminal.service
+  - id: prewarm
+    label: Pre-warm Ollama at boot
+    service: swarm-prewarm.service
+
+confirm_prompt: |
+  System modifications are disabled by default. Enable this pack? You can
+  change the selection later in Settings → Advanced → System modifications.
+
+audit_log: audit/sysmod.log

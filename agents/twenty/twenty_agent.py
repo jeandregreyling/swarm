@@ -1,13 +1,26 @@
 """
 agents/twenty/twenty_agent.py - Twenty (Qwen3.6)
-Local Qwen3.6 agent served via Ollama as 'qwen3:latest'.
+Local Qwen3.6 agent served via Ollama.
 """
 import logging, sys, re
 sys.path.insert(0, '/home/seven/swarm')
 sys.path.insert(0, '/home/seven/swarm/utils')
 logger = logging.getLogger('seven.twenty')
 AGENT_NAME = 'twenty'
-MODEL = 'qwen3:latest'
+MODEL = 'qwen3.6:latest'
+
+
+def _resolve_model():
+    """Prefer the DB registry model, but repair the legacy qwen3 alias."""
+    try:
+        from utils.db.registry import get_agent_models
+        configured = str((get_agent_models() or {}).get(AGENT_NAME) or '').strip()
+    except Exception:
+        configured = ''
+    chosen = configured or MODEL
+    if chosen.lower() in {'qwen3:latest', 'qwen3'}:
+        return MODEL
+    return chosen
 
 
 def _build_context(message):
@@ -45,6 +58,11 @@ def chat(message, conversation_history=None, stage_cb=None):
     const_mod = __import__('config', fromlist=['TWENTY_SYSTEM_PROMPT'])
     system_prompt = getattr(const_mod, 'TWENTY_SYSTEM_PROMPT',
                             'You are Twenty, Qwen3.6 - a sharp local reasoning agent in the Swarm.')
+    try:
+        from coding_bible import inject as _bible_inject
+        system_prompt = _bible_inject(system_prompt)
+    except Exception:
+        pass
 
     _emit('loading context')
     context = _build_context(message)
@@ -60,13 +78,15 @@ def chat(message, conversation_history=None, stage_cb=None):
                 messages.append(cleaned)
     messages.append({'role': 'user', 'content': message})
 
+    model_name = _resolve_model()
+
     def _api_call(msgs):
         buf = []
         def _cb(piece):
             buf.append(piece)
             if len(buf) % 15 == 0:
                 _emit(f'generating · {("".join(buf))[-300:]}')
-        return _llm.chat(MODEL, msgs, stream=True, temperature=0.6, on_chunk=_cb)
+        return _llm.chat_via_gateway(model_name, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.6)
 
     try:
         _emit('sending model request')
@@ -83,5 +103,5 @@ def chat(message, conversation_history=None, stage_cb=None):
     except Exception:
         pass
 
-    logger.info(f'[Twenty] model={MODEL} tokens={tokens}')
+    logger.info(f'[Twenty] model={model_name} tokens={tokens}')
     return answer, tokens

@@ -25,3 +25,6 @@ tavily-python
 # pytz
 # playwright
 # pywebview
+
+# Image generation runner (frontend/blueprints/media_bp.py)
+Pillow

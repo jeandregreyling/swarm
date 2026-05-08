@@ -82,18 +82,19 @@
 <!-- Modular CSS -->
 <link rel="stylesheet" href="/static/css/core.css">
 <link rel="stylesheet" href="/static/css/themes.css">
-<link rel="stylesheet" href="/static/css/components.css">
+<link rel="stylesheet" href="/static/css/components.css?v=6">
 <link rel="stylesheet" href="/static/css/windows.css">
-<link rel="stylesheet" href="/static/css/taskbar.css">
-<link rel="stylesheet" href="/static/css/views/chat.css">
-<link rel="stylesheet" href="/static/css/modals.css">
+<link rel="stylesheet" href="/static/css/taskbar.css?v=29">
+<link rel="stylesheet" href="/static/css/views/chat.css?v=3">
+<link rel="stylesheet" href="/static/css/modals.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/library.css">
-<link rel="stylesheet" href="/static/css/diamond.css">
+<link rel="stylesheet" href="/static/css/diamond.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/views/knowledge.css?v=1">
 <link rel="stylesheet" href="/static/css/views/localai.css?v=1">
+<link rel="stylesheet" href="/static/css/views/media-center.css?v=6">
 <link rel="stylesheet" href="/static/css/responsive.css">
-<link rel="stylesheet" href="/static/css/home-chat.css?v=28">
-<link rel="stylesheet" href="/static/css/login.css?v=27">
+<link rel="stylesheet" href="/static/css/home-chat.css?v=29">
+<link rel="stylesheet" href="/static/css/login.css?v=28">
 <link rel="stylesheet" href="/static/css/skills.css?v=27">
 <link rel="stylesheet" href="/static/css/views/tasker.css?v=1">
 <link rel="stylesheet" href="/static/css/views.css">
@@ -102,7 +103,8 @@
   // Pass ENV_STAGE from Flask to JS for the banner
   window.ENV_STAGE = "{{ ENV_STAGE }}";
 </script>
-<script src="/static/js/env-banner.js"></script>
+<script src="/static/js/env-banner.js?v=2"></script>
+<script src="/static/js/hive-parallax.js?v=1"></script>
 </head>
 <body>
 
@@ -142,6 +144,9 @@
     <div id="spotlight-input-row">
       <svg id="spotlight-icon" viewBox="0 0 20 20" fill="none" width="18" height="18"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       <input type="text" id="spotlight-input" placeholder="Search commands, docs, tickets, proposals, conversations, memory…" autocomplete="off" spellcheck="false">
+      <button id="spotlight-mic-btn" class="voice-mic-btn" title="Voice search" onclick="voiceRecordToggle(this, (t)=>{const i=document.getElementById('spotlight-input'); if(i){i.value=t; i.dispatchEvent(new Event('input'));}})">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><rect x="6" y="2" width="4" height="8" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2M6 14h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
       <kbd id="spotlight-esc-hint">Esc</kbd>
     </div>
     <div id="spotlight-results"></div>
@@ -162,14 +167,14 @@
 #spotlight-esc-hint{background:var(--window-header);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:10px;color:var(--text-dim);font-family:inherit;flex-shrink:0;}
 #spotlight-results{overflow-y:auto;max-height:calc(72vh - 110px);}
 #spotlight-results:empty{display:none;}
-.spotlight-section-header{padding:8px 18px 4px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;position:sticky;top:0;background:var(--card);z-index:1;}
-.spotlight-item{display:flex;align-items:center;gap:12px;padding:9px 18px;cursor:pointer;border-radius:0;transition:background .1s;}
+.spotlight-item{display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-radius:0;transition:background .1s;}
 .spotlight-item:hover,.spotlight-item.sp-active{background:color-mix(in srgb,var(--accent) 12%,transparent);}
-.spotlight-item-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:var(--window-header);border:1px solid var(--border);}
+.spotlight-item-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:var(--window-header);border:1px solid var(--border);}
 .spotlight-item-text{flex:1;min-width:0;}
-.spotlight-item-title{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.spotlight-item-sub{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.spotlight-item-title{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.spotlight-item-sub{font-size:10.5px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
 .spotlight-item-hint{font-size:10px;color:var(--text-dim);flex-shrink:0;opacity:.7;}
+.spotlight-section-header{padding:6px 14px 3px;font-size:9.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;position:sticky;top:0;background:var(--card);z-index:1;}
 #spotlight-footer{display:flex;gap:18px;padding:7px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--text-dim);background:var(--window-header);}
 </style>
 
@@ -266,11 +271,13 @@
             <span>Voice</span>
           </label>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
           <button id="scene-off-btn" onclick="setSceneMode('off')" style="padding:9px 10px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;font-weight:700;transition:all 0.18s;">Still</button>
           <button id="scene-beach-btn" onclick="setSceneMode('beach')" style="padding:9px 10px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;font-weight:700;transition:all 0.18s;">Beach</button>
           <button id="scene-forest-btn" onclick="setSceneMode('forest')" style="padding:9px 10px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;font-weight:700;transition:all 0.18s;">Forest</button>
           <button id="scene-rain-btn" onclick="setSceneMode('rain')" style="padding:9px 10px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;font-weight:700;transition:all 0.18s;">Rain</button>
+          <button id="scene-solar-btn" onclick="setSceneMode('solar')" style="padding:9px 10px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;font-weight:700;transition:all 0.18s;">Solar</button>
+          <button id="scene-underwater-btn" onclick="setSceneMode('underwater')" style="padding:9px 10px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;font-weight:700;transition:all 0.18s;">Underwater</button>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div>
@@ -291,7 +298,7 @@
           </div>
           <div id="atmosphere-value" style="font-size:20px;font-weight:700;letter-spacing:-0.03em;color:var(--accent);min-width:72px;text-align:right;">12:00</div>
         </div>
-        <input type="range" id="atmosphere-slider" min="0" max="100" value="38" oninput="onAtmosphereSliderInput(this.value)" style="width:100%;">
+        <input id="atmosphere-slider" type="range" min="0" max="100" step="1" value="38" oninput="onAtmosphereSliderInput(this.value)" style="width:100%;accent-color:var(--accent);cursor:pointer;" title="Blend across time of day">
         <div style="display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;">
           <span id="atmosphere-stop-1">Pink Dawn</span>
           <span id="atmosphere-stop-2">Blue Noon</span>
@@ -306,7 +313,7 @@
             </div>
             <div id="accent-value" style="font-size:18px;font-weight:700;letter-spacing:-0.03em;color:var(--accent);min-width:58px;text-align:right;">50%</div>
           </div>
-          <input type="range" id="accent-slider" min="0" max="100" value="50" oninput="onAccentSliderInput(this.value)" style="width:100%;">
+          <input id="accent-slider" type="range" min="0" max="100" step="1" value="50" oninput="onAccentSliderInput(this.value)" style="width:100%;accent-color:var(--accent);cursor:pointer;" title="Shift the accent hue">
           <div style="display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;">
             <span>Rose</span>
             <span>Sunrise</span>
@@ -321,7 +328,7 @@
             </div>
             <div id="hue-value" style="font-size:18px;font-weight:700;letter-spacing:-0.03em;color:var(--accent);min-width:58px;text-align:right;">50%</div>
           </div>
-          <input type="range" id="hue-slider" min="0" max="100" value="50" oninput="onHueSliderInput(this.value)" style="width:100%;">
+          <input id="hue-slider" type="range" min="0" max="100" step="1" value="50" oninput="onHueSliderInput(this.value)" style="width:100%;accent-color:var(--accent);cursor:pointer;" title="Global hue bias">
           <div style="display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;">
             <span>Warm</span>
             <span>Balanced</span>
@@ -334,7 +341,7 @@
             </div>
             <div id="contrast-value" style="font-size:18px;font-weight:700;letter-spacing:-0.03em;color:var(--accent);min-width:58px;text-align:right;">58%</div>
           </div>
-          <input type="range" id="contrast-slider" min="0" max="100" value="58" oninput="onContrastSliderInput(this.value)" style="width:100%;">
+          <input id="contrast-slider" type="range" min="0" max="100" step="1" value="58" oninput="onContrastSliderInput(this.value)" style="width:100%;accent-color:var(--accent);cursor:pointer;" title="Contrast between surfaces and text">
           <div style="display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;">
             <span>Soft</span>
             <span>Balanced</span>
@@ -347,7 +354,7 @@
             </div>
             <div id="opacity-value" style="font-size:18px;font-weight:700;letter-spacing:-0.03em;color:var(--accent);min-width:58px;text-align:right;">0%</div>
           </div>
-          <input type="range" id="opacity-slider" min="0" max="30" value="5">
+          <input id="opacity-slider" type="range" min="0" max="100" step="1" value="5" oninput="onOpacitySliderInput(this.value)" style="width:100%;accent-color:var(--accent);cursor:pointer;" title="How transparent the glass surfaces are">
           <div style="display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;">
             <span>Solid</span>
             <span>Soft Glass</span>
@@ -360,7 +367,7 @@
             </div>
             <div id="glow-value" style="font-size:18px;font-weight:700;letter-spacing:-0.03em;color:var(--accent);min-width:58px;text-align:right;">52%</div>
           </div>
-          <input type="range" id="glow-slider" min="0" max="100" value="52" oninput="onGlowSliderInput(this.value)" style="width:100%;">
+          <input id="glow-slider" type="range" min="0" max="100" step="1" value="52" oninput="onGlowSliderInput(this.value)" style="width:100%;accent-color:var(--accent);cursor:pointer;" title="Ambient glow intensity">
           <div style="display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;">
             <span>Quiet</span>
             <span>Moody</span>
@@ -382,12 +389,55 @@
           <option value="1.30">130%</option>
           </select>
         </div>
+        <!-- P4-M30: Apple-style font picker — default Open Sans Light -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:6px;border-top:1px solid color-mix(in srgb, var(--border) 72%, transparent 28%);">
+          <div style="font-size:11px;color:var(--text-dim);">UI Font</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <select id="theme-font-family-select" onchange="setUiFontFamily(this.value)" title="Pick UI font family">
+              <option value='"Open Sans", "Open Sans Light", system-ui, sans-serif' selected>Open Sans Light (default)</option>
+              <option value='-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif'>SF Pro / system-ui</option>
+              <option value='"Inter", system-ui, sans-serif'>Inter</option>
+              <option value='"Geist", "Geist Sans", system-ui, sans-serif'>Geist</option>
+              <option value='"IBM Plex Sans", system-ui, sans-serif'>IBM Plex Sans</option>
+              <option value='"Helvetica Neue", Helvetica, Arial, sans-serif'>Helvetica Neue</option>
+              <option value='Georgia, "Times New Roman", serif'>Georgia (serif)</option>
+              <option value='ui-monospace, SFMono-Regular, Menlo, monospace'>SF Mono (mono)</option>
+            </select>
+            <button type="button" onclick="addCustomUiFont()" title="Add a custom font family"
+              style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">+ Add font</button>
+          </div>
+        </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:6px;border-top:1px solid color-mix(in srgb, var(--border) 72%, transparent 28%);">
           <button onclick="resetThemeAndFontDefaults()"
             style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">Reset Atmosphere + Font</button>
           <button id="reset-window-layout-btn" onclick="resetWindowLayout()"
             style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;">Reset Window Layout</button>
         </div>
+      </div>
+    </div>
+
+    <!-- SYSTEM MODIFICATIONS (Phase-6 S-B4B7DC89E2) -->
+    <div class="settings-section" id="settings-section-sysmod">
+      <div class="settings-label" style="margin-bottom:10px;">System modifications</div>
+      <div style="padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--card);display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);">Enable system modifications</div>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Fan controller, desktop launcher, autostart. Off by default.</div>
+          </div>
+          <label class="scene-effect-toggle" for="sysmod-enable-input">
+            <input id="sysmod-enable-input" type="checkbox" onchange="setSysmodEnabled(this.checked)">
+            <span class="scene-effect-toggle-track"><span class="scene-effect-toggle-thumb"></span></span>
+            <span id="sysmod-enable-label">Off</span>
+          </label>
+        </div>
+        <div id="sysmod-hint" style="font-size:10px;color:var(--text-dim);line-height:1.5;">
+          Each capability is individually opt-in. See <a href="#" onclick="openWindowHelp && openWindowHelp('system-modifications'); return false;" style="color:var(--accent);">docs → system modifications</a>.
+        </div>
+        <!-- MD-FEATURE-C6D59801C77C — per-helper inventory rendered by
+             refreshSysmodHelpers() in theme.js. Copy-only commands; the
+             UI never invokes sudo on the user's behalf. -->
+        <div id="sysmod-helpers" style="display:flex;flex-direction:column;"></div>
       </div>
     </div>
 
@@ -421,6 +471,18 @@
     <div class="scene-rain-trails"></div>
     <div class="scene-rain-reflection"></div>
   </div>
+  <div id="scene-solar" class="scene-layer">
+    <div class="scene-solar-deep"></div>
+    <div class="scene-solar-nebula"></div>
+    <div class="scene-solar-sun"></div>
+    <div class="scene-solar-mars"></div>
+  </div>
+  <div id="scene-underwater" class="scene-layer">
+    <div class="scene-underwater-deep"></div>
+    <div class="scene-underwater-caustics"></div>
+    <div class="scene-underwater-floor"></div>
+    <div class="scene-underwater-coral"></div>
+  </div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════
@@ -443,10 +505,26 @@
 <div id="shortcuts-help-modal" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity 0.15s;">
   <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px 28px;max-width:520px;width:92%;max-height:84vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.4);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <div style="font-size:14px;font-weight:700;color:var(--text);">Keyboard Shortcuts &amp; Help</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);">Welcome to Seven's Swarm</div>
       <button onclick="document.getElementById('shortcuts-help-modal').classList.remove('open')" title="Close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;padding:4px;">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>
+    </div>
+
+    <!-- Welcome row: quick actions + show-at-startup -->
+    <div style="margin-bottom:14px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:color-mix(in srgb,var(--accent) 4%,var(--card));display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.5;">
+        New here? Start with Local AI to wire up Ollama/LM Studio, or jump straight into Enrollment for the full walkthrough.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="document.getElementById('shortcuts-help-modal').classList.remove('open'); try { openWindow('ollama','Local AI','view-ollama'); } catch(e){}" style="flex:1;min-width:120px;padding:8px 12px;border-radius:8px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--card));color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Local AI</button>
+        <button onclick="document.getElementById('shortcuts-help-modal').classList.remove('open'); try { openWindow('onboarding','Enrollment','view-onboarding'); } catch(e){}" style="flex:1;min-width:120px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Enrollment</button>
+        <button onclick="document.getElementById('shortcuts-help-modal').classList.remove('open'); try { openWindow('docs','Guide','view-docs'); } catch(e){}" style="flex:1;min-width:120px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Guide</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-dim);cursor:pointer;user-select:none;">
+        <input type="checkbox" id="welcome-show-at-startup" onchange="try { localStorage.setItem('fridays-welcome-at-startup', this.checked ? '1' : '0'); } catch(e){}" style="margin:0;">
+        Show this on every startup
+      </label>
     </div>
 
     <!-- Ctrl+Space superpower callout -->
@@ -613,10 +691,23 @@
         </div>
       </div>
     </div>
+    <!-- Phase-5 SMALL: Vibe/time-display removed from header (still reachable via
+         5-click settings overlay). World clocks restored per user request. -->
     <div id="world-clocks"></div>
-    <div id="time-display"></div>
+    <div id="time-display" style="display:none;"></div>
     <div id="home-controls">
-      <!-- Services dropdown -->
+      <button id="spotlight-tip" onclick="openSpotlight()" title="Spotlight search — Ctrl+Space"
+        aria-label="Spotlight search (Ctrl+Space)"
+        style="width:32px;height:32px;border-radius:50%;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));background:color-mix(in srgb,var(--accent) 9%,var(--card));color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s;">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" style="color:var(--accent);flex-shrink:0;" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <button id="auth-user-pill" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Identity & proxy user">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span id="auth-user-pill-label">ghost</span>
+      </button>
+      <button id="troubleshoot-btn" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Open diagnostics and error log"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Trace</button>
+      <button id="home-help-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Help">?</button>
+      <button id="home-settings-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings &amp; Themes"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.5 3.5l1 1M11.5 11.5l1 1M12.5 3.5l-1 1M4.5 11.5l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+      <!-- Services dropdown (swapped to end — S7) -->
       <div id="services-dropdown-wrap" style="position:relative;">
         <button id="services-dropdown-btn" onclick="toggleServicesDropdown()"
           style="height:32px;border-radius:16px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:12px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;padding:0 10px;gap:5px;"
@@ -636,19 +727,135 @@
           </div>
         </div>
       </div>
-      <button id="auth-user-pill" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Identity & proxy user">
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span id="auth-user-pill-label">ghost</span>
-      </button>
-      <button id="troubleshoot-btn" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Open diagnostics and error log"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Trace</button>
-      <button id="home-help-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Help">?</button>
-      <button id="home-settings-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.5 3.5l1 1M11.5 11.5l1 1M12.5 3.5l-1 1M4.5 11.5l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
     </div>
   </div>
 
+  <!-- Ctrl+Space discoverability hint — now lives inside #home-controls at the very top (S6→v28). -->
+
   <div id="home-content">
 
-    <!-- ═══ Home Chat — primary interaction surface (above tiles for prominence) ═══ -->
+    <!-- ═══ Quick Access tiles (Phase-5 SMALL: moved back above chat) ═══ -->
+    <div class="home-section home-tiles-section">
+      <!-- Y.49: First-run orientation card. Hidden by default; orientation_card.js
+           shows it when /api/orientation/seen returns seen=false. Points the user
+           at Help (?), Spotlight search, and the Manual tile so they aren't lost
+           on first launch. STEP-DOCS-UX-BC3D33C260. -->
+      <div id="orientation-card"
+           role="status"
+           aria-label="First-run orientation"
+           style="display:none; margin:8px 0; padding:12px 14px; border:1px solid var(--accent); border-radius:8px; background:var(--bg-elev,#111); color:var(--text); font-size:13px; line-height:1.5;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+          <strong style="font-size:14px;">Welcome — three things to find first</strong>
+          <button type="button" id="orientation-card-dismiss"
+                  aria-label="Dismiss orientation card"
+                  style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;">×</button>
+        </div>
+        <ol style="margin:6px 0 0 18px; padding:0;">
+          <li><strong>Help</strong> — the <code>?</code> icon on every tile and window header opens the contextual manual.</li>
+          <li><strong>Spotlight</strong> — the search bar at the top launches any tile by name (try "chat", "studio", "manual").</li>
+          <li><strong>Manual tile</strong> — the book icon opens the full manual for browsing.</li>
+        </ol>
+        <div style="margin-top:6px;">
+          <a href="#" id="orientation-card-open-manual"
+             style="color:var(--accent); text-decoration:underline; font-size:12px;">Open the orientation manual entry →</a>
+        </div>
+      </div>
+      <!-- First-run empty-state banner: shown when /api/wishlist/summary
+           reports zero entries across all four pillars and the user hasn't
+           dismissed it. Hidden by default; made visible by home_banner.js. -->
+      <div id="first-run-banner"
+           role="status"
+           style="display:none; margin:8px 0; padding:10px 14px; border:1px solid var(--accent); border-radius:6px; background:var(--bg-elev,#111); color:var(--text); font-size:13px;">
+        <strong>Welcome.</strong> The four pillars are empty.
+        Run <code>make seed</code> from your shell to load demo data, or click any tile to start capturing your own.
+        <button type="button" id="first-run-banner-dismiss"
+                aria-label="Dismiss welcome banner"
+                style="float:right;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;">×</button>
+      </div>
+      <div class="home-section-title" id="quick-access-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.4 1.4M10.6 10.6L12 12M4 12l1.4-1.4M10.6 5.4L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/></svg></span> Quick Access
+        <button id="quick-access-add-btn" onclick="event.stopPropagation(); if(typeof openWindow==='function'){openWindow('studio','Studio','view-studio'); setTimeout(()=>{const b=document.querySelector('#view-studio .proposal-new-btn, [onclick*=\"newProposal\"]'); if(b) b.click();},600);}"
+          title="Propose a new tile or feature"
+          style="margin-left:8px;width:20px;height:20px;border-radius:50%;border:1px dashed var(--border);background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;line-height:1;padding:0;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;">+</button>
+        <span class="section-caret">▼</span></div>
+      <div class="card-grid" id="quick-cards">
+        <div class="home-card" data-win-id="chat" data-win-title="Chat" data-win-template="view-chat" data-shortcut="Ctrl+J">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span><span>Chat</span></div>
+          <div class="card-desc">Ask the swarm</div>
+        </div>
+        <div class="home-card" data-win-id="terminal" data-win-title="Terminal" data-win-template="view-terminal">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 3.5h11v9h-11zM5 6l2 2-2 2M8.5 10h2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Terminal</span></div>
+          <div class="card-desc">Shell commands</div>
+        </div>
+        <div class="home-card" data-win-id="knowledge" data-win-title="Knowledge" data-win-template="view-knowledge" data-shortcut="Ctrl+B">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Knowledge</span></div>
+          <div class="card-desc">Files, docs, memory &amp; library</div>
+        </div>
+        <div class="home-card" data-win-id="monitor" data-win-title="Monitor" data-win-template="view-monitor">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 8l2.5-2.5M4.5 11.5A5 5 0 0 1 11.5 4.5M2.8 13.2a7.4 7.4 0 0 1 10.4-10.4M8 8l-1.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Monitor</span></div>
+          <div class="card-desc">System status &amp; health digest</div>
+        </div>
+        <div class="home-card" data-win-id="trace" data-win-title="Trace" data-win-template="view-trace">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Trace</span><span id="trace-tile-errors" style="display:none;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:var(--danger,#f44336);color:#fff;" title="Errors"></span><span id="trace-tile-warnings" style="display:none;margin-left:4px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:var(--warning,#f7b84b);color:#000;" title="Warnings"></span></div>
+          <div class="card-desc">End-to-end message tracing</div>
+        </div>
+        <div class="home-card" data-win-id="studio" data-win-title="Studio" data-win-template="view-studio" data-shortcut="Ctrl+P">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3c-2.8 0-5 1.9-5 4.4 0 2.4 2 4.3 4.5 4.3H9a1.5 1.5 0 0 0 0-3h-.5a.8.8 0 0 1-.8-.8A1.9 1.9 0 0 1 9.6 6H11A2 2 0 0 0 13 4c0-.6-.3-1-.8-1.1A9.4 9.4 0 0 0 8 3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="5.2" cy="7" r=".7" fill="currentColor"/><circle cx="7" cy="5.7" r=".7" fill="currentColor"/></svg></span><span>Studio</span><span id="home-studio-badge" style="display:none;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;"></span></div>
+          <div class="card-desc" id="home-studio-desc">Projects · Proposals · Git · Test Lab</div>
+        </div>
+        <div class="home-card" data-win-id="time-wizard" data-win-title="Vortex" data-win-template="view-time-wizard">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Vortex</span></div>
+          <div class="card-desc">State timeline</div>
+        </div>
+        <div class="home-card" data-win-id="access" data-win-title="Access" data-win-template="view-access">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Access</span></div>
+          <div class="card-desc">Senders &amp; permissions</div>
+        </div>
+        <div class="home-card" data-win-id="agents-config" data-win-title="Agents" data-win-template="view-agents-config">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Agents</span></div>
+          <div class="card-desc">Roster, skills, Local AI &amp; nodes</div>
+        </div>
+        <div class="home-card" data-win-id="media-center" data-win-title="Media Center" data-win-template="view-media-center">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 3v10M11 6.2c0 1.6-1.2 3.1-3 3.6V6.2c1.8.5 3 2 3 3.6Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Media Center</span></div>
+          <div class="card-desc">Music, video, compilation &amp; AI render queues</div>
+        </div>
+        <div class="home-card" data-win-id="email" data-win-title="Email" data-win-template="view-email" data-shortcut="Ctrl+E">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Email</span></div>
+          <div class="card-desc">Inbox &amp; compose</div>
+        </div>
+        <div class="home-card" data-win-id="feeds" data-win-title="Feeds" data-win-template="view-feeds">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span>Feeds</span></div>
+          <div class="card-desc">Social &amp; developer feeds</div>
+        </div>
+        <!-- Y.58: Files removed from home tiles — lives inside Knowledge Center.
+             Y.58: Tasker removed from home tiles — lives inside Knowledge Center.
+             Y.58: Cyber Security removed from home tiles — lives inside Vortex.
+             Y.58: Financial + Trading + Business merged into single "Show Me The
+             Money" tile that opens a hub with three tabs. -->
+        <div class="home-card home-card-wishlist" data-win-id="money-hub" data-win-title="Show Me The Money" data-win-template="view-money-hub" data-wishlist-status="active-v0">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 12.5h11M4 11V7M7 11V4M10 11V8M13 11V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Show Me The Money</span><span class="wishlist-badge">Hub</span></div>
+          <div class="card-desc">Financial · Trading · Business · NASDAQ/ASX feeds</div>
+        </div>
+        <!-- Y.58 — pillar-contract markers. Hidden from the user but keep the
+             active-v0 status flags so ops/bullshit_detector.py recognises the
+             pillars as live. The actual UI for these is mounted inside the
+             Money Hub (financial/trading/business) and Vortex (cyber). -->
+        <div class="home-card home-card-wishlist" data-win-id="wishlist-cyber" data-win-title="Cyber Security" data-win-template="view-wishlist-cyber" data-wishlist-pillar="cyber-security" data-wishlist-status="active-v0" hidden style="display:none !important;" aria-hidden="true"></div>
+        <div class="home-card home-card-wishlist" data-win-id="wishlist-financial" data-win-title="Financial Analytics" data-win-template="view-wishlist-financial" data-wishlist-pillar="financial" data-wishlist-status="active-v0" hidden style="display:none !important;" aria-hidden="true"></div>
+        <div class="home-card home-card-wishlist" data-win-id="wishlist-trading" data-win-title="Online Trading" data-win-template="view-wishlist-trading" data-wishlist-pillar="trading" data-wishlist-status="active-v0" hidden style="display:none !important;" aria-hidden="true"></div>
+        <div class="home-card home-card-wishlist" data-win-id="wishlist-business" data-win-title="Business Centre" data-win-template="view-wishlist-business" data-wishlist-pillar="business" data-wishlist-status="active-v0" hidden style="display:none !important;" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <!-- ═══ Home Chat — primary interaction surface ═══ -->
     <div class="home-section home-chat-section home-chat-prominent">
+      <!-- Y.59 — direct edge handles. The chat box itself is the dragger now;
+           top edge drag shrinks/grows by adjusting top, bottom edge drag
+           does the same on the other side. The standalone home-chat-resizer
+           below is hidden via CSS for back-compat but no longer the primary UI. -->
+      <div class="home-chat-edge home-chat-edge-top" data-edge="top"
+           role="separator" aria-orientation="horizontal"
+           aria-label="Resize chat from top edge — drag, double-click to reset"
+           tabindex="0" title="Drag top edge to resize"></div>
       <div id="home-chat-body">
         <!-- Main chat column -->
         <div id="home-chat-main">
@@ -659,13 +866,14 @@
               <span id="home-chat-env-badge" class="home-chat-env-badge"></span>
             </div>
             <div class="home-chat-bar-center">
-              <!-- Session 29.1 — thread dropdown removed from tile.
-                   Threads live in the main chat sidebar (and an upcoming
-                   dropdown there). The tile keeps "+ New" so users can fork
-                   without expanding. The select element stays in the DOM
-                   (display:none) so home-chat.js's getElementById calls keep
-                   working without a refactor. -->
-              <select id="home-chat-thread-select" title="Switch conversation thread" style="display:none;">
+              <!-- Session 29.1 removed this dropdown from the front-terminal by
+                   mistake while stripping it from the chat-tile. Phase-5 SMALL
+                   restores it here: the front-terminal home-chat gets the
+                   dropdown back (thread quick-switch without opening the full
+                   Chat view). The chat-tile must stay dropdown-free — threads
+                   live in its rail. -->
+              <select id="home-chat-thread-select" title="Switch conversation thread"
+                      style="background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:4px 8px;max-width:180px;">
                 <option value="">New conversation</option>
               </select>
               <button id="home-chat-new-btn" title="Start a new thread">+ New</button>
@@ -705,7 +913,13 @@
           </div>
           <div id="home-chat-input-area">
             <div class="home-chat-compose">
-              <textarea id="home-chat-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
+              <textarea id="home-chat-input" placeholder="Ask Seven (start with ?) · or @duck @gemma @ten…" rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
+              <button id="home-chat-fav-btn" class="voice-mic-btn" title="Save current input as favourite shortcut" onclick="homeChatToggleFavourite()" aria-label="Favourites">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M8 2.5l1.7 3.5 3.8.5-2.8 2.7.7 3.8L8 11.2 4.6 13l.7-3.8L2.5 6.5l3.8-.5L8 2.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+              </button>
+              <button id="home-chat-mic-btn" class="voice-mic-btn" title="Hold to talk" onclick="voiceRecordToggle(this, (t)=>{const i=document.getElementById('home-chat-input'); if(i){i.value=(i.value? i.value+' ':'')+t; i.focus();}})">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><rect x="6" y="2" width="4" height="8" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2M6 14h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              </button>
               <button id="home-chat-send-btn" title="Send message">
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2 8l12-5-5 12-2-5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M14 3L7 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
               </button>
@@ -713,6 +927,7 @@
             <div id="home-chat-meta">
               <span id="home-chat-status">Ready</span>
               <span id="home-chat-agent-count">0 agents on</span>
+              <span id="home-chat-token-count" style="margin-left:auto;color:var(--text-faint);font-size:10px;font-variant-numeric:tabular-nums;" title="Chars / words / estimated tokens (≈ chars÷4)">0 c · 0 w · ~0 t</span>
             </div>
           </div>
         </div>
@@ -736,115 +951,20 @@
           <div id="home-chat-agents" class="home-chat-agents"></div>
         </aside>
       </div>
+      <!-- Y.59 — bottom-edge resize handle, lives inside the chat section so
+           it's directly attached to the chat window (no more drift). -->
+      <div class="home-chat-edge home-chat-edge-bottom" data-edge="bottom"
+           role="separator" aria-orientation="horizontal"
+           aria-label="Resize chat from bottom edge — drag, double-click to reset"
+           tabindex="0" title="Drag bottom edge to resize"></div>
     </div>
 
-    <!-- Chat resize handle -->
-    <div class="home-chat-resizer" id="home-chat-resizer" title="Drag to resize chat"></div>
-
-    <!-- Quick Access Cards -->
-    <div class="home-section home-tiles-section">
-      <!-- Ctrl+Space discoverability hint — leads users to the global search -->
-      <div id="spotlight-tip" onclick="openSpotlight()" title="Open Spotlight search"
-        style="display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:color-mix(in srgb,var(--accent) 6%,var(--card));cursor:pointer;transition:background .15s,border-color .15s;">
-        <svg viewBox="0 0 20 20" width="15" height="15" fill="none" style="color:var(--accent);flex-shrink:0;"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <span style="font-size:11.5px;color:var(--text);flex:1;">
-          <strong>Tip:</strong> press
-          <kbd style="background:var(--window-header);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:10.5px;font-family:inherit;margin:0 2px;">Ctrl</kbd>
-          +
-          <kbd style="background:var(--window-header);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:10.5px;font-family:inherit;margin:0 2px;">Space</kbd>
-          anywhere to search across commands, docs, knowledge, tickets, proposals, chats and memory.
-        </span>
-        <span onclick="event.stopPropagation(); document.getElementById('shortcuts-help-modal').classList.add('open');"
-          title="View all shortcuts"
-          style="font-size:10px;color:var(--text-dim);padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer;">
-          All shortcuts (?)
-        </span>
-      </div>
-      <div class="home-section-title" id="quick-access-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.4 1.4M10.6 10.6L12 12M4 12l1.4-1.4M10.6 5.4L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/></svg></span> Quick Access <span class="section-caret">▼</span></div>
-      <div class="card-grid" id="quick-cards">
-        <div class="home-card" data-win-id="chat" data-win-title="Chat" data-win-template="view-chat" data-shortcut="Ctrl+J">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span><span>Chat</span></div>
-          <div class="card-desc">Ask the swarm</div>
-        </div>
-        <div class="home-card" data-win-id="terminal" data-win-title="Terminal" data-win-template="view-terminal">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 3.5h11v9h-11zM5 6l2 2-2 2M8.5 10h2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Terminal</span></div>
-          <div class="card-desc">Shell commands</div>
-        </div>
-        <div class="home-card" data-win-id="knowledge" data-win-title="Knowledge" data-win-template="view-knowledge" data-shortcut="Ctrl+B">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Knowledge</span></div>
-          <div class="card-desc">Files, docs &amp; library</div>
-        </div>
-        <div class="home-card" data-win-id="memory" data-win-title="Memory" data-win-template="view-memory">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 4a2 2 0 0 0-3 1.7v1.8A2.5 2.5 0 0 0 4.8 10H6m4-6a2 2 0 0 1 3 1.7v1.8A2.5 2.5 0 0 1 11.2 10H10M6 4v8m4-8v8M6 8h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Memory</span></div>
-          <div class="card-desc">Swarm knowledge</div>
-        </div>
-        <div class="home-card" data-win-id="monitor" data-win-title="Monitor" data-win-template="view-monitor">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 8l2.5-2.5M4.5 11.5A5 5 0 0 1 11.5 4.5M2.8 13.2a7.4 7.4 0 0 1 10.4-10.4M8 8l-1.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Monitor</span></div>
-          <div class="card-desc">System status</div>
-        </div>
-        <div class="home-card" data-win-id="health-digest" data-win-title="Health Digest" data-win-template="view-health-digest">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v4l2.5 1.5M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 10h7M4.5 7.5h7" stroke="currentColor" stroke-width="0.8" stroke-linecap="round" opacity="0.4"/></svg></span><span>Health Digest</span></div>
-          <div class="card-desc">Agent 20 one-stop-shop</div>
-        </div>
-        <!-- Docs merged into Knowledge (Tier 1.1) -->
-        <div class="home-card" data-win-id="skills" data-win-title="Skills" data-win-template="view-skills">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm0-2.2v1.2m0 7.6V13m5-5H11.8M4.2 8H3m8.1-3.1.9-.9M4 12l.9-.9m6.2 0 .9.9M4 4l.9.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Skills</span></div>
-          <div class="card-desc">Available tools</div>
-        </div>
-        <!-- Tickets removed from home (5.2): accessible via Ctrl+T, Studio, and Ticket Queue section below -->
-        <div class="home-card" data-win-id="studio" data-win-title="Studio" data-win-template="view-studio" data-shortcut="Ctrl+P">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3c-2.8 0-5 1.9-5 4.4 0 2.4 2 4.3 4.5 4.3H9a1.5 1.5 0 0 0 0-3h-.5a.8.8 0 0 1-.8-.8A1.9 1.9 0 0 1 9.6 6H11A2 2 0 0 0 13 4c0-.6-.3-1-.8-1.1A9.4 9.4 0 0 0 8 3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="5.2" cy="7" r=".7" fill="currentColor"/><circle cx="7" cy="5.7" r=".7" fill="currentColor"/></svg></span><span>Studio</span><span id="home-studio-badge" style="display:none;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;"></span></div>
-          <div class="card-desc" id="home-studio-desc">Projects · Proposals · Git · Test Lab</div>
-        </div>
-        <div class="home-card" data-win-id="time-wizard" data-win-title="Vortex" data-win-template="view-time-wizard">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Vortex</span></div>
-          <div class="card-desc">State timeline</div>
-        </div>
-        <div class="home-card" data-win-id="access" data-win-title="Access" data-win-template="view-access">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Access</span></div>
-          <div class="card-desc">Senders &amp; permissions</div>
-        </div>
-        <div class="home-card" data-win-id="agents-config" data-win-title="Agents" data-win-template="view-agents-config">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Agents</span></div>
-          <div class="card-desc">Roster, keys, models &amp; nodes</div>
-        </div>
-        <div class="home-card" data-win-id="localai" data-win-title="Local AI" data-win-template="view-localai">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 8h8M8 4v8M5.2 5.2l5.6 5.6M10.8 5.2l-5.6 5.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Local AI</span></div>
-          <div class="card-desc">Ollama, LM Studio &amp; Picoclaw</div>
-        </div>
-        <!-- Email restored to home (7G) -->
-        <div class="home-card" data-win-id="email" data-win-title="Email" data-win-template="view-email" data-shortcut="Ctrl+E">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Email</span></div>
-          <div class="card-desc">Inbox &amp; compose</div>
-        </div>
-        <!-- Git merged into Studio (7F): Ctrl+G opens Studio > Git tab -->
-        <!-- Library merged into Knowledge (Tier 1.1) -->
-        <!-- Local AI merged into Agents tile (7E) -->
-        <div class="home-card" data-win-id="vpn" data-win-title="VPN" data-win-template="view-vpn">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v3M3 8h3M10 8h3M5 4l2 2M11 4l-2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="10" r="3.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 8.5v2M7 10.5h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>VPN</span></div>
-          <div class="card-desc">Tailscale network status</div>
-        </div>
-        <div class="home-card" data-win-id="trace" data-win-title="Trace" data-win-template="view-trace">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Trace</span></div>
-          <div class="card-desc">End-to-end message tracing</div>
-        </div>
-
-        <div class="home-card" data-win-id="feeds" data-win-title="Feeds" data-win-template="view-feeds">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span>Feeds</span></div>
-          <div class="card-desc">Social &amp; developer feeds</div>
-        </div>
-        <div class="home-card" data-win-id="tasker" data-win-title="Tasker" data-win-template="view-tasker">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 3v3l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Tasker</span></div>
-          <div class="card-desc">Scheduled tasks &amp; automation</div>
-        </div>
-        <!-- + Add New tile -->
-        <div class="home-card home-card-add" id="add-new-tile" title="Create a proposal for new functionality">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 2"/><path d="M8 5.5v5M5.5 8h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span><span>Add New</span></div>
-          <div class="card-desc">Propose a feature or tool</div>
-        </div>
-      </div>
-    </div>
-
+    <!-- Y.59 — legacy standalone resizer kept for any third-party code that
+         queries it by id, but hidden via CSS. The new edge handles inside
+         the chat section replace it. -->
+    <div class="home-chat-resizer home-chat-resizer-legacy" id="home-chat-resizer"
+         role="separator" aria-orientation="horizontal" aria-hidden="true"
+         tabindex="-1" style="display:none;"></div>
 
   </div>
 </div>
@@ -862,6 +982,7 @@
 <div id="taskbar">
   <button id="home-btn" onclick="goHome()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M3 8.5V13h4v-3h2v3h4V8.5M1.5 9L8 3l6.5 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Home</button>
   <button id="email-dot-btn" onclick="openWindow('email','Email','view-email')" title="Email (Ctrl+E)" style="position:relative;background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="email-activity-dot" style="display:none;position:absolute;top:-2px;right:-2px;width:6px;height:6px;border-radius:50%;background:var(--cat-amber);"></span></button>
+  <div id="taskbar-launchers" class="taskbar-launcher-strip" aria-label="Quick launchers"></div>
   <div id="spacer"></div>
 </div>
 
@@ -873,15 +994,15 @@
   <div class="content-view">
     <div id="chat-layout" class="chat-font-scaled">
       <aside id="chat-thread-rail" class="chat-font-scope">
-        <div class="chat-thread-header">
-          <span class="chat-thread-title">Thread Rail</span>
-          <span class="chat-thread-grow"></span>
-          <button type="button" class="chat-dock-btn" onclick="toggleThreadRail()" title="Collapse thread rail">⟨</button>
-        </div>
         <div id="chat-section-threads" class="chat-section">
           <button type="button" class="chat-section-header" onclick="toggleChatSection('threads')" aria-controls="chat-section-threads-content" aria-expanded="true">
             <span class="chat-section-title"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M4 3v10M8 3v10M12 5v6M4 6h4M8 9h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Threads</span>
-            <span class="chat-section-caret" aria-hidden="true"></span>
+            <span class="chat-section-actions" aria-hidden="false">
+              <span class="chat-section-caret" aria-hidden="true" title="Expand/collapse list"></span>
+              <button type="button" class="chat-dock-btn chat-rail-collapse" onclick="event.stopPropagation();toggleThreadRail();" title="Collapse thread rail" aria-label="Collapse thread rail">
+                <svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </span>
           </button>
           <div id="chat-section-threads-content" class="chat-section-content">
             <input id="chat-thread-search" type="text" placeholder="Search threads..." />
@@ -896,9 +1017,9 @@
         <div id="chat-topbar">
           <div>
             <div class="chat-topbar-row">
-              <div class="chat-topbar-title-col">
-                <div class="chat-title">Fridays Chat Console</div>
-                <div class="chat-subtitle">Multi-agent conversation with live orchestration <span class="chat-mini-system">CPU --% · RAM --%</span></div>
+              <div class="chat-topbar-title-col" id="chat-topbar-title-col" data-collapsed="0">
+                <div class="chat-title" onclick="chatTopbarToggle()" title="Click to collapse" style="cursor:pointer;user-select:none;"><span id="chat-topbar-caret" style="display:inline-block;width:10px;color:var(--text-dim);font-size:10px;">▾</span> Fridays Chat Console</div>
+                <div class="chat-subtitle" id="chat-topbar-subtitle">Multi-agent conversation with live orchestration <span class="chat-mini-system">CPU --% · RAM --%</span></div>
               </div>
               <div class="chat-topbar-font-col">
                 <span class="chat-topbar-font-label">Font Size</span>
@@ -952,7 +1073,6 @@
               <textarea id="question-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
                 onkeydown="handleQuestionInputKeydown(event)"
                 oninput="this.style.height='1px';this.style.height=Math.min(this.scrollHeight,200)+'px';this.style.overflowY=this.scrollHeight>=200?'auto':'hidden';_debouncedClassify()"></textarea>
-              <button id="chat-parallel-mode-btn" class="chat-parallel-btn" onclick="onChatParallelModeToggle()" title="Sequential: agents run one at a time">Seq</button>
               <button id="send-btn" onclick="sendMessage()">Send</button>
             </div>
             <div id="chat-mention-menu" class="chat-mention-menu" role="listbox" aria-label="Agent mentions"></div>
@@ -987,17 +1107,13 @@
       <div id="chat-dock-resizer" class="chat-dock-resizer" onmousedown="startChatDockResize(event)" title="Drag to resize side panel"></div>
 
       <aside id="chat-right-dock" class="chat-font-scope" style="width:420px;">
-        <div id="chat-dock-header">
-          <span class="chat-dock-grow"></span>
-          <button type="button" class="chat-dock-btn" onclick="toggleChatDock()" title="Collapse right dock">◀</button>
-        </div>
-
         <div class="chat-dock-panel">
 
             <div id="chat-section-agents" class="chat-section" data-chat-default="open">
               <button type="button" class="chat-section-header" onclick="toggleChatSection('agents')" aria-controls="chat-section-agents-content" aria-expanded="true">
                 <span class="chat-section-title"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M6 4a2 2 0 0 0-3 1.7v1.8A2.5 2.5 0 0 0 4.8 10H6m4-6a2 2 0 0 1 3 1.7v1.8A2.5 2.5 0 0 1 11.2 10H10M6 4v8m4-8v8M6 8h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Agent Controls</span>
                 <span class="chat-section-caret" aria-hidden="true"></span>
+                <button type="button" class="chat-dock-btn chat-rail-collapse" onclick="event.stopPropagation();toggleChatDock();" title="Collapse right dock">◀</button>
               </button>
               <div id="chat-section-agents-content" class="chat-section-content">
                 <div class="chat-agent-row">
@@ -1025,6 +1141,10 @@
                 <span class="chat-section-caret" aria-hidden="true"></span>
               </button>
               <div id="chat-section-flow-content" class="chat-section-content">
+                <div class="chat-flow-mode-row">
+                  <button id="chat-exec-mode-btn" class="chat-mode-btn" onclick="onChatExecModeToggle()" title="Sequential: one agent speaks at a time via relay queue."><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M6.5 9.5l3-3M5 10.5l-1 1a1.4 1.4 0 0 0 2 2l1-1M12 5.5l1-1a1.4 1.4 0 0 0-2-2l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Sequential</button>
+                  <button id="chat-parallel-mode-btn" class="chat-mode-btn" onclick="onChatParallelModeToggle()" title="Both Seq: selected local and online agents can participate, but relay runs one speaker at a time.">Both Seq</button>
+                </div>
                 <div class="chat-flow-grid">
                   <label class="chat-relay-toggle" title="Which thread context is sent to selected agents.">
                     <span>Context</span>
@@ -1115,14 +1235,29 @@
     <!-- Main area -->
     <div id="terminal-layout" style="display:flex;flex:1;min-height:0;">
       <div id="terminal-main" style="flex:1;display:flex;flex-direction:column;min-width:0;">
+        <!-- V8 S-48738493AC: #terminal-output can toggle bubble-grid mode via body class `terminal-bubble-mode`. -->
         <div id="terminal-output" style="flex:1;overflow-y:auto;font-family:'SF Mono',ui-monospace,monospace;font-size:12px;line-height:1.45;color:var(--accent,#0f9);white-space:pre-wrap;padding:10px 12px;">Welcome to Fridays Terminal</div>
         <div id="terminal-history-panel" style="display:none;border-top:1px solid var(--border);background:var(--window-header);padding:8px 12px;max-height:160px;overflow:auto;"></div>
         <!-- Input row -->
         <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--border);flex-shrink:0;">
           <span style="color:var(--accent,#0f9);font-family:monospace;font-size:13px;font-weight:700;flex-shrink:0;">$</span>
           <input id="terminal-input" type="text" placeholder="Enter command…" autocomplete="off" spellcheck="false" style="flex:1;background:transparent;border:none;color:var(--text);font-family:'SF Mono',ui-monospace,monospace;font-size:12px;outline:none;caret-color:var(--accent,#0f9);" onkeydown="terminalHandleInputKeydown(event)">
+          <button id="terminal-fav-btn" onclick="terminalFavFromInput()" title="Save current input as a shortcut" style="background:transparent;border:1px solid var(--border);color:#f7b84b;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:12px;line-height:1;flex-shrink:0;">★</button>
+        </div>
+        <!-- V8 S-48738493AC: bottom menubar with status + bubble-grid toggle. -->
+        <div id="terminal-bottom-menubar" style="display:flex;align-items:center;gap:10px;padding:4px 12px;border-top:1px solid var(--border);background:var(--window-header);flex-shrink:0;font-size:10px;color:var(--text-dim);">
+          <span id="terminal-status-text" style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Ready</span>
+          <span id="terminal-exit-code" title="Last exit code" style="font-family:monospace;">exit: —</span>
+          <span id="terminal-elapsed" title="Last command runtime" style="font-family:monospace;">dur: —</span>
+          <button id="terminal-bubble-toggle" title="Toggle bubble grid output mode"
+            onclick="(function(){var o=document.getElementById('terminal-output');if(!o)return;var on=!o.classList.contains('terminal-bubble-mode');o.classList.toggle('terminal-bubble-mode',on);this.textContent=on?'▦ Bubble':'≡ Lines';try{localStorage.setItem('fridays-terminal-bubble',on?'1':'0');}catch(e){}}).call(this)"
+            style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--text-dim);cursor:pointer;font-size:10px;">≡ Lines</button>
         </div>
       </div>
+      <!-- V8 S-48738493AC: drag handle to resize shortcuts sidebar. -->
+      <div id="terminal-sidebar-resizer" title="Drag to resize shortcuts sidebar"
+        style="flex:0 0 5px;cursor:col-resize;background:transparent;"
+        onmousedown="(function(ev){ev.preventDefault();var side=document.getElementById('terminal-shortcuts-panel');if(!side)return;var startX=ev.clientX;var startW=side.getBoundingClientRect().width;var onMove=function(e){var w=Math.min(520,Math.max(120,startW-(e.clientX-startX)));side.style.width=w+'px';};var onUp=function(){document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);})(event)"></div>
       <!-- Shortcuts sidebar -->
       <aside id="terminal-shortcuts-panel" style="width:220px;max-width:40%;border-left:1px solid var(--border);background:var(--window-header);display:flex;flex-direction:column;position:relative;">
         <div id="terminal-shortcuts-header" style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;">
@@ -1226,29 +1361,65 @@
         <!-- Ollama -->
         <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
           <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+            <span class="agents-runner-light" id="agents-ollama-light" style="width:8px;height:8px;border-radius:99px;background:var(--text-dim);box-shadow:0 0 0 2px rgba(0,0,0,0.15);"></span>
             <span style="font-weight:600;font-size:13px;">Ollama</span>
             <span id="agents-ollama-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
+            <span id="agents-ollama-runtime" title="Fridays runtime gateway health" style="display:none;font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">runtime: —</span>
             <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:11434</span>
           </div>
           <div id="agents-ollama-models" style="padding:10px 14px;font-size:12px;color:var(--text-dim);min-height:40px;">—</div>
+          <div id="agents-ollama-warnings" style="display:none;padding:0 14px 10px;font-size:11px;color:#f59e0b;"></div>
+          <!-- STEP-AGENTS-TILE-UX-OPERATIONS-20260430 — explicit controls -->
+          <div style="padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--border);">
+            <button onclick="agentsOpenLogs('ollama')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Logs</button>
+            <button onclick="agentsCopyCmd('ollama-restart','sudo systemctl restart ollama')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Copy restart cmd</button>
+            <button onclick="agentsOllamaPullPrompt()" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Pull model…</button>
+          </div>
         </div>
+        <!-- MD-FEATURE-2F07F65F10F3 — picoclaw + lmstudio kept in system but
+             tucked behind an Advanced runners disclosure so the default Local AI
+             panel stays focused on Ollama. Backend wiring is unchanged. -->
+        <details style="grid-column:1/-1;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <summary style="padding:10px 14px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-dim);">Advanced runners (LM Studio · Picoclaw)</summary>
+          <div style="padding:0 14px 12px;display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:12px;">
         <!-- LM Studio -->
         <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
           <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+            <span class="agents-runner-light" id="agents-lmstudio-light" style="width:8px;height:8px;border-radius:99px;background:var(--text-dim);box-shadow:0 0 0 2px rgba(0,0,0,0.15);"></span>
             <span style="font-weight:600;font-size:13px;">LM Studio</span>
             <span id="agents-lmstudio-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
             <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:1234</span>
           </div>
           <div id="agents-lmstudio-info" style="padding:10px 14px;font-size:12px;color:var(--text-dim);min-height:40px;">—</div>
+          <div style="padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--border);">
+            <button onclick="agentsOpenLogs('lmstudio')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Logs</button>
+            <button onclick="agentsCopyCmd('lms-launch','open -a \\'LM Studio\\'  # macOS · run lms.exe on Windows · ./lmstudio --server on Linux')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Copy launch cmd</button>
+          </div>
         </div>
         <!-- Picoclaw -->
         <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
           <div style="padding:12px 14px;display:flex;align-items:center;gap:8px;">
+            <span class="agents-runner-light" id="agents-picoclaw-light" style="width:8px;height:8px;border-radius:99px;background:var(--text-dim);box-shadow:0 0 0 2px rgba(0,0,0,0.15);"></span>
             <span style="font-weight:600;font-size:13px;">Picoclaw</span>
             <span id="agents-picoclaw-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
             <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:18800</span>
           </div>
+          <div style="padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--border);">
+            <button onclick="agentsOpenLogs('picoclaw')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Logs</button>
+            <button onclick="agentsCopyCmd('pico-restart','sudo systemctl restart picoclaw  # if registered as a system service')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Copy restart cmd</button>
+          </div>
         </div>
+          </div>
+        </details>
+      </div>
+      <!-- STEP-AGENTS-TILE-UX-OPERATIONS-20260430 — disabled-agents panel -->
+      <div id="agents-disabled-panel" style="margin:0 16px 16px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Disabled agents</span>
+          <span id="agents-disabled-count" style="font-size:10px;padding:1px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">0</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Auto-disabled by chat router (timeouts / context overflow). Click ↻ to bring back online.</span>
+        </div>
+        <div id="agents-disabled-list" style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--text-dim);">No disabled agents.</div>
       </div>
       <div style="padding:0 16px 16px;display:flex;justify-content:flex-end;">
         <button onclick="agentsLocalAIRefresh()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;">↻ Refresh</button>
@@ -1392,29 +1563,41 @@
 
 <template id="view-knowledge">
   <div class="content-view knowledge-shell" id="knowledge-root" style="display:flex;flex-direction:column;height:100%;">
-    <!-- Discoverability hint: Ctrl+Space searches knowledge too -->
-    <div onclick="openSpotlight()" title="Open Spotlight search"
-      style="display:flex;align-items:center;gap:8px;margin:8px 10px 6px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:color-mix(in srgb,var(--accent) 5%,var(--card));cursor:pointer;font-size:11px;color:var(--text-dim);">
-      <svg viewBox="0 0 20 20" width="13" height="13" fill="none" style="color:var(--accent);flex-shrink:0;"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <span style="flex:1;">Looking for something? <strong style="color:var(--text);">Ctrl+Space</strong> searches files, docs, KB, tickets, proposals, chats and memory at once.</span>
-      <kbd style="background:var(--window-header);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:10px;font-family:inherit;">Ctrl+Space</kbd>
-    </div>
-    <!-- RAG quick-query: validate what the swarm can retrieve right now -->
-    <div id="kn-quick-query" style="display:flex;align-items:center;gap:8px;margin:0 10px 8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
-      <svg viewBox="0 0 20 20" width="14" height="14" fill="none" style="color:var(--accent);flex-shrink:0;" aria-hidden="true"><path d="M4 4h12v12H4z" stroke="currentColor" stroke-width="1.4"/><path d="M7 8h6M7 11h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-      <input id="kn-quick-query-input" type="text" placeholder="Ask the knowledge base (e.g. how does Vortex rollback work?) — tests RAG retrieval"
+    <!-- P4-S36: unified search bar — Spotlight + Ask KC in one row.
+         Enter triggers RAG; "Spotlight" button opens the cross-surface
+         search; results below are individually clickable. -->
+    <div id="kn-quick-query" style="display:flex;align-items:center;gap:8px;margin:8px 10px 6px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
+      <svg viewBox="0 0 20 20" width="14" height="14" fill="none" style="color:var(--accent);flex-shrink:0;" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="kn-quick-query-input" type="text" placeholder="Search or ask the knowledge base — Enter to ask, or use Spotlight for everything"
         style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font-family:inherit;font-size:12px;"
         onkeydown="if(event.key==='Enter'){ knowledgeRunQuery(); }">
       <button onclick="knowledgeRunQuery()" title="Run RAG query (Enter)"
         style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">Ask</button>
+      <button onclick="openSpotlight()" title="Open Spotlight (Ctrl+Space) — searches files, docs, KB, tickets, proposals, chats, memory"
+        style="background:var(--window-header);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:11px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+        Spotlight <kbd style="background:var(--card);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:9.5px;font-family:inherit;color:var(--text-dim);">Ctrl+Space</kbd>
+      </button>
       <button onclick="knowledgeClearQuery()" title="Clear results"
         style="background:var(--window-header);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text-dim);cursor:pointer;display:none;" id="kn-quick-query-clear">Clear</button>
     </div>
     <div id="kn-quick-query-results" style="margin:0 10px 8px;display:none;"></div>
+    <!-- P4-S37: interests pulled forward from the (i) modal so they're discoverable -->
+    <div id="kn-interests-strip" style="margin:0 10px 8px;padding:7px 10px;border:1px dashed color-mix(in srgb,var(--accent) 40%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--accent) 4%,var(--card));display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;">
+      <svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="color:var(--accent);flex-shrink:0;"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <strong style="color:var(--text);">Tell the swarm what you're into</strong>
+      <span style="color:var(--text-dim);">— Librarian/Scholar/Seeker will look out for these topics and surface them in Library.</span>
+      <span id="kn-interests-list" style="color:var(--text-dim);font-style:italic;">loading…</span>
+      <button onclick="knowledgeOpenInfo()" style="margin-left:auto;background:var(--accent);color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:10.5px;font-weight:700;cursor:pointer;">Edit interests</button>
+    </div>
     <div id="knowledge-tab-bar" class="knowledge-tab-bar"></div>
+    <div style="margin:0 10px 6px;display:flex;gap:6px;">
+      <button onclick="openWindow('tasker','Tasker','view-tasker')" title="Scheduled tasks &amp; automation" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text-dim);font-size:10px;cursor:pointer;"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" aria-hidden="true" style="vertical-align:-1px;"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Tasker — scheduled tasks</button>
+    </div>
     <div id="kn-panel-files" style="flex:1;min-height:0;display:flex;flex-direction:column;"></div>
     <div id="kn-panel-docs" style="flex:1;min-height:0;display:flex;flex-direction:column;display:none;"></div>
+    <div id="kn-panel-memory" style="flex:1;min-height:0;overflow-y:auto;display:none;"></div>
     <div id="kn-panel-library" style="flex:1;min-height:0;overflow-y:auto;display:none;"></div>
+    <div id="kn-panel-tasker" style="flex:1;min-height:0;overflow:hidden;display:none;"></div>
     <div id="kn-panel-guide" style="flex:1;min-height:0;overflow:hidden;display:none;"></div>
   </div>
 </template>
@@ -1539,28 +1722,46 @@
           style="padding:4px 14px 4px 12px;margin-right:2px;background:var(--info);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 0 0 2px color-mix(in srgb, var(--info) 53%, transparent),0 0 8px 2px color-mix(in srgb, var(--info) 60%, transparent);transition:box-shadow 0.2s;outline:none;">
           + New Proposal
         </button>
-        <button id="studio-tab-pending"
-          onclick="studioSetTab('pending')"
-          style="padding:5px 12px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#000;font-size:11px;font-weight:600;cursor:pointer;">Pending</button>
-        <button id="studio-tab-in_progress"
-          onclick="studioSetTab('in_progress')"
-          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">In Progress</button>
-        <button id="studio-tab-all"
-          onclick="studioSetTab('all')"
-          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">History</button>
         <button id="studio-tab-projects"
           onclick="studioSetTab('projects')"
-          title="Projects — Agile / Waterfall / Prince2 plans with Seven as owner"
-          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Projects</button>
-        <button id="studio-tab-git"
-          onclick="studioSetTab('git')"
-          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Git</button>
+          title="Projects — Agile / Waterfall / Prince2 plans with Seven as owner (default tab)"
+          style="padding:5px 14px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#000;font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent),0 0 12px 2px color-mix(in srgb, var(--accent) 55%, transparent);">Projects</button>
         <button id="studio-tab-testlab"
           onclick="studioSetTab('testlab')"
           title="Test Lab — run the 7-tier audit hierarchy + any registered test script against a change"
           style="padding:5px 14px;border-radius:4px;border:1px solid var(--info);background:color-mix(in srgb, var(--info) 18%, transparent);color:var(--info);font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 0 0 1px color-mix(in srgb, var(--info) 30%, transparent);">🧪 Test Lab</button>
+        <button id="studio-tab-pending"
+          onclick="studioSetTab('pending')"
+          title="Proposed — new proposals awaiting review"
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Proposed</button>
+        <button id="studio-tab-in_progress"
+          onclick="studioSetTab('in_progress')"
+          title="In Progress — approved, under UAT, or actively executing"
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">In Progress</button>
+        <button id="studio-tab-all"
+          onclick="studioSetTab('all')"
+          title="History — rejected, closed, and done proposals"
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">History</button>
+        <button id="studio-tab-media"
+          onclick="studioSetTab('media')"
+          title="Media — linked music/video production projects, interests, feeds, and spine activity"
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:700;cursor:pointer;">Media</button>
+        <button id="studio-tab-git"
+          onclick="studioSetTab('git')"
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Git</button>
+        <button id="studio-tab-records"
+          onclick="studioSetTab('records')"
+          title="Records — universal viewer for projects, steps, cases, runs, proposals, tickets, emails, notes, docs, threads (Platinum file layer)"
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Records</button>
+        <button id="studio-btn-governance"
+          onclick="openGovernancePanel()"
+          title="Governance controls — pause/resume enforcement, view ALM status"
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--warning);background:color-mix(in srgb, var(--warning) 14%, transparent);color:var(--warning);font-size:11px;font-weight:700;cursor:pointer;">🛡 Governance</button>
         <button onclick="studioSetTab(window._studioTab || 'pending')"
           style="margin-left:4px;background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">&#8635;</button>
+        <button onclick="studioShowTabHelp()" title="What does this tab do? — opens KC manual page"
+          aria-label="Tab help"
+          style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 9px;color:var(--text-dim);font-size:11px;font-weight:700;cursor:pointer;">?</button>
       </div>
     </div>
     <div id="studio-content" style="flex: 1; overflow-y: auto; padding: 0;">
@@ -1591,7 +1792,11 @@
       </div>
       <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
         <div style="flex:1;display:flex;min-height:0;">
-          <div id="git-files-list" style="flex:0 0 340px;overflow-y:auto;border-right:1px solid var(--border);min-width:260px;"></div>
+          <div id="git-files-list" style="flex:0 0 340px;overflow-y:auto;border-right:1px solid var(--border);min-width:200px;"></div>
+          <!-- V8 S-F1055E7A86: drag handle lets the user resize the file list / diff split. -->
+          <div id="git-files-resizer" title="Drag to resize file list"
+            style="flex:0 0 5px;cursor:col-resize;background:transparent;position:relative;"
+            onmousedown="(function(ev){ev.preventDefault();var list=document.getElementById('git-files-list');if(!list)return;var startX=ev.clientX;var startW=list.getBoundingClientRect().width;var onMove=function(e){var w=Math.min(640,Math.max(200,startW+(e.clientX-startX)));list.style.flex='0 0 '+w+'px';};var onUp=function(){document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);})(event)"></div>
           <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
             <div id="git-diff-toolbar" style="padding:10px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
               <div id="git-diff-title" style="font-size:11px;font-weight:700;color:var(--text-dim);">Select a changed file</div>
@@ -1699,6 +1904,11 @@
               <option value="prince2">Prince2</option>
             </select>
             <button onclick="projectsCreate()" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:5px;padding:5px 14px;cursor:pointer;font-size:11px;font-weight:700;">Create</button>
+            <select id="projects-status-filter" onchange="projectsSetStatusFilter(this.value)" title="Show active/archived projects" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;">
+              <option value="active">Active</option>
+              <option value="all">All</option>
+              <option value="archived">Archived</option>
+            </select>
             <button onclick="projectsRefresh()" style="background:transparent;border:1px solid var(--border);border-radius:5px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">&#8635;</button>
           </div>
         </div>
@@ -1712,38 +1922,70 @@
         </div>
       </div>
     </div>
+
+    <!-- Records panel — populated by studio-records.js (PACKET-08 Platinum slice). -->
+    <div id="studio-records-panel" style="display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;"></div>
+
+    <div id="studio-media-panel" style="display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:13px;font-weight:700;">
+            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-1px"><rect x="2.5" y="4" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 3v10M11 6.2c0 1.6-1.2 3.1-3 3.6V6.2c1.8.5 3 2 3 3.6Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Media Production
+            <span style="margin-left:8px;padding:1px 7px;border-radius:8px;font-size:9px;font-weight:700;background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);vertical-align:1px;">Studio-linked</span>
+          </div>
+          <div id="studio-media-summary" style="font-size:11px;color:var(--text-dim);">Loading media projects, linked interests, feeds, and spine activity…</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <button onclick="openWindow('media-center','Media Center','view-media-center')" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:700;">Open Media Center</button>
+          <button onclick="loadStudioMediaPanel()" style="background:transparent;border:1px solid var(--border);border-radius:5px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">&#8635;</button>
+        </div>
+      </div>
+      <div id="studio-media-body" style="flex:1;overflow:auto;padding:14px;color:var(--text-dim);font-size:11px;">
+        Loading Media view…
+      </div>
+    </div>
   </div>
 </template>
 
 <template id="view-time-wizard">
   <div class="content-view" style="display: flex; flex-direction: column;">
-    <div style="padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--window-header);">
+    <div style="padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--window-header);">
       <div style="display:flex;align-items:center;gap:8px;">
-        <h3 style="margin:0;font-size:12px;flex:1;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Vortex — Decision Timeline</h3>
+        <h3 style="margin:0;font-size:13px;flex:1;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-1px"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Vortex — Time Machine</h3>
+        <button onclick="openGovernancePanel()" title="Pause / resume Vortex + governance"
+          style="padding:4px 10px;border-radius:6px;border:1px solid var(--warning);background:color-mix(in srgb, var(--warning) 14%, transparent);color:var(--warning);font-size:10px;font-weight:700;cursor:pointer;">⏸ Controls</button>
         <button onclick="openSpotlight()" title="Search proposals, decisions &amp; more (Ctrl+Space)"
-          style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:10px;cursor:pointer;">
+          style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:10px;cursor:pointer;">
           <svg viewBox="0 0 20 20" width="11" height="11" fill="none" style="color:var(--accent);"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           Ctrl+Space
         </button>
         <button onclick="twOpenInfo()" title="What is Vortex?"
-          style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;padding:0;">
+          style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;padding:0;">
           <svg viewBox="0 0 16 16" width="11" height="11" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 5.2h0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </button>
       </div>
-      <div style="font-size: 9px; color: var(--text-dim);margin-top:4px;">All architectural decisions, checkpoints, and state transitions</div>
+      <div style="font-size: 11px; color: var(--text-dim);margin-top:6px;line-height:1.5;">Save a restore point, preview a rollback, then apply it if it looks right. Everything is auditable.</div>
+      <div id="tw-health-strip" style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:10px;flex-wrap:wrap;">
+        <span class="tw-health-pill" data-state="loading" style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);">
+          <span class="tw-health-dot" style="width:7px;height:7px;border-radius:50%;background:var(--text-dim);"></span>
+          <span class="tw-health-label">Vortex health: checking…</span>
+        </span>
+      </div>
     </div>
-    <div style="padding: 10px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); display: flex; flex-direction: column; gap: 10px;">
-      <div id="tw-summary" style="font-size: 9px; color: var(--text-dim);">Loading Vortex status...</div>
+    <div style="padding: 12px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); display: flex; flex-direction: column; gap: 12px;">
+      <div id="tw-summary" style="font-size: 10px; color: var(--text-dim);">Loading Vortex status...</div>
       <div style="display: flex; gap: 10px; align-items: center;">
-        <input type="range" id="tw-slider" min="0" max="0" value="0" step="1" style="flex: 1; accent-color: var(--accent); cursor: pointer;" title="Drag to inspect any checkpoint in the timeline.">
-        <div id="tw-slider-label" style="min-width: 220px; text-align: right; font-size: 9px; color: var(--text); font-family: monospace;">No checkpoints</div>
+        <span style="font-size:10px;color:var(--text-dim);white-space:nowrap;">Restore point:</span>
+        <input type="range" id="tw-slider" min="0" max="0" value="0" step="1" style="flex: 1; accent-color: var(--accent); cursor: pointer;" title="Drag to pick which restore point to inspect.">
+        <div id="tw-slider-label" style="min-width: 220px; text-align: right; font-size: 10px; color: var(--text); font-family: monospace;">No restore points yet</div>
       </div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button onclick="createTwCheckpoint()" title="Snapshot the current swarm state (DB + key files) so you can roll back to it later." style="padding: 5px 10px; background: var(--accent); border: none; border-radius: 4px; color: #000; font-size: 9px; font-weight: 700; cursor: pointer;">Capture Checkpoint</button>
-        <button onclick="previewTwCheckpoint(true)" title="Show what would change if you rolled back to the selected checkpoint — no actual changes made." style="padding: 5px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 9px; cursor: pointer;">Dry Run Step-Back</button>
-        <button onclick="applyTwRestore()" title="Apply the step-back: restore DB and files from the selected checkpoint. Irreversible without another checkpoint." style="padding: 5px 10px; background: var(--warning-dim); border: 1px solid color-mix(in srgb, var(--warning) 33%, transparent); border-radius: 4px; color: var(--warning); font-size: 9px; font-weight: 700; cursor: pointer;">Apply Step-Back</button>
+        <button onclick="createTwCheckpoint()" title="Take a snapshot of the swarm now so you can return to this state later." style="padding: 6px 12px; background: var(--accent); border: none; border-radius: 6px; color: #000; font-size: 11px; font-weight: 700; cursor: pointer;">💾 Save restore point</button>
+        <button onclick="previewTwCheckpoint(true)" title="Show what rolling back would change — safe, nothing is written." style="padding: 6px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 11px; cursor: pointer;">🔍 Preview rollback</button>
+        <button onclick="applyTwRestore()" title="Actually roll back to the selected restore point. Not reversible without another restore point." style="padding: 6px 12px; background: var(--warning-dim); border: 1px solid color-mix(in srgb, var(--warning) 33%, transparent); border-radius: 6px; color: var(--warning); font-size: 11px; font-weight: 700; cursor: pointer;">⏪ Roll back now</button>
       </div>
-      <div id="tw-restore-preview" style="background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 9px; color: var(--text-dim); min-height: 72px;">Drag the slider to inspect a checkpoint. Dry run preview will appear here.</div>
+      <div id="tw-restore-preview" style="background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 10px; color: var(--text-dim); min-height: 72px;">Drag the slider to pick a restore point, then click <strong>Preview rollback</strong> to see what would change.</div>
     </div>
     <!-- Horizontal visual timeline strip -->
     <div id="tw-visual-timeline" style="padding:8px 10px;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden;min-height:52px;background:rgba(255,255,255,0.015);display:flex;align-items:center;gap:0;scrollbar-width:thin;">
@@ -1764,10 +2006,12 @@
           <div style="color: var(--text-dim); font-size: 10px; text-align: center; padding: 24px 16px;">Loading decision timeline...</div>
         </div>
       </div>
-      <aside id="tw-history-panel" style="width: 320px; max-width: 46%; border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; background: rgba(255,255,255,0.01);">
+      <div id="tw-history-resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize Vortex history panel" style="width:4px;cursor:col-resize;background:var(--border);flex-shrink:0;align-self:stretch;outline:none;" title="Drag to resize · double-click to reset"></div>
+      <aside id="tw-history-panel" style="width: 320px; max-width: 60%; min-width: 220px; border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; background: rgba(255,255,255,0.01);">
         <div style="padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Vortex History</div>
+            <button class="tw-section-toggle" data-target="tw-history-list" aria-expanded="true" style="background:none;border:none;color:var(--text-dim);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;flex:1;text-align:left;"><span class="tw-toggle-caret" style="display:inline-block;transition:transform .15s;">▾</span>Vortex History</button>
+            <button onclick="twShowSectionHelp('history')" title="What does Vortex History show?" aria-label="Section help" style="padding:3px 7px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:10px;font-weight:700;cursor:pointer;">?</button>
             <button onclick="loadTimeWizardData()" style="padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 10px; cursor: pointer;">↻</button>
           </div>
           <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);cursor:pointer;">
@@ -1781,7 +2025,8 @@
         </div>
         <div style="border-top:1px solid var(--border);padding:10px 12px 6px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Spine Feed</div>
+            <button class="tw-section-toggle" data-target="tw-spine-feed" aria-expanded="true" style="background:none;border:none;color:var(--text-dim);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;flex:1;text-align:left;"><span class="tw-toggle-caret" style="display:inline-block;transition:transform .15s;">▾</span>Spine Feed</button>
+            <button onclick="twShowSectionHelp('spine')" title="What is the Spine Feed?" aria-label="Section help" style="padding:2px 7px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:10px;font-weight:700;cursor:pointer;">?</button>
             <button onclick="if(window.__trace)window.__trace.open({})" title="Open full Traced window" style="padding:2px 8px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:10px;cursor:pointer;">Open Traced</button>
           </div>
           <div style="font-size:9px;color:var(--text-dim);margin-bottom:6px;">Live events flowing through Seven's spine</div>
@@ -1803,6 +2048,7 @@
         <div style="font-size:9px;color:var(--text-dim);">Trusted senders, ignored addresses, skill permissions</div>
       </div>
       <button onclick="loadAccessData(window._accessWin)" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:9px;cursor:pointer;">↻ Refresh</button>
+      <button onclick="openWindow('vpn','VPN','view-vpn')" title="Open VPN / Tailscale network status" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:9px;cursor:pointer;margin-left:6px;">🔐 VPN</button>
     </div>
     <div style="flex:1;overflow-y:auto;padding:0;">
 
@@ -1919,7 +2165,8 @@
             <span class="lg-legend-dot" style="--c:#555;font-style:italic">⬡ tag</span>
           </div>
           <div id="library-graph-hint" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text-dim);pointer-events:none;opacity:.6;">Click a node · Scroll to zoom · Drag to pan</div>
-          <div id="library-graph-empty" style="display:none;position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-dim);">
+          <button id="library-graph-popout" onclick="hiveNodesPopout()" title="Open Hive Nodes in its own window (20 most recently touched)" style="position:absolute;top:8px;right:10px;background:var(--window-header);border:1px solid var(--border);border-radius:5px;padding:4px 10px;font-size:10px;color:var(--text-dim);cursor:pointer;">Hive Nodes ↗</button>
+          <div id="library-graph-empty" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-dim);">
             <svg viewBox="0 0 24 24" width="40" height="40" fill="none"><circle cx="8" cy="8" r="4" stroke="currentColor" stroke-width="1.3"/><circle cx="18" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><circle cx="15" cy="17" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M11.5 9.5l3.5-2M12 11.5l2 4" stroke="currentColor" stroke-width="1.3"/></svg>
             <div style="font-size:12px;font-weight:600;">No sources yet</div>
             <div style="font-size:11px;opacity:.7;">Add sources or click Seed Knowledge to get started</div>
@@ -2049,8 +2296,10 @@
         <div class="localai-title-row">
           <span class="localai-title">Local AI</span>
           <span id="localai-overall-status" class="localai-badge">checking...</span>
+          <span id="localai-runtime-badge" class="localai-badge" title="Fridays runtime gateway health" style="display:none;">runtime: —</span>
         </div>
         <div class="localai-subtitle">Offline inference, model management, and runtime control for Ollama, LM Studio, and Picoclaw.</div>
+        <div id="localai-runtime-warnings" style="display:none;margin-top:6px;font-size:11px;color:#f59e0b;"></div>
       </div>
       <div class="localai-header-actions">
         <button onclick="localaiRefresh()" class="knowledge-btn">Refresh</button>
@@ -2087,8 +2336,9 @@
             </div>
             <div class="localai-manager-card">
               <div class="localai-section-title">Pull Model</div>
-              <input id="ollama-pull-select" list="ollama-pull-datalist" class="knowledge-input localai-input" type="text" placeholder="Type to search models…" autocomplete="off">
-              <datalist id="ollama-pull-datalist"></datalist>
+              <select id="ollama-pull-select" class="knowledge-select localai-input">
+                <option value="">— Pick a model —</option>
+              </select>
               <div class="localai-field-row">
                 <input id="ollama-pull-input" class="knowledge-input localai-input" type="text" placeholder="Or paste a custom model name (e.g. gemma3:latest)">
                 <button onclick="localaiRefreshModelCatalog()" class="knowledge-btn" title="Refresh catalog">↻</button>
@@ -2174,6 +2424,154 @@
   </div>
 </template>
 
+<template id="view-media-center">
+  <div class="content-view media-center-shell" id="media-center-view">
+    <section class="media-center-header">
+      <div>
+        <div class="media-center-title">Media Center</div>
+        <div class="media-center-subtitle">A working table for media: add a song or clip, make a playable preview, then keep the output attached to Studio and Knowledge.</div>
+        <div class="media-center-flow" aria-label="Media Center workflow">
+          <span class="is-active">1 Pick project</span>
+          <span>2 Add reference</span>
+          <span>3 Make preview</span>
+          <span>4 Play output</span>
+        </div>
+        <div class="media-topline" id="media-center-topline"></div>
+      </div>
+      <div class="media-center-actions">
+        <span class="media-pill" id="media-center-status">framework</span>
+        <button class="media-action-btn media-action-btn-primary" onclick="mediaCenterMakePreview()">Make playable preview</button>
+        <button class="media-action-btn" onclick="mediaCenterOpenResearch('references')">Add reference</button>
+        <button class="media-action-btn" onclick="mediaCenterExpandAll()">Expand all</button>
+        <button class="media-action-btn" onclick="mediaCenterRefresh()">Refresh</button>
+      </div>
+    </section>
+
+    <section class="media-transport-bar" id="media-center-transport">
+      <button class="media-action-btn media-action-btn-primary" onclick="mediaCenterMakePreview()">Make playable preview</button>
+      <button class="media-action-btn" onclick="mediaCenterOpenResearch('references')">Add song or clip</button>
+      <button class="media-action-btn" onclick="mediaCenterSetBottomTab('queue')">Play outputs</button>
+      <button class="media-action-btn" onclick="mediaCenterQueueSelected('generate-audio')">Queue audio only</button>
+      <button class="media-action-btn" onclick="mediaCenterQueueSelected('generate-video')">Queue video only</button>
+      <button class="media-action-btn" onclick="mediaCenterOpenReviewPlan()">Studio trail</button>
+      <button class="media-action-btn" onclick="mediaCenterOpenResearch('routing')">Advanced routing</button>
+    </section>
+
+    <div class="media-editor-shell" id="media-center-grid">
+      <aside class="media-left-dock media-sidebar">
+        <section class="media-panel" data-panel-key="new-project">
+          <div class="media-panel-head">
+            <div>
+              <div class="media-panel-title">New Project</div>
+              <div class="media-panel-summary">Create a brief without leaving the workspace.</div>
+            </div>
+            <button class="media-panel-toggle" type="button" aria-label="Toggle New Project" aria-expanded="true" onclick="mediaCenterTogglePanel('new-project')"></button>
+          </div>
+          <div class="media-panel-body" data-panel-body>
+            <div class="media-form">
+              <label>Project name
+                <input id="media-center-project-name" type="text" placeholder="Neon trailer, ambient loop pack, launch teaser...">
+              </label>
+              <label>Core prompt
+                <textarea id="media-center-project-prompt" placeholder="Describe the music arc, visuals, pacing, and anything the pipeline should preserve."></textarea>
+              </label>
+              <div class="media-form-row">
+                <label>Medium
+                  <select id="media-center-project-medium">
+                    <option value="audio-video">Audio + video</option>
+                    <option value="music">Music only</option>
+                    <option value="video">Video only</option>
+                  </select>
+                </label>
+                <label>Duration
+                  <input id="media-center-project-duration" type="number" min="5" max="600" value="30">
+                </label>
+              </div>
+              <label>Style
+                <input id="media-center-project-style" type="text" placeholder="future pulse, analog dream, hyperpop cut-up...">
+              </label>
+              <button class="media-action-btn media-action-btn-primary" onclick="mediaCenterCreateProject()">Create project</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="media-panel media-scroll" data-panel-key="project-rack">
+          <div class="media-panel-head">
+            <div>
+              <div class="media-panel-title">Project Rack</div>
+              <div class="media-panel-summary">Pick the active composition and jump back into its plan.</div>
+            </div>
+            <button class="media-panel-toggle" type="button" aria-label="Toggle Project Rack" aria-expanded="true" onclick="mediaCenterTogglePanel('project-rack')"></button>
+          </div>
+          <div class="media-panel-body media-project-list" id="media-center-project-list" data-panel-body>
+            <div class="media-empty">Loading projects...</div>
+          </div>
+        </section>
+
+        <section class="media-panel media-scroll" data-panel-key="composer-outline">
+          <div class="media-panel-head">
+            <div>
+              <div class="media-panel-title">Composer Outline</div>
+              <div class="media-panel-summary">Scenes, tracks, and deliverables stay visible while you edit.</div>
+            </div>
+            <button class="media-panel-toggle" type="button" aria-label="Toggle Composer Outline" aria-expanded="true" onclick="mediaCenterTogglePanel('composer-outline')"></button>
+          </div>
+          <div class="media-panel-body" id="media-center-structure-dock" data-panel-body>
+            <div class="media-empty">Loading structure...</div>
+          </div>
+        </section>
+      </aside>
+
+      <div class="media-center-resizer" id="media-center-resizer" title="Drag to resize project rack" role="separator" aria-orientation="vertical" tabindex="0"></div>
+
+      <div class="media-main">
+        <section class="media-editor-stage" id="media-center-editor-stage">
+          <div class="media-empty">Loading composer...</div>
+        </section>
+
+        <section class="media-bottom-dock media-panel" data-panel-key="bottom-dock">
+          <div class="media-panel-head">
+            <div>
+              <div class="media-panel-title">Review Dock</div>
+              <div class="media-panel-summary">Queue, review plan, runtime, and handoff visibility stay under the editor.</div>
+            </div>
+            <div class="media-dock-tab-strip" id="media-center-bottom-tabs">
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetBottomTab('queue')">Queue</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetBottomTab('review')">Review</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetBottomTab('runtime')">Runtime</button>
+            </div>
+          </div>
+          <div class="media-panel-body" id="media-center-bottom-body" data-panel-body>
+            <div class="media-empty">Loading queue and review state...</div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="media-right-dock">
+        <section class="media-panel media-scroll" data-panel-key="research-center">
+          <div class="media-panel-head">
+            <div>
+              <div class="media-panel-title">Research Center</div>
+              <div class="media-panel-summary">References, Knowledge, routing, and advisor guidance stay one click from the editor.</div>
+            </div>
+            <div class="media-dock-tab-strip" id="media-center-research-tabs">
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('references')">References</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('accounts')">Accounts</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('feeds')">Feeds</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('knowledge')">Knowledge</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('routing')">Routing</button>
+              <button class="media-dock-tab" type="button" onclick="mediaCenterSetResearchTab('advisors')">Advisors</button>
+            </div>
+          </div>
+          <div class="media-panel-body" id="media-center-research-body" data-panel-body>
+            <div class="media-empty">Loading research context...</div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+</template>
+
 <template id="view-onboarding">
   {% include 'views/onboarding.html' %}
 </template>
@@ -2203,6 +2601,24 @@
       <div class="tasker-stat"><div class="tasker-stat-value" id="tasker-stat-last">–</div><div class="tasker-stat-label">Last Fired</div></div>
     </div>
 
+    <!-- Calendar -->
+    <div class="tasker-calendar-panel">
+      <div class="tasker-calendar-head">
+        <div>
+          <div class="tasker-watch-title">Task calendar</div>
+          <div class="tasker-watch-subtitle">Scheduled jobs, watched-topic emails, briefs, and upcoming Tasker runs in one place.</div>
+        </div>
+        <div class="tasker-calendar-controls">
+          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(-7)" title="Previous week">‹</button>
+          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(0)" title="Today">Today</button>
+          <button type="button" class="tasker-action-btn" onclick="shiftTaskerCalendar(7)" title="Next week">›</button>
+        </div>
+      </div>
+      <div class="tasker-calendar-grid" id="tasker-calendar-grid">
+        <div class="tasker-empty"><div class="tasker-empty-icon">⏱</div>Loading calendar...</div>
+      </div>
+    </div>
+
     <!-- Header -->
     <div class="tasker-header">
       <input class="tasker-search" type="text" id="tasker-search" placeholder="Search tasks..." oninput="filterTaskerList()">
@@ -2220,6 +2636,60 @@
       </select>
       <button class="tasker-btn-new" onclick="openTaskerForm()">+ New Task</button>
       <button class="tasker-btn-new" style="background:var(--accent-subtle,#2a4a5a)" onclick="bootstrapTasker()">⚡ Bootstrap</button>
+    </div>
+
+    <!-- Watched topic quick creator -->
+    <div class="tasker-watch-panel">
+      <div class="tasker-watch-copy">
+        <div class="tasker-watch-title">Watched research topic</div>
+        <div class="tasker-watch-subtitle">Create a saved interest and schedule Agent Eight/Scholar-style research emails without hand-writing Tasker args.</div>
+      </div>
+      <div class="tasker-watch-grid">
+        <label>Topic<input type="text" id="tasker-watch-topic" placeholder="SAP payroll Australia"></label>
+        <label>Schedule<input type="text" id="tasker-watch-schedule" value="daily 06:30" placeholder="daily 06:30"></label>
+        <label>Depth
+          <select id="tasker-watch-depth">
+            <option value="quick">Quick</option>
+            <option value="standard" selected>Standard</option>
+            <option value="deep">Deep</option>
+          </select>
+        </label>
+        <label>Agent<input type="text" id="tasker-watch-agent" value="eight" placeholder="eight"></label>
+        <label>Email<input type="text" id="tasker-watch-email" value="ghost" placeholder="ghost or address"></label>
+        <label>Min Quality<input type="number" min="0" max="1" step="0.05" id="tasker-watch-min-quality" value="0.45"></label>
+        <label>Min Novelty<input type="number" min="0" max="1" step="0.05" id="tasker-watch-min-novelty" value="0.35"></label>
+        <label>Min Score<input type="number" min="0" max="1" step="0.05" id="tasker-watch-min-score" value="0.50"></label>
+        <label>Max Items<input type="number" min="1" max="25" step="1" id="tasker-watch-max-items" value="10"></label>
+        <label>Historical Years<input type="number" min="1" max="50" step="1" id="tasker-watch-historical-years" value="5"></label>
+      </div>
+      <div class="tasker-watch-actions">
+        <button class="tasker-form-save" type="button" onclick="createWatchedTopicTask()">Create Watch</button>
+      </div>
+    </div>
+
+    <!-- Watched evidence review -->
+    <div class="tasker-evidence-panel">
+      <div class="tasker-watch-copy">
+        <div class="tasker-watch-title">Watched evidence review</div>
+        <div class="tasker-watch-subtitle">See what watched-topic research found, including qualified emails, weak sources, duplicates, and unnotified findings.</div>
+      </div>
+      <div class="tasker-evidence-controls">
+        <input type="text" id="tasker-evidence-topic" value="SAP payroll Australia" placeholder="Topic filter">
+        <select id="tasker-evidence-status">
+          <option value="all">All findings</option>
+          <option value="qualified">Qualified</option>
+          <option value="filtered">Filtered</option>
+          <option value="historical">Historical</option>
+          <option value="notified">Notified</option>
+          <option value="unnotified">Unnotified</option>
+        </select>
+        <button class="tasker-form-cancel" type="button" onclick="loadWatchedTopicEvidence()">Refresh Evidence</button>
+        <button class="tasker-form-save" type="button" onclick="runWatchedTopicNow()">Run Topic Now</button>
+      </div>
+      <div class="tasker-evidence-summary" id="tasker-evidence-summary">No evidence loaded yet.</div>
+      <div class="tasker-evidence-list" id="tasker-evidence-list">
+        <div class="tasker-empty"><div class="tasker-empty-icon">⌕</div>Open Tasker or click Refresh Evidence to load watched findings.</div>
+      </div>
     </div>
 
     <!-- Create/Edit form -->
@@ -2270,6 +2740,30 @@
   {% include 'views/feeds.html' %}
 </template>
 
+<template id="view-records-files">
+  <div class="content-view records-files-root" style="display:flex;flex-direction:column;height:100%;min-height:0;">
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <div style="font-size:13px;font-weight:700;">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-1px"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 8h6M6 10h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        Files
+      </div>
+      <button id="rfb-up" title="Up one folder" style="padding:4px 10px;border:1px solid var(--border);background:transparent;border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">↑ Up</button>
+      <div id="rfb-crumb" style="flex:1;font-size:11px;color:var(--text-dim);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+      <span id="rfb-count" style="font-size:10px;color:var(--text-dim);"></span>
+      <button id="rfb-refresh" style="padding:4px 10px;border:1px solid var(--border);background:transparent;border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">↻</button>
+    </div>
+    <div style="display:grid;grid-template-columns:24px 1fr 80px 130px;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">
+      <span></span><span>Name</span><span style="text-align:right;">Size</span><span>Modified</span>
+    </div>
+    <div id="rfb-list" style="flex:1;overflow:auto;min-height:0;"></div>
+    <div id="rfb-detail" style="display:none;border-top:1px solid var(--border);background:var(--bg);"></div>
+  </div>
+</template>
+
+<template id="view-media">
+  {% include 'views/media.html' %}
+</template>
+
 <template id="view-trace">
   <div class="content-view" id="trace-view" style="display:flex;flex-direction:column;height:100%;">
     <!-- Toolbar -->
@@ -2309,6 +2803,142 @@
 </template>
 
 <!-- ════════════════════════════════════════════════════════════════════════
+     WISHLIST PILLAR VIEWS (S-45064ED6C5) — active v0 dashboards.
+     Each pillar is now backed by its own blueprint (cybersecurity_bp,
+     financial_bp, trading_bp, business_bp). Views render: pillar
+     description + live summary panel + underlying project_steps.
+     ════════════════════════════════════════════════════════════════════════ -->
+
+<template id="view-wishlist-cyber">
+  <div class="content-view wishlist-pillar-view" data-pillar-slug="cyber-security" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div class="wishlist-pillar-header" style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <strong style="font-size:14px;">Cyber Security</strong>
+        <span class="wishlist-badge" style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--accent);color:#000;font-weight:700;">WISHLIST</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Diamond-tier governance pillar</span>
+      </div>
+      <div class="wishlist-pillar-subtitle" style="font-size:11px;color:var(--text-dim);margin-top:4px;">Active v0 — open audit events + severity counts</div>
+    </div>
+    <div class="wishlist-pillar-body" style="flex:1;overflow-y:auto;padding:14px 16px;">
+      <div class="wishlist-pillar-description" style="font-size:12px;line-height:1.5;color:var(--text);margin-bottom:14px;">Loading description…</div>
+      <div class="wishlist-pillar-live" data-live-slug="cyber-security" style="margin-bottom:14px;"></div>
+      <h4 style="font-size:11px;color:var(--text-dim);margin:6px 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Underlying steps</h4>
+      <ul class="wishlist-pillar-steps" style="list-style:none;padding:0;margin:0;font-size:12px;"></ul>
+    </div>
+  </div>
+</template>
+
+<template id="view-wishlist-financial">
+  <div class="content-view wishlist-pillar-view" data-pillar-slug="financial" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div class="wishlist-pillar-header" style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <strong style="font-size:14px;">Financial Analytics</strong>
+        <span class="wishlist-badge" style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--accent);color:#000;font-weight:700;">WISHLIST</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Investment-banking oriented</span>
+      </div>
+      <div class="wishlist-pillar-subtitle" style="font-size:11px;color:var(--text-dim);margin-top:4px;">Active v0 — open positions + high-conviction</div>
+    </div>
+    <div class="wishlist-pillar-body" style="flex:1;overflow-y:auto;padding:14px 16px;">
+      <div class="wishlist-pillar-description" style="font-size:12px;line-height:1.5;color:var(--text);margin-bottom:14px;">Loading description…</div>
+      <div class="wishlist-pillar-live" data-live-slug="financial" style="margin-bottom:14px;"></div>
+      <h4 style="font-size:11px;color:var(--text-dim);margin:6px 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Underlying steps</h4>
+      <ul class="wishlist-pillar-steps" style="list-style:none;padding:0;margin:0;font-size:12px;"></ul>
+    </div>
+  </div>
+</template>
+
+<template id="view-wishlist-trading">
+  <div class="content-view wishlist-pillar-view" data-pillar-slug="trading" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div class="wishlist-pillar-header" style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <strong style="font-size:14px;">Online Trading</strong>
+        <span class="wishlist-badge" style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--accent);color:#000;font-weight:700;">WISHLIST</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Crypto / market data placeholder</span>
+      </div>
+      <div class="wishlist-pillar-subtitle" style="font-size:11px;color:var(--text-dim);margin-top:4px;">Active v0 — pending signals + realised P&amp;L</div>
+    </div>
+    <div class="wishlist-pillar-body" style="flex:1;overflow-y:auto;padding:14px 16px;">
+      <div class="wishlist-pillar-description" style="font-size:12px;line-height:1.5;color:var(--text);margin-bottom:14px;">Loading description…</div>
+      <div class="wishlist-pillar-live" data-live-slug="trading" style="margin-bottom:14px;"></div>
+      <h4 style="font-size:11px;color:var(--text-dim);margin:6px 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Underlying steps</h4>
+      <ul class="wishlist-pillar-steps" style="list-style:none;padding:0;margin:0;font-size:12px;"></ul>
+    </div>
+  </div>
+</template>
+
+<template id="view-wishlist-business">
+  <div class="content-view wishlist-pillar-view" data-pillar-slug="business" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div class="wishlist-pillar-header" style="padding:14px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <strong style="font-size:14px;">Business Centre</strong>
+        <span class="wishlist-badge" style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--accent);color:#000;font-weight:700;">WISHLIST</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Run-the-company toolkit</span>
+      </div>
+      <div class="wishlist-pillar-subtitle" style="font-size:11px;color:var(--text-dim);margin-top:4px;">Active v0 — ledger + unreconciled count</div>
+    </div>
+    <div class="wishlist-pillar-body" style="flex:1;overflow-y:auto;padding:14px 16px;">
+      <div class="wishlist-pillar-description" style="font-size:12px;line-height:1.5;color:var(--text);margin-bottom:14px;">Loading description…</div>
+      <div class="wishlist-pillar-live" data-live-slug="business" style="margin-bottom:14px;"></div>
+      <h4 style="font-size:11px;color:var(--text-dim);margin:6px 0 8px;text-transform:uppercase;letter-spacing:0.5px;">Underlying steps</h4>
+      <ul class="wishlist-pillar-steps" style="list-style:none;padding:0;margin:0;font-size:12px;"></ul>
+    </div>
+  </div>
+</template>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     Y.58 — Show Me The Money hub: combines Financial / Trading / Business +
+     market feeds (NASDAQ / ASX) + investment-banking research surface.
+     Tabs route to the same wishlist-pillar views as before, plus a Markets
+     tab for live tickers and an IBank tab for proposition/acquisition research.
+     ════════════════════════════════════════════════════════════════════════ -->
+<template id="view-money-hub">
+  <div class="content-view money-hub-view" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div class="money-hub-tabbar" style="display:flex;gap:2px;border-bottom:1px solid var(--border);background:var(--window-header);padding:0 8px;flex-shrink:0;">
+      <button type="button" class="money-hub-tab active" data-money-tab="financial"
+        style="padding:9px 14px;background:transparent;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;">Financial</button>
+      <button type="button" class="money-hub-tab" data-money-tab="trading"
+        style="padding:9px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:12px;font-weight:500;cursor:pointer;">Trading</button>
+      <button type="button" class="money-hub-tab" data-money-tab="business"
+        style="padding:9px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:12px;font-weight:500;cursor:pointer;">Business</button>
+      <button type="button" class="money-hub-tab" data-money-tab="markets"
+        style="padding:9px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:12px;font-weight:500;cursor:pointer;">Markets · NASDAQ/ASX</button>
+      <button type="button" class="money-hub-tab" data-money-tab="ibank"
+        style="padding:9px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:12px;font-weight:500;cursor:pointer;">IBank Research</button>
+    </div>
+    <div class="money-hub-body" style="flex:1;overflow:auto;">
+      <div class="money-hub-pane" data-money-pane="financial" style="display:block;height:100%;"></div>
+      <div class="money-hub-pane" data-money-pane="trading" style="display:none;height:100%;"></div>
+      <div class="money-hub-pane" data-money-pane="business" style="display:none;height:100%;"></div>
+      <div class="money-hub-pane" data-money-pane="markets" style="display:none;height:100%;padding:14px 16px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">Live tickers</div>
+        <div class="money-hub-tickers" data-tickers-host style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;font-size:12px;">
+          <div style="color:var(--text-dim);">Loading market snapshot…</div>
+        </div>
+        <div style="margin-top:14px;font-size:10px;color:var(--text-dim);">Tasker pulls NASDAQ + ASX summary every 15 min when the <code>markets-watch</code> job is enabled.</div>
+        <div style="margin-top:8px;display:flex;gap:6px;">
+          <button type="button" onclick="moneyHubRefreshMarkets()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:11px;cursor:pointer;">Refresh</button>
+          <button type="button" onclick="moneyHubEnsureTaskerJob()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:11px;cursor:pointer;">Enable Tasker job</button>
+        </div>
+      </div>
+      <div class="money-hub-pane" data-money-pane="ibank" style="display:none;height:100%;padding:14px 16px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">Investment banking research</div>
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.55;margin-bottom:12px;">
+          Trading scans for stock patterns and the IBank track researches public propositions and acquisitions. Findings land here, in
+          Topics &amp; Interests (KC), and as proposals.
+        </div>
+        <div class="money-hub-research" data-ibank-host>
+          <div style="color:var(--text-dim);">Loading research feed…</div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:6px;">
+          <button type="button" onclick="moneyHubScanPatterns()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:11px;cursor:pointer;">Scan patterns now</button>
+          <button type="button" onclick="moneyHubResearchPropositions()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:11px;cursor:pointer;">Research propositions/acquisitions</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ════════════════════════════════════════════════════════════════════════
      JAVASCRIPT
      ════════════════════════════════════════════════════════════════════════ -->
 
@@ -2321,55 +2951,70 @@
 <!-- DYNAMIC_SCRIPTS -->
 
 <!-- Core -->
-<script src="/static/js/core/window-manager.js"></script>
-<script src="/static/js/core/theme.js"></script>
-<script src="/static/js/core/toast.js"></script>
+<script src="/static/js/core/window-manager.js?v=31"></script>
+<script src="/static/js/core/theme.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/core/toast.js?v=2"></script>
 <script src="/static/js/core/icons.js"></script>
 <script src="/static/js/core/swarm-chat.js"></script>
-<script src="/static/js/core/app.js?v=30"></script>
+<script src="/static/js/core/seven-panel.js?v=1"></script>
+<script src="/static/js/core/record-shortcuts.js?v=1"></script>
+<script src="/static/js/core/app.js?v=33"></script>
 
 <!-- Views -->
-<script src="/static/js/views/conversations.js"></script>
-<script src="/static/js/views/terminal.js"></script>
-<script src="/static/js/views/terminal-commands.js"></script>
-<script src="/static/js/views/files.js"></script>
-<script src="/static/js/views/git.js"></script>
-<script src="/static/js/views/memory.js"></script>
-<script src="/static/js/views/memory-landscape.js"></script>
-<script src="/static/js/views/monitor.js"></script>
-<script src="/static/js/views/docs.js"></script>
-<script src="/static/js/views/skills.js"></script>
-<script src="/static/js/views/tasker.js"></script>
-<script src="/static/js/views/tickets.js"></script>
-<script src="/static/js/views/email.js?v=29"></script>
-<script src="/static/js/views/studio.js?v=30r1"></script>
-<script src="/static/js/views/studio-testlab.js?v=30"></script>
-<script src="/static/js/views/projects.js?v=30"></script>
-<script src="/static/js/views/traced.js?v=29"></script>
+<script src="/static/js/views/conversations.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/terminal.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/terminal-commands.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/files.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/git.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/memory.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/memory-landscape.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/monitor.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/docs.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/skills.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/tasker.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/tickets.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/email.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/studio.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/studio-media.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/studio-testlab.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/studio-records.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/records-files.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/projects.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/traced.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/core/trace-bus.js?v=29"></script>
-<script src="/static/js/views/chat.js?v=30m1"></script>
-<script src="/static/js/views/services.js"></script>
-<script src="/static/js/views/ollama.js"></script>
-<script src="/static/js/views/time-wizard.js?v=29"></script>
-<script src="/static/js/views/access.js"></script>
-<script src="/static/js/views/library-graph.js"></script>
-<script src="/static/js/views/library.js?v=30t2"></script>
-<script src="/static/js/views/knowledge.js"></script>
-<script src="/static/js/views/spotlight.js"></script>
-<script src="/static/js/views/guide.js"></script>
-<script src="/static/js/views/vpn.js"></script>
-<script src="/static/js/views/localai.js"></script>
-<script src="/static/js/views/trace.js"></script>
-<script src="/static/js/views/onboarding.js"></script>
-<script src="/static/js/views/diamond.js"></script>
-<script src="/static/js/views/health-digest.js"></script>
+<script src="/static/js/views/chat.js?v={{ ASSET_VERSION }}-chat-trace1"></script>
+<script src="/static/js/views/services.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/ollama.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/time-wizard.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/access.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/library-graph.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/library.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/hive-nodes.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/voice.js?v=1"></script>
+<script src="/static/js/views/knowledge.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/media.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/spotlight.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/guide.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/vpn.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/money-hub.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/localai.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/media-center.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/trace.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/onboarding.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/diamond.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/health-digest.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/wishlist.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/pillar_live.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/home_banner.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/orientation_card.js?v={{ ASSET_VERSION }}"></script>
 
-<script src="/static/js/views/home-chat.js?v=29"></script>
-<script src="/static/js/friday-auth.js?v=27"></script>
+<script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/friday-auth.js?v=28"></script>
 <!-- Init (must be last — depends on all above) -->
 <script src="/static/js/core/sse-client.js"></script>
-<script src="/static/js/core/init.js?v=30"></script>
-<script src="/static/js/views/orbs.js?v=33"></script>
+<script src="/static/js/core/init.js?v=35"></script>
+<script src="/static/js/core/scene-sprites.js?v=2"></script>
+<script src="/static/js/views/orbs.js?v={{ ASSET_VERSION }}"></script>
 
 </body>
 </html>

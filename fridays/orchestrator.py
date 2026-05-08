@@ -50,6 +50,13 @@ THINK_CYCLE_LIMIT = 3         # max new proposals per agent per heartbeat
 SANDPIT_ROOT      = SWARM_ROOT / 'sandpits'
 ENV_AGENTS_FILE   = SWARM_ROOT / '.env.agents'
 
+# STEP-STOP-MARKDOWN-TRACKER-RECREATION-20260430 — by default the heartbeat no
+# longer recreates the legacy loose Markdown trackers (CURRENT_FOCUS.md,
+# STALE_PROPOSALS.md, per-agent DISPATCHED_WORK.md). Studio + KC carry the
+# canonical record now. Set SWARM_LEGACY_MD_TRACKERS=1 to re-enable for
+# operators still grepping the old files locally.
+LEGACY_MD_TRACKERS = os.environ.get('SWARM_LEGACY_MD_TRACKERS', '0').strip() in ('1', 'true', 'yes', 'on')
+
 
 def _env_int(name, default, min_value=1):
     raw = os.environ.get(name, '').strip()
@@ -102,6 +109,29 @@ DISPATCH_ROUTES = {
     'vision':     'scholar',
     'web':        'seeker',
     'news':       'seeker',
+}
+
+DISPATCH_CAPABILITIES = {
+    'sap':        'sap_payroll',
+    'hcm':        'sap_payroll',
+    'payroll':    'sap_payroll',
+    'analysis':   'analysis',
+    'analyse':    'analysis',
+    'research':   'research',
+    'search':     'research',
+    'route':      'orchestration',
+    'synthesis':  'synthesis',
+    'coordinate': 'orchestration',
+    'audit':      'audit',
+    'memory':     'memory',
+    'architect':  'architecture',
+    'design':     'architecture',
+    'code':       'coding',
+    'implement':  'coding',
+    'reason':     'analysis',
+    'vision':     'research',
+    'web':        'web_research',
+    'news':       'web_research',
 }
 
 
@@ -331,18 +361,39 @@ def agent_git_propose_and_execute(agent_id, action, paths=None, message='', prio
 def _naive_route(proposal):
     """
     Look at a proposal's title/description and decide which agent should handle it.
-    Uses keyword-based routing — same primitive Gemma uses, but local-only.
+    Uses keyword-based routing with capability scorecards when available.
     """
     text = (proposal.get('title', '') + ' ' + proposal.get('description', '')).lower()
     for keyword, agent in DISPATCH_ROUTES.items():
         if keyword in text:
+            capability = DISPATCH_CAPABILITIES.get(keyword)
+            if capability:
+                try:
+                    from core.agent_scorecards import best_agent_for_capability
+                    scored = best_agent_for_capability(
+                        capability,
+                        candidates=LOCAL_AGENTS + GHOST_LAYER_AGENTS,
+                        fallback=agent,
+                    )
+                    if scored:
+                        return scored
+                except Exception as exc:
+                    logger.debug(f'[Fridays] scorecard route failed for {keyword}: {exc}')
             return agent
     # Default: the agent that created it handles it
     return proposal.get('agent', 'gemma')
 
 
 def _write_dispatch(agent_name, proposal):
-    """Write a dispatch notice to the agent's sandpit for pickup on next think cycle."""
+    """Write a dispatch notice to the agent's sandpit for pickup on next think cycle.
+
+    Honours SWARM_LEGACY_MD_TRACKERS — when disabled (default) the loose
+    DISPATCHED_WORK.md is no longer recreated. Studio records (project_steps +
+    proposals tables) carry the same dispatch information.
+    """
+    if not LEGACY_MD_TRACKERS:
+        return
+
     sandpit = SANDPIT_ROOT / agent_name
     sandpit.mkdir(parents=True, exist_ok=True)
     
@@ -424,7 +475,24 @@ def _think_cycle(agent_name):
 
 
 def _update_focus_file(stats):
-    """Update shared/CURRENT_FOCUS.md with what the swarm is actively working on."""
+    """Update shared/CURRENT_FOCUS.md with what the swarm is actively working on.
+
+    Honours SWARM_LEGACY_MD_TRACKERS — when disabled (default) Studio's live
+    project view replaces this file. Heartbeat stats are still emitted via the
+    logger so the spine can ingest them.
+    """
+    if not LEGACY_MD_TRACKERS:
+        try:
+            logger.info(
+                '[heartbeat-stats] dispatched=%s self_proposed=%s escalated=%s git_auto_executed=%s git_auto_failed=%s',
+                stats.get('dispatched', 0), stats.get('self_proposed', 0),
+                stats.get('escalated', 0), stats.get('git_auto_executed', 0),
+                stats.get('git_auto_failed', 0),
+            )
+        except Exception:  # pragma: no cover — logger failures are non-fatal
+            pass
+        return
+
     focus_file = SANDPIT_ROOT / 'shared' / 'CURRENT_FOCUS.md'
     (SANDPIT_ROOT / 'shared').mkdir(parents=True, exist_ok=True)
     
@@ -455,10 +523,37 @@ def _update_focus_file(stats):
 
 
 def _check_stale_proposals(proposals):
-    """Find and escalate very old pending proposals."""
+    """Find and escalate very old pending proposals.
+
+    Writes one line per *new* stale proposal_id only (deduped against any
+    existing IDs already in STALE_PROPOSALS.md). This stops the file from
+    accumulating thousands of heartbeat duplicates.
+    """
     threshold = datetime.now(timezone.utc) - timedelta(minutes=STALE_MINUTES)
     escalated = []
-    
+
+    if not LEGACY_MD_TRACKERS:
+        # New path: just collect escalation IDs; Studio + ops/reconcile_stale_proposals
+        # consume the canonical record. The legacy STALE_PROPOSALS.md is no longer
+        # recreated.
+        for p in proposals:
+            try:
+                created = datetime.fromisoformat(p.get('created_at', '').replace(' ', 'T'))
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=timezone.utc)
+                if created < threshold:
+                    escalated.append(p['proposal_id'])
+            except Exception:
+                pass
+        return escalated
+
+    stale_file = SANDPIT_ROOT / 'shared' / 'STALE_PROPOSALS.md'
+    existing = stale_file.read_text() if stale_file.exists() else '# Stale Proposals\n'
+    # Cheap membership check — proposal_id is unique enough across the file
+    # body that substring matching is reliable in practice.
+    already = existing
+
+    new_lines = []
     for p in proposals:
         try:
             created = datetime.fromisoformat(p.get('created_at', '').replace(' ', 'T'))
@@ -466,16 +561,24 @@ def _check_stale_proposals(proposals):
                 created = created.replace(tzinfo=timezone.utc)
             if created < threshold:
                 escalated.append(p['proposal_id'])
-                # Write to shared log
-                stale_file = SANDPIT_ROOT / 'shared' / 'STALE_PROPOSALS.md'
-                existing = stale_file.read_text() if stale_file.exists() else '# Stale Proposals\n'
-                stale_file.write_text(
-                    existing +
-                    f"\n- [{datetime.now().strftime('%H:%M')}] {p['proposal_id']} ({p['agent']}): {p.get('title', '')[:80]}"
+                if p['proposal_id'] in already:
+                    continue  # already recorded, skip duplicate append
+                line = (
+                    f"\n- [{datetime.now().strftime('%H:%M')}] "
+                    f"{p['proposal_id']} ({p['agent']}): "
+                    f"{p.get('title', '')[:80]}"
                 )
+                new_lines.append(line)
+                already += line  # so two new same-id entries in this batch dedupe
         except Exception:
             pass
-    
+
+    if new_lines:
+        try:
+            stale_file.write_text(existing + ''.join(new_lines))
+        except Exception:
+            pass
+
     return escalated
 
 
@@ -525,7 +628,31 @@ def _process_local_agent_git_queue(per_agent_limit=GIT_EXECUTE_PER_AGENT_PER_HEA
 
 
 def run_heartbeat():
-    """Execute one full heartbeat cycle. Returns a stats dict."""
+    """Execute one full heartbeat cycle. Returns a stats dict.
+
+    2026-05-02 (S-059100FE16) — scheduler awareness: if a scheduled task
+    fired the orchestrator within the last HEARTBEAT_SECONDS we skip our
+    own dispatch loop to avoid double-firing the same work."""
+    # Scheduler-awareness short-circuit: if the scheduler ran our task in
+    # the last cycle window, treat that as the heartbeat for this tick.
+    try:
+        from database import get_connection
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT MAX(run_at) FROM task_run_log "
+                "WHERE task_name='orchestrator_heartbeat' "
+                "AND run_at >= datetime('now', ?)",
+                (f'-{HEARTBEAT_SECONDS} seconds',)
+            ).fetchone()
+        if row and row[0]:
+            logger.info(f'[Fridays] Scheduler already ran orchestrator at {row[0]}; skipping organic tick')
+            return {'dispatched': 0, 'self_proposed': 0, 'escalated': 0,
+                    'git_auto_executed': 0, 'git_auto_failed': 0,
+                    'git_auto_skipped_cap': 0, 'active_agents': [],
+                    'skipped_reason': 'scheduler_ran_recently'}
+    except Exception:
+        pass
+
     stats = {
         'dispatched': 0,
         'self_proposed': 0,

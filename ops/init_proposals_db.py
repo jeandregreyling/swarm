@@ -1,25 +1,20 @@
-import sqlite3
-import os
+from utils.db._connection import get_connection
 
-DB_PATH = os.path.expanduser("~/swarm/studio_proposals.db")
-
-conn = sqlite3.connect(DB_PATH)
+conn = get_connection()
 conn.execute('''
     CREATE TABLE IF NOT EXISTS work_proposals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proposal_id TEXT UNIQUE,
+        agent TEXT DEFAULT 'studio',
         title TEXT NOT NULL,
         description TEXT,
         status TEXT DEFAULT 'pending',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        approved_at TEXT,
-        rejected_at TEXT,
-        promoted_at TEXT,
         git_branch TEXT,
-        studio_link TEXT
+        source_node TEXT DEFAULT 'proposals_api'
     )
 ''')
 conn.commit()
 conn.close()
 
-print("✅ Created studio_proposals.db with work_proposals table")
-print(f"Location: {DB_PATH}")
+print("✅ Verified central swarm_memory.db work_proposals table")

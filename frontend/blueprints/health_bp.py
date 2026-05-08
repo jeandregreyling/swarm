@@ -56,3 +56,29 @@ def health_memory():
             conn.close()
     except Exception as exc:
         return jsonify({'error': str(exc)}), 500
+
+
+@health_digest_bp.route('/api/health/services')
+def health_services():
+    """Return per-service heartbeat + warnings.
+
+    2026-05-02 (S-E056DBAD19, S-B1279A66EB) — surfaces stale heartbeats and
+    frequent restarts so the operator can see when a daemon is flapping."""
+    try:
+        from utils.service_heartbeat import warnings as hb_warnings
+        with get_connection() as conn:
+            rows = conn.execute(
+                "SELECT service_name, code_version, started_at, last_beat_at, "
+                "pid, restart_count, last_restart_at FROM service_heartbeat"
+            ).fetchall()
+        services = [
+            {
+                'service': r[0], 'code_version': r[1], 'started_at': r[2],
+                'last_beat_at': r[3], 'pid': r[4],
+                'restart_count': r[5], 'last_restart_at': r[6],
+            }
+            for r in rows
+        ]
+        return jsonify({'services': services, 'warnings': hb_warnings()})
+    except Exception as exc:
+        return jsonify({'error': str(exc), 'services': [], 'warnings': []}), 500

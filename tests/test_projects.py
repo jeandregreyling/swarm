@@ -8,7 +8,14 @@ TARGETED test file (Session 30 QA directive).
 """
 from __future__ import annotations
 
+import os
+import sys
+
 import pytest
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 
 @pytest.fixture
@@ -118,6 +125,180 @@ def test_list_projects_counts_only_done_steps(isolated_db):
     row = [x for x in pj.list_projects() if x["project_id"] == pid][0]
     assert row["step_count"] == 2
     assert row["steps_done"] == 1
+
+
+# ── blackboard ──────────────────────────────────────────────────────────────
+
+def test_blackboard_notes_are_project_scoped_and_statused(isolated_db):
+    from core.knowledge import projects as pj
+
+    pid = pj.create_project("blackboard project")
+    note_id = pj.add_blackboard_note(
+        pid,
+        "Duck should verify the next recovery sweep before it runs active agents.",
+        author="duck",
+        kind="risk",
+    )
+
+    assert note_id and note_id.startswith("B-")
+    notes = pj.list_blackboard_notes(pid)
+    assert len(notes) == 1
+    assert notes[0]["author"] == "duck"
+    assert notes[0]["kind"] == "risk"
+    assert "verify the next recovery sweep" in notes[0]["content"]
+
+    detail = pj.get_project(pid)
+    assert detail["blackboard_notes"][0]["note_id"] == note_id
+
+    assert pj.update_blackboard_note_status(note_id, "resolved") is True
+    assert pj.list_blackboard_notes(pid) == []
+    all_notes = pj.list_blackboard_notes(pid, status=None)
+    assert all_notes[0]["status"] == "resolved"
+
+
+def test_blackboard_rejects_unknown_kind(isolated_db):
+    from core.knowledge import projects as pj
+
+    pid = pj.create_project("blackboard validation")
+    with pytest.raises(ValueError):
+        pj.add_blackboard_note(pid, "bad kind", kind="vibes")
+
+
+def test_blackboard_api_create_list_and_resolve(isolated_db):
+    from flask import Flask
+    from core.knowledge import projects as pj
+    from frontend.blueprints.knowledge_bp import knowledge_bp
+
+    pid = pj.create_project("blackboard api")
+    app = Flask(__name__)
+    app.register_blueprint(knowledge_bp)
+    client = app.test_client()
+
+    created = client.post(
+        f"/api/knowledge/projects/{pid}/blackboard",
+        json={"kind": "handoff", "author": "duck", "content": "Next agent should run the focused relay tests."},
+    )
+    assert created.status_code == 200
+    note_id = created.get_json()["note_id"]
+
+    listed = client.get(f"/api/knowledge/projects/{pid}/blackboard")
+    data = listed.get_json()
+    assert listed.status_code == 200
+    assert data["items"][0]["note_id"] == note_id
+    assert data["items"][0]["kind"] == "handoff"
+
+    resolved = client.patch(
+        f"/api/knowledge/blackboard/{note_id}",
+        json={"status": "resolved"},
+    )
+    assert resolved.status_code == 200
+    assert client.get(f"/api/knowledge/projects/{pid}/blackboard").get_json()["items"] == []
+    all_notes = client.get(f"/api/knowledge/projects/{pid}/blackboard?status=all").get_json()["items"]
+    assert all_notes[0]["status"] == "resolved"
+
+
+def test_project_context_preview_api_uses_project_pack(isolated_db):
+    from flask import Flask
+    from core.knowledge import projects as pj
+    from frontend.blueprints.knowledge_bp import knowledge_bp
+
+    pid = pj.create_project("context preview", description="Preview what a local agent will see.")
+    pj.add_step(pid, "wire preview drawer")
+    pj.add_test_case(pid, "preview js syntax", script_id="node --check frontend/static/js/views/projects.js")
+    pj.add_blackboard_note(pid, "The next agent should verify the preview endpoint.", author="codex", kind="handoff")
+
+    app = Flask(__name__)
+    app.register_blueprint(knowledge_bp)
+    client = app.test_client()
+
+    resp = client.get(f"/api/knowledge/projects/{pid}/context-preview")
+    data = resp.get_json()
+
+    assert resp.status_code == 200
+    assert data["ok"] is True
+    assert "Studio project context" in data["context"]
+    assert "context preview" in data["context"]
+    assert "wire preview drawer" in data["context"]
+    assert "preview js syntax" in data["context"]
+    assert "The next agent should verify the preview endpoint" in data["context"]
+
+
+def test_project_context_resolves_from_steps_tests_and_blackboard(isolated_db):
+    from core.knowledge import context_packs
+    from core.knowledge import projects as pj
+
+    pid = pj.create_project("Integration Improvement Audit 2026-04-28")
+    pj.add_step(pid, "Add SAP payroll Australia watcher")
+    pj.add_test_case(pid, "Tasker relay recovery sweep dry-run reports open cards")
+    pj.add_blackboard_note(
+        pid,
+        "relay_recovery_sweep is the active handoff path for stalled agents.",
+        author="codex",
+        kind="handoff",
+    )
+
+    assert context_packs.resolve_project_context_id("Any SAP payroll Australia updates?") == pid
+    assert context_packs.resolve_project_context_id("Check relay_recovery_sweep before the next agent run") == pid
+
+
+def test_project_context_resolves_from_task_interest_and_research_triggers(isolated_db):
+    from utils.db._connection import get_connection
+    from core.knowledge import context_packs
+    from core.knowledge import projects as pj
+
+    pid = pj.create_project("Watcher and Research Integration")
+    pj.add_step(pid, "Harden interest_research_update scheduler workflow")
+    pj.add_step(pid, "Deep research synthesis workflow for agent handoffs")
+
+    conn = get_connection()
+    try:
+        conn.executescript(
+            """
+            CREATE TABLE scheduled_tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                schedule TEXT,
+                action_type TEXT,
+                action_data TEXT,
+                enabled INTEGER DEFAULT 1
+            );
+            CREATE TABLE user_interests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT DEFAULT 'ghost',
+                topic TEXT,
+                category TEXT,
+                source_agent TEXT DEFAULT '',
+                score REAL DEFAULT 10,
+                active INTEGER DEFAULT 1,
+                updated_at TEXT DEFAULT (datetime('now'))
+            );
+            CREATE TABLE research_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                topic TEXT NOT NULL,
+                summary TEXT DEFAULT '',
+                updated_at TEXT DEFAULT (datetime('now'))
+            );
+            """
+        )
+        conn.execute(
+            """INSERT INTO scheduled_tasks (name, schedule, action_type, action_data, enabled)
+               VALUES ('sap_payroll_au_watch', 'daily 06:30', 'PYTHON',
+                       'interest_research_update topic="SAP payroll Australia"', 1)"""
+        )
+        conn.execute(
+            """INSERT INTO user_interests (topic, category, source_agent, score, active)
+               VALUES ('Project Helios packaging', 'research', 'scholar', 15, 1)"""
+        )
+        conn.execute(
+            """INSERT INTO research_sessions (topic, summary)
+               VALUES ('Project Helios packaging', 'deep research synthesis workflow for agent handoffs')"""
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    assert context_packs.resolve_project_context_id("sap_payroll_au_watch needs checking") == pid
+    assert context_packs.resolve_project_context_id("Continue Project Helios research") == pid
 
 
 # ── test cases ──────────────────────────────────────────────────────────────

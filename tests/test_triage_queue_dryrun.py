@@ -275,3 +275,26 @@ else:
 # Log activity in DB
 log_activity('test', 'dryrun_complete', f'triage_queue: {passed}/{len(results)} passed')
 print('\n[Dry run logged to activity_log]')
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CLEANUP — purge test rows so they don't accumulate as "queue noise" forever
+# (regression: 22 stale demo rows in production queue, 2026-05-01)
+# ══════════════════════════════════════════════════════════════════════════════
+try:
+    _con = get_connection()
+    _con.execute(
+        "DELETE FROM queue WHERE from_addr IN ('user@test.com','ghost@test.com','telegram@test.com') "
+        "AND status IN ('queued','completed') "
+        "AND (question LIKE 'What time is it?%' OR question LIKE 'Server is down now!%' OR question LIKE 'Telegram dryrun%')"
+    )
+    _q_purged = _con.total_changes
+    _con.execute(
+        "DELETE FROM tickets WHERE sender_email IN ('user@test.com','ghost@test.com','telegram@test.com') "
+        "AND question LIKE 'Demo%'"
+    )
+    _t_purged = _con.total_changes - _q_purged
+    _con.commit()
+    _con.close()
+    print(f'[cleanup] removed {_q_purged} test queue rows + {_t_purged} test tickets')
+except Exception as _exc:
+    print(f'[cleanup] WARN: could not purge test rows: {_exc}')

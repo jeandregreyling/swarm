@@ -64,6 +64,321 @@
   background: var(--accent-hover);
 }
 
+/* ── Watched topic creator ────────────────────────────────────────────── */
+.tasker-watch-panel {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 48%),
+    var(--card);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: var(--radius, 10px);
+  padding: 16px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tasker-watch-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tasker-watch-title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+.tasker-watch-subtitle {
+  color: var(--text-dim);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.tasker-watch-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 10px;
+}
+.tasker-watch-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.tasker-watch-grid input,
+.tasker-watch-grid select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+  padding: 8px 10px;
+}
+.tasker-watch-grid input:focus,
+.tasker-watch-grid select:focus {
+  border-color: var(--accent);
+}
+.tasker-watch-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Watched evidence review ──────────────────────────────────────────── */
+.tasker-evidence-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 10px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+.tasker-evidence-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.tasker-evidence-controls input,
+.tasker-evidence-controls select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+  padding: 8px 10px;
+}
+.tasker-evidence-controls input {
+  min-width: 220px;
+  flex: 1;
+}
+.tasker-evidence-summary {
+  color: var(--text-dim);
+  font-size: 11.5px;
+}
+.tasker-evidence-list {
+  display: grid;
+  gap: 10px;
+}
+.tasker-evidence-card {
+  background: color-mix(in srgb, var(--bg-input) 82%, transparent);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-faint);
+  border-radius: 9px;
+  padding: 12px;
+}
+.tasker-evidence-card.qualified {
+  border-left-color: #10b981;
+}
+.tasker-evidence-card.filtered {
+  border-left-color: #f59e0b;
+}
+.tasker-evidence-card.duplicate {
+  border-left-color: #94a3b8;
+}
+.tasker-evidence-card.historical {
+  border-left-color: #38bdf8;
+}
+.tasker-evidence-topline,
+.tasker-evidence-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+.tasker-evidence-title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 7px;
+}
+.tasker-evidence-topic,
+.tasker-evidence-source,
+.tasker-evidence-snippet,
+.tasker-evidence-reason {
+  color: var(--text-dim);
+  font-size: 11.5px;
+  line-height: 1.45;
+  margin-top: 6px;
+}
+.tasker-evidence-source a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.tasker-evidence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+.tasker-evidence-actions button {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 5px 8px;
+}
+.tasker-evidence-actions button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.tasker-evidence-reason {
+  color: var(--text-faint);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.tasker-evidence-scores span,
+.tasker-evidence-pill {
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.25px;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+.tasker-evidence-scores span {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text-dim);
+}
+.tasker-evidence-pill.qualified {
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981;
+}
+.tasker-evidence-pill.filtered {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+.tasker-evidence-pill.duplicate,
+.tasker-evidence-pill.quiet {
+  background: rgba(148, 163, 184, 0.14);
+  color: #94a3b8;
+}
+.tasker-evidence-pill.historical {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+}
+.tasker-evidence-pill.notified {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+.tasker-evidence-pill.review {
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+}
+
+/* ── Calendar ─────────────────────────────────────────────────────────── */
+.tasker-calendar-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 10px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+.tasker-calendar-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+.tasker-calendar-controls {
+  display: flex;
+  gap: 6px;
+}
+.tasker-calendar-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(112px, 1fr));
+}
+.tasker-calendar-day {
+  background: color-mix(in srgb, var(--bg-input) 82%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 132px;
+  min-width: 0;
+  padding: 9px;
+}
+.tasker-calendar-day.is-today {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+.tasker-calendar-date {
+  align-items: baseline;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  color: var(--text-dim);
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+}
+.tasker-calendar-date span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.35px;
+  text-transform: uppercase;
+}
+.tasker-calendar-date strong {
+  color: var(--text);
+  font-size: 12px;
+}
+.tasker-calendar-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tasker-calendar-item {
+  background: color-mix(in srgb, var(--accent) 8%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+  grid-template-columns: auto 1fr;
+  padding: 7px;
+  text-align: left;
+}
+.tasker-calendar-item:hover {
+  border-color: var(--accent);
+}
+.tasker-calendar-item.email-linked {
+  background: rgba(16, 185, 129, 0.10);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.tasker-calendar-time,
+.tasker-calendar-type {
+  color: var(--text-dim);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+}
+.tasker-calendar-name {
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tasker-calendar-type {
+  grid-column: 1 / -1;
+  text-transform: uppercase;
+}
+.tasker-calendar-empty {
+  color: var(--text-faint);
+  font-size: 11px;
+  padding: 7px 2px;
+}
+
 /* ── Task list ────────────────────────────────────────────────────────── */
 .tasker-list {
   display: flex;
@@ -348,4 +663,29 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 2px;
+}
+
+@media (max-width: 980px) {
+  .tasker-watch-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tasker-calendar-grid {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .tasker-watch-grid,
+  .tasker-evidence-controls {
+    grid-template-columns: 1fr;
+  }
+  .tasker-evidence-controls {
+    flex-direction: column;
+  }
+  .tasker-calendar-grid {
+    grid-template-columns: 1fr;
+  }
+  .tasker-calendar-head {
+    flex-direction: column;
+  }
 }

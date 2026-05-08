@@ -10,7 +10,10 @@ const FRIDAYS_WINDOW_ICON_SVGS = {
   terminal: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 3.5h11v9h-11zM5 6l2 2-2 2M8.5 10h2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   files: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
   memory: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 4a2 2 0 0 0-3 1.7v1.8A2.5 2.5 0 0 0 4.8 10H6m4-6a2 2 0 0 1 3 1.7v1.8A2.5 2.5 0 0 1 11.2 10H10M6 4v8m4-8v8M6 8h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  knowledge: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  settings: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.3 9 4l1.3-.3.8 1.2-.8 1 .2 1.2 1 .8-.5 1.3-1.4.1-.8 1-.1 1.3-1.4.3-.7-1.1H7l-.7 1.1-1.4-.3-.1-1.3-.8-1-1.4-.1-.5-1.3 1-.8.2-1.2-.8-1 .8-1.2L7 4l1-.7Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.7" stroke="currentColor" stroke-width="1.2"/></svg>',
   monitor: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 8l2.5-2.5M4.5 11.5A5 5 0 0 1 11.5 4.5M2.8 13.2a7.4 7.4 0 0 1 10.4-10.4M8 8l-1.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  trace: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 0 0 .9 1.5h8.2a1 1 0 0 0 .9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   docs: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 3.5h7.5v9H4a1.5 1.5 0 0 0 0-3h7.5M4 3.5a1.5 1.5 0 0 0 0 3M4 6.5h7.5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
   skills: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm0-2.2v1.2m0 7.6V13m5-5H11.8M4.2 8H3m8.1-3.1.9-.9M4 12l.9-.9m6.2 0 .9.9M4 4l.9.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
   tickets: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 5.5h10v2a1.5 1.5 0 0 0 0 3v2H3v-2a1.5 1.5 0 0 0 0-3zM6 5.5v7" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
@@ -18,7 +21,17 @@ const FRIDAYS_WINDOW_ICON_SVGS = {
   'time-wizard': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   access: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   'agents-config': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  email: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  feeds: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  'media-center': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 3v10M11 6.2c0 1.6-1.2 3.1-3 3.6V6.2c1.8.5 3 2 3 3.6Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   git: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 4.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm6 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM5 7.5v2c0 .8.7 1.5 1.5 1.5H9.5M9.5 5H11v3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  media: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="8" height="8" rx="1.4" stroke="currentColor" stroke-width="1.3"/><path d="M6 6.5v3l2.3-1.5L6 6.5Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M12 5v6M14 6v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  'records-files': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 8h6M6 10h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
+  tasker: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  'wishlist-cyber': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2l5 2v4c0 3-2 5-5 6-3-1-5-3-5-6V4l5-2zM6 8l1.5 1.5L11 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  'wishlist-financial': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 12.5h11M4 11V7M7 11V4M10 11V8M13 11V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  'wishlist-trading': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 11l3.5-4 3 2 4.5-5M11 4h2.5v2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  'wishlist-business': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 6h11v7h-11zM5 6V4h6v2M5 9h6M5 11h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 
 function fridaysCleanWindowTitle(title) {
@@ -27,8 +40,9 @@ function fridaysCleanWindowTitle(title) {
 
 function fridaysWindowIconMarkup(id) {
   const key = String(id || '').toLowerCase();
-  const svg = FRIDAYS_WINDOW_ICON_SVGS[key];
-  return svg ? `<span class="window-title-icon" aria-hidden="true">${svg}</span>` : '';
+  const svg = FRIDAYS_WINDOW_ICON_SVGS[key]
+    || '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 6.5h10" stroke="currentColor" stroke-width="1.3"/></svg>';
+  return `<span class="window-title-icon" aria-hidden="true">${svg}</span>`;
 }
 
 class WindowManager {
@@ -108,8 +122,24 @@ class WindowManager {
     contentDiv.className = 'window-content';
     contentDiv.appendChild(content);
 
+    // MD-FEATURE-CCD996631130 — Spotlight launch shortcut on every window
+    // bottom-bar. A small floating chip sits at the bottom-right inside the
+    // window frame so the operator can pop Spotlight without leaving the tile.
+    const spotlightBar = document.createElement('button');
+    spotlightBar.className = 'window-spotlight-launch';
+    spotlightBar.type = 'button';
+    spotlightBar.title = 'Open Spotlight (Ctrl+Space)';
+    spotlightBar.setAttribute('aria-label', 'Open Spotlight');
+    spotlightBar.innerHTML = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.2" stroke="currentColor" stroke-width="1.4"/><path d="M10.4 10.4l3.1 3.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+    spotlightBar.addEventListener('click', (e) => {
+      e.stopPropagation();
+      try { if (typeof window.openSpotlight === 'function') window.openSpotlight(); }
+      catch (_err) { /* spotlight not yet ready */ }
+    });
+
     win.appendChild(header);
     win.appendChild(contentDiv);
+    win.appendChild(spotlightBar);
     handles.forEach(h => win.appendChild(h));
 
     // Events
@@ -394,6 +424,13 @@ class WindowManager {
   close(id) {
     const win = this.windows.get(id);
     if (win) {
+      if (typeof win.beforeClose === 'function') {
+        try {
+          win.beforeClose();
+        } catch (err) {
+          console.warn('[WindowManager] beforeClose failed for', id, err);
+        }
+      }
       if (win.fullscreen) {
         const home = document.getElementById('home-page');
         if (home) home.style.display = 'flex';

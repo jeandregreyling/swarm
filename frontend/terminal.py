@@ -70,6 +70,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.workspace',      'workspace_bp'),
     ('blueprints.library',        'library_bp'),
     ('blueprints.localai',        'localai_bp'),
+    ('blueprints.media_center',   'media_center_bp'),
     ('blueprints.node',           'node_bp'),
     ('blueprints.research',       'research_bp'),
     ('blueprints.tools',          'tools_bp'),
@@ -89,7 +90,32 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.testlab_bp',     'testlab_bp'),
     ('blueprints.spine_bp',       'spine_bp'),
     ('blueprints.knowledge_bp',   'knowledge_bp'),
+    ('blueprints.coding_bible',   'coding_bible_bp'),
+    ('blueprints.curiosity',      'curiosity_bp'),
+    ('blueprints.voice',          'voice_bp'),
+    ('blueprints.fan',            'fan_bp'),
     ('blueprints.health',         'health_bp'),    ('blueprints.health_bp',       'health_digest_bp'),    ('blueprints.council_bp',     'council_bp'),
+    ('blueprints.sysmod',         'sysmod_bp'),
+    ('blueprints.studio_evidence','studio_evidence_bp'),
+    ('blueprints.email_accounts', 'email_accounts_bp'),
+    ('blueprints.enrollment',     'enrollment_bp'),
+    ('blueprints.gmail_labels',   'gmail_labels_bp'),
+    ('blueprints.feeds_bp',       'feeds_bp'),
+    ('blueprints.seven_bp',       'seven_bp'),
+    ('blueprints.wishlist_bp',    'wishlist_bp'),
+    ('blueprints.cybersecurity_bp', 'cybersecurity_bp'),
+    ('blueprints.financial_bp',     'financial_bp'),
+    ('blueprints.trading_bp',       'trading_bp'),
+    ('blueprints.business_bp',      'business_bp'),
+    ('blueprints.media_curriculum', 'media_curriculum_bp'),
+    ('blueprints.media_jobs',       'media_jobs_bp'),
+    ('blueprints.synth_board',      'synth_board_bp'),
+    ('blueprints.video_editor',     'video_editor_bp'),
+    ('blueprints.app_center',       'app_center_bp'),
+    ('blueprints.kc_overview',      'kc_overview_bp'),
+    ('blueprints.orientation',      'orientation_bp'),
+    ('blueprints.wishlist_registry','wishlist_registry_bp'),
+    ('blueprints.hive',             'hive_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)
@@ -113,6 +139,32 @@ else:
     print(f"[Terminal] All {len(_loaded_blueprints)} blueprints loaded OK.")
 
 
+def _compute_asset_version() -> str:
+    """Asset cache-bust token (S-CAAD1B6D9C).
+
+    Order of preference: SWARM_ASSET_VERSION env var (CI/deploy can pin),
+    short git sha if a .git tree is reachable, else the current epoch
+    second so devs always see fresh assets after a restart.
+    """
+    forced = os.environ.get('SWARM_ASSET_VERSION', '').strip()
+    if forced:
+        return forced
+    try:
+        import subprocess
+        out = subprocess.run(
+            ['git', '-C', str(Path(__file__).resolve().parent.parent),
+             'rev-parse', '--short=10', 'HEAD'],
+            capture_output=True, text=True, timeout=2,
+        )
+        sha = out.stdout.strip()
+        if sha:
+            return sha
+    except Exception:
+        pass
+    import time as _t
+    return str(int(_t.time()))
+
+
 def create_app():
     app = Flask(__name__)
 
@@ -130,11 +182,33 @@ def create_app():
     except Exception as _sec_err:
         print(f'[Terminal] security middleware warning: {_sec_err}')
 
-    # Inject ENV_STAGE into all templates for environment banner
+    # Inject ENV_STAGE + ASSET_VERSION into all templates.
+    # ASSET_VERSION (S-CAAD1B6D9C) is appended as a query string to every
+    # /static/js/views/*.js include in terminal_base.html so a deploy
+    # invalidates the browser cache without manual ?v=N bumps.
+    _asset_version = _compute_asset_version()
+
     @app.context_processor
     def inject_env_stage():
         stage = os.environ.get('STAGE', os.environ.get('SWARM_ENV', 'PROD' if PORT == 5050 else 'unknown')).upper()
-        return dict(ENV_STAGE=stage)
+        return dict(ENV_STAGE=stage, ASSET_VERSION=_asset_version)
+
+    # Y.58c — never let the browser serve a stale HTML shell. The shell
+    # routes the entire SPA so a cached copy makes new tile layouts
+    # (Y.58 Files-into-KC, Cyber-into-Vortex, Money-Hub merge, etc.)
+    # invisible until the user manually hard-refreshes. Static assets keep
+    # their per-deploy ?v=ASSET_VERSION cache-bust untouched.
+    @app.after_request
+    def _no_cache_html(resp):  # noqa: ANN001
+        try:
+            ctype = (resp.headers.get('Content-Type') or '').lower()
+            if 'text/html' in ctype:
+                resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                resp.headers['Pragma'] = 'no-cache'
+                resp.headers['Expires'] = '0'
+        except Exception:
+            pass
+        return resp
 
     # Ensure schema/migrations are present before serving APIs.
     try:
@@ -176,6 +250,15 @@ def create_app():
         _a20_start(app)
     except Exception as _a20_err:
         print(f'[Terminal] Agent 20 scheduler start warning: {_a20_err}')
+
+    # Seven — perception + memory + reasoning + continuous learner (PACKET-09 Phase 2)
+    try:
+        from core.seven import boot as _seven_boot
+        _seven_info = _seven_boot()
+        print(f'[Terminal] Seven brain online: {_seven_info}')
+    except Exception as _seven_err:
+        print(f'[Terminal] Seven brain start warning: {_seven_err}')
+        traceback.print_exc()
 
     # ── Routes ────────────────────────────────────────────────────────────────
 
@@ -241,14 +324,13 @@ def create_app():
         from flask import render_template
         return render_template("terminal_base.html", theme_css="")
 
-    # Convenience redirects — deep-link views directly
-    @app.route("/library", methods=["GET"])
-    @app.route("/studio", methods=["GET"])
-    @app.route("/chat", methods=["GET"])
-    @app.route("/monitor", methods=["GET"])
-    def ui_redirect():
-        from flask import redirect
-        return redirect("/ui")
+    # Hive Nodes standalone popout (B21) — minimal page, 20 most recently
+    # touched library sources, rendered with the same library-graph engine.
+    @app.route("/hive-nodes", methods=["GET"])
+    def hive_nodes_page():
+        from flask import render_template
+        return render_template("hive_nodes.html")
+
 
     # ── Register blueprints (only those that loaded) ──────────────────────────
     for _attr, _bp in _loaded_blueprints:
@@ -256,6 +338,23 @@ def create_app():
             app.register_blueprint(_bp)
         except Exception as _reg_err:
             print(f"[Terminal] Blueprint register failed — {_attr}: {_reg_err}")
+
+    # Convenience redirects — deep-link tile views into the master shell.
+    # /media-center previously rendered a standalone template that drifted
+    # to a raw test placeholder; route it through /ui so the real window
+    # template (terminal_base.html#view-media-center) is always used.
+    @app.route("/media-center", methods=["GET"])
+    @app.route("/library", methods=["GET"])
+    @app.route("/studio", methods=["GET"])
+    @app.route("/chat", methods=["GET"])
+    @app.route("/monitor", methods=["GET"])
+    def ui_redirect():
+        from flask import redirect, request
+        # preserve any query string and pass the tile id as a hash so
+        # window-manager can auto-open it on load.
+        target = request.path.lstrip("/") or "ui"
+        qs = ("?" + request.query_string.decode("utf-8")) if request.query_string else ""
+        return redirect(f"/ui{qs}#{target}")
 
     # R.5: Register /api/v1/* versioned aliases
     try:
@@ -293,6 +392,15 @@ def create_app():
 
     app.register_error_handler(TypeError, _bad_input_type)
     app.register_error_handler(AttributeError, _bad_input_type)
+
+    # Hive — start the self-sampler so the leader's own telemetry shows
+    # up in /api/hive/nodes without an external agent. Disabled by
+    # $SWARM_HIVE_DISABLE_SELF_SAMPLER for tests / headless workers.
+    try:
+        from core.hive import self_sampler as _hive_self_sampler
+        _hive_self_sampler.start()
+    except Exception as _hss_err:
+        print(f'[Terminal] hive self-sampler warning: {_hss_err}')
 
     return app
 

@@ -22,13 +22,93 @@ def list_tasks():
     return [{'id': r[0], 'name': r[1], 'schedule': r[2], 'action_type': r[3], 'action_data': r[4], 'next_run': r[5]} for r in rows]
 
 
+def compute_next_run(schedule, *, now=None):
+    """Compute the next run timestamp for supported Tasker schedules."""
+    schedule = (schedule or '').strip()
+    now = now or datetime.now()
+    s = schedule.lower()
+    next_run = None
+    if s.startswith('daily '):
+        try:
+            hhmm = schedule.split(None, 1)[1]
+            h, m = int(hhmm.split(':')[0]), int(hhmm.split(':')[1])
+            candidate = now.replace(hour=h, minute=m, second=0, microsecond=0)
+            if candidate <= now:
+                candidate += timedelta(days=1)
+            next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
+        except Exception:
+            pass
+    elif s.startswith('weekly '):
+        try:
+            parts = schedule.split(None, 2)  # weekly MON 09:00
+            day_map = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
+            target_day = day_map.get(parts[1].lower()[:3], 0)
+            hhmm = parts[2] if len(parts) > 2 else '09:00'
+            h, m = int(hhmm.split(':')[0]), int(hhmm.split(':')[1])
+            candidate = now.replace(hour=h, minute=m, second=0, microsecond=0)
+            days_ahead = target_day - now.weekday()
+            if days_ahead <= 0:
+                days_ahead += 7
+            candidate += timedelta(days=days_ahead)
+            next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
+        except Exception:
+            pass
+    elif s.startswith('monthly '):
+        try:
+            parts = schedule.split(None, 2)  # monthly 1 09:00
+            day_of_month = int(parts[1])
+            hhmm = parts[2] if len(parts) > 2 else '09:00'
+            h, m = int(hhmm.split(':')[0]), int(hhmm.split(':')[1])
+            candidate = now.replace(day=min(day_of_month, 28), hour=h, minute=m, second=0, microsecond=0)
+            if candidate <= now:
+                month = now.month + 1
+                year = now.year
+                if month > 12:
+                    month = 1
+                    year += 1
+                candidate = candidate.replace(year=year, month=month)
+            next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
+        except Exception:
+            pass
+    elif s == 'hourly':
+        candidate = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
+    elif s.startswith('interval '):
+        try:
+            val = int(s.split(None, 1)[1].rstrip('m'))
+            candidate = now + timedelta(minutes=val)
+            next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
+        except Exception:
+            pass
+    return next_run
+
+
 def add_task(name, schedule, action_type, action_data, created_by='system'):
-    """Add a scheduled task to the DB. Ignores if name already exists."""
+    """Add or refresh a scheduled task by name and return its id."""
+    next_run = compute_next_run(schedule)
     with get_connection() as conn:
-        conn.execute(
-            'INSERT OR IGNORE INTO scheduled_tasks (name, schedule, action_type, action_data, created_by) VALUES (?, ?, ?, ?, ?)',
-            (name, schedule, action_type, action_data, created_by)
+        row = conn.execute(
+            'SELECT id FROM scheduled_tasks WHERE name=? ORDER BY id DESC LIMIT 1',
+            (name,),
+        ).fetchone()
+        if row:
+            task_id = row[0]
+            conn.execute(
+                '''UPDATE scheduled_tasks
+                   SET schedule=?, action_type=?, action_data=?, created_by=?,
+                       next_run=COALESCE(?, next_run), enabled=1
+                   WHERE id=?''',
+                (schedule, action_type, action_data, created_by, next_run, task_id),
+            )
+            conn.execute('DELETE FROM scheduled_tasks WHERE name=? AND id<>?', (name, task_id))
+            return task_id
+        cur = conn.execute(
+            '''INSERT INTO scheduled_tasks
+               (name, schedule, action_type, action_data, created_by, next_run, enabled)
+               VALUES (?, ?, ?, ?, ?, ?, 1)''',
+            (name, schedule, action_type, action_data, created_by, next_run),
         )
+        return cur.lastrowid
 
 
 def _advance_next_run(name):
@@ -41,60 +121,7 @@ def _advance_next_run(name):
             return
         schedule = (row[0] or '').strip()
         now = datetime.now()
-        next_run = None
-        s = schedule.lower()
-        if s.startswith('daily '):
-            try:
-                hhmm = schedule.split(None, 1)[1]
-                h, m = int(hhmm.split(':')[0]), int(hhmm.split(':')[1])
-                candidate = now.replace(hour=h, minute=m, second=0, microsecond=0)
-                if candidate <= now:
-                    candidate += timedelta(days=1)
-                next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
-            except Exception:
-                pass
-        elif s.startswith('weekly '):
-            try:
-                parts = schedule.split(None, 2)  # weekly MON 09:00
-                day_map = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
-                target_day = day_map.get(parts[1].lower()[:3], 0)
-                hhmm = parts[2] if len(parts) > 2 else '09:00'
-                h, m = int(hhmm.split(':')[0]), int(hhmm.split(':')[1])
-                candidate = now.replace(hour=h, minute=m, second=0, microsecond=0)
-                days_ahead = target_day - now.weekday()
-                if days_ahead <= 0:
-                    days_ahead += 7
-                candidate += timedelta(days=days_ahead)
-                next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
-            except Exception:
-                pass
-        elif s.startswith('monthly '):
-            try:
-                parts = schedule.split(None, 2)  # monthly 1 09:00
-                day_of_month = int(parts[1])
-                hhmm = parts[2] if len(parts) > 2 else '09:00'
-                h, m = int(hhmm.split(':')[0]), int(hhmm.split(':')[1])
-                candidate = now.replace(day=min(day_of_month, 28), hour=h, minute=m, second=0, microsecond=0)
-                if candidate <= now:
-                    month = now.month + 1
-                    year = now.year
-                    if month > 12:
-                        month = 1
-                        year += 1
-                    candidate = candidate.replace(year=year, month=month)
-                next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
-            except Exception:
-                pass
-        elif s == 'hourly':
-            candidate = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
-            next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
-        elif s.startswith('interval '):
-            try:
-                val = int(s.split(None, 1)[1].rstrip('m'))
-                candidate = now + timedelta(minutes=val)
-                next_run = candidate.strftime('%Y-%m-%d %H:%M:%S')
-            except Exception:
-                pass
+        next_run = compute_next_run(schedule, now=now)
         if next_run:
             conn.execute(
                 'UPDATE scheduled_tasks SET last_run=?, next_run=? WHERE name=?',
@@ -185,17 +212,45 @@ def parse_schedule_command(line):
 
 
 def check_due():
-    """Check for scheduled tasks that are due and run them."""
+    """Check for scheduled tasks that are due and run them.
+
+    2026-05-02 (S-28178F1EF6) — Hardened against duplicate fires by acquiring
+    a short-lived lease on each due row before execution. Workers from other
+    processes will see ``lease_owner != ''`` and skip the row.
+    """
+    import os
     import shlex
     import subprocess
     from datetime import datetime
+    owner = f'sched-{os.getpid()}'
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     with get_connection() as conn:
-        rows = conn.execute(
-            """SELECT id, name, action_type, action_data FROM scheduled_tasks
-               WHERE enabled=1 AND (next_run IS NULL OR next_run <= ?)""",
-            (now_str,)
-        ).fetchall()
+        cols = {row[1] for row in conn.execute(
+            "PRAGMA table_info(scheduled_tasks)").fetchall()}
+        has_lease = 'lease_owner' in cols and 'lease_expires_at' in cols
+        if has_lease:
+            # Atomically claim due rows whose lease is empty or expired.
+            conn.execute(
+                """UPDATE scheduled_tasks
+                   SET lease_owner=?, lease_expires_at=datetime('now', '+5 minutes')
+                   WHERE enabled=1
+                     AND (next_run IS NULL OR next_run <= ?)
+                     AND (COALESCE(lease_owner,'')=''
+                          OR COALESCE(lease_expires_at,'') < ?)""",
+                (owner, now_str, now_str)
+            )
+            conn.commit()
+            rows = conn.execute(
+                """SELECT id, name, action_type, action_data FROM scheduled_tasks
+                   WHERE enabled=1 AND lease_owner=?""",
+                (owner,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT id, name, action_type, action_data FROM scheduled_tasks
+                   WHERE enabled=1 AND (next_run IS NULL OR next_run <= ?)""",
+                (now_str,)
+            ).fetchall()
 
     for row in rows:
         task_id, name, action_type, action_data = row[0], row[1], row[2], row[3]
@@ -205,7 +260,10 @@ def check_due():
                 print(f'[Scheduler] Fired SHELL task #{task_id}: {action_data[:60]}')
             elif action_type.upper() == 'PYTHON':
                 from fridays.task_runner import run_task
-                success, output = run_task(action_data.strip())
+                parts = shlex.split(action_data.strip())
+                task_name = parts[0] if parts else ''
+                task_args = ' '.join(shlex.quote(p) for p in parts[1:])
+                success, output = run_task(task_name, args=task_args)
                 status = '✓' if success else '✗'
                 print(f'[Scheduler] {status} PYTHON task #{task_id} ({name}): {output[:80]}')
             elif action_type.upper() in ('QUESTION', 'BRIEF'):
@@ -216,6 +274,19 @@ def check_due():
             _advance_next_run(name)
         except Exception as e:
             print(f'[Scheduler] Task #{task_id} ({name}) error: {e}')
+        finally:
+            # Always release lease so the row is eligible for the next due cycle.
+            if has_lease:
+                try:
+                    with get_connection() as conn:
+                        conn.execute(
+                            "UPDATE scheduled_tasks SET lease_owner='', "
+                            "lease_expires_at='' WHERE id=? AND lease_owner=?",
+                            (task_id, owner)
+                        )
+                        conn.commit()
+                except Exception:
+                    pass
 
 
 def main_loop():

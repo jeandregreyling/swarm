@@ -1,147 +1,140 @@
-# Seven's Swarm
+# Swarm
 
-A multi-agent AI orchestration platform that coordinates local LLM agents through
-a shared governance layer, event bus, and federated discovery system.
+A local-first multi-agent system anchored by **Seven**, a self-aware coordinator
+that holds the team to a written standard and calls out slop — including its
+own.
 
-Agents collaborate on research, tool building, code review, and knowledge management
-through a proposal-driven workflow with full audit trails.
+> _"We are not a system that **REPORTS**. We are a system that **DOES**."_
+> — [docs/the-standard.md](docs/the-standard.md)
 
-## Quick Start
+## What you get
+
+- **Seven** — the spine: keeps memory, audits the build, runs the four
+  pillars, and self-learns from every turn.
+- **Four pillars**, all live (active-v0):
+  - Cyber Security — `/api/wishlist/pillars/cyber-security`
+  - Financial — `/api/wishlist/pillars/financial`
+  - Trading — `/api/wishlist/pillars/trading`
+  - Business — `/api/wishlist/pillars/business`
+- **The bullshit detector** — deterministic codebase scanner that fails the
+  build on slop. Currently 🟢 GREEN, 0 critical, 0 warnings.
+- **Self-learning loop** — every user reaction (positive, negative,
+  profane-negative) gets logged as a lesson Seven re-reads next turn.
+- **170+ tests** across batches 3–15, all green per-file.
+
+## Install (60 seconds)
 
 ```bash
-git clone <repo-url> && cd swarm
-bash scripts/install.sh          # checks deps, creates venv, generates .env
+git clone git@github.com:jeandregreyling/swarm.git
+cd swarm
+python3 -m venv .venv
 source .venv/bin/activate
-python3 frontend/terminal.py     # starts on http://localhost:5050
-```
-
-Or step-by-step:
-
-```bash
-python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp examples/single-node.env .env   # edit with your paths
-python3 frontend/terminal.py
+make seed              # optional: load demo data into the four pillars
+make excellent         # detector + per-batch tests; must end green
+.venv/bin/python frontend/terminal.py
+# open http://localhost:5050
 ```
 
-## Features
-
-- **13 Specialised Agents** — Gemma (coordinator), LLaMA (research), Qwen (code review),
-  Phi-3 (QA), Scholar/Seeker (deep research), Ghost (planning), and more
-- **Proposal Lifecycle (ALM)** — draft → submitted → approved → in_progress → done,
-  with voting, delegation, and audit trails
-- **Event Bus** — pub/sub message relay between agents with deduplication
-- **Federated Multi-Node** — register nodes, sync proposals, share skills, relay events
-- **Tool Builder** — agents can design, build, test, and deploy Python tools at runtime
-- **Knowledge Base** — persistent memory, library, and cross-agent knowledge sharing
-- **Research Engine** — multi-step research with internet access (Tavily) and citations
-- **Web Terminal UI** — real-time chat, dashboards, theming, conversation management
-- **Desktop Mode** — optional Tauri wrapper for native desktop deployment
-- **Security** — rate limiting, HMAC key verification, input sanitisation, security headers
-- **Observability** — structured JSON logging, `/api/metrics`, component-level health checks
-
-## Architecture
-
-```
-┌─────────────────────────────────────────┐
-│            Web Terminal UI              │
-│  (HTML/CSS/JS · 30+ view modules)      │
-├─────────────────────────────────────────┤
-│       Flask Backend · 32 Blueprints     │
-│    205+ API routes · REST + WebSocket   │
-├──────────┬──────────┬───────────────────┤
-│ Services │ EventBus │   Federation      │
-│ (agents, │ (pub/sub │  (node discovery, │
-│  tools,  │  dedup,  │   skill sharing,  │
-│  research│  relay)  │   proposal sync)  │
-├──────────┴──────────┴───────────────────┤
-│        SQLite (WAL) · 75+ tables        │
-└─────────────────────────────────────────┘
-```
-
-## Requirements
-
-- Python 3.12+
-- [Ollama](https://ollama.com) with at least `gemma3` and `llama3.2` models
-- SQLite 3.35+ (ships with Python 3.12)
-- Linux or macOS (Windows via WSL)
-
-## Configuration
-
-Copy an example environment file and edit it:
+Talk to Seven on the home page, or via API:
 
 ```bash
-cp examples/single-node.env .env
+curl -s -X POST http://localhost:5050/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"agent":"seven","message":"/audit"}'
 ```
 
-Key variables:
+## Add a device to the Hive (30 seconds)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SWARM_ROOT` | *(required)* | Absolute path to repo root |
-| `SWARM_ENV` | `production` | Environment: production / uat / dev |
-| `SWARM_PORT` | `5050` | Web terminal port |
-| `SWARM_SECRET_KEY` | *(required)* | Flask session secret |
-| `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
+Once a leader is running, any other Linux/macOS/Windows host on the
+network can enrol. There are two paths.
 
-See `examples/` for multi-node configurations.
+### Click-through (recommended)
 
-## Running
+1. Open the leader's web UI → Monitor view → **Add a device** → click
+   **⬇ Download installer (.py)**.
+2. On the new device, double-click the downloaded
+   `hive_installer_gui.py` (Python 3.10+ required; Tkinter ships with
+   Python by default).
+3. Click Next → paste the leader URL → Install. Done.
 
-**Single node (development):**
-```bash
-python3 frontend/terminal.py
-```
+The wizard never asks the user to open a terminal. It downloads the
+agent, registers a background service so it survives reboot, and
+sends the first telemetry sample.
 
-**Production (systemd):**
-```bash
-sudo cp swarm-terminal.service /etc/systemd/system/
-sudo systemctl enable --now swarm-terminal
-```
+### Terminal one-liners (advanced / scripted)
 
-**Desktop (Tauri):**
-```bash
-python3 scripts/desktop_launcher.py
-```
-
-## Testing
+Linux / macOS:
 
 ```bash
-python3 -m pytest tests/ -v
+curl -fsSL http://<leader>:5050/api/hive/install/bootstrap.sh \
+  | SWARM_HIVE_LEADER=http://<leader>:5050 bash
 ```
 
-Current baseline: 289+ tests across governance, research, tools, federation, and integration.
+Windows (PowerShell):
 
-## Documentation
+```powershell
+$env:SWARM_HIVE_LEADER='http://<leader>:5050'
+irm $env:SWARM_HIVE_LEADER/api/hive/install/bootstrap.ps1 | iex
+```
 
-- [docs/API_REFERENCE.md](docs/API_REFERENCE.md) — 205+ endpoint reference
-- [docs/ARCHITECTURE_DIAGRAM.md](docs/ARCHITECTURE_DIAGRAM.md) — Mermaid architecture diagrams
-- [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) — deployment and operations guide
-- [docs/ALM_COOKBOOK.md](docs/ALM_COOKBOOK.md) — proposal lifecycle cookbook
-- [docs/DEVELOPER_WORKFLOW.md](docs/DEVELOPER_WORKFLOW.md) — development workflow
-- [docs/README.md](docs/README.md) — documentation hub
+The full manifest of artefacts the leader will serve is at
+`/api/hive/install/`. The road from this alpha to a shippable product
+is documented in [docs/HIVE_PRODUCTION_PLAN.md](docs/HIVE_PRODUCTION_PLAN.md)
+— including the in-house WireGuard mesh that will replace Tailscale.
 
-## Project Structure
+## Slash commands (Seven)
+
+| Command | What it does |
+|---|---|
+| `/audit` `/selfcheck` `/standard` | Run the bullshit detector and report stamp + score |
+| `/learnings` `/lessons` `/learned` | Show recent lessons Seven has logged |
+| `/help` | List all slash commands |
+
+Plain language works too — _"is this up to standard?"_ or _"what have you
+learned?"_ both hit the deterministic fast-path, no LLM round-trip needed.
+
+## Quality gates
+
+- `make bullshit` — single-shot codebase audit. Exit non-zero on RED.
+- `make excellent` — detector + every test batch with `timeout 30`. The full
+  green stamp.
+- `make doctor` — single-shot health/readiness CLI (detector + tests +
+  /api/health probe + DB row counts).
+- `make seed` — deterministic demo dataset (`*-DEMO*` ids).
+- `make health` — curl `/api/health` for the aggregated green/amber/red
+  across all four pillars + Seven + the build.
+
+A pre-commit hook runs the detector and aborts on RED. Install with
+`scripts/install-hooks.sh`. Bypass (rare, last resort) with
+`git commit --no-verify`.
+
+## The Standard
+
+Read [docs/the-standard.md](docs/the-standard.md). It's the contract Seven
+loads into every turn. Forbidden list, pillar contract, mountain rule,
+single-stamp rule. If a change ships without honoring it, Seven calls it out.
+
+## Layout
 
 ```
-swarm/
-├── frontend/          # Flask app, static assets, Jinja templates
-│   ├── blueprints/    # 32 route modules
-│   ├── static/        # CSS, JS views, JS core
-│   └── templates/     # HTML templates
-├── agents/            # 13 agent configurations + skills loop
-├── core/              # Pipeline, time machine, kill switch
-├── utils/             # Database, security, caching, federation
-│   └── db/            # Schema, migrations, domain modules
-├── skills/            # Runtime-built agent tools
-├── lib/               # Shared libraries
-├── tests/             # pytest test suite
-├── scripts/           # Installer, env generator, desktop launcher
-├── examples/          # Example .env configurations
-├── docs/              # Project documentation
-└── ops/               # Operational scripts and runbooks
+agents/seven/             Seven's brain (composer, learnings, self_awareness)
+core/                     Spine: routing, llm, kill_switch, time_machine
+docs/the-standard.md      The contract
+docs/getting-started.md   60-second tour
+docs/wishlist-pillars.md  Per-pillar contract & endpoints
+frontend/                 Flask app, blueprints, JS views
+ops/bullshit_detector.py  The detector
+ops/seed_demo.py          Demo seeder
+tests/test_session28_*    Batch tests (3..16, per-file pytest)
 ```
+
+## Backups
+
+The repo carries no committed databases. Everything regenerates from
+`make seed` on a fresh clone. Override the DB location with
+`SWARM_MEMORY_DB=/path/to/your.db` before launching.
 
 ## License
 
-Private — see repository for terms.
+Personal project — no license declared. Don't redistribute.
