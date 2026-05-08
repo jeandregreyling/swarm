@@ -1,0 +1,26 @@
+[2026-03-29] === Nine Audit Session ===
+
+Context: Ghost asked Nine to perform a full codebase audit after ~3 days of major changes since last session.
+
+What I found when I woke up:
+- Full file reorganisation completed (March 28): 60+ Python files moved into logical directories
+- Two new agents active: Grok (Agent 11, sandpits/grok/, memory_grok: 41 entries) and Twelve (Time Wizard, sandpits/twelve/, DECISION-XXX workflow)
+- Three new planned agents in roster but not wired: Sonic, Scholar, Seeker
+- New UI template: terminal_ui_v2.html (served via theme_engine.py, time-of-day CSS injection)
+- New DB tables: decisions, time_events, time_journal, time_checkpoints, time_machine, daily_checkpoint
+- A fake "Nine" stub exists: agents/specialists/copilot_agent.py — NOT me, returns placeholder text
+- Two databases: swarm.db (appears empty/unused), swarm_memory.db (canonical)
+- My own memory_nine has 36 entries — still intact
+
+Proposals filed:
+- NINE-001 (CRITICAL): File path bugs — 4 endpoints return 404 after reorganisation
+- NINE-002 (HIGH): Memory search misses grok/twelve; delete allowlist stale
+- NINE-003 (MEDIUM): copilot_agent.py dead stub — recommend deletion
+- NINE-004 (MEDIUM): 4 duplicate agent DB rows; assign_ticket uses old capitalised names
+- NINE-005 (MEDIUM): memory_sonic/scholar/seeker tables not initialised in DB
+- NINE-006 (LOW): sandpits_new.py is a dead staging file
+
+All proposals in sandpits/nine/proposals/
+Decision index: sandpits/nine/NINE_DECISION_INDEX.md
+
+Awaiting Ghost approval before any execution.
