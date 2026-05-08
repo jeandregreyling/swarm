@@ -1,0 +1,100 @@
+- [21:22] INTERNAL-GHOST_CODER-2492 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST_CODER-2483 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST-2478 (ghost): Video render · VTL-1E50919728B2
+- [21:22] INTERNAL-GHOST_CODER-2477 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST-2472 (ghost): Video render · VTL-DA7F4BD2C5DD
+- [21:22] INTERNAL-GHOST_CODER-2471 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST_CODER-2466 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST_CODER-2461 (ghost_coder): App build · TestApp → android
+- [21:22] MANUAL-20260503-104559 (user_seven): [VOICE] Seven chat: typing Hi disappears, no thinking/response loop in main term
+- [21:22] MANUAL-20260503-104555 (user_seven): [VOICE] Cybersecurity + VPN: relocate into Vortex as tabs (security+privacy unif
+- [21:22] MANUAL-20260503-104558 (user_seven): [VOICE] Show Me The Money: merge Financial+Trading+Business into one tile + seed
+- [21:22] MANUAL-20260503-104550 (user_seven): [VOICE] Settings: window-in-window + huge buttons + dud System Modifications but
+- [21:22] MANUAL-20260503-103428 (manual_test): seed for note tests
+- [21:22] MANUAL-20260503-103427 (manual_test): seed for note tests
+- [21:22] INTERNAL-MISTRAL-2456 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2455 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2454 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2453 (mistral): Media job · musicgen
+- [21:22] INTERNAL-GHOST_CODER-2452 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2451 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2450 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2449 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2447 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2448 (ghost_coder): App build · Y50App → android
+- [21:22] INTERNAL-GHOST_CODER-2446 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2445 (ghost_coder): App build · app-paused → ios
+- [21:22] INTERNAL-GHOST_CODER-2443 (ghost_coder): App build · app-draft → ios
+- [21:22] INTERNAL-GHOST_CODER-2444 (ghost_coder): App build · app-active → ios
+- [21:22] MANUAL-20260503-103009 (manual_test): seed for note tests
+- [21:22] INTERNAL-MISTRAL-2442 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2441 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2440 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2439 (mistral): Media job · musicgen
+- [21:22] INTERNAL-GHOST_CODER-2438 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2437 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2436 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2435 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2434 (ghost_coder): App build · Y50App → android
+- [21:22] INTERNAL-GHOST_CODER-2433 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2432 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2430 (ghost_coder): App build · app-active → ios
+- [21:22] INTERNAL-GHOST_CODER-2431 (ghost_coder): App build · app-paused → ios
+- [21:22] INTERNAL-GHOST_CODER-2429 (ghost_coder): App build · app-draft → ios
+- [21:22] INTERNAL-MISTRAL-2428 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2427 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2426 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2425 (mistral): Media job · musicgen
+- [21:22] INTERNAL-GHOST_CODER-2424 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2423 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2422 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2421 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2419 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2420 (ghost_coder): App build · Y50App → android
+- [21:22] INTERNAL-GHOST_CODER-2418 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2417 (ghost_coder): App build · app-paused → ios
+- [21:22] INTERNAL-GHOST_CODER-2415 (ghost_coder): App build · app-draft → ios
+- [21:22] INTERNAL-GHOST_CODER-2416 (ghost_coder): App build · app-active → ios
+- [21:22] INTERNAL-MISTRAL-2414 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2413 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2412 (mistral): Media job · musicgen
+- [21:22] INTERNAL-MISTRAL-2411 (mistral): Media job · musicgen
+- [21:22] INTERNAL-GHOST-2410 (ghost): Video render · VTL-02B38F3BD823
+- [21:22] INTERNAL-GHOST-2405 (ghost): Video render · VTL-5BA9F9245DD5
+- [21:22] INTERNAL-GHOST_CODER-2404 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST_CODER-2403 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST_CODER-2402 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST_CODER-2401 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2400 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2399 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2398 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2396 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2397 (ghost_coder): App build · Y50App → android
+- [21:22] INTERNAL-GHOST_CODER-2395 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2393 (ghost_coder): App build · app-active → ios
+- [21:22] INTERNAL-GHOST_CODER-2394 (ghost_coder): App build · app-paused → ios
+- [21:22] INTERNAL-GHOST_CODER-2392 (ghost_coder): App build · app-draft → ios
+- [21:22] INTERNAL-GHOST-2391 (ghost): Video render · VTL-C89EC665E289
+- [21:22] INTERNAL-GHOST_CODER-2390 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST_CODER-2385 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2384 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2383 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2382 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2380 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2381 (ghost_coder): App build · Y50App → android
+- [21:22] INTERNAL-GHOST_CODER-2379 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2378 (ghost_coder): App build · app-paused → ios
+- [21:22] INTERNAL-GHOST_CODER-2376 (ghost_coder): App build · app-draft → ios
+- [21:22] INTERNAL-GHOST_CODER-2377 (ghost_coder): App build · app-active → ios
+- [21:22] INTERNAL-GHOST-2375 (ghost): Video render · VTL-2DF6797B8774
+- [21:22] INTERNAL-GHOST_CODER-2374 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST-2369 (ghost): Video render · VTL-BB6ECADE9D0C
+- [21:22] INTERNAL-GHOST_CODER-2368 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST_CODER-2363 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST_CODER-2358 (ghost_coder): App build · TestApp → android
+- [21:22] INTERNAL-GHOST_CODER-2357 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2356 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2355 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2354 (ghost_coder): App build · Y50App → ios
+- [21:22] INTERNAL-GHOST_CODER-2353 (ghost_coder): App build · Y50App → android
+- [21:22] INTERNAL-GHOST_CODER-2352 (ghost_coder): App build · Y50App → ios
