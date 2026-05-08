@@ -13,6 +13,7 @@ LINKED TO:
                               developer_agents set here must match that file.
 """
 import os
+import re
 import subprocess
 import time
 
@@ -125,6 +126,92 @@ def _chat_response_is_unusable(agent_name, response_text):
     if 'unavailable' in lower and lower.startswith('[') and len(lower) <= 80:
         return True
     return False
+
+
+def _chat_extract_explicit_agent_mentions(text, allowed_agents=None):
+    """Return routable agents explicitly named in the user's message."""
+    raw = str(text or '')
+    if not raw.strip():
+        return []
+    allowed = {str(a or '').strip().lower() for a in (allowed_agents or []) if str(a or '').strip()}
+    labels = {}
+    try:
+        labels = _get_agent_labels()
+    except Exception:
+        labels = {}
+    matches = []
+    for agent in sorted(allowed):
+        names = {agent}
+        label = str(labels.get(agent) or '').strip().lower()
+        if label:
+            names.add(label)
+            names.add(label.split()[0])
+        for name in sorted(names, key=len, reverse=True):
+            if not name or len(name) < 3:
+                continue
+            pattern = r'(?<![A-Za-z0-9_])' + re.escape(name) + r'(?![A-Za-z0-9_])'
+            if re.search(pattern, raw, flags=re.IGNORECASE):
+                matches.append(agent)
+                break
+    return matches
+
+
+def _chat_user_prompt_is_informational(text):
+    """True when a prompt asks for status/explanation rather than system changes."""
+    raw = str(text or '').strip().lower()
+    if not raw:
+        return False
+    action_patterns = (
+        r'\bfix\b',
+        r'\bbuild\b',
+        r'\bimplement\b',
+        r'\bchange\b',
+        r'\bmodify\b',
+        r'\bpatch\b',
+        r'\bwrite\b',
+        r'\bcreate\b',
+        r'\bdelete\b',
+        r'\badd\b',
+        r'\bremove\b',
+        r'\bteach\b',
+        r'\bmake changes?\b',
+        r'\bupdate (the )?(file|code|function|system|watchdog|duck|agent|agents)\b',
+    )
+    if any(re.search(pattern, raw) for pattern in action_patterns):
+        return False
+    info_patterns = (
+        r'\bstatus update\b',
+        r'\bgive me (a )?status\b',
+        r'\bcurrent status\b',
+        r'\bwhat is\b',
+        r'\bwhat are\b',
+        r'\bshow me\b',
+        r'\btell me\b',
+        r'\bhow many\b',
+        r'\bwhy\b',
+        r'\bexplain\b',
+        r'\bsummar(y|ize)\b',
+    )
+    return any(re.search(pattern, raw) for pattern in info_patterns)
+
+
+def _chat_prompt_needs_clarification(text):
+    raw = str(text or '').strip().lower()
+    if not raw:
+        return True
+    compact = re.sub(r'\s+', ' ', raw)
+    vague = {
+        'help',
+        'status',
+        'status update',
+        'continue',
+        'fix it',
+        'do it',
+        'go',
+        'what now',
+        'look at it',
+    }
+    return compact in vague
 
 
 def _disable_agent_for_chat(agent_name, reason):
@@ -703,12 +790,9 @@ def api_chat():
     """Send a chat message to one or more agents on a shared conversation thread."""
     data = request.get_json() or {}
     message = (data.get('message') or '').strip()
-    # Default agent: 'nine' (Groq). On this CPU-only host local gemma3:4b
-    # takes 90-250s to first token; defaulting to a fast cloud agent makes
-    # the chat actually responsive. Eleven (xAI), Ten (GitHub Models), and
-    # Twelve (Anthropic) currently 401/429 — Nine/Groq is the live cloud
-    # agent as of 2026-05-03. Users can still pick any agent explicitly.
-    agent = (data.get('agent') or 'nine').strip().lower()
+    explicit_agent_field = str(data.get('agent') or '').strip().lower()
+    # Legacy fallback is still Nine, but only after mention/clarification checks.
+    agent = (explicit_agent_field or 'nine').strip().lower()
     requested_agents = data.get('agents')
     requested_conv_id = data.get('conversation_id')
     force_new_thread = bool(data.get('new_thread'))
@@ -739,6 +823,7 @@ def api_chat():
     # services used by local agents for internet access), disabled agents.
     allowed_agents = {a['name'].lower() for a in _reg_routable()}
 
+    explicit_agent_selection = bool(explicit_agent_field or (isinstance(requested_agents, list) and requested_agents))
     if isinstance(requested_agents, list) and requested_agents:
         normalized_agents = []
         for item in requested_agents:
@@ -748,9 +833,17 @@ def api_chat():
         if not normalized_agents:
             return jsonify({'ok': False, 'response': 'No agents selected'}), 400
     else:
-        normalized_agents = [agent]
+        mentioned_agents = _chat_extract_explicit_agent_mentions(message, allowed_agents)
+        if not explicit_agent_field and mentioned_agents:
+            normalized_agents = mentioned_agents
+        elif not explicit_agent_selection and _chat_prompt_needs_clarification(message):
+            normalized_agents = ['watchdog']
+        else:
+            normalized_agents = [agent]
 
     bad_agents = [name for name in normalized_agents if name not in allowed_agents]
+    if bad_agents == ['watchdog']:
+        bad_agents = []
     if bad_agents:
         return jsonify({'ok': False, 'response': f"Unsupported agent(s): {', '.join(bad_agents)}"}), 400
 
@@ -772,16 +865,21 @@ def api_chat():
         # must route through proposals and wait for approval.
         _developer_agents = _get_ghost_agent_names()
         is_developer_agent = selected_agent in _developer_agents
+        informational_request = _chat_user_prompt_is_informational(message)
 
         allowed_auto_skills = {'alm_create_proposal', 'ticket_create'}
         if is_developer_agent:
             allowed_auto_skills = allowed_auto_skills | {'fs_write', 'fs_patch', 'fs_readonly'}
+        if informational_request:
+            allowed_auto_skills = {'fs_readonly'} if is_developer_agent else set()
 
         cmds = _extract_skill_lines_from_text(response_text)
         if not cmds:
             # Developer agents: do NOT auto-create proposals from structured text.
             # Their responses are execution narration, not proposal drafts.
             if is_developer_agent:
+                return ''
+            if informational_request:
                 return ''
             # Dedup: only one auto-derived proposal per chat request across all agents
             if _proposal_created_this_request[0]:
@@ -891,6 +989,18 @@ def api_chat():
         except Exception:
             system_prompt = base_system
 
+        informational_request = _chat_user_prompt_is_informational(message)
+        if informational_request:
+            system_prompt = (
+                system_prompt.rstrip()
+                + '\n\n=== WATCHDOG READ-ONLY ROUTING GUARD ===\n'
+                + 'The latest user message is informational/status-seeking. '
+                + 'Do not create proposals, approve work, complete work, or modify files. '
+                + 'Use read-only inspection only. If the request is ambiguous, ask "What do you mean?" '
+                + 'with the missing target/context.\n'
+                + '=== END WATCHDOG READ-ONLY ROUTING GUARD ===\n'
+            )
+
         client = anthropic.Anthropic(api_key=api_key)
 
         def _run_skill_lines(cmds):
@@ -927,6 +1037,13 @@ def api_chat():
                     if mapped:
                         effective_name = 'fs_readonly'
                         effective_args = mapped
+
+                if informational_request and effective_name != 'fs_readonly':
+                    lines.append(
+                        f'[skill:{effective_name}] SKIPPED\n'
+                        'Watchdog read-only guard: status/informational prompts cannot run write, proposal, approval, or completion skills.'
+                    )
+                    continue
 
                 if not can_user_invoke_skill(selected_agent, effective_name, default_allow=True):
                     lines.append(f'[skill:{effective_name}] FAILED\\nNot authorized for user {selected_agent}')
@@ -1145,6 +1262,14 @@ def api_chat():
             _stage(stage_text, est_eta if eta_seconds is None else eta_seconds)
 
         effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
+        if _chat_user_prompt_is_informational(message):
+            effective_prompt = (
+                '=== WATCHDOG READ-ONLY ROUTING GUARD ===\n'
+                'This is a status/informational chat turn. Do not create proposals, approve work, '
+                'complete work, or modify files. Use read-only inspection only. If the request is '
+                'ambiguous, ask "What do you mean?" with the missing target/context.\n'
+                '=== END WATCHDOG READ-ONLY ROUTING GUARD ===\n\n'
+            ) + effective_prompt
         effective_prompt += _chat_handoff_contract(selected_agent, local_timeout)
         if not auto_relay:
             effective_prompt = (
@@ -1472,6 +1597,32 @@ def api_chat():
         to_agent = normalized_agents[0] if len(normalized_agents) == 1 else ','.join(normalized_agents)
         msg_sender = relay_from if relay_from else 'user'
         log_message(conv_id, msg_sender, message, to_agent=to_agent, message_type='relay' if relay_from else 'chat')
+
+        if normalized_agents == ['watchdog']:
+            clarify = (
+                'What do you mean? I need a target agent or a more specific action before I route this. '
+                'Name the agent, thread, or system area you want checked.'
+            )
+            log_message(conv_id, 'watchdog', clarify, to_agent='user', message_type='response')
+            try:
+                _trace(conv_id, 'watchdog', 'clarification', 'no explicit agent and ambiguous prompt')
+            except Exception:
+                pass
+            return jsonify({
+                'ok': True,
+                'mode': 'clarification',
+                'agent': 'watchdog',
+                'response': clarify,
+                'tokens': 0,
+                'responses': [{
+                    'agent': 'watchdog',
+                    'response': clarify,
+                    'tokens': 0,
+                    'elapsed_ms': 0,
+                }],
+                'agents': ['watchdog'],
+                'conversation_id': conv_id,
+            })
 
         parsed_skill = _parse_chat_skill_command(message)
         if parsed_skill:

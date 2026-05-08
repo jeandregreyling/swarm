@@ -10,6 +10,7 @@ Pipeline:
 import os
 import sys
 import time
+import re
 
 _SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +44,39 @@ def _duck_verdict(title: str, description: str, agent: str) -> tuple[str, str]:
 
     if len((title or '').strip()) < 5:
         return 'rejected', 'Title too short — please provide a clear proposal title.'
+
+    informational_patterns = (
+        r'\bstatus update\b',
+        r'\bprovide (a )?status\b',
+        r'\bcurrent status\b',
+        r'\breport\b',
+        r'\bsummar(y|ize)\b',
+        r'\btell (me|us)\b',
+        r'\bshow (me|us)\b',
+    )
+    change_patterns = (
+        r'\bfix\b',
+        r'\bbuild\b',
+        r'\bimplement\b',
+        r'\bchange\b',
+        r'\bmodify\b',
+        r'\bpatch\b',
+        r'\bwrite\b',
+        r'\bcreate\b',
+        r'\bdelete\b',
+        r'\badd\b',
+        r'\bremove\b',
+        r'\bupdate (the )?(file|code|function|system|watchdog|duck|agent|agents)\b',
+    )
+    if (
+        any(re.search(pattern, combined) for pattern in informational_patterns)
+        and not any(re.search(pattern, combined) for pattern in change_patterns)
+    ):
+        return (
+            'rejected',
+            'Duck rejected this as an informational/status request, not a build proposal. '
+            'Ask Ghost "what do you mean?" or request an explicit system change before starting work.',
+        )
 
     note = (
         f'Duck reviewed this proposal from {agent}. '

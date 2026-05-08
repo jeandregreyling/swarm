@@ -663,6 +663,38 @@ def test_watchdog_treats_placeholder_answer_as_unusable():
     assert chat_mod._chat_response_is_unusable('gemma', 'Here is the actual status update.') is False
 
 
+def test_chat_routes_explicit_agent_mentions_before_defaulting_to_nine(monkeypatch):
+    from frontend.blueprints import chat as chat_mod
+
+    monkeypatch.setattr(chat_mod, '_get_agent_labels', lambda: {'gemma': 'Gemma', 'nine': 'Nine'})
+
+    assert chat_mod._chat_extract_explicit_agent_mentions(
+        'Gemma give me a status update',
+        {'gemma', 'nine'},
+    ) == ['gemma']
+
+
+def test_watchdog_marks_status_prompts_read_only():
+    from frontend.blueprints import chat as chat_mod
+
+    assert chat_mod._chat_user_prompt_is_informational('Gemma give me a status update') is True
+    assert chat_mod._chat_user_prompt_is_informational('update the watchdog code to stop Ollama') is False
+    assert chat_mod._chat_prompt_needs_clarification('status update') is True
+
+
+def test_duck_rejects_status_only_work_proposals():
+    from utils import proposal_review
+
+    verdict, note = proposal_review._duck_verdict(
+        'Status Update',
+        'Provide current status for the user with queue and proposal counts.',
+        'nine',
+    )
+
+    assert verdict == 'rejected'
+    assert 'informational/status request' in note
+
+
 def test_project_context_block_adds_studio_project_pack(monkeypatch):
     from core.knowledge import projects as kc_projects
     from frontend.blueprints import chat as chat_mod
