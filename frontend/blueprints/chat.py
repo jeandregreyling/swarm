@@ -151,6 +151,8 @@ def _chat_try_hard_kill_local_agent(agent_name):
     result = {
         'agent': normalized or str(agent_name or '').strip().lower(),
         'configured_model': '',
+        'before_models': [],
+        'after_models': [],
         'models': [],
         'attempts': [],
         'ok': False,
@@ -164,6 +166,7 @@ def _chat_try_hard_kill_local_agent(agent_name):
     result['configured_model'] = configured_model
     wanted_aliases = _chat_model_aliases(configured_model)
     running_models = _chat_running_ollama_models()
+    result['before_models'] = running_models
 
     candidates = []
     for running_name in running_models:
@@ -213,14 +216,65 @@ def _chat_try_hard_kill_local_agent(agent_name):
                 'stderr': str(exc),
             })
 
+    after_models = _chat_running_ollama_models()
+    result['after_models'] = after_models
+    after_alias_sets = [_chat_model_aliases(name) for name in after_models]
+    still_running = []
+    for model_name in unique_candidates:
+        aliases = _chat_model_aliases(model_name)
+        if any(aliases & running_aliases for running_aliases in after_alias_sets):
+            still_running.append(model_name)
     ok_models = [item['model'] for item in result['attempts'] if item.get('ok')]
-    result['ok'] = bool(ok_models)
-    if ok_models:
-        result['detail'] = 'stopped ' + ', '.join(ok_models)
+    result['stopped_models'] = [m for m in unique_candidates if m not in still_running]
+    result['still_running_models'] = still_running
+    result['ok'] = bool(unique_candidates) and not still_running
+    if result['ok']:
+        result['detail'] = 'stopped ' + ', '.join(result['stopped_models'] or ok_models or unique_candidates)
     else:
         errors = [item.get('stderr') or item.get('stdout') or 'unknown error' for item in result['attempts']]
-        result['detail'] = '; '.join(errors[:2])
+        if still_running:
+            result['detail'] = 'still running after stop: ' + ', '.join(still_running)
+        else:
+            result['detail'] = '; '.join(errors[:2])
     return result
+
+
+def _chat_runtime_stop_trace(result):
+    agent = str((result or {}).get('agent') or 'agent')
+    if not result:
+        return f'ollama stop skipped - {agent}: no result'
+    detail = str(result.get('detail') or '').strip()
+    before = ','.join(result.get('before_models') or [])
+    after = ','.join(result.get('after_models') or [])
+    status = 'ok' if result.get('ok') else 'failed'
+    bits = [f'ollama stop {status} - {agent}']
+    if detail:
+        bits.append(detail[:220])
+    if before or after:
+        bits.append(f'before=[{before}] after=[{after}]')
+    return ' - '.join(bits)
+
+
+def _chat_apply_runtime_stop_to_job(job_id, agent_name, reason, *, elapsed_ms=0, stage_trace=None):
+    result = _chat_try_hard_kill_local_agent(agent_name)
+    trace = list(stage_trace or [])
+    trace.append({'text': _chat_runtime_stop_trace(result), 'ts': time.time()})
+    error = str(reason or '').strip()
+    detail = str(result.get('detail') or '').strip()
+    if detail:
+        error = (error + '; ' if error else '') + f'ollama stop: {detail}'
+    try:
+        update_chat_job_db(
+            job_id,
+            status='failed',
+            stage='stalled',
+            error=error,
+            elapsed_ms=int(elapsed_ms or 0),
+            stage_trace_json=json.dumps(trace),
+        )
+    except Exception:
+        pass
+    return result, trace, error
 
 # Thread/history helpers live in services.chat_history and are re-exported
 # through services/__init__.py. Names available here via `from services import *`:
