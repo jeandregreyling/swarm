@@ -21,6 +21,7 @@ from services import *
 from utils.db.registry import get_agent_roster as _reg_roster, get_single_task_locals as _reg_stl
 from utils.db.chat import (
     ensure_chat_relay_recovery,
+    ensure_silent_chat_thread_recovery,
     get_open_chat_relay_recoveries,
     update_chat_relay_recovery_status,
 )
@@ -1895,6 +1896,27 @@ def api_chat_jobs_status():
                 })
 
     if conv_id_int is not None:
+        try:
+            has_running = any(str(j.get('status') or '') == 'running' for j in jobs)
+            if not has_running:
+                silent_result = ensure_silent_chat_thread_recovery(
+                    conv_id_int,
+                    reason=(
+                        'Thread has cancelled/failed chat jobs and no visible '
+                        'agent reply after the latest user turn.'
+                    ),
+                )
+                recovery = silent_result.get('recovery') if isinstance(silent_result, dict) else None
+                if recovery:
+                    recoveries.append(recovery)
+                    if silent_result.get('created'):
+                        log_activity(
+                            'terminal',
+                            'silent_thread_recovery_created',
+                            f"conversation={conv_id_int} recovery={recovery.get('recovery_id')}",
+                        )
+        except Exception:
+            pass
         try:
             existing_ids = {str(r.get('recovery_id') or '') for r in recoveries}
             for recovery in get_open_chat_relay_recoveries(conv_id_int, limit=10):
