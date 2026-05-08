@@ -38,6 +38,20 @@ def _git_head_info(cwd=None):
     branch, rc2 = _git_cmd(['rev-parse', '--abbrev-ref', 'HEAD'], cwd=cwd)
     return (commit.strip()[:12] if rc1 == 0 else '', branch.strip() if rc2 == 0 else '')
 
+
+def _vortex_should_write_git(label: str) -> bool:
+    """Return whether this workflow checkpoint should create git commits/tags.
+
+    Heartbeat checkpoints are operational telemetry, not source changes. Letting
+    them commit/tag every few minutes makes normal project publishing unusable.
+    Keep the DB/Vortex checkpoint, but only write heartbeat git artifacts when
+    explicitly enabled for a debugging session.
+    """
+    safe = str(label or '').strip().lower()
+    if 'heartbeat' in safe:
+        return os.environ.get('SWARM_VORTEX_GIT_HEARTBEAT', '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    return True
+
 class TimeMachine:
     """Track system state across time. Enable temporal queries and replay."""
     
@@ -514,23 +528,23 @@ class TimeMachine:
         full_state = self.capture_workflow_state()
 
         # ── Git commit + tag for each active worktree (A.1.3) ─────────────
-        import os
         git_tags = {}
-        for wt_label, root in [('prod', _SWARM_PROD_ROOT), ('uat', _SWARM_UAT_ROOT), ('dev', _SWARM_DEV_ROOT)]:
-            if os.path.isdir(os.path.join(root, '.git')) or os.path.isfile(os.path.join(root, '.git')):
-                tag_name = f'{checkpoint_name}-{wt_label}'
-                # Stage all changes and commit (no-op if working tree is clean)
-                _git_cmd(['add', '-A'], cwd=root)
-                commit_msg = f'[vortex] {checkpoint_name}\n\nAgent: {agent}\n{description or ""}'.strip()
-                out_c, rc_c = _git_cmd(['commit', '-m', commit_msg, '--allow-empty'], cwd=root)
-                if rc_c != 0 and 'nothing to commit' not in (out_c or '').lower():
-                    print(f'[Vortex] git commit warning for {wt_label}: {out_c}')
-                # Tag the current HEAD (whether we just committed or not)
-                out, rc = _git_cmd(['tag', tag_name], cwd=root)
-                if rc == 0:
-                    git_tags[wt_label] = tag_name
-                else:
-                    print(f'[Vortex] git tag failed for {wt_label}: {out}')
+        if _vortex_should_write_git(label):
+            for wt_label, root in [('prod', _SWARM_PROD_ROOT), ('uat', _SWARM_UAT_ROOT), ('dev', _SWARM_DEV_ROOT)]:
+                if os.path.isdir(os.path.join(root, '.git')) or os.path.isfile(os.path.join(root, '.git')):
+                    tag_name = f'{checkpoint_name}-{wt_label}'
+                    # Stage all changes and commit (no-op if working tree is clean)
+                    _git_cmd(['add', '-A'], cwd=root)
+                    commit_msg = f'[vortex] {checkpoint_name}\n\nAgent: {agent}\n{description or ""}'.strip()
+                    out_c, rc_c = _git_cmd(['commit', '-m', commit_msg, '--allow-empty'], cwd=root)
+                    if rc_c != 0 and 'nothing to commit' not in (out_c or '').lower():
+                        print(f'[Vortex] git commit warning for {wt_label}: {out_c}')
+                    # Tag the current HEAD (whether we just committed or not)
+                    out, rc = _git_cmd(['tag', tag_name], cwd=root)
+                    if rc == 0:
+                        git_tags[wt_label] = tag_name
+                    else:
+                        print(f'[Vortex] git tag failed for {wt_label}: {out}')
         full_state['git_tags'] = git_tags
 
         checkpoint_id = self.create_checkpoint(checkpoint_name, agent, description, full_state)
