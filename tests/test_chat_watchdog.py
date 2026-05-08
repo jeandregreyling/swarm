@@ -228,6 +228,7 @@ def test_status_watchdog_opens_relay_recovery_card(monkeypatch):
     monkeypatch.setattr(chat_mod, 'get_open_chat_relay_recoveries', lambda *a, **k: [])
     monkeypatch.setattr(chat_mod, 'update_chat_job_db', lambda *a, **k: None)
     monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', lambda *a, **k: {'ok': True})
+    monkeypatch.setattr(chat_mod, '_trace', lambda *a, **k: None)
     monkeypatch.setattr(chat_mod, '_sse_chat', lambda *a, **k: None)
     monkeypatch.setattr(chat_mod, 'log_activity', lambda *a, **k: None)
 
@@ -306,6 +307,7 @@ def test_status_watchdog_recovers_db_running_job_missing_from_runtime(monkeypatc
 
     updated = []
     recovery_calls = []
+    timeline_calls = []
     with chat_mod._CHAT_JOB_LOCK:
         chat_mod._CHAT_JOBS.clear()
 
@@ -341,6 +343,7 @@ def test_status_watchdog_recovers_db_running_job_missing_from_runtime(monkeypatc
     monkeypatch.setattr(chat_mod, 'ensure_silent_chat_thread_recovery', lambda *a, **k: {'created': False, 'recovery': None})
     monkeypatch.setattr(chat_mod, 'get_open_chat_relay_recoveries', lambda *a, **k: [])
     monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', lambda *a, **k: {'ok': True})
+    monkeypatch.setattr(chat_mod, '_trace', lambda *a, **k: timeline_calls.append((a, k)))
     monkeypatch.setattr(chat_mod, 'log_activity', lambda *a, **k: None)
 
     app = Flask(__name__)
@@ -359,6 +362,8 @@ def test_status_watchdog_recovers_db_running_job_missing_from_runtime(monkeypatc
     assert recovery_calls[0]['job_id'] == 'job-db-orphan'
     assert recovery_calls[0]['stage_trace'][-2]['text'] == 'orphaned runtime job (watchdog)'
     assert recovery_calls[0]['stage_trace'][-1]['text'].startswith('ollama stop')
+    assert timeline_calls
+    assert timeline_calls[0][0][2] == 'ollama_control'
     assert data['recoveries'][0]['recovery_id'] == 'recovery-orphan-pytest'
 
 
@@ -600,6 +605,54 @@ def test_relay_recovery_status_endpoint_updates_card(monkeypatch):
     assert resp.status_code == 200
     assert data['ok'] is True
     assert calls == [('recovery-123', 'ignored', 'dismissed in pytest')]
+
+
+def test_watchdog_reconciles_unowned_ollama_runner(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    stop_calls = []
+    trace_calls = []
+    monkeypatch.setattr(chat_mod, '_chat_active_local_agents_from_db', lambda: set())
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['gemma3:latest'])
+    monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'gemma'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'gemma3:latest')
+    monkeypatch.setattr(
+        chat_mod,
+        '_chat_try_hard_kill_local_agent',
+        lambda agent: stop_calls.append(agent) or {
+            'agent': agent,
+            'ok': True,
+            'detail': 'stopped gemma3:latest',
+            'configured_model': 'gemma3:latest',
+            'models': ['gemma3:latest'],
+            'before_models': ['gemma3:latest'],
+            'after_models': [],
+        },
+    )
+    monkeypatch.setattr(chat_mod, '_chat_log_watchdog_ollama_event', lambda *a, **k: trace_calls.append((a, k)))
+
+    result = chat_mod._chat_reconcile_unowned_ollama_runners(2577)
+
+    assert stop_calls == ['gemma']
+    assert result and result[0]['ok'] is True
+    assert trace_calls
+    assert trace_calls[0][0][3] == 'watchdog_unowned_runner_stop'
+
+
+def test_watchdog_does_not_stop_owned_ollama_runner(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    stop_calls = []
+    monkeypatch.setattr(chat_mod, '_chat_active_local_agents_from_db', lambda: {'gemma'})
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['gemma3:latest'])
+    monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'gemma'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'gemma3:latest')
+    monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', lambda agent: stop_calls.append(agent))
+
+    assert chat_mod._chat_reconcile_unowned_ollama_runners(2577) == []
+    assert stop_calls == []
 
 
 def test_project_context_block_adds_studio_project_pack(monkeypatch):
