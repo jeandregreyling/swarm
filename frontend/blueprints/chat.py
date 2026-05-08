@@ -1878,6 +1878,46 @@ def api_chat_jobs_status():
                     _db_trace = json.loads(row.get('stage_trace_json') or '[]')
                 except Exception:
                     pass
+                row_status = str(row.get('status') or '').lower()
+                if row_status in {'running', 'dispatched', 'processing'}:
+                    error = (
+                        'Watchdog: job was still marked running in SQLite but '
+                        'is missing from the live runtime. Automatic orphan recovery.'
+                    )
+                    _db_trace.append({'text': 'orphaned runtime job (watchdog)', 'ts': time.time()})
+                    try:
+                        update_chat_job_db(
+                            row.get('job_id'),
+                            status='failed',
+                            stage='stalled',
+                            error=error,
+                            elapsed_ms=elapsed,
+                            stage_trace_json=json.dumps(_db_trace),
+                        )
+                    except Exception:
+                        pass
+                    try:
+                        _chat_try_hard_kill_local_agent(row.get('agent') or '')
+                    except Exception:
+                        pass
+                    try:
+                        recovery_result = ensure_chat_relay_recovery(
+                            job_id=row.get('job_id'),
+                            conversation_id=row.get('conversation_id'),
+                            stalled_agent=row.get('agent'),
+                            reason=error,
+                            stage_trace=_db_trace,
+                        )
+                        recovery = recovery_result.get('recovery') if isinstance(recovery_result, dict) else None
+                        if recovery:
+                            recoveries.append(recovery)
+                    except Exception:
+                        pass
+                    row = dict(row)
+                    row['status'] = 'failed'
+                    row['stage'] = 'stalled'
+                    row['error'] = error
+                    row['stage_trace_json'] = json.dumps(_db_trace)
                 jobs.append({
                     'job_id': row.get('job_id'),
                     'conversation_id': row.get('conversation_id'),
