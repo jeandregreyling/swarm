@@ -80,6 +80,11 @@ def create(ticket_number, sender_email, question, tags='', queue_id=None, email_
     logger.info(f'[Ticket] Created {ticket_number} for {sender_email}')
     log_action('ticket', f'created:{ticket_number}', f'Ticket created for {sender_email}', 'info')
     log_ticket_lifecycle(ticket_number, 'created', 'Librarian', f'Queue ID: {queue_id}')
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('ticket', ticket_number, actor='ticket_create')
+    except Exception:
+        pass
     return ticket_number
 
 
@@ -94,6 +99,11 @@ def set_routing(ticket_number, routing_dict):
     )
     conn.commit()
     conn.close()
+    try:
+        from core.records import mirror as _records_mirror
+        _records_mirror('ticket', ticket_number, actor='ticket_set_routing')
+    except Exception:
+        pass
 
 
 def add_agent_note(ticket_number, agent, note_type, content, confidence=0.8):

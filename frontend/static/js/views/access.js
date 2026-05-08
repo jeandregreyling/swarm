@@ -727,7 +727,15 @@ function agentsRenderList(agents) {
     el.innerHTML = '<div style="padding:20px;color:var(--text-dim);font-size:11px;">No agents found.</div>';
     return;
   }
-  el.innerHTML = agents.map(a => {
+  // Slice 5e: filter input + tier-grouped rows for faster scanning.
+  const groups = { human: [], local: [], service: [], api: [] };
+  agents.forEach(a => {
+    const isLocal = a.tier === 'local' || a.tier === 'human';
+    const isService = a.tier === 'service';
+    const key = a.tier === 'human' ? 'human' : (isService ? 'service' : (isLocal ? 'local' : 'api'));
+    (groups[key] || groups.api).push(a);
+  });
+  const renderRow = (a) => {
     const isLocal    = a.tier === 'local' || a.tier === 'human';
     const isService  = a.tier === 'service';
     const tierLabel  = a.tier === 'human' ? 'human' : isService ? 'service' : (isLocal ? 'local' : 'api');
@@ -738,12 +746,13 @@ function agentsRenderList(agents) {
     const tierBadge  = `<span style="${tierColor}border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">${tierLabel}</span>`;
     const isDecommissioned = a.enabled == 0;
     const statusDot = isDecommissioned
-      ? '<span style="color:#ffb366;font-size:10px;line-height:1;" title="Decommissioned">◌</span>'
+      ? '<span style="color:#ef4444;font-size:10px;line-height:1;" title="Offline: re-enable from Agents tile">●</span>'
       : '<span style="color:#4caf50;font-size:10px;line-height:1;">●</span>';
     const dcomBadge = isDecommissioned
-      ? '<span style="background:#3a2a00;color:#ffb366;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">OFF</span>'
+      ? '<span style="background:#3a1010;color:#ff8a8a;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">OFFLINE</span>'
       : '';
-    return `<div class="agents-list-row" data-name="${_esc(a.name)}"
+    const filterBlob = `${a.name||''} ${a.label||''} ${a.model||''} ${tierLabel}`.toLowerCase();
+    return `<div class="agents-list-row" data-name="${_esc(a.name)}" data-filter="${_esc(filterBlob)}"
       style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px;transition:background 0.12s;${isDecommissioned ? 'opacity:0.6;' : ''}">
       <div style="display:flex;align-items:center;gap:6px;">
         ${statusDot}
@@ -752,7 +761,34 @@ function agentsRenderList(agents) {
       </div>
       <div style="font-size:10px;color:var(--text-dim);padding-left:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(a.model || '')}</div>
     </div>`;
-  }).join('');
+  };
+  const groupBlock = (label, list) => {
+    if (!list.length) return '';
+    return `<div class="agents-group" data-group="${_esc(label)}">
+      <div class="agents-group-head" style="position:sticky;top:0;background:var(--window-header);padding:5px 14px;font-size:9.5px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);z-index:1;">${_esc(label)} <span style="opacity:.7;">(${list.length})</span></div>
+      ${list.map(renderRow).join('')}
+    </div>`;
+  };
+  const filterHtml = `<div style="position:sticky;top:0;background:var(--window-header);padding:8px 12px;border-bottom:1px solid var(--border);z-index:2;">
+    <input type="text" id="agents-list-filter" placeholder="Filter agents…" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:11px;font-family:inherit;outline:none;">
+  </div>`;
+  el.innerHTML = filterHtml + groupBlock('Human', groups.human) + groupBlock('Local', groups.local) + groupBlock('Service', groups.service) + groupBlock('API', groups.api);
+  // Filter wiring.
+  const flt = document.getElementById('agents-list-filter');
+  if (flt) {
+    flt.addEventListener('input', () => {
+      const q = flt.value.trim().toLowerCase();
+      el.querySelectorAll('.agents-list-row').forEach(r => {
+        r.style.display = (!q || (r.dataset.filter || '').includes(q)) ? '' : 'none';
+      });
+      // Hide group headers whose rows are all hidden.
+      el.querySelectorAll('.agents-group').forEach(g => {
+        const rows = g.querySelectorAll('.agents-list-row');
+        const visible = Array.from(rows).some(r => r.style.display !== 'none');
+        g.style.display = visible ? '' : 'none';
+      });
+    });
+  }
   // Attach click listeners after rendering — avoids double-quote conflicts with JSON.stringify in onclick attributes
   el.querySelectorAll('.agents-list-row').forEach(row => {
     row.addEventListener('click', () => {
@@ -805,9 +841,26 @@ function agentsShowDetail(agent) {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
         <div>
-          <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Number</label>
-          <input id="agent-number" type="number" value="${Number.isFinite(Number(agent.number)) ? Number(agent.number) : ''}"
-            style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
+          <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Number / Slot</label>
+          <select id="agent-number" style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;cursor:pointer;box-sizing:border-box;">
+            ${(() => {
+              // P4-M27: dropdown of all known slots (0..22) with current occupant shown
+              const cur = Number.isFinite(Number(agent.number)) ? Number(agent.number) : -1;
+              const occupants = {};
+              (window.__agentsData || []).forEach(a => { if (Number.isFinite(Number(a.number))) occupants[Number(a.number)] = a.label || a.name; });
+              const opts = [];
+              for (let n = 0; n <= 22; n++) {
+                const occ = occupants[n];
+                const isMine = (n === cur);
+                const taken = (!!occ && !isMine);
+                const label = isMine ? `${n} — ${agent.label || agent.name} (current)`
+                            : taken ? `${n} — ${occ} (taken)`
+                            : `${n} — empty`;
+                opts.push(`<option value="${n}" ${isMine ? 'selected' : ''} ${taken ? 'disabled' : ''}>${_esc(label)}</option>`);
+              }
+              return opts.join('');
+            })()}
+          </select>
         </div>
         <div>
           <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Label</label>
@@ -832,6 +885,16 @@ function agentsShowDetail(agent) {
         ${isLocal && agent.tier !== 'human' ? `
         <div id="agent-local-status" style="grid-column:span 2;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;color:var(--text-dim);">Checking local runtime availability...</div>
         ` : ''}
+        <div>
+          <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Chat ETA / Timer (sec)</label>
+          <input id="agent-eta-seconds" type="number" min="0" max="2000" value="${Number.isFinite(Number(agent.eta_seconds)) ? Number(agent.eta_seconds) : 60}"
+            style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Keep-Warm (sec)</label>
+          <input id="agent-keepalive-config" type="number" min="0" max="86400" value="${Number.isFinite(Number(agent.keep_alive)) ? Number(agent.keep_alive) : 300}"
+            style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
+        </div>
         <div style="grid-column:span 2;">
           <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">API Key</label>
           ${isLocal ? `<span style="font-size:11px;color:var(--text-dim);">— n/a for ${agent.tier} agents</span>` : `
@@ -850,9 +913,60 @@ function agentsShowDetail(agent) {
       </div>
 
       <div style="margin-bottom:14px;">
-        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Role / Description</label>
+        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Slot Role <span style="color:var(--text-dim);text-transform:none;font-weight:400;letter-spacing:0;">— hardcoded by slot number, not editable</span></label>
+        <div id="agent-slot-role-readout" style="padding:6px 9px;background:color-mix(in srgb,var(--accent) 4%,var(--card));border:1px dashed var(--border);border-radius:5px;color:var(--text);font-size:12px;font-weight:600;">${(() => {
+          // P4-M28: hardcoded role per slot — must match utils/config.py + DB roster
+          const SLOT_ROLES = {
+            0: 'Ghost — Human operator',
+            1: 'Generalist + decision maker',
+            2: 'Researcher (web)',
+            3: 'Quick coder',
+            4: 'Deep analyst',
+            5: 'Vortex — gatekeeper / time wizard',
+            6: 'Sanity checker',
+            7: 'Personal companion (Seven)',
+            8: 'SAP HCM/Payroll specialist (Gemma4)',
+            9: 'Developer Agent — system architect',
+            10: 'Developer Agent — software engineer',
+            11: 'Short and honest (Grok)',
+            12: 'Developer Agent — Claude / continuity',
+            13: 'Developer Agent — HuggingFace',
+            14: 'Research · Gemini',
+            15: 'Internet Search · Tavily',
+            16: 'Web Search · DuckDuckGo',
+            17: 'Developer Agent — Ghost Coder',
+            19: 'Developer Agent — o4-mini',
+            20: 'Big coder (Qwen3.6)',
+            21: 'Inspector — memory auditor (DeepSeek)',
+            22: 'Reserved'
+          };
+          const n = Number.isFinite(Number(agent.number)) ? Number(agent.number) : -1;
+          return _esc(SLOT_ROLES[n] || 'Unassigned slot');
+        })()}</div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Description <span style="color:var(--text-dim);text-transform:none;font-weight:400;letter-spacing:0;">— editable, shown in lists and tooltips</span></label>
         <input id="agent-role" type="text" value="${_esc(agent.role || '')}" placeholder="Short description of this agent's role"
           style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
+      </div>
+
+      <!-- V8 S-FAFF08FF9A: per-agent temperature gauge moved here from Chat right-menu.
+           Chat retains a quick slider for live tuning, but Agents detail is now the
+           canonical edit surface. Posts to /api/agents/<name>/temperature. -->
+      <div id="agent-temp-block" style="margin-bottom:14px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:color-mix(in srgb,var(--accent) 3%,var(--card));">
+        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Temperature <span style="color:var(--text-dim);text-transform:none;font-weight:400;letter-spacing:0;">— response variability (0 = deterministic, 1 = creative)</span></label>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input id="agent-temperature" type="range" min="0" max="1" step="0.05"
+            value="${Number.isFinite(Number(agent.temperature)) ? Number(agent.temperature).toFixed(2) : '0.70'}"
+            oninput="document.getElementById('agent-temperature-readout').textContent=Number(this.value).toFixed(2)"
+            style="flex:1;accent-color:var(--accent);cursor:pointer;">
+          <span id="agent-temperature-readout" style="font-family:monospace;font-size:12px;color:var(--text);min-width:42px;text-align:right;">${Number.isFinite(Number(agent.temperature)) ? Number(agent.temperature).toFixed(2) : '0.70'}</span>
+          <button id="agent-temperature-apply" type="button"
+            onclick="(function(){var v=parseFloat(document.getElementById('agent-temperature').value);fetch('/api/agents/'+encodeURIComponent('${_esc(agent.name)}')+'/temperature',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({temperature:v})}).then(function(r){return r.json();}).then(function(){window.__agentTemps=window.__agentTemps||{};window.__agentTemps['${_esc(agent.name)}'.toLowerCase()]=v;if(typeof renderChatAgentToggles==='function')renderChatAgentToggles();var st=document.getElementById('agent-temperature-status');if(st)st.textContent='Saved at '+new Date().toLocaleTimeString();}).catch(function(){var st=document.getElementById('agent-temperature-status');if(st)st.textContent='Save failed';});})()"
+            style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;white-space:nowrap;">Apply</button>
+        </div>
+        <div id="agent-temperature-status" style="font-size:10px;color:var(--text-dim);margin-top:4px;min-height:12px;"></div>
       </div>
 
       <div style="margin-bottom:18px;">
@@ -860,6 +974,25 @@ function agentsShowDetail(agent) {
         <textarea id="agent-prompt" rows="10"
           style="width:100%;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;font-family:monospace;outline:none;resize:vertical;box-sizing:border-box;">${_esc(agent.system_prompt || '')}</textarea>
       </div>
+
+      ${isLocal && agent.tier !== 'human' ? `
+      <!-- M10: runtime controls for local agents -->
+      <div style="margin-bottom:14px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:color-mix(in srgb,var(--accent) 3%,var(--card));">
+        <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Runtime Controls</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;">
+          <label style="display:flex;align-items:center;gap:4px;">Keep-warm (sec)
+            <input id="agent-keepalive-seconds" type="number" min="0" max="86400" value="${Number.isFinite(Number(agent.keep_alive)) ? Number(agent.keep_alive) : 300}"
+              style="width:80px;padding:4px 6px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;outline:none;box-sizing:border-box;">
+          </label>
+          <button id="agent-keepalive-apply" type="button"
+            style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">Apply</button>
+          <button id="agent-unload-btn" type="button"
+            style="background:transparent;border:1px solid #f7b84b66;color:#f7b84b;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">Unload</button>
+          <button id="agent-hard-kill-btn" type="button" title="Unload immediately (keep_alive=0)"
+            style="background:transparent;border:1px solid #f4433666;color:#f77;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">Hard-Kill</button>
+          <div id="agent-runtime-status" style="font-size:11px;color:var(--text-dim);"></div>
+        </div>
+      </div>` : ''}
 
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <button id="agent-save-btn"
@@ -871,8 +1004,7 @@ function agentsShowDetail(agent) {
           Reset
         </button>
         <div id="agent-save-status" style="font-size:11px;color:var(--text-dim);"></div>
-        <div style="flex:1;"></div>
-        ${agent.enabled == 0 ? `
+        <div style="flex:1;"></div>        ${agent.enabled == 0 ? `
         <span style="font-size:10px;color:#ffb366;border:1px solid #ffb36644;border-radius:10px;padding:2px 10px;">DECOMMISSIONED</span>
         <button id="agent-reactivate-btn"
           style="background:var(--card);border:1px solid #72e6a666;color:#72e6a6;border-radius:5px;padding:7px 14px;cursor:pointer;font-size:11px;">
@@ -899,6 +1031,52 @@ function agentsShowDetail(agent) {
   const saveBtn = el.querySelector('#agent-save-btn');
   if (saveBtn) {
     saveBtn.addEventListener('click', () => agentsSave(agent.name));
+  }
+  // M10: runtime controls for local agents
+  const keepaliveBtn = el.querySelector('#agent-keepalive-apply');
+  if (keepaliveBtn) {
+    keepaliveBtn.addEventListener('click', async () => {
+      const input = el.querySelector('#agent-keepalive-seconds');
+      const statusEl = el.querySelector('#agent-runtime-status');
+      const seconds = Math.max(0, Math.min(86400, parseInt(input?.value || '300', 10) || 300));
+      if (statusEl) statusEl.textContent = 'Applying…';
+      try {
+        const r = await fetch('/api/ollama/keepalive', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ model: agent.model || '', seconds }) });
+        const j = await r.json();
+        if (statusEl) statusEl.textContent = j.ok ? `Keep-alive set to ${seconds}s` : `Error: ${j.error || 'unknown'}`;
+      } catch (err) {
+        if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+      }
+    });
+  }
+  const unloadBtn = el.querySelector('#agent-unload-btn');
+  if (unloadBtn) {
+    unloadBtn.addEventListener('click', async () => {
+      const statusEl = el.querySelector('#agent-runtime-status');
+      if (statusEl) statusEl.textContent = 'Unloading…';
+      try {
+        const r = await fetch('/api/ollama/unload', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ model: agent.model || '' }) });
+        const j = await r.json();
+        if (statusEl) statusEl.textContent = j.ok ? `Unloaded ${agent.model}` : `Error: ${j.error || 'unknown'}`;
+      } catch (err) {
+        if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+      }
+    });
+  }
+  const hardKillBtn = el.querySelector('#agent-hard-kill-btn');
+  if (hardKillBtn) {
+    hardKillBtn.addEventListener('click', async () => {
+      const statusEl = el.querySelector('#agent-runtime-status');
+      if (!confirm(`Hard-kill ${agent.model}? This will forcibly unload the model from RAM.`)) return;
+      if (statusEl) statusEl.textContent = 'Hard-killing…';
+      try {
+        const r = await fetch('/api/ollama/unload', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ model: agent.model || '' }) });
+        const j = await r.json();
+        if (statusEl) statusEl.textContent = j.ok ? `✓ ${agent.model} killed` : `Error: ${j.error || 'unknown'}`;
+      } catch (err) {
+        if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+      }
+    });
   }
   const saveKeyBtn = el.querySelector('#agent-save-key-btn');
   if (saveKeyBtn) {
@@ -967,23 +1145,28 @@ async function _renderLocalAgentAvailability(agent) {
   if (!ollamaRunning) {
     statusEl.style.borderColor = '#ef444455';
     statusEl.innerHTML = `
-      <div style="color:#ef4444;font-weight:600;">Local agent unavailable: Ollama is offline.</div>
-      <div style="margin-top:4px;">Start Ollama, then return here. You can also pull missing models in Local AI.</div>
-      <div style="margin-top:8px;"><button onclick="openWindow('localai','Local AI','view-localai')" style="background:var(--card);border:1px solid #ef444455;color:var(--text);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;">Open Local AI</button></div>`;
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0;"></span>
+        <span style="color:#ef4444;font-weight:600;font-size:12px;">Ollama offline</span>
+        <button onclick="openWindow('localai','Local AI','view-localai')" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10.5px;">Local AI →</button>
+      </div>`;
     return;
   }
 
   if (!modelInstalled) {
     statusEl.style.borderColor = '#ef444455';
     statusEl.innerHTML = `
-      <div style="color:#ef4444;font-weight:600;">Local agent unavailable: model not installed.</div>
-      <div style="margin-top:4px;">Model <strong>${_esc(agent.model || 'unknown')}</strong> was not found in Ollama. Re-download it from Local AI.</div>
-      <div style="margin-top:8px;"><button onclick="openWindow('localai','Local AI','view-localai')" style="background:var(--card);border:1px solid #ef444455;color:var(--text);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;">Open Local AI</button></div>`;
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0;"></span>
+        <span style="color:#ef4444;font-weight:600;font-size:12px;">Model not installed</span>
+        <span style="color:var(--text-dim);font-size:11px;">${_esc(agent.model || 'unknown')}</span>
+        <button onclick="openWindow('localai','Local AI','view-localai')" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10.5px;">Local AI →</button>
+      </div>`;
     return;
   }
 
   statusEl.style.borderColor = '#22c55e55';
-  statusEl.innerHTML = `<div style="color:#22c55e;font-weight:600;">Local runtime ready.</div><div style="margin-top:4px;">Ollama is running and the assigned model is installed.</div>`;
+  statusEl.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0;"></span><span style="color:#22c55e;font-weight:600;font-size:12px;">Local runtime ready</span><span style="color:var(--text-dim);font-size:11px;">Ollama running · model installed</span></div>`;
 }
 
 function agentsSave(name) {
@@ -998,6 +1181,8 @@ function agentsSave(name) {
     role:          document.getElementById('agent-role')?.value     || '',
     system_prompt: document.getElementById('agent-prompt')?.value   || '',
     enabled:       document.getElementById('agent-enabled')?.checked !== false,
+    eta_seconds:   Number(document.getElementById('agent-eta-seconds')?.value || 60),
+    keep_alive:    Number(document.getElementById('agent-keepalive-config')?.value || 300),
   };
   const keyValue = (document.getElementById('agent-key-value')?.value || '').trim();
   const keyVar   = (document.getElementById('agent-key-var')?.value  || '').trim();
@@ -1804,6 +1989,16 @@ function agentsLocalAIRefresh() {
   fetch('/api/localai/status')
     .then(r => r.json())
     .then(data => {
+      const _light = (id, ok) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.background = ok ? '#22c55e' : '#ef4444';
+        el.style.boxShadow = `0 0 0 2px ${ok ? '#22c55e22' : '#ef444422'}, 0 0 6px ${ok ? '#22c55e' : '#ef4444'}`;
+        el.title = ok ? 'online' : 'offline · red light';
+      };
+      _light('agents-ollama-light',   !!data.ollama?.running);
+      _light('agents-lmstudio-light', !!data.lmstudio?.running);
+      _light('agents-picoclaw-light', !!data.picoclaw?.running);
       if (ollamaBadge) {
         const ok  = data.ollama?.running;
         const cnt = (data.ollama?.models || []).length;
@@ -1835,5 +2030,103 @@ function agentsLocalAIRefresh() {
     .catch(() => {
       if (ollamaBadge) { ollamaBadge.textContent = 'error'; ollamaBadge.style.color = 'var(--danger,#ff6b6b)'; }
     });
+
+  // Runtime gateway health badge + warnings (Fridays runtime snapshot).
+  if (typeof localaiRuntimeHealthRefresh === 'function') {
+    localaiRuntimeHealthRefresh('agents-ollama-runtime', 'agents-ollama-warnings');
+  }
+
+  // STEP-AGENTS-TILE-UX-OPERATIONS-20260430 — refresh disabled-agents panel
+  agentsRefreshDisabledPanel();
 }
 
+// ── STEP-AGENTS-TILE-UX-OPERATIONS-20260430 ─────────────────────────────
+// Per-runner controls + disabled-agents quick re-enable panel.
+
+function agentsCopyCmd(_id, cmd) {
+  if (!cmd) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(cmd).then(() => {
+      if (typeof showToast === 'function') showToast('Command copied to clipboard', 'success');
+    }).catch(() => {
+      if (typeof showToast === 'function') showToast('Clipboard blocked — see browser permissions', 'error');
+    });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = cmd; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); if (typeof showToast === 'function') showToast('Command copied', 'success'); } catch (_) {}
+    document.body.removeChild(ta);
+  }
+}
+
+function agentsOpenLogs(runner) {
+  // Prefer opening the Logs tile if present, otherwise fall back to a
+  // toast that points the user at the journal command.
+  try {
+    if (typeof openWindow === 'function') {
+      openWindow('logs-' + runner, 'Logs · ' + runner, 'view-logs');
+      return;
+    }
+  } catch (_) {}
+  const cmd = (runner === 'ollama') ? 'journalctl -u ollama -f -n 200'
+             : (runner === 'lmstudio') ? 'tail -f ~/.cache/lm-studio/server.log'
+             : 'journalctl -u picoclaw -f -n 200';
+  agentsCopyCmd(runner + '-logs', cmd);
+}
+
+function agentsOllamaPullPrompt() {
+  const tag = (typeof prompt === 'function') ? prompt('Model tag to pull (e.g. gemma3:4b)', 'gemma3:4b') : '';
+  if (!tag) return;
+  const safe = String(tag).replace(/[^a-zA-Z0-9._:\/-]/g, '');
+  if (!safe) return;
+  agentsCopyCmd('ollama-pull', `ollama pull ${safe}`);
+}
+
+function agentsRefreshDisabledPanel() {
+  const list = document.getElementById('agents-disabled-list');
+  const count = document.getElementById('agents-disabled-count');
+  if (!list) return;
+  fetch('/api/agents').then(r => r.json()).then(d => {
+    const arr = (d && Array.isArray(d.agents)) ? d.agents : (Array.isArray(d) ? d : []);
+    const disabled = arr.filter(a => a && a.enabled === 0);
+    if (count) count.textContent = String(disabled.length);
+    if (!disabled.length) {
+      list.innerHTML = '<div style="opacity:0.6;">No disabled agents.</div>';
+      return;
+    }
+    list.innerHTML = disabled.map(a => {
+      const safe = _esc(a.name || '');
+      const label = _esc(a.label || a.name || '');
+      const role = _esc(a.role || '');
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+          <span style="width:6px;height:6px;border-radius:99px;background:#ef4444;box-shadow:0 0 4px #ef4444;"></span>
+          <span style="font-weight:600;color:var(--text);">${label}</span>
+          <span style="font-size:10px;opacity:0.6;">${role}</span>
+          <button onclick="agentsReEnable('${safe}')" style="margin-left:auto;background:var(--accent);border:none;color:#000;border-radius:4px;padding:2px 9px;font-size:10px;font-weight:700;cursor:pointer;">↻ Re-enable</button>
+        </div>`;
+    }).join('');
+  }).catch(() => {
+    list.innerHTML = '<div style="color:#ef4444;">Could not load agents.</div>';
+  });
+}
+
+function agentsReEnable(name) {
+  if (!name) return;
+  fetch(`/api/agents/${encodeURIComponent(name)}/toggle`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: true }),
+  }).then(r => r.json()).then(() => {
+    if (typeof showToast === 'function') showToast(`${name} re-enabled`, 'success');
+    agentsRefreshDisabledPanel();
+    if (typeof agentsRefresh === 'function') agentsRefresh();
+  }).catch(() => {
+    if (typeof showToast === 'function') showToast('Re-enable failed', 'error');
+  });
+}
+
+window.agentsCopyCmd = agentsCopyCmd;
+window.agentsOpenLogs = agentsOpenLogs;
+window.agentsOllamaPullPrompt = agentsOllamaPullPrompt;
+window.agentsRefreshDisabledPanel = agentsRefreshDisabledPanel;
+window.agentsReEnable = agentsReEnable;

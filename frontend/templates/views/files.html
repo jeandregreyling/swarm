@@ -6,6 +6,12 @@
         <span style="font-size:13px;font-weight:700;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-2px"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg> Workspace Files</span>
         <input id="files-path-input" type="text" placeholder="Enter path or search..." style="flex:1;padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
         <button onclick="filesNavigateHome()" title="Go to workspace root" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M3 8.5V13h4v-3h2v3h4V8.5M1.5 9L8 3l6.5 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <!-- P4-S33: view-mode toggle (list / grid / compact) -->
+        <div id="files-view-toggle" role="group" aria-label="View mode" style="display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+          <button data-files-view="list" onclick="filesSetView('list')" title="List view" style="background:var(--card);border:none;color:var(--text-dim);padding:5px 8px;cursor:pointer;font-size:11px;border-right:1px solid var(--border);"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+          <button data-files-view="grid" onclick="filesSetView('grid')" title="Grid / icons" style="background:var(--card);border:none;color:var(--text-dim);padding:5px 8px;cursor:pointer;font-size:11px;border-right:1px solid var(--border);"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><rect x="2" y="2" width="5" height="5" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" stroke="currentColor" stroke-width="1.3"/></svg></button>
+          <button data-files-view="compact" onclick="filesSetView('compact')" title="Compact rows" style="background:var(--card);border:none;color:var(--text-dim);padding:5px 8px;cursor:pointer;font-size:11px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M2 3h12M2 6h12M2 9h12M2 12h12" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></button>
+        </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
         <input id="files-find-input" type="text" placeholder="Find text" style="flex:1;min-width:130px;padding:4px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
@@ -14,7 +20,12 @@
         <button onclick="filesReplacePreview()" title="Preview replacements" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;">Preview</button>
         <button onclick="filesReplaceApply()" title="Apply replacements" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:10px;font-weight:700;">Apply</button>
       </div>
-      <div id="files-breadcrumb" style="font-size:10px;color:var(--text-dim);font-family:monospace;overflow-x:auto;white-space:nowrap;padding:4px 0;"></div>
+      <!-- P4-S35: collapsible breadcrumb (duplicate of #files-path-input) -->
+      <div id="files-breadcrumb-row" style="display:flex;align-items:center;gap:6px;">
+        <button id="files-breadcrumb-toggle" type="button" onclick="filesToggleBreadcrumb()" title="Show/hide path"
+          style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:1px 6px;font-size:10px;cursor:pointer;line-height:1.4;">path</button>
+        <div id="files-breadcrumb" style="font-size:10px;color:var(--text-dim);font-family:monospace;overflow-x:auto;white-space:nowrap;padding:4px 0;flex:1;display:none;"></div>
+      </div>
     </div>
     <div style="flex:1;display:flex;min-height:0;gap:1px;">
       <div id="files-list" style="flex:1;overflow-y:auto;border-right:1px solid var(--border);min-width:0;"></div>

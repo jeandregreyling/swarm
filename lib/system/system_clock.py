@@ -55,7 +55,7 @@ class SystemClock:
         else:
             try:
                 self.tz = pytz.timezone(timezone)
-            except:
+            except Exception:
                 self.tz = pytz.UTC
     
     def now(self):

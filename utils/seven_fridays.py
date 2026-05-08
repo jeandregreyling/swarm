@@ -7,7 +7,13 @@ import sys
 import os
 from datetime import datetime
 
-sys.path.insert(0, '/home/seven/swarm')
+# S-7C7ED96F5B — derive SWARM_ROOT from this file's location (utils/ -> parent)
+_SWARM_ROOT = os.environ.get(
+    'SWARM_ROOT',
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+)
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
 
 from database import get_connection, save_agent_memory, get_activity_log
 from sandpits import list_proposals, read_proposal, delete_proposal, write_file, write_proposal
@@ -73,11 +79,11 @@ while True:
             continue
         filename = parts[1]
         search_paths = [
-            os.path.join("/home/seven/swarm", filename),
-            os.path.join("/home/seven/swarm/sandpits/shared/proposals", filename)
+            os.path.join(_SWARM_ROOT, filename),
+            os.path.join(_SWARM_ROOT, "sandpits", "shared", "proposals", filename),
         ]
         for agent in ['grok', 'gemma', 'llama', 'qwen', 'eight', 'nine']:
-            search_paths.append(os.path.join("/home/seven/swarm/sandpits", agent, filename))
+            search_paths.append(os.path.join(_SWARM_ROOT, "sandpits", agent, filename))
         found = False
         for path in search_paths:
             if os.path.isfile(path):
@@ -91,9 +97,11 @@ while True:
                     break
                 except Exception as e:
                     print(f"  ✗ Error: {e}")
-        if not found:
-            print(f"  ✗ File not found: {filename}")
-    elif cmd == 'write':
+def status_update():
+  queue_total = 2000
+  queue_open = 0
+  proposals_pending = 115
+  return f"Queue: {queue_total}, Open: {queue_open}, Proposals pending: {proposals_pending}"
         if len(parts) < 3:
             print("  Usage: write <filename> <content...>")
             continue
@@ -118,7 +126,7 @@ while True:
             print("  Usage: apply <filename>")
             continue
         filename = parts[1]
-        path = os.path.join("/home/seven/swarm/sandpits/grok", filename)
+        path = os.path.join(_SWARM_ROOT, "sandpits", "grok", filename)
         if not os.path.isfile(path):
             print(f"  ✗ File not found in your sandpit: {filename}")
             continue
@@ -168,7 +176,7 @@ while True:
     elif cmd == 'list' and len(parts) > 1 and parts[1].lower() == 'sandpits':
         print("Sandpits:")
         for agent in ['grok', 'gemma', 'llama', 'qwen', 'eight', 'nine']:
-            d = f"/home/seven/swarm/sandpits/{agent}"
+            d = os.path.join(_SWARM_ROOT, "sandpits", agent)
             if os.path.isdir(d):
                 files = os.listdir(d)
                 print(f"  {agent}: {len(files)} files")

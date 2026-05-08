@@ -35,5 +35,55 @@
           </div>
         </div>
         <div style="color: var(--text-dim); font-size: 10px;padding:10px;">Loading additional system information...</div>
+        <!-- Y.59 — Hive nodes thermal & performance panel -->
+        <div id="monitor-hive-panel" style="padding:10px;border-top:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <h3 style="margin:0;color:var(--text);font-size:12px;font-weight:600;">Hive · Thermal &amp; Performance</h3>
+            <span id="monitor-hive-meta" style="font-size:9px;color:var(--text-dim);"></span>
+            <div style="flex:1;"></div>
+            <button onclick="monitorHiveRefresh()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 7px;cursor:pointer;font-size:9px;">↻</button>
+          </div>
+          <div id="monitor-hive-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;">
+            <div style="color:var(--text-dim);font-size:10px;">No nodes enrolled yet.</div>
+          </div>
+          <!-- Add Device — visible, copy-paste install commands -->
+          <div id="monitor-hive-add" style="margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <strong style="font-size:11px;color:var(--text);">Add a device</strong>
+              <span style="font-size:9px;color:var(--text-dim);">Run on the device, not here.</span>
+              <div style="flex:1;"></div>
+              <button onclick="monitorHiveAddTab('clickthrough')" id="monitor-hive-tab-clickthrough" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 7px;cursor:pointer;font-size:9px;">Click-through</button>
+              <button onclick="monitorHiveAddTab('linux')"   id="monitor-hive-tab-linux"   style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 7px;cursor:pointer;font-size:9px;">Linux</button>
+              <button onclick="monitorHiveAddTab('macos')"   id="monitor-hive-tab-macos"   style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 7px;cursor:pointer;font-size:9px;">macOS</button>
+              <button onclick="monitorHiveAddTab('windows')" id="monitor-hive-tab-windows" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 7px;cursor:pointer;font-size:9px;">Windows</button>
+            </div>
+            <!-- Click-through (default) pane -->
+            <div id="monitor-hive-clickthrough" style="display:block;">
+              <div style="font-size:10px;color:var(--text);margin-bottom:6px;">
+                <strong>Recommended:</strong> download the wizard and double-click it on the new device. No terminal required.
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <a id="monitor-hive-installer-link" href="/api/hive/install/hive_installer_gui.py" download="hive_installer_gui.py" style="background:var(--accent, #2a7);border:1px solid var(--border);color:white;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:10px;text-decoration:none;display:inline-block;">⬇ Download installer (.py)</a>
+                <span style="font-size:9px;color:var(--text-dim);">Requires Python 3.10+ on the device. Tkinter ships with Python by default.</span>
+              </div>
+              <div style="margin-top:8px;font-size:9px;color:var(--text-dim);line-height:1.5;">
+                <div><strong>How:</strong> save the file → double-click → click Next → paste leader URL → click Install. Done in 30 seconds.</div>
+                <div>If the device blocks .py double-clicks, run from its file manager: right-click → Open with → Python.</div>
+              </div>
+            </div>
+            <!-- One-liner panes (hidden by default) -->
+            <div id="monitor-hive-oneliner" style="display:none;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <code id="monitor-hive-cmd" style="flex:1;display:block;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;overflow-x:auto;white-space:nowrap;">Loading…</code>
+                <button onclick="monitorHiveCopyCmd()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;cursor:pointer;font-size:10px;">Copy</button>
+              </div>
+              <div id="monitor-hive-cmd-status" style="margin-top:4px;font-size:9px;color:var(--text-dim);"></div>
+            </div>
+            <div style="margin-top:8px;font-size:9px;color:var(--text-dim);">
+              Manifest: <a id="monitor-hive-manifest-link" href="/api/hive/install/" target="_blank" style="color:var(--text-dim);">/api/hive/install/</a> ·
+              See <a href="/api/hive/install/README.md" target="_blank" style="color:var(--text-dim);">install README</a>
+            </div>
+          </div>
+        </div>
     </div>
   </div>

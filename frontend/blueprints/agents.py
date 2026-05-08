@@ -151,10 +151,10 @@ def api_agents_config_get():
     try:
         conn = get_connection()
         rows = conn.execute(
-             """SELECT number, name, label, model, role, roles, temperature,
-                    system_prompt, api_key_var, tier, enabled
+            """SELECT number, name, label, model, role, roles, temperature,
+                    system_prompt, api_key_var, tier, enabled, eta_seconds, keep_alive
                 FROM agents WHERE number >= 0 ORDER BY number ASC"""
-            ).fetchall()
+        ).fetchall()
         conn.close()
         result = []
         import json
@@ -205,7 +205,7 @@ def api_agents_config_put(name):
         return jsonify({'error': f'Agent {name} not found'}), 404
 
     import json
-    allowed = ['label', 'model', 'role', 'roles', 'temperature', 'system_prompt', 'tier', 'enabled', 'api_key_var', 'number']
+    allowed = ['label', 'model', 'role', 'roles', 'temperature', 'system_prompt', 'tier', 'enabled', 'api_key_var', 'number', 'eta_seconds', 'keep_alive']
     updates = {k: v for k, v in data.items() if k in allowed}
     if 'number' in updates:
         try:
@@ -227,6 +227,13 @@ def api_agents_config_put(name):
             current = conn.execute("SELECT number FROM agents WHERE name=?", (name,)).fetchone()
             current_number = int(current['number'] or 0) if current else 0
             conn.execute("UPDATE agents SET number=? WHERE name=?", (current_number, conflict['name']))
+    for int_field, max_value in (('eta_seconds', 2000), ('keep_alive', 86400)):
+        if int_field in updates:
+            try:
+                updates[int_field] = max(0, min(int(updates[int_field]), max_value))
+            except Exception:
+                conn.close()
+                return jsonify({'error': f'{int_field} must be an integer'}), 400
     # If roles is present and is a list, store as JSON
     if 'roles' in updates and isinstance(updates['roles'], list):
         updates['roles'] = json.dumps(updates['roles'])
@@ -258,6 +265,11 @@ def api_agents_config_put(name):
                 conn.commit()
         except Exception as e:
             print(f"[WARN] Could not archive memory for {name}: {e}")
+    try:
+        from utils.db.registry import invalidate_cache as _inv
+        _inv()
+    except Exception:
+        pass
     conn.commit()
     conn.close()
     return jsonify({'ok': True})
@@ -268,6 +280,11 @@ def api_agents_config_put(name):
 def api_agents_config_post():
     """Add a new agent."""
     data  = request.get_json() or {}
+    # Y.57: type-check before .strip() (Y.50 class).
+    for col in ('name', 'label', 'model', 'role', 'system_prompt', 'api_key_var', 'tier'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'error': f'{col} must be a string'}), 400
     name  = (data.get('name') or '').strip().lower()
     label = (data.get('label') or '').strip()
     model = (data.get('model') or '').strip()
@@ -300,6 +317,11 @@ def api_agents_key_put(name):
     """Write an API key to .env.agents for the named agent."""
     import re as _re
     data    = request.get_json() or {}
+    # Y.57: type-check before .strip() (Y.50 class).
+    for col in ('key_var', 'value'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'error': f'{col} must be a string'}), 400
     key_var = (data.get('key_var') or '').strip()
     value   = (data.get('value')   or '').strip()
 
@@ -582,6 +604,11 @@ def api_agent_memory(agent):
 def api_agent_memory_write(agent):
     """Write to an agent's memory pool. Body: {content, tags?, importance?} for memory_twelve style"""
     data = request.get_json() or {}
+    # Y.57: type-check before .strip() (Y.50 class).
+    for col in ('content', 'tags', 'type', 'subject'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'error': f'{col} must be a string'}), 400
     content = (data.get('content') or '').strip()
     tags = (data.get('tags') or '').strip()
     importance = int(data.get('importance', 5))
@@ -694,7 +721,7 @@ def api_agents_memories_query():
             
             if rows:
                 results[agent_key] = [dict(r) for r in rows]
-        except:
+        except sqlite3.OperationalError:
             pass  # Table might not exist, skip
     
     conn.close()
@@ -714,6 +741,11 @@ def api_agents_bootstrap():
     from datetime import datetime, timezone
 
     data = request.get_json() or {}
+    # Y.57: type-check before .strip() (Y.50 class).
+    for col in ('name',):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'error': f'{col} must be a string'}), 400
     name = (data.get('name') or '').strip().lower()
     if not name:
         return jsonify({'error': 'name required'}), 400
@@ -1644,6 +1676,11 @@ def api_agents_hot_swap():
     Proposals are re-assigned but remain tied to their original ticket/request.
     """
     data = request.get_json() or {}
+    # Y.57: type-check before .strip() (Y.50 class).
+    for col in ('from_agent', 'to_agent'):
+        v = data.get(col)
+        if v is not None and not isinstance(v, str):
+            return jsonify({'error': f'{col} must be a string'}), 400
     from_name = (data.get('from_agent') or '').strip().lower()
     to_name   = (data.get('to_agent') or '').strip().lower()
     if not from_name or not to_name:
@@ -1931,4 +1968,3 @@ def api_agent_self(name):
         'recent_diary': diary,
         'system_prompt': system_prompt[:1000] if system_prompt else '',
     })
-

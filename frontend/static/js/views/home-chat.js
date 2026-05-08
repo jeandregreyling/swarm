@@ -26,6 +26,15 @@
 
   // ── Initialization ───────────────────────────────────────────────────────
   window.initHomeChat = function () {
+    // B17-adjacent: every refresh must start on a fresh thread. Wipe the
+    // active-thread marker and local state BEFORE anything else so the UI
+    // never flashes the stale conversation while the fetch is in flight.
+    try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
+    _hcConvId = null;
+    window.__fridaysChatConversationId = null;
+    _hcClearMessages();
+    _hcShowWelcome(true);
+
     _hcSetEnvBadge();
     _hcBindEvents();
     _hcRenderAgentPills();
@@ -35,6 +44,21 @@
     _hcInitMiniLandscape();
     _hcRestorePanelState();
     _hcBindCrossSurfaceRefresh();
+    _hcPruneStaleAgentToggles();
+
+    // Handle browser bfcache restore (back/forward) — re-reset to a new thread.
+    window.addEventListener('pageshow', (ev) => {
+      if (ev.persisted) {
+        try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
+        _hcConvId = null;
+        window.__fridaysChatConversationId = null;
+        _hcClearMessages();
+        _hcShowWelcome(true);
+        const sel = document.getElementById('home-chat-thread-select');
+        if (sel) sel.value = '';
+        _hcLoadThreads();
+      }
+    });
   };
 
   // ── Session 28 fix: cross-surface refresh ────────────────────────────────
@@ -103,7 +127,8 @@
           _hcSend();
         }
       });
-      input.addEventListener('input', () => _hcAutoGrow(input));
+      input.addEventListener('input', () => { _hcAutoGrow(input); _hcUpdateTokenCount(input); });
+      _hcUpdateTokenCount(input);
     }
 
     // Quick-launch: typing anywhere on home page focuses chat input
@@ -129,6 +154,21 @@
   }
 
   // ── Load threads ─────────────────────────────────────────────────────────
+  // Y.58 fix: split into two paths. The init/refresh path wipes the active
+  // thread and clears messages so we land on a fresh canvas. The list-only
+  // path simply refreshes the dropdown without touching messages — used
+  // after sending the first message in a new thread, where wiping bubbles
+  // is exactly the bug the user has been seeing ("Hi disappears").
+  function _hcLoadThreadsListOnly() {
+    return fetch('/api/conversations')
+      .then(r => r.json())
+      .then(data => {
+        _hcConversations = Array.isArray(data) ? data : [];
+        _hcRenderThreadSelect();
+      })
+      .catch(() => {});
+  }
+
   function _hcLoadThreads() {
     fetch('/api/conversations')
       .then(r => r.json())
@@ -136,15 +176,15 @@
         _hcConversations = Array.isArray(data) ? data : [];
         _hcRenderThreadSelect();
 
-        // Restore last active thread
-        const saved = localStorage.getItem(HC_ACTIVE_THREAD_KEY);
-        const preferred = saved ? Number(saved) : null;
-        const match = preferred && _hcConversations.find(c => c.id === preferred);
-        if (match) {
-          _hcSwitchThread(match.id);
-        } else if (_hcConversations.length > 0) {
-          _hcSwitchThread(_hcConversations[0].id);
-        }
+        // Init/refresh path only: do NOT call this from inside _hcSend after
+        // a successful turn — that wipes the just-rendered user/agent bubbles.
+        try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
+        window.__fridaysChatConversationId = null;
+        _hcConvId = null;
+        _hcClearMessages();
+        _hcShowWelcome(true);
+        _hcRenderAgentPills();
+        _hcUpdateMeta();
       })
       .catch(() => {});
   }
@@ -153,11 +193,23 @@
     const sel = document.getElementById('home-chat-thread-select');
     if (!sel) return;
     const current = _hcConvId;
+    const fmtTs = (s) => {
+      if (!s) return '';
+      try {
+        if (/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}/.test(s) && !/[Z+]/.test(s.slice(-6))) s = s.replace(' ','T')+'Z';
+        const d = new Date(s);
+        if (isNaN(d)) return s.slice(0, 10);
+        return d.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit' }) + ' ' +
+               d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+      } catch (e) { return ''; }
+    };
     sel.innerHTML = '<option value="">New conversation</option>' +
       _hcConversations.slice(0, 30).map(c => {
-        const title = _hcEsc(c.title || '(untitled)').slice(0, 50);
-        const sel = c.id === current ? ' selected' : '';
-        return `<option value="${c.id}"${sel}>#${c.id} · ${title}</option>`;
+        const title = _hcEsc(String(c.title || '(untitled)')).slice(0, 44);
+        const ts = fmtTs(c.timestamp || c.created_at || c.updated_at || '');
+        const isSel = c.id === current ? ' selected' : '';
+        const tsBit = ts ? ' · ' + ts : '';
+        return `<option value="${c.id}"${isSel}>#${c.id} · ${title}${tsBit}</option>`;
       }).join('');
   }
 
@@ -184,11 +236,18 @@
           ? Number(rendered[rendered.length - 1].dataset.messageId || 0)
           : 0;
         const lastFetchedId = Number(msgs[msgs.length - 1].id || 0);
-        if (lastFetchedId > lastRenderedId) {
-          _hcClearMessages();
-          msgs.forEach(m => _hcAppendBubble(m));
-          _hcScrollBottom();
-        }
+        if (lastFetchedId <= lastRenderedId) return;
+
+        // Don't clobber locally-rendered bubbles that haven't been persisted
+        // yet (e.g. an agent reply just appended client-side while the DB row
+        // is still being written). If our local count is greater than what the
+        // DB returns, the in-flight append would vanish on a clobber-rebuild.
+        const totalRendered = container.querySelectorAll('.hc-bubble').length;
+        if (totalRendered > msgs.length) return;
+
+        _hcClearMessages();
+        msgs.forEach(m => _hcAppendBubble(m));
+        _hcScrollBottom();
       })
       .catch(() => {});
   }
@@ -284,6 +343,7 @@
     const div = document.createElement('div');
     div.className = `hc-bubble ${type}`;
     if (hasIds) div.dataset.messageId = msgId;
+    if (msg._placeholderId) div.dataset.ph = msg._placeholderId;
     div.innerHTML =
       `<div class="hc-bubble-header">` +
         `<span class="hc-bubble-sender">${_hcEsc(agentLabel)}</span>` +
@@ -413,11 +473,53 @@
     }
   }
 
+  // ── Follow-up #2: prune stale per-thread agent toggles ──────────────────
+  // HC_AGENT_TOGGLE_PREFIX keys grow unbounded. Every 24 h we look up the
+  // current conversation list and delete any toggle whose conv id is no
+  // longer present. Runs at most once a day (stamped in localStorage).
+  function _hcPruneStaleAgentToggles() {
+    try {
+      const STAMP_KEY = 'fridays-chat-toggle-prune-stamp';
+      const last = Number(localStorage.getItem(STAMP_KEY) || 0);
+      if (Date.now() - last < 86400 * 1000) return;
+      fetch('/api/conversations').then(r => r.json()).then(list => {
+        const known = new Set((Array.isArray(list) ? list : []).map(c => String(c.id)));
+        const toDelete = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k || !k.startsWith(HC_AGENT_TOGGLE_PREFIX)) continue;
+          const convId = k.slice(HC_AGENT_TOGGLE_PREFIX.length);
+          if (!known.has(convId)) toDelete.push(k);
+        }
+        toDelete.forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+        try { localStorage.setItem(STAMP_KEY, String(Date.now())); } catch (_) {}
+      }).catch(() => {});
+    } catch (_) { /* non-fatal */ }
+  }
+
   // ── Agent pills ──────────────────────────────────────────────────────────
+  // P4-M29: persist user's drag-drop ordering of pills
+  const HC_PILL_ORDER_KEY = 'fridays-chat-pill-order';
+  function _hcGetPillOrder() {
+    try { return JSON.parse(localStorage.getItem(HC_PILL_ORDER_KEY) || '[]'); }
+    catch (_) { return []; }
+  }
+  function _hcSavePillOrder(order) {
+    try { localStorage.setItem(HC_PILL_ORDER_KEY, JSON.stringify(order)); } catch (_) {}
+  }
+  function _hcAgentNumberFor(name) {
+    // Pull number from agents-config registry if present
+    try {
+      const reg = (window.__agentsData || []);
+      const a = reg.find(x => x.name === name || x.label === name);
+      if (a && Number.isFinite(Number(a.number))) return Number(a.number);
+    } catch (_) {}
+    return null;
+  }
   function _hcRenderAgentPills() {
     const host = document.getElementById('home-chat-agents');
     if (!host) return;
-    const agents = _hcAgentOptions();
+    let agents = _hcAgentOptions();
     if (agents.length === 0) {
       // Retry once after agent registry loads
       setTimeout(() => {
@@ -427,12 +529,28 @@
       return;
     }
 
+    // Apply persisted drag-drop order: any agent listed in saved order comes first,
+    // in that order. Anything new (not yet in saved order) appears at the end.
+    const savedOrder = _hcGetPillOrder();
+    if (savedOrder.length) {
+      const idx = new Map(savedOrder.map((v, i) => [v, i]));
+      agents = [...agents].sort((a, b) => {
+        const ai = idx.has(a.value) ? idx.get(a.value) : 999;
+        const bi = idx.has(b.value) ? idx.get(b.value) : 999;
+        return ai - bi;
+      });
+    }
+
     const enabled = _hcGetEnabledAgents();
     host.innerHTML = agents.map(a => {
       const active = enabled.includes(a.value) ? ' active' : '';
       const tierClass = (a.tier === 'paid' || a.tier === 'online') ? 'paid' : 'local';
-      return `<button class="home-chat-agent-pill${active}" data-agent="${_hcEsc(a.value)}" title="${_hcEsc(a.label)}">` +
-        `<span class="agent-dot ${tierClass}"></span>${_hcEsc(a.label)}</button>`;
+      const num = _hcAgentNumberFor(a.value);
+      const numBadge = (num !== null)
+        ? `<span class="agent-num-badge" style="font-size:9px;font-weight:700;background:rgba(0,0,0,0.35);color:#fff;border-radius:8px;padding:1px 5px;margin-right:4px;">${num}</span>`
+        : '';
+      return `<button class="home-chat-agent-pill${active}" draggable="true" data-agent="${_hcEsc(a.value)}" title="${_hcEsc(a.label)}">` +
+        `${numBadge}<span class="agent-dot ${tierClass}"></span>${_hcEsc(a.label)}</button>`;
     }).join('');
 
     host.querySelectorAll('.home-chat-agent-pill').forEach(btn => {
@@ -440,6 +558,34 @@
         btn.classList.toggle('active');
         _hcSaveEnabledAgents();
         _hcUpdateMeta();
+      });
+      // P4-M29: HTML5 drag-and-drop reorder
+      btn.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', btn.dataset.agent);
+        e.dataTransfer.effectAllowed = 'move';
+        btn.style.opacity = '0.5';
+      });
+      btn.addEventListener('dragend', () => { btn.style.opacity = ''; });
+      btn.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        btn.style.outline = '2px dashed var(--accent)';
+      });
+      btn.addEventListener('dragleave', () => { btn.style.outline = ''; });
+      btn.addEventListener('drop', e => {
+        e.preventDefault();
+        btn.style.outline = '';
+        const src = e.dataTransfer.getData('text/plain');
+        const dst = btn.dataset.agent;
+        if (!src || src === dst) return;
+        const all = Array.from(host.querySelectorAll('.home-chat-agent-pill')).map(p => p.dataset.agent);
+        const from = all.indexOf(src);
+        const to = all.indexOf(dst);
+        if (from < 0 || to < 0) return;
+        all.splice(from, 1);
+        all.splice(to, 0, src);
+        _hcSavePillOrder(all);
+        _hcRenderAgentPills();
       });
     });
     _hcUpdateMeta();
@@ -489,6 +635,84 @@
     }
   }
 
+  // Live token counter under the chat input. Estimate = chars/4 (Qwen/Llama).
+  function _hcUpdateTokenCount(input) {
+    const el = document.getElementById('home-chat-token-count');
+    if (!el) return;
+    const text = (input && input.value) || '';
+    const chars = text.length;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const est = Math.ceil(chars / 4);
+    el.textContent = `${chars} c · ${words} w · ~${est} t`;
+  }
+
+  // ── Seven Ask helper — leading "?" in chat short-circuits to /api/seven.
+  function _hcAskSeven(query) {
+    const trimmed = (query || '').trim();
+    let intent = 'status';
+    if (/\b(next|todo|what.*should|do.*now|start)\b/i.test(trimmed)) intent = 'next';
+    else if (/\b(remember|recall|remind|told)\b/i.test(trimmed))     intent = 'remember';
+    else if (/\b(status|state|how.*going|vital|pulse)\b/i.test(trimmed)) intent = 'status';
+    // Detect a record id token to set focus.
+    let focus = null;
+    const tokens = trimmed.split(/\s+/);
+    for (const tok of tokens) {
+      if (/^(B|S|P|PR|T|TC|TR|D|TH)-[0-9A-F]{4,}$/i.test(tok)) {
+        focus = tok.toUpperCase();
+        break;
+      }
+    }
+    const explainQs = focus ? '?focus=' + encodeURIComponent(focus) : '';
+    const decideQs = focus
+      ? '?intent=' + encodeURIComponent(intent) + '&focus=' + encodeURIComponent(focus)
+      : '?intent=' + encodeURIComponent(intent);
+    // Thinking placeholder.
+    const placeholderId = 'seven-think-' + Date.now();
+    _hcAppendBubble({
+      sender: 'seven', message_type: 'agent', agent: 'seven',
+      content: '_thinking…_', created_at: new Date().toISOString(),
+      _placeholderId: placeholderId
+    });
+    _hcScrollBottom();
+
+    Promise.all([
+      fetch('/api/seven/explain' + explainQs).then(r => r.json()).catch(() => ({})),
+      fetch('/api/seven/decide' + decideQs).then(r => r.json()).catch(() => ({})),
+    ]).then(([explainData, decideData]) => {
+      const lines = (explainData && explainData.lines) || [];
+      const proposals = (decideData && decideData.proposals) || [];
+      const partsBody = [];
+      if (lines.length) partsBody.push(lines.join('\n\n'));
+      if (proposals.length) {
+        partsBody.push('\n**Suggestions** _(propose-only)_');
+        proposals.slice(0, 3).forEach((p) => {
+          const t = p.target || null;
+          const tgt = t ? ` · \`${t.kind}:${t.id}\`` : '';
+          const conf = (typeof p.confidence === 'number')
+            ? ` · ${(p.confidence * 100) | 0}%` : '';
+          partsBody.push(`- **[${(p.action || 'review').toUpperCase()}]** ${p.label || ''}${tgt}${conf}\n  _${p.rationale || ''}_`);
+        });
+      }
+      if (decideData && decideData.refused) {
+        partsBody.push('\n_' + (decideData.refused_reason || 'propose-only') + '_');
+      }
+      const bodyText = partsBody.join('\n') ||
+        '_Seven has nothing to add yet — try `?status`, `?next`, or include a record id like `?S-7D7677C6E2`._';
+      // Replace placeholder with real bubble.
+      const msgs = document.getElementById('home-chat-messages');
+      if (msgs) {
+        const ph = msgs.querySelector('[data-ph="' + placeholderId + '"]');
+        if (ph) ph.remove();
+      }
+      _hcAppendBubble({
+        sender: 'seven', message_type: 'agent', agent: 'seven',
+        content: bodyText, created_at: new Date().toISOString(),
+        meta: { intent: intent, focus: focus, authority: 'propose-only' }
+      });
+      _hcScrollBottom();
+    });
+  }
+
   // ── Send message ─────────────────────────────────────────────────────────
   function _hcSend() {
     if (_hcSending) return;
@@ -497,6 +721,22 @@
     if (!input) return;
     const text = input.value.trim();
     if (!text) return;
+
+    // Seven Ask short-circuit — leading "?" routes to /api/seven/explain +
+    // /decide, renders a Seven assistant bubble inline, no agent fan-out.
+    if (text.charAt(0) === '?') {
+      // User bubble first.
+      _hcAppendBubble({
+        sender: 'user', message_type: 'user',
+        content: text, created_at: new Date().toISOString()
+      });
+      _hcScrollBottom();
+      input.value = '';
+      input.style.height = 'auto';
+      _hcUpdateTokenCount(input);
+      _hcAskSeven(text.replace(/^\?+\s*/, ''));
+      return;
+    }
 
     const isManual = localStorage.getItem(HC_MANUAL_KEY) === '1';
     const enabled = [];
@@ -537,6 +777,7 @@
 
     input.value = '';
     input.style.height = 'auto';
+    _hcUpdateTokenCount(input);
     _hcSending = true;
     if (sendBtn) sendBtn.classList.add('sending');
     sendBtn && (sendBtn.disabled = true);
@@ -571,8 +812,9 @@
           localStorage.setItem(HC_ACTIVE_THREAD_KEY, String(_hcConvId));
           window.__fridaysChatConversationId = _hcConvId;
           _hcSaveEnabledAgents();
-          // Refresh thread list to show the new thread
-          _hcLoadThreads();
+          // Refresh thread dropdown only — must NOT reset _hcConvId or wipe
+          // messages here (Y.58 fix for the "Hi disappears" race).
+          _hcLoadThreadsListOnly();
           // Session 28: notify other chat surfaces.
           try {
             window.dispatchEvent(new CustomEvent('swarm:conversation-changed', {
@@ -606,7 +848,7 @@
             _hcAppendBubble({
               sender: resp.agent || 'agent',
               message_type: 'agent',
-              content: resp.response || resp.text || '(no response)',
+              content: resp.response || resp.text || '(empty response)',
               created_at: new Date().toISOString()
             });
           });
@@ -615,6 +857,16 @@
             sender: data.agent || 'agent',
             message_type: 'agent',
             content: data.response,
+            created_at: new Date().toISOString()
+          });
+        } else if (!pendingAcks.length && !pendingJobIds.length) {
+          // Y.58 safety net: backend returned no responses, no pending jobs,
+          // and no top-level response. Surface SOMETHING instead of leaving the
+          // user staring at a blank chat (\"Hi disappears\" symptom).
+          _hcAppendBubble({
+            sender: 'system',
+            message_type: 'system',
+            content: data.error || data.response_error || 'No response from agent. Try again or pick a different agent.',
             created_at: new Date().toISOString()
           });
         }
@@ -1266,5 +1518,81 @@
     const welcome = document.querySelector('.home-chat-welcome');
     if (welcome) observer.observe(welcome, { attributes: true, attributeFilter: ['style'] });
   }
+
+  // ── MD-FEATURE-060FE8D72E64 — Favourites star next to chat input ────────
+  // Stores user-curated quick prompts in localStorage. Click the star to save
+  // the current input; if the input is empty, the star opens a picker so the
+  // user can paste a saved prompt back into the textarea.
+  const HC_FAVOURITES_KEY = 'fridays-chat-favourites';
+  function _hcLoadFavs() {
+    try { return JSON.parse(localStorage.getItem(HC_FAVOURITES_KEY) || '[]'); }
+    catch (_e) { return []; }
+  }
+  function _hcSaveFavs(list) {
+    localStorage.setItem(HC_FAVOURITES_KEY, JSON.stringify(list.slice(0, 50)));
+  }
+  function homeChatToggleFavourite() {
+    const input = document.getElementById('home-chat-input');
+    const text = (input && input.value || '').trim();
+    if (text) {
+      const favs = _hcLoadFavs();
+      if (!favs.includes(text)) {
+        favs.unshift(text);
+        _hcSaveFavs(favs);
+        if (typeof window.showToast === 'function') window.showToast('Saved to favourites', 'success');
+      } else {
+        if (typeof window.showToast === 'function') window.showToast('Already in favourites', 'info');
+      }
+      return;
+    }
+    _hcShowFavouritesPicker();
+  }
+  function _hcShowFavouritesPicker() {
+    const favs = _hcLoadFavs();
+    let modal = document.getElementById('home-chat-favs-modal');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'home-chat-favs-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
+    const items = favs.length
+      ? favs.map((f, i) => `
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+            <button data-fav-idx="${i}" class="hc-fav-use" style="flex:1;text-align:left;background:transparent;border:none;color:var(--text);font-size:12px;cursor:pointer;">${(f || '').replace(/[<>]/g, '').slice(0, 140)}</button>
+            <button data-fav-del="${i}" class="hc-fav-del" title="Remove" style="background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--text-dim);font-size:11px;cursor:pointer;padding:2px 6px;">×</button>
+          </div>`).join('')
+      : '<div style="font-size:11px;color:var(--text-dim);padding:6px 0;">No favourites yet. Type something into the chat input and click the star to save it.</div>';
+    modal.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(520px,90vw);max-height:70vh;overflow:auto;box-shadow:0 14px 40px rgba(0,0,0,.4);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);">Chat favourites</div>
+          <button onclick="document.getElementById('home-chat-favs-modal').remove()" aria-label="Close" style="background:transparent;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">×</button>
+        </div>
+        <div>${items}</div>
+      </div>`;
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) { modal.remove(); return; }
+      const useIdx = e.target.closest('[data-fav-idx]')?.getAttribute('data-fav-idx');
+      const delIdx = e.target.closest('[data-fav-del]')?.getAttribute('data-fav-del');
+      if (useIdx !== undefined && useIdx !== null) {
+        const list = _hcLoadFavs();
+        const v = list[Number(useIdx)];
+        if (v) {
+          const input = document.getElementById('home-chat-input');
+          if (input) { input.value = v; input.focus(); }
+        }
+        modal.remove();
+      } else if (delIdx !== undefined && delIdx !== null) {
+        const list = _hcLoadFavs();
+        list.splice(Number(delIdx), 1);
+        _hcSaveFavs(list);
+        modal.remove();
+        _hcShowFavouritesPicker();
+      }
+    });
+    const escH = (e) => { if (e.key === 'Escape') { const m = document.getElementById('home-chat-favs-modal'); if (m) m.remove(); document.removeEventListener('keydown', escH); } };
+    document.addEventListener('keydown', escH);
+    document.body.appendChild(modal);
+  }
+  window.homeChatToggleFavourite = homeChatToggleFavourite;
 
 })();

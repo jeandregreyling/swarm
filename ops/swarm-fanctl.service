@@ -1,0 +1,15 @@
+[Unit]
+Description=Seven's Swarm — Fan Controller helper
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/swarm-fanctl
+Restart=on-failure
+RestartSec=3
+# Runs as root because writing /sys/firmware/acpi/platform_profile and
+# /sys/class/hwmon/*/pwmN requires it. Access to the socket is group-gated
+# at 0660; add your user to the socket's group to allow mode changes.
+
+[Install]
+WantedBy=multi-user.target

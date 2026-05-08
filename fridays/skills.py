@@ -603,11 +603,14 @@ def _skill_tasker_list(args, agent, **_):
 
 def _skill_tasker_run(args, agent, **_):
     """Run a registered Python task immediately."""
-    task_name = args.strip()
+    import shlex
+    parts = shlex.split(args.strip())
+    task_name = parts[0] if parts else ''
     if not task_name:
-        return False, 'Usage: SKILL tasker_run <task_name>\nUse SKILL tasker_list to see available tasks.'
+        return False, 'Usage: SKILL tasker_run <task_name> [args]\nUse SKILL tasker_list to see available tasks.'
+    task_args = ' '.join(shlex.quote(p) for p in parts[1:])
     from fridays.task_runner import run_task
-    success, output = run_task(task_name)
+    success, output = run_task(task_name, args=task_args)
     return success, output
 
 
@@ -933,6 +936,7 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
     try:
         from queue_manager import intake_internal
         queue_id, proposal_id = intake_internal(agent, title, description, priority=5)
+        linked_project_id = ''
 
         # Record the originating conversation so Duck can reply back to the thread
         if source_conv_id:
@@ -950,6 +954,16 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
             except Exception:
                 pass
 
+        try:
+            from utils.studio_intake import link_proposal_to_project
+            linked_project_id = link_proposal_to_project(
+                proposal_id,
+                title=title,
+                description=description,
+            )
+        except Exception:
+            linked_project_id = ''
+
         # Fire Duck review in background — Duck will post approval/rejection back to thread
         import threading as _threading
         def _duck_review():
@@ -962,7 +976,8 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
                 pass
         _threading.Thread(target=_duck_review, daemon=True).start()
 
-        return True, f'ALM proposal created: queue_id={queue_id}, proposal_id={proposal_id}'
+        project_msg = f', project_id={linked_project_id}' if linked_project_id else ''
+        return True, f'ALM proposal created: queue_id={queue_id}, proposal_id={proposal_id}{project_msg}'
     except Exception as e:
         return False, f'alm_create_proposal failed: {e}'
 
@@ -2012,7 +2027,8 @@ def _trust_gate(skill_name, agent_name):
     return True, (
         f'Trust denied: {agent_name} (tier={tier}, max_trust={max_trust}) '
         f'cannot invoke {skill_name} (requires trust_level={required}). '
-        f'Grant override via user_skill_permissions or upgrade agent tier.'
+        f'Ask the operator to grant this permission in Agents access controls '
+        f'or upgrade the agent tier. Do not emit a user_skill_permissions skill.'
     )
 
 

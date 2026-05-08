@@ -1,0 +1,50 @@
+# Caddy reverse-proxy template for remote Swarm access.
+#
+# Deploy:
+#   1. Copy to /etc/caddy/Caddyfile on the host that owns the public DNS name.
+#   2. Replace {{DOMAIN}} with e.g. swarm.example.com.
+#   3. Ensure A/AAAA records point at this host.
+#   4. Optional: replace the reverse_proxy target with a WireGuard / tunnel
+#      hop if the Swarm box is not reachable on the LAN.
+#   5. systemctl reload caddy
+#
+# Caddy provisions a free Let's Encrypt certificate automatically on first
+# request. The /api/auth/2fa/* endpoints on the Swarm enforce TOTP second
+# factor so exposing the port publicly is safe.
+
+{{DOMAIN}} {
+    encode gzip zstd
+
+    # Block admin surfaces from the public edge.
+    @blocked {
+        path /admin/*
+        path /_debug/*
+    }
+    respond @blocked 404
+
+    # Rate limit login + 2FA.
+    @auth {
+        path /api/auth/login
+        path /api/auth/2fa/*
+    }
+    # Caddy rate-limiting requires the rate-limit plugin:
+    #   xcaddy build --with github.com/mholt/caddy-ratelimit
+    # rate_limit @auth 10r/m
+
+    reverse_proxy 127.0.0.1:5050 {
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-For {remote}
+        transport http {
+            read_timeout 5m
+            write_timeout 5m
+        }
+    }
+
+    log {
+        output file /var/log/caddy/swarm-access.log {
+            roll_size 20mb
+            roll_keep 10
+        }
+        format json
+    }
+}

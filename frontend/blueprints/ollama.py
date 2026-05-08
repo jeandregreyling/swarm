@@ -112,6 +112,30 @@ def api_ollama_unload():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@ollama_bp.route('/api/ollama/keepalive', methods=['POST'])
+def api_ollama_keepalive():
+    """Set per-model keep-alive (seconds). Sends a noop generate to refresh Ollama's TTL."""
+    import requests as _requests
+    data = request.get_json(silent=True) or {}
+    model = (data.get('model') or '').strip()
+    try:
+        seconds = int(data.get('seconds', 300))
+    except (TypeError, ValueError):
+        seconds = 300
+    seconds = max(0, min(seconds, 86400))  # clamp 0..24h
+    if not model:
+        return jsonify({'ok': False, 'error': 'model required'}), 400
+    try:
+        _requests.post(
+            'http://localhost:11434/api/generate',
+            json={'model': model, 'prompt': ' ', 'keep_alive': seconds},
+            timeout=30,
+        )
+        return jsonify({'ok': True, 'model': model, 'seconds': seconds})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 
 @ollama_bp.route('/api/ollama/ps')
 def api_ollama_ps():
@@ -132,6 +156,39 @@ def api_ollama_ps():
         return jsonify({'ok': True, 'models': models, 'count': len(models)})
     except Exception as e:
         return jsonify({'ok': True, 'models': [], 'count': 0, 'error': str(e)})
+
+
+@ollama_bp.route('/api/ollama/runtime/health')
+def api_ollama_runtime_health():
+    """Fridays runtime-gateway health snapshot for local models."""
+    from core.model_runtime_gateway import ollama_health
+    return jsonify(ollama_health())
+
+
+@ollama_bp.route('/api/ollama/runtime/json-normalize', methods=['POST'])
+def api_ollama_runtime_json_normalize():
+    """Normalize model JSON-ish text for downstream Studio/Media consumers."""
+    from core.model_runtime_gateway import normalize_model_json
+    data = request.get_json(silent=True) or {}
+    return jsonify(normalize_model_json(str(data.get('text') or '')))
+
+
+@ollama_bp.route('/api/ollama/runtime/force-unload', methods=['POST'])
+def api_ollama_runtime_force_unload():
+    """Best-effort recovery for an Ollama runner stuck in 'Stopping'.
+
+    Tries a polite unload, polls /api/ps, and escalates to systemctl restart
+    only if the runner is still stuck. Returns a structured snapshot so the
+    UI can show what was attempted and the next operator action if needed.
+    """
+    from core.model_runtime_gateway import force_unload
+    data = request.get_json(silent=True) or {}
+    model = (data.get('model') or '').strip()
+    if not model:
+        return jsonify({'ok': False, 'error': 'model required'}), 400
+    snap = force_unload(model)
+    status_code = 200 if snap.get('ok') else 409
+    return jsonify(snap), status_code
 
 
 
@@ -296,6 +353,5 @@ def api_ollama_web_fetch():
         })
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
-
 
 

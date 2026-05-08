@@ -1,5 +1,82 @@
 // Boot sequence — DOMContentLoaded, intervals, SSE
+
+// ── Settings modal: drag by h2, resize by CSS `resize: both` ─────────────
+function _initSettingsDragResize() {
+  // Legacy modal dragging is disabled now that Settings opens through the
+  // shared floating-window manager.
+}
+
 // Extracted from terminal_base.html
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GOVERNANCE PANEL (Studio → 🛡 Governance button)
+// ═══════════════════════════════════════════════════════════════════════════
+async function openGovernancePanel() {
+  let existing = document.getElementById('governance-panel-modal');
+  if (existing) { existing.remove(); }
+  const modal = document.createElement('div');
+  modal.id = 'governance-panel-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;width:min(520px,92vw);box-shadow:0 14px 40px rgba(0,0,0,.4);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:14px;font-weight:700;">🛡 Governance Controls</div>
+        <button onclick="document.getElementById('governance-panel-modal').remove()" style="background:transparent;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">×</button>
+      </div>
+      <div id="gov-panel-body" style="font-size:12px;color:var(--text-dim);">Loading…</div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  await refreshGovernancePanel();
+}
+
+async function refreshGovernancePanel() {
+  const body = document.getElementById('gov-panel-body');
+  if (!body) return;
+  try {
+    const r = await fetch('/api/governance/state');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'failed');
+    const pill = (label, on, color) => `<span style="padding:2px 8px;border-radius:999px;background:color-mix(in srgb, ${color} 18%, transparent);color:${color};border:1px solid ${color};font-size:10px;font-weight:700;">${label}: ${on ? 'ON' : 'OFF'}</span>`;
+    body.innerHTML = `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+        ${pill('ALM', d.alm_status === 'enforced', 'var(--accent)')}
+        ${pill('Vortex active', !!d.vortex_active, 'var(--info)')}
+        ${pill('Sniffles', !!d.sniffles_enabled, 'var(--success,#4caf50)')}
+        ${pill('Governance paused', !!d.paused, 'var(--warning)')}
+        ${pill('Vortex paused', !!d.vortex_paused, 'var(--warning)')}
+      </div>
+      <div style="line-height:1.55;color:var(--text);margin-bottom:14px;">
+        Governance is the Swarm's state-machine guarding proposal transitions.
+        Pausing it lets operators bypass strict guards temporarily (changes still audited).
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="toggleGovernance('governance')" style="flex:1;padding:8px 12px;background:${d.paused ? 'var(--accent)' : 'var(--warning)'};color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px;">${d.paused ? '▶ Resume Governance' : '⏸ Pause Governance'}</button>
+        <button onclick="toggleGovernance('vortex')" style="flex:1;padding:8px 12px;background:${d.vortex_paused ? 'var(--info)' : 'var(--warning)'};color:#000;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px;">${d.vortex_paused ? '▶ Resume Vortex' : '⏸ Pause Vortex'}</button>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:var(--text-dim);">Status persists in repository flag files; takes effect immediately.</div>
+    `;
+  } catch (e) {
+    body.innerHTML = `<div style="color:var(--error,#ff6161);">Failed to load governance state: ${e.message}</div>`;
+  }
+}
+
+async function toggleGovernance(target) {
+  try {
+    await fetch('/api/governance/toggle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target })
+    });
+    await refreshGovernancePanel();
+    if (typeof showToast === 'function') showToast(`${target === 'vortex' ? 'Vortex' : 'Governance'} toggled`, 'info');
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('Toggle failed: ' + e.message, 'error');
+  }
+}
+
+window.openGovernancePanel = openGovernancePanel;
+window.refreshGovernancePanel = refreshGovernancePanel;
+window.toggleGovernance = toggleGovernance;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INIT
@@ -30,6 +107,60 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('troubleshoot-clear-btn')?.addEventListener('click', () => clearTroubleshootLogs());
   document.getElementById('troubleshoot-copy-btn')?.addEventListener('click', () => copyTroubleshootLogs());
   _initTroubleshootDrag();
+  _initSettingsDragResize();
+
+  // Follow-up #5: per-tile hover ? buttons pull from single-source manual.
+  // Injects a small help glyph into every .home-card[data-win-id]. Clicking
+  // calls openWindowHelp(winId), which fetches /api/manual/<winId>.
+  try {
+    const _injectTileHelp = () => {
+      document.querySelectorAll('.home-card[data-win-id]').forEach(card => {
+        if (card.__tileHelpInjected) return;
+        card.__tileHelpInjected = true;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'home-card-help-btn';
+        btn.title = 'What is this?';
+        btn.textContent = '?';
+        btn.style.cssText = 'position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text-dim);font-size:10px;font-weight:700;cursor:pointer;opacity:0;transition:opacity .15s;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;z-index:2;';
+        btn.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
+        btn.addEventListener('mouseleave', () => { btn.style.opacity = '0.5'; });
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const winId = card.getAttribute('data-win-id');
+          if (winId && typeof openWindowHelp === 'function') openWindowHelp(winId);
+        });
+        if (getComputedStyle(card).position === 'static') card.style.position = 'relative';
+        card.appendChild(btn);
+        card.addEventListener('mouseenter', () => { btn.style.opacity = '0.5'; });
+        card.addEventListener('mouseleave', () => { btn.style.opacity = '0'; });
+      });
+    };
+    _injectTileHelp();
+    // Re-run when new cards are added (Add-Tile flow)
+    const _homeGrid = document.getElementById('home-tiles-grid') || document.querySelector('.home-tiles');
+    if (_homeGrid && typeof MutationObserver === 'function') {
+      new MutationObserver(_injectTileHelp).observe(_homeGrid, { childList: true });
+    }
+  } catch (_) { /* non-fatal */ }
+
+  // Welcome modal: show-at-startup wiring
+  try {
+    const cb = document.getElementById('welcome-show-at-startup');
+    const pref = localStorage.getItem('fridays-welcome-at-startup');
+    // First-visit default: ON. Once user unticks, remember 'never'.
+    const shouldShow = (pref === null) || pref === '1';
+    if (cb) cb.checked = shouldShow;
+    if (shouldShow) {
+      setTimeout(() => {
+        const m = document.getElementById('shortcuts-help-modal');
+        if (m) m.classList.add('open');
+        // First visit: persist so next boot knows user has seen it.
+        if (pref === null) { try { localStorage.setItem('fridays-welcome-at-startup', '1'); } catch (e) {} }
+      }, 600);
+    }
+  } catch (e) {}
 
   // Clicking empty home background should minimize open windows to taskbar.
   document.addEventListener('click', (event) => {
@@ -108,12 +239,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   
-  document.getElementById('opacity-slider').addEventListener('input', (e) => {
+  const opacityControl = document.getElementById('opacity-slider');
+  const handleOpacityControl = (e) => {
     const transparency = Math.max(0, Math.min(30, parseInt(e.target.value || '5', 10)));
     const actualOpacity = (100 - transparency) / 100;
     document.getElementById('opacity-value').textContent = transparency + '%';
     document.documentElement.style.setProperty('--glass-opacity', actualOpacity);
-  });
+  };
+  opacityControl.addEventListener('input', handleOpacityControl);
+  opacityControl.addEventListener('change', handleOpacityControl);
   
   // (time-slider removed — themes are now applied directly from buttons)
 
@@ -255,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: 'Chat', onclick: 'openWindow("chat", "Chat", "view-chat")', hint: 'Ctrl+J' },
       { label: 'Terminal', onclick: 'openWindow("terminal", "Terminal", "view-terminal")', hint: '' },
       { label: 'Knowledge', onclick: 'openWindow("knowledge", "Knowledge", "view-knowledge")', hint: 'Ctrl+B' },
-      { label: 'Files', onclick: 'openWindow("files", "Files", "view-files")', hint: '' },
+      { label: 'Files', onclick: 'openWindow("knowledge", "Knowledge", "view-knowledge"); setTimeout(()=>{ if (typeof knowledgeSetTab==="function") knowledgeSetTab("files"); }, 150)', hint: '' },
       { label: 'Git', onclick: 'openWindow("studio","Studio","view-studio"); setTimeout(()=>studioSetTab("git"),120)', hint: 'Ctrl+G' },
       { label: 'Memory', onclick: 'openWindow("memory", "Memory", "view-memory")', hint: '' },
       { label: 'Monitor', onclick: 'openWindow("monitor", "Monitor", "view-monitor")', hint: '' },

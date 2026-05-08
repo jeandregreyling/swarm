@@ -347,3 +347,57 @@ def api_skills_run():
 
 
 
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TOTP 2FA enrolment + verification (Phase-7 remote-access hardening)
+# ═══════════════════════════════════════════════════════════════════════════
+from core import auth_2fa as _auth_2fa
+from core import auth_rate_limit as _auth_rl
+
+
+def _client_ip():
+    return (request.headers.get('X-Forwarded-For') or request.remote_addr or '-').split(',')[0].strip()
+
+
+@auth_bp.route('/api/auth/2fa/enroll', methods=['POST'])
+def api_auth_2fa_enroll():
+    data = request.get_json(silent=True) or {}
+    username = (data.get('username') or '').strip()
+    if not username:
+        return jsonify({'ok': False, 'error': 'username required'}), 400
+    key = f"2fa_enroll:{_client_ip()}"
+    if not _auth_rl.allow(key, limit=5, window_s=60):
+        _auth_rl.audit('2fa_enroll', username=username, ip=_client_ip(), ok=False, extra={'reason': 'rate_limited'})
+        return jsonify({'ok': False, 'error': 'rate limited'}), 429
+    data = _auth_2fa.enroll(username)
+    _auth_rl.audit('2fa_enroll', username=username, ip=_client_ip(), ok=True)
+    return jsonify({'ok': True, **data})
+
+
+@auth_bp.route('/api/auth/2fa/verify', methods=['POST'])
+def api_auth_2fa_verify():
+    data = request.get_json(silent=True) or {}
+    username = (data.get('username') or '').strip()
+    code = (data.get('code') or '').strip()
+    if not username or not code:
+        return jsonify({'ok': False, 'error': 'username and code required'}), 400
+    key = f"2fa_verify:{_client_ip()}:{username}"
+    if not _auth_rl.allow(key, limit=10, window_s=60):
+        _auth_rl.audit('2fa_verify', username=username, ip=_client_ip(), ok=False, extra={'reason': 'rate_limited'})
+        return jsonify({'ok': False, 'error': 'rate limited'}), 429
+    ok = _auth_2fa.verify(username, code)
+    _auth_rl.audit('2fa_verify', username=username, ip=_client_ip(), ok=ok)
+    return jsonify({'ok': bool(ok)})
+
+
+@auth_bp.route('/api/auth/2fa/status')
+def api_auth_2fa_status():
+    username = (request.args.get('username') or '').strip()
+    if not username:
+        return jsonify({'ok': False, 'error': 'username required'}), 400
+    return jsonify({
+        'ok': True,
+        'enrolled': _auth_2fa.is_enrolled(username, verified_only=False),
+        'verified': _auth_2fa.is_enrolled(username, verified_only=True),
+    })

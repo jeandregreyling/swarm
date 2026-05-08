@@ -1,0 +1,86 @@
+.venv
+.venv/
+**/.venv/**
+node_modules
+**/node_modules/**
+__pycache__
+**/__pycache__/**
+*.pyc
+*.pyo
+.pytest_cache
+**/.pytest_cache/**
+.history
+.history/**
+.claude
+.claude/**
+
+# Model weights — huge, re-pullable from HuggingFace/Ollama.
+agents/seven/models
+agents/seven/models/**
+agents/*/models
+agents/*/models/**
+models
+models/**
+*.gguf
+*.bin
+*.safetensors
+*.onnx
+*.pt
+*.pth
+
+# DB hot-side — we snapshot via sqlite3 .backup separately.
+# Anchored to repo top so the same names *inside* db-snapshot/ are kept.
+./swarm_memory.db
+./swarm_memory.db-wal
+./swarm_memory.db-shm
+./swarm.db-wal
+./swarm.db-shm
+swarm_memory.db.backup.*
+swarm.db.backup.*
+swarm.db.empty.backup.*
+*.db.backup.*
+*.bak.*
+*.backup
+
+# Backups of backups — never recursive.
+runtime/backups/local
+runtime/backups/local/**
+runtime/backups/ntfs
+runtime/backups/ntfs/**
+
+# Cache & ephemeral runtime.
+runtime/cache
+runtime/cache/**
+runtime/sessions
+runtime/sessions/**
+runtime/state
+runtime/state/**
+*.log
+logs
+logs/**
+nohup.out
+
+# Worktrees that are external roots.
+sandpits
+sandpits/**
+sandpits_stage1
+sandpits_stage1/**
+sandpits_stage2
+sandpits_stage2/**
+sandpits_stage3
+sandpits_stage3/**
+
+# Build/dist.
+build
+build/**
+dist
+dist/**
+desktop/src-tauri/target
+desktop/src-tauri/target/**
+
+# OS noise.
+.DS_Store
+Thumbs.db
+
+# Frontend extras.
+frontend/static/vendor/**.map

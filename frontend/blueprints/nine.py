@@ -44,7 +44,10 @@ def api_nine_actions():
 def api_nine_chat():
     from datetime import datetime as _dt
     data    = request.get_json() or {}
-    message = (data.get('message') or '').strip()
+    msg_raw = data.get('message')
+    if msg_raw is not None and not isinstance(msg_raw, str):
+        return jsonify({'error': 'message must be a string'}), 400
+    message = (msg_raw or '').strip()
     if not message:
         return jsonify({'error': 'empty message'}), 400
 
@@ -133,7 +136,10 @@ def api_nine_stream():
     """Streaming version of Nine chat via SSE — Groq."""
     from datetime import datetime as _dt
     data    = request.get_json() or {}
-    message = (data.get('message') or '').strip()
+    msg_raw = data.get('message')
+    if msg_raw is not None and not isinstance(msg_raw, str):
+        return jsonify({'error': 'message must be a string'}), 400
+    message = (msg_raw or '').strip()
     if not message:
         return jsonify({'error': 'empty message'}), 400
 

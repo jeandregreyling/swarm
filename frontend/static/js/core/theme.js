@@ -5,12 +5,29 @@
 // TIME-OF-DAY & SETTINGS MANAGER
 // ═══════════════════════════════════════════════════════════════════════════
 
+// V8 S-0566553752 — 00-06 band now tips into early-morning colours instead of
+// a flat night block. Hours 03-05 are treated as 'morning' (pre-dawn warming)
+// while 22-02 stays in 'night'. The full 24-hour mapping is expressed as a
+// single-source array so UI surfaces can display it without re-deriving it.
+const FRIDAYS_HOUR_PHASE_MAP = Object.freeze([
+  'night',    'night',    'night',       // 00, 01, 02
+  'morning',  'morning',  'morning',     // 03, 04, 05 (pre-dawn warming)
+  'morning',  'morning',  'morning',     // 06, 07, 08
+  'morning',  'morning',  'morning',     // 09, 10, 11
+  'afternoon','afternoon','afternoon',   // 12, 13, 14
+  'afternoon','afternoon','afternoon',   // 15, 16, 17
+  'evening',  'evening',  'evening',     // 18, 19, 20
+  'evening',                              // 21
+  'night',    'night',                    // 22, 23
+]);
+
+function fridaysHourToPhase(hour) {
+  const h = ((Number(hour) | 0) % 24 + 24) % 24;
+  return FRIDAYS_HOUR_PHASE_MAP[h];
+}
+
 function getTimeOfDay() {
-  const hour = new Date().getHours();
-  if (hour >= 6 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 18) return 'afternoon';
-  if (hour >= 18 && hour < 22) return 'evening';
-  return 'night';
+  return fridaysHourToPhase(new Date().getHours());
 }
 
 const FRIDAYS_THEME_MODE_KEY = 'fridays_theme_mode';
@@ -23,7 +40,7 @@ const FRIDAYS_SCENE_EFFECT_KEY = 'fridays_scene_effect';
 const FRIDAYS_SCENE_LAYERS_KEY = 'fridays_scene_layers';
 const FRIDAYS_FOUNDATION_MODE_KEY = 'fridays_foundation_mode';
 const FRIDAYS_GLOW_VALUE_KEY = 'fridays_glow_value';
-const SCENE_MODES = ['off', 'beach', 'forest', 'rain'];
+const SCENE_MODES = ['off', 'beach', 'forest', 'rain', 'solar', 'underwater'];
 const FOUNDATION_MODES = ['auto', 'light', 'dark'];
 const SCENE_EFFECT_MODES = ['on', 'off'];
 const SCENE_LAYER_KEYS = ['orbs', 'lattice', 'clusters', 'scene'];
@@ -100,9 +117,9 @@ const ATMOSPHERE_KEYFRAMES = [
       '--hover': '#FFE9D0',
       '--bg-input': '#FFF6E8',
       '--border': '#E8CCAA',
-      '--text': '#4A311D',
-      '--text-dim': '#8E6B4F',
-      '--text-faint': '#C7A382',
+      '--text': '#2E1A0A',
+      '--text-dim': '#5B3C1F',
+      '--text-faint': '#8A6438',
       '--accent': '#FFB15A',
       '--accent-hover': '#FFC680',
       '--window-bg': '#FFFDF9',
@@ -110,6 +127,27 @@ const ATMOSPHERE_KEYFRAMES = [
       '--glow-a': '#FFE1B8',
       '--glow-b': '#FFF1D8',
       '--mist': '#FFF7EF',
+    },
+  },
+  {
+    stop: 64,
+    palette: {
+      '--bg': '#FFEDDC',
+      '--card': '#FFF7EA',
+      '--card-hover': '#FFE1C1',
+      '--hover': '#FFD6A8',
+      '--bg-input': '#FFE9D0',
+      '--border': '#E2A87A',
+      '--text': '#2A1005',
+      '--text-dim': '#5E2A10',
+      '--text-faint': '#8A4A22',
+      '--accent': '#E04E3C',
+      '--accent-hover': '#FF6B53',
+      '--window-bg': '#FFF7EA',
+      '--window-header': '#FFDDB8',
+      '--glow-a': '#FFB37A',
+      '--glow-b': '#FFD9A3',
+      '--mist': '#FFECD6',
     },
   },
   {
@@ -166,8 +204,12 @@ const ACCENT_KEYFRAMES = [
 
 const SCENE_PALETTE_STRIPS = {
   off: {
-    gradient: 'linear-gradient(90deg,#ff8fbe 0%,#ffcc9f 18%,#bde9ff 42%,#ffab63 70%,#775ac0 84%,#334253 100%)',
-    labels: ['Pink Dawn', 'Blue Noon', 'Amber Dusk', 'Grey Night'],
+    // MD-FEATURE-4FAB4C5137B2 — fill the 00:00-06:00 gap and widen the colour range
+    // beyond white/dark. The strip now carries a deep-night gradient (indigo →
+    // violet → magenta) that bridges grey-night back to pink-dawn instead of
+    // collapsing to flat dark.
+    gradient: 'linear-gradient(90deg,#ff8fbe 0%,#ffcc9f 16%,#bde9ff 38%,#7ad6c8 52%,#ffab63 68%,#775ac0 80%,#3a2f6b 88%,#1f1840 94%,#334253 100%)',
+    labels: ['Pink Dawn', 'Blue Noon', 'Amber Dusk', 'Indigo Midnight'],
   },
   beach: {
     gradient: 'linear-gradient(90deg,#0f3c78 0%,#1b5db0 22%,#2c8fd6 46%,#ff9a3d 74%,#ffbf6f 100%)',
@@ -180,6 +222,14 @@ const SCENE_PALETTE_STRIPS = {
   rain: {
     gradient: 'linear-gradient(90deg,#5a6c78 0%,#6d8592 24%,#7ea3ae 48%,#7b9382 76%,#a9b8b2 100%)',
     labels: ['Rain Grey', 'Soft Blue', 'Wet Glass', 'Green Mist'],
+  },
+  solar: {
+    gradient: 'linear-gradient(90deg,#0a0618 0%,#2b0d2e 20%,#8a1a2b 44%,#e24b2c 68%,#ff9a3a 86%,#fff0b8 100%)',
+    labels: ['Deep Void', 'Nebula', 'Red Giant', 'Corona'],
+  },
+  underwater: {
+    gradient: 'linear-gradient(90deg,#031525 0%,#05355b 22%,#0c5f88 46%,#2e9fbf 70%,#d2ecf6 100%)',
+    labels: ['Abyss', 'Deep Blue', 'Coral Light', 'Shallow'],
   },
 };
 
@@ -631,6 +681,19 @@ function onGlowSliderInput(value) {
   const currentMode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
   const currentAtmosphereValue = _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38);
   applyTimeTheme(currentMode, currentMode === 'manual' ? currentAtmosphereValue : null);
+}
+
+// Transparency dropdown — live apply (was previously only applied on Done).
+function onOpacitySliderInput(value) {
+  const transparency = _clampTransparencyValue(value || '5');
+  document.documentElement.style.setProperty('--glass-opacity', (100 - transparency) / 100);
+  const readout = document.getElementById('opacity-value');
+  if (readout) readout.textContent = transparency + '%';
+  try {
+    const settings = JSON.parse(localStorage.getItem('fridays-settings') || '{}');
+    settings.opacity = transparency;
+    localStorage.setItem('fridays-settings', JSON.stringify(settings));
+  } catch (_) {}
 }
 
 function _syncAccentControls(value) {
@@ -1482,7 +1545,7 @@ function createAnalogClockHTML(time) {
 function updateWorldClocks() {
   const container = document.getElementById('world-clocks');
   if (!container) {
-    console.log('ERROR: world-clocks container not found');
+    console.error('[clocks] world-clocks container not found');
     return;
   }
   
@@ -1512,7 +1575,7 @@ function updateWorldClocks() {
     
     container.innerHTML = html;
   } catch(e) {
-    console.log('ERROR in clocks:', e.message, e.stack);
+    console.error('[clocks] render failed:', e.message, e.stack);
   }
 }
 
@@ -1652,10 +1715,276 @@ function saveSettings() {
   closeSettings();
 }
 
+const FRIDAYS_SETTINGS_WINDOW_ID = 'settings';
+const FRIDAYS_SETTINGS_WINDOW_TEMPLATE_ID = 'view-settings-window-host';
+
+function _ensureSettingsWindowTemplate() {
+  let template = document.getElementById(FRIDAYS_SETTINGS_WINDOW_TEMPLATE_ID);
+  if (template) return template;
+
+  template = document.createElement('template');
+  template.id = FRIDAYS_SETTINGS_WINDOW_TEMPLATE_ID;
+  template.innerHTML = '<div id="settings-window-host" style="height:100%;"></div>';
+  document.body.appendChild(template);
+  return template;
+}
+
+function _resetSettingsBoxInlineLayout(box) {
+  if (!box) return;
+  box.style.position = 'relative';
+  box.style.left = '';
+  box.style.top = '';
+  box.style.maxWidth = '100%';
+  box.style.width = '100%';
+  box.style.height = 'auto';
+  box.style.margin = '0';
+}
+
+function _restoreSettingsBoxToModal() {
+  const modal = document.getElementById('settings-modal');
+  const box = document.getElementById('settings-box');
+  // Y.58 — always clear the windowed flag so the modal-mode CSS comes back.
+  document.body.removeAttribute('data-settings-windowed');
+  if (!modal || !box || box.parentElement === modal) return;
+  modal.appendChild(box);
+  _resetSettingsBoxInlineLayout(box);
+}
+
+function loadSettingsWindowData(win) {
+  const box = document.getElementById('settings-box');
+  const host = win?.el?.querySelector('#settings-window-host');
+  if (!box || !host) return;
+
+  _resetSettingsBoxInlineLayout(box);
+  // Y.58 — mark body so the .window-content scoped CSS in modals.css wins
+  // against any inline styles still on #settings-box.
+  document.body.setAttribute('data-settings-windowed', '1');
+  host.replaceWith(box);
+  if (win) {
+    win.beforeClose = _restoreSettingsBoxToModal;
+  }
+
+  loadSettings();
+}
+
 function toggleSettings() {
-  document.getElementById('settings-modal').classList.toggle('open');
+  const existing = winManager?.windows?.get(FRIDAYS_SETTINGS_WINDOW_ID);
+  if (existing) {
+    closeSettings();
+    return;
+  }
+
+  const modal = document.getElementById('settings-modal');
+  if (!winManager || typeof openWindow !== 'function' || !modal) {
+    modal?.classList.toggle('open');
+    return;
+  }
+
+  modal.classList.remove('open');
+  _ensureSettingsWindowTemplate();
+  openWindow(FRIDAYS_SETTINGS_WINDOW_ID, 'Settings', FRIDAYS_SETTINGS_WINDOW_TEMPLATE_ID, {
+    width: 560,
+    height: Math.min(760, Math.max(640, Math.round(window.innerHeight * 0.82))),
+    x: 96,
+    y: 56,
+  });
 }
 
 function closeSettings() {
-  document.getElementById('settings-modal').classList.remove('open');
+  if (winManager?.windows?.has(FRIDAYS_SETTINGS_WINDOW_ID)) {
+    winManager.close(FRIDAYS_SETTINGS_WINDOW_ID);
+    return;
+  }
+
+  _restoreSettingsBoxToModal();
+  document.getElementById('settings-modal')?.classList.remove('open');
 }
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// System modifications toggle (Phase-6 S-B4B7DC89E2)
+// ═════════════════════════════════════════════════════════════════════════
+const SYSMOD_KEY = 'fridays-sysmod-enabled';
+
+function getSysmodEnabled() {
+  try { return localStorage.getItem(SYSMOD_KEY) === '1'; } catch (_) { return false; }
+}
+
+function setSysmodEnabled(on) {
+  try { localStorage.setItem(SYSMOD_KEY, on ? '1' : '0'); } catch (_) {}
+  const lbl = document.getElementById('sysmod-enable-label');
+  if (lbl) lbl.textContent = on ? 'On' : 'Off';
+  const input = document.getElementById('sysmod-enable-input');
+  if (input && input.checked !== !!on) input.checked = !!on;
+  // Y.58 — visibly disable the per-capability + helper area when master is
+  // off so the toggle isn't "doing fuck all".
+  _sysmodApplyMasterState(!!on);
+  try {
+    fetch('/api/settings/sysmod', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: !!on }),
+    }).then(() => refreshSysmodHelpers()).catch(() => {});
+  } catch (_) {}
+  if (typeof showToast === 'function') {
+    showToast(`System modifications ${on ? 'enabled' : 'disabled'}`, on ? 'warning' : 'info');
+  }
+}
+
+function _sysmodApplyMasterState(on) {
+  const host = document.getElementById('sysmod-helpers');
+  const caps = document.getElementById('sysmod-capabilities');
+  [host, caps].forEach((el) => {
+    if (!el) return;
+    el.style.opacity = on ? '1' : '0.45';
+    el.style.pointerEvents = on ? 'auto' : 'none';
+  });
+}
+
+function setSysmodCapability(name, on) {
+  fetch('/api/settings/sysmod', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ capabilities: { [name]: !!on } }),
+  }).then(() => refreshSysmodHelpers()).catch(() => {});
+  if (typeof showToast === 'function') {
+    showToast(`${name.replace(/_/g, ' ')} ${on ? 'enabled' : 'disabled'}`, 'info');
+  }
+}
+
+function _initSysmodToggle() {
+  const input = document.getElementById('sysmod-enable-input');
+  if (!input) return;
+  // Y.58 — pull live server state so toggle reflects what the backend
+  // actually has stored, not just what localStorage thinks.
+  fetch('/api/settings/sysmod').then((r) => r.json()).then((d) => {
+    if (!d || d.ok !== true) return;
+    const enabled = !!d.enabled;
+    input.checked = enabled;
+    try { localStorage.setItem(SYSMOD_KEY, enabled ? '1' : '0'); } catch (_) {}
+    const lbl = document.getElementById('sysmod-enable-label');
+    if (lbl) lbl.textContent = enabled ? 'On' : 'Off';
+    _sysmodRenderCapabilities(d.capabilities || {});
+    _sysmodApplyMasterState(enabled);
+  }).catch(() => {
+    // Fall back to local cache.
+    input.checked = getSysmodEnabled();
+    const lbl = document.getElementById('sysmod-enable-label');
+    if (lbl) lbl.textContent = input.checked ? 'On' : 'Off';
+    _sysmodApplyMasterState(input.checked);
+  });
+  refreshSysmodHelpers();
+}
+
+function _sysmodRenderCapabilities(caps) {
+  // Render directly above #sysmod-helpers if a host element exists.
+  let host = document.getElementById('sysmod-capabilities');
+  if (!host) {
+    const helpers = document.getElementById('sysmod-helpers');
+    if (!helpers) return;
+    host = document.createElement('div');
+    host.id = 'sysmod-capabilities';
+    host.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:6px;';
+    helpers.parentNode.insertBefore(host, helpers);
+  }
+  const items = [
+    ['fan_controller',  'Fan controller',   'Boost the DELL fan when temps climb.'],
+    ['prewarm',         'Prewarm helper',   'Boot local model runners on system start.'],
+    ['desktop_shortcut','Desktop launcher', 'Add a desktop shortcut for the terminal.'],
+    ['autostart',       'Autostart on login', 'Launch Swarm when the OS logs in.'],
+  ];
+  host.innerHTML = items.map(([k, label, desc]) => {
+    const on = !!caps[k];
+    return `
+      <label style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;">
+        <input type="checkbox" ${on ? 'checked' : ''} onchange="setSysmodCapability('${k}', this.checked)" style="margin-top:2px;">
+        <span style="flex:1;">
+          <span style="font-size:11px;font-weight:700;color:var(--text);">${label}</span>
+          <span style="display:block;font-size:10px;color:var(--text-dim);margin-top:1px;">${desc}</span>
+        </span>
+      </label>`;
+  }).join('');
+}
+
+function refreshSysmodHelpers() {
+  const host = document.getElementById('sysmod-helpers');
+  if (!host) return;
+  host.innerHTML = '<div style="font-size:10px;color:var(--text-dim);">Loading helpers…</div>';
+  fetch('/api/settings/sysmod/helpers').then(r => {
+    if (r.status === 404) {
+      // Y.58 — route exists in source but not in the running server. Surface
+      // a clearer message instead of a silent failure ("does nothing").
+      throw new Error('helpers-route-missing');
+    }
+    return r.json();
+  }).then(d => {
+    const helpers = (d && d.helpers) || [];
+    if (!helpers.length) {
+      host.innerHTML = '<div style="font-size:10px;color:var(--text-dim);">No installable helpers known yet.</div>';
+      return;
+    }
+    host.innerHTML = helpers.map(h => {
+      const stateLabel = h.installed
+        ? (h.active ? '<span style="color:#7ad6c8;font-weight:700;">running</span>'
+                    : '<span style="color:#d8a032;font-weight:700;">installed · stopped</span>')
+        : '<span style="color:var(--text-dim);font-weight:600;">not installed</span>';
+      const primaryCmd = h.installed ? (h.active ? h.disable_cmd : h.enable_cmd) : h.install_cmd;
+      const primaryLabel = h.installed ? (h.active ? 'Copy disable command' : 'Copy enable command') : 'Copy install command';
+      const safeId = String(h.id || '').replace(/[^a-z0-9_-]/gi, '_');
+      return `
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--bg);margin-top:8px;">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+            <div style="font-size:11px;font-weight:700;color:var(--text);">${_sysmodEsc(h.title)}</div>
+            <div style="font-size:10px;">${stateLabel}</div>
+          </div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;line-height:1.5;">${_sysmodEsc(h.description)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+            <button onclick="_sysmodCopyCmd('${safeId}-primary')" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;">${primaryLabel}</button>
+            <button onclick="_sysmodCopyCmd('${safeId}-status')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">Copy status command</button>
+          </div>
+          <input type="hidden" id="${safeId}-primary" value="${_sysmodEsc(primaryCmd)}">
+          <input type="hidden" id="${safeId}-status" value="${_sysmodEsc(h.status_cmd)}">
+        </div>`;
+    }).join('') +
+    '<div style="font-size:10px;color:var(--text-dim);margin-top:8px;line-height:1.55;">' +
+    'Helpers run as system services. Swarm never executes <code>sudo</code> on your behalf — copy the command, paste it in a terminal, and the OS will prompt for your password.' +
+    '</div>';
+  }).catch((err) => {
+    if (err && err.message === 'helpers-route-missing') {
+      host.innerHTML = '<div style="font-size:11px;color:#d8a032;line-height:1.55;">System Modifications helper inventory is not available on this build. Restart <code>swarm-terminal.service</code> (or the dev server) to pick up the helpers route.</div>';
+      return;
+    }
+    host.innerHTML = '<div style="font-size:10px;color:#f44336;">Could not load helper inventory.</div>';
+  });
+}
+
+function _sysmodEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function _sysmodCopyCmd(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const txt = el.value || '';
+  if (!txt) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(() => {
+      if (typeof showToast === 'function') showToast('Command copied to clipboard', 'success');
+    }).catch(() => {
+      if (typeof showToast === 'function') showToast('Clipboard blocked — see browser permissions', 'error');
+    });
+  } else {
+    // Fallback: select via temp textarea
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); if (typeof showToast === 'function') showToast('Command copied', 'success'); }
+    catch (_) { if (typeof showToast === 'function') showToast('Clipboard unavailable', 'error'); }
+    document.body.removeChild(ta);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', _initSysmodToggle);
+window.setSysmodEnabled = setSysmodEnabled;
+window.getSysmodEnabled = getSysmodEnabled;
+window.refreshSysmodHelpers = refreshSysmodHelpers;
+window._sysmodCopyCmd = _sysmodCopyCmd;

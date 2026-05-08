@@ -23,7 +23,7 @@
 
     _source.onopen = function() {
       _retryMs = 2000;
-      console.log('[SSE] connected');
+      if (window.__SWARM_DEBUG) console.debug('[SSE] connected');
     };
 
     _source.onerror = function() {

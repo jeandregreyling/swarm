@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hive Nodes · Seven's Swarm</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --card: #121722;
+    --border: #1f2636;
+    --text: #d8dde8;
+    --text-dim: #8b93a7;
+    --accent: #5cb85c;
+    --window-header: #151b27;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Open Sans","Open Sans Light",system-ui,sans-serif; }
+  .hive-wrap { display: flex; flex-direction: column; height: 100vh; }
+  .hive-header {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    background: var(--window-header);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px;
+  }
+  .hive-title { font-weight: 700; letter-spacing: 0.4px; }
+  #hive-status { color: var(--text-dim); font-size: 11px; }
+  .hive-canvas-holder { flex: 1; position: relative; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; background: var(--bg); }
+  canvas:active { cursor: grabbing; }
+  .hive-footer { padding: 6px 14px; border-top: 1px solid var(--border);
+    color: var(--text-dim); font-size: 10px; }
+</style>
+</head>
+<body>
+  <div class="hive-wrap">
+    <div class="hive-header">
+      <span class="hive-title">Hive Nodes</span>
+      <span id="hive-status">Loading…</span>
+    </div>
+    <div class="hive-canvas-holder">
+      <canvas id="hive-graph-canvas"></canvas>
+    </div>
+    <div class="hive-footer">
+      Click a node to open it in the parent Library window. Drag to reposition · Scroll to zoom.
+    </div>
+  </div>
+  <script src="/static/js/views/library-graph.js?v=1"></script>
+  <script src="/static/js/views/hive-nodes.js?v=1"></script>
+</body>
+</html>

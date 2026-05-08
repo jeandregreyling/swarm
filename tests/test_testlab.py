@@ -62,6 +62,15 @@ def test_get_entry_unknown_returns_none():
     assert get_entry('nonexistent-script-xyz') is None
 
 
+def test_media_center_review_scripts_are_registered():
+    ids = {e['id'] for e in get_registry()}
+    assert 'pytest-media-center-review' in ids
+    assert 'pytest-media-center-projects-chat' in ids
+    assert 'pytest-media-center-daw-workspace' in ids
+    assert 'pytest-local-agent-runtime-fixes' in ids
+    assert 'js-syntax-media-center' in ids
+
+
 # ── Blueprint endpoint contract ─────────────────────────────────────────────
 
 @pytest.fixture

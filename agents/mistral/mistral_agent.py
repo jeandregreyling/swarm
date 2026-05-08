@@ -74,10 +74,14 @@ def chat(message, conversation_history=None, stage_cb=None):
     from core import llm as _llm
 
     from config import MISTRAL_SYSTEM_PROMPT
+    try:
+        from coding_bible import inject as _bible_inject
+    except Exception:
+        _bible_inject = lambda p: p
 
     _emit('loading context')
     context = _build_context(message)
-    system  = MISTRAL_SYSTEM_PROMPT + f'\n\n{context}'
+    system  = _bible_inject(MISTRAL_SYSTEM_PROMPT) + f'\n\n{context}'
 
     messages = [{'role': 'system', 'content': system}]
     if conversation_history:
@@ -90,7 +94,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             buf.append(piece)
             if len(buf) % 15 == 0:
                 _emit(f'generating · {("".join(buf))[-300:]}')
-        return _llm.chat(MODEL, msgs, stream=True, temperature=0.6, on_chunk=_cb)
+        return _llm.chat_via_gateway(MODEL, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.6)
 
     try:
         sys.path.insert(0, '/home/seven/swarm/agents')
@@ -104,7 +108,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             call_fn=_api_call,
             messages=messages,
             emit_fn=_emit,
-            max_passes=5,
+            max_passes=2,
             nudge_if_no_skills=True,
         )
     except Exception as e:

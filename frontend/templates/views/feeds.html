@@ -4,8 +4,28 @@
 
     <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" style="vertical-align:-2px"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg> Feeds</h2>
     <p style="color:var(--text-dim);font-size:13px;margin:0 0 20px;line-height:1.6;">
-      Connect social media and developer feeds to track interests, discover topics, and combine knowledge across the swarm.
+      Connect social, developer, and media feeds to track interests, discover topics, and combine knowledge across the swarm.
     </p>
+    <div style="margin:0 0 18px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:color-mix(in srgb,var(--accent) 6%, var(--card));display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);">Media pipeline inputs live here too</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Media Center now reads connected feeds and interest signals for music/video research and production context.</div>
+      </div>
+      <button onclick="openWindow('media-center','Media Center','view-media-center')" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:11px;font-weight:700;">Open Media Center</button>
+    </div>
+
+    <!-- V8 S-926EBCBBEC: login curation — opt-in surface that tells the swarm
+         which connected feeds should brief members at sign-in. -->
+    <div id="feeds-login-curation" style="margin-bottom:20px;padding:14px;background:color-mix(in srgb,var(--accent) 5%, var(--card));border:1px solid var(--border);border-radius:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Login Curation</div>
+      <label style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text);cursor:pointer;">
+        <input type="checkbox" id="feeds-login-curation-toggle" style="width:14px;height:14px;cursor:pointer;accent-color:var(--accent);">
+        <span>Brief swarm members with my connected feeds at sign-in</span>
+      </label>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">
+        When enabled, every swarm login refreshes a short digest across the feeds below and hands it to Librarian before the first prompt. Disable to keep feeds available inside Fridays without auto-briefing.
+      </div>
+    </div>
 
     <!-- Connected accounts -->
     <div style="margin-bottom:20px;">
@@ -77,6 +97,30 @@
 
         <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><circle cx="8" cy="8" r="5" stroke="#1db954" stroke-width="1.2"/><path d="M5.2 7.2c1.9-.5 3.7-.4 5.6.3M5.5 9c1.6-.4 3.1-.3 4.8.3" stroke="#1db954" stroke-width="1.1" stroke-linecap="round"/></svg></span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">Spotify</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Liked songs, playlists, release radar</div>
+        </div>
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><circle cx="8" cy="8" r="5" stroke="#f06292" stroke-width="1.2"/><path d="M8 5.5v5M6 7h4" stroke="#f06292" stroke-width="1.2" stroke-linecap="round"/></svg></span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">Apple Music</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Library, radios, new music mix</div>
+        </div>
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:16px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M11.8 5.2A2.8 2.8 0 0 0 8 3L5.5 10.5a1.6 1.6 0 1 0 1 1.4L9 4.8a1.2 1.2 0 0 1 1.6.9v4.6a1.6 1.6 0 1 0 1.2-1.5V5.2Z" stroke="#ff8800" stroke-width="1.1"/></svg></span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);">SoundCloud</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);">Creator uploads, likes, reposts</div>
+        </div>
+
+        <div class="feed-option" style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
             <span style="font-size:16px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px"><circle cx="8" cy="8" r="5" stroke="#ff4500" stroke-width="1.3"/><circle cx="6" cy="7" r="1" fill="#ff4500"/><circle cx="10" cy="7" r="1" fill="#ff4500"/><path d="M5.5 9.5c1 1 4 1 5 0" stroke="#ff4500" stroke-width="1" stroke-linecap="round"/></svg></span>
             <span style="font-size:12px;font-weight:600;color:var(--text);">Reddit</span>
           </div>
@@ -103,9 +147,9 @@
     </div>
 
     <div style="padding:14px;background:color-mix(in srgb, var(--accent) 6%, var(--card));border:1px solid var(--border);border-radius:10px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;">Coming soon</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;">Status: Partial — OAuth connectors pending (V7C-A10)</div>
       <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
-        Feed integration is being built. Connected feeds will combine topics across your interests and surface them in Library's knowledge graph. The swarm's members will use these feeds to stay current on topics you care about.
+        Custom RSS subscriptions persist to the server-side feed store today. Media targets (YouTube, Apple Music, Spotify, SoundCloud, Bandcamp, and custom feeds) are available to Media Center for production research, provenance, and Knowledge indexing. OAuth-only providers are recorded as pending connector intents until authentication wiring lands. Tracking step <code>S-47E3AE816F</code>.
       </div>
     </div>
 
@@ -119,22 +163,190 @@
   </style>
 
   <script>
-    // Wire tile clicks honestly — connectors aren't built yet, but the tiles
-    // should acknowledge the click instead of appearing dead. When a real
-    // connector ships, replace this handler with the per-provider flow.
+    // M13: Add/manage local feed subscriptions. Real OAuth connectors are
+    // out of scope here — this persists user intent + custom RSS URLs in
+    // localStorage so the swarm can pick them up later.
     (function(){
-      const labels = [];
+      const STORAGE_KEY = 'fridays-feeds-subscriptions';
+      const CURATION_KEY = 'fridays-feeds-login-curation';
+      const loadSubs = () => {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; }
+        catch { return {}; }
+      };
+      // V8 S-926EBCBBEC: persist the "brief swarm at login" opt-in.
+      (function wireLoginCuration(){
+        const cb = document.getElementById('feeds-login-curation-toggle');
+        if (!cb || cb.__fridaysWired) return;
+        cb.__fridaysWired = true;
+        try { cb.checked = localStorage.getItem(CURATION_KEY) === '1'; } catch {}
+        cb.addEventListener('change', () => {
+          try { localStorage.setItem(CURATION_KEY, cb.checked ? '1' : '0'); } catch {}
+          if (typeof toast === 'function') {
+            toast(cb.checked ? 'Swarm will brief on feeds at login' : 'Login curation disabled', 'info');
+          }
+        });
+      })();
+      const saveSubs = (subs) => {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(subs)); } catch {}
+      };
+      const slug = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const kindForName = (name) => ({
+        'X / Twitter': 'x',
+        'Hacker News': 'hn',
+        'LinkedIn': 'linkedin',
+        'Stack Overflow': 'stackoverflow',
+        'YouTube': 'youtube',
+        'Spotify': 'spotify',
+        'Apple Music': 'apple-music',
+        'SoundCloud': 'soundcloud',
+        'Reddit': 'reddit',
+        'npm / PyPI': 'npm',
+      })[name] || slug(name) || 'rss';
+      const createServerSubscription = async (entry) => {
+        const response = await fetch('/api/feeds/subscriptions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kind: entry.kind || entry.type || 'rss',
+            url: entry.url || `account://${entry.kind || entry.type || 'provider'}/${slug(entry.label || '')}`,
+            title: entry.label || entry.kind || 'feed',
+          }),
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || 'subscription failed');
+        return data.sub_id;
+      };
+      const toast = (msg, kind='info') => {
+        if (typeof showToast === 'function') showToast(msg, kind);
+        else if (typeof window.showToast === 'function') window.showToast(msg, kind);
+      };
+
+      const applyStatus = (el, name, subs) => {
+        const entry = subs[name];
+        let badge = el.querySelector('.feed-status-badge');
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'feed-status-badge';
+          badge.style.cssText = 'display:inline-block;margin-top:6px;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;';
+          el.appendChild(badge);
+        }
+        if (entry && entry.status === 'connected') {
+          badge.textContent = 'tracked';
+          badge.style.background = '#4caf5020';
+          badge.style.color = '#4caf50';
+          badge.style.border = '1px solid #4caf5060';
+        } else {
+          badge.textContent = 'click to add';
+          badge.style.background = 'var(--bg)';
+          badge.style.color = 'var(--text-dim)';
+          badge.style.border = '1px solid var(--border)';
+        }
+      };
+
+      const renderCustomList = () => {
+        const subs = loadSubs();
+        let host = document.getElementById('feeds-custom-list');
+        if (!host) return;
+        const rss = Object.entries(subs).filter(([, v]) => v && v.type === 'rss');
+        if (!rss.length) {
+          host.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:8px;">No custom feeds added yet.</div>';
+          return;
+        }
+        host.innerHTML = rss.map(([key, v]) =>
+          `<div style="padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;gap:10px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:600;color:var(--text);">${(v.label||key).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
+              <div style="font-size:10px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(v.url||'').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
+            </div>
+            <button data-remove-feed="${key}" style="background:transparent;border:1px solid #f44336aa;color:#f44336;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:11px;">Remove</button>
+          </div>`
+        ).join('');
+        host.querySelectorAll('[data-remove-feed]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const k = btn.dataset.removeFeed;
+            const s = loadSubs();
+            delete s[k];
+            saveSubs(s);
+            renderCustomList();
+            toast('Feed removed');
+          });
+        });
+      };
+
+      // Inject Manage/Custom section once
+      const viewRoot = document.querySelector('#view-feeds, .content-view');
+      if (viewRoot && !document.getElementById('feeds-custom-list')) {
+        const section = document.createElement('div');
+        section.style.cssText = 'margin-bottom:20px;';
+        section.innerHTML =
+          '<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">Custom Feeds <button id="feeds-add-btn" style="margin-left:auto;background:var(--accent);color:#fff;border:none;border-radius:5px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;">+ Add RSS</button></div>' +
+          '<div id="feeds-custom-list" style="display:flex;flex-direction:column;gap:6px;"></div>';
+        const availHeader = Array.from(viewRoot.querySelectorAll('div')).find(d => d.textContent.trim() === 'Available Feeds');
+        if (availHeader && availHeader.parentElement) availHeader.parentElement.parentElement.insertBefore(section, availHeader.parentElement);
+        else viewRoot.querySelector('div').appendChild(section);
+        renderCustomList();
+        document.getElementById('feeds-add-btn')?.addEventListener('click', () => {
+          const url = prompt('RSS or Atom feed URL:');
+          if (!url || !/^https?:\/\//i.test(url)) { if (url) toast('Invalid URL', 'error'); return; }
+          const label = prompt('Label for this feed:', url) || url;
+          const subs = loadSubs();
+          const key = 'rss:' + url;
+          subs[key] = { type: 'rss', url, label, status: 'connected', added: Date.now() };
+          saveSubs(subs);
+          createServerSubscription({ kind: 'rss', type: 'rss', url, label })
+            .then(subId => {
+              const next = loadSubs();
+              if (next[key]) {
+                next[key].sub_id = subId;
+                saveSubs(next);
+              }
+            })
+            .catch(err => toast('Server feed add failed: ' + (err.message || err), 'error'));
+          renderCustomList();
+          toast('Feed added: ' + label, 'success');
+        });
+      }
+
+      // Wire provider tiles to toggle tracked state
+      const subs = loadSubs();
       document.querySelectorAll('#view-feeds .feed-option, .feed-option').forEach(el => {
         if (el.__fridaysFeedsWired) return;
         el.__fridaysFeedsWired = true;
+        const nameEl = el.querySelector('span[style*="font-weight:600"]');
+        const name = (nameEl?.textContent || 'feed').trim();
+        if (name === 'RSS / Custom') {
+          // Click acts as shortcut to add RSS
+          el.addEventListener('click', () => {
+            document.getElementById('feeds-add-btn')?.click();
+          });
+          return;
+        }
+        applyStatus(el, name, subs);
         el.addEventListener('click', () => {
-          const name = (el.querySelector('span[style*="font-weight:600"]')?.textContent || 'this feed').trim();
-          const msg = name === 'RSS / Custom'
-            ? 'RSS/Custom feed connector is not wired yet — coming soon.'
-            : `${name} connector is not wired yet — coming soon.`;
-          if (typeof showToast === 'function') showToast(msg, 'info');
-          else if (typeof window.showToast === 'function') window.showToast(msg, 'info');
-          else console.info('[Feeds]', msg);
+          const s = loadSubs();
+          if (s[name] && s[name].status === 'connected') {
+            const subId = s[name].sub_id;
+            delete s[name];
+            saveSubs(s);
+            if (subId) fetch(`/api/feeds/subscriptions/${encodeURIComponent(subId)}`, { method: 'DELETE' }).catch(() => {});
+            applyStatus(el, name, s);
+            toast(name + ' untracked', 'info');
+          } else {
+            const kind = kindForName(name);
+            s[name] = { type: kind, kind, label: name, status: 'connected', added: Date.now() };
+            saveSubs(s);
+            createServerSubscription(s[name])
+              .then(subId => {
+                const next = loadSubs();
+                if (next[name]) {
+                  next[name].sub_id = subId;
+                  saveSubs(next);
+                }
+              })
+              .catch(err => toast('Server feed add failed: ' + (err.message || err), 'error'));
+            applyStatus(el, name, s);
+            toast(name + ' added — connector pending', 'success');
+          }
         });
       });
     })();

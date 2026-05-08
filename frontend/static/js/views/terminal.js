@@ -101,8 +101,106 @@ function _terminalSyncHistoryUi() {
     btn.style.color = state.historyOpen ? 'var(--accent)' : 'var(--text)';
     btn.style.borderColor = state.historyOpen ? 'var(--accent)' : 'var(--border)';
   }
+  // Phase-5 SMALL: History now pops out as a floating draggable window
+  // rather than a bottom-docked panel.
   if (panel) {
-    panel.style.display = state.historyOpen ? 'block' : 'none';
+    if (state.historyOpen) _terminalPromoteHistoryPanel(panel);
+    else _terminalDemoteHistoryPanel(panel);
+  }
+}
+
+function _terminalPromoteHistoryPanel(panel) {
+  if (panel.dataset.floating === '1') { panel.style.display = 'block'; return; }
+  panel.dataset.floating = '1';
+  // Remember original parent + next sibling so we can restore on demote.
+  panel.dataset.originalNextId = panel.nextElementSibling?.id || '';
+  panel._origParent = panel.parentNode;
+  panel._origNextSibling = panel.nextElementSibling;
+  panel._origStyle = panel.getAttribute('style') || '';
+
+  // Build a floating window chrome around the existing content.
+  const wrap = document.createElement('div');
+  wrap.id = 'terminal-history-floating';
+  wrap.style.cssText = 'position:fixed;top:120px;right:40px;z-index:9500;width:380px;max-width:calc(100vw - 40px);max-height:70vh;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 14px 40px rgba(0,0,0,.45);overflow:hidden;';
+
+  const header = document.createElement('div');
+  header.id = 'terminal-history-floating-header';
+  header.style.cssText = 'cursor:move;user-select:none;padding:8px 12px;background:var(--window-header,var(--bg));border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-dim);';
+  header.innerHTML = `
+    <span style="display:inline-flex;align-items:center;gap:6px;">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2.5 2.5"/></svg>
+      Terminal History
+    </span>
+    <button type="button" aria-label="Close history window"
+      style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;">×</button>`;
+  wrap.appendChild(header);
+
+  panel.style.cssText = 'flex:1;min-height:0;overflow:auto;padding:10px 12px;background:var(--card);border:none;max-height:none;display:block;';
+  wrap.appendChild(panel);
+  document.body.appendChild(wrap);
+
+  // Close handler
+  header.querySelector('button').addEventListener('click', () => {
+    const s = _terminalStreamState();
+    s.historyOpen = false;
+    _terminalSyncHistoryUi();
+  });
+
+  // Drag the window
+  let dragging = false, dx = 0, dy = 0;
+  header.addEventListener('mousedown', (e) => {
+    if (e.target.closest('button')) return;
+    dragging = true;
+    const rect = wrap.getBoundingClientRect();
+    dx = e.clientX - rect.left;
+    dy = e.clientY - rect.top;
+    document.body.style.userSelect = 'none';
+  });
+  const onMove = (e) => {
+    if (!dragging) return;
+    wrap.style.left = (e.clientX - dx) + 'px';
+    wrap.style.top = (e.clientY - dy) + 'px';
+    wrap.style.right = 'auto';
+  };
+  const onUp = () => { dragging = false; document.body.style.userSelect = ''; };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  wrap._cleanup = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+
+  // Esc-close
+  const esc = (e) => {
+    if (e.key === 'Escape') {
+      const s = _terminalStreamState();
+      s.historyOpen = false;
+      _terminalSyncHistoryUi();
+      document.removeEventListener('keydown', esc);
+    }
+  };
+  document.addEventListener('keydown', esc);
+  wrap._esc = esc;
+}
+
+function _terminalDemoteHistoryPanel(panel) {
+  if (panel.dataset.floating !== '1') { panel.style.display = 'none'; return; }
+  const wrap = document.getElementById('terminal-history-floating');
+  // Restore original parent + inline style
+  if (panel._origParent) {
+    if (panel._origNextSibling && panel._origNextSibling.parentNode === panel._origParent) {
+      panel._origParent.insertBefore(panel, panel._origNextSibling);
+    } else {
+      panel._origParent.appendChild(panel);
+    }
+  }
+  panel.setAttribute('style', panel._origStyle || 'display:none;');
+  panel.style.display = 'none';
+  panel.dataset.floating = '';
+  if (wrap) {
+    if (typeof wrap._cleanup === 'function') wrap._cleanup();
+    if (wrap._esc) document.removeEventListener('keydown', wrap._esc);
+    wrap.remove();
   }
 }
 
@@ -210,14 +308,13 @@ function _terminalAppendPromptLine(output, cmd, entryId) {
   const entry = document.createElement('div');
   entry.className = 'terminal-entry';
   entry.dataset.terminalEntryId = entryId;
-  // 10px bottom gap + 6px top padding keep multi-command runs visually
-  // distinct without a hard divider line.
-  entry.style.cssText = 'margin:0 0 10px;padding:6px 0 0;';
+  // S8: tight spacing between entries, keep copy/paste-friendly layout.
+  entry.style.cssText = 'margin:0 0 4px;padding:0;';
 
   const line = document.createElement('div');
   line.className = 'terminal-prompt-line';
   line.dataset.terminalEntryId = entryId;
-  line.style.cssText = 'color:var(--accent, #5c9bd6);margin:0 0 1px;';
+  line.style.cssText = 'color:var(--accent, #5c9bd6);margin:0;padding:0;';
   line.textContent = '❯ ' + cmd;
   entry.appendChild(line);
   output.appendChild(entry);
@@ -568,7 +665,56 @@ function renderTerminalQuickButtons(btnContainer, win) {
   const all = _terminalDbShortcuts.length ? _terminalDbShortcuts : DEFAULT_TERMINAL_SHORTCUTS;
 
   btnContainer.innerHTML = '';
-  all.forEach((item) => {
+  // Phase-5 SMALL: multi-select + combine. Shift/Ctrl/Cmd+click toggles a
+  // "selected" state on a chip; when 2+ are selected, a bottom action bar
+  // offers "Run combined" (chains with &&) and "Fill combined" (into input).
+  const selected = new Set();
+
+  const ensureActionBar = () => {
+    let bar = btnContainer.querySelector('#terminal-combine-bar');
+    if (!selected.size || selected.size < 2) { if (bar) bar.remove(); return; }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'terminal-combine-bar';
+      bar.style.cssText = 'position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--accent);padding:8px;margin-top:6px;display:flex;gap:6px;align-items:center;font-size:11px;box-shadow:0 -4px 10px rgba(0,0,0,.25);z-index:5;';
+      btnContainer.appendChild(bar);
+    }
+    const cmds = Array.from(selected).map(i => (all[i] && all[i].cmd) || '').filter(Boolean);
+    const combined = cmds.join(' && ');
+    bar.innerHTML = `
+      <span style="color:var(--accent);font-weight:700;">${selected.size} selected</span>
+      <button id="combine-run" style="margin-left:auto;background:var(--accent);color:#000;border:none;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;">Run combined</button>
+      <button id="combine-fill" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 10px;font-size:10px;cursor:pointer;">Fill</button>
+      <button id="combine-clear" title="Clear selection" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;">×</button>`;
+    bar.querySelector('#combine-run').onclick = () => {
+      cmdTerminal(combined);
+      selected.clear();
+      refreshSelections();
+    };
+    bar.querySelector('#combine-fill').onclick = () => {
+      const input = _terminalFind('#terminal-input');
+      if (input) { input.value = combined; input.focus(); }
+    };
+    bar.querySelector('#combine-clear').onclick = () => {
+      selected.clear();
+      refreshSelections();
+    };
+  };
+
+  const refreshSelections = () => {
+    btnContainer.querySelectorAll('.cmd-btn').forEach((b, i) => {
+      if (selected.has(i)) {
+        b.style.outline = '2px solid var(--accent)';
+        b.style.outlineOffset = '-2px';
+      } else {
+        b.style.outline = '';
+        b.style.outlineOffset = '';
+      }
+    });
+    ensureActionBar();
+  };
+
+  all.forEach((item, idx) => {
     const btn = document.createElement('button');
     btn.className = 'cmd-btn custom';
     if (item.id) { btn.dataset.scId = item.id; btn.draggable = true; }
@@ -576,7 +722,15 @@ function renderTerminalQuickButtons(btnContainer, win) {
       ? `<button class="cmd-remove" title="Remove shortcut" onclick="event.stopPropagation(); _scDelete(${item.id})">✕</button>`
       : '';
     btn.innerHTML = `${removeBtn}<span>${item.icon || '⚡'}</span> ${_escHtml(item.label || 'Shortcut')}<span class="cmd-meta">${_escHtml((item.cmd || '').slice(0, 90))}${(item.cmd || '').length > 90 ? '…' : ''}</span>`;
-    btn.onclick = () => cmdTerminal(item.cmd || '');
+    btn.onclick = (e) => {
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        if (selected.has(idx)) selected.delete(idx); else selected.add(idx);
+        refreshSelections();
+        return;
+      }
+      if (selected.size) { selected.clear(); refreshSelections(); }
+      cmdTerminal(item.cmd || '');
+    };
     btnContainer.appendChild(btn);
   });
   if (_terminalDbShortcuts.length) _scEnableDrag(btnContainer);
@@ -907,6 +1061,15 @@ async function _terminalSaveToShortcuts(cmd, btnEl) {
   } catch (e) {
     showToast('Save failed: ' + e.message, 'error');
   }
+}
+
+// Phase-5 SMALL: save the current terminal input value as a shortcut.
+function terminalFavFromInput() {
+  const input = _terminalFind('#terminal-input');
+  if (!input) return;
+  const cmd = String(input.value || '').trim();
+  if (!cmd) { showToast('Type a command first', 'info'); return; }
+  _terminalSaveToShortcuts(cmd, null);
 }
 
 // ── Agent shell command panel ─────────────────────────────────────────────────

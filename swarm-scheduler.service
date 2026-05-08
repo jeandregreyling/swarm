@@ -1,0 +1,23 @@
+[Unit]
+Description=Seven's Swarm Scheduler (daily digest + snooze wake-ups)
+After=network.target swarm-listener.service
+# S-D504258E73 — scheduler runs as its own systemd unit so the listener
+# can stay focused on the email/Gmail-Push pipeline without blocking on
+# the 60-second digest loop. This decouples the two responsibilities and
+# means a stuck scheduler tick can no longer freeze inbound mail intake.
+
+[Service]
+Type=simple
+User=seven
+WorkingDirectory=/home/seven/swarm
+ExecStart=/home/seven/swarm/.venv/bin/python3 /home/seven/swarm/utils/scheduler.py
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+Environment="PYTHONUNBUFFERED=1"
+Environment="SWARM_ROOT=/home/seven/swarm"
+EnvironmentFile=-/home/seven/swarm/.env.agents
+
+[Install]
+WantedBy=multi-user.target

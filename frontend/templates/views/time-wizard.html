@@ -1,9 +1,16 @@
 <!-- time-wizard.html — extracted from terminal_base.html -->
 <!-- Original: <template id="view-time-wizard"> -->
   <div class="content-view" style="display: flex; flex-direction: column;">
-    <div style="padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--window-header);">
-      <h3 style="margin-bottom: 6px;font-size:12px;">🌀 Vortex — Decision Timeline</h3>
-      <div style="font-size: 9px; color: var(--text-dim);">All architectural decisions, checkpoints, and state transitions</div>
+    <div style="padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--window-header); display:flex; align-items:flex-start; gap:10px;">
+      <div style="flex:1;min-width:0;">
+        <h3 style="margin-bottom: 6px;font-size:12px;">🌀 Vortex — Decision Timeline</h3>
+        <div style="font-size: 9px; color: var(--text-dim);">All architectural decisions, checkpoints, and state transitions</div>
+      </div>
+      <!-- V8 S-7622B4B16D: inline help + section collapse affordances -->
+      <button type="button" id="tw-help-btn" onclick="if(typeof openWindowHelp==='function'){openWindowHelp('time-wizard');}else if(typeof openDocs==='function'){openDocs('vortex');}" title="What is Vortex? Open help"
+        style="width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">?</button>
+      <button type="button" id="tw-toggle-history" onclick="(function(){var a=document.getElementById('tw-history-panel');if(!a)return;var h=a.dataset.collapsed==='1';a.dataset.collapsed=h?'0':'1';a.style.width=h?'320px':'0px';a.style.borderLeft=h?'1px solid var(--border)':'0';a.style.overflow=h?'':'hidden';this.textContent=h?'⟩ Hide history':'⟨ Show history';}).call(this)" title="Collapse or expand the Vortex history side panel"
+        style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text-dim);cursor:pointer;font-size:9px;white-space:nowrap;">⟩ Hide history</button>
     </div>
     <div style="padding: 10px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); display: flex; flex-direction: column; gap: 10px;">
       <div id="tw-summary" style="font-size: 9px; color: var(--text-dim);">Loading Vortex status...</div>

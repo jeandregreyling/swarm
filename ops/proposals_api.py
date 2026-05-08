@@ -1,31 +1,25 @@
 from flask import Flask, jsonify, request
-import sqlite3
-import os
 from datetime import datetime
+from utils.db._connection import get_connection
 
 app = Flask(__name__)
 
-DB_PATH = os.path.expanduser("~/swarm/studio_proposals.db")
-
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return get_connection()
 
 # Ensure the table exists with proper columns
 conn = get_db_connection()
 conn.execute('''
     CREATE TABLE IF NOT EXISTS work_proposals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proposal_id TEXT UNIQUE,
+        agent TEXT DEFAULT 'studio',
         title TEXT NOT NULL,
         description TEXT,
         status TEXT DEFAULT 'pending',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        approved_at TEXT,
-        rejected_at TEXT,
-        promoted_at TEXT,
         git_branch TEXT,
-        studio_link TEXT
+        source_node TEXT DEFAULT 'proposals_api'
     )
 ''')
 conn.commit()
@@ -43,7 +37,7 @@ def list_proposals():
 def approve_proposal(prop_id):
     conn = get_db_connection()
     now = datetime.now().isoformat()
-    conn.execute("UPDATE work_proposals SET status='approved', approved_at=? WHERE id=?", (now, prop_id))
+    conn.execute("UPDATE work_proposals SET status='approved', updated_at=? WHERE id=?", (now, prop_id))
     conn.commit()
     row = conn.execute("SELECT * FROM work_proposals WHERE id=?", (prop_id,)).fetchone()
     conn.close()
@@ -55,7 +49,7 @@ def approve_proposal(prop_id):
 def reject_proposal(prop_id):
     conn = get_db_connection()
     now = datetime.now().isoformat()
-    conn.execute("UPDATE work_proposals SET status='rejected', rejected_at=? WHERE id=?", (now, prop_id))
+    conn.execute("UPDATE work_proposals SET status='rejected', updated_at=? WHERE id=?", (now, prop_id))
     conn.commit()
     row = conn.execute("SELECT * FROM work_proposals WHERE id=?", (prop_id,)).fetchone()
     conn.close()
@@ -67,7 +61,7 @@ def reject_proposal(prop_id):
 def promote_proposal(prop_id):
     conn = get_db_connection()
     now = datetime.now().isoformat()
-    conn.execute("UPDATE work_proposals SET status='promoted', promoted_at=? WHERE id=?", (now, prop_id))
+    conn.execute("UPDATE work_proposals SET status='promoted', updated_at=? WHERE id=?", (now, prop_id))
     conn.commit()
     row = conn.execute("SELECT * FROM work_proposals WHERE id=?", (prop_id,)).fetchone()
     conn.close()
@@ -76,8 +70,7 @@ def promote_proposal(prop_id):
     return jsonify({"error": "Proposal not found"}), 404
 
 if __name__ == '__main__':
-    print("🚀 Proposals API (dedicated studio_proposals.db) running on http://0.0.0.0:5050")
-    print(f"   DB location: {DB_PATH}")
+    print("🚀 Proposals API (central swarm_memory.db) running on http://0.0.0.0:5050")
     print("   GET  /proposals")
     print("   POST /proposals/<id>/approve")
     print("   POST /proposals/<id>/reject")

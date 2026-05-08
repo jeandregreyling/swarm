@@ -23,6 +23,20 @@ CREATE TABLE IF NOT EXISTS agents (
     roles TEXT, -- JSON array of roles for multi-role support
     created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS agent_capability_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL,
+    capability TEXT NOT NULL,
+    score REAL DEFAULT 0.5,
+    confidence REAL DEFAULT 0.5,
+    evidence_count INTEGER DEFAULT 0,
+    source TEXT DEFAULT 'seed',
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(agent, capability)
+);
+CREATE INDEX IF NOT EXISTS idx_agent_capability_scores_capability ON agent_capability_scores (capability, score DESC);
 CREATE TABLE IF NOT EXISTS conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT,
@@ -40,6 +54,20 @@ CREATE TABLE IF NOT EXISTS messages (
     message_type TEXT DEFAULT 'response',
     tokens_used INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS chat_relay_recoveries (
+    recovery_id TEXT PRIMARY KEY,
+    conversation_id INTEGER DEFAULT 0,
+    job_id TEXT UNIQUE NOT NULL,
+    stalled_agent TEXT DEFAULT '',
+    status TEXT DEFAULT 'open',
+    recovery_agents_json TEXT DEFAULT '[]',
+    relay_context_json TEXT DEFAULT '{}',
+    summary TEXT DEFAULT '',
+    lease_owner TEXT DEFAULT '',
+    lease_until TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS memory (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -657,10 +685,19 @@ CREATE TABLE IF NOT EXISTS research_sessions (
     linked_proposal_id  TEXT DEFAULT '',
     requesting_agent    TEXT NOT NULL DEFAULT 'user',
     summary             TEXT DEFAULT '',
+    -- Columns originally added by _migrate_schema; mirrored here so fresh
+    -- DBs (and test fixtures that only run SCHEMA) have them too.
+    idempotency_key     TEXT DEFAULT '',
+    last_error          TEXT DEFAULT '',
+    project_id          TEXT DEFAULT '',
     created_at          TEXT DEFAULT (datetime('now')),
     updated_at          TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_research_sessions_status ON research_sessions (status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_research_sessions_idem
+    ON research_sessions(idempotency_key) WHERE idempotency_key != '';
+CREATE INDEX IF NOT EXISTS idx_research_sessions_project
+    ON research_sessions(project_id) WHERE project_id != '';
 
 -- Research evidence (B.1.1)
 CREATE TABLE IF NOT EXISTS research_evidence (
@@ -677,6 +714,34 @@ CREATE TABLE IF NOT EXISTS research_evidence (
 );
 CREATE INDEX IF NOT EXISTS idx_research_evidence_session ON research_evidence (session_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_research_evidence_dedup ON research_evidence (session_id, source_url, snippet_hash);
+
+-- Watched-topic evidence scoring for Tasker research updates
+CREATE TABLE IF NOT EXISTS watched_topic_evidence (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic_key           TEXT NOT NULL,
+    topic               TEXT NOT NULL,
+    evidence_fingerprint TEXT NOT NULL,
+    session_id          INTEGER DEFAULT 0,
+    source_url          TEXT DEFAULT '',
+    title               TEXT DEFAULT '',
+    snippet             TEXT DEFAULT '',
+    quality_score       REAL DEFAULT 0,
+    novelty_score       REAL DEFAULT 0,
+    combined_score      REAL DEFAULT 0,
+    qualified           INTEGER DEFAULT 0,
+    notified            INTEGER DEFAULT 0,
+    review_status       TEXT DEFAULT '',
+    review_note         TEXT DEFAULT '',
+    evidence_date       TEXT DEFAULT '',
+    recency_score       REAL DEFAULT 0,
+    recency_label       TEXT DEFAULT '',
+    is_historical       INTEGER DEFAULT 0,
+    reason              TEXT DEFAULT '',
+    created_at          TEXT DEFAULT (datetime('now')),
+    updated_at          TEXT DEFAULT (datetime('now')),
+    UNIQUE(topic_key, evidence_fingerprint)
+);
+CREATE INDEX IF NOT EXISTS idx_watched_topic_evidence_topic ON watched_topic_evidence (topic_key, updated_at);
 
 -- Tool builds (C.1.1)
 CREATE TABLE IF NOT EXISTS tool_builds (
@@ -798,13 +863,13 @@ def _migrate_schema(conn=None):
             conn.execute("ALTER TABLE trusted_domains ADD COLUMN channel TEXT DEFAULT 'email'")
             conn.commit()
     if 'trusted_domains' not in tables:
-        conn.execute('CREATE TABLE IF NOT EXISTS trusted_domains (id INTEGER PRIMARY KEY AUTOINCREMENT, domain TEXT UNIQUE NOT NULL, channel TEXT DEFAULT "email", added_by TEXT NOT NULL, notes TEXT DEFAULT "", added_at TEXT DEFAULT (datetime("now")))')
+        conn.execute("CREATE TABLE IF NOT EXISTS trusted_domains (id INTEGER PRIMARY KEY AUTOINCREMENT, domain TEXT UNIQUE NOT NULL, channel TEXT DEFAULT 'email', added_by TEXT NOT NULL, notes TEXT DEFAULT '', added_at TEXT DEFAULT (datetime('now')))")
         conn.commit()
     if 'snoozed_tickets' not in tables:
-        conn.execute('CREATE TABLE IF NOT EXISTS snoozed_tickets (id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_number TEXT NOT NULL, sender_email TEXT NOT NULL, wake_at TEXT NOT NULL, note TEXT DEFAULT "", created_at TEXT DEFAULT (datetime("now")), fired INTEGER DEFAULT 0)')
+        conn.execute("CREATE TABLE IF NOT EXISTS snoozed_tickets (id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_number TEXT NOT NULL, sender_email TEXT NOT NULL, wake_at TEXT NOT NULL, note TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')), fired INTEGER DEFAULT 0)")
         conn.commit()
     if 'project_docs' not in tables:
-        conn.execute('CREATE TABLE IF NOT EXISTS project_docs (id INTEGER PRIMARY KEY AUTOINCREMENT, doc_name TEXT NOT NULL, content TEXT DEFAULT "", tags TEXT DEFAULT "all", created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))')
+        conn.execute("CREATE TABLE IF NOT EXISTS project_docs (id INTEGER PRIMARY KEY AUTOINCREMENT, doc_name TEXT NOT NULL, content TEXT DEFAULT '', tags TEXT DEFAULT 'all', created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))")
         conn.commit()
     else:
         # Add tags column to existing project_docs if missing
@@ -816,23 +881,23 @@ def _migrate_schema(conn=None):
         conn.execute('CREATE TABLE IF NOT EXISTS memory_nine (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "nine", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT)')
         conn.commit()
     if 'memory_ten' not in tables:
-        conn.execute('CREATE TABLE IF NOT EXISTS memory_ten (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "ten", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))')
+        conn.execute("CREATE TABLE IF NOT EXISTS memory_ten (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'ten', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))")
         conn.commit()
     if 'approval_tokens' not in tables:
-        conn.execute('CREATE TABLE IF NOT EXISTS approval_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL, action TEXT NOT NULL, target_email TEXT NOT NULL DEFAULT "", created_by TEXT DEFAULT "system", created_at TEXT DEFAULT (datetime("now")), used_at TEXT, status TEXT DEFAULT "pending")')
+        conn.execute("CREATE TABLE IF NOT EXISTS approval_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL, action TEXT NOT NULL, target_email TEXT NOT NULL DEFAULT '', created_by TEXT DEFAULT 'system', created_at TEXT DEFAULT (datetime('now')), used_at TEXT, status TEXT DEFAULT 'pending')")
         conn.commit()
     if 'debates' not in tables:
-        conn.execute('CREATE TABLE IF NOT EXISTS debates (id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT NOT NULL, initiator TEXT DEFAULT "nine", status TEXT DEFAULT "open", rounds INTEGER DEFAULT 0, consensus TEXT DEFAULT "", proposal_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), closed_at TEXT)')
-        conn.execute('CREATE TABLE IF NOT EXISTS debate_turns (id INTEGER PRIMARY KEY AUTOINCREMENT, debate_id INTEGER NOT NULL, agent TEXT NOT NULL, position TEXT NOT NULL, round INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime("now")))')
+        conn.execute("CREATE TABLE IF NOT EXISTS debates (id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT NOT NULL, initiator TEXT DEFAULT 'nine', status TEXT DEFAULT 'open', rounds INTEGER DEFAULT 0, consensus TEXT DEFAULT '', proposal_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), closed_at TEXT)")
+        conn.execute("CREATE TABLE IF NOT EXISTS debate_turns (id INTEGER PRIMARY KEY AUTOINCREMENT, debate_id INTEGER NOT NULL, agent TEXT NOT NULL, position TEXT NOT NULL, round INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))")
         conn.commit()
     if 'file_writes' not in tables:
-        conn.execute('CREATE TABLE IF NOT EXISTS file_writes (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL, description TEXT DEFAULT "", previous_content TEXT DEFAULT "", new_content TEXT NOT NULL, applied_by TEXT DEFAULT "ghost", created_at TEXT DEFAULT (datetime("now")))')
+        conn.execute("CREATE TABLE IF NOT EXISTS file_writes (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL, description TEXT DEFAULT '', previous_content TEXT DEFAULT '', new_content TEXT NOT NULL, applied_by TEXT DEFAULT 'ghost', created_at TEXT DEFAULT (datetime('now')))")
         conn.commit()
     if 'user_profiles' not in tables:
-        conn.execute('CREATE TABLE IF NOT EXISTS user_profiles (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, display_name TEXT DEFAULT "", user_type TEXT DEFAULT "human", linked_agent TEXT DEFAULT "", is_active INTEGER DEFAULT 1, can_proxy INTEGER DEFAULT 0, created_by TEXT DEFAULT "system", created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))')
+        conn.execute("CREATE TABLE IF NOT EXISTS user_profiles (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, display_name TEXT DEFAULT '', user_type TEXT DEFAULT 'human', linked_agent TEXT DEFAULT '', is_active INTEGER DEFAULT 1, can_proxy INTEGER DEFAULT 0, created_by TEXT DEFAULT 'system', created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))")
         conn.commit()
     if 'user_skill_permissions' not in tables:
-        conn.execute('CREATE TABLE IF NOT EXISTS user_skill_permissions (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, skill_name TEXT NOT NULL, allowed INTEGER DEFAULT 1, created_by TEXT DEFAULT "ghost", created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")), UNIQUE(username, skill_name))')
+        conn.execute("CREATE TABLE IF NOT EXISTS user_skill_permissions (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, skill_name TEXT NOT NULL, allowed INTEGER DEFAULT 1, created_by TEXT DEFAULT 'ghost', created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')), UNIQUE(username, skill_name))")
         conn.commit()
     # memory_twelve: bootstrap test created it with a different schema; add missing columns
     if 'memory_twelve' in tables:
@@ -856,37 +921,55 @@ def _migrate_schema(conn=None):
         conn.commit()
     # Time Wizard tables (exist in live DB, now added to schema; migrate for safety)
     for tbl, ddl in [
-        ('memory_grok', 'CREATE TABLE IF NOT EXISTS memory_grok (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "grok", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
-        ('memory_twelve', 'CREATE TABLE IF NOT EXISTS memory_twelve (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "twelve", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
-        ('memory_mistral', 'CREATE TABLE IF NOT EXISTS memory_mistral (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "mistral", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
-        ('memory_thirteen', 'CREATE TABLE IF NOT EXISTS memory_thirteen (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "thirteen", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
-        ('memory_scholar', 'CREATE TABLE IF NOT EXISTS memory_scholar (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "scholar", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
-        ('memory_seeker', 'CREATE TABLE IF NOT EXISTS memory_seeker (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "seeker", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "session", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
-        ('memory_twenty', 'CREATE TABLE IF NOT EXISTS memory_twenty (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT "twenty", subject TEXT DEFAULT "", content TEXT NOT NULL, tags TEXT DEFAULT "", importance INTEGER DEFAULT 7, source TEXT DEFAULT "council", ticket_ref TEXT DEFAULT "", archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
-        ('council_output', 'CREATE TABLE IF NOT EXISTS council_output (id INTEGER PRIMARY KEY AUTOINCREMENT, orb_role TEXT NOT NULL, thought TEXT NOT NULL, detail TEXT DEFAULT "", urgency INTEGER DEFAULT 0, confidence REAL DEFAULT 0.5, pfv_p REAL, pfv_f REAL, pfv_v REAL, source_refs TEXT DEFAULT "[]", context_json TEXT DEFAULT "{}", dismissed INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), expires_at TEXT NOT NULL)'),
-        ('user_patterns', 'CREATE TABLE IF NOT EXISTS user_patterns (id INTEGER PRIMARY KEY AUTOINCREMENT, pattern_type TEXT NOT NULL, pattern_key TEXT NOT NULL, pattern_value TEXT, confidence REAL DEFAULT 0.1, occurrences INTEGER DEFAULT 1, first_seen TEXT DEFAULT (datetime("now")), last_seen TEXT DEFAULT (datetime("now")), UNIQUE(pattern_type, pattern_key))'),
-        ('decisions', 'CREATE TABLE IF NOT EXISTS decisions (decision_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT (datetime("now")), agent TEXT NOT NULL, component TEXT DEFAULT "", proposal_file TEXT DEFAULT "", decision TEXT NOT NULL, reasoning TEXT DEFAULT "", test_status TEXT DEFAULT "PENDING", commit_hash TEXT DEFAULT "", checkpoint_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), archived INTEGER DEFAULT 0)'),
-        ('time_machine', 'CREATE TABLE IF NOT EXISTS time_machine (checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT (datetime("now")), agent TEXT NOT NULL, file_path TEXT NOT NULL, before_code TEXT DEFAULT "", after_code TEXT NOT NULL, before_hash TEXT DEFAULT "", after_hash TEXT DEFAULT "", test_results TEXT DEFAULT "", decision_id INTEGER DEFAULT 0, commit_hash TEXT DEFAULT "", outcome TEXT DEFAULT "success", is_rollback_point INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))'),
-        ('time_events', 'CREATE TABLE IF NOT EXISTS time_events (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT "", event_type TEXT NOT NULL, agent TEXT NOT NULL, action TEXT DEFAULT "", target TEXT DEFAULT "", state_hash TEXT DEFAULT "", details TEXT DEFAULT "{}", created_at TEXT DEFAULT (datetime("now")))'),
-        ('time_journal', 'CREATE TABLE IF NOT EXISTS time_journal (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL, timestamp TEXT DEFAULT "", session_id TEXT DEFAULT "", phase TEXT DEFAULT "", status TEXT DEFAULT "active", notes TEXT DEFAULT "", created_at TEXT DEFAULT (datetime("now")))'),
-        ('time_checkpoints', 'CREATE TABLE IF NOT EXISTS time_checkpoints (id INTEGER PRIMARY KEY AUTOINCREMENT, checkpoint_name TEXT UNIQUE NOT NULL, timestamp TEXT DEFAULT "", description TEXT DEFAULT "", agent TEXT NOT NULL, full_state TEXT DEFAULT "{}", created_at TEXT DEFAULT (datetime("now")))'),
+        ('memory_grok', "CREATE TABLE IF NOT EXISTS memory_grok (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'grok', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
+        ('memory_twelve', "CREATE TABLE IF NOT EXISTS memory_twelve (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'twelve', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
+        ('memory_mistral', "CREATE TABLE IF NOT EXISTS memory_mistral (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'mistral', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
+        ('memory_thirteen', "CREATE TABLE IF NOT EXISTS memory_thirteen (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'thirteen', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
+        ('memory_scholar', "CREATE TABLE IF NOT EXISTS memory_scholar (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'scholar', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
+        ('memory_seeker', "CREATE TABLE IF NOT EXISTS memory_seeker (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'seeker', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
+        ('memory_twenty', "CREATE TABLE IF NOT EXISTS memory_twenty (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'twenty', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'council', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
+        ('council_output', "CREATE TABLE IF NOT EXISTS council_output (id INTEGER PRIMARY KEY AUTOINCREMENT, orb_role TEXT NOT NULL, thought TEXT NOT NULL, detail TEXT DEFAULT '', urgency INTEGER DEFAULT 0, confidence REAL DEFAULT 0.5, pfv_p REAL, pfv_f REAL, pfv_v REAL, source_refs TEXT DEFAULT \"[]\", context_json TEXT DEFAULT \"{}\", dismissed INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), expires_at TEXT NOT NULL)"),
+        ('user_patterns', "CREATE TABLE IF NOT EXISTS user_patterns (id INTEGER PRIMARY KEY AUTOINCREMENT, pattern_type TEXT NOT NULL, pattern_key TEXT NOT NULL, pattern_value TEXT, confidence REAL DEFAULT 0.1, occurrences INTEGER DEFAULT 1, first_seen TEXT DEFAULT (datetime('now')), last_seen TEXT DEFAULT (datetime('now')), UNIQUE(pattern_type, pattern_key))"),
+        ('decisions', "CREATE TABLE IF NOT EXISTS decisions (decision_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT (datetime('now')), agent TEXT NOT NULL, component TEXT DEFAULT '', proposal_file TEXT DEFAULT '', decision TEXT NOT NULL, reasoning TEXT DEFAULT '', test_status TEXT DEFAULT 'PENDING', commit_hash TEXT DEFAULT '', checkpoint_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), archived INTEGER DEFAULT 0)"),
+        ('time_machine', "CREATE TABLE IF NOT EXISTS time_machine (checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT (datetime('now')), agent TEXT NOT NULL, file_path TEXT NOT NULL, before_code TEXT DEFAULT '', after_code TEXT NOT NULL, before_hash TEXT DEFAULT '', after_hash TEXT DEFAULT '', test_results TEXT DEFAULT '', decision_id INTEGER DEFAULT 0, commit_hash TEXT DEFAULT '', outcome TEXT DEFAULT 'success', is_rollback_point INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
+        ('time_events', "CREATE TABLE IF NOT EXISTS time_events (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT '', event_type TEXT NOT NULL, agent TEXT NOT NULL, action TEXT DEFAULT '', target TEXT DEFAULT '', state_hash TEXT DEFAULT '', details TEXT DEFAULT \"{}\", created_at TEXT DEFAULT (datetime('now')))"),
+        ('time_journal', "CREATE TABLE IF NOT EXISTS time_journal (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL, timestamp TEXT DEFAULT '', session_id TEXT DEFAULT '', phase TEXT DEFAULT '', status TEXT DEFAULT 'active', notes TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')))"),
+        ('time_checkpoints', "CREATE TABLE IF NOT EXISTS time_checkpoints (id INTEGER PRIMARY KEY AUTOINCREMENT, checkpoint_name TEXT UNIQUE NOT NULL, timestamp TEXT DEFAULT '', description TEXT DEFAULT '', agent TEXT NOT NULL, full_state TEXT DEFAULT \"{}\", created_at TEXT DEFAULT (datetime('now')))"),
         ('daily_checkpoint', 'CREATE TABLE IF NOT EXISTS daily_checkpoint (checkpoint_id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, codebase_hash TEXT, memory_state TEXT, decisions_count INTEGER DEFAULT 0, description TEXT, is_stable INTEGER DEFAULT 0)'),
         ('ghost_briefs', 'CREATE TABLE IF NOT EXISTS ghost_briefs (id INTEGER PRIMARY KEY AUTOINCREMENT, generated_at TEXT DEFAULT CURRENT_TIMESTAMP, brief_type TEXT DEFAULT "on_demand", content TEXT NOT NULL, raw_data_snapshot TEXT, tokens_used INTEGER DEFAULT 0, triggered_by TEXT DEFAULT "system")'),
         ('scheduled_tasks', 'CREATE TABLE IF NOT EXISTS scheduled_tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, schedule TEXT NOT NULL, action_type TEXT NOT NULL, action_data TEXT NOT NULL, last_run TEXT, next_run TEXT, enabled INTEGER DEFAULT 1, created_by TEXT DEFAULT "ghost", created_at TEXT)'),
         ('task_run_log', 'CREATE TABLE IF NOT EXISTS task_run_log (id INTEGER PRIMARY KEY AUTOINCREMENT, task_name TEXT NOT NULL, status TEXT NOT NULL DEFAULT "ok", output TEXT DEFAULT "", run_at TEXT NOT NULL)'),
-        ('work_proposals', 'CREATE TABLE IF NOT EXISTS work_proposals (id INTEGER PRIMARY KEY AUTOINCREMENT, proposal_id TEXT UNIQUE NOT NULL, agent TEXT NOT NULL, title TEXT NOT NULL, description TEXT DEFAULT "", status TEXT DEFAULT "pending", proposal_file TEXT DEFAULT "", ticket_number TEXT DEFAULT "", queue_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
-        ('agent_capabilities', 'CREATE TABLE IF NOT EXISTS agent_capabilities (id INTEGER PRIMARY KEY AUTOINCREMENT, agent_name TEXT NOT NULL, capability TEXT NOT NULL, granted INTEGER DEFAULT 0, trust_level INTEGER DEFAULT 0, granted_by TEXT DEFAULT "system", proposal_id TEXT DEFAULT "", notes TEXT DEFAULT "", granted_at TEXT, created_at TEXT DEFAULT (datetime("now")), UNIQUE(agent_name, capability))'),
-        ('chat_jobs', 'CREATE TABLE IF NOT EXISTS chat_jobs (job_id TEXT PRIMARY KEY, conversation_id INTEGER DEFAULT 0, agent TEXT DEFAULT "", status TEXT DEFAULT "running", runtime_class TEXT DEFAULT "", stage TEXT DEFAULT "", eta_seconds INTEGER DEFAULT 60, elapsed_ms INTEGER DEFAULT 0, tokens INTEGER DEFAULT 0, error TEXT DEFAULT "", stage_trace_json TEXT DEFAULT "[]", started_at TEXT DEFAULT (datetime("now")), updated_at TEXT DEFAULT (datetime("now")))'),
+        ('work_proposals', "CREATE TABLE IF NOT EXISTS work_proposals (id INTEGER PRIMARY KEY AUTOINCREMENT, proposal_id TEXT UNIQUE NOT NULL, agent TEXT NOT NULL, title TEXT NOT NULL, description TEXT DEFAULT '', status TEXT DEFAULT 'pending', proposal_file TEXT DEFAULT '', ticket_number TEXT DEFAULT '', queue_id INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))"),
+        ('agent_capabilities', "CREATE TABLE IF NOT EXISTS agent_capabilities (id INTEGER PRIMARY KEY AUTOINCREMENT, agent_name TEXT NOT NULL, capability TEXT NOT NULL, granted INTEGER DEFAULT 0, trust_level INTEGER DEFAULT 0, granted_by TEXT DEFAULT 'system', proposal_id TEXT DEFAULT '', notes TEXT DEFAULT '', granted_at TEXT, created_at TEXT DEFAULT (datetime('now')), UNIQUE(agent_name, capability))"),
+        ('agent_capability_scores', "CREATE TABLE IF NOT EXISTS agent_capability_scores (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT NOT NULL, capability TEXT NOT NULL, score REAL DEFAULT 0.5, confidence REAL DEFAULT 0.5, evidence_count INTEGER DEFAULT 0, source TEXT DEFAULT 'seed', notes TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')), UNIQUE(agent, capability))"),
+        ('chat_jobs', "CREATE TABLE IF NOT EXISTS chat_jobs (job_id TEXT PRIMARY KEY, conversation_id INTEGER DEFAULT 0, agent TEXT DEFAULT '', status TEXT DEFAULT 'running', runtime_class TEXT DEFAULT '', stage TEXT DEFAULT '', eta_seconds INTEGER DEFAULT 60, elapsed_ms INTEGER DEFAULT 0, tokens INTEGER DEFAULT 0, error TEXT DEFAULT '', stage_trace_json TEXT DEFAULT \"[]\", started_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))"),
+        ('chat_relay_recoveries', "CREATE TABLE IF NOT EXISTS chat_relay_recoveries (recovery_id TEXT PRIMARY KEY, conversation_id INTEGER DEFAULT 0, job_id TEXT UNIQUE NOT NULL, stalled_agent TEXT DEFAULT '', status TEXT DEFAULT 'open', recovery_agents_json TEXT DEFAULT \"[]\", relay_context_json TEXT DEFAULT \"{}\", summary TEXT DEFAULT '', lease_owner TEXT DEFAULT '', lease_until TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))"),
     ]:
         if tbl not in tables:
             conn.execute(ddl)
             conn.commit()
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_agent_capability_scores_capability "
+        "ON agent_capability_scores (capability, score DESC)"
+    )
+    # 2026-05-02 (S-1C55C2826A) — scheduled task names must be unique.
+    # task_runner.upsert_task() uses name as the de-facto key but the column
+    # was historically NOT NULL only. Migration is safe because production has
+    # no duplicates today (verified). Partial index excludes legacy NULL/empty
+    # rows defensively.
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_scheduled_tasks_name_unique "
+        "ON scheduled_tasks(name) WHERE name IS NOT NULL AND name != ''"
+    )
+    conn.commit()
 
     # Add number + label columns to agents table (idempotent — ALTER TABLE ignored if column exists)
     for col_ddl in [
         "ALTER TABLE agents ADD COLUMN number INTEGER DEFAULT 0",
         "ALTER TABLE agents ADD COLUMN label  TEXT    DEFAULT ''",
         "ALTER TABLE chat_jobs ADD COLUMN stage_trace_json TEXT DEFAULT '[]'",
+        "ALTER TABLE chat_relay_recoveries ADD COLUMN lease_owner TEXT DEFAULT ''",
+        "ALTER TABLE chat_relay_recoveries ADD COLUMN lease_until TEXT DEFAULT ''",
     ]:
         try:
             conn.execute(col_ddl)
@@ -896,14 +979,14 @@ def _migrate_schema(conn=None):
 
     # terminal_shortcuts table — all shortcuts (defaults + custom) stored in DB
     try:
-        conn.execute('CREATE TABLE IF NOT EXISTS terminal_shortcuts (id INTEGER PRIMARY KEY AUTOINCREMENT, icon TEXT NOT NULL DEFAULT "⚡", label TEXT NOT NULL, cmd TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT (datetime("now")))')
+        conn.execute("CREATE TABLE IF NOT EXISTS terminal_shortcuts (id INTEGER PRIMARY KEY AUTOINCREMENT, icon TEXT NOT NULL DEFAULT \"⚡\", label TEXT NOT NULL, cmd TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))")
         conn.commit()
     except Exception:
         pass
 
     # Custom sudo whitelist entries for the Fridays terminal
     try:
-        conn.execute('CREATE TABLE IF NOT EXISTS sudo_command_whitelist (id INTEGER PRIMARY KEY AUTOINCREMENT, command TEXT NOT NULL UNIQUE, note TEXT DEFAULT "", added_by TEXT DEFAULT "ghost", created_at TEXT DEFAULT (datetime("now")))')
+        conn.execute("CREATE TABLE IF NOT EXISTS sudo_command_whitelist (id INTEGER PRIMARY KEY AUTOINCREMENT, command TEXT NOT NULL UNIQUE, note TEXT DEFAULT '', added_by TEXT DEFAULT 'ghost', created_at TEXT DEFAULT (datetime('now')))")
         conn.commit()
     except Exception:
         pass
@@ -1088,7 +1171,7 @@ def _migrate_schema(conn=None):
 
     # swarm_globals table — shared rules and global parameters
     try:
-        conn.execute('CREATE TABLE IF NOT EXISTS swarm_globals (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, value TEXT NOT NULL DEFAULT "", description TEXT DEFAULT "", updated_at TEXT DEFAULT (datetime("now")))')
+        conn.execute("CREATE TABLE IF NOT EXISTS swarm_globals (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL UNIQUE, value TEXT NOT NULL DEFAULT '', description TEXT DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))")
         conn.commit()
     except Exception:
         pass
@@ -1249,6 +1332,275 @@ def _migrate_schema(conn=None):
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_research_evidence_dedup ON research_evidence (session_id, source_url, snippet_hash)")
     conn.commit()
 
+    # 2026-05-02 (S-12E202F189 + S-A43BF83EB7) — research idempotency_key
+    # and last_error visibility. ALTER guarded; safe on existing rows.
+    try:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(research_sessions)").fetchall()}
+        if 'idempotency_key' not in cols:
+            conn.execute("ALTER TABLE research_sessions ADD COLUMN idempotency_key TEXT DEFAULT ''")
+        if 'last_error' not in cols:
+            conn.execute("ALTER TABLE research_sessions ADD COLUMN last_error TEXT DEFAULT ''")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_research_sessions_idem "
+            "ON research_sessions(idempotency_key) WHERE idempotency_key != ''"
+        )
+        conn.commit()
+    except Exception:
+        pass
+
+    # 2026-05-02 (S-90C2B45FAF) — every outbound email is recorded for audit.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS email_delivery_log (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            to_address      TEXT NOT NULL,
+            cc              TEXT NOT NULL DEFAULT '',
+            subject         TEXT NOT NULL DEFAULT '',
+            in_reply_to     TEXT NOT NULL DEFAULT '',
+            sent_at         TEXT NOT NULL DEFAULT (datetime('now')),
+            status          TEXT NOT NULL DEFAULT 'ok',
+            attempts        INTEGER NOT NULL DEFAULT 1,
+            error           TEXT NOT NULL DEFAULT '',
+            sender          TEXT NOT NULL DEFAULT ''
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_delivery_log_to ON email_delivery_log(to_address, sent_at DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_delivery_log_status ON email_delivery_log(status, sent_at DESC)")
+    conn.commit()
+
+    # 2026-05-02 (S-5E508B5488 + S-15087BF900) — task_run_log structured fields:
+    # duration_ms for performance, details_json for structured task output.
+    try:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(task_run_log)").fetchall()}
+        if 'duration_ms' not in cols:
+            conn.execute("ALTER TABLE task_run_log ADD COLUMN duration_ms INTEGER DEFAULT 0")
+        if 'details_json' not in cols:
+            conn.execute("ALTER TABLE task_run_log ADD COLUMN details_json TEXT DEFAULT ''")
+        conn.commit()
+    except Exception:
+        pass
+
+    # 2026-05-02 (S-B13B24A10F) — scheduled_tasks lease columns to prevent
+    # double-execution under concurrency. lease_expires_at is the cutoff;
+    # workers must clear/refresh before running.
+    try:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(scheduled_tasks)").fetchall()}
+        if 'lease_owner' not in cols:
+            conn.execute("ALTER TABLE scheduled_tasks ADD COLUMN lease_owner TEXT DEFAULT ''")
+        if 'lease_expires_at' not in cols:
+            conn.execute("ALTER TABLE scheduled_tasks ADD COLUMN lease_expires_at TEXT DEFAULT ''")
+        conn.commit()
+    except Exception:
+        pass
+
+    # 2026-05-02 (S-BFEE738F64) — research_sessions.project_id links a research
+    # run back to a Studio project so evidence shows up in project closeouts.
+    try:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(research_sessions)").fetchall()}
+        if 'project_id' not in cols:
+            conn.execute("ALTER TABLE research_sessions ADD COLUMN project_id TEXT DEFAULT ''")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_research_sessions_project "
+            "ON research_sessions(project_id) WHERE project_id != ''"
+        )
+        conn.commit()
+    except Exception:
+        pass
+
+    # 2026-05-02 (S-168F0F7D14) — per-topic last-seen tracker. Lets the
+    # watcher answer "when did we last see anything about X?" without
+    # scanning all evidence.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS watcher_topic_last_seen (
+            topic_key       TEXT PRIMARY KEY,
+            last_seen_at    TEXT NOT NULL DEFAULT (datetime('now')),
+            last_evidence_id INTEGER DEFAULT 0,
+            evidence_count  INTEGER DEFAULT 0,
+            updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.commit()
+
+    # 2026-05-02 (S-086BC371AD) — email retry queue. Failed sends sit here
+    # with next_attempt_at + attempts_remaining for a worker to pick up.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS email_retry_queue (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            to_address          TEXT NOT NULL,
+            cc                  TEXT NOT NULL DEFAULT '',
+            subject             TEXT NOT NULL DEFAULT '',
+            body                TEXT NOT NULL DEFAULT '',
+            html_body           TEXT NOT NULL DEFAULT '',
+            in_reply_to         TEXT NOT NULL DEFAULT '',
+            attempts            INTEGER NOT NULL DEFAULT 0,
+            attempts_remaining  INTEGER NOT NULL DEFAULT 3,
+            next_attempt_at     TEXT NOT NULL DEFAULT (datetime('now')),
+            last_error          TEXT NOT NULL DEFAULT '',
+            status              TEXT NOT NULL DEFAULT 'pending',
+            created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_retry_queue_pending "
+                 "ON email_retry_queue(status, next_attempt_at) "
+                 "WHERE status='pending'")
+    conn.commit()
+
+    # 2026-05-02 (S-DB17B92842) — per-topic settings (digest mode lets a
+    # topic batch evidence into periodic summaries instead of per-hit emails).
+    # 2026-05-02 (S-F98ABAB164) — missed_run_policy controls how the
+    # scheduler treats a task whose previous run was skipped:
+    #   'skip'  — ignore missed runs (default, current behaviour)
+    #   'catchup' — fire once now to catch up
+    #   'queue' — fire once for every missed run
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS watched_topic_settings (
+            topic_key             TEXT PRIMARY KEY,
+            digest_mode           TEXT NOT NULL DEFAULT 'instant',
+            digest_period_hours   INTEGER NOT NULL DEFAULT 24,
+            last_digest_at        TEXT NOT NULL DEFAULT '',
+            updated_at            TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.commit()
+    try:
+        cols = {row[1] for row in conn.execute(
+            "PRAGMA table_info(scheduled_tasks)").fetchall()}
+        if 'missed_run_policy' not in cols:
+            conn.execute(
+                "ALTER TABLE scheduled_tasks ADD COLUMN missed_run_policy TEXT DEFAULT 'skip'")
+        # 2026-05-02 (S-F02066C5FA) — link a scheduled task to a project step
+        # so each fire records evidence on that step.
+        if 'project_id' not in cols:
+            conn.execute(
+                "ALTER TABLE scheduled_tasks ADD COLUMN project_id TEXT DEFAULT ''")
+        if 'project_step_id' not in cols:
+            conn.execute(
+                "ALTER TABLE scheduled_tasks ADD COLUMN project_step_id TEXT DEFAULT ''")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_project "
+            "ON scheduled_tasks(project_id) WHERE project_id != ''")
+        conn.commit()
+    except Exception:
+        pass
+
+    # 2026-05-02 (S-F4DC817B17) — auto-create evidence after a task run
+    # for tasks linked to a project step.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS project_step_evidence (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id    TEXT NOT NULL,
+            step_id       TEXT NOT NULL,
+            source_type   TEXT NOT NULL DEFAULT 'task',
+            source_ref    TEXT NOT NULL DEFAULT '',
+            summary       TEXT NOT NULL DEFAULT '',
+            status        TEXT NOT NULL DEFAULT 'ok',
+            created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_project_step_evidence_step "
+        "ON project_step_evidence(project_id, step_id, created_at)")
+    conn.commit()
+
+    # 2026-05-02 (S-E056DBAD19, S-B1279A66EB) — service heartbeat:
+    # listener/terminal/scheduler write here on startup + every loop.
+    # Health endpoints can warn when a service hasn't beaten in N minutes
+    # or restart_count is climbing.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS service_heartbeat (
+            service_name      TEXT PRIMARY KEY,
+            code_version      TEXT NOT NULL DEFAULT '',
+            started_at        TEXT NOT NULL DEFAULT (datetime('now')),
+            last_beat_at      TEXT NOT NULL DEFAULT (datetime('now')),
+            pid               INTEGER DEFAULT 0,
+            restart_count     INTEGER DEFAULT 0,
+            last_restart_at   TEXT NOT NULL DEFAULT ''
+        )
+    """)
+    conn.commit()
+
+    # 2026-05-02 (S-859446F555) — per-key notification channel preferences.
+    # Key can be a topic_key, ticket_kind, agent name, or any namespaced
+    # string the caller chooses. channels_json is a JSON array of channels
+    # like ["email","discord","telegram"].
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS notification_channel_prefs (
+            key            TEXT PRIMARY KEY,
+            channels_json  TEXT NOT NULL DEFAULT '["email"]',
+            muted          INTEGER NOT NULL DEFAULT 0,
+            updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.commit()
+
+    # 2026-05-02 (S-BFCDBE9631) — per-topic cadence override. When > 0 the
+    # watcher must wait at least N minutes between notifications for that topic.
+    try:
+        cols = {row[1] for row in conn.execute(
+            "PRAGMA table_info(watched_topic_settings)").fetchall()}
+        if 'cadence_minutes' not in cols:
+            conn.execute(
+                "ALTER TABLE watched_topic_settings ADD COLUMN cadence_minutes "
+                "INTEGER NOT NULL DEFAULT 0")
+            conn.commit()
+    except Exception:
+        pass
+
+    # 2026-05-02 (S-0474A4BE17) — projects priority. 0=normal, higher=urgent.
+    try:
+        cols = {row[1] for row in conn.execute(
+            "PRAGMA table_info(projects)").fetchall()}
+        if 'priority' not in cols:
+            conn.execute(
+                "ALTER TABLE projects ADD COLUMN priority "
+                "INTEGER NOT NULL DEFAULT 0")
+            conn.commit()
+    except Exception:
+        pass
+
+    # watched_topic_evidence — scoring memory for Tasker watched-topic emails
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS watched_topic_evidence (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic_key           TEXT NOT NULL,
+            topic               TEXT NOT NULL,
+            evidence_fingerprint TEXT NOT NULL,
+            session_id          INTEGER DEFAULT 0,
+            source_url          TEXT DEFAULT '',
+            title               TEXT DEFAULT '',
+            snippet             TEXT DEFAULT '',
+            quality_score       REAL DEFAULT 0,
+            novelty_score       REAL DEFAULT 0,
+            combined_score      REAL DEFAULT 0,
+            qualified           INTEGER DEFAULT 0,
+            notified            INTEGER DEFAULT 0,
+            review_status       TEXT DEFAULT '',
+            review_note         TEXT DEFAULT '',
+            evidence_date       TEXT DEFAULT '',
+            recency_score       REAL DEFAULT 0,
+            recency_label       TEXT DEFAULT '',
+            is_historical       INTEGER DEFAULT 0,
+            reason              TEXT DEFAULT '',
+            created_at          TEXT DEFAULT (datetime('now')),
+            updated_at          TEXT DEFAULT (datetime('now')),
+            UNIQUE(topic_key, evidence_fingerprint)
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_watched_topic_evidence_topic ON watched_topic_evidence (topic_key, updated_at)")
+    for col_ddl in [
+        "ALTER TABLE watched_topic_evidence ADD COLUMN review_status TEXT DEFAULT ''",
+        "ALTER TABLE watched_topic_evidence ADD COLUMN review_note TEXT DEFAULT ''",
+        "ALTER TABLE watched_topic_evidence ADD COLUMN evidence_date TEXT DEFAULT ''",
+        "ALTER TABLE watched_topic_evidence ADD COLUMN recency_score REAL DEFAULT 0",
+        "ALTER TABLE watched_topic_evidence ADD COLUMN recency_label TEXT DEFAULT ''",
+        "ALTER TABLE watched_topic_evidence ADD COLUMN is_historical INTEGER DEFAULT 0",
+    ]:
+        try:
+            conn.execute(col_ddl)
+        except Exception:
+            pass
+    conn.commit()
+
     # tool_builds (C.1.1) — migration for existing DBs
     conn.execute("""
         CREATE TABLE IF NOT EXISTS tool_builds (
@@ -1349,11 +1701,85 @@ def _migrate_schema(conn=None):
             conn.execute("ALTER TABLE user_profiles ADD COLUMN approved INTEGER DEFAULT 0")
         if 'email' not in up_cols:
             conn.execute("ALTER TABLE user_profiles ADD COLUMN email TEXT DEFAULT ''")
+        # Enforce unique non-empty email (partial index allows blanks).
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_email_unique "
+            "ON user_profiles(email) WHERE email != ''"
+        )
+
+    # 2026-05-02 (S-642C4CC9B7) — startup hygiene for scheduled_tasks.
+    # On dirty production-like DBs we have seen:
+    #   * duplicate rows for the same task name (race during seed/migration)
+    #   * NULL next_run on enabled rows (scheduler skipped them silently)
+    # Both faults stop the scheduler from firing without raising errors, so
+    # we clean them up here. Idempotent: safe to run on every startup.
+    try:
+        _migrate_scheduled_tasks_hygiene(conn)
+    except Exception as exc:
+        # Hygiene must never break boot. Log to stderr only.
+        try:
+            import sys as _sys
+            print(f'[schema] scheduled_tasks hygiene skipped: {exc}', file=_sys.stderr)
+        except Exception:
+            pass
 
     conn.commit()
 
     if _close:
         conn.close()
+
+
+def _migrate_scheduled_tasks_hygiene(conn):
+    """Dedupe and repair scheduled_tasks. Returns dict with counts.
+
+    * Drops duplicates by name, keeping the lowest id (most recently created
+      tasks win the tie via the unique index already on the table) — actually
+      the unique partial index allows multiple rows when name='' so we
+      prefer the highest id (latest insert) for non-empty names.
+    * Fills NULL/empty next_run on enabled tasks with datetime('now') so the
+      scheduler picks them up on the next tick instead of skipping forever.
+    """
+    cols_present = {row[1] for row in conn.execute(
+        "PRAGMA table_info(scheduled_tasks)").fetchall()}
+    if 'name' not in cols_present or 'enabled' not in cols_present:
+        return {'duplicates_removed': 0, 'next_run_filled': 0}
+
+    # 1) Dedupe by name. Keep the row with the highest id (most recent).
+    dupes = conn.execute(
+        """
+        SELECT name, COUNT(*) AS n
+        FROM scheduled_tasks
+        WHERE name IS NOT NULL AND name != ''
+        GROUP BY name
+        HAVING n > 1
+        """
+    ).fetchall()
+    duplicates_removed = 0
+    for row in dupes:
+        name = row[0]
+        keep_id = conn.execute(
+            "SELECT MAX(id) FROM scheduled_tasks WHERE name = ?", (name,)
+        ).fetchone()[0]
+        cur = conn.execute(
+            "DELETE FROM scheduled_tasks WHERE name = ? AND id != ?",
+            (name, keep_id),
+        )
+        duplicates_removed += cur.rowcount or 0
+
+    # 2) Fill missing next_run on enabled rows.
+    cur = conn.execute(
+        "UPDATE scheduled_tasks "
+        "SET next_run = datetime('now') "
+        "WHERE enabled = 1 AND (next_run IS NULL OR next_run = '')"
+    )
+    next_run_filled = cur.rowcount or 0
+
+    if duplicates_removed or next_run_filled:
+        conn.commit()
+    return {
+        'duplicates_removed': int(duplicates_removed),
+        'next_run_filled': int(next_run_filled),
+    }
 
 
 def _seed_agents():
@@ -1379,7 +1805,7 @@ def _seed_agents():
         (13,  'thirteen',  'HuggingFace', 'meta-llama/Llama-3.3-70B-Instruct',  0.5,  'Developer Agent — HuggingFace specialist (testing)'),
         (17,  'ghost_coder', 'Ghost Coder', 'claude-sonnet-4-20250514',        0.3,  'Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays'),
         ( 7,  'seven',      'Seven',      'local-algorithm',                 0.0,  'Personal companion — loyal, thinks out loud'),
-        (21,  'twenty',     'Qwen3.6',    'qwen3:latest',                    0.8,  'Nervous system — observes, deliberates, suggests (no LLM)'),
+        (21,  'twenty',     'Qwen3.6',    'qwen3.6:latest',                  0.8,  'Nervous system — observes, deliberates, suggests (no LLM)'),
     ]
     conn = get_connection()
     for number, name, label, model, temp, role in roster:
@@ -1405,10 +1831,16 @@ def _seed_agents():
             "UPDATE agents SET number=-1, label='Retired', role=? WHERE name=?",
             (retired_note, retired_name)
         )
+    # Self-heal runtime drift from the earlier Twenty alias bug. Existing DBs
+    # may still hold qwen3:latest, which causes chat-time 404s against Ollama.
+    conn.execute(
+        "UPDATE agents SET model='qwen3.6:latest' "
+        "WHERE name='twenty' AND lower(trim(COALESCE(model,''))) IN ('qwen3:latest','qwen3')"
+    )
 
     # ── proposal_attachments table (ALM file attachments) ─────────────────────
     try:
-        conn.execute('CREATE TABLE IF NOT EXISTS proposal_attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, proposal_id TEXT NOT NULL, filename TEXT NOT NULL, original_name TEXT DEFAULT "", mime_type TEXT DEFAULT "application/octet-stream", size_bytes INTEGER DEFAULT 0, uploaded_by TEXT DEFAULT "ghost", created_at TEXT DEFAULT (datetime("now")))')
+        conn.execute("CREATE TABLE IF NOT EXISTS proposal_attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, proposal_id TEXT NOT NULL, filename TEXT NOT NULL, original_name TEXT DEFAULT '', mime_type TEXT DEFAULT 'application/octet-stream', size_bytes INTEGER DEFAULT 0, uploaded_by TEXT DEFAULT 'ghost', created_at TEXT DEFAULT (datetime('now')))")
         conn.commit()
     except Exception:
         pass

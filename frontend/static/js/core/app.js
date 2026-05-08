@@ -1,19 +1,141 @@
 // app.js — Core app — window opening, home, navigation
 // Clean version - no top-level return, all functions defined properly
+//
+// NOTE (V7C-A01, 2026-04-24): the previous stub definitions of
+// loadStudioData() and studioSetTab() lived here as "Early definitions to
+// prevent ReferenceErrors". They are now removed — the real implementations
+// in views/studio.js are the single source of truth and that file loads
+// before any Studio window can be opened (see terminal_base.html script
+// order: app.js @2414, studio.js @2430, Studio window opens on user click
+// which happens after the full script suite has parsed). Keeping the stubs
+// here was a latent footgun: any future script inserted between app.js and
+// studio.js would mask the real Studio wiring with silent console.log
+// no-ops. Covered by tests/test_v7c_a01_studio_default.py.
 
-// Early definitions to prevent ReferenceErrors
-function loadStudioData(win) {
-    console.log('[Studio] loadStudioData called for window', win ? win.id : 'unknown');
-    // Real implementation will be added once base UI is stable
+function _launchHomeNode(node) {
+    if (!node) return false;
+
+    let winId = String(node.dataset.winId || '').trim();
+    let winTitle = String(node.dataset.winTitle || '').trim();
+    let winTemplate = String(node.dataset.winTemplate || '').trim();
+
+    if (!winId || !winTitle || !winTemplate) {
+        const inline = String(node.getAttribute('onclick') || '');
+        const match = inline.match(/openWindow\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'([^']+)'\)/);
+        if (!match) return false;
+        winId = match[1];
+        winTitle = match[2];
+        winTemplate = match[3];
+    }
+
+    _troubleshootLog && _troubleshootLog('info', 'Card click launch', `id=${winId} template=${winTemplate}`);
+    openWindow(winId, winTitle, winTemplate);
+
+    const afterOpen = String(node.dataset.afterOpen || '').trim();
+    if (afterOpen.startsWith('docsSetTab:')) {
+        const tab = afterOpen.split(':')[1] || 'all';
+        setTimeout(() => {
+            if (typeof docsSetTab === 'function') docsSetTab(tab);
+        }, 120);
+    } else if (afterOpen.startsWith('studioSetTab:')) {
+        const tab = afterOpen.split(':')[1] || 'pending';
+        setTimeout(() => {
+            if (typeof studioSetTab === 'function') studioSetTab(tab);
+        }, 140);
+    }
+
+    return true;
 }
 
-function studioSetTab(tab) {
-    console.log('[Studio] studioSetTab called with', tab);
-    // Real tab switching will be added later
+function syncTaskbarLaunchers() {
+    const strip = document.getElementById('taskbar-launchers');
+    if (!strip) return;
+    const PINNED_LAUNCHERS = ['chat', 'terminal', 'knowledge', 'studio', 'media-center'];
+    const PINNED_LAUNCHER_META = {
+        'chat':         { title: 'Chat',         template: 'view-chat' },
+        'terminal':     { title: 'Terminal',     template: 'view-terminal' },
+        'knowledge':    { title: 'Knowledge',    template: 'view-knowledge' },
+        'studio':       { title: 'Studio',       template: 'view-studio' },
+        'media-center': { title: 'Media Center', template: 'view-media-center' },
+    };
+
+    // V8 Orbs overhaul (S-EAA7C440CC): mark active windows with a ring +
+    // underline, support a data-badge count on the source home card for
+    // unread / attention indicators.
+    const openWinIds = new Set();
+    try {
+        if (window.winManager && window.winManager.windows) {
+            window.winManager.windows.forEach((w) => {
+                const base = (w && (w.baseId || w.id)) ? String(w.baseId || w.id).split('-')[0] : '';
+                if (base) openWinIds.add(base);
+            });
+        }
+    } catch (_) { /* no-op */ }
+
+    strip.innerHTML = '';
+    const launchNodes = Array.from(document.querySelectorAll('#quick-cards .home-card[data-win-id]'));
+    const launchNodeMap = new Map(launchNodes.map((node) => [String(node.dataset.winId || '').trim(), node]));
+    const orderedNodes = [];
+    PINNED_LAUNCHERS.forEach((winId) => {
+        const node = launchNodeMap.get(winId);
+        if (node) {
+            orderedNodes.push(node);
+            return;
+        }
+        const meta = PINNED_LAUNCHER_META[winId];
+        if (meta) {
+            orderedNodes.push({
+                dataset: {
+                    winId,
+                    winTitle: meta.title,
+                    winTemplate: meta.template,
+                },
+            });
+        }
+    });
+    launchNodes.forEach((node) => {
+        if (!orderedNodes.includes(node)) orderedNodes.push(node);
+    });
+
+    orderedNodes.forEach((node) => {
+        const winId = String(node.dataset.winId || '').trim();
+        const winTitle = String(node.dataset.winTitle || '').trim();
+        if (!winId || !winTitle || winId === 'email') return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'taskbar-launcher-btn';
+        btn.title = winTitle;
+        btn.setAttribute('aria-label', winTitle);
+        if (openWinIds.has(winId)) btn.dataset.active = '1';
+        btn.innerHTML = fridaysWindowIconMarkup(winId);
+        const badgeCount = parseInt(node.dataset.badge || '0', 10);
+        if (badgeCount > 0) {
+            const badge = document.createElement('span');
+            badge.className = 'taskbar-badge';
+            badge.textContent = badgeCount > 99 ? '99+' : String(badgeCount);
+            btn.appendChild(badge);
+        }
+        btn.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+            try {
+                if (node instanceof HTMLElement) {
+                    _launchHomeNode(node);
+                } else {
+                    openWindow(winId, winTitle, String(node?.dataset?.winTemplate || `view-${winId}`));
+                }
+            } catch (err) {
+                _troubleshootLog && _troubleshootLog('error', 'Taskbar launcher failed', String(err?.message || err));
+                showToast && showToast('Open window failed: ' + (err?.message || err), 'error');
+            }
+        });
+        strip.appendChild(btn);
+    });
 }
 
 function bindHomeLaunchClicks() {
-    console.log('[App] bindHomeLaunchClicks called');
+    if (window.__SWARM_DEBUG) console.debug('[App] bindHomeLaunchClicks called');
     
     const launchNodes = Array.from(document.querySelectorAll('#quick-cards .home-card, #home-content .stat-card'));
     launchNodes.forEach((node) => {
@@ -30,37 +152,10 @@ function bindHomeLaunchClicks() {
             
             if (event.defaultPrevented) return;
             
-            let winId = String(node.dataset.winId || '').trim();
-            let winTitle = String(node.dataset.winTitle || '').trim();
-            let winTemplate = String(node.dataset.winTemplate || '').trim();
-            
-            if (!winId || !winTitle || !winTemplate) {
-                const inline = String(node.getAttribute('onclick') || '');
-                const match = inline.match(/openWindow\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'([^']+)'\)/);
-                if (!match) return;
-                winId = match[1];
-                winTitle = match[2];
-                winTemplate = match[3];
-            }
-            
             event.preventDefault();
             
             try {
-                _troubleshootLog && _troubleshootLog('info', 'Card click launch', `id=${winId} template=${winTemplate}`);
-                openWindow(winId, winTitle, winTemplate);
-                
-                const afterOpen = String(node.dataset.afterOpen || '').trim();
-                if (afterOpen.startsWith('docsSetTab:')) {
-                    const tab = afterOpen.split(':')[1] || 'all';
-                    setTimeout(() => {
-                        if (typeof docsSetTab === 'function') docsSetTab(tab);
-                    }, 120);
-                } else if (afterOpen.startsWith('studioSetTab:')) {
-                    const tab = afterOpen.split(':')[1] || 'pending';
-                    setTimeout(() => {
-                        if (typeof studioSetTab === 'function') studioSetTab(tab);
-                    }, 140);
-                }
+                if (!_launchHomeNode(node)) return;
             } catch (err) {
                 _troubleshootLog && _troubleshootLog('error', 'Card click launch failed', String(err?.message || err));
                 showToast && showToast('Open window failed: ' + (err?.message || err), 'error');
@@ -105,6 +200,7 @@ function openWindow(id, title, templateId, options = {}) {
             else if (id === 'git') loadGitData && loadGitData(win);
             else if (id === 'memory') loadMemoryData && loadMemoryData(win);
             else if (id === 'monitor') loadMonitorData && loadMonitorData(win);
+            else if (id === 'settings') loadSettingsWindowData && loadSettingsWindowData(win);
             else if (id === 'docs') loadDocsData && loadDocsData(win);
             else if (id === 'skills') loadSkillsData && loadSkillsData(win);
             else if (id === 'tickets') loadTicketsData && loadTicketsData(win);
@@ -116,12 +212,16 @@ function openWindow(id, title, templateId, options = {}) {
             else if (id === 'access') loadAccessData && loadAccessData(win);
             else if (id === 'agents-config') loadAgentsConfigData && loadAgentsConfigData(win);
             else if (id === 'localai') initializeLocalAiPanel && initializeLocalAiPanel();
+            else if (id === 'media-center') initMediaCenter && initMediaCenter(win);
             else if (id === 'trace') initTraceView && initTraceView(win);
             else if (id === 'onboarding') _initOnboarding && _initOnboarding();
             else if (id === 'knowledge') loadKnowledgeData && loadKnowledgeData(win);
             else if (id === 'vpn') loadVpnData && loadVpnData(win);
             else if (id === 'tasker') loadTaskerData && loadTaskerData(win);
             else if (id === 'health-digest') loadHealthDigest && loadHealthDigest(win);
+            else if (id === 'media') loadMediaData && loadMediaData(win);
+            else if (id === 'records-files') loadRecordsFilesData && loadRecordsFilesData(win);
+            else if (id === 'money-hub') loadMoneyHubData && loadMoneyHubData(win);
             else if (id === 'users') _loadUsersWindowContent && _loadUsersWindowContent(win);
 
             _troubleshootLog && _troubleshootLog('info', 'Window opened', `id=${windowKey} base=${id}`);
@@ -159,8 +259,9 @@ function initHomeCardReorder() {
     grid.dataset.reorderBound = '1';
     
     _restoreQuickCardOrder(grid);
+    syncTaskbarLaunchers();
     _initDragAndDrop(grid);
-    console.log('[App] initHomeCardReorder ready — drag enabled');
+    if (window.__SWARM_DEBUG) console.debug('[App] initHomeCardReorder ready — drag enabled');
 }
 
 function _initDragAndDrop(grid) {
@@ -170,14 +271,13 @@ function _initDragAndDrop(grid) {
     let offsetX = 0, offsetY = 0;
     let hasMoved = false;
 
-    // Mark all cards as draggable
-    grid.querySelectorAll('.home-card').forEach(c => {
-        if (!c.classList.contains('home-card-add')) c.classList.add('drag-ready');
-    });
+    // Mark all cards as draggable (Phase-5 SMALL: include home-card-add so the "+" tile
+    // can be repositioned like any other tile).
+    grid.querySelectorAll('.home-card').forEach(c => c.classList.add('drag-ready'));
 
     grid.addEventListener('pointerdown', (e) => {
         const card = e.target.closest('.home-card');
-        if (!card || card.classList.contains('home-card-add')) return;
+        if (!card) return;
         if (e.button !== 0) return; // left click only
 
         dragged = card;
@@ -236,8 +336,8 @@ function _initDragAndDrop(grid) {
         dragged.style.left = (ev.clientX - offsetX) + 'px';
         dragged.style.top  = (ev.clientY - offsetY) + 'px';
 
-        // Find which card we're hovering over
-        const cards = Array.from(grid.querySelectorAll('.home-card:not(.drag-active):not(.home-card-add)'));
+        // Find which card we're hovering over (include home-card-add so "+" is a valid neighbour)
+        const cards = Array.from(grid.querySelectorAll('.home-card:not(.drag-active)'));
         let closest = null, closestDist = Infinity;
         for (const c of cards) {
             const r = c.getBoundingClientRect();
@@ -290,6 +390,7 @@ function _saveCardOrder(grid) {
     try {
         localStorage.setItem(QUICK_CARD_ORDER_KEY, JSON.stringify(order));
     } catch (_) {}
+    syncTaskbarLaunchers();
 }
 
 function _restoreQuickCardOrder(grid) {
@@ -313,6 +414,7 @@ window.bindHomeLaunchClicks = bindHomeLaunchClicks;
 window.loadStudioData = loadStudioData;
 window.studioSetTab = studioSetTab;
 window.initHomeCardReorder = initHomeCardReorder;
+window.syncTaskbarLaunchers = syncTaskbarLaunchers;
 
 // Log that app.js loaded cleanly
-console.log('[App.js] Core functions loaded successfully');
+if (window.__SWARM_DEBUG) console.debug('[App.js] Core functions loaded successfully');
