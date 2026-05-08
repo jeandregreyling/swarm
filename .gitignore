@@ -1,10 +1,14 @@
 # Credentials & Secrets (NEVER commit these)
 config.py
 .env
+.env.*
+.env.agents
 .env.local
 *_credentials.json
 *_token.json
 *_password.txt
+*tokens*.jsonl
+swarm_hive_tokens.jsonl
 
 # Runtime databases (regenerated)
 *.db
