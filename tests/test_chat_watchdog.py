@@ -655,6 +655,14 @@ def test_watchdog_does_not_stop_owned_ollama_runner(monkeypatch):
     assert stop_calls == []
 
 
+def test_watchdog_treats_placeholder_answer_as_unusable():
+    from frontend.blueprints import chat as chat_mod
+
+    assert chat_mod._chat_response_is_unusable('gemma', '[gemma unavailable]') is True
+    assert chat_mod._chat_response_is_unusable('gemma', '[gemma] no response') is True
+    assert chat_mod._chat_response_is_unusable('gemma', 'Here is the actual status update.') is False
+
+
 def test_project_context_block_adds_studio_project_pack(monkeypatch):
     from core.knowledge import projects as kc_projects
     from frontend.blueprints import chat as chat_mod

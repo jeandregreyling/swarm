@@ -105,6 +105,28 @@ def _looks_like_token_exhaustion(text):
     return any(cue in lower for cue in cues)
 
 
+def _chat_response_is_unusable(agent_name, response_text):
+    raw = str(response_text or '').strip()
+    if not raw:
+        return True
+    lower = raw.lower()
+    agent = _normalize_chat_participant(agent_name)
+    placeholders = {
+        f'[{agent} unavailable]' if agent else '',
+        f'[{agent}] no response' if agent else '',
+        f'[{agent}] unavailable' if agent else '',
+        '[agent unavailable]',
+        '[agent] no response',
+    }
+    if lower in placeholders:
+        return True
+    if lower.endswith('no response') and lower.startswith('['):
+        return True
+    if 'unavailable' in lower and lower.startswith('[') and len(lower) <= 80:
+        return True
+    return False
+
+
 def _disable_agent_for_chat(agent_name, reason):
     """Take an agent out of chat routing until re-enabled from Agents tile."""
     name = str(agent_name or '').strip().lower()
@@ -1582,6 +1604,11 @@ def api_chat():
                 updated_iso = _chat_now_iso()
                 try:
                     response_text, tokens_used, elapsed_ms = done_future.result()
+                    if _chat_response_is_unusable(selected_agent, response_text):
+                        raise RuntimeError(
+                            f'{selected_agent} returned no usable answer: '
+                            f'{str(response_text or "").strip()[:120] or "empty response"}'
+                        )
                     if selected_agent in _get_ghost_agent_names() and _is_execution_confirmation(message):
                         try:
                             skill_output = _execute_agent_skill_lines(selected_agent, response_text, data)
@@ -1707,15 +1734,30 @@ def api_chat():
                                 _record_job_health_locked(job)
                             except Exception:
                                 pass
-                    update_chat_job_db(job_id, status='failed', stage='failed', error=err_text,
-                                       stage_trace_json=_trace_json_f)
+                    if _chat_runtime_class(selected_agent) == 'local':
+                        try:
+                            _stop_result, _trace_after_stop, err_text = _chat_apply_runtime_stop_to_job(
+                                job_id,
+                                selected_agent,
+                                err_text,
+                                stage_trace=(json.loads(_trace_json_f or '[]') if _trace_json_f else _agent_stage_trace),
+                                conversation_id=conv_id,
+                                action='watchdog_unusable_answer_stop',
+                            )
+                            _trace_json_f = json.dumps(_trace_after_stop)
+                        except Exception:
+                            update_chat_job_db(job_id, status='failed', stage='failed', error=err_text,
+                                               stage_trace_json=_trace_json_f)
+                    else:
+                        update_chat_job_db(job_id, status='failed', stage='failed', error=err_text,
+                                           stage_trace_json=_trace_json_f)
                     try:
                         ensure_chat_relay_recovery(
                             job_id=job_id,
                             conversation_id=conv_id,
                             stalled_agent=selected_agent,
                             reason=err_text,
-                            stage_trace=_agent_stage_trace,
+                            stage_trace=(json.loads(_trace_json_f or '[]') if _trace_json_f else _agent_stage_trace),
                         )
                     except Exception:
                         pass
