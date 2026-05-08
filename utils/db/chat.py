@@ -274,6 +274,110 @@ def ensure_chat_relay_recovery(
         return {'created': False, 'recovery': None, 'message': '', 'error': str(exc)}
 
 
+def ensure_silent_chat_thread_recovery(conversation_id, reason='chat thread has no visible agent reply'):
+    """Open one recovery card when a thread goes quiet after failed/cancelled jobs.
+
+    This catches the failure mode where watchdog has no live in-memory job to
+    mark stalled, but the user-facing thread is still broken because the latest
+    turn only contains user messages and cancelled/failed job rows.
+    """
+    try:
+        conv_id = int(conversation_id or 0)
+    except Exception:
+        conv_id = 0
+    if conv_id <= 0:
+        return {'created': False, 'recovery': None, 'message': ''}
+
+    try:
+        conn = get_connection()
+        try:
+            _ensure_relay_recovery_schema(conn)
+            existing = conn.execute(
+                """
+                SELECT * FROM chat_relay_recoveries
+                WHERE conversation_id=? AND status='open'
+                  AND job_id LIKE ?
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (conv_id, f'silent-thread-{conv_id}-%'),
+            ).fetchone()
+            if existing:
+                return {'created': False, 'recovery': _row_to_dict(existing), 'message': ''}
+
+            latest_user = conn.execute(
+                """
+                SELECT id, created_at, content
+                FROM messages
+                WHERE conversation_id=? AND from_agent='user'
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (conv_id,),
+            ).fetchone()
+            if not latest_user:
+                return {'created': False, 'recovery': None, 'message': ''}
+
+            reply = conn.execute(
+                """
+                SELECT id
+                FROM messages
+                WHERE conversation_id=?
+                  AND id > ?
+                  AND from_agent NOT IN ('user', 'watchdog')
+                  AND message_type NOT IN ('relay_recovery')
+                LIMIT 1
+                """,
+                (conv_id, int(latest_user['id'])),
+            ).fetchone()
+            if reply:
+                return {'created': False, 'recovery': None, 'message': ''}
+
+            jobs = conn.execute(
+                """
+                SELECT job_id, agent, status, stage, error, started_at, updated_at
+                FROM chat_jobs
+                WHERE conversation_id=?
+                ORDER BY updated_at DESC, started_at DESC
+                LIMIT 5
+                """,
+                (conv_id,),
+            ).fetchall()
+            terminal_jobs = [
+                dict(row) for row in jobs
+                if str(row['status'] or '').lower() in {'failed', 'cancelled'}
+            ]
+            if not terminal_jobs:
+                return {'created': False, 'recovery': None, 'message': ''}
+
+            latest_job = terminal_jobs[0]
+            agent = str(latest_job.get('agent') or 'agent').strip().lower() or 'agent'
+            stage_trace = []
+            for row in reversed(terminal_jobs):
+                status = str(row.get('status') or 'unknown')
+                stage = str(row.get('stage') or '').strip()
+                error = str(row.get('error') or '').strip()
+                text = f"{row.get('agent') or 'agent'} {status}"
+                if stage:
+                    text += f' - {stage}'
+                if error:
+                    text += f' - {error[:120]}'
+                stage_trace.append({'text': text})
+
+            return ensure_chat_relay_recovery(
+                job_id=f"silent-thread-{conv_id}-{int(latest_user['id'])}",
+                conversation_id=conv_id,
+                stalled_agent=agent,
+                reason=str(reason or 'chat thread has no visible agent reply')[:700],
+                stage_trace=stage_trace,
+                recovery_agents=_RELAY_RECOVERY_AGENTS,
+            )
+        finally:
+            conn.close()
+    except Exception as exc:
+        return {'created': False, 'recovery': None, 'message': '', 'error': str(exc)}
+
+
 def get_open_chat_relay_recoveries(conversation_id=None, limit=20):
     try:
         conn = get_connection()
