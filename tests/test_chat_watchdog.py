@@ -357,7 +357,8 @@ def test_status_watchdog_recovers_db_running_job_missing_from_runtime(monkeypatc
     assert updated
     assert recovery_calls
     assert recovery_calls[0]['job_id'] == 'job-db-orphan'
-    assert recovery_calls[0]['stage_trace'][-1]['text'] == 'orphaned runtime job (watchdog)'
+    assert recovery_calls[0]['stage_trace'][-2]['text'] == 'orphaned runtime job (watchdog)'
+    assert recovery_calls[0]['stage_trace'][-1]['text'].startswith('ollama stop')
     assert data['recoveries'][0]['recovery_id'] == 'recovery-orphan-pytest'
 
 
