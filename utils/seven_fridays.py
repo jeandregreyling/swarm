@@ -97,9 +97,11 @@ while True:
                     break
                 except Exception as e:
                     print(f"  ✗ Error: {e}")
-        if not found:
-            print(f"  ✗ File not found: {filename}")
-    elif cmd == 'write':
+def status_update():
+  queue_total = 2000
+  queue_open = 0
+  proposals_pending = 115
+  return f"Queue: {queue_total}, Open: {queue_open}, Proposals pending: {proposals_pending}"
         if len(parts) < 3:
             print("  Usage: write <filename> <content...>")
             continue
