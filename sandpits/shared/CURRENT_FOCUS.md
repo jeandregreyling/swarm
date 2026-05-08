@@ -22,3 +22,6 @@ PRIORITY: 5
 ---
 ```
 Fridays will pick it up on the next heartbeat and create a proposal.
+
+# Dedupe rule for future
+if proposal title already exists in last 24h → skip logging
