@@ -1055,12 +1055,35 @@ def _task_vortex_heartbeat(**kwargs):
     indistinguishable from 'is the swarm just idle?'. This task forces a
     known cadence so the freshness invariant has real signal.
     """
+    from datetime import UTC, datetime
+    import json
     from core.time_machine import time_wizard
-    r = time_wizard.create_workflow_checkpoint(
-        label='heartbeat',
-        agent='tasker',
-        description='Periodic Vortex liveness checkpoint (PACKET-10A).',
+
+    full_state = time_wizard.capture_workflow_state()
+    safe_name = f"vortex-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}-heartbeat"
+    checkpoint_id = time_wizard.create_checkpoint(
+        safe_name,
+        'tasker',
+        'Periodic Vortex liveness checkpoint (PACKET-10A).',
+        full_state,
     )
+    time_wizard.record_event(
+        agent='tasker',
+        action='vortex_heartbeat',
+        event_type='checkpoint',
+        target=safe_name,
+        details={'checkpoint_id': checkpoint_id, 'counts': full_state.get('counts', {})},
+    )
+    time_wizard._write_activity_log(
+        'checkpoint_created',
+        f'{safe_name} | agent=tasker | counts={json.dumps(full_state.get("counts", {}), ensure_ascii=True)}',
+    )
+    r = {
+        'checkpoint_id': checkpoint_id,
+        'checkpoint_name': safe_name,
+        'counts': full_state.get('counts', {}),
+        'git_tags': {},
+    }
     counts = r.get('counts', {})
     return (
         f"vortex_heartbeat ok · {r.get('checkpoint_name')} · "
