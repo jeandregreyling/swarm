@@ -258,6 +258,46 @@ def test_status_watchdog_opens_relay_recovery_card(monkeypatch):
     assert data['recoveries'][0]['recovery_id'] == 'recovery-pytest'
 
 
+def test_status_watchdog_opens_silent_thread_recovery_when_no_jobs(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    _fresh_state()
+    from flask import Flask
+    from frontend.blueprints import chat as chat_mod
+
+    silent_calls = []
+    with chat_mod._CHAT_JOB_LOCK:
+        chat_mod._CHAT_JOBS.clear()
+
+    def _fake_silent_recovery(conversation_id, reason=''):
+        silent_calls.append((conversation_id, reason))
+        return {
+            'created': True,
+            'recovery': {
+                'recovery_id': 'recovery-silent-pytest',
+                'job_id': 'silent-thread-2576-7508',
+                'stalled_agent': 'gemma',
+                'summary': 'silent thread recovery opened',
+            },
+            'message': 'silent recovery card',
+        }
+
+    monkeypatch.setattr(chat_mod, 'ensure_silent_chat_thread_recovery', _fake_silent_recovery)
+    monkeypatch.setattr(chat_mod, 'get_open_chat_relay_recoveries', lambda *a, **k: [])
+    monkeypatch.setattr(chat_mod, 'log_activity', lambda *a, **k: None)
+
+    app = Flask(__name__)
+    app.register_blueprint(chat_mod.chat_bp)
+    with app.test_client() as client:
+        resp = client.get('/api/chat/jobs/status?conversation_id=2576')
+        data = resp.get_json()
+
+    assert resp.status_code == 200
+    assert data['ok'] is True
+    assert silent_calls
+    assert silent_calls[0][0] == 2576
+    assert data['recoveries'][0]['recovery_id'] == 'recovery-silent-pytest'
+
+
 def test_relay_recovery_card_is_idempotent_and_contextual(monkeypatch, tmp_path):
     from utils.db import chat as db_chat
 
