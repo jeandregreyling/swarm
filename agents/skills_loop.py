@@ -168,7 +168,7 @@ def _extract_skill_cmds(text):
     return cmds
 
 
-def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_id=None):
+def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_id=None, allowed_skill_names=None):
     """Execute a list of (skill_name, skill_args) pairs. Returns joined output string."""
     char_limit = max_chars or _MAX_SKILL_OUTPUT_CHARS
     try:
@@ -183,6 +183,14 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
         # Log the skill invocation to the timeline
         args_preview = str(skill_args or '')[:300]
         _tl(source_conv_id, agent_name, 'skill_call', f'{skill_name} {args_preview}'.strip())
+
+        if allowed_skill_names is not None and skill_name not in allowed_skill_names:
+            parts.append(
+                f'[skill:{skill_name}] SKIPPED\n'
+                'Watchdog read-only guard: this chat turn can only run read-only skills.'
+            )
+            _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] SKIPPED — watchdog read-only guard')
+            continue
 
         # Optional per-agent permission check (non-fatal if missing)
         try:
@@ -222,6 +230,7 @@ def run_skill_loop(
     max_skill_chars=None,
     nudge_if_no_skills=False,
     source_conv_id=None,
+    allowed_skill_names=None,
 ):
     """
     Execute `call_fn(messages)` with SKILL command interception and re-prompting.
@@ -251,6 +260,12 @@ def run_skill_loop(
     (answer: str, tokens: int)
     """
     skill_char_limit = max_skill_chars or _MAX_SKILL_OUTPUT_CHARS
+    if allowed_skill_names is None:
+        guard_text = '\n'.join(str(m.get('content', '')) for m in messages if isinstance(m, dict))
+        if 'WATCHDOG READ-ONLY ROUTING GUARD' in guard_text:
+            allowed_skill_names = {'fs_readonly'}
+    elif not isinstance(allowed_skill_names, set):
+        allowed_skill_names = set(allowed_skill_names)
     # Track the baseline message count so we can trim accumulated turns later.
     baseline_len = len(messages)
     working_messages = list(messages)
@@ -332,7 +347,14 @@ def run_skill_loop(
                     if nudge_cmds:
                         logger.info(f'[{agent_name}] mid-loop nudge (pass {pass_num}) produced {len(nudge_cmds)} SKILL command(s) — executing inline')
                         emit_fn('running nudged skills')
-                        nudge_results = _execute_skill_cmds(nudge_cmds, agent_name, emit_fn, skill_char_limit, source_conv_id=source_conv_id)
+                        nudge_results = _execute_skill_cmds(
+                            nudge_cmds,
+                            agent_name,
+                            emit_fn,
+                            skill_char_limit,
+                            source_conv_id=source_conv_id,
+                            allowed_skill_names=allowed_skill_names,
+                        )
                         pass_num += 1
                         follow_up = (
                             'Skill outputs below.\n'
@@ -360,7 +382,14 @@ def run_skill_loop(
             break  # model is done — no skills requested
 
         emit_fn('running requested skills')
-        skill_results = _execute_skill_cmds(skill_cmds, agent_name, emit_fn, skill_char_limit, source_conv_id=source_conv_id)
+        skill_results = _execute_skill_cmds(
+            skill_cmds,
+            agent_name,
+            emit_fn,
+            skill_char_limit,
+            source_conv_id=source_conv_id,
+            allowed_skill_names=allowed_skill_names,
+        )
         pass_num += 1
 
         logger.debug(
