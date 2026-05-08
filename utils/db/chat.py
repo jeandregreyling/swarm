@@ -569,21 +569,35 @@ def _format_relay_recovery_card(
 
 def mark_orphaned_chat_jobs():
     """Mark any 'running' chat_jobs rows as failed. Call once on server startup."""
+    orphaned = []
     try:
         conn = get_connection()
         try:
-            conn.execute(
+            cur = conn.execute(
                 """UPDATE chat_jobs
                    SET status='failed', stage='failed',
                        error='server restarted — job lost',
                        updated_at=datetime('now')
-                   WHERE status='running'"""
+                   WHERE status='running'
+                   RETURNING job_id, conversation_id, agent"""
             )
+            orphaned = [dict(row) for row in cur.fetchall()]
             conn.commit()
         finally:
             conn.close()
     except Exception:
         pass
+    for row in orphaned:
+        try:
+            ensure_chat_relay_recovery(
+                job_id=row.get('job_id'),
+                conversation_id=row.get('conversation_id'),
+                stalled_agent=row.get('agent'),
+                reason='server restarted — job lost',
+                stage_trace=[{'text': 'server restarted - runtime job was orphaned'}],
+            )
+        except Exception:
+            pass
 
 
 def sweep_stuck_jobs(max_age_minutes=120):

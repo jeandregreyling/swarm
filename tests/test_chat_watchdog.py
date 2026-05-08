@@ -298,6 +298,69 @@ def test_status_watchdog_opens_silent_thread_recovery_when_no_jobs(monkeypatch):
     assert data['recoveries'][0]['recovery_id'] == 'recovery-silent-pytest'
 
 
+def test_status_watchdog_recovers_db_running_job_missing_from_runtime(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    _fresh_state()
+    from flask import Flask
+    from frontend.blueprints import chat as chat_mod
+
+    updated = []
+    recovery_calls = []
+    with chat_mod._CHAT_JOB_LOCK:
+        chat_mod._CHAT_JOBS.clear()
+
+    def _fake_recovery(**kwargs):
+        recovery_calls.append(kwargs)
+        return {
+            'created': True,
+            'recovery': {
+                'recovery_id': 'recovery-orphan-pytest',
+                'job_id': kwargs.get('job_id'),
+                'stalled_agent': kwargs.get('stalled_agent'),
+                'summary': 'orphan recovery opened',
+            },
+            'message': 'orphan recovery card',
+        }
+
+    monkeypatch.setattr(chat_mod, 'get_chat_jobs_by_ids', lambda ids: [{
+        'job_id': 'job-db-orphan',
+        'conversation_id': 2577,
+        'agent': 'gemma',
+        'status': 'running',
+        'runtime_class': 'local',
+        'stage': '',
+        'eta_seconds': 85,
+        'elapsed_ms': 0,
+        'error': '',
+        'stage_trace_json': '[]',
+        'started_at': '2026-05-08T05:28:01Z',
+        'updated_at': '2026-05-08T05:28:01Z',
+    }])
+    monkeypatch.setattr(chat_mod, 'update_chat_job_db', lambda *a, **k: updated.append((a, k)))
+    monkeypatch.setattr(chat_mod, 'ensure_chat_relay_recovery', _fake_recovery)
+    monkeypatch.setattr(chat_mod, 'ensure_silent_chat_thread_recovery', lambda *a, **k: {'created': False, 'recovery': None})
+    monkeypatch.setattr(chat_mod, 'get_open_chat_relay_recoveries', lambda *a, **k: [])
+    monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', lambda *a, **k: {'ok': True})
+    monkeypatch.setattr(chat_mod, 'log_activity', lambda *a, **k: None)
+
+    app = Flask(__name__)
+    app.register_blueprint(chat_mod.chat_bp)
+    with app.test_client() as client:
+        resp = client.get('/api/chat/jobs/status?conversation_id=2577&job_ids=job-db-orphan')
+        data = resp.get_json()
+
+    assert resp.status_code == 200
+    assert data['ok'] is True
+    assert data['jobs'][0]['status'] == 'failed'
+    assert data['jobs'][0]['stage'] == 'stalled'
+    assert 'missing from the live runtime' in data['jobs'][0]['error']
+    assert updated
+    assert recovery_calls
+    assert recovery_calls[0]['job_id'] == 'job-db-orphan'
+    assert recovery_calls[0]['stage_trace'][-1]['text'] == 'orphaned runtime job (watchdog)'
+    assert data['recoveries'][0]['recovery_id'] == 'recovery-orphan-pytest'
+
+
 def test_relay_recovery_card_is_idempotent_and_contextual(monkeypatch, tmp_path):
     from utils.db import chat as db_chat
 
@@ -372,6 +435,90 @@ def test_relay_recovery_card_is_idempotent_and_contextual(monkeypatch, tmp_path)
     assert recovery_count == 1
     assert len(card_rows) == 1
     assert 'Research this and hand it to Duck.' in card_rows[0]['content']
+
+
+def test_startup_orphan_sweep_creates_recovery_card(monkeypatch, tmp_path):
+    from utils.db import chat as db_chat
+
+    db_path = tmp_path / 'chat-startup-orphan.db'
+
+    def _conn():
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA foreign_keys=ON')
+        return conn
+
+    monkeypatch.setattr(db_chat, 'get_connection', _conn)
+    conn = _conn()
+    conn.executescript(
+        """
+        CREATE TABLE conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            source TEXT DEFAULT 'test',
+            sender TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER REFERENCES conversations(id),
+            from_agent TEXT NOT NULL,
+            to_agent TEXT,
+            content TEXT NOT NULL,
+            message_type TEXT DEFAULT 'response',
+            tokens_used INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE chat_jobs (
+            job_id TEXT PRIMARY KEY,
+            conversation_id INTEGER,
+            agent TEXT,
+            status TEXT,
+            runtime_class TEXT,
+            eta_seconds INTEGER,
+            started_at TEXT,
+            updated_at TEXT,
+            stage TEXT,
+            error TEXT,
+            elapsed_ms INTEGER,
+            tokens INTEGER DEFAULT 0,
+            stage_trace_json TEXT DEFAULT '[]'
+        );
+        """
+    )
+    conv_id = conn.execute("INSERT INTO conversations (title) VALUES ('orphan startup')").lastrowid
+    conn.execute(
+        "INSERT INTO messages (conversation_id, from_agent, to_agent, content, message_type) VALUES (?, 'user', 'gemma', 'Status update', 'chat')",
+        (conv_id,),
+    )
+    conn.execute(
+        """INSERT INTO chat_jobs
+           (job_id, conversation_id, agent, status, runtime_class, eta_seconds, started_at, updated_at, stage, error, elapsed_ms)
+           VALUES ('job-startup-orphan', ?, 'gemma', 'running', 'local', 85,
+                   '2026-05-08T05:28:01Z', '2026-05-08T05:28:01Z', '', '', 0)""",
+        (conv_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    db_chat.mark_orphaned_chat_jobs()
+
+    conn = _conn()
+    try:
+        job = conn.execute("SELECT status, stage, error FROM chat_jobs WHERE job_id='job-startup-orphan'").fetchone()
+        recovery = conn.execute("SELECT job_id, stalled_agent, status FROM chat_relay_recoveries").fetchone()
+        card = conn.execute("SELECT content FROM messages WHERE message_type='relay_recovery'").fetchone()
+    finally:
+        conn.close()
+
+    assert job['status'] == 'failed'
+    assert job['stage'] == 'failed'
+    assert 'server restarted' in job['error']
+    assert recovery['job_id'] == 'job-startup-orphan'
+    assert recovery['stalled_agent'] == 'gemma'
+    assert recovery['status'] == 'open'
+    assert 'server restarted - runtime job was orphaned' in card['content']
 
 
 def test_relay_recovery_leases_prevent_duplicate_active_reviews(monkeypatch, tmp_path):
