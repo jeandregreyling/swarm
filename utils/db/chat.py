@@ -600,34 +600,85 @@ def mark_orphaned_chat_jobs():
             pass
 
 
-def sweep_stuck_jobs(max_age_minutes=120):
+def sweep_stuck_jobs(max_age_minutes=120, no_progress_age_minutes=5, conversation_id=None):
     """Fail jobs stuck in running/dispatched/processing state beyond max_age_minutes.
 
     Designed to be called periodically (e.g. every 10 minutes) from a
     background thread. Returns the number of jobs swept.
+
+    A second, shorter no-progress budget catches the thread #2583 failure mode:
+    a DB job is created after a follow-up user turn, but the live runtime never
+    records even its first stage trace. Healthy local jobs write a stage almost
+    immediately; an empty trace after this grace period is an orphaned launch,
+    not a slow model.
     """
+    swept_rows = []
     try:
         conn = get_connection()
         try:
-            cutoff = f'-{max_age_minutes} minutes'
+            where = [
+                "status IN ('running', 'dispatched', 'processing')",
+                """(
+                       julianday(started_at) < julianday('now', ?)
+                    OR (
+                         COALESCE(stage, '') = ''
+                     AND COALESCE(error, '') = ''
+                     AND COALESCE(stage_trace_json, '[]') IN ('', '[]')
+                     AND julianday(started_at) < julianday('now', ?)
+                    )
+                )""",
+            ]
+            params = [
+                f'-{max_age_minutes} minutes',
+                f'-{no_progress_age_minutes} minutes',
+            ]
+            if conversation_id is not None:
+                where.append("conversation_id=?")
+                params.append(int(conversation_id or 0))
+
             cur = conn.execute(
-                """UPDATE chat_jobs
+                f"""UPDATE chat_jobs
                    SET status='failed', stage='failed',
-                       error=printf('stuck job swept (>%d min in state: %s)',
-                                    ?, status),
+                       error=CASE
+                         WHEN COALESCE(stage, '') = ''
+                          AND COALESCE(error, '') = ''
+                          AND COALESCE(stage_trace_json, '[]') IN ('', '[]')
+                         THEN printf('no-progress job swept (>%d min without first stage)', ?)
+                         ELSE printf('stuck job swept (>%d min in state: %s)', ?, status)
+                       END,
+                       stage_trace_json=CASE
+                         WHEN COALESCE(stage_trace_json, '[]') IN ('', '[]')
+                         THEN '[{{"text":"no progress recorded before watchdog sweep"}}]'
+                         ELSE stage_trace_json
+                       END,
                        updated_at=datetime('now')
-                   WHERE status IN ('running', 'dispatched', 'processing')
-                     AND started_at < datetime('now', ?)
-                   RETURNING job_id, agent, status""",
-                (max_age_minutes, cutoff),
+                   WHERE {' AND '.join(where)}
+                   RETURNING job_id, conversation_id, agent, status, stage, error, stage_trace_json""",
+                (no_progress_age_minutes, max_age_minutes, *params),
             )
-            swept = cur.fetchall()
-            if swept:
+            swept_rows = [dict(row) for row in cur.fetchall()]
+            if swept_rows:
                 conn.commit()
-            conn.close()
-            return len(swept)
+            return len(swept_rows)
         except Exception:
-            conn.close()
             return 0
+        finally:
+            conn.close()
     except Exception:
         return 0
+    finally:
+        for row in swept_rows:
+            try:
+                trace = json.loads(row.get('stage_trace_json') or '[]')
+            except Exception:
+                trace = []
+            try:
+                ensure_chat_relay_recovery(
+                    job_id=row.get('job_id'),
+                    conversation_id=row.get('conversation_id'),
+                    stalled_agent=row.get('agent'),
+                    reason=row.get('error') or 'chat job swept by watchdog',
+                    stage_trace=trace,
+                )
+            except Exception:
+                pass

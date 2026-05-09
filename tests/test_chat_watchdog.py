@@ -527,6 +527,94 @@ def test_startup_orphan_sweep_creates_recovery_card(monkeypatch, tmp_path):
     assert 'server restarted - runtime job was orphaned' in card['content']
 
 
+def test_sweep_stuck_jobs_recovers_no_progress_followup(monkeypatch, tmp_path):
+    from utils.db import chat as db_chat
+
+    db_path = tmp_path / 'chat-no-progress.db'
+
+    def _conn():
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA foreign_keys=ON')
+        return conn
+
+    monkeypatch.setattr(db_chat, 'get_connection', _conn)
+    conn = _conn()
+    conn.executescript(
+        """
+        CREATE TABLE conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            source TEXT DEFAULT 'test',
+            sender TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER REFERENCES conversations(id),
+            from_agent TEXT NOT NULL,
+            to_agent TEXT,
+            content TEXT NOT NULL,
+            message_type TEXT DEFAULT 'response',
+            tokens_used INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE chat_jobs (
+            job_id TEXT PRIMARY KEY,
+            conversation_id INTEGER,
+            agent TEXT,
+            status TEXT,
+            runtime_class TEXT,
+            eta_seconds INTEGER,
+            started_at TEXT,
+            updated_at TEXT,
+            stage TEXT,
+            error TEXT,
+            elapsed_ms INTEGER,
+            tokens INTEGER DEFAULT 0,
+            stage_trace_json TEXT DEFAULT '[]'
+        );
+        """
+    )
+    conv_id = conn.execute("INSERT INTO conversations (title) VALUES ('thread 2583 shape')").lastrowid
+    conn.execute(
+        "INSERT INTO messages (conversation_id, from_agent, to_agent, content, message_type) VALUES (?, 'user', 'sniffles', 'pick three items you want to fix', 'chat')",
+        (conv_id,),
+    )
+    conn.execute(
+        """INSERT INTO chat_jobs
+           (job_id, conversation_id, agent, status, runtime_class, eta_seconds,
+            started_at, updated_at, stage, error, elapsed_ms, stage_trace_json)
+           VALUES ('job-no-progress', ?, 'sniffles', 'running', 'local', 180,
+                   datetime('now', '-6 minutes'), datetime('now', '-6 minutes'),
+                   '', '', 0, '[]')""",
+        (conv_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    swept = db_chat.sweep_stuck_jobs(max_age_minutes=120, no_progress_age_minutes=5, conversation_id=conv_id)
+
+    conn = _conn()
+    try:
+        job = conn.execute("SELECT status, stage, error, stage_trace_json FROM chat_jobs WHERE job_id='job-no-progress'").fetchone()
+        recovery = conn.execute("SELECT job_id, stalled_agent, status FROM chat_relay_recoveries").fetchone()
+        card = conn.execute("SELECT content FROM messages WHERE message_type='relay_recovery'").fetchone()
+    finally:
+        conn.close()
+
+    assert swept == 1
+    assert job['status'] == 'failed'
+    assert job['stage'] == 'failed'
+    assert 'no-progress job swept' in job['error']
+    assert 'no progress recorded before watchdog sweep' in job['stage_trace_json']
+    assert recovery['job_id'] == 'job-no-progress'
+    assert recovery['stalled_agent'] == 'sniffles'
+    assert recovery['status'] == 'open'
+    assert 'pick three items you want to fix' in card['content']
+
+
 def test_relay_recovery_leases_prevent_duplicate_active_reviews(monkeypatch, tmp_path):
     from utils.db import chat as db_chat
 
