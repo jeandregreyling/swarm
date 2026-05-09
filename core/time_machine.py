@@ -12,6 +12,7 @@ from pathlib import Path
 import hashlib
 import re
 import subprocess
+import sys
 
 DB_PATH = Path(__file__).parent.parent / 'swarm_memory.db'
 
@@ -51,6 +52,104 @@ def _vortex_should_write_git(label: str) -> bool:
     if 'heartbeat' in safe:
         return os.environ.get('SWARM_VORTEX_GIT_HEARTBEAT', '').strip().lower() in {'1', 'true', 'yes', 'on'}
     return True
+
+
+def _vortex_sync_threshold() -> int:
+    raw = os.environ.get('SWARM_VORTEX_GIT_SYNC_THRESHOLD', '10').strip()
+    try:
+        return max(1, int(raw))
+    except Exception:
+        return 10
+
+
+def _git_status_paths(cwd=None) -> list[str]:
+    out, rc = _git_cmd(['status', '--porcelain', '--untracked-files=all'], cwd=cwd)
+    if rc != 0 or not out:
+        return []
+    paths = []
+    for line in out.splitlines():
+        item = line[3:].strip() if len(line) > 3 else ''
+        if ' -> ' in item:
+            item = item.split(' -> ', 1)[1].strip()
+        if item:
+            paths.append(item)
+    return paths
+
+
+def _run_secret_scan_include_untracked(cwd=None) -> tuple[str, int]:
+    script = Path(cwd or _SWARM_PROD_ROOT) / 'scripts' / 'secret_scan.py'
+    if not script.exists():
+        return 'secret scan script missing', 1
+    try:
+        r = subprocess.run(
+            [sys.executable, str(script), '--include-untracked'],
+            cwd=cwd or _SWARM_PROD_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        return (r.stdout + r.stderr).strip(), r.returncode
+    except Exception as e:
+        return str(e), 1
+
+
+def _vortex_maybe_git_sync(agent: str = 'vortex', reason: str = 'scheduled', cwd=None, threshold: int = None) -> dict:
+    """Commit and push a Git-visible change batch once it reaches a threshold.
+
+    Vortex should not create empty heartbeat commits. It should preserve real
+    batches after enough source changes accumulate, while running the local
+    secret scanner before staging anything.
+    """
+    root = cwd or _SWARM_PROD_ROOT
+    if not (os.path.isdir(os.path.join(root, '.git')) or os.path.isfile(os.path.join(root, '.git'))):
+        return {'status': 'skipped', 'reason': 'not-a-git-worktree', 'change_count': 0}
+
+    threshold = threshold or _vortex_sync_threshold()
+    paths = _git_status_paths(cwd=root)
+    change_count = len(paths)
+    result = {
+        'status': 'skipped',
+        'reason': 'below-threshold',
+        'threshold': threshold,
+        'change_count': change_count,
+        'commit': '',
+        'pushed': False,
+    }
+    if change_count < threshold:
+        return result
+
+    scan_out, scan_rc = _run_secret_scan_include_untracked(cwd=root)
+    if scan_rc != 0:
+        result.update({'status': 'blocked', 'reason': 'secret-scan-failed', 'scan': scan_out[:1200]})
+        return result
+
+    _git_cmd(['add', '-A'], cwd=root)
+    timestamp = datetime.now(UTC).strftime('%Y%m%d-%H%M%S')
+    commit_msg = (
+        f'[vortex-sync] {timestamp} batch {change_count} changes\n\n'
+        f'Agent: {agent}\n'
+        f'Reason: {reason}\n'
+        f'Threshold: {threshold}'
+    )
+    out_c, rc_c = _git_cmd(['commit', '-m', commit_msg], cwd=root)
+    if rc_c != 0:
+        result.update({'status': 'skipped', 'reason': 'commit-failed', 'commit_output': out_c[:1200]})
+        return result
+
+    commit, _branch = _git_head_info(cwd=root)
+    out_p, rc_p = _git_cmd(['push'], cwd=root)
+    if rc_p != 0 and 'no upstream branch' in (out_p or '').lower():
+        branch = _branch or 'HEAD'
+        out_p, rc_p = _git_cmd(['push', '-u', 'origin', branch], cwd=root)
+
+    result.update({
+        'status': 'synced' if rc_p == 0 else 'commit-only',
+        'reason': 'threshold-met',
+        'commit': commit,
+        'pushed': rc_p == 0,
+        'push_output': out_p[:1200] if rc_p != 0 else '',
+    })
+    return result
 
 class TimeMachine:
     """Track system state across time. Enable temporal queries and replay."""
