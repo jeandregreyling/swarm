@@ -272,6 +272,29 @@ function _renderTwHealth() {
   pill.setAttribute('data-state', state);
 }
 
+let _twGitDriftToastKey = '';
+
+async function checkVortexGitDrift() {
+  if (typeof checkVortexGitSyncDrift === 'function') {
+    checkVortexGitSyncDrift();
+    return;
+  }
+  try {
+    const resp = await fetch('/api/git/status?check_remote=1');
+    const data = await resp.json().catch(() => ({}));
+    if (!data || !data.ok) return;
+    const sync = data.out_of_sync || {};
+    const remote = data.remote_check || {};
+    if (!remote.checked || !remote.ok) return;
+    if (!sync.needs_pull) return;
+    const key = `${data.branch || ''}:${data.upstream || ''}:${data.behind || 0}`;
+    if (key === _twGitDriftToastKey) return;
+    _twGitDriftToastKey = key;
+    const msg = sync.summary || `Git is behind by ${data.behind || 0} commit(s). Pull before continuing.`;
+    if (typeof showToast === 'function') showToast(`Vortex Git sync: ${msg}`, 'warning');
+  } catch (_) {}
+}
+
 async function loadTimeWizardData() {
   // Y.58 — install Cyber + VPN tabs alongside the timeline. Idempotent.
   twInstallTabs();
@@ -305,6 +328,7 @@ async function loadTimeWizardData() {
     renderTwHistoryPanel();
     renderTwVisualTimeline();
     restoreTwSelection();
+    checkVortexGitDrift();
     if (_twCheckpoints.length) {
       await previewTwCheckpoint(false);
     } else {
