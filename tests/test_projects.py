@@ -71,10 +71,12 @@ def test_list_projects_returns_aggregates(isolated_db):
     pj.add_step(pid, "step 1")
     pj.add_step(pid, "step 2")
     pj.add_test_case(pid, "case 1")
+    pj.add_blackboard_note(pid, "Visible handoff", kind="handoff")
     items = pj.list_projects()
     row = [x for x in items if x["project_id"] == pid][0]
     assert row["step_count"] == 2
     assert row["case_count"] == 1
+    assert row["blackboard_count"] == 1
     assert row["steps_done"] == 0
 
 
