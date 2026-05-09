@@ -170,6 +170,35 @@ def _watchdog_budget_seconds(job):
     return budget
 
 
+def _watchdog_gateway_absolute_seconds(job):
+    """Return an explicit runtime gateway absolute cap from the stage trace.
+
+    The gateway emits stages like ``gateway: dispatch (absolute=600s idle=240s)``.
+    That cap is stronger than the generic local Ollama grace window: once the
+    gateway has declared an absolute ceiling, tiny streaming fragments must not
+    keep the chat bubble alive forever.
+    """
+    trace = job.get('stage_trace') or []
+    if not isinstance(trace, list):
+        return None
+    for entry in reversed(trace):
+        text = ''
+        if isinstance(entry, dict):
+            text = str(entry.get('text') or '')
+        else:
+            text = str(entry or '')
+        match = re.search(r'\babsolute\s*=\s*(\d+)\s*s\b', text, flags=re.IGNORECASE)
+        if not match:
+            continue
+        try:
+            seconds = int(match.group(1))
+        except Exception:
+            continue
+        if seconds > 0:
+            return seconds
+    return None
+
+
 def _watchdog_mark_stalled_jobs_locked():
     """Fail any 'running' job that has exceeded its idle watchdog budget.
 
@@ -187,13 +216,22 @@ def _watchdog_mark_stalled_jobs_locked():
         updated = float(job.get('updated_ts') or started)
         idle = now - updated
         budget = _watchdog_budget_seconds(job)
-        if idle <= budget:
+        absolute_budget = _watchdog_gateway_absolute_seconds(job)
+        absolute_expired = absolute_budget is not None and elapsed > float(absolute_budget)
+        idle_expired = idle > budget
+        if not absolute_expired and not idle_expired:
             continue
         agent = job.get('agent') or 'agent'
-        error_msg = (
-            f'Watchdog: {agent} had no progress for {int(idle)}s '
-            f'(budget {int(budget)}s, elapsed {int(elapsed)}s). Automatic stall detection.'
-        )
+        if absolute_expired:
+            error_msg = (
+                f'Watchdog: {agent} exceeded runtime gateway absolute cap '
+                f'({int(absolute_budget)}s, elapsed {int(elapsed)}s). Automatic stall detection.'
+            )
+        else:
+            error_msg = (
+                f'Watchdog: {agent} had no progress for {int(idle)}s '
+                f'(budget {int(budget)}s, elapsed {int(elapsed)}s). Automatic stall detection.'
+            )
         job.update({
             'status': 'failed',
             'stage': 'stalled',

@@ -136,6 +136,30 @@ def test_watchdog_uses_idle_time_not_total_runtime(monkeypatch):
     assert cj._CHAT_JOBS['job-active']['status'] == 'running'
 
 
+def test_watchdog_enforces_gateway_absolute_cap_despite_progress(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    _fresh_state()
+    now = time.time()
+    cj._CHAT_JOBS['job-gateway-cap'] = {
+        'job_id': 'job-gateway-cap',
+        'agent': 'gemma',
+        'status': 'running',
+        'runtime_class': 'local',
+        'eta_seconds': 85,
+        'started_ts': now - 610,
+        'updated_ts': now - 5,
+        'stage_trace': [
+            {'text': 'gateway: dispatch (absolute=600s idle=240s)', 'ts': now - 610},
+            {'text': 'generating · still streaming', 'ts': now - 5},
+        ],
+    }
+    with cj._CHAT_JOB_LOCK:
+        stalled = cj._watchdog_mark_stalled_jobs_locked()
+    assert len(stalled) == 1
+    assert cj._CHAT_JOBS['job-gateway-cap']['status'] == 'failed'
+    assert 'absolute cap' in cj._CHAT_JOBS['job-gateway-cap']['error']
+
+
 def test_watchdog_gives_local_jobs_full_handoff_window(monkeypatch):
     _suppress_durable_spine_logs(monkeypatch)
     _fresh_state()
@@ -726,6 +750,41 @@ def test_watchdog_reconciles_unowned_ollama_runner(monkeypatch):
     assert result and result[0]['ok'] is True
     assert trace_calls
     assert trace_calls[0][0][3] == 'watchdog_unowned_runner_stop'
+
+
+def test_watchdog_escalates_when_ollama_stop_leaves_single_runner(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    calls = {'ps': 0, 'cmds': []}
+    monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'gemma'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'gemma3:latest')
+    monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda name: {str(name or '').lower()})
+
+    def _running_models():
+        calls['ps'] += 1
+        return ['gemma3:latest'] if calls['ps'] <= 2 else []
+
+    class _Proc:
+        def __init__(self, returncode=0, stdout='', stderr=''):
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
+
+    def _run(cmd, **kwargs):
+        calls['cmds'].append(cmd)
+        return _Proc(0)
+
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', _running_models)
+    monkeypatch.setattr(chat_mod.subprocess, 'run', _run)
+    monkeypatch.setattr(chat_mod.time, 'sleep', lambda *_: None)
+
+    result = chat_mod._chat_try_hard_kill_local_agent('gemma')
+
+    assert result['ok'] is True
+    assert ['ollama', 'stop', 'gemma3:latest'] in calls['cmds']
+    assert ['pkill', '-f', 'ollama runner --ollama-engine'] in calls['cmds']
+    assert result['after_models'] == []
 
 
 def test_watchdog_does_not_stop_owned_ollama_runner(monkeypatch):
