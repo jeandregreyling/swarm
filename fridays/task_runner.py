@@ -1057,7 +1057,7 @@ def _task_vortex_heartbeat(**kwargs):
     """
     from datetime import UTC, datetime
     import json
-    from core.time_machine import time_wizard
+    from core.time_machine import _vortex_maybe_git_sync, time_wizard
 
     full_state = time_wizard.capture_workflow_state()
     safe_name = f"vortex-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}-heartbeat"
@@ -1078,18 +1078,28 @@ def _task_vortex_heartbeat(**kwargs):
         'checkpoint_created',
         f'{safe_name} | agent=tasker | counts={json.dumps(full_state.get("counts", {}), ensure_ascii=True)}',
     )
+    git_sync = _vortex_maybe_git_sync(agent='tasker', reason='vortex_heartbeat')
+    if git_sync.get('status') in {'synced', 'commit-only', 'blocked'}:
+        time_wizard._write_activity_log(
+            'git_sync',
+            json.dumps(git_sync, ensure_ascii=True),
+        )
     r = {
         'checkpoint_id': checkpoint_id,
         'checkpoint_name': safe_name,
         'counts': full_state.get('counts', {}),
         'git_tags': {},
+        'git_sync': git_sync,
     }
     counts = r.get('counts', {})
+    sync = r.get('git_sync') or {}
     return (
         f"vortex_heartbeat ok · {r.get('checkpoint_name')} · "
         f"props={counts.get('work_proposals', '?')} "
         f"decisions={counts.get('decisions', '?')} "
-        f"queue={counts.get('queue', '?')}"
+        f"queue={counts.get('queue', '?')} · "
+        f"git_sync={sync.get('status', 'unknown')} "
+        f"{sync.get('change_count', 0)}/{sync.get('threshold', '?')}"
     )
 
 
