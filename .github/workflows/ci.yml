@@ -49,6 +49,7 @@ jobs:
             frontend/services/chat_jobs.py \
             fridays/task_runner.py \
             scripts/secret_scan.py \
+            utils/sandpits.py \
             utils/db/chat.py
 
   security:

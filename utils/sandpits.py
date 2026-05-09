@@ -13,9 +13,9 @@ if _SWARM_ROOT not in sys.path:
 from database import get_connection
 from datetime import datetime
 
-# SANDPIT_BASE is intentionally anchored to the production swarm root even in
-# worktrees: agent sandboxes are a shared workspace, not per-stage artifacts.
-SANDPIT_BASE = os.environ.get('SANDPIT_BASE') or '/home/seven/swarm/sandpits'
+# SANDPIT_BASE follows SWARM_ROOT by default so tests and CI do not try to
+# create local production paths such as /home/seven on hosted runners.
+SANDPIT_BASE = os.environ.get('SANDPIT_BASE') or os.path.join(_SWARM_ROOT, 'sandpits')
 SHARED_DIR = os.path.join(SANDPIT_BASE, 'shared')
 PROPOSALS_DIR = os.path.join(SHARED_DIR, 'proposals')
 
