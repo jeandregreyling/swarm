@@ -13,6 +13,8 @@
   let _projects = [];
   let _selectedId = '';
   let _statusFilter = 'active'; // 'active' | 'all' | 'archived'
+  let _projectGitStatus = null;
+  let _projectGitBranches = [];
 
   function _loadStatusFilter() {
     try {
@@ -52,7 +54,91 @@
   window.loadStudioProjectsPanel = function () {
     _selectedId = localStorage.getItem(LS_SELECTED) || '';
     _loadStatusFilter();
+    projectsRefreshGitBar();
     projectsRefresh();
+  };
+
+  window.projectsRefreshGitBar = function () {
+    const statusEl = document.getElementById('projects-git-status');
+    const branchEl = document.getElementById('projects-branch-select');
+    if (statusEl) statusEl.textContent = 'Git: loading';
+    Promise.all([
+      fetch('/api/git/status?environment=dev').then(r => r.json()),
+      fetch('/api/git/branches?environment=dev').then(r => r.json()),
+    ])
+      .then(([status, branches]) => {
+        if (!status || !status.ok) throw new Error((status && status.error) || 'git status failed');
+        if (!branches || !branches.ok) throw new Error((branches && branches.error) || 'git branches failed');
+        _projectGitStatus = status;
+        _projectGitBranches = branches.branches || [];
+        _renderProjectGitBar();
+      })
+      .catch(err => {
+        if (statusEl) statusEl.textContent = 'Git unavailable: ' + (err.message || err);
+        if (branchEl) branchEl.innerHTML = '<option value="">No branches</option>';
+      });
+  };
+
+  function _renderProjectGitBar() {
+    const statusEl = document.getElementById('projects-git-status');
+    const branchEl = document.getElementById('projects-branch-select');
+    const s = _projectGitStatus || {};
+    const branch = s.branch || '(detached)';
+    const changed = s.counts && Number(s.counts.changed || 0);
+    const sync = [];
+    if (s.ahead) sync.push('ahead ' + s.ahead);
+    if (s.behind) sync.push('behind ' + s.behind);
+    if (statusEl) {
+      statusEl.textContent = `DEV ${branch} · ${s.clean ? 'clean' : changed + ' changed'}${sync.length ? ' · ' + sync.join(', ') : ''}`;
+      statusEl.style.color = s.behind ? '#ffb74d' : (s.clean ? 'var(--text-dim)' : 'var(--accent)');
+    }
+    if (branchEl) {
+      const current = (_projectGitBranches.find(b => b.current) || {}).name || s.branch || '';
+      branchEl.innerHTML = _projectGitBranches.length
+        ? _projectGitBranches.map(b => `<option value="${_esc(b.name)}"${b.name === current ? ' selected' : ''}>${_esc(b.name)}${b.upstream ? ' -> ' + _esc(b.upstream) : ''}</option>`).join('')
+        : '<option value="">No local branches</option>';
+    }
+  }
+
+  window.projectsCheckoutBranch = async function () {
+    const branchEl = document.getElementById('projects-branch-select');
+    const branch = String(branchEl && branchEl.value || '').trim();
+    if (!branch) {
+      alert('Select a local branch first.');
+      return;
+    }
+    const current = (_projectGitStatus && _projectGitStatus.branch) || '';
+    if (branch === current) {
+      alert('Already on branch: ' + branch);
+      return;
+    }
+    if (!confirm(`Checkout DEV branch "${branch}"?\n\nThis is blocked if the DEV worktree has uncommitted changes.`)) return;
+    let proposalId = null;
+    try {
+      if (typeof _createALMProposal === 'function') {
+        proposalId = await _createALMProposal(
+          'Git checkout branch',
+          `Checkout DEV worktree branch from Studio Projects: ${branch}`,
+          3,
+          { autoApprove: true }
+        );
+      }
+      const resp = await fetch('/api/git/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch: branch, environment: 'dev', proposal_id: proposalId || '' }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!data.ok) throw new Error(data.error || 'checkout failed');
+      if (typeof _finalizeALMProposal === 'function') await _finalizeALMProposal(proposalId);
+      if (typeof showToast === 'function') showToast('Checked out DEV branch: ' + branch, 'success');
+      else alert('Checked out DEV branch: ' + branch);
+      projectsRefreshGitBar();
+    } catch (err) {
+      if (proposalId && typeof _rejectALMProposal === 'function') await _rejectALMProposal(proposalId);
+      if (typeof showToast === 'function') showToast('Branch checkout failed: ' + (err.message || err), 'error');
+      else alert('Branch checkout failed: ' + (err.message || err));
+    }
   };
 
   window.projectsRefresh = function () {

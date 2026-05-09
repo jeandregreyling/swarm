@@ -441,7 +441,8 @@ def list_projects(*, status: Optional[str] = None, limit: int = 100,
                 f"SELECT p.*, "
                 f"(SELECT COUNT(*) FROM project_steps WHERE project_id=p.project_id) AS step_count, "
                 f"(SELECT COUNT(*) FROM project_test_cases WHERE project_id=p.project_id) AS case_count, "
-                f"(SELECT COUNT(*) FROM project_steps WHERE project_id=p.project_id AND status='done') AS steps_done "
+                f"(SELECT COUNT(*) FROM project_steps WHERE project_id=p.project_id AND status='done') AS steps_done, "
+                f"(SELECT COUNT(*) FROM project_blackboard_notes WHERE project_id=p.project_id AND status='active') AS blackboard_count "
                 f"FROM projects p {where} ORDER BY p.priority DESC, p.created_at DESC LIMIT ?",
                 params,
             ).fetchall()

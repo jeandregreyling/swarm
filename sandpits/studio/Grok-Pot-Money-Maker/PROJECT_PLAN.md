@@ -8,11 +8,19 @@
 - Paused Money Bot / Newsletter / revenue features until Studio is solid.
 - **Why:** Make the multi-layered flow usable without terminal commands so changes actually show in DEV/UAT before landing in Fridays.
 
+**May 10, 2026 - Step 4 Complete: Studio Projects Git Branch Bar**
+- Added `/api/git/branches` and `/api/git/checkout` so Studio can list local branches and switch an environment worktree through an ALM-gated mutation.
+- Added a Projects-panel Git bar for DEV: branch/status badge, branch selector, Checkout button, full Git-panel shortcut, and refresh-backed status loading.
+- Checkout is intentionally conservative: it only targets existing local branches and refuses to run when the DEV worktree has uncommitted changes.
+- Tests added: `tests/test_studio_projects_git_branch.py` covers branch listing, dirty-tree checkout blocking, and the Projects UI contract.
+- Validation: `pytest -q tests/test_studio_projects_git_branch.py`, `node --check frontend/static/js/views/projects.js`, and `python3 -m py_compile frontend/blueprints/git.py tests/test_studio_projects_git_branch.py` all pass.
+- **Why:** Seven can now see and change the DEV branch from Studio Projects without dropping to terminal commands, while keeping checkout behind ALM and dirty-tree safety checks.
+
 ## Sub-Tasks (Updated)
 1. [x] Initial Money Bot building block (tested)
 2. [x] Full Money Bot + Newsletter formatter (parked)
 3. [x] Log all current bugs in PROJECT_PLAN.md
-4. [ ] Add branch selector + git buttons in Studio UI (DEV 5051)
+4. [x] Add branch selector + git buttons in Studio UI (DEV 5051)
 5. [ ] Make Blackboard visible in project tile
 6. [ ] Make DEV default to feature branches and show commit status
 7. [ ] Clean up stuck proposals in Git ALM
