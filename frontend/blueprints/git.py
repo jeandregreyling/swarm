@@ -331,6 +331,69 @@ def api_git_status():
     })
 
 
+@git_bp.route('/api/git/branches', methods=['GET'])
+def api_git_branches():
+    """Return local branches for the selected repository environment."""
+    env = request.args.get('environment', '')
+    try:
+        proc = _run_git_command(
+            ['branch', '--format=%(refname:short)\t%(upstream:short)\t%(HEAD)'],
+            timeout=20,
+            env=env,
+        )
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': (proc.stderr or proc.stdout or 'git branch failed').strip()[:500]}), 500
+
+    branches = _parse_git_branch_list(proc.stdout or '')
+    current = next((b['name'] for b in branches if b.get('current')), '')
+    return jsonify({
+        'ok': True,
+        'environment': env or 'prod',
+        'current': current,
+        'branches': branches,
+    })
+
+
+@git_bp.route('/api/git/checkout', methods=['POST'])
+def api_git_checkout():
+    """Checkout an existing local branch, guarded by ALM and dirty-tree checks."""
+    data = request.get_json() or {}
+    gate = _alm_gate_or_response(data, 'git_checkout')
+    if gate:
+        return gate
+
+    env = str(data.get('environment', '')).strip()
+    branch = str(data.get('branch') or '').strip()
+    if not branch:
+        return jsonify({'ok': False, 'error': 'branch required'}), 400
+    if branch.startswith('-') or '..' in branch or any(ch.isspace() for ch in branch):
+        return jsonify({'ok': False, 'error': 'invalid branch name'}), 400
+
+    try:
+        exists = _run_git_command(['rev-parse', '--verify', f'refs/heads/{branch}'], timeout=10, env=env)
+        if exists.returncode != 0:
+            return jsonify({'ok': False, 'error': f'local branch not found: {branch}'}), 404
+
+        dirty = _run_git_command(['status', '--porcelain=1'], timeout=20, env=env)
+        if dirty.returncode != 0:
+            return jsonify({'ok': False, 'error': (dirty.stderr or dirty.stdout or 'git status failed').strip()[:500]}), 500
+        if (dirty.stdout or '').strip():
+            return jsonify({'ok': False, 'error': 'working tree has uncommitted changes; commit or stash before checkout'}), 409
+
+        proc = _run_git_command(['checkout', branch], timeout=30, env=env)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': (proc.stderr or proc.stdout or 'git checkout failed').strip()[:500]}), 500
+
+    log_activity('terminal', 'git_checkout', f'{env or "prod"}:{branch}')
+    return jsonify({'ok': True, 'branch': branch, 'environment': env or 'prod'})
+
+
 
 @git_bp.route('/api/git/diff', methods=['GET'])
 def api_git_diff():
@@ -482,4 +545,3 @@ def api_git_commit():
         'paths': staged_paths[:200],
         'message': final_message,
     })
-
