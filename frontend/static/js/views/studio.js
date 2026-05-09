@@ -73,9 +73,10 @@ function studioSetTab(tab) {
   const isProjects = (tab === 'projects');
   const isMedia = (tab === 'media');
   const isRecords = (tab === 'records');
+  const isAppCenter = (tab === 'appcenter');
 
   // Style proposal tab buttons
-  ['pending','in_progress','all','projects','media','git','testlab','records'].forEach(t => {
+  ['pending','in_progress','all','projects','media','git','appcenter','testlab','records'].forEach(t => {
     const btn = document.getElementById('studio-tab-' + t);
     if (!btn) return;
     const on = tab === t;
@@ -111,12 +112,14 @@ function studioSetTab(tab) {
   const projectsPanel = document.getElementById('studio-projects-panel');
   const mediaPanel = document.getElementById('studio-media-panel');
   const recordsPanel = document.getElementById('studio-records-panel');
-  if (container)      container.style.display      = (isGit || isTestLab || isProjects || isMedia || isRecords) ? 'none' : '';
+  const appCenterPanel = document.getElementById('studio-appcenter-panel');
+  if (container)      container.style.display      = (isGit || isTestLab || isProjects || isMedia || isRecords || isAppCenter) ? 'none' : '';
   if (gitPanel)       gitPanel.style.display       = isGit       ? 'flex' : 'none';
   if (testLabPanel)   testLabPanel.style.display   = isTestLab   ? 'flex' : 'none';
   if (projectsPanel)  projectsPanel.style.display  = isProjects  ? 'flex' : 'none';
   if (mediaPanel)     mediaPanel.style.display     = isMedia     ? 'flex' : 'none';
   if (recordsPanel)   recordsPanel.style.display   = isRecords   ? 'flex' : 'none';
+  if (appCenterPanel) appCenterPanel.style.display = isAppCenter ? 'flex' : 'none';
 
   if (isGit) {
     const fakeWin = {
@@ -134,8 +137,63 @@ function studioSetTab(tab) {
     if (typeof loadStudioMediaPanel === 'function') loadStudioMediaPanel();
   } else if (isRecords) {
     if (typeof loadStudioRecordsPanel === 'function') loadStudioRecordsPanel();
+  } else if (isAppCenter) {
+    if (typeof loadStudioAppCenterPanel === 'function') loadStudioAppCenterPanel();
   } else {
     if (container) loadProposals(container, tab);
+  }
+}
+
+async function loadStudioAppCenterPanel() {
+  const body = document.getElementById('appcenter-body');
+  if (!body) return;
+  body.innerHTML = '<div style="color:var(--text-dim);font-size:11px;text-align:center;padding:14px;">Loading App Center...</div>';
+  try {
+    const [projectsResp, registryResp] = await Promise.all([
+      fetch('/api/app-center/projects'),
+      fetch('/api/app-center/registry')
+    ]);
+    const projectsData = await projectsResp.json().catch(() => ({}));
+    const registryData = await registryResp.json().catch(() => ({}));
+    if (!projectsData.ok) throw new Error(projectsData.error || 'App Center projects failed');
+    if (!registryData.ok) throw new Error(registryData.error || 'App Center registry failed');
+    const projects = projectsData.projects || [];
+    const kinds = registryData.kinds || [];
+    const frameworks = registryData.frameworks || [];
+    const targets = registryData.targets || [];
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:12px;">
+        <div style="border:1px solid var(--border);background:var(--card);border-radius:6px;padding:10px;">
+          <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Backend app/game build projects</div>
+          <div style="font-size:11px;color:var(--text-dim);line-height:1.45;">Not Studio Git. Backend features must be registered as Flask blueprints and exposed through visible UI routes, tabs, or tiles before they are considered usable.</div>
+        </div>
+        <div style="border:1px solid var(--border);background:var(--card);border-radius:6px;padding:10px;">
+          <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Registry</div>
+          <div style="font-size:10px;color:var(--text-dim);line-height:1.45;">Kinds: ${_escHtml(kinds.join(', ') || 'none')}</div>
+          <div style="font-size:10px;color:var(--text-dim);line-height:1.45;">Frameworks: ${_escHtml(frameworks.slice(0, 16).join(', ') || 'none')}${frameworks.length > 16 ? '...' : ''}</div>
+          <div style="font-size:10px;color:var(--text-dim);line-height:1.45;">Targets: ${_escHtml(targets.join(', ') || 'none')}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0;">Projects (${projects.length})</div>
+      ${projects.length ? projects.map(p => `
+        <div style="border:1px solid var(--border);background:var(--card);border-radius:6px;padding:10px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+            <div>
+              <div style="font-size:12px;font-weight:700;">${_escHtml(p.name || p.project_id || 'Untitled')}</div>
+              <div style="font-size:10px;color:var(--text-dim);font-family:monospace;">${_escHtml(p.project_id || '')}</div>
+            </div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <span style="font-size:10px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--accent);">${_escHtml(p.kind || 'unknown')}</span>
+              <span style="font-size:10px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--text-dim);">${_escHtml(p.framework || 'custom')}</span>
+              <span style="font-size:10px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--text-dim);">${_escHtml(p.status || 'draft')}</span>
+            </div>
+          </div>
+          ${p.studio_project_id ? `<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">Studio link: <code>${_escHtml(p.studio_project_id)}</code></div>` : ''}
+        </div>
+      `).join('') : '<div style="padding:16px;text-align:center;color:var(--text-dim);font-size:11px;border:1px dashed var(--border);border-radius:6px;">No App Center projects yet.</div>'}
+    `;
+  } catch (e) {
+    body.innerHTML = `<div style="color:#f77;padding:20px;font-size:12px;">App Center failed: ${_escHtml(e.message || e)}</div>`;
   }
 }
 

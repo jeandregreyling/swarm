@@ -15,9 +15,18 @@ _GIT_ENVS = {
 }
 
 
+def _normalize_git_env(env: str = '') -> str:
+    env = str(env or '').strip().lower()
+    if env in ('', 'prod'):
+        return 'prod'
+    if env not in _GIT_ENVS:
+        raise ValueError('environment must be one of prod, uat, dev')
+    return env
+
+
 def _git_env_root(env: str = '') -> Path:
     """Return repo root for the given environment label, or default."""
-    env = str(env or '').strip().lower()
+    env = _normalize_git_env(env)
     if env in _GIT_ENVS:
         p = _GIT_ENVS[env]
         if p.is_dir():
@@ -52,6 +61,109 @@ def _run_git_command(args, timeout=20, env=''):
         timeout=timeout,
     )
     return proc
+
+
+def _git_error(proc, fallback: str) -> str:
+    return (proc.stderr or proc.stdout or fallback).strip()[:1200]
+
+
+def _safe_ref(value: str) -> str:
+    ref = str(value or '').strip()
+    if not ref:
+        raise ValueError('branch/ref required')
+    if ref.startswith('-') or '..' in ref or ref.endswith('.lock'):
+        raise ValueError('unsafe branch/ref')
+    if not re.match(r'^[A-Za-z0-9._/\-]+$', ref):
+        raise ValueError('branch/ref contains unsupported characters')
+    return ref
+
+
+def _status_for_env(env: str = '') -> dict:
+    proc = _run_git_command(['status', '--porcelain=1', '--branch'], timeout=20, env=env)
+    if proc.returncode != 0:
+        raise RuntimeError(_git_error(proc, 'git status failed'))
+    parsed = _parse_git_status_porcelain(proc.stdout or '')
+    parsed['clean'] = len(parsed['files']) == 0
+    return parsed
+
+
+def _require_clean_or_confirm(env: str, confirm_dirty: bool) -> dict:
+    parsed = _status_for_env(env)
+    if parsed['files'] and not confirm_dirty:
+        raise ValueError(
+            f"worktree has {len(parsed['files'])} changed file(s); confirm_dirty required"
+        )
+    return parsed
+
+
+def _ref_exists(ref: str, env: str = '') -> bool:
+    proc = _run_git_command(['rev-parse', '--verify', '--quiet', ref], timeout=10, env=env)
+    return proc.returncode == 0
+
+
+def _branch_ahead_behind(local_branch: str, upstream: str, env: str = '') -> dict:
+    proc = _run_git_command(
+        ['rev-list', '--left-right', '--count', f'{upstream}...{local_branch}'],
+        timeout=10,
+        env=env,
+    )
+    if proc.returncode != 0:
+        return {'ahead': 0, 'behind': 0}
+    parts = (proc.stdout or '').strip().split()
+    if len(parts) != 2:
+        return {'ahead': 0, 'behind': 0}
+    # left side is upstream-only commits, right side is local-only commits.
+    return {'behind': int(parts[0] or 0), 'ahead': int(parts[1] or 0)}
+
+
+def _list_git_branches(env: str = '') -> dict:
+    env = _normalize_git_env(env)
+    fetch = _run_git_command(['fetch', '--quiet', '--prune', 'origin'], timeout=45, env=env)
+    remote_check = {
+        'checked': True,
+        'ok': fetch.returncode == 0,
+        'error': '' if fetch.returncode == 0 else _git_error(fetch, 'git fetch failed'),
+    }
+    current = _status_for_env(env)
+
+    local_proc = _run_git_command(['branch', '--format=%(refname:short)|%(upstream:short)'], timeout=15, env=env)
+    if local_proc.returncode != 0:
+        raise RuntimeError(_git_error(local_proc, 'git branch failed'))
+    rem_proc = _run_git_command(['branch', '-r', '--format=%(refname:short)'], timeout=15, env=env)
+    if rem_proc.returncode != 0:
+        raise RuntimeError(_git_error(rem_proc, 'git remote branch failed'))
+
+    local = []
+    for line in (local_proc.stdout or '').splitlines():
+        if not line.strip():
+            continue
+        name, _, upstream = line.partition('|')
+        name = name.strip()
+        upstream = upstream.strip()
+        sync = _branch_ahead_behind(name, upstream, env=env) if upstream else {'ahead': 0, 'behind': 0}
+        local.append({
+            'name': name,
+            'upstream': upstream,
+            'current': name == current.get('branch'),
+            **sync,
+        })
+
+    remote = []
+    for line in (rem_proc.stdout or '').splitlines():
+        name = line.strip()
+        if not name or name.endswith('/HEAD') or name == 'origin/HEAD':
+            continue
+        remote.append({'name': name, 'local_name': name.split('/', 1)[1] if '/' in name else name})
+
+    return {
+        'environment': env,
+        'root': str(_git_env_root(env)),
+        'available': _git_env_root(env).is_dir(),
+        'current': current,
+        'remote_check': remote_check,
+        'local': sorted(local, key=lambda b: (not b.get('current'), b['name'].lower())),
+        'remote': sorted(remote, key=lambda b: b['name'].lower()),
+    }
 
 
 
@@ -312,6 +424,154 @@ def api_git_status():
     })
 
 
+@git_bp.route('/api/git/branches', methods=['GET'])
+def api_git_branches():
+    """Mirror local + origin branches for a selected worktree."""
+    env = request.args.get('environment', '')
+    try:
+        return jsonify({'ok': True, **_list_git_branches(env)})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@git_bp.route('/api/git/fetch', methods=['POST'])
+def api_git_fetch():
+    """Fetch origin for the selected worktree."""
+    data = request.get_json(silent=True) or {}
+    env = str(data.get('environment', '')).strip()
+    try:
+        env = _normalize_git_env(env)
+        proc = _run_git_command(['fetch', '--prune', 'origin'], timeout=45, env=env)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': _git_error(proc, 'git fetch failed')}), 500
+    log_activity('terminal', 'git_fetch', env)
+    return jsonify({'ok': True, **_list_git_branches(env)})
+
+
+@git_bp.route('/api/git/compare', methods=['GET'])
+def api_git_compare():
+    """Compare two refs without changing the selected worktree."""
+    env = request.args.get('environment', '')
+    try:
+        env = _normalize_git_env(env)
+        base = _safe_ref(request.args.get('base') or 'HEAD')
+        head = _safe_ref(request.args.get('head') or '')
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+    if not _ref_exists(base, env=env):
+        return jsonify({'ok': False, 'error': f'base ref not found: {base}'}), 404
+    if not _ref_exists(head, env=env):
+        return jsonify({'ok': False, 'error': f'head ref not found: {head}'}), 404
+
+    range_spec = f'{base}...{head}'
+    names = _run_git_command(['diff', '--name-status', range_spec], timeout=30, env=env)
+    if names.returncode != 0:
+        return jsonify({'ok': False, 'error': _git_error(names, 'git compare failed')}), 500
+    stat = _run_git_command(['diff', '--stat', range_spec], timeout=30, env=env)
+    log = _run_git_command(
+        ['log', '--oneline', '--left-right', '--cherry-pick', '--max-count=30', range_spec],
+        timeout=20,
+        env=env,
+    )
+
+    files = []
+    for line in (names.stdout or '').splitlines():
+        parts = line.split('\t')
+        if len(parts) >= 2:
+            files.append({'status': parts[0], 'path': parts[-1]})
+    return jsonify({
+        'ok': True,
+        'environment': env,
+        'base': base,
+        'head': head,
+        'file_count': len(files),
+        'files': files,
+        'stat': (stat.stdout or '')[:12000] if stat.returncode == 0 else '',
+        'log': (log.stdout or '')[:12000] if log.returncode == 0 else '',
+    })
+
+
+@git_bp.route('/api/git/checkout', methods=['POST'])
+def api_git_checkout():
+    """Checkout a local or origin branch in the selected worktree."""
+    data = request.get_json(silent=True) or {}
+    try:
+        env = _normalize_git_env(data.get('environment', ''))
+        branch = _safe_ref(data.get('branch') or '')
+        confirm_dirty = bool(data.get('confirm_dirty'))
+        _require_clean_or_confirm(env, confirm_dirty)
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'needs_confirm_dirty': 'confirm_dirty' in str(exc)}), 400
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    try:
+        if branch.startswith('origin/'):
+            local = branch.split('/', 1)[1]
+            if _ref_exists(f'refs/heads/{local}', env=env):
+                proc = _run_git_command(['checkout', local], timeout=40, env=env)
+                if proc.returncode == 0:
+                    _run_git_command(['branch', '--set-upstream-to', branch, local], timeout=20, env=env)
+            else:
+                proc = _run_git_command(['checkout', '-b', local, '--track', branch], timeout=40, env=env)
+        else:
+            proc = _run_git_command(['checkout', branch], timeout=40, env=env)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': _git_error(proc, 'git checkout failed')}), 500
+
+    log_activity('terminal', 'git_checkout', f'{env}:{branch}')
+    status = _status_for_env(env)
+    return jsonify({'ok': True, 'environment': env, 'branch': status.get('branch'), 'status': status})
+
+
+@git_bp.route('/api/git/pull', methods=['POST'])
+def api_git_pull():
+    """Fast-forward pull for the current branch in the selected worktree."""
+    data = request.get_json(silent=True) or {}
+    try:
+        env = _normalize_git_env(data.get('environment', ''))
+        confirm_dirty = bool(data.get('confirm_dirty'))
+        before = _require_clean_or_confirm(env, confirm_dirty)
+        if not before.get('upstream'):
+            return jsonify({'ok': False, 'error': 'current branch has no upstream'}), 400
+        proc = _run_git_command(['pull', '--ff-only'], timeout=60, env=env)
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'needs_confirm_dirty': 'confirm_dirty' in str(exc)}), 400
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': _git_error(proc, 'git pull failed')}), 500
+    log_activity('terminal', 'git_pull', env)
+    return jsonify({'ok': True, 'environment': env, 'output': (proc.stdout or '').strip()[:1200], 'status': _status_for_env(env)})
+
+
+@git_bp.route('/api/git/push', methods=['POST'])
+def api_git_push():
+    """Push the current branch. Force push is intentionally unsupported."""
+    data = request.get_json(silent=True) or {}
+    try:
+        env = _normalize_git_env(data.get('environment', ''))
+        status = _status_for_env(env)
+        branch = status.get('branch') or ''
+        if not branch or status.get('detached'):
+            return jsonify({'ok': False, 'error': 'cannot push detached HEAD'}), 400
+        if status.get('upstream'):
+            proc = _run_git_command(['push'], timeout=60, env=env)
+        else:
+            proc = _run_git_command(['push', '-u', 'origin', branch], timeout=60, env=env)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': _git_error(proc, 'git push failed')}), 500
+    log_activity('terminal', 'git_push', f'{env}:{branch}')
+    return jsonify({'ok': True, 'environment': env, 'branch': branch, 'output': (proc.stdout or proc.stderr or '').strip()[:1200], 'status': _status_for_env(env)})
+
+
 
 @git_bp.route('/api/git/diff', methods=['GET'])
 def api_git_diff():
@@ -463,5 +723,3 @@ def api_git_commit():
         'paths': staged_paths[:200],
         'message': final_message,
     })
-
-
