@@ -210,8 +210,9 @@
         <div style="font-size:9px;color:var(--text-dim);margin-top:2px;font-family:monospace;">${_esc(p.project_id)}</div>
         <div style="font-size:9px;color:var(--text-dim);margin-top:3px;">
           <span style="color:${statusColor};">●</span> ${_esc(p.status)} ·
-          ${p.steps_done || 0}/${p.step_count || 0} steps · ${p.case_count || 0} cases · owner: ${_esc(p.owner || 'seven')}
+          ${p.steps_done || 0}/${p.step_count || 0} steps · ${p.case_count || 0} cases · ${p.blackboard_count || 0} blackboard · owner: ${_esc(p.owner || 'seven')}
         </div>
+        ${(p.blackboard_count || 0) ? `<div style="font-size:9px;color:var(--accent);margin-top:3px;">Blackboard active: ${p.blackboard_count}</div>` : ''}
         ${p.step_count ? `<div style="height:3px;background:var(--border);border-radius:2px;margin-top:4px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:var(--accent);"></div></div>` : ''}
       </div>`;
     }).join('');
