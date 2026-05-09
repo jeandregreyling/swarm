@@ -16,12 +16,19 @@
 - Validation: `pytest -q tests/test_studio_projects_git_branch.py`, `node --check frontend/static/js/views/projects.js`, and `python3 -m py_compile frontend/blueprints/git.py tests/test_studio_projects_git_branch.py` all pass.
 - **Why:** Seven can now see and change the DEV branch from Studio Projects without dropping to terminal commands, while keeping checkout behind ALM and dirty-tree safety checks.
 
+**May 10, 2026 - Step 5 Complete: Blackboard Visible in Project Tile**
+- Added `blackboard_count` to `core.knowledge.projects.list_projects()` so the list endpoint carries active Blackboard note counts without N+1 detail calls.
+- Updated Studio project rows to show the count in metadata and an accent line when a project has active Blackboard notes.
+- Tests updated: `tests/test_projects.py` asserts the aggregate, and `tests/test_studio_projects_git_branch.py` asserts the UI contract remains present.
+- Validation: `pytest -q tests/test_studio_projects_git_branch.py tests/test_projects.py`, `node --check frontend/static/js/views/projects.js`, and `python3 -m py_compile core/knowledge/projects.py tests/test_projects.py tests/test_studio_projects_git_branch.py` all pass.
+- **Why:** The next agent/operator can see handoff-note presence from the project list instead of opening each project cold.
+
 ## Sub-Tasks (Updated)
 1. [x] Initial Money Bot building block (tested)
 2. [x] Full Money Bot + Newsletter formatter (parked)
 3. [x] Log all current bugs in PROJECT_PLAN.md
 4. [x] Add branch selector + git buttons in Studio UI (DEV 5051)
-5. [ ] Make Blackboard visible in project tile
+5. [x] Make Blackboard visible in project tile
 6. [ ] Make DEV default to feature branches and show commit status
 7. [ ] Clean up stuck proposals in Git ALM
 
