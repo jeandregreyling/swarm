@@ -23,14 +23,29 @@
 - Validation: `pytest -q tests/test_studio_projects_git_branch.py tests/test_projects.py`, `node --check frontend/static/js/views/projects.js`, and `python3 -m py_compile core/knowledge/projects.py tests/test_projects.py tests/test_studio_projects_git_branch.py` all pass.
 - **Why:** The next agent/operator can see handoff-note presence from the project list instead of opening each project cold.
 
+**May 10, 2026 - Step 6 Complete: DEV Default + Commit Status**
+- The Studio Git view now initializes with `environment: 'dev'` and syncs the environment selector to DEV on load, so operators start in the feature-branch worktree instead of prod.
+- The Projects Git bar added in Step 4 shows DEV branch, clean/changed state, and ahead/behind status directly in the Projects header.
+- Tests updated: `tests/test_studio_projects_git_branch.py` asserts the DEV default remains in `frontend/static/js/views/git.js`.
+- Validation: `pytest -q tests/test_studio_projects_git_branch.py tests/test_projects.py`, `node --check frontend/static/js/views/projects.js && node --check frontend/static/js/views/git.js`, and Python compile checks all pass.
+- **Why:** Studio should make DEV the safe default and surface commit state before any UAT/PROD promotion.
+
+**May 10, 2026 - Step 7 Complete: Git ALM Proposal Cleanup**
+- Inspected `work_proposals`: only one current Git-ish row matched Git/Studio criteria, but the Git ALM panel was rendering all proposals from `/api/work-proposals?limit=120`.
+- Fixed `gitLoadProposals()` to filter to Git-linked proposal titles/descriptions only: stage, unstage, commit, checkout, Git panel, or Studio Projects branch checkout text.
+- Updated Git-linked badge detection to include checkout proposals.
+- Tests updated: `tests/test_studio_projects_git_branch.py` asserts the Git panel keeps this filter contract.
+- Validation: `pytest -q tests/test_studio_projects_git_branch.py tests/test_projects.py`, JS syntax checks for Projects/Git, and Python compile checks all pass.
+- **Why:** Git ALM should not look stuck because unrelated pending project/work proposals are dumped into the Git panel.
+
 ## Sub-Tasks (Updated)
 1. [x] Initial Money Bot building block (tested)
 2. [x] Full Money Bot + Newsletter formatter (parked)
 3. [x] Log all current bugs in PROJECT_PLAN.md
 4. [x] Add branch selector + git buttons in Studio UI (DEV 5051)
 5. [x] Make Blackboard visible in project tile
-6. [ ] Make DEV default to feature branches and show commit status
-7. [ ] Clean up stuck proposals in Git ALM
+6. [x] Make DEV default to feature branches and show commit status
+7. [x] Clean up stuck proposals in Git ALM
 
 ## Blackboard Notes
 - User wants Git operations as UI buttons, not terminal commands.

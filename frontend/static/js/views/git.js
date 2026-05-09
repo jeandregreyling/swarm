@@ -299,7 +299,10 @@ async function gitLoadProposals() {
     const resp = await fetch('/api/work-proposals?limit=120');
     const data = await resp.json();
     const proposals = data.proposals || [];
-    const gitProposals = proposals;
+    const gitProposals = proposals.filter(p =>
+      /git (stage|unstage|commit|checkout)/i.test(p.title || '') ||
+      /via Git panel|Studio Projects:/.test(p.description || '')
+    );
     window.__gitProposals = gitProposals;
 
     const container = document.getElementById('git-proposals-list');
@@ -320,7 +323,7 @@ async function gitLoadProposals() {
       const isExecutable = status === 'approved';
       const canModerate = status === 'pending' || status === 'approved' || status === 'in_progress' || status === 'done';
       // Show Proposal-linked badge if created by git action
-      const isGitLinked = /git (stage|unstage|commit)/i.test(p.title || '') || /via Git panel/i.test(p.description || '');
+      const isGitLinked = /git (stage|unstage|commit|checkout)/i.test(p.title || '') || /via Git panel|Studio Projects:/i.test(p.description || '');
       return `
         <div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:4px;padding:8px;margin-bottom:6px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;">

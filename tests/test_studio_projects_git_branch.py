@@ -95,3 +95,11 @@ def test_git_panel_defaults_to_dev_environment():
 
     assert "environment: 'dev'" in js
     assert "envSelect.value = state.environment" in js
+
+
+def test_git_panel_filters_to_git_linked_proposals():
+    js = (ROOT / "frontend/static/js/views/git.js").read_text()
+
+    assert "proposals.filter" in js
+    assert "git (stage|unstage|commit|checkout)" in js
+    assert "Studio Projects:" in js
