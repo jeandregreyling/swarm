@@ -339,6 +339,14 @@ def create_app():
         except Exception as _reg_err:
             print(f"[Terminal] Blueprint register failed — {_attr}: {_reg_err}")
 
+    # Studio Projects layer bridge (Grok-Pot-Money-Maker + future sandpit projects)
+    try:
+        from studio_loader.studio_projects_bp import studio_projects_bp
+        app.register_blueprint(studio_projects_bp)
+        print("[Terminal] Studio projects blueprint registered (sandpits/studio discovery)")
+    except Exception as _studio_err:
+        print(f"[Terminal] Studio projects blueprint failed to register: {_studio_err}")
+
     # Convenience redirects — deep-link tile views into the master shell.
     # /media-center previously rendered a standalone template that drifted
     # to a raw test placeholder; route it through /ui so the real window
