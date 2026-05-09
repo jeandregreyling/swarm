@@ -88,3 +88,10 @@ def test_projects_tile_exposes_blackboard_count():
 
     assert "p.blackboard_count" in js
     assert "Blackboard active:" in js
+
+
+def test_git_panel_defaults_to_dev_environment():
+    js = (ROOT / "frontend/static/js/views/git.js").read_text()
+
+    assert "environment: 'dev'" in js
+    assert "envSelect.value = state.environment" in js
