@@ -1896,6 +1896,12 @@
             <div id="projects-summary" style="font-size:11px;color:var(--text-dim);">Plans own proposals, steps, test cases and runs. Owner defaults to <b>Seven</b>. Activity flows into Vortex.</div>
           </div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <span id="projects-git-status" title="Current Git branch and commit state" style="font-size:10px;color:var(--text-dim);border:1px solid var(--border);border-radius:5px;padding:5px 8px;background:var(--card);">Git: loading</span>
+            <select id="projects-branch-select" title="Checkout an existing local branch" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;min-width:170px;">
+              <option value="">Loading branches</option>
+            </select>
+            <button onclick="projectsCheckoutBranch()" title="Create/approve a Git checkout proposal first, then run branch checkout" style="background:transparent;border:1px solid var(--border);border-radius:5px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">Checkout</button>
+            <button onclick="studioSetTab('git')" title="Open the full Studio Git panel" style="background:transparent;border:1px solid var(--border);border-radius:5px;padding:5px 10px;color:var(--text-dim);font-size:11px;cursor:pointer;">Git</button>
             <input id="projects-new-name" type="text" placeholder="New project name…" style="padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;min-width:180px;outline:none;">
             <select id="projects-new-method" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;">
               <option value="mixed">Mixed</option>
