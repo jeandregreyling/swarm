@@ -17,7 +17,7 @@ jobs:
       - name: Install ruff
         run: pip install ruff
       - name: Lint
-        run: ruff check --select E,F,W --ignore E501,E402,F401,W503 frontend/ utils/ core/ tests/
+        run: ruff check --select E,F,W --ignore E501,E402,F401 frontend/ utils/ core/ tests/
 
   test:
     runs-on: ubuntu-latest

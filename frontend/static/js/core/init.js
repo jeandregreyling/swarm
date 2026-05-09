@@ -82,6 +82,25 @@ window.toggleGovernance = toggleGovernance;
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════
 
+let __vortexGitSyncToastKey = '';
+
+async function checkVortexGitSyncDrift() {
+  try {
+    const resp = await fetch('/api/git/status?check_remote=1');
+    const data = await resp.json().catch(() => ({}));
+    if (!data || !data.ok) return;
+    const remote = data.remote_check || {};
+    if (!remote.checked || !remote.ok) return;
+    const sync = data.out_of_sync || {};
+    if (!sync.needs_pull) return;
+    const key = `${data.environment || 'prod'}:${data.branch || ''}:${data.upstream || ''}:${data.behind || 0}`;
+    if (key === __vortexGitSyncToastKey) return;
+    __vortexGitSyncToastKey = key;
+    const msg = sync.summary || `Local Git is behind by ${data.behind || 0} commit(s). Pull before continuing.`;
+    if (typeof showToast === 'function') showToast(`Vortex Git sync: ${msg}`, 'warning');
+  } catch (_) { /* remote drift check is best-effort */ }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Load settings and apply time-of-day theme
   loadSettings();
@@ -230,6 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderRelayRuleList();
   startChatLiveSyncService();
   _librarianStartWatchdog();
+  checkVortexGitSyncDrift();
+  setInterval(checkVortexGitSyncDrift, 5 * 60 * 1000);
   
   // Settings modal handlers
   document.querySelectorAll('[data-time]').forEach(btn => {

@@ -262,7 +262,15 @@ def api_git_environments():
 def api_git_status():
     """Return repository status for the Fridays Git panel."""
     env = request.args.get('environment', '')
+    check_remote = str(request.args.get('check_remote') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    remote_check = {'checked': False, 'ok': True, 'error': ''}
     try:
+        if check_remote:
+            fetch = _run_git_command(['fetch', '--quiet', '--prune', 'origin'], timeout=40, env=env)
+            remote_check['checked'] = True
+            if fetch.returncode != 0:
+                remote_check['ok'] = False
+                remote_check['error'] = (fetch.stderr or fetch.stdout or 'git fetch failed').strip()[:500]
         proc = _run_git_command(['status', '--porcelain=1', '--branch'], timeout=20, env=env)
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
@@ -279,6 +287,18 @@ def api_git_status():
         'upstream': parsed['upstream'],
         'ahead': parsed['ahead'],
         'behind': parsed['behind'],
+        'remote_check': remote_check,
+        'out_of_sync': {
+            'needs_pull': parsed['behind'] > 0,
+            'needs_push': parsed['ahead'] > 0,
+            'summary': (
+                f"Local branch is behind {parsed['upstream']} by {parsed['behind']} commit(s). Pull before continuing."
+                if parsed['behind'] > 0 and parsed['upstream'] else
+                f"Local branch is ahead of {parsed['upstream']} by {parsed['ahead']} commit(s). Push when ready."
+                if parsed['ahead'] > 0 and parsed['upstream'] else
+                ''
+            ),
+        },
         'detached': parsed['detached'],
         'clean': len(files) == 0,
         'counts': {
@@ -443,6 +463,5 @@ def api_git_commit():
         'paths': staged_paths[:200],
         'message': final_message,
     })
-
 
 
