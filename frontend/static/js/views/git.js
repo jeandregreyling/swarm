@@ -8,7 +8,7 @@ function _gitState() {
       selectedStaged: false,
       status: null,
       filter: '',
-      environment: '',  // '' = default (prod)
+      environment: 'dev',  // Studio defaults to DEV; promotion to UAT/PROD is explicit.
     };
   }
   return window.__gitState;
@@ -20,6 +20,7 @@ function loadGitData(win) {
   const filterInput = win.el.querySelector('#git-filter-input');
   const commitInput = win.el.querySelector('#git-commit-message');
   const envSelect = win.el.querySelector('#git-env-select');
+  if (envSelect && !envSelect.value) envSelect.value = state.environment;
   if (filterInput && !filterInput.dataset.bound) {
     filterInput.dataset.bound = '1';
     filterInput.addEventListener('input', (e) => {
@@ -567,4 +568,3 @@ function _tableToAgent(table) {
                 memory_twelve:'twelve', memory_eleven:'eleven', memory_mistral:'mistral' };
   return map[table] || 'librarian';
 }
-
