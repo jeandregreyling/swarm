@@ -39,6 +39,20 @@ class AndroidSampler(private val ctx: Context) {
         power = power(),
     )
 
+    /**
+     * Return the list of well-known capabilities this device advertises.
+     * Samsung devices with NPUs report inference.npu; all Android devices
+     * with GLES 2.0+ report inference.gpu; every device reports
+     * inference.cpu and inference.tflite (TFLite is part of Android
+     * NNAPI / available as a CPU delegate even on low-end hardware).
+     */
+    fun capabilities(): List<String> {
+        val caps = mutableListOf("inference.cpu", "inference.tflite")
+        if (gpuPresent()) caps.add("inference.gpu")
+        if (npuPresent()) caps.add("inference.npu")
+        return caps
+    }
+
     // ---- compute --------------------------------------------------------
 
     private fun compute(): JSONObject {
@@ -48,10 +62,10 @@ class AndroidSampler(private val ctx: Context) {
             putOrNull("cpu_load_pct", load)
             putOrNull("cpu_peak_temp_c", temp)
             put("cpu_throttled", JSONObject.NULL)
-            put("gpu_present", false)
+            put("gpu_present", gpuPresent())
             put("gpu_load_pct", JSONObject.NULL)
             put("gpu_temp_c", JSONObject.NULL)
-            put("npu_present", false)
+            put("npu_present", npuPresent())
         }
     }
 
@@ -80,6 +94,75 @@ class AndroidSampler(private val ctx: Context) {
         val avg = ratios.average() * 100.0
         // Match Python's `round(x, 1)`.
         return Math.round(avg * 10.0) / 10.0
+    }
+
+    // ---- Samsung / advanced hardware detection --------------------------
+
+    /**
+     * Detect GPU presence via the device's declared OpenGL ES version.
+     * Every Android device with a display advertises a GLES version via
+     * ActivityManager.  GLES 2.0 (0x20000) is the baseline for anything
+     * that can run TFLite GPU delegate or Vulkan compute.
+     */
+    private fun gpuPresent(): Boolean {
+        return try {
+            val am = ctx.getSystemService(Context.ACTIVITY_SERVICE)
+                as? android.app.ActivityManager
+            val config = am?.deviceConfigurationInfo
+            config != null && config.reqGlEsVersion >= 0x20000
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Detect NPU presence.  Three signals are checked in order:
+     *
+     * 1. Samsung-specific: Exynos and recent Snapdragon Galaxy devices
+     *    ship NPU/DSP drivers under /vendor/lib[64].  We probe for the
+     *    Samsung Eden NN driver.
+     * 2. Generic Android: API 29+ exposes PowerManager thermal status,
+     *    but more importantly NNAPI is guaranteed on devices that
+     *    declare the neural-networks feature.  We use a lightweight
+     *    reflection check for the android.neuralnetworks package.
+     * 3. SoC blocklist: known high-end Samsung SoCs (exynos2100+,
+     *    exynos2200+, snapdragon 8 gen 1+) always include an NPU.
+     *
+     * This is best-effort; false negatives are acceptable (device still
+     * reports inference.cpu + inference.tflite).
+     */
+    private fun npuPresent(): Boolean {
+        // Samsung-specific driver probe.
+        if (Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
+            val samsungLibs = listOf(
+                "/vendor/lib/libeden_nn_on_system.so",
+                "/vendor/lib64/libeden_nn_on_system.so",
+                "/vendor/lib/libeden_nn_onsystem.so",
+                "/vendor/lib64/libeden_nn_onsystem.so",
+                "/system/lib/libeden_nn_on_system.so",
+                "/system/lib64/libeden_nn_on_system.so",
+            )
+            if (samsungLibs.any { File(it).exists() }) return true
+
+            // SoC fingerprint heuristic.
+            val hw = (Build.HARDWARE ?: "").lowercase()
+            val board = (Build.BOARD ?: "").lowercase()
+            val knownNpuSoCs = listOf(
+                "exynos2100", "exynos2200", "exynos2400",
+                "sm8450",   // Snapdragon 8 Gen 1
+                "sm8550",   // Snapdragon 8 Gen 2
+                "sm8650",   // Snapdragon 8 Gen 3
+            )
+            if (knownNpuSoCs.any { hw.contains(it) || board.contains(it) }) return true
+        }
+
+        // Generic NNAPI reflection probe (API 27+).
+        return try {
+            Class.forName("android.neuralnetworks.NeuralNetworks")
+            true
+        } catch (_: ClassNotFoundException) {
+            false
+        }
     }
 
     // ---- thermal --------------------------------------------------------

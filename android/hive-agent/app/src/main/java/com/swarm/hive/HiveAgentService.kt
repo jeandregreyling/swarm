@@ -176,12 +176,14 @@ class HiveAgentService : LifecycleService() {
     private fun buildPayload(nodeId: String, sampler: AndroidSampler): JSONObject {
         val sample = sampler.sample()
         val tsSec = System.currentTimeMillis() / 1000L
+        val caps = org.json.JSONArray()
+        for (c in sampler.capabilities()) caps.put(c)
         return JSONObject().apply {
             put("contract", CONTRACT_RESOURCE_V0)
             put("node_id", nodeId)
             put("platform", "android")
             put("ts", tsSec)
-            put("capabilities", org.json.JSONArray().apply { put("inference.cpu") })
+            put("capabilities", caps)
             put("compute", sample.compute)
             put("thermal", sample.thermal)
             put("memory", sample.memory)

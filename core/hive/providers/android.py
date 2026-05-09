@@ -43,7 +43,54 @@ class AndroidProvider:
         return 'android'
 
     def capabilities(self) -> list:
-        return ['inference.cpu']
+        caps = ['inference.cpu', 'inference.tflite']
+        if self._gpu_present():
+            caps.append('inference.gpu')
+        if self._npu_present():
+            caps.append('inference.npu')
+        return caps
+
+    def _gpu_present(self) -> bool:
+        """All Android devices with a display have a GLES GPU."""
+        return True
+
+    def _npu_present(self) -> bool:
+        """Best-effort NPU detection for Samsung and other Android devices."""
+        # Samsung-specific driver probe via getprop / file system.
+        manufacturer = (self._getprop('ro.product.manufacturer') or '').lower()
+        if manufacturer == 'samsung':
+            samsung_libs = [
+                '/vendor/lib/libeden_nn_on_system.so',
+                '/vendor/lib64/libeden_nn_on_system.so',
+                '/vendor/lib/libeden_nn_onsystem.so',
+                '/vendor/lib64/libeden_nn_onsystem.so',
+                '/system/lib/libeden_nn_on_system.so',
+                '/system/lib64/libeden_nn_on_system.so',
+            ]
+            if any(os.path.exists(p) for p in samsung_libs):
+                return True
+
+            # SoC fingerprint heuristic.
+            hardware = (self._getprop('ro.hardware') or '').lower()
+            board = (self._getprop('ro.product.board') or '').lower()
+            known_npu_socs = [
+                'exynos2100', 'exynos2200', 'exynos2400',
+                'sm8450',   # Snapdragon 8 Gen 1
+                'sm8550',   # Snapdragon 8 Gen 2
+                'sm8650',   # Snapdragon 8 Gen 3
+            ]
+            if any(s in hardware or s in board for s in known_npu_socs):
+                return True
+
+        # Generic: check for NNAPI HAL libraries.
+        nnapi_libs = [
+            '/vendor/lib/libneuralnetworks.so',
+            '/vendor/lib64/libneuralnetworks.so',
+        ]
+        if any(os.path.exists(p) for p in nnapi_libs):
+            return True
+
+        return False
 
     # ---- helpers ---------------------------------------------------------
 
@@ -150,10 +197,10 @@ class AndroidProvider:
             'cpu_peak_temp_c': self._cpu_peak_temp_c(),
             # We cannot read thermal throttle state on stock Android.
             'cpu_throttled': None,
-            'gpu_present': False,
+            'gpu_present': self._gpu_present(),
             'gpu_load_pct': None,
             'gpu_temp_c': None,
-            'npu_present': False,
+            'npu_present': self._npu_present(),
         }
 
     # ---- thermal (no fan) -----------------------------------------------

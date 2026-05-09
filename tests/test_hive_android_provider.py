@@ -187,6 +187,92 @@ def test_is_android_false_on_plain_linux(monkeypatch):
         assert is_android() is False
 
 
+# ---- Samsung / GPU / NPU detection ----------------------------------------
+
+def test_gpu_present_is_always_true():
+    """All Android devices with a display have a GLES GPU."""
+    assert AndroidProvider()._gpu_present() is True
+
+
+def test_npu_present_false_on_generic_android(monkeypatch):
+    """Non-Samsung devices without NNAPI libs report no NPU."""
+    p = AndroidProvider()
+    monkeypatch.setattr(p, '_getprop', staticmethod(lambda key: 'google' if key == 'ro.product.manufacturer' else None))
+    with patch('os.path.exists', return_value=False):
+        assert p._npu_present() is False
+
+
+def test_npu_present_true_via_samsung_driver(monkeypatch):
+    """Samsung devices with Eden NN driver libs report NPU present."""
+    p = AndroidProvider()
+    monkeypatch.setattr(p, '_getprop', staticmethod(lambda key: 'samsung' if key == 'ro.product.manufacturer' else None))
+
+    def exists_probe(path):
+        return 'libeden_nn_onsystem.so' in str(path)
+
+    with patch('os.path.exists', side_effect=exists_probe):
+        assert p._npu_present() is True
+
+
+def test_npu_present_true_via_samsung_soc(monkeypatch):
+    """Samsung devices with known NPU SoCs report NPU present."""
+    p = AndroidProvider()
+
+    def fake_getprop(key):
+        if key == 'ro.product.manufacturer':
+            return 'samsung'
+        if key == 'ro.hardware':
+            return 'exynos2200'
+        return None
+
+    monkeypatch.setattr(p, '_getprop', staticmethod(fake_getprop))
+    with patch('os.path.exists', return_value=False):
+        assert p._npu_present() is True
+
+
+def test_npu_present_true_via_generic_nnapi_lib(monkeypatch):
+    """Any device with NNAPI HAL libs reports NPU present."""
+    p = AndroidProvider()
+    monkeypatch.setattr(p, '_getprop', staticmethod(lambda key: 'google' if key == 'ro.product.manufacturer' else None))
+
+    def exists_probe(path):
+        return 'libneuralnetworks.so' in str(path)
+
+    with patch('os.path.exists', side_effect=exists_probe):
+        assert p._npu_present() is True
+
+
+def test_capabilities_includes_tflite_and_gpu(monkeypatch):
+    """Capabilities always include inference.cpu + inference.tflite + inference.gpu."""
+    p = AndroidProvider()
+    monkeypatch.setattr(p, '_npu_present', lambda: False)
+    caps = p.capabilities()
+    assert 'inference.cpu' in caps
+    assert 'inference.tflite' in caps
+    assert 'inference.gpu' in caps
+    assert 'inference.npu' not in caps
+
+
+def test_capabilities_includes_npu_when_present(monkeypatch):
+    """Capabilities include inference.npu when NPU is detected."""
+    p = AndroidProvider()
+    monkeypatch.setattr(p, '_npu_present', lambda: True)
+    caps = p.capabilities()
+    assert 'inference.npu' in caps
+
+
+def test_compute_reports_gpu_and_npu_flags(monkeypatch):
+    """compute() dict reflects gpu_present and npu_present dynamically."""
+    p = AndroidProvider()
+    monkeypatch.setattr(p, '_cpu_load_pct', lambda: 30.0)
+    monkeypatch.setattr(p, '_cpu_peak_temp_c', lambda: 40.0)
+    monkeypatch.setattr(p, '_gpu_present', lambda: True)
+    monkeypatch.setattr(p, '_npu_present', lambda: True)
+    c = p.compute()
+    assert c['gpu_present'] is True
+    assert c['npu_present'] is True
+
+
 # ---- dispatcher -----------------------------------------------------------
 
 def test_detect_provider_picks_android(monkeypatch):

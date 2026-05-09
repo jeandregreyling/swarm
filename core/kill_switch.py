@@ -87,9 +87,9 @@ class KillSwitch:
         
         try:
             # Import database to clear agent session
-            from utils.database import get_connection
+            from utils.db._connection import get_connection
             conn = get_connection()
-            
+
             # Clear any active requests for this agent
             conn.execute("UPDATE queue SET status = 'cancelled' WHERE agent = ? AND status = 'processing'", 
                         (agent_name,))
@@ -108,9 +108,9 @@ class KillSwitch:
         self.broadcast_alert(alert)
         
         try:
-            from utils.database import get_connection
+            from utils.db._connection import get_connection
             conn = get_connection()
-            
+
             # Mark all processing tasks as paused
             conn.execute("""
                 UPDATE queue
@@ -133,9 +133,9 @@ class KillSwitch:
         self.broadcast_alert(alert)
         
         try:
-            from utils.database import get_connection
+            from utils.db._connection import get_connection
             conn = get_connection()
-            
+
             # Resume paused tasks
             conn.execute("""
                 UPDATE queue

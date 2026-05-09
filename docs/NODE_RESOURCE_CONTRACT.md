@@ -98,7 +98,31 @@ each platform). Versioned at the envelope.
 | Windows  | WMI MSAcpi_ThermalZoneTemp      | OEM SDK or libre_hardware   | WMI thermal namespace                          |
 | macOS    | `powermetrics` / SMC            | n/a (SMC restricted)        | NSProcessInfo `thermalState`                   |
 | Android  | sysfs `/sys/class/thermal`      | n/a (vendor-locked)         | `PowerManager.getCurrentThermalStatus`         |
+| Samsung  | n/a (passive)                   | n/a (passive)               | Battery temp → derive_thermal_pressure         |
 | iOS      | n/a                             | n/a                         | `NSProcessInfo.thermalState`                   |
+
+### Samsung / Android capability detection
+
+Samsung Galaxy devices (and modern Android tablets such as the S9-FE)
+ship with NPUs that accelerate TFLite via NNAPI.  The Hive agent
+(native APK and Termux paths) detects these capabilities at runtime:
+
+- `inference.cpu` — always advertised.
+- `inference.tflite` — always advertised (TFLite CPU delegate is
+  universal on Android; NNAPI delegate activates when an NPU is
+  present).
+- `inference.gpu` — advertised when `ActivityManager` reports GLES 2.0+
+  support (universal on modern devices).
+- `inference.npu` — advertised when one of the following is true:
+  - Samsung-specific Eden NN driver (`libeden_nn_onsystem.so`) is
+    present in `/vendor/lib[64]` or `/system/lib[64]`.
+  - The SoC fingerprint (`ro.hardware` / `ro.product.board`) matches a
+    known NPU-capable chip (`exynos2100`, `exynos2200`, `exynos2400`,
+    `sm8450`, `sm8550`, `sm8650`).
+  - Generic NNAPI HAL (`libneuralnetworks.so`) is present.
+
+The scheduler can therefore route TFLite/NPU jobs to Samsung nodes
+without hard-coding a vendor list.
 
 Mobile platforms emit `controllable: false` for `thermal` and accept policy
 as advisory only — they self-throttle compute load instead.

@@ -21,7 +21,8 @@ do
 	sudo systemctl stop "$unit" 2>/dev/null || true
 done
 
-python3 /home/seven/swarm/ollama_killswitch.py --service || true
+_SWARM_ROOT="${SWARM_ROOT:-$(cd "$(dirname "$0")" && pwd)}"
+python3 "${_SWARM_ROOT}/ollama_killswitch.py" --service || true
 sudo fuser -k 5050/tcp 5051/tcp 5053/tcp 11434/tcp 2>/dev/null || true
 
 echo "All swarm services stopped."

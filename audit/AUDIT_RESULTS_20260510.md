@@ -50,10 +50,58 @@
 
 ---
 
-## Areas Pending (3, 4, 5, 6, 7, 9, 10)
+## Area 3 — Architecture & Routing ✅
 
-- Area 3 — Architecture & Routing
-- Area 4 — Security & Secrets
+**Critical fix: `core/knowledge/projects.py` `_emit_spine()` kwarg mismatch**
+
+| Check | Result |
+|-------|--------|
+| Spine event emission | **BROKEN** — `_emit_spine()` passed `summary`/`detail` but `core.spine.log()` expects `message`/`payload`. Silent failure (exception swallowed). |
+| Impact | Every project mutation (create, add_step, update_status, blackboard note) silently failed to emit TICKET events into Vortex. |
+| Fix | Corrected kwargs in `_emit_spine()` to use `message`/`payload`. |
+| Test | `tests/test_projects_emit_spine.py` — 3 tests, all green. |
+
+**Verdict:** Critical silent failure fixed. Root cause of "no updates / rejection" symptom on Samsung→Potato-1 connections.
+
+---
+
+## Area 4 — Security & Secrets ✅
+
+### Checks Performed
+
+| Check | Result |
+|-------|--------|
+| `python3 scripts/secret_scan.py` | **PASSED** — no tracked secrets or known key patterns |
+| `.gitignore` coverage | ✅ Comprehensive: `.env*`, `*_credentials.json`, `*_token.json`, `*_password.txt`, `*tokens*.jsonl`, `*.db`, `.secret_key` |
+| `nohup.out` secret leakage | ✅ Empty (0 bytes) — no leaked output |
+| Git history — secret commits | ✅ `2a89cd04` removed tracked env files; no re-introduction since |
+| Pre-commit hook | ✅ `swarm-secret-scan` runs `scripts/secret_scan.py` — covers 10 provider patterns (GitHub, Groq, HuggingFace, OpenAI, Anthropic, Google, Tavily, Slack, SendGrid, private keys) |
+| `SECURITY.md` | ✅ Adequate public-repo policy (credential rotation, removal, history compromise) |
+| `core/auth_2fa.py` | ✅ Pure stdlib TOTP (RFC 6238), `hmac.compare_digest` for timing-safe comparison, DB path configurable via `SWARM_2FA_DB` env var |
+| `core/auth_rate_limit.py` | ✅ Fixed-window per-IP limiter, thread-safe (`RLock`), JSON audit log to `audit/auth.log` |
+
+### Bugs Found & Fixed
+
+| Bug | Severity | File | Fix |
+|-----|----------|------|-----|
+| `kill_switch.py` used broken `from utils.database import get_connection` (shim does `from db import *` → `ModuleNotFoundError`) | **HIGH** — reset_agent, pause, resume all silently fail | `core/kill_switch.py` (3 locations) | Changed to `from utils.db._connection import get_connection` |
+| `killswitch.sh` hardcoded `/home/seven/swarm/ollama_killswitch.py` | **MEDIUM** — fails on non-default install paths | `killswitch.sh` line 24 | Uses `SWARM_ROOT` env with `dirname "$0"` fallback |
+
+### Observations (no fix needed)
+
+- `kill_switch.py` imports `utils.config` at module level (line 18–19) — if `config.py` is missing, entire module fails to import. This is acceptable since `config.py` is a deployment prerequisite.
+- KillSwitch API endpoints (`/api/killswitch/emergency` etc.) have no auth check in the method itself — authentication is expected to be enforced by the Flask blueprint layer. Verified this is standard pattern in the codebase.
+
+### Test Coverage
+
+New test file: `tests/test_security_audit_area4.py` — 8 tests, all passing.
+
+**Verdict:** Secret hygiene is solid. Two real bugs fixed in kill switch infrastructure. `make bullshit` GREEN 97/100 unchanged.
+
+---
+
+## Areas Pending (5, 6, 7, 9, 10)
+
 - Area 5 — Operations & Deployment
 - Area 6 — Agent Ecosystem
 - Area 7 — Frontend & UI Standard
@@ -62,4 +110,4 @@
 
 ---
 
-*Next action: proceed with Area 4 (Security & Secrets) or Area 3 (Architecture & Routing) based on owner priority.*
+*Next action: proceed with Area 5 (Operations & Deployment) based on audit plan priority.*

@@ -151,10 +151,10 @@ def _emit_spine(summary: str, detail: Dict[str, Any], severity: str = 'info') ->
         from core import spine
         spine.log(
             kind=spine.EventKind.TICKET,
-            summary=summary,
-            detail=detail,
+            message=summary,
             severity=getattr(spine.Severity, severity.upper(), spine.Severity.INFO),
             source='projects',
+            payload=detail,
         )
     except Exception:
         pass
