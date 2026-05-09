@@ -8,24 +8,24 @@ version = "6.0.0"
 description = "Seven's Swarm — multi-agent orchestration platform"
 requires-python = ">=3.11"
 dependencies = [
-    "Flask",
-    "requests",
-    "python-telegram-bot",
-    "discord.py",
-    "ollama",
-    "psutil",
-    "anthropic",
-    "duckduckgo-search",
-    "openai",
-    "google-genai",
-    "tavily-python",
+    "Flask>=3.1",
+    "requests>=2.33",
+    "python-telegram-bot>=22.0",
+    "discord.py>=2.7",
+    "ollama>=0.6",
+    "psutil>=7.0",
+    "anthropic>=0.88",
+    "duckduckgo-search>=8.0",
+    "openai>=2.32",
+    "google-genai>=1.70",
+    "tavily-python>=0.7",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "pylint",
-    "black",
+    "pytest>=9.0",
+    "pylint>=4.0",
+    "black>=26.0",
 ]
 
 [tool.pytest.ini_options]

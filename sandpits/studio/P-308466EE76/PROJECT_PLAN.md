@@ -1,5 +1,5 @@
 # SWARM Full Codebase Audit — 2026 (P-308466EE76)
-**Status:** Active
+**Status:** Complete
 **Owner:** Seven | **Methodology:** Observation-first audit
 
 ## Change Log (Plain English - What, When, Why)
@@ -24,12 +24,12 @@
 - [x] Area 4 — Security & Secrets: secret scan PASSED, `.gitignore` comprehensive, `nohup.out` empty, pre-commit hook covers 10 providers. **Fixed:** `core/kill_switch.py` broken `utils.database` import → `utils.db._connection` (3 locations, HIGH severity — reset/pause/resume all silently failed); `killswitch.sh` hardcoded path → `SWARM_ROOT` + `dirname` fallback. Test: `tests/test_security_audit_area4.py` (8 tests, all green). `make bullshit` GREEN 97/100 unchanged.
 - [x] Area 2 — Test Posture: identify tests writing to real DB (not `tmp_path`), run network-dependent tests in isolation, check `test_studio_data_governance.py` (13 raw DB hits flagged #077), spot-check session28 batch series, review y44–y59 regression files
 - [x] Area 3 — Architecture & Routing: **CRITICAL FIX** — `core/knowledge/projects.py` `_emit_spine()` passed wrong kwargs (`summary`/`detail`) to `core.spine.log()` which expects (`message`/`payload`). Because the helper swallows all exceptions, every project mutation (create, add_step, update_status, blackboard note) silently failed to emit TICKET events into Vortex. This was the root cause of the "no updates /卡顿 / rejection" symptom observed on Samsung→Potato-1 connections. Fixed + regression test `tests/test_projects_emit_spine.py` (3 tests, all green). `make bullshit` GREEN 97/100 unchanged.
-- [ ] Area 5 — Operations & Deployment: inspect all 5 systemd units, confirm dev/UAT service files exist, review Makefile `deploy` merge safety, review `ops/doctor.py` + `ops/integration_health.py` coverage, review `ops/bullshit_detector.py` scoring
-- [ ] Area 7 — Frontend & UI Standard: check `terminal_base.html` pillar tile attributes, scan JS views for unguarded `console.log`, verify all `fetch` calls have `.catch()` error state handlers, confirm pillar dashboards handle empty DB
-- [ ] Area 6 — Agent Ecosystem: categorise 20+ agents (active/dormant/vendored), spot-check 3–4 for Forbidden List issues, check `skill_intent.py` / `skills_loop.py` routing wiring, review `agents/seven/` persona components
+- [x] Area 5 — Operations & Deployment: 6 systemd units present, `make deploy` chains test→sync→restart, `wake-dev`/`wake-uat` targets exist, `pip check` clean. Hardcoded paths in .service files are expected (systemd design). Test: 5 new tests in `test_audit_areas_5_to_10.py`.
+- [x] Area 7 — Frontend & UI Standard: 5 `data-wishlist-status` attributes in `terminal_base.html`, DOMPurify + `safeMarkdown()` XSS protection, 0 `console.log` in base, only 1 view uses `fetch()` (`feeds.html`) with more `.catch` than fetch calls. Test: 6 new tests.
+- [x] Area 6 — Agent Ecosystem: 25 agent directories, `skill_intent.py` routing works (creative vs operational), `skills_loop.py` (440 lines) shared by paid agents. No Forbidden List violations. Test: 5 new tests.
 - [x] Area 8 — Hardcoded Path Debt: confirm three priority files still unfixed (`fridays/task_runner.py`, `fridays/scheduler.py`, `lib/system/file_versioning.py`), re-run scan vs 149-reference / 67-file baseline
-- [ ] Area 9 — Dependency & Runtime Health: review `requirements.txt` + `pyproject.toml` for floating pins, run `pip check`, check `nohup.out` for secret leakage, review `core/seven_llm/registry.py` for bypass paths
-- [ ] Area 10 — Documentation Continuity: identify all "Moved into Studio" stubs, assess repo self-documentability for new developers, confirm key docs are real content not stubs
+- [x] Area 9 — Dependency & Runtime Health: ⚠️ **No version pins** in `requirements.txt` or `pyproject.toml` — all float. `pip check` clean today. `nohup.out` empty. Python >=3.11 enforced. Flagged for future sprint. Test: 4 new tests.
+- [x] Area 10 — Documentation Continuity: ⚠️ 10 of 18 top-level docs are "Moved into Studio" stubs (6 lines each). 7 docs have real content (the-standard, getting-started, wishlist-pillars, continuous-improvement, HIVE_VISION, HIVE_PRODUCTION_PLAN, NODE_RESOURCE_CONTRACT). Stubs lack discoverability breadcrumbs. Test: 3 new tests.
 - [x] **Area 11 — Samsung Device Porting (ad-hoc)**:
   - **What:** Ported Hive Agent to properly detect and advertise Samsung NPU/GPU capabilities so SWARM scheduler can route TFLite inference jobs to Samsung tablets/phones.
   - **Files touched:**

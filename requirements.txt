@@ -1,19 +1,19 @@
-Flask
-requests
-python-telegram-bot
-discord.py
-ollama
-psutil
-pytest
-pylint
-black
+Flask>=3.1
+requests>=2.33
+python-telegram-bot>=22.0
+discord.py>=2.7
+ollama>=0.6
+psutil>=7.0
+pytest>=9.0
+pylint>=4.0
+black>=26.0
 
 # Core integrations — required for full swarm functionality
-anthropic
-duckduckgo-search
-openai
-google-genai
-tavily-python
+anthropic>=0.88
+duckduckgo-search>=8.0
+openai>=2.32
+google-genai>=1.70
+tavily-python>=0.7
 
 # Optional integrations — install as needed
 # google-api-python-client
@@ -27,4 +27,4 @@ tavily-python
 # pywebview
 
 # Image generation runner (frontend/blueprints/media_bp.py)
-Pillow
+Pillow>=12.0
