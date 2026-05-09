@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any
 
-STUDIO_ROOT = Path(__file__).resolve().parents[2] / "sandpits" / "studio"
+STUDIO_ROOT = Path(__file__).resolve().parents[1] / "sandpits" / "studio"
 
 def discover_projects() -> List[Dict[str, Any]]:
     projects = []
@@ -41,7 +41,8 @@ def _parse_project(name: str, plan_file: Path) -> Dict[str, Any]:
         if stripped.startswith("# ") and title == name:
             title = stripped[2:].strip()
         elif stripped.lower().startswith("**status:**"):
-            status = stripped.split(":", 1)[1].strip().lower()
+            # Strip bold markers then grab the value after the final colon
+            status = stripped.replace("**", "").split(":", 1)[1].strip().lower()
         elif stripped.lower().startswith("## packet") or stripped.lower().startswith("## step"):
             current_section = "packets"
         elif stripped.lower().startswith("## blackboard"):

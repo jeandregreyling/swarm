@@ -200,20 +200,27 @@ def test_wishlist_tile_present(template_html, win_id, template_id):
 
 
 def test_all_wishlist_tiles_marked_active_v0(template_html):
-    """Tiles were promoted from capture-only to active-v0 in batch 14."""
+    """Tiles were promoted from capture-only to active-v0 in batch 14.
+    Updated: money-hub was added as a 5th home-card-wishlist active-v0 tile
+    (audit P-308466EE76 / Area 1 fix — 2026-05-10).
+    """
     matches = re.findall(r'home-card home-card-wishlist[^>]*data-wishlist-status="active-v0"', template_html)
-    assert len(matches) == 4, f"expected 4 active-v0 tiles, found {len(matches)}"
+    assert len(matches) == 5, f"expected 5 active-v0 tiles, found {len(matches)}"
     assert 'data-wishlist-status="capture-only"' not in template_html
 
 
 def test_wishlist_tiles_use_wishlist_badge(template_html):
-    # Each pillar tile body should carry a Wishlist badge so users can't
-    # confuse them with shipped surfaces.
+    # Y.58 refactor: Financial, Trading, and Business were merged into the
+    # 'money-hub' tile; Cyber moved into Vortex. The four individual pillar
+    # tiles are now hidden empty contract markers (no badge). The badge now
+    # lives on money-hub. Updated by audit P-308466EE76 / Area 1 — 2026-05-10.
+    idx = template_html.find('data-win-id="money-hub"')
+    assert idx > -1, "money-hub tile not found in template"
+    block = template_html[idx:idx + 800]
+    assert 'wishlist-badge' in block, "money-hub tile missing Wishlist badge"
+    # The 4 hidden pillar contract tiles must still be present (used by bullshit_detector)
     for slug_marker in ('wishlist-cyber', 'wishlist-financial', 'wishlist-trading', 'wishlist-business'):
-        idx = template_html.find('data-win-id="' + slug_marker + '"')
-        assert idx > -1
-        block = template_html[idx:idx + 1200]
-        assert 'wishlist-badge' in block, f"tile {slug_marker} missing Wishlist badge"
+        assert f'data-win-id="{slug_marker}"' in template_html, f"hidden contract tile {slug_marker} missing"
 
 
 def test_wishlist_js_loader_referenced_once(template_html):

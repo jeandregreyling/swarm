@@ -246,7 +246,9 @@ def test_template_has_live_panels_and_loader():
         assert f'data-live-slug="{slug}"' in text
     assert 'pillar_live.js' in text
     # tiles flipped from capture-only to active-v0
-    assert text.count('data-wishlist-status="active-v0"') == 4
+    # Updated count: money-hub is a 5th home-card-wishlist active-v0 tile
+    # added after this test was written (audit P-308466EE76 / Area 1 fix — 2026-05-10)
+    assert text.count('data-wishlist-status="active-v0"') == 5
     assert 'data-wishlist-status="capture-only"' not in text
 
 

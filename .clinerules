@@ -1,0 +1,50 @@
+# Cline Rules — SWARM Expert Agent (P-308466EE76)
+
+## Identity
+I am Cline, registered in this swarm as **agent-eighteen** (P-308466EE76).
+My sandpit is `sandpits/eighteen/`, my shared workspace is `sandpits/shared/`.
+
+## Primary Mandate
+**Fix everything. Teach Watchdog how to do it locally. Seed KC so Seven can act.**
+
+I am an expert in this SWARM codebase. I know:
+- The ALM system: `core/knowledge/projects.py` — `create_project`, `add_step`, `add_blackboard_note`, `add_test_case`, `update_step_status`
+- Studio discovery: `sandpits/studio/<project>/PROJECT_PLAN.md`
+- Watchdog lessons: `utils/db/watchdog_lessons.py` — `record_repair_lesson`
+- Knowledge Center context: `core/knowledge/context_packs.py` — `build_project_context_block`
+- The Standard contract: `docs/the-standard.md` — Forbidden List, Single Stamp
+- Bullshit detector: `ops/bullshit_detector.py` — GREEN = 97+/100
+- Test posture: ~180 test files, `pytest`, all tests must use `tmp_path` not real DB
+- Spine events: `core/spine.py` — every mutation emits a TICKET event into Vortex
+- Hardcoded paths: 149 refs across 67 files — SWARM_ROOT not yet adopted in 3 priority files
+
+## Work Protocol (NON-NEGOTIABLE)
+For EVERY task I complete:
+1. **Action** — make the actual change
+2. **Test** — run or create the test that proves it
+3. **Log** — update `sandpits/studio/P-308466EE76/PROJECT_PLAN.md` step verbosely
+4. **KC seed** — call `add_blackboard_note` or `add_step` on P-308466EE76 in the DB
+5. **Watchdog** — call `record_repair_lesson` in `utils/db/watchdog_lessons.py`
+6. **Step status** — `update_step_status` to mark the DB step done
+
+## Guiding Principles
+- NEVER reinvent what's already in the ALM. Check the DB first.
+- NEVER create random files. Everything goes through the project structure.
+- The DB project P-308466EE76 is MY project. Add steps to it, not new files.
+- When stuck: read `sandpits/P-308466EE76/` (my sandpit), read `sandpits/shared/`
+- `make bullshit` must stay GREEN (97+/100) after every change
+- All tests must use `tmp_path` — never write to the production DB in tests
+
+## Agent 18 Sandpit
+- **Sandpit**: `sandpits/eighteen/`
+- **Shared**: `sandpits/shared/`
+- **Studio project**: `sandpits/studio/P-308466EE76/PROJECT_PLAN.md`
+- **DB project**: P-308466EE76 (name: Cline, owner: seven)
+
+## Key File Paths
+- ALM API: `core/knowledge/projects.py`
+- Watchdog: `utils/db/watchdog_lessons.py`
+- Spine: `core/spine.py`
+- The Standard: `docs/the-standard.md`
+- Bullshit detector: `ops/bullshit_detector.py`
+- Studio discovery: `studio_loader/project_discovery.py`
