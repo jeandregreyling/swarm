@@ -7,6 +7,7 @@ callers (via `from services import *`) continue to work unchanged.
 """
 import re
 import os
+import json
 import time
 import threading
 from datetime import datetime, timezone
@@ -121,6 +122,22 @@ def _chat_update_job(job_id, *, stage=None, status=None, eta_seconds=None, error
             job['error'] = str(error)
         job['updated_ts'] = now_ts
         job['updated_at'] = now_iso
+        db_snapshot = dict(job)
+
+    if stage is not None or status is not None or error is not None:
+        try:
+            from utils.db.chat import update_chat_job_db
+            update_chat_job_db(
+                job_id,
+                status=db_snapshot.get('status') or 'running',
+                stage=db_snapshot.get('stage') or '',
+                error=db_snapshot.get('error') or '',
+                elapsed_ms=max(0, int((float(db_snapshot.get('updated_ts') or now_ts) - float(db_snapshot.get('started_ts') or now_ts)) * 1000)),
+                tokens=int(db_snapshot.get('tokens') or 0),
+                stage_trace_json=json.dumps(db_snapshot.get('stage_trace') or []),
+            )
+        except Exception:
+            pass
 
 
 def _cleanup_chat_jobs_locked():
