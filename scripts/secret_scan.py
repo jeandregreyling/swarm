@@ -41,9 +41,12 @@ ALLOWLIST_PATHS = {
 }
 
 
-def tracked_files() -> list[str]:
+def files_to_scan(include_untracked: bool = False) -> list[str]:
+    args = ["git", "ls-files", "-z"]
+    if include_untracked:
+        args.extend(["--cached", "--others", "--exclude-standard"])
     result = subprocess.run(
-        ["git", "ls-files", "-z"],
+        args,
         cwd=ROOT,
         check=True,
         stdout=subprocess.PIPE,
@@ -58,9 +61,10 @@ def is_secret_filename(path: str) -> bool:
 
 
 def main() -> int:
+    include_untracked = "--include-untracked" in sys.argv[1:]
     failures: list[str] = []
 
-    for relpath in tracked_files():
+    for relpath in files_to_scan(include_untracked=include_untracked):
         if is_secret_filename(relpath):
             failures.append(f"{relpath}: tracked local secret filename")
             continue
