@@ -1442,6 +1442,14 @@
             <option value="uat">UAT</option>
             <option value="dev">DEV</option>
           </select>
+          <select id="git-branch-select" title="Local and origin branches" style="min-width:220px;max-width:320px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
+            <option value="">Loading branches...</option>
+          </select>
+          <button onclick="gitFetchBranches()" title="Fetch origin and refresh branches" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Fetch</button>
+          <button onclick="gitCompareSelectedBranch()" title="Compare selected branch without checking it out" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Compare</button>
+          <button onclick="gitCheckoutSelectedBranch()" title="Checkout selected branch in this environment" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Checkout</button>
+          <button onclick="gitPullCurrentBranch()" title="Fast-forward pull current branch" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Pull</button>
+          <button onclick="gitPushCurrentBranch()" title="Push current branch; force push is not supported" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Push</button>
           <input id="git-filter-input" type="text" placeholder="Filter files" style="width:180px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
           <button onclick="gitRefreshStatus()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Refresh</button>
         </div>
@@ -1749,6 +1757,10 @@
         <button id="studio-tab-git"
           onclick="studioSetTab('git')"
           style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">Git</button>
+        <button id="studio-tab-appcenter"
+          onclick="studioSetTab('appcenter')"
+          title="App Center — backend app/game build projects, not Studio Git"
+          style="padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;">App Center</button>
         <button id="studio-tab-records"
           onclick="studioSetTab('records')"
           title="Records — universal viewer for projects, steps, cases, runs, proposals, tickets, emails, notes, docs, threads (Platinum file layer)"
@@ -1781,6 +1793,14 @@
               <option value="uat">UAT</option>
               <option value="dev">DEV</option>
             </select>
+            <select id="git-branch-select" title="Local and origin branches" style="min-width:220px;max-width:320px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
+              <option value="">Loading branches...</option>
+            </select>
+            <button onclick="gitFetchBranches()" title="Fetch origin and refresh branches" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Fetch</button>
+            <button onclick="gitCompareSelectedBranch()" title="Compare selected branch without checking it out" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Compare</button>
+            <button onclick="gitCheckoutSelectedBranch()" title="Checkout selected branch in this environment" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Checkout</button>
+            <button onclick="gitPullCurrentBranch()" title="Fast-forward pull current branch" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Pull</button>
+            <button onclick="gitPushCurrentBranch()" title="Push current branch; force push is not supported" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Push</button>
             <input id="git-filter-input" type="text" placeholder="Filter files" style="width:180px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
             <button onclick="gitRefreshStatus()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Refresh</button>
           </div>
@@ -1818,6 +1838,20 @@
             <div style="padding:8px;text-align:center;">No proposals</div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- App Center panel (hidden until App Center tab selected) -->
+    <div id="studio-appcenter-panel" style="display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;">
+        <div>
+          <div style="font-size:13px;font-weight:700;">App Center</div>
+          <div style="font-size:11px;color:var(--text-dim);">Backend app/game build projects. Not Studio Git.</div>
+        </div>
+        <button onclick="loadStudioAppCenterPanel()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;">Refresh</button>
+      </div>
+      <div id="appcenter-body" style="flex:1;overflow:auto;padding:12px;">
+        <div style="color:var(--text-dim);font-size:11px;text-align:center;padding:14px;">Loading App Center...</div>
       </div>
     </div>
 
