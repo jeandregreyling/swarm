@@ -81,3 +81,10 @@ def test_projects_panel_exposes_git_branch_controls():
     assert "/api/git/status?environment=dev" in js
     assert "/api/git/branches?environment=dev" in js
     assert "/api/git/checkout" in js
+
+
+def test_projects_tile_exposes_blackboard_count():
+    js = (ROOT / "frontend/static/js/views/projects.js").read_text()
+
+    assert "p.blackboard_count" in js
+    assert "Blackboard active:" in js
