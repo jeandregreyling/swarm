@@ -12,3 +12,10 @@ repos:
       - id: check-yaml
       - id: check-json
         exclude: 'swarm_docs/|docs/api/'
+  - repo: local
+    hooks:
+      - id: swarm-secret-scan
+        name: swarm secret scan
+        entry: python scripts/secret_scan.py
+        language: system
+        pass_filenames: false

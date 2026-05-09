@@ -48,6 +48,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Scan for committed secrets
+        run: python scripts/secret_scan.py
       - name: Install safety
         run: pip install safety
       - name: Check dependencies
