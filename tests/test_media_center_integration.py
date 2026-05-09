@@ -254,6 +254,10 @@ def test_media_center_real_local_run_creates_playable_artifact_and_evidence():
         conn.close()
     assert evidence >= 1
 
+    # Cleanup: remove test project from DB so it doesn't pollute the ALM
+    from core.knowledge.projects import delete_project
+    delete_project(project["studio_project_id"])
+
 
 def test_media_center_creates_synth_take_on_timeline():
     app = create_app()
@@ -369,6 +373,10 @@ def test_media_center_real_local_run_can_use_input_reference():
         assert manifest_response.status_code == 200
         manifest_data = manifest_response.get_json()
         assert manifest_data["input_reference"]["id"] == ref["id"]
+
+    # Cleanup: remove test project from DB so it doesn't pollute the ALM
+    from core.knowledge.projects import delete_project
+    delete_project(project["studio_project_id"])
 
 
 def test_media_center_auto_detects_embeddable_media_reference():
