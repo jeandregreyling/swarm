@@ -58,6 +58,8 @@ def test_retention_manifest_distinguishes_active_and_empty_dbs(tmp_path, monkeyp
     manifest = gov.retention_manifest(inv)
 
     assert manifest["destructive_actions_taken"] is False
+    assert manifest["review_items_total"] == len(manifest["review_items"])
+    assert manifest["review_items_truncated"] is False
     assert inv["classification_counts"]["active_auxiliary_db"] == 1
     assert inv["classification_counts"]["empty_legacy_db"] == 1
     review_paths = {item["path"] for item in manifest["review_items"]}
@@ -67,6 +69,100 @@ def test_retention_manifest_distinguishes_active_and_empty_dbs(tmp_path, monkeyp
     empty = next(item for item in manifest["review_items"] if item["path"] == "agents/swarm.db")
     assert empty["recommended_action"] == "delete_empty_placeholder"
     assert "swarm_memory.db" not in review_paths
+
+
+def test_retention_manifest_prioritizes_dbs_before_loose_docs(tmp_path, monkeypatch):
+    import scripts.studio_data_governance as gov
+
+    monkeypatch.setattr(gov, "ROOT", tmp_path)
+    monkeypatch.setattr(gov, "DB_PATH", tmp_path / "swarm_memory.db")
+
+    (tmp_path / "swarm_memory.db").write_text("", encoding="utf-8")
+    (tmp_path / "swarm.db").write_text("legacy", encoding="utf-8")
+    for i in range(20):
+        (tmp_path / f"doc-{i}.md").write_text("# loose\n", encoding="utf-8")
+
+    manifest = gov.retention_manifest(gov.inventory())
+
+    assert manifest["review_items"][0]["path"] == "swarm.db"
+    assert manifest["review_items"][0]["classification"] == "active_auxiliary_db"
+
+
+def test_retention_summary_groups_actions_and_top_paths(tmp_path, monkeypatch):
+    import scripts.studio_data_governance as gov
+
+    monkeypatch.setattr(gov, "ROOT", tmp_path)
+    monkeypatch.setattr(gov, "DB_PATH", tmp_path / "swarm_memory.db")
+
+    (tmp_path / "swarm_memory.db").write_text("", encoding="utf-8")
+    (tmp_path / "swarm.db").write_text("legacy", encoding="utf-8")
+    (tmp_path / "old.log").write_text("x" * 100, encoding="utf-8")
+    old = tmp_path / "stage1.log"
+    old.write_text("generated", encoding="utf-8")
+    old.touch()
+
+    manifest = gov.retention_manifest(gov.inventory())
+    summary = gov.retention_summary(manifest, limit=3)
+
+    assert summary["destructive_actions_taken"] is False
+    assert summary["review_items_total"] == manifest["review_items_total"]
+    assert summary["review_items_truncated"] is False
+    assert "migrate_to_swarm_memory_then_retire" in summary["actions"]
+    action = summary["actions"]["migrate_to_swarm_memory_then_retire"]
+    assert action["count"] == 1
+    assert action["top_paths"][0]["path"] == "swarm.db"
+    assert "guard" in action["top_paths"][0]
+
+
+def test_swarm_db_retirement_check_accepts_retired_root_db(tmp_path, monkeypatch):
+    import scripts.studio_data_governance as gov
+
+    monkeypatch.setattr(gov, "ROOT", tmp_path)
+    monkeypatch.setattr(gov, "DB_PATH", tmp_path / "swarm_memory.db")
+
+    (tmp_path / "swarm.db.retired.20260502").write_text("legacy copy", encoding="utf-8")
+    conn = sqlite3.connect(tmp_path / "swarm_memory.db")
+    try:
+        for table in (
+            "user_2fa",
+            "settings_sysmod",
+            "enrollment_invites",
+            "gmail_labels_cache",
+            "user_profiles",
+        ):
+            conn.execute(f"CREATE TABLE {table} (id INTEGER)")
+        conn.commit()
+    finally:
+        conn.close()
+
+    result = gov.swarm_db_retirement_check()
+
+    assert result["ok"] is True
+    assert result["live_swarm_db_exists"] is False
+    assert result["central_db_exists"] is True
+    assert result["missing_tables"] == []
+    assert result["retired_copies"] == ["swarm.db.retired.20260502"]
+
+
+def test_swarm_db_retirement_check_blocks_live_or_incomplete_state(tmp_path, monkeypatch):
+    import scripts.studio_data_governance as gov
+
+    monkeypatch.setattr(gov, "ROOT", tmp_path)
+    monkeypatch.setattr(gov, "DB_PATH", tmp_path / "swarm_memory.db")
+
+    (tmp_path / "swarm.db").write_text("still live", encoding="utf-8")
+    conn = sqlite3.connect(tmp_path / "swarm_memory.db")
+    try:
+        conn.execute("CREATE TABLE user_2fa (id INTEGER)")
+        conn.commit()
+    finally:
+        conn.close()
+
+    result = gov.swarm_db_retirement_check()
+
+    assert result["ok"] is False
+    assert result["live_swarm_db_exists"] is True
+    assert "settings_sysmod" in result["missing_tables"]
 
 
 def test_governance_apply_migrates_auxiliary_db_state(tmp_path, monkeypatch):

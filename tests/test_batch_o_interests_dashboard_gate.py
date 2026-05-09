@@ -240,6 +240,9 @@ def test_mega_backlog_collect_and_render(conn):
         INSERT INTO project_steps (project_id, step_id, title, status) VALUES
             ('P-A','S-1','x','done'),
             ('P-A','S-2','y','todo'),
+            ('P-A','S-4','[P-441A6D6476] V8-B1 shell','todo'),
+            ('P-A','S-5','[PACKET-11] Media Center comp','doing'),
+            ('P-A','S-6','Fix watchdog orphan recovery','blocked'),
             ('P-B','S-3','z','done');
     """)
     from ops import mega_backlog
@@ -250,6 +253,12 @@ def test_mega_backlog_collect_and_render(conn):
     rendered = mega_backlog.render_text(records)
     assert "Alpha mega project" in rendered
     assert "P-A" in rendered
+    alpha = next(r for r in records if r["project_id"] == "P-A")
+    assert alpha["lanes"]["v8-runtime"]["todo"] == 1
+    assert alpha["lanes"]["media"]["doing"] == 1
+    assert alpha["lanes"]["watchdog-recovery"]["blocked"] == 1
+    assert "v8-runtime" in rendered
+    assert "watchdog-recovery" in rendered
 
 
 def test_mega_backlog_empty(conn):

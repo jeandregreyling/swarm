@@ -71,6 +71,46 @@ def test_git_checkout_blocks_dirty_worktree(monkeypatch):
     assert ["checkout", "feature/dev"] not in calls
 
 
+def test_git_pull_blocks_dirty_worktree(monkeypatch):
+    calls = []
+
+    def fake_git(args, timeout=20, env=""):
+        calls.append(args)
+        if args == ["status", "--porcelain=1"]:
+            return _Proc(" M frontend/static/js/views/git.js\n")
+        raise AssertionError(f"unexpected git command: {args}")
+
+    client = _client(monkeypatch, fake_git)
+    resp = client.post(
+        "/api/git/pull",
+        json={"environment": "dev", "proposal_id": "PROP-1"},
+    )
+    data = resp.get_json()
+
+    assert resp.status_code == 409
+    assert data["ok"] is False
+    assert "uncommitted changes" in data["error"]
+    assert ["pull", "--ff-only"] not in calls
+
+
+def test_git_fetch_and_push_routes(monkeypatch):
+    calls = []
+
+    def fake_git(args, timeout=20, env=""):
+        calls.append((args, env))
+        return _Proc("ok\n")
+
+    client = _client(monkeypatch, fake_git)
+
+    fetch = client.post("/api/git/fetch", json={"environment": "dev"}).get_json()
+    push = client.post("/api/git/push", json={"environment": "dev", "proposal_id": "PROP-1"}).get_json()
+
+    assert fetch["ok"] is True
+    assert push["ok"] is True
+    assert (["fetch", "--prune", "origin"], "dev") in calls
+    assert (["push"], "dev") in calls
+
+
 def test_projects_panel_exposes_git_branch_controls():
     template = (ROOT / "frontend/templates/terminal_base.html").read_text()
     js = (ROOT / "frontend/static/js/views/projects.js").read_text()
@@ -95,6 +135,20 @@ def test_git_panel_defaults_to_dev_environment():
 
     assert "environment: 'dev'" in js
     assert "envSelect.value = state.environment" in js
+
+
+def test_git_panel_exposes_branch_dropdown_and_direct_buttons():
+    template = (ROOT / "frontend/templates/terminal_base.html").read_text()
+    js = (ROOT / "frontend/static/js/views/git.js").read_text()
+
+    assert 'id="git-branch-select"' in template
+    assert 'id="git-checkout-btn"' in template
+    assert 'id="git-pull-btn"' in template
+    assert 'id="git-push-btn"' in template
+    assert "gitRefreshBranches()" in js
+    assert "/api/git/fetch" in js
+    assert "/api/git/pull" in js
+    assert "/api/git/push" in js
 
 
 def test_git_panel_filters_to_git_linked_proposals():

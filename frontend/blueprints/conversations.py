@@ -32,9 +32,6 @@ def api_conversation_messages(conv_id):
         "SELECT id, title, source, created_at FROM conversations WHERE id=?",
         (conv_id,)
     ).fetchone()
-    if not conv:
-        conn.close()
-        return jsonify({'error': 'not found'}), 404
     # All messages for this conversation, ordered chronologically
     rows = conn.execute(
         """SELECT id, from_agent AS sender, content, to_agent, message_type, tokens_used, created_at
@@ -50,6 +47,21 @@ def api_conversation_messages(conv_id):
            ORDER BY started_at ASC""",
         (conv_id,),
     ).fetchall()
+    if not conv:
+        if not rows and not job_rows:
+            conn.close()
+            return jsonify({'error': 'not found'}), 404
+        created_at = None
+        if rows:
+            created_at = rows[0]['created_at']
+        elif job_rows:
+            created_at = job_rows[0]['started_at']
+        conv = {
+            'id': conv_id,
+            'title': f'Archived chat #{conv_id}',
+            'source': 'recovered',
+            'created_at': created_at,
+        }
     # Look up any linked ticket for this conversation
     ticket_info = None
     try:
@@ -345,5 +357,4 @@ def api_trace_conversation(conv_id):
     except Exception as e:
         conn.close()
         return jsonify({'error': str(e)}), 500
-
 

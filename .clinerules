@@ -35,6 +35,12 @@ For EVERY task I complete:
 - `make bullshit` must stay GREEN (97+/100) after every change
 - All tests must use `tmp_path` — never write to the production DB in tests
 
+## Command Safety (NON-NEGOTIABLE)
+- NEVER run `tail -f`, `tail --follow`, `journalctl -f`, or any other infinite-follow command — these block forever and Cline will hang.
+- Always use `tail -n <N>` (bounded, exits immediately after printing N lines).
+- For `git log`, `journalctl`, and similar pager-triggering commands, always pass `--no-pager` or pipe through `head`/`cat`.
+- If a time-bounded stream is genuinely needed, wrap with `timeout <N> <command>` so it exits cleanly.
+
 ## Agent 18 Sandpit
 - **Sandpit**: `sandpits/eighteen/`
 - **Shared**: `sandpits/shared/`

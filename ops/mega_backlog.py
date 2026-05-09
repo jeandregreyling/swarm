@@ -21,6 +21,28 @@ import sys
 from typing import Any, Dict, List
 
 
+def lane_for_step(title: str, owner: str = "") -> str:
+    """Return a stable workstream lane label for a backlog step."""
+    blob = f"{title or ''} {owner or ''}".lower()
+    if "watchdog" in blob or "thread #" in blob or "chat257" in blob:
+        return "watchdog-recovery"
+    if "[packet-11]" in blob or "media center" in blob or "media " in blob:
+        return "media"
+    if "[p-441a6d6476]" in blob or "v8-" in blob or "seven runtime" in blob:
+        return "v8-runtime"
+    if "[wishlist]" in blob:
+        return "wishlist-capture"
+    if "[money-hub]" in blob or "newsletter" in blob:
+        return "money-hub"
+    if "[runtime]" in blob or "airllm" in blob:
+        return "runtime-research"
+    if "[md:bugs]" in blob or "bug-" in blob:
+        return "bugfix"
+    if "cleanup" in blob or "retire" in blob or "legacy db" in blob or "consolidate" in blob:
+        return "cleanup"
+    return "general"
+
+
 def collect(conn) -> List[Dict[str, Any]]:
     rows = conn.execute(
         "SELECT project_id, name, status FROM projects "
@@ -30,15 +52,30 @@ def collect(conn) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for pid, name, status in rows:
         steps = conn.execute(
-            "SELECT status, COUNT(*) FROM project_steps WHERE project_id=? "
-            "GROUP BY status",
+            "SELECT title, status, COALESCE(owner,'') FROM project_steps WHERE project_id=?",
             (pid,),
         ).fetchall()
         counts = {"total": 0, "done": 0, "blocked": 0, "todo": 0, "skipped": 0}
-        for st, n in steps:
-            counts["total"] += int(n)
+        lanes: Dict[str, Dict[str, int]] = {}
+        for title, st, owner in steps:
+            n = 1
+            lane = lane_for_step(title, owner)
+            lane_counts = lanes.setdefault(
+                lane,
+                {"total": 0, "done": 0, "blocked": 0, "todo": 0, "doing": 0, "skipped": 0},
+            )
+            lane_counts["total"] += n
             key = (st or "todo").strip().lower()
-            counts[key] = counts.get(key, 0) + int(n)
+            if key not in ("done", "blocked", "skipped"):
+                if key == "doing":
+                    lane_counts["doing"] += n
+                else:
+                    lane_counts["todo"] += n
+                key = "todo"
+            else:
+                lane_counts[key] += n
+            counts["total"] += n
+            counts[key] = counts.get(key, 0) + n
         try:
             evidence = conn.execute(
                 "SELECT COUNT(*) FROM project_step_evidence WHERE project_id=?",
@@ -51,6 +88,7 @@ def collect(conn) -> List[Dict[str, Any]]:
             "name": name,
             "status": status,
             "step_counts": counts,
+            "lanes": dict(sorted(lanes.items())),
             "evidence_count": int(evidence),
             "completion_pct": (
                 round(100.0 * counts["done"] / counts["total"], 1)
@@ -73,6 +111,17 @@ def render_text(records: List[Dict[str, Any]]) -> str:
             f"todo={c['todo']}  blocked={c.get('blocked',0)}  "
             f"evidence={r['evidence_count']}  ({r['completion_pct']}%)"
         )
+        open_lanes = [
+            (name, lane)
+            for name, lane in (r.get("lanes") or {}).items()
+            if lane.get("todo", 0) or lane.get("blocked", 0)
+        ]
+        for name, lane in sorted(open_lanes, key=lambda item: (-item[1].get("todo", 0), item[0]))[:8]:
+            lines.append(
+                f"  - {name}: {lane.get('done',0)}/{lane.get('total',0)} "
+                f"open={lane.get('todo',0)} doing={lane.get('doing',0)} "
+                f"blocked={lane.get('blocked',0)}"
+            )
     return "\n".join(lines)
 
 

@@ -394,6 +394,71 @@ def api_git_checkout():
     return jsonify({'ok': True, 'branch': branch, 'environment': env or 'prod'})
 
 
+@git_bp.route('/api/git/fetch', methods=['POST'])
+def api_git_fetch():
+    """Fetch remote refs for the selected repository environment."""
+    data = request.get_json() or {}
+    env = str(data.get('environment', '')).strip()
+    try:
+        proc = _run_git_command(['fetch', '--prune', 'origin'], timeout=60, env=env)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': (proc.stderr or proc.stdout or 'git fetch failed').strip()[:500]}), 500
+
+    log_activity('terminal', 'git_fetch', env or 'prod')
+    return jsonify({'ok': True, 'environment': env or 'prod', 'output': (proc.stdout or proc.stderr or '').strip()[:1200]})
+
+
+@git_bp.route('/api/git/pull', methods=['POST'])
+def api_git_pull():
+    """Pull the current branch, guarded by ALM and a clean worktree check."""
+    data = request.get_json() or {}
+    gate = _alm_gate_or_response(data, 'git_pull')
+    if gate:
+        return gate
+
+    env = str(data.get('environment', '')).strip()
+    try:
+        dirty = _run_git_command(['status', '--porcelain=1'], timeout=20, env=env)
+        if dirty.returncode != 0:
+            return jsonify({'ok': False, 'error': (dirty.stderr or dirty.stdout or 'git status failed').strip()[:500]}), 500
+        if (dirty.stdout or '').strip():
+            return jsonify({'ok': False, 'error': 'working tree has uncommitted changes; commit or stash before pull'}), 409
+
+        proc = _run_git_command(['pull', '--ff-only'], timeout=90, env=env)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': (proc.stderr or proc.stdout or 'git pull failed').strip()[:500]}), 500
+
+    log_activity('terminal', 'git_pull', env or 'prod')
+    return jsonify({'ok': True, 'environment': env or 'prod', 'output': (proc.stdout or proc.stderr or '').strip()[:1200]})
+
+
+@git_bp.route('/api/git/push', methods=['POST'])
+def api_git_push():
+    """Push the current branch to its configured upstream. Force push is not exposed."""
+    data = request.get_json() or {}
+    gate = _alm_gate_or_response(data, 'git_push')
+    if gate:
+        return gate
+
+    env = str(data.get('environment', '')).strip()
+    try:
+        proc = _run_git_command(['push'], timeout=90, env=env)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': (proc.stderr or proc.stdout or 'git push failed').strip()[:500]}), 500
+
+    log_activity('terminal', 'git_push', env or 'prod')
+    return jsonify({'ok': True, 'environment': env or 'prod', 'output': (proc.stdout or proc.stderr or '').strip()[:1200]})
+
+
 
 @git_bp.route('/api/git/diff', methods=['GET'])
 def api_git_diff():

@@ -1447,6 +1447,16 @@
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span id="git-branch-status" title="Current Git branch and upstream state" style="font-size:10px;color:var(--text-dim);border:1px solid var(--border);border-radius:5px;padding:5px 8px;background:var(--card);">Branches: loading</span>
+        <select id="git-branch-select" title="Local branches in the selected environment" style="min-width:220px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
+          <option value="">Loading branches</option>
+        </select>
+        <button id="git-checkout-btn" onclick="gitCheckoutSelectedBranch()" title="Checkout selected branch; blocked if the worktree is dirty" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Checkout</button>
+        <button onclick="gitFetchBranches()" title="Fetch and prune origin before refreshing branch list" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Fetch</button>
+        <button id="git-pull-btn" onclick="gitPullCurrentBranch()" title="Pull current branch with --ff-only; disabled when the worktree is dirty" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Pull</button>
+        <button id="git-push-btn" onclick="gitPushCurrentBranch()" title="Push current branch to upstream; force push is not exposed" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Push</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <input id="git-commit-message" type="text" placeholder="Commit message for staged changes" style="flex:1;min-width:220px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
         <button onclick="gitCommitChanges()" style="background:var(--accent);border:1px solid var(--accent);color:#000;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:11px;font-weight:700;">Propose Commit</button>
       </div>
@@ -1784,6 +1794,16 @@
             <input id="git-filter-input" type="text" placeholder="Filter files" style="width:180px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
             <button onclick="gitRefreshStatus()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Refresh</button>
           </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span id="git-branch-status" title="Current Git branch and upstream state" style="font-size:10px;color:var(--text-dim);border:1px solid var(--border);border-radius:5px;padding:5px 8px;background:var(--card);">Branches: loading</span>
+          <select id="git-branch-select" title="Local branches in the selected environment" style="min-width:220px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
+            <option value="">Loading branches</option>
+          </select>
+          <button id="git-checkout-btn" onclick="gitCheckoutSelectedBranch()" title="Checkout selected branch; blocked if the worktree is dirty" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Checkout</button>
+          <button onclick="gitFetchBranches()" title="Fetch and prune origin before refreshing branch list" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Fetch</button>
+          <button id="git-pull-btn" onclick="gitPullCurrentBranch()" title="Pull current branch with --ff-only; disabled when the worktree is dirty" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Pull</button>
+          <button id="git-push-btn" onclick="gitPushCurrentBranch()" title="Push current branch to upstream; force push is not exposed" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Push</button>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input id="git-commit-message" type="text" placeholder="Commit message for staged changes" style="flex:1;min-width:220px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">

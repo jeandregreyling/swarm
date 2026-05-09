@@ -746,6 +746,21 @@ def retention_manifest(inv: dict[str, Any]) -> dict[str, Any]:
                 "reason": f"Archive file older than {ARCHIVE_RETENTION_DAYS} days; not active planning truth.",
             })
 
+    priority = {
+        "active_auxiliary_db": 0,
+        "duplicate_or_legacy_db": 1,
+        "empty_legacy_db": 2,
+        "generated_output": 3,
+        "loose_document": 4,
+    }
+    review_items.sort(
+        key=lambda item: (
+            priority.get(str(item.get("classification") or ""), 99),
+            -int(item.get("size") or 0),
+            str(item.get("path") or ""),
+        )
+    )
+
     return {
         "generated_at": now_text(),
         "destructive_actions_taken": False,
@@ -755,7 +770,88 @@ def retention_manifest(inv: dict[str, Any]) -> dict[str, Any]:
         },
         "counts": dict(counts),
         "review_items": review_items[:500],
+        "review_items_total": len(review_items),
+        "review_items_truncated": len(review_items) > 500,
         "cold_archive_examples": keep_items[:100],
+    }
+
+
+def retention_summary(manifest: dict[str, Any], *, limit: int = 20) -> dict[str, Any]:
+    """Return a compact operator review summary for the cleanup manifest."""
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for item in manifest.get("review_items") or []:
+        action = item.get("recommended_action") or "review"
+        grouped.setdefault(action, []).append(item)
+
+    actions = {}
+    for action, items in sorted(grouped.items()):
+        largest = sorted(items, key=lambda item: int(item.get("size") or 0), reverse=True)[:limit]
+        actions[action] = {
+            "count": len(items),
+            "total_size": sum(int(item.get("size") or 0) for item in items),
+            "top_paths": [
+                {
+                    "path": item.get("path"),
+                    "size": item.get("size", 0),
+                    "classification": item.get("classification", ""),
+                    "guard": item.get("guard", ""),
+                }
+                for item in largest
+            ],
+        }
+
+    return {
+        "generated_at": manifest.get("generated_at") or now_text(),
+        "destructive_actions_taken": False,
+        "retention_days": manifest.get("retention_days") or {},
+        "counts": manifest.get("counts") or {},
+        "review_items_total": manifest.get("review_items_total", len(manifest.get("review_items") or [])),
+        "review_items_truncated": bool(manifest.get("review_items_truncated", False)),
+        "actions": actions,
+    }
+
+
+def swarm_db_retirement_check() -> dict[str, Any]:
+    """Verify the legacy root ``swarm.db`` can stay retired.
+
+    This is intentionally read-only with respect to files. It verifies there is
+    no live root swarm.db, retired copies are clearly named, and central tables
+    used by 2FA/sysmod/enrollment/Gmail-label surfaces exist in swarm_memory.db.
+    """
+    live = ROOT / "swarm.db"
+    retired = sorted(p.name for p in ROOT.glob("swarm.db.retired*"))
+    required_tables = [
+        "user_2fa",
+        "settings_sysmod",
+        "enrollment_invites",
+        "gmail_labels_cache",
+        "user_profiles",
+    ]
+    existing_tables: list[str] = []
+    if DB_PATH.exists():
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            rows = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+            existing_tables = sorted(str(row[0]) for row in rows)
+        finally:
+            conn.close()
+    missing = [name for name in required_tables if name not in existing_tables]
+    return {
+        "generated_at": now_text(),
+        "ok": (not live.exists()) and DB_PATH.exists() and not missing,
+        "live_swarm_db_exists": live.exists(),
+        "central_db": str(DB_PATH),
+        "central_db_exists": DB_PATH.exists(),
+        "required_tables": required_tables,
+        "missing_tables": missing,
+        "retired_copies": retired,
+        "decision": (
+            "root swarm.db already retired; keep named retired copies unless operator approves archive/delete"
+            if not live.exists() else
+            "root swarm.db still exists; do not delete until migration and endpoint verification pass"
+        ),
     }
 
 
@@ -1031,6 +1127,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true", help="write Studio/KC governance state")
     parser.add_argument("--manifest", action="store_true", help="print cleanup retention manifest")
+    parser.add_argument("--summary", action="store_true", help="print compact cleanup manifest summary")
+    parser.add_argument("--retirement-check", action="store_true", help="verify legacy root swarm.db retirement readiness")
     parser.add_argument("--check", action="store_true", help="exit non-zero when loose docs or legacy DBs need review")
     parser.add_argument("--json", action="store_true", help="print JSON output")
     args = parser.parse_args()
@@ -1039,8 +1137,12 @@ def main() -> int:
         result = apply_governance()
     else:
         inv = inventory()
-        if args.manifest:
+        if args.retirement_check:
+            result = swarm_db_retirement_check()
+        elif args.manifest:
             result = retention_manifest(inv)
+        elif args.summary:
+            result = retention_summary(retention_manifest(inv))
         else:
             result = inv
     if args.json:

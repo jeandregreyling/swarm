@@ -9,6 +9,8 @@ function _gitState() {
       status: null,
       filter: '',
       environment: 'dev',  // Studio defaults to DEV; promotion to UAT/PROD is explicit.
+      branches: [],
+      currentBranch: '',
     };
   }
   return window.__gitState;
@@ -38,11 +40,79 @@ function loadGitData(win) {
     envSelect.dataset.bound = '1';
     envSelect.addEventListener('change', () => {
       state.environment = envSelect.value;
+      state.branches = [];
+      state.currentBranch = '';
+      gitRefreshBranches();
       gitRefreshStatus({ preserveSelection: false });
     });
   }
+  gitBindBranchControls(win);
+  gitRefreshBranches();
   gitRefreshStatus({ preserveSelection: true });
   gitLoadProposals();
+}
+
+function gitBindBranchControls(win) {
+  const branchSelect = win?.el?.querySelector('#git-branch-select');
+  if (branchSelect && !branchSelect.dataset.bound) {
+    branchSelect.dataset.bound = '1';
+    branchSelect.addEventListener('change', () => gitRenderBranchControls());
+  }
+}
+
+async function gitRefreshBranches() {
+  const state = _gitState();
+  const win = window.__gitWin;
+  const branchSelect = win?.el?.querySelector('#git-branch-select');
+  const branchStatus = win?.el?.querySelector('#git-branch-status');
+  if (branchSelect) branchSelect.innerHTML = '<option value="">Loading branches</option>';
+  if (branchStatus) branchStatus.textContent = 'Branches: loading';
+  try {
+    const envQ = state.environment ? `?environment=${encodeURIComponent(state.environment)}` : '';
+    const resp = await fetch(`/api/git/branches${envQ}`);
+    const data = await resp.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || 'git branches failed');
+    state.branches = Array.isArray(data.branches) ? data.branches : [];
+    state.currentBranch = data.current || (state.branches.find(b => b.current) || {}).name || '';
+    gitRenderBranchControls();
+  } catch (e) {
+    state.branches = [];
+    state.currentBranch = '';
+    if (branchSelect) branchSelect.innerHTML = '<option value="">No branches</option>';
+    if (branchStatus) branchStatus.textContent = 'Branches unavailable: ' + (e.message || e);
+  }
+}
+
+function gitRenderBranchControls() {
+  const state = _gitState();
+  const win = window.__gitWin;
+  const branchSelect = win?.el?.querySelector('#git-branch-select');
+  const branchStatus = win?.el?.querySelector('#git-branch-status');
+  const checkoutBtn = win?.el?.querySelector('#git-checkout-btn');
+  const pullBtn = win?.el?.querySelector('#git-pull-btn');
+  const pushBtn = win?.el?.querySelector('#git-push-btn');
+  const branches = Array.isArray(state.branches) ? state.branches : [];
+  const current = state.currentBranch || state.status?.branch || '';
+  const selected = branchSelect ? String(branchSelect.value || current || '').trim() : current;
+
+  if (branchSelect) {
+    const value = selected || current;
+    branchSelect.innerHTML = branches.length
+      ? branches.map(b => `<option value="${_escHtml(b.name)}"${b.name === value ? ' selected' : ''}>${_escHtml(b.name)}${b.upstream ? ' -> ' + _escHtml(b.upstream) : ''}</option>`).join('')
+      : '<option value="">No local branches</option>';
+  }
+
+  const status = state.status || {};
+  const sync = [];
+  if (status.ahead) sync.push('ahead ' + status.ahead);
+  if (status.behind) sync.push('behind ' + status.behind);
+  if (branchStatus) {
+    branchStatus.textContent = `Branch: ${current || '(detached)'}${status.upstream ? ' -> ' + status.upstream : ''}${sync.length ? ' · ' + sync.join(', ') : ''}`;
+    branchStatus.style.color = status.behind ? '#ffb74d' : (status.ahead ? 'var(--accent)' : 'var(--text-dim)');
+  }
+  if (checkoutBtn) checkoutBtn.disabled = !selected || selected === current;
+  if (pullBtn) pullBtn.disabled = !!(status.counts && Number(status.counts.changed || 0));
+  if (pushBtn) pushBtn.disabled = false;
 }
 
 async function gitRefreshStatus(options = {}) {
@@ -59,6 +129,7 @@ async function gitRefreshStatus(options = {}) {
     const data = await resp.json().catch(() => ({}));
     if (!data.ok) throw new Error(data.error || 'git status failed');
     state.status = data;
+    state.currentBranch = data.branch || state.currentBranch || '';
 
     const files = Array.isArray(data.files) ? data.files : [];
     if (!preserveSelection || !files.some(entry => entry.path === state.selectedPath)) {
@@ -68,6 +139,7 @@ async function gitRefreshStatus(options = {}) {
     }
 
     gitRenderStatus();
+    gitRenderBranchControls();
     if (state.selectedPath) {
       await gitLoadDiff(state.selectedPath, state.selectedStaged, { silent: true });
     } else if (diffBody) {
@@ -291,6 +363,86 @@ async function gitCommitChanges() {
   } catch (e) {
     await _rejectALMProposal(proposalId);
     showToast(`Commit proposal failed: ${e.message || e}`, 'error');
+  }
+}
+
+async function gitCheckoutSelectedBranch() {
+  const branchEl = window.__gitWin?.el?.querySelector('#git-branch-select');
+  const branch = String(branchEl?.value || '').trim();
+  const state = _gitState();
+  if (!branch) {
+    showToast('Select a local branch first', 'error');
+    return;
+  }
+  if (branch === (state.currentBranch || state.status?.branch || '')) {
+    showToast('Already on branch: ' + branch, 'info');
+    return;
+  }
+  if (!confirm(`Checkout ${state.environment.toUpperCase()} branch "${branch}"?\n\nThis is blocked if the worktree has uncommitted changes.`)) return;
+  await gitRunDirectMutation('checkout', '/api/git/checkout', { branch });
+}
+
+async function gitFetchBranches() {
+  const state = _gitState();
+  try {
+    const resp = await fetch('/api/git/fetch', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ environment: state.environment })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || 'fetch failed');
+    showToast('Git fetch complete', 'success');
+    await gitRefreshBranches();
+    await gitRefreshStatus({ preserveSelection: true });
+  } catch (e) {
+    showToast('Git fetch failed: ' + (e.message || e), 'error');
+  }
+}
+
+async function gitPullCurrentBranch() {
+  const state = _gitState();
+  if (!confirm(`Pull ${state.environment.toUpperCase()} branch "${state.currentBranch || state.status?.branch || '(current)'}" with --ff-only?`)) return;
+  await gitRunDirectMutation('pull', '/api/git/pull', {});
+}
+
+async function gitPushCurrentBranch() {
+  const state = _gitState();
+  if (!confirm(`Push ${state.environment.toUpperCase()} branch "${state.currentBranch || state.status?.branch || '(current)'}" to its upstream?`)) return;
+  await gitRunDirectMutation('push', '/api/git/push', {});
+}
+
+async function gitRunDirectMutation(action, endpoint, payload) {
+  const state = _gitState();
+  let proposalId = null;
+  try {
+    if (typeof _createALMProposal === 'function') {
+      const branch = payload.branch || state.currentBranch || state.status?.branch || '';
+      proposalId = await _createALMProposal(
+        `Git ${action} branch`,
+        `Direct Git ${action} from Studio Git panel: ${state.environment || 'prod'} ${branch}`.trim(),
+        3,
+        { autoApprove: true }
+      );
+    }
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(Object.assign({}, payload, {
+        environment: state.environment,
+        proposal_id: proposalId || '',
+      }))
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || `${action} failed`);
+    if (proposalId && typeof _finalizeALMProposal === 'function') await _finalizeALMProposal(proposalId);
+    showToast(`Git ${action} complete`, 'success');
+    await gitRefreshBranches();
+    await gitRefreshStatus({ preserveSelection: false });
+    await gitLoadProposals();
+  } catch (e) {
+    if (proposalId && typeof _rejectALMProposal === 'function') await _rejectALMProposal(proposalId);
+    showToast(`Git ${action} failed: ${e.message || e}`, 'error');
   }
 }
 

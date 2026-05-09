@@ -72,3 +72,17 @@
 - **Test:** Re-ran focused pytest suite (75 tests) — all pass. `make bullshit` GREEN 97/100. Verified `python3 -m py_compile` on the modified test file.
 - **Clear:** Remaining 59 open steps are in 4 legitimate projects: Grok-Pot-Money-Maker (4), 2026-04-29 Consolidated Improvement (41), girl in the mirror demo comp (13), System Sweep — Icons are SVG (1). These are real work, not test artifacts.
 
+## May 10, 2026 - Watchdog Phase 1a: Thread #2576 Recovery Verified
+- **Action:** Picked up Phase 1a and started with `S-CHAT2576-XBOX-UI-WATCHDOG-20260508`. Confirmed the live ALM DB has an open relay recovery for conversation `2576`: `recovery-bd16cf94a981` / `silent-thread-2576-7508`, assigned to Librarian, Duck, and Vortex. Confirmed `http://127.0.0.1:5050/api/chat/jobs/status?conversation_id=2576` serves that recovery with no duplicate job rows.
+- **Test:** `pytest -q tests/test_chat_watchdog.py tests/test_watchdog_repair_lessons.py` passed `24/24`. Live `/_health` returned healthy on port `5050`, owned by `/home/seven/swarm/.venv/bin/python3 /home/seven/swarm/frontend/terminal.py`.
+- **Clear:** Marking the #2576 watchdog recovery implementation closed in ALM. Xbox-mode UI declutter remains a follow-on design slice, not a blocker for the recovery fix.
+
+## May 10, 2026 - Watchdog Phase 1a: Thread #2577 History + Orphan Recovery Verified
+- **Action:** Found the live #2577 status recovery working, but `/api/conversations/2577/messages` returned `404` because the conversation metadata row was missing while `chat_jobs` still held the actual runtime history. Patched the conversation history route to return a recovered archived conversation shell when persisted messages or job traces exist without metadata. Restarted the actual port `5050` owner, `swarm-terminal.service`.
+- **Test:** Added regression coverage in `tests/test_conversation_history_traces.py`; `pytest -q tests/test_conversation_history_traces.py tests/test_chat_watchdog.py tests/test_watchdog_repair_lessons.py` passed `26/26`. Live `/_health` is healthy after restart, PID `441914`. Live `http://127.0.0.1:5050/api/conversations/2577/messages` now returns `200` with `source: recovered` and three Gemma job traces, including the completed 63-step trace and placeholder-failure trace.
+- **Clear:** Marking `S-CHAT2577-HISTORY-TRACE-WATCHDOG-20260508` and `S-CHAT2577-WATCHDOG-ORPHAN-RUNTIME-20260508` done in ALM.
+
+## May 10, 2026 - Watchdog Phase 1a: Runtime Guards + Lesson Queue Closed
+- **Action:** Verified the remaining Watchdog runtime items in code and ALM evidence: Ollama stop mirroring, Ollama trace ownership, unusable placeholder-answer recovery, explicit-agent/status routing guard, failure-to-lesson operating loop, and the durable `watchdog_repair_lessons` queue. The focused suite exercises unowned Ollama reconciliation, owned-runner protection, placeholder-answer detection, status prompt read-only detection, Duck rejection of status-only work proposals, and repair lesson persistence.
+- **Test:** `pytest -q tests/test_conversation_history_traces.py tests/test_chat_watchdog.py tests/test_watchdog_repair_lessons.py` passed `26/26` before closeout. Live status routes for #2576/#2577 return their recovery cards, and the #2577 history route returns recovered server traces after restart.
+- **Clear:** Marking all nine Watchdog Phase 1a steps done in `P-00221285D1`. Next active Phase 1 work is the four Media Center doing steps.
