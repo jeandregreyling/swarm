@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-08 00:07",
+  "generated_at": "2026-05-10 02:13",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -167,6 +167,11 @@
       "description": "utils/db/trace_log.py \u2014 Session 29 durable mirror for core.spine events."
     },
     {
+      "path": "utils/db/watchdog_lessons.py",
+      "group": "Utils",
+      "description": "Persistent Watchdog repair lessons."
+    },
+    {
       "path": "utils/git_commit_logger.py",
       "group": "Utils",
       "description": "git_commit_logger.py \u2014 Seven's Swarm Time Wizard git hook"
@@ -259,7 +264,7 @@
     {
       "path": "utils/seven_fridays.py",
       "group": "Utils",
-      "description": "seven_fridays.py \u2014 Developer Agent REPL (Agent 11 interface)"
+      "description": ""
     },
     {
       "path": "utils/simulate.py",
@@ -4772,7 +4777,7 @@
     },
     {
       "name": "chat.js",
-      "size_kb": 283.1
+      "size_kb": 286.2
     },
     {
       "name": "conversations.js",
@@ -4932,7 +4937,7 @@
     },
     {
       "name": "time-wizard.js",
-      "size_kb": 58.8
+      "size_kb": 59.7
     },
     {
       "name": "trace.js",
@@ -4954,7 +4959,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 55191
+      "rows": 58225
     },
     {
       "name": "agent_capabilities",
@@ -4962,7 +4967,7 @@
     },
     {
       "name": "agent_capability_scores",
-      "rows": 17
+      "rows": 18
     },
     {
       "name": "agent_diary",
@@ -4990,11 +4995,11 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 769
+      "rows": 772
     },
     {
       "name": "audit_results",
-      "rows": 51
+      "rows": 53
     },
     {
       "name": "business_ledger",
@@ -5006,11 +5011,11 @@
     },
     {
       "name": "chat_jobs",
-      "rows": 736
+      "rows": 745
     },
     {
       "name": "chat_relay_recoveries",
-      "rows": 13
+      "rows": 17
     },
     {
       "name": "claude_log",
@@ -5018,15 +5023,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2715
+      "rows": 2856
     },
     {
       "name": "conversations",
-      "rows": 424
+      "rows": 432
     },
     {
       "name": "council_output",
-      "rows": 14196
+      "rows": 16479
     },
     {
       "name": "curiosity_questions",
@@ -5054,7 +5059,7 @@
     },
     {
       "name": "decisions",
-      "rows": 75835
+      "rows": 85717
     },
     {
       "name": "deferred_items",
@@ -5062,11 +5067,11 @@
     },
     {
       "name": "duck_log",
-      "rows": 1067
+      "rows": 1075
     },
     {
       "name": "email_delivery_log",
-      "rows": 21
+      "rows": 35
     },
     {
       "name": "email_retry_queue",
@@ -5098,7 +5103,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 5068
+      "rows": 5101
     },
     {
       "name": "gmail_labels_cache",
@@ -5106,7 +5111,7 @@
     },
     {
       "name": "governance_log",
-      "rows": 422
+      "rows": 431
     },
     {
       "name": "kc_media_curriculum",
@@ -5142,11 +5147,11 @@
     },
     {
       "name": "memory",
-      "rows": 149
+      "rows": 153
     },
     {
       "name": "memory_eight",
-      "rows": 0
+      "rows": 2
     },
     {
       "name": "memory_gemma",
@@ -5170,7 +5175,7 @@
     },
     {
       "name": "memory_nine",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "memory_qwen",
@@ -5206,7 +5211,7 @@
     },
     {
       "name": "messages",
-      "rows": 921
+      "rows": 951
     },
     {
       "name": "moderators",
@@ -5230,7 +5235,7 @@
     },
     {
       "name": "orientation_seen",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "pending_emails",
@@ -5238,7 +5243,7 @@
     },
     {
       "name": "project_blackboard_notes",
-      "rows": 47
+      "rows": 64
     },
     {
       "name": "project_doc_versions",
@@ -5246,7 +5251,7 @@
     },
     {
       "name": "project_docs",
-      "rows": 303
+      "rows": 317
     },
     {
       "name": "project_step_deps",
@@ -5254,19 +5259,19 @@
     },
     {
       "name": "project_step_evidence",
-      "rows": 19
+      "rows": 29
     },
     {
       "name": "project_steps",
-      "rows": 892
+      "rows": 942
     },
     {
       "name": "project_test_cases",
-      "rows": 367
+      "rows": 373
     },
     {
       "name": "projects",
-      "rows": 48
+      "rows": 50
     },
     {
       "name": "proposal_attachments",
@@ -5274,23 +5279,23 @@
     },
     {
       "name": "proposal_projects",
-      "rows": 21
+      "rows": 23
     },
     {
       "name": "queue",
-      "rows": 1998
+      "rows": 2012
     },
     {
       "name": "research_evidence",
-      "rows": 924
+      "rows": 1135
     },
     {
       "name": "research_sessions",
-      "rows": 51
+      "rows": 63
     },
     {
       "name": "sandpit_log",
-      "rows": 588
+      "rows": 594
     },
     {
       "name": "scheduled_tasks",
@@ -5314,11 +5319,11 @@
     },
     {
       "name": "seven_attention",
-      "rows": 2394
+      "rows": 2460
     },
     {
       "name": "seven_beliefs",
-      "rows": 5212
+      "rows": 5375
     },
     {
       "name": "seven_callouts",
@@ -5330,11 +5335,11 @@
     },
     {
       "name": "seven_episodes",
-      "rows": 13050
+      "rows": 13204
     },
     {
       "name": "seven_learnings",
-      "rows": 0
+      "rows": 1
     },
     {
       "name": "seven_settings",
@@ -5370,15 +5375,15 @@
     },
     {
       "name": "swarm_bus",
-      "rows": 422
+      "rows": 431
     },
     {
       "name": "swarm_event_acks",
-      "rows": 297
+      "rows": 328
     },
     {
       "name": "swarm_events",
-      "rows": 53
+      "rows": 54
     },
     {
       "name": "swarm_globals",
@@ -5386,7 +5391,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 53
+      "rows": 54
     },
     {
       "name": "swarm_nodes",
@@ -5402,11 +5407,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 11541
+      "rows": 12142
     },
     {
       "name": "task_run_log",
-      "rows": 3528
+      "rows": 4731
     },
     {
       "name": "terminal_shortcuts",
@@ -5422,27 +5427,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 821
+      "rows": 829
     },
     {
       "name": "tickets",
-      "rows": 834
+      "rows": 842
     },
     {
       "name": "time_checkpoints",
-      "rows": 7296
+      "rows": 7903
     },
     {
       "name": "time_events",
-      "rows": 150617
+      "rows": 153679
     },
     {
       "name": "time_journal",
-      "rows": 141839
+      "rows": 143958
     },
     {
       "name": "time_machine",
-      "rows": 8471
+      "rows": 8592
     },
     {
       "name": "tool_builds",
@@ -5450,7 +5455,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 2765
+      "rows": 3506
     },
     {
       "name": "trading_signals",
@@ -5497,8 +5502,12 @@
       "rows": 25
     },
     {
+      "name": "watchdog_repair_lessons",
+      "rows": 3
+    },
+    {
       "name": "watched_topic_evidence",
-      "rows": 156
+      "rows": 176
     },
     {
       "name": "watched_topic_settings",
@@ -5514,7 +5523,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 153
+      "rows": 160
     }
   ],
   "agents": [

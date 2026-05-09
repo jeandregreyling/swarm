@@ -14,11 +14,16 @@ Usage
 """
 
 import logging
+import os
 import sys
 import time
 from datetime import datetime
 
-sys.path.insert(0, '/home/seven/swarm')
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
 
 logger = logging.getLogger('seven.task_runner')
 
@@ -1121,7 +1126,7 @@ def _task_swarm_backup(**kwargs):
                 target = v.strip()
 
     proc = subprocess.run(
-        ['/usr/bin/env', 'bash', '/home/seven/swarm/scripts/backup_swarm.sh', target],
+        ['/usr/bin/env', 'bash', os.path.join(_SWARM_ROOT, 'scripts/backup_swarm.sh'), target],
         capture_output=True,
         text=True,
         timeout=900,
@@ -1138,7 +1143,7 @@ def _task_swarm_backup_verify(**kwargs):
     import subprocess
 
     proc = subprocess.run(
-        ['/usr/bin/env', 'python3', '/home/seven/swarm/scripts/backup_verify.py', 'extract'],
+        ['/usr/bin/env', 'python3', os.path.join(_SWARM_ROOT, 'scripts/backup_verify.py'), 'extract'],
         capture_output=True,
         text=True,
         timeout=600,

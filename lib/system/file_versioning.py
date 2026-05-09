@@ -5,26 +5,26 @@ Database-backed file version control with before/after content storage.
 Point-in-time restoration without duplication. All changes logged with agent 
 attribution and exact timestamps (HH:MM:SS precision).
 
-Version Store: /home/seven/swarm/.swarm_versions/ (for file metadata)
+Version Store: <SWARM_ROOT>/.swarm_versions/ (for file metadata)
 Database Store: swarm_memory.db table:file_versions (for content & history)
 
 Usage:
   from file_versioning import track_file_change, get_version_history, restore_to_date
-  
+
   # Log a file change
   track_file_change(
-    file_path='/home/seven/swarm/test.py',
+    file_path='<SWARM_ROOT>/test.py',
     agent='Nine',
     action='write',  # 'write', 'edit', 'delete'
     content_before='original code...',
     content_after='new code...'
   )
-  
+
   # Get version history for a file
-  history = get_version_history('/home/seven/swarm/test.py', limit=10)
-  
+  history = get_version_history('<SWARM_ROOT>/test.py', limit=10)
+
   # Restore file to specific date
-  restore_to_date('/home/seven/swarm/test.py', date='2026-03-26')
+  restore_to_date('<SWARM_ROOT>/test.py', date='2026-03-26')
 
 ═══════════════════════════════════════════════════════════════════════════════
 """
@@ -34,11 +34,15 @@ import sys
 from system_clock import get_timestamp, get_timestamp_date
 from database import get_connection
 
-sys.path.insert(0, '/home/seven/swarm')
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
 
 # Version metadata directory
-VERSIONS_DIR = '/home/seven/swarm/.swarm_versions'
-RESTORE_BIN_DIR = '/home/seven/swarm/.restore_bin'
+VERSIONS_DIR = os.path.join(_SWARM_ROOT, '.swarm_versions')
+RESTORE_BIN_DIR = os.path.join(_SWARM_ROOT, '.restore_bin')
 
 
 def _ensure_dirs():

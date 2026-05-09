@@ -3,11 +3,19 @@ scheduler.py — Seven's Swarm Scheduler
 Basic proactive tasks. Runs daily digest, snooze checks, etc.
 """
 
+import os
 import time
 from datetime import datetime, timedelta
 import sys
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
+
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
+_utils = os.path.join(_SWARM_ROOT, 'utils')
+if _utils not in sys.path:
+    sys.path.insert(0, _utils)
 
 from database import get_digest_stats, get_due_snoozed, mark_snooze_fired, get_overdue_tickets, get_connection
 from sandpits import list_proposals
@@ -132,7 +140,9 @@ def _advance_next_run(name):
 def run_daily_brief():
     """Generate a Ghost Brief and email it to Ghost."""
     try:
-        sys.path.insert(0, '/home/seven/swarm/lib/email')
+        _lib_email = os.path.join(_SWARM_ROOT, 'lib/email')
+        if _lib_email not in sys.path:
+            sys.path.insert(0, _lib_email)
         from brief_engine import generate_brief
         brief = generate_brief(trigger='daily_schedule')
         if not brief:
@@ -295,7 +305,9 @@ def main_loop():
     # Initialize Time Wizard session on startup
     try:
         import sys
-        sys.path.insert(0, '/home/seven/swarm/core')
+        _core = os.path.join(_SWARM_ROOT, 'core')
+        if _core not in sys.path:
+            sys.path.insert(0, _core)
         from time_machine import time_wizard
         session_id = time_wizard.bootstrap_session()
         if session_id:

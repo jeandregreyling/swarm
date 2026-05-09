@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-05-08 00:07*
+*Auto-generated: 2026-05-10 02:13*
 
 
 ## Python Modules
@@ -43,6 +43,7 @@
 | `utils/db/timeline.py` | utils/db/timeline.py — Conversation timeline writer. |
 | `utils/db/tools.py` | utils.db.tools — Tool build registry CRUD (C.1.2) |
 | `utils/db/trace_log.py` | utils/db/trace_log.py — Session 29 durable mirror for core.spine events. |
+| `utils/db/watchdog_lessons.py` | Persistent Watchdog repair lessons. |
 | `utils/git_commit_logger.py` | git_commit_logger.py — Seven's Swarm Time Wizard git hook |
 | `utils/governance.py` | utils/governance.py — Central proposal governance engine. |
 | `utils/intent_classifier.py` | Intent classifier for agentic chat routing (Phase 8.0). |
@@ -61,7 +62,7 @@
 | `utils/security_headers.py` | utils/security_headers.py — Security headers + input validation middleware (E.1) |
 | `utils/service_heartbeat.py` | Service heartbeat helpers (S-E056DBAD19, S-B1279A66EB). |
 | `utils/session_auth.py` | utils/session_auth.py — Session-based UI authentication (R.1) |
-| `utils/seven_fridays.py` | seven_fridays.py — Developer Agent REPL (Agent 11 interface) |
+| `utils/seven_fridays.py` | — |
 | `utils/simulate.py` | simulate.py — Seven's Swarm |
 | `utils/skills.py` | skills.py — Seven's Swarm Skills Framework |
 | `utils/structured_logger.py` | utils/structured_logger.py — JSON structured logging (E.3.1) |
@@ -308,7 +309,7 @@
 | Module | Size |
 |--------|------|
 | `access.js` | 114.8 KB |
-| `chat.js` | 283.1 KB |
+| `chat.js` | 286.2 KB |
 | `conversations.js` | 15.8 KB |
 | `diamond.js` | 39.6 KB |
 | `docs.js` | 24.6 KB |
@@ -348,7 +349,7 @@
 | `terminal-commands.js` | 17.6 KB |
 | `terminal.js` | 50.8 KB |
 | `tickets.js` | 6.0 KB |
-| `time-wizard.js` | 58.8 KB |
+| `time-wizard.js` | 59.7 KB |
 | `trace.js` | 22.6 KB |
 | `traced.js` | 5.8 KB |
 | `vpn.js` | 4.2 KB |
@@ -358,35 +359,35 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 55191 |
+| `activity_log` | 58225 |
 | `agent_capabilities` | 169 |
-| `agent_capability_scores` | 17 |
+| `agent_capability_scores` | 18 |
 | `agent_diary` | 0 |
 | `agent_skills` | 10 |
 | `agents` | 22 |
 | `app_builds` | 0 |
 | `app_project_targets` | 0 |
 | `app_projects` | 0 |
-| `approval_tokens` | 769 |
-| `audit_results` | 51 |
+| `approval_tokens` | 772 |
+| `audit_results` | 53 |
 | `business_ledger` | 0 |
 | `change_runs` | 44 |
-| `chat_jobs` | 736 |
-| `chat_relay_recoveries` | 13 |
+| `chat_jobs` | 745 |
+| `chat_relay_recoveries` | 17 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2715 |
-| `conversations` | 424 |
-| `council_output` | 14196 |
+| `conv_timeline` | 2856 |
+| `conversations` | 432 |
+| `council_output` | 16479 |
 | `curiosity_questions` | 5 |
 | `cyber_audit_events` | 0 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 75835 |
+| `decisions` | 85717 |
 | `deferred_items` | 0 |
-| `duck_log` | 1067 |
-| `email_delivery_log` | 21 |
+| `duck_log` | 1075 |
+| `email_delivery_log` | 35 |
 | `email_retry_queue` | 0 |
 | `enrollment_invites` | 0 |
 | `feed_subscriptions` | 40 |
@@ -394,9 +395,9 @@
 | `file_writes` | 4 |
 | `financial_positions` | 0 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 5068 |
+| `ghost_circle` | 5101 |
 | `gmail_labels_cache` | 0 |
-| `governance_log` | 422 |
+| `governance_log` | 431 |
 | `kc_media_curriculum` | 58 |
 | `kc_media_trace` | 12 |
 | `knowledge_chunks` | 1731 |
@@ -405,14 +406,14 @@
 | `media_jobs` | 1 |
 | `media_providers` | 7 |
 | `media_runs` | 183 |
-| `memory` | 149 |
-| `memory_eight` | 0 |
+| `memory` | 153 |
+| `memory_eight` | 2 |
 | `memory_gemma` | 0 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
 | `memory_llama` | 0 |
 | `memory_mistral` | 2 |
-| `memory_nine` | 0 |
+| `memory_nine` | 1 |
 | `memory_qwen` | 1 |
 | `memory_scholar` | 0 |
 | `memory_seeker` | 0 |
@@ -421,39 +422,39 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 474 |
-| `messages` | 921 |
+| `messages` | 951 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
 | `notification_channel_prefs` | 0 |
 | `notification_senders` | 8 |
-| `orientation_seen` | 0 |
+| `orientation_seen` | 1 |
 | `pending_emails` | 8 |
-| `project_blackboard_notes` | 47 |
+| `project_blackboard_notes` | 64 |
 | `project_doc_versions` | 375 |
-| `project_docs` | 303 |
+| `project_docs` | 317 |
 | `project_step_deps` | 0 |
-| `project_step_evidence` | 19 |
-| `project_steps` | 892 |
-| `project_test_cases` | 367 |
-| `projects` | 48 |
+| `project_step_evidence` | 29 |
+| `project_steps` | 942 |
+| `project_test_cases` | 373 |
+| `projects` | 50 |
 | `proposal_attachments` | 0 |
-| `proposal_projects` | 21 |
-| `queue` | 1998 |
-| `research_evidence` | 924 |
-| `research_sessions` | 51 |
-| `sandpit_log` | 588 |
+| `proposal_projects` | 23 |
+| `queue` | 2012 |
+| `research_evidence` | 1135 |
+| `research_sessions` | 63 |
+| `sandpit_log` | 594 |
 | `scheduled_tasks` | 22 |
 | `service_heartbeat` | 0 |
 | `settings_email_account_prefs` | 1 |
 | `settings_email_accounts` | 0 |
 | `settings_sysmod` | 2 |
-| `seven_attention` | 2394 |
-| `seven_beliefs` | 5212 |
+| `seven_attention` | 2460 |
+| `seven_beliefs` | 5375 |
 | `seven_callouts` | 9 |
 | `seven_concepts` | 9 |
-| `seven_episodes` | 13050 |
-| `seven_learnings` | 0 |
+| `seven_episodes` | 13204 |
+| `seven_learnings` | 1 |
 | `seven_settings` | 0 |
 | `skills` | 47 |
 | `sniffer_log` | 232 |
@@ -462,27 +463,27 @@
 | `sqlite_sequence` | 81 |
 | `studio_evidence` | 1 |
 | `sudo_command_whitelist` | 5 |
-| `swarm_bus` | 422 |
-| `swarm_event_acks` | 297 |
-| `swarm_events` | 53 |
+| `swarm_bus` | 431 |
+| `swarm_event_acks` | 328 |
+| `swarm_events` | 54 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 53 |
+| `swarm_knowledge` | 54 |
 | `swarm_nodes` | 0 |
 | `synth_board_projects` | 24 |
 | `synth_board_revisions` | 7 |
-| `system_stats` | 11541 |
-| `task_run_log` | 3528 |
+| `system_stats` | 12142 |
+| `task_run_log` | 4731 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
 | `test_runs` | 200 |
-| `ticket_notes` | 821 |
-| `tickets` | 834 |
-| `time_checkpoints` | 7296 |
-| `time_events` | 150617 |
-| `time_journal` | 141839 |
-| `time_machine` | 8471 |
+| `ticket_notes` | 829 |
+| `tickets` | 842 |
+| `time_checkpoints` | 7903 |
+| `time_events` | 153679 |
+| `time_journal` | 143958 |
+| `time_machine` | 8592 |
 | `tool_builds` | 0 |
-| `trace_events` | 2765 |
+| `trace_events` | 3506 |
 | `trading_signals` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
@@ -494,11 +495,12 @@
 | `user_skill_permissions` | 3 |
 | `video_render_jobs` | 10 |
 | `video_timelines` | 25 |
-| `watched_topic_evidence` | 156 |
+| `watchdog_repair_lessons` | 3 |
+| `watched_topic_evidence` | 176 |
 | `watched_topic_settings` | 0 |
 | `watcher_topic_last_seen` | 0 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 153 |
+| `work_proposals` | 160 |
 
 ## Agents
 
