@@ -54,6 +54,25 @@ def _run_git_command(args, timeout=20, env=''):
     return proc
 
 
+def _parse_git_branch_list(branch_text: str):
+    """Parse local branch rows emitted by ``git branch --format``."""
+    branches = []
+    for raw_line in (branch_text or '').splitlines():
+        line = raw_line.rstrip('\n')
+        if not line:
+            continue
+        name, upstream, head = (line.split('\t') + ['', '', ''])[:3]
+        name = name.strip()
+        if not name:
+            continue
+        branches.append({
+            'name': name,
+            'upstream': upstream.strip(),
+            'current': head.strip() == '*',
+        })
+    return branches
+
+
 
 def _build_git_operation_description(action: str, paths=None, message='') -> str:
     paths = [str(p).strip() for p in (paths or []) if str(p).strip()]
@@ -463,5 +482,4 @@ def api_git_commit():
         'paths': staged_paths[:200],
         'message': final_message,
     })
-
 
