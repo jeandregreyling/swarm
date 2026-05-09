@@ -1,24 +1,25 @@
 # Grok-Pot-Money-Maker (P-855E64250C)
-
 **Status:** Active | **Owner:** Seven | **Methodology:** Mixed
 
 ## Change Log (Plain English - What, When, Why)
+**May 9, 2026 - Studio & Git UX Focus (Top Priority)**
+- Logged user feedback: No visible changes in DEV 5051 despite branch pull, no Blackboard, no easy branch selector or git buttons in Studio/Git UI.
+- Shifted priority: Studio + Git integration is now #1 (branch preview, pull/checkout buttons, ENV awareness, Blackboard visibility, one-click operations).
+- Paused Money Bot / Newsletter / revenue features until Studio is solid.
+- **Why:** Make the multi-layered flow usable without terminal commands so changes actually show in DEV/UAT before landing in Fridays.
 
-**May 9, 2026 - Initial Seeding & Building Blocks**
-- Created dedicated project folder and branch.
-- Seeded Coder Bible hooks, KC/RAG updates, Money Bot starter, Newsletter blueprint, Trading Game playbook (stocks only, safe small $).
-- Added PROJECT_PLAN.md with full history, sub-tasks, tests.
-- **Why:** Enable traceable multi-layered flow: sandbox → Dell sync → governance → Fridays without breaking anything.
+## Sub-Tasks (Updated)
+1. [x] Initial Money Bot building block (tested)
+2. [x] Full Money Bot + Newsletter formatter (parked)
+3. [x] Log all current bugs in PROJECT_PLAN.md
+4. [ ] Add branch selector + git buttons in Studio UI (DEV 5051)
+5. [ ] Make Blackboard visible in project tile
+6. [ ] Make DEV default to feature branches and show commit status
+7. [ ] Clean up stuck proposals in Git ALM
 
-## Building Blocks Added
-- building_blocks/MONEY_BOT_BUILDING_BLOCK.py - safe yfinance scanner (VOO, SPY, etc.)
-- newsletter/NEWSLETTER_BLUEPRINT.md - professional SAP AU formatter for Seven
-- revenue_gigs/ templates for freelance & micro-SaaS
+## Blackboard Notes
+- User wants Git operations as UI buttons, not terminal commands.
+- Projects should span ENVs and show 'Built in DEV' status.
+- All conversation between us is now logged here as steps.
 
-## Sub-Tasks & Tests
-1. [x] Project folder + initial seed (tested: files visible on branch)
-2. [ ] Expand Money Bot with alerts/journal
-3. [ ] Newsletter formatter test on real SAP AU data
-4. [ ] First revenue gig sample
-
-**Next:** Push live examples + Tasker hook. All additive & safe.
+Pull this branch and refresh http://localhost:5051/ui to see updated plan. Focus locked on making Studio/Git usable first.
