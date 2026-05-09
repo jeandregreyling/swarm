@@ -90,17 +90,18 @@ def get_ghost_history(limit=10):
 
 def persist_chat_job(job_id, conversation_id, agent, runtime_class, eta_seconds, started_at):
     """Record a new chat job. Best-effort — never raises."""
+    stage_trace = json.dumps([{'text': 'queued'}], ensure_ascii=True)
     try:
         conn = get_connection()
         try:
             conn.execute(
                 """INSERT OR IGNORE INTO chat_jobs
                    (job_id, conversation_id, agent, status, runtime_class,
-                    eta_seconds, started_at, updated_at)
-                   VALUES (?, ?, ?, 'running', ?, ?, ?, ?)""",
+                    eta_seconds, started_at, updated_at, stage, stage_trace_json)
+                   VALUES (?, ?, ?, 'running', ?, ?, ?, ?, 'queued', ?)""",
                 (str(job_id), int(conversation_id or 0), str(agent or ''),
                  str(runtime_class or ''), int(eta_seconds or 60),
-                 str(started_at or ''), str(started_at or ''))
+                 str(started_at or ''), str(started_at or ''), stage_trace)
             )
             conn.commit()
         finally:
@@ -600,7 +601,7 @@ def mark_orphaned_chat_jobs():
             pass
 
 
-def sweep_stuck_jobs(max_age_minutes=120, no_progress_age_minutes=5, conversation_id=None):
+def sweep_stuck_jobs(max_age_minutes=120, no_progress_age_minutes=15, conversation_id=None):
     """Fail jobs stuck in running/dispatched/processing state beyond max_age_minutes.
 
     Designed to be called periodically (e.g. every 10 minutes) from a
