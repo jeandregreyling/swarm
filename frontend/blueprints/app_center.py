@@ -37,7 +37,7 @@ import uuid
 
 from flask import Blueprint, jsonify, request
 
-from studio_loader.project_discovery import discover_projects
+
 
 app_center_bp = Blueprint('app_center', __name__)
 
@@ -211,27 +211,6 @@ def list_projects():
         _ensure_tables(c)
         rows = c.execute(sql, args).fetchall()
         projects = [dict(r) for r in rows]
-
-        # === NEW: Include sandpit Studio projects (Grok-Pot-Money-Maker etc.) ===
-        try:
-            sandpit_projects = discover_projects()
-            for sp in sandpit_projects:
-                # Only add if not already present via studio_project_id linkage
-                if not any(p.get('studio_project_id') == sp['id'] for p in projects):
-                    projects.append({
-                        "project_id": sp['id'],
-                        "name": sp['name'],
-                        "kind": "studio",
-                        "framework": "sandpit",
-                        "owner": "seven",
-                        "status": sp.get('status', 'active').lower(),
-                        "studio_project_id": sp['id'],
-                        "updated_at": None,
-                        "_source": "sandpits/studio"
-                    })
-        except Exception as _sand_err:
-            print(f"[app_center] sandpit discovery warning: {_sand_err}")
-
         return jsonify(ok=True, count=len(projects), projects=projects)
     finally:
         c.close()
@@ -246,10 +225,6 @@ def get_project(project_id: str):
             'SELECT * FROM app_projects WHERE project_id=?', (project_id,)
         ).fetchone()
         if not row:
-            # Fallback: try sandpit discovery
-            for sp in discover_projects():
-                if sp['id'] == project_id:
-                    return jsonify(ok=True, project=sp)
             return jsonify(ok=False, error="not found"), 404
         targets = c.execute(
             'SELECT target, status, last_build_id, updated_at FROM app_project_targets '
