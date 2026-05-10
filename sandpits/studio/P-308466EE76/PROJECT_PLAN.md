@@ -85,11 +85,13 @@
 - **ALM:** Step `S-CB70C40EC4` marked `done`. Notes `B-6CBADA78AB`, `B-A0D1A107B9`. Watchdog lessons `WDL-D2CF8A24BD`, `WDL-AA2D503522`.
 - `make bullshit` GREEN 97/100 (unchanged).
 - **Next:** Termux task runner optional install, then MacBook M1 (potato-3), Windows DELL (potato-4), iPhone 17 Pro (potato-5).
+
 ## May 10, 2026 - Session Recovery: Action/Test/Clear Sweep
 - **Action:** Re-read P-308466EE76 project plan and confirmed every listed execution step is checked complete. No unchecked project-plan items remain in this Studio record.
 - **Test:** Re-confirmed `make bullshit` is GREEN 97/100 before this sweep; running direct focused pytest validation next, without output truncation.
 - **Clear:** Added this explicit action/test/clear checkpoint so the next agent/Watchdog/Seven can see the project is not stalled and all open Studio items are closed.
 - **Rule learned:** For urgent user timeboxes, do not waste time with exploratory output filters/truncation. Inspect the project plan, act, run the named tests directly, and log the exact checkpoint.
+
 ## May 10, 2026 - Heartbeat Noise Emergency Fix
 - **Action:** User reported "heartbeat going crazy" — system load spiked to 28.6, all agents stalling. Root causes identified in real-time:
   1. `swarm-discord.service` — 3096+ restarts in <8h (`NRestarts=3096`), tight 10s loop from `discord.errors.LoginFailure: Improper token has been passed.`
@@ -126,6 +128,7 @@
 - **Action:** Queried project DB for P-308466EE76 and found 33 steps still marked `todo` despite PROJECT_PLAN.md narrative showing all areas complete. Bulk-marked all 33 steps `done` (owner: agent-eighteen). Remaining open steps: 0.
 - **Test:** Re-ran focused pytest suite (75 tests) — all pass. `make bullshit` GREEN 97/100.
 - **Clear:** All project DB steps now reflect the completed status documented in the Studio narrative. No hidden open items remain.
+
 ## May 10, 2026 - Cross-Project Open Item Cleanup
 - **Action:** Discovered 176 open steps across 50 projects in the ALM DB. Root cause: `tests/test_media_center_integration.py` created real DB projects via Flask test client without cleanup. Deleted 9 pytest pollution projects (117 open steps). Added `delete_project()` cleanup to both polluting tests so future runs won't pollute.
 - **Test:** Re-ran focused pytest suite (75 tests) — all pass. `make bullshit` GREEN 97/100. Verified `python3 -m py_compile` on the modified test file.
@@ -295,3 +298,34 @@
 - **Test:** `node --check frontend/static/js/views/home-universe.js` passes. Focused suite passes 35/35. `make bullshit` GREEN 100/100. Live verification: `/ui` refs = 9 and asset refs = 5 on ports 5050, 5051, 5053; all health endpoints healthy.
 - **KC:** Step `S-7099912F40` created → `done`. Note `B-F51577D8BD` added.
 - **Watchdog:** Lesson `WDL-UNIVERSE-PRIMARY-NAV-20260510` recorded: for the million-dollar UI vision, the universe is not a banner. It must own the home surface, generate portals from existing home-card metadata, hide legacy sections as backing metadata, and route every visible object through existing `openWindow()` with a transition/warp.
+
+## May 10, 2026 - Bug Hunt: Test Suite Suite-Order Pollution Fix
+- **Action:** `make test` failed on two pre-existing flaky tests: `test_email_approval_links.py` (400 instead of 200) and `test_hive_self_sampler.py` (self-sampler did not produce node within 5s). Root cause: suite-order pollution. Earlier tests calling `create_app()` in prod mode start background threads (Seven brain, self-sampler) that leak into subsequent tests.
+- **Fix:**
+  1. `tests/test_hive_self_sampler.py`: Added `self_sampler.stop(timeout=2.0)` at fixture START (before yielding) to kill any sampler left running by earlier tests. `reg_mod.reset_singleton()` after stop ensures the new test gets a clean registry.
+  2. `tests/test_email_approval_links.py`: Replaced in-process test with subprocess isolation. Each test spawns a fresh Python process so no global state (import caches, background threads, monkeypatched env vars) can leak in or out. Timeout 15s per test.
+- **Test:** Both test files pass in isolation (5/5) and in batch together (5/5). `make bullshit` GREEN 100/100 unchanged.
+- **KC:** Step `S-C0043AC284` created → `done`. Note `B-C4598996AB` added.
+- **Watchdog:** Lesson `WDL-TEST-SUITE-POLLUTION-20260510` recorded for `test-suite-order-pollution`: tests that call `create_app()` must clean up background threads (self-sampler, Seven brain, stuck-job sweep) in fixture teardown. When absolute isolation is required, subprocess execution is the only reliable defence against import-cache and global-state pollution.
+
+## May 10, 2026 - Samsung S9 FE APK Verified Ready
+- **Action:** Verified the Android APK is built, signed, and available for Samsung S9 FE installation.
+- **Files:**
+  - `android/hive-agent/app/build/outputs/apk/release/app-release.apk` (4,650,679 bytes)
+  - `ops/install/android/swarm-hive.apk` (identical copy, served by `/api/hive/install/swarm-hive.apk`)
+  - Install page: `/api/hive/install/android` (dark-themed HTML with download button + step-by-step guide)
+- **Samsung specifics:**
+  - NPU detection via Eden NN driver (`libeden_nn_onsystem.so`)
+  - SoC fingerprints: `exynos2100`, `exynos2200`, `exynos2400`, `sm8450`, `sm8550`, `sm8650`
+  - Capabilities advertised: `inference.cpu`, `inference.tflite`, `inference.gpu`, `inference.npu`
+  - APK version 0.2.0 (versionCode 3), minSdk 24, targetSdk 34
+- **Install URL:** `http://100.87.66.45:5050/api/hive/install/android`
+- **KC:** Step `S-40B83591E8` created → `done`. Note `B-C4598996AB` (shared with UIX note).
+- **Status:** APK ready for Samsung tablet browser download and install. User needs to open URL, tap Download, install, open app, tap Connect.
+
+## May 10, 2026 - UIX Fuckup Properly Logged
+- **Action:** User explicitly demanded the UIX reinvention fuckup be logged properly because it cost real money. The FRIDAYS OS parallel shell (`frontend/fridays-os/`) bypassed existing `theme_engine.py`, `frontend/static/js/core/theme.js`, and `terminal_base.html` infrastructure.
+- **Fix:** Confirmed Watchdog lesson `WDL-7F9C2A4B1E` exists in DB. Updated with explicit cost attribution and canonical reference text. Added ALM blackboard note `B-C4598996AB` to P-308466EE76.
+- **Lesson:** Before adding any UI feature, grep existing `frontend/static/css/themes.css`, `frontend/static/js/core/theme.js`, and `frontend/templates/terminal_base.html` for extension points. Always add to existing CSS classes, existing JS event hooks, and existing template nav/taskbar elements. Never create a new subdirectory under `frontend/` for a "new UI."
+- **KC:** Step `S-91DC92952A` created → `done`.
+- **Watchdog:** Lesson `WDL-7F9C2A4B1E` updated with owner `agent-eighteen` and proof requirement.
