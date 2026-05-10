@@ -13,6 +13,10 @@ from core.hive import self_sampler
 def isolated_registry(tmp_path, monkeypatch):
     db = tmp_path / 'hive.db'
     monkeypatch.setenv('SWARM_HIVE_DB', str(db))
+    # CRITICAL: any previous test (or create_app in prod mode) may have
+    # started the self-sampler.  Stop it *before* resetting the singleton
+    # so the new test sees a clean slate.
+    self_sampler.stop(timeout=2.0)
     reg_mod.reset_singleton()
     yield reg_mod.get_registry()
     self_sampler.stop(timeout=2.0)
