@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#0B0F19</color>
+    <color name="surface_dark">#151B2B</color>
+    <color name="text_primary">#E0E6F1</color>
+    <color name="text_secondary">#A0AEC0</color>
+    <color name="accent">#4FD1C5</color>
+    <color name="bubble_bot">#1E293B</color>
+    <color name="bubble_user">#0F4C75</color>
+</resources>

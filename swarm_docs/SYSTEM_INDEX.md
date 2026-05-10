@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-05-10 22:20*
+*Auto-generated: 2026-05-11 00:10*
 
 
 ## Python Modules
@@ -363,7 +363,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 62620 |
+| `activity_log` | 62741 |
 | `agent_capabilities` | 169 |
 | `agent_capability_scores` | 18 |
 | `agent_diary` | 0 |
@@ -372,15 +372,15 @@
 | `app_builds` | 0 |
 | `app_project_targets` | 0 |
 | `app_projects` | 0 |
-| `approval_tokens` | 799 |
+| `approval_tokens` | 801 |
 | `audit_results` | 54 |
 | `business_ledger` | 0 |
 | `change_runs` | 46 |
-| `chat_jobs` | 805 |
-| `chat_relay_recoveries` | 77 |
+| `chat_jobs` | 806 |
+| `chat_relay_recoveries` | 78 |
 | `claude_log` | 1 |
-| `conv_timeline` | 4668 |
-| `conversations` | 125 |
+| `conv_timeline` | 4675 |
+| `conversations` | 126 |
 | `council_output` | 18685 |
 | `curiosity_questions` | 5 |
 | `cyber_audit_events` | 0 |
@@ -388,36 +388,36 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 93631 |
+| `decisions` | 93740 |
 | `deferred_items` | 0 |
 | `duck_log` | 1157 |
 | `email_delivery_log` | 41 |
 | `email_retry_queue` | 0 |
 | `enrollment_invites` | 0 |
-| `feed_subscriptions` | 44 |
+| `feed_subscriptions` | 47 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `financial_positions` | 0 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 5417 |
+| `ghost_circle` | 5419 |
 | `gmail_labels_cache` | 0 |
 | `governance_log` | 431 |
 | `kc_media_curriculum` | 60 |
-| `kc_media_trace` | 12 |
+| `kc_media_trace` | 13 |
 | `knowledge_chunks` | 1737 |
 | `knowledge_sources` | 145 |
 | `media_items` | 1 |
 | `media_jobs` | 1 |
 | `media_providers` | 7 |
 | `media_runs` | 183 |
-| `memory` | 173 |
-| `memory_eight` | 2 |
-| `memory_gemma` | 12 |
+| `memory` | 174 |
+| `memory_eight` | 1 |
+| `memory_gemma` | 13 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
-| `memory_llama` | 3 |
+| `memory_llama` | 2 |
 | `memory_mistral` | 2 |
-| `memory_nine` | 1 |
+| `memory_nine` | 0 |
 | `memory_qwen` | 1 |
 | `memory_scholar` | 0 |
 | `memory_seeker` | 0 |
@@ -426,7 +426,7 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 484 |
-| `messages` | 276 |
+| `messages` | 281 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -434,17 +434,17 @@
 | `notification_senders` | 10 |
 | `orientation_seen` | 1 |
 | `pending_emails` | 8 |
-| `project_blackboard_notes` | 121 |
+| `project_blackboard_notes` | 123 |
 | `project_doc_versions` | 375 |
 | `project_docs` | 319 |
 | `project_step_deps` | 0 |
-| `project_step_evidence` | 462 |
-| `project_steps` | 1140 |
-| `project_test_cases` | 513 |
-| `projects` | 64 |
+| `project_step_evidence` | 477 |
+| `project_steps` | 1560 |
+| `project_test_cases` | 993 |
+| `projects` | 96 |
 | `proposal_attachments` | 0 |
-| `proposal_projects` | 25 |
-| `queue` | 2135 |
+| `proposal_projects` | 27 |
+| `queue` | 2150 |
 | `research_evidence` | 1243 |
 | `research_sessions` | 69 |
 | `sandpit_log` | 646 |
@@ -453,11 +453,11 @@
 | `settings_email_account_prefs` | 1 |
 | `settings_email_accounts` | 0 |
 | `settings_sysmod` | 2 |
-| `seven_attention` | 3717 |
-| `seven_beliefs` | 8357 |
+| `seven_attention` | 4828 |
+| `seven_beliefs` | 10624 |
 | `seven_callouts` | 9 |
 | `seven_concepts` | 9 |
-| `seven_episodes` | 19960 |
+| `seven_episodes` | 26150 |
 | `seven_learnings` | 1 |
 | `seven_settings` | 0 |
 | `skills` | 47 |
@@ -468,26 +468,26 @@
 | `studio_evidence` | 1 |
 | `sudo_command_whitelist` | 5 |
 | `swarm_bus` | 431 |
-| `swarm_event_acks` | 405 |
-| `swarm_events` | 70 |
+| `swarm_event_acks` | 408 |
+| `swarm_events` | 79 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 70 |
+| `swarm_knowledge` | 79 |
 | `swarm_nodes` | 0 |
 | `synth_board_projects` | 24 |
 | `synth_board_revisions` | 7 |
-| `system_stats` | 12383 |
-| `task_run_log` | 5114 |
+| `system_stats` | 12405 |
+| `task_run_log` | 5134 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
 | `test_runs` | 202 |
 | `ticket_notes` | 911 |
 | `tickets` | 924 |
-| `time_checkpoints` | 8230 |
-| `time_events` | 155871 |
-| `time_journal` | 145823 |
-| `time_machine` | 8826 |
+| `time_checkpoints` | 8266 |
+| `time_events` | 155971 |
+| `time_journal` | 145887 |
+| `time_machine` | 8832 |
 | `tool_builds` | 0 |
-| `trace_events` | 8771 |
+| `trace_events` | 12143 |
 | `trading_signals` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
@@ -499,12 +499,12 @@
 | `user_skill_permissions` | 3 |
 | `video_render_jobs` | 10 |
 | `video_timelines` | 25 |
-| `watchdog_repair_lessons` | 38 |
+| `watchdog_repair_lessons` | 40 |
 | `watched_topic_evidence` | 189 |
 | `watched_topic_settings` | 0 |
 | `watcher_topic_last_seen` | 0 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 184 |
+| `work_proposals` | 201 |
 
 ## Agents
 

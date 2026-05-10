@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-10 22:19",
+  "generated_at": "2026-05-11 00:10",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -5008,7 +5008,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 62620
+      "rows": 62741
     },
     {
       "name": "agent_capabilities",
@@ -5044,7 +5044,7 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 799
+      "rows": 801
     },
     {
       "name": "audit_results",
@@ -5060,11 +5060,11 @@
     },
     {
       "name": "chat_jobs",
-      "rows": 805
+      "rows": 806
     },
     {
       "name": "chat_relay_recoveries",
-      "rows": 77
+      "rows": 78
     },
     {
       "name": "claude_log",
@@ -5072,11 +5072,11 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 4668
+      "rows": 4675
     },
     {
       "name": "conversations",
-      "rows": 125
+      "rows": 126
     },
     {
       "name": "council_output",
@@ -5108,7 +5108,7 @@
     },
     {
       "name": "decisions",
-      "rows": 93631
+      "rows": 93740
     },
     {
       "name": "deferred_items",
@@ -5132,7 +5132,7 @@
     },
     {
       "name": "feed_subscriptions",
-      "rows": 44
+      "rows": 47
     },
     {
       "name": "file_versions",
@@ -5152,7 +5152,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 5417
+      "rows": 5419
     },
     {
       "name": "gmail_labels_cache",
@@ -5168,7 +5168,7 @@
     },
     {
       "name": "kc_media_trace",
-      "rows": 12
+      "rows": 13
     },
     {
       "name": "knowledge_chunks",
@@ -5196,15 +5196,15 @@
     },
     {
       "name": "memory",
-      "rows": 173
+      "rows": 174
     },
     {
       "name": "memory_eight",
-      "rows": 2
+      "rows": 1
     },
     {
       "name": "memory_gemma",
-      "rows": 12
+      "rows": 13
     },
     {
       "name": "memory_ghost_coder",
@@ -5216,7 +5216,7 @@
     },
     {
       "name": "memory_llama",
-      "rows": 3
+      "rows": 2
     },
     {
       "name": "memory_mistral",
@@ -5224,7 +5224,7 @@
     },
     {
       "name": "memory_nine",
-      "rows": 1
+      "rows": 0
     },
     {
       "name": "memory_qwen",
@@ -5260,7 +5260,7 @@
     },
     {
       "name": "messages",
-      "rows": 276
+      "rows": 281
     },
     {
       "name": "moderators",
@@ -5292,7 +5292,7 @@
     },
     {
       "name": "project_blackboard_notes",
-      "rows": 121
+      "rows": 123
     },
     {
       "name": "project_doc_versions",
@@ -5308,19 +5308,19 @@
     },
     {
       "name": "project_step_evidence",
-      "rows": 462
+      "rows": 477
     },
     {
       "name": "project_steps",
-      "rows": 1140
+      "rows": 1560
     },
     {
       "name": "project_test_cases",
-      "rows": 513
+      "rows": 993
     },
     {
       "name": "projects",
-      "rows": 64
+      "rows": 96
     },
     {
       "name": "proposal_attachments",
@@ -5328,11 +5328,11 @@
     },
     {
       "name": "proposal_projects",
-      "rows": 25
+      "rows": 27
     },
     {
       "name": "queue",
-      "rows": 2135
+      "rows": 2150
     },
     {
       "name": "research_evidence",
@@ -5368,11 +5368,11 @@
     },
     {
       "name": "seven_attention",
-      "rows": 3717
+      "rows": 4828
     },
     {
       "name": "seven_beliefs",
-      "rows": 8357
+      "rows": 10624
     },
     {
       "name": "seven_callouts",
@@ -5384,7 +5384,7 @@
     },
     {
       "name": "seven_episodes",
-      "rows": 19960
+      "rows": 26150
     },
     {
       "name": "seven_learnings",
@@ -5428,11 +5428,11 @@
     },
     {
       "name": "swarm_event_acks",
-      "rows": 405
+      "rows": 408
     },
     {
       "name": "swarm_events",
-      "rows": 70
+      "rows": 79
     },
     {
       "name": "swarm_globals",
@@ -5440,7 +5440,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 70
+      "rows": 79
     },
     {
       "name": "swarm_nodes",
@@ -5456,11 +5456,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 12383
+      "rows": 12405
     },
     {
       "name": "task_run_log",
-      "rows": 5114
+      "rows": 5134
     },
     {
       "name": "terminal_shortcuts",
@@ -5484,19 +5484,19 @@
     },
     {
       "name": "time_checkpoints",
-      "rows": 8230
+      "rows": 8266
     },
     {
       "name": "time_events",
-      "rows": 155871
+      "rows": 155971
     },
     {
       "name": "time_journal",
-      "rows": 145823
+      "rows": 145887
     },
     {
       "name": "time_machine",
-      "rows": 8826
+      "rows": 8832
     },
     {
       "name": "tool_builds",
@@ -5504,7 +5504,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 8771
+      "rows": 12143
     },
     {
       "name": "trading_signals",
@@ -5552,7 +5552,7 @@
     },
     {
       "name": "watchdog_repair_lessons",
-      "rows": 38
+      "rows": 40
     },
     {
       "name": "watched_topic_evidence",
@@ -5572,7 +5572,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 184
+      "rows": 201
     }
   ],
   "agents": [

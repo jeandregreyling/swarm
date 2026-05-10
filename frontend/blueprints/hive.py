@@ -42,6 +42,7 @@ from core.hive.enrolment import (
     revoke_token,
     verify_token,
 )
+from utils.db.watchdog_lessons import list_open_repair_lessons
 
 _LOG = logging.getLogger(__name__)
 
@@ -344,6 +345,76 @@ def install_file(filename: str):
         as_attachment=False,
         download_name=filename,
     )
+
+
+# ── Job queue -----------------------------------------------------------
+
+@hive_bp.post('/jobs/submit')
+def submit_job():
+    """Submit a job to the Hive queue.
+
+    Body: {kind, payload, capability_req?}
+    """
+    payload = request.get_json(silent=True) or {}
+    kind = payload.get('kind')
+    if not isinstance(kind, str) or not kind:
+        return _err('kind required', 400)
+    job_id = _registry().submit_job(
+        kind,
+        payload.get('payload') or {},
+        capability_req=payload.get('capability_req'),
+    )
+    return jsonify({'ok': True, 'job_id': job_id})
+
+
+@hive_bp.post('/jobs/next')
+def claim_next_job():
+    """Node claims the next available job matching its capabilities.
+
+    Body: {node_id, capabilities[]}
+    """
+    payload = request.get_json(silent=True) or {}
+    node_id = payload.get('node_id')
+    caps = payload.get('capabilities') or []
+    if not isinstance(node_id, str) or not node_id:
+        return _err('node_id required', 400)
+    if not isinstance(caps, list):
+        return _err('capabilities must be a list', 400)
+    job = _registry().claim_next_job(node_id, caps)
+    if job is None:
+        return jsonify({'ok': True, 'job': None})
+    return jsonify({'ok': True, 'job': job})
+
+
+@hive_bp.post('/jobs/report')
+def report_job_result():
+    """Report job completion.
+
+    Body: {job_id, result}
+    """
+    payload = request.get_json(silent=True) or {}
+    job_id = payload.get('job_id')
+    result = payload.get('result')
+    if not isinstance(job_id, str) or not job_id:
+        return _err('job_id required', 400)
+    ok = _registry().report_job_result(job_id, result or {})
+    return jsonify({'ok': ok, 'job_id': job_id})
+
+
+@hive_bp.get('/jobs')
+def list_jobs():
+    """List jobs in the queue. Query: ?status=pending|claimed|completed"""
+    status = request.args.get('status')
+    jobs = _registry().list_jobs(status=status, limit=200)
+    return jsonify({'ok': True, 'count': len(jobs), 'jobs': jobs})
+
+
+@hive_bp.get('/lessons')
+def list_lessons():
+    """Return open Watchdog repair lessons so agents can self-heal."""
+    limit = request.args.get('limit', 20, type=int)
+    lessons = list_open_repair_lessons(limit=limit)
+    return jsonify({'ok': True, 'count': len(lessons), 'lessons': lessons})
 
 
 def _serve_core_hive_tarball() -> Response:

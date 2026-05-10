@@ -95,8 +95,18 @@ def _fetch_policy(leader: str, token: str, node_id: str) -> dict:
 
 def _fetch_job(leader: str, token: str, node_id: str) -> Optional[dict]:
     """Pull next job from leader. Returns None if no work."""
-    # Design note: /api/hive/jobs/next will be wired when the scheduler
-    # phase lands. Until then, returning None keeps the runner idle.
+    url = leader.rstrip("/") + "/api/hive/jobs/next"
+    headers = {"X-Hive-Token": token}
+    body = {"node_id": node_id, "capabilities": CAPABILITIES}
+    try:
+        resp = requests.post(url, json=body, headers=headers, timeout=15)
+        if resp.ok:
+            data = resp.json()
+            job = data.get("job")
+            if job:
+                return job
+    except Exception as e:
+        _LOG.warning("Fetch job failed: %s", e)
     return None
 
 

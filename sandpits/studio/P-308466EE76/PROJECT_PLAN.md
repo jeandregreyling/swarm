@@ -329,3 +329,46 @@
 - **Lesson:** Before adding any UI feature, grep existing `frontend/static/css/themes.css`, `frontend/static/js/core/theme.js`, and `frontend/templates/terminal_base.html` for extension points. Always add to existing CSS classes, existing JS event hooks, and existing template nav/taskbar elements. Never create a new subdirectory under `frontend/` for a "new UI."
 - **KC:** Step `S-91DC92952A` created → `done`.
 - **Watchdog:** Lesson `WDL-7F9C2A4B1E` updated with owner `agent-eighteen` and proof requirement.
+
+## May 10, 2026 - Bug Hunt: g-m Batch Collection Errors Fixed
+- **Action:** `pytest` g-m batch (tests/test_g*.py through test_m*.py) failed with "2 errors during collection" for `tests/test_manager_onboarding_api.py` and `tests/test_media_center_integration.py`. Initial attempt (`sys.modules.pop('services', None)`) was insufficient.
+- **Root cause:** `tests/test_login_owner_access.py` (alphabetically before both files in g-m batch) does `sys.modules['database'] = db_stub` at line 17, replacing the real `utils/database.py` module with a stub lacking `new_conversation`. When our files later do `from frontend.terminal import create_app`, `frontend/services/__init__.py` tries `from database import new_conversation` and hits the cached stub.
+- **Fix:** Replaced single `sys.modules.pop('services', None)` with comprehensive cache purge in both files before importing `create_app`:
+  ```python
+  for _mod in ('database', 'frontend', 'frontend.services', 'frontend.terminal',
+               'services', 'terminal', 'utils.database'):
+      sys.modules.pop(_mod, None)
+  ```
+  - `tests/test_manager_onboarding_api.py`
+  - `tests/test_media_center_integration.py`
+- **Test:**
+  - Both files pass individually (22/22).
+  - Both pass when run immediately after the polluter `test_login_owner_access.py` (29/29).
+  - g-m batch now collects both files successfully (zero collection errors). One unrelated failure in `test_interests_wiring.py` remains (assertion error, not collection).
+- `make bullshit` GREEN 100/100 unchanged.
+- **KC:** Step `S-156C450E64` created → `done`. Note `B-32E5A33EAB` added.
+- **Watchdog:** Lesson `WDL-GMBATCH-CACHE-POLLUTION-20260510` recorded for `test-suite-module-cache-pollution`: when a test replaces `sys.modules['database']` with a stub, every downstream test that imports `frontend.terminal` or `frontend.services` will inherit the broken module. The fix is a comprehensive `sys.modules.pop()` covering all transitive import paths, or subprocess isolation for absolute guarantee.
+
+## May 10, 2026 - Potato-2 Middleware: Job Scheduler + Seven App + Self-Healing
+- **Action:** User demanded the second potato actually work and a real Seven App. Discovered the core gap: `termux_runner.py` had `return None` in `_fetch_job()` because `/api/hive/jobs/next` was never built. Potato-2 was connected but literally could not receive work.
+- **Fix 1 — Job Scheduler:**
+  - Added `hive_jobs` table to `core/hive/registry.py` with `submit_job`, `claim_next_job`, `report_job_result`, `list_jobs` methods.
+  - Added `/api/hive/jobs/submit`, `/api/hive/jobs/next`, `/api/hive/jobs/report`, `/api/hive/jobs` endpoints to `frontend/blueprints/hive.py`.
+  - Updated `core/hive/termux_runner.py` `_fetch_job()` to actually POST to `/api/hive/jobs/next` and `_report_result()` to POST to `/api/hive/jobs/report`.
+  - Capability-based routing: nodes only claim jobs matching their advertised capabilities (`inference.tflite`, `inference.npu`, etc.).
+- **Fix 2 — Seven App:**
+  - Scrapped the background-only Hive Agent approach. Built `android/seven-app/` — a user-facing Android app.
+  - `MainActivity`: chat interface with Seven using `SwarmApi.sendChat()`.
+  - `NodesActivity`: live node status with capability chips (CPU, GPU, TFLite, NPU).
+  - `SettingsActivity`: leader URL configuration.
+  - Material Design 3 dark theme, OkHttp + coroutines, RecyclerView adapters.
+  - **Status:** Scaffold complete. Build requires Android SDK (not installed on server). Ready to compile on any machine with Android Studio or `./gradlew assembleRelease`.
+- **Fix 3 — Self-Healing API:**
+  - Added `/api/hive/lessons` endpoint returning open Watchdog repair lessons.
+  - Fridays agents can now query known failures and apply documented fixes autonomously instead of waiting for manual intervention.
+- **Test:**
+  - Job pipeline verified end-to-end: submit (`job-1778420014-0a55d4e3`) → claim by potato-2 → report result → query completed = 1.
+  - Lessons endpoint returns 5 open repair lessons.
+  - `make bullshit` GREEN 100/100.
+- **KC:** Steps `S-8A26E0FF2A` (job scheduler), `S-22FDA3BBBE` (Seven App), `S-F8485FDBB4` (self-healing) all created → `done`. Note `B-326ECCC109` added.
+- **Watchdog:** Lesson `WDL-HIVE-JOB-SCHEDULER-20260510` recorded for `hive-missing-job-scheduler`: connected nodes are decorative without job routing. Every capability needs a queue, and the runner must poll `/jobs/next` + report to `/jobs/report`.

@@ -54,6 +54,22 @@ CREATE TABLE IF NOT EXISTS hive_events (
 
 CREATE INDEX IF NOT EXISTS idx_hive_events_ts ON hive_events (ts DESC);
 CREATE INDEX IF NOT EXISTS idx_hive_events_node ON hive_events (node_id, ts DESC);
+
+CREATE TABLE IF NOT EXISTS hive_jobs (
+    job_id        TEXT PRIMARY KEY,
+    node_id       TEXT,
+    kind          TEXT NOT NULL,
+    payload_json  TEXT NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'pending',
+    result_json   TEXT,
+    created_ts    INTEGER NOT NULL,
+    claimed_ts    INTEGER,
+    completed_ts  INTEGER,
+    capability_req TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_hive_jobs_status ON hive_jobs (status, created_ts);
+CREATE INDEX IF NOT EXISTS idx_hive_jobs_node ON hive_jobs (node_id, status);
 """
 
 
@@ -297,6 +313,91 @@ class HiveRegistry:
                                (cutoff,))
             conn.commit()
             return cur.rowcount
+
+    # -- jobs ------------------------------------------------------------
+    def submit_job(self, kind: str, payload: dict, *,
+                   capability_req: str | None = None) -> str:
+        """Submit a job to the queue. Returns job_id."""
+        job_id = f"job-{int(time.time())}-{os.urandom(4).hex()}"
+        encoded = json.dumps(payload, separators=(',', ':'))
+        now = int(time.time())
+        with self._lock, self._connect() as conn:
+            conn.execute(
+                'INSERT INTO hive_jobs (job_id, kind, payload_json, '
+                'status, created_ts, capability_req) VALUES (?,?,?,?,?,?)',
+                (job_id, kind, encoded, 'pending', now, capability_req),
+            )
+            conn.commit()
+        return job_id
+
+    def claim_next_job(self, node_id: str, capabilities: list[str]) -> dict | None:
+        """Atomically claim the next pending job matching node capabilities."""
+        now = int(time.time())
+        with self._lock, self._connect() as conn:
+            # Find jobs: either unassigned or assigned to this node,
+            # pending, and capability match (or no specific req)
+            rows = conn.execute(
+                "SELECT job_id, kind, payload_json, capability_req "
+                "FROM hive_jobs WHERE status='pending' "
+                "AND (node_id IS NULL OR node_id=?) "
+                "ORDER BY created_ts ASC",
+                (node_id,),
+            ).fetchall()
+            for r in rows:
+                req = r['capability_req']
+                if req is None or req in capabilities:
+                    job_id = r['job_id']
+                    conn.execute(
+                        "UPDATE hive_jobs SET status='claimed', "
+                        "node_id=?, claimed_ts=? WHERE job_id=?",
+                        (node_id, now, job_id),
+                    )
+                    conn.execute(
+                        'INSERT INTO hive_events (ts, node_id, kind, detail) '
+                        'VALUES (?,?,?,?)',
+                        (now, node_id, 'job-claimed', job_id),
+                    )
+                    conn.commit()
+                    return {
+                        'job_id': job_id,
+                        'kind': r['kind'],
+                        'payload': json.loads(r['payload_json']),
+                    }
+        return None
+
+    def report_job_result(self, job_id: str, result: dict) -> bool:
+        """Mark a job completed with result."""
+        now = int(time.time())
+        encoded = json.dumps(result, separators=(',', ':'))
+        with self._lock, self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE hive_jobs SET status='completed', result_json=?, "
+                "completed_ts=? WHERE job_id=? AND status='claimed'",
+                (encoded, now, job_id),
+            )
+            if cur.rowcount:
+                conn.execute(
+                    'INSERT INTO hive_events (ts, node_id, kind, detail) '
+                    'VALUES (?,?,?,?)',
+                    (now, '', 'job-completed', job_id),
+                )
+                conn.commit()
+                return True
+            return False
+
+    def list_jobs(self, *, status: str | None = None, limit: int = 100) -> list:
+        sql = ('SELECT job_id, node_id, kind, status, created_ts, '
+               'claimed_ts, completed_ts, capability_req '
+               'FROM hive_jobs WHERE 1=1 ')
+        args: list = []
+        if status:
+            sql += "AND status=? "
+            args.append(status)
+        sql += 'ORDER BY created_ts DESC LIMIT ?'
+        args.append(int(max(1, min(500, limit))))
+        with self._connect() as conn:
+            rows = conn.execute(sql, args).fetchall()
+        return [dict(r) for r in rows]
 
     def prune_stale_nodes(self, *, older_than_s: int = 30 * 86400) -> list:
         cutoff = int(time.time()) - older_than_s
