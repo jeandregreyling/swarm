@@ -39,9 +39,12 @@ def evaluate(conn, project_id: str) -> Dict[str, Any]:
                 "blockers": ["project not found"], "warnings": [],
                 "step_summary": {}}
 
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(project_steps)").fetchall()}
+    test_files_expr = "COALESCE(test_files,'')" if "test_files" in cols else "''"
+    residual_expr = "COALESCE(residual_risk,'')" if "residual_risk" in cols else "''"
     rows = conn.execute(
         "SELECT step_id, title, status, "
-        "       COALESCE(test_files,''), COALESCE(residual_risk,'') "
+        f"       {test_files_expr}, {residual_expr} "
         "FROM project_steps WHERE project_id=?",
         (project_id,),
     ).fetchall()

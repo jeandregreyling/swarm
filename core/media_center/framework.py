@@ -1628,6 +1628,11 @@ def _ensure_tracking_project(state: dict[str, Any]) -> str:
 
 def _sync_project_integrations(project: dict[str, Any]) -> bool:
     changed = False
+    studio_project_id = str(project.get("studio_project_id") or "").strip()
+    if studio_project_id and not _kc_projects.get_project(studio_project_id):
+        project["studio_project_id"] = ""
+        studio_project_id = ""
+        changed = True
     if not project.get("studio_project_id"):
         studio_project_id = _kc_projects.create_project(
             project.get("name") or "Media Project",

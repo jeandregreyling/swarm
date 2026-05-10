@@ -1,4 +1,19 @@
-# install_windows.ps1 — install the Swarm Hive agent as a per-user
+#!/usr/bin/env python3
+"""Rewrite install_windows.ps1 to fix the 5 gaps identified in audit."""
+import sys, os, shutil
+
+REPO = '/home/seven/swarm'
+ORIG = f'{REPO}/ops/install/install_windows.ps1'
+BACKUP = f'{REPO}/ops/install/install_windows.ps1.bak-20260510'
+
+# Read original to preserve structure
+with open(ORIG, 'r', encoding='utf-8') as f:
+    orig_text = f.read()
+
+# Backup
+shutil.copy2(ORIG, BACKUP)
+
+new_script = r'''# install_windows.ps1 — install the Swarm Hive agent as a per-user
 # scheduled task that runs at logon and restarts on failure.
 #
 # Usage (PowerShell, no admin needed):
@@ -96,3 +111,16 @@ Write-Host "  Get-Content `"$env:APPDATA\swarm-hive\agent.json`""
 Write-Host ""
 Write-Host "[install_windows] To verify the node is enrolled:"
 Write-Host "  curl $leader/api/hive/nodes"
+'''
+
+with open(ORIG, 'w', encoding='utf-8') as f:
+    f.write(new_script)
+
+print(f'Backed up original to: {BACKUP}')
+print(f'Wrote fixed installer to: {ORIG}')
+print('Fixes applied:')
+print('  1. Python fallback: python3, python, py')
+print('  2. Bootstrap download from leader when not in repo')
+print('  3. Quoted paths via PowerShell wrapper script')
+print('  4. Task start verification')
+print('  5. Health check hint in output')

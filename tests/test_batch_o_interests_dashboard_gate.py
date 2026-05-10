@@ -193,6 +193,43 @@ def test_gate_blocks_when_done_step_has_no_evidence_or_test(conn):
     assert any("S-C" in b and "no test_files" in b for b in out["blockers"])
 
 
+def test_gate_handles_live_schema_without_test_files(tmp_path):
+    db = tmp_path / "live-like.db"
+    c = sqlite3.connect(str(db))
+    try:
+        c.executescript("""
+            CREATE TABLE projects (
+                project_id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'active'
+            );
+            CREATE TABLE project_steps (
+                step_id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'todo',
+                residual_risk TEXT DEFAULT ''
+            );
+            CREATE TABLE project_step_evidence (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id TEXT NOT NULL,
+                step_id TEXT NOT NULL,
+                summary TEXT DEFAULT ''
+            );
+            INSERT INTO projects (project_id, name) VALUES ('P-LIVE','live schema');
+            INSERT INTO project_steps (project_id, step_id, title, status)
+                VALUES ('P-LIVE','S-LIVE','done with evidence','done');
+            INSERT INTO project_step_evidence (project_id, step_id, summary)
+                VALUES ('P-LIVE','S-LIVE','verified');
+        """)
+        out = acceptance_gate.evaluate(c, "P-LIVE")
+    finally:
+        c.close()
+
+    assert out["ok"] is True
+    assert out["step_summary"]["done"] == 1
+
+
 def test_gate_passes_with_evidence_only(conn):
     conn.execute("INSERT INTO projects (project_id, name) VALUES ('P-4','z')")
     conn.execute(
