@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'utils'))
 sys.path.insert(0, str(ROOT / 'core' / 'pipeline'))
 
+sys.modules.pop('services', None)
 from frontend.terminal import create_app
 
 app = create_app()

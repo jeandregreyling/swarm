@@ -32,6 +32,8 @@ const FRIDAYS_WINDOW_ICON_SVGS = {
   'wishlist-financial': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 12.5h11M4 11V7M7 11V4M10 11V8M13 11V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
   'wishlist-trading': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 11l3.5-4 3 2 4.5-5M11 4h2.5v2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   'wishlist-business': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 6h11v7h-11zM5 6V4h6v2M5 9h6M5 11h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  'potato-farm': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="11" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 6.5l1.5 2M9.5 6.5l-1.5 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+  'money-hub': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 12.5h11M4 11V7M7 11V4M10 11V8M13 11V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
 };
 
 function fridaysCleanWindowTitle(title) {

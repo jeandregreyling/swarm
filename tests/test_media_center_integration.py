@@ -4,6 +4,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "frontend"))
 
+sys.modules.pop('services', None)
 from terminal import create_app
 
 
