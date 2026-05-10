@@ -55,8 +55,13 @@ def _make_connection(db_path):
 
 
 def get_connection():
-    """Return a connection to the shared (default) database."""
-    return _make_connection(DB_PATH)
+    """Return a connection to the shared (default) database.
+
+    Re-reads ``SWARM_DB_PATH`` at call time so test fixtures can
+    redirect the DB without reloading the module.
+    """
+    path = os.environ.get('SWARM_DB_PATH', DB_PATH)
+    return _make_connection(path)
 
 
 def get_service_connection(service_name):
