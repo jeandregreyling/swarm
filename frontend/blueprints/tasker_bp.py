@@ -353,6 +353,7 @@ def bootstrap_tasks():
         ('knowledge_seed',  'monthly 1 03:00',   'PYTHON', 'knowledge_seed'),
         ('documentation_governance_sweep', 'weekly Mon 03:40', 'PYTHON', 'documentation_governance_sweep'),
         ('relay_recovery_sweep', 'interval 30m', 'PYTHON', 'relay_recovery_sweep limit=3'),
+        ('money_hub_daily_newsletter', 'daily 07:20', 'PYTHON', 'money_hub_daily_newsletter'),
     ]
     defaults.extend(_default_watched_topic_tasks())
     added = 0

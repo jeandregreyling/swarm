@@ -58,6 +58,18 @@
 - Source audit plan: `audit/AUDIT_PLAN_20260510.md`
 - Results file: `audit/AUDIT_RESULTS_20260510.md`
 - New test file: `tests/test_swarm_root_priority_files.py` (9 tests, all green)
+
+**May 10, 2026 - POTATOFARM: Samsung S9 FE APK Install Page Deployed**
+- Added `@hive_bp.get('/install/android')` HTML landing page to `frontend/blueprints/hive.py`.
+- Page serves styled dark-themed install card with APK download button (4.6 MB), step-by-step enrolment guide, and leader URL + node-id pre-filled for `potato-2`.
+- **Critical fix:** Flask route registration order — `/install/android` must be registered BEFORE `/install/<path:filename>` catch-all. Restarted `swarm-terminal.service` via systemctl to reload.
+- Deregistered stale `android-334389048b872a53` node (6.6 days old, no telemetry).
+- Samsung NPU detection in `AndroidSampler.kt` probes: `libeden_nn_onsystem.so`, `libeden_nn_onsystem.so`, SoC fingerprints (`exynos2100`, `exynos2200`, `exynos2400`, `sm8450`, `sm8550`, `sm8650`), generic NNAPI reflection.
+- APK verified: 4,650,699 bytes, signed, `application/vnd.android.package-archive`.
+- Termux bootstrap one-liner prepared for post-install TFLite task runner with NNAPI delegate.
+- ALM: step `S-CB70C40EC4` added (doing), blackboard note `B-6CBADA78AB`, Watchdog lesson `WDL-D2CF8A24BD`.
+- `make bullshit` GREEN 97/100 (unchanged).
+- **Status:** Awaiting user to open `http://100.87.66.45:5050/api/hive/install/android` on Samsung tablet browser, download APK, install, open app, and tap Connect.
 ## May 10, 2026 - Session Recovery: Action/Test/Clear Sweep
 - **Action:** Re-read P-308466EE76 project plan and confirmed every listed execution step is checked complete. No unchecked project-plan items remain in this Studio record.
 - **Test:** Re-confirmed `make bullshit` is GREEN 97/100 before this sweep; running direct focused pytest validation next, without output truncation.

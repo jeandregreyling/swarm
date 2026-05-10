@@ -102,10 +102,11 @@ function moneyHubEnsureTaskerJob() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      title: 'markets-watch — NASDAQ + ASX summary',
-      schedule: 'every 15 minutes',
-      command: 'python -m core.market_watch',
-      tags: ['money-hub', 'markets', 'nasdaq', 'asx'],
+      name: 'money_hub_daily_newsletter',
+      schedule: 'daily 07:20',
+      action_type: 'PYTHON',
+      action_data: 'money_hub_daily_newsletter',
+      created_by: 'money-hub',
     }),
   }).then((r) => r.json()).then((d) => {
     alert((d && d.ok) ? 'Tasker job queued.' : 'Tasker accepted but no ok flag — check Tasker tab.');

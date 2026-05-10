@@ -221,6 +221,50 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+@hive_bp.get('/install/android')
+def install_android_page():
+    """HTML landing page for Android users — open in tablet browser, tap to install."""
+    leader = request.host_url.rstrip('/')
+    apk_url = f'{leader}/api/hive/install/swarm-hive.apk'
+    html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swarm Hive — Android Install</title>
+<style>
+  body {{ font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 2rem; background: #0b0f19; color: #e0e6f1; }}
+  .card {{ max-width: 420px; margin: auto; background: #151b2b; border-radius: 16px; padding: 2rem; box-shadow: 0 8px 32px rgba(0,0,0,.4); }}
+  h1 {{ margin: 0 0 .5rem; font-size: 1.5rem; }}
+  p {{ line-height: 1.5; color: #a0aec0; }}
+  .btn {{ display: block; width: 100%; padding: 1rem; margin: 1.5rem 0 0; font-size: 1.1rem; font-weight: 600; text-align: center; text-decoration: none; color: #0b0f19; background: #4fd1c5; border-radius: 10px; border: none; cursor: pointer; }}
+  .btn:hover {{ background: #38b2ac; }}
+  code {{ background: #0b0f19; padding: .15rem .4rem; border-radius: 6px; font-size: .9rem; color: #4fd1c5; }}
+  .steps {{ margin-top: 1.5rem; padding-left: 1.2rem; }}
+  .steps li {{ margin-bottom: .6rem; color: #a0aec0; }}
+  .warn {{ color: #f6ad55; font-size: .9rem; margin-top: 1rem; }}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>📱 Swarm Hive Agent</h1>
+  <p>Install the Hive agent on your Samsung S9 FE tablet and enrol it as <code>potato-2</code>.</p>
+  <a class="btn" href="{apk_url}" download>⬇ Download APK (4.6 MB)</a>
+  <p class="warn">⚠ You may need to allow “Install unknown apps” for your browser when prompted.</p>
+  <ol class="steps">
+    <li>Tap the button above to download <code>swarm-hive.apk</code>.</li>
+    <li>Open the downloaded file and tap <strong>Install</strong>.</li>
+    <li>Open the <strong>Hive Agent</strong> app.</li>
+    <li>Enter Leader URL: <code>http://100.87.66.45:5050</code></li>
+    <li>Enter Node ID: <code>potato-2</code></li>
+    <li>Tap <strong>Connect</strong>. Done!</li>
+  </ol>
+</div>
+</body>
+</html>'''
+    return Response(html, mimetype='text/html')
+
+
 @hive_bp.get('/install/')
 @hive_bp.get('/install')
 def install_manifest():

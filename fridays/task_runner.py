@@ -1049,6 +1049,12 @@ def _task_seven_daily_brief(**kwargs):
     return f"seven_daily_brief ok · {out['date']} · {out['summary']} · path={out['path']}"
 
 
+@register('money_hub_daily_newsletter', 'Money Hub daily newsletter into Knowledge Center', 'finance')
+def _task_money_hub_daily_newsletter(**kwargs):
+    from core import market_watch
+    return market_watch.run()
+
+
 # ── PACKET-10A: Backup & Trace Hardening ─────────────────────────────────────
 
 @register('vortex_heartbeat', 'PACKET-10A Vortex liveness: emit a workflow checkpoint so time_checkpoints stays fresh', 'maintenance')
