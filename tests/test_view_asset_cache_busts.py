@@ -18,12 +18,14 @@ def test_monitor_and_studio_scripts_have_cache_bust_tokens():
 
 def test_settings_bridge_core_scripts_have_cache_bust_tokens():
     tpl = TPL.read_text()
-    assert re.search(r'/static/js/core/window-manager\.js\?v=\d+', tpl)
-    assert re.search(r'/static/js/core/theme\.js\?v=\d+', tpl)
-    assert re.search(r'/static/js/core/app\.js\?v=\d+', tpl)
-    assert re.search(r'/static/js/core/init\.js\?v=\d+', tpl)
+    bust = r'\?v=(\d+|\{\{\s*ASSET_VERSION\s*\}\})'
+    assert re.search(r'/static/js/core/window-manager\.js' + bust, tpl)
+    assert re.search(r'/static/js/core/theme\.js' + bust, tpl)
+    assert re.search(r'/static/js/core/app\.js' + bust, tpl)
+    assert re.search(r'/static/js/core/init\.js' + bust, tpl)
 
 
 def test_taskbar_stylesheet_has_cache_bust_token():
     tpl = TPL.read_text()
-    assert re.search(r'/static/css/taskbar\.css\?v=\d+', tpl)
+    bust = r'\?v=(\d+|\{\{\s*ASSET_VERSION\s*\}\})'
+    assert re.search(r'/static/css/taskbar\.css' + bust, tpl)

@@ -1,0 +1,51 @@
+<!-- agents-config.html — extracted from terminal_base.html -->
+<!-- Original: <template id="view-agents-config"> -->
+  <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
+    <!-- Header -->
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:13px;font-weight:700;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-2px"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Agents</span>
+        <div style="flex:1;"></div>
+        <button onclick="agentsRefresh()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">↻ Refresh</button>
+        <button onclick="agentsShowAdd()" style="background:var(--accent);border:none;color:#000;border-radius:4px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:700;">+ Add Agent</button>
+      </div>
+    </div>
+    <!-- Body: list + detail panel — P4-M26: dynamic layout, fills the tile (no 100vh leak) -->
+    <div id="agents-config-root" style="display:flex;flex-direction:row;gap:0;flex:1;min-height:0;overflow:hidden;">
+      <div id="agents-list" style="width:clamp(180px, 26%, 340px);background:var(--sidebar);border-right:1.5px solid var(--border);overflow-y:auto;box-shadow:1px 0 0 0 var(--border);">
+        <!-- agent list rendered by JS -->
+      </div>
+      <div id="agents-detail" style="flex:1;min-width:0;background:var(--main-bg);overflow-y:auto;">
+        <!-- agent detail rendered by JS -->
+      </div>
+    </div>
+      <!-- Global params footer -->
+      <!-- The global parameters section has been removed -->
+  <style>
+  .agent-list-item {
+    transition: background 0.18s;
+  }
+  .agent-list-item:hover {
+    background: var(--sidebar-hover);
+  }
+  @media (max-width: 900px) {
+    #agents-config-root {
+      flex-direction: column;
+    }
+    #agents-list {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0;
+      max-height: 38%;
+      border-right: none;
+      border-bottom: 1.5px solid var(--border);
+      box-shadow: none;
+    }
+  }
+  /* P4-M26: very narrow tile (resized small) → hide list labels, keep numbered chips only */
+  @media (max-width: 560px) {
+    #agents-list .agent-list-label { display:none; }
+    #agents-list { width: 64px !important; max-width:64px !important; }
+  }
+  </style>
+  </div>
