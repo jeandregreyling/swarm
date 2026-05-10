@@ -222,43 +222,50 @@ def create_app():
     except Exception as exc:
         print(f'[Terminal] chat job orphan cleanup warning: {exc}')
 
-    # Background sweep for stuck jobs (every 10 minutes).
-    import threading as _th
-    def _stuck_job_sweeper():
-        import time as _time
-        while True:
-            _time.sleep(600)
-            try:
-                n = sweep_stuck_jobs(max_age_minutes=120)
-                if n:
-                    print(f'[Terminal] swept {n} stuck job(s)')
-            except Exception:
-                pass
-    _sweep_t = _th.Thread(target=_stuck_job_sweeper, daemon=True, name='stuck-job-sweep')
-    _sweep_t.start()
+    # DEV / UAT are manual test targets — they must NOT run background daemons
+    # that fight prod for DB locks, Ollama runners, or scheduled tasks.
+    _STAGE = os.environ.get('STAGE', '').upper()
+    _IS_PROD = _STAGE == 'PROD' or _STAGE == ''
 
-    # Node heartbeat daemon (A.5.1) — pings registered remote nodes
-    try:
-        from utils.node_discovery import start_heartbeat
-        start_heartbeat()
-    except Exception as _hb_err:
-        print(f'[Terminal] node heartbeat start warning: {_hb_err}')
+    if _IS_PROD:
+        # Background sweep for stuck jobs (every 10 minutes).
+        import threading as _th
+        def _stuck_job_sweeper():
+            import time as _time
+            while True:
+                _time.sleep(600)
+                try:
+                    n = sweep_stuck_jobs(max_age_minutes=120)
+                    if n:
+                        print(f'[Terminal] swept {n} stuck job(s)')
+                except Exception:
+                    pass
+        _sweep_t = _th.Thread(target=_stuck_job_sweeper, daemon=True, name='stuck-job-sweep')
+        _sweep_t.start()
 
-    # Agent 20 — council scheduler (§4b, Phase 8.1)
-    try:
-        from agents.twenty.scheduler import start as _a20_start
-        _a20_start(app)
-    except Exception as _a20_err:
-        print(f'[Terminal] Agent 20 scheduler start warning: {_a20_err}')
+        # Node heartbeat daemon (A.5.1) — pings registered remote nodes
+        try:
+            from utils.node_discovery import start_heartbeat
+            start_heartbeat()
+        except Exception as _hb_err:
+            print(f'[Terminal] node heartbeat start warning: {_hb_err}')
 
-    # Seven — perception + memory + reasoning + continuous learner (PACKET-09 Phase 2)
-    try:
-        from core.seven import boot as _seven_boot
-        _seven_info = _seven_boot()
-        print(f'[Terminal] Seven brain online: {_seven_info}')
-    except Exception as _seven_err:
-        print(f'[Terminal] Seven brain start warning: {_seven_err}')
-        traceback.print_exc()
+        # Agent 20 — council scheduler (§4b, Phase 8.1)
+        try:
+            from agents.twenty.scheduler import start as _a20_start
+            _a20_start(app)
+        except Exception as _a20_err:
+            print(f'[Terminal] Agent 20 scheduler start warning: {_a20_err}')
+
+        # Seven — perception + memory + reasoning + continuous learner (PACKET-09 Phase 2)
+        try:
+            from core.seven import boot as _seven_boot
+            _seven_info = _seven_boot()
+            print(f'[Terminal] Seven brain online: {_seven_info}')
+        except Exception as _seven_err:
+            print(f'[Terminal] Seven brain start warning: {_seven_err}')
+    else:
+        print(f'[Terminal] STAGE={_STAGE} — background daemons disabled (manual mode)')
 
     # ── Routes ────────────────────────────────────────────────────────────────
 
@@ -404,11 +411,13 @@ def create_app():
     # Hive — start the self-sampler so the leader's own telemetry shows
     # up in /api/hive/nodes without an external agent. Disabled by
     # $SWARM_HIVE_DISABLE_SELF_SAMPLER for tests / headless workers.
-    try:
-        from core.hive import self_sampler as _hive_self_sampler
-        _hive_self_sampler.start()
-    except Exception as _hss_err:
-        print(f'[Terminal] hive self-sampler warning: {_hss_err}')
+    # Also disabled on DEV/UAT so they don't fight prod for telemetry.
+    if _IS_PROD:
+        try:
+            from core.hive import self_sampler as _hive_self_sampler
+            _hive_self_sampler.start()
+        except Exception as _hss_err:
+            print(f'[Terminal] hive self-sampler warning: {_hss_err}')
 
     return app
 

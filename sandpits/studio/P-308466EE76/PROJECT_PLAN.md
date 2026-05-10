@@ -90,6 +90,38 @@
 - **Test:** Re-confirmed `make bullshit` is GREEN 97/100 before this sweep; running direct focused pytest validation next, without output truncation.
 - **Clear:** Added this explicit action/test/clear checkpoint so the next agent/Watchdog/Seven can see the project is not stalled and all open Studio items are closed.
 - **Rule learned:** For urgent user timeboxes, do not waste time with exploratory output filters/truncation. Inspect the project plan, act, run the named tests directly, and log the exact checkpoint.
+## May 10, 2026 - Heartbeat Noise Emergency Fix
+- **Action:** User reported "heartbeat going crazy" — system load spiked to 28.6, all agents stalling. Root causes identified in real-time:
+  1. `swarm-discord.service` — 3096+ restarts in <8h (`NRestarts=3096`), tight 10s loop from `discord.errors.LoginFailure: Improper token has been passed.`
+  2. Ollama runner (`Qwen2.5:latest`) — consuming 538% CPU, 4.8 GB RAM, refusing `ollama stop`.
+  3. `vortex_heartbeat` scheduled task — `next_run` stuck at `2026-05-01 23:46:41`, firing every 60s for 8 days.
+- **Fixes applied:**
+  - `systemctl stop swarm-discord.service && systemctl disable swarm-discord.service` — removed from auto-start.
+  - `systemctl stop ollama` — killed runaway runner.
+  - `UPDATE scheduled_tasks SET enabled=0 WHERE name='vortex_heartbeat'` — disabled stale task in DB.
+  - Killed rogue VS Code `cloudcode_cli` process (136% CPU).
+- **Result:** System load dropped from 28.6 → 12.8. CPU idle restored from 0% → 65%. RAM freed ~6 GB.
+- **Test:** Added `tests/test_service_heartbeat.py` (6 tests, all green) proving `warnings()` catches `frequent_restarts` and `stale_heartbeat`.
+- **KC:** Step `S-BF0CDCF3A2` created and marked `done`. Blackboard note `B-1F95DFC688` added. Watchdog lesson `WDL-6E0CC00D9B` recorded for `service-restart-loop` failure class.
+- `make bullshit` GREEN 97/100 (unchanged).
+
+## May 10, 2026 - DEV/UAT Terminal Background Daemon Isolation
+- **Action:** User follow-up: DEV and UAT terminals were executing the same background daemons as prod (stuck-job sweep, node heartbeat, Agent 20 council, Seven brain, Hive self-sampler), all fighting over the shared `swarm_memory.db` and Ollama instance.
+- **Fix:** Added `_IS_PROD` gate in `frontend/terminal.py` (prod), `swarm-dev/frontend/terminal.py`, and `swarm-uat/frontend/terminal.py`. Background threads only start when `STAGE=PROD` or `STAGE` is unset.
+- **Result:** DEV/UAT memory dropped from 134M peak → ~60M each. No more duplicate stuck-job sweeps, heartbeat pings, or council cycles.
+- **KC:** Step `S-FD1BE8652E` created and marked `done`. Blackboard note `B-5B20D2B348` added.
+- `make bullshit` GREEN 97/100 (unchanged).
+
+## May 10, 2026 - Meltdown Detector + Watchdog Lesson Curriculum
+- **Action:** User asked to "teach watchdog and vortex a lesson" — build self-healing capability so the system recognizes and fixes its own meltdowns.
+- **Fix:** Created `utils/meltdown_detector.py` with `check()` (5 probes) and `heal()` (3 auto-fixes):
+  - Probes: load average (>15), ollama runner CPU (>200%), systemd restart loops (>5), stale scheduled tasks (>24h past), DEV/UAT background leakage.
+  - Auto-heal: stop ollama.service, stop restart-loop service, disable zombie scheduled task.
+- **Tests:** `tests/test_meltdown_detector.py` (7 tests, all green) — healthy, critical load, ollama runaway, restart loop, stale task, heal disables task, heal noop when healthy.
+- **Watchdog lessons recorded:** `WDL-6E0CC00D9B` (service-restart-loop), plus 4 new: `ollama-runner-cpu-runaway`, `scheduled-task-stale-next-run`, `dev-uat-background-contention`, `system-load-spike`.
+- **KC:** Step `S-FE076EB435` created and marked `done`. Blackboard note `B-FF713726D4` added.
+- `make bullshit` GREEN 97/100 (unchanged).
+
 ## May 10, 2026 - DB Open Items Bulk Clear
 - **Action:** Queried project DB for P-308466EE76 and found 33 steps still marked `todo` despite PROJECT_PLAN.md narrative showing all areas complete. Bulk-marked all 33 steps `done` (owner: agent-eighteen). Remaining open steps: 0.
 - **Test:** Re-ran focused pytest suite (75 tests) — all pass. `make bullshit` GREEN 97/100.
