@@ -17,15 +17,17 @@ Commands (trusted only): URGENT, NOTE, TAG, SNOOZE, SKILL, SCHEDULE,
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+import os
 import sys
 import asyncio
 import logging
 
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/core')
-sys.path.insert(0, '/home/seven/swarm/core/pipeline')
-sys.path.insert(0, '/home/seven/swarm/agents/ghost')
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _SWARM_ROOT)
+sys.path.insert(0, os.path.join(_SWARM_ROOT, 'utils'))
+sys.path.insert(0, os.path.join(_SWARM_ROOT, 'core'))
+sys.path.insert(0, os.path.join(_SWARM_ROOT, 'core', 'pipeline'))
+sys.path.insert(0, os.path.join(_SWARM_ROOT, 'agents', 'ghost'))
 
 import discord
 from discord.ext import commands
@@ -53,7 +55,7 @@ from duck import on_queue_clear
 
 try:
     import importlib.util as _ilu
-    _spec = _ilu.spec_from_file_location('_tw_core', '/home/seven/swarm/core/time_machine.py')
+    _spec = _ilu.spec_from_file_location('_tw_core', os.path.join(_SWARM_ROOT, 'core', 'time_machine.py'))
     _tm_core = _ilu.module_from_spec(_spec)
     _spec.loader.exec_module(_tm_core)
     _tw = _tm_core.time_wizard

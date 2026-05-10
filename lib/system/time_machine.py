@@ -29,7 +29,8 @@ from system_clock import get_timestamp_date, get_system_clock
 from file_versioning import track_file_change, get_version_history, create_daily_checkpoint
 from database import get_connection
 
-sys.path.insert(0, '/home/seven/swarm')
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, _SWARM_ROOT)
 
 
 def create_checkpoint(date=None, description=''):

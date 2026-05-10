@@ -3,7 +3,22 @@
 PYTHON ?= python3
 
 help:  ## Show this help
-	@grep -E '^[a-z][a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*##' '{printf "  %-14s %s\n", $$1, $$2}'
+	@grep -E '^[a-z][a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*##' '{printf "  %-18s %s\n", $$1, $$2}'
+
+bootstrap:  ## One-command setup: venv, deps, .env, DB
+	@bash bootstrap.sh --auto
+
+docker-build:  ## Build the production Docker image
+	@docker build -t swarm:latest .
+
+docker-up:  ## Start SWARM in Docker Compose
+	@docker compose up -d
+
+docker-down:  ## Stop Docker Compose
+	@docker compose down
+
+docker-logs:  ## Tail Docker Compose logs
+	@docker compose logs -f swarm
 
 test:  ## Run pytest
 	$(PYTHON) -m pytest tests/ -x -q --tb=short

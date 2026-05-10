@@ -24,7 +24,8 @@ voice_bp = Blueprint('voice_bp', __name__)
 # ── Backend detection ─────────────────────────────────────────────────────────
 
 _PIPER_BIN = os.environ.get('PIPER_BIN') or shutil.which('piper')
-_PIPER_VOICES_DIR = os.environ.get('PIPER_VOICES_DIR', '/home/seven/swarm/models/piper')
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PIPER_VOICES_DIR = os.environ.get('PIPER_VOICES_DIR', os.path.join(_SWARM_ROOT, 'models', 'piper'))
 _PIPER_DEFAULT_VOICE = os.environ.get('PIPER_DEFAULT_VOICE', 'en_GB-alba-medium')
 
 _WHISPER_MODEL = os.environ.get('WHISPER_MODEL', 'base.en')

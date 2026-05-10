@@ -39,7 +39,7 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT_STR, 'utils'))
 sys.path.insert(0, os.path.join(_SWARM_ROOT_STR, 'lib/system'))
 sys.path.insert(0, os.path.join(_SWARM_ROOT_STR, 'lib/email'))
 sys.path.insert(0, os.path.join(_SWARM_ROOT_STR, 'core/pipeline'))
-sys.path.insert(0, '/home/seven/swarm/agents/specialists')
+sys.path.insert(0, os.path.join(_SWARM_ROOT_STR, 'agents', 'specialists'))
 
 from proposal_status import ACTIVE_PROPOSAL_STATUSES, STATUS_CLOSED
 
@@ -910,7 +910,7 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
     if source_conv_id:
         try:
             import sys as _sys2
-            _sys2.path.insert(0, '/home/seven/swarm/utils')
+            _sys2.path.insert(0, _SWARM_ROOT_STR + '/utils')
             from database import get_connection as _gc2
             _c2 = _gc2()
             _active_placeholders = ','.join('?' for _ in ACTIVE_PROPOSAL_STATUSES)
@@ -942,7 +942,7 @@ def _skill_alm_create_proposal(args, agent, source_conv_id=None, **_):
         if source_conv_id:
             try:
                 import sys as _sys
-                _sys.path.insert(0, '/home/seven/swarm/utils')
+                _sys.path.insert(0, _SWARM_ROOT_STR + '/utils')
                 from database import get_connection as _gc
                 _c = _gc()
                 _c.execute(
@@ -1827,7 +1827,7 @@ def _skill_claude_code(args, agent, **_):
         result = subprocess.run(
             ['claude', '-p', prompt, '--output-format', 'text'],
             capture_output=True, text=True, timeout=120,
-            cwd='/home/seven/swarm',
+            cwd=_SWARM_ROOT_STR,
         )
         output = result.stdout.strip() or result.stderr.strip()
         return bool(output), output or 'No response from Claude Code.'

@@ -1,0 +1,45 @@
+# docker-compose.yml — SWARM full stack
+# ═══════════════════════════════════════════════════════════════════════════════
+# Usage:
+#   docker compose up -d          # start everything
+#   docker compose logs -f swarm  # tail logs
+#   docker compose down           # stop
+# ═══════════════════════════════════════════════════════════════════════════════
+version: "3.9"
+
+services:
+  swarm:
+    build: .
+    image: swarm:latest
+    container_name: swarm-terminal
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    volumes:
+      - swarm-data:/app/data
+      - ./swarm_memory.db:/app/swarm_memory.db
+      - ./.env:/app/.env:ro
+    environment:
+      - SWARM_ROOT=/app
+      - SWARM_ENV=prod
+      - PORT=5050
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5050/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # Optional: Ollama sidecar (uncomment if you want Ollama in compose)
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: swarm-ollama
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ollama-models:/root/.ollama
+  #   ports:
+  #     - "11434:11434"
+
+volumes:
+  swarm-data:
+  # ollama-models:

@@ -8,17 +8,18 @@ After that, gmail_push.py uses the token automatically.
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
-import sys
 import os
-sys.path.insert(0, '/home/seven/swarm')
+import sys
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, _SWARM_ROOT)
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 import json
 
-CREDENTIALS_FILE = '/home/seven/swarm/lib/email/gmail_credentials.json'
-TOKEN_FILE       = '/home/seven/swarm/lib/email/gmail_token.json'
+CREDENTIALS_FILE = os.path.join(_SWARM_ROOT, 'lib', 'email', 'gmail_credentials.json')
+TOKEN_FILE       = os.path.join(_SWARM_ROOT, 'lib', 'email', 'gmail_token.json')
 PROJECT_ID       = 'gen-lang-client-0087469950'
 TOPIC_NAME       = f'projects/{PROJECT_ID}/topics/gmail-push'
 
