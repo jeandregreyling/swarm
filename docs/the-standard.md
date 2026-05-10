@@ -91,7 +91,37 @@ When something is good, push it further. When it is great, ask what would
 be embarrassing about it next month and fix that now. When the answer is
 "nothing", we stop and ship. Until then, we keep climbing.
 
-## 8. The Single Stamp
+## 8. The Galaxy Standard (UI / Spatial)
+
+Any spatial or dashboard UI that ships under `/fridays-os/` or replaces a default
+shell must satisfy all of the following:
+
+1. **Console Dashboard Metaphor** — Layout borrows from proven console UIs
+   (Xbox/PlayStation): horizontal section nav, large content cards, contextual
+   backgrounds, and a persistent quick-action bar. No experimental spatial
+   gimmicks (orbiting planets, 3D transforms, camera fly-throughs) unless the
+   user explicitly requests them.
+2. **Theme Engine** — A visible theme switcher is present. Themes are CSS custom
+   property sets applied via `data-theme` on `<body>`. Minimum themes:
+   `galaxy` (default), `cyber`, `warm`, `ocean`, `minimal`. Themes must change
+   background, accent, text, and card colors. Theme choice persists in
+   `localStorage`.
+3. **Background Context** — The background changes based on selected section or
+   theme. Backgrounds are CSS gradients or subtle imagery, never a blank void.
+4. **Card-First Content** — Every agent, function, or capability is represented
+   by a card with: name, real status indicator, recent activity summary, and
+   primary action buttons. Cards never show emojis; they use letter labels or
+   icons.
+5. **Control Center** — A slide-in or overlay panel provides quick access to
+   Chat, Search, Settings, and Notifications without leaving the current view.
+6. **Loading → Empty → Error → Populated** — Every panel, card list, and detail
+   view renders one of these four states. Never a frozen blank box.
+7. **Keyboard Navigation** — All interactive elements are reachable via keyboard
+   (`Tab`, `Enter`, `Escape`). Focus states are clearly visible.
+8. **No Gimmick Fatigue** — Effects serve function. If an animation does not
+   improve clarity, it is removed. The UI should feel good on day 1 and day 100.
+
+## 9. The Single Stamp
 
 A change is "up to standard" only when:
 

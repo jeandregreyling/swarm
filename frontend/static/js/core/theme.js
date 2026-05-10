@@ -1983,7 +1983,80 @@ function _sysmodCopyCmd(elId) {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════
+// NAMED THEME PICKER  (Galaxy Standard themes)
+// ═════════════════════════════════════════════════════════════════════════
+
+const FRIDAYS_NAMED_THEME_KEY = 'fridays_named_theme';
+const NAMED_THEMES = ['galaxy','cyber','warm','ocean','minimal','obsidian','void','aurora','ember','graphite','rose','lumen','sky','solar','midnight','copper','neon','arctic','apple','nature','mint'];
+
+function _getSavedNamedTheme() {
+  try { return localStorage.getItem(FRIDAYS_NAMED_THEME_KEY) || ''; } catch (_) { return ''; }
+}
+
+function _applyNamedTheme(name) {
+  // Remove all known named theme classes
+  NAMED_THEMES.forEach((t) => document.body.classList.remove('theme-' + t));
+  if (name && name !== 'auto') {
+    document.body.classList.add('theme-' + name);
+  }
+  // Update picker button label
+  const btn = document.getElementById('theme-picker-btn');
+  if (btn) {
+    btn.textContent = name && name !== 'auto' ? name.charAt(0).toUpperCase() + name.slice(1) : 'Theme';
+    btn.style.borderColor = name && name !== 'auto' ? 'var(--accent)' : 'var(--border)';
+    btn.style.color = name && name !== 'auto' ? 'var(--accent)' : 'var(--text-dim)';
+  }
+}
+
+function setNamedTheme(name) {
+  const theme = String(name || 'auto').toLowerCase();
+  if (theme === 'auto') {
+    try { localStorage.removeItem(FRIDAYS_NAMED_THEME_KEY); } catch (_) {}
+    _applyNamedTheme('');
+    // Restore atmosphere engine
+    const currentMode = _normalizeAtmosphereMode(window._selectedThemeMode || localStorage.getItem(FRIDAYS_THEME_MODE_KEY) || 'auto');
+    const currentAtmosphereValue = _clampAtmosphereValue(localStorage.getItem(FRIDAYS_ATMOSPHERE_VALUE_KEY) ?? window._currentAtmosphereValue ?? 38);
+    applyTimeTheme(currentMode, currentMode === 'manual' ? currentAtmosphereValue : null);
+    if (typeof showToast === 'function') showToast('Theme set to Auto (time-of-day)', 'info');
+  } else if (NAMED_THEMES.includes(theme)) {
+    try { localStorage.setItem(FRIDAYS_NAMED_THEME_KEY, theme); } catch (_) {}
+    _applyNamedTheme(theme);
+    if (typeof showToast === 'function') showToast('Theme: ' + theme.charAt(0).toUpperCase() + theme.slice(1), 'success');
+  }
+  // Close picker
+  const wrap = document.getElementById('theme-picker-wrap');
+  if (wrap) wrap.classList.remove('open');
+}
+
+function toggleThemePicker() {
+  const wrap = document.getElementById('theme-picker-wrap');
+  if (!wrap) return;
+  const isOpen = wrap.classList.toggle('open');
+  if (isOpen) {
+    // Close when clicking outside
+    const closeOnClickOutside = (e) => {
+      if (!wrap.contains(e.target)) {
+        wrap.classList.remove('open');
+        document.removeEventListener('click', closeOnClickOutside);
+      }
+    };
+    // Defer so the current click doesn't immediately close
+    setTimeout(() => document.addEventListener('click', closeOnClickOutside), 0);
+  }
+}
+
+function _initNamedTheme() {
+  const saved = _getSavedNamedTheme();
+  if (saved && NAMED_THEMES.includes(saved)) {
+    _applyNamedTheme(saved);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', _initNamedTheme);
 document.addEventListener('DOMContentLoaded', _initSysmodToggle);
+window.setNamedTheme = setNamedTheme;
+window.toggleThemePicker = toggleThemePicker;
 window.setSysmodEnabled = setSysmodEnabled;
 window.getSysmodEnabled = getSysmodEnabled;
 window.refreshSysmodHelpers = refreshSysmodHelpers;

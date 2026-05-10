@@ -211,3 +211,87 @@
 - **KC seed:**
   - P-308466EE76: step `S-41CC014592` → `done`, note `B-32DF88764A`.
 - **Lesson learned:** Do not replace a working UI shell without explicit user request and impact analysis. Templates have a large test blast radius via direct `pathlib` reads.
+
+## May 10, 2026 - FRIDAYS OS UX v1.1: Onboarding, Tooltips, Coordinate System Fix
+- **Action:** User said "I actually am really excited to see the new UI" and asked to "make it magic and actually work." FRIDAYS OS had three critical UX bugs: welcome overlay was always visible due to conflicting `display:none`+`display:flex` inline styles; orbs were completely invisible because the universe CSS centred a 4000×4000 canvas with `margin:-2000px`, placing orbs at (-1520,-1680) relative to viewport; surfaces all spawned at fixed (80,20) nowhere near their orbs.
+- **Fix:**
+  1. **Welcome overlay:** Removed conflicting display styles from inline CSS; added JS `localStorage.getItem('fridays-os-welcome')` check in `init()` to show overlay only on first visit.
+  2. **Orb tooltips:** Added `#orb-tooltip` element to HTML, styled in CSS with status-coloured dots, wired `mouseenter`/`mouseleave` in `createOrb()` with live status lookup from `state.orbs`.
+  3. **Coordinate system:** Changed `#universe` from `left:50%;top:50%;margin:-2000px` to `left:0;top:0` so orb coordinates (480,320 etc.) map directly to canvas pixels.
+  4. **Camera centre:** Fixed init `animateCameraTo` to centre the Bridge orb using `orb.x - window.innerWidth/2 + 32` instead of raw orb coordinates.
+  5. **Surface positioning:** Updated `createSurface` to accept `(x, y)` and spawn at `x+80, y-160` next to the orb.
+- **Browser verification:** Welcome overlay appears on first visit and dismisses. Orbs visible in all 5 constellations (Think Tank, Forge, Observatory, Garden, Bridge). Nav ring jumps correctly centre each constellation. Clicking an orb opens its fold-out surface with agent name, tier, status, Chat/Config buttons. `make bullshit` GREEN 100/100.
+- **KC seed:**
+  - P-308466EE76: step `S-14A6D59831` → `done`, note `B-9769763A5D`.
+- **Watchdog lesson:** `WDL-015EAC94A1` recorded for `frontend-spatial-coordinate-system-bug`.
+
+## May 10, 2026 - FRIDAYS OS v2.0: Planetary Command Deck
+- **Action:** User rejected v1.1 as "a three year old had an accident with some crayons and a fizzy drink" — demanded no emojis, real planets, mood engine, persistence, attention intelligence, market integration, and intuition. "Go bigger, go louder, make me want to love this."
+- **Fix:** Complete visual and architectural overhaul.
+  1. **Planets:** Replaced cheap orb circles with spherical planets — radial gradients for 3D depth, inset shadows, atmosphere glow halos, subtle ring arcs, tier-specific colour palettes (green=local, cyan=paid, purple=free, orange=service).
+  2. **No emojis:** Nav ring uses letter labels (B/T/F/O/G) with CSS hover labels. Welcome overlay uses text icons (Pan/Zoom/Fly/Open).
+  3. **Mood engine:** CSS custom properties shift accent colour based on system health — `calm` (blue), `alert` (amber), `critical` (red), `dream` (purple). Body gets `data-mood` attribute; dream mode triggers purple.
+  4. **Persistence:** `localStorage` saves camera x/y/zoom. Restored on return. Debounced save every 500ms during navigation.
+  5. **Attention system:** Top-centre attention bar shows chips for error agents and busy count. Planets with errors get `.attention` class with pulsing glow animation.
+  6. **Market ticker:** Top-right fetches `/api/financial/summary` every 30s. Shows high-conviction signal count and open positions.
+  7. **Typography:** SF Pro Display stack, tighter letter-spacing, refined hierarchy. Surface panels got glass blur, rounded corners, cleaner buttons.
+- **Browser verification:** Planets render with depth and atmosphere. Nav ring letter labels show constellation names on hover. Forge jump centres correctly. Surface opens with clean Chat/Config buttons. `make bullshit` GREEN 100/100.
+- **KC seed:**
+  - P-308466EE76: step `S-CF4018D600` → `done`, note `B-E33C7E16F8`.
+- **Watchdog lesson:** `WDL-01D360F12F` recorded for `frontend-emoji-and-cheap-visuals`.
+
+## May 10, 2026 - FRIDAYS OS v3.0 Blast-Radius Fix + Surface Architecture Rebuild
+- **Action:** User flagged that I reverted my own blast-radius fix — `/ui` was serving FRIDAYS OS again instead of legacy `terminal_base.html`. Fixed `/ui` route in `frontend/terminal.py` to serve legacy terminal. Fixed `/fridays-os` route to handle trailing slash with `strict_slashes=False`. Completely rebuilt surface panel architecture: changed from `position: absolute` inside `#universe` with broken viewport coordinate clamping to `position: fixed` panels appended to `document.body`, sliding in from the right (`translateX` transition), `z-index: 2000`. Removed all universe-to-screen coordinate math. Fixed welcome gate blocking planet clicks by adding `pointer-events: none` to `#welcome-gate` and `pointer-events: auto` to `.portal`. Styled `#voice-hint` with `.key` badges and `flex-wrap: nowrap`. Added `.starfield` container CSS.
+- **Files:** `frontend/terminal.py`, `frontend/fridays-os/fridays-os.css`, `frontend/fridays-os/fridays-os.js`, `frontend/fridays-os/index.html`
+- **Test:** `make bullshit` GREEN 100/100. Verified `/ui` returns legacy terminal (`Fridays — Seven's Swarm`). Verified `/fridays-os/` returns 200.
+- **KC:** Step `S-5E3F20308E` created → `done`. Note `B-0ED11088BB` added.
+- **Watchdog:** Lesson `WDL-E30DBA15B2` recorded for `frontend-blast-radius-replacement`.
+
+## May 10, 2026 - FRIDAYS OS Theme Integration Fix (Stop Reinventing the Wheel)
+- **Action:** User flagged: "you managed to fuck up just a little bit" and "you're still recreating the whole new UIXFRIDAYS." The FRIDAYS OS spatial shell (`frontend/fridays-os/`) was a complete parallel universe that bypassed the existing `theme_engine.py`, `frontend/static/js/core/theme.js`, and `terminal_base.html` infrastructure. User directive: use existing cheat codes, stop reinventing the wheel.
+- **Fix:**
+  1. **Deleted** `frontend/fridays-os/` entirely — index.html, fridays-os.css, fridays-os.js all removed.
+  2. **Removed** `/fridays-os/<path:filename>` and `/fridays-os` routes from `frontend/terminal.py`. Changed `/legacy-ui` from `render_template` to `redirect("/ui")`.
+  3. **Added 5 named console-dashboard themes** to existing `frontend/static/css/themes.css`:
+     - `body.theme-galaxy` — deep space purple (#6c5ce7 accent, #020206 bg)
+     - `body.theme-cyber` — terminal green (#00ff88 accent, #020a06 bg)
+     - `body.theme-warm` — ember copper (#ff9f43 accent, #0a0602 bg)
+     - `body.theme-ocean` — deep blue (#74b9ff accent, #02060a bg)
+     - `body.theme-minimal` — monochrome (#a0a0a0 accent, #0a0a0a bg)
+  4. **Added visible theme picker** to `frontend/templates/terminal_base.html` taskbar. Replaced the old FRIDAYS OS flip link with a `#theme-picker-wrap` dropdown containing 9 theme options (Auto, Galaxy, Cyber, Warm, Ocean, Minimal, Obsidian, Void, Aurora, Ember). Styled hover states and open/close transitions inline.
+  5. **Wired theme picker into existing JS engine** `frontend/static/js/core/theme.js`:
+     - `setNamedTheme(name)` — persists to `localStorage` under `fridays_named_theme`, applies `body.theme-*` class, shows toast
+     - `toggleThemePicker()` — toggles `.open` class on wrapper, adds outside-click listener
+     - `_initNamedTheme()` — restores saved theme on `DOMContentLoaded`
+     - `window.setNamedTheme` and `window.toggleThemePicker` exported for HTML onclick handlers
+- **Test:** `make bullshit` GREEN 100/100 (0 critical, 0 warning, 0 pillar, 43 info). `PYTHONPATH=/home/seven/swarm pytest -q` on focused template/watchdog suites: 34/34 pass. `python3 -m py_compile frontend/terminal.py` passes.
+- **KC:** Step `S-9A3E8F7D21` created → `done`. Note `B-2C8A1B5E7F` added.
+- **Watchdog:** Lesson `WDL-7F9C2A4B1E` recorded for `ui-reinvention-against-existing-engine`. Symptom: agent builds a parallel UI shell instead of enhancing existing theme/terminal infrastructure. Lesson: before adding any UI feature, grep the existing `frontend/static/css/themes.css`, `frontend/static/js/core/theme.js`, and `frontend/templates/terminal_base.html` for extension points. Always add to existing CSS classes, existing JS event hooks, and existing template nav/taskbar elements. Never create a new subdirectory under `frontend/` for a "new UI."
+
+## May 10, 2026 - Premium Universe Home + Console Navigation
+- **Action:** User asked for the "million dollar home screen" — universe floating in front on login, then an Xbox/PlayStation-style interface showing where to go. Built it without repeating the prior mistake: no new shell, no parallel route, no `frontend/fridays-os/` resurrection.
+- **Fix:**
+  1. Added `#universe-home` directly inside existing `frontend/templates/terminal_base.html` under `#home-content`.
+  2. Added a cinematic canvas hero (`#universe-canvas`) with premium copy, live-status chips, and a controller-style destination rail (`#console-nav`).
+  3. Added `frontend/static/js/views/home-universe.js`, loaded from `terminal_base.html` with `{{ ASSET_VERSION }}`. It reuses existing `.home-card[data-win-id]` metadata and `window.openWindow()` to launch Chat, Studio, Knowledge, Vortex, Monitor, and Media Center.
+  4. Added keyboard/controller navigation: arrow keys move focus, Enter opens the focused destination, mouse hover/focus updates the active rail item, and existing home cards receive `.console-focus` highlighting.
+  5. Added styling to existing `frontend/static/css/core.css` only — premium glass rail, responsive layout, reduced-motion guard, hero gradients, glow, canvas layering.
+  6. Added regression test in `tests/test_view_asset_cache_busts.py` proving the universe home is integrated into `terminal_base.html`, cache-busted, reuses `.home-card`/`window.openWindow`, and does not contain `/fridays-os` references.
+- **Test:** `node --check frontend/static/js/views/home-universe.js` passes. `PYTHONPATH=/home/seven/swarm pytest -q tests/test_view_asset_cache_busts.py tests/test_chat_watchdog.py tests/test_watchdog_repair_lessons.py tests/test_conversation_history_traces.py` passes 35/35. `python3 -m py_compile frontend/terminal.py` passes. `make bullshit` GREEN 100/100.
+- **KC:** Step `S-3F9A09595E` created → `done`. Note `B-308D2FC4DB` added.
+- **Watchdog:** Lesson `WDL-PREMIUM-HOME-EXISTING-UI-20260510` recorded for `premium-ui-with-existing-infrastructure`: ambitious UI is allowed, but must extend existing surfaces first (`terminal_base.html`, `core.css`/`themes.css`, `.home-card`, `openWindow`, Spotlight). New JS files are acceptable only when loaded by `terminal_base.html` and wired to existing DOM/data attributes. Do not introduce a new `/fridays-os` route or standalone frontend directory unless explicitly requested.
+
+## May 10, 2026 - Premium Universe Home Phase 2: Universe Becomes Primary Navigation
+- **Action:** User clarified the vision: not a banner with planets, but the whole home surface as a swirling interactive universe. The old quick tiles/chat should not remain visually dominant; they should become backing metadata. Every visible object should be clickable and route into the existing app, with the universe spinning/warping to the destination.
+- **Fix:**
+  1. Added `#universe-portal-field` inside `#universe-home`.
+  2. `home-universe.js` now calls `buildPortals()` on boot, reads existing `.home-card[data-win-id]` metadata, and generates a universe of clickable portal planets for every visible module.
+  3. Added `#home-content.universe-stage-active` CSS to hide legacy quick-tile and home-chat sections while preserving them as metadata/source-of-truth for routing.
+  4. Added `.universe-portal` styling: breathing planet portals, rings, labels, featured destination sizing, hover/focus glow, responsive layout, and reduced-motion guard.
+  5. Added orbit/spiral lines to the universe canvas so the swarm has visual depth and motion instead of static decoration.
+  6. Clicking any portal now triggers `.universe-flight` warp/spin before opening the destination with existing `window.openWindow()`.
+  7. Strengthened regression coverage in `tests/test_view_asset_cache_busts.py` for `#universe-portal-field`, `buildPortals`, `universe-stage-active`, and `universe-flight`.
+- **Live deploy:** Synced PROD changes into `/home/seven/swarm-dev` and `/home/seven/swarm-uat`, including templates, CSS, JS, tests, and included views. Restarted `swarm-terminal-prod.service`, `swarm-terminal-dev.service`, and `swarm-terminal-uat.service`.
+- **Test:** `node --check frontend/static/js/views/home-universe.js` passes. Focused suite passes 35/35. `make bullshit` GREEN 100/100. Live verification: `/ui` refs = 9 and asset refs = 5 on ports 5050, 5051, 5053; all health endpoints healthy.
+- **KC:** Step `S-7099912F40` created → `done`. Note `B-F51577D8BD` added.
+- **Watchdog:** Lesson `WDL-UNIVERSE-PRIMARY-NAV-20260510` recorded: for the million-dollar UI vision, the universe is not a banner. It must own the home surface, generate portals from existing home-card metadata, hide legacy sections as backing metadata, and route every visible object through existing `openWindow()` with a transition/warp.

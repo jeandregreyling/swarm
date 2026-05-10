@@ -291,3 +291,102 @@ body.theme-arctic {
   --shadow: 0 2px 12px rgba(37, 99, 235, 0.06);
   --radius: 10px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GALAXY STANDARD THEMES  (Console Dashboard palette)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── GALAXY  — deep space, purple nebula accent ── */
+body.theme-galaxy {
+  --bg:           #020206;
+  --card:         #0c0e16;
+  --card-hover:   #131520;
+  --hover:        #131520;
+  --bg-input:     #080a12;
+  --border:       rgba(255,255,255,0.06);
+  --text:         #dfe6e9;
+  --text-dim:     #636e72;
+  --text-faint:   #3d4145;
+  --accent:       #6c5ce7;
+  --accent-hover: #a29bfe;
+  --window-bg:    #0c0e16;
+  --window-header:#060810;
+  --shadow:       0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(108,92,231,0.08);
+  --radius:       16px;
+}
+
+/* ── CYBER  — terminal green, matrix glow ── */
+body.theme-cyber {
+  --bg:           #020a06;
+  --card:         #06120e;
+  --card-hover:   #0a1c16;
+  --hover:        #0a1c16;
+  --bg-input:     #040e0a;
+  --border:       rgba(0,255,136,0.08);
+  --text:         #e0f0e8;
+  --text-dim:     #5a8a72;
+  --text-faint:   #2a4a3a;
+  --accent:       #00ff88;
+  --accent-hover: #33ffaa;
+  --window-bg:    #06120e;
+  --window-header:#020a06;
+  --shadow:       0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,255,136,0.06);
+  --radius:       12px;
+}
+
+/* ── WARM  — ember glow, copper warmth ── */
+body.theme-warm {
+  --bg:           #0a0602;
+  --card:         #140e08;
+  --card-hover:   #1c1610;
+  --hover:        #1c1610;
+  --bg-input:     #0f0a04;
+  --border:       rgba(255,159,67,0.08);
+  --text:         #f0e8e0;
+  --text-dim:     #8a7a6a;
+  --text-faint:   #4a3e32;
+  --accent:       #ff9f43;
+  --accent-hover: #ffbf68;
+  --window-bg:    #140e08;
+  --window-header:#0a0602;
+  --shadow:       0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,159,67,0.06);
+  --radius:       16px;
+}
+
+/* ── OCEAN  — deep blue, arctic drift ── */
+body.theme-ocean {
+  --bg:           #02060a;
+  --card:         #080e14;
+  --card-hover:   #0e1620;
+  --hover:        #0e1620;
+  --bg-input:     #040a10;
+  --border:       rgba(116,185,255,0.08);
+  --text:         #e0ecf8;
+  --text-dim:     #5a7a9a;
+  --text-faint:   #2a4058;
+  --accent:       #74b9ff;
+  --accent-hover: #a8d0ff;
+  --window-bg:    #080e14;
+  --window-header:#02060a;
+  --shadow:       0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(116,185,255,0.06);
+  --radius:       16px;
+}
+
+/* ── MINIMAL  — pure dark, monochrome ── */
+body.theme-minimal {
+  --bg:           #0a0a0a;
+  --card:         #111111;
+  --card-hover:   #181818;
+  --hover:        #181818;
+  --bg-input:     #0e0e0e;
+  --border:       rgba(255,255,255,0.06);
+  --text:         #e0e0e0;
+  --text-dim:     #888888;
+  --text-faint:   #444444;
+  --accent:       #a0a0a0;
+  --accent-hover: #c0c0c0;
+  --window-bg:    #111111;
+  --window-header:#0a0a0a;
+  --shadow:       0 16px 48px rgba(0,0,0,0.5);
+  --radius:       10px;
+}

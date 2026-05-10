@@ -325,40 +325,17 @@ def create_app():
             "blueprints_failed": {a: e for a, e in _failed_blueprints},
         })
 
-    # FRIDAYS OS — default spatial UI (Session 30.2 v2)
+    # Default UI — terminal_base.html shell with full theme engine
     @app.route("/ui", methods=["GET"])
-    def fridays_ui():
-        from flask import send_from_directory, render_template_string, render_template
-        import pathlib
-        fridays_dir = pathlib.Path(__file__).resolve().parent / 'fridays-os'
-        html_path = fridays_dir / 'index.html'
-        try:
-            html = html_path.read_text(encoding='utf-8')
-            html = html.replace('{{ ASSET_VERSION }}', _asset_version)
-            return render_template_string(html)
-        except Exception:
-            # Fallback to legacy UI if FRIDAYS OS shell is missing
-            return render_template("terminal_base.html", theme_css="")
-
-    @app.route("/fridays-os/<path:filename>")
-    def fridays_os_static(filename):
-        from flask import send_from_directory
-        import pathlib
-        fridays_dir = pathlib.Path(__file__).resolve().parent / 'fridays-os'
-        return send_from_directory(fridays_dir, filename)
-
-    @app.route("/fridays-os", methods=["GET"])
-    def fridays_os_index():
-        from flask import send_from_directory
-        import pathlib
-        fridays_dir = pathlib.Path(__file__).resolve().parent / 'fridays-os'
-        return send_from_directory(fridays_dir, 'index.html')
-
-    # Legacy UI — classic terminal_base.html shell (always available)
-    @app.route("/legacy-ui", methods=["GET"])
-    def legacy_ui():
+    def ui():
         from flask import render_template
         return render_template("terminal_base.html", theme_css="")
+
+    # Legacy redirect (kept for bookmarks)
+    @app.route("/legacy-ui", methods=["GET"])
+    def legacy_ui():
+        from flask import redirect
+        return redirect("/ui")
 
     # Hive Nodes standalone popout (B21) — minimal page, 20 most recently
     # touched library sources, rendered with the same library-graph engine.
