@@ -50,13 +50,14 @@ function _launchHomeNode(node) {
 function syncTaskbarLaunchers() {
     const strip = document.getElementById('taskbar-launchers');
     if (!strip) return;
-    const PINNED_LAUNCHERS = ['chat', 'terminal', 'knowledge', 'studio', 'media-center'];
+    const PINNED_LAUNCHERS = ['chat', 'terminal', 'knowledge', 'studio', 'media-center', 'tasker'];
     const PINNED_LAUNCHER_META = {
         'chat':         { title: 'Chat',         template: 'view-chat' },
         'terminal':     { title: 'Terminal',     template: 'view-terminal' },
         'knowledge':    { title: 'Knowledge',    template: 'view-knowledge' },
         'studio':       { title: 'Studio',       template: 'view-studio' },
         'media-center': { title: 'Media Center', template: 'view-media-center' },
+        'tasker':       { title: 'Tasker',       template: 'view-tasker' },
     };
 
     // V8 Orbs overhaul (S-EAA7C440CC): mark active windows with a ring +

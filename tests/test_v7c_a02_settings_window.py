@@ -123,7 +123,8 @@ def test_r7_no_direct_settings_modal_classlist_add_in_new_entrypoints():
                     f"Direct #settings-modal open/close from {candidate.name}: {line.strip()}"
                 )
     # theme.js may have classList.remove('open') (it's the owner).
-    assert theme.count(".classList.remove('open');") <= 5, (
+    # V8 theme-picker added 2 legitimate close paths (setNamedTheme + outside-click).
+    assert theme.count(".classList.remove('open');") <= 6, (
         "theme.js has more direct overlay open/close calls than expected — "
         "audit before approving."
     )
