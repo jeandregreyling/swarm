@@ -1,18 +1,13 @@
 """
-agents/qwen/qwen_agent.py — Qwen (local Ollama)
-Deep reasoning analyst. Powered by qwen2.5:latest via Ollama.
+agents/gemma/gemma_agent.py — Gemma (local Ollama)
+Orchestrator agent. Powered by gemma3:latest via Ollama.
 """
 import logging, sys
-import os
-import sys
-_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, _SWARM_ROOT)
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "agents"))
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
-
-logger = logging.getLogger('seven.qwen')
-AGENT_NAME = 'qwen'
-MODEL      = 'qwen2.5:latest'
+sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
+logger = logging.getLogger('seven.gemma')
+AGENT_NAME = 'gemma'
+MODEL      = 'gemma3:latest'
 
 
 def _build_context(message):
@@ -21,14 +16,16 @@ def _build_context(message):
     conn = get_connection()
     try:
         queued = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
-        lines.append(f'Queue: {queued} queued')
+        open_t = conn.execute("SELECT COUNT(*) FROM tickets WHERE status='open'").fetchone()[0]
+        wp     = conn.execute("SELECT COUNT(*) FROM work_proposals WHERE status='pending'").fetchone()[0]
+        lines.append(f'Queue: {queued} queued | Open tickets: {open_t} | Pending proposals: {wp}')
     except Exception:
         pass
     finally:
         conn.close()
     mems = get_agent_memory(AGENT_NAME, query=message, limit=5) or []
     if mems:
-        lines.append(f"\n=== Qwen's memory ===")
+        lines.append(f"\n=== Gemma's memory ===")
         for m in mems:
             m = dict(m)
             lines.append(f"[{str(m.get('created_at',''))[:16]}] {m.get('subject','')}: {str(m.get('content',''))[:200]}")
@@ -45,11 +42,11 @@ def chat(message, conversation_history=None, stage_cb=None):
 
     from core import llm as _llm
 
-    from config import QWEN_SYSTEM_PROMPT
+    from config import GEMMA_SYSTEM_PROMPT
 
     _emit('loading context')
     context = _build_context(message)
-    system  = QWEN_SYSTEM_PROMPT + f'\n\n{context}' if context else QWEN_SYSTEM_PROMPT
+    system  = GEMMA_SYSTEM_PROMPT + f'\n\n{context}' if context else GEMMA_SYSTEM_PROMPT
 
     messages = [{'role': 'system', 'content': system}]
     if conversation_history:
@@ -60,22 +57,26 @@ def chat(message, conversation_history=None, stage_cb=None):
         buf = []
         def _cb(piece):
             buf.append(piece)
-            if len(buf) % 15 == 0:
+            if len(buf) == 1 or len(buf) % 15 == 0:
                 _emit(f'generating · {("".join(buf))[-300:]}')
-        return _llm.chat_via_gateway(MODEL, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.6)
+        return _llm.chat_via_gateway(MODEL, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.7)
 
     try:
+        sys.path.insert(0, '/home/seven/swarm/agents')
         from agents.skills_loop import run_skill_loop
+        from agents.skill_intent import message_likely_needs_skills
     except ImportError:
         from skills_loop import run_skill_loop
+        from skill_intent import message_likely_needs_skills
 
     try:
+        needs_skills = message_likely_needs_skills(message)
         answer, tokens = run_skill_loop(
             agent_name=AGENT_NAME, call_fn=_api_call,
-            messages=messages, emit_fn=_emit, max_passes=2, nudge_if_no_skills=True,
+            messages=messages, emit_fn=_emit, max_passes=2, nudge_if_no_skills=needs_skills,
         )
     except Exception as e:
-        return f'[qwen] error: {e}', 0
+        return f'[gemma] error: {e}', 0
 
     _emit('persisting memory')
     try:
@@ -85,5 +86,5 @@ def chat(message, conversation_history=None, stage_cb=None):
     except Exception:
         pass
 
-    logger.info(f'[Qwen] model={MODEL} tokens={tokens}')
+    logger.info(f'[Gemma] model={MODEL} tokens={tokens}')
     return answer, tokens

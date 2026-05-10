@@ -1,58 +1,57 @@
 """
-# LINKED TO: utils/config.py — imports ELEVEN_SYSTEM_PROMPT (edit prompts there, not here)
-agents/eleven/grok_agent.py — Eleven (Grok 3)
-Developer Agent — lateral thinker. Powered by xAI Grok API.
+# LINKED TO: utils/config.py — imports NINE_SYSTEM_PROMPT (edit prompts there, not here)
+agents/nine/nine_agent.py — Nine (Groq · llama-3.3-70b-versatile)
+Developer Agent — system architect. Powered by Groq API.
 """
 
 import logging
 import sys
-import os
-_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
+sys.path.insert(0, '/home/seven/swarm/utils')
 
-logger = logging.getLogger('seven.eleven')
+logger = logging.getLogger('seven.nine')
 
-AGENT_NAME = 'eleven'
+AGENT_NAME = 'nine'
 
 
 def _build_context(message):
-    """Build swarm context snapshot for Eleven."""
+    """Build swarm context snapshot for Nine."""
     from database import get_connection, get_agent_memory
     lines = []
     lines.append('=== Developer Agent context ===')
     lines.append('You are a Developer Agent operating under Ghost One direction. Execute directly — no proposal queue for Ghost One-directed work.')
-    lines.append('Worker Agent requests still require proposal approval.')
-    lines.append('Draft ideas in sandpits first; cross-check options with Nine/Ten/Twelve before final recommendation.')
+    lines.append('Worker Agent requests (Gemma, LLaMA, Mistral, Eight, Duck, Sniffles, Librarian) still require proposal approval.')
+    lines.append('Draft architectural options in sandpits first; cross-check with Ten, Eleven, and Twelve before final recommendation.')
     conn = get_connection()
     try:
         queued = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
         open_t = conn.execute("SELECT COUNT(*) FROM tickets WHERE status='open'").fetchone()[0]
         dec_count = conn.execute("SELECT COUNT(*) FROM decisions WHERE test_status='PASS'").fetchone()[0]
         wp_pending = conn.execute("SELECT COUNT(*) FROM work_proposals WHERE status='pending'").fetchone()[0]
-        lines.append(f"=== Swarm state ===")
-        lines.append(f"Queue: {queued} queued | Open tickets: {open_t}")
-        lines.append(f"Decisions logged (PASS): {dec_count} | Pending proposals: {wp_pending}")
+        lines.append('=== Swarm state ===')
+        lines.append(f'Queue: {queued} queued | Open tickets: {open_t}')
+        lines.append(f'Decisions logged (PASS): {dec_count} | Pending proposals: {wp_pending}')
         recent_dec = conn.execute(
-            "SELECT decision_id, agent, decision, created_at FROM decisions ORDER BY decision_id DESC LIMIT 5"
+            'SELECT decision_id, agent, decision, created_at FROM decisions ORDER BY decision_id DESC LIMIT 5'
         ).fetchall()
         if recent_dec:
-            lines.append("Recent decisions:")
+            lines.append('Recent decisions:')
             for d in recent_dec:
-                lines.append(f"  [{d['decision_id']}] {d['agent']}: {d['decision'][:80]}")
+                lines.append(f'  [{d["decision_id"]}] {d["agent"]}: {d["decision"][:80]}')
     finally:
         conn.close()
     relevant = get_agent_memory(AGENT_NAME, query=message, limit=5)
     if relevant:
-        lines.append("\n=== PAST MEMORY RECORDS (database — NOT prior messages in this conversation) ===")
+        lines.append('\n=== Nine\'s relevant memory ===')
         for m in relevant:
             m = dict(m)
-            lines.append(f"[RECORD {str(m.get('created_at',''))[:16]}] subject={m.get('subject','')!r} | {str(m.get('content',''))[:200]}")
+            lines.append(f'[{str(m.get("created_at", ""))[:16]}] {m.get("subject", "")}: {str(m.get("content", ""))[:200]}')
     return '\n'.join(lines)
 
 
 def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     """
-    Send a message to Eleven (Grok 3). Returns (answer, tokens_used).
+    Send a message to Nine (llama-3.3-70b-versatile via Groq).
+    Returns (answer, tokens_used).
     conversation_history: list of {role, content} dicts for multi-turn context.
     stage_cb(text, eta): called throughout for live progress in Fridays UI.
     conv_id: originating conversation ID — forwarded to alm_create_proposal so Duck can notify the thread.
@@ -65,22 +64,18 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
                 pass
 
     try:
-        from openai import OpenAI
+        from groq import Groq
     except ImportError:
         return None, 0
 
-    from config import XAI_API_KEY, XAI_MODEL, ELEVEN_SYSTEM_PROMPT
-    try:
-        from coding_bible import inject as _bible_inject
-    except Exception:
-        _bible_inject = lambda p: p
-    if not XAI_API_KEY:
-        logger.error('[Eleven] XAI_API_KEY not configured')
+    from config import GROQ_API_KEY, NINE_MODEL, NINE_SYSTEM_PROMPT
+    if not GROQ_API_KEY:
+        logger.error('[Nine] GROQ_API_KEY not configured')
         return None, 0
 
     _emit('loading context')
     context = _build_context(message)
-    system = _bible_inject(ELEVEN_SYSTEM_PROMPT) + f'\n\n{context}'
+    system = NINE_SYSTEM_PROMPT + f'\n\n{context}'
 
     messages = [{'role': 'system', 'content': system}]
     if conversation_history:
@@ -88,11 +83,11 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     messages.append({'role': 'user', 'content': message})
 
     try:
-        client = OpenAI(api_key=XAI_API_KEY, base_url='https://api.x.ai/v1')
+        client = Groq(api_key=GROQ_API_KEY)
 
         def _api_call(msgs):
             resp = client.chat.completions.create(
-                model=XAI_MODEL,
+                model=NINE_MODEL,
                 messages=msgs,
                 max_tokens=4096,
             )
@@ -104,23 +99,15 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
             call_fn=_api_call,
             messages=messages,
             emit_fn=_emit,
-            max_passes=10,
-            nudge_if_no_skills=False,  # Grok handles SKILL commands fine when the task needs them; nudge causes confusion on general questions
             source_conv_id=conv_id,
         )
 
         _emit('persisting response memory')
         try:
             from database import save_agent_memory
-            # Strip routing/relay context prefixes to get the actual user question
-            _user_q = str(message or '')
-            for _marker in ('=== End memory ===', '=== End knowledge broadcast ===', '=== EXECUTION CONFIRMATION ==='):
-                if _marker in _user_q:
-                    _user_q = _user_q[_user_q.rindex(_marker) + len(_marker):]
-            _user_q = _user_q.strip().lstrip('\n')[:100]
             save_agent_memory(
                 agent_name=AGENT_NAME,
-                subject=_user_q or 'eleven terminal chat',
+                subject=str(message or '')[:100],
                 content=answer,
                 tags='chat,shared-thread',
                 importance=7,
@@ -129,13 +116,13 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
         except Exception:
             pass
 
-        logger.info(f'[Eleven] tokens={tokens} | {message[:60]}')
+        logger.info(f'[Nine] tokens={tokens} | {message[:60]}')
         return answer, tokens
     except Exception as e:
         msg = str(e)
-        logger.error(f'[Eleven] API error: {msg}')
+        logger.error(f'[Nine] API error: {msg}')
         if '401' in msg or 'authentication' in msg.lower():
-            return '[Eleven] xAI API key invalid or expired.', 0
+            return '[Nine] Groq API key invalid or expired.', 0
         if '429' in msg or 'rate limit' in msg.lower():
-            return f'[Eleven] xAI rate limit hit. {msg}', 0
-        return f'[Eleven] API error: {msg}', 0
+            return f'[Nine] Groq rate limit hit. {msg}', 0
+        return f'[Nine] API error: {msg}', 0

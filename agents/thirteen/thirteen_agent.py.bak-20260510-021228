@@ -6,10 +6,8 @@ Developer Agent — HuggingFace specialist (testing). Powered by HuggingFace Inf
 
 import logging
 import sys
-import os
-_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "frontend"))
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm/frontend')
 
 logger = logging.getLogger('seven.thirteen')
 

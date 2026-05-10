@@ -1,7 +1,7 @@
 """
-# LINKED TO: utils/config.py — imports NINETEEN_SYSTEM_PROMPT (edit prompts there, not here)
-agents/nineteen/nineteen_agent.py — Nineteen (o4-mini)
-Fast reasoning agent. Powered by o4-mini via GitHub Models API.
+# LINKED TO: utils/config.py — imports TEN_SYSTEM_PROMPT (edit prompts there, not here)
+agents/ten/copilot_agent.py — Ten (GPT)
+Developer Agent — software engineer. Powered by GPT via GitHub Models API.
 Uses a GitHub PAT with models:read scope via https://models.inference.ai.azure.com
 
 Uses the shared agents/skills_loop.py for SKILL command interception.
@@ -10,24 +10,21 @@ Stage callbacks stream progress to the Fridays chat UI in real time.
 
 import logging
 import sys
-import os
-_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, _SWARM_ROOT)
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "agents"))
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm')
 
-logger = logging.getLogger('seven.nineteen')
+logger = logging.getLogger('seven.ten')
 
-AGENT_NAME = 'nineteen'
-_DEFAULT_MODEL = 'o4-mini'
+AGENT_NAME = 'ten'
+_DEFAULT_MODEL = 'gpt-4.1'
 
 
 def _build_context(message):
-    """Build swarm context snapshot for Nineteen."""
+    """Build swarm context snapshot for Ten."""
     from database import get_connection, get_agent_memory
     lines = []
-    lines.append('=== Reasoning Agent context ===')
-    lines.append('You are a Reasoning Agent operating under Ghost One direction. Execute directly — no proposal queue for Ghost One-directed work.')
+    lines.append('=== Developer Agent context ===')
+    lines.append('You are a Developer Agent operating under Ghost One direction. Execute directly — no proposal queue for Ghost One-directed work.')
     lines.append('Worker Agent requests still require proposal approval.')
     conn = get_connection()
     try:
@@ -42,7 +39,7 @@ def _build_context(message):
         conn.close()
 
     try:
-        recent = get_agent_memory('nineteen', query='', limit=5) or []
+        recent = get_agent_memory('ten', query='', limit=5) or []
         if recent:
             lines.append('=== Your recent memory (most important first) ===')
             for row in recent:
@@ -59,7 +56,7 @@ def _build_context(message):
 
 def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     """
-    Send a message to Nineteen (o4-mini via GitHub Models API).
+    Send a message to Ten (GPT via GitHub Models API).
 
     Uses the shared run_skill_loop for SKILL command interception.
     stage_cb(text, eta_seconds) — called throughout to push progress to the UI.
@@ -77,25 +74,26 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     try:
         from openai import OpenAI
     except ImportError:
-        logger.error('[Nineteen] openai package not installed')
+        logger.error('[Ten] openai package not installed')
         return None, 0
 
-    from config import GITHUB_TOKEN, NINETEEN_SYSTEM_PROMPT, NINETEEN_MODEL
+    from config import GITHUB_TOKEN, TEN_SYSTEM_PROMPT, TEN_MODEL
     if not GITHUB_TOKEN:
-        logger.error('[Nineteen] GITHUB_TOKEN not configured — add to .env.agents')
+        logger.error('[Ten] GITHUB_TOKEN not configured — add to .env.agents')
         return None, 0
 
     _emit('loading context')
     context = _build_context(message)
-    system = NINETEEN_SYSTEM_PROMPT + f'\n\n{context}'
+    system = TEN_SYSTEM_PROMPT + f'\n\n{context}'
 
     messages = [{'role': 'system', 'content': system}]
     if conversation_history:
-        messages.extend(conversation_history[-6:])
+        # gpt-4.1 has an 8000-token limit — keep history lean
+        messages.extend(conversation_history[-4:])
     messages.append({'role': 'user', 'content': message})
 
     # ── API call wrapper for skills_loop ───────────────────────────────────────
-    model = NINETEEN_MODEL or _DEFAULT_MODEL
+    model = TEN_MODEL or _DEFAULT_MODEL
 
     try:
         client = OpenAI(
@@ -103,13 +101,13 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
             base_url='https://models.inference.ai.azure.com',
         )
     except Exception as e:
-        return f'[Nineteen] Client init error: {e}', 0
+        return f'[Ten] Client init error: {e}', 0
 
     def _api_call(msgs):
         response = client.chat.completions.create(
             model=model,
             messages=msgs,
-            max_completion_tokens=16384,
+            max_tokens=4096,
         )
         content = response.choices[0].message.content
         tokens = response.usage.total_tokens if response.usage else 0
@@ -117,6 +115,7 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
 
     # ── Run through shared skill loop ──────────────────────────────────────────
     try:
+        sys.path.insert(0, '/home/seven/swarm/agents')
         from agents.skills_loop import run_skill_loop
     except ImportError:
         from skills_loop import run_skill_loop
@@ -128,24 +127,30 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
             messages=messages,
             emit_fn=_emit,
             max_passes=5,
-            max_skill_chars=2500,
+            max_skill_chars=2500,  # gpt-4.1 hard limit: 8000 tokens total
             source_conv_id=conv_id,
         )
     except Exception as e:
         msg = str(e)
-        logger.error(f'[Nineteen] API error: {msg}')
+        logger.error(f'[Ten] API error: {msg}')
         if 'RateLimitReached' in msg or '429' in msg or 'rate limit' in msg.lower():
-            return f'[Nineteen] GitHub Models rate limit reached. Resets in ~24h. Error: {msg}', 0
+            return f'[Ten] GitHub Models rate limit reached (50 req/day free tier). Resets in ~24h. Error: {msg}', 0
         if '401' in msg or 'Unauthorized' in msg or 'authentication' in msg.lower():
-            return '[Nineteen] GitHub token rejected (401). Regenerate PAT with Models scope at github.com/settings/tokens.', 0
-        return f'[Nineteen] API error: {msg}', 0
+            return '[Ten] GitHub token rejected (401). Regenerate PAT with Models scope at github.com/settings/tokens.', 0
+        return f'[Ten] API error: {msg}', 0
 
     _emit('persisting response memory')
     try:
         from database import save_agent_memory
+        # Strip routing/relay context prefixes to get the actual user question
+        _user_q = str(message or '')
+        for _marker in ('=== End memory ===', '=== End knowledge broadcast ===', '=== EXECUTION CONFIRMATION ==='):
+            if _marker in _user_q:
+                _user_q = _user_q[_user_q.rindex(_marker) + len(_marker):]
+        _user_q = _user_q.strip().lstrip('\n')[:100]
         save_agent_memory(
-            agent_name='nineteen',
-            subject=str(message or '')[:100],
+            agent_name='ten',
+            subject=_user_q or 'ten terminal chat',
             content=answer,
             tags='chat,shared-thread',
             importance=7,
@@ -154,5 +159,5 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     except Exception:
         pass
 
-    logger.info(f'[Nineteen] model={model} tokens={tokens} | {str(message or "")[:60]}')
+    logger.info(f'[Ten] model={model} tokens={tokens} | {str(message or "")[:60]}')
     return answer, tokens

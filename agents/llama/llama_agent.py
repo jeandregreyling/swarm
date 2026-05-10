@@ -3,8 +3,13 @@ agents/llama/llama_agent.py — LLaMA (local Ollama)
 Fast internet-connected researcher. Powered by llama3.2:latest via Ollama.
 """
 import logging, sys
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
+import os
+import sys
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, _SWARM_ROOT)
+sys.path.insert(0, os.path.join(_SWARM_ROOT, "agents"))
+sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
+
 logger = logging.getLogger('seven.llama')
 AGENT_NAME = 'llama'
 MODEL      = 'llama3.2:latest'
@@ -60,7 +65,6 @@ def chat(message, conversation_history=None, stage_cb=None):
         return _llm.chat_via_gateway(MODEL, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.7)
 
     try:
-        sys.path.insert(0, '/home/seven/swarm/agents')
         from agents.skills_loop import run_skill_loop
         from agents.skill_intent import message_likely_needs_skills
     except ImportError:

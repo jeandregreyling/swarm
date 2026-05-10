@@ -18,13 +18,14 @@ import sqlite3
 import time
 from typing import Tuple
 
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _BIBLE_PATH = os.environ.get(
     'CODING_BIBLE_PATH',
-    '/home/seven/swarm/docs/CODING_BIBLE.md',
+    os.path.join(_SWARM_ROOT, 'docs', 'CODING_BIBLE.md'),
 )
 _DB_PATH = os.environ.get(
     'SWARM_MEMORY_DB',
-    '/home/seven/swarm/swarm_memory.db',
+    os.path.join(_SWARM_ROOT, 'swarm_memory.db'),
 )
 _DOC_NAME = 'docs/CODING_BIBLE.md'
 _CACHE_TTL = 30.0

@@ -16,8 +16,7 @@ Rules:
 """
 
 import sys
-_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, _SWARM_ROOT)
+sys.path.insert(0, '/home/seven/swarm')
 
 from database import get_connection, get_project_docs, log_activity
 from sandpits import write_proposal

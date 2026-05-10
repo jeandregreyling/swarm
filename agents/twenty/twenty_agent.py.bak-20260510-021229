@@ -3,12 +3,8 @@ agents/twenty/twenty_agent.py - Twenty (Qwen3.6)
 Local Qwen3.6 agent served via Ollama.
 """
 import logging, sys, re
-import os
-import sys
-_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, _SWARM_ROOT)
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
-
+sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
 logger = logging.getLogger('seven.twenty')
 AGENT_NAME = 'twenty'
 MODEL = 'qwen3.6:latest'

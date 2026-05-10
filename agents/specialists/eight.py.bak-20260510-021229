@@ -10,9 +10,7 @@ Eight is called by orchestrator when Gemma routes IS_SAP=yes.
 """
 
 import sys
-import os
-_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, _SWARM_ROOT)
+sys.path.insert(0, '/home/seven/swarm')
 
 from database import (log_message, save_agent_memory, get_agent_memory,
                       search_memory, promote_to_verified)

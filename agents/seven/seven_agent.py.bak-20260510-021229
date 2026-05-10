@@ -12,9 +12,8 @@ import os
 import random
 import sys
 
-_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, _SWARM_ROOT)
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
+sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, '/home/seven/swarm/utils')
 
 logger = logging.getLogger('seven.seven')
 AGENT_NAME = 'seven'

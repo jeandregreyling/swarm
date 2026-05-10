@@ -6,7 +6,9 @@ Developer Agent — system architect. Powered by Groq API.
 
 import logging
 import sys
-sys.path.insert(0, '/home/seven/swarm/utils')
+import os
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 
 logger = logging.getLogger('seven.nine')
 

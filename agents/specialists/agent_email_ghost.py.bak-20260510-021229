@@ -11,9 +11,7 @@ Reject  → optional feedback written to agent's private sandpit.
 """
 
 import sys
-import os
-_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, _SWARM_ROOT)
+sys.path.insert(0, '/home/seven/swarm')
 
 from email_handler import send_reply
 from config import GHOST_EMAIL

@@ -10,11 +10,8 @@ Stage callbacks stream progress to the Fridays chat UI in real time.
 
 import logging
 import sys
-import os
-_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, _SWARM_ROOT)
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "agents"))
-sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
+sys.path.insert(0, '/home/seven/swarm/utils')
+sys.path.insert(0, '/home/seven/swarm')
 
 logger = logging.getLogger('seven.scholar')
 
@@ -116,6 +113,7 @@ def chat(message, conversation_history=None, stage_cb=None):
     try:
         from agents.skills_loop import run_skill_loop
     except ImportError:
+        sys.path.insert(0, '/home/seven/swarm/agents')
         from skills_loop import run_skill_loop
 
     # Feed the message as an OpenAI-style messages list (system + user turns)
