@@ -212,6 +212,7 @@ _INSTALL_FILES: dict[str, tuple[str, str]] = {
     'hive_installer_core.py':    ('ops/install/hive_installer_core.py',      'text/x-python'),
     'hive_installer_gui.py':     ('ops/install/hive_installer_gui.py',       'text/x-python'),
     'swarm-hive.apk':            ('ops/install/android/swarm-hive.apk',      'application/vnd.android.package-archive'),
+    't':                         ('ops/install/termux_quick.sh',             'text/x-shellscript'),
     'README.md':                 ('ops/install/README.md',                   'text/markdown'),
 }
 

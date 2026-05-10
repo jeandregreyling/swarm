@@ -70,6 +70,21 @@
 - ALM: step `S-CB70C40EC4` added (doing), blackboard note `B-6CBADA78AB`, Watchdog lesson `WDL-D2CF8A24BD`.
 - `make bullshit` GREEN 97/100 (unchanged).
 - **Status:** Awaiting user to open `http://100.87.66.45:5050/api/hive/install/android` on Samsung tablet browser, download APK, install, open app, and tap Connect.
+
+**May 10, 2026 - POTATOFARM: Samsung S9 FE Connected + Telemetry Flowing**
+- **CRITICAL FIX:** `core/hive/contract.py` `validate_telemetry` rejected Android payloads with `thermal_pressure=None`. Android apps cannot read `/sys/class/thermal` (sandboxed). Validator now allows `None` per contract design rule #1. APK rebuilt with `AndroidSampler` sending `"nominal"` instead of `JSONObject.NULL`.
+- **Telemetry confirmed flowing** from `potato-2`:
+  - Capabilities: `inference.cpu`, `inference.tflite`, `inference.gpu`, **`inference.npu`**
+  - `npu_present: true` — Samsung NPU detected via Eden NN driver probe
+  - `gpu_present: true` — OpenGL ES 2.0+ confirmed
+  - CPU: 24.4% load, 32.4°C
+  - Battery: 100%, plugged in
+  - RAM: 5,427 MB total / 1,575 MB free
+- **Short Termux bootstrap:** `curl -fsSL 100.87.66.45:5050/api/hive/install/t | bash` (served as `ops/install/termux_quick.sh`)
+- **Monitor UI enhanced:** `_renderHiveCard` now shows colored capability badges (NPU=purple, GPU=blue, TFLite=green, CPU=orange) and hardware checkmarks on mobile cards.
+- **ALM:** Step `S-CB70C40EC4` marked `done`. Notes `B-6CBADA78AB`, `B-A0D1A107B9`. Watchdog lessons `WDL-D2CF8A24BD`, `WDL-AA2D503522`.
+- `make bullshit` GREEN 97/100 (unchanged).
+- **Next:** Termux task runner optional install, then MacBook M1 (potato-3), Windows DELL (potato-4), iPhone 17 Pro (potato-5).
 ## May 10, 2026 - Session Recovery: Action/Test/Clear Sweep
 - **Action:** Re-read P-308466EE76 project plan and confirmed every listed execution step is checked complete. No unchecked project-plan items remain in this Studio record.
 - **Test:** Re-confirmed `make bullshit` is GREEN 97/100 before this sweep; running direct focused pytest validation next, without output truncation.

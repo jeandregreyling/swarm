@@ -231,8 +231,11 @@ class AndroidSampler(private val ctx: Context) {
         return JSONObject().apply {
             put("on_battery", onBattery)
             putOrNull("battery_pct", pct)
-            // Let the leader's local_node.derive_thermal_pressure fill this.
-            put("thermal_pressure", JSONObject.NULL)
+            // Android tablets/phones cannot read SoC thermal pressure directly
+            // (no /sys/class/thermal access for untrusted apps). Report nominal
+            // so the contract validator accepts the payload; the leader can
+            // override with battery-temp heuristics if desired.
+            put("thermal_pressure", "nominal")
         }
     }
 

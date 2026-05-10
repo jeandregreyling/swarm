@@ -299,7 +299,7 @@ def validate_telemetry(payload: dict) -> None:
     if p.get('battery_pct') is not None:
         _require_pct(p, 'battery_pct', 'telemetry.power')
     tp = p.get('thermal_pressure')
-    if tp not in THERMAL_PRESSURE_LEVELS:
+    if tp is not None and tp not in THERMAL_PRESSURE_LEVELS:
         raise ContractError(
             f'telemetry.power.thermal_pressure: must be one of '
             f'{THERMAL_PRESSURE_LEVELS}, got {tp!r}'

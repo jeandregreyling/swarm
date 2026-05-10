@@ -463,6 +463,17 @@ function _renderHiveCard(node) {
     ? (m.ram_total_mb >= 1024 ? (m.ram_total_mb/1024).toFixed(1) + ' GB' : m.ram_total_mb + ' MB')
     : '—';
 
+  // Capability badges
+  const caps = (t.capabilities || []);
+  const capBadges = caps.map(cap => {
+    const color = cap.includes('npu') ? '#9c27b0'
+      : cap.includes('gpu') ? '#2196f3'
+      : cap.includes('tflite') ? '#4caf50'
+      : cap.includes('cpu') ? '#ff9800'
+      : 'var(--text-dim)';
+    return `<span style="display:inline-block;padding:1px 5px;border-radius:3px;background:${color}22;color:${color};border:1px solid ${color}55;font-size:8px;font-weight:600;margin-right:3px;margin-bottom:2px;">${_hiveEsc(cap.replace('inference.',''))}</span>`;
+  }).join('');
+
   // Mobile/Android layout: emphasise CPU load, RAM, battery (the data we
   // have); de-emphasise fan/temp (which are sandbox-null on stock Android).
   if (isMobile) {
@@ -473,16 +484,21 @@ function _renderHiveCard(node) {
     const swapStr = m.swap_used_mb != null && m.swap_used_mb > 0
       ? ` · swap ${Math.round(m.swap_used_mb)} MB` : '';
     const tempStr = c.cpu_peak_temp_c != null ? c.cpu_peak_temp_c + '°C' : null;
+    const npuBadge = c.npu_present ? '<span style="color:#9c27b0;font-weight:700;">NPU ✓</span>' : '';
+    const gpuBadge = c.gpu_present ? '<span style="color:#2196f3;font-weight:700;">GPU ✓</span>' : '';
     return `
       <div style="background:var(--card);border:1px solid ${stale ? '#f4433655' : 'var(--border)'};
                   border-radius:6px;padding:10px;font-size:10px;line-height:1.5;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
           <span style="width:8px;height:8px;border-radius:50%;background:${pColor};"></span>
           <strong style="font-size:11px;color:var(--text);">${platIcon} ${_hiveEsc(node.label || node.node_id)}</strong>
+          <span style="flex:1;"></span>
+          ${npuBadge}${npuBadge && gpuBadge ? ' · ' : ''}${gpuBadge}
         </div>
         <div style="color:var(--text-dim);font-size:9px;margin-bottom:6px;">
           ${_hiveEsc(node.platform || '')} · ${ageStr}
         </div>
+        <div style="margin-bottom:4px;">${capBadges}</div>
         <div>CPU load: <strong>${cpuLoadStr}</strong>${tempStr ? ` · ${tempStr}` : ''}</div>
         <div>RAM: <strong>${ramPct != null ? ramPct + '%' : '—'}</strong>
           ${m.ram_total_mb ? ` of ${ramTotalStr}` : ''}${swapStr}</div>
