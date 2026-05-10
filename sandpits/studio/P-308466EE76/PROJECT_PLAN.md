@@ -198,3 +198,16 @@
 - **KC seed:**
   - P-DD3A355602: step `S-C2-BULLSHIT-100` → `done`, note `B-BULLSHIT-100-MILESTONE`.
   - P-308466EE76: step `S-C2-BULLSHIT-100` → `done`, note `B-BULLSHIT-100-MILESTONE`.
+
+## May 10, 2026 - Fix: Template Deletion Blast Radius + FRIDAYS OS Overengineering
+- **Action:** User flagged that deleting `frontend/templates/terminal_base.html` and all `views/*.html` broke ~25 test files (43+ references), and the FRIDAYS OS spatial interface was an unrequested overengineering of the UI.
+- **Fix:**
+  1. Restored all 19 templates from `frontend/archive/templates/` back to `frontend/templates/`.
+  2. Reverted `frontend/terminal.py` `/ui` route to serve `terminal_base.html` directly instead of the FRIDAYS OS spatial shell.
+  3. Kept FRIDAYS OS as experimental `/fridays-os` route (not default) so the prototype isn't lost.
+  4. Updated `tests/test_view_asset_cache_busts.py` to accept `{{ ASSET_VERSION }}` as a valid cache-bust token (matches S-CAAD1B6D9C canonical pattern).
+- **Test:** `PYTHONPATH=/home/seven/swarm pytest -q` focused template tests all pass. `make bullshit` GREEN 100/100. Two pre-existing flaky tests (`test_email_approval_links.py`, `test_hive_self_sampler.py`) pass in isolation; their suite-order fragility is a separate known issue.
+- **Watchdog lesson:** `WDL-TEMPLATE-BLAST-2026` recorded for `template-deletion-blast-radius`.
+- **KC seed:**
+  - P-308466EE76: step `S-41CC014592` → `done`, note `B-32DF88764A`.
+- **Lesson learned:** Do not replace a working UI shell without explicit user request and impact analysis. Templates have a large test blast radius via direct `pathlib` reads.

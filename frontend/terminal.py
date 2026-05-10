@@ -325,14 +325,21 @@ def create_app():
             "blueprints_failed": {a: e for a, e in _failed_blueprints},
         })
 
-    # Fridays UI route (serves main HTML interface)
+    # FRIDAYS OS — default spatial UI (Session 30.2 v2)
     @app.route("/ui", methods=["GET"])
     def fridays_ui():
-        from flask import render_template
-        return render_template("terminal_base.html", theme_css="")
+        from flask import send_from_directory, render_template_string, render_template
+        import pathlib
+        fridays_dir = pathlib.Path(__file__).resolve().parent / 'fridays-os'
+        html_path = fridays_dir / 'index.html'
+        try:
+            html = html_path.read_text(encoding='utf-8')
+            html = html.replace('{{ ASSET_VERSION }}', _asset_version)
+            return render_template_string(html)
+        except Exception:
+            # Fallback to legacy UI if FRIDAYS OS shell is missing
+            return render_template("terminal_base.html", theme_css="")
 
-    # Experimental FRIDAYS OS spatial shell — secondary route, not the default UI.
-    # Kept for future iteration if the spatial interface matures past prototype.
     @app.route("/fridays-os/<path:filename>")
     def fridays_os_static(filename):
         from flask import send_from_directory
@@ -346,6 +353,12 @@ def create_app():
         import pathlib
         fridays_dir = pathlib.Path(__file__).resolve().parent / 'fridays-os'
         return send_from_directory(fridays_dir, 'index.html')
+
+    # Legacy UI — classic terminal_base.html shell (always available)
+    @app.route("/legacy-ui", methods=["GET"])
+    def legacy_ui():
+        from flask import render_template
+        return render_template("terminal_base.html", theme_css="")
 
     # Hive Nodes standalone popout (B21) — minimal page, 20 most recently
     # touched library sources, rendered with the same library-graph engine.

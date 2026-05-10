@@ -104,6 +104,23 @@
   }
   requestAnimationFrame(tickInput);
 
+  // ── Tooltip ───────────────────────────────────────────────────────────────
+  const tooltipEl = $('#orb-tooltip');
+  function showTooltip(el, id) {
+    if (!tooltipEl) return;
+    const orb = state.orbs.get(id);
+    const label = orb ? orb.label : id;
+    const status = orb ? orb.status : 'idle';
+    const rect = el.getBoundingClientRect();
+    tooltipEl.innerHTML = `<span class="tt-status ${status}"></span><strong>${label}</strong>`;
+    tooltipEl.style.left = `${rect.left + rect.width / 2 - tooltipEl.offsetWidth / 2}px`;
+    tooltipEl.style.top = `${rect.top - tooltipEl.offsetHeight - 10}px`;
+    tooltipEl.style.opacity = '1';
+  }
+  function hideTooltip() {
+    if (tooltipEl) tooltipEl.style.opacity = '0';
+  }
+
   // ── Orbs ──────────────────────────────────────────────────────────────────
   function createOrb(id, label, x, y, tier = 'local', status = 'idle') {
     const el = document.createElement('div');
@@ -119,6 +136,8 @@
       e.stopPropagation();
       focusOrb(id);
     });
+    el.addEventListener('mouseenter', () => showTooltip(el, id));
+    el.addEventListener('mouseleave', hideTooltip);
     universe.appendChild(el);
     state.orbs.set(id, { el, x, y, label, tier, status });
     return el;
@@ -260,75 +279,173 @@
     });
   }
 
+  // ── API ───────────────────────────────────────────────────────────────────
+  async function fetchAgents() {
+    try {
+      const res = await fetch('/api/agents/status');
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (e) {
+      console.warn('[FRIDAYS] agent fetch failed:', e);
+      return [];
+    }
+  }
+
+  // Store actual constellation centres after layout so nav ring can jump to them
+  const constellationCentres = {};
+
+  function tierToConstellation(tier) {
+    // Map DB tier → spatial constellation + colour
+    const map = {
+      local:    { name: 'Think Tank',   colour: 'rgba(0,255,136,0.12)',  cx: 480,  cy: 320 },
+      paid:     { name: 'Forge',        colour: 'rgba(0,229,255,0.12)',  cx: 480,  cy: 860 },
+      free:     { name: 'Observatory',  colour: 'rgba(200,180,255,0.12)', cx: 1260, cy: 320 },
+      service:  { name: 'Garden',       colour: 'rgba(255,170,0,0.12)',  cx: 1260, cy: 860 },
+    };
+    return map[tier] || map.local;
+  }
+
+  function layoutAgents(agents) {
+    // Group by constellation
+    const groups = {};
+    for (const a of agents) {
+      const t = (a.tier || 'local').toLowerCase();
+      if (!groups[t]) groups[t] = [];
+      groups[t].push(a);
+    }
+
+    const constellationOrbIds = {};
+    for (const [tier, list] of Object.entries(groups)) {
+      const cfg = tierToConstellation(tier);
+      if (!constellationOrbIds[cfg.name]) constellationOrbIds[cfg.name] = [];
+      // Spiral layout around constellation centre
+      const angleStep = (2 * Math.PI) / Math.max(list.length, 1);
+      const radius = 180;
+      list.forEach((a, i) => {
+        const angle = angleStep * i - Math.PI / 2;
+        const x = cfg.cx + Math.cos(angle) * radius;
+        const y = cfg.cy + Math.sin(angle) * radius;
+        const id = a.name.toLowerCase();
+        const status = a.status === 'busy' ? 'working' : (a.status === 'down' ? 'error' : (a.enabled === false ? 'disabled' : 'idle'));
+        createOrb(id, a.name, x, y, tier, status);
+        constellationOrbIds[cfg.name].push(id);
+        // Create/update surface with live data
+        createSurface(id, a.name, renderAgentSurface(a));
+      });
+      // Store actual centre for nav ring jumps
+      constellationCentres[cfg.name.toLowerCase().replace(/\s+/g, '-')] = { x: cfg.cx, y: cfg.cy };
+    }
+
+    // Draw constellation lines
+    requestAnimationFrame(() => {
+      for (const [name, ids] of Object.entries(constellationOrbIds)) {
+        const cfg = Object.values(tierToConstellation).find(c => c.name === name);
+        drawConstellation(name, ids, cfg?.colour || 'rgba(255,255,255,0.08)');
+      }
+      // Bridge constellation — hardcoded system nodes
+      createOrb('system-bridge', 'Bridge', 900, 580, 'service', 'active');
+      drawConstellation('Bridge', ['system-bridge'], 'rgba(255,255,255,0.08)');
+      constellationCentres['center'] = { x: 900, y: 580 };
+    });
+  }
+
+  function renderAgentSurface(a) {
+    const statusColor = a.status === 'busy' ? 'var(--success)' : (a.status === 'down' ? 'var(--error)' : 'var(--text-dim)');
+    const cbBadge = a.circuit_breaker && a.circuit_breaker !== 'closed'
+      ? `<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:var(--error);color:#fff;font-size:10px;font-weight:700;margin-left:8px;">CB ${a.circuit_breaker}</span>`
+      : '';
+    const lastSeen = a.last_seen
+      ? `<span style="color:var(--text-dim);font-size:11px;">· ${new Date(a.last_seen * 1000).toLocaleTimeString()}</span>`
+      : '';
+    return `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${statusColor};display:inline-block;box-shadow:0 0 8px ${statusColor};"></span>
+        <strong style="font-size:14px;">${a.name}</strong>
+        <span style="font-size:11px;color:var(--text-dim);text-transform:uppercase;">${a.tier}</span>
+        ${cbBadge}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;color:var(--text-dim);margin-bottom:10px;">
+        <div>Status: <strong style="color:var(--text);">${a.status}</strong></div>
+        <div>Active jobs: <strong style="color:var(--text);">${a.active_jobs || 0}</strong></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">Last seen ${lastSeen || '—'}</div>
+      <div style="display:flex;gap:6px;">
+        <a href="/legacy-ui#chat" target="_self" style="padding:5px 10px;border-radius:6px;background:var(--accent);color:#000;font-size:11px;font-weight:700;text-decoration:none;">Chat</a>
+        <a href="/legacy-ui#agents-config" target="_self" style="padding:5px 10px;border-radius:6px;background:var(--glass-border);color:var(--text);font-size:11px;text-decoration:none;border:1px solid var(--glass-border);">Config</a>
+      </div>
+    `;
+  }
+
+  // ── Live polling ───────────────────────────────────────────────────────────
+  async function refreshAgents() {
+    const agents = await fetchAgents();
+    if (!agents.length) return;
+    for (const a of agents) {
+      const id = a.name.toLowerCase();
+      const orb = state.orbs.get(id);
+      if (orb) {
+        const newStatus = a.status === 'busy' ? 'working' : (a.status === 'down' ? 'error' : (a.enabled === false ? 'disabled' : 'idle'));
+        if (orb.status !== newStatus) {
+          orb.status = newStatus;
+          const dot = orb.el.querySelector('.orb-status');
+          if (dot) dot.className = `orb-status ${newStatus}`;
+        }
+      }
+      // Update surface if it exists
+      const s = state.surfaces.get(id);
+      if (s) {
+        s.el.querySelector('.surface-body').innerHTML = renderAgentSurface(a);
+      }
+    }
+  }
+
   // ── Init ──────────────────────────────────────────────────────────────────
-  function init() {
+  async function init() {
     seedStars(250);
 
-    // Agent orbs — positioned in constellations
-    // Think Tank (top-left)
-    createOrb('gemma', 'Gemma', 400, 300, 'local', 'idle');
-    createOrb('qwen', 'Qwen', 520, 260, 'local', 'active');
-    createOrb('llama', 'Llama', 480, 400, 'local', 'idle');
-    createOrb('mistral', 'Mistral', 340, 380, 'local', 'idle');
-    createOrb('deepseek', 'DeepSeek', 580, 360, 'local', 'idle');
-    createOrb('duck', 'Duck', 620, 300, 'local', 'idle');
-    createOrb('sniffles', 'Sniffles', 420, 200, 'local', 'idle');
+    // First-visit welcome
+    const welcomeOverlay = $('#welcome-overlay');
+    try {
+      if (welcomeOverlay && !localStorage.getItem('fridays-os-welcome')) {
+        welcomeOverlay.style.display = 'flex';
+      }
+    } catch (e) {
+      /* localStorage may be blocked */ }
 
-    // Forge (bottom-left)
-    createOrb('nine', 'Nine', 400, 800, 'paid', 'idle');
-    createOrb('ten', 'Ten', 520, 840, 'paid', 'idle');
-    createOrb('eleven', 'Eleven', 480, 940, 'paid', 'idle');
-    createOrb('twelve', 'Twelve', 340, 920, 'paid', 'idle');
-    createOrb('thirteen', 'Thirteen', 580, 880, 'paid', 'idle');
+    const agents = await fetchAgents();
+    if (agents.length) {
+      layoutAgents(agents);
+    } else {
+      // Fallback: hardcoded demo layout when API is unreachable
+      createOrb('gemma', 'Gemma', 400, 300, 'local', 'idle');
+      createOrb('seven', 'Seven', 860, 600, 'service', 'active');
+      drawConstellation('Think Tank', ['gemma'], 'rgba(0,255,136,0.12)');
+      drawConstellation('Bridge', ['seven'], 'rgba(255,255,255,0.08)');
+      createSurface('gemma', 'Gemma', '<p style="color:var(--text-dim)">Offline — API unreachable</p>');
+      createSurface('seven', 'Seven', '<p style="color:var(--text-dim)">Offline — API unreachable</p>');
+    }
 
-    // Observatory (top-right)
-    createOrb('scholar', 'Scholar', 1200, 300, 'free', 'idle');
-    createOrb('seeker', 'Seeker', 1320, 260, 'free', 'idle');
-    createOrb('librarian', 'Librarian', 1280, 400, 'free', 'idle');
-
-    // Garden (bottom-right)
-    createOrb('ghost', 'Ghost', 1200, 800, 'service', 'active');
-    createOrb('fridays', 'Fridays', 1320, 840, 'service', 'active');
-    createOrb('watchdog', 'Watchdog', 1280, 940, 'service', 'working');
-
-    // Bridge (centre)
-    createOrb('seven', 'Seven', 860, 600, 'service', 'active');
-    createOrb('eight', 'Eight', 980, 560, 'local', 'idle');
-    createOrb('vortex', 'Vortex', 940, 680, 'service', 'active');
-
-    // Constellations
-    requestAnimationFrame(() => {
-      drawConstellation('Think Tank', ['gemma', 'qwen', 'llama', 'mistral', 'deepseek', 'duck', 'sniffles'], 'rgba(0,255,136,0.12)');
-      drawConstellation('Forge', ['nine', 'ten', 'eleven', 'twelve', 'thirteen'], 'rgba(0,229,255,0.12)');
-      drawConstellation('Observatory', ['scholar', 'seeker', 'librarian'], 'rgba(200,180,255,0.12)');
-      drawConstellation('Garden', ['ghost', 'fridays', 'watchdog'], 'rgba(255,170,0,0.12)');
-      drawConstellation('Bridge', ['seven', 'eight', 'vortex'], 'rgba(255,255,255,0.08)');
-    });
-
-    // Surfaces (placeholder content — API-backed in production)
-    createSurface('gemma', 'Gemma', '<p>Local Ollama agent. Model: gemma3:latest</p><p>Status: idle</p>');
-    createSurface('qwen', 'Qwen', '<p>Local Ollama agent. Model: qwen2.5:latest</p><p>Status: active</p>');
-    createSurface('seven', 'Seven', '<p>System orchestrator. Perception + memory + reasoning.</p><p>Status: online</p>');
-    createSurface('watchdog', 'Watchdog', '<p>Self-healing monitor. Circuit breaker active.</p><p>Status: working</p>');
-
-    // Navigation ring handlers
+    // Navigation ring handlers — jump to actual constellation centres
     document.querySelectorAll('.nav-orb').forEach((btn) => {
       btn.addEventListener('click', () => {
         const nav = btn.dataset.nav;
         setNavActive(nav);
-        if (nav === 'center') animateCameraTo(800, 500, 0, 1);
-        if (nav === 'think-tank') animateCameraTo(480, 320, 0, 1.2);
-        if (nav === 'forge') animateCameraTo(480, 860, 0, 1.2);
-        if (nav === 'observatory') animateCameraTo(1260, 320, 0, 1.2);
-        if (nav === 'garden') animateCameraTo(1260, 860, 0, 1.2);
+        const centre = constellationCentres[nav];
+        if (centre) {
+          const targetX = centre.x - window.innerWidth / 2 + 32;
+          const targetY = centre.y - window.innerHeight / 2 + 32;
+          animateCameraTo(targetX, targetY, 0, 1.2);
+        }
       });
     });
+
+    // Start live polling (10s)
+    setInterval(refreshAgents, 10000);
 
     // Hide loader
     setTimeout(() => {
       loader.classList.add('hidden');
-      // Initial camera position — centre on Bridge
-      animateCameraTo(800, 500, 0, 1);
+      animateCameraTo(900, 580, 0, 1);
     }, 600);
   }
 
