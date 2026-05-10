@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-05-10 02:13*
+*Auto-generated: 2026-05-10 22:03*
 
 
 ## Python Modules
@@ -48,6 +48,7 @@
 | `utils/governance.py` | utils/governance.py — Central proposal governance engine. |
 | `utils/intent_classifier.py` | Intent classifier for agentic chat routing (Phase 8.0). |
 | `utils/load_project_docs.py` | load_project_docs.py — Seven's Swarm |
+| `utils/meltdown_detector.py` | Meltdown detector — self-healing triage for the swarm. |
 | `utils/model_selector.py` | Model selector for agentic chat routing (Phase 8.0 — Chunk 8E). |
 | `utils/node_discovery.py` | utils/node_discovery.py — Node discovery + heartbeat + event relay (A.5.1, D.2, D.3) |
 | `utils/notification_prefs.py` | Notification channel preferences (S-859446F555). |
@@ -99,6 +100,7 @@
 | `core/hive/providers/windows.py` | core.hive.providers.windows — Windows telemetry provider. |
 | `core/hive/registry.py` | core.hive.registry — persistent node registry. |
 | `core/hive/self_sampler.py` | core.hive.self_sampler — leader-side daemon that samples THIS host. |
+| `core/hive/termux_runner.py` | core.hive.termux_runner — Python task executor for Android (Termux). |
 | `core/integration_dashboard.py` | core.integration_dashboard — aggregate tile for the Studio |
 | `core/interests_bridge.py` | core.interests_bridge — small surface for the Tasker UI bridge and |
 | `core/kill_switch.py` | KILL SWITCHES — Emergency control agents via Telegram/Discord |
@@ -109,6 +111,7 @@
 | `core/knowledge/scripts.py` | core.knowledge.scripts — Knowledge Center's test-lab script registry. |
 | `core/knowledge/test_runs.py` | core.knowledge.test_runs — Session 30: ALM-style test run history. |
 | `core/llm.py` | core/llm.py — Single Ollama gateway for the entire swarm. |
+| `core/market_watch.py` | Money Hub newsletter generation. |
 | `core/media_center/__init__.py` | — |
 | `core/media_center/framework.py` | Media Center framework helpers. |
 | `core/model_runtime_gateway.py` | Fridays-owned local model runtime gateway. |
@@ -250,7 +253,7 @@
 | `fan` | 2 | blueprints/fan.py — CPU temperature + fan mode API. |
 | `feeds_bp` | 5 | blueprints/feeds_bp.py — Feeds subscription CRUD + poll. |
 | `financial_bp` | 5 | Financial Analytics pillar — investment-banking oriented. |
-| `git` | 6 | git.py — Git Operations routes |
+| `git` | 11 | git.py — Git Operations routes |
 | `gmail_labels` | 2 | frontend/blueprints/gmail_labels.py — Gmail label sync for Email folders. |
 | `health` | 2 | Unified system health aggregator. |
 | `health_bp` | 4 | Health digest API blueprint — one-stop-shop system visibility. |
@@ -309,13 +312,13 @@
 | Module | Size |
 |--------|------|
 | `access.js` | 114.8 KB |
-| `chat.js` | 286.2 KB |
+| `chat.js` | 286.5 KB |
 | `conversations.js` | 15.8 KB |
 | `diamond.js` | 39.6 KB |
 | `docs.js` | 24.6 KB |
 | `email.js` | 47.8 KB |
 | `files.js` | 47.6 KB |
-| `git.js` | 24.1 KB |
+| `git.js` | 30.9 KB |
 | `guide.js` | 7.9 KB |
 | `health-digest.js` | 8.2 KB |
 | `hive-nodes.js` | 2.7 KB |
@@ -330,13 +333,14 @@
 | `memory-landscape.js` | 9.6 KB |
 | `memory.js` | 30.3 KB |
 | `money-hub.js` | 6.8 KB |
-| `monitor.js` | 33.7 KB |
+| `monitor.js` | 34.6 KB |
 | `ollama.js` | 4.1 KB |
 | `onboarding.js` | 18.2 KB |
 | `orbs.js` | 93.0 KB |
 | `orientation_card.js` | 2.3 KB |
 | `pillar_live.js` | 13.1 KB |
-| `projects.js` | 53.7 KB |
+| `potato-farm.js` | 9.7 KB |
+| `projects.js` | 57.9 KB |
 | `records-files.js` | 8.7 KB |
 | `services.js` | 5.0 KB |
 | `skills.js` | 26.2 KB |
@@ -359,7 +363,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 58225 |
+| `activity_log` | 62579 |
 | `agent_capabilities` | 169 |
 | `agent_capability_scores` | 18 |
 | `agent_diary` | 0 |
@@ -368,50 +372,50 @@
 | `app_builds` | 0 |
 | `app_project_targets` | 0 |
 | `app_projects` | 0 |
-| `approval_tokens` | 772 |
-| `audit_results` | 53 |
+| `approval_tokens` | 794 |
+| `audit_results` | 54 |
 | `business_ledger` | 0 |
-| `change_runs` | 44 |
-| `chat_jobs` | 745 |
-| `chat_relay_recoveries` | 17 |
+| `change_runs` | 45 |
+| `chat_jobs` | 803 |
+| `chat_relay_recoveries` | 75 |
 | `claude_log` | 1 |
-| `conv_timeline` | 2856 |
-| `conversations` | 432 |
-| `council_output` | 16479 |
+| `conv_timeline` | 4660 |
+| `conversations` | 117 |
+| `council_output` | 18685 |
 | `curiosity_questions` | 5 |
 | `cyber_audit_events` | 0 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 85717 |
+| `decisions` | 93628 |
 | `deferred_items` | 0 |
-| `duck_log` | 1075 |
-| `email_delivery_log` | 35 |
+| `duck_log` | 1155 |
+| `email_delivery_log` | 41 |
 | `email_retry_queue` | 0 |
 | `enrollment_invites` | 0 |
-| `feed_subscriptions` | 40 |
+| `feed_subscriptions` | 43 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `financial_positions` | 0 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 5101 |
+| `ghost_circle` | 5404 |
 | `gmail_labels_cache` | 0 |
 | `governance_log` | 431 |
-| `kc_media_curriculum` | 58 |
+| `kc_media_curriculum` | 59 |
 | `kc_media_trace` | 12 |
-| `knowledge_chunks` | 1731 |
-| `knowledge_sources` | 139 |
+| `knowledge_chunks` | 1737 |
+| `knowledge_sources` | 145 |
 | `media_items` | 1 |
 | `media_jobs` | 1 |
 | `media_providers` | 7 |
 | `media_runs` | 183 |
-| `memory` | 153 |
+| `memory` | 171 |
 | `memory_eight` | 2 |
-| `memory_gemma` | 0 |
+| `memory_gemma` | 11 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
-| `memory_llama` | 0 |
+| `memory_llama` | 3 |
 | `memory_mistral` | 2 |
 | `memory_nine` | 1 |
 | `memory_qwen` | 1 |
@@ -421,39 +425,39 @@
 | `memory_ten` | 64 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `memory_twenty` | 474 |
-| `messages` | 951 |
+| `memory_twenty` | 484 |
+| `messages` | 256 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
 | `notification_channel_prefs` | 0 |
-| `notification_senders` | 8 |
+| `notification_senders` | 10 |
 | `orientation_seen` | 1 |
 | `pending_emails` | 8 |
-| `project_blackboard_notes` | 64 |
+| `project_blackboard_notes` | 121 |
 | `project_doc_versions` | 375 |
-| `project_docs` | 317 |
+| `project_docs` | 319 |
 | `project_step_deps` | 0 |
-| `project_step_evidence` | 29 |
-| `project_steps` | 942 |
-| `project_test_cases` | 373 |
-| `projects` | 50 |
+| `project_step_evidence` | 457 |
+| `project_steps` | 1114 |
+| `project_test_cases` | 483 |
+| `projects` | 62 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 23 |
-| `queue` | 2012 |
-| `research_evidence` | 1135 |
-| `research_sessions` | 63 |
-| `sandpit_log` | 594 |
-| `scheduled_tasks` | 22 |
+| `queue` | 2118 |
+| `research_evidence` | 1243 |
+| `research_sessions` | 69 |
+| `sandpit_log` | 644 |
+| `scheduled_tasks` | 23 |
 | `service_heartbeat` | 0 |
 | `settings_email_account_prefs` | 1 |
 | `settings_email_accounts` | 0 |
 | `settings_sysmod` | 2 |
-| `seven_attention` | 2460 |
-| `seven_beliefs` | 5375 |
+| `seven_attention` | 3590 |
+| `seven_beliefs` | 8091 |
 | `seven_callouts` | 9 |
 | `seven_concepts` | 9 |
-| `seven_episodes` | 13204 |
+| `seven_episodes` | 18626 |
 | `seven_learnings` | 1 |
 | `seven_settings` | 0 |
 | `skills` | 47 |
@@ -464,26 +468,26 @@
 | `studio_evidence` | 1 |
 | `sudo_command_whitelist` | 5 |
 | `swarm_bus` | 431 |
-| `swarm_event_acks` | 328 |
-| `swarm_events` | 54 |
+| `swarm_event_acks` | 399 |
+| `swarm_events` | 67 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 54 |
+| `swarm_knowledge` | 67 |
 | `swarm_nodes` | 0 |
 | `synth_board_projects` | 24 |
 | `synth_board_revisions` | 7 |
-| `system_stats` | 12142 |
-| `task_run_log` | 4731 |
+| `system_stats` | 12380 |
+| `task_run_log` | 5108 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
-| `test_runs` | 200 |
-| `ticket_notes` | 829 |
-| `tickets` | 842 |
-| `time_checkpoints` | 7903 |
-| `time_events` | 153679 |
-| `time_journal` | 143958 |
-| `time_machine` | 8592 |
+| `test_runs` | 201 |
+| `ticket_notes` | 909 |
+| `tickets` | 922 |
+| `time_checkpoints` | 8228 |
+| `time_events` | 155869 |
+| `time_journal` | 145823 |
+| `time_machine` | 8817 |
 | `tool_builds` | 0 |
-| `trace_events` | 3506 |
+| `trace_events` | 8031 |
 | `trading_signals` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
@@ -495,12 +499,12 @@
 | `user_skill_permissions` | 3 |
 | `video_render_jobs` | 10 |
 | `video_timelines` | 25 |
-| `watchdog_repair_lessons` | 3 |
-| `watched_topic_evidence` | 176 |
+| `watchdog_repair_lessons` | 38 |
+| `watched_topic_evidence` | 189 |
 | `watched_topic_settings` | 0 |
 | `watcher_topic_last_seen` | 0 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 160 |
+| `work_proposals` | 167 |
 
 ## Agents
 

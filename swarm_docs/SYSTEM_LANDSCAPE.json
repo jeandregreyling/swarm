@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-10 02:13",
+  "generated_at": "2026-05-10 22:02",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -190,6 +190,11 @@
       "path": "utils/load_project_docs.py",
       "group": "Utils",
       "description": "load_project_docs.py \u2014 Seven's Swarm"
+    },
+    {
+      "path": "utils/meltdown_detector.py",
+      "group": "Utils",
+      "description": "Meltdown detector \u2014 self-healing triage for the swarm."
     },
     {
       "path": "utils/model_selector.py",
@@ -422,6 +427,11 @@
       "description": "core.hive.self_sampler \u2014 leader-side daemon that samples THIS host."
     },
     {
+      "path": "core/hive/termux_runner.py",
+      "group": "Core",
+      "description": "core.hive.termux_runner \u2014 Python task executor for Android (Termux)."
+    },
+    {
       "path": "core/integration_dashboard.py",
       "group": "Core",
       "description": "core.integration_dashboard \u2014 aggregate tile for the Studio"
@@ -470,6 +480,11 @@
       "path": "core/llm.py",
       "group": "Core",
       "description": "core/llm.py \u2014 Single Ollama gateway for the entire swarm."
+    },
+    {
+      "path": "core/market_watch.py",
+      "group": "Core",
+      "description": "Money Hub newsletter generation."
     },
     {
       "path": "core/media_center/__init__.py",
@@ -2153,6 +2168,36 @@
           ]
         },
         {
+          "path": "/api/git/branches",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/git/checkout",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/git/fetch",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/git/pull",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
+          "path": "/api/git/push",
+          "methods": [
+            "POST"
+          ]
+        },
+        {
           "path": "/api/git/diff",
           "methods": [
             "GET"
@@ -2177,7 +2222,7 @@
           ]
         }
       ],
-      "route_count": 6
+      "route_count": 11
     },
     {
       "name": "gmail_labels",
@@ -4777,7 +4822,7 @@
     },
     {
       "name": "chat.js",
-      "size_kb": 286.2
+      "size_kb": 286.5
     },
     {
       "name": "conversations.js",
@@ -4801,7 +4846,7 @@
     },
     {
       "name": "git.js",
-      "size_kb": 24.1
+      "size_kb": 30.9
     },
     {
       "name": "guide.js",
@@ -4861,7 +4906,7 @@
     },
     {
       "name": "monitor.js",
-      "size_kb": 33.7
+      "size_kb": 34.6
     },
     {
       "name": "ollama.js",
@@ -4884,8 +4929,12 @@
       "size_kb": 13.1
     },
     {
+      "name": "potato-farm.js",
+      "size_kb": 9.7
+    },
+    {
       "name": "projects.js",
-      "size_kb": 53.7
+      "size_kb": 57.9
     },
     {
       "name": "records-files.js",
@@ -4959,7 +5008,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 58225
+      "rows": 62579
     },
     {
       "name": "agent_capabilities",
@@ -4995,11 +5044,11 @@
     },
     {
       "name": "approval_tokens",
-      "rows": 772
+      "rows": 794
     },
     {
       "name": "audit_results",
-      "rows": 53
+      "rows": 54
     },
     {
       "name": "business_ledger",
@@ -5007,15 +5056,15 @@
     },
     {
       "name": "change_runs",
-      "rows": 44
+      "rows": 45
     },
     {
       "name": "chat_jobs",
-      "rows": 745
+      "rows": 803
     },
     {
       "name": "chat_relay_recoveries",
-      "rows": 17
+      "rows": 75
     },
     {
       "name": "claude_log",
@@ -5023,15 +5072,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 2856
+      "rows": 4660
     },
     {
       "name": "conversations",
-      "rows": 432
+      "rows": 117
     },
     {
       "name": "council_output",
-      "rows": 16479
+      "rows": 18685
     },
     {
       "name": "curiosity_questions",
@@ -5059,7 +5108,7 @@
     },
     {
       "name": "decisions",
-      "rows": 85717
+      "rows": 93628
     },
     {
       "name": "deferred_items",
@@ -5067,11 +5116,11 @@
     },
     {
       "name": "duck_log",
-      "rows": 1075
+      "rows": 1155
     },
     {
       "name": "email_delivery_log",
-      "rows": 35
+      "rows": 41
     },
     {
       "name": "email_retry_queue",
@@ -5083,7 +5132,7 @@
     },
     {
       "name": "feed_subscriptions",
-      "rows": 40
+      "rows": 43
     },
     {
       "name": "file_versions",
@@ -5103,7 +5152,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 5101
+      "rows": 5404
     },
     {
       "name": "gmail_labels_cache",
@@ -5115,7 +5164,7 @@
     },
     {
       "name": "kc_media_curriculum",
-      "rows": 58
+      "rows": 59
     },
     {
       "name": "kc_media_trace",
@@ -5123,11 +5172,11 @@
     },
     {
       "name": "knowledge_chunks",
-      "rows": 1731
+      "rows": 1737
     },
     {
       "name": "knowledge_sources",
-      "rows": 139
+      "rows": 145
     },
     {
       "name": "media_items",
@@ -5147,7 +5196,7 @@
     },
     {
       "name": "memory",
-      "rows": 153
+      "rows": 171
     },
     {
       "name": "memory_eight",
@@ -5155,7 +5204,7 @@
     },
     {
       "name": "memory_gemma",
-      "rows": 0
+      "rows": 11
     },
     {
       "name": "memory_ghost_coder",
@@ -5167,7 +5216,7 @@
     },
     {
       "name": "memory_llama",
-      "rows": 0
+      "rows": 3
     },
     {
       "name": "memory_mistral",
@@ -5207,11 +5256,11 @@
     },
     {
       "name": "memory_twenty",
-      "rows": 474
+      "rows": 484
     },
     {
       "name": "messages",
-      "rows": 951
+      "rows": 256
     },
     {
       "name": "moderators",
@@ -5231,7 +5280,7 @@
     },
     {
       "name": "notification_senders",
-      "rows": 8
+      "rows": 10
     },
     {
       "name": "orientation_seen",
@@ -5243,7 +5292,7 @@
     },
     {
       "name": "project_blackboard_notes",
-      "rows": 64
+      "rows": 121
     },
     {
       "name": "project_doc_versions",
@@ -5251,7 +5300,7 @@
     },
     {
       "name": "project_docs",
-      "rows": 317
+      "rows": 319
     },
     {
       "name": "project_step_deps",
@@ -5259,19 +5308,19 @@
     },
     {
       "name": "project_step_evidence",
-      "rows": 29
+      "rows": 457
     },
     {
       "name": "project_steps",
-      "rows": 942
+      "rows": 1114
     },
     {
       "name": "project_test_cases",
-      "rows": 373
+      "rows": 483
     },
     {
       "name": "projects",
-      "rows": 50
+      "rows": 62
     },
     {
       "name": "proposal_attachments",
@@ -5283,23 +5332,23 @@
     },
     {
       "name": "queue",
-      "rows": 2012
+      "rows": 2118
     },
     {
       "name": "research_evidence",
-      "rows": 1135
+      "rows": 1243
     },
     {
       "name": "research_sessions",
-      "rows": 63
+      "rows": 69
     },
     {
       "name": "sandpit_log",
-      "rows": 594
+      "rows": 644
     },
     {
       "name": "scheduled_tasks",
-      "rows": 22
+      "rows": 23
     },
     {
       "name": "service_heartbeat",
@@ -5319,11 +5368,11 @@
     },
     {
       "name": "seven_attention",
-      "rows": 2460
+      "rows": 3590
     },
     {
       "name": "seven_beliefs",
-      "rows": 5375
+      "rows": 8091
     },
     {
       "name": "seven_callouts",
@@ -5335,7 +5384,7 @@
     },
     {
       "name": "seven_episodes",
-      "rows": 13204
+      "rows": 18626
     },
     {
       "name": "seven_learnings",
@@ -5379,11 +5428,11 @@
     },
     {
       "name": "swarm_event_acks",
-      "rows": 328
+      "rows": 399
     },
     {
       "name": "swarm_events",
-      "rows": 54
+      "rows": 67
     },
     {
       "name": "swarm_globals",
@@ -5391,7 +5440,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 54
+      "rows": 67
     },
     {
       "name": "swarm_nodes",
@@ -5407,11 +5456,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 12142
+      "rows": 12380
     },
     {
       "name": "task_run_log",
-      "rows": 4731
+      "rows": 5108
     },
     {
       "name": "terminal_shortcuts",
@@ -5423,31 +5472,31 @@
     },
     {
       "name": "test_runs",
-      "rows": 200
+      "rows": 201
     },
     {
       "name": "ticket_notes",
-      "rows": 829
+      "rows": 909
     },
     {
       "name": "tickets",
-      "rows": 842
+      "rows": 922
     },
     {
       "name": "time_checkpoints",
-      "rows": 7903
+      "rows": 8228
     },
     {
       "name": "time_events",
-      "rows": 153679
+      "rows": 155869
     },
     {
       "name": "time_journal",
-      "rows": 143958
+      "rows": 145823
     },
     {
       "name": "time_machine",
-      "rows": 8592
+      "rows": 8817
     },
     {
       "name": "tool_builds",
@@ -5455,7 +5504,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 3506
+      "rows": 8031
     },
     {
       "name": "trading_signals",
@@ -5503,11 +5552,11 @@
     },
     {
       "name": "watchdog_repair_lessons",
-      "rows": 3
+      "rows": 38
     },
     {
       "name": "watched_topic_evidence",
-      "rows": 176
+      "rows": 189
     },
     {
       "name": "watched_topic_settings",
@@ -5523,7 +5572,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 160
+      "rows": 167
     }
   ],
   "agents": [
@@ -6093,6 +6142,10 @@
       "file": "frontend/templates/terminal_base.html"
     },
     {
+      "id": "theme-picker-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
       "id": "chat-new-thread-btn",
       "file": "frontend/templates/terminal_base.html"
     },
@@ -6178,6 +6231,18 @@
     },
     {
       "id": "agents-tab-localai",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "git-checkout-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "git-pull-btn",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "git-push-btn",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -6334,6 +6399,10 @@
     },
     {
       "class": "hc-panel-close",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "class": "theme-picker-item",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -8209,6 +8278,38 @@
       "file": "frontend/static/js/views/orbs.js"
     },
     {
+      "id": "pfarm-grid",
+      "file": "frontend/static/js/views/potato-farm.js"
+    },
+    {
+      "id": "pfarm-meta",
+      "file": "frontend/static/js/views/potato-farm.js"
+    },
+    {
+      "id": "pfarm-target-node",
+      "file": "frontend/static/js/views/potato-farm.js"
+    },
+    {
+      "id": "pfarm-git-status",
+      "file": "frontend/static/js/views/potato-farm.js"
+    },
+    {
+      "id": "pfarm-task-type",
+      "file": "frontend/static/js/views/potato-farm.js"
+    },
+    {
+      "id": "pfarm-task-payload",
+      "file": "frontend/static/js/views/potato-farm.js"
+    },
+    {
+      "id": "pfarm-dispatch-status",
+      "file": "frontend/static/js/views/potato-farm.js"
+    },
+    {
+      "id": "pfarm-log",
+      "file": "frontend/static/js/views/potato-farm.js"
+    },
+    {
       "id": "trace-conv-id",
       "file": "frontend/static/js/views/trace.js"
     },
@@ -8578,6 +8679,14 @@
     },
     {
       "id": "projects-detail",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "projects-git-status",
+      "file": "frontend/static/js/views/projects.js"
+    },
+    {
+      "id": "projects-branch-select",
       "file": "frontend/static/js/views/projects.js"
     },
     {
