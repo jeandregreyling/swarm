@@ -13,7 +13,9 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'utils'))
 sys.path.insert(0, str(ROOT / 'core' / 'pipeline'))
 
-sys.modules.pop('services', None)
+for _mod in ('database', 'frontend', 'frontend.services', 'frontend.terminal',
+             'services', 'terminal', 'utils.database'):
+    sys.modules.pop(_mod, None)
 from frontend.terminal import create_app
 
 app = create_app()

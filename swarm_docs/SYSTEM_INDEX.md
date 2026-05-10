@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-05-10 22:03*
+*Auto-generated: 2026-05-10 22:20*
 
 
 ## Python Modules
@@ -363,7 +363,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 62579 |
+| `activity_log` | 62620 |
 | `agent_capabilities` | 169 |
 | `agent_capability_scores` | 18 |
 | `agent_diary` | 0 |
@@ -372,15 +372,15 @@
 | `app_builds` | 0 |
 | `app_project_targets` | 0 |
 | `app_projects` | 0 |
-| `approval_tokens` | 794 |
+| `approval_tokens` | 799 |
 | `audit_results` | 54 |
 | `business_ledger` | 0 |
-| `change_runs` | 45 |
-| `chat_jobs` | 803 |
-| `chat_relay_recoveries` | 75 |
+| `change_runs` | 46 |
+| `chat_jobs` | 805 |
+| `chat_relay_recoveries` | 77 |
 | `claude_log` | 1 |
-| `conv_timeline` | 4660 |
-| `conversations` | 117 |
+| `conv_timeline` | 4668 |
+| `conversations` | 125 |
 | `council_output` | 18685 |
 | `curiosity_questions` | 5 |
 | `cyber_audit_events` | 0 |
@@ -388,21 +388,21 @@
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 93628 |
+| `decisions` | 93631 |
 | `deferred_items` | 0 |
-| `duck_log` | 1155 |
+| `duck_log` | 1157 |
 | `email_delivery_log` | 41 |
 | `email_retry_queue` | 0 |
 | `enrollment_invites` | 0 |
-| `feed_subscriptions` | 43 |
+| `feed_subscriptions` | 44 |
 | `file_versions` | 4 |
 | `file_writes` | 4 |
 | `financial_positions` | 0 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 5404 |
+| `ghost_circle` | 5417 |
 | `gmail_labels_cache` | 0 |
 | `governance_log` | 431 |
-| `kc_media_curriculum` | 59 |
+| `kc_media_curriculum` | 60 |
 | `kc_media_trace` | 12 |
 | `knowledge_chunks` | 1737 |
 | `knowledge_sources` | 145 |
@@ -410,9 +410,9 @@
 | `media_jobs` | 1 |
 | `media_providers` | 7 |
 | `media_runs` | 183 |
-| `memory` | 171 |
+| `memory` | 173 |
 | `memory_eight` | 2 |
-| `memory_gemma` | 11 |
+| `memory_gemma` | 12 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
 | `memory_llama` | 3 |
@@ -426,7 +426,7 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 484 |
-| `messages` | 256 |
+| `messages` | 276 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -438,26 +438,26 @@
 | `project_doc_versions` | 375 |
 | `project_docs` | 319 |
 | `project_step_deps` | 0 |
-| `project_step_evidence` | 457 |
-| `project_steps` | 1114 |
-| `project_test_cases` | 483 |
-| `projects` | 62 |
+| `project_step_evidence` | 462 |
+| `project_steps` | 1140 |
+| `project_test_cases` | 513 |
+| `projects` | 64 |
 | `proposal_attachments` | 0 |
-| `proposal_projects` | 23 |
-| `queue` | 2118 |
+| `proposal_projects` | 25 |
+| `queue` | 2135 |
 | `research_evidence` | 1243 |
 | `research_sessions` | 69 |
-| `sandpit_log` | 644 |
+| `sandpit_log` | 646 |
 | `scheduled_tasks` | 23 |
 | `service_heartbeat` | 0 |
 | `settings_email_account_prefs` | 1 |
 | `settings_email_accounts` | 0 |
 | `settings_sysmod` | 2 |
-| `seven_attention` | 3590 |
-| `seven_beliefs` | 8091 |
+| `seven_attention` | 3717 |
+| `seven_beliefs` | 8357 |
 | `seven_callouts` | 9 |
 | `seven_concepts` | 9 |
-| `seven_episodes` | 18626 |
+| `seven_episodes` | 19960 |
 | `seven_learnings` | 1 |
 | `seven_settings` | 0 |
 | `skills` | 47 |
@@ -468,26 +468,26 @@
 | `studio_evidence` | 1 |
 | `sudo_command_whitelist` | 5 |
 | `swarm_bus` | 431 |
-| `swarm_event_acks` | 399 |
-| `swarm_events` | 67 |
+| `swarm_event_acks` | 405 |
+| `swarm_events` | 70 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 67 |
+| `swarm_knowledge` | 70 |
 | `swarm_nodes` | 0 |
 | `synth_board_projects` | 24 |
 | `synth_board_revisions` | 7 |
-| `system_stats` | 12380 |
-| `task_run_log` | 5108 |
+| `system_stats` | 12383 |
+| `task_run_log` | 5114 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
-| `test_runs` | 201 |
-| `ticket_notes` | 909 |
-| `tickets` | 922 |
-| `time_checkpoints` | 8228 |
-| `time_events` | 155869 |
+| `test_runs` | 202 |
+| `ticket_notes` | 911 |
+| `tickets` | 924 |
+| `time_checkpoints` | 8230 |
+| `time_events` | 155871 |
 | `time_journal` | 145823 |
-| `time_machine` | 8817 |
+| `time_machine` | 8826 |
 | `tool_builds` | 0 |
-| `trace_events` | 8031 |
+| `trace_events` | 8771 |
 | `trading_signals` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
@@ -504,7 +504,7 @@
 | `watched_topic_settings` | 0 |
 | `watcher_topic_last_seen` | 0 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 167 |
+| `work_proposals` | 184 |
 
 ## Agents
 
