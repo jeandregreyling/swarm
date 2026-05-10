@@ -4324,7 +4324,7 @@ function _appendChatBubble(sender, text, opts = {}) {
       <button class="chat-action-btn" data-resend-text="${localText}" data-resend-agents="${selectedAgentsCsv}" onclick="resendUserMessage(this.dataset.resendText, this.dataset.resendAgents)">Resend</button>
       ${opts.editable && opts.messageId && opts.conversationId
         ? `<button class="chat-action-btn" onclick="editOwnPrompt(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Change</button>
-           <button class="chat-action-btn" onclick="deleteOwnPrompt(${Number(opts.conversationId)}, ${Number(opts.messageId)})">Delete</button>`
+           <button class="chat-action-btn" style="padding:2px 6px;color:#f44336;border-color:#f4433660;" onclick="deleteOwnPrompt(${Number(opts.conversationId)}, ${Number(opts.messageId)}, event)" title="Delete message"><svg viewBox="0 0 16 16" width="11" height="11" fill="none"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4l.5 9a1 1 0 001 1h4a1 1 0 001-1l.5-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`
         : `<button class="chat-action-btn" data-revise-text="${localText}" onclick="revisePromptDraft(this.dataset.reviseText)">Change Text</button>`}
     </div>`
     : '';

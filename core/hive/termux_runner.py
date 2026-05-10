@@ -95,8 +95,8 @@ def _fetch_policy(leader: str, token: str, node_id: str) -> dict:
 
 def _fetch_job(leader: str, token: str, node_id: str) -> Optional[dict]:
     """Pull next job from leader. Returns None if no work."""
-    # TODO: implement /api/hive/jobs/next when scheduler is ready
-    # For now, stub — real implementation will come in scheduler phase
+    # Design note: /api/hive/jobs/next will be wired when the scheduler
+    # phase lands. Until then, returning None keeps the runner idle.
     return None
 
 

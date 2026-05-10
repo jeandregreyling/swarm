@@ -822,3 +822,139 @@ def test_project_context_block_adds_studio_project_pack(monkeypatch):
     assert 'Relay recovery backend compile check' in block
     assert 'Watch for duplicate recovery reviews' in block
     assert 'Agent Relay Recovery Upgrade' in block
+
+
+def test_watchdog_circuit_breaker_state_initializes_and_resets(monkeypatch):
+    from frontend.blueprints import chat as chat_mod
+
+    with chat_mod._WATCHDOG_KILL_LOCK:
+        chat_mod._WATCHDOG_KILL_STATE.clear()
+
+    state = chat_mod._watchdog_get_kill_state('qwen2.5:latest')
+    assert state['consecutive_failures'] == 0
+    assert state['escalation_level'] == 0
+    assert state['ticket_emitted'] is False
+
+    state['consecutive_failures'] = 5
+    chat_mod._watchdog_reset_kill_state('qwen2.5:latest')
+
+    with chat_mod._WATCHDOG_KILL_LOCK:
+        assert 'qwen2.5:latest' not in chat_mod._WATCHDOG_KILL_STATE
+
+
+def test_watchdog_backoff_respects_exponential_delays(monkeypatch):
+    from frontend.blueprints import chat as chat_mod
+
+    base = 5
+    state = {'consecutive_failures': 0, 'last_attempt_ts': 0.0}
+    assert chat_mod._watchdog_backoff_ok(state) is True
+
+    now = time.time()
+    state = {'consecutive_failures': 1, 'last_attempt_ts': now}
+    assert chat_mod._watchdog_backoff_ok(state) is False
+    state['last_attempt_ts'] = now - base
+    assert chat_mod._watchdog_backoff_ok(state) is True
+
+    state = {'consecutive_failures': 3, 'last_attempt_ts': now}
+    assert chat_mod._watchdog_backoff_ok(state) is False
+    state['last_attempt_ts'] = now - (base * 4)
+    assert chat_mod._watchdog_backoff_ok(state) is True
+
+    state = {'consecutive_failures': 5, 'last_attempt_ts': now}
+    assert chat_mod._watchdog_backoff_ok(state) is False
+    state['last_attempt_ts'] = now - (base * 16)
+    assert chat_mod._watchdog_backoff_ok(state) is True
+
+
+def test_watchdog_escalates_to_kill9_after_three_failures(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    with chat_mod._WATCHDOG_KILL_LOCK:
+        chat_mod._WATCHDOG_KILL_STATE.clear()
+
+    monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['qwen2.5:latest'])
+    monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
+
+    stop_calls = []
+
+    def _failing_stop(model_name):
+        stop_calls.append(model_name)
+        return {'ok': False, 'detail': 'mock stop failed'}
+
+    monkeypatch.setattr(chat_mod, '_watchdog_kill_ollama_runner_pid', _failing_stop)
+
+    chat_mod._watchdog_get_kill_state('qwen2.5:latest')['consecutive_failures'] = 3
+    chat_mod._watchdog_get_kill_state('qwen2.5:latest')['last_attempt_ts'] = 0.0
+
+    result = chat_mod._chat_try_hard_kill_local_agent('qwen')
+    assert result['ok'] is False
+    assert any(a['action'] == 'kill-9' for a in result['attempts'])
+    assert stop_calls == ['qwen2.5:latest']
+
+
+def test_watchdog_emits_ticket_once_after_five_failures(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+    from core import spine
+
+    with chat_mod._WATCHDOG_KILL_LOCK:
+        chat_mod._WATCHDOG_KILL_STATE.clear()
+
+    monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['qwen2.5:latest'])
+    monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
+
+    tickets = []
+    real_log = spine.log
+
+    def _capture_ticket(kind, message, **kwargs):
+        if kind == spine.EventKind.TICKET:
+            tickets.append({'message': message, 'payload': kwargs.get('payload')})
+        kwargs['persist'] = False
+        return real_log(kind, message, **kwargs)
+
+    monkeypatch.setattr(spine, 'log', _capture_ticket)
+
+    def _failing_kill9(model_name):
+        return {'ok': False, 'detail': 'mock kill-9 failed'}
+
+    monkeypatch.setattr(chat_mod, '_watchdog_kill_ollama_runner_pid', _failing_kill9)
+
+    chat_mod._watchdog_get_kill_state('qwen2.5:latest')['consecutive_failures'] = 5
+    chat_mod._watchdog_get_kill_state('qwen2.5:latest')['last_attempt_ts'] = 0.0
+
+    result = chat_mod._chat_try_hard_kill_local_agent('qwen')
+    assert result['ok'] is False
+    assert len(tickets) == 1
+    assert 'kill-9 both failed' in tickets[0]['message']
+    assert tickets[0]['payload']['escalation_level'] == 3
+
+    chat_mod._watchdog_get_kill_state('qwen2.5:latest')['last_attempt_ts'] = 0.0
+    tickets.clear()
+    result2 = chat_mod._chat_try_hard_kill_local_agent('qwen')
+    assert len(tickets) == 0
+    assert result2['attempts'][0]['action'] == 'kill-9'
+
+
+def test_watchdog_resets_state_when_model_confirmed_gone(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    with chat_mod._WATCHDOG_KILL_LOCK:
+        chat_mod._WATCHDOG_KILL_STATE.clear()
+
+    monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: [])
+    monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
+
+    chat_mod._watchdog_get_kill_state('qwen2.5:latest')['consecutive_failures'] = 3
+
+    result = chat_mod._chat_try_hard_kill_local_agent('qwen')
+    assert result['ok'] is True
+    with chat_mod._WATCHDOG_KILL_LOCK:
+        assert 'qwen2.5:latest' not in chat_mod._WATCHDOG_KILL_STATE

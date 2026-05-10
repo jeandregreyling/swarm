@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>FRIDAYS OS</title>
+  <link rel="stylesheet" href="/fridays-os/fridays-os.css?v={{ ASSET_VERSION }}">
+  <meta name="theme-color" content="#050508">
+</head>
+<body>
+  <!-- Loader -->
+  <div id="loader">
+    <div class="spinner"></div>
+    <p>Initialising FRIDAYS OS</p>
+  </div>
+
+  <!-- Dream overlay -->
+  <div id="dream-overlay"></div>
+
+  <!-- 3D Viewport -->
+  <div id="viewport">
+    <div id="camera">
+      <div id="universe">
+        <!-- Starfield -->
+        <div class="starfield"></div>
+
+        <!-- Constellation SVG layer -->
+        <svg id="constellation-layer" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;"></svg>
+
+        <!-- Orbs and surfaces are injected here by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-corner tl">
+      <div id="hud-title">FRIDAYS OS</div>
+      <div id="hud-subtitle">Spatial Command</div>
+    </div>
+    <div class="hud-corner tr">
+      <div id="hud-coords">X 0  Y 0  Z 1.00</div>
+    </div>
+    <div class="hud-corner bl">
+      <div id="voice-hint">
+        <span>Voice</span>
+        <span class="key">Space</span>
+        <span>Dream</span>
+        <span class="key">Esc</span>
+        <span>Close</span>
+      </div>
+    </div>
+    <div class="hud-corner br">
+      <div id="nav-ring">
+        <button class="nav-orb active" data-nav="center" title="Bridge">⌖</button>
+        <button class="nav-orb" data-nav="think-tank" title="Think Tank">🧠</button>
+        <button class="nav-orb" data-nav="forge" title="Forge">⚒</button>
+        <button class="nav-orb" data-nav="observatory" title="Observatory">🔭</button>
+        <button class="nav-orb" data-nav="garden" title="Garden">🌿</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/fridays-os/fridays-os.js?v={{ ASSET_VERSION }}"></script>
+</body>
+</html>

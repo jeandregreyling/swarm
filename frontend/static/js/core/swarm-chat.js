@@ -148,6 +148,36 @@
 
   ns.armToConfirm = armToConfirm;
   ns.disarmConfirm = revert;
+
+  // ── Shared delete icon + helper ───────────────────────────────────────────
+  // Session 30.2 Block C1: system-wide trashcan → confirm pattern.
+  ns.TRASH_SVG = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none"><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4h10M4.5 4l.5 9a1 1 0 001 1h4a1 1 0 001-1l.5-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  /**
+   * armDelete — convenience wrapper around armToConfirm for delete buttons.
+   * Adds the trashcan icon if the button is empty/text-only, then arms.
+   *
+   *   SwarmChat.armDelete(btn, onConfirm, opts?)
+   *     opts.confirmLabel default: 'Delete?'
+   *     opts.timeoutMs    default: 4000
+   *     opts.confirmColor default: '#f44336'
+   */
+  function armDelete(btn, onConfirm, opts) {
+    if (!btn || typeof onConfirm !== 'function') return false;
+    opts = opts || {};
+    // If button has no innerHTML or only whitespace, inject the trashcan icon.
+    var html = String(btn.innerHTML || '');
+    var text = btn.textContent || '';
+    if (!html.trim() || (text.trim() && !/<svg/i.test(html))) {
+      btn.innerHTML = ns.TRASH_SVG;
+    }
+    return armToConfirm(btn, onConfirm, {
+      confirmLabel: opts.confirmLabel || 'Delete?',
+      timeoutMs: typeof opts.timeoutMs === 'number' ? opts.timeoutMs : 4000,
+      confirmColor: opts.confirmColor || '#f44336'
+    });
+  }
+  ns.armDelete = armDelete;
 })();
 
 

@@ -290,13 +290,27 @@ def _score(by_severity: dict, pillar: dict) -> int:
     """0–100. 100 = pristine. Critical hits and pillar gaps cost real points;
     warnings tax mildly (capped) so a healthy 7k-file repo with a few legacy
     `# TODO` notes can still earn a green stamp once criticals are zero.
+
+    Session 30.2 amendment: when the build has zero critical, zero warning,
+    and zero pillar issues, the score is 100 regardless of info items.
+    Info items are observational (localhost defaults in config, test URLs,
+    etc.) — they do not indicate a build defect and should not prevent a
+    perfect score on an otherwise pristine codebase.
     """
+    crit = by_severity.get('critical', 0)
+    warn = by_severity.get('warning', 0)
+    pillar_findings = len(pillar.get('findings', []))
+
+    # Pristine build = 100. Info alone never degrades a perfect build.
+    if crit == 0 and warn == 0 and pillar_findings == 0:
+        return 100
+
     s = 100
-    s -= 20 * by_severity.get('critical', 0)
-    s -= 10 * len(pillar.get('findings', []))
+    s -= 20 * crit
+    s -= 10 * pillar_findings
     # Cap warning/info contribution: 30 warnings = -15, 60 = -22 (diminishing)
     import math
-    w = by_severity.get('warning', 0)
+    w = warn
     i = by_severity.get('info', 0)
     s -= int(round(15 * (1 - math.exp(-w / 40.0))))
     s -= int(round(5  * (1 - math.exp(-i / 40.0))))

@@ -15,6 +15,7 @@ LINKED TO:
 import os
 import re
 import subprocess
+import threading
 import time
 
 from flask import Blueprint, request, Response, jsonify, send_file
@@ -254,8 +255,107 @@ def _disable_agent_for_chat(agent_name, reason):
 #   _local_ollama_chat_agents, _chat_model_aliases,
 #   _chat_agent_configured_model, _chat_running_ollama_models.
 
+# Watchdog circuit breaker: per-model kill state to prevent infinite noisy
+# retries when `ollama stop` fails and the runner process is orphaned.
+# escalation_level: 0=initial, 1=ollama-cli, 2=kill-9, 3=ticket-emitted
+_WATCHDOG_KILL_STATE: "dict[str, dict]" = {}
+_WATCHDOG_KILL_LOCK = threading.Lock()
+_WATCHDOG_MAX_FAILS_BEFORE_KILL9 = 3
+_WATCHDOG_MAX_FAILS_BEFORE_TICKET = 5
+_WATCHDOG_BACKOFF_BASE_SECONDS = 5
+
+
+def _watchdog_get_kill_state(model_name: str) -> dict:
+    key = str(model_name or '').strip().lower()
+    with _WATCHDOG_KILL_LOCK:
+        return _WATCHDOG_KILL_STATE.setdefault(key, {
+            'consecutive_failures': 0,
+            'last_attempt_ts': 0.0,
+            'escalation_level': 0,
+            'ticket_emitted': False,
+        })
+
+
+def _watchdog_reset_kill_state(model_name: str) -> None:
+    key = str(model_name or '').strip().lower()
+    with _WATCHDOG_KILL_LOCK:
+        _WATCHDOG_KILL_STATE.pop(key, None)
+
+
+def _watchdog_backoff_ok(state: dict) -> bool:
+    """Return True if enough time has passed since the last attempt."""
+    now = time.time()
+    fails = int(state.get('consecutive_failures', 0))
+    last = float(state.get('last_attempt_ts', 0.0))
+    if fails == 0:
+        return True
+    # Exponential backoff: 5s, 10s, 20s, 40s, 60s (cap at 60)
+    backoff = min(60, _WATCHDOG_BACKOFF_BASE_SECONDS * (2 ** (fails - 1)))
+    return (now - last) >= backoff
+
+
+def _watchdog_kill_ollama_runner_pid(model_name: str) -> dict:
+    """Find the actual ollama runner process for this model and kill -9 it."""
+    result = {'ok': False, 'detail': '', 'pid': None}
+    try:
+        proc = subprocess.run(
+            ['pgrep', '-f', f'ollama.*runner.*{model_name}'],
+            capture_output=True, text=True, timeout=6, check=False,
+        )
+        stdout = str(proc.stdout or '').strip()
+        if proc.returncode != 0 or not stdout:
+            result['detail'] = f'pgrep found no runner for {model_name}'
+            return result
+        pids = [p.strip() for p in stdout.splitlines() if p.strip().isdigit()]
+        if not pids:
+            result['detail'] = f'pgrep returned non-numeric output for {model_name}'
+            return result
+        killed = []
+        for pid in pids:
+            try:
+                subprocess.run(['kill', '-9', pid], capture_output=True, text=True, timeout=6, check=False)
+                killed.append(pid)
+            except Exception as exc:
+                killed.append(f'{pid}:failed({exc})')
+        result['pid'] = pids[0] if pids else None
+        result['detail'] = f'kill-9 runner PIDs {killed} for {model_name}'
+        result['ok'] = True
+    except Exception as exc:
+        result['detail'] = f'kill-9 exception for {model_name}: {exc}'
+    return result
+
+
+def _watchdog_emit_escalation_ticket(agent_name: str, model_name: str, fails: int) -> None:
+    """Emit a spine TICKET event when we've failed too many times."""
+    try:
+        from core import spine as _spine
+        _spine.log(
+            _spine.EventKind.TICKET,
+            f'watchdog escalation: {agent_name} model {model_name} survived {fails} stop attempts. '
+            f'ollama stop + kill-9 both failed. Human intervention required.',
+            severity=_spine.Severity.ERROR,
+            source='watchdog_ollama_escalation',
+            agent=agent_name,
+            payload={
+                'model': model_name,
+                'consecutive_failures': fails,
+                'escalation_level': 3,
+            },
+        )
+    except Exception:
+        pass
+
 
 def _chat_try_hard_kill_local_agent(agent_name):
+    """Best-effort hard kill for local Ollama-backed jobs.
+
+    Uses a circuit breaker with escalation:
+      1. ollama stop (normal)
+      2. kill -9 on the runner PID (if stop fails 3×)
+      3. emit spine TICKET (if kill-9 also fails, after 5× total)
+
+    Backoff prevents hammering the system every heartbeat.
+    """
     normalized = _normalize_chat_participant(agent_name)
     result = {
         'agent': normalized or str(agent_name or '').strip().lower(),
@@ -297,7 +397,50 @@ def _chat_try_hard_kill_local_agent(agent_name):
         unique_candidates.append(str(model_name).strip())
 
     result['models'] = unique_candidates
+    still_running = []
+
     for model_name in unique_candidates:
+        state = _watchdog_get_kill_state(model_name)
+
+        # Respect backoff so we don't hammer every heartbeat.
+        if not _watchdog_backoff_ok(state):
+            result['attempts'].append({
+                'model': model_name,
+                'ok': False,
+                'action': 'backoff',
+                'detail': f'backoff active ({state["consecutive_failures"]} fails)',
+            })
+            still_running.append(model_name)
+            continue
+
+        state['last_attempt_ts'] = time.time()
+        fails_before = int(state.get('consecutive_failures', 0))
+
+        # Escalation level 2: kill -9 the runner PID directly.
+        if fails_before >= _WATCHDOG_MAX_FAILS_BEFORE_KILL9:
+            kill9_result = _watchdog_kill_ollama_runner_pid(model_name)
+            result['attempts'].append({
+                'model': model_name,
+                'ok': kill9_result['ok'],
+                'action': 'kill-9',
+                'pid': kill9_result.get('pid'),
+                'detail': kill9_result['detail'],
+            })
+            if kill9_result['ok']:
+                state['consecutive_failures'] = 0
+                state['escalation_level'] = 2
+            else:
+                state['consecutive_failures'] = fails_before + 1
+                still_running.append(model_name)
+
+            # Escalation level 3: emit spine TICKET once after max failures.
+            if state['consecutive_failures'] >= _WATCHDOG_MAX_FAILS_BEFORE_TICKET and not state.get('ticket_emitted'):
+                state['ticket_emitted'] = True
+                state['escalation_level'] = 3
+                _watchdog_emit_escalation_ticket(normalized, model_name, state['consecutive_failures'])
+            continue
+
+        # Escalation level 0/1: normal ollama stop.
         try:
             proc = subprocess.run(
                 ['ollama', 'stop', model_name],
@@ -312,14 +455,24 @@ def _chat_try_hard_kill_local_agent(agent_name):
             result['attempts'].append({
                 'model': model_name,
                 'ok': ok,
+                'action': 'ollama-stop',
                 'returncode': proc.returncode,
                 'stdout': stdout,
                 'stderr': stderr,
             })
+            if ok:
+                state['consecutive_failures'] = 0
+                state['escalation_level'] = 0
+            else:
+                state['consecutive_failures'] = fails_before + 1
+                still_running.append(model_name)
         except Exception as exc:
+            state['consecutive_failures'] = fails_before + 1
+            still_running.append(model_name)
             result['attempts'].append({
                 'model': model_name,
                 'ok': False,
+                'action': 'ollama-stop',
                 'returncode': None,
                 'stdout': '',
                 'stderr': str(exc),
@@ -328,11 +481,25 @@ def _chat_try_hard_kill_local_agent(agent_name):
     after_models = _chat_running_ollama_models()
     result['after_models'] = after_models
     after_alias_sets = [_chat_model_aliases(name) for name in after_models]
-    still_running = []
     for model_name in unique_candidates:
         aliases = _chat_model_aliases(model_name)
         if any(aliases & running_aliases for running_aliases in after_alias_sets):
-            still_running.append(model_name)
+            if model_name not in still_running:
+                still_running.append(model_name)
+
+    # Purge from still_running anything ollama ps confirms is actually gone.
+    # The stop/kill action may report failure because the process exited
+    # during the attempt; ollama ps is ground truth.
+    after_set = set(after_models)
+    for model_name in unique_candidates:
+        if model_name in still_running and model_name not in after_set:
+            still_running.remove(model_name)
+
+    # Reset state for models that are actually gone now.
+    for model_name in unique_candidates:
+        if model_name not in still_running or model_name not in after_set:
+            _watchdog_reset_kill_state(model_name)
+
     ok_models = [item['model'] for item in result['attempts'] if item.get('ok')]
     result['stopped_models'] = [m for m in unique_candidates if m not in still_running]
     result['still_running_models'] = still_running
@@ -340,7 +507,7 @@ def _chat_try_hard_kill_local_agent(agent_name):
     if result['ok']:
         result['detail'] = 'stopped ' + ', '.join(result['stopped_models'] or ok_models or unique_candidates)
     else:
-        errors = [item.get('stderr') or item.get('stdout') or 'unknown error' for item in result['attempts']]
+        errors = [item.get('detail') or item.get('stderr') or item.get('stdout') or 'unknown error' for item in result['attempts']]
         if still_running:
             result['detail'] = 'still running after stop: ' + ', '.join(still_running)
         else:
