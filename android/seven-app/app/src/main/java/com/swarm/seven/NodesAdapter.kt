@@ -4,16 +4,20 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.chip.Chip
 
-class NodesAdapter : RecyclerView.Adapter<NodesAdapter.ViewHolder>() {
-    private var nodes = listOf<HiveNode>()
+class NodesAdapter : ListAdapter<HiveNode, NodesAdapter.ViewHolder>(DiffCallback) {
 
-    fun setNodes(newNodes: List<HiveNode>) {
-        nodes = newNodes
-        notifyDataSetChanged()
+    companion object DiffCallback : DiffUtil.ItemCallback<HiveNode>() {
+        override fun areItemsTheSame(oldItem: HiveNode, newItem: HiveNode): Boolean =
+            oldItem.nodeId == newItem.nodeId
+
+        override fun areContentsTheSame(oldItem: HiveNode, newItem: HiveNode): Boolean =
+            oldItem == newItem
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -23,10 +27,8 @@ class NodesAdapter : RecyclerView.Adapter<NodesAdapter.ViewHolder>() {
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(nodes[position])
+        holder.bind(getItem(position))
     }
-
-    override fun getItemCount(): Int = nodes.size
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val nodeId: TextView = itemView.findViewById(R.id.nodeId)

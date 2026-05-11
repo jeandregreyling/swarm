@@ -1,0 +1,50 @@
+[
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/layout_item_node.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/layout/item_node.xml"
+    },
+    {
+        "merged": "com.swarm.seven.app-merged_res-34:/layout_activity_main.xml.flat",
+        "source": "com.swarm.seven.app-main-36:/layout/activity_main.xml"
+    },
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/layout_item_chat_user.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/layout/item_chat_user.xml"
+    },
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/layout_item_chat_bot.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/layout/item_chat_bot.xml"
+    },
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/layout_activity_nodes.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/layout/activity_nodes.xml"
+    },
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/layout_activity_main.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/layout/activity_main.xml"
+    },
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/menu_main_menu.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/menu/main_menu.xml"
+    },
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/layout_item_chat_typing.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/layout/item_chat_typing.xml"
+    },
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/drawable_bg_bubble_user.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/drawable/bg_bubble_user.xml"
+    },
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/layout_activity_settings.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/layout/activity_settings.xml"
+    },
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/drawable_bg_input.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/drawable/bg_input.xml"
+    },
+    {
+        "merged": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-merged_res-34:/drawable_bg_bubble_bot.xml.flat",
+        "source": "/home/seven/.gradle/daemon/8.2/com.swarm.seven.app-main-36:/drawable/bg_bubble_bot.xml"
+    }
+]

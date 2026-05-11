@@ -116,6 +116,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.orientation',      'orientation_bp'),
     ('blueprints.wishlist_registry','wishlist_registry_bp'),
     ('blueprints.hive',             'hive_bp'),
+    ('blueprints.mac_download',     'mac_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)

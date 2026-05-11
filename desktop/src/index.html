@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seven</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <h1>Seven</h1>
+      <span class="tag">Desktop</span>
+    </div>
+    <nav>
+      <button class="nav-btn active" data-view="chat">
+        <span class="icon">💬</span> Chat
+      </button>
+      <button class="nav-btn" data-view="nodes">
+        <span class="icon">🌐</span> Nodes
+      </button>
+      <button class="nav-btn" data-view="enrol">
+        <span class="icon">🔗</span> Join Swarm
+      </button>
+      <button class="nav-btn" data-view="settings">
+        <span class="icon">⚙️</span> Settings
+      </button>
+    </nav>
+    <div class="status">
+      <div class="status-dot" id="connDot"></div>
+      <span id="connText">Checking...</span>
+    </div>
+  </aside>
+
+  <main id="main">
+    <!-- Chat View -->
+    <section id="view-chat" class="view active">
+      <div class="chat-header">
+        <h2>Seven</h2>
+        <span class="subtitle">Ask anything. The swarm is listening.</span>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-bar">
+        <input type="text" id="chatInput" placeholder="Ask Seven..." autocomplete="off">
+        <button id="sendBtn">Send</button>
+      </div>
+    </section>
+
+    <!-- Nodes View -->
+    <section id="view-nodes" class="view">
+      <div class="chat-header">
+        <h2>Hive Nodes</h2>
+        <span class="subtitle" id="nodeCount">Loading...</span>
+      </div>
+      <div class="nodes-grid" id="nodesGrid"></div>
+    </section>
+
+    <!-- Enrol View -->
+    <section id="view-enrol" class="view">
+      <div class="chat-header">
+        <h2>Join the Swarm</h2>
+        <span class="subtitle">Enrol this Mac as a Hive node</span>
+      </div>
+      <div class="form-card">
+        <label>Node ID</label>
+        <input type="text" id="enrolNodeId" placeholder="macbook-pro-1">
+        <label>Label (optional)</label>
+        <input type="text" id="enrolLabel" placeholder="My MacBook">
+        <button id="enrolBtn" class="primary">Enrol This Mac</button>
+        <div id="enrolResult" class="result"></div>
+      </div>
+    </section>
+
+    <!-- Settings View -->
+    <section id="view-settings" class="view">
+      <div class="chat-header">
+        <h2>Settings</h2>
+        <span class="subtitle">Leader URL and preferences</span>
+      </div>
+      <div class="form-card">
+        <label>Leader URL</label>
+        <input type="text" id="leaderUrl" value="http://100.87.66.45:5050">
+        <button id="saveSettingsBtn" class="primary">Save</button>
+        <div id="settingsResult" class="result"></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

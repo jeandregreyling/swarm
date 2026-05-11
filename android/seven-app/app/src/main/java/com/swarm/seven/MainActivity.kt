@@ -2,21 +2,32 @@ package com.swarm.seven
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.inputmethod.EditorInfo
+import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     private lateinit var chatAdapter: ChatAdapter
     private lateinit var recyclerView: RecyclerView
     private lateinit var inputField: EditText
-    private val scope = CoroutineScope(Dispatchers.Main + Job())
-    private val api = SwarmApi(this)
+    private lateinit var sendButton: ImageButton
+    private lateinit var statusButton: Button
+    private lateinit var sundialView: SundialView
+    private lateinit var potatoStatusText: TextView
+    private lateinit var potatoResourceText: TextView
+    private val api by lazy { SwarmApi(this) }
+    private val sampler by lazy { AndroidSampler(this) }
+    private var sending = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,18 +56,41 @@ class MainActivity : AppCompatActivity() {
         recyclerView.adapter = chatAdapter
 
         inputField = findViewById(R.id.messageInput)
-        findViewById<ImageButton>(R.id.sendButton).setOnClickListener {
+        sendButton = findViewById(R.id.sendButton)
+        statusButton = findViewById(R.id.statusButton)
+        sundialView = findViewById(R.id.sundialView)
+        potatoStatusText = findViewById(R.id.potatoStatusText)
+        potatoResourceText = findViewById(R.id.potatoResourceText)
+
+        sendButton.setOnClickListener {
             sendMessage()
+        }
+        statusButton.setOnClickListener {
+            postStatusUpdate("Manual status update")
+        }
+
+        // Allow keyboard send action
+        inputField.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEND) {
+                sendMessage()
+                true
+            } else {
+                false
+            }
         }
 
         // Welcome message
         chatAdapter.addMessage(ChatMessage(
-            text = "Seven online. Swarm active. What do you need?",
+            text = "Seven online. This tablet should be a potato node, not just a chat window. Try: status update",
             isUser = false
         ))
+        sundialView.setStatus(10, "Booting", "Checking leader")
+        refreshPotatoStatus(postTelemetry = true)
     }
 
     private fun sendMessage() {
+        if (sending) return
+
         val text = inputField.text.toString().trim()
         if (text.isEmpty()) return
 
@@ -64,27 +98,116 @@ class MainActivity : AppCompatActivity() {
         inputField.text.clear()
         recyclerView.scrollToPosition(chatAdapter.itemCount - 1)
 
-        scope.launch {
+        if (handleLocalPotatoCommand(text)) return
+
+        setSending(true)
+        chatAdapter.setTyping(true)
+
+        lifecycleScope.launch {
             try {
-                val response = withContext(Dispatchers.IO) {
+                val result = withContext(Dispatchers.IO) {
                     api.sendChat(text)
                 }
-                chatAdapter.addMessage(ChatMessage(
-                    text = response,
-                    isUser = false
-                ))
+                result.fold(
+                    onSuccess = { response ->
+                        chatAdapter.setTyping(false)
+                        chatAdapter.addMessage(ChatMessage(
+                            text = response,
+                            isUser = false
+                        ))
+                    },
+                    onFailure = { error ->
+                        chatAdapter.setTyping(false)
+                        chatAdapter.addMessage(ChatMessage(
+                            text = "Couldn't reach Seven: ${error.message}",
+                            isUser = false
+                        ))
+                    }
+                )
                 recyclerView.scrollToPosition(chatAdapter.itemCount - 1)
             } catch (e: Exception) {
+                chatAdapter.setTyping(false)
                 chatAdapter.addMessage(ChatMessage(
                     text = "Error: ${e.message}",
                     isUser = false
                 ))
+            } finally {
+                setSending(false)
             }
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        scope.cancel()
+    private fun setSending(busy: Boolean) {
+        sending = busy
+        sendButton.isEnabled = !busy
+        sendButton.alpha = if (busy) 0.4f else 1.0f
+    }
+
+    private fun handleLocalPotatoCommand(text: String): Boolean {
+        val t = text.lowercase()
+        val isStatus = listOf("status", "resource", "potato", "node", "update").any { t.contains(it) }
+        if (!isStatus) return false
+        postStatusUpdate("Status update posted for this tablet.")
+        return true
+    }
+
+    private fun postStatusUpdate(prefix: String) {
+        setSending(true)
+        chatAdapter.setTyping(true)
+        lifecycleScope.launch {
+            val message = withContext(Dispatchers.IO) {
+                val enrol = api.enrol(sampler.nodeId(), sampler.deviceLabel())
+                val telemetry = api.postTelemetry(sampler.telemetryPayload())
+                val health = api.leaderHealth()
+                buildString {
+                    appendLine(prefix)
+                    appendLine(sampler.summary())
+                    appendLine()
+                    appendLine("Leader: ${api.baseUrl}")
+                    appendLine("Enrolment: ${enrol.fold({ "ok ($it)" }, { "failed: ${it.message}" })}")
+                    appendLine("Telemetry: ${telemetry.fold({ "posted" }, { "failed: ${it.message}" })}")
+                    appendLine("Leader health: ${health.fold({ if (it) "online" else "degraded" }, { "failed: ${it.message}" })}")
+                    appendLine()
+                    append("What this means: Seven now knows this Samsung is potato-2 and can share resources through Hive jobs. Local LLMs are not inside the Android app yet; they run through Termux/Ollama with small models after we clear enough storage.")
+                }
+            }
+            chatAdapter.setTyping(false)
+            chatAdapter.addMessage(ChatMessage(message, isUser = false))
+            recyclerView.scrollToPosition(chatAdapter.itemCount - 1)
+            updatePotatoViews("Connected as ${sampler.nodeId()}")
+            setSending(false)
+        }
+    }
+
+    private fun refreshPotatoStatus(postTelemetry: Boolean) {
+        updatePotatoViews("Checking ${sampler.nodeId()}...")
+        lifecycleScope.launch {
+            val status = withContext(Dispatchers.IO) {
+                val enrol = api.enrol(sampler.nodeId(), sampler.deviceLabel())
+                val telemetry = if (postTelemetry) api.postTelemetry(sampler.telemetryPayload()) else Result.success(sampler.nodeId())
+                val health = api.leaderHealth()
+                val ok = enrol.isSuccess && telemetry.isSuccess && health.getOrDefault(false)
+                ok to if (enrol.isSuccess && telemetry.isSuccess) "Connected potato: ${sampler.nodeId()}" else "Potato not fully connected"
+            }
+            updatePotatoViews(status.second, leaderOk = status.first)
+        }
+    }
+
+    private fun updatePotatoViews(status: String, leaderOk: Boolean = true) {
+        val sample = sampler.sample()
+        potatoStatusText.text = status
+        potatoResourceText.text = "Caps: ${sample.capabilities.joinToString()} · RAM ${sample.memory.optLong("ram_free_mb", -1)}MB free/${sample.memory.optLong("ram_total_mb", -1)}MB · Battery ${sample.power.optInt("battery_pct", -1)}%"
+        val free = sample.memory.optLong("ram_free_mb", 0)
+        val total = sample.memory.optLong("ram_total_mb", 1).coerceAtLeast(1)
+        val ramScore = ((free.toDouble() / total.toDouble()) * 25.0).toInt().coerceIn(0, 25)
+        val batteryScore = if (sample.power.optInt("battery_pct", 0) >= 20) 20 else 6
+        val capScore = 15 + sample.capabilities.count { it in setOf("inference.gpu", "inference.npu", "inference.tflite") } * 8
+        val leaderScore = if (leaderOk) 25 else 0
+        val score = (ramScore + batteryScore + capScore + leaderScore).coerceIn(0, 100)
+        sundialView.setStatus(
+            score,
+            if (leaderOk) "Online" else "Degraded",
+            "${sample.capabilities.size} caps · ${free}MB free",
+        )
     }
 }

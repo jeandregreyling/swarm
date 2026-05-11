@@ -213,6 +213,11 @@ _INSTALL_FILES: dict[str, tuple[str, str]] = {
     'hive_installer_core.py':    ('ops/install/hive_installer_core.py',      'text/x-python'),
     'hive_installer_gui.py':     ('ops/install/hive_installer_gui.py',       'text/x-python'),
     'swarm-hive.apk':            ('ops/install/android/swarm-hive.apk',      'application/vnd.android.package-archive'),
+    'seven-app.apk':             ('ops/install/android/seven-app.apk',       'application/vnd.android.package-archive'),
+    'seven-app-v1.0.0.apk':      ('ops/install/android/seven-app-v1.0.0.apk','application/vnd.android.package-archive'),
+    'seven-app-v1.0.1.apk':      ('ops/install/android/seven-app-v1.0.1.apk','application/vnd.android.package-archive'),
+    'seven-app-v1.0.2.apk':      ('ops/install/android/seven-app-v1.0.2.apk','application/vnd.android.package-archive'),
+    'seven-app-v1.0.3.apk':      ('ops/install/android/seven-app-v1.0.3.apk','application/vnd.android.package-archive'),
     't':                         ('ops/install/termux_quick.sh',             'text/x-shellscript'),
     'README.md':                 ('ops/install/README.md',                   'text/markdown'),
 }
@@ -227,13 +232,18 @@ def _repo_root() -> Path:
 def install_android_page():
     """HTML landing page for Android users — open in tablet browser, tap to install."""
     leader = request.host_url.rstrip('/')
-    apk_url = f'{leader}/api/hive/install/swarm-hive.apk'
+    apk_url = f'{leader}/api/hive/install/seven-app.apk'
+    v103_url = f'{leader}/api/hive/install/seven-app-v1.0.3.apk'
+    v102_url = f'{leader}/api/hive/install/seven-app-v1.0.2.apk'
+    v101_url = f'{leader}/api/hive/install/seven-app-v1.0.1.apk'
+    v100_url = f'{leader}/api/hive/install/seven-app-v1.0.0.apk'
+    old_url = f'{leader}/api/hive/install/swarm-hive.apk'
     html = f'''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Swarm Hive — Android Install</title>
+<title>Seven — Android Install</title>
 <style>
   body {{ font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 2rem; background: #0b0f19; color: #e0e6f1; }}
   .card {{ max-width: 420px; margin: auto; background: #151b2b; border-radius: 16px; padding: 2rem; box-shadow: 0 8px 32px rgba(0,0,0,.4); }}
@@ -241,26 +251,41 @@ def install_android_page():
   p {{ line-height: 1.5; color: #a0aec0; }}
   .btn {{ display: block; width: 100%; padding: 1rem; margin: 1.5rem 0 0; font-size: 1.1rem; font-weight: 600; text-align: center; text-decoration: none; color: #0b0f19; background: #4fd1c5; border-radius: 10px; border: none; cursor: pointer; }}
   .btn:hover {{ background: #38b2ac; }}
+  .btn-secondary {{ display: block; width: 100%; padding: .7rem; margin: .5rem 0 0; font-size: .9rem; font-weight: 500; text-align: center; text-decoration: none; color: #a0aec0; background: #0b0f19; border-radius: 8px; border: 1px solid #2d3748; cursor: pointer; }}
+  .btn-secondary:hover {{ background: #1a202c; color: #e0e6f1; }}
   code {{ background: #0b0f19; padding: .15rem .4rem; border-radius: 6px; font-size: .9rem; color: #4fd1c5; }}
   .steps {{ margin-top: 1.5rem; padding-left: 1.2rem; }}
   .steps li {{ margin-bottom: .6rem; color: #a0aec0; }}
   .warn {{ color: #f6ad55; font-size: .9rem; margin-top: 1rem; }}
+  .feature {{ font-size: .85rem; color: #68d391; margin-top: .8rem; }}
+  .version {{ font-size: .8rem; color: #718096; margin-top: .5rem; }}
+  .archive {{ margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #2d3748; }}
+  .archive-title {{ font-size: .85rem; color: #718096; margin-bottom: .5rem; }}
 </style>
 </head>
 <body>
 <div class="card">
-  <h1>📱 Swarm Hive Agent</h1>
-  <p>Install the Hive agent on your Samsung S9 FE tablet and enrol it as <code>potato-2</code>.</p>
-  <a class="btn" href="{apk_url}" download>⬇ Download APK (4.6 MB)</a>
+  <h1>🤖 Seven for Android</h1>
+  <p>Install the <strong>Seven</strong> app on your Samsung S9 FE tablet. Chat with the swarm, view Hive nodes, and manage settings.</p>
+  <p class="version">Latest: v1.0.3 (5.0 MB) · signed · sundial system status</p>
+  <a class="btn" href="{apk_url}" download>⬇ Download Seven App</a>
   <p class="warn">⚠ You may need to allow “Install unknown apps” for your browser when prompted.</p>
   <ol class="steps">
-    <li>Tap the button above to download <code>swarm-hive.apk</code>.</li>
+    <li>Tap the button above to download <code>seven-app.apk</code>.</li>
     <li>Open the downloaded file and tap <strong>Install</strong>.</li>
-    <li>Open the <strong>Hive Agent</strong> app.</li>
+    <li>Open the <strong>Seven</strong> app.</li>
     <li>Enter Leader URL: <code>http://100.87.66.45:5050</code></li>
-    <li>Enter Node ID: <code>potato-2</code></li>
-    <li>Tap <strong>Connect</strong>. Done!</li>
+    <li>Tap <strong>Save</strong>. Done!</li>
   </ol>
+  <p class="feature">✅ Features: Chat · Nodes Grid · Settings · Material Design 3</p>
+  <div class="archive">
+    <p class="archive-title">📦 Version Archive</p>
+    <a class="btn-secondary" href="{v103_url}" download>v1.0.3 — sundial system status</a>
+    <a class="btn-secondary" href="{v102_url}" download>v1.0.2 — potato status + resource sharing</a>
+    <a class="btn-secondary" href="{v101_url}" download>v1.0.1 — launch crash fix</a>
+    <a class="btn-secondary" href="{v100_url}" download>v1.0.0 — seven-app-v1.0.0.apk</a>
+    <a class="btn-secondary" href="{old_url}" download>v0.2.0 — swarm-hive.apk (old agent)</a>
+  </div>
 </div>
 </body>
 </html>'''

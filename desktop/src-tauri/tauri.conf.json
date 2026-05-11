@@ -1,22 +1,20 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Seven's Swarm",
-  "version": "4.0.0",
-  "identifier": "com.seven.swarm",
+  "productName": "Seven",
+  "version": "1.0.0",
+  "identifier": "com.swarm.seven.desktop",
   "build": {
     "beforeDevCommand": "",
-    "devUrl": "http://localhost:5050/ui",
     "beforeBuildCommand": "",
-    "frontendDist": "http://localhost:5050/ui"
+    "frontendDist": "../src"
   },
   "app": {
     "windows": [
       {
         "label": "main",
-        "title": "Seven's Swarm",
-        "url": "http://localhost:5050/ui",
-        "width": 1400,
-        "height": 900,
+        "title": "Seven",
+        "width": 1200,
+        "height": 800,
         "resizable": true,
         "fullscreen": false,
         "center": true,
@@ -25,21 +23,29 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' http://localhost:5050; connect-src 'self' http://localhost:5050 ws://localhost:5050; script-src 'self' 'unsafe-inline' http://localhost:5050; style-src 'self' 'unsafe-inline' http://localhost:5050; img-src 'self' data: blob: http://localhost:5050; font-src 'self' data: http://localhost:5050"
+      "csp": "default-src 'self'; connect-src 'self' http: https: ws: wss:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self' data:"
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage"],
+    "targets": ["deb", "appimage", "dmg"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
       "icons/icon.ico"
     ],
     "resources": [],
     "copyright": "Seven 2026",
-    "category": "DeveloperTool",
-    "shortDescription": "Local-first AI swarm with governance",
-    "longDescription": "Seven's Swarm — A local-first, governance-first AI agent swarm with multi-node federation, tool building, and research capabilities."
+    "category": "Productivity",
+    "shortDescription": "Seven — AI swarm command centre",
+    "longDescription": "Seven Desktop — Chat with Seven, monitor Hive nodes, and enrol your Mac into the swarm. One app for everything.",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.13",
+      "signingIdentity": null,
+      "entitlements": null
+    }
   }
 }

@@ -2,6 +2,21 @@
 
 let _mediaCenterState = null;
 let _mediaCenterSelectedProjectId = null;
+
+// Deep screens (nested UI inside Media Center shell)
+const _mediaCenterDeepDefaultScreen = 'shell';
+let _mediaCenterScreen = _mediaCenterDeepDefaultScreen;
+let _mediaCenterScreenStack = [];
+
+// Deep screens are local-only UI states.
+// They are separate from dock collapse/tab state so users can step in/out cleanly.
+function _mediaCenterDeepScreenStateKey() {
+  return 'fridays.mediaCenter.v3.deepScreen';
+}
+function _mediaCenterDeepScreenStackKey() {
+  return 'fridays.mediaCenter.v3.deepScreenStack';
+}
+
 const _mediaCenterPanelDefaults = {
   'new-project': true,
   'project-rack': false,
@@ -64,6 +79,7 @@ function _mediaCenterSetFocusMode(enabled) {
 
 function initMediaCenter() {
   _mediaCenterWireResizer();
+  _mediaCenterDeepLoadFromLocalStorage();
   return mediaCenterRefresh();
 }
 
@@ -94,11 +110,100 @@ function _mediaCenterRuntimeBadge(runtime) {
   return 'framework';
 }
 
+function _mediaCenterDeepLoadFromLocalStorage() {
+  try {
+    const stackRaw = localStorage.getItem(_mediaCenterDeepScreenStackKey());
+    if (stackRaw) _mediaCenterScreenStack = JSON.parse(stackRaw) || [];
+    const screen = localStorage.getItem(_mediaCenterDeepScreenStateKey());
+    if (screen) _mediaCenterScreen = screen;
+  } catch (e) {
+    // ignore
+  }
+}
+
+function _mediaCenterDeepPersist() {
+  try {
+    localStorage.setItem(_mediaCenterDeepScreenStateKey(), _mediaCenterScreen);
+    localStorage.setItem(_mediaCenterDeepScreenStackKey(), JSON.stringify(_mediaCenterScreenStack || []));
+  } catch (e) {
+    // ignore
+  }
+}
+
+function _mediaCenterDeepRenderBackButton() {
+  const root = document.getElementById('media-center-view');
+  if (!root) return;
+  const btn = document.getElementById('media-center-deep-back-btn');
+  if (!btn) return;
+  const canGoBack = (_mediaCenterScreenStack || []).length > 0;
+  btn.style.display = canGoBack ? '' : 'none';
+  btn.setAttribute('aria-disabled', canGoBack ? 'false' : 'true');
+}
+
+function _mediaCenterDeepRenderScreen(project, state) {
+  const editor = document.getElementById('media-center-editor-stage');
+  if (!editor) return;
+
+  if (_mediaCenterScreen === 'shell') {
+    editor.innerHTML = project ? _mediaCenterEditorStage(project) : '<div class="media-empty">Create or select a project to open the composer.</div>';
+    return;
+  }
+
+  if (_mediaCenterScreen === 'deep-routing') {
+    // Reuse existing routing form by rendering it inside the editor stage.
+    editor.innerHTML = project ? _mediaCenterResearchDock(state, project, 'routing') : '<div class="media-empty">No project selected.</div>';
+    return;
+  }
+
+  if (_mediaCenterScreen === 'deep-references') {
+    // Reuse existing references form.
+    editor.innerHTML = project ? _mediaCenterResearchDock(state, project, 'references') : '<div class="media-empty">No project selected.</div>';
+    return;
+  }
+
+  if (_mediaCenterScreen === 'deep-studio') {
+    // Studio trail is handled by opening Studio window (existing behavior).
+    editor.innerHTML = '<div class="media-empty">Opening Studio…</div>';
+    if (project?.studio_project_id) {
+      setTimeout(() => mediaCenterOpenStudioProject(project.studio_project_id), 120);
+    } else {
+      setTimeout(() => mediaCenterOpenReviewPlan(), 120);
+    }
+    return;
+  }
+
+  // fallback
+  editor.innerHTML = project ? _mediaCenterEditorStage(project) : '<div class="media-empty">Create or select a project to open the composer.</div>';
+}
+
+function mediaCenterNavigateDeep(screen) {
+  const root = document.getElementById('media-center-view');
+  if (!root) return;
+  if (!screen) return;
+  const prev = _mediaCenterScreen;
+  if (prev && prev !== screen) {
+    _mediaCenterScreenStack.push(prev);
+  }
+  _mediaCenterScreen = screen;
+  _mediaCenterDeepPersist();
+  _mediaCenterDeepRenderBackButton();
+  _renderMediaCenter();
+}
+
+function mediaCenterBackDeep() {
+  if (!(_mediaCenterScreenStack || []).length) return;
+  _mediaCenterScreen = _mediaCenterScreenStack.pop() || _mediaCenterDeepDefaultScreen;
+  _mediaCenterDeepPersist();
+  _mediaCenterDeepRenderBackButton();
+  _renderMediaCenter();
+}
+
 function _renderMediaCenter() {
   const state = _mediaCenterState || {};
   const projects = state.projects || [];
   const project = projects.find((item) => item.id === _mediaCenterSelectedProjectId) || projects[0] || null;
   if (project) _mediaCenterSelectedProjectId = project.id;
+
 
   const counts = state.counts || {};
   const topline = document.getElementById('media-center-topline');
@@ -353,8 +458,8 @@ function _mediaCenterEditorStage(project) {
   `;
 }
 
-function _mediaCenterResearchDock(state, project) {
-  const tab = _mediaCenterGetTab('research', 'references');
+function _mediaCenterResearchDock(state, project, forcedTab) {
+  const tab = forcedTab || _mediaCenterGetTab('research', 'references');
   const accounts = state.accounts?.registry || [];
   const accountOptions = accounts.map((account) => `<option value="${_mcEsc(account.id)}">${_mcEsc(account.name)} · ${_mcEsc(account.status)}</option>`).join('');
   const activeProjectReferences = (project.media_refs || []).slice(0, 12).map((ref) => _mediaCenterReferenceCard(ref)).join('');

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#4FD1C5</color>
+    <color name="bg_dark">#0B0F19</color>
+    <color name="bubble_bot">#1E293B</color>
+    <color name="bubble_user">#0F4C75</color>
+    <color name="surface_dark">#151B2B</color>
+    <color name="text_primary">#E0E6F1</color>
+    <color name="text_secondary">#A0AEC0</color>
+    <string name="app_name">Seven</string>
+    <style name="Theme.Seven" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorPrimaryDark">@color/bg_dark</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="colorOnPrimary">@color/bg_dark</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorOnSecondary">@color/bg_dark</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="android:navigationBarColor">@color/bg_dark</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="windowActionModeOverlay">true</item>
+    </style>
+</resources>

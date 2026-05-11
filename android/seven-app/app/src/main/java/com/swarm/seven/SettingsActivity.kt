@@ -18,7 +18,21 @@ class SettingsActivity : AppCompatActivity() {
         urlInput.setText(api.baseUrl)
 
         saveBtn.setOnClickListener {
-            api.baseUrl = urlInput.text.toString().trim()
+            val raw = urlInput.text.toString().trim()
+            if (raw.isEmpty()) {
+                Toast.makeText(this, "URL cannot be empty", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
+                Toast.makeText(this, "URL must start with http:// or https://", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (raw.endsWith("/")) {
+                urlInput.setText(raw.removeSuffix("/"))
+                Toast.makeText(this, "Trailing slash removed", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            api.baseUrl = raw
             Toast.makeText(this, "Leader URL saved", Toast.LENGTH_SHORT).show()
             finish()
         }

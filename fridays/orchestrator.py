@@ -764,5 +764,15 @@ def run_forever():
         time.sleep(HEARTBEAT_SECONDS)
 
 
+# Re-export ask_agent so fridays.orchestrator.ask_agent works for
+# chat_smoke_probe and other callers that import from this module.
+try:
+    from core.pipeline.orchestrator import ask_agent
+except Exception:
+    def ask_agent(agent_name, prompt, retries=2):
+        """Fallback stub when core.pipeline.orchestrator is unavailable."""
+        raise RuntimeError('ask_agent not available: core.pipeline.orchestrator import failed')
+
+
 if __name__ == '__main__':
     run_forever()

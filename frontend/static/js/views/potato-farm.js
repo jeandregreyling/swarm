@@ -92,6 +92,81 @@ function _pfRenderNode(node) {
   `;
 }
 
+function _pfExpectedNodes(nodes) {
+  const byId = new Map(nodes.map(n => [String(n.node_id || '').toLowerCase(), n]));
+  const expected = [
+    { node_id: 'potato-1', label: 'potato-1 Leader', platform: 'linux', expected: true },
+    { node_id: 'potato-2', label: 'potato-2 Samsung S9 FE', platform: 'android', expected: true },
+    { node_id: 'potato-3', label: 'potato-3 MacBook', platform: 'macos', expected: true },
+    { node_id: 'potato-4', label: 'potato-4 Dell', platform: 'windows', expected: true },
+  ];
+  const merged = nodes.slice();
+  expected.forEach(e => {
+    if (!byId.has(e.node_id.toLowerCase()) && !merged.some(n => String(n.node_id || '').toLowerCase().includes(e.node_id))) {
+      merged.push({ ...e, offline: true, age_s: null, telemetry: { capabilities: [] } });
+    }
+  });
+  return merged;
+}
+
+function _pfRenderMap(nodes, jobs) {
+  const map = document.getElementById('pfarm-map');
+  const meta = document.getElementById('pfarm-map-meta');
+  if (!map) return;
+  const displayNodes = _pfExpectedNodes(nodes);
+  const w = 760, h = 260;
+  const cx = w / 2, cy = h / 2;
+  const radius = 92;
+  const positions = {};
+  displayNodes.forEach((n, i) => {
+    const id = n.node_id || `node-${i}`;
+    if (String(id).includes('potato-1') || String(id).includes('linux-')) {
+      positions[id] = { x: cx, y: cy };
+    } else {
+      const angle = (-90 + (360 * i / Math.max(displayNodes.length - 1, 1))) * Math.PI / 180;
+      positions[id] = { x: cx + Math.cos(angle) * radius * 2.2, y: cy + Math.sin(angle) * radius };
+    }
+  });
+  const leader = displayNodes.find(n => String(n.node_id || '').includes('potato-1') || String(n.node_id || '').startsWith('linux-')) || displayNodes[0];
+  const leaderPos = positions[leader?.node_id] || { x: cx, y: cy };
+  const edges = displayNodes.filter(n => n !== leader).map(n => ({ from: leader.node_id, to: n.node_id }));
+  const jobEdges = (jobs || []).filter(j => j.node_id).map(j => ({ from: 'potato-1', to: j.node_id, job: j }));
+  const edgeSvg = edges.map(e => {
+    const a = leaderPos, b = positions[e.to] || a;
+    return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--border)" stroke-width="1.2" stroke-dasharray="3 4"/>`;
+  }).join('') + jobEdges.map(e => {
+    const a = leaderPos, b = positions[e.to] || a;
+    return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--accent)" stroke-width="2.2" opacity=".8"/>`;
+  }).join('');
+  const nodeSvg = displayNodes.map(n => {
+    const id = n.node_id || '';
+    const p = positions[id] || { x: cx, y: cy };
+    const live = !n.offline && Number(n.age_s ?? 9999) < 180;
+    const fill = live ? (String(id).includes('potato-2') ? '#4caf50' : '#4fd1c5') : '#444';
+    const stroke = n.offline ? '#f44336' : 'var(--accent)';
+    const caps = ((n.telemetry || {}).capabilities || []).length;
+    return `<g><circle cx="${p.x}" cy="${p.y}" r="22" fill="${fill}33" stroke="${stroke}" stroke-width="2"/><text x="${p.x}" y="${p.y - 3}" text-anchor="middle" fill="var(--text)" font-size="10" font-weight="700">${_pfEsc(id.replace('potato-', 'P'))}</text><text x="${p.x}" y="${p.y + 12}" text-anchor="middle" fill="var(--text-dim)" font-size="8">${n.offline ? 'offline' : caps + ' caps'}</text></g>`;
+  }).join('');
+  map.innerHTML = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:260px;display:block;">${edgeSvg}${nodeSvg}</svg>`;
+  if (meta) meta.textContent = `${nodes.length} live · ${displayNodes.filter(n => n.offline).length} expected offline`;
+}
+
+function _pfRenderHandoffs(jobs) {
+  const el = document.getElementById('pfarm-handoffs');
+  if (!el) return;
+  if (!jobs || !jobs.length) {
+    el.innerHTML = '<div>No handoffs yet. Dispatch a task to see potato routing here.</div>';
+    return;
+  }
+  el.innerHTML = jobs.slice(0, 12).map(j => {
+    const to = j.node_id || 'auto-route';
+    const when = j.completed_ts || j.claimed_ts || j.created_ts;
+    const age = when ? Math.max(0, Math.floor(Date.now()/1000 - when)) + 's ago' : '—';
+    const color = j.status === 'completed' ? '#4caf50' : j.status === 'claimed' ? '#2196f3' : '#ffa500';
+    return `<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:5px;padding:6px;background:rgba(0,0,0,.12);"><span style="color:${color};font-weight:700;min-width:70px;">${_pfEsc(j.status)}</span><span style="flex:1;">potato-1 → <strong>${_pfEsc(to)}</strong> · ${_pfEsc(j.kind || 'job')}</span><span>${_pfEsc(j.capability_req || '')}</span><span style="color:var(--text-dim);">${age}</span></div>`;
+  }).join('');
+}
+
 async function pfarmRefresh() {
   const grid = document.getElementById('pfarm-grid');
   const meta = document.getElementById('pfarm-meta');
@@ -100,11 +175,13 @@ async function pfarmRefresh() {
   if (!grid) return;
 
   try {
-    // Fetch nodes
-    const r = await fetch('/api/hive/nodes');
+    // Fetch nodes + handoff/job history
+    const [r, jr] = await Promise.all([fetch('/api/hive/nodes'), fetch('/api/hive/jobs')]);
     const j = await r.json();
+    const jobsJson = jr.ok ? await jr.json() : { jobs: [] };
     if (!j || !j.ok) throw new Error('not ok');
     const nodes = j.nodes || [];
+    const jobs = jobsJson.jobs || [];
 
     if (meta) meta.textContent = `${nodes.length} node${nodes.length === 1 ? '' : 's'}`;
 
@@ -113,6 +190,8 @@ async function pfarmRefresh() {
     } else {
       grid.innerHTML = nodes.map(_pfRenderNode).join('');
     }
+    _pfRenderMap(nodes, jobs);
+    _pfRenderHandoffs(jobs);
 
     // Update target node dropdown
     if (targetSelect) {
@@ -138,7 +217,7 @@ async function pfarmRefresh() {
         .catch(() => { gitStatus.textContent = 'Git status unavailable'; });
     }
 
-    pfarmLog(`Refreshed: ${nodes.length} node(s)`);
+    pfarmLog(`Refreshed: ${nodes.length} live node(s), ${jobs.length} handoff(s)`);
   } catch (e) {
     grid.innerHTML = `<div style="color:#f77;font-size:10px;">Mesh unreachable: ${_pfEsc(e.message || e)}</div>`;
     pfarmLog(`Error: ${e.message || e}`);
@@ -155,30 +234,21 @@ function pfarmDispatch() {
   const target = targetSel ? targetSel.value : '';
   const payload = payloadIn ? payloadIn.value.trim() : '';
 
-  const envelope = {
-    contract: 'seven.task/v0',
-    task_id: 'T-' + Math.random().toString(36).slice(2, 10).toUpperCase(),
-    origin_node: 'potato-1',
-    target_node: target || null,
-    required_capabilities: _pfTaskCaps(taskType),
-    priority: 'normal',
-    payload: { type: taskType, data: payload },
-    timeout_seconds: 300,
-    max_retries: 2,
-    created_at: Math.floor(Date.now() / 1000)
-  };
+  const caps = _pfTaskCaps(taskType);
+  const envelope = { kind: taskType, payload: { data: payload, target_node: target || null }, capability_req: caps[0] || null };
 
-  if (status) status.innerHTML = `<span style="color:var(--accent);">Routing ${envelope.task_id}…</span>`;
+  if (status) status.innerHTML = `<span style="color:var(--accent);">Submitting handoff…</span>`;
 
-  fetch('/api/hive/task', {
+  fetch('/api/hive/jobs/submit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(envelope)
   })
   .then(r => r.ok ? r.json() : Promise.reject(r.status))
   .then(d => {
-    if (status) status.innerHTML = `<span style="color:#4caf50;">✓ Routed to ${d.target_node || 'auto'}</span>`;
-    pfarmLog(`Dispatched ${envelope.task_id} → ${d.target_node || 'auto'}`);
+    if (status) status.innerHTML = `<span style="color:#4caf50;">✓ Submitted ${_pfEsc(d.job_id || 'job')}</span>`;
+    pfarmLog(`Submitted handoff ${d.job_id || ''} (${taskType})`);
+    pfarmRefresh();
   })
   .catch(e => {
     if (status) status.innerHTML = `<span style="color:#f44336;">✗ Failed: ${_pfEsc(String(e))}</span>`;
@@ -188,11 +258,11 @@ function pfarmDispatch() {
 
 function _pfTaskCaps(type) {
   const map = {
-    'tflite.inference': ['inference.tflite', 'scheduler.worker'],
-    'ollama.chat': ['inference.ollama', 'scheduler.worker'],
-    'agent.run': ['scheduler.worker'],
-    'git.sync': ['scheduler.worker'],
-    'custom': ['scheduler.worker']
+    'tflite.inference': ['inference.tflite'],
+    'ollama.chat': ['inference.ollama'],
+    'agent.run': ['inference.cpu'],
+    'git.sync': ['scheduler.coordinator'],
+    'custom': ['inference.cpu']
   };
   return map[type] || ['scheduler.worker'];
 }

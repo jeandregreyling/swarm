@@ -1,26 +1,27 @@
 #!/usr/bin/env bash
-# desktop/build.sh — Tauri v2 desktop build helper (Phase-5 small S-E7775EAA48).
+# desktop/build.sh — Tauri v2 build helper for Seven Desktop App.
 #
-# Builds the Swarm desktop shell that embeds http://127.0.0.1:5050/ui as a
-# native window, plus produces .deb and AppImage bundles for Linux. macOS
-# and Windows targets are available if cargo-tauri is installed with those
-# toolchains, but the CI path targets Linux.
+# Builds a native desktop app (macOS .dmg / .app, Linux .deb / .AppImage).
+# The app bundles its own HTML/JS frontend and talks to the SWARM leader
+# via Rust-native HTTP commands (no CORS, no localhost dependency).
 #
 # Usage:
-#   ./desktop/build.sh              # debug dev run (tauri dev)
-#   ./desktop/build.sh release      # release bundles (deb + appimage)
-#   ./desktop/build.sh release dmg  # macOS bundle (requires macOS host)
+#   ./desktop/build.sh              # dev run (cargo tauri dev)
+#   ./desktop/build.sh release      # release bundles (platform-specific)
+#   ./desktop/build.sh release dmg  # macOS DMG only
+#   ./desktop/build.sh release deb  # Linux .deb only
 #
 # Prereqs:
-#   - Rust + cargo (rustup).
+#   - Rust + cargo (rustup)
 #   - cargo install tauri-cli --version '^2'
-#   - System libs: libwebkit2gtk-4.1-dev build-essential curl wget file
+#   - Linux libs: libwebkit2gtk-4.1-dev build-essential curl wget file
 #                  libssl-dev libayatana-appindicator3-dev librsvg2-dev
+#   - macOS: Xcode command line tools
 #
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "${ROOT}/desktop"
+cd "${ROOT}/desktop/src-tauri"
 
 MODE="${1:-dev}"
 shift || true
@@ -39,15 +40,13 @@ case "${MODE}" in
         cargo tauri dev
         ;;
     release)
-        cargo tauri build --bundles deb,appimage "$@"
-        echo "---"
-        echo "Bundles in: ${ROOT}/desktop/src-tauri/target/release/bundle/"
-        ;;
-    dmg|msi)
-        cargo tauri build --bundles "${MODE}" "$@"
+        cargo tauri build "$@"
+        echo ""
+        echo "=== Build outputs ==="
+        find "${ROOT}/desktop/src-tauri/target/release/bundle" -type f -exec ls -lh {} \;
         ;;
     *)
-        echo "Usage: desktop/build.sh [dev|release|dmg|msi] [extra tauri args]" >&2
+        echo "Usage: $0 [dev|release] [bundle-targets...]" >&2
         exit 1
         ;;
 esac

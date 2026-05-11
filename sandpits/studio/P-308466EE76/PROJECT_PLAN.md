@@ -372,3 +372,144 @@
   - `make bullshit` GREEN 100/100.
 - **KC:** Steps `S-8A26E0FF2A` (job scheduler), `S-22FDA3BBBE` (Seven App), `S-F8485FDBB4` (self-healing) all created → `done`. Note `B-326ECCC109` added.
 - **Watchdog:** Lesson `WDL-HIVE-JOB-SCHEDULER-20260510` recorded for `hive-missing-job-scheduler`: connected nodes are decorative without job routing. Every capability needs a queue, and the runner must poll `/jobs/next` + report to `/jobs/report`.
+
+## May 11, 2026 — Seven Desktop App (macOS)
+- **Action:** User asked for the Mac OS app next and clarified: one app called Seven, not two separate apps. Enrollment is included in the same app.
+- **Fix:** Transformed the existing Tauri wrapper (which just loaded `http://localhost:5050/ui`) into a proper native desktop app with bundled frontend.
+- **Frontend:**
+  - `desktop/src/index.html` — single-page app with sidebar navigation
+  - `desktop/src/styles.css` — dark theme matching Android Seven App
+  - `desktop/src/app.js` — Chat view, Nodes view, Enrolment view, Settings view
+  - Chat: messages with Seven via `/api/chat`
+  - Nodes: live grid of Hive nodes with capability chips
+  - Enrolment: enrol this Mac as a Hive node (`/api/hive/enrol`)
+  - Settings: leader URL configuration
+- **Backend (Rust):**
+  - `desktop/src-tauri/src/main.rs` — `api_get` and `api_post` Tauri commands using `reqwest`
+  - HTTP requests go through native Rust, not the browser — no CORS issues
+  - `Cargo.toml` — added `reqwest`, `tokio`, `tauri-plugin-http`
+- **Config:**
+  - `tauri.conf.json` — bundled frontend (`frontendDist: "../src"`), macOS DMG target enabled
+  - Bundle targets: `deb`, `appimage`, `dmg`
+  - macOS minimum version: 10.13
+  - Product name: "Seven", identifier: `com.swarm.seven.desktop`
+- **Build:**
+  - `desktop/build.sh` — `./desktop/build.sh release` builds all platform bundles
+  - `cargo tauri dev` for development
+- **Architecture:** One app. No separate "join" app. The same Seven app handles chat, node monitoring, and enrolment.
+- **Test:** `make bullshit` GREEN 100/100 (633 files scanned).
+- **KC:** Step `S-D66232DE4B` created → `done`. Note `B-5BC8805B76` added.
+- **Watchdog:** Lesson `WDL-DESKTOP-NATIVE-APP-20260511` recorded for `desktop-wrapper-vs-native-app`: a desktop app must bundle its own frontend and use native HTTP commands. Do not rely on localhost being available.
+
+## May 11, 2026 — Seven App APK Built + Install Page Updated
+- **Action:** User asked if there was an update for the Android app to push to the Samsung tablet. The old Hive Agent APK (background service only, says "connected") needed replacing with the new Seven App (user-facing chat + nodes + settings).
+- **Fix 1 — Gradle Plugin Resolution:**
+  - `android/seven-app/build.gradle.kts` was applying Android plugins directly (no `apply false`), conflicting with `app/build.gradle.kts` also applying them. This caused "Plugin [id: 'com.android.application'] was not found".
+  - Fixed by stripping root `build.gradle.kts` to plugin declarations only with `apply false`, matching the `android/hive-agent/` project pattern.
+  - Added missing `logging-interceptor` dependency to `app/build.gradle.kts`.
+- **Fix 2 — Missing Launcher Icons:**
+  - `app/src/main/AndroidManifest.xml` referenced `@mipmap/ic_launcher` and `@mipmap/ic_launcher_round` which did not exist.
+  - Removed `android:icon` and `android:roundIcon` attributes from manifest to allow build completion. Proper adaptive icons can be added later.
+- **Build:**
+  - `./gradlew clean :app:assembleRelease` — BUILD SUCCESSFUL in 1m 55s, 43 tasks executed.
+  - APK: `android/seven-app/app/build/outputs/apk/release/app-release-unsigned.apk` (5.0 MB).
+  - Copied to `ops/install/android/seven-app.apk`.
+- **Fix 3 — APK Signing (post-build):**
+  - User reported "App is invalid" when trying to install. Unsigned release APKs are rejected by Android.
+  - Signed the APK with `apksigner` using the debug keystore: `apksigner sign --ks ~/.android/debug.keystore --in seven-app.apk`.
+  - Verified: `apksigner verify --verbose` shows v2 scheme=true, v3 scheme=true, 1 signer.
+- **Install Page:**
+  - Updated `_INSTALL_FILES` in `frontend/blueprints/hive.py` to include `seven-app.apk`.
+  - Updated `/api/hive/install/android` HTML page: now branded "Seven for Android", serves `seven-app.apk` (5.0 MB), instructions reflect Seven App flow (Settings → Leader URL → Save), feature list: Chat · Nodes Grid · Settings · Material Design 3.
+  - Server restart issue: old process (PID 805209) held stale bytecode in memory; direct `kill` + systemd auto-restart forced fresh process.
+- **Files changed:**
+  - `android/seven-app/build.gradle.kts` — plugin declarations with `apply false`
+  - `android/seven-app/app/build.gradle.kts` — added `logging-interceptor:4.12.0`
+  - `android/seven-app/app/src/main/AndroidManifest.xml` — removed missing icon refs
+  - `frontend/blueprints/hive.py` — added `seven-app.apk` to install manifest, updated Android page
+- **KC:** Step `S-A37225F1D2` created → `done`. Blackboard note `B-4F08C6C280` added.
+- **Watchdog:** Lesson `WDL-1C66365D82` recorded for `android-gradle-plugin-not-found`: root `build.gradle.kts` must use `apply false` for plugin version declarations; never put `android {}` or `dependencies {}` in the root build file.
+- **Watchdog:** Lesson `WDL-AFC417CC4D` recorded for `android-apk-unsigned-install-failure`: unsigned APKs cannot be installed on Android devices (release builds require signing). Always sign with `apksigner` before distributing.
+- **Versioning:** Added `seven-app-v1.0.0.apk` archive. Install page shows "Latest: v1.0.0" + Version Archive section with old `swarm-hive.apk` (v0.2.0). Next build bumped to v1.0.1 (versionCode=2) in `app/build.gradle.kts`.
+
+## May 11, 2026 — Seven Android App Robustness Fix
+- **Action:** User reported the Seven Android app still wasn't working. Full code review and fix.
+- **Issues found & fixed:**
+  1. **Missing `proguard-rules.pro`** — referenced in `build.gradle.kts` for release builds but file didn't exist. Created with OkHttp, coroutine, and data class keep rules.
+  2. **Unsafe coroutine scope** — `MainActivity` used manual `CoroutineScope(Dispatchers.Main + Job())` instead of `lifecycleScope`. Migrated to `lifecycleScope` with proper cancellation.
+  3. **No typing indicator** — added `item_chat_typing.xml` layout + `setTyping()` in `ChatAdapter` showing "Seven is thinking..." while API responds.
+  4. **Brittle JSON parsing** — `SwarmApi.sendChat()`, `listNodes()`, `submitJob()` returned raw types that crashed on malformed JSON or empty responses. Changed all three to return `Result<T>` with safe JSON parsing and descriptive error messages.
+  5. **No send button debounce** — rapid taps could fire duplicate requests. Added `sending` flag + button disabled/alpha state while request is in-flight.
+  6. **No URL validation in Settings** — user could save garbage strings as leader URL. Added validation: non-empty, must start with `http://` or `https://`, trailing slash auto-removed.
+  7. **No empty state UI on Nodes screen** — added `emptyText` TextView with "No nodes enrolled yet." / "Swipe down to retry" shown when list is empty or on error.
+  8. **Inefficient RecyclerView** — `NodesAdapter` used `notifyDataSetChanged()`. Upgraded to `ListAdapter` with `DiffUtil.ItemCallback` for efficient incremental updates.
+  9. **Keyboard send action** — added `setOnEditorActionListener` with `IME_ACTION_SEND` so the keyboard send key also fires `sendMessage()`.
+- **Files changed:**
+  - `android/seven-app/app/proguard-rules.pro` — created
+  - `android/seven-app/app/src/main/java/com/swarm/seven/SwarmApi.kt` — safe JSON, `Result<T>` return types
+  - `android/seven-app/app/src/main/java/com/swarm/seven/MainActivity.kt` — lifecycleScope, debounce, typing indicator, keyboard send
+  - `android/seven-app/app/src/main/java/com/swarm/seven/ChatAdapter.kt` — typing indicator view type
+  - `android/seven-app/app/src/main/java/com/swarm/seven/NodesAdapter.kt` — ListAdapter + DiffUtil
+  - `android/seven-app/app/src/main/java/com/swarm/seven/NodesActivity.kt` — Result handling, empty state
+  - `android/seven-app/app/src/main/java/com/swarm/seven/SettingsActivity.kt` — URL validation
+  - `android/seven-app/app/src/main/res/layout/item_chat_typing.xml` — created
+  - `android/seven-app/app/src/main/res/layout/activity_nodes.xml` — added emptyText, fixed layout weight
+- **KC:** Step `S-ANDROID-SEVEN-ROBUSTNESS-20260511` created → `done`. Note `B-ANDROID-SEVEN-ROBUSTNESS-20260511` added.
+- **Watchdog:** Lesson `WDL-ANDROID-APP-ROBUSTNESS-20260511` recorded for `android-app-brittle-json-and-unsafe-scope`: Android apps talking to backend APIs must wrap all network responses in `Result<T>`, use `lifecycleScope` not manual coroutine scopes, debounce user actions, validate user input, and show loading/error states for all async operations.
+
+## May 11, 2026 — Seven Android App Launch Crash Fixed + Device Verified
+- **Action:** User reported the Seven Android app still crashed immediately on open. Reproduced build posture locally, found the server already had Android SDKs but no Gradle SDK pointer. Added `android/seven-app/local.properties` with `sdk.dir=/home/seven/Android/Sdk` for local builds.
+- **Root cause:** `MainActivity`, `NodesActivity`, and `SettingsActivity` extend `AppCompatActivity`, but the app theme used `Theme.Material3.Dark.NoActionBar`. AppCompat activities require an AppCompat/MaterialComponents-compatible theme; the mismatch can crash at launch on Samsung/Android runtimes.
+- **Fixes:**
+  1. Changed `Theme.Seven` parent to `Theme.MaterialComponents.DayNight.NoActionBar` and added primary/secondary/on-colour values.
+  2. Removed obsolete `package="com.swarm.seven"` from `AndroidManifest.xml`; namespace already lives in Gradle.
+  3. Marked secondary activities `android:exported="false"`.
+  4. Fixed `ChatAdapter.addMessage()` typing-indicator bug that added the same bot message twice and notified the wrong row when replacing the typing row.
+  5. Built debug and release APKs successfully.
+  6. Signed release APK with debug keystore and copied it to `ops/install/android/seven-app.apk` and `ops/install/android/seven-app-v1.0.1.apk`.
+  7. Updated `/api/hive/install/android` page and manifest to show Latest `v1.0.1` and archive link.
+- **Device verification:** Samsung S9 FE connected via ADB (`SM_X516B`, serial `R52W90B364J`). Installed `ops/install/android/seven-app.apk` using `adb install -r`. Launched via monkey. `uiautomator dump` confirmed `MainActivity` renders toolbar, welcome message, input, and send button. Bounded logcat scan after launch showed no `FATAL EXCEPTION`, `InflateException`, `IllegalStateException`, `Resources$NotFoundException`, or app `AndroidRuntime` crash. Chat input test also produced no fatal crash lines.
+- **No sudo/software needed:** Android SDK, Gradle wrapper, `adb`, and `apksigner` were already present. Only `local.properties` was needed for the repo build.
+- **Install URL:** `http://100.87.66.45:5050/api/hive/install/android` now advertises `Latest: v1.0.1`.
+
+## May 11, 2026 — Seven Android App Becomes Real Potato Node (v1.0.2)
+- **Action:** User clarified the app was still just a chat screen and asked whether the system knows the Samsung is a potato that can share resources and eventually run local LLMs. Corrected the product direction: the Seven app must surface/activate potato identity and resource sharing, not just remote chat.
+- **Fixes:**
+  1. Added `AndroidSampler.kt` to Seven App, porting resource sampling from the Hive Agent path into the user-facing app.
+  2. The Samsung S9 FE (`SM-X516B`) now identifies as canonical node `potato-2`, not a duplicate generated `potato-android-*` node.
+  3. App now enrols itself via `/api/hive/enrol` and posts `node.resource/v0` telemetry via `/api/hive/telemetry` on launch.
+  4. Main screen now has a potato status card showing connection, capabilities, RAM, and battery.
+  5. Added explicit `POST POTATO STATUS UPDATE` button so the user does not have to guess a chat phrase.
+  6. Status response explains the current truth: resource sharing is active through Hive jobs; local LLMs are not inside the app yet and need the Termux/Ollama small-model path after freeing storage.
+  7. NPU detection strengthened for Samsung S9 FE: advertises `inference.npu` for `SM-X516B` plus Eden NN/system library heuristics.
+  8. Removed duplicate `potato-android-sm-x516b-d200d489` node from registry; leader now shows only canonical `potato-2` for the Samsung.
+  9. Bumped Seven App to `v1.0.2` (`versionCode=3`), built release, signed APK, copied to `ops/install/android/seven-app.apk` and archive `seven-app-v1.0.2.apk`.
+  10. Updated `/api/hive/install/android` page and manifest: Latest `v1.0.2` — potato status + resource sharing.
+- **Device verification:** Installed v1.0.2 onto Samsung via `adb install -r`. Launched with monkey. UI dump confirmed: `Connected potato: potato-2`, caps `inference.cpu, inference.tflite, inference.gpu, inference.npu`, RAM `~1531MB free/5427MB`, battery `100%`, and visible `POST POTATO STATUS UPDATE` button. Bounded logcat scan showed no fatal crash. Leader `/api/hive/nodes` shows `potato-2 android` with capabilities `['inference.cpu', 'inference.gpu', 'inference.npu', 'inference.tflite']` and memory telemetry.
+- **Important limitation:** This makes the tablet a resource-sharing Hive node from the app. Running local LLMs still requires the Termux/Ollama runner path and enough storage for a small model; the Android app should next include a guided “Install local LLM runner” flow and storage cleanup assistant.
+
+## May 11, 2026 — Seven Android v1.0.3 Sundial System Status
+- **Action:** User asked for a “sundial” so the Android app shows system status at a glance, and asked what else can be added.
+- **Fix:** Added `SundialView.kt`, a custom Android canvas gauge on the main screen. It scores system status from leader reachability, local RAM availability, battery status, and advertised capabilities. Green/amber/red arc colour reflects healthy/degraded/critical state.
+- **UI:** Main screen now shows: sundial gauge, `Connected potato: potato-2`, capability line, RAM/battery line, and `POST POTATO STATUS UPDATE` button.
+- **Versioning:** Bumped Seven Android app to `v1.0.3` (`versionCode=4`). Built release, signed APK, copied to `ops/install/android/seven-app.apk` and archive `seven-app-v1.0.3.apk`.
+- **Install page:** `/api/hive/install/android` now advertises `Latest: v1.0.3` and archive entry `seven-app-v1.0.3.apk`.
+- **Device verification:** Installed v1.0.3 on Samsung S9 FE via adb. UI dump confirms `sundialView` exists and app renders Connected potato status with CPU/TFLite/GPU/NPU caps. Bounded logcat scan showed no fatal crash. Leader confirms live `potato-2` telemetry.
+- **Next app improvements recommended:** local LLM installer/storage assistant, job queue view (pending/claimed/completed), one-tap benchmark, storage cleanup advisor, model catalogue with size estimates, background telemetry toggle, logs/repair-lessons panel, node policy controls, and notifications when potato-2 goes stale or overheats.
+
+## May 11, 2026 — Fridays Potato Farm UI Fixed + Network Map/Handoffs + iOS/Mac Assessment
+- **Action:** User reported Potato Farm in Fridays was empty and should show Samsung/Dell, a network map, and task handoffs between potatoes. User also asked whether the iOS app can be put on the Mac as an additional potato.
+- **Root cause:** `frontend/static/js/views/potato-farm.js` existed, but `frontend/templates/terminal_base.html` never loaded it. The `view-potato-farm` template rendered static placeholders, but none of the JS refresh/render/dispatch functions existed in the browser, so the farm appeared empty.
+- **Backend verified:** Live `/api/hive/nodes` returns 2 live nodes: `potato-2` (Samsung S9 FE Android with CPU/GPU/NPU/TFLite caps) and `linux-fc03ff3acb84e442` (leader/Linux coordinator). Live `/api/hive/jobs` returns one completed handoff/job to `potato-2`.
+- **Fixes applied:**
+  1. Added `<script src="/static/js/views/potato-farm.js?v={{ ASSET_VERSION }}"></script>` to `terminal_base.html`.
+  2. Added a Network Map panel to `frontend/templates/views/potato-farm.html`.
+  3. Added Potato Handoffs panel to show `/api/hive/jobs` history.
+  4. `potato-farm.js` now renders expected topology nodes: `potato-1` leader, `potato-2` Samsung, `potato-3` MacBook, `potato-4` Dell. Missing nodes are shown as expected/offline placeholders instead of silently disappearing.
+  5. Network map draws leader-to-peer links and overlays job/handoff edges.
+  6. Handoff timeline shows status, source→target, kind, capability request, and age.
+  7. Dispatch path fixed from nonexistent `/api/hive/task` to existing `/api/hive/jobs/submit`.
+  8. Capability routing map corrected to real capabilities (`inference.tflite`, `inference.ollama`, `inference.cpu`, `scheduler.coordinator`).
+- **Tests:** `node --check frontend/static/js/views/potato-farm.js` passes. `python3 -m py_compile frontend/blueprints/hive.py frontend/terminal.py` passes. `/ui` now includes `potato-farm.js`. API smoke: nodes `['potato-2', 'linux-fc03ff3acb84e442']`, jobs `[('job-1778420014-0a55d4e3', 'potato-2', 'completed')]`.
+- **iOS/Mac assessment:** `ios/hive-agent/` contains only `HiveAgent.swift`. There is no Xcode project, no Info.plist, no SwiftUI/UIKit app shell, no signing/bundle configuration, and no Mac Catalyst target. Therefore it is **not currently in a state to install/run on the Mac**. Also, iOS background execution is constrained and is not the right path for a Mac potato. The existing `desktop/` Tauri app is the correct Mac app base; to make Mac an additional potato (`potato-3`), add native desktop telemetry/enrolment posting and local resource sampler to the Tauri app rather than trying to run the iOS stub on macOS.
+- **Next:** Build potato-3 in `desktop/` (Tauri): auto-enrol as `potato-3`, sample macOS resources, post `node.resource/v0`, show itself in Potato Farm, and later support local model/runtime capability discovery.
