@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-12 00:09",
+  "generated_at": "2026-05-13 00:06",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -5014,7 +5014,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 63771
+      "rows": 64796
     },
     {
       "name": "agent_capabilities",
@@ -5054,7 +5054,7 @@
     },
     {
       "name": "audit_results",
-      "rows": 55
+      "rows": 56
     },
     {
       "name": "business_ledger",
@@ -5114,7 +5114,7 @@
     },
     {
       "name": "decisions",
-      "rows": 93741
+      "rows": 93742
     },
     {
       "name": "deferred_items",
@@ -5122,11 +5122,11 @@
     },
     {
       "name": "duck_log",
-      "rows": 1159
+      "rows": 1161
     },
     {
       "name": "email_delivery_log",
-      "rows": 45
+      "rows": 48
     },
     {
       "name": "email_retry_queue",
@@ -5262,7 +5262,7 @@
     },
     {
       "name": "memory_twenty",
-      "rows": 484
+      "rows": 446
     },
     {
       "name": "messages",
@@ -5306,7 +5306,7 @@
     },
     {
       "name": "project_docs",
-      "rows": 323
+      "rows": 324
     },
     {
       "name": "project_step_deps",
@@ -5338,15 +5338,15 @@
     },
     {
       "name": "queue",
-      "rows": 2153
+      "rows": 2156
     },
     {
       "name": "research_evidence",
-      "rows": 1354
+      "rows": 1464
     },
     {
       "name": "research_sessions",
-      "rows": 75
+      "rows": 81
     },
     {
       "name": "sandpit_log",
@@ -5374,11 +5374,11 @@
     },
     {
       "name": "seven_attention",
-      "rows": 4848
+      "rows": 4850
     },
     {
       "name": "seven_beliefs",
-      "rows": 10683
+      "rows": 10688
     },
     {
       "name": "seven_callouts",
@@ -5390,7 +5390,7 @@
     },
     {
       "name": "seven_episodes",
-      "rows": 26221
+      "rows": 26224
     },
     {
       "name": "seven_learnings",
@@ -5438,7 +5438,7 @@
     },
     {
       "name": "swarm_events",
-      "rows": 80
+      "rows": 81
     },
     {
       "name": "swarm_globals",
@@ -5446,7 +5446,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 80
+      "rows": 81
     },
     {
       "name": "swarm_nodes",
@@ -5462,11 +5462,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 12692
+      "rows": 12978
     },
     {
       "name": "task_run_log",
-      "rows": 5447
+      "rows": 5758
     },
     {
       "name": "terminal_shortcuts",
@@ -5482,27 +5482,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 913
+      "rows": 915
     },
     {
       "name": "tickets",
-      "rows": 926
+      "rows": 928
     },
     {
       "name": "time_checkpoints",
-      "rows": 8268
+      "rows": 8270
     },
     {
       "name": "time_events",
-      "rows": 162389
+      "rows": 170163
     },
     {
       "name": "time_journal",
-      "rows": 152303
+      "rows": 160075
     },
     {
       "name": "time_machine",
-      "rows": 8839
+      "rows": 9151
     },
     {
       "name": "tool_builds",
@@ -5510,7 +5510,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 12246
+      "rows": 12294
     },
     {
       "name": "trading_signals",
@@ -5562,7 +5562,7 @@
     },
     {
       "name": "watched_topic_evidence",
-      "rows": 196
+      "rows": 206
     },
     {
       "name": "watched_topic_settings",
@@ -5578,7 +5578,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 202
+      "rows": 203
     }
   ],
   "agents": [
