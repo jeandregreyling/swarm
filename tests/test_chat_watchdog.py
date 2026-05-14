@@ -783,7 +783,7 @@ def test_watchdog_escalates_when_ollama_stop_leaves_single_runner(monkeypatch):
 
     assert result['ok'] is True
     assert ['ollama', 'stop', 'gemma3:latest'] in calls['cmds']
-    assert ['pkill', '-f', 'ollama runner --ollama-engine'] in calls['cmds']
+    assert ['pkill', '-f', 'ollama runner --model'] in calls['cmds']
     assert result['after_models'] == []
 
 
@@ -1017,3 +1017,47 @@ def test_watchdog_resets_state_when_model_confirmed_gone(monkeypatch):
     assert result['ok'] is True
     with chat_mod._WATCHDOG_KILL_LOCK:
         assert 'qwen2.5:latest' not in chat_mod._WATCHDOG_KILL_STATE
+
+
+def test_skills_loop_does_not_nudge_empty_gateway_failure():
+    from agents.skills_loop import run_skill_loop
+
+    calls = []
+    stages = []
+
+    def _call_fn(_messages):
+        calls.append(_messages)
+        return '', 0
+
+    answer, tokens = run_skill_loop(
+        agent_name='mistral',
+        call_fn=_call_fn,
+        messages=[{'role': 'user', 'content': 'fix watchdog'}],
+        emit_fn=stages.append,
+        max_passes=2,
+        nudge_if_no_skills=True,
+    )
+
+    assert answer == ''
+    assert tokens == 0
+    assert len(calls) == 1
+    assert 'nudging for skill commands' not in stages
+
+
+def test_terminal_job_ignores_late_stage_after_cancel():
+    _fresh_state()
+    now = time.time()
+    cj._CHAT_JOBS['job-cancelled'] = {
+        'job_id': 'job-cancelled',
+        'agent': 'mistral',
+        'status': 'cancelled',
+        'stage': 'cancelled by user',
+        'eta_seconds': 0,
+        'started_ts': now - 10,
+        'updated_ts': now,
+        'stage_trace': [{'text': 'cancelled by user', 'ts': now}],
+    }
+
+    cj._chat_update_job('job-cancelled', stage='finalizing answer')
+
+    assert cj._CHAT_JOBS['job-cancelled']['stage'] == 'cancelled by user'

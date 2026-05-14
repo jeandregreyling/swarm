@@ -106,6 +106,8 @@ def _chat_update_job(job_id, *, stage=None, status=None, eta_seconds=None, error
         job = _CHAT_JOBS.get(job_id)
         if not job:
             return
+        if status is None and str(job.get('status') or '') in {'completed', 'failed', 'cancelled'}:
+            return
         now_ts = time.time()
         now_iso = _chat_now_iso()
         if stage is not None:

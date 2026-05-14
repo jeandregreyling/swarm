@@ -511,7 +511,7 @@ def _chat_try_hard_kill_local_agent(agent_name):
     if still_running and len(after_models) == 1:
         try:
             proc = subprocess.run(
-                ['pkill', '-f', 'ollama runner --ollama-engine'],
+                ['pkill', '-f', 'ollama runner --model'],
                 capture_output=True,
                 text=True,
                 timeout=6,

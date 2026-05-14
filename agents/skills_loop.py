@@ -299,7 +299,7 @@ def run_skill_loop(
     )
 
     # Nudge pass — one extra call if no skills and the caller requested it.
-    if nudge_if_no_skills and not has_skill:
+    if nudge_if_no_skills and not has_skill and str(first_content or '').strip():
         emit_fn('nudging for skill commands')
         nudge_messages = working_messages + [
             {'role': 'assistant', 'content': answer},
