@@ -1,10 +1,10 @@
 """
-KILL SWITCHES — Emergency control agents via Telegram/Discord
-Allows Ghost to trigger immediate actions:
-- Emergency shutdown (all agents)
-- Agent reset/restart
-- Session termination
-- State rollback
+KILL SWITCHES — Emergency control agents via Telegram/Discord + UI
+Allows hard stops for individual agents, chats, and global swarm.
+Integrated with queue, orchestrator, and desktop button config.
+
+Enhanced for P-00221285D1: per-agent kills, better stalling recovery hooks,
+and exposure for agents tile / chats.
 """
 
 import requests
@@ -19,7 +19,7 @@ from utils.config import TELEGRAM_TOKEN, TELEGRAM_BOT_NAME, GHOST_TELEGRAM_CHAT_
 from utils.config import DISCORD_TOKEN, DISCORD_BOT_NAME, DISCORD_CHANNEL_ID
 
 class KillSwitch:
-    """Emergency control interface for the swarm."""
+    """Emergency control interface for the swarm. Hard stops + recovery hooks."""
     
     def notify_telegram(self, message: str, action: str = None) -> bool:
         """Send alert to Ghost via Telegram."""
@@ -65,32 +65,64 @@ class KillSwitch:
         return telegram_ok or discord_ok
     
     def emergency_shutdown(self, reason: str = "Unknown") -> bool:
-        """Gracefully shutdown all agents and services."""
+        """Hard global shutdown of all agents and services. Use for total stall or compromise."""
         alert = f"🛑 EMERGENCY SHUTDOWN TRIGGERED\nReason: {reason}\nTime: {datetime.now().isoformat()}"
         self.broadcast_alert(alert, severity='CRITICAL')
+        self.record_kill_event('emergency_shutdown', 'system', reason)
         
         try:
-            # Kill all terminal.py instances
+            # Kill all terminal.py / fridays instances
             subprocess.run(['pkill', '-f', 'frontend/terminal.py'], check=False)
-            # Kill all Ollama agents
+            subprocess.run(['pkill', '-f', 'fridays/'], check=False)
+            # Kill Ollama processes
             subprocess.run(['pkill', '-f', 'ollama'], check=False)
-            print("[KillSwitch] Emergency shutdown complete")
+            # Additional: kill python agents
+            subprocess.run(['pkill', '-f', 'python.*agent'], check=False)
+            print("[KillSwitch] HARD global emergency shutdown complete")
             return True
         except Exception as e:
             print(f"[KillSwitch] Shutdown error: {e}")
+            return False
+    
+    def kill_agent(self, agent_name: str, thread_id: str = None, reason: str = "User requested hard stop") -> bool:
+        """Hard stop for a specific agent (and optional thread/chat). Use from agents tile or chats."""
+        alert = f"🔴 HARD KILL AGENT: {agent_name}\nThread: {thread_id or 'all'}\nReason: {reason}\nTime: {datetime.now().isoformat()}"
+        self.broadcast_alert(alert, severity='CRITICAL')
+        self.record_kill_event('kill_agent', agent_name, reason)
+        
+        try:
+            from utils.database import get_connection
+            conn = get_connection()
+            
+            # Cancel processing/queued tasks for this agent
+            if thread_id:
+                conn.execute("UPDATE queue SET status = 'cancelled', error = ? WHERE (agent = ? OR thread_id = ?) AND status IN ('processing', 'queued')", 
+                            (reason, agent_name, thread_id))
+            else:
+                conn.execute("UPDATE queue SET status = 'cancelled', error = ? WHERE agent = ? AND status IN ('processing', 'queued')", 
+                            (reason, agent_name))
+            conn.commit()
+            conn.close()
+            
+            # Kill related processes if identifiable
+            subprocess.run(['pkill', '-f', f'{agent_name}'], check=False)
+            
+            print(f"[KillSwitch] Hard killed agent {agent_name} (thread {thread_id})")
+            return True
+        except Exception as e:
+            print(f"[KillSwitch] kill_agent failed: {e}")
             return False
     
     def reset_agent(self, agent_name: str) -> bool:
         """Reset an agent's session without full shutdown."""
         alert = f"⚙️ AGENT RESET: {agent_name}\nTime: {datetime.now().isoformat()}"
         self.broadcast_alert(alert)
+        self.record_kill_event('reset_agent', agent_name)
         
         try:
-            # Import database to clear agent session
             from utils.database import get_connection
             conn = get_connection()
             
-            # Clear any active requests for this agent
             conn.execute("UPDATE queue SET status = 'cancelled' WHERE agent = ? AND status = 'processing'", 
                         (agent_name,))
             conn.commit()
@@ -106,18 +138,13 @@ class KillSwitch:
         """Pause all agents (does not shutdown, allows resume)."""
         alert = f"⏸️ PAUSE ALL AGENTS\nReason: {reason}\nTime: {datetime.now().isoformat()}"
         self.broadcast_alert(alert)
+        self.record_kill_event('pause_all', 'system', reason)
         
         try:
             from utils.database import get_connection
             conn = get_connection()
             
-            # Mark all processing tasks as paused
-            conn.execute("""
-                UPDATE queue
-                SET status = 'paused'
-                WHERE status = 'processing'
-            """)
-            
+            conn.execute("UPDATE queue SET status = 'paused' WHERE status = 'processing'")
             conn.commit()
             conn.close()
             
@@ -131,18 +158,13 @@ class KillSwitch:
         """Resume paused agents."""
         alert = f"▶️ RESUME ALL AGENTS\nTime: {datetime.now().isoformat()}"
         self.broadcast_alert(alert)
+        self.record_kill_event('resume_all', 'system')
         
         try:
             from utils.database import get_connection
             conn = get_connection()
             
-            # Resume paused tasks
-            conn.execute("""
-                UPDATE queue
-                SET status = 'queued'
-                WHERE status = 'paused'
-            """)
-            
+            conn.execute("UPDATE queue SET status = 'queued' WHERE status = 'paused'")
             conn.commit()
             conn.close()
             
@@ -170,22 +192,32 @@ class KillSwitch:
     def create_desktop_buttons(self) -> dict:
         """
         Generate JSON config for desktop kill switch buttons.
-        These can be rendered in a taskbar, panel, or widget.
+        These can (and should) be rendered in agents tile, taskbar, or widget.
+        Now includes per-agent kill hooks.
         """
         return {
             'buttons': [
                 {
                     'id': 'emergency_shutdown',
-                    'label': '🛑 SHUTDOWN',
-                    'tooltip': 'Emergency shutdown all agents',
+                    'label': '🛑 HARD SHUTDOWN ALL',
+                    'tooltip': 'Emergency hard stop all agents and services',
                     'color': '#ff3333',
                     'action': '/api/killswitch/emergency',
                     'confirm': True,
-                    'confirm_message': 'CONFIRM EMERGENCY SHUTDOWN?'
+                    'confirm_message': 'CONFIRM HARD GLOBAL SHUTDOWN? This stops everything.'
+                },
+                {
+                    'id': 'kill_selected_agent',
+                    'label': '🔴 KILL SELECTED AGENT',
+                    'tooltip': 'Hard stop specific agent (from agents tile)',
+                    'color': '#cc0000',
+                    'action': '/api/killswitch/kill_agent',
+                    'confirm': True,
+                    'confirm_message': 'Kill this agent and cancel its tasks?'
                 },
                 {
                     'id': 'pause_agents',
-                    'label': '⏸️ PAUSE',
+                    'label': '⏸️ PAUSE ALL',
                     'tooltip': 'Pause all active agents',
                     'color': '#ffaa00',
                     'action': '/api/killswitch/pause',
@@ -201,12 +233,12 @@ class KillSwitch:
                 },
                 {
                     'id': 'restart_server',
-                    'label': '🔄 RESTART',
-                    'tooltip': 'Restart swarm server',
+                    'label': '🔄 RESTART SERVER',
+                    'tooltip': 'Restart swarm/Fridays server',
                     'color': '#0066ff',
                     'action': '/api/killswitch/restart',
                     'confirm': True,
-                    'confirm_message': 'Restart swarm server?'
+                    'confirm_message': 'Restart server?'
                 }
             ]
         }
