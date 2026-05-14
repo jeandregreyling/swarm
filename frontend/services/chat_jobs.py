@@ -201,6 +201,29 @@ def _watchdog_gateway_absolute_seconds(job):
     return None
 
 
+def _watchdog_gateway_idle_seconds(job):
+    """Return the runtime gateway idle cap from the stage trace, if present."""
+    trace = job.get('stage_trace') or []
+    if not isinstance(trace, list):
+        return None
+    for entry in reversed(trace):
+        text = ''
+        if isinstance(entry, dict):
+            text = str(entry.get('text') or '')
+        else:
+            text = str(entry or '')
+        match = re.search(r'\bidle\s*=\s*(\d+)\s*s\b', text, flags=re.IGNORECASE)
+        if not match:
+            continue
+        try:
+            seconds = int(match.group(1))
+        except Exception:
+            continue
+        if seconds > 0:
+            return seconds
+    return None
+
+
 def _watchdog_mark_stalled_jobs_locked():
     """Fail any 'running' job that has exceeded its idle watchdog budget.
 
@@ -219,8 +242,10 @@ def _watchdog_mark_stalled_jobs_locked():
         idle = now - updated
         budget = _watchdog_budget_seconds(job)
         absolute_budget = _watchdog_gateway_absolute_seconds(job)
+        gateway_idle_budget = _watchdog_gateway_idle_seconds(job)
         absolute_expired = absolute_budget is not None and elapsed > float(absolute_budget)
-        idle_expired = idle > budget
+        idle_budget = min(budget, float(gateway_idle_budget)) if gateway_idle_budget is not None else budget
+        idle_expired = idle > idle_budget
         if not absolute_expired and not idle_expired:
             continue
         agent = job.get('agent') or 'agent'
@@ -229,10 +254,16 @@ def _watchdog_mark_stalled_jobs_locked():
                 f'Watchdog: {agent} exceeded runtime gateway absolute cap '
                 f'({int(absolute_budget)}s, elapsed {int(elapsed)}s). Automatic stall detection.'
             )
+        elif gateway_idle_budget is not None and idle > float(gateway_idle_budget):
+            error_msg = (
+                f'Watchdog: {agent} exceeded runtime gateway idle cap '
+                f'({int(gateway_idle_budget)}s, idle {int(idle)}s, elapsed {int(elapsed)}s). '
+                'Automatic stall detection.'
+            )
         else:
             error_msg = (
                 f'Watchdog: {agent} had no progress for {int(idle)}s '
-                f'(budget {int(budget)}s, elapsed {int(elapsed)}s). Automatic stall detection.'
+                f'(budget {int(idle_budget)}s, elapsed {int(elapsed)}s). Automatic stall detection.'
             )
         job.update({
             'status': 'failed',

@@ -160,6 +160,29 @@ def test_watchdog_enforces_gateway_absolute_cap_despite_progress(monkeypatch):
     assert 'absolute cap' in cj._CHAT_JOBS['job-gateway-cap']['error']
 
 
+def test_watchdog_enforces_gateway_idle_cap_for_silent_dispatch(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    _fresh_state()
+    now = time.time()
+    cj._CHAT_JOBS['job-gateway-idle'] = {
+        'job_id': 'job-gateway-idle',
+        'agent': 'mistral',
+        'status': 'running',
+        'runtime_class': 'local',
+        'eta_seconds': 90,
+        'started_ts': now - 260,
+        'updated_ts': now - 250,
+        'stage_trace': [
+            {'text': 'gateway: dispatch (absolute=600s idle=240s)', 'ts': now - 250},
+        ],
+    }
+    with cj._CHAT_JOB_LOCK:
+        stalled = cj._watchdog_mark_stalled_jobs_locked()
+    assert len(stalled) == 1
+    assert cj._CHAT_JOBS['job-gateway-idle']['status'] == 'failed'
+    assert 'idle cap' in cj._CHAT_JOBS['job-gateway-idle']['error']
+
+
 def test_watchdog_gives_local_jobs_full_handoff_window(monkeypatch):
     _suppress_durable_spine_logs(monkeypatch)
     _fresh_state()
@@ -728,6 +751,7 @@ def test_watchdog_reconciles_unowned_ollama_runner(monkeypatch):
     monkeypatch.setattr(chat_mod, '_chat_active_local_agents_from_db', lambda: set())
     monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['gemma3:latest'])
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'gemma'})
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'gemma'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'gemma3:latest')
     monkeypatch.setattr(
         chat_mod,
@@ -758,6 +782,7 @@ def test_watchdog_escalates_when_ollama_stop_leaves_single_runner(monkeypatch):
 
     calls = {'ps': 0, 'cmds': []}
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'gemma'})
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'gemma'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'gemma3:latest')
     monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda name: {str(name or '').lower()})
 
@@ -795,6 +820,7 @@ def test_watchdog_does_not_stop_owned_ollama_runner(monkeypatch):
     monkeypatch.setattr(chat_mod, '_chat_active_local_agents_from_db', lambda: {'gemma'})
     monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['gemma3:latest'])
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'gemma'})
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'gemma'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'gemma3:latest')
     monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', lambda agent: stop_calls.append(agent))
 
@@ -802,12 +828,57 @@ def test_watchdog_does_not_stop_owned_ollama_runner(monkeypatch):
     assert stop_calls == []
 
 
+def test_watchdog_reconciles_shared_utility_ollama_runner(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    stop_calls = []
+    monkeypatch.setattr(chat_mod, '_chat_active_local_agents_from_db', lambda: set())
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['qwen:latest'])
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'librarian'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen:latest')
+    monkeypatch.setattr(
+        chat_mod,
+        '_chat_try_hard_kill_local_agent',
+        lambda agent: stop_calls.append(agent) or {
+            'agent': agent,
+            'ok': True,
+            'detail': 'stopped qwen:latest',
+            'configured_model': 'qwen:latest',
+            'models': ['qwen:latest'],
+            'before_models': ['qwen:latest'],
+            'after_models': [],
+        },
+    )
+    monkeypatch.setattr(chat_mod, '_chat_log_watchdog_ollama_event', lambda *a, **k: None)
+
+    result = chat_mod._chat_reconcile_unowned_ollama_runners(2822)
+
+    assert stop_calls == ['librarian']
+    assert result and result[0]['ok'] is True
+
+
 def test_watchdog_treats_placeholder_answer_as_unusable():
     from frontend.blueprints import chat as chat_mod
 
     assert chat_mod._chat_response_is_unusable('gemma', '[gemma unavailable]') is True
     assert chat_mod._chat_response_is_unusable('gemma', '[gemma] no response') is True
+    assert chat_mod._chat_response_is_unusable('mistral', '[mistral] No response - check server logs.') is True
     assert chat_mod._chat_response_is_unusable('gemma', 'Here is the actual status update.') is False
+
+
+def test_timeout_self_handoff_is_not_successful_completion():
+    from frontend.blueprints import chat as chat_mod
+
+    text = (
+        '[twenty] reached the handoff deadline after 251s while still showing active progress.\n\n'
+        'SELF-HANDOFF:\n'
+        '- Current status: deadline 240s reached with heartbeat idle 239s.\n'
+    )
+
+    assert chat_mod._chat_response_is_timeout_handoff(text, 0) is True
+    assert chat_mod._chat_response_is_timeout_handoff(text, 42) is False
+    assert chat_mod._chat_response_is_timeout_handoff('Finished the proposal.', 0) is False
 
 
 def test_chat_routes_explicit_agent_mentions_before_defaulting_to_nine(monkeypatch):
@@ -933,6 +1004,7 @@ def test_watchdog_escalates_to_kill9_after_three_failures(monkeypatch):
         chat_mod._WATCHDOG_KILL_STATE.clear()
 
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'qwen'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
     monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['qwen2.5:latest'])
     monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
@@ -963,6 +1035,7 @@ def test_watchdog_emits_ticket_once_after_five_failures(monkeypatch):
         chat_mod._WATCHDOG_KILL_STATE.clear()
 
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'qwen'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
     monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['qwen2.5:latest'])
     monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
@@ -1007,6 +1080,7 @@ def test_watchdog_resets_state_when_model_confirmed_gone(monkeypatch):
         chat_mod._WATCHDOG_KILL_STATE.clear()
 
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'qwen'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
     monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: [])
     monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
@@ -1061,3 +1135,22 @@ def test_terminal_job_ignores_late_stage_after_cancel():
     cj._chat_update_job('job-cancelled', stage='finalizing answer')
 
     assert cj._CHAT_JOBS['job-cancelled']['stage'] == 'cancelled by user'
+
+
+def test_terminal_job_ignores_late_stage_after_failed():
+    _fresh_state()
+    now = time.time()
+    cj._CHAT_JOBS['job-failed'] = {
+        'job_id': 'job-failed',
+        'agent': 'mistral',
+        'status': 'failed',
+        'stage': 'stalled',
+        'eta_seconds': 0,
+        'started_ts': now - 10,
+        'updated_ts': now,
+        'stage_trace': [{'text': 'stalled (watchdog)', 'ts': now}],
+    }
+
+    cj._chat_update_job('job-failed', stage='finalizing answer')
+
+    assert cj._CHAT_JOBS['job-failed']['stage'] == 'stalled'

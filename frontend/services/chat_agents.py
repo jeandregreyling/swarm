@@ -19,6 +19,27 @@ def _local_ollama_chat_agents():
         return set()
 
 
+def _all_local_ollama_chat_agents():
+    try:
+        from utils.db.registry import get_all_agents_raw
+        roster = get_all_agents_raw() or []
+    except Exception:
+        return set()
+    non_ollama_models = {'external', 'local-algorithm', ''}
+    agents = set()
+    for row in roster:
+        if row.get('tier', 'local') != 'local':
+            continue
+        name = _normalize_chat_participant(row.get('name'))
+        if not name or name == 'ghost':
+            continue
+        model = str(row.get('model') or '').strip().lower()
+        if model in non_ollama_models:
+            continue
+        agents.add(name)
+    return agents
+
+
 def _chat_model_aliases(name):
     raw = str(name or '').strip().lower()
     if not raw:
@@ -60,6 +81,7 @@ def _chat_running_ollama_models():
 
 
 __all__ = [
+    '_all_local_ollama_chat_agents',
     '_chat_agent_configured_model',
     '_chat_model_aliases',
     '_chat_running_ollama_models',

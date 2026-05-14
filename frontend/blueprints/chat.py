@@ -122,11 +122,23 @@ def _chat_response_is_unusable(agent_name, response_text):
     }
     if lower in placeholders:
         return True
+    if 'no response' in lower and 'check server logs' in lower and lower.startswith('['):
+        return True
     if lower.endswith('no response') and lower.startswith('['):
         return True
     if 'unavailable' in lower and lower.startswith('[') and len(lower) <= 80:
         return True
     return False
+
+
+def _chat_response_is_timeout_handoff(response_text, tokens_used=0):
+    raw = str(response_text or '').strip()
+    if not raw:
+        return False
+    if int(tokens_used or 0) != 0:
+        return False
+    lower = raw.lower()
+    return 'self-handoff:' in lower and 'handoff deadline' in lower
 
 
 def _chat_extract_explicit_agent_mentions(text, allowed_agents=None):
@@ -388,7 +400,7 @@ def _chat_try_hard_kill_local_agent(agent_name):
         'ok': False,
         'detail': '',
     }
-    if normalized not in _local_ollama_chat_agents():
+    if normalized not in _all_local_ollama_chat_agents():
         result['detail'] = 'agent is not an Ollama-backed local runtime'
         return result
 
@@ -702,7 +714,7 @@ def _chat_reconcile_unowned_ollama_runners(conversation_id=None):
         return []
 
     stopped = []
-    for agent_name in sorted(_local_ollama_chat_agents()):
+    for agent_name in sorted(_all_local_ollama_chat_agents()):
         agent = _normalize_chat_participant(agent_name)
         if not agent or agent in active_agents:
             continue
@@ -1436,7 +1448,7 @@ def api_chat():
         def _await_agent_future(future, *, text_only=False):
             poll_seconds = 5.0
             idle_stall_seconds = 300.0
-            local_runtime = selected_agent in _local_ollama_chat_agents()
+            local_runtime = selected_agent in _all_local_ollama_chat_agents()
             while True:
                 try:
                     return future.result(timeout=poll_seconds)
@@ -1984,6 +1996,7 @@ def api_chat():
                             f'{selected_agent} returned no usable answer: '
                             f'{str(response_text or "").strip()[:120] or "empty response"}'
                         )
+                    handoff_failure = _chat_response_is_timeout_handoff(response_text, tokens_used)
                     if selected_agent in _get_ghost_agent_names() and _is_execution_confirmation(message):
                         try:
                             skill_output = _execute_agent_skill_lines(selected_agent, response_text, data)
@@ -1996,8 +2009,8 @@ def api_chat():
                             )
                     with _CHAT_JOB_LOCK:
                         existing = _CHAT_JOBS.get(job_id)
-                        cancelled = bool(existing and existing.get('status') == 'cancelled')
-                    if cancelled:
+                        terminal_status = str((existing or {}).get('status') or '')
+                    if terminal_status in {'cancelled', 'failed'}:
                         return
                     response_target = _gate_relay_target(
                         _resolve_chat_reply_target(selected_agent, response_text, reply_context),
@@ -2033,15 +2046,22 @@ def api_chat():
                     _trace_json = None
                     with _CHAT_JOB_LOCK:
                         job = _CHAT_JOBS.get(job_id)
-                        if job and job.get('status') != 'cancelled':
+                        if job and job.get('status') not in {'cancelled', 'failed'}:
+                            final_status = 'failed' if handoff_failure else 'completed'
+                            final_stage = 'handoff' if handoff_failure else 'completed'
+                            final_error = (
+                                'handoff deadline reached without a final agent answer'
+                                if handoff_failure else ''
+                            )
                             job.update({
-                                'status': 'completed',
-                                'stage': 'completed',
+                                'status': final_status,
+                                'stage': final_stage,
                                 'eta_seconds': 0,
                                 'updated_ts': updated_ts,
                                 'updated_at': updated_iso,
                                 'elapsed_ms': int(elapsed_ms or 0),
                                 'tokens': int(tokens_used or 0),
+                                'error': final_error,
                                 'response': response_text or '',
                             })
                             _trace_json = json.dumps(job.get('stage_trace') or [])
@@ -2053,10 +2073,39 @@ def api_chat():
                             except Exception:
                                 pass
                     update_chat_job_db(
-                        job_id, status='completed', stage='completed',
-                        elapsed_ms=int(elapsed_ms or 0), tokens=int(tokens_used or 0),
+                        job_id,
+                        status='failed' if handoff_failure else 'completed',
+                        stage='handoff' if handoff_failure else 'completed',
+                        error=(
+                            'handoff deadline reached without a final agent answer'
+                            if handoff_failure else ''
+                        ),
+                        elapsed_ms=int(elapsed_ms or 0),
+                        tokens=int(tokens_used or 0),
                         stage_trace_json=_trace_json,
                     )
+                    if handoff_failure:
+                        try:
+                            ensure_chat_relay_recovery(
+                                job_id=job_id,
+                                conversation_id=conv_id,
+                                stalled_agent=selected_agent,
+                                reason='handoff deadline reached without a final agent answer',
+                                stage_trace=(json.loads(_trace_json or '[]') if _trace_json else []),
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            _sse_chat(
+                                conv_id,
+                                selected_agent,
+                                'failed',
+                                job_id=job_id,
+                                error='handoff deadline reached without a final agent answer',
+                            )
+                        except Exception:
+                            pass
+                        return
                     try:
                         _sse_chat(conv_id, selected_agent, 'completed', job_id=job_id, tokens=int(tokens_used or 0))
                     except Exception:

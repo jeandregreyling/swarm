@@ -266,6 +266,7 @@ from .chat_relay import (
 # worker-pool variant from chat_jobs wins in the services namespace, and
 # chat.py keeps its own CLI-based variant locally.
 from .chat_agents import (
+    _all_local_ollama_chat_agents,
     _chat_agent_configured_model,
     _chat_model_aliases,
     _chat_running_ollama_models,
@@ -362,6 +363,7 @@ __all__ = [
     '_infer_reply_target_from_text',
     '_is_execution_confirmation',
     '_is_time_wizard_active',
+    '_all_local_ollama_chat_agents',
     '_local_ollama_chat_agents',
     '_log_proposal_duck_review',
     '_normalize_chat_participant',
