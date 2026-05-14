@@ -1,6 +1,14 @@
-"""killswitch.py — Kill Switches routes"""
+"""killswitch.py — Kill Switches routes
+Exposes the enhanced hard kill functionality from core/kill_switch.py
+for use in agents tile, chats, and desktop.
+
+Updated for P-00221285D1 to include per-agent hard kill.
+"""
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
+import sys
+import threading
+from datetime import datetime, timezone
 
 killswitch_bp = Blueprint('killswitch', __name__)
 
@@ -15,12 +23,12 @@ def api_killswitch_buttons(current_user=None):
 @killswitch_bp.route('/api/killswitch/emergency', methods=['POST'])
 @require_owner
 def api_killswitch_emergency(current_user=None):
-    """EMERGENCY SHUTDOWN — immediate stop all agents."""
+    """EMERGENCY SHUTDOWN — immediate hard stop all agents."""
     reason = request.json.get('reason', 'Manual emergency shutdown') if request.json else 'Manual emergency shutdown'
-    
+
     kill_switch.record_kill_event('emergency_shutdown', agent='system', reason=reason)
     success = kill_switch.emergency_shutdown(reason=reason)
-    
+
     return jsonify({
         'action': 'emergency_shutdown',
         'success': success,
@@ -68,7 +76,7 @@ def api_killswitch_restart(current_user=None):
     kill_switch.record_kill_event('restart_server', agent='system')
     kill_switch.broadcast_alert('🔄 RESTART SERVER initiated')
     
-    # Spawn restart in background via subprocess (os.execv in a thread is undefined)
+    # Spawn restart in background via subprocess
     def _restart():
         import time, subprocess
         time.sleep(1)
@@ -88,7 +96,7 @@ def api_killswitch_restart(current_user=None):
 @killswitch_bp.route('/api/killswitch/agent/<agent_name>/reset', methods=['POST'])
 @require_owner
 def api_killswitch_agent_reset(agent_name, current_user=None):
-    """Reset specific agent."""
+    """Reset specific agent session."""
     kill_switch.record_kill_event('agent_reset', agent=agent_name)
     success = kill_switch.reset_agent(agent_name)
     
@@ -100,4 +108,23 @@ def api_killswitch_agent_reset(agent_name, current_user=None):
     })
 
 
+@killswitch_bp.route('/api/killswitch/agent/<agent_name>/kill', methods=['POST'])
+@require_owner
+def api_killswitch_agent_kill(agent_name, current_user=None):
+    """HARD KILL specific agent (and optional thread). Use from agents tile or chats.
+    Body: { "thread_id": "optional", "reason": "optional" }
+    """
+    data = request.json or {}
+    thread_id = data.get('thread_id')
+    reason = data.get('reason', 'Hard stop from UI/agents tile')
 
+    kill_switch.record_kill_event('kill_agent', agent=agent_name, reason=reason)
+    success = kill_switch.kill_agent(agent_name=agent_name, thread_id=thread_id, reason=reason)
+
+    return jsonify({
+        'action': 'kill_agent',
+        'agent': agent_name,
+        'thread_id': thread_id,
+        'success': success,
+        'timestamp': datetime.now(timezone.utc).isoformat() + 'Z'
+    })

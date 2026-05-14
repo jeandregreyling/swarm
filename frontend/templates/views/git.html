@@ -9,6 +9,19 @@
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input id="git-filter-input" type="text" placeholder="Filter files" style="width:180px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;">
+          <select id="git-env-select" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
+            <option value="">PROD</option>
+            <option value="uat">UAT</option>
+            <option value="dev">DEV</option>
+          </select>
+          <select id="git-branch-select" title="Local and origin branches" style="min-width:220px;max-width:320px;padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;">
+            <option value="">Loading branches...</option>
+          </select>
+          <button onclick="gitFetchBranches()" title="Fetch origin and refresh branches" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Fetch</button>
+          <button onclick="gitCompareSelectedBranch()" title="Compare selected branch without checking it out" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Compare</button>
+          <button onclick="gitCheckoutSelectedBranch()" title="Checkout selected branch in this environment" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Checkout</button>
+          <button onclick="gitPullCurrentBranch()" title="Fast-forward pull current branch" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Pull</button>
+          <button onclick="gitPushCurrentBranch()" title="Push current branch; force push is not supported" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Push</button>
           <button onclick="gitRefreshStatus()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Refresh</button>
         </div>
       </div>

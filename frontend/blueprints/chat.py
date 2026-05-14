@@ -508,6 +508,42 @@ def _chat_try_hard_kill_local_agent(agent_name):
             if model_name not in still_running:
                 still_running.append(model_name)
 
+    if still_running and len(after_models) == 1:
+        try:
+            proc = subprocess.run(
+                ['pkill', '-f', 'ollama runner --ollama-engine'],
+                capture_output=True,
+                text=True,
+                timeout=6,
+                check=False,
+            )
+            result['attempts'].append({
+                'model': ','.join(still_running),
+                'ok': proc.returncode in (0, 1),
+                'action': 'runner-pkill',
+                'returncode': proc.returncode,
+                'stdout': str(proc.stdout or '').strip(),
+                'stderr': str(proc.stderr or '').strip(),
+            })
+            time.sleep(1.0)
+            after_models = _chat_running_ollama_models()
+            result['after_models'] = after_models
+            after_alias_sets = [_chat_model_aliases(name) for name in after_models]
+            still_running = []
+            for model_name in unique_candidates:
+                aliases = _chat_model_aliases(model_name)
+                if any(aliases & running_aliases for running_aliases in after_alias_sets):
+                    still_running.append(model_name)
+        except Exception as exc:
+            result['attempts'].append({
+                'model': ','.join(still_running),
+                'ok': False,
+                'action': 'runner-pkill',
+                'returncode': None,
+                'stdout': '',
+                'stderr': f'runner-pkill-failed: {exc}',
+            })
+
     # Purge from still_running anything ollama ps confirms is actually gone.
     # The stop/kill action may report failure because the process exited
     # during the attempt; ollama ps is ground truth.

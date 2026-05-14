@@ -124,6 +124,7 @@ MANUAL: dict[str, dict[str, str]] = {
     'app-center': {
         'title': 'App Center',
         'body': (
+            'Backend app/game build projects. Not Studio Git.\n\n'
             'Build mobile, tablet, desktop, web, and game projects from one '
             'place. Each project records its kind (mobile/tablet/desktop/web/'
             'game), framework (flutter, react-native, tauri, electron, godot, '

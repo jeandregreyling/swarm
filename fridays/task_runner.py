@@ -241,6 +241,42 @@ def _task_relay_recovery_sweep(**kwargs):
     return f'Reviewed {len(reviewed)} relay recoveries: {", ".join(reviewed)}'
 
 
+@register('watchdog_stall_detection', 'Auto-detect stuck processing tasks, auto-pause them, and create watchdog repair lessons. Run every 5-10 minutes.', 'monitoring')
+def _task_watchdog_stall_detection(**kwargs):
+    """Periodic stall detector with optional auto-recovery."""
+    import shlex
+    from utils.db.watchdog_lessons import detect_and_record_stalls
+
+    opts = {'max_age_minutes': '15', 'limit': '20', 'auto_recover': 'true'}
+    for tok in shlex.split(kwargs.get('args') or ''):
+        if '=' not in tok:
+            continue
+        k, v = tok.split('=', 1)
+        if k.strip().lower() in opts:
+            opts[k.strip().lower()] = v.strip()
+
+    try:
+        max_age = max(5, min(int(opts['max_age_minutes']), 120))
+    except Exception:
+        max_age = 15
+    try:
+        lim = max(5, min(int(opts['limit']), 50))
+    except Exception:
+        lim = 20
+    auto_recover = str(opts.get('auto_recover', 'true')).strip().lower() in {'true', '1', 'yes', 'on'}
+
+    lessons = detect_and_record_stalls(
+        max_age_minutes=max_age,
+        limit=lim,
+        auto_recover=auto_recover,
+    )
+    count = len(lessons)
+    if count == 0:
+        return f'No stalled tasks detected (>{max_age} min)'
+    action = 'created repair lessons and attempted recovery' if auto_recover else 'created repair lessons'
+    return f'{action} for {count} stalled task(s) (>{max_age} min)'
+
+
 def _tasker_in_idle_window(window, now=None):
     """Return whether local time is inside an HH:MM-HH:MM idle window."""
     window = str(window or '').strip()

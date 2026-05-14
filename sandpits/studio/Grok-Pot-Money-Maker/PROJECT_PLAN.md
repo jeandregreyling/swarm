@@ -45,7 +45,7 @@
 4. [x] Add branch selector + git buttons in Studio UI (DEV 5051)
 5. [x] Make Blackboard visible in project tile
 6. [x] Make DEV default to feature branches and show commit status
-7. [x] Clean up stuck proposals in Git ALM
+7. [ ] Clean up stuck proposals in Git ALM
 
 ## Blackboard Notes
 - User wants Git operations as UI buttons, not terminal commands.
