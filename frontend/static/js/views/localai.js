@@ -173,16 +173,19 @@ async function localaiRefreshModelCatalog(silent) {
     const response = await fetch('/api/ollama/library');
     const data = await response.json();
     const remote = Array.isArray(data.models) ? data.models : [];
-    const installed = (_ollamaInventory || []).map(m => m.name).filter(Boolean);
-    const merged = Array.from(new Set([...installed, ...remote, ..._OLLAMA_DEFAULT_LIBRARY]))
+    const installed = new Set((_ollamaInventory || []).map(m => m.name).filter(Boolean));
+    const merged = Array.from(new Set([...remote, ..._OLLAMA_DEFAULT_LIBRARY]))
       .filter(Boolean)
+      .filter(name => !installed.has(name))
       .sort((a, b) => a.localeCompare(b));
     _ollamaPullCatalog = merged;
     _renderOllamaPullCatalog();
     if (!silent) _setOllamaStatus(`Model catalog refreshed (${merged.length} entries).`, 'ok');
   } catch (error) {
-    const installed = (_ollamaInventory || []).map(m => m.name).filter(Boolean);
-    _ollamaPullCatalog = Array.from(new Set([...installed, ..._OLLAMA_DEFAULT_LIBRARY])).sort((a, b) => a.localeCompare(b));
+    const installed = new Set((_ollamaInventory || []).map(m => m.name).filter(Boolean));
+    _ollamaPullCatalog = Array.from(new Set(_OLLAMA_DEFAULT_LIBRARY))
+      .filter(name => !installed.has(name))
+      .sort((a, b) => a.localeCompare(b));
     _renderOllamaPullCatalog();
     if (!silent) _setOllamaStatus(`Catalog refresh failed; using fallback list (${error.message}).`, 'error');
   }
@@ -196,12 +199,10 @@ function _renderOllamaPullCatalog() {
     if (select && select.tagName === 'SELECT') select.innerHTML = '<option value="">(catalog unavailable)</option>';
     return;
   }
-  // Build safe options list once
-  const installed = new Set((_ollamaInventory || []).map(m => m.name).filter(Boolean));
+  // Pull catalog intentionally excludes locally installed models.
   const options = _ollamaPullCatalog.map(name => {
     const safe = _escapeHtml(name);
-    const tag = installed.has(name) ? ' (installed)' : '';
-    return { name, safe, tag };
+    return { name, safe };
   });
   // Legacy datalist path (if still present in another view)
   if (datalist) datalist.innerHTML = options.map(o => `<option value="${o.safe}">`).join('');
@@ -209,7 +210,7 @@ function _renderOllamaPullCatalog() {
     if (select.tagName === 'SELECT') {
       const prev = select.value;
       select.innerHTML = '<option value="">— Pick a model —</option>' +
-        options.map(o => `<option value="${o.safe}">${o.safe}${o.tag}</option>`).join('');
+        options.map(o => `<option value="${o.safe}">${o.safe}</option>`).join('');
       if (prev) select.value = prev;
     } else {
       select.placeholder = 'Type to search models…';

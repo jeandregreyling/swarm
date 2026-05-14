@@ -250,6 +250,27 @@ def _disable_agent_for_chat(agent_name, reason):
         return False
 
 
+def _chat_error_should_disable_agent(text):
+    raw = str(text or '').strip().lower()
+    if not raw:
+        return False
+    auth_cues = (
+        '401',
+        'unauthorized',
+        'bad credentials',
+        'invalid api key',
+        'missing api key',
+        'authentication',
+        'api key rejected',
+        'token rejected',
+    )
+    return (
+        any(cue in raw for cue in auth_cues)
+        or 'timed out' in raw
+        or _looks_like_token_exhaustion(raw)
+    )
+
+
 # Ollama-agent helpers live in services.chat_agents and are re-exported through
 # services/__init__.py. Names available here via `from services import *`:
 #   _local_ollama_chat_agents, _chat_model_aliases,
@@ -1671,11 +1692,11 @@ def api_chat():
                 except Exception as _dyn_err:
                     response_text = f'[{selected_agent}] error: {_dyn_err}'
             _stage('finalizing answer', 0)
-            if _looks_like_token_exhaustion(response_text):
-                _disable_agent_for_chat(selected_agent, 'token/context exhaustion detected in response')
+            if _chat_error_should_disable_agent(response_text):
+                _disable_agent_for_chat(selected_agent, response_text)
                 response_text = (
-                    f'[{selected_agent}] was taken offline because it reported token/context exhaustion. '
-                    'Re-enable it from the Agents tile after reducing context or changing model settings.\n\n'
+                    f'[{selected_agent}] was taken offline because it reported a runtime/auth failure. '
+                    'Re-enable it from the Agents tile after checking credentials, timeout, context, or model settings.\n\n'
                     + (response_text or '')
                 )
         except FuturesTimeoutError:
@@ -2007,7 +2028,7 @@ def api_chat():
                 except Exception as exc:
                     err_text = str(exc or '').strip() or exc.__class__.__name__
                     agent_taken_offline = False
-                    if 'timed out' in err_text.lower() or _looks_like_token_exhaustion(err_text):
+                    if _chat_error_should_disable_agent(err_text):
                         agent_taken_offline = _disable_agent_for_chat(selected_agent, err_text)
                     with _CHAT_JOB_LOCK:
                         existing = _CHAT_JOBS.get(job_id)

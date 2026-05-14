@@ -8,7 +8,7 @@ let _pfarmTimer = null;
 
 function _pfEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
-    '&':'&','<':'<','>':'>','"':'"',"'":'&#39;'
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
 }
 
@@ -38,6 +38,7 @@ function _pfRenderNode(node) {
   const caps = t.capabilities || [];
   const platform = (node.platform || '').toLowerCase();
   const isAndroid = platform === 'android' || platform.startsWith('android');
+  const isDell = platform.includes('linuxmint') || String(node.label || node.node_id || '').toLowerCase().includes('dell');
   const isMaster = (node.node_id || '').toLowerCase().includes('potato-1') || (node.label || '').toLowerCase().includes('master');
   const ramPct = (m.ram_total_mb && m.ram_free_mb != null)
     ? Math.round(100 - (100 * m.ram_free_mb / m.ram_total_mb)) : null;
@@ -68,12 +69,16 @@ function _pfRenderNode(node) {
   const battStr = p.battery_pct != null ? `${Math.round(p.battery_pct)}% ${p.on_battery ? '🔋' : '⚡'}` : '—';
   const npuOk = c.npu_present ? '✓ NPU' : '';
   const gpuOk = c.gpu_present ? '✓ GPU' : '';
+  const displayName = node.label || (isDell ? 'Dell Linux Potato' : node.node_id);
+  const shareHint = caps.length
+    ? caps.map(cap => cap.replace('inference.', '').replace('scheduler.', '').replace('storage.', '')).join(' / ')
+    : 'No shared resources reported yet';
 
   return `
     <div style="background:var(--card);border:1px solid ${stale ? '#f4433655' : 'var(--border)'};border-radius:6px;padding:10px;font-size:10px;line-height:1.5;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
         <span style="width:8px;height:8px;border-radius:50%;background:${stale ? '#f44336' : '#4caf50'};"></span>
-        <strong style="font-size:11px;color:var(--text);">${platIcon} ${_pfEsc(node.label || node.node_id)}</strong>
+        <strong style="font-size:11px;color:var(--text);">${platIcon} ${_pfEsc(displayName)}</strong>
         ${roleBadge}
         <span style="flex:1;"></span>
         ${userPill}
@@ -88,6 +93,9 @@ function _pfRenderNode(node) {
         ${p.battery_pct != null ? `<span>Batt: <strong>${battStr}</strong></span>` : ''}
         ${npuOk || gpuOk ? `<span style="color:var(--text-dim);">${npuOk}${npuOk && gpuOk ? ' · ' : ''}${gpuOk}</span>` : ''}
       </div>
+      <div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);color:var(--text-dim);font-size:9px;">
+        Share: <strong style="color:var(--text);">${_pfEsc(shareHint)}</strong>
+      </div>
     </div>
   `;
 }
@@ -98,7 +106,7 @@ function _pfExpectedNodes(nodes) {
     { node_id: 'potato-1', label: 'potato-1 Leader', platform: 'linux', expected: true },
     { node_id: 'potato-2', label: 'potato-2 Samsung S9 FE', platform: 'android', expected: true },
     { node_id: 'potato-3', label: 'potato-3 MacBook', platform: 'macos', expected: true },
-    { node_id: 'potato-4', label: 'potato-4 Dell', platform: 'windows', expected: true },
+    { node_id: 'potato-4', label: 'potato-4 Dell', platform: 'linux/windows', expected: true },
   ];
   const merged = nodes.slice();
   expected.forEach(e => {

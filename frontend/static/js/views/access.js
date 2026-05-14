@@ -2075,11 +2075,12 @@ function agentsOpenLogs(runner) {
 }
 
 function agentsOllamaPullPrompt() {
-  const tag = (typeof prompt === 'function') ? prompt('Model tag to pull (e.g. gemma3:4b)', 'gemma3:4b') : '';
-  if (!tag) return;
-  const safe = String(tag).replace(/[^a-zA-Z0-9._:\/-]/g, '');
-  if (!safe) return;
-  agentsCopyCmd('ollama-pull', `ollama pull ${safe}`);
+  if (typeof openWindow === 'function') openWindow('localai', 'Local AI', 'view-localai');
+  setTimeout(() => {
+    if (typeof localaiRefresh === 'function') localaiRefresh();
+    const input = document.getElementById('ollama-pull-input');
+    if (input) input.focus();
+  }, 150);
 }
 
 function agentsRefreshDisabledPanel() {

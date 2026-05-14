@@ -6,7 +6,7 @@
 
 function $(id) { return document.getElementById(id); }
 
-let leaderUrl = localStorage.getItem('leaderUrl') || 'http://100.87.66.45:5050';
+let leaderUrl = localStorage.getItem('leaderUrl') || 'http://127.0.0.1:5050';
 let currentView = 'chat';
 
 function ensureTopErrorNode() {
@@ -72,15 +72,22 @@ if (!invoke) {
 }
 
 async function apiGet(path) {
-  if (!invoke) throw new Error("Tauri invoke is unavailable");
-  return invoke('api_get', { url: `${leaderUrl}${path}` });
+  if (invoke) return invoke('api_get', { url: `${leaderUrl}${path}` });
+  const r = await fetch(`${leaderUrl}${path}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
 }
 
 async function apiPost(path, body) {
-  if (!invoke) throw new Error("Tauri invoke is unavailable");
-
   try {
-    return await invoke('api_post', { url: `${leaderUrl}${path}`, body });
+    if (invoke) return await invoke('api_post', { url: `${leaderUrl}${path}`, body });
+    const r = await fetch(`${leaderUrl}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
   } catch (e) {
     // Preserve tauri invoke error payloads in a readable way.
     const msg =
