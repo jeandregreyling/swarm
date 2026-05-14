@@ -1,11 +1,7 @@
 """Persistent Watchdog repair lessons.
 
-This is the small bridge between "we noticed a failure" and "local agents can
-repair it through DEV/UAT".  Watchdog records a failure class plus the proof
-needed before the lesson is promoted into behavior.
-
-Enhanced for P-00221285D1: added automatic stall detection that scans
-for stuck processing tasks and auto-creates repair lessons.
+Enhanced: Stall detection now attempts basic recovery (pause) where safe
+and creates stronger repair lessons with recovery suggestions.
 """
 from __future__ import annotations
 
@@ -134,63 +130,69 @@ def list_open_repair_lessons(limit=20):
         conn.close()
 
 
-def detect_and_record_stalls(max_age_minutes: int = 15, limit: int = 20) -> list:
+def detect_and_record_stalls(max_age_minutes: int = 15, limit: int = 20, auto_recover: bool = True) -> list:
     """
-    Automatic stall detector.
-    Scans queue/chat_jobs for tasks stuck in 'processing' longer than max_age_minutes.
-    Auto-creates repair lessons so the watchdog + agents can act on them.
-
-    Returns list of created lesson dicts.
-    Call this periodically from Tasker or watchdog loop.
+    Automatic stall detector with optional recovery.
+    Finds stuck processing tasks and creates repair lessons.
+    If auto_recover=True, attempts to pause stuck tasks as first response.
     """
     conn = get_connection()
     created_lessons = []
     try:
         _ensure_schema(conn)
 
-        # Look for stuck processing items (adjust table/columns if your queue schema differs)
         cutoff = (datetime.now() - timedelta(minutes=max_age_minutes)).isoformat()
+
+        # Try queue first, fallback to chat_jobs
         try:
             rows = conn.execute(
                 """
-                SELECT id, agent, thread_id, status, updated_at, created_at
+                SELECT id, agent, thread_id, status, updated_at
                 FROM queue
-                WHERE status = 'processing'
-                  AND (updated_at < ? OR created_at < ?)
-                ORDER BY updated_at ASC
-                LIMIT ?
+                WHERE status = 'processing' AND updated_at < ?
+                ORDER BY updated_at ASC LIMIT ?
                 """,
-                (cutoff, cutoff, limit),
+                (cutoff, limit)
             ).fetchall()
         except Exception:
-            # Fallback: try chat_jobs if queue table shape differs
             rows = conn.execute(
                 """
-                SELECT id, agent, conversation_id as thread_id, status, updated_at, created_at
+                SELECT id, agent, conversation_id as thread_id, status, updated_at
                 FROM chat_jobs
-                WHERE status = 'processing'
-                  AND (updated_at < ? OR created_at < ?)
-                ORDER BY updated_at ASC
-                LIMIT ?
+                WHERE status = 'processing' AND updated_at < ?
+                ORDER BY updated_at ASC LIMIT ?
                 """,
-                (cutoff, cutoff, limit),
+                (cutoff, limit)
             ).fetchall()
 
         for row in rows:
             row_dict = dict(row)
             agent = row_dict.get('agent') or 'unknown'
             thread_id = str(row_dict.get('thread_id') or row_dict.get('id') or '')
+
+            # Attempt auto-recovery: pause the stuck task
+            recovered = False
+            if auto_recover:
+                try:
+                    conn.execute(
+                        "UPDATE queue SET status = 'paused' WHERE id = ? AND status = 'processing'",
+                        (row_dict.get('id'),)
+                    )
+                    conn.commit()
+                    recovered = True
+                except Exception:
+                    pass  # table might differ, ignore
+
             symptom = f"Stuck in processing > {max_age_minutes} min (agent={agent}, thread={thread_id})"
             lesson_text = (
-                f"Task for agent {agent} (thread {thread_id}) has been processing too long. "
-                "Possible causes: infinite loop, missing progress heartbeat, deadlock, or unhandled exception. "
-                "Recommended: kill the task, inspect logs, add timeout/heartbeat, or trigger recovery sweep."
+                f"Task for agent {agent} (thread {thread_id}) stuck in processing. "
+                f"Auto-paused: {recovered}. "
+                "Next: investigate logs, add heartbeat/timeout, or trigger full recovery sweep."
             )
             evidence = {
                 'agent': agent,
                 'thread_id': thread_id,
-                'status': row_dict.get('status'),
-                'last_updated': row_dict.get('updated_at'),
+                'auto_paused': recovered,
                 'detected_at': datetime.now().isoformat(),
             }
 
