@@ -3,11 +3,15 @@
 This is the small bridge between "we noticed a failure" and "local agents can
 repair it through DEV/UAT".  Watchdog records a failure class plus the proof
 needed before the lesson is promoted into behavior.
+
+Enhanced for P-00221285D1: added automatic stall detection that scans
+for stuck processing tasks and auto-creates repair lessons.
 """
 from __future__ import annotations
 
 import json
 import uuid
+from datetime import datetime, timedelta
 
 from ._connection import get_connection
 
@@ -129,3 +133,78 @@ def list_open_repair_lessons(limit=20):
     finally:
         conn.close()
 
+
+def detect_and_record_stalls(max_age_minutes: int = 15, limit: int = 20) -> list:
+    """
+    Automatic stall detector.
+    Scans queue/chat_jobs for tasks stuck in 'processing' longer than max_age_minutes.
+    Auto-creates repair lessons so the watchdog + agents can act on them.
+
+    Returns list of created lesson dicts.
+    Call this periodically from Tasker or watchdog loop.
+    """
+    conn = get_connection()
+    created_lessons = []
+    try:
+        _ensure_schema(conn)
+
+        # Look for stuck processing items (adjust table/columns if your queue schema differs)
+        cutoff = (datetime.now() - timedelta(minutes=max_age_minutes)).isoformat()
+        try:
+            rows = conn.execute(
+                """
+                SELECT id, agent, thread_id, status, updated_at, created_at
+                FROM queue
+                WHERE status = 'processing'
+                  AND (updated_at < ? OR created_at < ?)
+                ORDER BY updated_at ASC
+                LIMIT ?
+                """,
+                (cutoff, cutoff, limit),
+            ).fetchall()
+        except Exception:
+            # Fallback: try chat_jobs if queue table shape differs
+            rows = conn.execute(
+                """
+                SELECT id, agent, conversation_id as thread_id, status, updated_at, created_at
+                FROM chat_jobs
+                WHERE status = 'processing'
+                  AND (updated_at < ? OR created_at < ?)
+                ORDER BY updated_at ASC
+                LIMIT ?
+                """,
+                (cutoff, cutoff, limit),
+            ).fetchall()
+
+        for row in rows:
+            row_dict = dict(row)
+            agent = row_dict.get('agent') or 'unknown'
+            thread_id = str(row_dict.get('thread_id') or row_dict.get('id') or '')
+            symptom = f"Stuck in processing > {max_age_minutes} min (agent={agent}, thread={thread_id})"
+            lesson_text = (
+                f"Task for agent {agent} (thread {thread_id}) has been processing too long. "
+                "Possible causes: infinite loop, missing progress heartbeat, deadlock, or unhandled exception. "
+                "Recommended: kill the task, inspect logs, add timeout/heartbeat, or trigger recovery sweep."
+            )
+            evidence = {
+                'agent': agent,
+                'thread_id': thread_id,
+                'status': row_dict.get('status'),
+                'last_updated': row_dict.get('updated_at'),
+                'detected_at': datetime.now().isoformat(),
+            }
+
+            lesson = record_repair_lesson(
+                failure_class='stalled_task',
+                symptom=symptom,
+                lesson=lesson_text,
+                evidence=evidence,
+                owner='watchdog_auto',
+                source_thread_id=thread_id,
+            )
+            if lesson:
+                created_lessons.append(lesson)
+
+        return created_lessons
+    finally:
+        conn.close()
