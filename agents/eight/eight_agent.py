@@ -61,10 +61,16 @@ def chat(message, conversation_history=None, stage_cb=None):
     messages.append({"role": "user", "content": message})
     try:
         _emit('sending request')
-        answer, tokens = _llm.chat(
+        buf = []
+        def _cb(piece):
+            buf.append(piece)
+            if len(buf) == 1 or len(buf) % 15 == 0:
+                _emit(f'generating · {("".join(buf))[-300:]}')
+        answer, tokens = _llm.chat_via_gateway(
             model_name,
             messages,
-            stream=False,
+            stage_cb=stage_cb,
+            on_chunk=_cb,
             temperature=0.4,
         )
         _emit('persisting memory')

@@ -12,6 +12,8 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 logger = logging.getLogger('seven.twenty')
 AGENT_NAME = 'twenty'
 MODEL = 'qwen3.6:latest'
+GATEWAY_IDLE_TIMEOUT_S = 900
+GATEWAY_ABSOLUTE_TIMEOUT_S = 2000
 
 
 def _resolve_model():
@@ -90,7 +92,15 @@ def chat(message, conversation_history=None, stage_cb=None):
             buf.append(piece)
             if len(buf) % 15 == 0:
                 _emit(f'generating · {("".join(buf))[-300:]}')
-        return _llm.chat_via_gateway(model_name, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.6)
+        return _llm.chat_via_gateway(
+            model_name,
+            msgs,
+            stage_cb=stage_cb,
+            on_chunk=_cb,
+            temperature=0.6,
+            idle_timeout_s=GATEWAY_IDLE_TIMEOUT_S,
+            absolute_timeout_s=GATEWAY_ABSOLUTE_TIMEOUT_S,
+        )
 
     try:
         _emit('sending model request')

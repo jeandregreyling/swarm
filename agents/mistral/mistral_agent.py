@@ -21,6 +21,8 @@ logger = logging.getLogger('seven.mistral')
 AGENT_NAME = 'mistral'
 MODEL      = 'mistral:latest'
 SANDPIT    = 'sandpits/mistral/'
+GATEWAY_IDLE_TIMEOUT_S = 180
+GATEWAY_ABSOLUTE_TIMEOUT_S = 600
 
 
 def _build_context(message):
@@ -97,7 +99,15 @@ def chat(message, conversation_history=None, stage_cb=None):
             buf.append(piece)
             if len(buf) % 15 == 0:
                 _emit(f'generating · {("".join(buf))[-300:]}')
-        return _llm.chat_via_gateway(MODEL, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.6)
+        return _llm.chat_via_gateway(
+            MODEL,
+            msgs,
+            stage_cb=stage_cb,
+            on_chunk=_cb,
+            temperature=0.6,
+            idle_timeout_s=GATEWAY_IDLE_TIMEOUT_S,
+            absolute_timeout_s=GATEWAY_ABSOLUTE_TIMEOUT_S,
+        )
 
     try:
         from agents.skills_loop import run_skill_loop

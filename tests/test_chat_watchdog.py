@@ -306,6 +306,44 @@ def test_status_watchdog_opens_relay_recovery_card(monkeypatch):
     assert data['recoveries'][0]['recovery_id'] == 'recovery-pytest'
 
 
+def test_status_reconciles_unowned_runners_while_job_is_running(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    _fresh_state()
+    from flask import Flask
+    from frontend.blueprints import chat as chat_mod
+
+    reconcile_calls = []
+    with chat_mod._CHAT_JOB_LOCK:
+        chat_mod._CHAT_JOBS.clear()
+        now = time.time()
+        chat_mod._CHAT_JOBS['job-qwen-live'] = {
+            'job_id': 'job-qwen-live',
+            'conversation_id': 4322,
+            'agent': 'qwen',
+            'status': 'running',
+            'runtime_class': 'local',
+            'eta_seconds': 120,
+            'started_ts': now,
+            'updated_ts': now,
+            'stage': 'gateway: dispatch (absolute=2000s idle=900s)',
+            'stage_trace': [],
+        }
+
+    monkeypatch.setattr(chat_mod, '_chat_reconcile_unowned_ollama_runners', lambda conv_id: reconcile_calls.append(conv_id) or [])
+    monkeypatch.setattr(chat_mod, 'get_open_chat_relay_recoveries', lambda *a, **k: [])
+
+    app = Flask(__name__)
+    app.register_blueprint(chat_mod.chat_bp)
+    with app.test_client() as client:
+        resp = client.get('/api/chat/jobs/status?conversation_id=4322')
+        data = resp.get_json()
+
+    assert resp.status_code == 200
+    assert data['ok'] is True
+    assert data['jobs'][0]['status'] == 'running'
+    assert reconcile_calls == [4322]
+
+
 def test_status_watchdog_opens_silent_thread_recovery_when_no_jobs(monkeypatch):
     _suppress_durable_spine_logs(monkeypatch)
     _fresh_state()
@@ -780,7 +818,7 @@ def test_watchdog_escalates_when_ollama_stop_leaves_single_runner(monkeypatch):
     _suppress_durable_spine_logs(monkeypatch)
     from frontend.blueprints import chat as chat_mod
 
-    calls = {'ps': 0, 'cmds': []}
+    calls = {'ps': 0, 'cmds': [], 'pkilled': False}
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'gemma'})
     monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'gemma'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'gemma3:latest')
@@ -788,7 +826,7 @@ def test_watchdog_escalates_when_ollama_stop_leaves_single_runner(monkeypatch):
 
     def _running_models():
         calls['ps'] += 1
-        return ['gemma3:latest'] if calls['ps'] <= 2 else []
+        return [] if calls['pkilled'] else ['gemma3:latest']
 
     class _Proc:
         def __init__(self, returncode=0, stdout='', stderr=''):
@@ -798,6 +836,8 @@ def test_watchdog_escalates_when_ollama_stop_leaves_single_runner(monkeypatch):
 
     def _run(cmd, **kwargs):
         calls['cmds'].append(cmd)
+        if cmd[:3] == ['pkill', '-f', 'ollama runner --model']:
+            calls['pkilled'] = True
         return _Proc(0)
 
     monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', _running_models)
@@ -809,6 +849,41 @@ def test_watchdog_escalates_when_ollama_stop_leaves_single_runner(monkeypatch):
     assert result['ok'] is True
     assert ['ollama', 'stop', 'gemma3:latest'] in calls['cmds']
     assert ['pkill', '-f', 'ollama runner --model'] in calls['cmds']
+    assert result['after_models'] == []
+
+
+def test_watchdog_waits_for_ollama_stop_to_settle(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    calls = {'ps': 0, 'cmds': []}
+    monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'qwen'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
+    monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda name: {str(name or '').lower()})
+
+    def _running_models():
+        calls['ps'] += 1
+        return ['qwen2.5:latest'] if calls['ps'] <= 2 else []
+
+    class _Proc:
+        returncode = 0
+        stdout = ''
+        stderr = ''
+
+    def _run(cmd, **kwargs):
+        calls['cmds'].append(cmd)
+        return _Proc()
+
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', _running_models)
+    monkeypatch.setattr(chat_mod.subprocess, 'run', _run)
+    monkeypatch.setattr(chat_mod.time, 'sleep', lambda *_: None)
+
+    result = chat_mod._chat_try_hard_kill_local_agent('qwen')
+
+    assert result['ok'] is True
+    assert ['ollama', 'stop', 'qwen2.5:latest'] in calls['cmds']
+    assert ['pkill', '-f', 'ollama runner --model'] not in calls['cmds']
     assert result['after_models'] == []
 
 
@@ -879,6 +954,13 @@ def test_timeout_self_handoff_is_not_successful_completion():
     assert chat_mod._chat_response_is_timeout_handoff(text, 0) is True
     assert chat_mod._chat_response_is_timeout_handoff(text, 42) is False
     assert chat_mod._chat_response_is_timeout_handoff('Finished the proposal.', 0) is False
+
+
+def test_twenty_persistent_mode_uses_local_handoff_window():
+    from frontend.blueprints import chat as chat_mod
+
+    assert chat_mod._chat_agent_timeout_seconds('twenty', persistent_mode=True) == 2000
+    assert chat_mod._chat_agent_timeout_seconds('twenty', persistent_mode=False) == 12
 
 
 def test_chat_routes_explicit_agent_mentions_before_defaulting_to_nine(monkeypatch):
@@ -1006,7 +1088,8 @@ def test_watchdog_escalates_to_kill9_after_three_failures(monkeypatch):
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
     monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'qwen'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
-    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['qwen2.5:latest'])
+    restarted = {'done': False}
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: [] if restarted['done'] else ['qwen2.5:latest'])
     monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
 
     stop_calls = []
@@ -1023,7 +1106,90 @@ def test_watchdog_escalates_to_kill9_after_three_failures(monkeypatch):
     result = chat_mod._chat_try_hard_kill_local_agent('qwen')
     assert result['ok'] is False
     assert any(a['action'] == 'kill-9' for a in result['attempts'])
-    assert stop_calls == ['qwen2.5:latest']
+    assert stop_calls[0] == 'qwen2.5:latest'
+
+
+def test_watchdog_kill9_resolves_runner_by_model_digest(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    cmds = []
+    monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_model_info', lambda: [{
+        'model': 'Qwen2.5:latest',
+        'digest': 'abc123',
+    }])
+    monkeypatch.setattr(chat_mod, '_chat_ollama_model_blob_patterns', lambda model: ['sha256-layer456'])
+
+    class _Proc:
+        def __init__(self, returncode=0, stdout='', stderr=''):
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
+
+    def _run(cmd, **kwargs):
+        cmds.append(cmd)
+        if cmd[:2] == ['pgrep', '-f'] and 'sha256-layer456' in cmd[2]:
+            return _Proc(0, '4242\n')
+        if cmd[:2] == ['pgrep', '-f']:
+            return _Proc(1, '')
+        return _Proc(0, '')
+
+    monkeypatch.setattr(chat_mod.subprocess, 'run', _run)
+    monkeypatch.setattr(
+        'builtins.open',
+        lambda path, mode='r', *a, **k: type(
+            '_F',
+            (),
+            {'read': lambda self: b'/usr/local/bin/ollama runner --model sha256-layer456'},
+        )(),
+    )
+
+    result = chat_mod._watchdog_kill_ollama_runner_pid('Qwen2.5:latest')
+
+    assert result['ok'] is True
+    assert result['pid'] == '4242'
+    assert ['kill', '-9', '4242'] in cmds
+
+
+def test_watchdog_kill9_uses_sudo_when_runner_user_differs(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    cmds = []
+    monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_model_info', lambda: [{'model': 'Qwen2.5:latest'}])
+    monkeypatch.setattr(chat_mod, '_chat_ollama_model_blob_patterns', lambda model: ['sha256-layer456'])
+    monkeypatch.setattr(chat_mod.os.path, 'exists', lambda path: False)
+    monkeypatch.setattr(
+        'builtins.open',
+        lambda path, mode='r', *a, **k: type(
+            '_F',
+            (),
+            {'read': lambda self: b'/usr/local/bin/ollama runner --model sha256-layer456'},
+        )(),
+    )
+
+    class _Proc:
+        def __init__(self, returncode=0, stdout='', stderr=''):
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
+
+    def _run(cmd, **kwargs):
+        cmds.append(cmd)
+        if cmd[:2] == ['pgrep', '-f']:
+            return _Proc(0, '4242\n')
+        if cmd[:3] == ['kill', '-9', '4242']:
+            return _Proc(1, stderr='Operation not permitted')
+        return _Proc(0)
+
+    monkeypatch.setattr(chat_mod.subprocess, 'run', _run)
+
+    result = chat_mod._watchdog_kill_ollama_runner_pid('Qwen2.5:latest')
+
+    assert result['ok'] is True
+    assert ['sudo', '-n', 'kill', '-9', '4242'] in cmds
 
 
 def test_watchdog_emits_ticket_once_after_five_failures(monkeypatch):
@@ -1037,7 +1203,8 @@ def test_watchdog_emits_ticket_once_after_five_failures(monkeypatch):
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
     monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'qwen'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
-    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['qwen2.5:latest'])
+    restarted = {'done': False}
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: [] if restarted['done'] else ['qwen2.5:latest'])
     monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
 
     tickets = []
@@ -1070,6 +1237,177 @@ def test_watchdog_emits_ticket_once_after_five_failures(monkeypatch):
     result2 = chat_mod._chat_try_hard_kill_local_agent('qwen')
     assert len(tickets) == 0
     assert result2['attempts'][0]['action'] == 'kill-9'
+
+
+def test_watchdog_restarts_ollama_when_kill9_fails_and_no_active_jobs(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    with chat_mod._WATCHDOG_KILL_LOCK:
+        chat_mod._WATCHDOG_KILL_STATE.clear()
+
+    monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'qwen'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
+    restarted = {'done': False}
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: [] if restarted['done'] else ['qwen2.5:latest'])
+    monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
+    monkeypatch.setattr(chat_mod, '_chat_active_local_agents_from_db', lambda: set())
+    monkeypatch.setattr(chat_mod, '_watchdog_kill_ollama_runner_pid', lambda model: {'ok': False, 'detail': 'permission denied'})
+    def _restart(model):
+        restarted['done'] = True
+        return {
+            'ok': True,
+            'detail': 'ollama service restarted',
+            'action': 'systemctl-restart-ollama',
+        }
+
+    monkeypatch.setattr(chat_mod, '_watchdog_restart_ollama_service', _restart)
+
+    chat_mod._watchdog_get_kill_state('qwen2.5:latest')['consecutive_failures'] = 3
+    chat_mod._watchdog_get_kill_state('qwen2.5:latest')['last_attempt_ts'] = 0.0
+
+    result = chat_mod._chat_try_hard_kill_local_agent('qwen')
+
+    assert result['ok'] is True
+    assert any(a['action'] == 'kill-9' for a in result['attempts'])
+    assert any(a['action'] == 'systemctl-restart-ollama' for a in result['attempts'])
+
+
+def test_runtime_stop_ignores_current_job_for_restart_escalation(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    calls = {'ignore_job_id': None}
+    monkeypatch.setattr(chat_mod, 'update_chat_job_db', lambda *a, **k: None)
+    monkeypatch.setattr(chat_mod, '_chat_log_watchdog_ollama_event', lambda *a, **k: None)
+
+    def _fake_kill(agent, *, ignore_job_id=None):
+        calls['ignore_job_id'] = ignore_job_id
+        return {
+            'agent': agent,
+            'ok': True,
+            'detail': 'ollama service restarted',
+            'before_models': ['Qwen3.6:latest'],
+            'after_models': [],
+            'models': ['Qwen3.6:latest'],
+        }
+
+    monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', _fake_kill)
+
+    result, trace, error = chat_mod._chat_apply_runtime_stop_to_job(
+        'job-current',
+        'twenty',
+        'stalled',
+        stage_trace=[{'text': 'stalled (watchdog)', 'ts': 1.0}],
+        conversation_id=2831,
+    )
+
+    assert calls['ignore_job_id'] == 'job-current'
+    assert result['ok'] is True
+    assert trace[-1]['text'].startswith('ollama stop ok')
+    assert 'ollama service restarted' in error
+
+
+def test_cancel_passes_job_id_to_local_cleanup(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    _fresh_state()
+    from flask import Flask
+    from frontend.blueprints import chat as chat_mod
+
+    now = time.time()
+    with chat_mod._CHAT_JOB_LOCK:
+        chat_mod._CHAT_JOBS.clear()
+        chat_mod._CHAT_JOBS['job-cancel-mistral'] = {
+            'job_id': 'job-cancel-mistral',
+            'conversation_id': 2832,
+            'agent': 'mistral',
+            'status': 'running',
+            'runtime_class': 'local',
+            'eta_seconds': 90,
+            'started_ts': now - 120,
+            'updated_ts': now,
+            'stage': 'gateway: dispatch (absolute=2000s idle=900s)',
+            'stage_trace': [],
+        }
+
+    calls = []
+    delayed = []
+    monkeypatch.setattr(chat_mod, 'update_chat_job_db', lambda *a, **k: None)
+    monkeypatch.setattr(chat_mod, '_chat_log_watchdog_ollama_event', lambda *a, **k: None)
+    monkeypatch.setattr(chat_mod, 'log_activity', lambda *a, **k: None)
+    monkeypatch.setattr(
+        chat_mod,
+        '_chat_schedule_delayed_runtime_cleanup',
+        lambda agent, job_id=None, delay_seconds=30: delayed.append((agent, job_id, delay_seconds)) or True,
+    )
+
+    def _fake_kill(agent, *, ignore_job_id=None):
+        calls.append((agent, ignore_job_id))
+        return {
+            'agent': agent,
+            'ok': True,
+            'detail': 'stopped Mistral:latest',
+            'before_models': ['Mistral:latest'],
+            'after_models': [],
+            'models': ['Mistral:latest'],
+        }
+
+    monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', _fake_kill)
+
+    app = Flask(__name__)
+    app.register_blueprint(chat_mod.chat_bp)
+    with app.test_client() as client:
+        resp = client.post('/api/chat/jobs/cancel', json={
+            'conversation_id': 2832,
+            'job_ids': ['job-cancel-mistral'],
+            'hard_kill': True,
+        })
+        data = resp.get_json()
+
+    assert resp.status_code == 200
+    assert data['ok'] is True
+    assert calls == [('mistral', 'job-cancel-mistral')]
+    assert delayed == [('mistral', 'job-cancel-mistral', 30)]
+    assert data['cancelled'][0]['job_id'] == 'job-cancel-mistral'
+
+
+def test_watchdog_immediate_escalates_after_successful_stop_still_running(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    with chat_mod._WATCHDOG_KILL_LOCK:
+        chat_mod._WATCHDOG_KILL_STATE.clear()
+
+    restarted = {'done': False}
+    monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'eight'})
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'eight'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'gemma4:26b')
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: [] if restarted['done'] else ['gemma4:26b'])
+    monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
+    monkeypatch.setattr(chat_mod, '_chat_active_local_agents_from_db', lambda: set())
+    monkeypatch.setattr(chat_mod.time, 'sleep', lambda *_: None)
+
+    class _Proc:
+        returncode = 0
+        stdout = ''
+        stderr = ''
+
+    monkeypatch.setattr(chat_mod.subprocess, 'run', lambda *a, **k: _Proc())
+    monkeypatch.setattr(chat_mod, '_watchdog_kill_ollama_runner_pid', lambda model: {'ok': False, 'detail': 'no permission'})
+
+    def _restart(model):
+        restarted['done'] = True
+        return {'ok': True, 'detail': 'ollama service restarted', 'action': 'systemctl-restart-ollama'}
+
+    monkeypatch.setattr(chat_mod, '_watchdog_restart_ollama_service', _restart)
+
+    result = chat_mod._chat_try_hard_kill_local_agent('eight')
+
+    assert result['ok'] is True
+    assert any(a['action'] == 'ollama-stop' and a['ok'] for a in result['attempts'])
+    assert any(a['action'] == 'kill-9-immediate' for a in result['attempts'])
+    assert any(a['action'] == 'systemctl-restart-ollama' for a in result['attempts'])
 
 
 def test_watchdog_resets_state_when_model_confirmed_gone(monkeypatch):

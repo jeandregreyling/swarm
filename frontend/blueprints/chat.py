@@ -13,10 +13,12 @@ LINKED TO:
                               developer_agents set here must match that file.
 """
 import os
+import json
 import re
 import subprocess
 import threading
 import time
+import urllib.request
 
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
@@ -61,7 +63,11 @@ def _chat_agent_timeout_seconds(agent_name, persistent_mode=False):
     """User-visible completion/handoff deadline for chat agent calls."""
     agent = str(agent_name or '').strip().lower()
     if persistent_mode:
-        if agent in {'gemma', 'llama', 'llama3', 'mistral', 'qwen', 'eight', 'seven', 'librarian', 'duck', 'sniffles', 'phi3', 'deepseek_local', 'deepseek-local', 'lmstudio'}:
+        if agent in {
+            'gemma', 'llama', 'llama3', 'mistral', 'qwen', 'eight', 'seven',
+            'twenty', 'librarian', 'duck', 'sniffles', 'phi3',
+            'deepseek_local', 'deepseek-local', 'lmstudio'
+        }:
             return _chat_local_handoff_deadline_seconds()
         return 240
     if agent == 'sniffles':
@@ -327,34 +333,124 @@ def _watchdog_backoff_ok(state: dict) -> bool:
     return (now - last) >= backoff
 
 
+def _chat_running_ollama_model_info():
+    try:
+        with urllib.request.urlopen('http://127.0.0.1:11434/api/ps', timeout=3) as resp:
+            payload = json.loads(resp.read().decode('utf-8', errors='replace') or '{}')
+        return [dict(item) for item in (payload.get('models') or []) if isinstance(item, dict)]
+    except Exception:
+        return []
+
+
+def _chat_ollama_model_blob_patterns(model_name):
+    try:
+        payload = json.dumps({'model': str(model_name or '').strip()}).encode('utf-8')
+        req = urllib.request.Request(
+            'http://127.0.0.1:11434/api/show',
+            data=payload,
+            headers={'Content-Type': 'application/json'},
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode('utf-8', errors='replace') or '{}')
+        modelfile = str(data.get('modelfile') or '')
+    except Exception:
+        return []
+    return sorted(set(re.findall(r'sha256-[0-9a-f]{32,}', modelfile, flags=re.IGNORECASE)))
+
+
 def _watchdog_kill_ollama_runner_pid(model_name: str) -> dict:
     """Find the actual ollama runner process for this model and kill -9 it."""
     result = {'ok': False, 'detail': '', 'pid': None}
     try:
-        proc = subprocess.run(
-            ['pgrep', '-f', f'ollama.*runner.*{model_name}'],
-            capture_output=True, text=True, timeout=6, check=False,
-        )
-        stdout = str(proc.stdout or '').strip()
-        if proc.returncode != 0 or not stdout:
-            result['detail'] = f'pgrep found no runner for {model_name}'
-            return result
-        pids = [p.strip() for p in stdout.splitlines() if p.strip().isdigit()]
+        patterns = [str(model_name or '').strip()]
+        aliases = _chat_model_aliases(model_name)
+        for item in _chat_running_ollama_model_info():
+            running_name = str(item.get('model') or item.get('name') or '').strip()
+            if aliases and not (aliases & _chat_model_aliases(running_name)):
+                continue
+            digest = str(item.get('digest') or '').strip()
+            if digest:
+                patterns.append(digest)
+                patterns.append('sha256-' + digest)
+            patterns.extend(_chat_ollama_model_blob_patterns(running_name))
+
+        pids = []
+        seen = set()
+        for pattern in [p for p in patterns if p]:
+            proc = subprocess.run(
+                ['pgrep', '-f', f'ollama.*runner.*{pattern}'],
+                capture_output=True, text=True, timeout=6, check=False,
+            )
+            stdout = str(proc.stdout or '').strip()
+            if proc.returncode != 0 or not stdout:
+                continue
+            for pid in stdout.splitlines():
+                pid = pid.strip()
+                if not pid.isdigit() or pid in seen or int(pid) == os.getpid():
+                    continue
+                try:
+                    cmdline = open(f'/proc/{pid}/cmdline', 'rb').read().replace(b'\x00', b' ').decode(errors='replace')
+                except Exception:
+                    cmdline = ''
+                if 'ollama runner' not in cmdline or '--model' not in cmdline:
+                    continue
+                if pid not in seen:
+                    seen.add(pid)
+                    pids.append(pid)
+
+        # Ollama runner commands use blob paths rather than model names on many
+        # installs; the digest lookup above is the reliable path. If neither
+        # form found a process, report the attempted patterns for diagnosis.
         if not pids:
-            result['detail'] = f'pgrep returned non-numeric output for {model_name}'
+            result['detail'] = f'pgrep found no runner for {model_name} (patterns={patterns})'
             return result
         killed = []
+        failed = []
         for pid in pids:
             try:
-                subprocess.run(['kill', '-9', pid], capture_output=True, text=True, timeout=6, check=False)
-                killed.append(pid)
+                proc = subprocess.run(['kill', '-9', pid], capture_output=True, text=True, timeout=6, check=False)
+                if proc.returncode != 0:
+                    proc = subprocess.run(['sudo', '-n', 'kill', '-9', pid], capture_output=True, text=True, timeout=6, check=False)
+                if proc.returncode == 0:
+                    time.sleep(0.2)
+                    if os.path.exists(f'/proc/{pid}'):
+                        failed.append(f'{pid}:still-present')
+                    else:
+                        killed.append(pid)
+                else:
+                    detail = str(proc.stderr or proc.stdout or '').strip()
+                    failed.append(f'{pid}:failed({detail or proc.returncode})')
             except Exception as exc:
-                killed.append(f'{pid}:failed({exc})')
+                failed.append(f'{pid}:failed({exc})')
         result['pid'] = pids[0] if pids else None
-        result['detail'] = f'kill-9 runner PIDs {killed} for {model_name}'
-        result['ok'] = True
+        result['detail'] = f'kill-9 runner PIDs killed={killed} failed={failed} for {model_name}'
+        result['ok'] = bool(killed) and not failed
     except Exception as exc:
         result['detail'] = f'kill-9 exception for {model_name}: {exc}'
+    return result
+
+
+def _watchdog_restart_ollama_service(model_name: str) -> dict:
+    result = {'ok': False, 'detail': '', 'action': 'systemctl-restart-ollama'}
+    try:
+        proc = subprocess.run(
+            ['systemctl', 'restart', 'ollama'],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        if proc.returncode != 0:
+            result['detail'] = str(proc.stderr or proc.stdout or f'returncode={proc.returncode}').strip()
+            return result
+        after_models = _chat_wait_for_ollama_models_to_clear([model_name], timeout_s=8.0, interval_s=0.5)
+        aliases = _chat_model_aliases(model_name)
+        still = any(aliases & _chat_model_aliases(name) for name in after_models)
+        result['ok'] = not still
+        result['detail'] = 'ollama service restarted' if result['ok'] else f'ollama restarted but {model_name} still running'
+    except Exception as exc:
+        result['detail'] = f'ollama restart exception: {exc}'
     return result
 
 
@@ -379,7 +475,7 @@ def _watchdog_emit_escalation_ticket(agent_name: str, model_name: str, fails: in
         pass
 
 
-def _chat_try_hard_kill_local_agent(agent_name):
+def _chat_try_hard_kill_local_agent(agent_name, *, ignore_job_id=None):
     """Best-effort hard kill for local Ollama-backed jobs.
 
     Uses a circuit breaker with escalation:
@@ -463,8 +559,25 @@ def _chat_try_hard_kill_local_agent(agent_name):
                 state['consecutive_failures'] = 0
                 state['escalation_level'] = 2
             else:
-                state['consecutive_failures'] = fails_before + 1
-                still_running.append(model_name)
+                restart_result = None
+                try:
+                    if not _chat_active_local_agents_from_db(exclude_job_id=ignore_job_id):
+                        restart_result = _watchdog_restart_ollama_service(model_name)
+                except Exception:
+                    restart_result = None
+                if restart_result:
+                    result['attempts'].append({
+                        'model': model_name,
+                        'ok': restart_result['ok'],
+                        'action': restart_result.get('action') or 'systemctl-restart-ollama',
+                        'detail': restart_result.get('detail') or '',
+                    })
+                if restart_result and restart_result.get('ok'):
+                    state['consecutive_failures'] = 0
+                    state['escalation_level'] = 2
+                else:
+                    state['consecutive_failures'] = fails_before + 1
+                    still_running.append(model_name)
 
             # Escalation level 3: emit spine TICKET once after max failures.
             if state['consecutive_failures'] >= _WATCHDOG_MAX_FAILS_BEFORE_TICKET and not state.get('ticket_emitted'):
@@ -511,7 +624,7 @@ def _chat_try_hard_kill_local_agent(agent_name):
                 'stderr': str(exc),
             })
 
-    after_models = _chat_running_ollama_models()
+    after_models = _chat_wait_for_ollama_models_to_clear(unique_candidates)
     result['after_models'] = after_models
     after_alias_sets = [_chat_model_aliases(name) for name in after_models]
     for model_name in unique_candidates:
@@ -556,6 +669,47 @@ def _chat_try_hard_kill_local_agent(agent_name):
                 'stderr': f'runner-pkill-failed: {exc}',
             })
 
+    if still_running:
+        try:
+            active_agents_now = _chat_active_local_agents_from_db(exclude_job_id=ignore_job_id)
+        except Exception:
+            active_agents_now = set()
+        if not active_agents_now:
+            for model_name in list(still_running):
+                kill9_result = _watchdog_kill_ollama_runner_pid(model_name)
+                result['attempts'].append({
+                    'model': model_name,
+                    'ok': kill9_result['ok'],
+                    'action': 'kill-9-immediate',
+                    'pid': kill9_result.get('pid'),
+                    'detail': kill9_result.get('detail') or '',
+                })
+            after_models = _chat_wait_for_ollama_models_to_clear(unique_candidates, timeout_s=3.0, interval_s=0.5)
+            result['after_models'] = after_models
+            after_alias_sets = [_chat_model_aliases(name) for name in after_models]
+            still_running = []
+            for model_name in unique_candidates:
+                aliases = _chat_model_aliases(model_name)
+                if any(aliases & running_aliases for running_aliases in after_alias_sets):
+                    still_running.append(model_name)
+            for model_name in list(still_running):
+                restart_result = _watchdog_restart_ollama_service(model_name)
+                result['attempts'].append({
+                    'model': model_name,
+                    'ok': restart_result.get('ok'),
+                    'action': restart_result.get('action') or 'systemctl-restart-ollama',
+                    'detail': restart_result.get('detail') or '',
+                })
+            if still_running:
+                after_models = _chat_wait_for_ollama_models_to_clear(unique_candidates, timeout_s=3.0, interval_s=0.5)
+                result['after_models'] = after_models
+                after_alias_sets = [_chat_model_aliases(name) for name in after_models]
+                still_running = []
+                for model_name in unique_candidates:
+                    aliases = _chat_model_aliases(model_name)
+                    if any(aliases & running_aliases for running_aliases in after_alias_sets):
+                        still_running.append(model_name)
+
     # Purge from still_running anything ollama ps confirms is actually gone.
     # The stop/kill action may report failure because the process exited
     # during the attempt; ollama ps is ground truth.
@@ -582,6 +736,30 @@ def _chat_try_hard_kill_local_agent(agent_name):
         else:
             result['detail'] = '; '.join(errors[:2])
     return result
+
+
+def _chat_wait_for_ollama_models_to_clear(model_names, *, timeout_s=5.0, interval_s=0.5):
+    """Poll Ollama briefly after stop/kill so unload latency is not logged as failure."""
+    wanted = [str(name or '').strip() for name in (model_names or []) if str(name or '').strip()]
+    if not wanted:
+        return _chat_running_ollama_models()
+    deadline = time.time() + max(0.0, float(timeout_s or 0))
+    checks = max(1, int(max(0.0, float(timeout_s or 0)) / max(0.05, float(interval_s or 0.5))) + 1)
+    after_models = _chat_running_ollama_models()
+    for _ in range(checks):
+        after_alias_sets = [_chat_model_aliases(name) for name in after_models]
+        still = []
+        for model_name in wanted:
+            aliases = _chat_model_aliases(model_name)
+            if any(aliases & running_aliases for running_aliases in after_alias_sets):
+                still.append(model_name)
+        if not still:
+            return after_models
+        if time.time() >= deadline:
+            break
+        time.sleep(max(0.05, float(interval_s or 0.5)))
+        after_models = _chat_running_ollama_models()
+    return after_models
 
 
 def _chat_runtime_stop_trace(result):
@@ -648,8 +826,19 @@ def _chat_apply_runtime_stop_to_job(
     conversation_id=None,
     action='watchdog_stop',
 ):
-    result = _chat_try_hard_kill_local_agent(agent_name)
     trace = list(stage_trace or [])
+    try:
+        update_chat_job_db(
+            job_id,
+            status='failed',
+            stage='stalled',
+            error=str(reason or '').strip(),
+            elapsed_ms=int(elapsed_ms or 0),
+            stage_trace_json=json.dumps(trace),
+        )
+    except Exception:
+        pass
+    result = _chat_try_hard_kill_local_agent(agent_name, ignore_job_id=job_id)
     stop_text = _chat_runtime_stop_trace(result)
     trace.append({'text': stop_text, 'ts': time.time()})
     error = str(reason or '').strip()
@@ -678,17 +867,48 @@ def _chat_apply_runtime_stop_to_job(
     return result, trace, error
 
 
-def _chat_active_local_agents_from_db():
+def _chat_schedule_delayed_runtime_cleanup(agent_name, job_id=None, delay_seconds=30):
+    agent = str(agent_name or '').strip().lower()
+    if not agent:
+        return False
+
+    def _delayed():
+        try:
+            time.sleep(max(1, int(delay_seconds or 30)))
+            _chat_try_hard_kill_local_agent(agent, ignore_job_id=job_id)
+        except Exception:
+            pass
+
+    try:
+        thread = threading.Thread(
+            target=_delayed,
+            name=f'chat-delayed-cleanup-{agent}',
+            daemon=True,
+        )
+        thread.start()
+        return True
+    except Exception:
+        return False
+
+
+def _chat_active_local_agents_from_db(exclude_job_id=None):
     try:
         conn = get_connection()
         try:
+            params = []
+            extra = ''
+            if exclude_job_id:
+                extra = ' AND job_id != ?'
+                params.append(str(exclude_job_id))
             rows = conn.execute(
-                """
+                f"""
                 SELECT DISTINCT agent
                 FROM chat_jobs
                 WHERE status IN ('running', 'dispatched', 'processing')
                   AND runtime_class='local'
-                """
+                  {extra}
+                """,
+                params,
             ).fetchall()
             return {
                 _normalize_chat_participant(row['agent'])
@@ -2588,9 +2808,9 @@ def api_chat_jobs_status():
 
     if conv_id_int is not None:
         try:
+            _chat_reconcile_unowned_ollama_runners(conv_id_int)
             has_running = any(str(j.get('status') or '') == 'running' for j in jobs)
             if not has_running:
-                _chat_reconcile_unowned_ollama_runners(conv_id_int)
                 silent_result = ensure_silent_chat_thread_recovery(
                     conv_id_int,
                     reason=(
@@ -2702,7 +2922,7 @@ def api_chat_jobs_cancel():
 
     cancelled = []
     skipped = []
-    local_agents_to_kill = set()
+    local_agents_to_kill = {}
     with _CHAT_JOB_LOCK:
         _cleanup_chat_jobs_locked()
         for job_id, job in list(_CHAT_JOBS.items()):
@@ -2738,16 +2958,19 @@ def api_chat_jobs_cancel():
             update_chat_job_db(job_id, status='cancelled', stage='cancelled by user',
                                error='cancelled by user')
             if hard_kill and _chat_runtime_class(job.get('agent')) == 'local':
-                local_agents_to_kill.add(str(job.get('agent') or '').strip().lower())
+                agent_key = str(job.get('agent') or '').strip().lower()
+                if agent_key and agent_key not in local_agents_to_kill:
+                    local_agents_to_kill[agent_key] = job_id
             cancelled.append({'job_id': job_id, 'agent': job.get('agent'), 'cancel_signal_sent': cancel_signal_sent})
 
     hard_kill_results = []
     hard_kill_by_agent = {}
     if hard_kill and local_agents_to_kill:
-        for agent_name in sorted(a for a in local_agents_to_kill if a):
-            result = _chat_try_hard_kill_local_agent(agent_name)
+        for agent_name, kill_job_id in sorted(local_agents_to_kill.items()):
+            result = _chat_try_hard_kill_local_agent(agent_name, ignore_job_id=kill_job_id)
             hard_kill_results.append(result)
             hard_kill_by_agent[agent_name] = result
+            _chat_schedule_delayed_runtime_cleanup(agent_name, job_id=kill_job_id)
             log_activity('terminal', 'chat_job_hard_kill', f"agent={agent_name} ok={result.get('ok')} detail={result.get('detail', '')[:120]}")
 
     for item in cancelled:

@@ -104,6 +104,25 @@ def test_chat_via_gateway_translates_events_to_stage_cb(monkeypatch):
     assert "gateway: completed" in joined
 
 
+def test_chat_via_gateway_default_timeouts_match_local_chat_policy(monkeypatch):
+    captured = {}
+
+    def fake_gateway_chat(model, messages, **kwargs):
+        captured.update(kwargs)
+        return gw.RuntimeResult(ok=True, model=model, content="ok", tokens=1)
+
+    monkeypatch.setattr(gw, "chat", fake_gateway_chat)
+
+    content, tokens = llm.chat_via_gateway("qwen2.5:latest", [{"role": "user", "content": "hi"}])
+
+    assert content == "ok"
+    assert tokens == 1
+    assert captured["idle_timeout_s"] == llm.GATEWAY_CHAT_IDLE_TIMEOUT_S
+    assert captured["absolute_timeout_s"] == llm.GATEWAY_CHAT_ABSOLUTE_TIMEOUT_S
+    assert captured["idle_timeout_s"] == gw.DEFAULT_IDLE_TIMEOUT_S
+    assert captured["absolute_timeout_s"] == gw.DEFAULT_ABSOLUTE_TIMEOUT_S
+
+
 def test_chat_via_gateway_returns_partial_on_failure(monkeypatch):
     def fake_post(url, json=None, stream=None, timeout=None):
         raise RuntimeError("boom")
@@ -148,6 +167,7 @@ def test_chat_via_gateway_tolerates_single_arg_stage_cb(monkeypatch):
         "agents/deepseek_local/deepseek_local_agent.py",
         "agents/phi3/phi3_agent.py",
         "agents/twenty/twenty_agent.py",
+        "agents/eight/eight_agent.py",
     ],
 )
 def test_local_agents_use_gateway_helper(path):

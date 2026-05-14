@@ -17,6 +17,8 @@ import requests
 
 
 OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+DEFAULT_IDLE_TIMEOUT_S = 900
+DEFAULT_ABSOLUTE_TIMEOUT_S = 2000
 
 
 @dataclass
@@ -325,10 +327,11 @@ def chat(
     messages: list[dict[str, str]],
     *,
     base_url: str = OLLAMA_BASE_URL,
-    # CPU-only first-token can take 90-120s on a cold model; old 60s/300s
-    # defaults caused chat to fail with read-timeouts. See chat_via_gateway.
-    absolute_timeout_s: int = 600,
-    idle_timeout_s: int = 240,
+    # Persistent chat jobs can legitimately spend several minutes in local
+    # inference. Keep the transport clocks aligned with the chat watchdog
+    # policy so the gateway does not fail first with a stale 240s idle cap.
+    absolute_timeout_s: int = DEFAULT_ABSOLUTE_TIMEOUT_S,
+    idle_timeout_s: int = DEFAULT_IDLE_TIMEOUT_S,
     keep_alive: str | int = "60s",
     options: dict[str, Any] | None = None,
     on_token: Any = None,

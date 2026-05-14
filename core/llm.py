@@ -49,6 +49,8 @@ logger = logging.getLogger('core.llm')
 # ── Policy constants ────────────────────────────────────────────────────────
 DEFAULT_KEEP_ALIVE = 300          # 5 minutes. Never pin forever.
 MAX_CONCURRENT_PER_MODEL = 1      # One active chat per model — prevents double-runner spawn.
+GATEWAY_CHAT_IDLE_TIMEOUT_S = 900
+GATEWAY_CHAT_ABSOLUTE_TIMEOUT_S = 2000
 _MODEL_LOCKS: dict[str, threading.Semaphore] = {}
 _MODEL_LOCKS_MUTEX = threading.Lock()
 
@@ -206,13 +208,12 @@ def chat_via_gateway(
     *,
     stage_cb: Optional[Callable[..., None]] = None,
     on_chunk: Optional[Callable[[str], None]] = None,
-    # CPU-only inference cold-loads (e.g. gemma3:4b without GPU) routinely take
-    # 90-120s before the first token streams. The previous 60s default aborted
-    # every cold turn with `Read timed out` and surfaced as `[gemma unavailable]`
-    # in the chat UI ("Hi disappears"). 240s gives cold loads room while still
-    # letting the absolute clock cap stuck inferences.
-    idle_timeout_s: int = 240,
-    absolute_timeout_s: int = 600,
+    # Local chat jobs are surfaced through persistent job tracking after the
+    # initial UI wait. Keep the gateway clocks aligned with that policy so a
+    # healthy but slow local worker does not get killed by the lower transport
+    # default while the chat layer still expects it to continue.
+    idle_timeout_s: int = GATEWAY_CHAT_IDLE_TIMEOUT_S,
+    absolute_timeout_s: int = GATEWAY_CHAT_ABSOLUTE_TIMEOUT_S,
     keep_alive: Any = None,
     options: Optional[dict] = None,
     temperature: Optional[float] = None,
