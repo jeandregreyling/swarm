@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-14 00:06",
+  "generated_at": "2026-05-15 00:12",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -2174,13 +2174,19 @@
           ]
         },
         {
-          "path": "/api/git/checkout",
+          "path": "/api/git/fetch",
           "methods": [
             "POST"
           ]
         },
         {
-          "path": "/api/git/fetch",
+          "path": "/api/git/compare",
+          "methods": [
+            "GET"
+          ]
+        },
+        {
+          "path": "/api/git/checkout",
           "methods": [
             "POST"
           ]
@@ -2222,7 +2228,7 @@
           ]
         }
       ],
-      "route_count": 11
+      "route_count": 12
     },
     {
       "name": "gmail_labels",
@@ -2450,9 +2456,15 @@
           "methods": [
             "POST"
           ]
+        },
+        {
+          "path": "/api/killswitch/agent/<agent_name>/kill",
+          "methods": [
+            "POST"
+          ]
         }
       ],
-      "route_count": 6
+      "route_count": 7
     },
     {
       "name": "knowledge_bp",
@@ -4852,7 +4864,7 @@
     },
     {
       "name": "git.js",
-      "size_kb": 30.9
+      "size_kb": 32.0
     },
     {
       "name": "guide.js",
@@ -4888,7 +4900,7 @@
     },
     {
       "name": "localai.js",
-      "size_kb": 30.0
+      "size_kb": 29.9
     },
     {
       "name": "media-center.js",
@@ -4936,7 +4948,7 @@
     },
     {
       "name": "potato-farm.js",
-      "size_kb": 14.2
+      "size_kb": 14.8
     },
     {
       "name": "projects.js",
@@ -4972,7 +4984,7 @@
     },
     {
       "name": "studio.js",
-      "size_kb": 98.5
+      "size_kb": 102.9
     },
     {
       "name": "tasker.js",
@@ -5014,7 +5026,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 65822
+      "rows": 67694
     },
     {
       "name": "agent_capabilities",
@@ -5054,7 +5066,7 @@
     },
     {
       "name": "audit_results",
-      "rows": 57
+      "rows": 58
     },
     {
       "name": "business_ledger",
@@ -5066,11 +5078,11 @@
     },
     {
       "name": "chat_jobs",
-      "rows": 808
+      "rows": 820
     },
     {
       "name": "chat_relay_recoveries",
-      "rows": 80
+      "rows": 89
     },
     {
       "name": "claude_log",
@@ -5078,15 +5090,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 4679
+      "rows": 5536
     },
     {
       "name": "conversations",
-      "rows": 128
+      "rows": 136
     },
     {
       "name": "council_output",
-      "rows": 18685
+      "rows": 19054
     },
     {
       "name": "curiosity_questions",
@@ -5114,7 +5126,7 @@
     },
     {
       "name": "decisions",
-      "rows": 93743
+      "rows": 95362
     },
     {
       "name": "deferred_items",
@@ -5122,11 +5134,11 @@
     },
     {
       "name": "duck_log",
-      "rows": 1163
+      "rows": 1165
     },
     {
       "name": "email_delivery_log",
-      "rows": 53
+      "rows": 54
     },
     {
       "name": "email_retry_queue",
@@ -5178,11 +5190,11 @@
     },
     {
       "name": "knowledge_chunks",
-      "rows": 1737
+      "rows": 1738
     },
     {
       "name": "knowledge_sources",
-      "rows": 145
+      "rows": 146
     },
     {
       "name": "media_items",
@@ -5206,7 +5218,7 @@
     },
     {
       "name": "memory_eight",
-      "rows": 1
+      "rows": 2
     },
     {
       "name": "memory_gemma",
@@ -5226,7 +5238,7 @@
     },
     {
       "name": "memory_mistral",
-      "rows": 2
+      "rows": 5
     },
     {
       "name": "memory_nine",
@@ -5262,11 +5274,11 @@
     },
     {
       "name": "memory_twenty",
-      "rows": 407
+      "rows": 410
     },
     {
       "name": "messages",
-      "rows": 287
+      "rows": 315
     },
     {
       "name": "moderators",
@@ -5298,7 +5310,7 @@
     },
     {
       "name": "project_blackboard_notes",
-      "rows": 131
+      "rows": 186
     },
     {
       "name": "project_doc_versions",
@@ -5306,7 +5318,7 @@
     },
     {
       "name": "project_docs",
-      "rows": 325
+      "rows": 326
     },
     {
       "name": "project_step_deps",
@@ -5314,11 +5326,11 @@
     },
     {
       "name": "project_step_evidence",
-      "rows": 477
+      "rows": 481
     },
     {
       "name": "project_steps",
-      "rows": 1568
+      "rows": 1575
     },
     {
       "name": "project_test_cases",
@@ -5338,15 +5350,15 @@
     },
     {
       "name": "queue",
-      "rows": 2159
+      "rows": 2162
     },
     {
       "name": "research_evidence",
-      "rows": 1572
+      "rows": 1678
     },
     {
       "name": "research_sessions",
-      "rows": 87
+      "rows": 93
     },
     {
       "name": "sandpit_log",
@@ -5374,11 +5386,11 @@
     },
     {
       "name": "seven_attention",
-      "rows": 4852
+      "rows": 4862
     },
     {
       "name": "seven_beliefs",
-      "rows": 10693
+      "rows": 10722
     },
     {
       "name": "seven_callouts",
@@ -5390,7 +5402,7 @@
     },
     {
       "name": "seven_episodes",
-      "rows": 26228
+      "rows": 26258
     },
     {
       "name": "seven_learnings",
@@ -5434,11 +5446,11 @@
     },
     {
       "name": "swarm_event_acks",
-      "rows": 418
+      "rows": 478
     },
     {
       "name": "swarm_events",
-      "rows": 82
+      "rows": 83
     },
     {
       "name": "swarm_globals",
@@ -5446,7 +5458,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 82
+      "rows": 87
     },
     {
       "name": "swarm_nodes",
@@ -5462,11 +5474,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 13264
+      "rows": 13545
     },
     {
       "name": "task_run_log",
-      "rows": 6069
+      "rows": 6363
     },
     {
       "name": "terminal_shortcuts",
@@ -5482,27 +5494,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 917
+      "rows": 919
     },
     {
       "name": "tickets",
-      "rows": 930
+      "rows": 932
     },
     {
       "name": "time_checkpoints",
-      "rows": 8272
+      "rows": 8274
     },
     {
       "name": "time_events",
-      "rows": 178005
+      "rows": 182284
     },
     {
       "name": "time_journal",
-      "rows": 167915
+      "rows": 172192
     },
     {
       "name": "time_machine",
-      "rows": 9153
+      "rows": 9173
     },
     {
       "name": "tool_builds",
@@ -5510,7 +5522,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 12342
+      "rows": 13224
     },
     {
       "name": "trading_signals",
@@ -5562,7 +5574,7 @@
     },
     {
       "name": "watched_topic_evidence",
-      "rows": 213
+      "rows": 216
     },
     {
       "name": "watched_topic_settings",
@@ -5578,7 +5590,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 204
+      "rows": 205
     }
   ],
   "agents": [
@@ -5713,7 +5725,7 @@
       "model": "gpt-5",
       "role": "Developer Agent \u2014 code-aware AI, reads/writes/patches code, bridges Copilot and Fridays",
       "tier": "paid",
-      "enabled": 1
+      "enabled": 0
     },
     {
       "name": "nineteen",
@@ -6305,6 +6317,10 @@
     },
     {
       "id": "studio-tab-git",
+      "file": "frontend/templates/terminal_base.html"
+    },
+    {
+      "id": "studio-tab-appcenter",
       "file": "frontend/templates/terminal_base.html"
     },
     {
@@ -7489,6 +7505,14 @@
     },
     {
       "id": "studio-media-panel",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "studio-appcenter-panel",
+      "file": "frontend/static/js/views/studio.js"
+    },
+    {
+      "id": "appcenter-body",
       "file": "frontend/static/js/views/studio.js"
     },
     {
