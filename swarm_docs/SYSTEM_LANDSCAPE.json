@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-15 00:12",
+  "generated_at": "2026-05-16 00:11",
   "python_modules": [
     {
       "path": "utils/agent_coordination.py",
@@ -315,6 +315,11 @@
       "path": "utils/vs_tools.py",
       "group": "Utils",
       "description": "vs_tools.py \u2014 VS tab file read/memory tools for Nine"
+    },
+    {
+      "path": "utils/watchdog_deos.py",
+      "group": "Utils",
+      "description": "Watchdog DEOS supervisor."
     },
     {
       "path": "core/acceptance_gate.py",
@@ -5026,7 +5031,7 @@
   "db_tables": [
     {
       "name": "activity_log",
-      "rows": 67694
+      "rows": 70445
     },
     {
       "name": "agent_capabilities",
@@ -5066,7 +5071,7 @@
     },
     {
       "name": "audit_results",
-      "rows": 58
+      "rows": 59
     },
     {
       "name": "business_ledger",
@@ -5078,11 +5083,11 @@
     },
     {
       "name": "chat_jobs",
-      "rows": 820
+      "rows": 827
     },
     {
       "name": "chat_relay_recoveries",
-      "rows": 89
+      "rows": 95
     },
     {
       "name": "claude_log",
@@ -5090,15 +5095,15 @@
     },
     {
       "name": "conv_timeline",
-      "rows": 5536
+      "rows": 7403
     },
     {
       "name": "conversations",
-      "rows": 136
+      "rows": 143
     },
     {
       "name": "council_output",
-      "rows": 19054
+      "rows": 19515
     },
     {
       "name": "curiosity_questions",
@@ -5126,7 +5131,7 @@
     },
     {
       "name": "decisions",
-      "rows": 95362
+      "rows": 96704
     },
     {
       "name": "deferred_items",
@@ -5134,11 +5139,11 @@
     },
     {
       "name": "duck_log",
-      "rows": 1165
+      "rows": 1167
     },
     {
       "name": "email_delivery_log",
-      "rows": 54
+      "rows": 59
     },
     {
       "name": "email_retry_queue",
@@ -5170,7 +5175,7 @@
     },
     {
       "name": "ghost_circle",
-      "rows": 5419
+      "rows": 5420
     },
     {
       "name": "gmail_labels_cache",
@@ -5218,7 +5223,7 @@
     },
     {
       "name": "memory_eight",
-      "rows": 2
+      "rows": 3
     },
     {
       "name": "memory_gemma",
@@ -5238,7 +5243,7 @@
     },
     {
       "name": "memory_mistral",
-      "rows": 5
+      "rows": 8
     },
     {
       "name": "memory_nine",
@@ -5246,7 +5251,7 @@
     },
     {
       "name": "memory_qwen",
-      "rows": 1
+      "rows": 0
     },
     {
       "name": "memory_scholar",
@@ -5274,11 +5279,11 @@
     },
     {
       "name": "memory_twenty",
-      "rows": 410
+      "rows": 412
     },
     {
       "name": "messages",
-      "rows": 315
+      "rows": 335
     },
     {
       "name": "moderators",
@@ -5310,7 +5315,7 @@
     },
     {
       "name": "project_blackboard_notes",
-      "rows": 186
+      "rows": 192
     },
     {
       "name": "project_doc_versions",
@@ -5318,7 +5323,7 @@
     },
     {
       "name": "project_docs",
-      "rows": 326
+      "rows": 327
     },
     {
       "name": "project_step_deps",
@@ -5326,11 +5331,11 @@
     },
     {
       "name": "project_step_evidence",
-      "rows": 481
+      "rows": 595
     },
     {
       "name": "project_steps",
-      "rows": 1575
+      "rows": 1583
     },
     {
       "name": "project_test_cases",
@@ -5338,7 +5343,7 @@
     },
     {
       "name": "projects",
-      "rows": 96
+      "rows": 97
     },
     {
       "name": "proposal_attachments",
@@ -5350,15 +5355,15 @@
     },
     {
       "name": "queue",
-      "rows": 2162
+      "rows": 2166
     },
     {
       "name": "research_evidence",
-      "rows": 1678
+      "rows": 1786
     },
     {
       "name": "research_sessions",
-      "rows": 93
+      "rows": 99
     },
     {
       "name": "sandpit_log",
@@ -5366,7 +5371,7 @@
     },
     {
       "name": "scheduled_tasks",
-      "rows": 23
+      "rows": 25
     },
     {
       "name": "service_heartbeat",
@@ -5386,11 +5391,11 @@
     },
     {
       "name": "seven_attention",
-      "rows": 4862
+      "rows": 4871
     },
     {
       "name": "seven_beliefs",
-      "rows": 10722
+      "rows": 10748
     },
     {
       "name": "seven_callouts",
@@ -5402,7 +5407,7 @@
     },
     {
       "name": "seven_episodes",
-      "rows": 26258
+      "rows": 26282
     },
     {
       "name": "seven_learnings",
@@ -5446,11 +5451,11 @@
     },
     {
       "name": "swarm_event_acks",
-      "rows": 478
+      "rows": 513
     },
     {
       "name": "swarm_events",
-      "rows": 83
+      "rows": 84
     },
     {
       "name": "swarm_globals",
@@ -5458,7 +5463,7 @@
     },
     {
       "name": "swarm_knowledge",
-      "rows": 87
+      "rows": 93
     },
     {
       "name": "swarm_nodes",
@@ -5474,11 +5479,11 @@
     },
     {
       "name": "system_stats",
-      "rows": 13545
+      "rows": 13779
     },
     {
       "name": "task_run_log",
-      "rows": 6363
+      "rows": 6574
     },
     {
       "name": "terminal_shortcuts",
@@ -5494,27 +5499,27 @@
     },
     {
       "name": "ticket_notes",
-      "rows": 919
+      "rows": 921
     },
     {
       "name": "tickets",
-      "rows": 932
+      "rows": 934
     },
     {
       "name": "time_checkpoints",
-      "rows": 8274
+      "rows": 8276
     },
     {
       "name": "time_events",
-      "rows": 182284
+      "rows": 182296
     },
     {
       "name": "time_journal",
-      "rows": 172192
+      "rows": 172202
     },
     {
       "name": "time_machine",
-      "rows": 9173
+      "rows": 9202
     },
     {
       "name": "tool_builds",
@@ -5522,7 +5527,7 @@
     },
     {
       "name": "trace_events",
-      "rows": 13224
+      "rows": 15108
     },
     {
       "name": "trading_signals",
@@ -5570,11 +5575,11 @@
     },
     {
       "name": "watchdog_repair_lessons",
-      "rows": 49
+      "rows": 51
     },
     {
       "name": "watched_topic_evidence",
-      "rows": 216
+      "rows": 226
     },
     {
       "name": "watched_topic_settings",
@@ -5590,7 +5595,7 @@
     },
     {
       "name": "work_proposals",
-      "rows": 205
+      "rows": 207
     }
   ],
   "agents": [

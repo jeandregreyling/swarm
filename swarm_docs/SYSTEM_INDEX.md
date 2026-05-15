@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-05-15 00:12*
+*Auto-generated: 2026-05-16 00:11*
 
 
 ## Python Modules
@@ -73,6 +73,7 @@
 | `utils/swarm_tasks.py` | swarm_tasks.py — Seven's Swarm |
 | `utils/tasker_run_lock.py` | utils.tasker_run_lock — per-task in-process lock for run-now actions. |
 | `utils/vs_tools.py` | vs_tools.py — VS tab file read/memory tools for Nine |
+| `utils/watchdog_deos.py` | Watchdog DEOS supervisor. |
 
 ### Core
 
@@ -364,7 +365,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 67694 |
+| `activity_log` | 70445 |
 | `agent_capabilities` | 169 |
 | `agent_capability_scores` | 18 |
 | `agent_diary` | 0 |
@@ -374,25 +375,25 @@
 | `app_project_targets` | 0 |
 | `app_projects` | 0 |
 | `approval_tokens` | 801 |
-| `audit_results` | 58 |
+| `audit_results` | 59 |
 | `business_ledger` | 0 |
 | `change_runs` | 46 |
-| `chat_jobs` | 820 |
-| `chat_relay_recoveries` | 89 |
+| `chat_jobs` | 827 |
+| `chat_relay_recoveries` | 95 |
 | `claude_log` | 1 |
-| `conv_timeline` | 5536 |
-| `conversations` | 136 |
-| `council_output` | 19054 |
+| `conv_timeline` | 7403 |
+| `conversations` | 143 |
+| `council_output` | 19515 |
 | `curiosity_questions` | 5 |
 | `cyber_audit_events` | 0 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 95362 |
+| `decisions` | 96704 |
 | `deferred_items` | 0 |
-| `duck_log` | 1165 |
-| `email_delivery_log` | 54 |
+| `duck_log` | 1167 |
+| `email_delivery_log` | 59 |
 | `email_retry_queue` | 0 |
 | `enrollment_invites` | 0 |
 | `feed_subscriptions` | 47 |
@@ -400,7 +401,7 @@
 | `file_writes` | 4 |
 | `financial_positions` | 0 |
 | `ghost_briefs` | 101 |
-| `ghost_circle` | 5419 |
+| `ghost_circle` | 5420 |
 | `gmail_labels_cache` | 0 |
 | `governance_log` | 431 |
 | `kc_media_curriculum` | 60 |
@@ -412,22 +413,22 @@
 | `media_providers` | 7 |
 | `media_runs` | 183 |
 | `memory` | 176 |
-| `memory_eight` | 2 |
+| `memory_eight` | 3 |
 | `memory_gemma` | 0 |
 | `memory_ghost_coder` | 0 |
 | `memory_grok` | 47 |
 | `memory_llama` | 1 |
-| `memory_mistral` | 5 |
+| `memory_mistral` | 8 |
 | `memory_nine` | 0 |
-| `memory_qwen` | 1 |
+| `memory_qwen` | 0 |
 | `memory_scholar` | 0 |
 | `memory_seeker` | 0 |
 | `memory_sonic` | 0 |
 | `memory_ten` | 64 |
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
-| `memory_twenty` | 410 |
-| `messages` | 315 |
+| `memory_twenty` | 412 |
+| `messages` | 335 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -435,30 +436,30 @@
 | `notification_senders` | 10 |
 | `orientation_seen` | 1 |
 | `pending_emails` | 8 |
-| `project_blackboard_notes` | 186 |
+| `project_blackboard_notes` | 192 |
 | `project_doc_versions` | 392 |
-| `project_docs` | 326 |
+| `project_docs` | 327 |
 | `project_step_deps` | 0 |
-| `project_step_evidence` | 481 |
-| `project_steps` | 1575 |
+| `project_step_evidence` | 595 |
+| `project_steps` | 1583 |
 | `project_test_cases` | 993 |
-| `projects` | 96 |
+| `projects` | 97 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 27 |
-| `queue` | 2162 |
-| `research_evidence` | 1678 |
-| `research_sessions` | 93 |
+| `queue` | 2166 |
+| `research_evidence` | 1786 |
+| `research_sessions` | 99 |
 | `sandpit_log` | 646 |
-| `scheduled_tasks` | 23 |
+| `scheduled_tasks` | 25 |
 | `service_heartbeat` | 0 |
 | `settings_email_account_prefs` | 1 |
 | `settings_email_accounts` | 0 |
 | `settings_sysmod` | 2 |
-| `seven_attention` | 4862 |
-| `seven_beliefs` | 10722 |
+| `seven_attention` | 4871 |
+| `seven_beliefs` | 10748 |
 | `seven_callouts` | 11 |
 | `seven_concepts` | 9 |
-| `seven_episodes` | 26258 |
+| `seven_episodes` | 26282 |
 | `seven_learnings` | 1 |
 | `seven_settings` | 0 |
 | `skills` | 47 |
@@ -469,26 +470,26 @@
 | `studio_evidence` | 1 |
 | `sudo_command_whitelist` | 5 |
 | `swarm_bus` | 431 |
-| `swarm_event_acks` | 478 |
-| `swarm_events` | 83 |
+| `swarm_event_acks` | 513 |
+| `swarm_events` | 84 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 87 |
+| `swarm_knowledge` | 93 |
 | `swarm_nodes` | 0 |
 | `synth_board_projects` | 24 |
 | `synth_board_revisions` | 7 |
-| `system_stats` | 13545 |
-| `task_run_log` | 6363 |
+| `system_stats` | 13779 |
+| `task_run_log` | 6574 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
 | `test_runs` | 202 |
-| `ticket_notes` | 919 |
-| `tickets` | 932 |
-| `time_checkpoints` | 8274 |
-| `time_events` | 182284 |
-| `time_journal` | 172192 |
-| `time_machine` | 9173 |
+| `ticket_notes` | 921 |
+| `tickets` | 934 |
+| `time_checkpoints` | 8276 |
+| `time_events` | 182296 |
+| `time_journal` | 172202 |
+| `time_machine` | 9202 |
 | `tool_builds` | 0 |
-| `trace_events` | 13224 |
+| `trace_events` | 15108 |
 | `trading_signals` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
@@ -500,12 +501,12 @@
 | `user_skill_permissions` | 3 |
 | `video_render_jobs` | 10 |
 | `video_timelines` | 25 |
-| `watchdog_repair_lessons` | 49 |
-| `watched_topic_evidence` | 216 |
+| `watchdog_repair_lessons` | 51 |
+| `watched_topic_evidence` | 226 |
 | `watched_topic_settings` | 0 |
 | `watcher_topic_last_seen` | 0 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 205 |
+| `work_proposals` | 207 |
 
 ## Agents
 
