@@ -521,11 +521,21 @@ def test_relay_recovery_card_is_idempotent_and_contextual(monkeypatch, tmp_path)
     try:
         recovery_count = conn.execute('SELECT COUNT(*) FROM chat_relay_recoveries').fetchone()[0]
         card_rows = conn.execute("SELECT content FROM messages WHERE message_type='relay_recovery'").fetchall()
+        project = conn.execute("SELECT name FROM projects WHERE project_id='P-CHAT-RELAY-RECOVERY'").fetchone()
+        step = conn.execute(
+            "SELECT title, status, owner, owner_route FROM project_steps "
+            "WHERE project_id='P-CHAT-RELAY-RECOVERY'"
+        ).fetchone()
     finally:
         conn.close()
     assert recovery_count == 1
     assert len(card_rows) == 1
     assert 'Research this and hand it to Duck.' in card_rows[0]['content']
+    assert project['name'] == 'Chat Relay Recovery Watchdog'
+    assert 'Recover chat thread' in step['title']
+    assert step['status'] == 'todo'
+    assert step['owner'] == 'qwen'
+    assert step['owner_route'].startswith('watchdog:recovery-')
 
 
 def test_startup_orphan_sweep_creates_recovery_card(monkeypatch, tmp_path):
@@ -751,6 +761,19 @@ def test_relay_recovery_leases_prevent_duplicate_active_reviews(monkeypatch, tmp
 
     assert db_chat.update_chat_relay_recovery_status(recovery_id, 'reviewed', 'pytest handled') is True
     assert db_chat.get_open_chat_relay_recoveries(limit=5) == []
+
+    conn = _conn()
+    try:
+        step = conn.execute(
+            "SELECT status FROM project_steps WHERE project_id='P-CHAT-RELAY-RECOVERY'"
+        ).fetchone()
+        evidence_count = conn.execute(
+            "SELECT COUNT(*) FROM project_step_evidence WHERE project_id='P-CHAT-RELAY-RECOVERY'"
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    assert step['status'] == 'done'
+    assert evidence_count >= 3
 
 
 def test_relay_recovery_status_endpoint_updates_card(monkeypatch):

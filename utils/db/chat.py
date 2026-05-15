@@ -2,6 +2,7 @@
 db.chat — Conversations, messages, and chat job tracking.
 """
 import json
+import time
 import uuid
 
 from ._connection import get_connection
@@ -9,6 +10,7 @@ from ._connection import get_connection
 
 _RELAY_RECOVERY_AGENTS = ('librarian', 'duck', 'vortex')
 _RELAY_RECOVERY_STATUSES = {'open', 'reviewed', 'ignored', 'escalated'}
+_RELAY_RECOVERY_PROJECT_ID = 'P-CHAT-RELAY-RECOVERY'
 
 
 def _ensure_relay_recovery_schema(conn):
@@ -42,6 +44,199 @@ def _ensure_relay_recovery_schema(conn):
 
 def _row_to_dict(row):
     return dict(row) if row is not None else None
+
+
+def _relay_recovery_step_id(recovery_id):
+    suffix = ''.join(ch for ch in str(recovery_id or '').upper() if ch.isalnum())
+    suffix = suffix[-12:] or uuid.uuid4().hex[:12].upper()
+    return f'S-RELAY-{suffix}'
+
+
+def _ensure_relay_recovery_project_schema(conn):
+    """Best-effort Studio task board bridge for recovery cards."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS projects (
+            project_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            methodology TEXT NOT NULL DEFAULT 'mixed',
+            status TEXT NOT NULL DEFAULT 'active',
+            owner TEXT NOT NULL DEFAULT 'seven',
+            created_at REAL NOT NULL,
+            updated_at REAL,
+            priority INTEGER NOT NULL DEFAULT 0,
+            tags TEXT NOT NULL DEFAULT '[]'
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS project_steps (
+            step_id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT NOT NULL DEFAULT 'todo',
+            owner TEXT NOT NULL DEFAULT 'seven',
+            order_idx INTEGER NOT NULL DEFAULT 0,
+            created_at REAL NOT NULL,
+            updated_at REAL,
+            residual_risk TEXT DEFAULT '',
+            owner_route TEXT DEFAULT ''
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS project_step_evidence (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id TEXT NOT NULL,
+            step_id TEXT NOT NULL,
+            source_type TEXT NOT NULL DEFAULT 'task',
+            source_ref TEXT NOT NULL DEFAULT '',
+            summary TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'ok',
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS project_blackboard_notes (
+            note_id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            author TEXT NOT NULL DEFAULT 'seven',
+            kind TEXT NOT NULL DEFAULT 'note',
+            content TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at REAL NOT NULL,
+            updated_at REAL
+        )"""
+    )
+    now = time.time()
+    conn.execute(
+        """
+        INSERT INTO projects
+            (project_id, name, description, methodology, status, owner,
+             created_at, updated_at, priority, tags)
+        VALUES (?, ?, ?, 'agile', 'active', 'watchdog', ?, ?, 80, ?)
+        ON CONFLICT(project_id) DO UPDATE SET
+            description=excluded.description,
+            status='active',
+            updated_at=excluded.updated_at,
+            tags=excluded.tags
+        """,
+        (
+            _RELAY_RECOVERY_PROJECT_ID,
+            'Chat Relay Recovery Watchdog',
+            (
+                'One-at-a-time board for stalled chat jobs, silent threads, '
+                'and watchdog recovery cards. Every timeout gets a visible '
+                'Studio step, prompt, evidence trail, and completion status.'
+            ),
+            now,
+            now,
+            json.dumps(['watchdog', 'chat', 'relay-recovery'], ensure_ascii=True),
+        ),
+    )
+
+
+def _sync_relay_recovery_task_board(conn, recovery, card='', status='todo', evidence_summary=''):
+    """Create/update the Studio step that tracks one relay recovery card."""
+    try:
+        _ensure_relay_recovery_project_schema(conn)
+        recovery = recovery or {}
+        recovery_id = str(recovery.get('recovery_id') or '').strip()
+        if not recovery_id:
+            return ''
+        step_id = _relay_recovery_step_id(recovery_id)
+        conv_id = int(recovery.get('conversation_id') or 0)
+        stalled_agent = str(recovery.get('stalled_agent') or 'agent').strip().lower() or 'agent'
+        job_id = str(recovery.get('job_id') or '').strip()
+        summary = str(recovery.get('summary') or '').strip()
+        title = f'Recover chat thread #{conv_id} after {stalled_agent} stalled'
+        prompt = (
+            'Recovery prompt for the next agent:\n'
+            '- Work one recovery at a time; finish or escalate this card before claiming another.\n'
+            '- Read the thread tail and stage trace. Continue the user-visible task, do not restart from scratch.\n'
+            '- Write concise progress/results back to this Studio step and the conversation.\n'
+            '- If the recovery fails, record exactly where it fell over and what proof is missing.\n'
+            '- Do not expose private chain-of-thought.\n'
+        )
+        description = (
+            f'Recovery ID: {recovery_id}\n'
+            f'Conversation: #{conv_id}\n'
+            f'Stalled job: {job_id}\n'
+            f'Stalled agent: {stalled_agent}\n'
+            f'Summary: {summary}\n\n'
+            f'{prompt}\n'
+            f'Relay recovery card:\n{str(card or "").strip()[:4000]}'
+        )[:6000]
+        now = time.time()
+        conn.execute(
+            """
+            INSERT INTO project_steps
+                (step_id, project_id, title, description, status, owner,
+                 order_idx, created_at, updated_at, residual_risk, owner_route)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(step_id) DO UPDATE SET
+                title=excluded.title,
+                description=excluded.description,
+                status=excluded.status,
+                owner=excluded.owner,
+                updated_at=excluded.updated_at,
+                residual_risk=excluded.residual_risk,
+                owner_route=excluded.owner_route
+            """,
+            (
+                step_id,
+                _RELAY_RECOVERY_PROJECT_ID,
+                title[:180],
+                description,
+                status,
+                stalled_agent,
+                int(now),
+                now,
+                now,
+                'Open until an agent either completes the original user task or records an explicit blocker.',
+                f'watchdog:{recovery_id}',
+            ),
+        )
+        if evidence_summary:
+            conn.execute(
+                """
+                INSERT INTO project_step_evidence
+                    (project_id, step_id, source_type, source_ref, summary, status)
+                VALUES (?, ?, 'watchdog_recovery', ?, ?, ?)
+                """,
+                (
+                    _RELAY_RECOVERY_PROJECT_ID,
+                    step_id,
+                    recovery_id,
+                    str(evidence_summary or '')[:500],
+                    'ok' if status in {'todo', 'doing', 'done'} else 'warn',
+                ),
+            )
+        note_id = f'BB-{step_id}'
+        conn.execute(
+            """
+            INSERT INTO project_blackboard_notes
+                (note_id, project_id, author, kind, content, status, created_at, updated_at)
+            VALUES (?, ?, 'watchdog', 'handoff', ?, 'active', ?, ?)
+            ON CONFLICT(note_id) DO UPDATE SET
+                content=excluded.content,
+                status=excluded.status,
+                updated_at=excluded.updated_at
+            """,
+            (
+                note_id,
+                _RELAY_RECOVERY_PROJECT_ID,
+                (
+                    f'{title}\n\n'
+                    f'{prompt}\n'
+                    f'Latest status: {status}. Recovery ID: {recovery_id}.'
+                )[:3000],
+                now,
+                now,
+            ),
+        )
+        return step_id
+    except Exception:
+        return ''
 
 
 def new_conversation(title, source='email', sender=''):
@@ -254,6 +449,20 @@ def ensure_chat_relay_recovery(
                     json.dumps(context, ensure_ascii=True),
                     summary,
                 ),
+            )
+            pending_recovery = {
+                'recovery_id': recovery_id,
+                'conversation_id': conv_id,
+                'job_id': job_id,
+                'stalled_agent': agent,
+                'summary': summary,
+            }
+            _sync_relay_recovery_task_board(
+                conn,
+                pending_recovery,
+                card=card,
+                status='todo',
+                evidence_summary=f'Recovery opened: {reason}',
             )
             conn.execute(
                 """
@@ -471,7 +680,14 @@ def lease_chat_relay_recoveries(owner, limit=3, lease_seconds=1800, conversation
                         (recovery_id,),
                     ).fetchone()
                     if fresh:
-                        claimed.append(dict(fresh))
+                        fresh_dict = dict(fresh)
+                        _sync_relay_recovery_task_board(
+                            conn,
+                            fresh_dict,
+                            status='doing',
+                            evidence_summary=f'Recovery leased to {owner}',
+                        )
+                        claimed.append(fresh_dict)
             conn.commit()
             return claimed
         finally:
@@ -509,6 +725,24 @@ def update_chat_relay_recovery_status(recovery_id, status, summary=None):
                     """,
                     (status, str(summary or '')[:1000], recovery_id),
                 )
+            if cur.rowcount > 0:
+                fresh = conn.execute(
+                    "SELECT * FROM chat_relay_recoveries WHERE recovery_id=?",
+                    (recovery_id,),
+                ).fetchone()
+                if fresh:
+                    step_status = {
+                        'reviewed': 'done',
+                        'ignored': 'skipped',
+                        'escalated': 'blocked',
+                        'open': 'todo',
+                    }.get(status, 'todo')
+                    _sync_relay_recovery_task_board(
+                        conn,
+                        dict(fresh),
+                        status=step_status,
+                        evidence_summary=summary or f'Recovery marked {status}',
+                    )
             conn.commit()
             return cur.rowcount > 0
         finally:

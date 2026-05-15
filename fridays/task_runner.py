@@ -119,13 +119,13 @@ def _task_play_time(**kwargs):
     return 'Play time complete'
 
 
-@register('relay_recovery_sweep', 'Review stalled chat relay recovery cards with Librarian and Duck', 'agents')
+@register('relay_recovery_sweep', 'Recover stalled chat relay cards one at a time with Librarian and Duck', 'agents')
 def _task_relay_recovery_sweep(**kwargs):
     """
     Sweep open chat relay recovery cards.
 
     Args:
-      limit=3             max cards to inspect
+      limit=1             max cards to inspect; keep this at 1 on this machine
       run_agents=0        set to 1 to actually ask Librarian and Duck
       agents=librarian,duck
       lease_minutes=30    active-review lease duration
@@ -144,7 +144,7 @@ def _task_relay_recovery_sweep(**kwargs):
     )
 
     opts = {
-        'limit': '3',
+        'limit': '1',
         'run_agents': '0',
         'agents': 'librarian,duck',
         'lease_minutes': '30',
@@ -301,11 +301,18 @@ def _tasker_in_idle_window(window, now=None):
 
 def _relay_recovery_agent_prompt(recovery, thread_tail, stage_trace):
     lines = [
-        'You are reviewing a stalled chat relay recovery card.',
+        'You are recovering a stalled chat relay card. Treat this as an active task board item, not a passive review.',
         f"Recovery ID: {recovery.get('recovery_id')}",
         f"Conversation: #{recovery.get('conversation_id')}",
         f"Stalled agent: {recovery.get('stalled_agent')}",
         f"Summary: {recovery.get('summary')}",
+        '',
+        'Operating rules:',
+        '- Work one recovery at a time; finish this card or name the blocker before moving on.',
+        '- Continue from the visible thread tail and stage trace. Do not restart the task from scratch.',
+        '- If the original request asked for a simple code/config/doc change, identify the exact next patch and verification command.',
+        '- Write back where recovery falls over: missing context, runtime timeout, model failure, unsafe action, or test failure.',
+        '- Keep notes concise and user-visible. Do not expose private chain-of-thought.',
         '',
         'Last stage trace:',
     ]
@@ -324,7 +331,7 @@ def _relay_recovery_agent_prompt(recovery, thread_tail, stage_trace):
         if content:
             lines.append(f'- {sender} -> {target}: {content}')
     lines.append('')
-    lines.append('Return concise recovery notes: intended next step, risks, missing evidence, and who should continue. Do not expose private chain-of-thought.')
+    lines.append('Return concise recovery notes with: current state, exact next action, proof to run, blocker if any, and who should continue.')
     return '\n'.join(lines)
 
 
