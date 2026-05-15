@@ -435,3 +435,81 @@ def test_deos_cycle_returns_stale_local_work_claim_to_board(monkeypatch, tmp_pat
     assert step['status'] == 'blocked'
     assert 'expired' in step['residual_risk']
     assert evidence['status'] == 'warn'
+
+
+def test_deos_cycle_reroutes_blocked_failed_local_work(monkeypatch, tmp_path):
+    from utils import watchdog_deos
+
+    db_path = tmp_path / 'deos-reroute-work.db'
+    conn = _conn(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE agents (
+            name TEXT PRIMARY KEY,
+            model TEXT NOT NULL,
+            tier TEXT DEFAULT 'local',
+            enabled INTEGER DEFAULT 1,
+            eta_seconds INTEGER DEFAULT 60,
+            keep_alive INTEGER DEFAULT 300
+        );
+        CREATE TABLE chat_relay_recoveries (recovery_id TEXT PRIMARY KEY, job_id TEXT UNIQUE NOT NULL, status TEXT DEFAULT 'open');
+        CREATE TABLE projects (
+            project_id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT,
+            methodology TEXT DEFAULT 'agile', status TEXT DEFAULT 'active',
+            owner TEXT DEFAULT 'seven', created_at REAL, updated_at REAL,
+            priority INTEGER DEFAULT 0, tags TEXT DEFAULT '[]'
+        );
+        CREATE TABLE project_steps (
+            step_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, title TEXT NOT NULL,
+            description TEXT, status TEXT DEFAULT 'todo', owner TEXT DEFAULT 'seven',
+            order_idx INTEGER DEFAULT 0, created_at REAL, updated_at REAL,
+            residual_risk TEXT DEFAULT '', owner_route TEXT DEFAULT ''
+        );
+        CREATE TABLE project_step_evidence (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id TEXT NOT NULL,
+            step_id TEXT NOT NULL,
+            source_type TEXT DEFAULT 'task',
+            source_ref TEXT DEFAULT '',
+            summary TEXT DEFAULT '',
+            status TEXT DEFAULT 'ok',
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        """
+    )
+    conn.executemany(
+        "INSERT INTO agents (name, model) VALUES (?, ?)",
+        [('duck', 'qwen2.5:latest'), ('librarian', 'qwen:latest'), ('seven', 'local-algorithm'), ('qwen', 'qwen2.5:latest'), ('gemma', 'gemma3:latest')],
+    )
+    conn.execute("INSERT INTO projects (project_id, name, created_at) VALUES ('P-WORK', 'Work', 1)")
+    conn.execute(
+        """INSERT INTO project_steps
+           (step_id, project_id, title, description, status, owner, created_at, updated_at)
+           VALUES ('S-WORK-REROUTE', 'P-WORK', 'Failed Mistral packet', 'Recover me.', 'blocked', 'mistral', 1, 1)"""
+    )
+    conn.execute(
+        """INSERT INTO project_step_evidence
+           (project_id, step_id, source_type, source_ref, summary, status)
+           VALUES ('P-WORK', 'S-WORK-REROUTE', 'watchdog_deos', 'agent-work:S-WORK-REROUTE', 'mistral result tokens=0: ', 'warn')"""
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: (False, 'cold'))
+
+    report = watchdog_deos.run_deos_cycle('prewarm=0 execute_recovery=0 execute_work=0')
+
+    conn = _conn(db_path)
+    try:
+        step = conn.execute("SELECT owner, residual_risk FROM project_steps WHERE step_id='S-WORK-REROUTE'").fetchone()
+        evidence = conn.execute(
+            "SELECT status, summary FROM project_step_evidence WHERE step_id='S-WORK-REROUTE' AND source_ref='reroute:S-WORK-REROUTE'"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert report['operates']['rerouted_local_work'] == 1
+    assert step['owner'] == 'qwen'
+    assert 'rerouted to qwen' in step['residual_risk']
+    assert evidence['status'] == 'warn'

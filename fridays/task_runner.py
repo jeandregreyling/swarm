@@ -272,14 +272,17 @@ def _task_relay_recovery_sweep(**kwargs):
                 had_failure = True
             outputs.append(f'{agent}: {str(answer or "").strip()[:1200]}')
             if conv_id:
-                log_message(
-                    conv_id,
-                    agent,
-                    str(answer or '').strip() or f'[{agent}] no recovery review returned',
-                    to_agent='user',
-                    message_type='relay_recovery_review',
-                    tokens_used=0,
-                )
+                try:
+                    log_message(
+                        conv_id,
+                        agent,
+                        str(answer or '').strip() or f'[{agent}] no recovery review returned',
+                        to_agent='user',
+                        message_type='relay_recovery_review',
+                        tokens_used=0,
+                    )
+                except Exception as exc:
+                    outputs.append(f'{agent}: conversation log skipped: {type(exc).__name__}: {exc}')
 
         update_chat_relay_recovery_status(
             recovery_id,

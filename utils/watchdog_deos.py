@@ -32,6 +32,8 @@ WORK_AGENT_MODULES = {
     'gemma': ('agents.gemma.gemma_agent', 'chat'),
 }
 
+WORK_AGENT_ORDER = ['qwen', 'gemma', 'mistral']
+
 
 def _bool_opt(value: Any, default: bool = False) -> bool:
     if value is None:
@@ -217,12 +219,15 @@ def _warm_model(model: str, keep_alive: int, timeout_seconds: int) -> Tuple[bool
         import requests
         resp = requests.post(
             'http://127.0.0.1:11434/api/generate',
-            json={'model': model, 'prompt': ' ', 'keep_alive': max(60, int(keep_alive or 300))},
+            json={
+                'model': model,
+                'prompt': ' ',
+                'keep_alive': max(60, int(keep_alive or 300)),
+                'stream': False,
+                'options': {'num_predict': 1},
+            },
             timeout=max(10, int(timeout_seconds or 45)),
-            stream=True,
         )
-        for _ in resp.iter_lines():
-            pass
         if resp.status_code >= 400:
             return False, f'{model} warm failed http={resp.status_code}'
         return True, f'{model} warm ok'
@@ -283,6 +288,79 @@ def _clear_stale_local_work_claims(conn, stale_seconds: int = 1800) -> int:
             (_now(), step_id),
         )
         _add_step_evidence(conn, step_id, f'stale-claim:{step_id}', summary, 'warn')
+        count += 1
+    return count
+
+
+def _failed_work_agents(conn, step_id: str) -> set:
+    try:
+        rows = conn.execute(
+            """SELECT summary FROM project_step_evidence
+               WHERE step_id=? AND source_ref=? AND status='warn'
+               ORDER BY id""",
+            (step_id, f'agent-work:{step_id}'),
+        ).fetchall()
+    except Exception:
+        return set()
+    failed = set()
+    for row in rows:
+        first = str(row['summary'] or '').split(' ', 1)[0].strip().lower()
+        if first in WORK_AGENT_MODULES:
+            failed.add(first)
+    return failed
+
+
+def _next_work_agent(conn, step_id: str, current: str) -> Optional[str]:
+    current = str(current or '').strip().lower()
+    failed = _failed_work_agents(conn, step_id)
+    for agent in WORK_AGENT_ORDER:
+        if agent not in failed:
+            return agent
+    return None
+
+
+def _reroute_blocked_failed_local_steps(conn, limit: int = 5) -> int:
+    candidates = tuple(WORK_AGENT_MODULES)
+    placeholders = ','.join('?' for _ in candidates)
+    try:
+        rows = conn.execute(
+            f"""SELECT step_id, owner, title FROM project_steps
+                WHERE status='blocked'
+                  AND lower(owner) IN ({placeholders})
+                  AND EXISTS (
+                    SELECT 1 FROM project_step_evidence e
+                    WHERE e.step_id=project_steps.step_id
+                      AND e.source_ref='agent-work:' || project_steps.step_id
+                      AND e.status='warn'
+                  )
+                ORDER BY updated_at ASC
+                LIMIT ?""",
+            (*candidates, max(1, int(limit or 5))),
+        ).fetchall()
+    except Exception:
+        return 0
+    count = 0
+    for row in rows:
+        step_id = str(row['step_id'])
+        current = str(row['owner'] or '').strip().lower()
+        if current not in _failed_work_agents(conn, step_id):
+            continue
+        nxt = _next_work_agent(conn, step_id, current)
+        if not nxt:
+            continue
+        summary = f"DEOS rerouted blocked local work from {current} to {nxt}: {row['title']}"
+        conn.execute(
+            """UPDATE project_steps
+               SET owner=?, residual_risk=?, updated_at=?
+               WHERE step_id=? AND status='blocked'""",
+            (
+                nxt,
+                f'Previous local agent {current} failed to complete this packet; rerouted to {nxt}.',
+                _now(),
+                step_id,
+            ),
+        )
+        _add_step_evidence(conn, step_id, f'reroute:{step_id}', summary, 'warn')
         count += 1
     return count
 
@@ -487,10 +565,12 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
 
         cleared = _clear_expired_recovery_leases(conn)
         stale_work_claims = _clear_stale_local_work_claims(conn, local_work_stale)
+        rerouted_work = _reroute_blocked_failed_local_steps(conn)
         counts = _recovery_counts(conn)
         report['operates'] = {
             'expired_leases_cleared': cleared,
             'stale_local_work_claims': stale_work_claims,
+            'rerouted_local_work': rerouted_work,
             'recovery_counts': counts,
             'readiness_failed': readiness_failed,
             'ready_recovery_agents': ready_recovery_agents,

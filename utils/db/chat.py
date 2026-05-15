@@ -146,6 +146,7 @@ def _sync_relay_recovery_task_board(conn, recovery, card='', status='todo', evid
         step_id = _relay_recovery_step_id(recovery_id)
         conv_id = int(recovery.get('conversation_id') or 0)
         stalled_agent = str(recovery.get('stalled_agent') or 'agent').strip().lower() or 'agent'
+        owner = _relay_recovery_owner(stalled_agent)
         job_id = str(recovery.get('job_id') or '').strip()
         summary = str(recovery.get('summary') or '').strip()
         title = f'Recover chat thread #{conv_id} after {stalled_agent} stalled'
@@ -188,7 +189,7 @@ def _sync_relay_recovery_task_board(conn, recovery, card='', status='todo', evid
                 title[:180],
                 description,
                 status,
-                stalled_agent,
+                owner,
                 int(now),
                 now,
                 now,
@@ -237,6 +238,15 @@ def _sync_relay_recovery_task_board(conn, recovery, card='', status='todo', evid
         return step_id
     except Exception:
         return ''
+
+
+def _relay_recovery_owner(stalled_agent):
+    stalled = str(stalled_agent or '').strip().lower()
+    order = ['qwen', 'gemma', 'mistral']
+    for agent in order:
+        if agent != stalled:
+            return agent
+    return 'qwen'
 
 
 def new_conversation(title, source='email', sender=''):

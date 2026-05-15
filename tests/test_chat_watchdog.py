@@ -534,7 +534,7 @@ def test_relay_recovery_card_is_idempotent_and_contextual(monkeypatch, tmp_path)
     assert project['name'] == 'Chat Relay Recovery Watchdog'
     assert 'Recover chat thread' in step['title']
     assert step['status'] == 'todo'
-    assert step['owner'] == 'qwen'
+    assert step['owner'] == 'gemma'
     assert step['owner_route'].startswith('watchdog:recovery-')
 
 
