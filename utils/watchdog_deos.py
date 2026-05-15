@@ -9,6 +9,7 @@ piece of recovery work, executes bounded operations, and records evidence.
 from __future__ import annotations
 
 import json
+import re
 import shlex
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -33,6 +34,12 @@ WORK_AGENT_MODULES = {
 }
 
 WORK_AGENT_ORDER = ['qwen', 'gemma', 'mistral']
+
+WORK_AGENT_MODELS = {
+    'mistral': 'mistral:latest',
+    'qwen': 'qwen:latest',
+    'gemma': 'gemma3:latest',
+}
 
 
 def _bool_opt(value: Any, default: bool = False) -> bool:
@@ -408,11 +415,13 @@ def _claim_local_agent_step(conn) -> Optional[Dict[str, Any]]:
 
 
 def _agent_work_prompt(step: Dict[str, Any]) -> str:
+    context = _local_work_context(step)
     return (
         'You are running under Watchdog/Seven DEOS. Complete this Studio task if it is safe and concrete.\n'
         'Rules:\n'
         '- Work only on this one task.\n'
         '- Use SKILL commands for file reads, patches, verification, or ALM actions when needed.\n'
+        '- Prefer the smallest useful completion. Do not over-research simple recovery cards.\n'
         '- Do not create broad rewrites or unrelated work.\n'
         '- If the task is unclear, unsafe, or too large, stop and report BLOCKED with the exact blocker.\n'
         '- End your final answer with exactly one status line: DEOS_STATUS: done | blocked | needs_human.\n'
@@ -422,7 +431,74 @@ def _agent_work_prompt(step: Dict[str, Any]) -> str:
         f"Title: {step.get('title')}\n"
         f"Owner route: {step.get('owner_route')}\n\n"
         f"Description:\n{step.get('description') or ''}\n"
+        f"{context}"
     )
+
+
+def _local_work_context(step: Dict[str, Any]) -> str:
+    """Attach compact live context for recovery cards so local models get facts."""
+    text = f"{step.get('description') or ''}\n{step.get('title') or ''}"
+    match = re.search(r'Conversation:\s*#?(\d+)|thread\s+#?(\d+)', text, flags=re.I)
+    if not match:
+        return ''
+    conv_id = int((match.group(1) or match.group(2) or 0) or 0)
+    if not conv_id:
+        return ''
+    lines = ['\nLive conversation context:\n']
+    try:
+        conn = get_connection()
+        try:
+            recovery_id = ''
+            route = str(step.get('owner_route') or '')
+            if route.startswith('watchdog:'):
+                recovery_id = route.split(':', 1)[1]
+            if recovery_id:
+                rec = conn.execute(
+                    "SELECT relay_context_json FROM chat_relay_recoveries WHERE recovery_id=?",
+                    (recovery_id,),
+                ).fetchone()
+                if rec:
+                    try:
+                        ctx = json.loads(rec['relay_context_json'] or '{}')
+                    except Exception:
+                        ctx = {}
+                    thread_tail = ctx.get('thread_tail') if isinstance(ctx, dict) else []
+                    stage_trace = ctx.get('stage_trace') if isinstance(ctx, dict) else []
+                    if stage_trace:
+                        lines.append('Stage trace:')
+                        for item in stage_trace[-6:]:
+                            text = item.get('text') if isinstance(item, dict) else str(item)
+                            if text:
+                                lines.append(f"- {str(text)[:300]}")
+                    if thread_tail:
+                        lines.append('Thread tail from recovery card:')
+                        for item in thread_tail[-8:]:
+                            if not isinstance(item, dict):
+                                continue
+                            sender = str(item.get('from_agent') or 'unknown')[:40]
+                            target = str(item.get('to_agent') or '')[:60]
+                            arrow = f' -> {target}' if target else ''
+                            content = ' '.join(str(item.get('content') or '').split())[:700]
+                            lines.append(f"- {sender}{arrow}: {content}")
+            rows = conn.execute(
+                """SELECT from_agent, to_agent, content, message_type, created_at
+                   FROM messages
+                   WHERE conversation_id=?
+                   ORDER BY id DESC
+                   LIMIT 8""",
+                (conv_id,),
+            ).fetchall()
+            for row in reversed(rows):
+                sender = str(row['from_agent'] or 'unknown')[:40]
+                target = str(row['to_agent'] or '')[:60]
+                arrow = f' -> {target}' if target else ''
+                content = ' '.join(str(row['content'] or '').split())[:700]
+                lines.append(f"- {row['created_at']} {sender}{arrow}: {content}")
+        finally:
+            conn.close()
+    except Exception as exc:
+        lines.append(f'- conversation lookup failed: {type(exc).__name__}: {exc}')
+    return '\n'.join(lines) + '\n'
 
 
 def _local_agent_worker(queue, agent: str, prompt: str) -> None:
@@ -443,6 +519,8 @@ def _run_local_agent_work(agent: str, prompt: str, timeout_seconds: int) -> Tupl
         timeout_seconds = max(60, min(int(timeout_seconds or 600), 3600))
     except Exception:
         timeout_seconds = 600
+    if 'Recovery ID:' in prompt and 'Live conversation context:' in prompt:
+        return _run_local_agent_direct(agent, prompt, min(timeout_seconds, 120))
     ctx = mp.get_context('fork')
     queue = ctx.Queue(maxsize=1)
     proc = ctx.Process(target=_local_agent_worker, args=(queue, agent, prompt))
@@ -462,6 +540,78 @@ def _run_local_agent_work(agent: str, prompt: str, timeout_seconds: int) -> Tupl
     return status == 'ok', answer, int(tokens or 0)
 
 
+def _run_local_agent_direct(agent: str, prompt: str, timeout_seconds: int) -> Tuple[bool, str, int]:
+    """Use a short local-model call for simple relay recovery packets."""
+    import requests
+    model = WORK_AGENT_MODELS.get(str(agent or '').strip().lower())
+    if not model:
+        return False, f'{agent} has no direct local model mapping', 0
+    direct_prompt = _compact_direct_recovery_prompt(prompt)
+    direct_prompt = (
+        'You are a local recovery worker. Answer only from the provided facts. '
+        'Complete the user-visible recovery in 1-4 concise lines. '
+        'Your first line must answer the latest user request or summarize the concrete recovery result. '
+        'Do not return only a status line. '
+        'If the last user request is already answerable, answer it directly. '
+        'Do not include any DEOS_STATUS line; Watchdog will add it after you return useful content.\n\n'
+        + direct_prompt
+    )
+    try:
+        resp = requests.post(
+            'http://127.0.0.1:11434/api/chat',
+            json={
+                'model': model,
+                'messages': [
+                    {'role': 'system', 'content': 'Be brief. Do not use tools. Do not expose private reasoning.'},
+                    {'role': 'user', 'content': direct_prompt},
+                ],
+                'stream': False,
+                'keep_alive': 300,
+                'options': {'temperature': 0.1, 'num_predict': 80},
+            },
+            timeout=max(15, int(timeout_seconds or 120)),
+        )
+        if resp.status_code >= 400:
+            return False, f'{agent} direct recovery failed http={resp.status_code}', 0
+        data = resp.json()
+        msg = data.get('message') or {}
+        content = str(msg.get('content') or data.get('response') or '').strip()
+        visible = re.sub(r'(?im)^\s*DEOS_STATUS:\s*(done|blocked|needs_human)\s*$', '', content).strip()
+        if content and not visible:
+            return False, f'{agent} direct recovery returned only a status line', int(data.get('eval_count') or 0)
+        if content and 'deos_status:' not in content.lower():
+            content = content.rstrip() + '\nDEOS_STATUS: done'
+        return bool(content), content or f'{agent} direct recovery returned no content', int(data.get('eval_count') or 0)
+    except Exception as exc:
+        return False, f'{agent} direct recovery failed: {type(exc).__name__}: {exc}', 0
+
+
+def _compact_direct_recovery_prompt(prompt: str) -> str:
+    title = ''
+    step = ''
+    user_lines = []
+    failure_lines = []
+    for raw in str(prompt or '').splitlines():
+        line = raw.strip()
+        lower = line.lower()
+        if line.startswith('Step:'):
+            step = line[:120]
+        elif line.startswith('Title:'):
+            title = line[:180]
+        elif line.startswith('- user') or ' user -> ' in lower:
+            user_lines.append(line[:500])
+        elif 'failed' in lower or 'stalled' in lower or 'waiting for model slot' in lower:
+            failure_lines.append(line[:500])
+    parts = [p for p in [step, title] if p]
+    if user_lines:
+        parts.append('Latest user request/context:\n' + '\n'.join(user_lines[-3:]))
+    if failure_lines:
+        parts.append('Failure evidence:\n' + '\n'.join(failure_lines[-4:]))
+    if not parts:
+        parts.append(str(prompt or '')[-1000:])
+    return '\n\n'.join(parts)[:1400]
+
+
 def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, tokens: int) -> str:
     text = str(answer or '').strip()
     lowered = text.lower()
@@ -472,6 +622,8 @@ def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, 
     elif 'deos_status: needs_human' in lowered:
         status = 'blocked'
     else:
+        status = 'blocked'
+    if status == 'done' and _looks_like_refusal(text):
         status = 'blocked'
     summary = f"{step.get('owner')} result tokens={tokens}: {text[:420]}"
     evidence_status = 'ok' if status == 'done' else 'warn'
@@ -494,7 +646,50 @@ def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, 
         "UPDATE project_steps SET status=?, residual_risk=?, updated_at=? WHERE step_id=?",
         (status, residual, now, step.get('step_id')),
     )
+    if status == 'done':
+        _close_relay_recovery_if_applicable(step, text)
     return status
+
+
+def _looks_like_refusal(text: str) -> bool:
+    lowered = str(text or '').lower()
+    markers = [
+        'unable to assist',
+        'cannot assist',
+        "can't assist",
+        'i am sorry',
+        "i'm sorry",
+        'do not hesitate to ask',
+    ]
+    return any(marker in lowered for marker in markers)
+
+
+def _close_relay_recovery_if_applicable(step: Dict[str, Any], result: str) -> None:
+    route = str(step.get('owner_route') or '')
+    if not route.startswith('watchdog:recovery-'):
+        return
+    recovery_id = route.split(':', 1)[1]
+    desc = str(step.get('description') or '')
+    match = re.search(r'Conversation:\s*#?(\d+)', desc, flags=re.I)
+    conv_id = int(match.group(1)) if match else 0
+    summary = f"Local work completed recovery {recovery_id}: {str(result or '').strip()[:700]}"
+    try:
+        from utils.db.chat import log_message, update_chat_relay_recovery_status
+        if conv_id:
+            try:
+                log_message(
+                    conv_id,
+                    'watchdog',
+                    str(result or '').strip(),
+                    to_agent='user',
+                    message_type='relay_recovery_review',
+                    tokens_used=0,
+                )
+            except Exception:
+                pass
+        update_chat_relay_recovery_status(recovery_id, 'reviewed', summary=summary)
+    except Exception:
+        pass
 
 
 def run_deos_cycle(args: str = '') -> Dict[str, Any]:

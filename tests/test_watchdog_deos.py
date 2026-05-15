@@ -372,6 +372,14 @@ def test_deos_cycle_blocks_unverified_local_agent_result(monkeypatch, tmp_path):
     assert 'did not prove it' in evidence['summary']
 
 
+def test_deos_cycle_blocks_refusal_even_with_done_status(monkeypatch, tmp_path):
+    from utils import watchdog_deos
+
+    assert watchdog_deos._looks_like_refusal(
+        "I'm sorry, but I am unable to assist you with this request.\nDEOS_STATUS: done"
+    )
+
+
 def test_deos_cycle_returns_stale_local_work_claim_to_board(monkeypatch, tmp_path):
     from utils import watchdog_deos
 
@@ -513,3 +521,26 @@ def test_deos_cycle_reroutes_blocked_failed_local_work(monkeypatch, tmp_path):
     assert step['owner'] == 'qwen'
     assert 'rerouted to qwen' in step['residual_risk']
     assert evidence['status'] == 'warn'
+
+
+def test_deos_cycle_uses_direct_local_model_for_relay_recovery(monkeypatch, tmp_path):
+    from utils import watchdog_deos
+
+    calls = []
+
+    def fake_direct(agent, prompt, timeout_seconds):
+        calls.append((agent, timeout_seconds, 'Live conversation context:' in prompt))
+        return True, 'Health pulse: local recovery path is online.\nDEOS_STATUS: done', 9
+
+    monkeypatch.setattr(watchdog_deos, '_run_local_agent_direct', fake_direct)
+
+    ok, answer, tokens = watchdog_deos._run_local_agent_work(
+        'qwen',
+        'Recovery ID: recovery-x\nLive conversation context:\n- user: Health pulse in one line.',
+        240,
+    )
+
+    assert ok is True
+    assert tokens == 9
+    assert 'DEOS_STATUS: done' in answer
+    assert calls == [('qwen', 120, True)]
