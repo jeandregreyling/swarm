@@ -239,26 +239,57 @@ def check_due():
             "PRAGMA table_info(scheduled_tasks)").fetchall()}
         has_lease = 'lease_owner' in cols and 'lease_expires_at' in cols
         if has_lease:
-            # Atomically claim due rows whose lease is empty or expired.
-            conn.execute(
-                """UPDATE scheduled_tasks
-                   SET lease_owner=?, lease_expires_at=datetime('now', '+5 minutes')
+            # Claim exactly one due row per scheduler tick. Local agents run on a
+            # small machine; claiming every overdue row makes later tasks appear
+            # stuck behind the first long local model call.
+            row = conn.execute(
+                """SELECT id FROM scheduled_tasks
                    WHERE enabled=1
                      AND (next_run IS NULL OR next_run <= ?)
                      AND (COALESCE(lease_owner,'')=''
-                          OR COALESCE(lease_expires_at,'') < ?)""",
-                (owner, now_str, now_str)
-            )
-            conn.commit()
+                          OR COALESCE(lease_expires_at,'') < ?)
+                   ORDER BY
+                     CASE name
+                       WHEN 'watchdog_deos_cycle' THEN 0
+                       WHEN 'local_agent_work_cycle' THEN 1
+                       ELSE 2
+                     END,
+                     COALESCE(next_run, '0000-00-00 00:00:00') ASC,
+                     id ASC
+                   LIMIT 1""",
+                (now_str, now_str),
+            ).fetchone()
+            if row:
+                conn.execute(
+                    """UPDATE scheduled_tasks
+                       SET lease_owner=?, lease_expires_at=datetime('now', '+30 minutes')
+                       WHERE id=?
+                         AND enabled=1
+                         AND (COALESCE(lease_owner,'')=''
+                              OR COALESCE(lease_expires_at,'') < ?)""",
+                    (owner, row[0], now_str),
+                )
+                conn.commit()
             rows = conn.execute(
                 """SELECT id, name, action_type, action_data FROM scheduled_tasks
-                   WHERE enabled=1 AND lease_owner=?""",
-                (owner,)
+                   WHERE enabled=1 AND lease_owner=?
+                   ORDER BY id ASC
+                   LIMIT 1""",
+                (owner,),
             ).fetchall()
         else:
             rows = conn.execute(
                 """SELECT id, name, action_type, action_data FROM scheduled_tasks
-                   WHERE enabled=1 AND (next_run IS NULL OR next_run <= ?)""",
+                   WHERE enabled=1 AND (next_run IS NULL OR next_run <= ?)
+                   ORDER BY
+                     CASE name
+                       WHEN 'watchdog_deos_cycle' THEN 0
+                       WHEN 'local_agent_work_cycle' THEN 1
+                       ELSE 2
+                     END,
+                     COALESCE(next_run, '0000-00-00 00:00:00') ASC,
+                     id ASC
+                   LIMIT 1""",
                 (now_str,)
             ).fetchall()
 

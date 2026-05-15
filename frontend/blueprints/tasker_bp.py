@@ -352,7 +352,8 @@ def bootstrap_tasks():
         ('landscape_refresh','weekly Mon 04:00',  'PYTHON', 'landscape_refresh'),
         ('knowledge_seed',  'monthly 1 03:00',   'PYTHON', 'knowledge_seed'),
         ('documentation_governance_sweep', 'weekly Mon 03:40', 'PYTHON', 'documentation_governance_sweep'),
-        ('relay_recovery_sweep', 'interval 10m', 'PYTHON', 'relay_recovery_sweep limit=1 run_agents=1 force=1'),
+        ('watchdog_deos_cycle', 'interval 5m', 'PYTHON', 'watchdog_deos_cycle prewarm=1 warm_timeout_seconds=60 execute_recovery=1 agent_timeout_seconds=90'),
+        ('local_agent_work_cycle', 'interval 15m', 'PYTHON', 'local_agent_work_cycle work_timeout_seconds=900'),
         ('money_hub_daily_newsletter', 'daily 07:20', 'PYTHON', 'money_hub_daily_newsletter'),
     ]
     defaults.extend(_default_watched_topic_tasks())

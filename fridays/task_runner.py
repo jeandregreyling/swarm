@@ -17,6 +17,7 @@ import logging
 import os
 import sys
 import time
+import multiprocessing as _mp
 from datetime import datetime
 
 _SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
@@ -26,6 +27,43 @@ if _SWARM_ROOT not in sys.path:
     sys.path.insert(0, _SWARM_ROOT)
 
 logger = logging.getLogger('seven.task_runner')
+
+
+def _ask_agent_worker(queue, agent, prompt):
+    try:
+        try:
+            import orchestrator
+        except Exception:
+            from core.pipeline import orchestrator
+        answer = orchestrator.ask_agent(agent, prompt)
+        queue.put(('ok', str(answer or '').strip()))
+    except Exception as exc:
+        queue.put(('error', f'{type(exc).__name__}: {exc}'))
+
+
+def _ask_agent_with_timeout(agent, prompt, timeout_seconds=240):
+    """Ask one agent in a killable child process so Tasker cannot hang forever."""
+    try:
+        timeout_seconds = max(30, min(int(timeout_seconds or 240), 1800))
+    except Exception:
+        timeout_seconds = 240
+    ctx = _mp.get_context('fork')
+    queue = ctx.Queue(maxsize=1)
+    proc = ctx.Process(target=_ask_agent_worker, args=(queue, agent, prompt))
+    proc.start()
+    proc.join(timeout_seconds)
+    if proc.is_alive():
+        proc.terminate()
+        proc.join(10)
+        if proc.is_alive():
+            proc.kill()
+            proc.join(5)
+        return False, f'[{agent}] timed out after {timeout_seconds}s during relay recovery'
+    try:
+        status, payload = queue.get_nowait()
+    except Exception:
+        status, payload = ('error', f'[{agent}] exited without returning recovery notes')
+    return status == 'ok', payload
 
 
 # ── Registry ──────────────────────────────────────────────────────────────────
@@ -130,6 +168,7 @@ def _task_relay_recovery_sweep(**kwargs):
       agents=librarian,duck
       lease_minutes=30    active-review lease duration
       conversation_id=0    optional single thread to recover first
+      agent_timeout_seconds=240
       idle_window=22:00-06:00
       force=0             set to 1 to override the idle window
 
@@ -150,6 +189,7 @@ def _task_relay_recovery_sweep(**kwargs):
         'agents': 'librarian,duck',
         'lease_minutes': '30',
         'conversation_id': '0',
+        'agent_timeout_seconds': '240',
         'idle_window': '22:00-06:00',
         'force': '0',
     }
@@ -179,6 +219,10 @@ def _task_relay_recovery_sweep(**kwargs):
         conversation_id = int(opts.get('conversation_id') or 0) or None
     except Exception:
         conversation_id = None
+    try:
+        agent_timeout_seconds = max(30, min(int(opts.get('agent_timeout_seconds') or 240), 1800))
+    except Exception:
+        agent_timeout_seconds = 240
 
     if not run_agents:
         recoveries = get_open_chat_relay_recoveries(limit=limit)
@@ -193,11 +237,6 @@ def _task_relay_recovery_sweep(**kwargs):
             f'Active relay recovery deferred outside idle window {idle_window}. '
             'Re-run with force=1 to override.'
         )
-
-    try:
-        import orchestrator
-    except Exception:
-        from core.pipeline import orchestrator
 
     recoveries = lease_chat_relay_recoveries(
         'tasker:relay_recovery_sweep',
@@ -222,11 +261,15 @@ def _task_relay_recovery_sweep(**kwargs):
         prompt = _relay_recovery_agent_prompt(recovery, thread_tail, stage_trace)
 
         outputs = []
+        had_failure = False
         for agent in agents:
-            try:
-                answer = orchestrator.ask_agent(agent, prompt)
-            except Exception as exc:
-                answer = f'[{agent}] relay recovery review failed: {exc}'
+            ok, answer = _ask_agent_with_timeout(
+                agent,
+                prompt,
+                timeout_seconds=agent_timeout_seconds,
+            )
+            if not ok:
+                had_failure = True
             outputs.append(f'{agent}: {str(answer or "").strip()[:1200]}')
             if conv_id:
                 log_message(
@@ -240,7 +283,7 @@ def _task_relay_recovery_sweep(**kwargs):
 
         update_chat_relay_recovery_status(
             recovery_id,
-            'reviewed',
+            'escalated' if had_failure else 'reviewed',
             summary='; '.join(outputs)[:1000],
         )
         reviewed.append(recovery_id)
@@ -282,6 +325,24 @@ def _task_watchdog_stall_detection(**kwargs):
         return f'No stalled tasks detected (>{max_age} min)'
     action = 'created repair lessons and attempted recovery' if auto_recover else 'created repair lessons'
     return f'{action} for {count} stalled task(s) (>{max_age} min)'
+
+
+@register('watchdog_deos_cycle', 'Run Watchdog/Seven DEOS control-plane cycle: decide, execute, operate, sustain.', 'monitoring')
+def _task_watchdog_deos_cycle(**kwargs):
+    from utils.watchdog_deos import run_deos_cycle_summary
+    return run_deos_cycle_summary(kwargs.get('args') or '')
+
+
+@register('local_agent_work_cycle', 'Let one local agent claim and execute one Studio step with bounded runtime.', 'agents')
+def _task_local_agent_work_cycle(**kwargs):
+    from utils.watchdog_deos import run_deos_cycle_summary
+    args = str(kwargs.get('args') or '').strip()
+    merged = (
+        'prewarm=1 warm_timeout_seconds=60 execute_recovery=0 '
+        'execute_work=1 work_timeout_seconds=900 '
+        + args
+    ).strip()
+    return run_deos_cycle_summary(merged)
 
 
 def _tasker_in_idle_window(window, now=None):

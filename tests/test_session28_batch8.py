@@ -177,6 +177,80 @@ def test_check_due_acquires_and_releases_lease(hb_db):
     assert (row[0] or '') == ''
 
 
+def test_check_due_claims_one_due_task_per_tick(hb_db):
+    from fridays import scheduler
+    from fridays.task_runner import TASK_REGISTRY
+
+    fired = []
+    TASK_REGISTRY['_one_tick_probe_a'] = {
+        'fn': lambda args='': (fired.append('a') or 'ok'),
+        'description': 'p', 'category': 'test',
+    }
+    TASK_REGISTRY['_one_tick_probe_b'] = {
+        'fn': lambda args='': (fired.append('b') or 'ok'),
+        'description': 'p', 'category': 'test',
+    }
+
+    conn = sqlite3.connect(hb_db)
+    conn.execute(
+        "INSERT INTO scheduled_tasks (name, schedule, action_type, action_data, next_run) "
+        "VALUES ('probe_a', 'interval 1m', 'PYTHON', '_one_tick_probe_a', '2000-01-01 00:00:00')"
+    )
+    conn.execute(
+        "INSERT INTO scheduled_tasks (name, schedule, action_type, action_data, next_run) "
+        "VALUES ('probe_b', 'interval 1m', 'PYTHON', '_one_tick_probe_b', '2000-01-01 00:00:00')"
+    )
+    conn.commit()
+    conn.close()
+
+    try:
+        scheduler.check_due()
+    finally:
+        TASK_REGISTRY.pop('_one_tick_probe_a', None)
+        TASK_REGISTRY.pop('_one_tick_probe_b', None)
+
+    assert fired == ['a']
+
+
+def test_check_due_prioritizes_deos_control_plane(hb_db):
+    from fridays import scheduler
+    from fridays.task_runner import TASK_REGISTRY
+
+    fired = []
+    previous = TASK_REGISTRY.get('watchdog_deos_cycle')
+    TASK_REGISTRY['watchdog_deos_cycle'] = {
+        'fn': lambda args='': (fired.append('deos') or 'ok'),
+        'description': 'p', 'category': 'test',
+    }
+    TASK_REGISTRY['_old_probe'] = {
+        'fn': lambda args='': (fired.append('old') or 'ok'),
+        'description': 'p', 'category': 'test',
+    }
+
+    conn = sqlite3.connect(hb_db)
+    conn.execute(
+        "INSERT INTO scheduled_tasks (name, schedule, action_type, action_data, next_run) "
+        "VALUES ('old_probe', 'interval 1m', 'PYTHON', '_old_probe', '1999-01-01 00:00:00')"
+    )
+    conn.execute(
+        "INSERT INTO scheduled_tasks (name, schedule, action_type, action_data, next_run) "
+        "VALUES ('watchdog_deos_cycle', 'interval 5m', 'PYTHON', 'watchdog_deos_cycle', '2000-01-01 00:00:00')"
+    )
+    conn.commit()
+    conn.close()
+
+    try:
+        scheduler.check_due()
+    finally:
+        if previous is None:
+            TASK_REGISTRY.pop('watchdog_deos_cycle', None)
+        else:
+            TASK_REGISTRY['watchdog_deos_cycle'] = previous
+        TASK_REGISTRY.pop('_old_probe', None)
+
+    assert fired == ['deos']
+
+
 # S-E056DBAD19 / S-B1279A66EB ---------------------------------------------
 
 def test_record_startup_increments_restart_count(hb_db):
