@@ -129,6 +129,7 @@ def _task_relay_recovery_sweep(**kwargs):
       run_agents=0        set to 1 to actually ask Librarian and Duck
       agents=librarian,duck
       lease_minutes=30    active-review lease duration
+      conversation_id=0    optional single thread to recover first
       idle_window=22:00-06:00
       force=0             set to 1 to override the idle window
 
@@ -148,6 +149,7 @@ def _task_relay_recovery_sweep(**kwargs):
         'run_agents': '0',
         'agents': 'librarian,duck',
         'lease_minutes': '30',
+        'conversation_id': '0',
         'idle_window': '22:00-06:00',
         'force': '0',
     }
@@ -173,6 +175,10 @@ def _task_relay_recovery_sweep(**kwargs):
         for item in str(opts.get('agents') or '').split(',')
         if item.strip().lower() in {'librarian', 'duck'}
     ] or ['librarian', 'duck']
+    try:
+        conversation_id = int(opts.get('conversation_id') or 0) or None
+    except Exception:
+        conversation_id = None
 
     if not run_agents:
         recoveries = get_open_chat_relay_recoveries(limit=limit)
@@ -197,6 +203,7 @@ def _task_relay_recovery_sweep(**kwargs):
         'tasker:relay_recovery_sweep',
         limit=limit,
         lease_seconds=lease_seconds,
+        conversation_id=conversation_id,
     )
     if not recoveries:
         return 'No unleased open chat relay recoveries.'
