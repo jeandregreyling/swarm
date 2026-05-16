@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import shlex
+import sqlite3
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -43,6 +44,25 @@ WORK_AGENT_MODELS = {
     'gemma': 'gemma3:latest',
     'llama': 'llama3.2:latest',
 }
+
+
+def _is_sqlite_lock_error(exc: Exception) -> bool:
+    return isinstance(exc, sqlite3.OperationalError) and 'locked' in str(exc).lower()
+
+
+def _execute_with_retry(conn, sql: str, params=(), attempts: int = 4) -> None:
+    last = None
+    for attempt in range(max(1, int(attempts or 1))):
+        try:
+            conn.execute(sql, params)
+            return
+        except Exception as exc:
+            last = exc
+            if not _is_sqlite_lock_error(exc) or attempt >= attempts - 1:
+                raise
+            time.sleep(0.25 * (2 ** attempt))
+    if last:
+        raise last
 
 
 def _bool_opt(value: Any, default: bool = False) -> bool:
@@ -174,7 +194,8 @@ def _add_step_evidence(
     status: str = 'ok',
     project_id: str = PROJECT_ID,
 ) -> None:
-    conn.execute(
+    _execute_with_retry(
+        conn,
         """INSERT INTO project_step_evidence
             (project_id, step_id, source_type, source_ref, summary, status)
            VALUES (?, ?, 'watchdog_deos', ?, ?, ?)""",
@@ -733,7 +754,8 @@ def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, 
     )
     now = _now()
     residual = '' if status == 'done' else 'Agent did not provide a verified DEOS_STATUS: done result; see latest evidence.'
-    conn.execute(
+    _execute_with_retry(
+        conn,
         "UPDATE project_steps SET status=?, residual_risk=?, updated_at=? WHERE step_id=?",
         (status, residual, now, step.get('step_id')),
     )

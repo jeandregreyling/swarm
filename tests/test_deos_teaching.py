@@ -1,5 +1,6 @@
 from utils import deos_teaching
 from utils import watchdog_deos
+import sqlite3
 
 
 def test_local_agent_packet_contains_deos_contract_and_role_hint():
@@ -34,3 +35,21 @@ def test_deos_teaching_seed_steps_are_project_ready():
     assert [step["project_id"] for step in steps] == ["P-X", "P-X", "P-X"]
     assert all(step["step_id"].startswith("S-DEOS-") for step in steps)
     assert "House agent coaching loop" in markdown
+
+
+def test_watchdog_deos_evidence_write_retries_sqlite_locks(monkeypatch):
+    calls = []
+    sleeps = []
+
+    class Conn:
+        def execute(self, sql, params=()):
+            calls.append((sql, params))
+            if len(calls) < 3:
+                raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(watchdog_deos.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    watchdog_deos._add_step_evidence(Conn(), "S", "ref", "summary")
+
+    assert len(calls) == 3
+    assert sleeps == [0.25, 0.5]
