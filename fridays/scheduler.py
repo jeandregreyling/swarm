@@ -237,6 +237,7 @@ def check_due():
     import os
     import shlex
     import subprocess
+    import sys
     from datetime import datetime
     owner = f'sched-{os.getpid()}'
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -312,13 +313,29 @@ def check_due():
                 subprocess.Popen(shlex.split(action_data))
                 print(f'[Scheduler] Fired SHELL task #{task_id}: {action_data[:60]}')
             elif action_type.upper() == 'PYTHON':
-                from fridays.task_runner import run_task
                 parts = shlex.split(action_data.strip())
                 task_name = parts[0] if parts else ''
                 task_args = ' '.join(shlex.quote(p) for p in parts[1:])
-                success, output = run_task(task_name, args=task_args)
-                status = '✓' if success else '✗'
-                print(f'[Scheduler] {status} PYTHON task #{task_id} ({name}): {output[:80]}')
+                env = os.environ.copy()
+                env['PYTHONPATH'] = _SWARM_ROOT + (os.pathsep + env['PYTHONPATH'] if env.get('PYTHONPATH') else '')
+                subprocess.Popen(
+                    [
+                        sys.executable,
+                        '-c',
+                        (
+                            'import sys; '
+                            'from fridays.task_runner import run_task; '
+                            'ok,out=run_task(sys.argv[1], args=sys.argv[2]); '
+                            'print(("OK" if ok else "FAIL") + " " + str(out)[:500])'
+                        ),
+                        task_name,
+                        task_args,
+                    ],
+                    cwd=_SWARM_ROOT,
+                    env=env,
+                    start_new_session=True,
+                )
+                print(f'[Scheduler] Fired PYTHON task #{task_id} ({name}): {task_name} {task_args[:80]}')
             elif action_type.upper() in ('QUESTION', 'BRIEF'):
                 if 'brief_engine' in (action_data or ''):
                     subprocess.Popen(shlex.split(action_data))
