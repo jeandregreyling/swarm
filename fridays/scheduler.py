@@ -4,7 +4,9 @@ Basic proactive tasks. Runs daily digest, snooze checks, etc.
 """
 
 import os
+import sqlite3
 import time
+from contextlib import closing
 from datetime import datetime, timedelta
 import sys
 
@@ -21,9 +23,13 @@ from database import get_digest_stats, get_due_snoozed, mark_snooze_fired, get_o
 from sandpits import list_proposals
 
 
+def _is_sqlite_lock(exc):
+    return isinstance(exc, sqlite3.OperationalError) and 'locked' in str(exc).lower()
+
+
 def list_tasks():
     """Return all enabled scheduled tasks from the DB."""
-    with get_connection() as conn:
+    with closing(get_connection()) as conn:
         rows = conn.execute(
             'SELECT id, name, schedule, action_type, action_data, next_run FROM scheduled_tasks WHERE enabled=1 ORDER BY id'
         ).fetchall()
@@ -94,7 +100,7 @@ def compute_next_run(schedule, *, now=None):
 def add_task(name, schedule, action_type, action_data, created_by='system'):
     """Add or refresh a scheduled task by name and return its id."""
     next_run = compute_next_run(schedule)
-    with get_connection() as conn:
+    with closing(get_connection()) as conn:
         row = conn.execute(
             'SELECT id FROM scheduled_tasks WHERE name=? ORDER BY id DESC LIMIT 1',
             (name,),
@@ -121,7 +127,7 @@ def add_task(name, schedule, action_type, action_data, created_by='system'):
 
 def _advance_next_run(name):
     """Advance next_run for a task after it fires. Supports daily, weekly, monthly, hourly, interval."""
-    with get_connection() as conn:
+    with closing(get_connection()) as conn:
         row = conn.execute(
             'SELECT schedule FROM scheduled_tasks WHERE name=?', (name,)
         ).fetchone()
@@ -185,7 +191,7 @@ def check_snoozed():
 
 def disable_task(task_id):
     """Disable a scheduled task by numeric ID."""
-    with get_connection() as conn:
+    with closing(get_connection()) as conn:
         conn.execute('UPDATE scheduled_tasks SET enabled=0 WHERE id=?', (task_id,))
 
 
@@ -234,64 +240,70 @@ def check_due():
     from datetime import datetime
     owner = f'sched-{os.getpid()}'
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    with get_connection() as conn:
-        cols = {row[1] for row in conn.execute(
-            "PRAGMA table_info(scheduled_tasks)").fetchall()}
-        has_lease = 'lease_owner' in cols and 'lease_expires_at' in cols
-        if has_lease:
-            # Claim exactly one due row per scheduler tick. Local agents run on a
-            # small machine; claiming every overdue row makes later tasks appear
-            # stuck behind the first long local model call.
-            row = conn.execute(
-                """SELECT id FROM scheduled_tasks
-                   WHERE enabled=1
-                     AND (next_run IS NULL OR next_run <= ?)
-                     AND (COALESCE(lease_owner,'')=''
-                          OR COALESCE(lease_expires_at,'') < ?)
-                   ORDER BY
-                     CASE name
-                       WHEN 'watchdog_deos_cycle' THEN 0
-                       WHEN 'local_agent_work_cycle' THEN 1
-                       ELSE 2
-                     END,
-                     COALESCE(next_run, '0000-00-00 00:00:00') ASC,
-                     id ASC
-                   LIMIT 1""",
-                (now_str, now_str),
-            ).fetchone()
-            if row:
-                conn.execute(
-                    """UPDATE scheduled_tasks
-                       SET lease_owner=?, lease_expires_at=datetime('now', '+30 minutes')
-                       WHERE id=?
-                         AND enabled=1
+    try:
+        with closing(get_connection()) as conn:
+            cols = {row[1] for row in conn.execute(
+                "PRAGMA table_info(scheduled_tasks)").fetchall()}
+            has_lease = 'lease_owner' in cols and 'lease_expires_at' in cols
+            if has_lease:
+                # Claim exactly one due row per scheduler tick. Local agents run on a
+                # small machine; claiming every overdue row makes later tasks appear
+                # stuck behind the first long local model call.
+                row = conn.execute(
+                    """SELECT id FROM scheduled_tasks
+                       WHERE enabled=1
+                         AND (next_run IS NULL OR next_run <= ?)
                          AND (COALESCE(lease_owner,'')=''
-                              OR COALESCE(lease_expires_at,'') < ?)""",
-                    (owner, row[0], now_str),
-                )
-                conn.commit()
-            rows = conn.execute(
-                """SELECT id, name, action_type, action_data FROM scheduled_tasks
-                   WHERE enabled=1 AND lease_owner=?
-                   ORDER BY id ASC
-                   LIMIT 1""",
-                (owner,),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """SELECT id, name, action_type, action_data FROM scheduled_tasks
-                   WHERE enabled=1 AND (next_run IS NULL OR next_run <= ?)
-                   ORDER BY
-                     CASE name
-                       WHEN 'watchdog_deos_cycle' THEN 0
-                       WHEN 'local_agent_work_cycle' THEN 1
-                       ELSE 2
-                     END,
-                     COALESCE(next_run, '0000-00-00 00:00:00') ASC,
-                     id ASC
-                   LIMIT 1""",
-                (now_str,)
-            ).fetchall()
+                              OR COALESCE(lease_expires_at,'') < ?)
+                       ORDER BY
+                         CASE name
+                           WHEN 'watchdog_deos_cycle' THEN 0
+                           WHEN 'local_agent_work_cycle' THEN 1
+                           ELSE 2
+                         END,
+                         COALESCE(next_run, '0000-00-00 00:00:00') ASC,
+                         id ASC
+                       LIMIT 1""",
+                    (now_str, now_str),
+                ).fetchone()
+                if row:
+                    conn.execute(
+                        """UPDATE scheduled_tasks
+                           SET lease_owner=?, lease_expires_at=datetime('now', '+30 minutes')
+                           WHERE id=?
+                             AND enabled=1
+                             AND (COALESCE(lease_owner,'')=''
+                                  OR COALESCE(lease_expires_at,'') < ?)""",
+                        (owner, row[0], now_str),
+                    )
+                    conn.commit()
+                rows = conn.execute(
+                    """SELECT id, name, action_type, action_data FROM scheduled_tasks
+                       WHERE enabled=1 AND lease_owner=?
+                       ORDER BY id ASC
+                       LIMIT 1""",
+                    (owner,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """SELECT id, name, action_type, action_data FROM scheduled_tasks
+                       WHERE enabled=1 AND (next_run IS NULL OR next_run <= ?)
+                       ORDER BY
+                         CASE name
+                           WHEN 'watchdog_deos_cycle' THEN 0
+                           WHEN 'local_agent_work_cycle' THEN 1
+                           ELSE 2
+                         END,
+                         COALESCE(next_run, '0000-00-00 00:00:00') ASC,
+                         id ASC
+                       LIMIT 1""",
+                    (now_str,)
+                ).fetchall()
+    except Exception as exc:
+        if _is_sqlite_lock(exc):
+            print(f'[Scheduler] skipped due check: sqlite lock: {exc}')
+            return
+        raise
 
     for row in rows:
         task_id, name, action_type, action_data = row[0], row[1], row[2], row[3]
@@ -319,7 +331,7 @@ def check_due():
             # Always release lease so the row is eligible for the next due cycle.
             if has_lease:
                 try:
-                    with get_connection() as conn:
+                    with closing(get_connection()) as conn:
                         conn.execute(
                             "UPDATE scheduled_tasks SET lease_owner='', "
                             "lease_expires_at='' WHERE id=? AND lease_owner=?",

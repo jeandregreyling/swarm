@@ -839,11 +839,15 @@ def handle_followup_email(e, clean_from, subject, body, thread_cc, ticket):
     # Build history context from prior messages in this conversation
     history_context = ''
     if conv_id:
-        prior = get_connection().execute(
-            'SELECT from_agent, content FROM messages '
-            'WHERE conversation_id=? ORDER BY id',
-            (conv_id,)
-        ).fetchall()
+        _history_conn = get_connection()
+        try:
+            prior = _history_conn.execute(
+                'SELECT from_agent, content FROM messages '
+                'WHERE conversation_id=? ORDER BY id',
+                (conv_id,)
+            ).fetchall()
+        finally:
+            _history_conn.close()
         if prior:
             lines = []
             for row in prior:
