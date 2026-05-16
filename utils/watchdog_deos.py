@@ -221,6 +221,13 @@ def _add_evidence(conn, source_ref: str, summary: str, status: str = 'ok') -> No
     _add_step_evidence(conn, STEP_ID, source_ref, summary, status)
 
 
+def _add_evidence_best_effort(conn, source_ref: str, summary: str, status: str = 'ok') -> None:
+    try:
+        _add_evidence(conn, source_ref, summary, status)
+    except Exception:
+        pass
+
+
 def _agent_rows(conn) -> Dict[str, Dict[str, Any]]:
     try:
         rows = conn.execute(
@@ -819,12 +826,6 @@ def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, 
         status = 'blocked'
     summary = f"{step.get('owner')} result tokens={tokens} {review.get('summary')}: {text[:420]}"
     evidence_status = 'ok' if status == 'done' else 'warn'
-    _add_evidence(
-        conn,
-        f'agent-work:{step.get("step_id")}',
-        summary,
-        evidence_status,
-    )
     _add_step_evidence(
         conn,
         str(step.get('step_id') or ''),
@@ -832,6 +833,12 @@ def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, 
         summary,
         evidence_status,
         project_id=str(step.get('project_id') or PROJECT_ID),
+    )
+    _add_evidence_best_effort(
+        conn,
+        f'agent-work:{step.get("step_id")}',
+        summary,
+        evidence_status,
     )
     now = _now()
     residual = '' if status == 'done' else 'Agent did not provide a verified DEOS_STATUS: done result; see latest evidence.'
