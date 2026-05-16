@@ -318,16 +318,13 @@ def check_due():
                 task_args = ' '.join(shlex.quote(p) for p in parts[1:])
                 env = os.environ.copy()
                 env['PYTHONPATH'] = _SWARM_ROOT + (os.pathsep + env['PYTHONPATH'] if env.get('PYTHONPATH') else '')
+                timeout = os.environ.get('FRIDAYS_TASK_WORKER_TIMEOUT', '900')
                 subprocess.Popen(
                     [
                         sys.executable,
-                        '-c',
-                        (
-                            'import sys; '
-                            'from fridays.task_runner import run_task; '
-                            'ok,out=run_task(sys.argv[1], args=sys.argv[2]); '
-                            'print(("OK" if ok else "FAIL") + " " + str(out)[:500])'
-                        ),
+                        os.path.join(_SWARM_ROOT, 'fridays', 'task_worker.py'),
+                        '--timeout-seconds',
+                        timeout,
                         task_name,
                         task_args,
                     ],
