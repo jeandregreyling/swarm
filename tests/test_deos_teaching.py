@@ -46,6 +46,22 @@ def test_deos_teaching_seed_steps_are_project_ready():
     assert "House agent coaching loop" in markdown
 
 
+def test_drill_queue_steps_create_relay_chain():
+    steps = deos_teaching.drill_queue_steps("P-X", count=5, start_index=4, agents=["gemma", "llama", "mistral"])
+
+    assert [step["step_id"] for step in steps] == [
+        "S-DEOS-TEACHING-DRILL-04",
+        "S-DEOS-TEACHING-DRILL-05",
+        "S-DEOS-TEACHING-DRILL-06",
+        "S-DEOS-TEACHING-DRILL-07",
+        "S-DEOS-TEACHING-DRILL-08",
+    ]
+    assert [step["owner"] for step in steps] == ["gemma", "llama", "mistral", "gemma", "llama"]
+    assert "Handoff: watchdog -> gemma -> llama" in steps[0]["description"]
+    assert "Task: Return exactly: Proof: GEMMA_DEOS_DRILL_04_READY" in steps[0]["description"]
+    assert steps[1]["owner_route"] == "watchdog:drill-queue:gemma->llama->mistral"
+
+
 def test_local_result_evaluator_tracks_proof_and_status():
     review = deos_teaching.evaluate_local_result("Proof: pytest passed\nDEOS_STATUS: done")
 

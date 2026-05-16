@@ -30,6 +30,8 @@ ROLE_HINTS = {
     'llama': 'Prefer simple relay continuations and plain-language summaries; avoid inventing file paths.',
 }
 
+DRILL_AGENT_ORDER = ['qwen', 'gemma', 'llama', 'mistral']
+
 
 def local_agent_packet(agent: str = '') -> str:
     """Return the compact DEOS packet for a local worker."""
@@ -75,6 +77,41 @@ def studio_seed_steps(project_id: str = 'P-DEOS-OPERATING-SYSTEM-20260516') -> l
             'owner_route': 'watchdog:drill-queue',
         },
     ]
+
+
+def drill_queue_steps(
+    project_id: str = 'P-DEOS-OPERATING-SYSTEM-20260516',
+    count: int = 30,
+    start_index: int = 4,
+    agents: Iterable[str] = DRILL_AGENT_ORDER,
+) -> list[dict]:
+    """Build a deterministic one-task-at-a-time local-agent drill queue."""
+    agent_list = [str(agent or '').strip().lower() for agent in agents if str(agent or '').strip()]
+    if not agent_list:
+        agent_list = list(DRILL_AGENT_ORDER)
+    total = max(1, int(count or 1))
+    start = max(1, int(start_index or 1))
+    steps = []
+    for offset in range(total):
+        index = start + offset
+        agent = agent_list[offset % len(agent_list)]
+        prev_agent = agent_list[(offset - 1) % len(agent_list)] if offset else 'watchdog'
+        next_agent = agent_list[(offset + 1) % len(agent_list)]
+        marker = f'{agent.upper()}_DEOS_DRILL_{index:02d}_READY'
+        steps.append({
+            'step_id': f'S-DEOS-TEACHING-DRILL-{index:02d}',
+            'project_id': project_id,
+            'title': f'Teaching drill {index:02d}: {prev_agent} to {agent} relay proof',
+            'description': (
+                'DEOS_MICRO_TASK\n'
+                f'Handoff: {prev_agent} -> {agent} -> {next_agent}\n'
+                f'Task: Return exactly: Proof: {marker}'
+            ),
+            'owner': agent,
+            'owner_route': f'watchdog:drill-queue:{prev_agent}->{agent}->{next_agent}',
+            'order_idx': 150 + offset,
+        })
+    return steps
 
 
 def format_seed_markdown(steps: Iterable[dict]) -> str:
