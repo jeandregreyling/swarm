@@ -163,12 +163,19 @@ def _ensure_project(conn) -> None:
     )
 
 
-def _add_step_evidence(conn, step_id: str, source_ref: str, summary: str, status: str = 'ok') -> None:
+def _add_step_evidence(
+    conn,
+    step_id: str,
+    source_ref: str,
+    summary: str,
+    status: str = 'ok',
+    project_id: str = PROJECT_ID,
+) -> None:
     conn.execute(
         """INSERT INTO project_step_evidence
             (project_id, step_id, source_type, source_ref, summary, status)
            VALUES (?, ?, 'watchdog_deos', ?, ?, ?)""",
-        (PROJECT_ID, step_id, str(source_ref or '')[:120], str(summary or '')[:500], status),
+        (project_id or PROJECT_ID, step_id, str(source_ref or '')[:120], str(summary or '')[:500], status),
     )
 
 
@@ -372,10 +379,29 @@ def _reroute_blocked_failed_local_steps(conn, limit: int = 5) -> int:
     return count
 
 
-def _claim_local_agent_step(conn) -> Optional[Dict[str, Any]]:
+def _claim_local_agent_step(
+    conn,
+    project_id: str = '',
+    step_prefix: str = '',
+    owner: str = '',
+) -> Optional[Dict[str, Any]]:
     """Claim one actionable Studio step for a local agent."""
-    candidates = tuple(WORK_AGENT_MODULES)
+    if owner:
+        candidates = tuple(a for a in WORK_AGENT_MODULES if a == str(owner).strip().lower())
+    else:
+        candidates = tuple(WORK_AGENT_MODULES)
+    if not candidates:
+        return None
     placeholders = ','.join('?' for _ in candidates)
+    extra_where = []
+    params: List[Any] = list(candidates)
+    if project_id:
+        extra_where.append("project_id=?")
+        params.append(str(project_id))
+    if step_prefix:
+        extra_where.append("step_id LIKE ?")
+        params.append(str(step_prefix) + '%')
+    extra_sql = (' AND ' + ' AND '.join(extra_where)) if extra_where else ''
     try:
         row = conn.execute(
             f"""
@@ -383,13 +409,14 @@ def _claim_local_agent_step(conn) -> Optional[Dict[str, Any]]:
             FROM project_steps
             WHERE status IN ('todo', 'blocked')
               AND lower(owner) IN ({placeholders})
+              {extra_sql}
             ORDER BY
               CASE status WHEN 'blocked' THEN 0 ELSE 1 END,
               updated_at ASC,
               created_at ASC
             LIMIT 1
             """,
-            tuple(candidates),
+            tuple(params),
         ).fetchone()
     except Exception:
         return None
@@ -408,6 +435,7 @@ def _claim_local_agent_step(conn) -> Optional[Dict[str, Any]]:
             f'claim:{data["step_id"]}',
             f"DEOS claimed step for {data.get('owner')}: {data.get('title')}",
             'ok',
+            project_id=data.get('project_id') or PROJECT_ID,
         )
     except Exception:
         return None
@@ -521,6 +549,8 @@ def _run_local_agent_work(agent: str, prompt: str, timeout_seconds: int) -> Tupl
         timeout_seconds = 600
     if 'Recovery ID:' in prompt and 'Live conversation context:' in prompt:
         return _run_local_agent_direct(agent, prompt, min(timeout_seconds, 120))
+    if 'DEOS_MICRO_TASK' in prompt:
+        return _run_local_agent_micro_direct(agent, prompt, min(timeout_seconds, 90))
     ctx = mp.get_context('fork')
     queue = ctx.Queue(maxsize=1)
     proc = ctx.Process(target=_local_agent_worker, args=(queue, agent, prompt))
@@ -538,6 +568,61 @@ def _run_local_agent_work(agent: str, prompt: str, timeout_seconds: int) -> Tupl
     except Exception:
         return False, f'{agent} exited without returning a result', 0
     return status == 'ok', answer, int(tokens or 0)
+
+
+def _run_local_agent_micro_direct(agent: str, prompt: str, timeout_seconds: int) -> Tuple[bool, str, int]:
+    """Use a short local-model call for tiny bounded Studio tasks."""
+    import requests
+    model = WORK_AGENT_MODELS.get(str(agent or '').strip().lower())
+    if not model:
+        return False, f'{agent} has no direct local model mapping', 0
+    task = _compact_micro_task_prompt(prompt)
+    try:
+        resp = requests.post(
+            'http://127.0.0.1:11434/api/chat',
+            json={
+                'model': model,
+                'messages': [
+                    {'role': 'system', 'content': 'Complete the tiny task directly. Be concise. Do not use tools. Do not explain.'},
+                    {'role': 'user', 'content': task},
+                ],
+                'stream': False,
+                'keep_alive': 300,
+                'options': {'temperature': 0.1, 'num_predict': 80},
+            },
+            timeout=max(15, int(timeout_seconds or 90)),
+        )
+        if resp.status_code >= 400:
+            return False, f'{agent} micro task failed http={resp.status_code}', 0
+        data = resp.json()
+        msg = data.get('message') or {}
+        content = str(msg.get('content') or data.get('response') or '').strip()
+        visible = re.sub(r'(?im)^\s*DEOS_STATUS:\s*(done|blocked|needs_human)\s*$', '', content).strip()
+        if content and not visible:
+            return False, f'{agent} micro task returned only a status line', int(data.get('eval_count') or 0)
+        if content and 'deos_status:' not in content.lower():
+            content = content.rstrip() + '\nDEOS_STATUS: done'
+        return bool(content), content or f'{agent} micro task returned no content', int(data.get('eval_count') or 0)
+    except Exception as exc:
+        return False, f'{agent} micro task failed: {type(exc).__name__}: {exc}', 0
+
+
+def _compact_micro_task_prompt(prompt: str) -> str:
+    lines = []
+    keep = False
+    for raw in str(prompt or '').splitlines():
+        line = raw.strip()
+        if 'DEOS_MICRO_TASK' in line:
+            keep = True
+            continue
+        if keep and line:
+            lines.append(line)
+    text = '\n'.join(lines).strip() or str(prompt or '')[-1000:]
+    return (
+        'DEOS_MICRO_TASK\n'
+        'Return the requested result only. Do not include DEOS_STATUS; Watchdog adds that.\n'
+        + text[:1200]
+    )
 
 
 def _run_local_agent_direct(agent: str, prompt: str, timeout_seconds: int) -> Tuple[bool, str, int]:
@@ -639,6 +724,7 @@ def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, 
         f'agent-work:{step.get("step_id")}',
         summary,
         evidence_status,
+        project_id=str(step.get('project_id') or PROJECT_ID),
     )
     now = _now()
     residual = '' if status == 'done' else 'Agent did not provide a verified DEOS_STATUS: done result; see latest evidence.'
@@ -698,6 +784,9 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
     prewarm = _bool_opt(opts.get('prewarm'), default=False)
     execute_recovery = _bool_opt(opts.get('execute_recovery'), default=True)
     execute_work = _bool_opt(opts.get('execute_work'), default=False)
+    work_project_id = str(opts.get('work_project_id') or '').strip()
+    work_step_prefix = str(opts.get('work_step_prefix') or '').strip()
+    work_owner = str(opts.get('work_owner') or '').strip().lower()
     try:
         warm_timeout = max(10, min(int(opts.get('warm_timeout_seconds') or 45), 300))
     except Exception:
@@ -801,7 +890,12 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
     if execute_work:
         conn = get_connection()
         try:
-            step = _claim_local_agent_step(conn)
+            step = _claim_local_agent_step(
+                conn,
+                project_id=work_project_id,
+                step_prefix=work_step_prefix,
+                owner=work_owner,
+            )
             if step:
                 conn.commit()
             else:

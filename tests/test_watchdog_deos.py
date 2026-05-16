@@ -544,3 +544,94 @@ def test_deos_cycle_uses_direct_local_model_for_relay_recovery(monkeypatch, tmp_
     assert tokens == 9
     assert 'DEOS_STATUS: done' in answer
     assert calls == [('qwen', 120, True)]
+
+
+def test_deos_cycle_uses_direct_local_model_for_micro_task(monkeypatch):
+    from utils import watchdog_deos
+
+    calls = []
+
+    def fake_micro(agent, prompt, timeout_seconds):
+        calls.append((agent, timeout_seconds, 'DEOS_MICRO_TASK' in prompt))
+        return True, 'Mistral micro result\nDEOS_STATUS: done', 4
+
+    monkeypatch.setattr(watchdog_deos, '_run_local_agent_micro_direct', fake_micro)
+
+    ok, answer, tokens = watchdog_deos._run_local_agent_work(
+        'mistral',
+        'Project: P\nDEOS_MICRO_TASK\nTask: Return READY.',
+        180,
+    )
+
+    assert ok is True
+    assert tokens == 4
+    assert 'DEOS_STATUS: done' in answer
+    assert calls == [('mistral', 90, True)]
+
+
+def test_deos_cycle_filters_local_work_by_project_and_owner(monkeypatch, tmp_path):
+    from utils import watchdog_deos
+
+    db_path = tmp_path / 'deos-filter-work.db'
+    conn = _conn(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE agents (
+            name TEXT PRIMARY KEY,
+            model TEXT NOT NULL,
+            tier TEXT DEFAULT 'local',
+            enabled INTEGER DEFAULT 1,
+            eta_seconds INTEGER DEFAULT 60,
+            keep_alive INTEGER DEFAULT 300
+        );
+        CREATE TABLE chat_relay_recoveries (recovery_id TEXT PRIMARY KEY, job_id TEXT UNIQUE NOT NULL, status TEXT DEFAULT 'open');
+        CREATE TABLE projects (
+            project_id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT,
+            methodology TEXT DEFAULT 'agile', status TEXT DEFAULT 'active',
+            owner TEXT DEFAULT 'seven', created_at REAL, updated_at REAL,
+            priority INTEGER DEFAULT 0, tags TEXT DEFAULT '[]'
+        );
+        CREATE TABLE project_steps (
+            step_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, title TEXT NOT NULL,
+            description TEXT, status TEXT DEFAULT 'todo', owner TEXT DEFAULT 'seven',
+            order_idx INTEGER DEFAULT 0, created_at REAL, updated_at REAL,
+            residual_risk TEXT DEFAULT '', owner_route TEXT DEFAULT ''
+        );
+        """
+    )
+    conn.executemany(
+        "INSERT INTO agents (name, model) VALUES (?, ?)",
+        [('duck', 'qwen2.5:latest'), ('librarian', 'qwen:latest'), ('seven', 'local-algorithm'), ('mistral', 'mistral:latest'), ('qwen', 'qwen:latest')],
+    )
+    conn.execute("INSERT INTO projects (project_id, name, created_at) VALUES ('P-DRILL', 'Drill', 1)")
+    conn.execute("INSERT INTO projects (project_id, name, created_at) VALUES ('P-OTHER', 'Other', 1)")
+    conn.execute(
+        "INSERT INTO project_steps (step_id, project_id, title, description, status, owner, created_at, updated_at) VALUES ('S-OTHER-1','P-OTHER','Old other','DEOS_MICRO_TASK\\nTask: other','todo','qwen',1,1)"
+    )
+    conn.execute(
+        "INSERT INTO project_steps (step_id, project_id, title, description, status, owner, created_at, updated_at) VALUES ('S-DRILL-1','P-DRILL','Drill one','DEOS_MICRO_TASK\\nTask: drill','todo','mistral',1,2)"
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: (False, 'cold'))
+    monkeypatch.setattr(
+        watchdog_deos,
+        '_run_local_agent_work',
+        lambda agent, prompt, timeout_seconds: (True, 'drill done\nDEOS_STATUS: done', 2),
+    )
+
+    watchdog_deos.run_deos_cycle(
+        'prewarm=0 execute_recovery=0 execute_work=1 work_project_id=P-DRILL work_owner=mistral work_step_prefix=S-DRILL-'
+    )
+
+    conn = _conn(db_path)
+    try:
+        drill = conn.execute("SELECT status FROM project_steps WHERE step_id='S-DRILL-1'").fetchone()
+        other = conn.execute("SELECT status FROM project_steps WHERE step_id='S-OTHER-1'").fetchone()
+    finally:
+        conn.close()
+    assert drill['status'] == 'done'
+    assert other['status'] == 'todo'
