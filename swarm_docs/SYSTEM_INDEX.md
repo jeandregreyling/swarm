@@ -1,6 +1,6 @@
 # SYSTEM INDEX
 
-*Auto-generated: 2026-05-16 00:11*
+*Auto-generated: 2026-05-16 13:41*
 
 
 ## Python Modules
@@ -187,6 +187,7 @@
 | `fridays/orchestrator.py` | fridays/orchestrator.py — Seven's Swarm |
 | `fridays/research_workflow.py` | fridays/research_workflow.py — Multi-stage research orchestrator (B.2) |
 | `fridays/scheduler.py` | scheduler.py — Seven's Swarm Scheduler |
+| `fridays/scheduler_daemon.py` | Standalone scheduler loop for Fridays. |
 | `fridays/shell_agent.py` | fridays/shell_agent.py — Seven's Swarm (RL-019) |
 | `fridays/skills.py` | fridays/skills.py — Seven's Swarm (RL-021) |
 | `fridays/task_runner.py` | fridays/task_runner.py — Python task runner registry for the Tasker. |
@@ -250,7 +251,7 @@
 | `email_accounts` | 6 | frontend/blueprints/email_accounts.py — runtime email accounts registry. |
 | `email_bp` | 5 | blueprints/email_bp.py — Email tile API |
 | `enrollment` | 4 | frontend/blueprints/enrollment.py — user-account enrolment endpoints. |
-| `exec_bp` | 4 | exec_bp.py — Ghost Exec routes |
+| `exec_bp` | 6 | exec_bp.py — Ghost Exec routes |
 | `fan` | 2 | blueprints/fan.py — CPU temperature + fan mode API. |
 | `feeds_bp` | 5 | blueprints/feeds_bp.py — Feeds subscription CRUD + poll. |
 | `financial_bp` | 5 | Financial Analytics pillar — investment-banking oriented. |
@@ -344,7 +345,7 @@
 | `potato-farm.js` | 14.8 KB |
 | `projects.js` | 57.9 KB |
 | `records-files.js` | 8.7 KB |
-| `services.js` | 5.0 KB |
+| `services.js` | 8.8 KB |
 | `skills.js` | 26.2 KB |
 | `spotlight.js` | 26.1 KB |
 | `studio-media.js` | 18.4 KB |
@@ -365,7 +366,7 @@
 
 | Table | Rows |
 |-------|------|
-| `activity_log` | 70445 |
+| `activity_log` | 70976 |
 | `agent_capabilities` | 169 |
 | `agent_capability_scores` | 18 |
 | `agent_diary` | 0 |
@@ -375,24 +376,24 @@
 | `app_project_targets` | 0 |
 | `app_projects` | 0 |
 | `approval_tokens` | 801 |
-| `audit_results` | 59 |
+| `audit_results` | 60 |
 | `business_ledger` | 0 |
 | `change_runs` | 46 |
-| `chat_jobs` | 827 |
+| `chat_jobs` | 863 |
 | `chat_relay_recoveries` | 95 |
 | `claude_log` | 1 |
-| `conv_timeline` | 7403 |
-| `conversations` | 143 |
-| `council_output` | 19515 |
+| `conv_timeline` | 7465 |
+| `conversations` | 144 |
+| `council_output` | 19914 |
 | `curiosity_questions` | 5 |
 | `cyber_audit_events` | 0 |
 | `daily_checkpoint` | 0 |
 | `daily_checkpoints` | 0 |
 | `debate_turns` | 0 |
 | `debates` | 0 |
-| `decisions` | 96704 |
+| `decisions` | 97924 |
 | `deferred_items` | 0 |
-| `duck_log` | 1167 |
+| `duck_log` | 1169 |
 | `email_delivery_log` | 59 |
 | `email_retry_queue` | 0 |
 | `enrollment_invites` | 0 |
@@ -428,7 +429,7 @@
 | `memory_thirteen` | 0 |
 | `memory_twelve` | 0 |
 | `memory_twenty` | 412 |
-| `messages` | 335 |
+| `messages` | 409 |
 | `moderators` | 2 |
 | `node_config` | 0 |
 | `node_skills` | 0 |
@@ -436,17 +437,17 @@
 | `notification_senders` | 10 |
 | `orientation_seen` | 1 |
 | `pending_emails` | 8 |
-| `project_blackboard_notes` | 192 |
+| `project_blackboard_notes` | 193 |
 | `project_doc_versions` | 392 |
-| `project_docs` | 327 |
+| `project_docs` | 329 |
 | `project_step_deps` | 0 |
-| `project_step_evidence` | 595 |
-| `project_steps` | 1583 |
+| `project_step_evidence` | 1091 |
+| `project_steps` | 1639 |
 | `project_test_cases` | 993 |
-| `projects` | 97 |
+| `projects` | 99 |
 | `proposal_attachments` | 0 |
 | `proposal_projects` | 27 |
-| `queue` | 2166 |
+| `queue` | 2169 |
 | `research_evidence` | 1786 |
 | `research_sessions` | 99 |
 | `sandpit_log` | 646 |
@@ -455,11 +456,11 @@
 | `settings_email_account_prefs` | 1 |
 | `settings_email_accounts` | 0 |
 | `settings_sysmod` | 2 |
-| `seven_attention` | 4871 |
-| `seven_beliefs` | 10748 |
+| `seven_attention` | 4873 |
+| `seven_beliefs` | 10753 |
 | `seven_callouts` | 11 |
 | `seven_concepts` | 9 |
-| `seven_episodes` | 26282 |
+| `seven_episodes` | 26288 |
 | `seven_learnings` | 1 |
 | `seven_settings` | 0 |
 | `skills` | 47 |
@@ -473,23 +474,23 @@
 | `swarm_event_acks` | 513 |
 | `swarm_events` | 84 |
 | `swarm_globals` | 3 |
-| `swarm_knowledge` | 93 |
+| `swarm_knowledge` | 95 |
 | `swarm_nodes` | 0 |
 | `synth_board_projects` | 24 |
 | `synth_board_revisions` | 7 |
-| `system_stats` | 13779 |
-| `task_run_log` | 6574 |
+| `system_stats` | 13915 |
+| `task_run_log` | 6692 |
 | `terminal_shortcuts` | 16 |
 | `test_run_artifacts` | 61 |
 | `test_runs` | 202 |
-| `ticket_notes` | 921 |
-| `tickets` | 934 |
-| `time_checkpoints` | 8276 |
-| `time_events` | 182296 |
-| `time_journal` | 172202 |
-| `time_machine` | 9202 |
+| `ticket_notes` | 923 |
+| `tickets` | 936 |
+| `time_checkpoints` | 8278 |
+| `time_events` | 182299 |
+| `time_journal` | 172203 |
+| `time_machine` | 9217 |
 | `tool_builds` | 0 |
-| `trace_events` | 15108 |
+| `trace_events` | 15173 |
 | `trading_signals` | 0 |
 | `trusted_domains` | 0 |
 | `trusted_senders` | 10 |
@@ -506,7 +507,7 @@
 | `watched_topic_settings` | 0 |
 | `watcher_topic_last_seen` | 0 |
 | `work_proposal_notes` | 5 |
-| `work_proposals` | 207 |
+| `work_proposals` | 208 |
 
 ## Agents
 
