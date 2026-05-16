@@ -1,0 +1,14 @@
+[Unit]
+Description=Seven's Swarm Email Listener (user)
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/seven/swarm
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/seven/swarm/core/pipeline/listener.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

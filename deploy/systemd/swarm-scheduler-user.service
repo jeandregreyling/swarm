@@ -1,10 +1,9 @@
 [Unit]
-Description=Seven's Swarm Fridays Scheduler
-After=network.target ollama.service
+Description=Seven's Swarm Fridays Scheduler (user)
+After=default.target
 
 [Service]
 Type=simple
-User=seven
 WorkingDirectory=/home/seven/swarm
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 /home/seven/swarm/fridays/scheduler_daemon.py --interval-seconds 60 --task-timeout-seconds 600
@@ -12,4 +11,4 @@ Restart=on-failure
 RestartSec=10
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
