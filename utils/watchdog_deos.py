@@ -50,7 +50,7 @@ def _is_sqlite_lock_error(exc: Exception) -> bool:
     return isinstance(exc, sqlite3.OperationalError) and 'locked' in str(exc).lower()
 
 
-def _execute_with_retry(conn, sql: str, params=(), attempts: int = 4) -> None:
+def _execute_with_retry(conn, sql: str, params=(), attempts: int = 12) -> None:
     last = None
     for attempt in range(max(1, int(attempts or 1))):
         try:
@@ -60,7 +60,7 @@ def _execute_with_retry(conn, sql: str, params=(), attempts: int = 4) -> None:
             last = exc
             if not _is_sqlite_lock_error(exc) or attempt >= attempts - 1:
                 raise
-            time.sleep(0.25 * (2 ** attempt))
+            time.sleep(min(2.0, 0.25 * (2 ** attempt)))
     if last:
         raise last
 
