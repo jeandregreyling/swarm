@@ -40,6 +40,38 @@ _RELAY_HANDOFF_MODELS = {
 _RELAY_HANDOFF_ORDER = ('qwen', 'gemma', 'llama', 'mistral')
 
 
+def _close_lingering_swarm_db_fds():
+    """Drop stale SQLite descriptors before waiting on forked local models."""
+    if not os.path.isdir('/proc/self/fd'):
+        return 0
+    root = os.environ.get('SWARM_ROOT') or _SWARM_ROOT
+    db_path = os.environ.get('SWARM_DB_PATH') or os.path.join(root, 'swarm_memory.db')
+    targets = {
+        os.path.abspath(db_path),
+        os.path.abspath(db_path + '-wal'),
+        os.path.abspath(db_path + '-shm'),
+    }
+    closed = 0
+    for fd_name in os.listdir('/proc/self/fd'):
+        try:
+            fd = int(fd_name)
+        except Exception:
+            continue
+        if fd <= 2:
+            continue
+        try:
+            target = os.path.abspath(os.readlink(f'/proc/self/fd/{fd_name}'))
+        except Exception:
+            continue
+        if target in targets:
+            try:
+                os.close(fd)
+                closed += 1
+            except Exception:
+                pass
+    return closed
+
+
 def _ask_agent_worker(queue, agent, prompt):
     try:
         try:
@@ -400,6 +432,7 @@ def _task_relay_recovery_sweep(**kwargs):
     )
     if not recoveries:
         return 'No unleased open chat relay recoveries.'
+    _close_lingering_swarm_db_fds()
 
     reviewed = []
     for recovery in recoveries:
@@ -418,6 +451,7 @@ def _task_relay_recovery_sweep(**kwargs):
         had_failure = False
         visible_completion = False
         for agent in agents:
+            _close_lingering_swarm_db_fds()
             ok, answer = _ask_agent_with_timeout(
                 agent,
                 prompt,
@@ -458,6 +492,7 @@ def _task_relay_recovery_sweep(**kwargs):
                         )
                     except Exception as exc:
                         outputs.append(f'{handoff_agent}: handoff dispatch log skipped: {type(exc).__name__}: {exc}')
+                _close_lingering_swarm_db_fds()
                 ok, answer, tokens = _run_relay_handoff_agent(
                     handoff_agent,
                     handoff_prompt,

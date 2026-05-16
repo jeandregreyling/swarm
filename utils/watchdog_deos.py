@@ -9,6 +9,7 @@ piece of recovery work, executes bounded operations, and records evidence.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
 import sqlite3
@@ -45,6 +46,38 @@ WORK_AGENT_MODELS = {
     'gemma': 'gemma3:latest',
     'llama': 'llama3.2:latest',
 }
+
+
+def _close_lingering_swarm_db_fds() -> int:
+    """Release stale SQLite fds before long local-model waits."""
+    if not os.path.isdir('/proc/self/fd'):
+        return 0
+    root = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    db_path = os.environ.get('SWARM_DB_PATH') or os.path.join(root, 'swarm_memory.db')
+    targets = {
+        os.path.abspath(db_path),
+        os.path.abspath(db_path + '-wal'),
+        os.path.abspath(db_path + '-shm'),
+    }
+    closed = 0
+    for fd_name in os.listdir('/proc/self/fd'):
+        try:
+            fd = int(fd_name)
+        except Exception:
+            continue
+        if fd <= 2:
+            continue
+        try:
+            target = os.path.abspath(os.readlink(f'/proc/self/fd/{fd_name}'))
+        except Exception:
+            continue
+        if target in targets:
+            try:
+                os.close(fd)
+                closed += 1
+            except Exception:
+                pass
+    return closed
 
 
 def _is_sqlite_lock_error(exc: Exception) -> bool:
@@ -1003,6 +1036,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
         report['executes'].append('recovery skipped: no support agents ready')
     elif execute_recovery:
         try:
+            _close_lingering_swarm_db_fds()
             from fridays.task_runner import run_task
             ok, output = run_task(
                 'relay_recovery_sweep',
@@ -1035,6 +1069,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
             conn.close()
         if step:
             agent = str(step.get('owner') or '').strip().lower()
+            _close_lingering_swarm_db_fds()
             ok, answer, tokens = _run_local_agent_work(
                 agent,
                 _agent_work_prompt(step),
