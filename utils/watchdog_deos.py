@@ -51,7 +51,7 @@ def _is_sqlite_lock_error(exc: Exception) -> bool:
     return isinstance(exc, sqlite3.OperationalError) and 'locked' in str(exc).lower()
 
 
-def _execute_with_retry(conn, sql: str, params=(), attempts: int = 12) -> None:
+def _execute_with_retry(conn, sql: str, params=(), attempts: int = 5) -> None:
     last = None
     for attempt in range(max(1, int(attempts or 1))):
         try:
@@ -61,9 +61,16 @@ def _execute_with_retry(conn, sql: str, params=(), attempts: int = 12) -> None:
             last = exc
             if not _is_sqlite_lock_error(exc) or attempt >= attempts - 1:
                 raise
-            time.sleep(min(2.0, 0.25 * (2 ** attempt)))
+            time.sleep(min(1.0, 0.25 * (2 ** attempt)))
     if last:
         raise last
+
+
+def _configure_connection(conn) -> None:
+    try:
+        conn.execute('PRAGMA busy_timeout=5000')
+    except Exception:
+        pass
 
 
 def _bool_opt(value: Any, default: bool = False) -> bool:
@@ -88,7 +95,8 @@ def _now() -> float:
 
 def _ensure_project(conn) -> None:
     now = _now()
-    conn.execute(
+    _execute_with_retry(
+        conn,
         """CREATE TABLE IF NOT EXISTS projects (
             project_id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
@@ -100,9 +108,10 @@ def _ensure_project(conn) -> None:
             updated_at REAL,
             priority INTEGER NOT NULL DEFAULT 0,
             tags TEXT NOT NULL DEFAULT '[]'
-        )"""
+        )""",
     )
-    conn.execute(
+    _execute_with_retry(
+        conn,
         """CREATE TABLE IF NOT EXISTS project_steps (
             step_id TEXT PRIMARY KEY,
             project_id TEXT NOT NULL,
@@ -115,9 +124,10 @@ def _ensure_project(conn) -> None:
             updated_at REAL,
             residual_risk TEXT DEFAULT '',
             owner_route TEXT DEFAULT ''
-        )"""
+        )""",
     )
-    conn.execute(
+    _execute_with_retry(
+        conn,
         """CREATE TABLE IF NOT EXISTS project_step_evidence (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             project_id TEXT NOT NULL,
@@ -127,9 +137,10 @@ def _ensure_project(conn) -> None:
             summary TEXT NOT NULL DEFAULT '',
             status TEXT NOT NULL DEFAULT 'ok',
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )"""
+        )""",
     )
-    conn.execute(
+    _execute_with_retry(
+        conn,
         """INSERT INTO projects
             (project_id, name, description, methodology, status, owner,
              created_at, updated_at, priority, tags)
@@ -149,7 +160,8 @@ def _ensure_project(conn) -> None:
             json.dumps(['watchdog', 'deos', 'chat', 'relay-recovery'], ensure_ascii=True),
         ),
     )
-    conn.execute(
+    _execute_with_retry(
+        conn,
         """INSERT INTO project_steps
             (step_id, project_id, title, description, status, owner, order_idx,
              created_at, updated_at, residual_risk, owner_route)
@@ -168,7 +180,8 @@ def _ensure_project(conn) -> None:
         ,
         (STEP_ID, PROJECT_ID, now, now),
     )
-    conn.execute(
+    _execute_with_retry(
+        conn,
         """INSERT INTO project_steps
             (step_id, project_id, title, description, status, owner, order_idx,
              created_at, updated_at, residual_risk, owner_route)
@@ -907,6 +920,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
     }
 
     conn = get_connection()
+    _configure_connection(conn)
     try:
         _ensure_project(conn)
         conn.commit()
@@ -961,6 +975,19 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
             'ok',
         )
         conn.commit()
+    except Exception as exc:
+        if not _is_sqlite_lock_error(exc):
+            raise
+        report['operates'] = {
+            'expired_leases_cleared': 0,
+            'stale_local_work_claims': 0,
+            'rerouted_local_work': 0,
+            'recovery_counts': {},
+            'readiness_failed': True,
+            'ready_recovery_agents': [],
+        }
+        report['executes'].append(f'deos cycle skipped: sqlite lock during control-plane setup: {exc}')
+        return report
     finally:
         conn.close()
 
@@ -984,6 +1011,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
 
     if execute_work:
         conn = get_connection()
+        _configure_connection(conn)
         try:
             step = _claim_local_agent_step(
                 conn,
@@ -1006,6 +1034,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
                 timeout_seconds=work_timeout,
             )
             conn = get_connection()
+            _configure_connection(conn)
             try:
                 final_status = _finish_local_agent_step(conn, step, ok, answer, tokens)
                 conn.commit()
