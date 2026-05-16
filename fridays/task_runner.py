@@ -18,7 +18,9 @@ import os
 import sys
 import time
 import multiprocessing as _mp
-from datetime import datetime
+import json
+from datetime import datetime, timezone
+import uuid
 
 _SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +29,15 @@ if _SWARM_ROOT not in sys.path:
     sys.path.insert(0, _SWARM_ROOT)
 
 logger = logging.getLogger('seven.task_runner')
+
+_RELAY_HANDOFF_MODELS = {
+    'qwen': 'qwen:latest',
+    'gemma': 'gemma3:latest',
+    'llama': 'llama3.2:latest',
+    'mistral': 'mistral:latest',
+}
+
+_RELAY_HANDOFF_ORDER = ('qwen', 'gemma', 'llama', 'mistral')
 
 
 def _ask_agent_worker(queue, agent, prompt):
@@ -64,6 +75,135 @@ def _ask_agent_with_timeout(agent, prompt, timeout_seconds=240):
     except Exception:
         status, payload = ('error', f'[{agent}] exited without returning recovery notes')
     return status == 'ok', payload
+
+
+def _relay_handoff_agents(stalled_agent, raw=''):
+    allowed = [item.strip().lower() for item in str(raw or '').split(',') if item.strip()]
+    allowed = [item for item in allowed if item in _RELAY_HANDOFF_MODELS]
+    if not allowed:
+        allowed = list(_RELAY_HANDOFF_ORDER)
+    stalled = str(stalled_agent or '').strip().lower()
+    ordered = [item for item in allowed if item != stalled]
+    if stalled in allowed:
+        ordered.append(stalled)
+    return ordered
+
+
+def _compact_relay_handoff_prompt(recovery, thread_tail, stage_trace, support_outputs):
+    lines = [
+        'Continue this stalled Fridays chat task and produce the missing user-visible answer.',
+        f"Recovery ID: {recovery.get('recovery_id')}",
+        f"Conversation: #{recovery.get('conversation_id')}",
+        f"Original stalled agent: {recovery.get('stalled_agent')}",
+        '',
+        'Rules:',
+        '- Answer the latest user request directly using only the facts below.',
+        '- If a prior support note is wrong, correct it.',
+        '- Keep it concise and operational.',
+        '- Do not include DEOS_STATUS; Watchdog adds completion status.',
+        '',
+        'Thread tail:',
+    ]
+    for msg in (thread_tail or [])[-8:]:
+        if not isinstance(msg, dict):
+            continue
+        sender = str(msg.get('from_agent') or 'unknown')[:40]
+        target = str(msg.get('to_agent') or '')[:60]
+        content = ' '.join(str(msg.get('content') or '').split())[:500]
+        if content:
+            arrow = f' -> {target}' if target else ''
+            lines.append(f'- {sender}{arrow}: {content}')
+    if stage_trace:
+        lines.append('')
+        lines.append('Failure evidence:')
+        for item in (stage_trace or [])[-6:]:
+            text = item.get('text') if isinstance(item, dict) else item
+            if text:
+                lines.append(f'- {str(text)[:240]}')
+    if support_outputs:
+        lines.append('')
+        lines.append('Support review notes:')
+        for item in support_outputs[-4:]:
+            lines.append(f'- {str(item)[:500]}')
+    return '\n'.join(lines)[:3000]
+
+
+def _run_relay_handoff_agent(agent, prompt, timeout_seconds=120):
+    import requests
+
+    model = _RELAY_HANDOFF_MODELS.get(str(agent or '').strip().lower())
+    if not model:
+        return False, f'{agent} has no relay handoff model mapping', 0
+    try:
+        resp = requests.post(
+            'http://127.0.0.1:11434/api/chat',
+            json={
+                'model': model,
+                'messages': [
+                    {
+                        'role': 'system',
+                        'content': 'You are a local recovery worker. Return only the missing user-visible answer.',
+                    },
+                    {'role': 'user', 'content': prompt},
+                ],
+                'stream': False,
+                'keep_alive': 300,
+                'options': {'temperature': 0.1, 'num_predict': 220, 'num_ctx': 2048},
+            },
+            timeout=max(30, min(int(timeout_seconds or 120), 300)),
+        )
+        if resp.status_code >= 400:
+            return False, f'{agent} relay handoff failed http={resp.status_code}', 0
+        data = resp.json()
+        msg = data.get('message') or {}
+        content = str(msg.get('content') or data.get('response') or '').strip()
+        if not content:
+            return False, f'{agent} relay handoff returned no content', int(data.get('eval_count') or 0)
+        if 'deos_status:' not in content.lower():
+            content = content.rstrip() + '\nDEOS_STATUS: done'
+        tokens = int((data.get('eval_count') or 0) + (data.get('prompt_eval_count') or 0))
+        return True, content, tokens
+    except Exception as exc:
+        return False, f'{agent} relay handoff failed: {type(exc).__name__}: {exc}', 0
+
+
+def _record_relay_handoff_job(conv_id, agent, status, stage, answer='', error='', tokens=0, elapsed_ms=0):
+    if not conv_id:
+        return ''
+    try:
+        from utils.db._connection import get_connection
+
+        job_id = f'relay-handoff-{conv_id}-{agent}-{uuid.uuid4().hex[:8]}'
+        trace = [{
+            'ts': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+            'stage': stage,
+            'detail': (answer or error or '')[:500],
+        }]
+        conn = get_connection()
+        try:
+            conn.execute(
+                """INSERT INTO chat_jobs
+                   (job_id, conversation_id, agent, status, runtime_class, stage,
+                    eta_seconds, elapsed_ms, tokens, error, started_at, updated_at, stage_trace_json)
+                   VALUES (?, ?, ?, ?, 'relay-handoff', ?, 120, ?, ?, ?, datetime('now'), datetime('now'), ?)""",
+                (
+                    job_id,
+                    int(conv_id),
+                    str(agent or ''),
+                    str(status or ''),
+                    str(stage or ''),
+                    int(elapsed_ms or 0),
+                    int(tokens or 0),
+                    str(error or '')[:1000],
+                    json.dumps(trace),
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return job_id
+    except Exception:
+        return ''
 
 
 # ── Registry ──────────────────────────────────────────────────────────────────
@@ -169,10 +309,16 @@ def _task_relay_recovery_sweep(**kwargs):
       lease_minutes=30    active-review lease duration
       conversation_id=0    optional single thread to recover first
       agent_timeout_seconds=240
+      handoff_on_failure=1
+      handoff_agents=qwen,gemma,llama,mistral
+      handoff_timeout_seconds=120
       idle_window=22:00-06:00
       force=0             set to 1 to override the idle window
 
     Dry-run is the default so Tasker can safely surface pending recoveries.
+    Librarian/Duck are support reviewers. A failed support review does not
+    complete the recovery; Watchdog hands the actual task to a bounded local
+    worker and only closes the card when a visible answer is written.
     """
     import json
     import shlex
@@ -190,6 +336,9 @@ def _task_relay_recovery_sweep(**kwargs):
         'lease_minutes': '30',
         'conversation_id': '0',
         'agent_timeout_seconds': '240',
+        'handoff_on_failure': '1',
+        'handoff_agents': 'qwen,gemma,llama,mistral',
+        'handoff_timeout_seconds': '120',
         'idle_window': '22:00-06:00',
         'force': '0',
     }
@@ -223,6 +372,11 @@ def _task_relay_recovery_sweep(**kwargs):
         agent_timeout_seconds = max(30, min(int(opts.get('agent_timeout_seconds') or 240), 1800))
     except Exception:
         agent_timeout_seconds = 240
+    handoff_on_failure = str(opts.get('handoff_on_failure') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    try:
+        handoff_timeout_seconds = max(30, min(int(opts.get('handoff_timeout_seconds') or 120), 300))
+    except Exception:
+        handoff_timeout_seconds = 120
 
     if not run_agents:
         recoveries = get_open_chat_relay_recoveries(limit=limit)
@@ -262,6 +416,7 @@ def _task_relay_recovery_sweep(**kwargs):
 
         outputs = []
         had_failure = False
+        visible_completion = False
         for agent in agents:
             ok, answer = _ask_agent_with_timeout(
                 agent,
@@ -284,9 +439,74 @@ def _task_relay_recovery_sweep(**kwargs):
                 except Exception as exc:
                     outputs.append(f'{agent}: conversation log skipped: {type(exc).__name__}: {exc}')
 
+        if handoff_on_failure and had_failure and conv_id:
+            handoff_prompt = _compact_relay_handoff_prompt(recovery, thread_tail, stage_trace, outputs)
+            for handoff_agent in _relay_handoff_agents(recovery.get('stalled_agent'), opts.get('handoff_agents')):
+                start = time.time()
+                if conv_id:
+                    try:
+                        log_message(
+                            conv_id,
+                            'watchdog',
+                            (
+                                f'Relay recovery handoff: support review for {recovery_id} hit a timeout/failure; '
+                                f'dispatching the stalled task to {handoff_agent}.'
+                            ),
+                            to_agent=handoff_agent,
+                            message_type='relay_recovery',
+                            tokens_used=0,
+                        )
+                    except Exception as exc:
+                        outputs.append(f'{handoff_agent}: handoff dispatch log skipped: {type(exc).__name__}: {exc}')
+                ok, answer, tokens = _run_relay_handoff_agent(
+                    handoff_agent,
+                    handoff_prompt,
+                    timeout_seconds=handoff_timeout_seconds,
+                )
+                elapsed_ms = int((time.time() - start) * 1000)
+                if ok:
+                    visible_completion = True
+                    outputs.append(f'{handoff_agent}: completed handoff: {str(answer or "").strip()[:1200]}')
+                    try:
+                        log_message(
+                            conv_id,
+                            handoff_agent,
+                            str(answer or '').strip(),
+                            to_agent='user',
+                            message_type='chat',
+                            tokens_used=int(tokens or 0),
+                        )
+                    except Exception as exc:
+                        visible_completion = False
+                        outputs.append(f'{handoff_agent}: completion log skipped: {type(exc).__name__}: {exc}')
+                    _record_relay_handoff_job(
+                        conv_id,
+                        handoff_agent,
+                        'done',
+                        'visible_completion_written' if visible_completion else 'completion_log_failed',
+                        answer=answer,
+                        tokens=tokens,
+                        elapsed_ms=elapsed_ms,
+                    )
+                    if visible_completion:
+                        break
+                else:
+                    outputs.append(f'{handoff_agent}: handoff failed: {str(answer or "").strip()[:1200]}')
+                    _record_relay_handoff_job(
+                        conv_id,
+                        handoff_agent,
+                        'failed',
+                        'handoff_failed',
+                        error=answer,
+                        elapsed_ms=elapsed_ms,
+                    )
+
+        final_status = 'reviewed'
+        if had_failure and not visible_completion:
+            final_status = 'escalated'
         update_chat_relay_recovery_status(
             recovery_id,
-            'escalated' if had_failure else 'reviewed',
+            final_status,
             summary='; '.join(outputs)[:1000],
         )
         reviewed.append(recovery_id)

@@ -207,6 +207,27 @@ def test_relay_recovery_sweep_dry_run_reports_open_cards(monkeypatch):
     assert "run_agents=1" in msg
 
 
+def test_relay_db_retry_retries_sqlite_locks(monkeypatch):
+    import sqlite3
+
+    from utils.db import chat as db_chat
+
+    calls = []
+    sleeps = []
+
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise sqlite3.OperationalError("database is locked")
+        return "claimed"
+
+    monkeypatch.setattr(db_chat.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    assert db_chat._with_relay_db_retry(flaky, attempts=4, base_delay=0.1) == "claimed"
+    assert len(calls) == 3
+    assert sleeps == [0.1, 0.2]
+
+
 def test_relay_recovery_sweep_active_run_uses_leases(monkeypatch):
     import json
     import sys
@@ -255,6 +276,65 @@ def test_relay_recovery_sweep_active_run_uses_leases(monkeypatch):
     assert updates[0][1] == "reviewed"
     assert "librarian: librarian reviewed" in updates[0][2]
     assert len(messages) == 2
+
+
+def test_relay_recovery_sweep_hands_off_after_support_timeout(monkeypatch):
+    import json
+
+    import fridays.task_runner as task_runner
+    from utils.db import chat as db_chat
+
+    updates = []
+    messages = []
+    jobs = []
+
+    monkeypatch.setattr(db_chat, "lease_chat_relay_recoveries", lambda *args, **kwargs: [{
+        "recovery_id": "recovery-timeout",
+        "conversation_id": 2832,
+        "stalled_agent": "mistral",
+        "summary": "mistral timed out",
+        "relay_context_json": json.dumps({
+            "thread_tail": [{"from_agent": "user", "to_agent": "mistral", "content": "fix the watchdog warning"}],
+            "stage_trace": [{"text": "mistral timed out"}],
+        }),
+    }])
+    monkeypatch.setattr(
+        db_chat,
+        "update_chat_relay_recovery_status",
+        lambda rid, status, summary=None: updates.append((rid, status, summary)) or True,
+    )
+    monkeypatch.setattr(db_chat, "log_message", lambda *args, **kwargs: messages.append((args, kwargs)))
+    monkeypatch.setattr(task_runner, "_log_run", lambda *a, **k: None)
+    monkeypatch.setattr(
+        task_runner,
+        "_ask_agent_with_timeout",
+        lambda agent, prompt, timeout_seconds=240: (False, f"[{agent}] timed out"),
+    )
+    monkeypatch.setattr(
+        task_runner,
+        "_run_relay_handoff_agent",
+        lambda agent, prompt, timeout_seconds=120: (True, "qwen completed the visible recovery\nDEOS_STATUS: done", 7),
+    )
+    monkeypatch.setattr(
+        task_runner,
+        "_record_relay_handoff_job",
+        lambda *args, **kwargs: jobs.append((args, kwargs)) or "job-handoff",
+    )
+
+    ok, msg = task_runner.run_task(
+        "relay_recovery_sweep",
+        args="limit=1 run_agents=1 agents=librarian lease_minutes=5 force=1 handoff_agents=qwen,gemma",
+    )
+
+    assert ok is True
+    assert "Reviewed 1 relay recoveries: recovery-timeout" in msg
+    assert updates == [("recovery-timeout", "reviewed", updates[0][2])]
+    assert "completed handoff" in updates[0][2]
+    assert len(messages) == 3
+    assert messages[1][1]["message_type"] == "relay_recovery"
+    assert messages[1][1]["to_agent"] == "qwen"
+    assert messages[2][0][1] == "qwen"
+    assert jobs and jobs[0][0][2] == "done"
 
 
 def test_relay_recovery_sweep_active_run_respects_idle_window(monkeypatch):

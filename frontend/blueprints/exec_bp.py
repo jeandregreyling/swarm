@@ -17,6 +17,120 @@ _SWARM_ROOT = _os.environ.get('SWARM_ROOT',
               _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
 _SWARM_ROOT_PATH = _Path(_SWARM_ROOT).resolve()
 
+_SERVICE_REGISTRY = [
+    {'id': 'swarm-terminal.service', 'label': 'PROD UI', 'env': 'PROD', 'kind': 'ui', 'port': 5050},
+    {'id': 'swarm-terminal-dev.service', 'label': 'DEV UI', 'env': 'DEV', 'kind': 'ui', 'port': 5051},
+    {'id': 'swarm-terminal-uat.service', 'label': 'UAT UI', 'env': 'UAT', 'kind': 'ui', 'port': 5053},
+    {'id': 'swarm-fridays.service', 'label': 'Fridays Orchestrator', 'env': 'SHARED', 'kind': 'core'},
+    {'id': 'swarm-monitor.service', 'label': 'System Monitor', 'env': 'SHARED', 'kind': 'core'},
+    {'id': 'swarm-listener.service', 'label': 'Email Listener', 'env': 'SHARED', 'kind': 'io'},
+    {'id': 'swarm-telegram.service', 'label': 'Telegram Bot', 'env': 'SHARED', 'kind': 'io'},
+    {'id': 'swarm-discord.service', 'label': 'Discord Bot', 'env': 'SHARED', 'kind': 'io'},
+    {'id': 'swarm-sniffer.service', 'label': 'Sniffer', 'env': 'SHARED', 'kind': 'io'},
+    {'id': 'swarm-housekeeping.service', 'label': 'Housekeeping', 'env': 'SHARED', 'kind': 'maintenance'},
+    {'id': 'swarm-prewarm.service', 'label': 'Model Prewarm', 'env': 'SHARED', 'kind': 'runtime'},
+    {'id': 'ollama.service', 'label': 'Ollama Runtime', 'env': 'RUNTIME', 'kind': 'runtime'},
+]
+
+
+def _service_by_id(service_id):
+    service_id = str(service_id or '').strip()
+    for svc in _SERVICE_REGISTRY:
+        if svc['id'] == service_id:
+            return dict(svc)
+    return None
+
+
+def _run_systemctl(args, timeout=20):
+    import subprocess as _sp
+    cmd = ['sudo', 'systemctl'] + list(args)
+    result = _sp.run(cmd, capture_output=True, text=True, timeout=timeout)
+    output = (result.stdout + result.stderr).strip() or '(done)'
+    return result.returncode == 0, output
+
+
+def _systemctl_is_enabled(unit):
+    import subprocess as _sp
+    try:
+        r = _sp.run(['systemctl', 'is-enabled', unit], capture_output=True, text=True, timeout=3)
+        return r.stdout.strip() or r.stderr.strip() or 'unknown'
+    except Exception:
+        return 'unknown'
+
+
+def _systemctl_is_active(unit):
+    import subprocess as _sp
+    try:
+        r = _sp.run(['systemctl', 'is-active', unit], capture_output=True, text=True, timeout=3)
+        status = r.stdout.strip() or r.stderr.strip() or 'unknown'
+        return status == 'active', status
+    except Exception:
+        return False, 'error'
+
+
+def _service_payload(svc):
+    active, status = _systemctl_is_active(svc['id'])
+    enabled = _systemctl_is_enabled(svc['id'])
+    return {
+        **svc,
+        'active': active,
+        'status': status,
+        'enabled': enabled,
+        'installed': status not in {'not-found', 'unknown'} or enabled not in {'not-found', 'unknown'},
+        'can_restart': True,
+        'can_hard_restart': True,
+    }
+
+
+def _ollama_runner_rows():
+    import subprocess as _sp
+    rows = []
+    try:
+        proc = _sp.run(
+            ['pgrep', '-af', 'ollama runner'],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        for line in (proc.stdout or '').splitlines():
+            parts = line.strip().split(' ', 1)
+            if not parts or not parts[0].isdigit():
+                continue
+            rows.append({'pid': int(parts[0]), 'cmd': parts[1] if len(parts) > 1 else ''})
+    except Exception:
+        pass
+    return rows
+
+
+def _log_watchdog_service_action(action, detail, status='ok'):
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            content = (
+                'Watchdog service controls manage PROD/DEV/UAT UI units, shared swarm services, '
+                'and Ollama hard-kill/restart actions from the bottom-right Services menu. '
+                f'Last action: {action} status={status} detail={str(detail)[:500]}'
+            )
+            cur = conn.execute(
+                """UPDATE swarm_knowledge
+                   SET content=?, source_agent='watchdog', category='fact', importance=8, updated_at=datetime('now')
+                   WHERE key='watchdog_service_controls_runtime_ops'""",
+                (content,),
+            )
+            if cur.rowcount == 0:
+                conn.execute(
+                    """INSERT INTO swarm_knowledge
+                       (key, content, source_agent, category, importance, created_at, updated_at)
+                       VALUES ('watchdog_service_controls_runtime_ops', ?, 'watchdog', 'fact', 8, datetime('now'), datetime('now'))""",
+                    (content,),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
 
 
 @exec_bp.route('/api/exec', methods=['POST'])
@@ -57,53 +171,95 @@ def api_exec():
 
 @exec_bp.route('/api/services/<service_id>/restart', methods=['POST'])
 def api_service_restart(service_id):
-    """Restart a swarm-* service. Bypasses ALM — restricted to swarm-* pattern only."""
-    import subprocess as _sp
-    import re
-    if not re.match(r'^swarm-[a-z\-]+$', service_id):
+    """Restart a known service. Bypasses ALM; restricted to the service registry."""
+    svc = _service_by_id(service_id)
+    if not svc:
         return jsonify({'ok': False, 'error': 'Invalid service id'}), 400
+    data = request.get_json(silent=True) or {}
+    hard = str(data.get('mode') or '').strip().lower() in {'hard', 'kill', 'force'}
     try:
-        result = _sp.run(
-            ['sudo', 'systemctl', 'restart', service_id],
-            capture_output=True, text=True, timeout=15
-        )
-        output = (result.stdout + result.stderr).strip() or '(done)'
-        ok = result.returncode == 0
+        if hard:
+            kill_ok, kill_out = _run_systemctl(['kill', '-s', 'SIGKILL', svc['id']], timeout=12)
+            start_ok, start_out = _run_systemctl(['start', svc['id']], timeout=20)
+            ok = start_ok
+            output = f'kill={kill_ok}: {kill_out}\nstart={start_ok}: {start_out}'
+            action = 'service_hard_restart'
+        else:
+            ok, output = _run_systemctl(['restart', svc['id']], timeout=20)
+            action = 'service_restart'
         from database import log_activity
-        log_activity('terminal', 'service_restart', service_id)
-        return jsonify({'ok': ok, 'output': output})
+        log_activity('terminal', action, svc['id'])
+        _log_watchdog_service_action(action, f'{svc["id"]}: {output}', 'ok' if ok else 'error')
+        return jsonify({'ok': ok, 'output': output, 'service': _service_payload(svc)})
     except Exception as e:
         return jsonify({'ok': False, 'output': str(e)})
 
 
 @exec_bp.route('/api/services', methods=['GET'])
 def api_services_status():
-    """Return status for all swarm-* systemd services."""
-    import subprocess as _sp
-    services = [
-        {'id': 'swarm-terminal-prod', 'label': 'Terminal'},
-        {'id': 'swarm-listener',    'label': 'Listener'},
-        {'id': 'swarm-telegram',    'label': 'Telegram'},
-        {'id': 'swarm-discord',     'label': 'Discord'},
-        {'id': 'swarm-fridays',     'label': 'Fridays'},
-        {'id': 'swarm-sniffer',     'label': 'Sniffer'},
-        {'id': 'swarm-monitor',     'label': 'Monitor'},
-        {'id': 'swarm-housekeeping','label': 'Housekeeping'},
-    ]
-    result = []
-    for svc in services:
-        try:
-            r = _sp.run(
-                ['systemctl', 'is-active', svc['id']],
-                capture_output=True, text=True, timeout=3
-            )
-            active = r.stdout.strip() == 'active'
-            status = r.stdout.strip()
-        except Exception as e:
-            active = False
-            status = 'error'
-        result.append({**svc, 'active': active, 'status': status})
+    """Return status for managed PROD/DEV/UAT/shared services plus Ollama runners."""
+    result = [_service_payload(svc) for svc in _SERVICE_REGISTRY]
+    result.append({
+        'id': 'ollama-runners',
+        'label': 'Ollama Runners',
+        'env': 'RUNTIME',
+        'kind': 'runtime',
+        'active': bool(_ollama_runner_rows()),
+        'status': f'{len(_ollama_runner_rows())} runner(s)',
+        'enabled': 'runtime',
+        'installed': True,
+        'can_restart': False,
+        'can_hard_restart': False,
+        'can_kill': True,
+        'runners': _ollama_runner_rows(),
+    })
     return jsonify(result)
+
+
+@exec_bp.route('/api/services/restart-all', methods=['POST'])
+def api_services_restart_all():
+    """Restart all known services for an environment group."""
+    data = request.get_json(silent=True) or {}
+    env = str(data.get('env') or 'PROD').strip().upper()
+    hard = bool(data.get('hard'))
+    if env not in {'PROD', 'DEV', 'UAT', 'SHARED', 'RUNTIME'}:
+        return jsonify({'ok': False, 'error': 'Invalid env'}), 400
+    targets = [svc for svc in _SERVICE_REGISTRY if svc['env'] == env]
+    if env == 'RUNTIME':
+        targets = [svc for svc in _SERVICE_REGISTRY if svc['id'] == 'ollama.service']
+    results = []
+    for svc in targets:
+        try:
+            if hard:
+                kill_ok, kill_out = _run_systemctl(['kill', '-s', 'SIGKILL', svc['id']], timeout=12)
+                start_ok, start_out = _run_systemctl(['start', svc['id']], timeout=20)
+                results.append({'id': svc['id'], 'ok': start_ok, 'output': f'kill={kill_ok}: {kill_out}\nstart={start_ok}: {start_out}'})
+            else:
+                ok, output = _run_systemctl(['restart', svc['id']], timeout=20)
+                results.append({'id': svc['id'], 'ok': ok, 'output': output})
+        except Exception as exc:
+            results.append({'id': svc['id'], 'ok': False, 'output': str(exc)})
+    ok_all = all(item['ok'] for item in results)
+    _log_watchdog_service_action('restart_all', f'env={env} hard={hard} results={results}', 'ok' if ok_all else 'error')
+    return jsonify({'ok': ok_all, 'env': env, 'results': results})
+
+
+@exec_bp.route('/api/services/ollama/kill-runners', methods=['POST'])
+def api_ollama_kill_runners():
+    """Hard kill runaway Ollama runner child processes without stopping the service."""
+    import os
+    import signal
+    killed = []
+    errors = []
+    for row in _ollama_runner_rows():
+        try:
+            os.kill(int(row['pid']), signal.SIGKILL)
+            killed.append(row)
+        except Exception as exc:
+            errors.append({'pid': row.get('pid'), 'error': str(exc)})
+    ok = not errors
+    _log_watchdog_service_action('ollama_kill_runners', f'killed={killed} errors={errors}', 'ok' if ok else 'error')
+    return jsonify({'ok': ok, 'killed': killed, 'errors': errors, 'remaining': _ollama_runner_rows()})
 
 
 @exec_bp.route('/api/exec/write', methods=['POST'])
@@ -153,6 +309,3 @@ def api_exec_write():
         return jsonify({'ok': True, 'output': f'Written: {path}\n{lines_old} → {lines_new} lines'})
     except Exception as e:
         return jsonify({'error': str(e), 'ok': False}), 500
-
-
-

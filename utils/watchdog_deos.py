@@ -31,14 +31,16 @@ WORK_AGENT_MODULES = {
     'mistral': ('agents.mistral.mistral_agent', 'chat'),
     'qwen': ('agents.qwen.qwen_agent', 'chat'),
     'gemma': ('agents.gemma.gemma_agent', 'chat'),
+    'llama': ('agents.llama.llama_agent', 'chat'),
 }
 
-WORK_AGENT_ORDER = ['qwen', 'gemma', 'mistral']
+WORK_AGENT_ORDER = ['qwen', 'gemma', 'llama', 'mistral']
 
 WORK_AGENT_MODELS = {
     'mistral': 'mistral:latest',
     'qwen': 'qwen:latest',
     'gemma': 'gemma3:latest',
+    'llama': 'llama3.2:latest',
 }
 
 

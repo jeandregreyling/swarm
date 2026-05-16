@@ -2,6 +2,7 @@
 db.chat — Conversations, messages, and chat job tracking.
 """
 import json
+import sqlite3
 import time
 import uuid
 
@@ -11,6 +12,26 @@ from ._connection import get_connection
 _RELAY_RECOVERY_AGENTS = ('librarian', 'duck', 'vortex')
 _RELAY_RECOVERY_STATUSES = {'open', 'reviewed', 'ignored', 'escalated'}
 _RELAY_RECOVERY_PROJECT_ID = 'P-CHAT-RELAY-RECOVERY'
+
+
+def _is_sqlite_lock_error(exc):
+    return isinstance(exc, sqlite3.OperationalError) and 'locked' in str(exc).lower()
+
+
+def _with_relay_db_retry(fn, attempts=4, base_delay=0.25):
+    """Retry short relay-recovery writes when another local process holds SQLite."""
+    last = None
+    for attempt in range(max(1, int(attempts or 1))):
+        try:
+            return fn()
+        except Exception as exc:
+            last = exc
+            if not _is_sqlite_lock_error(exc) or attempt >= attempts - 1:
+                raise
+            time.sleep(float(base_delay or 0.25) * (2 ** attempt))
+    if last:
+        raise last
+    return None
 
 
 def _ensure_relay_recovery_schema(conn):
@@ -647,7 +668,7 @@ def lease_chat_relay_recoveries(owner, limit=3, lease_seconds=1800, conversation
     except Exception:
         lease_seconds = 1800
 
-    try:
+    def _claim():
         conn = get_connection()
         try:
             _ensure_relay_recovery_schema(conn)
@@ -702,6 +723,9 @@ def lease_chat_relay_recoveries(owner, limit=3, lease_seconds=1800, conversation
             return claimed
         finally:
             conn.close()
+
+    try:
+        return _with_relay_db_retry(_claim)
     except Exception:
         return []
 
@@ -713,7 +737,7 @@ def update_chat_relay_recovery_status(recovery_id, status, summary=None):
         return False
     if status not in _RELAY_RECOVERY_STATUSES:
         return False
-    try:
+    def _update():
         conn = get_connection()
         try:
             _ensure_relay_recovery_schema(conn)
@@ -757,6 +781,9 @@ def update_chat_relay_recovery_status(recovery_id, status, summary=None):
             return cur.rowcount > 0
         finally:
             conn.close()
+
+    try:
+        return bool(_with_relay_db_retry(_update))
     except Exception:
         return False
 
