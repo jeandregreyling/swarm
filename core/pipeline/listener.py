@@ -65,6 +65,11 @@ def _listener_pause_requested():
     return os.path.exists(LISTENER_PAUSE_FILE)
 
 
+def _listener_runs_scheduler():
+    """Legacy fallback; production scheduling runs in scheduler_daemon."""
+    return os.environ.get('LISTENER_RUNS_SCHEDULER', '').lower() in ('1', 'true', 'yes')
+
+
 def _try_enable_gmail_push():
     """Best-effort Gmail Push activation without requiring a process restart."""
     try:
@@ -1506,12 +1511,15 @@ def run_forever(interval=60):
                         if time.time() - _last_imap_sweep > 300:
                             process_emails()
                             _last_imap_sweep = time.time()
-                    # RL-020: Check scheduled tasks every loop
-                    try:
-                        from fridays.scheduler import check_due
-                        check_due()
-                    except Exception as e:
-                        pass
+                    # RL-020 legacy fallback. Production scheduling is owned by
+                    # fridays/scheduler_daemon.py so the listener does not spawn
+                    # local-agent work or hold DB locks while handling inbox IO.
+                    if _listener_runs_scheduler():
+                        try:
+                            from fridays.scheduler import check_due
+                            check_due()
+                        except Exception:
+                            pass
                     # Swarm tasks: snooze + SLA (every 5 min)
                     if time.time() - _last_imap_sweep > 300:
                         try:
@@ -1561,8 +1569,9 @@ def run_forever(interval=60):
             # Swarm tasks every 5 min
             if time.time() - _last_task_check > 300:
                 try:
-                    from fridays.scheduler import check_due
-                    check_due()
+                    if _listener_runs_scheduler():
+                        from fridays.scheduler import check_due
+                        check_due()
                     from swarm_tasks import check_snoozed, check_sla, check_proposals
                     check_snoozed()
                     check_sla(hours=4)
