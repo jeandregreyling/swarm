@@ -58,6 +58,11 @@ logger = logging.getLogger('seven.listener')
 
 
 PUSH_RECOVERY_INTERVAL_SECONDS = 900
+LISTENER_PAUSE_FILE = os.path.join(SWARM_ROOT, '.listener_paused')
+
+
+def _listener_pause_requested():
+    return os.path.exists(LISTENER_PAUSE_FILE)
 
 
 def _try_enable_gmail_push():
@@ -1457,6 +1462,9 @@ def _startup_queue_cleanup():
 
 
 def run_forever(interval=60):
+    if _listener_pause_requested():
+        print(f'[Listener] Pause file present: {LISTENER_PAUSE_FILE}. Exiting cleanly.')
+        return
     # Ensure DB schema is up to date (adds any columns added after initial deploy)
     from database import _migrate_schema
     _migrate_schema()
@@ -1483,6 +1491,9 @@ def run_forever(interval=60):
             _last_imap_sweep = time.time()
             while True:
                 try:
+                    if _listener_pause_requested():
+                        print(f'[Listener] Pause file present: {LISTENER_PAUSE_FILE}. Exiting cleanly.')
+                        return
                     emails = pull_new_emails(timeout_seconds=55)
                     if emails:
                         process_emails(emails)
@@ -1537,6 +1548,9 @@ def run_forever(interval=60):
         _last_push_recovery_attempt = 0.0
         while True:
             try:
+                if _listener_pause_requested():
+                    print(f'[Listener] Pause file present: {LISTENER_PAUSE_FILE}. Exiting cleanly.')
+                    return
                 process_emails()
             except Exception as e:
                 print(f'[Listener] Error: {e}')
