@@ -9,8 +9,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import signal
+import sys
 import time
+
+_SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _SWARM_ROOT not in sys.path:
+    sys.path.insert(0, _SWARM_ROOT)
 
 from fridays.scheduler import check_due
 
