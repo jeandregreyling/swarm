@@ -12,6 +12,7 @@ import json
 import re
 import shlex
 import sqlite3
+import subprocess
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -567,6 +568,17 @@ def _local_agent_worker(queue, agent: str, prompt: str) -> None:
         queue.put(('error', f'{type(exc).__name__}: {exc}', 0))
 
 
+def _local_agent_direct_worker(queue, mode: str, agent: str, prompt: str, timeout_seconds: int) -> None:
+    try:
+        if mode == 'micro':
+            ok, answer, tokens = _run_local_agent_micro_direct(agent, prompt, timeout_seconds)
+        else:
+            ok, answer, tokens = _run_local_agent_direct(agent, prompt, timeout_seconds)
+        queue.put(('ok' if ok else 'error', str(answer or ''), int(tokens or 0)))
+    except Exception as exc:
+        queue.put(('error', f'{type(exc).__name__}: {exc}', 0))
+
+
 def _run_local_agent_work(agent: str, prompt: str, timeout_seconds: int) -> Tuple[bool, str, int]:
     import multiprocessing as mp
     try:
@@ -574,9 +586,9 @@ def _run_local_agent_work(agent: str, prompt: str, timeout_seconds: int) -> Tupl
     except Exception:
         timeout_seconds = 600
     if 'Recovery ID:' in prompt and 'Live conversation context:' in prompt:
-        return _run_local_agent_direct(agent, prompt, min(timeout_seconds, 120))
+        return _run_local_agent_direct_guarded(agent, 'recovery', prompt, min(timeout_seconds, 120))
     if 'DEOS_MICRO_TASK' in prompt:
-        return _run_local_agent_micro_direct(agent, prompt, min(timeout_seconds, 90))
+        return _run_local_agent_direct_guarded(agent, 'micro', prompt, min(timeout_seconds, 90))
     ctx = mp.get_context('fork')
     queue = ctx.Queue(maxsize=1)
     proc = ctx.Process(target=_local_agent_worker, args=(queue, agent, prompt))
@@ -594,6 +606,54 @@ def _run_local_agent_work(agent: str, prompt: str, timeout_seconds: int) -> Tupl
     except Exception:
         return False, f'{agent} exited without returning a result', 0
     return status == 'ok', answer, int(tokens or 0)
+
+
+def _run_local_agent_direct_guarded(agent: str, mode: str, prompt: str, timeout_seconds: int) -> Tuple[bool, str, int]:
+    import multiprocessing as mp
+    try:
+        guard_timeout = max(1, int(timeout_seconds or 90))
+    except Exception:
+        guard_timeout = 90
+    ctx = mp.get_context('fork')
+    queue = ctx.Queue(maxsize=1)
+    proc = ctx.Process(target=_local_agent_direct_worker, args=(queue, mode, agent, prompt, guard_timeout))
+    proc.start()
+    proc.join(guard_timeout + 5)
+    if proc.is_alive():
+        proc.terminate()
+        proc.join(5)
+        if proc.is_alive():
+            proc.kill()
+            proc.join(5)
+        reset = _hard_reset_ollama_after_timeout(agent, mode)
+        return False, f'{agent} {mode} task exceeded guarded timeout {guard_timeout}s; {reset}', 0
+    try:
+        status, answer, tokens = queue.get_nowait()
+    except Exception:
+        return False, f'{agent} {mode} task exited without returning a result', 0
+    return status == 'ok', answer, int(tokens or 0)
+
+
+def _hard_reset_ollama_after_timeout(agent: str, mode: str) -> str:
+    try:
+        kill = subprocess.run(
+            ['systemctl', 'kill', '-s', 'SIGKILL', 'ollama.service'],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        start = subprocess.run(
+            ['systemctl', 'start', 'ollama.service'],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if kill.returncode == 0 and start.returncode == 0:
+            return f'ollama hard reset after {agent} {mode} timeout'
+        detail = (kill.stderr or start.stderr or kill.stdout or start.stdout or '').strip()[:180]
+        return f'ollama hard reset failed rc={kill.returncode}/{start.returncode}: {detail}'
+    except Exception as exc:
+        return f'ollama hard reset failed: {type(exc).__name__}: {exc}'
 
 
 def _run_local_agent_micro_direct(agent: str, prompt: str, timeout_seconds: int) -> Tuple[bool, str, int]:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import sys
+import time
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
@@ -529,11 +530,11 @@ def test_deos_cycle_uses_direct_local_model_for_relay_recovery(monkeypatch, tmp_
 
     calls = []
 
-    def fake_direct(agent, prompt, timeout_seconds):
-        calls.append((agent, timeout_seconds, 'Live conversation context:' in prompt))
+    def fake_direct(agent, mode, prompt, timeout_seconds):
+        calls.append((agent, mode, timeout_seconds, 'Live conversation context:' in prompt))
         return True, 'Health pulse: local recovery path is online.\nDEOS_STATUS: done', 9
 
-    monkeypatch.setattr(watchdog_deos, '_run_local_agent_direct', fake_direct)
+    monkeypatch.setattr(watchdog_deos, '_run_local_agent_direct_guarded', fake_direct)
 
     ok, answer, tokens = watchdog_deos._run_local_agent_work(
         'qwen',
@@ -544,7 +545,7 @@ def test_deos_cycle_uses_direct_local_model_for_relay_recovery(monkeypatch, tmp_
     assert ok is True
     assert tokens == 9
     assert 'DEOS_STATUS: done' in answer
-    assert calls == [('qwen', 120, True)]
+    assert calls == [('qwen', 'recovery', 120, True)]
 
 
 def test_deos_cycle_uses_direct_local_model_for_micro_task(monkeypatch):
@@ -552,11 +553,11 @@ def test_deos_cycle_uses_direct_local_model_for_micro_task(monkeypatch):
 
     calls = []
 
-    def fake_micro(agent, prompt, timeout_seconds):
-        calls.append((agent, timeout_seconds, 'DEOS_MICRO_TASK' in prompt))
+    def fake_micro(agent, mode, prompt, timeout_seconds):
+        calls.append((agent, mode, timeout_seconds, 'DEOS_MICRO_TASK' in prompt))
         return True, 'Mistral micro result\nDEOS_STATUS: done', 4
 
-    monkeypatch.setattr(watchdog_deos, '_run_local_agent_micro_direct', fake_micro)
+    monkeypatch.setattr(watchdog_deos, '_run_local_agent_direct_guarded', fake_micro)
 
     ok, answer, tokens = watchdog_deos._run_local_agent_work(
         'mistral',
@@ -567,7 +568,7 @@ def test_deos_cycle_uses_direct_local_model_for_micro_task(monkeypatch):
     assert ok is True
     assert tokens == 4
     assert 'DEOS_STATUS: done' in answer
-    assert calls == [('mistral', 90, True)]
+    assert calls == [('mistral', 'micro', 90, True)]
 
 
 def test_deos_cycle_filters_local_work_by_project_and_owner(monkeypatch, tmp_path):
@@ -636,3 +637,32 @@ def test_deos_cycle_filters_local_work_by_project_and_owner(monkeypatch, tmp_pat
         conn.close()
     assert drill['status'] == 'done'
     assert other['status'] == 'todo'
+
+
+def test_direct_local_agent_guard_times_out_hung_micro_call(monkeypatch):
+    from utils import watchdog_deos
+
+    resets = []
+
+    def hung_micro(*_args, **_kwargs):
+        time.sleep(10)
+        return True, 'late\nDEOS_STATUS: done', 1
+
+    monkeypatch.setattr(watchdog_deos, '_run_local_agent_micro_direct', hung_micro)
+    monkeypatch.setattr(
+        watchdog_deos,
+        '_hard_reset_ollama_after_timeout',
+        lambda agent, mode: resets.append((agent, mode)) or 'ollama hard reset after timeout',
+    )
+
+    ok, answer, tokens = watchdog_deos._run_local_agent_direct_guarded(
+        'mistral',
+        'micro',
+        'DEOS_MICRO_TASK\nTask: Return READY.',
+        1,
+    )
+
+    assert ok is False
+    assert tokens == 0
+    assert 'guarded timeout 1s' in answer
+    assert resets == [('mistral', 'micro')]
