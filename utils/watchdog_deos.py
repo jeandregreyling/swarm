@@ -15,6 +15,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from utils.db._connection import get_connection
+from utils.deos_teaching import local_agent_packet
 
 
 PROJECT_ID = 'P-CHAT-RELAY-RECOVERY'
@@ -446,7 +447,9 @@ def _claim_local_agent_step(
 
 def _agent_work_prompt(step: Dict[str, Any]) -> str:
     context = _local_work_context(step)
+    agent = str(step.get('owner') or '').strip().lower()
     return (
+        f'{local_agent_packet(agent)}\n\n'
         'You are running under Watchdog/Seven DEOS. Complete this Studio task if it is safe and concrete.\n'
         'Rules:\n'
         '- Work only on this one task.\n'
