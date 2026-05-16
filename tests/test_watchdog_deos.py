@@ -301,6 +301,7 @@ def test_deos_cycle_claims_one_local_agent_work_step(monkeypatch, tmp_path):
     assert step['residual_risk'] == ''
     assert evidence['status'] == 'ok'
     assert 'DEOS_STATUS: done' in evidence['summary']
+    assert 'coaching=passed' in evidence['summary']
     assert [r['source_ref'] for r in claimed_evidence] == ['claim:S-WORK-1', 'agent-work:S-WORK-1']
 
 

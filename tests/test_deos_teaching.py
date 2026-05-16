@@ -28,6 +28,15 @@ def test_watchdog_work_prompt_teaches_local_agent_contract():
     assert "DEOS_STATUS: done | blocked | needs_human" in prompt
 
 
+def test_micro_task_prompt_preserves_exact_output_and_proof_guidance():
+    prompt = watchdog_deos._compact_micro_task_prompt(
+        "header\nDEOS_MICRO_TASK\nTask: Return exactly: Proof: READY"
+    )
+
+    assert "Preserve exact requested text and visible proof phrases" in prompt
+    assert "Task: Return exactly: Proof: READY" in prompt
+
+
 def test_deos_teaching_seed_steps_are_project_ready():
     steps = deos_teaching.studio_seed_steps("P-X")
     markdown = deos_teaching.format_seed_markdown(steps)
@@ -35,6 +44,34 @@ def test_deos_teaching_seed_steps_are_project_ready():
     assert [step["project_id"] for step in steps] == ["P-X", "P-X", "P-X"]
     assert all(step["step_id"].startswith("S-DEOS-") for step in steps)
     assert "House agent coaching loop" in markdown
+
+
+def test_local_result_evaluator_tracks_proof_and_status():
+    review = deos_teaching.evaluate_local_result("Proof: pytest passed\nDEOS_STATUS: done")
+
+    assert review["passed"] is True
+    assert review["coaching_status"] == "passed"
+    assert review["status"] == "done"
+    assert review["issues"] == []
+
+
+def test_local_result_evaluator_flags_missing_proof_without_hiding_output():
+    review = deos_teaching.evaluate_local_result("Fixed it.\nDEOS_STATUS: done")
+
+    assert review["passed"] is True
+    assert review["coaching_status"] == "needs_coaching"
+    assert review["issues"] == ["missing_proof"]
+    assert review["visible"] == "Fixed it."
+
+
+def test_local_result_evaluator_blocks_refusals_and_missing_status():
+    refusal = deos_teaching.evaluate_local_result("I'm sorry, I am unable to assist.\nDEOS_STATUS: done")
+    missing = deos_teaching.evaluate_local_result("I looked at it but did not prove it.")
+
+    assert refusal["passed"] is False
+    assert "refusal" in refusal["issues"]
+    assert missing["status"] == ""
+    assert "missing_deos_status" in missing["issues"]
 
 
 def test_watchdog_deos_evidence_write_retries_sqlite_locks(monkeypatch):

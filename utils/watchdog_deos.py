@@ -16,7 +16,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from utils.db._connection import get_connection
-from utils.deos_teaching import local_agent_packet
+from utils.deos_teaching import evaluate_local_result, local_agent_packet
 
 
 PROJECT_ID = 'P-CHAT-RELAY-RECOVERY'
@@ -609,7 +609,14 @@ def _run_local_agent_micro_direct(agent: str, prompt: str, timeout_seconds: int)
             json={
                 'model': model,
                 'messages': [
-                    {'role': 'system', 'content': 'Complete the tiny task directly. Be concise. Do not use tools. Do not explain.'},
+                    {
+                        'role': 'system',
+                        'content': (
+                            'Complete the tiny task directly. Follow exact-output instructions literally. '
+                            'If asked to return exact text, copy that text without rewriting it as JSON, booleans, or prose. '
+                            'Do not use tools. Do not explain.'
+                        ),
+                    },
                     {'role': 'user', 'content': task},
                 ],
                 'stream': False,
@@ -646,7 +653,8 @@ def _compact_micro_task_prompt(prompt: str) -> str:
     text = '\n'.join(lines).strip() or str(prompt or '')[-1000:]
     return (
         'DEOS_MICRO_TASK\n'
-        'Return the requested result only. Do not include DEOS_STATUS; Watchdog adds that.\n'
+        'Return the requested result only. Preserve exact requested text and visible proof phrases. '
+        'Do not include DEOS_STATUS; Watchdog adds that.\n'
         + text[:1200]
     )
 
@@ -725,18 +733,18 @@ def _compact_direct_recovery_prompt(prompt: str) -> str:
 
 def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, tokens: int) -> str:
     text = str(answer or '').strip()
-    lowered = text.lower()
+    review = evaluate_local_result(text, ok=ok)
     if not ok:
         status = 'blocked'
-    elif 'deos_status: done' in lowered:
+    elif review.get('status') == 'done':
         status = 'done'
-    elif 'deos_status: needs_human' in lowered:
+    elif review.get('status') == 'needs_human':
         status = 'blocked'
     else:
         status = 'blocked'
-    if status == 'done' and _looks_like_refusal(text):
+    if status == 'done' and 'refusal' in review.get('issues', []):
         status = 'blocked'
-    summary = f"{step.get('owner')} result tokens={tokens}: {text[:420]}"
+    summary = f"{step.get('owner')} result tokens={tokens} {review.get('summary')}: {text[:420]}"
     evidence_status = 'ok' if status == 'done' else 'warn'
     _add_evidence(
         conn,

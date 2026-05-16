@@ -6,6 +6,7 @@ turning every job into a long philosophy prompt.
 """
 from __future__ import annotations
 
+import re
 from typing import Iterable
 
 
@@ -84,3 +85,89 @@ def format_seed_markdown(steps: Iterable[dict]) -> str:
         lines.append(f"## {step['step_id']} - {step['title']}")
         lines.append(step['description'])
     return '\n'.join(lines).strip() + '\n'
+
+
+def evaluate_local_result(answer: str, ok: bool = True) -> dict:
+    """Assess whether a local worker followed the DEOS handoff contract."""
+    text = str(answer or '').strip()
+    lowered = text.lower()
+    status_match = re.search(r'(?im)^\s*DEOS_STATUS:\s*(done|blocked|needs_human)\s*$', text)
+    status = status_match.group(1).lower() if status_match else ''
+    visible = re.sub(r'(?im)^\s*DEOS_STATUS:\s*(done|blocked|needs_human)\s*$', '', text).strip()
+    issues = []
+    if not ok:
+        issues.append('runner_failed')
+    if not text:
+        issues.append('empty_answer')
+    if not visible:
+        issues.append('no_visible_work')
+    if not status:
+        issues.append('missing_deos_status')
+    elif status not in {'done', 'blocked', 'needs_human'}:
+        issues.append('invalid_deos_status')
+    if status == 'done' and not _has_proof_marker(visible):
+        issues.append('missing_proof')
+    if _looks_like_refusal(text):
+        issues.append('refusal')
+    if status in {'blocked', 'needs_human'} and not _has_blocker_detail(visible):
+        issues.append('missing_blocker_detail')
+
+    passed = ok and bool(text) and bool(visible) and status == 'done' and 'refusal' not in issues
+    if 'missing_proof' in issues:
+        coaching_status = 'needs_coaching'
+    elif passed:
+        coaching_status = 'passed'
+    else:
+        coaching_status = 'failed'
+
+    return {
+        'status': status,
+        'visible': visible,
+        'issues': issues,
+        'passed': passed,
+        'coaching_status': coaching_status,
+        'summary': _coaching_summary(coaching_status, status, issues),
+    }
+
+
+def _has_proof_marker(text: str) -> bool:
+    lowered = str(text or '').lower()
+    markers = [
+        'proof',
+        'verified',
+        'tested',
+        'pytest',
+        'curl',
+        'sqlite',
+        'evidence',
+        'logged',
+        'created',
+        'updated',
+        'wrote',
+        'completed',
+    ]
+    return any(marker in lowered for marker in markers)
+
+
+def _has_blocker_detail(text: str) -> bool:
+    lowered = str(text or '').lower()
+    markers = ['blocked', 'blocker', 'timeout', 'failed', 'missing', 'unsafe', 'locked', 'needs human']
+    return any(marker in lowered for marker in markers)
+
+
+def _looks_like_refusal(text: str) -> bool:
+    lowered = str(text or '').lower()
+    markers = [
+        'unable to assist',
+        'cannot assist',
+        "can't assist",
+        'i am sorry',
+        "i'm sorry",
+        'do not hesitate to ask',
+    ]
+    return any(marker in lowered for marker in markers)
+
+
+def _coaching_summary(coaching_status: str, status: str, issues: list[str]) -> str:
+    issue_text = ','.join(issues) if issues else 'none'
+    return f'coaching={coaching_status} deos_status={status or "missing"} issues={issue_text}'
