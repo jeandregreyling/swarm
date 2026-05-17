@@ -212,6 +212,7 @@ function openWindow(id, title, templateId, options = {}) {
             else if (id === 'access') loadAccessData && loadAccessData(win);
             else if (id === 'agents-config') loadAgentsConfigData && loadAgentsConfigData(win);
             else if (id === 'localai') initializeLocalAiPanel && initializeLocalAiPanel();
+            else if (id === 'grokpot') window.initializeGrokPotPanel && window.initializeGrokPotPanel();
             else if (id === 'media-center') initMediaCenter && initMediaCenter(win);
             else if (id === 'trace') initTraceView && initTraceView(win);
             else if (id === 'onboarding') _initOnboarding && _initOnboarding();

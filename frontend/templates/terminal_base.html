@@ -802,6 +802,10 @@
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3c-2.8 0-5 1.9-5 4.4 0 2.4 2 4.3 4.5 4.3H9a1.5 1.5 0 0 0 0-3h-.5a.8.8 0 0 1-.8-.8A1.9 1.9 0 0 1 9.6 6H11A2 2 0 0 0 13 4c0-.6-.3-1-.8-1.1A9.4 9.4 0 0 0 8 3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="5.2" cy="7" r=".7" fill="currentColor"/><circle cx="7" cy="5.7" r=".7" fill="currentColor"/></svg></span><span>Studio</span><span id="home-studio-badge" style="display:none;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;"></span></div>
           <div class="card-desc" id="home-studio-desc">Projects · Proposals · Git · Test Lab</div>
         </div>
+        <div class="home-card" data-win-id="grokpot" data-win-title="Grok Pot" data-win-template="view-grokpot">
+          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 7h8l-1 5.2A1.5 1.5 0 0 1 9.5 13.5h-3A1.5 1.5 0 0 1 5 12.2L4 7Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5.5 5.2c.4-.7 1.1-1.2 2-1.2h1c.9 0 1.6.5 2 1.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Grok Pot</span></div>
+          <div class="card-desc">Grok suggestions awaiting review · Money Maker plans</div>
+        </div>
         <div class="home-card" data-win-id="time-wizard" data-win-title="Vortex" data-win-template="view-time-wizard">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Vortex</span></div>
           <div class="card-desc">State timeline</div>
@@ -1447,6 +1451,7 @@
           </select>
           <button onclick="gitFetchBranches()" title="Fetch origin and refresh branches" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Fetch</button>
           <button onclick="gitCompareSelectedBranch()" title="Compare selected branch without checking it out" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Compare</button>
+          <button onclick="gitBrowseSelectedBranch()" title="Browse files in selected branch without checkout" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Browse</button>
           <button onclick="gitCheckoutSelectedBranch()" title="Checkout selected branch in this environment" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Checkout</button>
           <button onclick="gitPullCurrentBranch()" title="Fast-forward pull current branch" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Pull</button>
           <button onclick="gitPushCurrentBranch()" title="Push current branch; force push is not supported" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Push</button>
@@ -1487,9 +1492,29 @@
   </div>
 </template>
 
+<template id="view-grokpot">
+  <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--window-header);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+      <div>
+        <div style="font-size:13px;font-weight:700;">🫖 Grok Pot</div>
+        <div style="font-size:11px;color:var(--text-dim);">Draft Grok suggestions awaiting review. Money Maker project plans. Remote branches for compare/pull.</div>
+      </div>
+      <button onclick="grokpotRefresh()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">↻ Refresh</button>
+    </div>
+    <div style="flex:1;display:flex;min-height:0;">
+      <div id="grokpot-sidebar" style="flex:0 0 320px;overflow-y:auto;border-right:1px solid var(--border);padding:10px;">
+        <div style="color:var(--text-dim);font-size:11px;">Loading…</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+        <div id="grokpot-detail-title" style="padding:8px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);font-size:11px;font-weight:600;color:var(--text-dim);">Select a doc to read</div>
+        <pre id="grokpot-detail-body" style="flex:1;overflow:auto;margin:0;padding:12px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-word;color:var(--text);">Drafts are read-only here. Use the Git tile (Browse/Compare/Checkout) to pull a Grok branch into a working tree.</pre>
+      </div>
+    </div>
+  </div>
+</template>
+
 <template id="view-memory">
   <div class="content-view">
-    <!-- Memory header -->
     <div style="padding:10px 14px 0;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
         <span style="font-size:13px;font-weight:700;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-1px"><path d="M6 4a2 2 0 0 0-3 1.7v1.8A2.5 2.5 0 0 0 4.8 10H6m4-6a2 2 0 0 1 3 1.7v1.8A2.5 2.5 0 0 1 11.2 10H10M6 4v8m4-8v8M6 8h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Memory Browser</span>
@@ -2454,6 +2479,43 @@
         </div>
         <div id="localai-agent-roster" class="localai-roster"></div>
       </section>
+
+      <section class="localai-panel" id="localai-watchdog-panel">
+        <div class="localai-panel-head">
+          <div>
+            <div class="localai-panel-title">Watchdog</div>
+            <div class="localai-panel-subtitle">Stall detection, repair lessons, and missing local models.</div>
+          </div>
+          <div class="localai-panel-meta">
+            <span id="watchdog-status-badge" class="localai-badge">—</span>
+          </div>
+        </div>
+        <div id="watchdog-missing-models" class="localai-stack-card" style="display:none;"></div>
+        <div class="localai-manager-card">
+          <div class="localai-section-title">Stall detection</div>
+          <div class="localai-field-row" style="flex-wrap:wrap;gap:8px;align-items:center;">
+            <label style="font-size:11px;color:var(--text-dim);">Stale &gt;
+              <input id="watchdog-stale-minutes" type="number" min="1" max="720" value="15"
+                class="knowledge-input localai-input" style="width:70px;display:inline-block;margin-left:4px;">
+              min
+            </label>
+            <label style="font-size:11px;color:var(--text-dim);">Limit
+              <input id="watchdog-scan-limit" type="number" min="1" max="200" value="20"
+                class="knowledge-input localai-input" style="width:70px;display:inline-block;margin-left:4px;">
+            </label>
+            <label style="font-size:11px;color:var(--text-dim);display:inline-flex;align-items:center;gap:4px;">
+              <input id="watchdog-auto-recover" type="checkbox" checked> Auto-pause stuck tasks
+            </label>
+            <button onclick="watchdogSaveSettings()" class="knowledge-btn">Save</button>
+            <button onclick="watchdogScanNow()" class="knowledge-btn knowledge-btn-primary">Scan now</button>
+          </div>
+          <div id="watchdog-scan-status" class="localai-status-strip" style="margin-top:6px;display:none;"></div>
+        </div>
+        <div class="localai-manager-card">
+          <div class="localai-section-title">Open repair lessons</div>
+          <div id="watchdog-lessons-list" class="localai-model-list">Loading…</div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -3032,6 +3094,7 @@
 <script src="/static/js/views/vpn.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/money-hub.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/localai.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/grokpot.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/media-center.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/trace.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/onboarding.js?v={{ ASSET_VERSION }}"></script>
