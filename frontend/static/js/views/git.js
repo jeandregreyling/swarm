@@ -258,6 +258,73 @@ async function gitCheckoutSelectedBranch() {
   }
 }
 
+async function gitBrowseSelectedBranch() {
+  const state = _gitState();
+  const branch = _gitSelectedBranch();
+  if (!branch) { showToast('Choose a branch to browse', 'error'); return; }
+  const titleEl = window.__gitWin?.el?.querySelector('#git-diff-title');
+  const bodyEl = window.__gitWin?.el?.querySelector('#git-diff-body');
+  const actionsEl = window.__gitWin?.el?.querySelector('#git-diff-actions');
+  if (titleEl) titleEl.textContent = `Browse ${branch}`;
+  if (actionsEl) actionsEl.innerHTML = '';
+  if (bodyEl) bodyEl.textContent = `Loading file tree at ${branch}…`;
+  try {
+    const envP = state.environment ? `&environment=${encodeURIComponent(state.environment)}` : '';
+    const resp = await fetch(`/api/git/tree?ref=${encodeURIComponent(branch)}${envP}`);
+    const data = await resp.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || 'tree failed');
+    const paths = data.paths || [];
+    state._browseRef = branch;
+    state._browseEnv = state.environment || '';
+    if (!bodyEl) return;
+    const filter = (window.__gitWin?.el?.querySelector('#git-filter-input')?.value || '').trim().toLowerCase();
+    const filtered = filter ? paths.filter(p => p.toLowerCase().includes(filter)) : paths;
+    const trunc = data.truncated ? ` (showing first ${paths.length} of many)` : '';
+    const list = filtered.slice(0, 2000).map(p => {
+      const safe = String(p).replace(/"/g, '&quot;');
+      return `<div class="git-browse-row" onclick="gitOpenBrowsedFile('${safe.replace(/'/g, "\\'")}')"
+        style="padding:3px 8px;cursor:pointer;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;color:var(--text);"
+        onmouseover="this.style.background='rgba(255,255,255,0.04)'"
+        onmouseout="this.style.background='transparent'">${safe}</div>`;
+    }).join('');
+    bodyEl.style.whiteSpace = 'normal';
+    bodyEl.innerHTML = `<div style="margin-bottom:8px;color:var(--text-dim);font-size:11px;">
+      ${filtered.length} file(s)${trunc} · click any file to view its contents at <strong>${branch}</strong>
+    </div>${list || '<div style="padding:8px;color:var(--text-dim);">No files match filter.</div>'}`;
+  } catch (e) {
+    if (bodyEl) bodyEl.textContent = `Browse failed: ${e.message || e}`;
+    showToast(`Browse failed: ${e.message || e}`, 'error');
+  }
+}
+
+async function gitOpenBrowsedFile(path) {
+  const state = _gitState();
+  const ref = state._browseRef;
+  if (!ref) return;
+  const titleEl = window.__gitWin?.el?.querySelector('#git-diff-title');
+  const bodyEl = window.__gitWin?.el?.querySelector('#git-diff-body');
+  const actionsEl = window.__gitWin?.el?.querySelector('#git-diff-actions');
+  if (titleEl) titleEl.textContent = `${ref} :: ${path}`;
+  if (actionsEl) {
+    actionsEl.innerHTML = `<button onclick="gitBrowseSelectedBranch()"
+      style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;">↩ Back to file list</button>`;
+  }
+  if (bodyEl) { bodyEl.style.whiteSpace = 'pre-wrap'; bodyEl.textContent = 'Loading…'; }
+  try {
+    const envP = state._browseEnv ? `&environment=${encodeURIComponent(state._browseEnv)}` : '';
+    const resp = await fetch(`/api/git/show?ref=${encodeURIComponent(ref)}&path=${encodeURIComponent(path)}${envP}`);
+    const data = await resp.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || 'show failed');
+    if (data.binary) {
+      bodyEl.textContent = `(binary file · ${data.bytes} bytes)`;
+      return;
+    }
+    bodyEl.textContent = (data.truncated ? '(truncated)\n' : '') + (data.content || '');
+  } catch (e) {
+    if (bodyEl) bodyEl.textContent = `Open failed: ${e.message || e}`;
+  }
+}
+
 async function gitPullCurrentBranch() {
   const state = _gitState();
   if (!confirm(`Pull current branch in ${state.environment || 'prod'}?`)) return;

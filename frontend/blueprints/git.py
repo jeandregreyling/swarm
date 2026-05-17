@@ -612,6 +612,64 @@ def api_git_diff():
 
 
 
+@git_bp.route('/api/git/tree', methods=['GET'])
+def api_git_tree():
+    """List files at any ref (local or origin/) without checkout."""
+    env = request.args.get('environment', '')
+    try:
+        env = _normalize_git_env(env)
+        ref = _safe_ref(request.args.get('ref') or 'HEAD')
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    if not _ref_exists(ref, env=env):
+        return jsonify({'ok': False, 'error': f'ref not found: {ref}'}), 404
+    proc = _run_git_command(
+        ['ls-tree', '-r', '--name-only', '--full-tree', ref],
+        timeout=20, env=env,
+    )
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': _git_error(proc, 'ls-tree failed')}), 500
+    paths = [p for p in (proc.stdout or '').splitlines() if p.strip()]
+    return jsonify({
+        'ok': True, 'environment': env, 'ref': ref,
+        'count': len(paths),
+        'paths': paths[:5000],
+        'truncated': len(paths) > 5000,
+    })
+
+
+@git_bp.route('/api/git/show', methods=['GET'])
+def api_git_show():
+    """Return file contents at a given ref (read-only browse, no checkout)."""
+    env = request.args.get('environment', '')
+    try:
+        env = _normalize_git_env(env)
+        ref = _safe_ref(request.args.get('ref') or 'HEAD')
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    path = (request.args.get('path') or '').strip().lstrip('/')
+    if not path or '..' in path.split('/'):
+        return jsonify({'ok': False, 'error': 'invalid path'}), 400
+    if not _ref_exists(ref, env=env):
+        return jsonify({'ok': False, 'error': f'ref not found: {ref}'}), 404
+    proc = _run_git_command(['show', f'{ref}:{path}'], timeout=20, env=env)
+    if proc.returncode != 0:
+        return jsonify({'ok': False, 'error': _git_error(proc, 'git show failed')}), 404
+    text = proc.stdout or ''
+    truncated = False
+    if len(text) > 200_000:
+        text = text[:200_000]
+        truncated = True
+    is_binary = '\x00' in text[:4096]
+    return jsonify({
+        'ok': True, 'environment': env, 'ref': ref, 'path': path,
+        'content': '' if is_binary else text,
+        'binary': is_binary,
+        'bytes': len(proc.stdout or ''),
+        'truncated': truncated,
+    })
+
+
 @git_bp.route('/api/git/stage', methods=['POST'])
 def api_git_stage():
     """Stage one or more repository paths."""
