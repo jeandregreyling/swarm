@@ -24,6 +24,8 @@ const _MODEL_OPTIONS = {
 };
 
 let _ollamaModelsCache = null;
+let _ollamaLoadedCache = null;
+let _lmstudioModelsCache = null;
 let _localAiStatusCache = null;
 let _localAiStatusCacheTs = 0;
 
@@ -33,10 +35,151 @@ async function _fetchOllamaModelList() {
     const res = await fetch('/api/localai/status');
     const data = await res.json();
     _ollamaModelsCache = (data.ollama?.models || []).map(m => m.name || m);
+    _lmstudioModelsCache = (data.lmstudio?.models || []).map(m => (typeof m === 'string') ? m : (m.name || m.id || ''));
   } catch(e) {
     _ollamaModelsCache = [];
+    _lmstudioModelsCache = _lmstudioModelsCache || [];
   }
   return _ollamaModelsCache;
+}
+
+async function _fetchOllamaLoadedList() {
+  if (_ollamaLoadedCache) return _ollamaLoadedCache;
+  try {
+    const res = await fetch('/api/ollama/ps');
+    const data = await res.json();
+    _ollamaLoadedCache = (data.models || []).map(m => m.name).filter(Boolean);
+  } catch (e) {
+    _ollamaLoadedCache = [];
+  }
+  return _ollamaLoadedCache;
+}
+
+async function _fetchLmStudioModels() {
+  if (_lmstudioModelsCache) return _lmstudioModelsCache;
+  await _fetchOllamaModelList();
+  return _lmstudioModelsCache || [];
+}
+
+// Refresh caches so tier-switching / refresh buttons see live data.
+function _invalidateModelCaches() {
+  _ollamaModelsCache = null;
+  _ollamaLoadedCache = null;
+  _lmstudioModelsCache = null;
+}
+
+const _CUSTOM_SENTINEL = '__custom__';
+
+function _renderUnifiedSelectHtml(idAttr, optgroups, currentModel) {
+  // optgroups: [{label, options: [{value,label}]}]
+  // Make sure the current model is selectable even if not in any group.
+  let knownValues = new Set();
+  optgroups.forEach(g => g.options.forEach(o => knownValues.add(o.value)));
+  let prefix = '';
+  if (currentModel && !knownValues.has(currentModel)) {
+    prefix = `<optgroup label="Current"><option value="${_esc(currentModel)}" selected>${_esc(currentModel)} (custom)</option></optgroup>`;
+  }
+  const groupsHtml = optgroups.filter(g => g.options.length > 0).map(g => {
+    const opts = g.options.map(o =>
+      `<option value="${_esc(o.value)}" ${o.value === currentModel ? 'selected' : ''}>${_esc(o.label)}</option>`
+    ).join('');
+    return `<optgroup label="${_esc(g.label)}">${opts}</optgroup>`;
+  }).join('');
+  const customOpt = `<optgroup label="Advanced"><option value="${_CUSTOM_SENTINEL}">Custom… (type a model name)</option></optgroup>`;
+  return `<select id="${idAttr}" style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;cursor:pointer;box-sizing:border-box;">${prefix}${groupsHtml}${customOpt}</select>`;
+}
+
+// Build the unified model picker HTML synchronously from caches.
+// Caller must `await _primeModelCaches()` first for live data.
+function _buildUnifiedModelSelect(tier, currentModel, idAttr) {
+  idAttr = idAttr || 'agent-model';
+  const installed = _ollamaModelsCache || [];
+  const loaded    = _ollamaLoadedCache || [];
+  const lms       = _lmstudioModelsCache || [];
+  const loadedSet = new Set(loaded);
+  const installedNotLoaded = installed.filter(m => !loadedSet.has(m));
+
+  let groups = [];
+  if (tier === 'local') {
+    groups.push({ label: 'Ollama (loaded in RAM)', options: loaded.map(m => ({ value: m, label: m })) });
+    groups.push({ label: 'Ollama (installed)',     options: installedNotLoaded.map(m => ({ value: m, label: m })) });
+    groups.push({ label: 'LM Studio',              options: lms.map(m => ({ value: m, label: m })) });
+  } else if (tier === 'paid' || tier === 'free') {
+    groups.push({ label: 'Cloud APIs', options: _MODEL_OPTIONS.paid.slice() });
+    // Show locals too so an operator can flip a paid agent to a local model.
+    if (loaded.length || installed.length) {
+      groups.push({ label: 'Ollama (installed)', options: installed.map(m => ({ value: m, label: m })) });
+    }
+  } else if (tier === 'human' || tier === 'service') {
+    groups.push({ label: 'n/a',  options: [{ value: '', label: '(no model)' }] });
+  } else {
+    groups.push({ label: 'Cloud APIs', options: _MODEL_OPTIONS.paid.slice() });
+  }
+  return _renderUnifiedSelectHtml(idAttr, groups, currentModel);
+}
+
+async function _primeModelCaches(force) {
+  if (force) _invalidateModelCaches();
+  // _fetchOllamaModelList also primes LM Studio cache via /api/localai/status
+  await Promise.all([_fetchOllamaModelList(), _fetchOllamaLoadedList()]);
+}
+
+// Attach handler so selecting "Custom…" reveals a free-text input.
+function _wireCustomModelOverride(selectEl, currentModel) {
+  if (!selectEl || selectEl.__customWired) return;
+  selectEl.__customWired = true;
+  const container = selectEl.parentElement;
+  if (!container) return;
+  // Hidden override input created lazily.
+  function ensureOverride() {
+    let inp = container.querySelector('.agent-model-custom');
+    if (!inp) {
+      inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'agent-model-custom';
+      inp.placeholder = 'e.g. gpt-4o-mini, deepseek-r1:7b';
+      inp.value = (currentModel && currentModel !== _CUSTOM_SENTINEL) ? currentModel : '';
+      inp.style.cssText = 'width:100%;margin-top:6px;padding:6px 9px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;';
+      container.appendChild(inp);
+    }
+    return inp;
+  }
+  selectEl.addEventListener('change', () => {
+    if (selectEl.value === _CUSTOM_SENTINEL) {
+      const inp = ensureOverride();
+      inp.style.display = '';
+      inp.focus();
+    } else {
+      const inp = container.querySelector('.agent-model-custom');
+      if (inp) inp.style.display = 'none';
+    }
+  });
+}
+
+// Read the active model value (resolves custom-override input if Custom… selected).
+function _readAgentModelValue(selectId) {
+  selectId = selectId || 'agent-model';
+  const sel = document.getElementById(selectId);
+  if (!sel) return '';
+  if (sel.tagName === 'INPUT') return sel.value || '';
+  if (sel.value === _CUSTOM_SENTINEL) {
+    const inp = sel.parentElement?.querySelector('.agent-model-custom');
+    return (inp?.value || '').trim();
+  }
+  return sel.value || '';
+}
+
+// Refresh the Add-Agent modal's model dropdown when tier changes.
+function _refreshNewAgentModelDropdown(modal, tier) {
+  if (!modal) return;
+  const wrap = modal.querySelector('#new-agent-model-wrap');
+  if (!wrap) return;
+  _primeModelCaches(false).then(() => {
+    const html = _buildUnifiedModelSelect(tier, '', 'new-agent-model');
+    wrap.innerHTML = html;
+    const sel = wrap.querySelector('#new-agent-model');
+    _wireCustomModelOverride(sel, '');
+  });
 }
 
 async function _fetchLocalAiStatus(force) {
@@ -702,6 +845,7 @@ function loadAgentsConfigData(win) {
 }
 
 function agentsRefresh() {
+  _invalidateModelCaches();
   const list   = document.getElementById('agents-list');
   const detail = document.getElementById('agents-detail');
   if (list)   list.innerHTML   = '<div style="padding:20px;color:var(--text-dim);font-size:11px;">Loading…</div>';
@@ -813,18 +957,17 @@ function agentsShowDetail(agent) {
         ? '<span style="color:var(--text-dim);font-size:10px;">— n/a</span>'
         : '<span style="color:#ff6b6b;font-size:10px;">● not set</span>');
 
-  // Build model dropdown or text input
+  // Build model dropdown (unified across tiers).
   const currentModel = agent.model || '';
   let modelHtml;
-  if (isLocal && agent.tier !== 'human') {
-    // For local agents, we'll inject the dropdown async after render
-    modelHtml = `<select id="agent-model" style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;cursor:pointer;">
+  if (agent.tier === 'human' || agent.tier === 'service') {
+    modelHtml = `<input id="agent-model" type="text" value="${_esc(currentModel)}" placeholder="(not applicable)"
+      style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">`;
+  } else {
+    // Render an immediate placeholder; replace with live optgroups once caches load.
+    modelHtml = `<select id="agent-model" style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;cursor:pointer;box-sizing:border-box;">
       <option value="${_esc(currentModel)}" selected>${_esc(currentModel || 'Loading…')}</option>
     </select>`;
-  } else {
-    const selectHtml = _buildModelSelect(agent.name, agent.tier, currentModel);
-    modelHtml = selectHtml || `<input id="agent-model" type="text" value="${_esc(currentModel)}"
-      style="width:100%;padding:6px 9px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">`;
   }
   el.innerHTML = `
     <div style="padding:18px 20px;max-width:700px;">
@@ -1106,19 +1249,22 @@ function agentsShowDetail(agent) {
     decommissionBtn.addEventListener('click', () => agentsDecommission(agent.name, agent.label || agent.name));
   }
 
-  // Async: populate local agent model dropdown with Ollama models
-  if (isLocal && agent.tier !== 'human') {
-    _buildLocalModelSelect(currentModel).then(selectHtml => {
-      if (selectHtml) {
-        const modelContainer = el.querySelector('#agent-model')?.parentElement;
-        if (modelContainer) {
-          const labelEl = modelContainer.querySelector('label');
-          modelContainer.innerHTML = '';
-          if (labelEl) modelContainer.appendChild(labelEl);
-          modelContainer.insertAdjacentHTML('beforeend', selectHtml);
-        }
+  // Populate model dropdown (unified Ollama loaded/installed + LM Studio + cloud presets).
+  if (agent.tier !== 'human' && agent.tier !== 'service') {
+    _primeModelCaches(false).then(() => {
+      const selectHtml = _buildUnifiedModelSelect(agent.tier, currentModel, 'agent-model');
+      const modelContainer = el.querySelector('#agent-model')?.parentElement;
+      if (modelContainer) {
+        const labelEl = modelContainer.querySelector('label');
+        modelContainer.innerHTML = '';
+        if (labelEl) modelContainer.appendChild(labelEl);
+        modelContainer.insertAdjacentHTML('beforeend', selectHtml);
+        const newSel = modelContainer.querySelector('#agent-model');
+        _wireCustomModelOverride(newSel, currentModel);
       }
     });
+  }
+  if (isLocal && agent.tier !== 'human') {
     _renderLocalAgentAvailability(agent);
   }
 }
@@ -1175,7 +1321,7 @@ function agentsSave(name) {
   const payload = {
     number:        Number(document.getElementById('agent-number')?.value || 0),
     label:         document.getElementById('agent-label')?.value    || '',
-    model:         document.getElementById('agent-model')?.value    || '',
+    model:         _readAgentModelValue('agent-model'),
     tier:          document.getElementById('agent-tier')?.value     || 'local',
     api_key_var:   document.getElementById('agent-key-var')?.value  || '',
     role:          document.getElementById('agent-role')?.value     || '',
@@ -1715,8 +1861,11 @@ function agentsShowAdd() {
         </div>
         <div>
           <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Model</label>
-          <input id="new-agent-model" type="text" placeholder="e.g. gpt-4o-mini"
-            style="width:100%;padding:6px 9px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;box-sizing:border-box;">
+          <div id="new-agent-model-wrap">
+            <select id="new-agent-model" style="width:100%;padding:6px 9px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;outline:none;cursor:pointer;box-sizing:border-box;">
+              <option value="">Loading…</option>
+            </select>
+          </div>
         </div>
         <div>
           <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Tier</label>
@@ -1784,6 +1933,7 @@ function agentsShowAdd() {
     // local/human/service don't need key confirmation
     if (isNoKey) _setAddReady(true);
     else _setAddReady(false);
+    _refreshNewAgentModelDropdown(modal, tierSel.value);
   }
   function _setAddReady(ready) {
     submitBtn.style.opacity = ready ? '1' : '0.4';
@@ -1791,6 +1941,7 @@ function agentsShowAdd() {
   }
   tierSel.addEventListener('change', _updateTierVis);
   _updateTierVis();
+  _refreshNewAgentModelDropdown(modal, tierSel.value);
 
   // Confirm button — validates both fields filled, saves to __pendingKeyConfirm
   window.__pendingNewAgentKey = null;
@@ -1850,7 +2001,7 @@ function agentsSubmitAdd() {
   const payload = {
     name,
     label:         (modal?.querySelector('#new-agent-label')?.value   || '').trim() || name,
-    model:         (modal?.querySelector('#new-agent-model')?.value   || '').trim(),
+    model:         _readAgentModelValue('new-agent-model'),
     tier,
     api_key_var:   pending?.keyVar || (modal?.querySelector('#new-agent-key-var')?.value || '').trim(),
     role:          (modal?.querySelector('#new-agent-role')?.value    || '').trim(),
