@@ -116,6 +116,8 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.orientation',      'orientation_bp'),
     ('blueprints.wishlist_registry','wishlist_registry_bp'),
     ('blueprints.hive',             'hive_bp'),
+    ('blueprints.watchdog_bp',      'watchdog_bp'),
+    ('blueprints.grokpot_bp',       'grokpot_bp'),
 ]
 
 _loaded_blueprints   = []   # (attr_name, blueprint_object)

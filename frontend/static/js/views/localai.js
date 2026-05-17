@@ -268,6 +268,10 @@ function localaiRefresh() {
     // Runtime gateway health pill + warnings (Fridays-owned snapshot).
     localaiRuntimeHealthRefresh('localai-runtime-badge', 'localai-runtime-warnings');
 
+    // Watchdog panel + missing-models alert.
+    watchdogRefresh();
+    watchdogRefreshMissingModels();
+
     if (_ollamaSelectedModel) {
       selectOllamaModel(_ollamaSelectedModel, true);
     }
@@ -720,3 +724,137 @@ function localaiTogglePicoEmbed() {
 function initializeLocalAiPanel() {
   localaiRefresh();
 }
+
+// ── Watchdog panel ──────────────────────────────────────────────────────────
+
+async function watchdogRefresh() {
+  const list  = document.getElementById('watchdog-lessons-list');
+  const badge = document.getElementById('watchdog-status-badge');
+  try {
+    const r = await fetch('/api/watchdog/status');
+    const d = await r.json();
+    const s = d.settings || {};
+    const stale = document.getElementById('watchdog-stale-minutes');
+    const limit = document.getElementById('watchdog-scan-limit');
+    const auto  = document.getElementById('watchdog-auto-recover');
+    if (stale && typeof s.stale_minutes === 'number') stale.value = s.stale_minutes;
+    if (limit && typeof s.scan_limit    === 'number') limit.value = s.scan_limit;
+    if (auto  && typeof s.auto_recover  !== 'undefined') auto.checked = !!Number(s.auto_recover);
+
+    const count = Number(d.open_count || 0);
+    if (badge) {
+      const ok = count === 0;
+      badge.textContent = ok ? '0 open' : `${count} open`;
+      badge.style.background = ok
+        ? 'color-mix(in srgb,#22c55e 15%,var(--card))'
+        : 'color-mix(in srgb,#f59e0b 15%,var(--card))';
+      badge.style.color = ok ? '#22c55e' : '#f59e0b';
+      badge.style.borderColor = ok ? '#22c55e55' : '#f59e0b55';
+    }
+    if (!list) return;
+    const lessons = Array.isArray(d.lessons) ? d.lessons : [];
+    if (lessons.length === 0) {
+      list.innerHTML = '<div style="color:var(--text-dim);font-size:11px;padding:6px;">No open repair lessons.</div>';
+      return;
+    }
+    list.innerHTML = lessons.map(l => {
+      const cls = _escapeHtml(l.failure_class || 'lesson');
+      const symptom = _escapeHtml(l.symptom || '');
+      const lessonTxt = _escapeHtml(l.lesson || '');
+      const updated = _escapeHtml(l.updated_at || '');
+      const status = _escapeHtml(l.status || 'open');
+      return `<div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px;background:var(--card);">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;">
+          <span style="font-weight:600;">${cls}</span>
+          <span style="color:var(--text-dim);">${status} · ${updated}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text);margin-top:4px;">${symptom}</div>
+        <div style="font-size:10.5px;color:var(--text-dim);margin-top:3px;">${lessonTxt}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    if (list) list.innerHTML = `<div style="color:#ef4444;font-size:11px;">Watchdog status unavailable: ${_escapeHtml(e.message || e)}</div>`;
+    if (badge) { badge.textContent = 'error'; badge.style.color = '#ef4444'; }
+  }
+}
+
+async function watchdogSaveSettings() {
+  const payload = {
+    stale_minutes: Number(document.getElementById('watchdog-stale-minutes')?.value || 15),
+    scan_limit:    Number(document.getElementById('watchdog-scan-limit')?.value    || 20),
+    auto_recover:  document.getElementById('watchdog-auto-recover')?.checked ? 1 : 0,
+  };
+  const statusEl = document.getElementById('watchdog-scan-status');
+  if (statusEl) { statusEl.style.display = ''; statusEl.textContent = 'Saving…'; }
+  try {
+    const r = await fetch('/api/watchdog/settings', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (statusEl) statusEl.textContent = d.ok ? 'Settings saved.' : `Save failed: ${d.error || ''}`;
+  } catch (e) {
+    if (statusEl) statusEl.textContent = `Save failed: ${e.message || e}`;
+  }
+}
+
+async function watchdogScanNow() {
+  const statusEl = document.getElementById('watchdog-scan-status');
+  if (statusEl) { statusEl.style.display = ''; statusEl.textContent = 'Scanning…'; }
+  const payload = {
+    stale_minutes: Number(document.getElementById('watchdog-stale-minutes')?.value || 15),
+    scan_limit:    Number(document.getElementById('watchdog-scan-limit')?.value    || 20),
+    auto_recover:  !!document.getElementById('watchdog-auto-recover')?.checked,
+  };
+  try {
+    const r = await fetch('/api/watchdog/scan', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      if (statusEl) statusEl.textContent = `Scan failed: ${d.error || 'unknown'}`;
+      return;
+    }
+    if (statusEl) statusEl.textContent = `Scan complete · ${d.created_lessons} new lesson(s).`;
+    watchdogRefresh();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = `Scan failed: ${e.message || e}`;
+  }
+}
+
+async function watchdogRefreshMissingModels() {
+  const box = document.getElementById('watchdog-missing-models');
+  if (!box) return;
+  try {
+    const r = await fetch('/api/watchdog/missing-models');
+    const d = await r.json();
+    const missing = Array.isArray(d.missing) ? d.missing : [];
+    if (missing.length === 0) {
+      box.style.display = 'none';
+      return;
+    }
+    const rows = missing.map(m =>
+      `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:3px 0;">
+        <span style="color:var(--text);">${_escapeHtml(m.label || m.agent)} · <span style="color:var(--text-dim);">${_escapeHtml(m.agent)}</span></span>
+        <span style="font-family:monospace;color:#f59e0b;">${_escapeHtml(m.model)}</span>
+      </div>`
+    ).join('');
+    box.style.display = '';
+    box.style.borderLeft = '3px solid #f59e0b';
+    box.innerHTML = `<div style="font-weight:600;color:#f59e0b;font-size:12px;margin-bottom:6px;">
+      ${missing.length} expected model(s) not installed
+    </div>${rows}
+    <div style="font-size:10.5px;color:var(--text-dim);margin-top:6px;">
+      Pull missing models from the Ollama panel above, or reassign these agents to an installed model.
+    </div>`;
+  } catch (e) {
+    box.style.display = 'none';
+  }
+}
+
+window.watchdogRefresh = watchdogRefresh;
+window.watchdogSaveSettings = watchdogSaveSettings;
+window.watchdogScanNow = watchdogScanNow;
+window.watchdogRefreshMissingModels = watchdogRefreshMissingModels;
+
