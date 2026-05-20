@@ -36,8 +36,12 @@ class NodesAdapter : ListAdapter<HiveNode, NodesAdapter.ViewHolder>(DiffCallback
         private val chipGroup: ChipGroup = itemView.findViewById(R.id.capabilities)
 
         fun bind(node: HiveNode) {
-            nodeId.text = node.nodeId
-            platform.text = "${node.platform} \u2022 ${node.ageS}s ago"
+            nodeId.text = if (node.expected) "${node.nodeId} · expected" else node.nodeId
+            platform.text = when {
+                node.offline -> "${node.platform} \u2022 waiting for telemetry"
+                node.ageS >= 0 -> "${node.platform} \u2022 ${node.ageS}s ago"
+                else -> node.platform
+            }
             chipGroup.removeAllViews()
             node.capabilities.forEach { cap ->
                 val chip = Chip(itemView.context).apply {

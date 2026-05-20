@@ -16,6 +16,17 @@
         android:textColor="@color/text_primary"
         android:textSize="16sp" />
 
+    <TextView
+        android:id="@+id/handoffText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp"
+        android:text="Handoff: loading..."
+        android:textColor="@color/accent"
+        android:textSize="14sp" />
+
     <com.google.android.material.progressindicator.CircularProgressIndicator
         android:id="@+id/progress"
         android:layout_width="wrap_content"

@@ -58,8 +58,18 @@ class WindowManager {
 
   create(id, title, contentTemplateId, options = {}) {
     if (this.windows.has(id)) {
+      const existing = this.windows.get(id);
+      if (existing?.minimized) {
+        existing.minimized = false;
+        existing.el.style.display = 'flex';
+      }
       this.focus(id);
-      return this.windows.get(id);
+      try {
+        if (typeof window.fridaysWindowRendered === 'function') {
+          window.fridaysWindowRendered(id, existing);
+        }
+      } catch (_err) { /* view hook best-effort */ }
+      return existing;
     }
 
     const baseId = options.baseId || id;
@@ -172,6 +182,11 @@ class WindowManager {
 
     this.addTaskbarBtn(id, title, baseId);
     this.save();
+    try {
+      if (typeof window.fridaysWindowRendered === 'function') {
+        window.fridaysWindowRendered(id, this.windows.get(id));
+      }
+    } catch (_err) { /* view hook best-effort */ }
     return this.windows.get(id);
   }
 

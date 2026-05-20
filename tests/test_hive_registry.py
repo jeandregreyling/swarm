@@ -69,3 +69,26 @@ def test_recent_events_returned(reg):
     events = reg.recent_events(node_id='n1', limit=10)
     kinds = [e['kind'] for e in events]
     assert 'policy-set' in kinds
+
+
+def test_targeted_job_only_claimed_by_target(reg):
+    job_id = reg.submit_job(
+        'tflite.inference',
+        {'packet': 'tiny'},
+        capability_req='inference.gpu',
+        node_id='potato-2',
+    )
+    assert reg.claim_next_job('potato-1', ['inference.gpu']) is None
+    job = reg.claim_next_job('potato-2', ['inference.gpu'])
+    assert job is not None
+    assert job['job_id'] == job_id
+
+
+def test_capability_required_for_targeted_job(reg):
+    reg.submit_job(
+        'tflite.inference',
+        {'packet': 'tiny'},
+        capability_req='inference.gpu',
+        node_id='potato-2',
+    )
+    assert reg.claim_next_job('potato-2', ['inference.cpu']) is None

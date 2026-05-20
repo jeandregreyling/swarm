@@ -57,10 +57,95 @@ def _err(msg: str, status: int = 400) -> Any:
     return jsonify({'ok': False, 'error': msg}), status
 
 
+_EXPECTED_FARM_NODES = (
+    {
+        'node_id': 'potato-1',
+        'label': 'potato-1 Leader',
+        'platform': 'linux',
+        'capabilities': ['scheduler.coordinator', 'inference.cpu', 'inference.ollama'],
+    },
+    {
+        'node_id': 'potato-2',
+        'label': 'potato-2 Samsung S9 FE',
+        'platform': 'android',
+        'capabilities': ['scheduler.worker', 'inference.cpu', 'inference.gpu', 'inference.tflite'],
+    },
+    {
+        'node_id': 'potato-3',
+        'label': 'potato-3 MacBook',
+        'platform': 'macos',
+        'capabilities': ['scheduler.worker', 'inference.cpu'],
+    },
+    {
+        'node_id': 'potato-4',
+        'label': 'potato-4 Dell',
+        'platform': 'linux/windows',
+        'capabilities': ['scheduler.worker', 'inference.cpu'],
+    },
+)
+
+
+def _with_expected_farm_nodes(nodes: list[dict]) -> list[dict]:
+    """Add expected farm nodes so every client renders the same roster."""
+    seen = {str(n.get('node_id') or '').lower() for n in nodes}
+    merged = list(nodes)
+    for expected in _EXPECTED_FARM_NODES:
+        if expected['node_id'].lower() in seen:
+            continue
+        merged.append({
+            'node_id': expected['node_id'],
+            'platform': expected['platform'],
+            'enrolled_ts': None,
+            'last_seen_ts': None,
+            'age_s': None,
+            'label': expected['label'],
+            'notes': 'expected potato farm node; waiting for telemetry',
+            'offline': True,
+            'expected': True,
+            'telemetry': {
+                'contract': 'node.resource/v0',
+                'node_id': expected['node_id'],
+                'platform': expected['platform'],
+                'ts': 0,
+                'capabilities': expected['capabilities'],
+                'compute': {
+                    'cpu_load_pct': None,
+                    'cpu_peak_temp_c': None,
+                    'cpu_throttled': None,
+                    'gpu_present': 'inference.gpu' in expected['capabilities'],
+                    'gpu_load_pct': None,
+                    'gpu_temp_c': None,
+                    'npu_present': 'inference.npu' in expected['capabilities'],
+                },
+                'thermal': {
+                    'fan_rpm': None,
+                    'fan_pwm': None,
+                    'fan_max_rpm': None,
+                    'fan_mode': 'unknown',
+                    'controllable': False,
+                },
+                'memory': {
+                    'ram_total_mb': None,
+                    'ram_free_mb': None,
+                    'swap_used_mb': None,
+                },
+                'power': {
+                    'on_battery': False,
+                    'battery_pct': None,
+                    'thermal_pressure': 'nominal',
+                },
+            },
+            'policy': None,
+        })
+    return merged
+
+
 @hive_bp.get('/nodes')
 def list_nodes():
     max_age = request.args.get('max_age_s', type=int)
     nodes = _registry().list_nodes(max_age_s=max_age)
+    if request.args.get('expected', '1') != '0':
+        nodes = _with_expected_farm_nodes(nodes)
     return jsonify({'ok': True, 'count': len(nodes), 'nodes': nodes})
 
 
@@ -212,8 +297,10 @@ _INSTALL_FILES: dict[str, tuple[str, str]] = {
     'bootstrap.ps1':             ('ops/install/bootstrap.ps1',               'text/plain'),
     'hive_installer_core.py':    ('ops/install/hive_installer_core.py',      'text/x-python'),
     'hive_installer_gui.py':     ('ops/install/hive_installer_gui.py',       'text/x-python'),
+    'termux_runner.py':          ('core/hive/termux_runner.py',              'text/x-python'),
     'swarm-hive.apk':            ('ops/install/android/swarm-hive.apk',      'application/vnd.android.package-archive'),
     'seven-app.apk':             ('ops/install/android/seven-app.apk',       'application/vnd.android.package-archive'),
+    'seven-app-v1.0.4.apk':      ('ops/install/android/seven-app-v1.0.4.apk','application/vnd.android.package-archive'),
     'seven-app-v1.0.0.apk':      ('ops/install/android/seven-app-v1.0.0.apk','application/vnd.android.package-archive'),
     'seven-app-v1.0.1.apk':      ('ops/install/android/seven-app-v1.0.1.apk','application/vnd.android.package-archive'),
     'seven-app-v1.0.2.apk':      ('ops/install/android/seven-app-v1.0.2.apk','application/vnd.android.package-archive'),
@@ -233,6 +320,7 @@ def install_android_page():
     """HTML landing page for Android users — open in tablet browser, tap to install."""
     leader = request.host_url.rstrip('/')
     apk_url = f'{leader}/api/hive/install/seven-app.apk'
+    v104_url = f'{leader}/api/hive/install/seven-app-v1.0.4.apk'
     v103_url = f'{leader}/api/hive/install/seven-app-v1.0.3.apk'
     v102_url = f'{leader}/api/hive/install/seven-app-v1.0.2.apk'
     v101_url = f'{leader}/api/hive/install/seven-app-v1.0.1.apk'
@@ -267,7 +355,7 @@ def install_android_page():
 <div class="card">
   <h1>🤖 Seven for Android</h1>
   <p>Install the <strong>Seven</strong> app on your Samsung S9 FE tablet. Chat with the swarm, view Hive nodes, and manage settings.</p>
-  <p class="version">Latest: v1.0.3 (5.0 MB) · signed · sundial system status</p>
+    <p class="version">Latest: v1.0.4 (5.5 MB) · signed · GPU packet handoff</p>
   <a class="btn" href="{apk_url}" download>⬇ Download Seven App</a>
   <p class="warn">⚠ You may need to allow “Install unknown apps” for your browser when prompted.</p>
   <ol class="steps">
@@ -280,6 +368,7 @@ def install_android_page():
   <p class="feature">✅ Features: Chat · Nodes Grid · Settings · Material Design 3</p>
   <div class="archive">
     <p class="archive-title">📦 Version Archive</p>
+        <a class="btn-secondary" href="{v104_url}" download>v1.0.4 — GPU packet handoff</a>
     <a class="btn-secondary" href="{v103_url}" download>v1.0.3 — sundial system status</a>
     <a class="btn-secondary" href="{v102_url}" download>v1.0.2 — potato status + resource sharing</a>
     <a class="btn-secondary" href="{v101_url}" download>v1.0.1 — launch crash fix</a>
@@ -378,18 +467,23 @@ def install_file(filename: str):
 def submit_job():
     """Submit a job to the Hive queue.
 
-    Body: {kind, payload, capability_req?}
+    Body: {kind, payload, capability_req?, node_id?}
     """
     payload = request.get_json(silent=True) or {}
     kind = payload.get('kind')
     if not isinstance(kind, str) or not kind:
         return _err('kind required', 400)
+    body = payload.get('payload') or {}
+    node_id = payload.get('node_id') or body.get('target_node')
+    if node_id is not None and not isinstance(node_id, str):
+        return _err('node_id must be a string', 400)
     job_id = _registry().submit_job(
         kind,
-        payload.get('payload') or {},
+        body,
         capability_req=payload.get('capability_req'),
+        node_id=node_id or None,
     )
-    return jsonify({'ok': True, 'job_id': job_id})
+    return jsonify({'ok': True, 'job_id': job_id, 'node_id': node_id or None})
 
 
 @hive_bp.post('/jobs/next')

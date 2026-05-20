@@ -31,6 +31,11 @@ import kotlin.concurrent.thread
  */
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        private const val DEFAULT_LEADER = "http://100.87.66.45:5050"
+        private const val SAMSUNG_POTATO_NODE_ID = "potato-2"
+    }
+
     private lateinit var prefs: HivePrefs
     private lateinit var leaderField: EditText
     private lateinit var nodeIdField: EditText
@@ -103,6 +108,22 @@ class MainActivity : AppCompatActivity() {
         }
 
         ensureNotificationPermission()
+
+        // Dedicated potato-slate mode: the Samsung should join the farm
+        // without manual typing after a reinstall or clean-up.
+        if (prefs.leader.isBlank() || prefs.token.isBlank()) {
+            val leader = DEFAULT_LEADER
+            val nodeId = if (Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
+                SAMSUNG_POTATO_NODE_ID
+            } else {
+                prefs.suggestNodeId()
+            }
+            leaderField.setText(leader)
+            nodeIdField.setText(nodeId)
+            connect(leader, nodeId)
+        } else {
+            AgentLauncher.start(this)
+        }
     }
 
     private fun hideKeyboard() {
@@ -120,6 +141,10 @@ class MainActivity : AppCompatActivity() {
             return
         }
         leaderField.setText(leader)  // show the cleaned-up form back to the user
+        connect(leader, preferred)
+    }
+
+    private fun connect(leader: String, preferred: String?) {
         setStatus(getString(R.string.status_enrolling), State.Working)
         thread(name = "hive-enrol") {
             val res = EnrolmentClient.enrol(leader, preferred)

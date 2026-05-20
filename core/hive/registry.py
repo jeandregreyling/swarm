@@ -316,16 +316,23 @@ class HiveRegistry:
 
     # -- jobs ------------------------------------------------------------
     def submit_job(self, kind: str, payload: dict, *,
-                   capability_req: str | None = None) -> str:
+                   capability_req: str | None = None,
+                   node_id: str | None = None) -> str:
         """Submit a job to the queue. Returns job_id."""
         job_id = f"job-{int(time.time())}-{os.urandom(4).hex()}"
         encoded = json.dumps(payload, separators=(',', ':'))
         now = int(time.time())
         with self._lock, self._connect() as conn:
             conn.execute(
-                'INSERT INTO hive_jobs (job_id, kind, payload_json, '
-                'status, created_ts, capability_req) VALUES (?,?,?,?,?,?)',
-                (job_id, kind, encoded, 'pending', now, capability_req),
+                'INSERT INTO hive_jobs (job_id, node_id, kind, payload_json, '
+                'status, created_ts, capability_req) VALUES (?,?,?,?,?,?,?)',
+                (job_id, node_id or None, kind, encoded, 'pending', now,
+                 capability_req),
+            )
+            conn.execute(
+                'INSERT INTO hive_events (ts, node_id, kind, detail) '
+                'VALUES (?,?,?,?)',
+                (now, node_id or '', 'job-submitted', job_id),
             )
             conn.commit()
         return job_id

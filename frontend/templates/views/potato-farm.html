@@ -16,6 +16,12 @@
   </div>
 
   <div id="pfarm-content" style="flex:1;overflow-y:auto;padding:10px;">
+    <!-- Proof strip -->
+    <div id="pfarm-proof" style="padding:10px;border:1px solid var(--accent);border-radius:6px;background:color-mix(in srgb,var(--accent) 14%,var(--card));margin-bottom:12px;font-size:11px;line-height:1.5;">
+      <div style="font-weight:700;color:var(--text);">Samsung GPU handoff proof loading...</div>
+      <div style="font-size:10px;color:var(--text-dim);">Waiting for potato-2 status.</div>
+    </div>
+
     <!-- Network map -->
     <div style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);margin-bottom:12px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
@@ -41,6 +47,7 @@
       <div style="font-weight:600;margin-bottom:8px;font-size:11px;">🚜 Dispatch Task</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;">
         <select id="pfarm-task-type" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;">
+          <option value="tflite.gpu">Samsung GPU Packet</option>
           <option value="tflite.inference">TFLite Inference</option>
           <option value="ollama.chat">Ollama Chat</option>
           <option value="agent.run">Agent Run</option>

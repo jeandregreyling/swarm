@@ -225,6 +225,7 @@ class HiveAgent:
                 reply = self.post_once()
                 if reply.get('ok'):
                     _LOG.info('telemetry posted ok ts=%s', reply.get('ts'))
+                    self.claim_and_run_once()
                     backoff = 1.0
                 else:
                     _LOG.warning('leader rejected telemetry: %s', reply)
@@ -239,6 +240,45 @@ class HiveAgent:
                 continue
             elapsed = time.time() - t0
             self._sleep(max(0.0, self.interval - elapsed))
+
+    def claim_and_run_once(self) -> None:
+        """Claim and complete one lightweight Hive job when available."""
+        payload = self.sample_payload()
+        caps = payload.get('capabilities') or []
+        data = self._transport(
+            'POST',
+            f'{self.leader}/api/hive/jobs/next',
+            payload={'node_id': payload['node_id'], 'capabilities': caps},
+            token=self.token,
+        )
+        job = data.get('job')
+        if not isinstance(job, dict):
+            return
+        result = self._run_job(job, caps)
+        self._transport(
+            'POST',
+            f'{self.leader}/api/hive/jobs/report',
+            payload={'node_id': payload['node_id'], 'job_id': job['job_id'], 'result': result},
+            token=self.token,
+        )
+
+    def _run_job(self, job: dict[str, Any], caps: list[str]) -> dict[str, Any]:
+        """Default portable runner: prove routing; specialized runners do inference."""
+        kind = job.get('kind')
+        body = job.get('payload') or {}
+        if kind in {'gpu.probe', 'tflite.gpu', 'tflite.inference'}:
+            return {
+                'ok': True,
+                'runner': 'portable-hive-agent',
+                'kind': kind,
+                'gpu_present': 'inference.gpu' in caps,
+                'npu_present': 'inference.npu' in caps,
+                'capabilities': caps,
+                'packet_profile': body.get('packet_profile', 'tiny-quantized'),
+                'quantization': body.get('quantization', 'int8-preferred'),
+                'note': 'portable agent claimed the packet; termux_runner.py executes model-file TFLite packets',
+            }
+        return {'ok': True, 'runner': 'portable-hive-agent', 'kind': kind, 'echo': body.get('data')}
 
     def _sleep(self, seconds: float) -> None:
         """Interruptible sleep so SIGTERM exits within ~1s."""

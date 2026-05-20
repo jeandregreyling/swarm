@@ -40,8 +40,11 @@ Rules enforced
 from __future__ import annotations
 
 import logging
+import json
 import threading
 import time
+import urllib.request
+from types import SimpleNamespace
 from typing import Any, Callable, Iterable, Optional
 
 logger = logging.getLogger('core.llm')
@@ -88,6 +91,19 @@ def _get_ollama():
     """Lazy import so import failures surface at call time, not module load."""
     import ollama
     return ollama
+
+
+def _to_namespace(value: Any) -> Any:
+    if isinstance(value, dict):
+        return SimpleNamespace(**{k: _to_namespace(v) for k, v in value.items()})
+    if isinstance(value, list):
+        return [_to_namespace(v) for v in value]
+    return value
+
+
+def _ollama_http(path: str) -> Any:
+    with urllib.request.urlopen(f'http://localhost:11434{path}', timeout=5) as resp:
+        return json.loads(resp.read().decode('utf-8') or '{}')
 
 
 # ── Public API ──────────────────────────────────────────────────────────────
@@ -176,12 +192,20 @@ def chat(
 
 def ps():
     """Return running models (raw ollama ListResponse; has `.models`)."""
-    return _get_ollama().ps()
+    ollama = _get_ollama()
+    if hasattr(ollama, 'ps'):
+        return ollama.ps()
+    data = _ollama_http('/api/ps')
+    return SimpleNamespace(models=_to_namespace(data.get('models') or []))
 
 
 def list_models():
     """Return all pulled models (raw ollama ListResponse; has `.models`)."""
-    return _get_ollama().list()
+    ollama = _get_ollama()
+    if hasattr(ollama, 'list'):
+        return ollama.list()
+    data = _ollama_http('/api/tags')
+    return SimpleNamespace(models=_to_namespace(data.get('models') or []))
 
 
 def show(model: str):

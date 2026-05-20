@@ -138,3 +138,33 @@ def test_agent_post_once_via_main(hive_agent, isolated_config, monkeypatch, caps
     assert rc == 0
     data = json.loads(capsys.readouterr().out)
     assert data == {'ok': True, 'ts': 42}
+
+
+def test_agent_claims_and_reports_gpu_job(hive_agent, isolated_config):
+    calls = []
+
+    def fake_transport(method, url, *, payload=None, token=None, timeout=10.0):
+        calls.append((method, url, payload, token))
+        if url.endswith('/api/hive/jobs/next'):
+            return {'ok': True, 'job': {
+                'job_id': 'job-1',
+                'kind': 'tflite.gpu',
+                'payload': {'packet_profile': 'tiny-quantized'},
+            }}
+        if url.endswith('/api/hive/jobs/report'):
+            return {'ok': True}
+        return {'ok': True, 'ts': 1}
+
+    agent = hive_agent.HiveAgent(
+        leader='http://leader:5050',
+        token='tok',
+        node_id='potato-2',
+        transport=fake_transport,
+    )
+    agent.claim_and_run_once()
+
+    report = [c for c in calls if c[1].endswith('/api/hive/jobs/report')][0]
+    result = report[2]['result']
+    assert result['ok'] is True
+    assert result['kind'] == 'tflite.gpu'
+    assert result['packet_profile'] == 'tiny-quantized'

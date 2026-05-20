@@ -99,3 +99,29 @@ def test_delete_existing(client):
     assert rv.status_code == 200
     rv2 = client.get('/api/hive/node/togo')
     assert rv2.status_code == 404
+
+
+def test_submit_job_can_target_node(client):
+    rv = client.post('/api/hive/jobs/submit', json={
+        'kind': 'tflite.inference',
+        'payload': {'target_node': 'potato-2', 'packet': 'tiny'},
+        'capability_req': 'inference.gpu',
+    })
+    assert rv.status_code == 200, rv.get_data(as_text=True)
+    j = rv.get_json()
+    assert j['ok']
+    assert j['node_id'] == 'potato-2'
+
+    rv = client.post('/api/hive/jobs/next', json={
+        'node_id': 'potato-1',
+        'capabilities': ['inference.gpu'],
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['job'] is None
+
+    rv = client.post('/api/hive/jobs/next', json={
+        'node_id': 'potato-2',
+        'capabilities': ['inference.gpu', 'inference.tflite'],
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['job']['kind'] == 'tflite.inference'

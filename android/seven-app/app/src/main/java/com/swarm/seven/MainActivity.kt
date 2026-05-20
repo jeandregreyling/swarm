@@ -158,6 +158,7 @@ class MainActivity : AppCompatActivity() {
             val message = withContext(Dispatchers.IO) {
                 val enrol = api.enrol(sampler.nodeId(), sampler.deviceLabel())
                 val telemetry = api.postTelemetry(sampler.telemetryPayload())
+                val handoff = claimOneHandoff()
                 val health = api.leaderHealth()
                 buildString {
                     appendLine(prefix)
@@ -166,6 +167,7 @@ class MainActivity : AppCompatActivity() {
                     appendLine("Leader: ${api.baseUrl}")
                     appendLine("Enrolment: ${enrol.fold({ "ok ($it)" }, { "failed: ${it.message}" })}")
                     appendLine("Telemetry: ${telemetry.fold({ "posted" }, { "failed: ${it.message}" })}")
+                    appendLine("Handoff: ${handoff ?: "no queued packet"}")
                     appendLine("Leader health: ${health.fold({ if (it) "online" else "degraded" }, { "failed: ${it.message}" })}")
                     appendLine()
                     append("What this means: Seven now knows this Samsung is potato-2 and can share resources through Hive jobs. Local LLMs are not inside the Android app yet; they run through Termux/Ollama with small models after we clear enough storage.")
@@ -185,12 +187,35 @@ class MainActivity : AppCompatActivity() {
             val status = withContext(Dispatchers.IO) {
                 val enrol = api.enrol(sampler.nodeId(), sampler.deviceLabel())
                 val telemetry = if (postTelemetry) api.postTelemetry(sampler.telemetryPayload()) else Result.success(sampler.nodeId())
+                val handoff = if (postTelemetry) claimOneHandoff() else null
                 val health = api.leaderHealth()
                 val ok = enrol.isSuccess && telemetry.isSuccess && health.getOrDefault(false)
-                ok to if (enrol.isSuccess && telemetry.isSuccess) "Connected potato: ${sampler.nodeId()}" else "Potato not fully connected"
+                ok to when {
+                    handoff != null -> handoff
+                    enrol.isSuccess && telemetry.isSuccess -> "Connected potato: ${sampler.nodeId()}"
+                    else -> "Potato not fully connected"
+                }
             }
             updatePotatoViews(status.second, leaderOk = status.first)
         }
+    }
+
+    private fun claimOneHandoff(): String? {
+        val nodeId = sampler.nodeId()
+        val sample = sampler.sample()
+        val job = api.claimNextJob(nodeId, sample.capabilities).getOrNull() ?: return null
+        val result = org.json.JSONObject().apply {
+            put("ok", true)
+            put("runner", "seven-app")
+            put("kind", job.kind)
+            put("gpu_present", sample.capabilities.contains("inference.gpu"))
+            put("npu_present", sample.capabilities.contains("inference.npu"))
+            put("capabilities", org.json.JSONArray().also { arr -> sample.capabilities.forEach { arr.put(it) } })
+            put("packet_profile", "tiny-quantized")
+            put("quantization", "int8-preferred")
+        }
+        val reported = api.reportJobResult(nodeId, job.jobId, result).getOrDefault(false)
+        return if (reported) "${job.kind} -> $nodeId completed" else "${job.kind} -> $nodeId claimed"
     }
 
     private fun updatePotatoViews(status: String, leaderOk: Boolean = true) {

@@ -30,13 +30,13 @@ _OLLAMA_LIBRARY_FALLBACK = [
 @ollama_bp.route('/api/ollama/models')
 def api_ollama_models():
     """List all locally installed Ollama models."""
-    import ollama as _ollama
+    from core import llm as _llm
     try:
-        result = _ollama.list()
+        result = _llm.list_models()
         models = []
         for m in (result.models if hasattr(result, 'models') else []):
             models.append({
-                'name':        getattr(m, 'model', '') or '',
+                'name':        getattr(m, 'model', '') or getattr(m, 'name', '') or '',
                 'size':        int(getattr(m, 'size', 0) or 0),
                 'modified_at': str(getattr(m, 'modified_at', '') or ''),
                 'family':      (getattr(m, 'details', None) and getattr(m.details, 'family', '')) or '',
@@ -140,9 +140,9 @@ def api_ollama_keepalive():
 @ollama_bp.route('/api/ollama/ps')
 def api_ollama_ps():
     """Show models currently loaded (resident in RAM or being actively used)."""
-    import ollama as _ollama
+    from core import llm as _llm
     try:
-        result = _ollama.ps()
+        result = _llm.ps()
         models = []
         for m in (result.models if hasattr(result, 'models') else []):
             size_bytes  = int(getattr(m, 'size', 0) or 0)
@@ -254,6 +254,7 @@ def api_ollama_pull():
 def api_ollama_delete():
     """Delete a locally installed model. Refuses if the model is currently loaded."""
     import ollama as _ollama
+    from core import llm as _llm
     data  = request.get_json(silent=True) or {}
     model = (data.get('model') or '').strip()
     if not model:
@@ -262,7 +263,7 @@ def api_ollama_delete():
         # Guard: refuse if model is resident in RAM
         loaded_names = []
         try:
-            ps = _ollama.ps()
+            ps = _llm.ps()
             loaded_names = [
                 getattr(m, 'model', '') or ''
                 for m in (ps.models if hasattr(ps, 'models') else [])

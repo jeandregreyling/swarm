@@ -144,24 +144,12 @@ def _compute_asset_version() -> str:
     """Asset cache-bust token (S-CAAD1B6D9C).
 
     Order of preference: SWARM_ASSET_VERSION env var (CI/deploy can pin),
-    short git sha if a .git tree is reachable, else the current epoch
-    second so devs always see fresh assets after a restart.
+    else current epoch second so local/live operator changes are visible
+    immediately after a restart even before a git commit changes HEAD.
     """
     forced = os.environ.get('SWARM_ASSET_VERSION', '').strip()
     if forced:
         return forced
-    try:
-        import subprocess
-        out = subprocess.run(
-            ['git', '-C', str(Path(__file__).resolve().parent.parent),
-             'rev-parse', '--short=10', 'HEAD'],
-            capture_output=True, text=True, timeout=2,
-        )
-        sha = out.stdout.strip()
-        if sha:
-            return sha
-    except Exception:
-        pass
     import time as _t
     return str(int(_t.time()))
 
@@ -197,13 +185,16 @@ def create_app():
     # Y.58c — never let the browser serve a stale HTML shell. The shell
     # routes the entire SPA so a cached copy makes new tile layouts
     # (Y.58 Files-into-KC, Cyber-into-Vortex, Money-Hub merge, etc.)
-    # invisible until the user manually hard-refreshes. Static assets keep
-    # their per-deploy ?v=ASSET_VERSION cache-bust untouched.
+    # invisible until the user manually hard-refreshes. JS/CSS are also
+    # no-cached in this local operator build because hot patching Fridays
+    # without committing leaves git-sha cache-bust tokens unchanged.
     @app.after_request
     def _no_cache_html(resp):  # noqa: ANN001
         try:
+            from flask import request
             ctype = (resp.headers.get('Content-Type') or '').lower()
-            if 'text/html' in ctype:
+            path = getattr(request, 'path', '') or ''
+            if 'text/html' in ctype or path.startswith('/static/'):
                 resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                 resp.headers['Pragma'] = 'no-cache'
                 resp.headers['Expires'] = '0'
@@ -272,7 +263,9 @@ def create_app():
 
     @app.route("/", methods=["GET"])
     def root_status():
-        from flask import jsonify
+        from flask import jsonify, redirect, request
+        if request.accept_mimetypes.accept_html:
+            return redirect("/ui")
         return jsonify({"status": "ok", "message": "Fridays/Swarm API is running."})
 
     @app.route("/_health", methods=["GET"])

@@ -127,9 +127,43 @@ class SwarmApi(context: Context) {
                         nodeId = n.optString("node_id"),
                         platform = n.optString("platform"),
                         ageS = n.optInt("age_s", -1),
+                        offline = n.optBoolean("offline", false),
+                        expected = n.optBoolean("expected", false),
                         capabilities = n.optJSONObject("telemetry")?.optJSONArray("capabilities")?.let { arr ->
                             (0 until arr.length()).map { j -> arr.optString(j) }
                         } ?: emptyList()
+                    )
+                }
+                Result.success(result)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun listJobs(): Result<List<HiveJob>> {
+        return try {
+            val request = Request.Builder()
+                .url("$baseUrl/api/hive/jobs")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Server returned HTTP ${response.code}")
+                val raw = response.body?.string() ?: return Result.failure(IOException("Empty response"))
+                val json = try {
+                    JSONObject(raw)
+                } catch (e: Exception) {
+                    return Result.failure(IOException("Malformed server response"))
+                }
+                val jobs = json.optJSONArray("jobs") ?: JSONArray()
+                val result = (0 until jobs.length()).map { i ->
+                    val j = jobs.getJSONObject(i)
+                    HiveJob(
+                        jobId = j.optString("job_id"),
+                        nodeId = j.optString("node_id"),
+                        kind = j.optString("kind"),
+                        status = j.optString("status"),
+                        capabilityReq = j.optString("capability_req"),
                     )
                 }
                 Result.success(result)
@@ -166,11 +200,72 @@ class SwarmApi(context: Context) {
             Result.failure(e)
         }
     }
+
+    fun claimNextJob(nodeId: String, capabilities: List<String>): Result<HiveJob?> {
+        return try {
+            val body = JSONObject().apply {
+                put("node_id", nodeId)
+                put("capabilities", JSONArray().also { arr -> capabilities.forEach { arr.put(it) } })
+            }.toString().toRequestBody(jsonType)
+            val builder = Request.Builder()
+                .url("$baseUrl/api/hive/jobs/next")
+                .post(body)
+            if (hiveToken.isNotBlank()) builder.header("X-Hive-Token", hiveToken)
+
+            client.newCall(builder.build()).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Server returned HTTP ${response.code}")
+                val raw = response.body?.string() ?: return Result.failure(IOException("Empty response"))
+                val json = JSONObject(raw)
+                val job = json.optJSONObject("job") ?: return Result.success(null)
+                Result.success(HiveJob(
+                    jobId = job.optString("job_id"),
+                    nodeId = nodeId,
+                    kind = job.optString("kind"),
+                    status = "claimed",
+                    capabilityReq = "",
+                ))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun reportJobResult(nodeId: String, jobId: String, result: JSONObject): Result<Boolean> {
+        return try {
+            val body = JSONObject().apply {
+                put("node_id", nodeId)
+                put("job_id", jobId)
+                put("result", result)
+            }.toString().toRequestBody(jsonType)
+            val builder = Request.Builder()
+                .url("$baseUrl/api/hive/jobs/report")
+                .post(body)
+            if (hiveToken.isNotBlank()) builder.header("X-Hive-Token", hiveToken)
+
+            client.newCall(builder.build()).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Server returned HTTP ${response.code}")
+                val json = JSONObject(response.body?.string() ?: "{}")
+                Result.success(json.optBoolean("ok", false))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 data class HiveNode(
     val nodeId: String,
     val platform: String,
     val ageS: Int,
+    val offline: Boolean,
+    val expected: Boolean,
     val capabilities: List<String>
+)
+
+data class HiveJob(
+    val jobId: String,
+    val nodeId: String,
+    val kind: String,
+    val status: String,
+    val capabilityReq: String,
 )

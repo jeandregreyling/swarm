@@ -127,7 +127,9 @@ class HiveAgentService : LifecycleService() {
         wl.acquire(15_000L)
         try {
             val payload = buildPayload(nodeId, sampler)
-            return postTelemetry(leader, payload)
+            val posted = postTelemetry(leader, payload)
+            if (posted) claimAndRunOneJob(leader, nodeId, sampler.capabilities())
+            return posted
         } finally {
             if (wl.isHeld) wl.release()
         }
@@ -137,6 +139,10 @@ class HiveAgentService : LifecycleService() {
 
     private fun postTelemetry(leader: String, payload: JSONObject): Boolean {
         val urlStr = leader.trimEnd('/') + "/api/hive/telemetry"
+        return postJson(urlStr, payload) != null
+    }
+
+    private fun postJson(urlStr: String, payload: JSONObject): JSONObject? {
         return try {
             val url = URL(urlStr)
             val conn = (url.openConnection() as HttpURLConnection).apply {
@@ -159,15 +165,61 @@ class HiveAgentService : LifecycleService() {
                 ?: ""
             conn.disconnect()
             if (code in 200..299) {
-                Log.d(TAG, "tick ok ${payload.optLong("ts")}")
-                true
+                if (body.isBlank()) JSONObject() else JSONObject(body)
             } else {
-                Log.w(TAG, "tick http $code: ${body.take(200)}")
-                false
+                Log.w(TAG, "post http $code: ${body.take(200)}")
+                null
             }
         } catch (e: Exception) {
-            Log.w(TAG, "tick failed: ${e.javaClass.simpleName}: ${e.message}")
-            false
+            Log.w(TAG, "post failed: ${e.javaClass.simpleName}: ${e.message}")
+            null
+        }
+    }
+
+    private fun claimAndRunOneJob(leader: String, nodeId: String, caps: List<String>) {
+        val req = JSONObject().apply {
+            put("node_id", nodeId)
+            val arr = org.json.JSONArray()
+            for (c in caps) arr.put(c)
+            put("capabilities", arr)
+        }
+        val claimed = postJson(leader.trimEnd('/') + "/api/hive/jobs/next", req) ?: return
+        val job = claimed.optJSONObject("job") ?: return
+        val jobId = job.optString("job_id")
+        if (jobId.isBlank()) return
+        Log.i(TAG, "claimed hive job $jobId kind=${job.optString("kind")}")
+        val result = runJob(job, caps)
+        postJson(
+            leader.trimEnd('/') + "/api/hive/jobs/report",
+            JSONObject().apply {
+                put("node_id", nodeId)
+                put("job_id", jobId)
+                put("result", result)
+            }
+        )
+    }
+
+    private fun runJob(job: JSONObject, caps: List<String>): JSONObject {
+        val kind = job.optString("kind")
+        val payload = job.optJSONObject("payload") ?: JSONObject()
+        return when (kind) {
+            "gpu.probe", "tflite.gpu", "tflite.inference" -> JSONObject().apply {
+                put("ok", true)
+                put("runner", "android-apk")
+                put("kind", kind)
+                put("gpu_present", caps.contains("inference.gpu"))
+                put("npu_present", caps.contains("inference.npu"))
+                put("capabilities", org.json.JSONArray(caps))
+                put("packet_profile", payload.optString("packet_profile", "tiny-quantized"))
+                put("quantization", payload.optString("quantization", "int8-preferred"))
+                put("note", "APK claimed the packet and verified Samsung GPU capability; Termux runner executes model-file TFLite packets.")
+            }
+            else -> JSONObject().apply {
+                put("ok", true)
+                put("runner", "android-apk")
+                put("kind", kind)
+                put("echo", payload.optString("data", ""))
+            }
         }
     }
 

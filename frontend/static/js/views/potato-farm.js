@@ -38,6 +38,7 @@ function _pfRenderNode(node) {
   const caps = t.capabilities || [];
   const platform = (node.platform || '').toLowerCase();
   const isAndroid = platform === 'android' || platform.startsWith('android');
+  const isPotato2 = String(node.node_id || '').toLowerCase().includes('potato-2') || String(node.label || '').toLowerCase().includes('samsung');
   const isDell = platform.includes('linuxmint') || String(node.label || node.node_id || '').toLowerCase().includes('dell');
   const isMaster = (node.node_id || '').toLowerCase().includes('potato-1') || (node.label || '').toLowerCase().includes('master');
   const ramPct = (m.ram_total_mb && m.ram_free_mb != null)
@@ -48,7 +49,7 @@ function _pfRenderNode(node) {
     : ageS < 60 ? `${ageS}s ago`
     : ageS < 3600 ? `${Math.floor(ageS/60)}m ago`
     : `${Math.floor(ageS/3600)}h ago`;
-  const stale = ageS != null && ageS > 120;
+  const stale = !!node.offline || (ageS != null && ageS > 120);
 
   const platIcon = isAndroid ? '📱'
     : platform.includes('darwin') || platform.includes('mac') ? '🍎'
@@ -63,7 +64,7 @@ function _pfRenderNode(node) {
     ? `<span style="padding:1px 5px;border-radius:3px;background:var(--accent)22;color:var(--accent);border:1px solid var(--accent)55;font-size:8px;font-weight:600;">👤 ${_pfEsc(node.user)}</span>`
     : '<span style="padding:1px 5px;border-radius:3px;background:var(--border);color:var(--text-dim);border:1px solid var(--border);font-size:8px;">no user</span>';
 
-  const capBadges = caps.map(_pfCapBadge).join('') || '<span style="font-size:9px;color:var(--text-dim);">no capabilities</span>';
+  const capBadges = caps.map(_pfCapBadge).join('') || '<span style="font-size:9px;color:var(--text-dim);">waiting for telemetry</span>';
   const cpuStr = c.cpu_load_pct != null ? Math.round(c.cpu_load_pct) + '%' : '—';
   const ramStr = ramPct != null ? ramPct + '%' : '—';
   const battStr = p.battery_pct != null ? `${Math.round(p.battery_pct)}% ${p.on_battery ? '🔋' : '⚡'}` : '—';
@@ -73,6 +74,11 @@ function _pfRenderNode(node) {
   const shareHint = caps.length
     ? caps.map(cap => cap.replace('inference.', '').replace('scheduler.', '').replace('storage.', '')).join(' / ')
     : 'No shared resources reported yet';
+  const gpuLine = isPotato2
+    ? (c.gpu_present || caps.includes('inference.gpu')
+        ? '<span style="color:#4caf50;font-weight:700;">Samsung GPU worker armed</span>'
+        : '<span style="color:#ffa500;font-weight:700;">Samsung expected · waiting for app telemetry</span>')
+    : '';
 
   return `
     <div style="background:var(--card);border:1px solid ${stale ? '#f4433655' : 'var(--border)'};border-radius:6px;padding:10px;font-size:10px;line-height:1.5;">
@@ -95,6 +101,7 @@ function _pfRenderNode(node) {
       </div>
       <div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);color:var(--text-dim);font-size:9px;">
         Share: <strong style="color:var(--text);">${_pfEsc(shareHint)}</strong>
+        ${gpuLine ? `<div style="margin-top:3px;">${gpuLine}</div>` : ''}
       </div>
     </div>
   `;
@@ -175,6 +182,44 @@ function _pfRenderHandoffs(jobs) {
   }).join('');
 }
 
+function _pfRenderProof(nodes, jobs) {
+  const el = document.getElementById('pfarm-proof');
+  const potato2 = (nodes || []).find(n => String(n.node_id || '').toLowerCase() === 'potato-2');
+  const p2Telemetry = potato2?.telemetry || {};
+  const caps = p2Telemetry.capabilities || [];
+  const proofJob = (jobs || []).find(j =>
+    (j.node_id === 'potato-2' || j.capability_req === 'inference.gpu') &&
+    (j.kind === 'tflite.gpu' || j.kind === 'gpu.probe' || j.kind === 'tflite.inference')
+  );
+  const liveAge = potato2?.age_s;
+  const liveText = liveAge == null ? 'expected' : liveAge < 180 ? 'live' : `${liveAge}s old`;
+  const status = proofJob?.status || 'waiting';
+  const ok = status === 'completed' && caps.includes('inference.gpu');
+  if (el) {
+    el.style.borderColor = ok ? '#4caf50' : 'var(--accent)';
+    el.style.background = ok ? 'rgba(76,175,80,.12)' : 'color-mix(in srgb,var(--accent) 14%,var(--card))';
+    el.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${ok ? '#4caf50' : '#ffa500'};display:inline-block;"></span>
+        <strong style="font-size:12px;color:var(--text);">Samsung GPU handoff ${_pfEsc(status)}</strong>
+        <span style="color:var(--text-dim);">${_pfEsc(proofJob?.job_id || 'no job yet')}</span>
+      </div>
+      <div style="margin-top:4px;color:var(--text-dim);font-size:10px;">
+        potato-2 is ${_pfEsc(liveText)} · ${_pfEsc(caps.join(', ') || 'no capabilities')} · route ${_pfEsc(proofJob?.kind || 'tflite.gpu')} -> potato-2
+      </div>
+    `;
+  }
+  const globalProof = document.getElementById('potato-global-proof');
+  const globalText = document.getElementById('potato-global-proof-text');
+  if (globalProof && globalText) {
+    globalProof.style.borderColor = ok ? '#4caf50' : '#ffa500';
+    globalProof.style.background = ok ? 'rgba(18,32,23,.96)' : 'rgba(40,28,10,.96)';
+    globalText.textContent = ok
+      ? `POTATO2 GPU OK · ${proofJob.kind} -> potato-2 completed`
+      : `POTATO2 ${caps.includes('inference.gpu') ? 'GPU visible' : 'waiting'} · ${status}`;
+  }
+}
+
 async function pfarmRefresh() {
   const grid = document.getElementById('pfarm-grid');
   const meta = document.getElementById('pfarm-meta');
@@ -193,19 +238,21 @@ async function pfarmRefresh() {
 
     if (meta) meta.textContent = `${nodes.length} node${nodes.length === 1 ? '' : 's'}`;
 
-    if (!nodes.length) {
+    const displayNodes = _pfExpectedNodes(nodes);
+    if (!displayNodes.length) {
       grid.innerHTML = '<div style="color:var(--text-dim);font-size:10px;">No nodes enrolled yet.</div>';
     } else {
-      grid.innerHTML = nodes.map(_pfRenderNode).join('');
+      grid.innerHTML = displayNodes.map(_pfRenderNode).join('');
     }
     _pfRenderMap(nodes, jobs);
+    _pfRenderProof(nodes, jobs);
     _pfRenderHandoffs(jobs);
 
     // Update target node dropdown
     if (targetSelect) {
       const current = targetSelect.value;
       targetSelect.innerHTML = '<option value="">Auto-route (best node)</option>' +
-        nodes.map(n => `<option value="${_pfEsc(n.node_id)}">${_pfEsc(n.label || n.node_id)}</option>`).join('');
+        displayNodes.map(n => `<option value="${_pfEsc(n.node_id)}">${_pfEsc(n.label || n.node_id)}${n.offline ? ' (expected)' : ''}</option>`).join('');
       targetSelect.value = current;
     }
 
@@ -232,6 +279,42 @@ async function pfarmRefresh() {
   }
 }
 
+async function pfarmRefreshHomeBadge() {
+  const badge = document.getElementById('home-potato-badge');
+  const desc = document.getElementById('home-potato-desc');
+  if (!badge && !desc) return;
+  try {
+    const [nodesRes, jobsRes] = await Promise.all([fetch('/api/hive/nodes'), fetch('/api/hive/jobs')]);
+    const nodesJson = await nodesRes.json();
+    const jobsJson = await jobsRes.json();
+    const potato2 = (nodesJson.nodes || []).find(n => String(n.node_id || '').toLowerCase() === 'potato-2');
+    const caps = (potato2?.telemetry || {}).capabilities || [];
+    const proofJob = (jobsJson.jobs || []).find(j =>
+      (j.node_id === 'potato-2' || j.capability_req === 'inference.gpu') &&
+      (j.kind === 'tflite.gpu' || j.kind === 'gpu.probe' || j.kind === 'tflite.inference')
+    );
+    const ok = proofJob?.status === 'completed' && caps.includes('inference.gpu');
+    if (badge) {
+      badge.style.display = 'inline-block';
+      badge.textContent = ok ? 'GPU OK' : (proofJob?.status || 'WAIT');
+      badge.style.background = ok ? '#4caf5022' : '#ffa50022';
+      badge.style.color = ok ? '#4caf50' : '#ffa500';
+      badge.style.border = `1px solid ${ok ? '#4caf5055' : '#ffa50055'}`;
+    }
+    if (desc) {
+      desc.textContent = ok
+        ? `Samsung handoff completed · ${proofJob.job_id}`
+        : `potato-2 ${caps.includes('inference.gpu') ? 'GPU visible' : 'waiting'} · ${proofJob?.status || 'no handoff'}`;
+    }
+  } catch (_e) {
+    if (badge) {
+      badge.style.display = 'inline-block';
+      badge.textContent = 'ERR';
+      badge.style.color = 'var(--danger,#f44336)';
+    }
+  }
+}
+
 function pfarmDispatch() {
   const typeSel = document.getElementById('pfarm-task-type');
   const targetSel = document.getElementById('pfarm-target-node');
@@ -243,7 +326,17 @@ function pfarmDispatch() {
   const payload = payloadIn ? payloadIn.value.trim() : '';
 
   const caps = _pfTaskCaps(taskType);
-  const envelope = { kind: taskType, payload: { data: payload, target_node: target || null }, capability_req: caps[0] || null };
+  const envelope = {
+    kind: taskType,
+    payload: {
+      data: payload,
+      target_node: target || null,
+      packet_profile: taskType.includes('tflite') ? 'tiny-quantized' : 'standard',
+      quantization: taskType.includes('tflite') ? 'int8-preferred' : null,
+    },
+    capability_req: caps[0] || null,
+    node_id: target || null,
+  };
 
   if (status) status.innerHTML = `<span style="color:var(--accent);">Submitting handoff…</span>`;
 
@@ -266,6 +359,7 @@ function pfarmDispatch() {
 
 function _pfTaskCaps(type) {
   const map = {
+    'tflite.gpu': ['inference.gpu'],
     'tflite.inference': ['inference.tflite'],
     'ollama.chat': ['inference.ollama'],
     'agent.run': ['inference.cpu'],
@@ -289,11 +383,31 @@ function pfarmStartAutoRefresh() {
   _pfarmTimer = setInterval(pfarmRefresh, 20000);
 }
 
+function pfarmEnsureVisible() {
+  pfarmRefreshHomeBadge();
+  if (document.getElementById('pfarm-grid')) pfarmStartAutoRefresh();
+}
+
+const _pfarmPrevWindowRendered = window.fridaysWindowRendered;
+window.fridaysWindowRendered = function fridaysPotatoFarmWindowRendered(id, winState) {
+  if (typeof _pfarmPrevWindowRendered === 'function') {
+    try { _pfarmPrevWindowRendered(id, winState); } catch (_err) { /* preserve later hooks */ }
+  }
+  const baseId = String(winState?.baseId || id || '').toLowerCase();
+  if (baseId === 'potato-farm') {
+    setTimeout(pfarmEnsureVisible, 0);
+  }
+};
+
 window.pfarmRefresh = pfarmRefresh;
 window.pfarmDispatch = pfarmDispatch;
 window.pfarmLog = pfarmLog;
+window.pfarmRefreshHomeBadge = pfarmRefreshHomeBadge;
+window.pfarmEnsureVisible = pfarmEnsureVisible;
 
 document.addEventListener('DOMContentLoaded', () => {
+  pfarmRefreshHomeBadge();
+  setInterval(pfarmRefreshHomeBadge, 20000);
   if (document.getElementById('pfarm-grid')) {
     pfarmStartAutoRefresh();
   } else {
