@@ -19,12 +19,18 @@ from __future__ import annotations
 
 import datetime as _dt
 import os
+import re
 import sqlite3
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 AUDIT = ROOT / "audit"
+
+_DEFAULT_NEWS_FEEDS: tuple[tuple[str, str], ...] = (
+    ("Reuters World", "https://feeds.reuters.com/reuters/worldNews"),
+    ("Hacker News", "https://hnrss.org/frontpage"),
+)
 
 
 def _db_path() -> str:
@@ -126,6 +132,198 @@ def _detector_block() -> tuple[str, dict]:
     return body, d
 
 
+def _html_to_text(raw: str) -> str:
+    if not raw:
+        return ''
+    text = re.sub(r'<[^>]+>', ' ', raw)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+def _extract_image_urls(raw: str) -> list[str]:
+    if not raw:
+        return []
+    out = re.findall(r'https?://[^\s\"\'>]+\.(?:png|jpg|jpeg|webp|gif)', raw, flags=re.IGNORECASE)
+    # Preserve order while deduping.
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for url in out:
+        if url in seen:
+            continue
+        seen.add(url)
+        uniq.append(url)
+    return uniq
+
+
+def _source_name(sub: dict) -> str:
+    title = str(sub.get('title') or '').strip()
+    if title:
+        return title
+    url = str(sub.get('url') or '').strip()
+    return url.replace('https://', '').replace('http://', '')[:60] if url else 'unknown source'
+
+
+def _collect_articles(max_feeds: int = 4, per_feed: int = 4) -> tuple[list[dict], list[str]]:
+    """Pull live RSS/Atom items from enabled subscriptions.
+
+    Returns (articles, issues). We degrade gracefully if feeds are absent or
+    network/content parsing fails.
+    """
+    try:
+        from core import feeds as _feeds
+    except Exception as exc:  # noqa: BLE001
+        return [], [f'feeds unavailable: {exc}']
+
+    issues: list[str] = []
+    articles: list[dict] = []
+    subs = _feeds.list_subscriptions('seven')
+    enabled = [s for s in subs if bool(s.get('enabled')) and s.get('kind') in ('rss', 'atom')]
+    if not enabled:
+        # Honest fallback: pull from known public feeds if the operator has
+        # not configured personal subscriptions yet.
+        enabled = [
+            {'title': title, 'url': url, 'kind': 'rss', 'enabled': True}
+            for title, url in _DEFAULT_NEWS_FEEDS
+        ]
+    for sub in enabled[:max_feeds]:
+        url = str(sub.get('url') or '').strip()
+        if not url:
+            continue
+        try:
+            rows = _feeds.fetch_rss(url, limit=per_feed, timeout=6.0)
+        except Exception as exc:  # noqa: BLE001
+            issues.append(f"{_source_name(sub)}: {exc}")
+            continue
+        for row in rows:
+            title = str(row.get('title') or '').strip()
+            if not title:
+                continue
+            raw_summary = str(row.get('summary') or '')
+            plain_summary = _html_to_text(raw_summary)
+            images = _extract_image_urls(raw_summary)
+            articles.append({
+                'source': _source_name(sub),
+                'title': title,
+                'link': str(row.get('link') or '').strip(),
+                'published': str(row.get('published') or '').strip(),
+                'summary': plain_summary,
+                'images': images,
+            })
+    return articles, issues
+
+
+def _article_score(article: dict) -> int:
+    text = (article.get('title', '') + ' ' + article.get('summary', '')).lower()
+    high = ('security', 'breach', 'vulnerability', 'ransomware', 'earnings',
+            'inflation', 'rate', 'regulation', 'ai', 'gpu', 'chip', 'market')
+    med = ('policy', 'risk', 'outage', 'latency', 'cloud', 'supply', 'trade')
+    score = 0
+    for w in high:
+        if w in text:
+            score += 3
+    for w in med:
+        if w in text:
+            score += 1
+    return score
+
+
+def _topic_label(article: dict) -> str:
+    text = (article.get('title', '') + ' ' + article.get('summary', '')).lower()
+    if any(k in text for k in ('security', 'breach', 'vulnerability', 'ransomware', 'patch')):
+        return 'Cyber'
+    if any(k in text for k in ('earnings', 'market', 'stock', 'bond', 'rate', 'inflation')):
+        return 'Markets'
+    if any(k in text for k in ('ai', 'model', 'gpu', 'chip', 'llm')):
+        return 'AI'
+    if any(k in text for k in ('policy', 'law', 'regulation', 'compliance')):
+        return 'Policy'
+    return 'General'
+
+
+def _bottom_up_explanation(article: dict) -> tuple[str, str, str, str]:
+    title = article.get('title', '')
+    summary = article.get('summary', '')
+    if len(summary) > 260:
+        summary = summary[:257].rstrip() + '...'
+    signal = f"The direct signal is: {title}."
+    system = "This can alter operational risk, cost curves, or execution speed within the next few cycles."
+    stack = "If this touches your stack, priorities shift in scheduling, hardening, or budget allocation before product work."
+    action = "Track one measurable follow-up today: impact on latency, cost, incident exposure, or delivery confidence."
+    if summary:
+        signal = f"The direct signal is: {summary}"
+    return signal, system, stack, action
+
+
+def _newsroom_block(articles: list[dict], issues: list[str]) -> tuple[str, str]:
+    if not articles:
+        fallback = "_No feed articles available today. Add RSS/Atom sources in Feeds to enable article-grounded newsroom analysis._"
+        if issues:
+            fallback += "\n\n" + "\n".join(f"- feed issue: {i}" for i in issues[:5])
+        return fallback, "_No newsroom article-mix chart available without feed articles._"
+
+    ranked = sorted(articles, key=_article_score, reverse=True)
+    top = ranked[:6]
+    cards: list[str] = []
+    topic_counts: dict[str, int] = {}
+    for idx, a in enumerate(top, start=1):
+        topic = _topic_label(a)
+        topic_counts[topic] = topic_counts.get(topic, 0) + 1
+        score = _article_score(a)
+        signal, system, stack, action = _bottom_up_explanation(a)
+        image_md = f"\n![{a['title']}]({a['images'][0]})\n" if a.get('images') else ""
+        link = a.get('link') or ''
+        source_line = f"Source: **{a.get('source') or 'unknown'}**"
+        if link:
+            source_line += f" · [{link}]({link})"
+        if a.get('published'):
+            source_line += f" · {a['published']}"
+        cards.append(
+            f"### {idx}. {a['title']}\n"
+            f"{source_line}\n"
+            f"{image_md}"
+            f"- Relevance score: **{score}** · Topic: **{topic}**\n"
+            f"- What happened: {signal}\n"
+            f"- Bottom-up (why you should care):\n"
+            f"  - Layer 1 (signal): {signal}\n"
+            f"  - Layer 2 (system): {system}\n"
+            f"  - Layer 3 (your stack): {stack}\n"
+            f"  - Action today: {action}\n"
+            f"\n<details><summary>Article excerpt</summary>\n\n{a.get('summary') or '_No summary provided by source._'}\n\n</details>"
+        )
+
+    topic_pie = "\n".join(f"    \"{k}\" : {v}" for k, v in sorted(topic_counts.items(), key=lambda kv: (-kv[1], kv[0])))
+    table_lines = [
+        "| # | Topic | Relevance | Source |",
+        "|---|---|---:|---|",
+    ]
+    for idx, a in enumerate(top, start=1):
+        table_lines.append(
+            f"| {idx} | {_topic_label(a)} | {_article_score(a)} | {a.get('source') or 'unknown'} |"
+        )
+    chart_block = (
+        "```mermaid\n"
+        "pie title Story Topic Mix\n"
+        f"{topic_pie}\n"
+        "```\n\n"
+        + "\n".join(table_lines)
+    )
+
+    if issues:
+        cards.append("#### Feed issues\n" + "\n".join(f"- {i}" for i in issues[:5]))
+    return "\n\n".join(cards), chart_block
+
+
+def _ops_chart(episodes_n: int, beliefs_n: int, pos_n: int, neg_n: int, user_n: int, seven_n: int) -> str:
+    return (
+        "```mermaid\n"
+        "xychart-beta\n"
+        "    title \"Daily Operational Signals\"\n"
+        "    x-axis [episodes, beliefs, positive, negative, user_callouts, seven_callouts]\n"
+        f"    bar [{episodes_n}, {beliefs_n}, {pos_n}, {neg_n}, {user_n}, {seven_n}]\n"
+        "```"
+    )
+
+
 def _conviction_summary(callouts_rows: list) -> str:
     """Average a tiny conviction estimate over the day's Seven turns."""
     seven_callouts = [r for r in callouts_rows if r["target"] == "seven"]
@@ -170,6 +368,9 @@ def compose_daily(now: float | None = None) -> dict:
     callouts_md, user_n, seven_n = _callouts_block(callouts)
     detector_md, det = _detector_block()
     conviction_md = _conviction_summary(callouts)
+    articles, feed_issues = _collect_articles()
+    newsroom_md, charts_md = _newsroom_block(articles, feed_issues)
+    ops_chart_md = _ops_chart(len(episodes), len(beliefs), pos_n, neg_n, user_n, seven_n)
 
     summary = (
         f"episodes={len(episodes)} beliefs_touched={len(beliefs)} "
@@ -189,6 +390,14 @@ This is what Seven noticed today.
 
 ## Build hygiene
 {detector_md}
+
+## Newsroom (article-grounded)
+{newsroom_md}
+
+## Visuals
+{ops_chart_md}
+
+{charts_md}
 
 ## What happened
 {_episode_narrative(episodes)}

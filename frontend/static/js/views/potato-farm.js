@@ -29,6 +29,77 @@ function _pfCapBadge(cap) {
   return `<span style="display:inline-block;padding:1px 5px;border-radius:3px;background:${color}22;color:${color};border:1px solid ${color}55;font-size:8px;font-weight:600;margin-right:3px;margin-bottom:2px;">${_pfEsc(label)}</span>`;
 }
 
+function _pfJobResult(j) {
+  return (j && typeof j.result === 'object' && j.result) ? j.result : {};
+}
+
+function _pfGpuProbe(j) {
+  const result = _pfJobResult(j);
+  return (result.gpu_probe && typeof result.gpu_probe === 'object') ? result.gpu_probe : null;
+}
+
+function _pfProbeSummary(j) {
+  const result = _pfJobResult(j);
+  const probe = _pfGpuProbe(j);
+  if (!probe) return '';
+  const tiny = probe.tiny_model && typeof probe.tiny_model === 'object' ? probe.tiny_model : null;
+  const capsule = probe.model_capsule && typeof probe.model_capsule === 'object' ? probe.model_capsule : null;
+  const ladder = Array.isArray(probe.benchmark_ladder) ? probe.benchmark_ladder : [];
+  const bits = [];
+  bits.push(probe.ok ? 'GPU kernel OK' : 'GPU probe failed');
+  if (probe.renderer) bits.push(probe.renderer);
+  if (tiny?.model) bits.push(tiny.model);
+  if (tiny?.latency_ms != null) bits.push(`${tiny.latency_ms}ms model`);
+  if (capsule?.capsule_id) bits.push(`capsule ${capsule.capsule_id}`);
+  if (capsule?.latency_ms != null) bits.push(`${capsule.latency_ms}ms capsule`);
+  if (Array.isArray(capsule?.output_rgba)) bits.push(`rgba[${capsule.output_rgba.join(',')}]`);
+  if (probe.capacity_score != null) bits.push(`score ${probe.capacity_score}`);
+  if (ladder.length) bits.push(ladder.map(row => `${row.model_size}x${row.model_size}:${row.latency_ms}ms`).join(' / '));
+  if (!tiny && probe.shader_ms != null) bits.push(`${probe.shader_ms}ms shader`);
+  if (result.runner) bits.push(result.runner);
+  return bits.join(' · ');
+}
+
+function _pfJobTime(j) {
+  return Number(j?.completed_ts || j?.claimed_ts || j?.created_ts || 0);
+}
+
+function _pfIsGpuProofJob(j) {
+  const kind = j?.kind || '';
+  return j?.node_id === 'potato-2' ||
+    j?.capability_req === 'inference.gpu' ||
+    j?.capability_req === 'seven-app.gpu.capsule' ||
+    kind === 'tiny.gpu.benchmark' ||
+    kind === 'tiny.gpu.model' ||
+    kind === 'tflite.gpu' ||
+    kind === 'gpu.probe' ||
+    kind === 'tflite.inference';
+}
+
+function _pfProofRank(j) {
+  const probe = _pfGpuProbe(j);
+  const capsule = probe?.model_capsule && typeof probe.model_capsule === 'object' ? probe.model_capsule : null;
+  let rank = _pfJobTime(j) / 1000000000000;
+  if (j?.status === 'completed') rank += 100;
+  if (probe?.ok === true) rank += 50;
+  if (capsule?.status === 'ok' || capsule?.capsule_id) rank += 50;
+  if (j?.capability_req === 'seven-app.gpu.capsule') rank += 25;
+  if (_pfJobResult(j).runner === 'seven-app') rank += 10;
+  return rank;
+}
+
+function _pfBestProofJob(jobs) {
+  return (jobs || [])
+    .filter(_pfIsGpuProofJob)
+    .sort((a, b) => _pfProofRank(b) - _pfProofRank(a))[0] || null;
+}
+
+function _pfIsNodeFresh(node, maxAgeS = 180) {
+  if (!node || node.offline) return false;
+  const age = Number(node.age_s ?? (node.last_seen_ts ? Math.max(0, Math.floor(Date.now() / 1000 - node.last_seen_ts)) : Number.POSITIVE_INFINITY));
+  return Number.isFinite(age) && age <= maxAgeS;
+}
+
 function _pfRenderNode(node) {
   const t = node.telemetry || {};
   const c = t.compute || {};
@@ -156,14 +227,76 @@ function _pfRenderMap(nodes, jobs) {
   const nodeSvg = displayNodes.map(n => {
     const id = n.node_id || '';
     const p = positions[id] || { x: cx, y: cy };
-    const live = !n.offline && Number(n.age_s ?? 9999) < 180;
+    const ageS = n.last_seen_ts ? Math.max(0, Math.floor(Date.now()/1000 - n.last_seen_ts)) : (n.age_s ?? null);
+    const live = !n.offline && (ageS == null || Number(ageS) < 180);
+    const telemetry = n.telemetry || {};
+    const compute = telemetry.compute || {};
+    const memory = telemetry.memory || {};
+    const power = telemetry.power || {};
+    const ramPct = (memory.ram_total_mb && memory.ram_free_mb != null)
+      ? Math.round(100 - (100 * memory.ram_free_mb / memory.ram_total_mb)) : null;
+    const cpuPct = compute.cpu_load_pct != null ? Math.round(compute.cpu_load_pct) : null;
+    const batteryPct = power.battery_pct != null ? Math.round(power.battery_pct) : null;
     const fill = live ? (String(id).includes('potato-2') ? '#4caf50' : '#4fd1c5') : '#444';
     const stroke = n.offline ? '#f44336' : 'var(--accent)';
     const caps = ((n.telemetry || {}).capabilities || []).length;
-    return `<g><circle cx="${p.x}" cy="${p.y}" r="22" fill="${fill}33" stroke="${stroke}" stroke-width="2"/><text x="${p.x}" y="${p.y - 3}" text-anchor="middle" fill="var(--text)" font-size="10" font-weight="700">${_pfEsc(id.replace('potato-', 'P'))}</text><text x="${p.x}" y="${p.y + 12}" text-anchor="middle" fill="var(--text-dim)" font-size="8">${n.offline ? 'offline' : caps + ' caps'}</text></g>`;
+    const resourceLine = n.offline
+      ? 'offline'
+      : `C${cpuPct ?? '—'} R${ramPct ?? '—'}${batteryPct != null ? ' B' + batteryPct : ''}`;
+    return `<g>
+      <circle cx="${p.x}" cy="${p.y}" r="28" fill="${fill}22" stroke="${stroke}" stroke-width="2"/>
+      <circle cx="${p.x}" cy="${p.y}" r="20" fill="${fill}18" stroke="${live ? fill : '#666'}" stroke-width="1" stroke-dasharray="${live ? '0' : '4 4'}"/>
+      <text x="${p.x}" y="${p.y - 7}" text-anchor="middle" fill="var(--text)" font-size="10" font-weight="800">${_pfEsc(id.replace('potato-', 'P'))}</text>
+      <text x="${p.x}" y="${p.y + 7}" text-anchor="middle" fill="var(--text-dim)" font-size="8">${_pfEsc(resourceLine)}</text>
+      <text x="${p.x}" y="${p.y + 19}" text-anchor="middle" fill="var(--text-dim)" font-size="7">${n.offline ? 'expected' : caps + ' shared'}</text>
+    </g>`;
   }).join('');
   map.innerHTML = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:260px;display:block;">${edgeSvg}${nodeSvg}</svg>`;
-  if (meta) meta.textContent = `${nodes.length} live · ${displayNodes.filter(n => n.offline).length} expected offline`;
+  if (meta) {
+    const liveCount = displayNodes.filter(n => _pfIsNodeFresh(n)).length;
+    const offlineCount = displayNodes.filter(n => n.offline || !_pfIsNodeFresh(n)).length;
+    meta.textContent = `${liveCount} live · ${offlineCount} offline/stale`;
+  }
+}
+
+async function pfarmDispatchQuantum() {
+  const status = document.getElementById('pfarm-quantum-status');
+  const chunks = [
+    { chunk_id: 'qchunk-1', precision: 'int8', packet: 'probe-alpha' },
+    { chunk_id: 'qchunk-2', precision: 'int8', packet: 'probe-beta' },
+    { chunk_id: 'qchunk-3', precision: 'int8', packet: 'probe-gamma' },
+  ];
+  if (status) status.innerHTML = '<span style="color:var(--accent);">Submitting 3 quantum chunks...</span>';
+  try {
+    const submitted = [];
+    for (const chunk of chunks) {
+      const res = await fetch('/api/hive/jobs/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'tflite.gpu',
+          payload: {
+            target_node: 'potato-2',
+            quantum_chunk: true,
+            packet_profile: 'tiny-quantized',
+            quantization: 'int8-preferred',
+            chunk,
+          },
+          capability_req: 'inference.gpu',
+          node_id: 'potato-2',
+        }),
+      });
+      if (!res.ok) throw new Error('submit failed: ' + res.status);
+      const body = await res.json();
+      submitted.push(body.job_id || chunk.chunk_id);
+    }
+    if (status) status.innerHTML = `<span style="color:#4caf50;">Submitted ${submitted.length} chunks: ${submitted.map(_pfEsc).join(', ')}</span>`;
+    pfarmLog(`Quantum chunks submitted: ${submitted.join(', ')}`);
+    pfarmRefresh();
+  } catch (err) {
+    if (status) status.innerHTML = `<span style="color:#f44336;">Quantum chunking failed: ${_pfEsc(err.message || err)}</span>`;
+    pfarmLog(`Quantum chunking failed: ${err.message || err}`);
+  }
 }
 
 function _pfRenderHandoffs(jobs) {
@@ -173,12 +306,18 @@ function _pfRenderHandoffs(jobs) {
     el.innerHTML = '<div>No handoffs yet. Dispatch a task to see potato routing here.</div>';
     return;
   }
-  el.innerHTML = jobs.slice(0, 12).map(j => {
+  const ordered = jobs.slice().sort((a, b) => {
+    const ac = _pfGpuProbe(a)?.model_capsule ? 1 : 0;
+    const bc = _pfGpuProbe(b)?.model_capsule ? 1 : 0;
+    return (bc - ac) || (_pfJobTime(b) - _pfJobTime(a));
+  });
+  el.innerHTML = ordered.slice(0, 12).map(j => {
     const to = j.node_id || 'auto-route';
     const when = j.completed_ts || j.claimed_ts || j.created_ts;
     const age = when ? Math.max(0, Math.floor(Date.now()/1000 - when)) + 's ago' : '—';
     const color = j.status === 'completed' ? '#4caf50' : j.status === 'claimed' ? '#2196f3' : '#ffa500';
-    return `<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:5px;padding:6px;background:rgba(0,0,0,.12);"><span style="color:${color};font-weight:700;min-width:70px;">${_pfEsc(j.status)}</span><span style="flex:1;">potato-1 → <strong>${_pfEsc(to)}</strong> · ${_pfEsc(j.kind || 'job')}</span><span>${_pfEsc(j.capability_req || '')}</span><span style="color:var(--text-dim);">${age}</span></div>`;
+    const probe = _pfProbeSummary(j);
+    return `<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:5px;padding:6px;background:rgba(0,0,0,.12);"><span style="color:${color};font-weight:700;min-width:70px;">${_pfEsc(j.status)}</span><span style="flex:1;">potato-1 → <strong>${_pfEsc(to)}</strong> · ${_pfEsc(j.kind || 'job')}${probe ? `<br><span style="color:var(--text-dim);font-size:9px;">${_pfEsc(probe)}</span>` : ''}</span><span>${_pfEsc(j.capability_req || '')}</span><span style="color:var(--text-dim);">${age}</span></div>`;
   }).join('');
 }
 
@@ -187,36 +326,48 @@ function _pfRenderProof(nodes, jobs) {
   const potato2 = (nodes || []).find(n => String(n.node_id || '').toLowerCase() === 'potato-2');
   const p2Telemetry = potato2?.telemetry || {};
   const caps = p2Telemetry.capabilities || [];
-  const proofJob = (jobs || []).find(j =>
-    (j.node_id === 'potato-2' || j.capability_req === 'inference.gpu') &&
-    (j.kind === 'tflite.gpu' || j.kind === 'gpu.probe' || j.kind === 'tflite.inference')
-  );
+  const proofJob = _pfBestProofJob(jobs);
   const liveAge = potato2?.age_s;
   const liveText = liveAge == null ? 'expected' : liveAge < 180 ? 'live' : `${liveAge}s old`;
   const status = proofJob?.status || 'waiting';
-  const ok = status === 'completed' && caps.includes('inference.gpu');
+  const probe = _pfGpuProbe(proofJob);
+  const fresh = _pfIsNodeFresh(potato2);
+  const ok = fresh && status === 'completed' && probe?.ok === true;
+  const result = _pfJobResult(proofJob);
+  const runner = result.runner || 'no runner yet';
+  const renderer = probe?.renderer || (caps.includes('inference.gpu') ? 'GPU advertised, kernel not measured' : 'no GPU telemetry');
+  const tiny = probe?.tiny_model && typeof probe.tiny_model === 'object' ? probe.tiny_model : null;
+  const capsule = probe?.model_capsule && typeof probe.model_capsule === 'object' ? probe.model_capsule : null;
+  const ladder = Array.isArray(probe?.benchmark_ladder) ? probe.benchmark_ladder : [];
+  const shaderMs = tiny?.latency_ms != null ? `${tiny.latency_ms}ms model` : probe?.shader_ms != null ? `${probe.shader_ms}ms shader` : 'no shader timing';
+  const capsuleOutput = Array.isArray(capsule?.output_rgba) ? ` rgba[${capsule.output_rgba.join(',')}]` : '';
+  const capsuleText = capsule?.capsule_id
+    ? `Capsule: ${capsule.capsule_id} · ${capsule.model || 'model'} · ${capsule.latency_ms ?? '?'}ms · ${capsule.source || 'hive-payload'}${capsuleOutput}`
+    : '';
+  const ladderText = ladder.length
+    ? ladder.map(row => `${row.model_size}x${row.model_size} ${row.latency_ms}ms`).join(' · ')
+    : '';
+  const scoreText = probe?.capacity_score != null ? ` · score ${probe.capacity_score}` : '';
+  const memory = p2Telemetry.memory || {};
+  const freeRam = memory.ram_free_mb != null ? `${memory.ram_free_mb} MB free` : 'RAM unknown';
   if (el) {
     el.style.borderColor = ok ? '#4caf50' : 'var(--accent)';
     el.style.background = ok ? 'rgba(76,175,80,.12)' : 'color-mix(in srgb,var(--accent) 14%,var(--card))';
     el.innerHTML = `
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <span style="width:10px;height:10px;border-radius:50%;background:${ok ? '#4caf50' : '#ffa500'};display:inline-block;"></span>
-        <strong style="font-size:12px;color:var(--text);">Samsung GPU handoff ${_pfEsc(status)}</strong>
+        <strong style="font-size:12px;color:var(--text);">Samsung GPU handoff ${_pfEsc(fresh ? status : 'stale')}</strong>
         <span style="color:var(--text-dim);">${_pfEsc(proofJob?.job_id || 'no job yet')}</span>
       </div>
       <div style="margin-top:4px;color:var(--text-dim);font-size:10px;">
         potato-2 is ${_pfEsc(liveText)} · ${_pfEsc(caps.join(', ') || 'no capabilities')} · route ${_pfEsc(proofJob?.kind || 'tflite.gpu')} -> potato-2
       </div>
+      <div style="margin-top:6px;color:var(--text);font-size:10px;line-height:1.5;">
+        Runner: <strong>${_pfEsc(runner)}</strong> · Renderer: <strong>${_pfEsc(renderer)}</strong> · ${_pfEsc(shaderMs)}${_pfEsc(scoreText)} · ${_pfEsc(freeRam)}
+        ${capsuleText ? `<br><span style="color:var(--text);">${_pfEsc(capsuleText)}</span>` : ''}
+        ${ladderText ? `<br><span style="color:var(--text-dim);">Ladder: ${_pfEsc(ladderText)}</span>` : ''}
+      </div>
     `;
-  }
-  const globalProof = document.getElementById('potato-global-proof');
-  const globalText = document.getElementById('potato-global-proof-text');
-  if (globalProof && globalText) {
-    globalProof.style.borderColor = ok ? '#4caf50' : '#ffa500';
-    globalProof.style.background = ok ? 'rgba(18,32,23,.96)' : 'rgba(40,28,10,.96)';
-    globalText.textContent = ok
-      ? `POTATO2 GPU OK · ${proofJob.kind} -> potato-2 completed`
-      : `POTATO2 ${caps.includes('inference.gpu') ? 'GPU visible' : 'waiting'} · ${status}`;
   }
 }
 
@@ -289,22 +440,24 @@ async function pfarmRefreshHomeBadge() {
     const jobsJson = await jobsRes.json();
     const potato2 = (nodesJson.nodes || []).find(n => String(n.node_id || '').toLowerCase() === 'potato-2');
     const caps = (potato2?.telemetry || {}).capabilities || [];
-    const proofJob = (jobsJson.jobs || []).find(j =>
-      (j.node_id === 'potato-2' || j.capability_req === 'inference.gpu') &&
-      (j.kind === 'tflite.gpu' || j.kind === 'gpu.probe' || j.kind === 'tflite.inference')
-    );
-    const ok = proofJob?.status === 'completed' && caps.includes('inference.gpu');
+    const proofJob = _pfBestProofJob(jobsJson.jobs || []);
+    const probe = _pfGpuProbe(proofJob);
+    const fresh = _pfIsNodeFresh(potato2);
+    const ok = fresh && proofJob?.status === 'completed' && (probe?.ok === true || caps.includes('inference.gpu'));
     if (badge) {
       badge.style.display = 'inline-block';
-      badge.textContent = ok ? 'GPU OK' : (proofJob?.status || 'WAIT');
+      badge.textContent = ok ? 'GPU OK' : (fresh ? (proofJob?.status || 'WAIT') : 'STALE');
       badge.style.background = ok ? '#4caf5022' : '#ffa50022';
       badge.style.color = ok ? '#4caf50' : '#ffa500';
       badge.style.border = `1px solid ${ok ? '#4caf5055' : '#ffa50055'}`;
     }
     if (desc) {
+      const capsule = probe?.model_capsule && typeof probe.model_capsule === 'object' ? probe.model_capsule : null;
       desc.textContent = ok
-        ? `Samsung handoff completed · ${proofJob.job_id}`
-        : `potato-2 ${caps.includes('inference.gpu') ? 'GPU visible' : 'waiting'} · ${proofJob?.status || 'no handoff'}`;
+        ? `Samsung handoff completed · ${proofJob.job_id}${capsule?.capsule_id ? ' · ' + capsule.capsule_id : ''}`
+        : fresh
+          ? `potato-2 ${caps.includes('inference.gpu') ? 'GPU visible' : 'waiting'} · ${proofJob?.status || 'no handoff'}`
+          : `potato-2 offline/stale · last proof is historical`;
     }
   } catch (_e) {
     if (badge) {
@@ -401,6 +554,7 @@ window.fridaysWindowRendered = function fridaysPotatoFarmWindowRendered(id, winS
 
 window.pfarmRefresh = pfarmRefresh;
 window.pfarmDispatch = pfarmDispatch;
+window.pfarmDispatchQuantum = pfarmDispatchQuantum;
 window.pfarmLog = pfarmLog;
 window.pfarmRefreshHomeBadge = pfarmRefreshHomeBadge;
 window.pfarmEnsureVisible = pfarmEnsureVisible;

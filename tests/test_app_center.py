@@ -177,3 +177,49 @@ def test_list_projects_filters(client):
     assert games['count'] == 1 and games['projects'][0]['kind'] == 'game'
     flutter = client.get('/api/app-center/projects?framework=flutter').get_json()
     assert flutter['count'] == 1 and flutter['projects'][0]['framework'] == 'flutter'
+
+
+def test_list_projects_text_search(client):
+    client.post('/api/app-center/projects', json={
+        'name': 'Payroll Radar',
+        'kind': 'web',
+        'framework': 'next',
+        'targets': [],
+        'owner': 'Swarm KC',
+        'studio_project_id': 'P-SAP-NEWS',
+    })
+    client.post('/api/app-center/projects', json={
+        'name': 'Unrelated App',
+        'kind': 'mobile',
+        'framework': 'flutter',
+        'targets': [],
+        'owner': 'Elsewhere',
+    })
+
+    by_name = client.get('/api/app-center/projects?q=payroll').get_json()
+    assert by_name['count'] == 1
+    assert by_name['projects'][0]['name'] == 'Payroll Radar'
+
+    by_owner = client.get('/api/app-center/projects?q=swarm').get_json()
+    assert by_owner['count'] == 1
+    assert by_owner['projects'][0]['owner'] == 'Swarm KC'
+
+    by_studio_id = client.get('/api/app-center/projects?q=sap-news').get_json()
+    assert by_studio_id['count'] == 1
+    assert by_studio_id['projects'][0]['studio_project_id'] == 'P-SAP-NEWS'
+
+
+def test_list_projects_includes_build_and_target_summary(client):
+    pid = client.post('/api/app-center/projects', json={
+        'name': 'Buildable App',
+        'kind': 'mobile',
+        'framework': 'flutter',
+        'targets': ['ios', 'android'],
+    }).get_json()['project_id']
+    build = client.post(f'/api/app-center/projects/{pid}/build', json={'target': 'android'}).get_json()
+
+    listed = client.get('/api/app-center/projects').get_json()['projects'][0]
+    assert listed['target_count'] == 2
+    assert 'android:queued' in listed['target_summary']
+    assert listed['last_build_status'] == 'queued'
+    assert listed['last_build_id'] == build['build_id']

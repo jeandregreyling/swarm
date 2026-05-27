@@ -14,6 +14,11 @@ def client(tmp_path, monkeypatch):
     # Isolate DB + token store from production data.
     monkeypatch.setenv('SWARM_HIVE_DB', str(tmp_path / 'hive.db'))
     monkeypatch.setenv('SWARM_HIVE_TOKENS', str(tmp_path / 'tokens.jsonl'))
+    monkeypatch.setenv('SWARM_DB_PATH', str(tmp_path / 'swarm_memory.db'))
+    import utils.db._connection as conn_mod
+    conn_mod.DB_PATH = str(tmp_path / 'swarm_memory.db')
+    import utils.db.trace_log as trace_log
+    trace_log._SCHEMA_READY = False
     # Reset registry singleton so the env-var takes effect.
     import core.hive.registry as reg_mod
     reg_mod.reset_singleton()
@@ -102,8 +107,17 @@ def test_delete_existing(client):
 
 
 def test_submit_job_can_target_node(client):
+    payload = build_telemetry(
+        'potato-2', 'android',
+        compute={'gpu_present': True},
+        memory={'ram_total_mb': 6000, 'ram_free_mb': 1800},
+        power={'battery_pct': 80},
+        capabilities=['inference.cpu', 'inference.gpu', 'inference.tflite'],
+    )
+    client.post('/api/hive/telemetry', json=payload)
+
     rv = client.post('/api/hive/jobs/submit', json={
-        'kind': 'tflite.inference',
+        'kind': 'tiny.gpu.benchmark',
         'payload': {'target_node': 'potato-2', 'packet': 'tiny'},
         'capability_req': 'inference.gpu',
     })
@@ -124,4 +138,236 @@ def test_submit_job_can_target_node(client):
         'capabilities': ['inference.gpu', 'inference.tflite'],
     })
     assert rv.status_code == 200
-    assert rv.get_json()['job']['kind'] == 'tflite.inference'
+    job = rv.get_json()['job']
+    assert job['kind'] == 'tiny.gpu.benchmark'
+
+    rv = client.post('/api/hive/jobs/report', json={
+        'job_id': job['job_id'],
+        'result': {'ok': True, 'runner': 'test-runner', 'gpu_probe': {'ok': True}},
+    })
+    assert rv.status_code == 200
+
+    rv = client.get('/api/hive/jobs')
+    assert rv.status_code == 200
+    listed = rv.get_json()['jobs'][0]
+    assert listed['payload']['packet'] == 'tiny'
+    assert listed['result']['runner'] == 'test-runner'
+    assert listed['result']['gpu_probe']['ok'] is True
+
+
+def test_tiny_gpu_benchmark_full_loop_returns_capacity_proof(client):
+    payload = build_telemetry(
+        'potato-2', 'android',
+        compute={'gpu_present': True},
+        memory={'ram_total_mb': 6000, 'ram_free_mb': 1800},
+        power={'battery_pct': 80},
+        capabilities=['inference.cpu', 'inference.gpu', 'inference.tflite'],
+    )
+    client.post('/api/hive/telemetry', json=payload)
+
+    rv = client.post('/api/hive/jobs/submit', json={
+        'kind': 'tiny.gpu.benchmark',
+        'payload': {
+            'target_node': 'potato-2',
+            'benchmark_sizes': [4, 16, 64, 128],
+            'model_capsule': {
+                'capsule_id': 'swarm-golden-linear-v1',
+                'model': 'swarm-linear-4x4',
+                'input': [0.18, 0.41, 0.73, 1.0],
+                'weights': [
+                    0.62, 0.10, 0.24, 0.02,
+                    0.12, 0.58, 0.16, 0.04,
+                    0.08, 0.18, 0.70, 0.02,
+                    0.20, 0.14, 0.18, 0.48,
+                ],
+            },
+        },
+        'capability_req': 'inference.gpu',
+    })
+    assert rv.status_code == 200, rv.get_data(as_text=True)
+    job_id = rv.get_json()['job_id']
+
+    rv = client.post('/api/hive/jobs/next', json={
+        'node_id': 'potato-2',
+        'capabilities': ['inference.gpu', 'inference.tflite'],
+    })
+    assert rv.status_code == 200
+    job = rv.get_json()['job']
+    assert job['job_id'] == job_id
+    assert job['kind'] == 'tiny.gpu.benchmark'
+    assert job['payload']['benchmark_sizes'] == [4, 16, 64, 128]
+    assert job['payload']['model_capsule']['capsule_id'] == 'swarm-golden-linear-v1'
+
+    gpu_probe = {
+        'ok': True,
+        'renderer': 'Mali-G68',
+        'capacity_score': 100,
+        'benchmark_ladder': [
+            {'model_size': 4, 'ok': True, 'latency_ms': 5.6},
+            {'model_size': 16, 'ok': True, 'latency_ms': 2.8},
+            {'model_size': 64, 'ok': True, 'latency_ms': 3.0},
+            {'model_size': 128, 'ok': True, 'latency_ms': 12.0},
+        ],
+        'tiny_model': {
+            'model': 'tiny-gpu-linear-128x128',
+            'model_size': 128,
+            'latency_ms': 12.0,
+            'delegate': 'gles-fragment-shader',
+        },
+        'model_capsule': {
+            'ok': True,
+            'capsule_id': 'swarm-golden-linear-v1',
+            'model': 'swarm-linear-4x4',
+            'delegate': 'gles-fragment-shader',
+            'source': 'hive-payload',
+            'output_rgba': [55, 73, 140, 151],
+            'latency_ms': 1.2,
+        },
+    }
+    rv = client.post('/api/hive/jobs/report', json={
+        'job_id': job_id,
+        'result': {'ok': True, 'runner': 'seven-app', 'gpu_probe': gpu_probe},
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['ok'] is True
+
+    rv = client.get('/api/hive/jobs?status=completed')
+    assert rv.status_code == 200
+    listed = rv.get_json()['jobs'][0]
+    assert listed['job_id'] == job_id
+    assert listed['payload']['target_node'] == 'potato-2'
+    assert listed['result']['runner'] == 'seven-app'
+    assert listed['result']['gpu_probe']['renderer'] == 'Mali-G68'
+    assert listed['result']['gpu_probe']['capacity_score'] >= 80
+    assert [
+        row['model_size']
+        for row in listed['result']['gpu_probe']['benchmark_ladder']
+    ] == [4, 16, 64, 128]
+    capsule = listed['result']['gpu_probe']['model_capsule']
+    assert capsule['capsule_id'] == 'swarm-golden-linear-v1'
+    assert capsule['source'] == 'hive-payload'
+    assert capsule['output_rgba'] == [55, 73, 140, 151]
+
+
+def test_gpu_routing_rejects_unhealthy_node(client):
+    payload = build_telemetry(
+        'potato-2', 'android',
+        compute={'gpu_present': True},
+        memory={'ram_total_mb': 6000, 'ram_free_mb': 1800},
+        power={'battery_pct': 12},
+        capabilities=['inference.cpu', 'inference.gpu', 'inference.tflite'],
+    )
+    client.post('/api/hive/telemetry', json=payload)
+
+    rv = client.post('/api/hive/jobs/submit', json={
+        'kind': 'tiny.gpu.benchmark',
+        'payload': {'target_node': 'potato-2'},
+        'capability_req': 'inference.gpu',
+    })
+    assert rv.status_code == 200
+
+    rv = client.post('/api/hive/jobs/next', json={
+        'node_id': 'potato-2',
+        'capabilities': ['inference.gpu', 'inference.tflite'],
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['job'] is None
+
+
+def test_gpu_routing_requires_capacity_before_inference(client):
+    payload = build_telemetry(
+        'potato-2', 'android',
+        compute={'gpu_present': True},
+        memory={'ram_total_mb': 6000, 'ram_free_mb': 1800},
+        power={'battery_pct': 80},
+        capabilities=['inference.cpu', 'inference.gpu', 'inference.tflite'],
+    )
+    client.post('/api/hive/telemetry', json=payload)
+
+    rv = client.post('/api/hive/jobs/submit', json={
+        'kind': 'tflite.inference',
+        'payload': {'target_node': 'potato-2'},
+        'capability_req': 'inference.gpu',
+    })
+    assert rv.status_code == 200
+
+    rv = client.post('/api/hive/jobs/next', json={
+        'node_id': 'potato-2',
+        'capabilities': ['inference.gpu', 'inference.tflite'],
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['job'] is None
+
+
+def test_stale_gpu_node_is_offline_and_cannot_claim(client):
+    payload = build_telemetry(
+        'potato-2', 'android',
+        compute={'gpu_present': True},
+        memory={'ram_total_mb': 6000, 'ram_free_mb': 1800},
+        power={'battery_pct': 80},
+        capabilities=['inference.cpu', 'inference.gpu', 'inference.tflite'],
+        ts=1,
+    )
+    client.post('/api/hive/telemetry', json=payload)
+
+    rv = client.get('/api/hive/nodes?expected=0')
+    assert rv.status_code == 200
+    node = rv.get_json()['nodes'][0]
+    assert node['node_id'] == 'potato-2'
+    assert node['offline'] is True
+
+    rv = client.post('/api/hive/jobs/submit', json={
+        'kind': 'tiny.gpu.benchmark',
+        'payload': {'target_node': 'potato-2'},
+        'capability_req': 'inference.gpu',
+    })
+    assert rv.status_code == 200
+
+    rv = client.post('/api/hive/jobs/next', json={
+        'node_id': 'potato-2',
+        'capabilities': ['inference.gpu', 'inference.tflite'],
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['job'] is None
+
+
+def test_hive_job_lifecycle_writes_studio_trace_events(client):
+    payload = build_telemetry(
+        'potato-2', 'android',
+        compute={'gpu_present': True},
+        memory={'ram_total_mb': 6000, 'ram_free_mb': 1800},
+        power={'battery_pct': 80},
+        capabilities=['inference.cpu', 'inference.gpu', 'inference.tflite'],
+    )
+    client.post('/api/hive/telemetry', json=payload)
+
+    rv = client.post('/api/hive/jobs/submit', json={
+        'kind': 'tiny.gpu.benchmark',
+        'payload': {'target_node': 'potato-2'},
+        'capability_req': 'inference.gpu',
+    })
+    assert rv.status_code == 200
+    job_id = rv.get_json()['job_id']
+
+    rv = client.post('/api/hive/jobs/next', json={
+        'node_id': 'potato-2',
+        'capabilities': ['inference.gpu', 'inference.tflite'],
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['job']['job_id'] == job_id
+
+    rv = client.post('/api/hive/jobs/report', json={
+        'job_id': job_id,
+        'result': {'ok': True, 'runner': 'seven-app'},
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['ok'] is True
+
+    from utils.db import trace_log
+    events = trace_log.list_events(
+        thread_id=job_id,
+        change_id='P-HIVE-P2-GPU-LOOP',
+    )
+    stages = {e['payload'].get('stage') for e in events}
+    assert {'submitted', 'claimed', 'completed'} <= stages
+    assert {e['source'] for e in events} == {'hive'}

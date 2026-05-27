@@ -96,6 +96,14 @@ class NodesActivity : AppCompatActivity() {
             put("capabilities", org.json.JSONArray().also { arr -> sample.capabilities.forEach { arr.put(it) } })
             put("packet_profile", "tiny-quantized")
             put("quantization", "int8-preferred")
+            if (job.kind == "gpu.probe" || job.kind == "tflite.gpu" || job.kind == "tflite.inference" || job.kind == "tiny.gpu.model" || job.kind == "tiny.gpu.benchmark") {
+                val payload = job.payload ?: org.json.JSONObject()
+                val sizes = payload.optJSONArray("benchmark_sizes")?.let { arr ->
+                    (0 until arr.length()).mapNotNull { idx -> arr.optInt(idx).takeIf { it > 0 } }
+                }.orEmpty()
+                val modelSize = payload.optInt("model_size", 4)
+                put("gpu_probe", GpuProbe.run(modelSize = modelSize, benchmarkSizes = sizes, capsule = payload.optJSONObject("model_capsule")))
+            }
         }
         api.reportJobResult(nodeId, job.jobId, result)
         return "Handoff: ${job.kind} → $nodeId · completed"

@@ -12,13 +12,36 @@
   'use strict';
 
   var _source = null;
+  var _retryTimer = null;
   var _retryMs = 2000;
   var _maxRetry = 30000;
+  var _isPageClosing = false;
 
-  function connect() {
+  function _clearRetry() {
+    if (_retryTimer) {
+      clearTimeout(_retryTimer);
+      _retryTimer = null;
+    }
+  }
+
+  function _scheduleReconnect() {
+    if (_isPageClosing || !navigator.onLine) return;
+    _clearRetry();
+    _retryTimer = setTimeout(connect, _retryMs);
+    _retryMs = Math.min(_retryMs * 1.5, _maxRetry);
+  }
+
+  function _closeSource() {
     if (_source) {
       try { _source.close(); } catch(e) {}
+      _source = null;
     }
+  }
+
+  function connect() {
+    if (_isPageClosing || !navigator.onLine) return;
+    _clearRetry();
+    _closeSource();
     _source = new EventSource('/api/events');
 
     _source.onopen = function() {
@@ -27,11 +50,11 @@
     };
 
     _source.onerror = function() {
-      console.warn('[SSE] connection lost, retrying in ' + _retryMs + 'ms');
-      _source.close();
-      _source = null;
-      setTimeout(connect, _retryMs);
-      _retryMs = Math.min(_retryMs * 1.5, _maxRetry);
+      if (window.__SWARM_DEBUG && !_isPageClosing && navigator.onLine) {
+        console.debug('[SSE] reconnect in ' + _retryMs + 'ms');
+      }
+      _closeSource();
+      _scheduleReconnect();
     };
 
     // Listen for typed events
@@ -46,6 +69,16 @@
       });
     });
   }
+
+  window.addEventListener('online', function() {
+    if (!_source && !_isPageClosing) connect();
+  });
+
+  window.addEventListener('pagehide', function() {
+    _isPageClosing = true;
+    _clearRetry();
+    _closeSource();
+  });
 
   // Auto-connect when DOM is ready
   if (document.readyState === 'loading') {

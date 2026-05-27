@@ -379,7 +379,7 @@ function createWatchedTopicTask() {
     min_novelty: val('tasker-watch-min-novelty') || '0.35',
     min_score: val('tasker-watch-min-score') || '0.50',
     max_items: val('tasker-watch-max-items') || '10',
-    historical_years: val('tasker-watch-historical-years') || '5',
+    historical_years: val('tasker-watch-historical-years') || '0',
   };
 
   if (!payload.topic) {

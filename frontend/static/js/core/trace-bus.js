@@ -21,6 +21,10 @@
   const buffer = [];
   const handlers = { event: [] };
   let es = null;
+  let retryTimer = null;
+  let pageClosing = false;
+  let retryMs = 2000;
+  const maxRetryMs = 30000;
   let tickerEl = null;
   let lastRender = 0;
   let pending = [];
@@ -103,6 +107,7 @@
 
   function start() {
     if (es) return;
+    if (pageClosing || !navigator.onLine) return;
     tickerEl = document.getElementById('trace-ticker');
 
     // Prime with a small backlog from the DB so the user sees context on open
@@ -116,6 +121,9 @@
 
     try {
       es = new EventSource('/api/spine/stream');
+      es.onopen = () => {
+        retryMs = 2000;
+      };
       es.onmessage = (msg) => {
         if (!msg || !msg.data) return;
         try {
@@ -124,7 +132,14 @@
         } catch (_) {}
       };
       es.onerror = () => {
-        // Browser auto-reconnects. Nothing to do here.
+        if (es) { try { es.close(); } catch (_) {} es = null; }
+        if (pageClosing || !navigator.onLine) return;
+        if (retryTimer) clearTimeout(retryTimer);
+        retryTimer = setTimeout(() => {
+          retryTimer = null;
+          start();
+        }, retryMs);
+        retryMs = Math.min(Math.floor(retryMs * 1.5), maxRetryMs);
       };
     } catch (_) {
       es = null;
@@ -132,6 +147,7 @@
   }
 
   function stop() {
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
     if (es) { try { es.close(); } catch (_) {} es = null; }
   }
 
@@ -159,6 +175,15 @@
   }
 
   window.__trace = { start, stop, on, off, recent, open, pin };
+
+  window.addEventListener('online', () => {
+    if (!es && !pageClosing) start();
+  });
+
+  window.addEventListener('pagehide', () => {
+    pageClosing = true;
+    stop();
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', start, { once: true });

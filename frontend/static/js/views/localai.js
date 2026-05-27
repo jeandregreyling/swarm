@@ -667,11 +667,16 @@ function localaiOpenChat(agentName) {
   if (typeof openWindow === 'function') openWindow('chat', 'Chat', 'view-chat');
   // Give the chat view a moment to render, then select the agent
   setTimeout(() => {
-    const toggles = document.querySelectorAll('.agent-toggle-btn, [data-agent]');
-    toggles.forEach(btn => {
-      const name = (btn.dataset.agent || btn.textContent || '').toLowerCase();
-      if (name === agentName.toLowerCase()) btn.click();
-    });
+    const key = String(agentName || '').trim().toLowerCase();
+    if (typeof agentsSelectChatAgent === 'function' && agentsSelectChatAgent(key)) return;
+    const cssKey = window.CSS && typeof CSS.escape === 'function'
+      ? CSS.escape(key)
+      : key.replace(/["\\]/g, '\\$&');
+    const input = document.querySelector(`.chat-agent-toggle[value="${cssKey}"]`);
+    if (input) {
+      input.checked = true;
+      if (typeof onChatAgentToggleChange === 'function') onChatAgentToggleChange(input);
+    }
   }, 400);
 }
 

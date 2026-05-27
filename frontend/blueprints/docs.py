@@ -893,6 +893,127 @@ def api_docs_feedback():
         conn.close()
 
 
+def _recursive_search_root(raw_path: str) -> str:
+    root = _os.path.realpath(_SWARM_ROOT)
+    requested = raw_path.strip() if raw_path else root
+    if not _os.path.isabs(requested):
+        requested = _os.path.join(root, requested)
+    resolved = _os.path.realpath(requested)
+    if resolved != root and not resolved.startswith(root + _os.sep):
+        raise ValueError('path must stay inside swarm root')
+    if not _os.path.exists(resolved):
+        raise ValueError('path does not exist')
+    return resolved
+
+
+def _chunk_rg_output(raw_hits: str, limit: int) -> list[str]:
+    chunks: list[str] = []
+    current: list[str] = []
+    for line in raw_hits.splitlines():
+        if line == '--':
+            chunk = '\n'.join(current).strip()
+            if chunk:
+                chunks.append(chunk)
+            current = []
+            continue
+        current.append(line)
+    chunk = '\n'.join(current).strip()
+    if chunk:
+        chunks.append(chunk)
+    return [chunk[:4000] for chunk in chunks[:limit]]
+
+
+@docs_bp.route('/api/docs/recursive-chunk', methods=['POST'])
+def api_docs_recursive_chunk():
+    """Search locally with rg, save bounded chunks to KC, and return IDs."""
+    data = request.get_json(silent=True) or {}
+    query = (data.get('query') or '').strip()
+    if len(query) < 3:
+        return jsonify({'ok': False, 'error': 'query too short'}), 400
+    try:
+        limit = int(data.get('limit') or 12)
+    except Exception:
+        limit = 12
+    limit = max(1, min(limit, 20))
+
+    try:
+        search_root = _recursive_search_root(data.get('path') or '')
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+    import hashlib
+    import subprocess
+
+    cmd = [
+        'rg', '--line-number', '--context', '2', '--max-count', '50',
+        '--hidden', '--no-heading', '--color', 'never',
+        '--glob', '!.git', '--glob', '!node_modules', '--glob', '!venv',
+        '--glob', '!.venv', '--glob', '!__pycache__', '--glob', '!*.db',
+        '--glob', '!*.sqlite', '--glob', '!*.sqlite3', '--glob', '!*.log',
+        query, search_root,
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+    except FileNotFoundError:
+        return jsonify({'ok': False, 'error': 'rg is not installed'}), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'error': 'recursive search timed out'}), 504
+
+    if result.returncode not in (0, 1):
+        return jsonify({'ok': False, 'error': (result.stderr or 'rg failed').strip()}), 500
+
+    chunks = _chunk_rg_output(result.stdout, limit)
+    if not chunks:
+        return jsonify({'ok': True, 'found': 0, 'blackboard_ids': [], 'message': 'No matches found in physical system.'})
+
+    seeded = []
+    conn = get_connection()
+    try:
+        for chunk in chunks:
+            chunk_hash = hashlib.sha256(chunk.encode('utf-8', 'ignore')).hexdigest()[:12]
+            safe_query = query[:80].replace('\n', ' ')
+            doc_name = f'[Recursive] {safe_query} ({chunk_hash})'
+            content = (
+                f'Recursive retrieval chunk\n'
+                f'Query: {query}\n'
+                f'Path: {_os.path.relpath(search_root, _SWARM_ROOT)}\n'
+                f'Hash: {chunk_hash}\n\n{chunk}'
+            )[:4000]
+            existing = conn.execute(
+                "SELECT id FROM project_docs WHERE doc_name=? ORDER BY id DESC LIMIT 1",
+                (doc_name,),
+            ).fetchone()
+            if existing:
+                doc_id = existing['id'] if hasattr(existing, 'keys') else existing[0]
+                conn.execute(
+                    "UPDATE project_docs SET content=?, tags=?, updated_at=datetime('now') WHERE id=?",
+                    (content, 'recursive-search,blackboard,ram-saver', doc_id),
+                )
+            else:
+                cur = conn.execute(
+                    "INSERT INTO project_docs (doc_name, content, tags) VALUES (?,?,?)",
+                    (doc_name, content, 'recursive-search,blackboard,ram-saver'),
+                )
+                doc_id = cur.lastrowid
+            seeded.append({'id': doc_id, 'doc_name': doc_name})
+        conn.commit()
+    finally:
+        conn.close()
+
+    try:
+        log_activity('terminal', 'recursive_chunking', f'Found {len(seeded)} KC chunks for "{query}"')
+    except Exception:
+        pass
+
+    return jsonify({
+        'ok': True,
+        'found': len(seeded),
+        'blackboard_ids': [item['doc_name'] for item in seeded],
+        'items': seeded,
+        'instruction': 'Use these KC project_docs IDs first; read only specific chunks that matter.',
+    })
+
+
 @docs_bp.route('/api/docs/feedback', methods=['GET'])
 def api_docs_feedback_list():
     """List doc UX feedback steps (todo first, newest first)."""

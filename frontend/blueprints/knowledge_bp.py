@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
@@ -35,6 +36,160 @@ def _group_scripts(scripts):
             order.append(g)
         groups[g].append(s)
     return [{'name': g, 'scripts': groups[g]} for g in order]
+
+
+def _count_table(conn: sqlite3.Connection, table: str) -> int:
+    try:
+        row = conn.execute(f"SELECT COUNT(*) AS n FROM {table}").fetchone()
+        return int(row['n'] if isinstance(row, sqlite3.Row) else row[0])
+    except Exception:
+        return 0
+
+
+def _latest_from_table(conn: sqlite3.Connection, table: str, title_col: str, limit: int = 5):
+    try:
+        rows = conn.execute(
+            f"SELECT id, {title_col} AS title, created_at, updated_at FROM {table} "
+            "ORDER BY COALESCE(updated_at, created_at) DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    except Exception:
+        return []
+    return [dict(row) for row in rows]
+
+
+def _latest_test_runs(conn: sqlite3.Connection, limit: int = 5):
+    try:
+        rows = conn.execute(
+            "SELECT run_id, script_id AS title, status, exit_code, started_at, ended_at, "
+            "project_id, step_id, case_id FROM test_runs "
+            "ORDER BY started_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    except Exception:
+        return []
+    return [dict(row) for row in rows]
+
+
+def _latest_steps(conn: sqlite3.Connection, limit: int = 5):
+    try:
+        rows = conn.execute(
+            "SELECT step_id, project_id, title, status, created_at, updated_at FROM project_steps "
+            "ORDER BY COALESCE(updated_at, created_at) DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    except Exception:
+        return []
+    return [dict(row) for row in rows]
+
+
+def _artifact_files(limit: int = 12):
+    root = Path(os.environ.get('SWARM_ROOT') or os.getcwd())
+    artifact_root = root / 'artifacts'
+    if not artifact_root.exists():
+        return []
+    files = [path for path in artifact_root.rglob('*') if path.is_file()]
+    files.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    items = []
+    for path in files[:limit]:
+        stat = path.stat()
+        items.append({
+            'path': str(path.relative_to(root)),
+            'bytes': stat.st_size,
+            'updated_at': stat.st_mtime,
+        })
+    return items
+
+
+def _evidence_receipts(counts, latest, artifacts):
+    receipts = []
+    for key, count in counts.items():
+        if count:
+            table = key
+            if key == 'knowledge_rows':
+                table = 'swarm_knowledge'
+            receipts.append({
+                'kind': 'database_count',
+                'label': key,
+                'value': count,
+                'source': {
+                    'type': 'sqlite',
+                    'database': 'swarm_memory.db',
+                    'table': table,
+                    'sql': f'SELECT COUNT(*) FROM {table}',
+                },
+            })
+    for kind, rows in latest.items():
+        for row in rows:
+            receipt = {
+                'kind': 'database_row',
+                'label': kind,
+                'title': row.get('title'),
+                'status': row.get('status'),
+                'updated_at': row.get('updated_at') or row.get('created_at'),
+                'source': {'type': 'sqlite', 'database': 'swarm_memory.db'},
+                'record': dict(row),
+            }
+            if kind == 'project_docs':
+                receipt['source'].update({'table': 'project_docs', 'id_column': 'id', 'id': row.get('id')})
+            elif kind == 'work_proposals':
+                receipt['source'].update({'table': 'work_proposals', 'id_column': 'id', 'id': row.get('id')})
+            elif kind == 'test_runs':
+                receipt['source'].update({'table': 'test_runs', 'id_column': 'run_id', 'id': row.get('run_id')})
+                receipt['href'] = f"/api/knowledge/test-runs/{row.get('run_id')}"
+            elif kind == 'project_steps':
+                receipt['source'].update({'table': 'project_steps', 'id_column': 'step_id', 'id': row.get('step_id')})
+                receipt['href'] = f"/api/knowledge/steps/{row.get('step_id')}"
+            receipts.append(receipt)
+    for artifact in artifacts:
+        receipts.append({
+            'kind': 'artifact_file',
+            'title': artifact.get('path'),
+            'path': artifact.get('path'),
+            'bytes': artifact.get('bytes'),
+            'updated_at': artifact.get('updated_at'),
+            'source': {
+                'type': 'file',
+                'root': 'SWARM_ROOT',
+                'path': artifact.get('path'),
+            },
+        })
+    return receipts[:50]
+
+
+@knowledge_bp.route('/api/knowledge/evidence', methods=['GET'])
+def api_knowledge_evidence():
+    """Return a concrete receipt of persisted knowledge, tests, and artifacts."""
+    try:
+        from utils.db._connection import get_connection as _get_conn
+        with _get_conn() as conn:
+            conn.row_factory = sqlite3.Row
+            counts = {
+                'knowledge_rows': _count_table(conn, 'swarm_knowledge'),
+                'knowledge_chunks': _count_table(conn, 'knowledge_chunks'),
+                'knowledge_sources': _count_table(conn, 'knowledge_sources'),
+                'project_docs': _count_table(conn, 'project_docs'),
+                'project_steps': _count_table(conn, 'project_steps'),
+                'test_runs': _count_table(conn, 'test_runs'),
+                'test_run_artifacts': _count_table(conn, 'test_run_artifacts'),
+                'work_proposals': _count_table(conn, 'work_proposals'),
+            }
+            latest = {
+                'project_docs': _latest_from_table(conn, 'project_docs', 'doc_name'),
+                'work_proposals': _latest_from_table(conn, 'work_proposals', 'title'),
+                'test_runs': _latest_test_runs(conn),
+                'project_steps': _latest_steps(conn),
+            }
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    artifacts = _artifact_files()
+    return jsonify({
+        'ok': True,
+        'counts': counts,
+        'latest': latest,
+        'artifacts': artifacts,
+        'evidence': _evidence_receipts(counts, latest, artifacts),
+    })
 
 
 @knowledge_bp.route('/api/knowledge/testlab/scripts', methods=['GET'])

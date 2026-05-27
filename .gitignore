@@ -42,7 +42,10 @@ archive/
 # Backups (already backed up separately)
 *.backup
 *.bak
+*.bak.*
 *.db.backup.*
+*.db.corrupt.*
+*.db.recovered*
 swarm_memory.db.backup.*
 swarm.db.backup.*
 swarm.db.empty.backup.*
@@ -52,6 +55,18 @@ swarm.db.retired.*
 /build/
 /dist/
 .claude/
+
+# Android Gradle build output and local build cache (rebuildable)
+android/**/.gradle/
+android/**/build/
+!android/**/src/**/build/
+!ops/install/android/
+!ops/install/android/*.apk
+!ops/install/android/*.idsig
+android/ops/
+android/**/build_log.txt
+android/**/nodes.json
+android/**/view.xml
 
 # Logs (ephemeral — regenerated each run)
 *.log
@@ -106,6 +121,9 @@ swarm_docs/SYSTEM_LANDSCAPE.json
 # specific assets only with `git add -f <path>` and a clear reason.
 artifacts/
 artifacts/media_center/
+# Generated previews/reports.
+audit/*.html
+audit/seven_daily_*.md
 # Sandpit per-agent session logs (rolling, regenerated each run).
 sandpits/*/session_*.log
 

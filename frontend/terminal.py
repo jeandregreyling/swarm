@@ -268,6 +268,10 @@ def create_app():
             return redirect("/ui")
         return jsonify({"status": "ok", "message": "Fridays/Swarm API is running."})
 
+    @app.route("/favicon.ico", methods=["GET"])
+    def favicon():
+        return ('', 204)
+
     @app.route("/_health", methods=["GET"])
     def health_status():
         from flask import jsonify

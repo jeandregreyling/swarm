@@ -168,16 +168,17 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     const cb = document.getElementById('welcome-show-at-startup');
     const pref = localStorage.getItem('fridays-welcome-at-startup');
-    // First-visit default: ON. Once user unticks, remember 'never'.
-    const shouldShow = (pref === null) || pref === '1';
+    // First-visit default: OFF to avoid interrupting the main screen.
+    // Users can still opt-in via the checkbox.
+    const shouldShow = pref === '1';
     if (cb) cb.checked = shouldShow;
     if (shouldShow) {
       setTimeout(() => {
         const m = document.getElementById('shortcuts-help-modal');
         if (m) m.classList.add('open');
-        // First visit: persist so next boot knows user has seen it.
-        if (pref === null) { try { localStorage.setItem('fridays-welcome-at-startup', '1'); } catch (e) {} }
       }, 600);
+    } else if (pref === null) {
+      try { localStorage.setItem('fridays-welcome-at-startup', '0'); } catch (e) {}
     }
   } catch (e) {}
 

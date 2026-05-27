@@ -72,6 +72,53 @@ CREATE INDEX IF NOT EXISTS idx_hive_jobs_status ON hive_jobs (status, created_ts
 CREATE INDEX IF NOT EXISTS idx_hive_jobs_node ON hive_jobs (node_id, status);
 """
 
+_GPU_CAPABILITY = 'inference.gpu'
+_GPU_MIN_RAM_FREE_MB = 512
+_GPU_MIN_BATTERY_PCT = 20
+_GPU_MIN_CAPACITY_SCORE = 70
+_GPU_DISCOVERY_KINDS = {'gpu.probe', 'tiny.gpu.benchmark'}
+_NODE_OFFLINE_AFTER_S = 90
+
+
+def _decode_json(raw: str | None) -> dict | None:
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _is_gpu_job(kind: str, capability_req: str | None) -> bool:
+    return capability_req == _GPU_CAPABILITY or kind.startswith('tiny.gpu.')
+
+
+def _trace_hive_job(stage: str, job_id: str, *, node_id: str | None = None,
+                    kind: str | None = None, detail: dict | None = None) -> None:
+    try:
+        from core.spine import EventKind, Severity, log
+        payload = {
+            'stage': stage,
+            'job_id': job_id,
+            'node_id': node_id,
+            'kind': kind,
+        }
+        if detail:
+            payload.update(detail)
+        log(
+            EventKind.SYSTEM,
+            f'Hive job {stage}: {job_id}',
+            severity=Severity.INFO,
+            source='hive',
+            agent=node_id,
+            thread_id=job_id,
+            change_id='P-HIVE-P2-GPU-LOOP',
+            payload=payload,
+        )
+    except Exception:
+        pass
+
 
 class HiveRegistry:
     """SQLite-backed Hive node registry. Thread-safe for single-process use.
@@ -277,6 +324,7 @@ class HiveRegistry:
                 'enrolled_ts': r['enrolled_ts'],
                 'last_seen_ts': last_seen,
                 'age_s': (now - last_seen) if last_seen else None,
+                'offline': last_seen is None or now - last_seen > _NODE_OFFLINE_AFTER_S,
                 'label': r['label'],
                 'notes': r['notes'],
                 'telemetry': telem,
@@ -314,6 +362,62 @@ class HiveRegistry:
             conn.commit()
             return cur.rowcount
 
+    def _latest_gpu_capacity_score(self, conn: sqlite3.Connection,
+                                   node_id: str) -> int | None:
+        rows = conn.execute(
+            "SELECT result_json FROM hive_jobs WHERE node_id=? "
+            "AND status='completed' AND result_json IS NOT NULL "
+            "ORDER BY completed_ts DESC LIMIT 20",
+            (node_id,),
+        ).fetchall()
+        for row in rows:
+            result = _decode_json(row['result_json'])
+            probe = result.get('gpu_probe') if result else None
+            if not isinstance(probe, dict):
+                continue
+            score = probe.get('capacity_score')
+            if isinstance(score, (int, float)):
+                return int(score)
+        return None
+
+    def _gpu_route_rejection(self, conn: sqlite3.Connection, *,
+                             node_id: str, kind: str,
+                             capability_req: str | None) -> str | None:
+        if not _is_gpu_job(kind, capability_req):
+            return None
+        row = conn.execute(
+            'SELECT last_seen_ts, telemetry_json FROM hive_nodes WHERE node_id=?',
+            (node_id,),
+        ).fetchone()
+        telemetry = _decode_json(row['telemetry_json'] if row else None)
+        if telemetry is None:
+            return 'missing node telemetry'
+        last_seen = row['last_seen_ts']
+        if last_seen is None or int(time.time()) - last_seen > _NODE_OFFLINE_AFTER_S:
+            return f'node heartbeat older than {_NODE_OFFLINE_AFTER_S}s'
+        caps = telemetry.get('capabilities') or []
+        if _GPU_CAPABILITY not in caps:
+            return 'node telemetry does not advertise inference.gpu'
+        compute = telemetry.get('compute') or {}
+        if compute.get('gpu_present') is False:
+            return 'node telemetry reports no GPU present'
+        memory = telemetry.get('memory') or {}
+        ram_free = memory.get('ram_free_mb')
+        if not isinstance(ram_free, (int, float)) or ram_free < _GPU_MIN_RAM_FREE_MB:
+            return f'ram_free_mb below {_GPU_MIN_RAM_FREE_MB}'
+        power = telemetry.get('power') or {}
+        battery_pct = power.get('battery_pct')
+        if battery_pct is not None and battery_pct < _GPU_MIN_BATTERY_PCT:
+            return f'battery_pct below {_GPU_MIN_BATTERY_PCT}'
+        if kind in _GPU_DISCOVERY_KINDS:
+            return None
+        score = self._latest_gpu_capacity_score(conn, node_id)
+        if score is None:
+            return 'missing GPU capacity benchmark'
+        if score < _GPU_MIN_CAPACITY_SCORE:
+            return f'capacity_score below {_GPU_MIN_CAPACITY_SCORE}'
+        return None
+
     # -- jobs ------------------------------------------------------------
     def submit_job(self, kind: str, payload: dict, *,
                    capability_req: str | None = None,
@@ -335,6 +439,8 @@ class HiveRegistry:
                 (now, node_id or '', 'job-submitted', job_id),
             )
             conn.commit()
+        _trace_hive_job('submitted', job_id, node_id=node_id, kind=kind,
+                        detail={'capability_req': capability_req})
         return job_id
 
     def claim_next_job(self, node_id: str, capabilities: list[str]) -> dict | None:
@@ -354,6 +460,26 @@ class HiveRegistry:
                 req = r['capability_req']
                 if req is None or req in capabilities:
                     job_id = r['job_id']
+                    rejection = self._gpu_route_rejection(
+                        conn,
+                        node_id=node_id,
+                        kind=r['kind'],
+                        capability_req=req,
+                    )
+                    if rejection:
+                        conn.execute(
+                            'INSERT INTO hive_events (ts, node_id, kind, detail) '
+                            'VALUES (?,?,?,?)',
+                            (now, node_id, 'job-route-rejected',
+                             json.dumps({'job_id': job_id, 'reason': rejection},
+                                        separators=(',', ':'))),
+                        )
+                        conn.commit()
+                        _trace_hive_job(
+                            'route_rejected', job_id, node_id=node_id,
+                            kind=r['kind'], detail={'reason': rejection},
+                        )
+                        continue
                     conn.execute(
                         "UPDATE hive_jobs SET status='claimed', "
                         "node_id=?, claimed_ts=? WHERE job_id=?",
@@ -365,6 +491,8 @@ class HiveRegistry:
                         (now, node_id, 'job-claimed', job_id),
                     )
                     conn.commit()
+                    _trace_hive_job('claimed', job_id, node_id=node_id,
+                                    kind=r['kind'])
                     return {
                         'job_id': job_id,
                         'kind': r['kind'],
@@ -389,12 +517,14 @@ class HiveRegistry:
                     (now, '', 'job-completed', job_id),
                 )
                 conn.commit()
+                _trace_hive_job('completed', job_id)
                 return True
             return False
 
     def list_jobs(self, *, status: str | None = None, limit: int = 100) -> list:
         sql = ('SELECT job_id, node_id, kind, status, created_ts, '
-               'claimed_ts, completed_ts, capability_req '
+               'claimed_ts, completed_ts, capability_req, payload_json, '
+               'result_json '
                'FROM hive_jobs WHERE 1=1 ')
         args: list = []
         if status:
@@ -404,7 +534,18 @@ class HiveRegistry:
         args.append(int(max(1, min(500, limit))))
         with self._connect() as conn:
             rows = conn.execute(sql, args).fetchall()
-        return [dict(r) for r in rows]
+        out = []
+        for row in rows:
+            item = dict(row)
+            for key, target in (('payload_json', 'payload'), ('result_json', 'result')):
+                raw = item.pop(key, None)
+                if raw:
+                    try:
+                        item[target] = json.loads(raw)
+                    except (json.JSONDecodeError, TypeError):
+                        item[target] = None
+            out.append(item)
+        return out
 
     def prune_stale_nodes(self, *, older_than_s: int = 30 * 86400) -> list:
         cutoff = int(time.time()) - older_than_s

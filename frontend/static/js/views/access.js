@@ -698,10 +698,25 @@ function clearWorkflow() {
 // =========================================================
 function loadAgentsConfigData(win) {
   window.__agentsWin = win;
+  window.__agentsSelected = window.__agentsSelected || null;
+  window.__agentsTab = window.__agentsTab || 'overview';
+  agentsSwitchTab(window.__agentsTab);
   agentsRefresh();
+  if (window.__agentsOpsTimer) clearInterval(window.__agentsOpsTimer);
+  window.__agentsOpsTimer = setInterval(() => {
+    const active = document.activeElement;
+    const editing = active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName) && document.getElementById('agents-configure-body')?.contains(active);
+    if (!editing && document.getElementById('agents-overview-body')) agentsOpsRefresh();
+  }, 20000);
 }
 
 function agentsRefresh() {
+  agentsConfigRefresh();
+  agentsOpsRefresh(true);
+  if (window.__agentsTab === 'runtimes') agentsLocalAIRefresh();
+}
+
+function agentsConfigRefresh() {
   const list   = document.getElementById('agents-list');
   const detail = document.getElementById('agents-detail');
   if (list)   list.innerHTML   = '<div style="padding:20px;color:var(--text-dim);font-size:11px;">Loading…</div>';
@@ -714,10 +729,245 @@ function agentsRefresh() {
     window.__globalsData = Array.isArray(globalsData) ? globalsData : (globalsData.globals || []);
     agentsRenderList(window.__agentsData);
     agentsRenderGlobals(window.__globalsData);
-    if (window.__agentsData.length > 0) agentsShowDetail(window.__agentsData[0]);
+    const selected = (window.__agentsData || []).find(a => a.name === window.__agentsSelected) || window.__agentsData[0];
+    if (selected) agentsShowDetail(selected);
   }).catch(err => {
     if (list) list.innerHTML = `<div style="padding:20px;color:#ff6b6b;font-size:11px;">Error: ${_esc(err.message)}</div>`;
   });
+}
+
+function agentsOpsRefresh(force) {
+  const board = document.getElementById('agents-ops-board');
+  if (board && force) board.innerHTML = '<div class="agents-empty">Loading agent operations…</div>';
+  return fetch('/api/agents/ops-summary')
+    .then(r => r.json())
+    .then(data => {
+      window.__agentsOps = data;
+      if (!data.ok) throw new Error(data.error || 'ops summary failed');
+      agentsRenderOpsSummary(data);
+      agentsRenderOpsOverview(data);
+      agentsRenderOpsQueue(data);
+      agentsRenderOpsRuntimes(data);
+      return data;
+    })
+    .catch(err => {
+      if (board) board.innerHTML = `<div class="agents-empty" style="color:#ff6b6b;">${_esc(err.message || err)}</div>`;
+    });
+}
+
+function _agentsGroupFor(a) {
+  if (a.tier === 'human') return 'Human';
+  if (a.tier === 'local') return 'Core local';
+  if (a.tier === 'service') return 'Services';
+  return 'Developer API';
+}
+
+function agentsRenderOpsSummary(data) {
+  const el = document.getElementById('agents-summary-strip');
+  if (!el) return;
+  const s = data.summary || {};
+  const cards = [
+    ['Ready', s.ready || 0],
+    ['Busy', s.busy || 0],
+    ['Offline/Disabled', s.disabled || 0],
+    ['Config review', (s.missing_model || 0) + (s.missing_credentials || 0)],
+    ['Stale runtime', (data.blockers || []).filter(b => b.kind === 'hive' || b.kind === 'runtime').length],
+  ];
+  el.innerHTML = cards.map(([label, value]) => `<div class="agents-summary-card"><div class="agents-summary-label">${_esc(label)}</div><div class="agents-summary-value">${_esc(value)}</div></div>`).join('');
+
+  const blockers = document.getElementById('agents-blockers');
+  if (blockers) {
+    const items = (data.blockers || []).slice(0, 8);
+    blockers.innerHTML = items.length
+      ? items.map(b => `<span class="agents-blocker ${_esc(b.severity || '')}">${_esc(b.message || '')}</span>`).join('')
+      : '<span class="agents-blocker">No active blockers reported</span>';
+  }
+}
+
+function agentsRenderOpsOverview(data) {
+  const board = document.getElementById('agents-ops-board');
+  if (!board) return;
+  const agents = data.agents || [];
+  if (!window.__agentsSelected && agents.length) window.__agentsSelected = agents[0].name;
+  const groups = {'Core local': [], 'Developer API': [], 'Services': [], 'Human': []};
+  agents.forEach(a => (groups[_agentsGroupFor(a)] || groups['Developer API']).push(a));
+  const card = (a) => {
+    const selected = a.name === window.__agentsSelected ? ' selected' : '';
+    const modelState = a.missing_model ? 'model review' : (a.missing_credentials ? 'key missing' : (a.model_installed === true ? 'model ready' : 'configured'));
+    const last = a.last_seen || 'no recent job';
+    const jobLabel = Number(a.active_jobs || 0) === 1 ? 'running job' : 'running jobs';
+    return `<div class="agents-agent-card${selected}" data-agent="${_esc(a.name)}">
+      <div class="agents-agent-top">
+        <span class="agents-pill ${_esc(a.readiness || '')}">${_esc(a.readiness || a.status || 'idle')}</span>
+        <span class="agents-agent-name">${_esc(a.label || a.name)}</span>
+        <span class="agents-pill">${_esc(a.runtime_backend || a.tier || '')}</span>
+      </div>
+      <div class="agents-agent-meta">
+        ${_esc(a.model || 'no model')} · ${_esc(modelState)}<br>
+        ${_esc(a.active_jobs || 0)} ${jobLabel} · ${_esc(last)}<br>
+        ${_esc(a.recommended_action || 'Ready')}
+      </div>
+      <div class="agents-card-actions">
+        <button type="button" data-action="chat" data-agent="${_esc(a.name)}">Chat</button>
+        <button type="button" data-action="toggle" data-agent="${_esc(a.name)}">${a.enabled ? 'Disable' : 'Enable'}</button>
+        ${a.tier === 'local' ? `<button type="button" data-action="unload" data-agent="${_esc(a.name)}">Unload</button><button type="button" data-action="force" data-agent="${_esc(a.name)}">Force unload</button>` : ''}
+        <button type="button" data-action="logs" data-agent="${_esc(a.name)}">Logs</button>
+        <button type="button" data-action="edit" data-agent="${_esc(a.name)}">Edit</button>
+      </div>
+    </div>`;
+  };
+  board.innerHTML = Object.entries(groups).map(([label, list]) => {
+    if (!list.length) return '';
+    return `<section><div class="agents-agent-group-title">${_esc(label)} (${list.length})</div><div class="agents-agent-grid">${list.map(card).join('')}</div></section>`;
+  }).join('');
+  board.querySelectorAll('.agents-agent-card').forEach(el => {
+    el.addEventListener('click', e => {
+      const actionBtn = e.target.closest('button[data-action]');
+      const agent = el.dataset.agent;
+      if (actionBtn) {
+        agentsOpsAction(actionBtn.dataset.action, agent);
+        return;
+      }
+      window.__agentsSelected = agent;
+      agentsRenderOpsOverview(window.__agentsOps || data);
+    });
+  });
+  agentsRenderOpsDetail((data.agents || []).find(a => a.name === window.__agentsSelected) || agents[0], data);
+}
+
+function agentsRenderOpsDetail(agent, data) {
+  const el = document.getElementById('agents-ops-detail');
+  if (!el) return;
+  if (!agent) {
+    el.innerHTML = '<div class="agents-empty">Select an agent.</div>';
+    return;
+  }
+  const nodeText = (data.nodes || []).filter(n => !n.offline).map(n => n.label || n.node_id).join(', ') || 'No live farm worker';
+  const actions = [
+    ['chat', 'Chat'],
+    ['toggle', agent.enabled ? 'Disable' : 'Enable'],
+    ...(agent.tier === 'local' ? [['unload', 'Unload'], ['force', 'Force unload']] : []),
+    ['logs', 'Open logs'],
+    ['edit', 'Edit Agent'],
+  ];
+  el.innerHTML = `<div class="agents-detail-title">${_esc(agent.label || agent.name)}</div>
+    <div>${_esc(agent.role || 'No role description')}</div>
+    <div class="agents-detail-row"><span>Status</span><strong>${_esc(agent.status || '')}</strong></div>
+    <div class="agents-detail-row"><span>Runtime</span><strong>${_esc(agent.runtime_backend || '')}</strong></div>
+    <div class="agents-detail-row"><span>Model</span><strong>${_esc(agent.model || '')}</strong></div>
+    <div class="agents-detail-row"><span>Running jobs</span><strong>${_esc(agent.active_jobs || 0)}</strong></div>
+    <div class="agents-detail-row"><span>Capabilities</span><strong>${_esc(agent.capabilities_count || 0)}</strong></div>
+    <div class="agents-detail-row"><span>Farm capacity</span><strong>${_esc(nodeText)}</strong></div>
+    <div class="agents-detail-row"><span>Action</span><strong>${_esc(agent.recommended_action || '')}</strong></div>
+    <div class="agents-card-actions agents-detail-actions">
+      ${actions.map(([action, label]) => `<button type="button" data-action="${_esc(action)}" data-agent="${_esc(agent.name)}">${_esc(label)}</button>`).join('')}
+    </div>`;
+  el.querySelectorAll('button[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => agentsOpsAction(btn.dataset.action, btn.dataset.agent));
+  });
+}
+
+function agentsOpsAction(action, name) {
+  const agent = ((window.__agentsOps || {}).agents || []).find(a => a.name === name) || ((window.__agentsData || []).find(a => a.name === name));
+  if (action === 'chat') {
+    if (typeof openWindow === 'function') openWindow('chat', 'Chat', 'view-chat');
+    setTimeout(() => {
+      if (!agentsSelectChatAgent(name) && typeof showToast === 'function') {
+        showToast(`${agent?.label || name} is not enabled in Chat. Enable the agent first.`, 'error');
+      }
+    }, 200);
+    return;
+  }
+  if (action === 'edit') {
+    window.__agentsSelected = name;
+    agentsSwitchTab('configure');
+    const fresh = (window.__agentsData || []).find(a => a.name === name);
+    if (fresh) agentsShowDetail(fresh);
+    return;
+  }
+  if (action === 'toggle') {
+    fetch(`/api/agents/${encodeURIComponent(name)}/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }).then(r => r.json()).then(d => {
+      if (typeof showToast === 'function') showToast(`${name} ${d.enabled ? 'enabled' : 'disabled'}`, 'success');
+      agentsRefresh();
+    }).catch(() => {
+      if (typeof showToast === 'function') showToast('Toggle failed', 'error');
+    });
+    return;
+  }
+  if (action === 'logs') {
+    agentsOpenLogs(agent?.runtime_backend === 'api' ? 'ollama' : (agent?.runtime_backend || 'ollama'));
+    return;
+  }
+  if ((action === 'unload' || action === 'force') && agent?.model) {
+    if (action === 'force' && typeof localaiRuntimeForceUnload === 'function') {
+      localaiRuntimeForceUnload(agent.model, '', '');
+    } else {
+      fetch('/api/ollama/unload', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ model: agent.model }) })
+        .then(() => agentsOpsRefresh(true));
+    }
+  }
+}
+
+function agentsSelectChatAgent(name) {
+  const key = String(name || '').trim().toLowerCase();
+  if (!key) return false;
+
+  if (typeof _applySingleThreadAgent === 'function' && _applySingleThreadAgent(key)) {
+    if (typeof _setAgentSelectionState === 'function') _setAgentSelectionState(key, 'manual');
+    if (typeof renderChatAgentToggles === 'function') renderChatAgentToggles();
+    if (typeof updateComposerMeta === 'function') updateComposerMeta();
+    return true;
+  }
+
+  const cssKey = window.CSS && typeof CSS.escape === 'function'
+    ? CSS.escape(key)
+    : key.replace(/["\\]/g, '\\$&');
+  const input = document.querySelector(`.chat-agent-toggle[value="${cssKey}"]`);
+  if (!input) return false;
+  input.checked = true;
+  if (typeof onChatAgentToggleChange === 'function') onChatAgentToggleChange(input);
+  return true;
+}
+
+function agentsRenderOpsQueue(data) {
+  const el = document.getElementById('agents-queue-panel');
+  if (!el) return;
+  const active = (data.jobs || {}).active || [];
+  const failed = (data.jobs || {}).failed_recent || [];
+  const recoveries = (data.jobs || {}).recoveries || [];
+  const activeRows = active.map(j => `<div class="agents-runtime-card"><h4>${_esc(j.agent || 'agent')} · ${_esc(j.status || '')}</h4><div>${_esc(j.stage || 'running')} · thread ${_esc(j.conversation_id || '')}</div><div class="agents-card-actions"><button onclick="window.cancelChatJob && window.cancelChatJob('${_esc(j.job_id || '')}')">Cancel</button></div></div>`);
+  const recoveryRows = recoveries.map(r => `<div class="agents-runtime-card"><h4>Recovery · ${_esc(r.stalled_agent || '')}</h4><div>${_esc(r.stage || r.status || '')} · ${_esc(r.reason || '')}</div></div>`);
+  const failedRows = failed.map(j => `<div class="agents-runtime-card agents-muted-card"><h4>${_esc(j.agent || 'agent')} · failed</h4><div>${_esc(j.stage || j.error || 'failed')} · thread ${_esc(j.conversation_id || '')}</div></div>`);
+  el.innerHTML = `
+    <div class="agents-section-label">Running and pending work</div>
+    <div class="agents-queue-list">${activeRows.join('') || '<div class="agents-empty">No running or pending chat jobs.</div>'}</div>
+    <div class="agents-section-label">Relay recoveries</div>
+    <div class="agents-queue-list">${recoveryRows.join('') || '<div class="agents-empty">No open relay recoveries.</div>'}</div>
+    <details class="agents-failed-work">
+      <summary>Recent failed jobs (${failed.length})</summary>
+      <div class="agents-queue-list">${failedRows.join('') || '<div class="agents-empty">No recent failed jobs.</div>'}</div>
+    </details>`;
+}
+
+function agentsRenderOpsRuntimes(data) {
+  const el = document.getElementById('agents-runtimes-panel');
+  if (!el) return;
+  const rt = data.runtimes || {};
+  const nodes = data.nodes || [];
+  const hiveJobs = ((data.jobs || {}).hive || []).filter(j => j.status !== 'completed');
+  const runtimeCard = (name, body, ok) => `<div class="agents-runtime-card"><h4><span class="agents-pill ${ok ? 'ready' : 'blocked'}">${ok ? 'online' : 'offline'}</span> ${_esc(name)}</h4>${body}</div>`;
+  const ollamaModels = (rt.ollama?.models || []).map(m => `<span class="agents-pill">${_esc(m.name || m)}</span>`).join(' ') || 'No models';
+  const farmRows = nodes.map(n => `<div class="agents-detail-row"><span>${_esc(n.label || n.node_id)}</span><strong>${n.offline ? 'stale/offline' : 'live'} · ${_esc((n.capabilities || []).join(', ') || 'no caps')}</strong></div>`).join('');
+  el.innerHTML = [
+    runtimeCard('Ollama', `<div>${ollamaModels}</div>`, !!rt.ollama?.running),
+    runtimeCard('LM Studio', `<div>${_esc(rt.lmstudio?.loaded || 'No loaded model')}</div>`, !!rt.lmstudio?.running),
+    runtimeCard('Picoclaw', `<div>${_esc(rt.picoclaw?.url || '')}</div>`, !!rt.picoclaw?.running),
+    `<div class="agents-runtime-card"><h4><span class="agents-pill ${nodes.some(n => !n.offline) ? 'ready' : 'blocked'}">${nodes.filter(n => !n.offline).length} live</span> Potato Farm</h4>${farmRows}<div style="margin-top:8px;color:var(--text-dim);font-size:11px;">${hiveJobs.length} pending/claimed handoff(s)</div></div>`,
+  ].join('');
 }
 
 function agentsRenderList(agents) {
@@ -801,6 +1051,7 @@ function agentsRenderList(agents) {
 
 function agentsShowDetail(agent) {
   if (!agent) return;
+  window.__agentsSelected = agent.name;
   document.querySelectorAll('.agents-list-row').forEach(r => {
     r.style.background = r.dataset.name === agent.name ? 'rgba(255,255,255,0.06)' : '';
   });
@@ -1945,28 +2196,17 @@ function agentsSaveGlobal(key) {
 
 // ── Agents tab switching (Agents / Local AI) ──────────────────────────────
 function agentsSwitchTab(tab) {
-  const agentsBody  = document.getElementById('agents-agents-body');
-  const localaiBody = document.getElementById('agents-localai-body');
-  const tabAgents   = document.getElementById('agents-tab-agents');
-  const tabLocalai  = document.getElementById('agents-tab-localai');
-  if (!agentsBody || !localaiBody) return;
-
-  const isAgents = (tab === 'agents');
-  agentsBody.style.display  = isAgents ? 'flex'  : 'none';
-  localaiBody.style.display = isAgents ? 'none'  : 'block';
-
-  if (tabAgents) {
-    tabAgents.style.borderBottomColor = isAgents ? 'var(--accent)' : 'transparent';
-    tabAgents.style.color             = isAgents ? 'var(--text)'   : 'var(--text-dim)';
-    tabAgents.style.fontWeight        = isAgents ? '600'           : '400';
-  }
-  if (tabLocalai) {
-    tabLocalai.style.borderBottomColor = isAgents ? 'transparent'   : 'var(--accent)';
-    tabLocalai.style.color             = isAgents ? 'var(--text-dim)' : 'var(--text)';
-    tabLocalai.style.fontWeight        = isAgents ? '400'           : '600';
-  }
-
-  if (!isAgents) agentsLocalAIRefresh();
+  const valid = ['overview', 'queue', 'runtimes', 'configure'];
+  const active = valid.includes(tab) ? tab : 'overview';
+  window.__agentsTab = active;
+  valid.forEach(key => {
+    const body = document.getElementById(`agents-${key}-body`);
+    const btn = document.getElementById(`agents-tab-${key}`);
+    if (body) body.classList.toggle('active', key === active);
+    if (btn) btn.classList.toggle('active', key === active);
+  });
+  if (active === 'runtimes') agentsLocalAIRefresh();
+  if (active === 'overview' || active === 'queue' || active === 'runtimes') agentsOpsRefresh(false);
 }
 
 function agentsLocalAIRefresh() {
@@ -2131,3 +2371,4 @@ window.agentsOpenLogs = agentsOpenLogs;
 window.agentsOllamaPullPrompt = agentsOllamaPullPrompt;
 window.agentsRefreshDisabledPanel = agentsRefreshDisabledPanel;
 window.agentsReEnable = agentsReEnable;
+window.agentsSelectChatAgent = agentsSelectChatAgent;

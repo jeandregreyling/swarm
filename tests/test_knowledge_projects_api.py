@@ -251,6 +251,42 @@ def test_search_returns_matches(projects_client):
     assert any("apollo" in n for n in names)
 
 
+def test_evidence_receipt_counts_tangible_records(projects_client):
+    pid = _create_project(projects_client, name="Evidence Project")
+    projects_client.post(f"/api/knowledge/projects/{pid}/steps", json={"title": "Touch"})
+
+    r = projects_client.get("/api/knowledge/evidence")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["ok"] is True
+    counts = body["counts"]
+    assert counts["project_steps"] >= 1
+    for key in (
+        "knowledge_rows",
+        "knowledge_chunks",
+        "knowledge_sources",
+        "project_docs",
+        "test_runs",
+        "test_run_artifacts",
+        "work_proposals",
+    ):
+        assert key in counts
+    assert "project_docs" in body["latest"]
+    assert isinstance(body["artifacts"], list)
+    assert body["evidence"]
+    assert any(
+        item.get("label") == "project_steps"
+        and item.get("source", {}).get("sql") == "SELECT COUNT(*) FROM project_steps"
+        for item in body["evidence"]
+    )
+    assert any(
+        item.get("label") == "project_steps"
+        and item.get("source", {}).get("id_column") == "step_id"
+        and item.get("href", "").startswith("/api/knowledge/steps/")
+        for item in body["evidence"]
+    )
+
+
 def test_delete_project(projects_client):
     pid = _create_project(projects_client)
     r = projects_client.delete(f"/api/knowledge/projects/{pid}")

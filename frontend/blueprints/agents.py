@@ -143,6 +143,308 @@ def api_agents_status():
         return jsonify({'error': str(e)}), 500
 
 
+def _agents_config_rows_for_ops():
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """SELECT number, name, label, model, role, roles, temperature,
+                      system_prompt, api_key_var, tier, enabled, eta_seconds, keep_alive
+                 FROM agents WHERE number >= 0 ORDER BY number ASC"""
+        ).fetchall()
+    finally:
+        conn.close()
+    result = []
+    for row in rows:
+        item = dict(row)
+        roles_val = item.get('roles')
+        if roles_val:
+            try:
+                item['roles'] = _json.loads(roles_val)
+            except Exception:
+                item['roles'] = []
+        elif item.get('role'):
+            item['roles'] = [item['role']]
+        else:
+            item['roles'] = []
+        key_var = item.get('api_key_var') or ''
+        if key_var:
+            raw = os.environ.get(key_var, '')
+            if not raw:
+                try:
+                    from config import _load_env_key
+                    raw = _load_env_key(key_var)
+                except Exception:
+                    raw = ''
+            item['api_key_set'] = bool(raw)
+        else:
+            item['api_key_set'] = None
+        item['status'] = _agent_reachability_status(item['name'])
+        result.append(item)
+    return result
+
+
+def _agents_status_rows_for_ops():
+    try:
+        conn = get_connection()
+        try:
+            agents_rows = conn.execute(
+                "SELECT name, tier, enabled FROM agents WHERE number >= 0 ORDER BY number ASC"
+            ).fetchall()
+            running_rows = conn.execute(
+                "SELECT agent, COUNT(*) as cnt FROM chat_jobs WHERE status='running' GROUP BY agent"
+            ).fetchall()
+            last_seen_rows = conn.execute(
+                "SELECT agent, MAX(updated_at) as last_seen FROM chat_jobs GROUP BY agent"
+            ).fetchall()
+        finally:
+            conn.close()
+        running_map = {str(r['agent'] or '').lower(): int(r['cnt'] or 0) for r in running_rows}
+        last_seen_map = {str(r['agent'] or '').lower(): r['last_seen'] for r in last_seen_rows}
+        try:
+            from utils.circuit_breaker import status_for as _cb_status_for
+        except Exception:
+            _cb_status_for = None
+        out = {}
+        for row in agents_rows:
+            name = str(row['name'] or '').lower()
+            enabled = bool(row['enabled']) if row['enabled'] is not None else True
+            active = running_map.get(name, 0)
+            cb_state = 'closed'
+            if _cb_status_for:
+                try:
+                    cb_state = (_cb_status_for(name) or {}).get('state', 'closed')
+                except Exception:
+                    cb_state = 'closed'
+            status = 'disabled' if (not enabled or name in DISABLED_AGENTS) else ('down' if cb_state == 'open' else ('busy' if active else 'idle'))
+            out[name] = {
+                'name': name,
+                'tier': row['tier'] or 'local',
+                'status': status,
+                'active_jobs': active,
+                'circuit_breaker': cb_state,
+                'last_seen': last_seen_map.get(name),
+            }
+        return out
+    except Exception:
+        return {}
+
+
+def _agents_runtime_summary_for_ops(blockers):
+    try:
+        from frontend.blueprints.localai import _ollama_status, _lmstudio_status, _picoclaw_status
+        runtimes = {
+            'ollama': _ollama_status(),
+            'lmstudio': _lmstudio_status(),
+            'picoclaw': _picoclaw_status(),
+        }
+    except Exception as exc:
+        blockers.append({'kind': 'runtime', 'severity': 'warn', 'message': f'Local AI status unavailable: {exc}'})
+        runtimes = {
+            'ollama': {'running': False, 'models': []},
+            'lmstudio': {'running': False, 'models': [], 'loaded': None},
+            'picoclaw': {'running': False, 'url': 'http://localhost:18790'},
+        }
+    for key, label in (('lmstudio', 'LM Studio'), ('picoclaw', 'Picoclaw')):
+        if not runtimes.get(key, {}).get('running'):
+            blockers.append({'kind': 'runtime', 'severity': 'info', 'message': f'{label} offline'})
+    if not runtimes.get('ollama', {}).get('running'):
+        blockers.append({'kind': 'runtime', 'severity': 'blocker', 'message': 'Ollama offline'})
+    return runtimes
+
+
+def _agents_hive_summary_for_ops(blockers):
+    try:
+        from core.hive import get_registry
+        from frontend.blueprints.hive import _with_expected_farm_nodes
+        reg = get_registry()
+        nodes = _with_expected_farm_nodes(reg.list_nodes())
+        jobs = reg.list_jobs(limit=50)
+    except Exception as exc:
+        blockers.append({'kind': 'hive', 'severity': 'warn', 'message': f'Potato Farm unavailable: {exc}'})
+        return [], []
+    out_nodes = []
+    for node in nodes:
+        telemetry = node.get('telemetry') or {}
+        caps = telemetry.get('capabilities') or []
+        age_s = node.get('age_s')
+        offline = bool(node.get('offline'))
+        ready = not offline
+        out_nodes.append({
+            'node_id': node.get('node_id'),
+            'label': node.get('label') or node.get('node_id'),
+            'platform': node.get('platform'),
+            'offline': offline,
+            'expected': bool(node.get('expected')),
+            'age_s': age_s,
+            'capabilities': caps,
+            'gpu_present': bool((telemetry.get('compute') or {}).get('gpu_present')),
+            'ready': ready,
+        })
+        if node.get('node_id') == 'potato-2' and offline:
+            blockers.append({'kind': 'hive', 'severity': 'blocker', 'message': 'potato-2 stale/offline'})
+    out_jobs = []
+    for job in jobs:
+        out_jobs.append({
+            'job_id': job.get('job_id'),
+            'node_id': job.get('node_id'),
+            'kind': job.get('kind'),
+            'status': job.get('status'),
+            'capability_req': job.get('capability_req'),
+            'created_ts': job.get('created_ts'),
+            'claimed_ts': job.get('claimed_ts'),
+            'completed_ts': job.get('completed_ts'),
+        })
+    return out_nodes, out_jobs
+
+
+def _agents_chat_jobs_for_ops(blockers):
+    try:
+        conn = get_connection()
+        try:
+            job_rows = conn.execute(
+                """SELECT job_id, conversation_id, agent, status, runtime_class, stage,
+                          eta_seconds, error, started_at AS created_at, updated_at
+                     FROM chat_jobs
+                    WHERE status IN ('running','pending','queued')
+                    ORDER BY updated_at DESC LIMIT 100"""
+            ).fetchall()
+            failed_rows = conn.execute(
+                """SELECT job_id, conversation_id, agent, status, runtime_class, stage,
+                          eta_seconds, error, started_at AS created_at, updated_at
+                     FROM chat_jobs
+                    WHERE status='failed'
+                    ORDER BY updated_at DESC LIMIT 24"""
+            ).fetchall()
+            recovery_rows = conn.execute(
+                """SELECT recovery_id, conversation_id, stalled_agent, status,
+                          '' AS stage, summary AS reason, updated_at
+                     FROM chat_relay_recoveries
+                    WHERE status NOT IN ('done','cancelled','resolved')
+                    ORDER BY updated_at DESC LIMIT 50"""
+            ).fetchall()
+        finally:
+            conn.close()
+    except Exception as exc:
+        blockers.append({'kind': 'chat', 'severity': 'warn', 'message': f'Chat job status unavailable: {exc}'})
+        return {'active': [], 'recoveries': []}
+    active = [dict(r) for r in job_rows]
+    failed_recent = [dict(r) for r in failed_rows]
+    recoveries = [dict(r) for r in recovery_rows]
+    return {'active': active, 'failed_recent': failed_recent, 'recoveries': recoveries}
+
+
+def _ops_model_tokens(model):
+    raw = str(model or '').strip().lower()
+    if not raw:
+        return set()
+    base = raw.split(':', 1)[0]
+    return {raw, base}
+
+
+@agents_bp.route('/api/agents/ops-summary')
+def api_agents_ops_summary():
+    """Operator-first summary for the redesigned Agents tile."""
+    blockers = []
+    try:
+        agents = _agents_config_rows_for_ops()
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'summary': {}, 'agents': [], 'runtimes': {}, 'jobs': {}, 'nodes': [], 'blockers': []}), 500
+
+    status_map = _agents_status_rows_for_ops()
+    runtimes = _agents_runtime_summary_for_ops(blockers)
+    nodes, hive_jobs = _agents_hive_summary_for_ops(blockers)
+    jobs = _agents_chat_jobs_for_ops(blockers)
+    capability_counts = {}
+    try:
+        from database import get_agent_capabilities
+        for agent in agents:
+            capability_counts[agent['name']] = len([c for c in get_agent_capabilities(agent['name']) if c.get('granted')])
+    except Exception:
+        capability_counts = {}
+
+    installed_models = {str(m.get('name') or m).lower() for m in runtimes.get('ollama', {}).get('models', [])}
+    installed_tokens = set()
+    for installed_model in installed_models:
+        installed_tokens.update(_ops_model_tokens(installed_model))
+    summary = {'ready': 0, 'busy': 0, 'disabled': 0, 'blocked': 0, 'missing_credentials': 0, 'missing_model': 0}
+    active_by_agent = {}
+    for job in jobs.get('active') or []:
+        key = str(job.get('agent') or '').lower()
+        if key:
+            active_by_agent[key] = active_by_agent.get(key, 0) + 1
+
+    ops_agents = []
+    for agent in agents:
+        name = str(agent.get('name') or '').lower()
+        tier = agent.get('tier') or 'local'
+        status = status_map.get(name, {})
+        enabled = bool(agent.get('enabled')) if agent.get('enabled') is not None else True
+        active_jobs = int(status.get('active_jobs') or active_by_agent.get(name, 0) or 0)
+        runtime_backend = 'human' if tier == 'human' else ('ollama' if tier == 'local' else ('service' if tier == 'service' else 'api'))
+        model = agent.get('model') or ''
+        model_tokens = _ops_model_tokens(model)
+        missing_model = tier == 'local' and model and not bool(model_tokens & installed_tokens)
+        missing_credentials = tier in ('paid', 'free') and bool(agent.get('api_key_var')) and not bool(agent.get('api_key_set'))
+        disabled = (not enabled) or status.get('status') == 'disabled'
+        blocked = missing_model or missing_credentials or status.get('status') == 'down'
+        if disabled:
+            summary['disabled'] += 1
+            recommended = 'Re-enable after checking why it was disabled'
+            readiness = 'disabled'
+        elif active_jobs:
+            summary['busy'] += 1
+            recommended = 'Monitor or cancel the active job'
+            readiness = 'busy'
+        elif blocked:
+            summary['blocked'] += 1
+            recommended = 'Review configured model' if missing_model else ('Add API key' if missing_credentials else 'Inspect circuit breaker')
+            readiness = 'blocked'
+        else:
+            summary['ready'] += 1
+            recommended = 'Ready for Chat'
+            readiness = 'ready'
+        if missing_model:
+            summary['missing_model'] += 1
+            blockers.append({'kind': 'agent', 'severity': 'warn', 'agent': name, 'message': f'{agent.get("label") or name}: configured model unavailable ({model})'})
+        if missing_credentials:
+            summary['missing_credentials'] += 1
+            blockers.append({'kind': 'agent', 'severity': 'blocker', 'agent': name, 'message': f'{agent.get("label") or name}: API key missing ({agent.get("api_key_var")})'})
+        ops_agents.append({
+            'name': name,
+            'number': agent.get('number'),
+            'label': agent.get('label') or name,
+            'role': agent.get('role') or '',
+            'tier': tier,
+            'model': model,
+            'enabled': enabled,
+            'status': status.get('status') or ('disabled' if disabled else 'idle'),
+            'readiness': readiness,
+            'runtime_backend': runtime_backend,
+            'api_key_var': agent.get('api_key_var') or '',
+            'api_key_set': agent.get('api_key_set'),
+            'model_installed': not missing_model if tier == 'local' else None,
+            'missing_model': missing_model,
+            'missing_credentials': missing_credentials,
+            'active_jobs': active_jobs,
+            'last_seen': status.get('last_seen'),
+            'circuit_breaker': status.get('circuit_breaker') or 'closed',
+            'capabilities_count': capability_counts.get(name, 0),
+            'eta_seconds': agent.get('eta_seconds'),
+            'keep_alive': agent.get('keep_alive'),
+            'recommended_action': recommended,
+        })
+
+    return jsonify({
+        'ok': True,
+        'summary': summary,
+        'agents': ops_agents,
+        'runtimes': runtimes,
+        'jobs': {**jobs, 'hive': hive_jobs},
+        'nodes': nodes,
+        'blockers': blockers,
+    })
+
+
 @agents_bp.route('/api/agents/config')
 # WARNING: Indentation or syntax errors here will break the web server. Always test with:
 #   python3 frontend/terminal.py

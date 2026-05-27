@@ -47,6 +47,19 @@ function _launchHomeNode(node) {
     return true;
 }
 
+function toggleTaskbarWindow(id, title, templateId) {
+    const windowKey = String(id || '').trim();
+    if (!windowKey || !winManager || !winManager.windows) return;
+
+    const existing = winManager.windows.get(windowKey);
+    if (existing) {
+        winManager.minimize(windowKey);
+        return;
+    }
+
+    openWindow(windowKey, title, templateId);
+}
+
 function syncTaskbarLaunchers() {
     const strip = document.getElementById('taskbar-launchers');
     if (!strip) return;
@@ -121,11 +134,7 @@ function syncTaskbarLaunchers() {
                 event.preventDefault();
                 event.stopPropagation();
             try {
-                if (node instanceof HTMLElement) {
-                    _launchHomeNode(node);
-                } else {
-                    openWindow(winId, winTitle, String(node?.dataset?.winTemplate || `view-${winId}`));
-                }
+                toggleTaskbarWindow(winId, winTitle, String(node?.dataset?.winTemplate || `view-${winId}`));
             } catch (err) {
                 _troubleshootLog && _troubleshootLog('error', 'Taskbar launcher failed', String(err?.message || err));
                 showToast && showToast('Open window failed: ' + (err?.message || err), 'error');
@@ -205,7 +214,7 @@ function openWindow(id, title, templateId, options = {}) {
             else if (id === 'docs') loadDocsData && loadDocsData(win);
             else if (id === 'skills') loadSkillsData && loadSkillsData(win);
             else if (id === 'tickets') loadTicketsData && loadTicketsData(win);
-            else if (id === 'studio') loadStudioData(win);
+            else if (id === 'studio' && typeof window.loadStudioData === 'function') window.loadStudioData(win);
             else if (id === 'email') loadEmailData && loadEmailData(win);
             else if (id === 'library') libInit && libInit();
             else if (id === 'time-wizard') initTimeWizard && initTimeWizard();
@@ -214,6 +223,7 @@ function openWindow(id, title, templateId, options = {}) {
             else if (id === 'agents-config') loadAgentsConfigData && loadAgentsConfigData(win);
             else if (id === 'localai') initializeLocalAiPanel && initializeLocalAiPanel();
             else if (id === 'media-center') initMediaCenter && initMediaCenter(win);
+            else if (id === 'potato-farm') pfarmEnsureVisible && pfarmEnsureVisible();
             else if (id === 'trace') initTraceView && initTraceView(win);
             else if (id === 'onboarding') _initOnboarding && _initOnboarding();
             else if (id === 'knowledge') loadKnowledgeData && loadKnowledgeData(win);
@@ -412,8 +422,6 @@ function _restoreQuickCardOrder(grid) {
 window.openWindow = openWindow;
 window.goHome = goHome;
 window.bindHomeLaunchClicks = bindHomeLaunchClicks;
-window.loadStudioData = loadStudioData;
-window.studioSetTab = studioSetTab;
 window.initHomeCardReorder = initHomeCardReorder;
 window.syncTaskbarLaunchers = syncTaskbarLaunchers;
 

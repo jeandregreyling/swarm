@@ -158,12 +158,29 @@ class SwarmApi(context: Context) {
                 val jobs = json.optJSONArray("jobs") ?: JSONArray()
                 val result = (0 until jobs.length()).map { i ->
                     val j = jobs.getJSONObject(i)
+                    val jobResult = j.optJSONObject("result")
+                    val gpuProbe = jobResult?.optJSONObject("gpu_probe")
+                    val tinyModel = gpuProbe?.optJSONObject("tiny_model")
+                    val capsule = gpuProbe?.optJSONObject("model_capsule")
+                    val ladder = gpuProbe?.optJSONArray("benchmark_ladder")
                     HiveJob(
                         jobId = j.optString("job_id"),
                         nodeId = j.optString("node_id"),
                         kind = j.optString("kind"),
                         status = j.optString("status"),
                         capabilityReq = j.optString("capability_req"),
+                        payload = j.optJSONObject("payload"),
+                        runner = jobResult?.optString("runner", "") ?: "",
+                        gpuProbeOk = gpuProbe?.optBoolean("ok", false) ?: false,
+                        gpuRenderer = gpuProbe?.optString("renderer", "") ?: "",
+                        tinyModel = tinyModel?.optString("model", "") ?: "",
+                        tinyModelLatencyMs = tinyModel?.optDouble("latency_ms", -1.0) ?: -1.0,
+                        capacityScore = gpuProbe?.optInt("capacity_score", -1) ?: -1,
+                        benchmarkSummary = summarizeBenchmarkLadder(ladder),
+                        capsuleId = capsule?.optString("capsule_id", "") ?: "",
+                        capsuleModel = capsule?.optString("model", "") ?: "",
+                        capsuleLatencyMs = capsule?.optDouble("latency_ms", -1.0) ?: -1.0,
+                        capsuleOutputSummary = summarizeCapsuleOutput(capsule?.optJSONArray("output_rgba")),
                     )
                 }
                 Result.success(result)
@@ -173,12 +190,13 @@ class SwarmApi(context: Context) {
         }
     }
 
-    fun submitJob(kind: String, payload: JSONObject, capabilityReq: String? = null): Result<String> {
+    fun submitJob(kind: String, payload: JSONObject, capabilityReq: String? = null, nodeId: String? = null): Result<String> {
         return try {
             val body = JSONObject().apply {
                 put("kind", kind)
                 put("payload", payload)
                 capabilityReq?.let { put("capability_req", it) }
+                nodeId?.let { put("node_id", it) }
             }.toString().toRequestBody(jsonType)
 
             val request = Request.Builder()
@@ -223,6 +241,7 @@ class SwarmApi(context: Context) {
                     kind = job.optString("kind"),
                     status = "claimed",
                     capabilityReq = "",
+                    payload = job.optJSONObject("payload"),
                 ))
             }
         } catch (e: Exception) {
@@ -251,6 +270,25 @@ class SwarmApi(context: Context) {
             Result.failure(e)
         }
     }
+
+    private fun summarizeBenchmarkLadder(ladder: JSONArray?): String {
+        if (ladder == null || ladder.length() == 0) return ""
+        val bits = mutableListOf<String>()
+        for (i in 0 until ladder.length()) {
+            val row = ladder.optJSONObject(i) ?: continue
+            val size = row.optInt("model_size", -1)
+            val latency = row.optDouble("latency_ms", -1.0)
+            if (size > 0 && latency >= 0.0) bits.add("${size}x$size ${latency}ms")
+        }
+        return bits.joinToString(" · ")
+    }
+
+    private fun summarizeCapsuleOutput(output: JSONArray?): String {
+        if (output == null || output.length() == 0) return ""
+        val values = mutableListOf<String>()
+        for (i in 0 until output.length()) values.add(output.optInt(i).toString())
+        return values.joinToString(prefix = "[", postfix = "]")
+    }
 }
 
 data class HiveNode(
@@ -268,4 +306,16 @@ data class HiveJob(
     val kind: String,
     val status: String,
     val capabilityReq: String,
+    val payload: JSONObject? = null,
+    val runner: String = "",
+    val gpuProbeOk: Boolean = false,
+    val gpuRenderer: String = "",
+    val tinyModel: String = "",
+    val tinyModelLatencyMs: Double = -1.0,
+    val capacityScore: Int = -1,
+    val benchmarkSummary: String = "",
+    val capsuleId: String = "",
+    val capsuleModel: String = "",
+    val capsuleLatencyMs: Double = -1.0,
+    val capsuleOutputSummary: String = "",
 )

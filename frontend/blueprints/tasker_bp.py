@@ -403,7 +403,7 @@ def create_watched_topic_task():
         min_novelty = _bounded_float(data.get('min_novelty'), 0.35, 0.0, 1.0)
         min_score = _bounded_float(data.get('min_score'), 0.50, 0.0, 1.0)
         max_items = max(1, min(int(data.get('max_items') or 10), 25))
-        historical_years = max(1, min(int(data.get('historical_years') or 5), 50))
+        historical_years = max(0, min(int(data.get('historical_years') or 0), 50))
     except Exception:
         return jsonify({'ok': False, 'error': 'score, thresholds, max items, and historical years must be numeric'}), 400
 
@@ -471,6 +471,28 @@ def create_watched_topic_task():
                 (task_name, schedule, action_data, created_by, now, next_run),
             )
             task_id = cur.lastrowid
+        cadence_minutes = _cadence_minutes_for_schedule(schedule)
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS watched_topic_settings (
+                topic_key TEXT PRIMARY KEY,
+                digest_mode TEXT NOT NULL DEFAULT 'instant',
+                digest_period_hours INTEGER NOT NULL DEFAULT 24,
+                last_digest_at TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                cadence_minutes INTEGER NOT NULL DEFAULT 0
+            )"""
+        )
+        conn.execute(
+            """INSERT INTO watched_topic_settings
+               (topic_key, digest_mode, digest_period_hours, cadence_minutes, updated_at)
+               VALUES (?, 'digest', 24, ?, datetime('now'))
+               ON CONFLICT(topic_key) DO UPDATE SET
+                   digest_mode='digest',
+                   digest_period_hours=24,
+                   cadence_minutes=excluded.cadence_minutes,
+                   updated_at=datetime('now')""",
+            (_watched_topic_key(topic), cadence_minutes),
+        )
         conn.commit()
 
     return jsonify({
@@ -840,7 +862,7 @@ def _watched_topic_action_data(
     min_novelty,
     min_score,
     max_items,
-    historical_years=5,
+    historical_years=0,
 ):
     parts = [
         'interest_research_update',
@@ -855,6 +877,28 @@ def _watched_topic_action_data(
         shlex.quote(f'historical_years={int(historical_years)}'),
     ]
     return ' '.join(parts)
+
+
+def _cadence_minutes_for_schedule(schedule):
+    schedule = str(schedule or '').strip().lower()
+    if schedule == 'hourly':
+        return 60
+    if schedule.startswith('interval '):
+        raw = schedule.split(' ', 1)[1].strip()
+        try:
+            if raw.endswith('m'):
+                return max(1, int(raw[:-1]))
+            if raw.endswith('h'):
+                return max(1, int(raw[:-1]) * 60)
+        except Exception:
+            return 0
+    if schedule.startswith('daily '):
+        return 24 * 60
+    if schedule.startswith('weekly '):
+        return 7 * 24 * 60
+    if schedule.startswith('monthly '):
+        return 30 * 24 * 60
+    return 0
 
 
 def _default_watched_topic_tasks():
@@ -881,7 +925,7 @@ def _default_watched_topic_tasks():
                 min_novelty=0.35,
                 min_score=0.50,
                 max_items=10,
-                historical_years=5,
+                historical_years=0,
             ),
         ))
     return tasks

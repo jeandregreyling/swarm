@@ -196,26 +196,27 @@ def api_ollama_runtime_force_unload():
 def api_ollama_show(model):
     """Return rich model metadata: family, quantisation, capabilities, parameters.
     Cached for 5 minutes to prevent UI polling from storming the ollama runner."""
-    import ollama as _ollama
     now = time.time()
     cached = _SHOW_CACHE.get(model)
     if cached and (now - cached[0]) < _SHOW_TTL:
         return jsonify(cached[1])
     try:
-        result = _ollama.show(model)
-        details = getattr(result, 'details', None)
+        resp = requests.post('http://localhost:11434/api/show', json={'model': model}, timeout=30)
+        resp.raise_for_status()
+        result = resp.json() or {}
+        details = result.get('details') or {}
         payload = {
             'ok': True,
             'model': model,
-            'modelfile':    getattr(result, 'modelfile', '') or '',
-            'parameters':   getattr(result, 'parameters', '') or '',
-            'template':     getattr(result, 'template', '') or '',
-            'capabilities': list(getattr(result, 'capabilities', None) or []),
+            'modelfile':    result.get('modelfile') or '',
+            'parameters':   result.get('parameters') or '',
+            'template':     result.get('template') or '',
+            'capabilities': list(result.get('capabilities') or []),
             'details': {
-                'family':              getattr(details, 'family', '') or '' if details else '',
-                'format':              getattr(details, 'format', '') or '' if details else '',
-                'parameter_size':      getattr(details, 'parameter_size', '') or '' if details else '',
-                'quantization_level':  getattr(details, 'quantization_level', '') or '' if details else '',
+                'family':              details.get('family') or '',
+                'format':              details.get('format') or '',
+                'parameter_size':      details.get('parameter_size') or '',
+                'quantization_level':  details.get('quantization_level') or '',
             },
         }
         _SHOW_CACHE[model] = (now, payload)
@@ -354,5 +355,3 @@ def api_ollama_web_fetch():
         })
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
-
-

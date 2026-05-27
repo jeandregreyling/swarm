@@ -13,7 +13,9 @@
 
 let _knowledgeWin = null;
 let _knowledgeTab = 'files';
-let _knowledgeLoaded = { files: false, docs: false, library: false, guide: false };
+let _knowledgeLoaded = { files: false, docs: false, evidence: false, sources: false, library: false, guide: false };
+let _knSourcesCache = [];
+let _knSourceOpenId = null;
 
 /* Constellation styling — injected once */
 (function _knInjectStyle() {
@@ -36,6 +38,8 @@ let _knowledgeLoaded = { files: false, docs: false, library: false, guide: false
 const _KN_TABS = [
   { id: 'files',   label: 'Files',   icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M2.5 5h4l1-1.5h6V12H2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
   { id: 'docs',    label: 'Docs',    icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M4 3.5h7.5v9H4a1.5 1.5 0 0 0 0-3h7.5M4 3.5a1.5 1.5 0 0 0 0 3M4 6.5h7.5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
+  { id: 'evidence', label: 'Evidence', icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M3 3.5h10v9H3zM5 6h6M5 8h4M5 10h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
+  { id: 'sources', label: 'Sources', icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M3 5.5h3l1-1.5h6v8.5H3z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="5.5" cy="8.5" r=".7" fill="currentColor"/><circle cx="8" cy="8.5" r=".7" fill="currentColor"/><circle cx="10.5" cy="8.5" r=".7" fill="currentColor"/></svg>' },
   { id: 'memory',  label: 'Memory',  icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
   { id: 'library', label: 'Library', icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M3 3.5h3v9H3zM7 3.5h3v9H7zM11.5 3.5l2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
   { id: 'tasker',  label: 'Tasker',  icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
@@ -44,7 +48,7 @@ const _KN_TABS = [
 
 function loadKnowledgeData(win) {
   _knowledgeWin = win;
-  _knowledgeLoaded = { files: false, docs: false, memory: false, library: false, tasker: false, guide: false };
+  _knowledgeLoaded = { files: false, docs: false, evidence: false, sources: false, memory: false, library: false, tasker: false, guide: false };
 
   const root = win.el.querySelector('#knowledge-root');
   if (!root) return;
@@ -312,6 +316,18 @@ function _knEsc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function _knAttr(s) {
+  return _knEsc(s).replace(/"/g, '&quot;');
+}
+
+function _knJs(s) {
+  return JSON.stringify(String(s || '')).replace(/</g, '\\u003c');
+}
+
+function _knJson(s) {
+  return _knEsc(JSON.stringify(s || {}, null, 2));
+}
+
 // P4-S36 — actions on selectable RAG results
 function knowledgeOpenResult(path) {
   if (!path) return;
@@ -410,6 +426,12 @@ function _knLoadSubView(tab) {
     const mockWin = { el: panel };
     if (typeof loadMemoryData === 'function') loadMemoryData(mockWin);
   }
+  else if (tab === 'evidence') {
+    knowledgeLoadEvidence();
+  }
+  else if (tab === 'sources') {
+    knowledgeLoadSources();
+  }
   else if (tab === 'library') {
     const panel = document.getElementById('kn-panel-library');
     if (!panel) return;
@@ -447,6 +469,285 @@ function _knLoadSubView(tab) {
     if (typeof loadGuideData === 'function') loadGuideData(mockWin);
   }
 }
+
+async function knowledgeLoadSources() {
+  const panel = document.getElementById('kn-panel-sources');
+  if (!panel) return;
+  panel.innerHTML = `<div class="kn-evidence-state">Opening source folders...</div>`;
+  try {
+    const r = await fetch('/api/library/sources?order=updated&limit=240');
+    const d = await r.json();
+    if (!d || !d.ok) throw new Error((d && d.error) || 'sources endpoint failed');
+    _knSourcesCache = Array.isArray(d.sources) ? d.sources : [];
+    _knSourceOpenId = _knSourceOpenId || (_knSourcesCache[0] && _knSourcesCache[0].source_id) || null;
+    knowledgeRenderSources(d.stats || {});
+    if (_knSourceOpenId) knowledgeOpenSourceBubble(_knSourceOpenId, { silent: true });
+  } catch (err) {
+    panel.innerHTML = `<div class="kn-evidence-state kn-evidence-error">Sources failed: ${_knEsc(String(err.message || err))}</div>`;
+  }
+}
+
+function knowledgeRenderSources(stats) {
+  const panel = document.getElementById('kn-panel-sources');
+  if (!panel) return;
+  const cats = {};
+  for (const src of _knSourcesCache) {
+    const cat = src.category || 'general';
+    if (!cats[cat]) cats[cat] = [];
+    cats[cat].push(src);
+  }
+  const total = stats.total_sources || _knSourcesCache.length;
+  const chunks = stats.total_chunks || _knSourcesCache.reduce((n, s) => n + Number(s.chunk_count || 0), 0);
+  const folderHtml = Object.entries(cats).map(([cat, rows]) => `
+    <details class="kn-source-folder" open>
+      <summary>
+        <span class="kn-source-folder-label">${_knEsc(cat.replace(/_/g, ' '))}</span>
+        <span class="kn-source-folder-count">${rows.length}</span>
+      </summary>
+      <div class="kn-source-orbit" data-source-category="${_knEsc(cat)}">
+        ${rows.map((src, idx) => knowledgeSourceDot(src, idx)).join('')}
+      </div>
+    </details>
+  `).join('');
+  panel.innerHTML = `
+    <div class="kn-sources-layout">
+      <section class="kn-sources-map">
+        <div class="kn-evidence-header kn-sources-header">
+          <div>
+            <div class="knowledge-title">Source Folders</div>
+            <div class="knowledge-subtitle">Click a dot to open the source bubble. Bubbles expose preview, classification, reprocess, open, and delete.</div>
+          </div>
+          <div class="kn-sources-stats">
+            <span>${_knEsc(total)} sources</span>
+            <span>${_knEsc(chunks)} chunks</span>
+            <button class="knowledge-btn knowledge-btn-primary" onclick="knowledgeLoadSources()">Refresh</button>
+          </div>
+        </div>
+        <div class="kn-source-folders">${folderHtml || '<div class="kn-evidence-state">No active sources yet. Add sources in the Library tab.</div>'}</div>
+      </section>
+      <aside id="kn-source-bubble" class="kn-source-bubble">
+        <div class="kn-source-bubble-empty">Pick a source dot.</div>
+      </aside>
+    </div>`;
+}
+
+function knowledgeSourceDot(src, idx) {
+  const cat = src.category || 'general';
+  const color = { sap_corner:'#f7b84b', programming:'#5bc0de', fridays:'#5cb85c', general:'#9b9b9b' }[cat] || '#8ea3bf';
+  const size = Math.max(12, Math.min(28, 12 + Number(src.chunk_count || 0) * 0.6));
+  const left = 8 + ((idx * 23) % 84);
+  const top = 10 + ((idx * 37) % 72);
+  const active = Number(src.source_id) === Number(_knSourceOpenId) ? ' active' : '';
+  return `<button class="kn-source-dot${active}" data-source-id="${Number(src.source_id)}" onclick="knowledgeOpenSourceBubble(${Number(src.source_id)})" title="${_knAttr(src.title || 'source')}" style="--kn-dot-color:${color};--kn-dot-size:${size}px;left:${left}%;top:${top}%;">
+    <span></span>
+  </button>`;
+}
+
+async function knowledgeOpenSourceBubble(sourceId, opts = {}) {
+  _knSourceOpenId = Number(sourceId);
+  document.querySelectorAll('.kn-source-dot').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.sourceId) === _knSourceOpenId);
+  });
+  const bubble = document.getElementById('kn-source-bubble');
+  if (!bubble) return;
+  bubble.innerHTML = `<div class="kn-source-bubble-empty">Opening source...</div>`;
+  try {
+    const r = await fetch(`/api/library/sources/${encodeURIComponent(sourceId)}`);
+    const d = await r.json();
+    if (!d || !d.ok) throw new Error((d && d.error) || 'source not found');
+    const src = d.source || {};
+    const tags = _knParseTags(src.domain_tags);
+    const ref = src.source_ref || '';
+    const isUrl = /^https?:\/\//i.test(ref);
+    const raw = String(src.raw_text || '').slice(0, 1600);
+    bubble.innerHTML = `
+      <div class="kn-source-bubble-head">
+        <div>
+          <div class="kn-source-bubble-kicker">${_knEsc(src.source_type || 'source')} · #${_knEsc(src.source_id)}</div>
+          <div class="kn-source-bubble-title">${_knEsc(src.title || 'Untitled source')}</div>
+        </div>
+        <button class="knowledge-icon-btn" onclick="knowledgeCloseSourceBubble()" title="Close">x</button>
+      </div>
+      <div class="kn-source-thought">
+        <div class="kn-source-thought-dot"></div>
+        <div>
+          <strong>Thought bubble</strong>
+          <p>This source currently feeds ${_knEsc(src.chunk_count || 0)} retrievable chunk${Number(src.chunk_count || 0) === 1 ? '' : 's'} into KC.</p>
+        </div>
+      </div>
+      <details class="kn-source-section" open>
+        <summary>Folder: classification</summary>
+        <label>Title<input id="kn-source-title" class="knowledge-input" value="${_knAttr(src.title || '')}"></label>
+        <div class="kn-source-form-row">
+          <label>Category<input id="kn-source-category" class="knowledge-input" value="${_knAttr(src.category || 'general')}"></label>
+          <label>Subcategory<input id="kn-source-subcategory" class="knowledge-input" value="${_knAttr(src.subcategory || '')}"></label>
+        </div>
+        <label>Tags<input id="kn-source-tags" class="knowledge-input" value="${_knAttr(tags.join(', '))}"></label>
+      </details>
+      <details class="kn-source-section" open>
+        <summary>Folder: preview</summary>
+        ${ref ? `<div class="kn-source-ref">${isUrl ? `<a href="${_knAttr(ref)}" target="_blank" rel="noopener">${_knEsc(ref)}</a>` : _knEsc(ref)}</div>` : ''}
+        <pre class="kn-source-preview">${_knEsc(raw || '(No preview text stored)')}</pre>
+      </details>
+      <div class="kn-source-actions">
+        <button class="knowledge-btn knowledge-btn-primary" onclick="knowledgeSaveSourceBubble(${Number(src.source_id)})">Save</button>
+        ${isUrl ? `<button class="knowledge-btn" onclick="window.open(${_knJs(ref)},'_blank','noopener')">Open URL</button>` : ''}
+        <button class="knowledge-btn" onclick="knowledgeReprocessSource(${Number(src.source_id)})">Reprocess</button>
+        <button class="knowledge-btn" onclick="knowledgeSendSourceToChat(${Number(src.source_id)})">Send to chat</button>
+        <button class="knowledge-btn kn-source-danger" onclick="knowledgeDeleteSource(${Number(src.source_id)})">Delete</button>
+      </div>`;
+    if (!opts.silent && typeof showToast === 'function') showToast('Source bubble opened');
+  } catch (err) {
+    bubble.innerHTML = `<div class="kn-evidence-state kn-evidence-error">Source failed: ${_knEsc(String(err.message || err))}</div>`;
+  }
+}
+
+function knowledgeCloseSourceBubble() {
+  _knSourceOpenId = null;
+  document.querySelectorAll('.kn-source-dot').forEach(btn => btn.classList.remove('active'));
+  const bubble = document.getElementById('kn-source-bubble');
+  if (bubble) bubble.innerHTML = '<div class="kn-source-bubble-empty">Pick a source dot.</div>';
+}
+
+async function knowledgeSaveSourceBubble(sourceId) {
+  const tags = (document.getElementById('kn-source-tags')?.value || '')
+    .split(',').map(t => t.trim()).filter(Boolean);
+  const payload = {
+    title: document.getElementById('kn-source-title')?.value || '',
+    category: document.getElementById('kn-source-category')?.value || 'general',
+    subcategory: document.getElementById('kn-source-subcategory')?.value || '',
+    tags,
+  };
+  const r = await fetch(`/api/library/sources/${encodeURIComponent(sourceId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || 'save failed');
+  if (typeof showToast === 'function') showToast('Source updated', 'success');
+  await knowledgeLoadSources();
+}
+
+async function knowledgeReprocessSource(sourceId) {
+  const r = await fetch(`/api/library/sources/${encodeURIComponent(sourceId)}/reprocess`, { method: 'POST' });
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || 'reprocess failed');
+  if (typeof showToast === 'function') showToast('Reprocess queued', 'success');
+}
+
+function knowledgeSendSourceToChat(sourceId) {
+  const src = _knSourcesCache.find(s => Number(s.source_id) === Number(sourceId));
+  const text = src ? `KC source #${src.source_id}: ${src.title}${src.source_ref ? ' — ' + src.source_ref : ''}` : `KC source #${sourceId}`;
+  if (typeof openWindow === 'function') openWindow('chat', 'Chat', 'view-chat');
+  setTimeout(() => {
+    const inp = document.getElementById('chat-input') || document.querySelector('textarea[id*="chat"]');
+    if (inp) {
+      inp.value = (inp.value ? inp.value + '\n' : '') + text;
+      inp.focus();
+    }
+  }, 250);
+}
+
+async function knowledgeDeleteSource(sourceId) {
+  if (!confirm('Remove this KC source and its chunks?')) return;
+  const r = await fetch(`/api/library/sources/${encodeURIComponent(sourceId)}`, { method: 'DELETE' });
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || 'delete failed');
+  if (typeof showToast === 'function') showToast('Source deleted', 'success');
+  _knSourceOpenId = null;
+  await knowledgeLoadSources();
+}
+
+function _knParseTags(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(Boolean).map(String) : [];
+  } catch (_) {
+    return String(raw).split(',').map(s => s.trim()).filter(Boolean);
+  }
+}
+
+async function knowledgeLoadEvidence() {
+  const panel = document.getElementById('kn-panel-evidence');
+  if (!panel) return;
+  panel.innerHTML = `<div class="kn-evidence-state">Loading evidence receipts...</div>`;
+  try {
+    const r = await fetch('/api/knowledge/evidence');
+    const d = await r.json();
+    if (!d || !d.ok) throw new Error((d && d.error) || 'evidence endpoint failed');
+    const counts = d.counts || {};
+    const evidence = Array.isArray(d.evidence) ? d.evidence : [];
+    const countsHtml = Object.entries(counts).map(([key, value]) => `
+      <div class="kn-evidence-count">
+        <span>${_knEsc(key.replace(/_/g, ' '))}</span>
+        <strong>${_knEsc(value)}</strong>
+      </div>
+    `).join('');
+    const receiptsHtml = evidence.map((item) => {
+      const source = item.source || {};
+      const title = item.title || item.label || item.path || item.kind;
+      const detail = source.sql || [source.table, source.id_column && source.id ? `${source.id_column}=${source.id}` : '', source.path].filter(Boolean).join(' · ');
+      const action = item.href
+        ? `<button class="knowledge-btn" onclick="knowledgeOpenEvidenceHref('${String(item.href).replace(/'/g, "\\'")}')">Open row</button>`
+        : item.path
+          ? `<button class="knowledge-btn" onclick="knowledgeOpenResult('${String(item.path).replace(/'/g, "\\'")}')">Open file</button>`
+          : '';
+      return `<article class="kn-evidence-receipt">
+        <div class="kn-evidence-receipt-head">
+          <div>
+            <div class="kn-evidence-kind">${_knEsc(item.kind || 'receipt')}</div>
+            <div class="kn-evidence-title">${_knEsc(title)}</div>
+          </div>
+          ${item.value !== undefined ? `<div class="kn-evidence-value">${_knEsc(item.value)}</div>` : ''}
+        </div>
+        ${detail ? `<div class="kn-evidence-source">${_knEsc(detail)}</div>` : ''}
+        ${action ? `<div class="kn-evidence-actions">${action}</div>` : ''}
+        <details class="kn-evidence-raw"><summary>Raw receipt</summary><pre>${_knJson(item)}</pre></details>
+      </article>`;
+    }).join('') || '<div class="kn-evidence-state">No evidence receipts returned.</div>';
+    panel.innerHTML = `
+      <div class="kn-evidence-header">
+        <div>
+          <div class="knowledge-title">Evidence Receipts</div>
+          <div class="knowledge-subtitle">Inspectable rows, queries and files behind the Knowledge Center.</div>
+        </div>
+        <button class="knowledge-btn knowledge-btn-primary" onclick="knowledgeLoadEvidence()">Refresh</button>
+      </div>
+      <div class="kn-evidence-counts">${countsHtml}</div>
+      <div class="kn-evidence-list">${receiptsHtml}</div>`;
+  } catch (err) {
+    panel.innerHTML = `<div class="kn-evidence-state kn-evidence-error">Evidence failed: ${_knEsc(String(err.message || err))}</div>`;
+  }
+}
+
+function knowledgeOpenEvidenceHref(href) {
+  if (!href) return;
+  fetch(href).then(r => r.json()).then(d => {
+    const panel = document.getElementById('kn-panel-evidence');
+    if (!panel) return;
+    const existing = document.getElementById('kn-evidence-detail');
+    if (existing) existing.remove();
+    const detail = document.createElement('div');
+    detail.id = 'kn-evidence-detail';
+    detail.className = 'kn-evidence-detail';
+    detail.innerHTML = `<div class="kn-evidence-detail-head"><strong>${_knEsc(href)}</strong><button class="knowledge-icon-btn" onclick="document.getElementById('kn-evidence-detail')?.remove()">x</button></div><pre>${_knJson(d)}</pre>`;
+    panel.prepend(detail);
+  }).catch(err => {
+    if (typeof showToast === 'function') showToast('Could not open evidence row: ' + String(err.message || err), 'error');
+  });
+}
+
+window.knowledgeLoadEvidence = knowledgeLoadEvidence;
+window.knowledgeOpenEvidenceHref = knowledgeOpenEvidenceHref;
+window.knowledgeLoadSources = knowledgeLoadSources;
+window.knowledgeOpenSourceBubble = knowledgeOpenSourceBubble;
+window.knowledgeCloseSourceBubble = knowledgeCloseSourceBubble;
+window.knowledgeSaveSourceBubble = knowledgeSaveSourceBubble;
+window.knowledgeReprocessSource = knowledgeReprocessSource;
+window.knowledgeSendSourceToChat = knowledgeSendSourceToChat;
+window.knowledgeDeleteSource = knowledgeDeleteSource;
 
 /* Auto-classify items in docs/library panels with gold glow and badges */
 function _knClassifyItems(panel) {

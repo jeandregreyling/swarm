@@ -72,8 +72,15 @@ def test_recent_events_returned(reg):
 
 
 def test_targeted_job_only_claimed_by_target(reg):
+    reg.record_telemetry(build_telemetry(
+        'potato-2', 'android',
+        compute={'gpu_present': True},
+        memory={'ram_total_mb': 6000, 'ram_free_mb': 1800},
+        power={'battery_pct': 80},
+        capabilities=['inference.cpu', 'inference.gpu', 'inference.tflite'],
+    ))
     job_id = reg.submit_job(
-        'tflite.inference',
+        'tiny.gpu.benchmark',
         {'packet': 'tiny'},
         capability_req='inference.gpu',
         node_id='potato-2',

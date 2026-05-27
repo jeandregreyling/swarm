@@ -84,12 +84,13 @@
 <link rel="stylesheet" href="/static/css/themes.css">
 <link rel="stylesheet" href="/static/css/components.css?v=6">
 <link rel="stylesheet" href="/static/css/windows.css">
-<link rel="stylesheet" href="/static/css/taskbar.css?v=29">
+<link rel="stylesheet" href="/static/css/taskbar.css?v=30">
 <link rel="stylesheet" href="/static/css/views/chat.css?v=3">
 <link rel="stylesheet" href="/static/css/modals.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/library.css">
 <link rel="stylesheet" href="/static/css/diamond.css?v={{ ASSET_VERSION }}">
-<link rel="stylesheet" href="/static/css/views/knowledge.css?v=1">
+<link rel="stylesheet" href="/static/css/views/knowledge.css?v={{ ASSET_VERSION }}">
+<link rel="stylesheet" href="/static/css/views/agents.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/views/localai.css?v=1">
 <link rel="stylesheet" href="/static/css/views/media-center.css?v=6">
 <link rel="stylesheet" href="/static/css/responsive.css">
@@ -117,16 +118,6 @@
 </div>
 
 {# env-banner.js handles DEV/UAT strips — nothing needed here #}
-
-<!-- Live Potato Farm proof strip. This is intentionally outside the tile/window
-  system so stale saved windows, card order, or unopened views cannot hide it. -->
-<button id="potato-global-proof"
-     type="button"
-     onclick="try{winManager.create('potato-farm','Potato Farm','view-potato-farm',{width:920,height:680,x:80,y:70});}catch(_e){}"
-     style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9998;display:flex;align-items:center;gap:8px;max-width:min(720px,calc(100vw - 24px));padding:7px 12px;border-radius:999px;border:1px solid #4caf50;background:rgba(18,32,23,.96);color:#e8ffe8;box-shadow:0 8px 24px rgba(0,0,0,.36);font-size:11px;font-weight:700;line-height:1.25;cursor:pointer;">
-  <span style="width:9px;height:9px;border-radius:50%;background:#4caf50;box-shadow:0 0 10px #4caf50;flex:0 0 auto;"></span>
-  <span id="potato-global-proof-text">POTATO2 GPU OK · tflite.gpu -> potato-2 completed</span>
-</button>
 
 <!-- ════════════════════════════════════════════════════════════════════════
      SESSION 29 TRACE TICKER (top-right live feed of spine events)
@@ -995,13 +986,15 @@
 
 <div id="taskbar">
   <button id="home-btn" onclick="goHome()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M3 8.5V13h4v-3h2v3h4V8.5M1.5 9L8 3l6.5 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Home</button>
-  <button id="email-dot-btn" onclick="openWindow('email','Email','view-email')" title="Email (Ctrl+E)" style="position:relative;background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="email-activity-dot" style="display:none;position:absolute;top:-2px;right:-2px;width:6px;height:6px;border-radius:50%;background:var(--cat-amber);"></span></button>
-  <div id="theme-picker-wrap" style="position:relative;margin-left:6px;">
-    <button id="theme-picker-btn" onclick="toggleThemePicker()" title="Switch theme"
-      style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:11px;font-weight:600;transition:all 0.2s;">
+  <button id="email-dot-btn" class="taskbar-control-btn" onclick="toggleTaskbarWindow('email','Email','view-email')" title="Email (Ctrl+E)" aria-label="Email">
+    <svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span id="email-activity-dot"></span>
+  </button>
+  <div id="theme-picker-wrap" class="taskbar-theme-picker">
+    <button id="theme-picker-btn" class="taskbar-control-btn" type="button" title="Switch theme" aria-haspopup="menu" aria-expanded="false">
       Theme
     </button>
-    <div id="theme-picker-menu" style="display:none;position:fixed;bottom:42px;left:auto;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:160px;z-index:9999;box-shadow:var(--shadow);">
+    <div id="theme-picker-menu" role="menu" aria-label="Themes">
       <div style="font-size:10px;color:var(--text-dim);font-weight:600;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;padding:0 4px;">Themes</div>
       <button onclick="setNamedTheme('auto')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
         <span style="width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#ff8fbe,#bde9ff,#ffab63,#775ac0);"></span>Auto
@@ -1036,11 +1029,6 @@
       </button>
     </div>
   </div>
-  <style>
-    .theme-picker-item:hover { background: var(--hover) !important; }
-    #theme-picker-wrap.open #theme-picker-menu { display: block !important; }
-    #theme-picker-wrap.open #theme-picker-btn { border-color: var(--accent); color: var(--accent); }
-  </style>
   <div id="taskbar-launchers" class="taskbar-launcher-strip" aria-label="Quick launchers"></div>
   <div id="spacer"></div>
 </div>
@@ -1380,26 +1368,38 @@
 </template>
 
 <template id="view-agents-config">
-  <div class="content-view" style="display:flex;flex-direction:column;height:100%;">
-    <!-- Header -->
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span style="font-size:13px;font-weight:700;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-1px"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Agents</span>
-        <div style="flex:1;"></div>
-        <button onclick="agentsRefresh()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;">↻ Refresh</button>
-        <button onclick="agentsShowAdd()" style="background:var(--accent);border:none;color:#000;border-radius:4px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:700;">+ Add Agent</button>
-        <button onclick="openWindow('onboarding','Enrollment','view-onboarding')" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;"><svg viewBox='0 0 16 16' width='10' height='10' fill='none' style='vertical-align:-1px'><path d='M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 3v3l2.5 1.5' stroke='currentColor' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/></svg> Enrollment</button>
-        <button onclick="resetOnboardingWalkthrough()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 10px;cursor:pointer;font-size:11px;"><svg viewBox='0 0 16 16' width='10' height='10' fill='none' style='vertical-align:-1px'><path d='M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4' stroke='currentColor' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/></svg> Reset Walkthrough</button>
+  <div class="content-view agents-console">
+    <div class="agents-console-header">
+      <div>
+        <div class="agents-console-title"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Agents</div>
+        <div class="agents-console-subtitle">Readiness, runtime capacity, queue state, and configuration.</div>
+      </div>
+      <div class="agents-console-actions">
+        <button class="agents-btn" onclick="agentsRefresh()">Refresh</button>
+        <button class="agents-btn agents-btn-primary" onclick="agentsSwitchTab('configure');agentsShowAdd()">Add Agent</button>
+        <button class="agents-btn" onclick="openWindow('onboarding','Enrollment','view-onboarding')">Enrollment</button>
+        <button class="agents-btn" onclick="resetOnboardingWalkthrough()">Reset Walkthrough</button>
       </div>
     </div>
-    <!-- Tab bar -->
-    <div id="agents-tab-bar" style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0;padding:0 16px;gap:2px;background:var(--window-header);">
-      <button id="agents-tab-agents" onclick="agentsSwitchTab('agents')" style="background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text);padding:7px 14px;cursor:pointer;font-size:12px;font-weight:600;">Agents</button>
-      <button id="agents-tab-localai" onclick="agentsSwitchTab('localai')" style="background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);padding:7px 14px;cursor:pointer;font-size:12px;">Local AI</button>
+    <div id="agents-tab-bar" class="agents-tab-bar">
+      <button id="agents-tab-overview" class="agents-tab active" onclick="agentsSwitchTab('overview')">Overview</button>
+      <button id="agents-tab-queue" class="agents-tab" onclick="agentsSwitchTab('queue')">Work Queue</button>
+      <button id="agents-tab-runtimes" class="agents-tab" onclick="agentsSwitchTab('runtimes')">Runtimes</button>
+      <button id="agents-tab-configure" class="agents-tab" onclick="agentsSwitchTab('configure')">Configure</button>
     </div>
-    <!-- Body: Agents -->
-    <div id="agents-agents-body" style="flex:1;display:flex;flex-direction:column;min-height:0;">
-      <div style="flex:1;display:flex;min-height:0;">
+    <div id="agents-overview-body" class="agents-tab-body active">
+      <div id="agents-summary-strip" class="agents-summary-strip"></div>
+      <div id="agents-blockers" class="agents-blockers"></div>
+      <div class="agents-overview-layout">
+        <div id="agents-ops-board" class="agents-ops-board"></div>
+        <aside id="agents-ops-detail" class="agents-ops-detail"></aside>
+      </div>
+    </div>
+    <div id="agents-queue-body" class="agents-tab-body">
+      <div id="agents-queue-panel" class="agents-panel"></div>
+    </div>
+    <div id="agents-configure-body" class="agents-tab-body agents-configure-body">
+      <div class="agents-config-layout">
         <!-- Agent list -->
         <div id="agents-list" style="width:240px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);"></div>
         <!-- Detail / edit panel -->
@@ -1414,74 +1414,62 @@
         <div id="agents-globals-body" style="display:none;padding:0 16px 14px;"></div>
       </div>
     </div>
-    <!-- Body: Local AI -->
-    <div id="agents-localai-body" style="display:none;flex:1;overflow-y:auto;">
-      <div style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
-        <!-- Ollama -->
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
-            <span class="agents-runner-light" id="agents-ollama-light" style="width:8px;height:8px;border-radius:99px;background:var(--text-dim);box-shadow:0 0 0 2px rgba(0,0,0,0.15);"></span>
-            <span style="font-weight:600;font-size:13px;">Ollama</span>
-            <span id="agents-ollama-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
-            <span id="agents-ollama-runtime" title="Fridays runtime gateway health" style="display:none;font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">runtime: —</span>
-            <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:11434</span>
+    <div id="agents-runtimes-body" class="agents-tab-body agents-runtimes-body">
+      <div id="agents-runtimes-panel" class="agents-runtime-grid"></div>
+      <div class="agents-runtime-controls">
+        <div class="agents-section-label">Ollama controls</div>
+        <div class="agents-control-card">
+          <div class="agents-control-head">
+            <span class="agents-runner-light" id="agents-ollama-light"></span>
+            <strong>Ollama</strong>
+            <span id="agents-ollama-badge" class="agents-pill">—</span>
+            <span id="agents-ollama-runtime" class="agents-pill" title="Fridays runtime gateway health">runtime: —</span>
           </div>
-          <div id="agents-ollama-models" style="padding:10px 14px;font-size:12px;color:var(--text-dim);min-height:40px;">—</div>
-          <div id="agents-ollama-warnings" style="display:none;padding:0 14px 10px;font-size:11px;color:#f59e0b;"></div>
-          <!-- STEP-AGENTS-TILE-UX-OPERATIONS-20260430 — explicit controls -->
-          <div style="padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--border);">
-            <button onclick="agentsOpenLogs('ollama')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Logs</button>
-            <button onclick="agentsCopyCmd('ollama-restart','sudo systemctl restart ollama')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Copy restart cmd</button>
-            <button onclick="agentsOllamaPullPrompt()" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Pull model…</button>
-          </div>
-        </div>
-        <!-- MD-FEATURE-2F07F65F10F3 — picoclaw + lmstudio kept in system but
-             tucked behind an Advanced runners disclosure so the default Local AI
-             panel stays focused on Ollama. Backend wiring is unchanged. -->
-        <details style="grid-column:1/-1;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-          <summary style="padding:10px 14px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-dim);">Advanced runners (LM Studio · Picoclaw)</summary>
-          <div style="padding:0 14px 12px;display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:12px;">
-        <!-- LM Studio -->
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
-            <span class="agents-runner-light" id="agents-lmstudio-light" style="width:8px;height:8px;border-radius:99px;background:var(--text-dim);box-shadow:0 0 0 2px rgba(0,0,0,0.15);"></span>
-            <span style="font-weight:600;font-size:13px;">LM Studio</span>
-            <span id="agents-lmstudio-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
-            <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:1234</span>
-          </div>
-          <div id="agents-lmstudio-info" style="padding:10px 14px;font-size:12px;color:var(--text-dim);min-height:40px;">—</div>
-          <div style="padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--border);">
-            <button onclick="agentsOpenLogs('lmstudio')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Logs</button>
-            <button onclick="agentsCopyCmd('lms-launch','open -a \\'LM Studio\\'  # macOS · run lms.exe on Windows · ./lmstudio --server on Linux')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Copy launch cmd</button>
+          <div id="agents-ollama-models" class="agents-model-strip">—</div>
+          <div id="agents-ollama-warnings" class="agents-runtime-warning"></div>
+          <div class="agents-card-actions">
+            <button onclick="agentsOpenLogs('ollama')">Logs</button>
+            <button onclick="agentsCopyCmd('ollama-restart','sudo systemctl restart ollama')">Copy restart cmd</button>
+            <button onclick="agentsOllamaPullPrompt()">Pull model…</button>
+            <button onclick="openWindow('localai','Local AI','view-localai')">Open Local AI</button>
+            <button onclick="agentsLocalAIRefresh()">Refresh</button>
           </div>
         </div>
-        <!-- Picoclaw -->
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-          <div style="padding:12px 14px;display:flex;align-items:center;gap:8px;">
-            <span class="agents-runner-light" id="agents-picoclaw-light" style="width:8px;height:8px;border-radius:99px;background:var(--text-dim);box-shadow:0 0 0 2px rgba(0,0,0,0.15);"></span>
-            <span style="font-weight:600;font-size:13px;">Picoclaw</span>
-            <span id="agents-picoclaw-badge" style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">—</span>
-            <span style="font-size:11px;color:var(--text-dim);margin-left:auto;">:18800</span>
-          </div>
-          <div style="padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px dashed var(--border);">
-            <button onclick="agentsOpenLogs('picoclaw')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Logs</button>
-            <button onclick="agentsCopyCmd('pico-restart','sudo systemctl restart picoclaw  # if registered as a system service')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer;">Copy restart cmd</button>
-          </div>
-        </div>
+        <details class="agents-advanced-runners">
+          <summary>Secondary runners and disabled agents</summary>
+          <div class="agents-advanced-grid">
+            <div class="agents-control-card">
+              <div class="agents-control-head">
+                <span class="agents-runner-light" id="agents-lmstudio-light"></span>
+                <strong>LM Studio</strong>
+                <span id="agents-lmstudio-badge" class="agents-pill">—</span>
+              </div>
+              <div id="agents-lmstudio-info" class="agents-model-strip">—</div>
+              <div class="agents-card-actions">
+                <button onclick="agentsOpenLogs('lmstudio')">Logs</button>
+                <button onclick="agentsCopyCmd('lms-launch','open -a \\'LM Studio\\'  # macOS · run lms.exe on Windows · ./lmstudio --server on Linux')">Copy launch cmd</button>
+              </div>
+            </div>
+            <div class="agents-control-card">
+              <div class="agents-control-head">
+                <span class="agents-runner-light" id="agents-picoclaw-light"></span>
+                <strong>Picoclaw</strong>
+                <span id="agents-picoclaw-badge" class="agents-pill">—</span>
+              </div>
+              <div class="agents-card-actions">
+                <button onclick="agentsOpenLogs('picoclaw')">Logs</button>
+                <button onclick="agentsCopyCmd('pico-restart','sudo systemctl restart picoclaw  # if registered as a system service')">Copy restart cmd</button>
+              </div>
+            </div>
+            <div id="agents-disabled-panel" class="agents-control-card">
+              <div class="agents-control-head">
+                <strong>Disabled agents</strong>
+                <span id="agents-disabled-count" class="agents-pill">0</span>
+              </div>
+              <div id="agents-disabled-list" class="agents-model-strip">No disabled agents.</div>
+            </div>
           </div>
         </details>
-      </div>
-      <!-- STEP-AGENTS-TILE-UX-OPERATIONS-20260430 — disabled-agents panel -->
-      <div id="agents-disabled-panel" style="margin:0 16px 16px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <span style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">Disabled agents</span>
-          <span id="agents-disabled-count" style="font-size:10px;padding:1px 7px;border-radius:99px;background:var(--border);color:var(--text-dim);">0</span>
-          <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">Auto-disabled by chat router (timeouts / context overflow). Click ↻ to bring back online.</span>
-        </div>
-        <div id="agents-disabled-list" style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--text-dim);">No disabled agents.</div>
-      </div>
-      <div style="padding:0 16px 16px;display:flex;justify-content:flex-end;">
-        <button onclick="agentsLocalAIRefresh()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;">↻ Refresh</button>
       </div>
     </div>
   </div>
@@ -1672,6 +1660,8 @@
     </div>
     <div id="kn-panel-files" style="flex:1;min-height:0;display:flex;flex-direction:column;"></div>
     <div id="kn-panel-docs" style="flex:1;min-height:0;display:flex;flex-direction:column;display:none;"></div>
+    <div id="kn-panel-evidence" style="flex:1;min-height:0;overflow-y:auto;display:none;"></div>
+    <div id="kn-panel-sources" style="flex:1;min-height:0;overflow:hidden;display:none;"></div>
     <div id="kn-panel-memory" style="flex:1;min-height:0;overflow-y:auto;display:none;"></div>
     <div id="kn-panel-library" style="flex:1;min-height:0;overflow-y:auto;display:none;"></div>
     <div id="kn-panel-tasker" style="flex:1;min-height:0;overflow:hidden;display:none;"></div>
@@ -3004,6 +2994,85 @@
   </div>
 </template>
 
+<template id="view-potato-farm">
+  <div class="content-view" style="display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden;background:radial-gradient(120% 90% at 0% 0%, color-mix(in srgb,#76b947 14%,transparent) 0%, transparent 50%), var(--window-bg);">
+    <div style="padding:10px 12px;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:12px;font-weight:800;color:var(--text);display:inline-flex;align-items:center;gap:7px;">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="11" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 6.5l1.5 2M9.5 6.5l-1.5 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Potato Farm
+      </span>
+      <span id="pfarm-meta" style="font-size:10px;color:var(--text-dim);">loading mesh...</span>
+      <span id="pfarm-map-meta" style="font-size:10px;color:var(--text-dim);"></span>
+      <div style="flex:1;"></div>
+      <button onclick="pfarmRefresh()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:10px;font-weight:700;">Refresh</button>
+    </div>
+
+    <div id="pfarm-content" style="flex:1;min-height:0;overflow-y:auto;padding:12px;">
+      <div style="display:grid;grid-template-columns:minmax(280px,1.5fr) minmax(240px,.8fr);gap:12px;margin-bottom:12px;">
+        <section style="border:1px solid var(--border);border-radius:8px;background:color-mix(in srgb,var(--card) 92%,transparent);overflow:hidden;">
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+            <strong style="font-size:12px;color:var(--text);">Farm Map</strong>
+            <span style="font-size:10px;color:var(--text-dim);">live resources + sharing routes</span>
+          </div>
+          <div id="pfarm-map" style="min-height:260px;background:linear-gradient(180deg,rgba(80,120,50,.08),rgba(0,0,0,.08));">
+            <div style="padding:16px;color:var(--text-dim);font-size:11px;">Loading potato map...</div>
+          </div>
+        </section>
+
+        <section id="pfarm-proof" style="border:1px solid var(--border);border-radius:8px;background:var(--card);padding:12px;align-self:stretch;">
+          <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:6px;">Quantum Chunking</div>
+          <div style="font-size:10px;color:var(--text-dim);line-height:1.45;margin-bottom:10px;">Split tiny packets across available potatoes and watch which node claims each packet.</div>
+          <button onclick="pfarmDispatchQuantum()" style="background:var(--accent);border:none;color:#000;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:10px;font-weight:800;width:100%;">Send quantum chunks</button>
+          <div id="pfarm-quantum-status" style="margin-top:8px;font-size:10px;color:var(--text-dim);"></div>
+        </section>
+      </div>
+
+      <section style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
+          <strong style="font-size:12px;color:var(--text);">Potatoes</strong>
+          <span style="font-size:10px;color:var(--text-dim);">CPU, RAM, battery, capabilities and share state</span>
+        </div>
+        <div id="pfarm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
+          <div style="color:var(--text-dim);font-size:10px;">Loading potatoes...</div>
+        </div>
+      </section>
+
+      <section style="display:grid;grid-template-columns:minmax(260px,.9fr) minmax(320px,1.1fr);gap:12px;">
+        <div style="padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
+          <div style="font-weight:700;margin-bottom:8px;font-size:11px;color:var(--text);">Dispatch Task</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;">
+            <select id="pfarm-task-type" style="padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:10px;">
+              <option value="tflite.gpu">Quantum GPU Chunk</option>
+              <option value="tflite.inference">TFLite Inference</option>
+              <option value="ollama.chat">Ollama Chat</option>
+              <option value="agent.run">Agent Run</option>
+              <option value="git.sync">Git Sync</option>
+              <option value="custom">Custom</option>
+            </select>
+            <select id="pfarm-target-node" style="padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:10px;">
+              <option value="">Auto-route (best node)</option>
+            </select>
+            <input id="pfarm-task-payload" type="text" placeholder="Payload JSON or text" style="flex:1;min-width:180px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:10px;"/>
+            <button onclick="pfarmDispatch()" style="background:var(--accent);border:none;color:#000;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:10px;font-weight:800;">Route</button>
+          </div>
+          <div id="pfarm-dispatch-status" style="margin-top:7px;font-size:10px;color:var(--text-dim);"></div>
+          <div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);">
+            <div style="font-weight:700;margin-bottom:5px;font-size:11px;color:var(--text);">Git Sync</div>
+            <div id="pfarm-git-status" style="font-size:10px;color:var(--text-dim);">Checking...</div>
+          </div>
+        </div>
+
+        <div style="padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);">
+          <div style="font-weight:700;margin-bottom:8px;font-size:11px;color:var(--text);">Sharing Lane</div>
+          <div id="pfarm-handoffs" style="display:grid;gap:6px;font-size:10px;color:var(--text-dim);max-height:180px;overflow:auto;"></div>
+          <div style="font-weight:700;margin:12px 0 6px;font-size:11px;color:var(--text);">Mesh Log</div>
+          <div id="pfarm-log" style="font-size:9px;color:var(--text-dim);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;max-height:100px;overflow-y:auto;"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</template>
+
 <!-- ════════════════════════════════════════════════════════════════════════
      Y.58 — Show Me The Money hub: combines Financial / Trading / Business +
      market feeds (NASDAQ / ASX) + investment-banking research surface.
@@ -3071,13 +3140,13 @@
 
 <!-- Core -->
 <script src="/static/js/core/window-manager.js?v=31"></script>
-<script src="/static/js/core/theme.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/core/theme.js?v={{ ASSET_VERSION }}-taskbar3"></script>
 <script src="/static/js/core/toast.js?v=2"></script>
 <script src="/static/js/core/icons.js"></script>
 <script src="/static/js/core/swarm-chat.js"></script>
 <script src="/static/js/core/seven-panel.js?v=1"></script>
 <script src="/static/js/core/record-shortcuts.js?v=1"></script>
-<script src="/static/js/core/app.js?v=33"></script>
+<script src="/static/js/core/app.js?v={{ ASSET_VERSION }}-taskbar2"></script>
 
 <!-- Views -->
 <script src="/static/js/views/conversations.js?v={{ ASSET_VERSION }}"></script>
@@ -3100,16 +3169,16 @@
 <script src="/static/js/views/records-files.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/projects.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/traced.js?v={{ ASSET_VERSION }}"></script>
-<script src="/static/js/core/trace-bus.js?v=29"></script>
+<script src="/static/js/core/trace-bus.js?v=30"></script>
 <script src="/static/js/views/chat.js?v={{ ASSET_VERSION }}-chat-trace1"></script>
 <script src="/static/js/views/services.js?v={{ ASSET_VERSION }}-services2"></script>
 <script src="/static/js/views/ollama.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/time-wizard.js?v={{ ASSET_VERSION }}"></script>
-<script src="/static/js/views/access.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/access.js?v={{ ASSET_VERSION }}-agent-chat1"></script>
 <script src="/static/js/views/library-graph.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/library.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/hive-nodes.js?v={{ ASSET_VERSION }}"></script>
-<script src="/static/js/views/potato-farm.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/potato-farm.js?v={{ ASSET_VERSION }}-stale2"></script>
 <script src="/static/js/voice.js?v=1"></script>
 <script src="/static/js/views/knowledge.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/media.js?v={{ ASSET_VERSION }}"></script>
@@ -3117,7 +3186,7 @@
 <script src="/static/js/views/guide.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/vpn.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/money-hub.js?v={{ ASSET_VERSION }}"></script>
-<script src="/static/js/views/localai.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/localai.js?v={{ ASSET_VERSION }}-agent-chat1"></script>
 <script src="/static/js/views/media-center.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/trace.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/onboarding.js?v={{ ASSET_VERSION }}"></script>
@@ -3131,8 +3200,8 @@
 <script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/friday-auth.js?v=28"></script>
 <!-- Init (must be last — depends on all above) -->
-<script src="/static/js/core/sse-client.js"></script>
-<script src="/static/js/core/init.js?v=35"></script>
+<script src="/static/js/core/sse-client.js?v=2"></script>
+<script src="/static/js/core/init.js?v=36"></script>
 <script src="/static/js/core/scene-sprites.js?v=2"></script>
 <script src="/static/js/views/orbs.js?v={{ ASSET_VERSION }}"></script>
 

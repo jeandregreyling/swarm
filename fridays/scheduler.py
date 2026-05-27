@@ -115,6 +115,7 @@ def add_task(name, schedule, action_type, action_data, created_by='system'):
                 (schedule, action_type, action_data, created_by, next_run, task_id),
             )
             conn.execute('DELETE FROM scheduled_tasks WHERE name=? AND id<>?', (name, task_id))
+            conn.commit()
             return task_id
         cur = conn.execute(
             '''INSERT INTO scheduled_tasks
@@ -122,6 +123,7 @@ def add_task(name, schedule, action_type, action_data, created_by='system'):
                VALUES (?, ?, ?, ?, ?, ?, 1)''',
             (name, schedule, action_type, action_data, created_by, next_run),
         )
+        conn.commit()
         return cur.lastrowid
 
 

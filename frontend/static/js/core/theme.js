@@ -2004,8 +2004,7 @@ function _applyNamedTheme(name) {
   const btn = document.getElementById('theme-picker-btn');
   if (btn) {
     btn.textContent = name && name !== 'auto' ? name.charAt(0).toUpperCase() + name.slice(1) : 'Theme';
-    btn.style.borderColor = name && name !== 'auto' ? 'var(--accent)' : 'var(--border)';
-    btn.style.color = name && name !== 'auto' ? 'var(--accent)' : 'var(--text-dim)';
+    btn.dataset.active = name && name !== 'auto' ? '1' : '0';
   }
 }
 
@@ -2029,15 +2028,24 @@ function setNamedTheme(name) {
   if (wrap) wrap.classList.remove('open');
 }
 
-function toggleThemePicker() {
+function toggleThemePicker(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.__fridaysThemeHandled = true;
+  }
   const wrap = document.getElementById('theme-picker-wrap');
   if (!wrap) return;
   const isOpen = wrap.classList.toggle('open');
+  const btn = document.getElementById('theme-picker-btn');
+  if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   if (isOpen) {
+    _positionThemePickerMenu();
     // Close when clicking outside
     const closeOnClickOutside = (e) => {
       if (!wrap.contains(e.target)) {
         wrap.classList.remove('open');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
         document.removeEventListener('click', closeOnClickOutside);
       }
     };
@@ -2046,11 +2054,63 @@ function toggleThemePicker() {
   }
 }
 
+function _closeThemePicker() {
+  const wrap = document.getElementById('theme-picker-wrap');
+  const btn = document.getElementById('theme-picker-btn');
+  if (wrap) wrap.classList.remove('open');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+function _positionThemePickerMenu() {
+  const btn = document.getElementById('theme-picker-btn');
+  const menu = document.getElementById('theme-picker-menu');
+  if (!btn || !menu) return;
+  const rect = btn.getBoundingClientRect();
+  const width = Math.max(menu.offsetWidth || 170, 170);
+  const margin = 12;
+  const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
+  menu.style.left = left + 'px';
+  menu.style.bottom = Math.max(52, window.innerHeight - rect.top + 8) + 'px';
+}
+
+function _initTaskbarThemePicker() {
+  const btn = document.getElementById('theme-picker-btn');
+  if (!btn || btn.dataset.bound === '1') return;
+  btn.dataset.bound = '1';
+  btn.addEventListener('pointerdown', (e) => {
+    btn.dataset.pointerHandled = '1';
+    e.preventDefault();
+    e.stopPropagation();
+    toggleThemePicker(e);
+  });
+  btn.addEventListener('click', (e) => {
+    if (e.__fridaysThemeHandled) return;
+    if (btn.dataset.pointerHandled === '1') {
+      btn.dataset.pointerHandled = '0';
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    toggleThemePicker(e);
+  });
+  window.addEventListener('resize', () => {
+    const wrap = document.getElementById('theme-picker-wrap');
+    if (wrap && wrap.classList.contains('open')) _positionThemePickerMenu();
+  });
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') _closeThemePicker();
+});
+
 function _initNamedTheme() {
   const saved = _getSavedNamedTheme();
   if (saved && NAMED_THEMES.includes(saved)) {
     _applyNamedTheme(saved);
   }
+  _initTaskbarThemePicker();
 }
 
 document.addEventListener('DOMContentLoaded', _initNamedTheme);

@@ -421,7 +421,7 @@ def test_tasker_watch_topic_creates_interest_and_scheduled_task(tmp_path, monkey
     assert "email=ghost@example.com" in data["action_data"]
     assert "min_quality=0.60" in data["action_data"]
     assert "max_items=5" in data["action_data"]
-    assert "historical_years=5" in data["action_data"]
+    assert "historical_years=0" in data["action_data"]
 
     with get_conn() as conn:
         interest = conn.execute(
@@ -483,7 +483,7 @@ def test_tasker_bootstrap_seeds_successfactors_watched_topics(tmp_path, monkeypa
     assert "topic=SuccessFactors Employee Central Payroll Australia" in action_blob
     assert "topic=SuccessFactors Onboarding 2.0 Australia" in action_blob
     assert "topic=SAP SuccessFactors new home page" in action_blob
-    assert action_blob.count("historical_years=5") >= 5
+    assert action_blob.count("historical_years=0") >= 5
 
 
 def test_tasker_watch_topic_updates_existing_interest_and_task(tmp_path, monkeypatch):
@@ -571,7 +571,7 @@ def test_tasker_watch_topic_reuses_existing_topic_task_name(tmp_path, monkeypatc
     assert tasks[0]["name"] == "sap_payroll_au_watch"
     assert tasks[0]["schedule"] == "interval 45m"
     assert "min_score=0.65" in tasks[0]["action_data"]
-    assert "historical_years=5" in tasks[0]["action_data"]
+    assert "historical_years=0" in tasks[0]["action_data"]
 
 
 def test_tasker_watch_topic_rejects_invalid_schedule(monkeypatch):
@@ -885,10 +885,13 @@ def test_tasker_run_watched_topic_now_runs_task_and_returns_evidence(tmp_path, m
 
 
 def test_interest_research_update_emails_only_qualified_novel_evidence(tmp_path, monkeypatch):
+    from datetime import datetime
+
     import fridays.task_runner as task_runner
 
     db_path = tmp_path / "watched-topic.db"
     topic = "SAP payroll Australia"
+    current_year = datetime.now().year
     sent = []
 
     def get_conn():
@@ -913,9 +916,9 @@ def test_interest_research_update_emails_only_qualified_novel_evidence(tmp_path,
                 conn,
                 sid,
                 source_url="https://www.ato.gov.au/businesses-and-organisations/hiring-and-paying-your-workers/single-touch-payroll",
-                title="Single Touch Payroll reporting",
+                title=f"Single Touch Payroll reporting {current_year}",
                 snippet=(
-                    "The ATO explains current Single Touch Payroll reporting obligations "
+                    f"The ATO explains {current_year} Single Touch Payroll reporting obligations "
                     "for Australian employers, including payroll event reporting and "
                     "employee payment information updates."
                 ),

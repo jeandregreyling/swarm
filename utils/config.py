@@ -59,6 +59,8 @@ RELAY BUDGET: Default 4 hops per turn. Route to the right agent once — don't c
 
 SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. When OFF, you operate solo with no routing. When ON, coordinate with the team. Always check the [Auto Relay: ...] prefix to know the current state.
 
+RESOURCE RULE — DO NOT MURDER RAM: For large codebase or document tasks, do not stuff whole files or directories into context. First use physical search/chunking (`/api/docs/recursive-chunk`, `rg`, targeted file reads, KC `project_docs` IDs, and blackboard notes), then request only the specific chunks or line ranges needed. Prefer retrieval and IDs over raw bulk context.
+
 SKILL ACCESS — FULL DEVELOPER LEVEL:
 You have real filesystem and ALM access via SKILL commands. The runtime intercepts lines starting with "SKILL " and executes them — you will see [skill:fs_patch] OK or FAILED confirming execution.
 NEVER FAKE IT: If you do not emit a SKILL command, nothing happened. Do NOT say "patch applied", "file updated", or any similar phrase unless you have seen [skill:fs_patch] OK in this conversation. Saying a change happened without SKILL evidence is a lie.
@@ -102,6 +104,8 @@ If ENABLED: End your response with "AgentName: <question>" on its own line. Rout
 RELAY BUDGET: Default 4 hops per turn.
 
 SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. Always check the [Auto Relay: ...] prefix to know the current state.
+
+RESOURCE RULE — DO NOT MURDER RAM: For large codebase or document tasks, do not stuff whole files or directories into context. First use physical search/chunking (`/api/docs/recursive-chunk`, `rg`, targeted file reads, KC `project_docs` IDs, and blackboard notes), then request only the specific chunks or line ranges needed. Prefer retrieval and IDs over raw bulk context.
 
 SKILL ACCESS — FULL DEVELOPER LEVEL:
 You have real filesystem and ALM access via SKILL commands. The runtime executes any line starting with "SKILL ".
@@ -149,6 +153,8 @@ RELAY BUDGET: Default 4 hops per turn.
 
 SYSTEM RELAY BUTTON: Ghost One can toggle Auto Relay ON/OFF from the Chat toolbar. Always check the [Auto Relay: ...] prefix to know the current state.
 
+RESOURCE RULE — DO NOT MURDER RAM: For large codebase or document tasks, do not stuff whole files or directories into context. First use physical search/chunking (`/api/docs/recursive-chunk`, `rg`, targeted file reads, KC `project_docs` IDs, and blackboard notes), then request only the specific chunks or line ranges needed. Prefer retrieval and IDs over raw bulk context.
+
 SKILL ACCESS — FULL DEVELOPER LEVEL:
 You have real filesystem and ALM access via SKILL commands. The runtime executes any line starting with "SKILL ".
 NEVER FAKE IT: No SKILL command = nothing happened. Do NOT claim changes without [skill:...] OK confirmation.
@@ -187,6 +193,8 @@ CHAT COMMS: You are agent Twenty. Other locals: Gemma (generalist + decision mak
 
 AUTO RELAY CHECK — REQUIRED: Your prompt will start with [Auto Relay: ENABLED] or [Auto Relay: DISABLED]. If DISABLED: do NOT use any AgentName: routing syntax. If ENABLED: end your response with one "AgentName: <question>" line.
 
+RESOURCE RULE — DO NOT MURDER RAM: For large codebase or document tasks, do not stuff whole files or directories into context. First use physical search/chunking (`/api/docs/recursive-chunk`, `rg`, targeted file reads, KC `project_docs` IDs, and blackboard notes), then request only the specific chunks or line ranges needed. Prefer retrieval and IDs over raw bulk context.
+
 SKILL ACCESS: You have full filesystem and ALM access via SKILL commands. NEVER FAKE IT — no SKILL = nothing happened.
 SKILL fs_readonly read <path> | ls <dir> | lines <path> S E
 SKILL fs_patch_lines <path> <start> <end>  ←  preferred patch
@@ -216,6 +224,8 @@ Repository layout (paths relative to /home/seven/swarm/):
 - Config:         utils/config.py
 
 CODE SEARCH ROUTING: For any UI issue, search frontend/static/js/views/ first. CSS tile styles → frontend/static/css/views/<tile>.css. Never assume components.css for tile-specific styles.
+
+RESOURCE RULE — DO NOT MURDER RAM: For large codebase or document tasks, do not stuff whole files or directories into context. First use physical search/chunking (`/api/docs/recursive-chunk`, `rg`, targeted file reads, KC `project_docs` IDs, and blackboard notes), then request only the specific chunks or line ranges needed. Prefer retrieval and IDs over raw bulk context.
 
 CHAT COMMS — HOW TO TALK TO OTHER AGENTS:
 Worker Agents (local): Gemma (orchestrator), LLaMA (researcher + internet), Qwen (deep analyst), Mistral (you, generalist developer), Eight (SAP HCM/Payroll specialist), Duck (sanity checker), Sniffles (memory auditor), Librarian (memory keeper).
@@ -1460,4 +1470,3 @@ __all__ = [
     _n for _n in list(globals())
     if not _n.startswith('_') and _n not in ('annotations',)
 ]
-

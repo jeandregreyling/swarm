@@ -21,7 +21,7 @@
   padding: 5px 8px;
   align-items: center;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
 }
 .taskbar-btn {
   display: inline-flex;
@@ -68,6 +68,76 @@
   letter-spacing: -0.01em;
 }
 #home-btn:hover { opacity: 0.85; }
+.taskbar-control-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+.taskbar-control-btn:hover {
+  background: var(--card-hover);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  color: var(--text);
+  transform: translateY(-1px);
+}
+.taskbar-control-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+#email-activity-dot {
+  display: none;
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cat-amber);
+  box-shadow: 0 0 0 2px var(--window-header, var(--bg));
+}
+.taskbar-theme-picker {
+  position: relative;
+  display: inline-flex;
+}
+#theme-picker-menu {
+  display: none;
+  position: fixed;
+  bottom: 56px;
+  left: 64px;
+  min-width: 170px;
+  padding: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 10000;
+}
+#theme-picker-wrap.open #theme-picker-menu {
+  display: block;
+}
+#theme-picker-wrap.open #theme-picker-btn,
+#theme-picker-btn[data-active="1"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+.theme-picker-item:hover {
+  background: var(--hover) !important;
+}
 .taskbar-launcher-strip {
   display: inline-flex;
   align-items: center;

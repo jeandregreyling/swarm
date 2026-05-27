@@ -161,6 +161,12 @@ async function loadStudioAppCenterPanel() {
     const kinds = registryData.kinds || [];
     const frameworks = registryData.frameworks || [];
     const targets = registryData.targets || [];
+    const kindOpts = kinds.map(k => `<option value="${_escHtml(k)}">${_escHtml(k)}</option>`).join('');
+    const frameworkOpts = frameworks.map(f => `<option value="${_escHtml(f)}">${_escHtml(f)}</option>`).join('');
+    const targetChecks = targets.map(t => `
+      <label style="display:flex;gap:5px;align-items:center;font-size:10px;color:var(--text-dim);">
+        <input type="checkbox" name="appcenter-target" value="${_escHtml(t)}" style="margin:0;"> ${_escHtml(t)}
+      </label>`).join('');
     body.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:12px;">
         <div style="border:1px solid var(--border);background:var(--card);border-radius:6px;padding:10px;">
@@ -174,6 +180,21 @@ async function loadStudioAppCenterPanel() {
           <div style="font-size:10px;color:var(--text-dim);line-height:1.45;">Targets: ${_escHtml(targets.join(', ') || 'none')}</div>
         </div>
       </div>
+      <form id="appcenter-create-form" onsubmit="return appCenterCreateProject(event)" style="border:1px solid var(--border);background:var(--card);border-radius:6px;padding:10px;margin-bottom:12px;display:grid;gap:8px;">
+        <div style="font-size:11px;font-weight:700;">Create app project</div>
+        <div style="display:grid;grid-template-columns:minmax(160px,1.5fr) minmax(120px,.8fr) minmax(150px,.9fr);gap:8px;">
+          <input name="name" placeholder="Project name" required maxlength="128" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:11px;">
+          <select name="kind" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:11px;">${kindOpts}</select>
+          <select name="framework" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:11px;">${frameworkOpts}</select>
+        </div>
+        <textarea name="description" placeholder="What this app/game is supposed to do" rows="2" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:11px;resize:vertical;"></textarea>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(85px,1fr));gap:5px;">${targetChecks}</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input name="studio_project_id" placeholder="Studio project ID (optional)" style="flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:11px;">
+          <button type="submit" style="background:var(--accent);border:none;color:#000;border-radius:4px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer;">Create</button>
+          <span id="appcenter-create-status" style="font-size:10px;color:var(--text-dim);"></span>
+        </div>
+      </form>
       <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0;">Projects (${projects.length})</div>
       ${projects.length ? projects.map(p => `
         <div style="border:1px solid var(--border);background:var(--card);border-radius:6px;padding:10px;margin-bottom:8px;">
@@ -188,7 +209,19 @@ async function loadStudioAppCenterPanel() {
               <span style="font-size:10px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--text-dim);">${_escHtml(p.status || 'draft')}</span>
             </div>
           </div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:6px;">
+            Targets: ${_escHtml(_appCenterTargetSummary(p.target_summary, p.target_count))} · Last build: ${_escHtml(p.last_build_status || 'none')}
+          </div>
           ${p.studio_project_id ? `<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">Studio link: <code>${_escHtml(p.studio_project_id)}</code></div>` : ''}
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+            <select id="appcenter-build-target-${_escHtml(p.project_id || '')}" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 7px;font-size:10px;">
+              ${_appCenterBuildTargetOptions(p.target_summary)}
+            </select>
+            <button type="button" onclick="appCenterStartBuild(${_jsStr(p.project_id || '')})" style="background:var(--accent);border:none;color:#000;border-radius:4px;padding:4px 9px;font-size:10px;font-weight:800;cursor:pointer;">Queue build</button>
+            <button type="button" onclick="appCenterShowBuilds(${_jsStr(p.project_id || '')})" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 9px;font-size:10px;cursor:pointer;">Builds</button>
+            <span id="appcenter-status-${_escHtml(p.project_id || '')}" style="font-size:10px;color:var(--text-dim);"></span>
+          </div>
+          <div id="appcenter-builds-${_escHtml(p.project_id || '')}" style="display:none;margin-top:8px;font-size:10px;color:var(--text-dim);"></div>
         </div>
       `).join('') : '<div style="padding:16px;text-align:center;color:var(--text-dim);font-size:11px;border:1px dashed var(--border);border-radius:6px;">No App Center projects yet.</div>'}
     `;
@@ -196,6 +229,100 @@ async function loadStudioAppCenterPanel() {
     body.innerHTML = `<div style="color:#f77;padding:20px;font-size:12px;">App Center failed: ${_escHtml(e.message || e)}</div>`;
   }
 }
+
+function _appCenterTargetSummary(raw, count) {
+  if (!raw) return count ? `${count} target(s)` : 'none attached';
+  return raw.split(',').map(x => x.replace(':', ' ')).join(', ');
+}
+
+function _appCenterBuildTargetOptions(raw) {
+  const targets = (raw || '').split(',').map(x => x.split(':')[0]).filter(Boolean);
+  if (!targets.length) return '<option value="">No targets attached</option>';
+  return targets.map(t => `<option value="${_escHtml(t)}">${_escHtml(t)}</option>`).join('');
+}
+
+async function appCenterCreateProject(ev) {
+  ev.preventDefault();
+  const form = ev.currentTarget;
+  const status = document.getElementById('appcenter-create-status');
+  const targets = Array.from(form.querySelectorAll('input[name="appcenter-target"]:checked')).map(i => i.value);
+  const payload = {
+    name: form.name.value.trim(),
+    kind: form.kind.value,
+    framework: form.framework.value,
+    description: form.description.value.trim(),
+    studio_project_id: form.studio_project_id.value.trim(),
+    targets,
+    status: 'draft',
+  };
+  if (status) status.textContent = 'Creating...';
+  try {
+    const r = await fetch('/api/app-center/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    if (status) status.textContent = `Created ${d.project_id}`;
+    loadStudioAppCenterPanel();
+  } catch (e) {
+    if (status) status.textContent = `Failed: ${e.message || e}`;
+  }
+  return false;
+}
+
+async function appCenterStartBuild(projectId) {
+  const sel = document.getElementById(`appcenter-build-target-${projectId}`);
+  const status = document.getElementById(`appcenter-status-${projectId}`);
+  const target = sel ? sel.value : '';
+  if (!target) {
+    if (status) status.textContent = 'Attach a target before building.';
+    return;
+  }
+  if (status) status.textContent = `Queueing ${target}...`;
+  try {
+    const r = await fetch(`/api/app-center/projects/${encodeURIComponent(projectId)}/build`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    if (status) status.textContent = `${d.status}: ${d.build_id}`;
+    appCenterShowBuilds(projectId, true);
+  } catch (e) {
+    if (status) status.textContent = `Build failed: ${e.message || e}`;
+  }
+}
+
+async function appCenterShowBuilds(projectId, forceOpen) {
+  const host = document.getElementById(`appcenter-builds-${projectId}`);
+  if (!host) return;
+  if (host.style.display !== 'none' && !forceOpen) {
+    host.style.display = 'none';
+    return;
+  }
+  host.style.display = 'block';
+  host.innerHTML = 'Loading builds...';
+  try {
+    const r = await fetch(`/api/app-center/projects/${encodeURIComponent(projectId)}/builds`);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    host.innerHTML = (d.builds || []).length ? (d.builds || []).slice(0, 8).map(b => `
+      <div style="border:1px solid var(--border);border-radius:4px;padding:5px;margin-bottom:4px;background:rgba(0,0,0,.12);">
+        <strong>${_escHtml(b.build_id || '')}</strong> · ${_escHtml(b.target || '')} · ${_escHtml(b.status || '')}
+        ${b.asset_id ? ` · asset ${_escHtml(b.asset_id)}` : ''}
+        ${b.error ? `<div style="color:#f77;">${_escHtml(b.error)}</div>` : ''}
+      </div>`).join('') : 'No builds yet.';
+  } catch (e) {
+    host.innerHTML = `<span style="color:#f77;">Failed: ${_escHtml(e.message || e)}</span>`;
+  }
+}
+
+window.appCenterCreateProject = appCenterCreateProject;
+window.appCenterStartBuild = appCenterStartBuild;
+window.appCenterShowBuilds = appCenterShowBuilds;
 
 function loadProposals(container, tab) {
   const mode = tab || window._studioTab || 'pending';

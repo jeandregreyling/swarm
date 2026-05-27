@@ -267,6 +267,52 @@ def get_interests():
     })
 
 
+@interests_bp.route('/api/newsletter/feedback')
+def newsletter_feedback():
+    """Capture one-click newsletter feedback and fold it back into KC interests."""
+    from core.market_watch import record_newsletter_article_feedback
+
+    try:
+        evidence_id = int(request.args.get('evidence_id') or 0)
+    except ValueError:
+        evidence_id = 0
+    vote = (request.args.get('vote') or '').strip().lower()
+    note = (request.args.get('note') or '').strip()
+    if not evidence_id or vote not in {'up', 'down'}:
+        return (
+            "<!doctype html><title>Feedback not saved</title>"
+            "<body style='font-family:system-ui;padding:32px'>"
+            "<h1>Feedback not saved</h1><p>The feedback link was missing an article id or vote.</p></body>",
+            400,
+            {'Content-Type': 'text/html; charset=utf-8'},
+        )
+
+    result = record_newsletter_article_feedback(evidence_id, vote, note=note)
+    if not result.get('ok'):
+        return (
+            "<!doctype html><title>Feedback not saved</title>"
+            "<body style='font-family:system-ui;padding:32px'>"
+            f"<h1>Feedback not saved</h1><p>{result.get('error') or 'Unknown article.'}</p></body>",
+            404,
+            {'Content-Type': 'text/html; charset=utf-8'},
+        )
+
+    label = 'useful' if vote == 'up' else 'not useful'
+    topic = result.get('topic') or 'this topic'
+    return (
+        "<!doctype html><title>Feedback saved</title>"
+        "<body style='font-family:system-ui;padding:32px;line-height:1.5;background:#f8fafc;color:#0f172a'>"
+        "<main style='max-width:620px'>"
+        "<h1 style='margin:0 0 12px'>Feedback saved</h1>"
+        f"<p>Marked article #{evidence_id} as <strong>{label}</strong>.</p>"
+        f"<p>KC interest weighting for <strong>{topic}</strong> has been updated.</p>"
+        "<p><a href='/ui'>Back to Fridays</a></p>"
+        "</main></body>",
+        200,
+        {'Content-Type': 'text/html; charset=utf-8'},
+    )
+
+
 @interests_bp.route('/api/interests/seed', methods=['POST'])
 def seed_interests():
     """Save user-selected interests from onboarding or manual entry."""

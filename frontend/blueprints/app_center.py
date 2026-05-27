@@ -193,6 +193,7 @@ def list_projects():
     kind = (request.args.get('kind') or '').strip().lower() or None
     framework = (request.args.get('framework') or '').strip().lower() or None
     status = (request.args.get('status') or '').strip().lower() or None
+    q = (request.args.get('q') or '').strip()
     where = []
     args: list = []
     if kind:
@@ -201,8 +202,20 @@ def list_projects():
         where.append('framework=?'); args.append(framework)
     if status:
         where.append('status=?'); args.append(status)
-    sql = ('SELECT project_id, name, kind, framework, owner, status, '
-           'studio_project_id, updated_at FROM app_projects')
+    if q:
+        # Lightweight project search over primary identity fields.
+        where.append('(lower(name) LIKE ? OR lower(owner) LIKE ? OR lower(studio_project_id) LIKE ? OR lower(project_id) LIKE ?)')
+        term = f'%{q.lower()}%'
+        args.extend([term, term, term, term])
+    sql = (
+        'SELECT p.project_id, p.name, p.kind, p.framework, p.owner, p.status, '
+        'p.studio_project_id, p.updated_at, '
+        '(SELECT COUNT(*) FROM app_project_targets t WHERE t.project_id=p.project_id) AS target_count, '
+        '(SELECT GROUP_CONCAT(t.target || ":" || t.status, ",") FROM app_project_targets t WHERE t.project_id=p.project_id) AS target_summary, '
+        '(SELECT b.status FROM app_builds b WHERE b.project_id=p.project_id ORDER BY b.created_at DESC LIMIT 1) AS last_build_status, '
+        '(SELECT b.build_id FROM app_builds b WHERE b.project_id=p.project_id ORDER BY b.created_at DESC LIMIT 1) AS last_build_id '
+        'FROM app_projects p'
+    )
     if where:
         sql += ' WHERE ' + ' AND '.join(where)
     sql += ' ORDER BY updated_at DESC LIMIT 200'

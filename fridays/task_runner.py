@@ -769,7 +769,7 @@ def _task_interest_research_update(**kwargs):
         'min_novelty': '0.35',
         'min_score': '0.50',
         'max_items': '10',
-        'historical_years': '5',
+        'historical_years': '0',
     }
     for tok in shlex.split(kwargs.get('args') or ''):
         if '=' not in tok:
@@ -801,9 +801,9 @@ def _task_interest_research_update(**kwargs):
     except Exception:
         max_items = 10
     try:
-        historical_years = max(1, min(int(opts.get('historical_years') or 5), 50))
+        historical_years = max(0, min(int(opts.get('historical_years') or 0), 50))
     except Exception:
-        historical_years = 5
+        historical_years = 0
 
     prior_context = _watched_topic_prior_context(topic)
 
@@ -999,7 +999,7 @@ def _rank_watched_topic_evidence(
     min_quality,
     min_novelty,
     min_score,
-    historical_years=5,
+    historical_years=0,
 ):
     assessed = []
     seen = set()
@@ -1127,7 +1127,7 @@ def _text_tokens(text):
     }
 
 
-def _evidence_date_metadata(row, *, historical_years=5):
+def _evidence_date_metadata(row, *, historical_years=0):
     """Extract a rough evidence date and recency score from title/snippet/URL."""
     import re
     from datetime import datetime
@@ -1145,6 +1145,13 @@ def _evidence_date_metadata(row, *, historical_years=5):
         if 1990 <= int(match) <= current_year + 1
     ]
     if not years:
+        if historical_years <= 0:
+            return {
+                'evidence_date': '',
+                'recency_score': 0.2,
+                'recency_label': 'undated stale',
+                'is_historical': True,
+            }
         return {
             'evidence_date': '',
             'recency_score': 0.65,
@@ -1422,6 +1429,18 @@ def _task_seven_daily_brief(**kwargs):
 def _task_money_hub_daily_newsletter(**kwargs):
     from core import market_watch
     return market_watch.run()
+
+
+@register('sap_au_monthly_newsletter', 'SAP Australia monthly interactive newsletter into Studio + Knowledge', 'finance')
+def _task_sap_au_monthly_newsletter(**kwargs):
+    from core import market_watch
+    return market_watch.run_sap_au_monthly()
+
+
+@register('sap_au_monthly_send', 'SAP Australia monthly Swarm KC gossip email send', 'finance')
+def _task_sap_au_monthly_send(**kwargs):
+    from core import market_watch
+    return market_watch.run_sap_au_monthly_send()
 
 
 # ── PACKET-10A: Backup & Trace Hardening ─────────────────────────────────────

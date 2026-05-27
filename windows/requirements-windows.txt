@@ -1,16 +1,8 @@
 # Fridays Windows dependencies
-# pip install -r requirements-windows.txt
+# pip install -r windows/requirements-windows.txt
 
-# Core (same as Linux)
-Flask
-requests
-ollama
-psutil
-anthropic
-openai
-google-genai
-tavily-python
-duckduckgo-search
+# Core app dependencies. Keep Windows in lockstep with the Flask app.
+-r ../requirements.txt
 
 # Windows UI
 pywebview>=4.4.1

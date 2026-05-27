@@ -9,7 +9,7 @@ set SCRIPT=%~dp0
 set ROOT=%SCRIPT%..
 
 echo [Build] Installing dependencies...
-pip install pywebview pystray pillow pyinstaller --quiet
+pip install -r "%SCRIPT%requirements-windows.txt" --quiet
 
 echo [Build] Cleaning previous build...
 if exist "%SCRIPT%build" rmdir /s /q "%SCRIPT%build"
@@ -28,7 +28,7 @@ pyinstaller ^
   --add-data "%ROOT%\frontend\templates;frontend\templates" ^
   --add-data "%ROOT%\frontend\static;frontend\static" ^
   --add-data "%ROOT%\frontend\blueprints;frontend\blueprints" ^
-  --add-data "%ROOT%\frontend\services.py;frontend" ^
+  --add-data "%ROOT%\frontend\services;frontend\services" ^
   --add-data "%ROOT%\frontend\terminal.py;frontend" ^
   --add-data "%ROOT%\frontend\theme_engine.py;frontend" ^
   --add-data "%ROOT%\utils;utils" ^

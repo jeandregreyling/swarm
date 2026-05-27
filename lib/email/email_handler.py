@@ -162,7 +162,7 @@ def _enqueue_retry(to_address, cc_clean, subject, body, html_body,
         pass
 
 
-def send_reply(to_address, subject, body, original_message_id=None, html_body=None, cc=None):
+def send_reply(to_address, subject, body, original_message_id=None, html_body=None, cc=None, sender_name=None):
     """
     Send an email reply.
     cc: list of additional addresses to CC (e.g. other recipients from the original thread).
@@ -175,7 +175,10 @@ def send_reply(to_address, subject, body, original_message_id=None, html_body=No
         try:
             server = connect_smtp()
             msg = MIMEMultipart('alternative')
-            msg['From'] = GMAIL_ADDRESS
+            if sender_name:
+                msg['From'] = f'{sender_name} <{GMAIL_ADDRESS}>'
+            else:
+                msg['From'] = GMAIL_ADDRESS
             msg['To'] = to_address
             if cc_clean:
                 msg['Cc'] = ', '.join(cc_clean)
