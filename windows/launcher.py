@@ -1,5 +1,5 @@
 """
-windows/launcher.py — Fridays Standalone Windows Launcher
+windows/launcher.py ? Fridays Standalone Windows Launcher
 
 Handles two modes:
   - PyInstaller frozen .exe: app code in sys._MEIPASS, user data next to the .exe
@@ -15,7 +15,7 @@ import os
 import threading
 import time
 
-# ── Detect frozen vs source ───────────────────────────────────────────────────
+# ?? Detect frozen vs source ???????????????????????????????????????????????????
 
 if getattr(sys, 'frozen', False):
     # Running as PyInstaller bundle
@@ -25,6 +25,10 @@ else:
     # Running from source (dev / testing)
     _APP_ROOT  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     _DATA_ROOT = _APP_ROOT
+
+_LOCAL_APPDATA = os.environ.get('LOCALAPPDATA') or _DATA_ROOT
+_DB_ROOT = os.path.join(_LOCAL_APPDATA, 'Fridays')
+os.makedirs(_DB_ROOT, exist_ok=True)
 
 _FRONT = os.path.join(_APP_ROOT, 'frontend')
 _UTILS = os.path.join(_APP_ROOT, 'utils')
@@ -36,7 +40,7 @@ for _p in (_APP_ROOT, _FRONT, _UTILS):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-# ── First-run: create user data directories ───────────────────────────────────
+# ?? First-run: create user data directories ???????????????????????????????????
 
 def _bootstrap_data_root(data_root):
     for subdir in ('sandpits/shared', 'sandpits/qwen', 'sandpits/gemma',
@@ -51,12 +55,20 @@ def _bootstrap_data_root(data_root):
 
 _bootstrap_data_root(_DATA_ROOT)
 
-# ── Environment ───────────────────────────────────────────────────────────────
+# ?? Environment ???????????????????????????????????????????????????????????????
 
 os.environ.setdefault('SWARM_ENV',      'prod')
+os.environ.setdefault('SWARM_GOVERNOR_MODE', 'advisory')
 os.environ['SWARM_PLATFORM'] = 'windows'
 os.environ['SWARM_ROOT']     = _DATA_ROOT
-os.environ['SWARM_DB_PATH']  = os.path.join(_DATA_ROOT, 'swarm_memory.db')
+os.environ['SWARM_DB_PATH']  = os.path.join(_DB_ROOT, 'swarm_memory.db')
+os.environ['SWARM_MEMORY_DB'] = os.environ['SWARM_DB_PATH']
+os.environ['SWARM_HIVE_DB']   = os.path.join(_DB_ROOT, 'swarm_hive.db')
+if getattr(sys, 'frozen', False):
+    _runtime_default = f'frozen:{os.path.realpath(sys.executable)}'
+else:
+    _runtime_default = f'source:{os.path.realpath(_APP_ROOT)}'
+os.environ.setdefault('FRIDAYS_RUNTIME_ID', _runtime_default)
 
 # Tell agents where sandpits live (they default to SWARM_ROOT/sandpits)
 os.environ.setdefault('SANDPITS_ROOT', os.path.join(_DATA_ROOT, 'sandpits'))
@@ -65,7 +77,7 @@ _PORT = int(os.environ.get('PORT', 5050))
 _HOST = '127.0.0.1'
 _URL  = f'http://{_HOST}:{_PORT}'
 
-# ── Splash window ─────────────────────────────────────────────────────────────
+# ?? Splash window ?????????????????????????????????????????????????????????????
 
 def _show_splash():
     """Simple tk splash while the server starts. Silent if tk missing."""
@@ -84,7 +96,7 @@ def _show_splash():
         root.geometry(f'340x100+{x}+{y}')
         tk.Label(root, text='Fridays', font=('Segoe UI', 22, 'bold'),
                  fg='#5bc0de', bg='#0d1117').pack(pady=(18, 2))
-        tk.Label(root, text='Starting…', font=('Segoe UI', 10),
+        tk.Label(root, text='Starting?', font=('Segoe UI', 10),
                  fg='#888', bg='#0d1117').pack()
         root.update()
         return root
@@ -99,7 +111,7 @@ def _close_splash(splash):
     except Exception:
         pass
 
-# ── Backend server ────────────────────────────────────────────────────────────
+# ?? Backend server ????????????????????????????????????????????????????????????
 
 def _run_server():
     from socketserver import ThreadingMixIn
@@ -131,7 +143,27 @@ def _wait_ready(timeout=60):
             time.sleep(0.3)
     return False
 
-# ── System tray icon ──────────────────────────────────────────────────────────
+
+def _is_healthy(timeout=2):
+    import json
+    import urllib.request
+    try:
+        with urllib.request.urlopen(_URL + '/_health', timeout=timeout) as response:
+            if response.status != 200:
+                return False
+            payload = json.loads(response.read().decode('utf-8', errors='replace') or '{}')
+            current_runtime = str(payload.get('runtime_id') or '').strip()
+            expected_runtime = str(os.environ.get('FRIDAYS_RUNTIME_ID') or '').strip()
+            return bool(current_runtime) and current_runtime == expected_runtime
+    except Exception:
+        return False
+
+
+def _open_browser():
+    import webbrowser
+    webbrowser.open(_URL + '/ui')
+
+# ?? System tray icon ??????????????????????????????????????????????????????????
 
 def _start_tray():
     try:
@@ -162,9 +194,10 @@ def _start_tray():
     except Exception:
         pass
 
-# ── Main window ───────────────────────────────────────────────────────────────
+# ?? Main window ???????????????????????????????????????????????????????????????
 
 def _open_window():
+    allow_browser_fallback = os.environ.get('FRIDAYS_ALLOW_BROWSER_FALLBACK', '0') == '1'
     try:
         import webview
         webview.create_window(
@@ -176,19 +209,45 @@ def _open_window():
             text_select = True,
         )
         webview.start(debug=False)
+        return True
     except ImportError:
-        import webbrowser
-        webbrowser.open(_URL + '/ui')
-        print('[Fridays] Running in browser mode. Close this window to quit.')
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            pass
+        msg = '[Fridays] Native desktop window unavailable: missing pywebview.'
+        if allow_browser_fallback:
+            print(msg + ' Falling back to browser due to FRIDAYS_ALLOW_BROWSER_FALLBACK=1')
+            _open_browser()
+            try:
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                pass
+            return True
+        print(msg)
+        print('[Fridays] Run windows\\install-fridays.bat to repair desktop dependencies.')
+        return False
+    except Exception as exc:
+        msg = f'[Fridays] Desktop window unavailable: {exc}'
+        if allow_browser_fallback:
+            print(msg + ' Falling back to browser due to FRIDAYS_ALLOW_BROWSER_FALLBACK=1')
+            _open_browser()
+            try:
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                pass
+            return True
+        print(msg)
+        return False
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# ?? Entry point ???????????????????????????????????????????????????????????????
 
 def main():
+    if _is_healthy():
+        print(f'[Fridays] Reusing existing runtime on {_URL}')
+        ok = _open_window()
+        if not ok:
+            raise SystemExit(1)
+        return
+
     splash = _show_splash()
 
     server_thread = threading.Thread(target=_run_server, daemon=True, name='fridays-server')
@@ -197,7 +256,9 @@ def main():
     _wait_ready(timeout=60)
     _close_splash(splash)
     _start_tray()
-    _open_window()
+    ok = _open_window()
+    if not ok:
+        raise SystemExit(1)
 
     os._exit(0)
 

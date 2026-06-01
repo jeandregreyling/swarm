@@ -9,26 +9,55 @@
 :: ─────────────────────────────────────────────────────────────────────────────
 
 setlocal EnableDelayedExpansion
+set "FRIDAYS_NO_PAUSE=%FRIDAYS_NO_PAUSE%"
 
-pushd "%~dp0.."
-set "ROOT=%CD%"
-popd
+set "ROOT=%~dp0.."
+for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "Write-Output ((Get-Item '%~dp0..').FullName)"`) do set "ROOT=%%I"
 
-set "VENV=%ROOT%\.venv-win"
+set "IS_UNC=0"
+if "%ROOT:~0,2%"=="\\" set "IS_UNC=1"
+
+if "%IS_UNC%"=="1" (
+    if not defined LOCALAPPDATA set "LOCALAPPDATA=%USERPROFILE%\AppData\Local"
+    set "VENV=%LOCALAPPDATA%\Fridays\venv-win"
+    echo [..] UNC workspace detected. Using local Windows venv: %VENV%
+) else (
+    set "VENV=%ROOT%\.venv-win"
+)
+
 set "PY=%VENV%\Scripts\python.exe"
 
 if not exist "%PY%" (
-    echo [ERROR] Python venv missing at %VENV%
-    echo         Run  windows\install-fridays.bat  first.
-    pause & exit /b 1
+    echo [..] Python venv missing at %VENV%
+    echo [..] Running one-time install automatically
+    set "FRIDAYS_NO_PAUSE=1"
+    set "FRIDAYS_VENV_PATH=%VENV%"
+    call "%ROOT%\windows\install-fridays.bat"
+    if errorlevel 1 (
+        echo [ERROR] Windows install failed.
+        if /i not "%FRIDAYS_NO_PAUSE%"=="1" pause
+        exit /b 1
+    )
+    if not exist "%PY%" (
+        echo [ERROR] Python venv still missing after install.
+        if /i not "%FRIDAYS_NO_PAUSE%"=="1" pause
+        exit /b 1
+    )
 )
 
 :: ── Make sure Ollama is up ─────────────────────────────────────────────────
+:: Point Ollama at the shared model store on the NTFS data partition.
+:: Both Windows and WSL read from this same directory so models are only stored once.
+if not defined OLLAMA_MODELS (
+    if exist "F:\.ollama\models" (
+        set "OLLAMA_MODELS=F:\.ollama\models"
+    )
+)
 where ollama >nul 2>nul
 if not errorlevel 1 (
     powershell -Command "try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 -Uri http://localhost:11434/api/tags | Out-Null; exit 0 } catch { exit 1 }" >nul 2>nul
     if errorlevel 1 (
-        echo [..] Starting Ollama server in background
+        echo [..] Starting Ollama server in background (models: %OLLAMA_MODELS%)
         start "" /min "ollama" serve
         timeout /t 3 /nobreak >nul
     ) else (
@@ -42,17 +71,36 @@ if not errorlevel 1 (
 set "SWARM_PLATFORM=windows"
 set "SWARM_ENV=prod"
 set "SWARM_ROOT=%ROOT%"
-set "SWARM_DB_PATH=%ROOT%\swarm_memory.db"
+if not defined LOCALAPPDATA set "LOCALAPPDATA=%ROOT%"
+set "FRIDAYS_DATA=%LOCALAPPDATA%\Fridays"
+if not exist "%FRIDAYS_DATA%" mkdir "%FRIDAYS_DATA%" >nul 2>nul
+set "SWARM_DB_PATH=%FRIDAYS_DATA%\swarm_memory.db"
+set "SWARM_MEMORY_DB=%SWARM_DB_PATH%"
+set "SWARM_HIVE_DB=%FRIDAYS_DATA%\swarm_hive.db"
 set "PORT=5050"
 set "PYTHONPATH=%ROOT%;%ROOT%\frontend;%ROOT%\utils"
+set "UI_URL=http://127.0.0.1:%PORT%/ui"
+set "FRIDAYS_RUNTIME_ID=source:%ROOT%"
+
+:: ── Reuse existing healthy runtime instead of spawning duplicates ──────────
+powershell -Command "$expected = [System.IO.Path]::GetFullPath('%ROOT%'); try { $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 -Uri http://127.0.0.1:%PORT%/_health; if ($r.StatusCode -ne 200) { exit 1 }; $j = $r.Content | ConvertFrom-Json; if ($j.runtime_id -eq ('source:' + $expected)) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>nul
+if not errorlevel 1 (
+    echo [OK] Fridays already running on port %PORT%
+    echo [..] Opening native Fridays app window (no browser fallback)
+    "%PY%" "%ROOT%\windows\launcher.py"
+    if errorlevel 1 (
+        echo [WARN] Native launcher failed; opening browser as last resort.
+        start "" "%UI_URL%"
+        exit /b 0
+    )
+    exit /b 0
+)
 
 :: ── Pre-flight: launcher.py if present, else direct terminal.py ────────────
-set "LAUNCHER=%ROOT%\windows\launcher.py"
-if exist "%LAUNCHER%" (
-    echo [..] Launching Fridays via windows\launcher.py
-    "%PY%" "%LAUNCHER%"
-) else (
-    echo [..] Launching Fridays Flask app directly
+echo [..] Launching Fridays via windows\launcher.py
+"%PY%" "%ROOT%\windows\launcher.py"
+if errorlevel 1 (
+    echo [WARN] Native launcher failed; starting Flask directly.
     pushd "%ROOT%\frontend"
     start "" http://localhost:5050/ui
     "%PY%" -c "from terminal import create_app; from wsgiref.simple_server import make_server; make_server('127.0.0.1', 5050, create_app()).serve_forever()"

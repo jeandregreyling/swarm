@@ -89,6 +89,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.tasker_bp',      'tasker_bp'),
     ('blueprints.testlab_bp',     'testlab_bp'),
     ('blueprints.spine_bp',       'spine_bp'),
+    ('blueprints.governor_bp',    'governor_bp'),
     ('blueprints.knowledge_bp',   'knowledge_bp'),
     ('blueprints.coding_bible',   'coding_bible_bp'),
     ('blueprints.curiosity',      'curiosity_bp'),
@@ -208,6 +209,13 @@ def create_app():
     except Exception as exc:
         print(f'[Terminal] database bootstrap warning: {exc}')
 
+    try:
+        from core.system_governor import init_governor
+        _gov = init_governor()
+        print(f'[Terminal] governor online: node={_gov.node} mode={_gov.mode}')
+    except Exception as exc:
+        print(f'[Terminal] governor bootstrap warning: {exc}')
+
     # Mark orphaned chat jobs from previous process.
     try:
         mark_orphaned_chat_jobs()
@@ -318,6 +326,7 @@ def create_app():
             "status": overall,
             "port": PORT,
             "env": ENV.upper(),
+            "runtime_id": os.environ.get("FRIDAYS_RUNTIME_ID", ""),
             "components": components,
             "blueprints_loaded": [a for a, _ in _loaded_blueprints],
             "blueprints_failed": {a: e for a, e in _failed_blueprints},
