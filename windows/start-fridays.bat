@@ -11,6 +11,8 @@
 setlocal EnableDelayedExpansion
 set "FRIDAYS_NO_PAUSE=%FRIDAYS_NO_PAUSE%"
 
+call :resolve_ollama
+
 set "ROOT=%~dp0.."
 for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "Write-Output ((Get-Item '%~dp0..').FullName)"`) do set "ROOT=%%I"
 
@@ -75,18 +77,17 @@ if not defined OLLAMA_MODELS (
         set "OLLAMA_MODELS=F:\.ollama\models"
     )
 )
-where ollama >nul 2>nul
-if not errorlevel 1 (
+if defined OLLAMA_CMD (
     powershell -Command "try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 -Uri http://localhost:11434/api/tags | Out-Null; exit 0 } catch { exit 1 }" >nul 2>nul
     if errorlevel 1 (
         echo [..] Starting Ollama server in background (models: %OLLAMA_MODELS%)
-        start "" /min "ollama" serve
+        start "" /min "%OLLAMA_CMD%" serve
         timeout /t 3 /nobreak >nul
     ) else (
         echo [OK] Ollama already running.
     )
 ) else (
-    echo [WARN] Ollama not on PATH. Local models will be unavailable.
+    echo [WARN] Ollama not found on this Windows machine. Local models will be unavailable.
 )
 
 :: ── Environment ────────────────────────────────────────────────────────────
@@ -130,3 +131,29 @@ if errorlevel 1 (
 )
 
 endlocal
+goto :eof
+
+:resolve_ollama
+set "OLLAMA_CMD="
+where ollama >nul 2>nul
+if not errorlevel 1 (
+    set "OLLAMA_CMD=ollama"
+    goto :eof
+)
+if exist "%LOCALAPPDATA%\Programs\Ollama\ollama.exe" (
+    set "OLLAMA_CMD=%LOCALAPPDATA%\Programs\Ollama\ollama.exe"
+    goto :eof
+)
+if exist "%USERPROFILE%\AppData\Local\Programs\Ollama\ollama.exe" (
+    set "OLLAMA_CMD=%USERPROFILE%\AppData\Local\Programs\Ollama\ollama.exe"
+    goto :eof
+)
+if exist "%ProgramFiles%\Ollama\ollama.exe" (
+    set "OLLAMA_CMD=%ProgramFiles%\Ollama\ollama.exe"
+    goto :eof
+)
+if exist "%ProgramFiles(x86)%\Ollama\ollama.exe" (
+    set "OLLAMA_CMD=%ProgramFiles(x86)%\Ollama\ollama.exe"
+    goto :eof
+)
+goto :eof

@@ -18,6 +18,8 @@ set "FRIDAYS_NO_PAUSE=%FRIDAYS_NO_PAUSE%"
 set "FRIDAYS_SKIP_OLLAMA_PULL=%FRIDAYS_SKIP_OLLAMA_PULL%"
 set "FRIDAYS_VENV_PATH=%FRIDAYS_VENV_PATH%"
 
+call :resolve_ollama
+
 :: Resolve the project root (parent of this script's folder)
 set "ROOT=%~dp0.."
 for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "Write-Output ((Get-Item '%~dp0..').FullName)"`) do set "ROOT=%%I"
@@ -79,10 +81,9 @@ if errorlevel 1 (
 )
 
 :: ── Step 4 — Ollama ────────────────────────────────────────────────────────
-where ollama >nul 2>nul
-if errorlevel 1 (
+if not defined OLLAMA_CMD (
     echo.
-    echo [WARN] Ollama not found on PATH.
+    echo [WARN] Ollama not found on this Windows machine.
     echo        Install Ollama from https://ollama.com/download/windows
     echo        then re-run this installer.
     goto :done
@@ -100,7 +101,7 @@ echo   Pulling hot-path models (this can take a while)
 echo ============================================================
 for %%M in (qwen2.5:latest gemma3:latest qwen:latest llama3.2:latest) do (
     echo [..] ollama pull %%M
-    ollama pull %%M
+    "%OLLAMA_CMD%" pull %%M
 )
 
 :done
@@ -112,3 +113,29 @@ echo ============================================================
 echo.
 if /i not "%FRIDAYS_NO_PAUSE%"=="1" pause
 endlocal
+goto :eof
+
+:resolve_ollama
+set "OLLAMA_CMD="
+where ollama >nul 2>nul
+if not errorlevel 1 (
+    set "OLLAMA_CMD=ollama"
+    goto :eof
+)
+if exist "%LOCALAPPDATA%\Programs\Ollama\ollama.exe" (
+    set "OLLAMA_CMD=%LOCALAPPDATA%\Programs\Ollama\ollama.exe"
+    goto :eof
+)
+if exist "%USERPROFILE%\AppData\Local\Programs\Ollama\ollama.exe" (
+    set "OLLAMA_CMD=%USERPROFILE%\AppData\Local\Programs\Ollama\ollama.exe"
+    goto :eof
+)
+if exist "%ProgramFiles%\Ollama\ollama.exe" (
+    set "OLLAMA_CMD=%ProgramFiles%\Ollama\ollama.exe"
+    goto :eof
+)
+if exist "%ProgramFiles(x86)%\Ollama\ollama.exe" (
+    set "OLLAMA_CMD=%ProgramFiles(x86)%\Ollama\ollama.exe"
+    goto :eof
+)
+goto :eof

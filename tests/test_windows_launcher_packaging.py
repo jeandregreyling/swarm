@@ -66,3 +66,7 @@ def test_windows_install_and_start_verify_core_imports():
     assert '"%PY%" -c "import flask, requests, psutil"' in start
     assert 'Windows venv exists but core app deps are missing' in start
     assert 'Windows venv still missing core app deps after repair.' in start
+    assert 'call :resolve_ollama' in install
+    assert 'call :resolve_ollama' in start
+    assert '%LOCALAPPDATA%\\Programs\\Ollama\\ollama.exe' in install
+    assert '%ProgramFiles%\\Ollama\\ollama.exe' in start
