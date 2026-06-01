@@ -24,9 +24,9 @@
   opacity: 0.3;
   transition: stroke 0.6s, opacity 0.6s, stroke-width 0.4s;
 }
-.sundial-ray.ray-ok    { stroke: rgba(76, 175, 80, 0.35); opacity: 0.5; }
-.sundial-ray.ray-warn  { stroke: rgba(255, 183, 77, 0.6); opacity: 0.7; stroke-width: 1.5; }
-.sundial-ray.ray-crit  { stroke: rgba(239, 83, 80, 0.7);  opacity: 0.9; stroke-width: 2; }
+.sundial-ray.ray-ok    { stroke: rgba(var(--health-ok-rgb), 0.35);   opacity: 0.5; }
+.sundial-ray.ray-warn  { stroke: rgba(var(--health-warn-rgb), 0.6);  opacity: 0.7; stroke-width: 1.5; }
+.sundial-ray.ray-crit  { stroke: rgba(var(--health-crit-rgb), 0.7);  opacity: 0.9; stroke-width: 2; }
 
 #sundial-center {
   position: absolute;
@@ -36,6 +36,9 @@
   text-align: center;
   z-index: 2;
   user-select: none;
+  /* Cap inside the 150px ring so title/sub never overlap the orbit rays */
+  max-width: 92px;
+  pointer-events: none;
 }
 
 #sundial-title {
@@ -47,21 +50,21 @@
   color: var(--text);
 }
 #sundial-title[data-health="ok"] {
-  color: #4caf50;
-  text-shadow: 0 0 10px rgba(76, 175, 80, 0.25);
+  color: var(--health-ok);
+  text-shadow: 0 0 10px rgba(var(--health-ok-rgb), 0.25);
 }
 #sundial-title[data-health="warn"] {
-  color: #ffb74d;
-  text-shadow: 0 0 12px rgba(255, 183, 77, 0.3);
+  color: var(--health-warn);
+  text-shadow: 0 0 12px rgba(var(--health-warn-rgb), 0.3);
 }
 #sundial-title[data-health="crit"] {
-  color: #ef5350;
-  text-shadow: 0 0 16px rgba(239, 83, 80, 0.4);
+  color: var(--health-crit);
+  text-shadow: 0 0 16px rgba(var(--health-crit-rgb), 0.4);
   animation: sundial-rage 2s ease-in-out infinite;
 }
 @keyframes sundial-rage {
-  0%, 100% { text-shadow: 0 0 10px rgba(239, 83, 80, 0.3); }
-  50%      { text-shadow: 0 0 22px rgba(239, 83, 80, 0.55); }
+  0%, 100% { text-shadow: 0 0 10px rgba(var(--health-crit-rgb), 0.3); }
+  50%      { text-shadow: 0 0 22px rgba(var(--health-crit-rgb), 0.55); }
 }
 
 .sundial-refreshing #sundial-title {
@@ -122,26 +125,26 @@
 
 /* Node health states: grow + glow */
 .sundial-node[data-health="ok"] .sundial-dot {
-  border-color: rgba(76, 175, 80, 0.35);
-  box-shadow: 0 0 6px rgba(76, 175, 80, 0.12);
-  color: #4caf50;
+  border-color: rgba(var(--health-ok-rgb), 0.35);
+  box-shadow: 0 0 6px rgba(var(--health-ok-rgb), 0.12);
+  color: var(--health-ok);
 }
 .sundial-node[data-health="warn"] .sundial-dot {
-  border-color: rgba(255, 183, 77, 0.6);
-  box-shadow: 0 0 10px rgba(255, 183, 77, 0.25);
+  border-color: rgba(var(--health-warn-rgb), 0.6);
+  box-shadow: 0 0 10px rgba(var(--health-warn-rgb), 0.25);
   transform: scale(1.18);
-  color: #ffb74d;
+  color: var(--health-warn);
 }
 .sundial-node[data-health="crit"] .sundial-dot {
-  border-color: rgba(239, 83, 80, 0.6);
-  box-shadow: 0 0 14px rgba(239, 83, 80, 0.35);
+  border-color: rgba(var(--health-crit-rgb), 0.6);
+  box-shadow: 0 0 14px rgba(var(--health-crit-rgb), 0.35);
   transform: scale(1.35);
-  color: #ef5350;
+  color: var(--health-crit);
   animation: sundial-throb 2s ease-in-out infinite;
 }
 @keyframes sundial-throb {
-  0%, 100% { transform: scale(1.35); box-shadow: 0 0 10px rgba(239, 83, 80, 0.25); }
-  50%      { transform: scale(1.55); box-shadow: 0 0 20px rgba(239, 83, 80, 0.5); }
+  0%, 100% { transform: scale(1.35); box-shadow: 0 0 10px rgba(var(--health-crit-rgb), 0.25); }
+  50%      { transform: scale(1.55); box-shadow: 0 0 20px rgba(var(--health-crit-rgb), 0.5); }
 }
 
 .sundial-node:hover .sundial-dot {
@@ -179,9 +182,9 @@
 .stip-val    { font-size: 16px; font-weight: 700; color: var(--text); text-align: center; padding: 2px 0; }
 .stip-health { font-size: 9px; text-align: center; color: var(--text-dim); display: flex; align-items: center; justify-content: center; gap: 4px; }
 .stip-dot    { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-.stip-h-ok .stip-dot   { background: #4caf50; }
-.stip-h-warn .stip-dot { background: #ffb74d; }
-.stip-h-crit .stip-dot { background: #ef5350; }
+.stip-h-ok .stip-dot   { background: var(--health-ok); }
+.stip-h-warn .stip-dot { background: var(--health-warn); }
+.stip-h-crit .stip-dot { background: var(--health-crit); }
 
 /* ── Attention Dots ───────────────────────────────────────────────────────── */
 
@@ -203,9 +206,9 @@
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 .attn-dot:empty { width: 8px; height: 8px; min-width: 8px; padding: 0; border-radius: 50%; }
-.attn-dot-info { background: #42a5f5; }
-.attn-dot-warn { background: #ff9800; }
-.attn-dot-crit { background: #ef5350; animation: attn-throb 2s ease-in-out infinite; }
+.attn-dot-info { background: var(--info); }
+.attn-dot-warn { background: var(--health-warn); }
+.attn-dot-crit { background: var(--health-crit); animation: attn-throb 2s ease-in-out infinite; }
 @keyframes attn-throb {
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.15); }
@@ -268,7 +271,7 @@
   transition: background 0.12s;
 }
 .ctx-item:hover { background: rgba(var(--accent-rgb, 96, 165, 250), 0.1); }
-.ctx-danger:hover { background: rgba(239, 83, 80, 0.1); color: #ef5350; }
+.ctx-danger:hover { background: rgba(var(--health-crit-rgb), 0.1); color: var(--health-crit); }
 .ctx-sep { height: 1px; background: var(--border); margin: 3px 6px; }
 
 /* ── Hidden Tiles ─────────────────────────────────────────────────────────── */

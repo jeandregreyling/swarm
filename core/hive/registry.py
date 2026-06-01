@@ -76,7 +76,7 @@ _GPU_CAPABILITY = 'inference.gpu'
 _GPU_MIN_RAM_FREE_MB = 512
 _GPU_MIN_BATTERY_PCT = 20
 _GPU_MIN_CAPACITY_SCORE = 70
-_GPU_DISCOVERY_KINDS = {'gpu.probe', 'tiny.gpu.benchmark'}
+_GPU_DISCOVERY_KINDS = {'gpu.probe', 'tiny.gpu.benchmark', 'tflite.gpu'}
 _NODE_OFFLINE_AFTER_S = 90
 
 

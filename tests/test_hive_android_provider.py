@@ -96,11 +96,18 @@ def test_cpu_load_pct_averages_freq_ratio(tmp_path, monkeypatch):
         return None
 
     monkeypatch.setattr(p, '_read_int_file', staticmethod(fake_read_int))
-    monkeypatch.setattr(os.path, 'isdir', lambda path: '/sys/devices/system/cpu/cpu' in path and (root / path.split('/sys/devices/system/cpu/', 1)[1].split('/', 1)[0]).exists())
+
+    def fake_isdir(path):
+        return path in {
+            '/sys/devices/system/cpu/cpu0',
+            '/sys/devices/system/cpu/cpu1',
+        }
+
+    monkeypatch.setattr(os.path, 'isdir', fake_isdir)
     monkeypatch.setattr(os.path, 'exists', lambda path: False)
 
     load = p._cpu_load_pct()
-    # cpu0 = 100%, cpu1 = 26.6% → avg ~63.3%
+    # cpu0 = 100%, cpu1 = 26.6% ? avg ~63.3%
     assert load is not None
     assert 60.0 <= load <= 65.0
 
@@ -281,3 +288,5 @@ def test_detect_provider_picks_android(monkeypatch):
     with patch('platform.system', return_value='Linux'):
         prov = detect_provider()
     assert prov.platform_name() == 'android'
+
+

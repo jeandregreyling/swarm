@@ -15,6 +15,20 @@ logger = logging.getLogger('seven.nine')
 AGENT_NAME = 'nine'
 
 
+def _classify_groq_error(exc: Exception) -> tuple[str, bool]:
+    raw = str(exc or '').strip()
+    lowered = raw.lower()
+    if not raw:
+        return '[Nine] Groq request failed.', False
+    if '401' in lowered or 'authentication' in lowered or 'invalid api key' in lowered:
+        return '[Nine] Groq API key invalid or expired.', True
+    if '403' in lowered or 'access denied' in lowered or 'network settings' in lowered:
+        return '[Nine] Groq access denied. Check network egress, proxy, firewall, or account policy.', True
+    if '429' in lowered or 'rate limit' in lowered:
+        return f'[Nine] Groq rate limit hit. {raw}', False
+    return f'[Nine] API error: {raw}', False
+
+
 def _build_context(message):
     """Build swarm context snapshot for Nine."""
     from database import get_connection, get_agent_memory
@@ -123,8 +137,5 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     except Exception as e:
         msg = str(e)
         logger.error(f'[Nine] API error: {msg}')
-        if '401' in msg or 'authentication' in msg.lower():
-            return '[Nine] Groq API key invalid or expired.', 0
-        if '429' in msg or 'rate limit' in msg.lower():
-            return f'[Nine] Groq rate limit hit. {msg}', 0
-        return f'[Nine] API error: {msg}', 0
+        classified, _is_runtime = _classify_groq_error(e)
+        return classified, 0

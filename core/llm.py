@@ -41,6 +41,8 @@ from __future__ import annotations
 
 import logging
 import json
+import os
+import re
 import threading
 import time
 import urllib.request
@@ -56,6 +58,28 @@ GATEWAY_CHAT_IDLE_TIMEOUT_S = 900
 GATEWAY_CHAT_ABSOLUTE_TIMEOUT_S = 2000
 _MODEL_LOCKS: dict[str, threading.Semaphore] = {}
 _MODEL_LOCKS_MUTEX = threading.Lock()
+
+
+def _resolve_ollama_host() -> str:
+    """Resolve the Ollama base URL, including WSL2 host-bridge setups."""
+    env = os.environ.get('OLLAMA_HOST', '').strip()
+    if env:
+        return env if env.startswith('http') else f'http://{env}'
+
+    try:
+        release = open('/proc/sys/kernel/osrelease', 'r', encoding='utf-8').read().lower()
+        if 'microsoft' in release or 'wsl' in release:
+            resolv = open('/etc/resolv.conf', 'r', encoding='utf-8').read()
+            match = re.search(r'^nameserver\s+([\d.]+)', resolv, re.MULTILINE)
+            if match:
+                return f'http://{match.group(1)}:11434'
+    except OSError:
+        pass
+
+    return 'http://localhost:11434'
+
+
+OLLAMA_BASE_URL = _resolve_ollama_host()
 
 
 def _lock_for(model: str) -> threading.Semaphore:
@@ -89,6 +113,8 @@ def _sanitize_keep_alive(value: Any) -> Any:
 
 def _get_ollama():
     """Lazy import so import failures surface at call time, not module load."""
+    if not os.environ.get('OLLAMA_HOST'):
+        os.environ['OLLAMA_HOST'] = OLLAMA_BASE_URL
     import ollama
     return ollama
 
@@ -102,7 +128,7 @@ def _to_namespace(value: Any) -> Any:
 
 
 def _ollama_http(path: str) -> Any:
-    with urllib.request.urlopen(f'http://localhost:11434{path}', timeout=5) as resp:
+    with urllib.request.urlopen(f'{OLLAMA_BASE_URL}{path}', timeout=5) as resp:
         return json.loads(resp.read().decode('utf-8') or '{}')
 
 
@@ -321,7 +347,10 @@ def chat_via_gateway(
         )
         if not result.ok and not result.content:
             error = result.error or 'gateway error'
-        return result.content or '', int(result.tokens or 0)
+        content = result.content or ''
+        if not content and error:
+            content = f'[local runtime error: {error}]'
+        return content, int(result.tokens or 0)
     finally:
         elapsed = time.monotonic() - t0
         sem.release()

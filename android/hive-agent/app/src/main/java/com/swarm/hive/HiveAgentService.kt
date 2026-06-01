@@ -205,18 +205,36 @@ class HiveAgentService : LifecycleService() {
         return when (kind) {
             "gpu.probe", "tflite.gpu", "tflite.inference" -> JSONObject().apply {
                 put("ok", true)
-                put("runner", "android-apk")
+                put("runner", "android-hive-apk")
                 put("kind", kind)
                 put("gpu_present", caps.contains("inference.gpu"))
                 put("npu_present", caps.contains("inference.npu"))
                 put("capabilities", org.json.JSONArray(caps))
                 put("packet_profile", payload.optString("packet_profile", "tiny-quantized"))
                 put("quantization", payload.optString("quantization", "int8-preferred"))
-                put("note", "APK claimed the packet and verified Samsung GPU capability; Termux runner executes model-file TFLite packets.")
+                put("gpu_probe", GpuProbe.run(
+                    modelSize = payload.optInt("model_size", 4),
+                    benchmarkSizes = payload.optJSONArray("benchmark_sizes"),
+                    capsule = payload.optJSONObject("model_capsule"),
+                ))
+                put("note", "APK claimed the packet and produced Samsung GPU capacity proof.")
+            }
+            "tiny.gpu.benchmark" -> JSONObject().apply {
+                put("ok", true)
+                put("runner", "android-hive-apk")
+                put("kind", kind)
+                put("gpu_present", caps.contains("inference.gpu"))
+                put("npu_present", caps.contains("inference.npu"))
+                put("capabilities", org.json.JSONArray(caps))
+                put("gpu_probe", GpuProbe.run(
+                    modelSize = payload.optInt("model_size", 4),
+                    benchmarkSizes = payload.optJSONArray("benchmark_sizes"),
+                    capsule = payload.optJSONObject("model_capsule"),
+                ))
             }
             else -> JSONObject().apply {
                 put("ok", true)
-                put("runner", "android-apk")
+                put("runner", "android-hive-apk")
                 put("kind", kind)
                 put("echo", payload.optString("data", ""))
             }

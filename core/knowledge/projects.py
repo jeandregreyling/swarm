@@ -61,7 +61,8 @@ def _normalize_tags(value: Any) -> List[str]:
 __all__ = [
     'create_project', 'list_projects', 'get_project', 'update_project',
     'delete_project',
-    'add_step', 'list_steps', 'update_step_status', 'update_step',
+    'add_step', 'list_steps', 'list_open_steps', 'claim_step',
+    'update_step_status', 'update_step',
     'delete_step',
     'add_test_case', 'list_test_cases', 'update_case_status',
     'update_test_case', 'delete_test_case',
@@ -82,7 +83,10 @@ METHODOLOGIES = ('agile', 'waterfall', 'prince2', 'mixed')
 STEP_STATUSES = ('todo', 'doing', 'blocked', 'partial', 'done', 'skipped')
 CASE_STATUSES = ('draft', 'ready', 'passed', 'failed', 'blocked', 'obsolete')
 PROJECT_STATUSES = ('active', 'archived', 'on_hold')
-BLACKBOARD_KINDS = ('note', 'handoff', 'decision', 'risk', 'test', 'research', 'milestone')
+BLACKBOARD_KINDS = (
+    'note', 'handoff', 'decision', 'risk', 'test', 'research', 'milestone',
+    'quintum-chunk', 'quintum-synthesis',
+)
 BLACKBOARD_STATUSES = ('active', 'resolved', 'archived')
 DEFAULT_OWNER = 'seven'
 
@@ -571,6 +575,95 @@ def list_steps(project_id: str) -> List[Dict[str, Any]]:
             conn.close()
     except Exception:
         return []
+
+
+def list_open_steps(
+    *,
+    owner: Optional[str] = None,
+    limit: int = 10,
+    project_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Return unclaimed todo steps available for agent pickup.
+
+    A step is claimable when ``status='todo'`` and ``owner`` is NULL, empty,
+    the sentinel ``'unassigned'``, or the orchestration default owner
+    ``'seven'``. Pass *owner* to filter to steps already assigned to a
+    specific agent.
+
+    Used by the Studio watcher (Gemma / quintum chunking loop) to find work.
+    """
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            params: list = []
+            clauses = ["ps.status='todo'"]
+            if owner is not None:
+                clauses.append("ps.owner=?")
+                params.append(owner[:64])
+            else:
+                clauses.append(
+                    "(ps.owner IS NULL OR ps.owner='' OR ps.owner='unassigned' OR ps.owner=?)"
+                )
+                params.append(DEFAULT_OWNER)
+            if project_id:
+                clauses.append("ps.project_id=?")
+                params.append(project_id)
+            params.append(max(1, min(limit, 100)))
+            rows = conn.execute(
+                "SELECT ps.*, p.name AS project_name "
+                "FROM project_steps ps "
+                "LEFT JOIN projects p ON p.project_id = ps.project_id "
+                "WHERE " + " AND ".join(clauses) + " "
+                "ORDER BY ps.order_idx ASC, ps.created_at ASC "
+                "LIMIT ?",
+                params,
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
+
+def claim_step(step_id: str, agent_name: str) -> bool:
+    """Atomically claim a todo step for *agent_name*.
+
+    Uses a compare-and-swap: only succeeds when the step is still ``'todo'``
+    with no owner, orchestration-default owner, or sentinel owner at the
+    moment of the UPDATE. Returns ``True`` when the claim succeeded, ``False``
+    when another agent beat us to it or the step does not exist.
+
+    On success the step transitions to ``'doing'`` and ``owner`` is set to
+    *agent_name*.  A Spine event is emitted so the timeline shows the claim.
+    """
+    if not step_id or not (agent_name or '').strip():
+        return False
+    _ensure_schema()
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            cur = conn.execute(
+                "UPDATE project_steps "
+                "SET status='doing', owner=?, updated_at=? "
+                "WHERE step_id=? AND status='todo' "
+                "AND (owner IS NULL OR owner='' OR owner='unassigned' OR owner=?)",
+                (agent_name[:64], time.time(), step_id, DEFAULT_OWNER),
+            )
+            conn.commit()
+            ok = cur.rowcount > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
+    if ok:
+        _emit_spine(
+            f"Step claimed by {agent_name}: {step_id}",
+            {'step_id': step_id, 'agent': agent_name, 'status': 'doing'},
+        )
+    return ok
 
 
 def get_step(step_id: str) -> Optional[Dict[str, Any]]:

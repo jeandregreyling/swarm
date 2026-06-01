@@ -80,11 +80,11 @@
 </style>
 
 <!-- Modular CSS -->
-<link rel="stylesheet" href="/static/css/core.css">
-<link rel="stylesheet" href="/static/css/themes.css">
+<link rel="stylesheet" href="/static/css/core.css?v={{ ASSET_VERSION }}">
+<link rel="stylesheet" href="/static/css/themes.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/components.css?v=6">
 <link rel="stylesheet" href="/static/css/windows.css">
-<link rel="stylesheet" href="/static/css/taskbar.css?v=30">
+<link rel="stylesheet" href="/static/css/taskbar.css?v=31-themepicker">
 <link rel="stylesheet" href="/static/css/views/chat.css?v=3">
 <link rel="stylesheet" href="/static/css/modals.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/library.css">
@@ -767,8 +767,9 @@
       <div id="first-run-banner"
            role="status"
            style="display:none; margin:8px 0; padding:10px 14px; border:1px solid var(--accent); border-radius:6px; background:var(--bg-elev,#111); color:var(--text); font-size:13px;">
-        <strong>Welcome.</strong> The four pillars are empty.
-        Run <code>make seed</code> from your shell to load demo data, or click any tile to start capturing your own.
+        <strong>Welcome.</strong> No starter data is loaded yet.
+        Run <code>make seed</code> in Terminal to load sample records, or open any tile and save your first real item.
+        <a href="#" onclick="try { openWindow('docs','Guide','view-docs'); } catch(e){}; return false;" style="margin-left:8px;color:var(--accent);text-decoration:underline;">Need help? Open quick guide.</a>
         <button type="button" id="first-run-banner-dismiss"
                 aria-label="Dismiss welcome banner"
                 style="float:right;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;">×</button>
@@ -995,37 +996,76 @@
       Theme
     </button>
     <div id="theme-picker-menu" role="menu" aria-label="Themes">
-      <div style="font-size:10px;color:var(--text-dim);font-weight:600;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;padding:0 4px;">Themes</div>
-      <button onclick="setNamedTheme('auto')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
-        <span style="width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#ff8fbe,#bde9ff,#ffab63,#775ac0);"></span>Auto
+      <div class="theme-picker-heading">Themes</div>
+      <button onclick="setNamedTheme('auto')" class="theme-picker-item" data-theme="auto">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#ff8fbe,#bde9ff,#ffab63,#775ac0);"></span>Auto
       </button>
-      <button onclick="setNamedTheme('galaxy')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
-        <span style="width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#6c5ce7,#2f3640);"></span>Galaxy
+      <button onclick="setNamedTheme('galaxy')" class="theme-picker-item" data-theme="galaxy">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#6c5ce7,#2f3640);"></span>Galaxy
       </button>
-      <button onclick="setNamedTheme('cyber')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
-        <span style="width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#00ff88,#020a06);"></span>Cyber
+      <button onclick="setNamedTheme('cyber')" class="theme-picker-item" data-theme="cyber">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#00ff88,#020a06);"></span>Cyber
       </button>
-      <button onclick="setNamedTheme('warm')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
-        <span style="width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#ff9f43,#0a0602);"></span>Warm
+      <button onclick="setNamedTheme('warm')" class="theme-picker-item" data-theme="warm">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#ff9f43,#0a0602);"></span>Warm
       </button>
-      <button onclick="setNamedTheme('ocean')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
-        <span style="width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#74b9ff,#02060a);"></span>Ocean
+      <button onclick="setNamedTheme('ocean')" class="theme-picker-item" data-theme="ocean">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#74b9ff,#02060a);"></span>Ocean
       </button>
-      <button onclick="setNamedTheme('minimal')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
-        <span style="width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#a0a0a0,#0a0a0a);"></span>Minimal
+      <button onclick="setNamedTheme('minimal')" class="theme-picker-item" data-theme="minimal">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#a0a0a0,#0a0a0a);"></span>Minimal
       </button>
-      <div style="border-top:1px solid var(--border);margin:6px 0;"></div>
-      <button onclick="setNamedTheme('obsidian')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
-        <span style="width:14px;height:14px;border-radius:50%;background:#111113;"></span>Obsidian
+      <div class="theme-picker-sep"></div>
+      <button onclick="setNamedTheme('obsidian')" class="theme-picker-item" data-theme="obsidian">
+        <span class="theme-swatch" style="background:#111113;"></span>Obsidian
       </button>
-      <button onclick="setNamedTheme('void')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
-        <span style="width:14px;height:14px;border-radius:50%;background:#111111;"></span>Void
+      <button onclick="setNamedTheme('void')" class="theme-picker-item" data-theme="void">
+        <span class="theme-swatch" style="background:#111111;"></span>Void
       </button>
-      <button onclick="setNamedTheme('aurora')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
-        <span style="width:14px;height:14px;border-radius:50%;background:#13141F;"></span>Aurora
+      <button onclick="setNamedTheme('aurora')" class="theme-picker-item" data-theme="aurora">
+        <span class="theme-swatch" style="background:#13141F;"></span>Aurora
       </button>
-      <button onclick="setNamedTheme('ember')" class="theme-picker-item" style="display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:6px;border:none;background:transparent;color:var(--text);cursor:pointer;font-size:12px;text-align:left;transition:background 0.15s;">
-        <span style="width:14px;height:14px;border-radius:50%;background:#141210;"></span>Ember
+      <button onclick="setNamedTheme('ember')" class="theme-picker-item" data-theme="ember">
+        <span class="theme-swatch" style="background:#141210;"></span>Ember
+      </button>
+      <div class="theme-picker-sep"></div>
+      <button onclick="setNamedTheme('graphite')" class="theme-picker-item" data-theme="graphite">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#635BFF,#1A1D27);"></span>Graphite
+      </button>
+      <button onclick="setNamedTheme('rose')" class="theme-picker-item" data-theme="rose">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#FB7185,#160E10);"></span>Rose
+      </button>
+      <button onclick="setNamedTheme('lumen')" class="theme-picker-item" data-theme="lumen">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#FFE74A,#FFFDF8);"></span>Lumen
+      </button>
+      <button onclick="setNamedTheme('sky')" class="theme-picker-item" data-theme="sky">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#21D4FD,#F4FBFF);"></span>Sky
+      </button>
+      <button onclick="setNamedTheme('solar')" class="theme-picker-item" data-theme="solar">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#FF9F43,#FFF6EA);"></span>Solar
+      </button>
+      <div class="theme-picker-sep"></div>
+      <button onclick="setNamedTheme('midnight')" class="theme-picker-item" data-theme="midnight">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#7C3AED,#080810);"></span>Midnight
+      </button>
+      <button onclick="setNamedTheme('copper')" class="theme-picker-item" data-theme="copper">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#D97706,#12100E);"></span>Copper
+      </button>
+      <button onclick="setNamedTheme('neon')" class="theme-picker-item" data-theme="neon">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#00FFAA,#050508);"></span>Neon
+      </button>
+      <button onclick="setNamedTheme('arctic')" class="theme-picker-item" data-theme="arctic">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#2563EB,#F0F4F8);"></span>Arctic
+      </button>
+      <div class="theme-picker-sep"></div>
+      <button onclick="setNamedTheme('apple')" class="theme-picker-item" data-theme="apple">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#0071E3,#1C1C1C);"></span>Apple
+      </button>
+      <button onclick="setNamedTheme('nature')" class="theme-picker-item" data-theme="nature">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#10B981,#152620);"></span>Nature
+      </button>
+      <button onclick="setNamedTheme('mint')" class="theme-picker-item" data-theme="mint">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#06B6D4,#152A35);"></span>Mint
       </button>
     </div>
   </div>
@@ -3140,7 +3180,7 @@
 
 <!-- Core -->
 <script src="/static/js/core/window-manager.js?v=31"></script>
-<script src="/static/js/core/theme.js?v={{ ASSET_VERSION }}-taskbar3"></script>
+<script src="/static/js/core/theme.js?v={{ ASSET_VERSION }}-picker21"></script>
 <script src="/static/js/core/toast.js?v=2"></script>
 <script src="/static/js/core/icons.js"></script>
 <script src="/static/js/core/swarm-chat.js"></script>
@@ -3199,6 +3239,7 @@
 
 <script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/friday-auth.js?v=28"></script>
+<script src="/static/js/core/aig_focus.js?v={{ ASSET_VERSION }}"></script>
 <!-- Init (must be last — depends on all above) -->
 <script src="/static/js/core/sse-client.js?v=2"></script>
 <script src="/static/js/core/init.js?v=36"></script>

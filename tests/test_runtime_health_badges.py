@@ -53,10 +53,38 @@ def test_ollama_health_down_when_unreachable(monkeypatch):
         raise _Boom("connection refused")
 
     monkeypatch.setattr(gw.requests, "get", _raise)
+    monkeypatch.setattr(gw, "_LAST_OLLAMA_STATUS", None)
     snap = gw.ollama_health(base_url="http://127.0.0.1:0")
     assert snap["ok"] is False
     assert snap["status"] == "down"
+    assert snap["error_code"] == "RUNTIME_OFFLINE"
     assert snap["warnings"] and "unreachable" in snap["warnings"][0]
+
+
+def test_ollama_health_emits_runtime_offline_event_on_transition(monkeypatch):
+    events = []
+    bus = []
+
+    monkeypatch.setattr(gw, "_LAST_OLLAMA_STATUS", None)
+
+    class _Boom(Exception):
+        pass
+
+    def _raise(*_a, **_kw):
+        raise _Boom("connection refused")
+
+    monkeypatch.setattr(gw.requests, "get", _raise)
+    monkeypatch.setattr("utils.swarm_bus.publish", lambda topic, payload, source_service='local': bus.append((topic, payload, source_service)))
+
+    from core import spine
+    monkeypatch.setattr(spine, "log", lambda kind, message, **kw: events.append((kind, message, kw)) or None)
+
+    snap = gw.ollama_health(base_url="http://127.0.0.1:0")
+
+    assert snap["status"] == "down"
+    assert bus and bus[0][0] == "runtime.ollama"
+    assert bus[0][1]["error_code"] == "RUNTIME_OFFLINE"
+    assert events and events[0][1] == "ollama runtime down"
 
 
 def test_runtime_health_endpoint_shape():

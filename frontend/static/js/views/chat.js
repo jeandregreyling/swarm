@@ -41,11 +41,15 @@ function _loadAgentRegistry() {
           label: `${num} · ${lbl}`,
           number: num,
           tier,
+          available: a.available !== false,
+          availabilityReason: String(a.availability_reason || ''),
           hasTemp: _TEMP_CAPABLE.has(name),
         });
       });
       next.sort((a, b) => (a.number || 99) - (b.number || 99));
       CHAT_AGENT_OPTIONS = next;
+      window.__agentsData = Array.isArray(data) ? data : [];
+      window.dispatchEvent(new CustomEvent('fridays:agent-registry-loaded', { detail: { agents: next } }));
       if (typeof renderChatAgentToggles === 'function') renderChatAgentToggles();
       if (typeof _hcRenderAgentPills === 'function') _hcRenderAgentPills();
     });
@@ -5210,6 +5214,10 @@ function renderChatAgentToggles() {
     const bubbleColor = _getActorBubbleColor(agent.value) || (agent.tier === 'paid' ? '#ff7043' : '#4caf50');
     const selState = _getAgentSelectionState(agent.value);
     const agentIcon = _chatAgentMeta(agent.value).icon;
+    const availabilityReason = String(agent.availabilityReason || '').trim();
+    const availabilityLabel = agent.available === false
+      ? (availabilityReason || 'Unavailable')
+      : 'Available';
 
     // Row state drives the pip glow via CSS class
     let rowState = '';
@@ -5229,7 +5237,7 @@ function renderChatAgentToggles() {
       </select>` : `<div class="agent-sel-temp agent-sel-temp--placeholder"></div>`;
 
     return `
-      <div class="agent-sel-row${rowState}" title="${_escapeHtml(agent.label)} · ${tierLabel}">
+      <div class="agent-sel-row${rowState}" title="${_escapeHtml(agent.label)} · ${tierLabel}${availabilityReason ? ' · ' + _escapeHtml(availabilityReason) : ''}">
         <label class="agent-sel-main">
           <input class="agent-sel-check chat-agent-toggle" type="checkbox" value="${agent.value}" ${checked}
             onchange="onChatAgentToggleChange(this);_setAgentSelectionState('${agent.value}',this.checked?'manual':null);renderChatAgentToggles();">
@@ -5237,6 +5245,7 @@ function renderChatAgentToggles() {
           <span class="agent-sel-icon">${agentIcon}</span>
           <span class="agent-sel-name">${_escapeHtml(agent.label)}</span>
         </label>
+        <span class="agent-sel-state" style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;">${_escapeHtml(availabilityLabel)}</span>
         ${tempPart}
         <input class="agent-sel-swatch" type="color" value="${_escapeHtml(bubbleColor)}"
           title="${_escapeHtml(agent.label)} bubble color" oninput="setActorBubbleColor('${agent.value}',this.value)">

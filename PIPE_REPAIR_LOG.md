@@ -284,3 +284,35 @@ Before running DOES on production tasks:
 - **Pipe 3**: Resource management, explicit process lifecycle, memory pressure handling
 
 **Engineering Principle**: In distributed systems, trust nothing that crosses a boundary. Isolate, validate, and explicitly manage every state transition.
+
+---
+
+## June 1, 2026 Improvements Log
+
+This entry records the UI and launcher improvements completed on June 1.
+
+### Home UI and Productivity
+
+- Quick Access collapse was tightened so collapsed mode consumes less vertical space on desktop and small screens.
+- Home chat visual intensity now follows occupancy/theme settings instead of using a fixed opacity behavior.
+- The empty-pillars/first-run banner copy was rewritten for clarity and now includes a direct help link.
+- Quick Access collapse animation was tuned for cleaner transitions and less layout jitter.
+
+### Android Tablet and GPU Visibility
+
+- Samsung tablet-facing dashboard was updated to show clearer capability summaries.
+- GPU proofing visibility and model capability rendering were improved in the Android app layer.
+- Leader-model summary exposure was added to support better handoff visibility between tablet and host workflows.
+
+### Windows Native App Startup
+
+- Startup flow was hardened to prefer native app window behavior instead of browser-first behavior.
+- UNC/WSL launch reliability was improved by selecting a local Windows virtual environment for launcher dependencies.
+- Launcher routing was changed to execution-first fallback logic to avoid fragile file-existence checks under UNC.
+- Browser fallback remains a last-resort path only when native launcher execution fails.
+
+### Validation Snapshot
+
+- Frontend and Android edits were validated in-session with no reported file-level errors on touched files.
+- Windows launcher path was smoke-tested with successful local health checks and UI asset serving.
+- Known follow-up risk remains historical DB lock contention when backfilling older Studio project records.

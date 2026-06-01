@@ -18,12 +18,18 @@ guards make the surface safe against malformed input.
 """
 from __future__ import annotations
 
+import concurrent.futures
+import json
 import logging
+import os
 from pathlib import Path
+import sqlite3
+import time
 from typing import Any
 
 import io
 import tarfile
+from urllib.parse import quote
 
 from flask import Blueprint, Response, jsonify, request, send_from_directory, url_for
 
@@ -35,6 +41,7 @@ from core.hive import (
     validate_policy,
     validate_telemetry,
 )
+from core.hive.registry import DEFAULT_DB
 from core.hive.contract import ContractError
 from core.hive.enrolment import (
     list_tokens,
@@ -45,12 +52,86 @@ from core.hive.enrolment import (
 from utils.db.watchdog_lessons import list_open_repair_lessons
 
 _LOG = logging.getLogger(__name__)
+_HIVE_LIST_TIMEOUT_S = 2.5
 
 hive_bp = Blueprint('hive', __name__, url_prefix='/api/hive')
 
 
 def _registry() -> HiveRegistry:
     return get_registry()
+
+
+def _hive_db_path() -> str:
+    return str(os.environ.get('SWARM_HIVE_DB') or Path(DEFAULT_DB))
+
+
+def _decode_json(raw: str | None) -> dict | None:
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _list_nodes_from_db(path: str, *, max_age_s: int | None = None) -> list[dict]:
+    """Best-effort direct DB read for Hive nodes.
+
+    This bypasses the HiveRegistry singleton/lock path when Windows runtime
+    startup leaves the registry in a blocked state. It should degrade to an
+    empty roster quickly rather than hanging the browser.
+    """
+    if not path or not Path(path).exists():
+        return []
+    conn = sqlite3.connect(path, timeout=1.0)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            'SELECT node_id, platform, enrolled_ts, last_seen_ts, '
+            'telemetry_json, policy_json, label, notes '
+            'FROM hive_nodes ORDER BY COALESCE(last_seen_ts, 0) DESC'
+        ).fetchall()
+    finally:
+        conn.close()
+
+    now = int(time.time())
+    out: list[dict] = []
+    for row in rows:
+        last_seen = row['last_seen_ts']
+        if max_age_s is not None and (
+            last_seen is None or now - int(last_seen) > max_age_s
+        ):
+            continue
+        out.append({
+            'node_id': row['node_id'],
+            'platform': row['platform'],
+            'enrolled_ts': row['enrolled_ts'],
+            'last_seen_ts': last_seen,
+            'age_s': (now - int(last_seen)) if last_seen else None,
+            'offline': last_seen is None or now - int(last_seen) > 90,
+            'label': row['label'],
+            'notes': row['notes'],
+            'telemetry': _decode_json(row['telemetry_json']),
+            'policy': _decode_json(row['policy_json']),
+        })
+    return out
+
+
+def _safe_list_nodes(max_age_s: int | None = None) -> tuple[list[dict], str]:
+    path = _hive_db_path()
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+        fut = pool.submit(lambda: get_registry().list_nodes(max_age_s=max_age_s))
+        try:
+            return fut.result(timeout=_HIVE_LIST_TIMEOUT_S), 'registry'
+        except concurrent.futures.TimeoutError:
+            _LOG.warning('Hive registry list_nodes timed out after %.1fs; falling back to direct DB read', _HIVE_LIST_TIMEOUT_S)
+        except Exception as exc:
+            _LOG.warning('Hive registry list_nodes failed: %s; falling back to direct DB read', exc)
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+    return _list_nodes_from_db(path, max_age_s=max_age_s), 'db-fallback'
 
 
 def _err(msg: str, status: int = 400) -> Any:
@@ -143,10 +224,14 @@ def _with_expected_farm_nodes(nodes: list[dict]) -> list[dict]:
 @hive_bp.get('/nodes')
 def list_nodes():
     max_age = request.args.get('max_age_s', type=int)
-    nodes = _registry().list_nodes(max_age_s=max_age)
+    if os.environ.get('SWARM_PLATFORM') == 'windows':
+        nodes = _list_nodes_from_db(_hive_db_path(), max_age_s=max_age)
+        source = 'db-fallback-windows'
+    else:
+        nodes, source = _safe_list_nodes(max_age_s=max_age)
     if request.args.get('expected', '1') != '0':
         nodes = _with_expected_farm_nodes(nodes)
-    return jsonify({'ok': True, 'count': len(nodes), 'nodes': nodes})
+    return jsonify({'ok': True, 'count': len(nodes), 'nodes': nodes, 'source': source})
 
 
 @hive_bp.get('/node/<node_id>')
@@ -247,7 +332,12 @@ def enrol_node():
     reg = _registry()
     reg.enrol(node_id, platform, label=label, notes=payload.get('notes', ''))
     token = mint_token(node_id, label=label)
-    return jsonify({'ok': True, 'node_id': node_id, 'token': token})
+    return jsonify({
+        'ok': True,
+        'node_id': node_id,
+        'token': token,
+        'leader': request.host_url.rstrip('/'),
+    })
 
 
 @hive_bp.post('/revoke/<node_id>')
@@ -319,6 +409,11 @@ def _repo_root() -> Path:
 def install_android_page():
     """HTML landing page for Android users — open in tablet browser, tap to install."""
     leader = request.host_url.rstrip('/')
+    hive_apk_url = f'{leader}/api/hive/install/swarm-hive.apk'
+    join_url = (
+        'swarmhive://join?'
+        f'leader={quote(leader, safe="")}&node_id=potato-2'
+    )
     apk_url = f'{leader}/api/hive/install/seven-app.apk'
     v104_url = f'{leader}/api/hive/install/seven-app-v1.0.4.apk'
     v103_url = f'{leader}/api/hive/install/seven-app-v1.0.3.apk'
@@ -353,19 +448,30 @@ def install_android_page():
 </head>
 <body>
 <div class="card">
-  <h1>🤖 Seven for Android</h1>
-  <p>Install the <strong>Seven</strong> app on your Samsung S9 FE tablet. Chat with the swarm, view Hive nodes, and manage settings.</p>
-    <p class="version">Latest: v1.0.4 (5.5 MB) · signed · GPU packet handoff</p>
-  <a class="btn" href="{apk_url}" download>⬇ Download Seven App</a>
+  <h1>Samsung Potato Farm</h1>
+  <p>Install the always-on <strong>Swarm Hive</strong> worker on the Samsung tablet so it joins as <code>potato-2</code>, posts telemetry, and claims GPU packets.</p>
+  <p class="version">Leader: <code>{leader}</code> · worker: <code>swarm-hive.apk</code></p>
+  <a class="btn" href="{hive_apk_url}" download>Download Hive Worker</a>
+  <a class="btn-secondary" href="{join_url}">Open Worker + Join potato-2</a>
   <p class="warn">⚠ You may need to allow “Install unknown apps” for your browser when prompted.</p>
   <ol class="steps">
-    <li>Tap the button above to download <code>seven-app.apk</code>.</li>
+    <li>Tap the worker download above and install <code>swarm-hive.apk</code>.</li>
+    <li>Return to this page and tap <strong>Open Worker + Join potato-2</strong>.</li>
+    <li>Keep battery optimisation disabled for Swarm Hive if Android prompts.</li>
+  </ol>
+  <p class="feature">✅ Farm worker: foreground telemetry · boot resume · GPU capacity proof · packet claim/report loop</p>
+  <div class="archive">
+    <p class="archive-title">Optional chat/dashboard app</p>
+    <a class="btn-secondary" href="{apk_url}" download>Download Seven App v1.0.4</a>
+  </div>
+  <ol class="steps">
+    <li>Optional: install <code>seven-app.apk</code> if you want chat and node dashboards on the tablet.</li>
     <li>Open the downloaded file and tap <strong>Install</strong>.</li>
     <li>Open the <strong>Seven</strong> app.</li>
-    <li>Enter Leader URL: <code>http://100.87.66.45:5050</code></li>
+    <li>Enter Leader URL: <code>{leader}</code></li>
     <li>Tap <strong>Save</strong>. Done!</li>
   </ol>
-  <p class="feature">✅ Features: Chat · Nodes Grid · Settings · Material Design 3</p>
+  <p class="feature">✅ Seven app: Chat · Nodes Grid · Settings · Material Design 3</p>
   <div class="archive">
     <p class="archive-title">📦 Version Archive</p>
         <a class="btn-secondary" href="{v104_url}" download>v1.0.4 — GPU packet handoff</a>

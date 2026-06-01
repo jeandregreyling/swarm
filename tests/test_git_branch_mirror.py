@@ -121,3 +121,46 @@ def test_invalid_environment_rejected(tmp_path, monkeypatch):
 
     assert response.status_code == 500
     assert response.get_json()["ok"] is False
+
+
+def test_unavailable_dev_environment_returns_not_available_payload(tmp_path, monkeypatch):
+    repo, _remote = _seed_repo(tmp_path)
+    client = _client(monkeypatch, repo)
+
+    import frontend.blueprints.git as git_bp_mod
+    monkeypatch.setattr(
+        git_bp_mod,
+        "_GIT_ENVS",
+        {"prod": repo, "dev": tmp_path / "missing-dev", "uat": tmp_path / "missing-uat"},
+    )
+
+    branches = client.get("/api/git/branches?environment=dev")
+    status = client.get("/api/git/status?environment=dev")
+
+    for response in (branches, status):
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["ok"] is False
+        assert data["environment"] == "dev"
+        assert data["available"] is False
+        assert "unavailable on this runtime" in data["error"]
+
+
+def test_status_check_remote_degrades_when_fetch_errors(tmp_path, monkeypatch):
+    repo, _remote = _seed_repo(tmp_path)
+    client = _client(monkeypatch, repo)
+
+    import frontend.blueprints.git as git_bp_mod
+
+    def fake_remote_fetch(env: str = '', timeout: int = 12):
+        raise RuntimeError('Host key verification failed')
+
+    monkeypatch.setattr(git_bp_mod, '_remote_fetch', fake_remote_fetch)
+
+    response = client.get('/api/git/status?check_remote=1&environment=dev')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['ok'] is True
+    assert data['remote_check']['checked'] is True
+    assert data['remote_check']['ok'] is False
+    assert 'Host key verification failed' in data['remote_check']['error']

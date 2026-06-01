@@ -22,6 +22,7 @@ import urllib.request
 
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
+from database import log_ghost_circle
 from utils.db.registry import get_agent_roster as _reg_roster, get_single_task_locals as _reg_stl
 from utils.db.chat import (
     ensure_chat_relay_recovery,
@@ -274,7 +275,10 @@ def _chat_error_should_disable_agent(text):
         return False
     auth_cues = (
         '401',
+        '403',
         'unauthorized',
+        'access denied',
+        'network settings',
         'bad credentials',
         'invalid api key',
         'missing api key',
@@ -302,6 +306,61 @@ _WATCHDOG_KILL_LOCK = threading.Lock()
 _WATCHDOG_MAX_FAILS_BEFORE_KILL9 = 3
 _WATCHDOG_MAX_FAILS_BEFORE_TICKET = 5
 _WATCHDOG_BACKOFF_BASE_SECONDS = 5
+
+
+def _normalize_human_alias(value):
+    raw = str(value or '').strip().lower()
+    if not raw:
+        return ''
+    alias = re.sub(r'[^a-z0-9_]+', '_', raw).strip('_')
+    return alias[:40]
+
+
+def _ghost_log_source(identity, current_user=None):
+    """Prefer the human alias over the canonical ghost owner username."""
+    session_user = current_user or {}
+    session_name = str(session_user.get('username') or '').strip().lower()
+    session_display = _normalize_human_alias(session_user.get('display_name') or '')
+    if session_name and session_name != 'ghost':
+        return session_name
+    if session_display:
+        return session_display
+
+    actor = identity.get('actor') or {}
+    actor_name = str(actor.get('username') or identity.get('acting_user') or '').strip().lower()
+    actor_display = _normalize_human_alias(actor.get('display_name') or '')
+    if actor_name and actor_name != 'ghost':
+        return actor_name
+    if actor_display:
+        return actor_display
+
+    effective = identity.get('effective') or {}
+    effective_name = str(effective.get('username') or identity.get('effective_user') or '').strip().lower()
+    effective_display = _normalize_human_alias(effective.get('display_name') or '')
+    if effective_name and effective_name != 'ghost':
+        return effective_name
+    if effective_display:
+        return effective_display
+    return actor_name or effective_name or 'ghost'
+
+
+def _log_human_ghost_thought(message, identity, conversation_id=None, current_user=None):
+    raw = str(message or '').strip()
+    if not raw:
+        return
+    source = _ghost_log_source(identity, current_user=current_user)
+    entry_type = 'developer_thought' if ('?' in raw or _chat_user_prompt_is_informational(raw)) else 'operator_prompt'
+    conv_ref = f'conv:{conversation_id}' if conversation_id else ''
+    meta = (
+        f'acting_user={identity.get("acting_user") or ""} '
+        f'effective_user={identity.get("effective_user") or ""} '
+        f'proxy_as={identity.get("proxy_as") or ""}'
+    ).strip()
+    content = raw if not meta else f'{raw}\n\n[{meta}]'
+    try:
+        log_ghost_circle(entry_type, source, content, ticket_ref=conv_ref, severity='info')
+    except Exception:
+        pass
 
 
 def _watchdog_get_kill_state(model_name: str) -> dict:
@@ -357,6 +416,38 @@ def _chat_ollama_model_blob_patterns(model_name):
     except Exception:
         return []
     return sorted(set(re.findall(r'sha256-[0-9a-f]{32,}', modelfile, flags=re.IGNORECASE)))
+
+
+def _watchdog_api_unload_model(model_name: str, *, timeout_s: float = 8.0) -> dict:
+    """Ask Ollama via HTTP /api/generate with keep_alive=0 to unload a model.
+
+    This is the transport-agnostic unload (works whether Ollama runs as a
+    local Linux daemon, on Windows over a WSL bridge, or remotely). It
+    matches what the `ollama stop` CLI does internally. Returning ok=True
+    only requires the request to succeed; the caller still re-checks
+    /api/ps to confirm the model actually left memory.
+    """
+    name = str(model_name or '').strip()
+    result = {'model': name, 'ok': False, 'detail': '', 'action': 'api-unload'}
+    if not name:
+        result['detail'] = 'no model name'
+        return result
+    try:
+        body = json.dumps({'model': name, 'keep_alive': 0}).encode('utf-8')
+        req = urllib.request.Request(
+            'http://127.0.0.1:11434/api/generate',
+            data=body,
+            headers={'Content-Type': 'application/json'},
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            status = getattr(resp, 'status', 200)
+            resp.read()
+        result['ok'] = 200 <= int(status) < 300
+        result['detail'] = f'api keep_alive=0 status={status}'
+    except Exception as exc:
+        result['detail'] = f'api-unload failed: {exc}'
+    return result
 
 
 def _watchdog_kill_ollama_runner_pid(model_name: str) -> dict:
@@ -586,7 +677,24 @@ def _chat_try_hard_kill_local_agent(agent_name, *, ignore_job_id=None):
                 _watchdog_emit_escalation_ticket(normalized, model_name, state['consecutive_failures'])
             continue
 
-        # Escalation level 0/1: normal ollama stop.
+        # Escalation level 0/1: primary path is the HTTP API (keep_alive=0).
+        # Works for local Linux daemon, Windows host over WSL bridge, or any
+        # remote Ollama. Fall back to the CLI only if the API call failed
+        # AND the CLI is available on PATH.
+        api_result = _watchdog_api_unload_model(model_name)
+        result['attempts'].append(api_result)
+        if api_result['ok']:
+            # Confirm via /api/ps before declaring success.
+            after_models = _chat_wait_for_ollama_models_to_clear(
+                [model_name], timeout_s=4.0, interval_s=0.4,
+            )
+            aliases = _chat_model_aliases(model_name)
+            still = any(aliases & _chat_model_aliases(name) for name in after_models)
+            if not still:
+                state['consecutive_failures'] = 0
+                state['escalation_level'] = 0
+                continue
+
         try:
             proc = subprocess.run(
                 ['ollama', 'stop', model_name],
@@ -607,6 +715,16 @@ def _chat_try_hard_kill_local_agent(agent_name, *, ignore_job_id=None):
                 'stderr': stderr,
             })
             if ok:
+                state['consecutive_failures'] = 0
+                state['escalation_level'] = 0
+            else:
+                state['consecutive_failures'] = fails_before + 1
+                still_running.append(model_name)
+        except FileNotFoundError:
+            # No CLI on this host (e.g. WSL bridging to Windows Ollama).
+            # The API attempt above is what we have; treat its outcome as
+            # authoritative and skip the OS-level escalation.
+            if api_result['ok']:
                 state['consecutive_failures'] = 0
                 state['escalation_level'] = 0
             else:
@@ -1306,6 +1424,7 @@ def api_chat():
     identity, err = _resolve_identity_or_response(data)
     if err:
         return err
+    current_user = get_current_user()
 
     # Per-request dedup flag: prevents multiple agents in a single multi-agent
     # chat turn from each auto-creating their own proposal.  Only the first agent
@@ -2049,6 +2168,9 @@ def api_chat():
             title_agents = ','.join(normalized_agents[:2])
             _env_tag = os.environ.get('SWARM_ENV', 'prod').upper()
             conv_id = new_conversation(f'{title_agents}: {message[:90]}', source=f'terminal-ui:{_env_tag}')
+
+        if not relay_from:
+            _log_human_ghost_thought(message, identity, conversation_id=conv_id, current_user=current_user)
 
         to_agent = normalized_agents[0] if len(normalized_agents) == 1 else ','.join(normalized_agents)
         msg_sender = relay_from if relay_from else 'user'

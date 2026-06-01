@@ -129,6 +129,30 @@ def test_list_projects_counts_only_done_steps(isolated_db):
     assert row["steps_done"] == 1
 
 
+def test_list_open_steps_treats_default_owner_as_claimable(isolated_db):
+    from core.knowledge import projects as pj
+
+    pid = pj.create_project("claimable defaults")
+    sid = pj.add_step(pid, "watch me")
+
+    items = pj.list_open_steps(limit=10)
+    assert any(item["step_id"] == sid for item in items)
+
+
+def test_claim_step_accepts_default_owner_and_is_atomic(isolated_db):
+    from core.knowledge import projects as pj
+
+    pid = pj.create_project("atomic claim")
+    sid = pj.add_step(pid, "first pass")
+
+    assert pj.claim_step(sid, "gemma") is True
+    assert pj.claim_step(sid, "duck") is False
+
+    step = pj.get_step(sid)
+    assert step["status"] == "doing"
+    assert step["owner"] == "gemma"
+
+
 # ── blackboard ──────────────────────────────────────────────────────────────
 
 def test_blackboard_notes_are_project_scoped_and_statused(isolated_db):
@@ -164,6 +188,19 @@ def test_blackboard_rejects_unknown_kind(isolated_db):
     pid = pj.create_project("blackboard validation")
     with pytest.raises(ValueError):
         pj.add_blackboard_note(pid, "bad kind", kind="vibes")
+
+
+def test_blackboard_accepts_quintum_kinds(isolated_db):
+    from core.knowledge import projects as pj
+
+    pid = pj.create_project("quintum notes")
+    chunk_id = pj.add_blackboard_note(pid, "chunk evidence", kind="quintum-chunk")
+    synth_id = pj.add_blackboard_note(pid, "final answer", kind="quintum-synthesis")
+
+    notes = pj.list_blackboard_notes(pid, status=None)
+    kinds = {note["note_id"]: note["kind"] for note in notes}
+    assert kinds[chunk_id] == "quintum-chunk"
+    assert kinds[synth_id] == "quintum-synthesis"
 
 
 def test_blackboard_api_create_list_and_resolve(isolated_db):

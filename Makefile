@@ -1,4 +1,4 @@
-.PHONY: test lint fmt audit restart sync help wake-dev wake-uat sleep-dev sleep-uat sleep-all status excellent bullshit seed doctor health hooks preflight integ-health log-summary
+.PHONY: test lint fmt audit restart sync help wake-dev wake-uat sleep-dev sleep-uat sleep-all status excellent bullshit seed doctor health hooks preflight integ-health log-summary plan-bootstrap plan-preflight plan-wave1 plan-git-audit potato-inventory
 
 PYTHON ?= python3
 
@@ -67,6 +67,21 @@ integ-health:  ## Print swarm integration health (DB, scheduler, services, route
 
 log-summary:  ## Summarize last hour of swarm-* journal errors
 	@$(PYTHON) -m ops.service_log_summary
+
+plan-bootstrap:  ## Create/reuse the June 2026 plan-mode Studio coordination project
+	$(PYTHON) scripts/plan_mode_bootstrap.py
+
+plan-preflight:  ## Run plan-mode preflight checks (swap/NTFS/API/backup/chunking)
+	$(PYTHON) scripts/plan_mode_preflight.py --chunking-smoke
+
+plan-wave1:  ## Build Wave-1 inventory, classify blockers, and mark Phase-1 doing
+	$(PYTHON) scripts/plan_mode_wave1_inventory.py
+
+plan-git-audit:  ## Run non-destructive git/cloud sync audit for plan mode
+	$(PYTHON) scripts/plan_mode_git_sync_audit.py
+
+potato-inventory:  ## Build Potato Farm source-of-truth inventory + blocker matrix (S-POTATO-00)
+	$(PYTHON) scripts/potato_farm_inventory.py
 
 excellent: bullshit  ## Bullshit detector + per-batch tests = the standard
 	@for f in tests/test_session28_batch*.py tests/test_tasker_dry_run.py tests/test_slash_commands.py ; do \

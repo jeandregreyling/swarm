@@ -23,12 +23,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sendButton: ImageButton
     private lateinit var statusButton: Button
     private lateinit var gpuModelButton: Button
-    private lateinit var sundialView: SundialView
+    private lateinit var tabletSundialView: SundialView
+    private lateinit var leaderSundialView: SundialView
     private lateinit var potatoStatusText: TextView
     private lateinit var potatoResourceText: TextView
     private lateinit var potatoFarmText: TextView
     private lateinit var handoffProofText: TextView
     private lateinit var tinyModelProofText: TextView
+    private lateinit var leaderStatusText: TextView
+    private lateinit var leaderResourceText: TextView
     private val api by lazy { SwarmApi(this) }
     private val sampler by lazy { AndroidSampler(this) }
     private var sending = false
@@ -63,18 +66,21 @@ class MainActivity : AppCompatActivity() {
         sendButton = findViewById(R.id.sendButton)
         statusButton = findViewById(R.id.statusButton)
         gpuModelButton = findViewById(R.id.gpuModelButton)
-        sundialView = findViewById(R.id.sundialView)
+        tabletSundialView = findViewById(R.id.tabletSundialView)
+        leaderSundialView = findViewById(R.id.leaderSundialView)
         potatoStatusText = findViewById(R.id.potatoStatusText)
         potatoResourceText = findViewById(R.id.potatoResourceText)
         potatoFarmText = findViewById(R.id.potatoFarmText)
         handoffProofText = findViewById(R.id.handoffProofText)
         tinyModelProofText = findViewById(R.id.tinyModelProofText)
+        leaderStatusText = findViewById(R.id.leaderStatusText)
+        leaderResourceText = findViewById(R.id.leaderResourceText)
 
         sendButton.setOnClickListener {
             sendMessage()
         }
         statusButton.setOnClickListener {
-            postStatusUpdate("Manual status update")
+            postStatusUpdate("Manual capability refresh")
         }
         gpuModelButton.setOnClickListener {
             runGpuBenchmarkHandoff()
@@ -92,10 +98,11 @@ class MainActivity : AppCompatActivity() {
 
         // Welcome message
         chatAdapter.addMessage(ChatMessage(
-            text = "Seven online. This tablet should be a potato node, not just a chat window. Try: status update",
+            text = "Seven online. This tablet now shows live Samsung + Dell capability consoles above chat.",
             isUser = false
         ))
-        sundialView.setStatus(10, "Booting", "Checking leader")
+        tabletSundialView.setStatus(10, "Booting", "Samsung node")
+        leaderSundialView.setStatus(10, "Booting", "Dell leader")
         refreshPotatoStatus(postTelemetry = true)
     }
 
@@ -181,20 +188,19 @@ class MainActivity : AppCompatActivity() {
                     appendLine("Handoff: ${handoff ?: "no queued packet"}")
                     appendLine("Leader health: ${health.fold({ if (it) "online" else "degraded" }, { "failed: ${it.message}" })}")
                     appendLine()
-                    append("What this means: Seven now knows this Samsung is potato-2 and can share resources through Hive jobs. The app can run a tiny GPU-loaded model now; Gemma/Llama still need a LiteRT or native LLM runner.")
+                    append("What this means: Samsung is now a visible capability node with GPU probe evidence, and Dell/leader capability visibility is updated in the dashboard cards.")
                 }
             }
             chatAdapter.setTyping(false)
             chatAdapter.addMessage(ChatMessage(message, isUser = false))
             recyclerView.scrollToPosition(chatAdapter.itemCount - 1)
-            updatePotatoViews("Connected as ${sampler.nodeId()}")
             refreshFarmTile()
             setSending(false)
         }
     }
 
     private fun refreshPotatoStatus(postTelemetry: Boolean) {
-        updatePotatoViews("Checking ${sampler.nodeId()}...")
+        updateTabletViews("Checking ${sampler.nodeId()}...")
         lifecycleScope.launch {
             val status = withContext(Dispatchers.IO) {
                 val enrol = api.enrol(sampler.nodeId(), sampler.deviceLabel())
@@ -208,7 +214,7 @@ class MainActivity : AppCompatActivity() {
                     else -> "Potato not fully connected"
                 }
             }
-            updatePotatoViews(status.second, leaderOk = status.first)
+            updateTabletViews(status.second, leaderOk = status.first)
             refreshFarmTile()
         }
     }
@@ -216,8 +222,8 @@ class MainActivity : AppCompatActivity() {
     private fun runGpuBenchmarkHandoff() {
         setSending(true)
         gpuModelButton.isEnabled = false
-        handoffProofText.text = "Handoff proof: submitting GPU capacity ladder..."
-        tinyModelProofText.text = "GPU benchmark: waiting for potato-2 claim..."
+        handoffProofText.text = "GPU handoff: submitting Samsung capability test..."
+        tinyModelProofText.text = "GPU benchmark: waiting for Samsung node claim..."
         lifecycleScope.launch {
             val message = withContext(Dispatchers.IO) {
                 val nodeId = sampler.nodeId()
@@ -241,7 +247,7 @@ class MainActivity : AppCompatActivity() {
                 val latest = api.listJobs().getOrNull().orEmpty()
                     .firstOrNull { it.nodeId == nodeId && it.kind == "tiny.gpu.benchmark" }
                 buildString {
-                    appendLine("GPU capacity ladder handoff")
+                    appendLine("Samsung GPU capability test")
                     appendLine("Submit: ${submit.fold({ it }, { "failed: ${it.message}" })}")
                     appendLine("Claim: ${claimed ?: "no queued packet claimed"}")
                     append(formatJobProof(latest))
@@ -295,10 +301,20 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun updatePotatoViews(status: String, leaderOk: Boolean = true) {
+    private fun updateTabletViews(status: String, leaderOk: Boolean = true) {
         val sample = sampler.sample()
         potatoStatusText.text = status
-        potatoResourceText.text = "Caps: ${sample.capabilities.joinToString()} · RAM ${sample.memory.optLong("ram_free_mb", -1)}MB free/${sample.memory.optLong("ram_total_mb", -1)}MB · Battery ${sample.power.optInt("battery_pct", -1)}%"
+        potatoResourceText.text = buildString {
+            append("Samsung caps: ")
+            append(sample.capabilities.joinToString { prettyCapability(it) })
+            append("\nMemory: ")
+            append(sample.memory.optLong("ram_free_mb", -1))
+            append("MB free / ")
+            append(sample.memory.optLong("ram_total_mb", -1))
+            append("MB · Battery ")
+            append(sample.power.optInt("battery_pct", -1))
+            append("%")
+        }
         val free = sample.memory.optLong("ram_free_mb", 0)
         val total = sample.memory.optLong("ram_total_mb", 1).coerceAtLeast(1)
         val ramScore = ((free.toDouble() / total.toDouble()) * 25.0).toInt().coerceIn(0, 25)
@@ -306,9 +322,9 @@ class MainActivity : AppCompatActivity() {
         val capScore = 15 + sample.capabilities.count { it in setOf("inference.gpu", "inference.npu", "inference.tflite") } * 8
         val leaderScore = if (leaderOk) 25 else 0
         val score = (ramScore + batteryScore + capScore + leaderScore).coerceIn(0, 100)
-        sundialView.setStatus(
+        tabletSundialView.setStatus(
             score,
-            if (leaderOk) "Online" else "Degraded",
+            if (leaderOk) "Samsung ready" else "Leader degraded",
             "${sample.capabilities.size} caps · ${free}MB free",
         )
     }
@@ -320,19 +336,35 @@ class MainActivity : AppCompatActivity() {
                 val jobs = api.listJobs().getOrNull().orEmpty()
                 val live = nodes.count { !it.offline && it.ageS >= 0 }
                 val p2 = nodes.firstOrNull { it.nodeId == sampler.nodeId() }
+                val leader = nodes.firstOrNull { it.nodeId != sampler.nodeId() } ?: nodes.firstOrNull()
+                val modelSummary = api.leaderModelSummary().getOrDefault("Leader models: unavailable")
                 val latest = jobs.firstOrNull {
                     it.nodeId == sampler.nodeId() &&
                         (it.kind == "tiny.gpu.benchmark" || it.kind == "tiny.gpu.model" || it.kind == "gpu.probe" || it.kind == "tflite.gpu")
                 }
-                Triple(
+                val leaderCaps = leader?.capabilities?.joinToString { prettyCapability(it) } ?: "none advertised"
+                val leaderScore = (45 + (leader?.capabilities?.size ?: 0) * 8 - if (leader?.offline == true) 35 else 0).coerceIn(0, 100)
+                val leaderLabel = when {
+                    leader == null -> "Unknown"
+                    leader.offline -> "Offline"
+                    leader.ageS in 0..90 -> "Live"
+                    else -> "Stale"
+                }
+                Quintuple(
                     "Potato Farm: ${nodes.size} nodes · $live live · this ${p2?.nodeId ?: sampler.nodeId()} shares ${p2?.capabilities?.joinToString { c -> c.removePrefix("inference.") } ?: "local telemetry"}",
                     latest,
                     formatJobProof(latest),
+                    "Leader: ${(leader?.nodeId ?: "unknown")} · $leaderLabel · caps ${leader?.capabilities?.size ?: 0}",
+                    "Leader capabilities: $leaderCaps\n$modelSummary",
+                    leaderScore,
                 )
             }
             potatoFarmText.text = farm.first
-            handoffProofText.text = "Handoff proof: ${farm.second?.kind ?: "waiting"} -> ${farm.second?.nodeId ?: sampler.nodeId()} · ${farm.second?.status ?: "no packet"}"
+            handoffProofText.text = "GPU handoff: ${farm.second?.kind ?: "waiting"} -> ${farm.second?.nodeId ?: sampler.nodeId()} · ${farm.second?.status ?: "no packet"}"
             tinyModelProofText.text = farm.third
+            leaderStatusText.text = farm.fourth
+            leaderResourceText.text = farm.fifth
+            leaderSundialView.setStatus(farm.sixth, if (farm.sixth >= 65) "Leader ready" else "Leader limited", "Dell capability surface")
         }
     }
 
@@ -350,4 +382,24 @@ class MainActivity : AppCompatActivity() {
             "GPU benchmark: ${job.kind} ${job.status}; waiting for GPU result."
         }
     }
+
+    private fun prettyCapability(cap: String): String {
+        return cap
+            .removePrefix("inference.")
+            .removePrefix("seven-app.")
+            .replace('.', ' ')
+            .replace('-', ' ')
+            .split(' ')
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { token -> token.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } }
+    }
+
+    private data class Quintuple(
+        val first: String,
+        val second: HiveJob?,
+        val third: String,
+        val fourth: String,
+        val fifth: String,
+        val sixth: Int,
+    )
 }

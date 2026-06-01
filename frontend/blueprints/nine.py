@@ -55,6 +55,7 @@ def api_nine_chat():
     try:
         from config import GROQ_API_KEY, NINE_MODEL, NINE_SYSTEM_PROMPT
         from groq import Groq
+        from agents.nine.nine_agent import _classify_groq_error
 
         if not GROQ_API_KEY:
             return jsonify({'error': 'GROQ_API_KEY not configured — add to /etc/environment'}), 500
@@ -127,7 +128,8 @@ def api_nine_chat():
 
     except Exception as e:
         print(f'[Terminal] Nine error: {e}')
-        return jsonify({'error': str(e)}), 500
+        classified, runtime_fault = _classify_groq_error(e)
+        return jsonify({'error': classified, 'runtime_fault': runtime_fault}), 500
 
 
 
@@ -147,6 +149,7 @@ def api_nine_stream():
     try:
         from config import GROQ_API_KEY, NINE_MODEL, NINE_SYSTEM_PROMPT
         from groq import Groq
+        from agents.nine.nine_agent import _classify_groq_error
 
         if not GROQ_API_KEY:
             def _err():
@@ -200,13 +203,13 @@ def api_nine_stream():
                 log_activity('terminal', 'nine_consulted', f'model={NINE_MODEL} | {message[:80]}')
                 yield f'data: {json.dumps({"done": True, "model": NINE_MODEL})}\n\n'
             except Exception as e:
-                yield f'data: {json.dumps({"error": str(e)})}\n\n'
+                classified, runtime_fault = _classify_groq_error(e)
+                yield f'data: {json.dumps({"error": classified, "runtime_fault": runtime_fault})}\n\n'
 
         return Response(_generate(), mimetype='text/event-stream',
                         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 

@@ -6,6 +6,14 @@
 (function () {
   'use strict';
 
+  if (!window.__fridaysHomeChatRegistryListenerBound) {
+    window.addEventListener('fridays:agent-registry-loaded', () => {
+      try { _hcRenderAgentPills(); } catch (_) {}
+      try { _hcUpdateMeta(); } catch (_) {}
+    });
+    window.__fridaysHomeChatRegistryListenerBound = true;
+  }
+
   // ── State ────────────────────────────────────────────────────────────────
   let _hcConvId = null;
   let _hcConversations = [];

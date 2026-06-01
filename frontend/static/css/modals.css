@@ -733,3 +733,11 @@ body[data-settings-windowed="1"] #settings-box h2 {
 body.mode-dark #settings-box select {
   background-color: color-mix(in srgb, var(--card) 88%, black 12%);
 }
+
+/* Shortcuts help modal — `.open` was missing, so inline opacity:0 /
+   pointer-events:none kept it invisible and let #troubleshoot-btn /
+   #home-header swallow clicks. */
+#shortcuts-help-modal.open {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}

@@ -456,13 +456,19 @@ function initQuickAccessCollapse() {
   if (!title) return;
   const section = title.closest('.home-section');
   if (!section) return;
+  const homePage = document.getElementById('home-page');
+  const applyCollapsedState = (isCollapsed) => {
+    section.classList.toggle('collapsed', !!isCollapsed);
+    if (homePage) homePage.classList.toggle('quick-access-collapsed', !!isCollapsed);
+    // Keep layout in sync so chat area can immediately reclaim space.
+    try { window.dispatchEvent(new Event('resize')); } catch (_) {}
+  };
   // Restore saved state
-  if (localStorage.getItem(QUICK_ACCESS_COLLAPSED_KEY) === '1') {
-    section.classList.add('collapsed');
-  }
+  applyCollapsedState(localStorage.getItem(QUICK_ACCESS_COLLAPSED_KEY) === '1');
   title.addEventListener('click', () => {
-    section.classList.toggle('collapsed');
-    localStorage.setItem(QUICK_ACCESS_COLLAPSED_KEY, section.classList.contains('collapsed') ? '1' : '0');
+    const next = !section.classList.contains('collapsed');
+    applyCollapsedState(next);
+    localStorage.setItem(QUICK_ACCESS_COLLAPSED_KEY, next ? '1' : '0');
   });
 }
 

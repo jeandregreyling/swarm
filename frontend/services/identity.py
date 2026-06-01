@@ -4,6 +4,7 @@ services.identity — Caller identity resolution, agent auth, reachability.
 Extracted from services/__init__.py as part of Phase B.
 """
 import os
+import time
 
 from flask import request, jsonify
 
@@ -14,6 +15,9 @@ from utils.db.registry import (
     get_agent_runtime_classes as _reg_runtime,
     get_api_key_map       as _reg_api_keys,
 )
+
+_LOCAL_RUNTIME_CACHE = {'ts': 0.0, 'ollama_running': True}
+_LOCAL_RUNTIME_TTL_SECONDS = 2.0
 
 
 def _resolve_identity_or_response(data):
@@ -83,6 +87,22 @@ def _validate_agent_request():
     return agent_id, None
 
 
+def _ollama_runtime_running():
+    now = time.time()
+    cached_ts = float(_LOCAL_RUNTIME_CACHE.get('ts') or 0.0)
+    if (now - cached_ts) <= _LOCAL_RUNTIME_TTL_SECONDS:
+        return bool(_LOCAL_RUNTIME_CACHE.get('ollama_running', True))
+    running = True
+    try:
+        from frontend.blueprints.localai import _ollama_status
+        running = bool((_ollama_status() or {}).get('running'))
+    except ImportError:
+        running = True
+    _LOCAL_RUNTIME_CACHE['ts'] = now
+    _LOCAL_RUNTIME_CACHE['ollama_running'] = running
+    return running
+
+
 def _agent_reachability_status(agent_name):
     """Return 'online', 'degraded', or 'offline' based on real API key / service availability."""
     # Late import — DISABLED_AGENTS lives in services/__init__.py and is mutated by agents.py
@@ -91,15 +111,44 @@ def _agent_reachability_status(agent_name):
     name = (agent_name or '').strip().lower()
     if name in DISABLED_AGENTS:
         return 'offline'
+    if name == 'ghost':
+        return 'online'
     # Determine tier from registry
     rt = _reg_runtime()
     tier = rt.get(name, '')
-    # Local Ollama agents — assume online if not disabled
-    if tier == 'local' or name == 'ghost':
-        return 'online'
+    if tier == 'local':
+        return 'online' if _ollama_runtime_running() else 'offline'
     # API-backed agents — check key presence via env var from registry
     api_keys = _reg_api_keys()
     env_var = api_keys.get(name) or ''
     if not env_var:
         return 'online'  # unknown agent or no key configured
     return 'online' if os.environ.get(env_var, '') else 'offline'
+
+
+def _agent_availability_reason(agent_name):
+    """Return a human-readable reason when an agent is not available.
+
+    Empty string means the agent is available enough for the UI to present it
+    as ready. The status field still carries the coarse online/offline state.
+    """
+    from . import DISABLED_AGENTS
+
+    name = (agent_name or '').strip().lower()
+    if not name:
+        return 'unknown agent'
+    if name in DISABLED_AGENTS:
+        return 'disabled'
+    if name == 'ghost':
+        return ''
+
+    rt = _reg_runtime()
+    tier = rt.get(name, '')
+    if tier == 'local':
+        return '' if _ollama_runtime_running() else 'Ollama offline'
+
+    api_keys = _reg_api_keys()
+    env_var = api_keys.get(name) or ''
+    if not env_var:
+        return ''
+    return '' if os.environ.get(env_var, '') else f'missing {env_var}'

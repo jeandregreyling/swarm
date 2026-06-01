@@ -48,7 +48,10 @@ class AndroidSampler(private val ctx: Context) {
      */
     fun capabilities(): List<String> {
         val caps = mutableListOf("inference.cpu", "inference.tflite")
-        if (gpuPresent()) caps.add("inference.gpu")
+        if (gpuPresent()) {
+            caps.add("inference.gpu")
+            caps.add("seven-app.gpu.capsule")
+        }
         if (npuPresent()) caps.add("inference.npu")
         return caps
     }

@@ -1057,7 +1057,7 @@ function applyTimeTheme(time, explicitValue = null) {
     document.documentElement.style.setProperty(key, value);
   });
 
-  document.body.classList.remove('theme-obsidian', 'theme-void', 'theme-aurora', 'theme-ember', 'theme-graphite', 'theme-rose', 'theme-lumen', 'theme-sky', 'theme-solar', 'theme-midnight', 'theme-copper', 'theme-neon', 'theme-arctic');
+  document.body.classList.remove('theme-galaxy', 'theme-cyber', 'theme-warm', 'theme-ocean', 'theme-minimal', 'theme-obsidian', 'theme-void', 'theme-aurora', 'theme-ember', 'theme-graphite', 'theme-rose', 'theme-lumen', 'theme-sky', 'theme-solar', 'theme-midnight', 'theme-copper', 'theme-neon', 'theme-arctic', 'theme-apple', 'theme-nature', 'theme-mint');
   document.body.classList.toggle('mode-dark', resolvedFoundation === 'dark');
   document.body.classList.toggle('mode-light', resolvedFoundation !== 'dark');
   document.body.dataset.atmosphereSegment = mode.segment;
@@ -2006,6 +2006,15 @@ function _applyNamedTheme(name) {
     btn.textContent = name && name !== 'auto' ? name.charAt(0).toUpperCase() + name.slice(1) : 'Theme';
     btn.dataset.active = name && name !== 'auto' ? '1' : '0';
   }
+  // Highlight active picker item
+  const activeKey = name && name !== 'auto' ? name : 'auto';
+  document.querySelectorAll('#theme-picker-menu .theme-picker-item[data-theme]').forEach((el) => {
+    if (el.getAttribute('data-theme') === activeKey) {
+      el.setAttribute('data-active', '1');
+    } else {
+      el.removeAttribute('data-active');
+    }
+  });
 }
 
 function setNamedTheme(name) {

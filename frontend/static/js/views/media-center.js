@@ -95,7 +95,12 @@ async function mediaCenterRefresh() {
       _mediaCenterSelectedProjectId = data.projects[0].id;
     }
     _renderMediaCenter();
-    if (status) status.textContent = _mediaCenterRuntimeBadge(data.runtime);
+    if (status) {
+      status.textContent = data.degraded ? 'degraded' : _mediaCenterRuntimeBadge(data.runtime);
+    }
+    if (data.degraded && typeof showToast === 'function') {
+      showToast('Media Center loaded in degraded mode (some Linux-side context unavailable).', 'info');
+    }
   } catch (err) {
     if (typeof showToast === 'function') showToast('Media Center failed to load: ' + (err.message || err), 'error');
     if (status) status.textContent = 'offline';

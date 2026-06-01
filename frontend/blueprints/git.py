@@ -27,11 +27,12 @@ def _normalize_git_env(env: str = '') -> str:
 def _git_env_root(env: str = '') -> Path:
     """Return repo root for the given environment label, or default."""
     env = _normalize_git_env(env)
-    if env in _GIT_ENVS:
-        p = _GIT_ENVS[env]
-        if p.is_dir():
-            return p
-    return _git_repo_root()
+    if env == 'prod':
+        return _git_repo_root()
+    p = _GIT_ENVS.get(env)
+    if p and p.is_dir() and (p / '.git').exists():
+        return p
+    raise FileNotFoundError(f'git environment "{env}" is unavailable on this runtime')
 
 
 
@@ -50,17 +51,39 @@ def _git_rel_path(path_value: str, env: str = '') -> str:
 
 
 
-def _run_git_command(args, timeout=20, env=''):
+def _run_git_command(args, timeout=20, env='', extra_env=None):
     import subprocess
 
     repo_root = _git_env_root(env)
+    repo_root_str = str(repo_root)
+    cmd_env = os.environ.copy()
+    if extra_env:
+        cmd_env.update({str(k): str(v) for k, v in extra_env.items() if v is not None})
     proc = subprocess.run(
-        ['git', '-C', str(repo_root), *args],
+        ['git', '-c', f'safe.directory={repo_root_str}', '-C', repo_root_str, *args],
         capture_output=True,
         text=True,
         timeout=timeout,
+        env=cmd_env,
     )
     return proc
+
+
+def _remote_git_env() -> dict:
+    return {
+        'GIT_TERMINAL_PROMPT': '0',
+        'GIT_ASKPASS': 'echo',
+        'GIT_SSH_COMMAND': 'ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5',
+    }
+
+
+def _remote_fetch(env: str = '', timeout: int = 12):
+    return _run_git_command(
+        ['fetch', '--quiet', '--prune', 'origin'],
+        timeout=timeout,
+        env=env,
+        extra_env=_remote_git_env(),
+    )
 
 
 def _parse_git_branch_list(branch_text: str):
@@ -159,10 +182,11 @@ def _list_git_branches(env: str = '') -> dict:
 
     remote_check = {'checked': True, 'ok': False, 'error': ''}
     try:
-        fetch = _run_git_command(['fetch', '--quiet', '--prune', 'origin'], timeout=45, env=env)
+        fetch = _remote_fetch(env=env, timeout=12)
         remote_check['ok'] = fetch.returncode == 0
         remote_check['error'] = '' if fetch.returncode == 0 else _git_error(fetch, 'git fetch failed')
     except Exception as exc:
+        remote_check['ok'] = False
         remote_check['error'] = str(exc)
 
     for branch in local:
@@ -410,18 +434,39 @@ def api_git_status():
     env = request.args.get('environment', '')
     check_remote = str(request.args.get('check_remote') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
     remote_check = {'checked': False, 'ok': True, 'error': ''}
+    def _env_unavailable(message: str):
+        return jsonify({
+            'ok': False,
+            'error': message,
+            'environment': env or 'prod',
+            'available': False,
+        })
     try:
         if check_remote:
-            fetch = _run_git_command(['fetch', '--quiet', '--prune', 'origin'], timeout=40, env=env)
+            fetch = _remote_fetch(env=env, timeout=12)
             remote_check['checked'] = True
             if fetch.returncode != 0:
                 remote_check['ok'] = False
                 remote_check['error'] = (fetch.stderr or fetch.stdout or 'git fetch failed').strip()[:500]
+        else:
+            remote_check['checked'] = False
+    except FileNotFoundError as exc:
+        return _env_unavailable(str(exc))
+    except Exception as exc:
+        remote_check['checked'] = True
+        remote_check['ok'] = False
+        remote_check['error'] = str(exc)[:500]
+    try:
         proc = _run_git_command(['status', '--porcelain=1', '--branch'], timeout=20, env=env)
+    except FileNotFoundError as exc:
+        return _env_unavailable(str(exc))
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
     if proc.returncode != 0:
+        message = (proc.stderr or proc.stdout or 'git status failed').strip()[:500]
+        if env and 'not a git repository' in message.lower():
+            return _env_unavailable(message)
         return jsonify({'ok': False, 'error': (proc.stderr or proc.stdout or 'git status failed').strip()[:500]}), 500
 
     parsed = _parse_git_status_porcelain(proc.stdout or '')
@@ -464,6 +509,13 @@ def api_git_branches():
     env = request.args.get('environment', '')
     try:
         return jsonify({'ok': True, **_list_git_branches(env)})
+    except FileNotFoundError as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'environment': env or 'prod', 'available': False})
+    except RuntimeError as exc:
+        message = str(exc)
+        if env and 'not a git repository' in message.lower():
+            return jsonify({'ok': False, 'error': message, 'environment': env or 'prod', 'available': False})
+        return jsonify({'ok': False, 'error': message}), 500
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
@@ -475,7 +527,12 @@ def api_git_fetch():
     env = str(data.get('environment', '')).strip()
     try:
         env = _normalize_git_env(env)
-        proc = _run_git_command(['fetch', '--prune', 'origin'], timeout=45, env=env)
+        proc = _run_git_command(
+            ['fetch', '--prune', 'origin'],
+            timeout=20,
+            env=env,
+            extra_env=_remote_git_env(),
+        )
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
     if proc.returncode != 0:

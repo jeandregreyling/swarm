@@ -50,6 +50,20 @@ def test_telemetry_post_and_list(client):
     assert any(n['node_id'] == 'node-test' for n in j['nodes'])
 
 
+def test_nodes_windows_runtime_uses_db_fallback(client, monkeypatch):
+    monkeypatch.setenv('SWARM_PLATFORM', 'windows')
+    payload = build_telemetry('node-win', 'windows')
+    rv = client.post('/api/hive/telemetry', json=payload)
+    assert rv.status_code == 200, rv.get_data(as_text=True)
+
+    rv = client.get('/api/hive/nodes?expected=0')
+    assert rv.status_code == 200
+    j = rv.get_json()
+    assert j['ok'] is True
+    assert j['source'] == 'db-fallback-windows'
+    assert [n['node_id'] for n in j['nodes']] == ['node-win']
+
+
 def test_telemetry_post_rejects_invalid(client):
     rv = client.post('/api/hive/telemetry', json={'not': 'valid'})
     assert rv.status_code in (400, 422)
@@ -297,6 +311,57 @@ def test_gpu_routing_requires_capacity_before_inference(client):
     })
     assert rv.status_code == 200
     assert rv.get_json()['job'] is None
+
+
+def test_tflite_gpu_packet_can_establish_capacity_then_inference_claims(client):
+    payload = build_telemetry(
+        'potato-2', 'android',
+        compute={'gpu_present': True},
+        memory={'ram_total_mb': 6000, 'ram_free_mb': 1800},
+        power={'battery_pct': 80},
+        capabilities=['inference.cpu', 'inference.gpu', 'inference.tflite'],
+    )
+    client.post('/api/hive/telemetry', json=payload)
+
+    rv = client.post('/api/hive/jobs/submit', json={
+        'kind': 'tflite.gpu',
+        'payload': {'target_node': 'potato-2', 'benchmark_sizes': [4, 16, 64, 128]},
+        'capability_req': 'inference.gpu',
+    })
+    assert rv.status_code == 200
+    gpu_job_id = rv.get_json()['job_id']
+
+    rv = client.post('/api/hive/jobs/next', json={
+        'node_id': 'potato-2',
+        'capabilities': ['inference.gpu', 'inference.tflite'],
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['job']['job_id'] == gpu_job_id
+
+    rv = client.post('/api/hive/jobs/report', json={
+        'job_id': gpu_job_id,
+        'result': {
+            'ok': True,
+            'runner': 'android-hive-apk',
+            'gpu_probe': {'ok': True, 'capacity_score': 90},
+        },
+    })
+    assert rv.status_code == 200
+
+    rv = client.post('/api/hive/jobs/submit', json={
+        'kind': 'tflite.inference',
+        'payload': {'target_node': 'potato-2'},
+        'capability_req': 'inference.gpu',
+    })
+    assert rv.status_code == 200
+    infer_job_id = rv.get_json()['job_id']
+
+    rv = client.post('/api/hive/jobs/next', json={
+        'node_id': 'potato-2',
+        'capabilities': ['inference.gpu', 'inference.tflite'],
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['job']['job_id'] == infer_job_id
 
 
 def test_stale_gpu_node_is_offline_and_cannot_claim(client):

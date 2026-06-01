@@ -60,11 +60,13 @@ function loadKnowledgeData(win) {
       `<button class="kn-tab${t.id === _knowledgeTab ? ' kn-tab-active' : ''}" data-kn-tab="${t.id}" onclick="knowledgeSetTab('${t.id}')">${t.icon} ${t.label}</button>`
     ).join('');
     // Trailing (i) info button — explains what this panel does
-    const infoHtml = `<button class="kn-tab kn-info-btn" type="button" onclick="knowledgeOpenInfo()" title="What is the Knowledge Center?" style="margin-left:auto;border-radius:50%;width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;">
+    const infoHtml = `<button class="kn-tab kn-info-btn" type="button" onclick="knowledgeOpenInfo()" title="What is the Knowledge Center?" style="margin-left:auto;flex:0 0 auto;border-radius:50%;width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;">
       <svg viewBox="0 0 16 16" width="12" height="12" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v4M8 5.2h0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>`;
     tabBar.style.display = 'flex';
     tabBar.style.alignItems = 'center';
+    tabBar.style.flexWrap = 'wrap';
+    tabBar.style.gap = '6px';
     tabBar.innerHTML = tabsHtml + infoHtml;
   }
 

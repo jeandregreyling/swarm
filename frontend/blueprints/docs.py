@@ -923,6 +923,61 @@ def _chunk_rg_output(raw_hits: str, limit: int) -> list[str]:
     return [chunk[:4000] for chunk in chunks[:limit]]
 
 
+def _fallback_recursive_hits(query: str, search_root: str, max_hits: int = 50) -> str:
+    """Portable fallback when rg is unavailable.
+
+    Emits a text stream compatible with _chunk_rg_output using '--' separators.
+    """
+    import re as _re
+
+    q = (query or '').strip()
+    if not q:
+        return ''
+    rx = _re.compile(_re.escape(q), _re.IGNORECASE)
+    skip_dirs = {'.git', 'node_modules', 'venv', '.venv', '__pycache__'}
+    skip_exts = {'.db', '.sqlite', '.sqlite3', '.log'}
+
+    out: list[str] = []
+    hit_count = 0
+    for root, dirs, files in _os.walk(search_root):
+        dirs[:] = [d for d in dirs if d not in skip_dirs]
+        for name in files:
+            if hit_count >= max_hits:
+                break
+            if any(name.endswith(ext) for ext in skip_exts):
+                continue
+            path = _os.path.join(root, name)
+            try:
+                if _os.path.getsize(path) > 1_000_000:
+                    continue
+            except Exception:
+                continue
+            try:
+                with open(path, 'r', encoding='utf-8', errors='ignore') as fh:
+                    lines = fh.read().splitlines()
+            except Exception:
+                continue
+            for idx, line in enumerate(lines, start=1):
+                if hit_count >= max_hits:
+                    break
+                if not rx.search(line):
+                    continue
+                start = max(1, idx - 2)
+                end = min(len(lines), idx + 2)
+                block = [f"{path}:{idx}:{line}"]
+                for n in range(start, end + 1):
+                    if n == idx:
+                        continue
+                    block.append(f"{path}-{n}-{lines[n - 1]}")
+                out.append('\n'.join(block))
+                out.append('--')
+                hit_count += 1
+        if hit_count >= max_hits:
+            break
+
+    return '\n'.join(out)
+
+
 @docs_bp.route('/api/docs/recursive-chunk', methods=['POST'])
 def api_docs_recursive_chunk():
     """Search locally with rg, save bounded chunks to KC, and return IDs."""
@@ -953,9 +1008,14 @@ def api_docs_recursive_chunk():
         query, search_root,
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15, check=False)
     except FileNotFoundError:
-        return jsonify({'ok': False, 'error': 'rg is not installed'}), 500
+        fallback_raw = _fallback_recursive_hits(query, search_root, max_hits=50)
+        class _Fallback:
+            returncode = 0 if fallback_raw.strip() else 1
+            stdout = fallback_raw
+            stderr = ''
+        result = _Fallback()
     except subprocess.TimeoutExpired:
         return jsonify({'ok': False, 'error': 'recursive search timed out'}), 504
 

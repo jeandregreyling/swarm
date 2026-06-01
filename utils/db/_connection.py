@@ -49,9 +49,13 @@ def _make_connection(db_path):
     """Create a SQLite connection with standard PRAGMAs."""
     conn = sqlite3.connect(db_path, timeout=30)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA busy_timeout=30000")
+    # WAL can fail transiently under competing handles; keep connection usable.
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+    except sqlite3.OperationalError as exc:
+        logger.warning("journal_mode=WAL unavailable for %s: %s", db_path, exc)
+    conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
 

@@ -1,0 +1,142 @@
+{
+  "all_known_capabilities": [
+    "inference.cpu",
+    "inference.gpu",
+    "inference.npu",
+    "inference.ollama",
+    "inference.tflite",
+    "scheduler.coordinator",
+    "scheduler.worker",
+    "storage.bulk"
+  ],
+  "blockers": [
+    {
+      "id": "single-node-cluster",
+      "severity": "high",
+      "summary": "Acceptance gate requires \u22652 live nodes simultaneously."
+    },
+    {
+      "id": "android-stale",
+      "severity": "high",
+      "summary": "No Android node is live; Samsung GPU proof is historical only."
+    },
+    {
+      "id": "unmet-capability-demand",
+      "severity": "medium",
+      "summary": "Pending jobs require capabilities not present on any live node: inference.gpu\u00d74"
+    }
+  ],
+  "freshness_s_gate": 180,
+  "generated_at": "2026-06-01T08:22:01.089159+00:00",
+  "job_summary": {
+    "claimed": 0,
+    "completed": 24,
+    "pending_by_capability": {
+      "inference.gpu": 4
+    },
+    "total": 28,
+    "unmet_demand_by_capability": {
+      "inference.gpu": 4
+    }
+  },
+  "leader_url": "http://127.0.0.1:5050",
+  "live_capabilities": [
+    "inference.cpu",
+    "scheduler.coordinator",
+    "storage.bulk"
+  ],
+  "node_counts": {
+    "live": 1,
+    "offline": 5,
+    "stale-historical": 0,
+    "stale-recent": 0,
+    "unknown": 0
+  },
+  "nodes_by_class": {
+    "live": [
+      {
+        "age_s": 21,
+        "capabilities": [
+          "inference.cpu",
+          "scheduler.coordinator",
+          "storage.bulk"
+        ],
+        "expected": false,
+        "label": null,
+        "node_id": "linux-57b1d3fa35d3c930",
+        "offline": false,
+        "platform": "linux-ubuntu"
+      }
+    ],
+    "offline": [
+      {
+        "age_s": 366804,
+        "capabilities": [
+          "inference.cpu",
+          "inference.ollama",
+          "scheduler.coordinator",
+          "storage.bulk"
+        ],
+        "expected": false,
+        "label": null,
+        "node_id": "linux-fc03ff3acb84e442",
+        "offline": true,
+        "platform": "linux-linuxmint"
+      },
+      {
+        "age_s": 376565,
+        "capabilities": [
+          "inference.cpu",
+          "inference.tflite",
+          "inference.gpu",
+          "inference.npu"
+        ],
+        "expected": false,
+        "label": "samsung SM-X516B",
+        "node_id": "potato-2",
+        "offline": true,
+        "platform": "android"
+      },
+      {
+        "age_s": null,
+        "capabilities": [
+          "scheduler.coordinator",
+          "inference.cpu",
+          "inference.ollama"
+        ],
+        "expected": true,
+        "label": "potato-1 Leader",
+        "node_id": "potato-1",
+        "offline": true,
+        "platform": "linux"
+      },
+      {
+        "age_s": null,
+        "capabilities": [
+          "scheduler.worker",
+          "inference.cpu"
+        ],
+        "expected": true,
+        "label": "potato-3 MacBook",
+        "node_id": "potato-3",
+        "offline": true,
+        "platform": "macos"
+      },
+      {
+        "age_s": null,
+        "capabilities": [
+          "scheduler.worker",
+          "inference.cpu"
+        ],
+        "expected": true,
+        "label": "potato-4 Dell",
+        "node_id": "potato-4",
+        "offline": true,
+        "platform": "linux/windows"
+      }
+    ],
+    "stale-historical": [],
+    "stale-recent": [],
+    "unknown": []
+  }
+}

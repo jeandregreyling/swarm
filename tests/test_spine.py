@@ -287,6 +287,33 @@ def test_persist_survives_bad_payload(isolated_db):
     assert any(r['message'] == 'x' for r in rows)
 
 
+def test_sync_story_payload_round_trips_through_trace_log(isolated_db):
+    from core import spine
+    from utils.db import trace_log
+
+    payload = {
+        'kind': 'sync_story',
+        'risk': 'runtime-impacting',
+        'origin': {'source_node': 'linux-1234', 'target_node': 'origin'},
+        'intent': {'branch': 'main', 'from_sha': 'abc123', 'to_sha': 'def456'},
+        'transition': {'categories': ['runtime', 'ui'], 'paths': ['frontend/blueprints/chat.py']},
+        'consequence': {'result': 'synced', 'next': 'upstream aligned for this batch'},
+    }
+    spine.log(
+        spine.EventKind.SYSTEM,
+        'linux-1234 main abc123 -> def456 | synced | 1 paths | risk=runtime-impacting',
+        source='time_machine.sync',
+        payload=payload,
+    )
+
+    rows = trace_log.list_events(limit=10)
+    story = next(r for r in rows if r['payload'].get('kind') == 'sync_story')
+    assert story['source'] == 'time_machine.sync'
+    assert story['payload']['risk'] == 'runtime-impacting'
+    assert story['payload']['origin']['source_node'] == 'linux-1234'
+    assert story['payload']['transition']['categories'] == ['runtime', 'ui']
+
+
 # ── Session 29.1 — activity_log mirror for warn+ events ─────────────────────
 
 def test_warn_event_mirrors_to_activity_log(isolated_db):

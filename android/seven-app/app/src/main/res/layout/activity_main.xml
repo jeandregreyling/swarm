@@ -1,97 +1,139 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:background="@color/bg_dark">
 
-    <com.google.android.material.appbar.AppBarLayout
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/surface_dark"
-            app:title="Seven"
-            app:titleTextColor="@color/text_primary"
-            app:menu="@menu/main_menu" />
-    </com.google.android.material.appbar.AppBarLayout>
-
-    <LinearLayout
-        android:id="@+id/potatoStatusCard"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp"
+        android:layout_height="?attr/actionBarSize"
         android:background="@color/surface_dark"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        app:title="Seven"
+        app:titleTextColor="@color/text_primary"
+        app:menu="@menu/main_menu" />
 
-        <com.swarm.seven.SundialView
-            android:id="@+id/sundialView"
-            android:layout_width="match_parent"
-            android:layout_height="150dp" />
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:fillViewport="true"
+        android:background="@color/surface_dark">
 
-        <TextView
-            android:id="@+id/potatoStatusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Potato node: checking..."
-            android:textColor="@color/text_primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/potatoResourceText"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Telemetry not posted yet."
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:orientation="vertical"
+            android:padding="12dp">
 
-        <TextView
-            android:id="@+id/potatoFarmText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/bg_input"
-            android:padding="8dp"
-            android:text="Potato Farm: waiting for mesh..."
-            android:textColor="@color/text_primary"
-            android:textSize="12sp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Samsung Tablet Capability Console"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/handoffProofText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/bg_input"
-            android:padding="8dp"
-            android:text="Handoff proof: no packet yet."
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            <com.swarm.seven.SundialView
+                android:id="@+id/tabletSundialView"
+                android:layout_width="match_parent"
+                android:layout_height="132dp"
+                android:layout_marginTop="6dp" />
 
-        <TextView
-            android:id="@+id/tinyModelProofText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/bg_input"
-            android:padding="8dp"
-            android:text="Tiny GPU model: not run yet."
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            <TextView
+                android:id="@+id/potatoStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Tablet node: checking..."
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/statusButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:backgroundTint="@color/accent"
-            android:text="Post potato status update"
-            android:textColor="@color/bg_dark" />
+            <TextView
+                android:id="@+id/potatoResourceText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Capabilities loading..."
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/handoffProofText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_input"
+                android:padding="8dp"
+                android:text="GPU handoff: waiting..."
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tinyModelProofText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_input"
+                android:padding="8dp"
+                android:text="GPU benchmark details will appear here."
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Dell / Leader Capability Console"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <com.swarm.seven.SundialView
+                android:id="@+id/leaderSundialView"
+                android:layout_width="match_parent"
+                android:layout_height="132dp"
+                android:layout_marginTop="6dp" />
+
+            <TextView
+                android:id="@+id/leaderStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Leader node: checking..."
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/leaderResourceText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Leader capabilities loading..."
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/potatoFarmText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_input"
+                android:padding="8dp"
+                android:text="Potato Farm: waiting for mesh..."
+                android:textColor="@color/text_primary"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/statusButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:backgroundTint="@color/accent"
+                android:text="Refresh Samsung + Dell capabilities"
+                android:textColor="@color/bg_dark" />
 
             <Button
                 android:id="@+id/gpuModelButton"
@@ -99,25 +141,35 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:backgroundTint="@color/accent"
-                android:text="Run GPU capacity ladder"
+                android:text="Run Samsung GPU capability test"
                 android:textColor="@color/bg_dark" />
-    </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="12dp"
+        android:paddingTop="6dp"
+        android:text="Chat"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp"
+        android:textStyle="bold" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/chatRecycler"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:paddingLeft="8dp"
         android:paddingRight="8dp"
-        android:paddingTop="500dp"
-        android:paddingBottom="88dp"
-        android:clipToPadding="false"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        android:paddingBottom="8dp"
+        android:clipToPadding="false" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
         android:orientation="horizontal"
         android:padding="8dp"
         android:background="@color/surface_dark"
@@ -146,4 +198,5 @@
             android:src="@android:drawable/ic_menu_send"
             android:contentDescription="Send" />
     </LinearLayout>
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+</LinearLayout>

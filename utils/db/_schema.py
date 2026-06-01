@@ -1071,6 +1071,13 @@ def _migrate_schema(conn=None):
         "ALTER TABLE agents ADD COLUMN aliases        TEXT DEFAULT '[]'",
         "ALTER TABLE agents ADD COLUMN eta_seconds    INTEGER DEFAULT 60",
         "ALTER TABLE agents ADD COLUMN keep_alive     INTEGER DEFAULT NULL",
+        # Phase 3 — Runtime truth / zoo census columns
+        "ALTER TABLE agents ADD COLUMN provider         TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN fault_domain     TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN runtime_status   TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN runtime_reason   TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN registry_status  TEXT DEFAULT ''",
+        "ALTER TABLE agents ADD COLUMN runtime_checked_at TEXT DEFAULT ''",
     ]:
         try:
             conn.execute(col_ddl)

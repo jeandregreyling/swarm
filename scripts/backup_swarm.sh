@@ -121,14 +121,47 @@ snapshot_db() {
   mkdir -p "$out_dir"
   local rc=0
   if [[ -f "$REPO/swarm_memory.db" ]]; then
-    sqlite3 "$REPO/swarm_memory.db" ".backup '$out_dir/swarm_memory.db'" || rc=$?
+    if command -v sqlite3 >/dev/null 2>&1; then
+      sqlite3 "$REPO/swarm_memory.db" ".backup '$out_dir/swarm_memory.db'" || rc=$?
+    else
+      python3 - "$REPO/swarm_memory.db" "$out_dir/swarm_memory.db" <<'PY' || rc=$?
+import sqlite3
+import sys
+
+src, dst = sys.argv[1], sys.argv[2]
+src_db = sqlite3.connect(src)
+try:
+    dst_db = sqlite3.connect(dst)
+    try:
+        src_db.backup(dst_db)
+    finally:
+        dst_db.close()
+finally:
+    src_db.close()
+PY
+    fi
     if [[ $rc -ne 0 ]]; then
       echo "[backup] WARN: sqlite3 .backup failed rc=$rc" >&2
       return $rc
     fi
     # Integrity-check the snapshot before we tar it up.
     local check
-    check="$(sqlite3 "$out_dir/swarm_memory.db" 'PRAGMA integrity_check;' 2>&1 | head -1)"
+    if command -v sqlite3 >/dev/null 2>&1; then
+      check="$(sqlite3 "$out_dir/swarm_memory.db" 'PRAGMA integrity_check;' 2>&1 | head -1)"
+    else
+      check="$(python3 - "$out_dir/swarm_memory.db" <<'PY'
+import sqlite3
+import sys
+
+db = sqlite3.connect(sys.argv[1])
+try:
+    row = db.execute('PRAGMA integrity_check;').fetchone()
+    print((row or [''])[0])
+finally:
+    db.close()
+PY
+      )"
+    fi
     if [[ "$check" != "ok" ]]; then
       echo "[backup] FATAL: snapshot integrity_check returned: $check" >&2
       return 9

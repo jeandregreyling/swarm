@@ -3,7 +3,13 @@
 import json as _json
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
-from utils.db.registry import get_agent_roster as _reg_roster_bp, invalidate_cache as _invalidate_reg_cache
+from utils.db.registry import (
+    get_agent_roster as _reg_roster_bp,
+    invalidate_cache as _invalidate_reg_cache,
+    full_zoo_ping as _full_zoo_ping,
+    get_zoo_ping_snapshot as _get_zoo_ping_snapshot,
+)
+from frontend.services.identity import _agent_availability_reason
 
 agents_bp = Blueprint('agents', __name__)
 ROLES_SKILLS_PATH = os.path.join(os.path.dirname(__file__), '..', 'roles_skills.json')
@@ -70,6 +76,27 @@ def api_agents():
     return jsonify(result)
 
 
+def _runtime_fault_map():
+    """Return {agent_name: runtime_reason} for active agents with runtime FAULTs."""
+    try:
+        snap = _get_zoo_ping_snapshot() or {}
+        items = snap.get('items') or []
+    except Exception:
+        return {}
+    faults = {}
+    for row in items:
+        name = str((row or {}).get('name') or '').strip().lower()
+        if not name:
+            continue
+        registry_status = str((row or {}).get('registry_status') or '').upper()
+        runtime_status = str((row or {}).get('runtime_status') or '').upper()
+        if registry_status != 'ACTIVE' or runtime_status != 'FAULT':
+            continue
+        reason = str((row or {}).get('runtime_reason') or '').strip() or 'runtime fault'
+        faults[name] = reason
+    return faults
+
+
 # ── A.2.2: Agent Status API ────────────────────────────────────────────────
 @agents_bp.route('/api/agents/status')
 def api_agents_status():
@@ -106,11 +133,13 @@ def api_agents_status():
         except ImportError:
             _cb_available = False
 
+        runtime_faults = _runtime_fault_map()
         result = []
         for row in agents_rows:
             name = row['name'].lower()
             enabled = bool(row['enabled']) if row['enabled'] is not None else True
             active = running_map.get(name, 0)
+            reachability = _agent_reachability_status(name)
 
             cb_state = 'closed'
             if _cb_available:
@@ -123,7 +152,7 @@ def api_agents_status():
             # Derive status: disabled > down > busy > idle
             if not enabled or name in DISABLED_AGENTS:
                 status = 'disabled'
-            elif cb_state == 'open':
+            elif cb_state == 'open' or reachability == 'offline' or name in runtime_faults:
                 status = 'down'
             elif active > 0:
                 status = 'busy'
@@ -137,13 +166,29 @@ def api_agents_status():
                 'active_jobs': active,
                 'circuit_breaker': cb_state,
                 'last_seen': last_seen_map.get(name),
+                'runtime_reason': runtime_faults.get(name, ''),
             })
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
+@agents_bp.route('/api/agents/zoo-ping', methods=['GET', 'POST'])
+def api_agents_zoo_ping():
+    """Runtime census for local + paid agent availability."""
+    if request.method == 'POST':
+        try:
+            return jsonify(_full_zoo_ping())
+        except Exception as e:
+            return jsonify({'ok': False, 'error': str(e)}), 500
+    try:
+        return jsonify(_get_zoo_ping_snapshot())
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 def _agents_config_rows_for_ops():
+    runtime_faults = _runtime_fault_map()
     conn = get_connection()
     try:
         rows = conn.execute(
@@ -178,7 +223,15 @@ def _agents_config_rows_for_ops():
             item['api_key_set'] = bool(raw)
         else:
             item['api_key_set'] = None
-        item['status'] = _agent_reachability_status(item['name'])
+        item_name = str(item.get('name') or '').strip().lower()
+        if item_name in runtime_faults:
+            item['status'] = 'offline'
+        else:
+            item['status'] = _agent_reachability_status(item['name'])
+        item['availability_reason'] = _agent_availability_reason(item['name'])
+        if item_name in runtime_faults and not item['availability_reason']:
+            item['availability_reason'] = f"local runtime fault: {runtime_faults[item_name]}"
+        item['available'] = not bool(item['availability_reason'])
         result.append(item)
     return result
 
@@ -204,18 +257,20 @@ def _agents_status_rows_for_ops():
             from utils.circuit_breaker import status_for as _cb_status_for
         except Exception:
             _cb_status_for = None
+        runtime_faults = _runtime_fault_map()
         out = {}
         for row in agents_rows:
             name = str(row['name'] or '').lower()
             enabled = bool(row['enabled']) if row['enabled'] is not None else True
             active = running_map.get(name, 0)
+            reachability = _agent_reachability_status(name)
             cb_state = 'closed'
             if _cb_status_for:
                 try:
                     cb_state = (_cb_status_for(name) or {}).get('state', 'closed')
                 except Exception:
                     cb_state = 'closed'
-            status = 'disabled' if (not enabled or name in DISABLED_AGENTS) else ('down' if cb_state == 'open' else ('busy' if active else 'idle'))
+            status = 'disabled' if (not enabled or name in DISABLED_AGENTS) else ('down' if (cb_state == 'open' or reachability == 'offline' or name in runtime_faults) else ('busy' if active else 'idle'))
             out[name] = {
                 'name': name,
                 'tier': row['tier'] or 'local',
@@ -223,6 +278,7 @@ def _agents_status_rows_for_ops():
                 'active_jobs': active,
                 'circuit_breaker': cb_state,
                 'last_seen': last_seen_map.get(name),
+                'runtime_reason': runtime_faults.get(name, ''),
             }
         return out
     except Exception:
@@ -446,23 +502,26 @@ def api_agents_ops_summary():
 
 
 @agents_bp.route('/api/agents/config')
-# WARNING: Indentation or syntax errors here will break the web server. Always test with:
-#   python3 frontend/terminal.py
 def api_agents_config_get():
     """Full agent config for the Agents tile — includes system_prompt, api_key_var, tier."""
+    import json
+    import os
+
     try:
         conn = get_connection()
-        rows = conn.execute(
-            """SELECT number, name, label, model, role, roles, temperature,
-                    system_prompt, api_key_var, tier, enabled, eta_seconds, keep_alive
-                FROM agents WHERE number >= 0 ORDER BY number ASC"""
-        ).fetchall()
-        conn.close()
+        try:
+            rows = conn.execute(
+                """SELECT number, name, label, model, role, roles, temperature,
+                        system_prompt, api_key_var, tier, enabled, eta_seconds, keep_alive
+                    FROM agents WHERE number >= 0 ORDER BY number ASC"""
+            ).fetchall()
+        finally:
+            conn.close()
+
+        runtime_faults = _runtime_fault_map()
         result = []
-        import json
         for r in rows:
             d = dict(r)
-            # Parse roles as array, fallback to single role if needed
             roles_val = d.get('roles')
             if roles_val:
                 try:
@@ -473,10 +532,9 @@ def api_agents_config_get():
                 d['roles'] = [d['role']]
             else:
                 d['roles'] = []
-            # Never send the actual key — send presence flag only
+
             key_var = d.get('api_key_var') or ''
             if key_var:
-                import os
                 raw = os.environ.get(key_var, '')
                 if not raw:
                     try:
@@ -486,8 +544,17 @@ def api_agents_config_get():
                         raw = ''
                 d['api_key_set'] = bool(raw)
             else:
-                d['api_key_set'] = None  # not applicable
-            d['status'] = _agent_reachability_status(d['name'])
+                d['api_key_set'] = None
+
+            d_name = str(d.get('name') or '').strip().lower()
+            if d_name in runtime_faults:
+                d['status'] = 'offline'
+            else:
+                d['status'] = _agent_reachability_status(d['name'])
+            d['availability_reason'] = _agent_availability_reason(d['name'])
+            if d_name in runtime_faults and not d['availability_reason']:
+                d['availability_reason'] = f"local runtime fault: {runtime_faults[d_name]}"
+            d['available'] = not bool(d['availability_reason'])
             result.append(d)
         return jsonify(result)
     except Exception as e:

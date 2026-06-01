@@ -29,6 +29,7 @@ class ThemeEngine:
 
     def __init__(self):
         self.swarm_root = Path(__file__).resolve().parents[1]
+        self.db_path = Path(os.environ.get('SWARM_DB_PATH') or (self.swarm_root / 'swarm_memory.db'))
         self.themes_dir = self.swarm_root / 'themes'
         self.templates_dir = self.swarm_root / 'frontend' / 'templates'
         
@@ -222,7 +223,7 @@ if (document.readyState === 'loading') {{
 
         counts = {'total': 0, 'pending': 0, 'approved': 0, 'executed': 0}
         try:
-            conn = sqlite3.connect(str(self.swarm_root / 'swarm_memory.db'))
+            conn = sqlite3.connect(str(self.db_path))
             conn.row_factory = sqlite3.Row
             table = conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='work_proposals'"

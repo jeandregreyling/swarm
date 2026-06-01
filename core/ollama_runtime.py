@@ -50,11 +50,11 @@ class OllamaRuntime:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 raw = resp.read().decode("utf-8", errors="replace")
         except urllib.error.URLError as e:
-            raise OllamaUnavailable(f"ollama {path} unreachable: {e}") from e
+            raise OllamaUnavailable(f"RUNTIME_OFFLINE: ollama {path} unreachable: {e}") from e
         try:
             return json.loads(raw)
         except json.JSONDecodeError as e:
-            raise OllamaUnavailable(f"ollama {path} returned non-JSON: {e}") from e
+            raise OllamaUnavailable(f"RUNTIME_PROTOCOL_ERROR: ollama {path} returned non-JSON: {e}") from e
 
     @classmethod
     def eject(cls, model: Optional[str] = None) -> None:

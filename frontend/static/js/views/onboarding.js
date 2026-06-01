@@ -11,9 +11,9 @@
   function _shouldReopenEveryLaunch() {
     try {
       const value = localStorage.getItem('swarm_onboarding_reopen_every_launch');
-      return value === null ? true : value === '1';
+      return value === '1';
     } catch (e) {
-      return true;
+      return false;
     }
   }
 
@@ -375,7 +375,6 @@
 
   function _maybeAutoLaunch() {
     try {
-      // "Open every launch" defaults to on until the user unticks it.
       const reopen = _shouldReopenEveryLaunch();
       if (!reopen) return;
       if (localStorage.getItem('swarm_onboarding_complete') === '1') return;

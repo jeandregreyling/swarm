@@ -25,6 +25,24 @@ declare -A MODEL_TIMEOUT=(
   ["qwen:latest"]=300
 )
 
+# ── WSL → Windows-host Ollama bridge (no-op outside WSL) ──────────────────
+# When the swarm runs inside WSL2 and Ollama is installed on the Windows
+# host, 127.0.0.1:11434 inside WSL does not reach it. The bridge binds
+# 127.0.0.1:11434 here and forwards to the Windows gateway, so every
+# hardcoded localhost:11434 callsite keeps working unchanged.
+SWARM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  if ! curl -sf --max-time 1 "$OLLAMA_URL/api/tags" >/dev/null 2>&1; then
+    if ! pgrep -f 'wsl_ollama_bridge\.py' >/dev/null 2>&1; then
+      log "Starting WSL→Windows Ollama bridge"
+      nohup python3 "$SWARM_DIR/scripts/wsl_ollama_bridge.py" \
+        >/tmp/wsl_ollama_bridge.log 2>&1 &
+      disown || true
+      sleep 1
+    fi
+  fi
+fi
+
 # ── Wait for Ollama to accept connections ─────────────────────────────────
 log "Waiting for Ollama..."
 for i in $(seq 1 $MAX_WAIT); do

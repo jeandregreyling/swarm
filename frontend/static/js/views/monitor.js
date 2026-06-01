@@ -133,6 +133,10 @@ function loadMonitorData(win) {
             <div style="font-weight:600;margin-bottom:6px;">Inference Intelligence</div>
             <div id="mn-insights"></div>
           </div>
+          <div id="monitor-zoo-census" style="margin-bottom:12px;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--card);">
+            <div style="font-weight:600;margin-bottom:6px;">Sovereign Zoo Census</div>
+            <div style="font-size:11px;color:var(--text-dim);">Loading cages…</div>
+          </div>
           <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Agent Runtime (Live)</div><div id="mn-runtime"></div></div>
           <div style="margin-bottom:12px;"><div style="font-weight:600;margin-bottom:6px;">Model Residency (<span id="mn-models-count">0</span>)</div><div id="mn-models"></div></div>
           <div id="mn-pools-wrap" style="margin-bottom:4px;display:none;"><div style="font-weight:600;margin-bottom:4px;">Memory Pools</div><div id="mn-pools" style="font-size:11px;color:var(--text-dim);"></div></div>
@@ -211,6 +215,8 @@ function loadMonitorData(win) {
     if (poolsWrap) { poolsWrap.style.display = poolsHtml ? '' : 'none'; }
     if (poolsHtml) mnHtml('mn-pools', poolsHtml);
 
+    _renderMonitorZooCensus(win, data.zoo_census || {});
+
     mnTxt('mn-timestamp', `Updated ${H(data.last_activity||data.timestamp||'—')}`);
   };
 
@@ -246,6 +252,104 @@ function loadMonitorData(win) {
     if (!winManager.windows.has(win.id)) { clearInterval(win._monitorHealthTimer); return; }
     _renderMonitorHealthCheck(win);
   }, 60000);
+}
+
+function _renderMonitorZooCensus(win, census) {
+  const host = win.el.querySelector('#monitor-zoo-census');
+  if (!host) return;
+  if (!census || census.ok === false) {
+    host.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div style="font-weight:600;">Sovereign Zoo Census</div>
+        <button onclick="monitorZooPing()" style="padding:4px 8px;font-size:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;">Ping cages</button>
+      </div>
+      <div style="font-size:11px;color:#f77;margin-top:6px;">${_escHtml((census && census.error) || 'census unavailable')}</div>`;
+    return;
+  }
+  const summary = census.summary || {};
+  const orphaned = Array.isArray(census.orphaned_names) ? census.orphaned_names : [];
+  const breakdown = census.breakdown || {};
+  const activeNames = Array.isArray(breakdown.active) ? breakdown.active : [];
+  const localFaults = Array.isArray(breakdown.local_faults) ? breakdown.local_faults : [];
+  const paidFaults = Array.isArray(breakdown.paid_faults) ? breakdown.paid_faults : [];
+  const topReasons = Array.isArray(census.top_reasons) ? census.top_reasons : [];
+  const chips = orphaned.slice(0, 8).map(name =>
+    `<span style="display:inline-block;padding:2px 6px;border-radius:10px;background:#f4433620;color:#f77;border:1px solid #f4433660;font-size:10px;margin:2px 4px 0 0;">${_escHtml(name)}</span>`
+  ).join('');
+  const more = orphaned.length > 8
+    ? `<span style="font-size:10px;color:var(--text-dim);">+${orphaned.length - 8} more</span>`
+    : '';
+  const checkedAt = census.checked_at || 'never';
+  const survivorLine = activeNames.length
+    ? activeNames.map(name => `<span style="display:inline-block;padding:2px 6px;border-radius:10px;background:#4caf5020;color:#4caf50;border:1px solid #4caf5060;font-size:10px;margin:2px 4px 0 0;">${_escHtml(name)}</span>`).join('')
+    : '<span style="color:var(--text-dim);">No active survivors.</span>';
+  const reasonHtml = topReasons.length
+    ? topReasons.map(item => `<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">${_escHtml(item.reason)} <strong style="color:var(--text);">×${_escHtml(String(item.count || 0))}</strong></div>`).join('')
+    : '<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">No fault reasons recorded.</div>';
+  host.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div style="font-weight:600;">Sovereign Zoo Census</div>
+      <button id="monitor-zoo-ping-btn" onclick="monitorZooPing()" style="padding:4px 8px;font-size:10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;">Ping cages</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px;">
+      <div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);"><div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;">Checked</div><div style="font-size:16px;font-weight:700;">${_escHtml(String(summary.agents_checked || 0))}</div></div>
+      <div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);"><div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;">Active</div><div style="font-size:16px;font-weight:700;color:#4caf50;">${_escHtml(String(summary.active || 0))}</div></div>
+      <div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);"><div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;">Disabled</div><div style="font-size:16px;font-weight:700;color:#ffa500;">${_escHtml(String(summary.disabled || 0))}</div></div>
+      <div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);"><div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;">Orphaned</div><div style="font-size:16px;font-weight:700;color:#f77;">${_escHtml(String(summary.orphaned || 0))}</div></div>
+    </div>
+    <div style="font-size:10px;color:var(--text-dim);margin-top:8px;">Last census: ${_escHtml(checkedAt)}</div>
+    <div style="margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);">
+      <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px;">Survivors</div>
+      <div style="font-size:11px;">${survivorLine}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+      <div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);">
+        <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;">Local faults</div>
+        <div style="font-size:16px;font-weight:700;color:#f77;">${_escHtml(String(localFaults.length))}</div>
+      </div>
+      <div style="padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);">
+        <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;">Paid faults</div>
+        <div style="font-size:16px;font-weight:700;color:#f77;">${_escHtml(String(paidFaults.length))}</div>
+      </div>
+    </div>
+    <div style="font-size:11px;margin-top:8px;">${chips || '<span style="color:var(--text-dim);">No orphaned agents.</span>'} ${more}</div>
+    <div style="margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--window-header);">
+      <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;">Top fault reasons</div>
+      ${reasonHtml}
+    </div>`;
+}
+
+function monitorZooPing() {
+  const win = window.__monitorWin;
+  const btn = win && win.el.querySelector('#monitor-zoo-ping-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Pinging…';
+  }
+  fetch('/api/agents/zoo-ping', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (!data || data.ok === false) {
+        throw new Error((data && data.error) || 'zoo ping failed');
+      }
+      if (win && win._monitorRefreshFn) win._monitorRefreshFn();
+    })
+    .catch(err => {
+      if (win) {
+        _renderMonitorZooCensus(win, { ok: false, error: String(err) });
+      }
+    })
+    .finally(() => {
+      const activeWin = window.__monitorWin;
+      const activeBtn = activeWin && activeWin.el.querySelector('#monitor-zoo-ping-btn');
+      if (activeBtn) {
+        activeBtn.disabled = false;
+        activeBtn.textContent = 'Ping cages';
+      }
+    });
 }
 
 function _renderMonitorHealthCheck(win) {

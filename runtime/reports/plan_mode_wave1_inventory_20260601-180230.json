@@ -1,0 +1,519 @@
+{
+  "generated_at": 1780300950,
+  "coord_project_id": "P-FAEAF9AF90",
+  "active_projects": [
+    {
+      "project_id": "P-CHAT-RELAY-RECOVERY",
+      "name": "Chat Relay Recovery Watchdog",
+      "priority": 80
+    },
+    {
+      "project_id": "P-94531FE267",
+      "name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "priority": 10
+    },
+    {
+      "project_id": "P-10F93B5799",
+      "name": "Media Center + Studio Integration",
+      "priority": 0
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "name": "Swarm Launch Teaser",
+      "priority": 0
+    },
+    {
+      "project_id": "P-FAEAF9AF90",
+      "name": "Plan Mode Execution - June 2026",
+      "priority": 0
+    }
+  ],
+  "open_steps": [
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-68FDE2C6DE",
+      "title": "[Tile sweep] Potato Farm operational routing and recovery",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-70C1DA6B2A",
+      "title": "Recover Potato Farm live worker",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-896F077F5A",
+      "title": "1 June release go/no-go",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-BF7DBDA63E",
+      "title": "Resolve stale relay recovery #2122",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-D71F0AAAA9",
+      "title": "Prove multi-node first-claim behavior",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-F06E77DCB9",
+      "title": "Lock KC interest bus contract",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-F3AC8A3D5C",
+      "title": "[Tile sweep] Vortex and Cyber Security should show state, risk, and recovery paths",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-POTATO-00-INVENTORY",
+      "title": "Potato Farm source-of-truth inventory and blocker matrix",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-POTATO-01-CONTRACTS",
+      "title": "Design shared sync contracts for chats, KC, agents, and node identity",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-POTATO-02-SERVER-SYNC",
+      "title": "Build leader sync API foundation",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-CHAT-RELAY-RECOVERY",
+      "project_name": "Chat Relay Recovery Watchdog",
+      "step_id": "S-RELAY-7ABB01481C6A",
+      "title": "Recover chat thread #2164 after gemma stalled",
+      "status": "todo",
+      "priority": 10,
+      "bucket": "infra-blocker"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-POTATO-07-ANDROID-CLIENT",
+      "title": "Overhaul Android potato client",
+      "status": "todo",
+      "priority": 30,
+      "bucket": "android"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-POTATO-06-DESKTOP-CLIENT",
+      "title": "Overhaul Linux/macOS/Windows desktop client",
+      "status": "todo",
+      "priority": 40,
+      "bucket": "desktop-windows"
+    },
+    {
+      "project_id": "P-FAEAF9AF90",
+      "project_name": "Plan Mode Execution - June 2026",
+      "step_id": "S-214D8556C2",
+      "title": "[PHASE-3] Windows app sync alignment",
+      "status": "todo",
+      "priority": 40,
+      "bucket": "desktop-windows"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-1B90B67986",
+      "title": "[Tile sweep] Show Me The Money should close the loop with KC, Tasker, and farm signals",
+      "status": "todo",
+      "priority": 50,
+      "bucket": "chunking-kc"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-BAAE9C22D8",
+      "title": "[Tile sweep] Media Center handoffs should use Chat, Studio, KC, and Potato Farm",
+      "status": "todo",
+      "priority": 50,
+      "bucket": "chunking-kc"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-F7C134D9C6",
+      "title": "[Tile sweep] Knowledge, Files, Library, and Tasker need one KC-driven bus",
+      "status": "todo",
+      "priority": 50,
+      "bucket": "chunking-kc"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-POTATO-04-KC-SHARING",
+      "title": "Make Knowledge Center usable across potatoes",
+      "status": "todo",
+      "priority": 50,
+      "bucket": "chunking-kc"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-0AABC34F26",
+      "title": "Knowledge Center composition seeding",
+      "status": "todo",
+      "priority": 50,
+      "bucket": "chunking-kc"
+    },
+    {
+      "project_id": "P-FAEAF9AF90",
+      "project_name": "Plan Mode Execution - June 2026",
+      "step_id": "S-D4F01B22ED",
+      "title": "[PHASE-5] LLM chunking validation",
+      "status": "todo",
+      "priority": 50,
+      "bucket": "chunking-kc"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-E3D0688194",
+      "title": "Create App Center artifact trail",
+      "status": "todo",
+      "priority": 60,
+      "bucket": "distribution"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-E9821587D0",
+      "title": "[Tile sweep] App Center must have real artifacts and project links",
+      "status": "todo",
+      "priority": 60,
+      "bucket": "distribution"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-POTATO-08-APPCENTER",
+      "title": "Register Potato clients and artifacts in App Center",
+      "status": "todo",
+      "priority": 60,
+      "bucket": "distribution"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-POTATO-09-E2E-PROOF",
+      "title": "Run multi-potato acceptance proof",
+      "status": "todo",
+      "priority": 70,
+      "bucket": "acceptance"
+    },
+    {
+      "project_id": "P-FAEAF9AF90",
+      "project_name": "Plan Mode Execution - June 2026",
+      "step_id": "S-74ABFD83F4",
+      "title": "[PHASE-6] Integrated E2E acceptance and closeout",
+      "status": "todo",
+      "priority": 70,
+      "bucket": "acceptance"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-09C8408B4B",
+      "title": "Run first SAP watched-topic evidence harvest",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-35997D7448",
+      "title": "[Tile sweep] Hidden wishlist pillar loaders must be fixed or formally retired",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-4E79F1BC0C",
+      "title": "Decide LiteRT dependency and model asset",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-76237F9E88",
+      "title": "[Tile sweep] Studio project board should be the destination for every tile action",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-7D73416326",
+      "title": "[Tile sweep] Chat becomes the routing console for Studio and Potato Farm work",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-84F367B310",
+      "title": "[Tile sweep] Agents and Local AI should reflect farm-backed capacity",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-871BF7E9F1",
+      "title": "[Tile sweep] Release-readiness checks for the whole tile system",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-94439A14C3",
+      "title": "[Tile sweep] Email, Feeds, and Access should become trusted intake routes",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-A1D1B58ED8",
+      "title": "[Tile sweep] Tile shell, Spotlight, Manual, and contextual help need consistency checks",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-A98FBEC858",
+      "title": "[Tile sweep] Terminal and Git should create evidence, not invisible side effects",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-B98A4EFF2C",
+      "title": "[Tile sweep] Monitor, Trace, Health Digest, and backups need one operator view",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-POTATO-03-CHAT-SHARING",
+      "title": "Make chats usable across potatoes",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-94531FE267",
+      "project_name": "2026-06-01 Build Readiness - KC Driven Operating System",
+      "step_id": "S-POTATO-05-AGENT-CAPACITY",
+      "title": "Unify Agents, Chat, and Potato Farm routing",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-2803B9E155",
+      "title": "Routing and federation readiness",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-741355C83B",
+      "title": "Studio project linkage",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-7509765ED6",
+      "title": "Advisor workflow review",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-815FD58BAF",
+      "title": "Scene: Intro",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-955010FA07",
+      "title": "Bottom review dock review",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-B53971FB1D",
+      "title": "Research dock usefulness review",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-B8BE44A7AF",
+      "title": "Chat and local-agent flow checks",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-C5FEB7E505",
+      "title": "DAW-first workspace review",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-DBB436E399",
+      "title": "Composition and scene workflow",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-EF568B9E06",
+      "title": "Transport and command bar review",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-F45238F730",
+      "title": "Knowledge provenance and feeds",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-B3D201AF5E",
+      "project_name": "Swarm Launch Teaser",
+      "step_id": "S-FC09D5A94F",
+      "title": "Scene: Lift",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-FAEAF9AF90",
+      "project_name": "Plan Mode Execution - June 2026",
+      "step_id": "S-15AE0C402A",
+      "title": "[PHASE-0] Preflight baseline and guardrails",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-FAEAF9AF90",
+      "project_name": "Plan Mode Execution - June 2026",
+      "step_id": "S-4CBFDA96A2",
+      "title": "[PHASE-2] Potato Farm remote-first stabilization",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-FAEAF9AF90",
+      "project_name": "Plan Mode Execution - June 2026",
+      "step_id": "S-A0C982CE55",
+      "title": "[PHASE-1] Reconcile all active Studio projects",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    },
+    {
+      "project_id": "P-FAEAF9AF90",
+      "project_name": "Plan Mode Execution - June 2026",
+      "step_id": "S-E8B01886E6",
+      "title": "[PHASE-4] GitHub backup and drift audit",
+      "status": "todo",
+      "priority": 90,
+      "bucket": "general"
+    }
+  ]
+}

@@ -358,6 +358,27 @@ def check_due():
                     pass
 
 
+def setup_studio_watcher_task():
+    """Ensure a 'studio_watcher' scheduled task exists (interval 1m).
+
+    Safe to call multiple times — add_task is idempotent (upserts by name).
+    The task dispatches Gemma's watch_studio() via the task_runner registry.
+    """
+    try:
+        task_id = add_task(
+            name='studio_watcher',
+            schedule='interval 1m',  # every 1 minute
+            action_type='PYTHON',
+            action_data='studio_watcher 3',  # max_steps=3 per tick
+            created_by='scheduler_init',
+        )
+        print(f'[Scheduler] studio_watcher task registered (id={task_id})')
+        return task_id
+    except Exception as exc:
+        print(f'[Scheduler] studio_watcher registration failed: {exc}')
+        return None
+
+
 def main_loop():
     print("Scheduler started — checking every 60 seconds (press Ctrl+C to stop)")
     
@@ -373,7 +394,10 @@ def main_loop():
             print(f"[TimeMachine] Session {session_id} started")
     except Exception as e:
         print(f"[TimeMachine] Initialization warning: {e}")
-    
+
+    # QT-06: register Studio watcher task (idempotent upsert)
+    setup_studio_watcher_task()
+
     while True:
         try:
             check_due()

@@ -13,8 +13,9 @@ import hashlib
 import re
 import subprocess
 import sys
+from typing import Any
 
-DB_PATH = Path(__file__).parent.parent / 'swarm_memory.db'
+DB_PATH = Path(os.environ.get('SWARM_DB_PATH') or (Path(__file__).parent.parent / 'swarm_memory.db'))
 
 # ── Git / worktree roots ──────────────────────────────────────────────────
 _SWARM_PROD_ROOT = os.environ.get('SWARM_ROOT', str(Path(__file__).parent.parent))
@@ -38,6 +39,28 @@ def _git_head_info(cwd=None):
     commit, rc1 = _git_cmd(['rev-parse', 'HEAD'], cwd=cwd)
     branch, rc2 = _git_cmd(['rev-parse', '--abbrev-ref', 'HEAD'], cwd=cwd)
     return (commit.strip()[:12] if rc1 == 0 else '', branch.strip() if rc2 == 0 else '')
+
+
+def _git_head_full(cwd=None) -> str:
+    commit, rc = _git_cmd(['rev-parse', 'HEAD'], cwd=cwd)
+    return commit.strip() if rc == 0 else ''
+
+
+def _git_remote_name(cwd=None) -> str:
+    branch, rc_branch = _git_cmd(['rev-parse', '--abbrev-ref', 'HEAD'], cwd=cwd)
+    if rc_branch == 0 and branch.strip():
+        upstream, rc_upstream = _git_cmd(
+            ['config', f'branch.{branch.strip()}.remote'],
+            cwd=cwd,
+        )
+        if rc_upstream == 0 and upstream.strip():
+            return upstream.strip()
+    remotes, rc = _git_cmd(['remote'], cwd=cwd)
+    if rc == 0:
+        first = next((line.strip() for line in remotes.splitlines() if line.strip()), '')
+        if first:
+            return first
+    return 'origin'
 
 
 def _vortex_should_write_git(label: str) -> bool:
@@ -76,6 +99,176 @@ def _git_status_paths(cwd=None) -> list[str]:
     return paths
 
 
+def _vortex_local_node_id() -> str:
+    try:
+        from core.hive.local_node import get_local_node
+        return get_local_node().node_id
+    except Exception:
+        return os.environ.get('SWARM_NODE_ID', '').strip() or 'unknown-node'
+
+
+def _sync_story_categories(paths: list[str]) -> tuple[list[str], bool]:
+    categories = set()
+    runtime_hit = False
+    for raw_path in paths:
+        path = str(raw_path or '').strip().replace('\\', '/')
+        if not path:
+            continue
+        if path.startswith('frontend/static/') or path.startswith('frontend/templates/'):
+            categories.add('ui')
+        if path.startswith('frontend/blueprints/') or path.startswith('frontend/services/'):
+            categories.add('runtime')
+            runtime_hit = True
+        if path.startswith('agents/') or path.startswith('core/seven_llm/'):
+            categories.add('agent-config')
+        if path.startswith('utils/db/') or path.endswith('.db') or 'schema' in path:
+            categories.add('db-schema')
+            runtime_hit = True
+        if path.startswith('windows/') or path.startswith('core/hive/providers/windows'):
+            categories.add('windows-runtime')
+            runtime_hit = True
+        if path.startswith('docs/') or path.startswith('sandpits/studio/'):
+            categories.add('docs-studio')
+        if path.startswith('core/') and 'time_machine' not in path:
+            categories.add('core-runtime')
+            runtime_hit = True
+    if not categories:
+        categories.add('uncategorized')
+    return sorted(categories), runtime_hit
+
+
+def _sync_story_risk(status: str, reason: str, paths: list[str], categories: list[str]) -> str:
+    safe_status = str(status or '').strip().lower()
+    safe_reason = str(reason or '').strip().lower()
+    if safe_status == 'blocked':
+        return 'blocked'
+    if safe_status == 'commit-only':
+        return 'review-recommended'
+    risky_prefixes = (
+        'frontend/blueprints/',
+        'frontend/services/',
+        'windows/',
+        'utils/db/',
+        'core/',
+    )
+    risky = any(str(p or '').replace('\\', '/').startswith(risky_prefixes) for p in paths)
+    if risky or 'runtime' in categories or 'core-runtime' in categories or 'windows-runtime' in categories:
+        return 'runtime-impacting'
+    if safe_reason in {'below-threshold', 'not-a-git-worktree'}:
+        return 'safe'
+    return 'review-recommended'
+
+
+def _build_sync_story(
+    *,
+    root: str,
+    agent: str,
+    reason: str,
+    status: str,
+    result: dict[str, Any],
+    before_commit: str,
+    before_branch: str,
+    after_commit: str,
+    after_branch: str,
+    paths: list[str],
+) -> dict[str, Any]:
+    categories, runtime_hit = _sync_story_categories(paths)
+    risk = _sync_story_risk(status, result.get('reason', ''), paths, categories)
+    branch = after_branch or before_branch or 'unknown'
+    remote_name = _git_remote_name(cwd=root)
+    source_node = _vortex_local_node_id()
+    path_preview = paths[:12]
+    current_state = {
+        'git_status': status,
+        'clean_after_sync': status == 'synced',
+        'restart_recommended': runtime_hit,
+        'local_overrides_remain': status in {'commit-only', 'blocked'},
+    }
+    next_step = {
+        'synced': 'upstream aligned for this batch',
+        'commit-only': 'commit created locally but upstream push still needs attention',
+        'blocked': 'operator intervention required before sync can continue',
+        'skipped': 'batch retained locally until threshold or preconditions change',
+    }.get(status, 'operator review required')
+    summary = (
+        f"{source_node} {branch} {before_commit[:12] or 'none'} -> {after_commit[:12] or before_commit[:12] or 'none'} "
+        f"| {status} | {len(paths)} paths | risk={risk}"
+    )
+    return {
+        'kind': 'sync_story',
+        'version': 1,
+        'summary': summary,
+        'risk': risk,
+        'origin': {
+            'source_node': source_node,
+            'target_node': remote_name,
+            'transport': 'github' if remote_name == 'origin' else remote_name,
+            'actor': agent,
+            'trigger': reason,
+            'repo_root': str(root),
+        },
+        'intent': {
+            'branch': branch,
+            'from_sha': before_commit[:12],
+            'to_sha': after_commit[:12] or before_commit[:12],
+            'reason': reason,
+            'threshold': result.get('threshold'),
+            'change_count': result.get('change_count', len(paths)),
+        },
+        'transition': {
+            'files_changed_count': len(paths),
+            'paths': path_preview,
+            'paths_truncated': len(paths) > len(path_preview),
+            'categories': categories,
+        },
+        'consequence': {
+            'result': status,
+            'reason': result.get('reason', ''),
+            'current_state': current_state,
+            'next': next_step,
+            'commit': after_commit[:12] or '',
+            'pushed': bool(result.get('pushed')),
+            'push_output': str(result.get('push_output') or '')[:500],
+            'scan': str(result.get('scan') or '')[:500],
+        },
+        'intervention': {
+            'recommended': [
+                'open diff',
+                'inspect changed paths',
+                'review runtime impact' if runtime_hit else 'review sync summary',
+                'retry push' if status == 'commit-only' else 'proceed',
+            ],
+        },
+    }
+
+
+def _emit_sync_story(story: dict[str, Any]) -> None:
+    try:
+        from core.spine import EventKind, Severity, log as spine_log
+        spine_log(
+            EventKind.SYSTEM,
+            story.get('summary', 'sync story'),
+            severity=Severity.INFO if story.get('risk') != 'blocked' else Severity.WARN,
+            source='time_machine.sync',
+            agent=story.get('origin', {}).get('actor'),
+            change_id=story.get('intent', {}).get('to_sha') or story.get('intent', {}).get('from_sha'),
+            payload=story,
+        )
+    except Exception:
+        pass
+    try:
+        from utils.swarm_bus import publish as bus_publish
+        bus_publish('git.sync', story, source_service='time_machine')
+    except Exception:
+        pass
+    try:
+        from utils.db.audit import log_activity, log_ghost_circle
+        log_activity('terminal', 'git_sync_story', story.get('summary', '')[:500])
+        log_ghost_circle('sync_story', story.get('origin', {}).get('source_node', 'vortex'), json.dumps(story, ensure_ascii=True))
+    except Exception:
+        pass
+
+
 def _run_secret_scan_include_untracked(cwd=None) -> tuple[str, int]:
     script = Path(cwd or _SWARM_PROD_ROOT) / 'scripts' / 'secret_scan.py'
     if not script.exists():
@@ -105,6 +298,8 @@ def _vortex_maybe_git_sync(agent: str = 'vortex', reason: str = 'scheduled', cwd
         return {'status': 'skipped', 'reason': 'not-a-git-worktree', 'change_count': 0}
 
     threshold = threshold or _vortex_sync_threshold()
+    before_commit = _git_head_full(cwd=root)
+    _before_commit_short, before_branch = _git_head_info(cwd=root)
     paths = _git_status_paths(cwd=root)
     change_count = len(paths)
     result = {
@@ -121,6 +316,20 @@ def _vortex_maybe_git_sync(agent: str = 'vortex', reason: str = 'scheduled', cwd
     scan_out, scan_rc = _run_secret_scan_include_untracked(cwd=root)
     if scan_rc != 0:
         result.update({'status': 'blocked', 'reason': 'secret-scan-failed', 'scan': scan_out[:1200]})
+        story = _build_sync_story(
+            root=root,
+            agent=agent,
+            reason=reason,
+            status=result['status'],
+            result=result,
+            before_commit=before_commit,
+            before_branch=before_branch,
+            after_commit=before_commit,
+            after_branch=before_branch,
+            paths=paths,
+        )
+        result['story'] = story
+        _emit_sync_story(story)
         return result
 
     _git_cmd(['add', '-A'], cwd=root)
@@ -149,6 +358,20 @@ def _vortex_maybe_git_sync(agent: str = 'vortex', reason: str = 'scheduled', cwd
         'pushed': rc_p == 0,
         'push_output': out_p[:1200] if rc_p != 0 else '',
     })
+    story = _build_sync_story(
+        root=root,
+        agent=agent,
+        reason=reason,
+        status=result['status'],
+        result=result,
+        before_commit=before_commit,
+        before_branch=before_branch,
+        after_commit=commit,
+        after_branch=_branch,
+        paths=paths,
+    )
+    result['story'] = story
+    _emit_sync_story(story)
     return result
 
 class TimeMachine:

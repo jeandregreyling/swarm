@@ -93,3 +93,18 @@ DOES is not a prompt demo. It is a deterministic orchestration pattern with:
 - and bounded failure domains.
 
 That makes it suitable for open-source transparency and enterprise audit reviews.
+
+## Operator-Facing Layer
+
+DOES governs structural truth.
+Fridays still needs an operator-facing law so the system does not degrade into a
+status-only admin surface.
+
+That layer is defined in:
+- [Fridays Operator Heuristics](/mnt/wsl/PHYSICALDRIVE0p1/home/seven/swarm/docs/architecture/FRIDAYS_OPERATOR_HEURISTICS.md)
+- [Sync Story Spec](/mnt/wsl/PHYSICALDRIVE0p1/home/seven/swarm/docs/architecture/SYNC_STORY_SPEC.md)
+
+In short:
+- DOES protects structure.
+- DEOS protects operational continuity.
+- the operator heuristics protect visible causality.

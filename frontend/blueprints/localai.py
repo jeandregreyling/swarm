@@ -6,13 +6,44 @@ Unified status and chat proxy for all local inference services:
   - LM Studio      (port 1234, OpenAI-compatible)
   - Picoclaw       (port 18790, gateway API)
 """
+import os
+import re
 import requests
 import json
 from flask import Blueprint, jsonify, request
 
 localai_bp = Blueprint('localai', __name__)
 
-_OLLAMA_BASE  = 'http://localhost:11434'
+
+def _resolve_ollama_host() -> str:
+    """Return the Ollama base URL, honouring OLLAMA_HOST env var.
+
+    Under WSL2 the Flask process runs in Linux while Ollama may run on the
+    Windows host.  We detect WSL2 by reading /proc/sys/kernel/osrelease and,
+    if found, derive the Windows host IP from /etc/resolv.conf (WSL2 always
+    writes the host gateway there as 'nameserver <ip>').  OLLAMA_HOST always
+    takes priority so the caller can override everything.
+    """
+    env = os.environ.get('OLLAMA_HOST', '').strip()
+    if env:
+        # If the env var doesn't include a scheme, add one.
+        return env if env.startswith('http') else f'http://{env}'
+
+    try:
+        release = open('/proc/sys/kernel/osrelease').read().lower()
+        if 'microsoft' in release or 'wsl' in release:
+            # Running inside WSL2 — Ollama likely runs on the Windows host.
+            resolv = open('/etc/resolv.conf').read()
+            m = re.search(r'^nameserver\s+([\d.]+)', resolv, re.MULTILINE)
+            if m:
+                return f'http://{m.group(1)}:11434'
+    except OSError:
+        pass  # Not Linux or files not present — fall through to localhost.
+
+    return 'http://localhost:11434'
+
+
+_OLLAMA_BASE  = _resolve_ollama_host()
 _LMSTUDIO_BASE = 'http://localhost:1234'
 _PICOCLAW_BASE = 'http://localhost:18790'
 

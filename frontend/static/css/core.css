@@ -24,6 +24,17 @@
   --edge-glow-hover: 0 0 0 rgba(0,0,0,0);
   --glow-animation: none;
   --glow-hover-animation: none;
+
+  /* Health status tokens (consumed by sundial, attention dots, ctx-danger, etc.).
+     Themes may override; rgb triplets allow rgba() with custom alpha. */
+  --health-ok:        #4caf50;
+  --health-warn:      #ffb74d;
+  --health-crit:      #ef5350;
+  --health-ok-rgb:    76, 175, 80;
+  --health-warn-rgb:  255, 183, 77;
+  --health-crit-rgb:  239, 83, 80;
+  --info:             #42a5f5;
+  --info-rgb:         66, 165, 245;
 }
 
 /* Theme injection — time-of-day palettes from fridays.json override above */

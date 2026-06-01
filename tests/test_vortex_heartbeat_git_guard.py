@@ -118,3 +118,87 @@ def test_vortex_git_sync_commits_and_pushes_at_threshold(monkeypatch, tmp_path):
     assert result['commit'] == 'abcdef123456'
     assert ['add', '-A'] in git_calls
     assert ['push'] in git_calls
+    assert result['story']['risk'] == 'review-recommended'
+    assert result['story']['origin']['actor'] == 'vortex'
+    assert result['story']['consequence']['result'] == 'synced'
+
+
+def test_vortex_git_sync_emits_blocked_sync_story(monkeypatch, tmp_path):
+    from core import time_machine
+
+    root = tmp_path / 'repo'
+    root.mkdir()
+    (root / '.git').mkdir()
+
+    status = '\n'.join([
+        ' M frontend/blueprints/chat.py',
+        ' M sandpits/studio/P-7B9C4D2F1A/PROJECT_PLAN.md',
+    ] + [f' M file_{i}.py' for i in range(8)])
+
+    def _fake_git(args, cwd=None):
+        if args[:2] == ['status', '--porcelain']:
+            return status, 0
+        if args == ['rev-parse', 'HEAD']:
+            return 'feedfacecafebeef', 0
+        if args == ['rev-parse', '--abbrev-ref', 'HEAD']:
+            return 'main', 0
+        if args[:2] == ['config', 'branch.main.remote']:
+            return 'origin', 0
+        if args == ['remote']:
+            return 'origin\n', 0
+        return '', 0
+
+    emitted = []
+    monkeypatch.setattr(time_machine, '_git_cmd', _fake_git)
+    monkeypatch.setattr(time_machine, '_run_secret_scan_include_untracked', lambda cwd=None: ('secrets found', 1))
+    monkeypatch.setattr(time_machine, '_emit_sync_story', lambda story: emitted.append(story))
+    monkeypatch.setattr(time_machine, '_vortex_local_node_id', lambda: 'linux-1234')
+
+    result = time_machine._vortex_maybe_git_sync(cwd=str(root), threshold=10, agent='tasker', reason='heartbeat')
+
+    assert result['status'] == 'blocked'
+    assert result['reason'] == 'secret-scan-failed'
+    assert result['story']['risk'] == 'blocked'
+    assert result['story']['origin']['source_node'] == 'linux-1234'
+    assert result['story']['transition']['categories'] == ['docs-studio', 'runtime']
+    assert result['story']['consequence']['result'] == 'blocked'
+    assert emitted and emitted[0]['summary'] == result['story']['summary']
+
+
+def test_vortex_git_sync_marks_runtime_impact_when_runtime_paths_change(monkeypatch, tmp_path):
+    from core import time_machine
+
+    root = tmp_path / 'repo'
+    root.mkdir()
+    (root / '.git').mkdir()
+
+    status = '\n'.join([
+        ' M frontend/blueprints/chat.py',
+        ' M frontend/static/js/views/chat.js',
+    ] + [f' M file_{i}.py' for i in range(8)])
+
+    def _fake_git(args, cwd=None):
+        if args[:2] == ['status', '--porcelain']:
+            return status, 0
+        if args == ['rev-parse', 'HEAD']:
+            return 'abcdef1234567890', 0
+        if args == ['rev-parse', '--abbrev-ref', 'HEAD']:
+            return 'main', 0
+        if args == ['remote']:
+            return 'origin\n', 0
+        if args[:2] == ['config', 'branch.main.remote']:
+            return 'origin', 0
+        if args == ['push']:
+            return '', 0
+        return '', 0
+
+    monkeypatch.setattr(time_machine, '_git_cmd', _fake_git)
+    monkeypatch.setattr(time_machine, '_run_secret_scan_include_untracked', lambda cwd=None: ('ok', 0))
+    monkeypatch.setattr(time_machine, '_emit_sync_story', lambda story: None)
+    monkeypatch.setattr(time_machine, '_vortex_local_node_id', lambda: 'linux-1234')
+
+    result = time_machine._vortex_maybe_git_sync(cwd=str(root), threshold=10, agent='tasker', reason='manual')
+
+    assert result['story']['risk'] == 'runtime-impacting'
+    assert result['story']['transition']['categories'] == ['runtime', 'ui']
+    assert result['story']['origin']['source_node'] == 'linux-1234'

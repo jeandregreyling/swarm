@@ -27,6 +27,14 @@ _OLLAMA_LIBRARY_FALLBACK = [
     'snowflake-arctic-embed2:latest',
 ]
 
+
+def _classify_ollama_runtime_error(exc: Exception) -> tuple[str, str]:
+    raw = str(exc or '').strip()
+    lowered = raw.lower()
+    if isinstance(exc, ConnectionRefusedError) or 'connection refused' in lowered or 'unreachable' in lowered:
+        return 'RUNTIME_OFFLINE', raw or 'ollama backend unreachable'
+    return 'RUNTIME_ERROR', raw or 'ollama backend error'
+
 @ollama_bp.route('/api/ollama/models')
 def api_ollama_models():
     """List all locally installed Ollama models."""
@@ -43,9 +51,16 @@ def api_ollama_models():
                 'parameters':  (getattr(m, 'details', None) and getattr(m.details, 'parameter_size', '')) or '',
             })
         models.sort(key=lambda x: x['name'])
-        return jsonify({'models': models})
+        return jsonify({'ok': True, 'running': True, 'models': models})
     except Exception as e:
-        return jsonify({'error': str(e), 'models': []}), 500
+        error_code, detail = _classify_ollama_runtime_error(e)
+        return jsonify({
+            'ok': False,
+            'running': False,
+            'error_code': error_code,
+            'error': detail,
+            'models': [],
+        })
 
 
 @ollama_bp.route('/api/ollama/library')

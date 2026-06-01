@@ -245,7 +245,9 @@ def api_ghost_circle():
 def api_monitor():
     """Monitor data for the home dashboard."""
     from monitor import get_system_status
+    from utils.db.registry import get_zoo_ping_snapshot
     status = get_system_status()
+    zoo = get_zoo_ping_snapshot()
     with _CHAT_JOB_LOCK:
         _cleanup_chat_jobs_locked()
         running_jobs = [
@@ -336,6 +338,7 @@ def api_monitor():
         'memory_pools':   status.get('memory_pools', {}),
         'runtime_jobs':   running_jobs,
         'duck_flags_today': _get_duck_flags_today(),
+        'zoo_census': zoo,
     })
 
 
@@ -538,6 +541,5 @@ def api_swarm_status():
         'debates':    [{'topic': r[0][:60], 'status': r[1], 'rounds': r[2]} for r in debates],
         'proposals':  proposals,
     })
-
 
 

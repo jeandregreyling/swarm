@@ -41,6 +41,20 @@ def test_install_manifest_has_required_keys(client):
             assert entry['size'] and entry['size'] > 0
 
 
+def test_install_android_page_promotes_tablet_apk(client):
+    rv = client.get('/api/hive/install/android', base_url='http://leader.example:5050')
+    assert rv.status_code == 200
+    body = rv.get_data(as_text=True)
+    assert 'Samsung Potato Farm' in body
+    assert 'swarm-hive.apk' in body
+    assert 'Open Worker + Join potato-2' in body
+    assert 'swarmhive://join?' in body
+    assert 'leader=http%3A%2F%2Fleader.example%3A5050' in body
+    assert '/api/hive/install/seven-app.apk' in body
+    assert '/api/hive/install/seven-app-v1.0.4.apk' in body
+    assert 'http://leader.example:5050' in body
+
+
 def test_install_manifest_no_trailing_slash_works(client):
     # Both /install and /install/ should resolve.
     rv = client.get('/api/hive/install')
@@ -206,3 +220,4 @@ def test_bootstrap_sh_detects_termux(client):
     # Must fetch and extract the core/hive runtime tarball.
     assert 'core_hive.tar.gz' in body
     assert 'tar -xzf' in body
+

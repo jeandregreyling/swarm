@@ -29,7 +29,18 @@ def api_vpn_status():
     """Return Tailscale network status."""
     data = _tailscale_status()
     if 'error' in data:
-        return jsonify({'ok': False, 'error': data['error']}), 503
+        return jsonify({
+            'ok': False,
+            'available': False,
+            'backend_state': 'unavailable',
+            'peer_count': 0,
+            'online_count': 0,
+            'peers': [],
+            'self': {},
+            'tailnet_name': '',
+            'error': data['error'],
+            'error_code': 'VPN_UNAVAILABLE',
+        }), 200
 
     self_node = data.get('Self', {})
     peers = data.get('Peer', {})

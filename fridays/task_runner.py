@@ -1622,6 +1622,33 @@ def _task_chat_smoke_probe(**kwargs):
     return f'chat_smoke_probe FAILED agent={agent} elapsed_ms={elapsed_ms} err={err or "empty reply"}'
 
 
+
+@register(
+    'studio_watcher',
+    'QT-04/06 — Gemma scans open Studio steps and works through them via quintum chunking',
+    'studio',
+)
+def _task_studio_watcher(**kwargs):
+    """Periodic Studio task dispatcher powered by Gemma (quintum chunking pipeline).
+
+    Picks up to 3 unclaimed todo steps per run, claims each atomically, runs the
+    split→probe→note→synthesise→validate cycle, and marks steps done or blocked.
+    """
+    try:
+        from agents.gemma.gemma_agent import watch_studio
+    except ImportError:
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(_SWARM_ROOT, 'agents'))
+        from gemma.gemma_agent import watch_studio
+
+    max_steps = int((kwargs.get('args') or '3').strip() or 3)
+    results = watch_studio(max_steps=max_steps)
+    if not results:
+        return 'studio_watcher: no open steps found'
+    parts = [f"{r['step_id']}→{r['status']}(r={r['retries']})" for r in results]
+    return 'studio_watcher: ' + ', '.join(parts)
+
 # ── Execution ─────────────────────────────────────────────────────────────────
 
 def run_task(name, args=''):

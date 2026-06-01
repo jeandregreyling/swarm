@@ -31,6 +31,7 @@ Endpoints:
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import time
 import uuid
@@ -41,7 +42,7 @@ from flask import Blueprint, jsonify, request
 
 app_center_bp = Blueprint('app_center', __name__)
 
-_DB_PATH = 'swarm_memory.db'
+_DB_PATH = os.environ.get('SWARM_DB_PATH', 'swarm_memory.db')
 
 _VALID_KINDS = {'mobile', 'tablet', 'desktop', 'web', 'game'}
 _VALID_FRAMEWORKS = {
@@ -64,8 +65,10 @@ _VALID_BUILD_STATUS   = {'queued', 'building', 'succeeded', 'failed', 'cancelled
 
 
 def _conn() -> sqlite3.Connection:
-    c = sqlite3.connect(_DB_PATH)
+    c = sqlite3.connect(_DB_PATH, timeout=10)
     c.row_factory = sqlite3.Row
+    c.execute('PRAGMA journal_mode=WAL')
+    c.execute('PRAGMA busy_timeout=10000')
     return c
 
 

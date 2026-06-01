@@ -25,6 +25,9 @@
 set -euo pipefail
 
 export OLLAMA_HOST="${OLLAMA_HOST:-127.0.0.1:11434}"
+# Shared model store on the NTFS data partition (mounted at /mnt/f in WSL2).
+# Windows side uses F:\.ollama\models; both paths point to the same files.
+export OLLAMA_MODELS="${OLLAMA_MODELS:-/mnt/f/.ollama/models}"
 export OLLAMA_NUM_PARALLEL=1
 export OLLAMA_MAX_LOADED_MODELS=1
 export OLLAMA_KEEP_ALIVE=0

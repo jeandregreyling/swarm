@@ -153,6 +153,12 @@
   min-width: 0;
   border-right: none;
   overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+#chat-thread-rail.collapsed * {
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 #chat-thread-restore-btn {
   position: absolute;
@@ -195,6 +201,11 @@
 }
 .chat-thread-resizer:hover {
   background: color-mix(in oklab, var(--accent) 18%, transparent);
+}
+#chat-layout.threads-collapsed #chat-thread-resizer {
+  width: 0 !important;
+  opacity: 0;
+  pointer-events: none;
 }
 #chat-topbar {
   display: flex;

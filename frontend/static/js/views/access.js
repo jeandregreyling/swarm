@@ -27,6 +27,29 @@ let _ollamaModelsCache = null;
 let _localAiStatusCache = null;
 let _localAiStatusCacheTs = 0;
 
+async function _fetchJsonOrThrow(url, options) {
+  const res = await fetch(url, options);
+  const text = await res.text();
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (_) {
+    data = null;
+  }
+  if (!res.ok) {
+    const message = (data && (data.error || data.message))
+      || `HTTP ${res.status} on ${url}`;
+    throw new Error(message);
+  }
+  if (data !== null) return data;
+  const preview = (text || '').trim().slice(0, 80).toLowerCase();
+  if (preview.startsWith('<!doctype') || preview.startsWith('<html')) {
+    throw new Error(`${url} returned HTML instead of JSON`);
+  }
+  throw new Error(`${url} returned invalid JSON${contentType ? ` (${contentType})` : ''}`);
+}
+
 async function _fetchOllamaModelList() {
   if (_ollamaModelsCache) return _ollamaModelsCache;
   try {
@@ -722,8 +745,8 @@ function agentsConfigRefresh() {
   if (list)   list.innerHTML   = '<div style="padding:20px;color:var(--text-dim);font-size:11px;">Loading…</div>';
   if (detail) detail.innerHTML = '';
   return Promise.all([
-    fetch('/api/agents/config').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
-    fetch('/api/swarm/globals').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    _fetchJsonOrThrow('/api/agents/config'),
+    _fetchJsonOrThrow('/api/swarm/globals')
   ]).then(([agentsData, globalsData]) => {
     window.__agentsData  = Array.isArray(agentsData)  ? agentsData  : (agentsData.agents  || []);
     window.__globalsData = Array.isArray(globalsData) ? globalsData : (globalsData.globals || []);
@@ -739,8 +762,7 @@ function agentsConfigRefresh() {
 function agentsOpsRefresh(force) {
   const board = document.getElementById('agents-ops-board');
   if (board && force) board.innerHTML = '<div class="agents-empty">Loading agent operations…</div>';
-  return fetch('/api/agents/ops-summary')
-    .then(r => r.json())
+  return _fetchJsonOrThrow('/api/agents/ops-summary')
     .then(data => {
       window.__agentsOps = data;
       if (!data.ok) throw new Error(data.error || 'ops summary failed');
@@ -996,10 +1018,10 @@ function agentsRenderList(agents) {
     const tierBadge  = `<span style="${tierColor}border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">${tierLabel}</span>`;
     const isDecommissioned = a.enabled == 0;
     const statusDot = isDecommissioned
-      ? '<span style="color:#ef4444;font-size:10px;line-height:1;" title="Offline: re-enable from Agents tile">●</span>'
+      ? '<span style="color:#ef4444;font-size:10px;line-height:1;" title="Disabled: re-enable from Agents tile">●</span>'
       : '<span style="color:#4caf50;font-size:10px;line-height:1;">●</span>';
     const dcomBadge = isDecommissioned
-      ? '<span style="background:#3a1010;color:#ff8a8a;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">OFFLINE</span>'
+      ? '<span style="background:#3a1010;color:#ff8a8a;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:700;">DISABLED</span>'
       : '';
     const filterBlob = `${a.name||''} ${a.label||''} ${a.model||''} ${tierLabel}`.toLowerCase();
     return `<div class="agents-list-row" data-name="${_esc(a.name)}" data-filter="${_esc(filterBlob)}"

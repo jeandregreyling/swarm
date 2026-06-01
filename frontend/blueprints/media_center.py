@@ -1,5 +1,6 @@
 """Media Center API blueprint."""
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request, send_file
@@ -23,9 +24,53 @@ from utils.swarm_root import SWARM_ROOT
 media_center_bp = Blueprint("media_center", __name__)
 
 
+def _media_center_lite_payload(reason: str = "fallback") -> dict:
+    """Return a fast, minimal Media Center state payload.
+
+    Used when full public_state() is slow or fails (often due locked/slow
+    side stores). Keeps the tile usable instead of appearing dead.
+    """
+    # Keep fallback storage-free: if side stores are locked, this must still
+    # return immediately so UI can recover.
+    projects = []
+    jobs = []
+    return {
+        "degraded": True,
+        "degraded_reason": reason,
+        "projects": projects,
+        "jobs": jobs,
+        "runtime": {},
+        "knowledge": {"indexed_count": 0},
+        "tracking": {"progress": {"done_steps": 0, "step_count": 0}},
+        "counts": {
+            "projects": len(projects),
+            "queued_jobs": sum(1 for job in jobs if str(job.get("status") or "") == "queued"),
+            "completed_jobs": sum(1 for job in jobs if str(job.get("status") or "") == "completed"),
+        },
+    }
+
+
 @media_center_bp.route("/api/media-center/state", methods=["GET"])
 def media_center_state():
-    return jsonify({"ok": True, **public_state()})
+    # Bound expensive state hydration so UI stays responsive when side
+    # stores are slow/locked (common on mixed Windows/WSL setups).
+    pool = ThreadPoolExecutor(max_workers=1)
+    future = pool.submit(public_state)
+    try:
+        payload = future.result(timeout=4.0)
+        return jsonify({"ok": True, **payload})
+    except FuturesTimeout:
+        future.cancel()
+        return jsonify({"ok": True, **_media_center_lite_payload("state_timeout")})
+    except Exception:
+        return jsonify({"ok": True, **_media_center_lite_payload("state_error")})
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+
+
+@media_center_bp.route("/api/media-center/state-lite", methods=["GET"])
+def media_center_state_lite():
+    return jsonify({"ok": True, **_media_center_lite_payload("explicit_lite")})
 
 
 @media_center_bp.route("/api/media-center/projects", methods=["POST"])

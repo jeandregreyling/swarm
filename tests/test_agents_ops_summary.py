@@ -23,6 +23,9 @@ def test_agents_template_has_operator_tabs():
 
 def test_agents_tile_uses_ops_summary_and_keeps_lifecycle_out_of_cards():
     assert "fetch('/api/agents/ops-summary')" in ACCESS
+    assert "function _fetchJsonOrThrow" in ACCESS
+    assert "_fetchJsonOrThrow('/api/swarm/globals')" in ACCESS
+    assert "_fetchJsonOrThrow('/api/agents/ops-summary')" in ACCESS
     assert "function agentsRenderOpsOverview" in ACCESS
     assert "function agentsRenderOpsQueue" in ACCESS
     assert "function agentsRenderOpsRuntimes" in ACCESS

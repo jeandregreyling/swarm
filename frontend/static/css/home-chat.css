@@ -9,6 +9,9 @@
   min-height: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  background: color-mix(in srgb, var(--window-bg, var(--card)) calc(var(--glass-opacity, 1) * 100%), transparent);
+  backdrop-filter: blur(var(--glass-blur, 6px));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 6px));
   overflow: hidden;
 }
 
@@ -22,6 +25,7 @@
 .home-chat-section {
   display: flex;
   flex-direction: column;
+  --home-chat-glass: calc(var(--glass-opacity, 1) * 100%);
   min-height: 340px;
   max-height: calc(100vh - 340px);
   border-bottom: none !important;
@@ -127,8 +131,53 @@
   padding-bottom: 8px !important;
   border-bottom: none !important;
 }
+
+/* When Quick Access is collapsed, reclaim vertical space aggressively. */
+#home-page.quick-access-collapsed .home-tiles-section {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 0 !important;
+  border-bottom: none !important;
+}
+#home-page.quick-access-collapsed .home-tiles-section .card-grid {
+  display: grid !important;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  margin-bottom: 0;
+}
+#home-page.quick-access-collapsed .home-tiles-section .home-section-title {
+  margin-bottom: 0;
+  padding-bottom: 2px;
+  min-height: 14px;
+  font-size: 8px;
+  letter-spacing: 0.85px;
+  line-height: 1.1;
+}
+#home-page.quick-access-collapsed #quick-access-title {
+  gap: 4px;
+}
+#home-page.quick-access-collapsed #quick-access-title .section-caret {
+  font-size: 7px;
+}
+#home-page.quick-access-collapsed #quick-access-add-btn {
+  display: none !important;
+}
+#home-page.quick-access-collapsed .home-tiles-section #orientation-card,
+#home-page.quick-access-collapsed .home-tiles-section #first-run-banner {
+  display: none !important;
+}
+#home-page.quick-access-collapsed .home-chat-section {
+  max-height: calc(100vh - 226px);
+}
 .home-tiles-section .card-grid {
   gap: 6px;
+  overflow: hidden;
+  max-height: 1200px;
+  opacity: 1;
+  transform: translateY(0);
+  transition: max-height 0.22s ease, opacity 0.18s ease, transform 0.18s ease;
 }
 .home-tiles-section .home-card {
   padding: 8px 10px;
@@ -140,7 +189,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: color-mix(in srgb, var(--card) 92%, transparent);
+  background: color-mix(in srgb, var(--card) var(--home-chat-glass), transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
@@ -400,7 +449,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) var(--home-chat-glass), transparent);
   min-height: 180px;
   scrollbar-width: auto;
   scrollbar-color: var(--accent) transparent;
@@ -709,7 +758,7 @@
 /* ── Input area ──────────────────────────────────────────────────────────── */
 #home-chat-input-area {
   border-top: 1px solid var(--border);
-  background: color-mix(in srgb, var(--card) 96%, transparent);
+  background: color-mix(in srgb, var(--card) var(--home-chat-glass), transparent);
   backdrop-filter: blur(8px);
   flex-shrink: 0;
 }
@@ -830,6 +879,18 @@
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  #home-page.quick-access-collapsed .home-tiles-section {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  #home-page.quick-access-collapsed .home-tiles-section .home-section-title {
+    margin-bottom: 0;
+    font-size: 8px;
+  }
+  #home-page.quick-access-collapsed .home-chat-section {
+    min-height: 300px;
+    max-height: calc(100vh - 220px);
+  }
   .home-chat-section {
     min-height: 260px;
     max-height: calc(100vh - 280px);

@@ -20,6 +20,27 @@ def get_ghost_circle_entries(limit=50, severity_filter=None):
     return rows
 
 
+def log_ghost_circle(entry_type, source, content, ticket_ref='', severity='info'):
+    """Append a Ghost Circle entry without letting audit failures break callers."""
+    try:
+        conn = get_connection()
+        conn.execute(
+            """INSERT INTO ghost_circle (entry_type, source, content, ticket_ref, severity)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                str(entry_type or 'note')[:80],
+                str(source or 'ghost')[:120],
+                str(content or '')[:12000],
+                str(ticket_ref or '')[:120],
+                str(severity or 'info')[:20],
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f'[GhostCircle] log_ghost_circle failed: {e}')
+
+
 def log_activity(service, event, detail='', severity='info'):
     """
     Write a line to the activity_log. Called from listener, telegram, scheduler, skills.

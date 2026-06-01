@@ -391,7 +391,13 @@ def _get_agent_residency():
             bucket.sort(key=lambda item: item.get('label') or item.get('agent') or '')
         return residency
     except Exception as exc:
-        logger.warning(f'[Diamond] residency: {exc}')
+        # Ollama unreachable is the common case when the daemon is stopped;
+        # don't spam WARNING for it, just trace at debug level.
+        msg = str(exc)
+        if 'Connection refused' in msg or 'Errno 111' in msg or 'Max retries' in msg or 'NewConnectionError' in msg:
+            logger.debug('[Diamond] residency: ollama unreachable (%s)', msg)
+        else:
+            logger.warning(f'[Diamond] residency: {exc}')
         return {'ram': [], 'swap': [], 'gpu': []}
 
 

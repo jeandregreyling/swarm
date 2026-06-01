@@ -8,6 +8,7 @@ the result.
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -16,9 +17,28 @@ from typing import Any, Iterable
 import requests
 
 
-OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+def _resolve_ollama_host() -> str:
+    env = os.environ.get('OLLAMA_HOST', '').strip()
+    if env:
+        return env if env.startswith('http') else f'http://{env}'
+
+    try:
+        release = open('/proc/sys/kernel/osrelease', 'r', encoding='utf-8').read().lower()
+        if 'microsoft' in release or 'wsl' in release:
+            resolv = open('/etc/resolv.conf', 'r', encoding='utf-8').read()
+            match = re.search(r'^nameserver\s+([\d.]+)', resolv, re.MULTILINE)
+            if match:
+                return f'http://{match.group(1)}:11434'
+    except OSError:
+        pass
+
+    return 'http://127.0.0.1:11434'
+
+
+OLLAMA_BASE_URL = _resolve_ollama_host()
 DEFAULT_IDLE_TIMEOUT_S = 900
 DEFAULT_ABSOLUTE_TIMEOUT_S = 2000
+_LAST_OLLAMA_STATUS: str | None = None
 
 
 @dataclass
@@ -138,12 +158,15 @@ def ollama_health(base_url: str = OLLAMA_BASE_URL, *, ps_payload: dict[str, Any]
             resp.raise_for_status()
             ps_payload = resp.json()
         except Exception as exc:
-            return {
+            snap = {
                 "ok": False,
                 "status": "down",
                 "models": [],
                 "warnings": [f"ollama unreachable: {exc}"],
+                "error_code": "RUNTIME_OFFLINE",
             }
+            _emit_ollama_runtime_state(snap)
+            return snap
 
     models = []
     warnings = []
@@ -168,12 +191,54 @@ def ollama_health(base_url: str = OLLAMA_BASE_URL, *, ps_payload: dict[str, Any]
     status = "healthy"
     if any(model["state"] == "stopping" for model in models):
         status = "degraded"
-    return {
+    snap = {
         "ok": True,
         "status": status,
         "models": models,
         "warnings": warnings,
+        "error_code": "" if status != "down" else "RUNTIME_OFFLINE",
     }
+    _emit_ollama_runtime_state(snap)
+    return snap
+
+
+def _emit_ollama_runtime_state(snap: dict[str, Any]) -> None:
+    global _LAST_OLLAMA_STATUS
+    status = str(snap.get("status") or "")
+    if not status or status == _LAST_OLLAMA_STATUS:
+        return
+    _LAST_OLLAMA_STATUS = status
+    payload = {
+        "kind": "ollama_runtime",
+        "status": status,
+        "ok": bool(snap.get("ok")),
+        "error_code": str(snap.get("error_code") or ""),
+        "warnings": list(snap.get("warnings") or []),
+        "models": [
+            {
+                "name": entry.get("name"),
+                "state": entry.get("state"),
+            }
+            for entry in (snap.get("models") or [])
+        ],
+    }
+    try:
+        from utils.swarm_bus import publish as bus_publish
+        bus_publish("runtime.ollama", payload, source_service="model_runtime_gateway")
+    except Exception:
+        pass
+    try:
+        from core import spine
+        severity = spine.Severity.WARN if status in {"down", "degraded"} else spine.Severity.INFO
+        spine.log(
+            spine.EventKind.SYSTEM,
+            f"ollama runtime {status}",
+            severity=severity,
+            source="model_runtime_gateway",
+            payload=payload,
+        )
+    except Exception:
+        pass
 
 
 def force_unload(
@@ -349,6 +414,46 @@ def chat(
     started = _now()
     events: list[RuntimeEvent] = []
 
+    def _fallback_generate() -> RuntimeResult:
+        """Fallback path for runtimes where /api/chat fails but /api/generate still works."""
+        system_prompt = ""
+        user_turns: list[str] = []
+        for msg in messages or []:
+            role = str((msg or {}).get("role") or "").strip().lower()
+            content = str((msg or {}).get("content") or "").strip()
+            if not content:
+                continue
+            if role == "system" and not system_prompt:
+                system_prompt = content
+            elif role == "user":
+                user_turns.append(content)
+
+        prompt = user_turns[-1] if user_turns else str((messages or [{}])[-1].get("content") or "")
+        payload = {
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+            "keep_alive": keep_alive,
+            "options": options or {},
+        }
+        if system_prompt:
+            payload["system"] = system_prompt
+
+        resp = requests.post(
+            f"{base_url}/api/generate",
+            json=payload,
+            timeout=(10, max(1, int(idle_timeout_s))),
+        )
+        resp.raise_for_status()
+        data = resp.json() or {}
+        answer = str(data.get("response") or "")
+        tok = int(data.get("eval_count") or 0)
+        _record(RuntimeEvent("fallback_generate", _now(), "chat->generate fallback", tokens=tok))
+        if answer:
+            _record(RuntimeEvent("completed", _now(), tokens=tok or len(answer.split())))
+            return RuntimeResult(True, model, answer, tok, _now() - started, events=events)
+        raise RuntimeError("generate fallback returned empty response")
+
     def _record(event: RuntimeEvent) -> None:
         events.append(event)
         if on_event is not None:
@@ -374,13 +479,33 @@ def chat(
                 on_event(events[-1].as_dict())
             except Exception:
                 pass
+        # Bound read timeout so a wedged /api/chat call quickly falls back to /api/generate.
+        chat_read_timeout_s = max(20, min(int(idle_timeout_s), 45))
         with requests.post(
             f"{base_url}/api/chat",
             json=payload,
             stream=True,
-            timeout=(10, max(1, int(idle_timeout_s))),
+            timeout=(10, chat_read_timeout_s),
         ) as resp:
-            resp.raise_for_status()
+            try:
+                resp.raise_for_status()
+            except requests.HTTPError as exc:
+                detail = ''
+                try:
+                    payload = resp.json() or {}
+                    detail = str(payload.get('error') or payload.get('message') or '').strip()
+                except Exception:
+                    detail = (resp.text or '').strip()[:300]
+                lowered = detail.lower()
+                if 'memory layout cannot be allocated' in lowered:
+                    _record(RuntimeEvent('fallback', _now(), 'chat endpoint allocation failed; trying generate'))
+                    try:
+                        return _fallback_generate()
+                    except Exception as fallback_exc:
+                        raise requests.HTTPError(f'{exc} — {detail}; generate fallback failed: {fallback_exc}') from exc
+                if detail:
+                    raise requests.HTTPError(f'{exc} — {detail}') from exc
+                raise
             last_token_at = _now()
             for line in resp.iter_lines(decode_unicode=True):
                 elapsed = _now() - started
@@ -410,6 +535,13 @@ def chat(
                     _record(RuntimeEvent("completed", _now(), tokens=tokens))
                     break
         return RuntimeResult(True, model, "".join(content_parts), tokens, _now() - started, events=events)
+    except requests.ReadTimeout as exc:
+        _record(RuntimeEvent("fallback", _now(), f"chat read-timeout ({exc}); trying generate"))
+        try:
+            return _fallback_generate()
+        except Exception as fallback_exc:
+            _record(RuntimeEvent("failed", _now(), f"chat timeout + generate fallback failed: {fallback_exc}", tokens=tokens))
+            return RuntimeResult(False, model, "".join(content_parts), tokens, _now() - started, error=str(fallback_exc), events=events)
     except Exception as exc:
         _record(RuntimeEvent("failed", _now(), str(exc), tokens=tokens))
         return RuntimeResult(False, model, "".join(content_parts), tokens, _now() - started, error=str(exc), events=events)

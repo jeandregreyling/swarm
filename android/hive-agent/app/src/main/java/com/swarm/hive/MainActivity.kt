@@ -3,6 +3,7 @@ package com.swarm.hive
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.PorterDuff
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -80,8 +81,9 @@ class MainActivity : AppCompatActivity() {
         statusView  = findViewById(R.id.status)
         statusDot   = findViewById(R.id.status_dot)
 
-        leaderField.setText(prefs.leader)
-        nodeIdField.setText(prefs.nodeId.ifBlank { prefs.suggestNodeId() })
+        val join = parseJoinIntent(intent?.data)
+        leaderField.setText(join?.leader ?: prefs.leader)
+        nodeIdField.setText(join?.nodeId ?: prefs.nodeId.ifBlank { prefs.suggestNodeId() })
         refreshStatus()
 
         findViewById<Button>(R.id.btn_connect).setOnClickListener { onConnectClicked() }
@@ -111,8 +113,10 @@ class MainActivity : AppCompatActivity() {
 
         // Dedicated potato-slate mode: the Samsung should join the farm
         // without manual typing after a reinstall or clean-up.
-        if (prefs.leader.isBlank() || prefs.token.isBlank()) {
-            val leader = DEFAULT_LEADER
+        if (join != null) {
+            connect(join.leader, join.nodeId)
+        } else if (prefs.leader.isBlank() || prefs.token.isBlank()) {
+            val leader = normalizeLeaderUrl(DEFAULT_LEADER)
             val nodeId = if (Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
                 SAMSUNG_POTATO_NODE_ID
             } else {
@@ -124,6 +128,26 @@ class MainActivity : AppCompatActivity() {
         } else {
             AgentLauncher.start(this)
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent?) {
+        super.onNewIntent(intent)
+        val join = parseJoinIntent(intent?.data) ?: return
+        leaderField.setText(join.leader)
+        nodeIdField.setText(join.nodeId ?: nodeIdField.text.toString())
+        connect(join.leader, join.nodeId ?: nodeIdField.text.toString())
+    }
+
+    private data class JoinRequest(val leader: String, val nodeId: String?)
+
+    private fun parseJoinIntent(uri: Uri?): JoinRequest? {
+        if (uri == null || uri.scheme != "swarmhive" || uri.host != "join") return null
+        val leader = normalizeLeaderUrl(uri.getQueryParameter("leader").orEmpty())
+        if (leader.isBlank()) return null
+        val nodeId = uri.getQueryParameter("node_id")
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+        return JoinRequest(leader, nodeId)
     }
 
     private fun hideKeyboard() {

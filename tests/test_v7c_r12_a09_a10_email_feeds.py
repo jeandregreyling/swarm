@@ -15,8 +15,8 @@ Locks:
 from pathlib import Path
 
 ROOT  = Path(__file__).resolve().parents[1]
-EMAIL = (ROOT / 'frontend' / 'static' / 'js' / 'views' / 'email.js').read_text()
-FEEDS = (ROOT / 'frontend' / 'templates' / 'views' / 'feeds.html').read_text()
+EMAIL = (ROOT / 'frontend' / 'static' / 'js' / 'views' / 'email.js').read_text(encoding='utf-8')
+FEEDS = (ROOT / 'frontend' / 'templates' / 'views' / 'feeds.html').read_text(encoding='utf-8')
 
 
 def test_r12_r1_email_folders_sidebar():

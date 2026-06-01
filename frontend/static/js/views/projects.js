@@ -32,6 +32,35 @@
     return _projects.filter(p => p.status !== 'archived');
   }
 
+  function _isQuintumKind(kind) {
+    return kind === 'quintum-chunk' || kind === 'quintum-synthesis';
+  }
+
+  function _blackboardKindStyle(kind) {
+    if (kind === 'quintum-synthesis') {
+      return {
+        fg: '#1f2937',
+        bg: 'linear-gradient(135deg,#f7b84b,#f3d37a)',
+        border: 'rgba(243, 211, 122, 0.45)',
+        label: 'synthesis'
+      };
+    }
+    if (kind === 'quintum-chunk') {
+      return {
+        fg: '#8ecae6',
+        bg: 'rgba(142, 202, 230, 0.12)',
+        border: 'rgba(142, 202, 230, 0.28)',
+        label: 'chunk'
+      };
+    }
+    return {
+      fg: 'var(--accent)',
+      bg: 'transparent',
+      border: 'transparent',
+      label: kind || 'note'
+    };
+  }
+
   window.projectsSetStatusFilter = function (v) {
     if (v !== 'active' && v !== 'all' && v !== 'archived') v = 'active';
     _statusFilter = v;
@@ -296,11 +325,15 @@
             <button onclick="projectsAddBlackboardNote('${_esc(p.project_id)}')" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Note</button>
           </div>
         </div>
-        ${blackboard.length ? blackboard.map(note => `
-          <div style="display:grid;grid-template-columns:86px 76px 1fr 112px;gap:6px;padding:6px;border-top:1px solid var(--border);align-items:start;font-size:10px;">
-            <span style="font-size:8px;color:var(--accent);font-weight:800;text-transform:uppercase;letter-spacing:0.4px;">${_esc(note.kind || 'note')}</span>
+        ${blackboard.length ? blackboard.map(note => {
+          const kind = String(note.kind || 'note');
+          const badge = _blackboardKindStyle(kind);
+          const isQuintum = _isQuintumKind(kind);
+          return `
+          <div style="display:grid;grid-template-columns:86px 76px 1fr 112px;gap:6px;padding:6px;border-top:1px solid var(--border);align-items:start;font-size:10px;${isQuintum ? `background:${badge.bg};` : ''}">
+            <span style="font-size:8px;color:${badge.fg};font-weight:800;text-transform:uppercase;letter-spacing:0.4px;${isQuintum ? `display:inline-flex;align-items:center;justify-content:center;padding:2px 6px;border-radius:999px;border:1px solid ${badge.border};background:${badge.bg};` : ''}">${_esc(badge.label)}</span>
             <span style="color:var(--text-dim);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_esc(note.author || 'agent')}">${_esc(note.author || 'agent')}</span>
-            <span style="color:var(--text);white-space:pre-wrap;line-height:1.35;">${_esc(note.content || '')}</span>
+            <span style="color:var(--text);white-space:pre-wrap;line-height:1.35;${isQuintum ? 'max-height:72px;overflow:auto;' : ''}">${_esc(note.content || '')}</span>
             <span style="display:flex;gap:3px;justify-content:flex-end;">
               <button onclick="projectsSetBlackboardStatus('${_esc(note.note_id)}','resolved')" title="Mark resolved"
                 style="background:none;border:1px solid var(--border);color:#4caf50;border-radius:3px;padding:2px 6px;font-size:9px;cursor:pointer;">Resolve</button>
@@ -308,7 +341,7 @@
                 style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:2px 6px;font-size:9px;cursor:pointer;">Archive</button>
             </span>
           </div>
-        `).join('') : '<div style="padding:6px;color:var(--text-dim);font-size:10px;border-top:1px solid var(--border);">No blackboard notes yet. Add the first handoff note so the next agent starts warm instead of cold.</div>'}
+        `; }).join('') : '<div style="padding:6px;color:var(--text-dim);font-size:10px;border-top:1px solid var(--border);">No blackboard notes yet. Add the first handoff note so the next agent starts warm instead of cold.</div>'}
       </div>
 
       <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:var(--card);">
