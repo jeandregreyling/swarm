@@ -70,6 +70,14 @@ if exist "%REQ%" (
     "%VENV%\Scripts\python.exe" -m pip install flask requests pillow ollama anthropic openai psutil pywebview pystray
 )
 
+echo [..] Verifying core app imports
+"%VENV%\Scripts\python.exe" -c "import flask, requests, psutil"
+if errorlevel 1 (
+    echo [ERROR] Core Python dependencies failed to import after install.
+    if /i not "%FRIDAYS_NO_PAUSE%"=="1" pause
+    exit /b 1
+)
+
 :: ── Step 4 — Ollama ────────────────────────────────────────────────────────
 where ollama >nul 2>nul
 if errorlevel 1 (

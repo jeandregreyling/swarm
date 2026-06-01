@@ -31,6 +31,7 @@ if not exist "%PY%" (
     echo [..] Python venv missing at %VENV%
     echo [..] Running one-time install automatically
     set "FRIDAYS_NO_PAUSE=1"
+    set "FRIDAYS_SKIP_OLLAMA_PULL=1"
     set "FRIDAYS_VENV_PATH=%VENV%"
     call "%ROOT%\windows\install-fridays.bat"
     if errorlevel 1 (
@@ -40,6 +41,27 @@ if not exist "%PY%" (
     )
     if not exist "%PY%" (
         echo [ERROR] Python venv still missing after install.
+        if /i not "%FRIDAYS_NO_PAUSE%"=="1" pause
+        exit /b 1
+    )
+)
+
+"%PY%" -c "import flask, requests, psutil" >nul 2>nul
+if errorlevel 1 (
+    echo [..] Windows venv exists but core app deps are missing
+    echo [..] Repairing venv via windows\install-fridays.bat
+    set "FRIDAYS_NO_PAUSE=1"
+    set "FRIDAYS_SKIP_OLLAMA_PULL=1"
+    set "FRIDAYS_VENV_PATH=%VENV%"
+    call "%ROOT%\windows\install-fridays.bat"
+    if errorlevel 1 (
+        echo [ERROR] Windows dependency repair failed.
+        if /i not "%FRIDAYS_NO_PAUSE%"=="1" pause
+        exit /b 1
+    )
+    "%PY%" -c "import flask, requests, psutil" >nul 2>nul
+    if errorlevel 1 (
+        echo [ERROR] Windows venv still missing core app deps after repair.
         if /i not "%FRIDAYS_NO_PAUSE%"=="1" pause
         exit /b 1
     )

@@ -12,6 +12,9 @@ def test_windows_launcher_reuses_existing_runtime_before_splash():
     start = START_BAT.read_text(encoding='utf-8')
     terminal = TERMINAL.read_text(encoding='utf-8')
 
+    assert "_REQUIRED_RUNTIME_MODULES = ('flask', 'requests', 'psutil')" in src
+    assert 'def _missing_runtime_modules():' in src
+    assert "Runtime dependencies missing" in src
     assert 'def _is_healthy(timeout=2):' in src
     assert "payload.get('runtime_id')" in src
     assert "os.environ.get('FRIDAYS_RUNTIME_ID')" in src
@@ -19,5 +22,7 @@ def test_windows_launcher_reuses_existing_runtime_before_splash():
     assert "print(f'[Fridays] Reusing existing runtime on {_URL}')" in src
     assert "os.environ.setdefault('FRIDAYS_RUNTIME_ID', _runtime_default)" in src
     assert "set \"FRIDAYS_RUNTIME_ID=source:%ROOT%\"" in start
+    assert "\"%PY%\" -c \"import flask, requests, psutil\"" in start
+    assert "FRIDAYS_SKIP_OLLAMA_PULL=1" in start
     assert "runtime_id" in terminal
     assert src.index('if _is_healthy():') < src.index('splash = _show_splash()')
