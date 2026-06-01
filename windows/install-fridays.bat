@@ -14,11 +14,13 @@
 :: ─────────────────────────────────────────────────────────────────────────────
 
 setlocal EnableDelayedExpansion
+set "FRIDAYS_NO_PAUSE=%FRIDAYS_NO_PAUSE%"
+set "FRIDAYS_SKIP_OLLAMA_PULL=%FRIDAYS_SKIP_OLLAMA_PULL%"
+set "FRIDAYS_VENV_PATH=%FRIDAYS_VENV_PATH%"
 
 :: Resolve the project root (parent of this script's folder)
-pushd "%~dp0.."
-set "ROOT=%CD%"
-popd
+set "ROOT=%~dp0.."
+for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "Write-Output ((Get-Item '%~dp0..').FullName)"`) do set "ROOT=%%I"
 
 echo.
 echo ============================================================
@@ -39,7 +41,11 @@ for /f "tokens=2 delims= " %%v in ('python --version') do set "PYVER=%%v"
 echo [OK] Python detected: %PYVER%
 
 :: ── Step 2 — venv ──────────────────────────────────────────────────────────
-set "VENV=%ROOT%\.venv-win"
+if defined FRIDAYS_VENV_PATH (
+    set "VENV=%FRIDAYS_VENV_PATH%"
+) else (
+    set "VENV=%ROOT%\.venv-win"
+)
 if exist "%VENV%\Scripts\python.exe" (
     echo [OK] Existing venv found at %VENV%
 ) else (
@@ -75,6 +81,11 @@ if errorlevel 1 (
 )
 echo [OK] Ollama detected.
 
+if /i "%FRIDAYS_SKIP_OLLAMA_PULL%"=="1" (
+    echo [..] Skipping Ollama model pulls because FRIDAYS_SKIP_OLLAMA_PULL=1
+    goto :done
+)
+
 echo.
 echo ============================================================
 echo   Pulling hot-path models (this can take a while)
@@ -91,5 +102,5 @@ echo   Install complete.
 echo   Launch Fridays with:  windows\start-fridays.bat
 echo ============================================================
 echo.
-pause
+if /i not "%FRIDAYS_NO_PAUSE%"=="1" pause
 endlocal
