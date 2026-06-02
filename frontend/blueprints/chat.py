@@ -1188,7 +1188,7 @@ def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, r
     knowledge_block = _build_knowledge_broadcast_block(selected_agent)
     handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
     project_block = _build_project_context_block(f'{latest_message}\n{threaded_prompt[-4000:]}')
-    base_prompt = handoff_block + threaded_prompt + project_block + memory_block + knowledge_block
+    base_prompt = handoff_block + project_block + memory_block + knowledge_block + threaded_prompt
     if selected_agent in {'duck', 'sniffles'}:
         return (
             '=== Audit mode ===\n'

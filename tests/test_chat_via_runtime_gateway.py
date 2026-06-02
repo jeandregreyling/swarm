@@ -213,3 +213,9 @@ def test_chat_handoff_contract_precedes_user_prompt():
     assert "handoff_contract = _chat_handoff_contract(selected_agent, local_timeout)" in src
     assert "effective_prompt = handoff_contract + '\\n\\n' + effective_prompt" in src
     assert "effective_prompt += _chat_handoff_contract" not in src
+
+
+def test_local_agent_prompt_keeps_threaded_prompt_last():
+    src = Path("frontend/blueprints/chat.py").read_text(encoding="utf-8")
+    assert "base_prompt = handoff_block + project_block + memory_block + knowledge_block + threaded_prompt" in src
+    assert "base_prompt = handoff_block + threaded_prompt + project_block" not in src
