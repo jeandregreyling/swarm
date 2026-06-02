@@ -402,6 +402,7 @@ def chat(
     options: dict[str, Any] | None = None,
     on_token: Any = None,
     on_event: Any = None,
+    prefer_generate: bool = False,
 ) -> RuntimeResult:
     """Run an Ollama chat with structured events and idle/absolute clocks.
 
@@ -465,6 +466,14 @@ def chat(
                 pass
 
     _record(RuntimeEvent("queued", started))
+    if prefer_generate:
+        _record(RuntimeEvent("fallback", _now(), "generate preferred"))
+        try:
+            return _fallback_generate()
+        except Exception as exc:
+            _record(RuntimeEvent("failed", _now(), f"generate preferred failed: {exc}"))
+            return RuntimeResult(False, model, "", 0, _now() - started, error=str(exc), events=events)
+
     content_parts: list[str] = []
     tokens = 0
     try:

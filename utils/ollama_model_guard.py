@@ -5,13 +5,9 @@ import os
 from pathlib import Path
 from typing import Any, Iterable
 
+from utils.local_runtime_policy import configured_ollama_models, normalize_model_name
 
 DEFAULT_EXPECTED_MODEL_STORE = "/mnt/llm/.ollama/models"
-_NON_OLLAMA_MODELS = {"", "external", "local-algorithm"}
-
-
-def normalize_model_name(value: Any) -> str:
-    return str(value or "").strip().lower()
 
 
 def expected_model_store() -> str:
@@ -33,18 +29,6 @@ def manifest_models(model_store: str | os.PathLike[str] | None = None) -> set[st
         if len(rel) < 2:
             continue
         models.add(normalize_model_name(f"{rel[-2]}:{rel[-1]}"))
-    return models
-
-
-def configured_ollama_models(agents: Iterable[dict[str, Any]]) -> set[str]:
-    models: set[str] = set()
-    for agent in agents or []:
-        tier = str((agent or {}).get("tier") or "local").strip().lower()
-        if tier != "local":
-            continue
-        model = normalize_model_name((agent or {}).get("model"))
-        if model not in _NON_OLLAMA_MODELS:
-            models.add(model)
     return models
 
 

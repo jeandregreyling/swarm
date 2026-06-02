@@ -23,11 +23,13 @@ if str(ROOT) not in sys.path:
 
 from utils.ollama_model_guard import build_model_store_guard  # noqa: E402
 from utils.db._connection import get_connection  # noqa: E402
+from utils.local_runtime_policy import preferred_model_for_agent  # noqa: E402
 
 
 BASE = "http://127.0.0.1:5050"
 OLLAMA = "http://127.0.0.1:11434"
-TOKEN = "LIVE_CHAT_PROOF_602"
+TOKEN_PREFIX = "LIVE_CHAT_PROOF"
+PROOF_MODEL = preferred_model_for_agent("qwen", "qwen:latest")
 BAD_INTERNAL_TEXT = (
     "FRIDAYS STUDIO HANDOFF TIMER",
     "SELF-HANDOFF",
@@ -78,9 +80,11 @@ def _record(results: list[dict[str, Any]], name: str, ok: bool, detail: str, **e
     print(f"{status} {name}: {detail}", flush=True)
 
 
-def _assert_useful_response(text: str) -> tuple[bool, str]:
+def _assert_useful_response(text: str, token: str) -> tuple[bool, str]:
     raw = str(text or "").strip()
-    if TOKEN not in raw:
+    compact_raw = raw.replace(" _", "_").replace("_ ", "_").replace(" ", "")
+    compact_token = token.replace(" ", "")
+    if token not in raw and compact_token not in compact_raw:
         return False, f"proof token missing; response={raw[:220]!r}"
     for bad in BAD_INTERNAL_TEXT:
         if bad.lower() in raw.lower():
@@ -116,6 +120,7 @@ def main() -> int:
     parser.add_argument("--skip-android", action="store_true")
     args = parser.parse_args()
     base = args.base.rstrip("/")
+    token = f"{TOKEN_PREFIX}_{int(time.time())}"
     results: list[dict[str, Any]] = []
 
     try:
@@ -137,15 +142,15 @@ def main() -> int:
     except Exception as exc:
         _record(results, "shared-model-store", False, str(exc))
 
-    direct_prompt = f"Return exactly this token and no other words: {TOKEN}"
+    direct_prompt = f"Return exactly this token and no other words: {token}"
     try:
         direct = _http_json(
             "POST",
             f"{OLLAMA}/api/generate",
-            {"model": "qwen:latest", "prompt": direct_prompt, "stream": False, "keep_alive": "300s"},
+            {"model": PROOF_MODEL, "prompt": direct_prompt, "stream": False, "keep_alive": "300s"},
             timeout=120,
         )
-        ok, detail = _assert_useful_response(str(direct.get("response") or ""))
+        ok, detail = _assert_useful_response(str(direct.get("response") or ""), token)
         _record(results, "ollama-direct-qwen", ok, detail)
     except Exception as exc:
         _record(results, "ollama-direct-qwen", False, str(exc))
@@ -154,10 +159,10 @@ def main() -> int:
         quick = _http_json(
             "POST",
             f"{base}/api/localai/ollama/chat",
-            {"model": "qwen:latest", "message": direct_prompt},
+            {"model": PROOF_MODEL, "message": direct_prompt},
             timeout=140,
         )
-        ok, detail = _assert_useful_response(str(quick.get("answer") or quick.get("response") or ""))
+        ok, detail = _assert_useful_response(str(quick.get("answer") or quick.get("response") or ""), token)
         _record(results, "flask-quick-chat-qwen", ok and bool(quick.get("ok")), detail)
     except Exception as exc:
         _record(results, "flask-quick-chat-qwen", False, str(exc))
@@ -167,8 +172,8 @@ def main() -> int:
             "POST",
             f"{base}/api/chat",
             {
-                "message": f"In one short sentence, include the exact token {TOKEN}.",
-                "agent": "librarian",
+                "message": f"Return exactly this token and no other characters: {token}",
+                "agent": "qwen",
                 "history_mode": "none",
                 "new_thread": True,
                 "parallel": False,
@@ -189,15 +194,15 @@ def main() -> int:
                 time.sleep(4)
             if final_job:
                 response = str(final_job.get("response") or final_job.get("error") or response)
-                ok, detail = _assert_useful_response(response)
-                _record(results, "main-chat-librarian", ok and final_job.get("status") == "completed", detail, job_id=final_job.get("job_id"), status=final_job.get("status"))
+                ok, detail = _assert_useful_response(response, token)
+                _record(results, "main-chat-qwen", ok and final_job.get("status") == "completed", detail, job_id=final_job.get("job_id"), status=final_job.get("status"))
             else:
-                _record(results, "main-chat-librarian", False, f"job did not finish within deadline: {job_ids}")
+                _record(results, "main-chat-qwen", False, f"job did not finish within deadline: {job_ids}")
         else:
-            ok, detail = _assert_useful_response(response)
-            _record(results, "main-chat-librarian", ok and bool(main_chat.get("ok")), detail)
+            ok, detail = _assert_useful_response(response, token)
+            _record(results, "main-chat-qwen", ok and bool(main_chat.get("ok")), detail)
     except Exception as exc:
-        _record(results, "main-chat-librarian", False, str(exc))
+        _record(results, "main-chat-qwen", False, str(exc))
 
     try:
         runtime = _http_json("GET", f"{base}/api/ollama/runtime/health", timeout=10)

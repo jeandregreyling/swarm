@@ -286,11 +286,7 @@ def _chat_error_should_disable_agent(text):
         'api key rejected',
         'token rejected',
     )
-    return (
-        any(cue in raw for cue in auth_cues)
-        or 'timed out' in raw
-        or _looks_like_token_exhaustion(raw)
-    )
+    return any(cue in raw for cue in auth_cues) or _looks_like_token_exhaustion(raw)
 
 
 # Ollama-agent helpers live in services.chat_agents and are re-exported through
@@ -1116,8 +1112,14 @@ def _build_local_memory_block(selected_agent, latest_message):
         tags = str(row['tags'] or '').strip()
         subject = str(row['subject'] or '').strip()[:120]
         content = str(row['content'] or '').strip().replace('\n', ' ')[:420]
+        combined = f'{subject} {content}'.lower()
+        if 'live_chat_proof' in combined or 'archived-bad-live-proof' in tags.lower():
+            continue
         prefix = f'[{tags}] ' if tags else ''
         lines.append(f'- {prefix}{subject}: {content}')
+
+    if not lines:
+        return ''
 
     return (
         '\n\n=== Your recent memory ===\n'
@@ -1308,6 +1310,10 @@ def _persist_local_agent_memory(selected_agent, latest_message, response_text):
     if 'taking longer than expected' in lowered:
         return
     if lowered.endswith('no response'):
+        return
+    if 'live_chat_proof' in lowered or 'live_chat_proof' in str(latest_message or '').lower():
+        return
+    if 'your agent name is gemma' in lowered and str(selected_agent or '').strip().lower() != 'gemma':
         return
 
     content = (

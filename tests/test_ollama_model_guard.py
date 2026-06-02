@@ -40,3 +40,18 @@ def test_guard_warns_when_configured_model_is_not_in_shared_store(tmp_path):
     assert guard["ok"] is True
     assert guard["absent_from_expected"] == ["deepseek-r1:7b"]
     assert guard["issues"][0]["kind"] == "configured_model_absent"
+
+
+def test_guard_ignores_disabled_local_agents(tmp_path):
+    _manifest(tmp_path, "Qwen2.5")
+    agents = [
+        {"name": "sniffles", "tier": "local", "model": "deepseek-r1:7b", "enabled": 0},
+        {"name": "qwen", "tier": "local", "model": "qwen2.5:latest", "enabled": 1},
+    ]
+
+    guard = build_model_store_guard(agents, {"qwen2.5:latest"}, model_store=tmp_path)
+
+    assert guard["ok"] is True
+    assert guard["configured_models"] == ["qwen2.5:latest"]
+    assert guard["absent_from_expected"] == []
+    assert guard["issues"] == []

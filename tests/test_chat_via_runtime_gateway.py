@@ -123,6 +123,26 @@ def test_chat_via_gateway_default_timeouts_match_local_chat_policy(monkeypatch):
     assert captured["absolute_timeout_s"] == gw.DEFAULT_ABSOLUTE_TIMEOUT_S
 
 
+def test_chat_via_gateway_can_prefer_generate(monkeypatch):
+    captured = {}
+
+    def fake_gateway_chat(model, messages, **kwargs):
+        captured.update(kwargs)
+        return gw.RuntimeResult(ok=True, model=model, content="ok", tokens=1)
+
+    monkeypatch.setattr(gw, "chat", fake_gateway_chat)
+
+    content, tokens = llm.chat_via_gateway(
+        "qwen:latest",
+        [{"role": "user", "content": "hi"}],
+        prefer_generate=True,
+    )
+
+    assert content == "ok"
+    assert tokens == 1
+    assert captured["prefer_generate"] is True
+
+
 def test_chat_via_gateway_returns_partial_on_failure(monkeypatch):
     def fake_post(url, json=None, stream=None, timeout=None):
         raise RuntimeError("boom")
@@ -219,3 +239,24 @@ def test_local_agent_prompt_keeps_threaded_prompt_last():
     src = Path("frontend/blueprints/chat.py").read_text(encoding="utf-8")
     assert "base_prompt = handoff_block + project_block + memory_block + knowledge_block + threaded_prompt" in src
     assert "base_prompt = handoff_block + threaded_prompt + project_block" not in src
+
+
+def test_live_proof_and_wrong_identity_are_not_persisted():
+    src = Path("frontend/blueprints/chat.py").read_text(encoding="utf-8")
+    assert "'live_chat_proof' in lowered" in src
+    assert "'your agent name is gemma' in lowered" in src
+    assert "'live_chat_proof' in combined" in src
+
+
+def test_qwen_uses_fast_generate_first_model():
+    src = Path("agents/qwen/qwen_agent.py").read_text(encoding="utf-8")
+    assert "preferred_model_for_agent(AGENT_NAME, 'qwen:latest')" in src
+    assert "QWEN_CHAT_SYSTEM_PROMPT" in src
+    assert "prefer_generate=True" in src
+    assert "def _compact_chat_prompt" in src
+    assert "=== New user message ===" in src
+
+
+def test_timeout_does_not_disable_local_agent():
+    src = Path("frontend/blueprints/chat.py").read_text(encoding="utf-8")
+    assert "or 'timed out' in raw" not in src

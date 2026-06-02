@@ -32,6 +32,11 @@ import time
 import logging
 
 logger = logging.getLogger('seven.resource_gate')
+try:
+    from utils.local_runtime_policy import preferred_model_for_agent
+except Exception:
+    def preferred_model_for_agent(_agent, current_model=''):
+        return current_model
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -39,7 +44,7 @@ logger = logging.getLogger('seven.resource_gate')
 _AGENT_MODEL_MAP = {
     'gemma':          'gemma3:latest',
     'llama':          'llama3.2:latest',
-    'qwen':           'qwen2.5:latest',
+    'qwen':           preferred_model_for_agent('qwen', 'qwen:latest'),
     'mistral':        'mistral:latest',
     'eight':          'gemma4:26b',
     'phi3':           'phi3:mini',

@@ -1,6 +1,6 @@
 """
 agents/qwen/qwen_agent.py — Qwen (local Ollama)
-Deep reasoning analyst. Powered by qwen2.5:latest via Ollama.
+Deep reasoning analyst. Powered by qwen:latest via Ollama.
 """
 import logging, sys
 import os
@@ -12,7 +12,23 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 
 logger = logging.getLogger('seven.qwen')
 AGENT_NAME = 'qwen'
-MODEL      = 'qwen2.5:latest'
+from utils.local_runtime_policy import QWEN_CHAT_SYSTEM_PROMPT, preferred_model_for_agent
+
+MODEL = preferred_model_for_agent(AGENT_NAME, 'qwen:latest')
+
+
+def _compact_chat_prompt(message):
+    raw = str(message or '').strip()
+    if not raw:
+        return ''
+    marker = '=== New user message ==='
+    if marker in raw:
+        latest = raw.rsplit(marker, 1)[-1].strip()
+        if latest:
+            return latest[-3000:]
+    if len(raw) > 5000:
+        return raw[-3000:]
+    return raw
 
 
 def _build_context(message):
@@ -45,16 +61,15 @@ def chat(message, conversation_history=None, stage_cb=None):
 
     from core import llm as _llm
 
-    from config import QWEN_SYSTEM_PROMPT
-
     _emit('loading context')
-    context = _build_context(message)
-    system  = QWEN_SYSTEM_PROMPT + f'\n\n{context}' if context else QWEN_SYSTEM_PROMPT
+    compact_message = _compact_chat_prompt(message)
+    context = _build_context(compact_message)
+    system  = QWEN_CHAT_SYSTEM_PROMPT + f'\n\n{context}' if context else QWEN_CHAT_SYSTEM_PROMPT
 
     messages = [{'role': 'system', 'content': system}]
     if conversation_history:
         messages.extend(conversation_history[-8:])
-    messages.append({'role': 'user', 'content': message})
+    messages.append({'role': 'user', 'content': compact_message})
 
     def _api_call(msgs):
         buf = []
@@ -62,7 +77,14 @@ def chat(message, conversation_history=None, stage_cb=None):
             buf.append(piece)
             if len(buf) % 15 == 0:
                 _emit(f'generating · {("".join(buf))[-300:]}')
-        return _llm.chat_via_gateway(MODEL, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.6)
+        return _llm.chat_via_gateway(
+            MODEL,
+            msgs,
+            stage_cb=stage_cb,
+            on_chunk=_cb,
+            temperature=0.6,
+            prefer_generate=True,
+        )
 
     try:
         from agents.skills_loop import run_skill_loop
@@ -72,7 +94,7 @@ def chat(message, conversation_history=None, stage_cb=None):
     try:
         answer, tokens = run_skill_loop(
             agent_name=AGENT_NAME, call_fn=_api_call,
-            messages=messages, emit_fn=_emit, max_passes=2, nudge_if_no_skills=True,
+            messages=messages, emit_fn=_emit, max_passes=1, nudge_if_no_skills=False,
         )
     except Exception as e:
         return f'[qwen] error: {e}', 0
