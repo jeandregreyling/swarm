@@ -15,6 +15,20 @@
 
     <string name="btn_connect">Join the Swarm</string>
     <string name="btn_stop">Stop sharing</string>
+    <string name="btn_refresh">Refresh</string>
+    <string name="btn_gpu_proof">GPU proof</string>
+
+    <string name="runtime_title">Node runtime</string>
+    <string name="runtime_summary_empty">No telemetry posted yet.</string>
+    <string name="farm_summary_empty">Farm status not checked yet.</string>
+    <string name="chat_title">Leader chat</string>
+    <string name="model_summary_empty">Models not loaded yet.</string>
+    <string name="btn_prev_model">Prev</string>
+    <string name="btn_next_model">Next</string>
+    <string name="btn_models">Models</string>
+    <string name="hint_chat">Ask potato-1 through Ollama…</string>
+    <string name="btn_send_chat">Send to selected model</string>
+    <string name="chat_response_empty">Chat response will appear here.</string>
 
     <string name="footer_hint">Open the Swarm dashboard on your computer.\nThe Leader address is shown in the Monitor view.</string>
 
@@ -27,4 +41,7 @@
     <string name="status_needs_enrol">Configured · tap Join the Swarm</string>
     <string name="status_running">Live · %1$s</string>
     <string name="status_stopped">Stopped</string>
+    <string name="status_refreshing">Checking node state…</string>
+    <string name="status_gpu_submitted">GPU proof queued for this node.</string>
+    <string name="status_chatting">Sending chat…</string>
 </resources>

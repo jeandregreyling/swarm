@@ -128,7 +128,11 @@ class HiveAgentService : LifecycleService() {
         try {
             val payload = buildPayload(nodeId, sampler)
             val posted = postTelemetry(leader, payload)
-            if (posted) claimAndRunOneJob(leader, nodeId, sampler.capabilities())
+            if (posted) {
+                prefs.lastTelemetryTs = System.currentTimeMillis() / 1000L
+                prefs.lastTelemetrySummary = telemetrySummary(payload)
+                claimAndRunOneJob(leader, nodeId, sampler.capabilities())
+            }
             return posted
         } finally {
             if (wl.isHeld) wl.release()
@@ -189,7 +193,7 @@ class HiveAgentService : LifecycleService() {
         if (jobId.isBlank()) return
         Log.i(TAG, "claimed hive job $jobId kind=${job.optString("kind")}")
         val result = runJob(job, caps)
-        postJson(
+        val reported = postJson(
             leader.trimEnd('/') + "/api/hive/jobs/report",
             JSONObject().apply {
                 put("node_id", nodeId)
@@ -197,6 +201,19 @@ class HiveAgentService : LifecycleService() {
                 put("result", result)
             }
         )
+        prefs.lastJobTs = System.currentTimeMillis() / 1000L
+        prefs.lastJobSummary = buildString {
+            append(job.optString("kind", "job"))
+            append(" ")
+            append(if (reported != null) "completed" else "ran; report failed")
+            append(" via ")
+            append(result.optString("runner", "android-hive-apk"))
+            val probe = result.optJSONObject("gpu_probe")
+            val renderer = probe?.optString("renderer", "") ?: ""
+            if (renderer.isNotBlank()) append(" on ").append(renderer)
+            val score = probe?.optInt("capacity_score", -1) ?: -1
+            if (score >= 0) append(" score ").append(score)
+        }
     }
 
     private fun runJob(job: JSONObject, caps: List<String>): JSONObject {
@@ -238,6 +255,22 @@ class HiveAgentService : LifecycleService() {
                 put("kind", kind)
                 put("echo", payload.optString("data", ""))
             }
+        }
+    }
+
+    private fun telemetrySummary(payload: JSONObject): String {
+        val mem = payload.optJSONObject("memory")
+        val power = payload.optJSONObject("power")
+        val caps = payload.optJSONArray("capabilities")
+        return buildString {
+            append("posted ")
+            append(caps?.length() ?: 0)
+            append(" caps")
+            val free = mem?.optLong("ram_free_mb", -1L) ?: -1L
+            val total = mem?.optLong("ram_total_mb", -1L) ?: -1L
+            if (free >= 0 && total > 0) append(" · ").append(free).append("/").append(total).append("MB")
+            val battery = power?.optInt("battery_pct", -1) ?: -1
+            if (battery >= 0) append(" · battery ").append(battery).append("%")
         }
     }
 

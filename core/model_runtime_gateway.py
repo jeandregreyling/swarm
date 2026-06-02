@@ -38,6 +38,7 @@ def _resolve_ollama_host() -> str:
 OLLAMA_BASE_URL = _resolve_ollama_host()
 DEFAULT_IDLE_TIMEOUT_S = 900
 DEFAULT_ABSOLUTE_TIMEOUT_S = 2000
+FALLBACK_GENERATE_TIMEOUT_S = 60
 _LAST_OLLAMA_STATUS: str | None = None
 
 
@@ -439,10 +440,11 @@ def chat(
         if system_prompt:
             payload["system"] = system_prompt
 
+        fallback_timeout_s = max(1, min(int(idle_timeout_s), FALLBACK_GENERATE_TIMEOUT_S))
         resp = requests.post(
             f"{base_url}/api/generate",
             json=payload,
-            timeout=(10, max(1, int(idle_timeout_s))),
+            timeout=(10, fallback_timeout_s),
         )
         resp.raise_for_status()
         data = resp.json() or {}

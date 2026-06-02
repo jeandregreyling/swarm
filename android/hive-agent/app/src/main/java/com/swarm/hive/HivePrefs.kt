@@ -34,6 +34,22 @@ class HivePrefs(ctx: Context) {
         get() = sp.getLong(K_INTERVAL_MS, 30_000L)
         set(v) = sp.edit().putLong(K_INTERVAL_MS, v).apply()
 
+    var lastTelemetryTs: Long
+        get() = sp.getLong(K_LAST_TELEMETRY_TS, 0L)
+        set(v) = sp.edit().putLong(K_LAST_TELEMETRY_TS, v).apply()
+
+    var lastTelemetrySummary: String
+        get() = sp.getString(K_LAST_TELEMETRY_SUMMARY, "") ?: ""
+        set(v) = sp.edit().putString(K_LAST_TELEMETRY_SUMMARY, v).apply()
+
+    var lastJobTs: Long
+        get() = sp.getLong(K_LAST_JOB_TS, 0L)
+        set(v) = sp.edit().putLong(K_LAST_JOB_TS, v).apply()
+
+    var lastJobSummary: String
+        get() = sp.getString(K_LAST_JOB_SUMMARY, "") ?: ""
+        set(v) = sp.edit().putString(K_LAST_JOB_SUMMARY, v).apply()
+
     /** True once the user has at least set a leader URL. */
     val isConfigured: Boolean
         get() = leader.isNotBlank()
@@ -62,5 +78,9 @@ class HivePrefs(ctx: Context) {
         private const val K_NODE_ID = "node_id"
         private const val K_TOKEN = "token"
         private const val K_INTERVAL_MS = "interval_ms"
+        private const val K_LAST_TELEMETRY_TS = "last_telemetry_ts"
+        private const val K_LAST_TELEMETRY_SUMMARY = "last_telemetry_summary"
+        private const val K_LAST_JOB_TS = "last_job_ts"
+        private const val K_LAST_JOB_SUMMARY = "last_job_summary"
     }
 }

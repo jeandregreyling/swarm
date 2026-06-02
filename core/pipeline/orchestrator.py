@@ -329,7 +329,7 @@ def ask_agent(agent_name, prompt, retries=2):
     from core import llm as _llm
     for attempt in range(retries + 1):
         try:
-            answer, ec = _llm.chat(
+            answer, ec = _llm.chat_via_gateway(
                 model,
                 messages,
                 temperature=temp,
@@ -577,7 +577,7 @@ def librarian_relay_review(text, from_agent, timeout_s=18):
     start = time.time()
     try:
         from core import llm as _llm
-        raw, _tokens = _llm.chat(
+        raw, _tokens = _llm.chat_via_gateway(
             model,
             messages,
             temperature=0.05,

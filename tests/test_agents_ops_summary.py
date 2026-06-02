@@ -22,7 +22,6 @@ def test_agents_template_has_operator_tabs():
 
 
 def test_agents_tile_uses_ops_summary_and_keeps_lifecycle_out_of_cards():
-    assert "fetch('/api/agents/ops-summary')" in ACCESS
     assert "function _fetchJsonOrThrow" in ACCESS
     assert "_fetchJsonOrThrow('/api/swarm/globals')" in ACCESS
     assert "_fetchJsonOrThrow('/api/agents/ops-summary')" in ACCESS
@@ -63,3 +62,13 @@ def test_agents_ops_summary_endpoint_degrades_to_json(client):
       assert data["ok"] is True
       assert isinstance(data["agents"], list)
       assert isinstance(data["blockers"], list)
+
+
+def test_ops_model_installed_requires_exact_tag():
+    from frontend.blueprints.agents import _ops_model_installed
+
+    installed = {"qwen2.5:0.5b", "qwen:latest"}
+
+    assert _ops_model_installed("qwen2.5:latest", installed) is False
+    assert _ops_model_installed("qwen2.5:0.5b", installed) is True
+    assert _ops_model_installed("qwen", installed) is True

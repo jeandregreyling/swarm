@@ -193,6 +193,195 @@
                 android:textAllCaps="false" />
         </LinearLayout>
 
+        <!-- ── Node runtime card ─────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_card"
+            android:padding="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/runtime_title"
+                android:textColor="@color/brand_text"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/runtime_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/runtime_summary_empty"
+                android:textColor="@color/brand_text_dim"
+                android:textSize="12sp"
+                android:textIsSelectable="true"
+                android:lineSpacingExtra="2dp" />
+
+            <TextView
+                android:id="@+id/farm_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/farm_summary_empty"
+                android:textColor="@color/brand_text_dim"
+                android:textSize="12sp"
+                android:textIsSelectable="true"
+                android:lineSpacingExtra="2dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_refresh"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="@string/btn_refresh"
+                    android:textAllCaps="false"
+                    android:textColor="@color/brand_text"
+                    app:strokeColor="@color/brand_text_dim"
+                    app:cornerRadius="10dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_gpu_proof"
+                    style="@style/Widget.Material3.Button"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:text="@string/btn_gpu_proof"
+                    android:textAllCaps="false"
+                    android:backgroundTint="@color/brand_amber"
+                    android:textColor="@color/brand_ink"
+                    app:cornerRadius="10dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ── Leader chat proof ─────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_card"
+            android:padding="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/chat_title"
+                android:textColor="@color/brand_text"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/model_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/model_summary_empty"
+                android:textColor="@color/brand_text_dim"
+                android:textSize="12sp"
+                android:textIsSelectable="true"
+                android:lineSpacingExtra="2dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_prev_model"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="52dp"
+                    android:layout_height="48dp"
+                    android:text="@string/btn_prev_model"
+                    android:textAllCaps="false"
+                    android:textColor="@color/brand_text"
+                    app:strokeColor="@color/brand_text_dim"
+                    app:cornerRadius="10dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_next_model"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="52dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/btn_next_model"
+                    android:textAllCaps="false"
+                    android:textColor="@color/brand_text"
+                    app:strokeColor="@color/brand_text_dim"
+                    app:cornerRadius="10dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_models"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:text="@string/btn_models"
+                    android:textAllCaps="false"
+                    android:textColor="@color/brand_text"
+                    app:strokeColor="@color/brand_text_dim"
+                    app:cornerRadius="10dp" />
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/chat_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_field"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="12dp"
+                android:textColor="@color/brand_text"
+                android:textColorHint="@color/brand_text_dim"
+                android:textSize="14sp"
+                android:hint="@string/hint_chat"
+                android:inputType="textCapSentences|textMultiLine"
+                android:minLines="2"
+                android:maxLines="5"
+                android:imeOptions="actionSend"
+                android:importantForAutofill="no" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_send_chat"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/btn_send_chat"
+                android:textAllCaps="false"
+                android:backgroundTint="@color/brand_amber"
+                android:textColor="@color/brand_ink"
+                app:cornerRadius="10dp" />
+
+            <TextView
+                android:id="@+id/chat_response"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_field"
+                android:padding="12dp"
+                android:text="@string/chat_response_empty"
+                android:textColor="@color/brand_text_dim"
+                android:textSize="12sp"
+                android:textIsSelectable="true"
+                android:lineSpacingExtra="2dp" />
+        </LinearLayout>
+
         <!-- ── Footer hint ───────────────────────────────────────────── -->
         <TextView
             android:layout_width="match_parent"

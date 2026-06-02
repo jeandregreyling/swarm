@@ -389,12 +389,13 @@ def _agents_chat_jobs_for_ops(blockers):
     return {'active': active, 'failed_recent': failed_recent, 'recoveries': recoveries}
 
 
-def _ops_model_tokens(model):
+def _ops_model_installed(model, installed_models):
     raw = str(model or '').strip().lower()
     if not raw:
-        return set()
-    base = raw.split(':', 1)[0]
-    return {raw, base}
+        return False
+    if ':' in raw:
+        return raw in installed_models
+    return raw in installed_models or raw in {m.split(':', 1)[0] for m in installed_models}
 
 
 @agents_bp.route('/api/agents/ops-summary')
@@ -419,9 +420,19 @@ def api_agents_ops_summary():
         capability_counts = {}
 
     installed_models = {str(m.get('name') or m).lower() for m in runtimes.get('ollama', {}).get('models', [])}
-    installed_tokens = set()
-    for installed_model in installed_models:
-        installed_tokens.update(_ops_model_tokens(installed_model))
+    model_store = {}
+    try:
+        from utils.ollama_model_guard import build_model_store_guard
+        model_store = build_model_store_guard(agents, installed_models)
+        for issue in model_store.get('issues') or []:
+            blockers.append({
+                'kind': issue.get('kind') or 'model_store',
+                'severity': issue.get('severity') or 'warn',
+                'message': issue.get('message') or 'Ollama model-store issue',
+                'models': issue.get('models') or [],
+            })
+    except Exception as exc:
+        blockers.append({'kind': 'model_store', 'severity': 'warn', 'message': f'Ollama model-store guard unavailable: {exc}'})
     summary = {'ready': 0, 'busy': 0, 'disabled': 0, 'blocked': 0, 'missing_credentials': 0, 'missing_model': 0}
     active_by_agent = {}
     for job in jobs.get('active') or []:
@@ -438,8 +449,7 @@ def api_agents_ops_summary():
         active_jobs = int(status.get('active_jobs') or active_by_agent.get(name, 0) or 0)
         runtime_backend = 'human' if tier == 'human' else ('ollama' if tier == 'local' else ('service' if tier == 'service' else 'api'))
         model = agent.get('model') or ''
-        model_tokens = _ops_model_tokens(model)
-        missing_model = tier == 'local' and model and not bool(model_tokens & installed_tokens)
+        missing_model = tier == 'local' and model and not _ops_model_installed(model, installed_models)
         missing_credentials = tier in ('paid', 'free') and bool(agent.get('api_key_var')) and not bool(agent.get('api_key_set'))
         disabled = (not enabled) or status.get('status') == 'disabled'
         blocked = missing_model or missing_credentials or status.get('status') == 'down'
@@ -495,6 +505,7 @@ def api_agents_ops_summary():
         'summary': summary,
         'agents': ops_agents,
         'runtimes': runtimes,
+        'model_store': model_store,
         'jobs': {**jobs, 'hive': hive_jobs},
         'nodes': nodes,
         'blockers': blockers,

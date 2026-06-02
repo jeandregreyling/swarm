@@ -177,3 +177,32 @@ def test_local_agents_use_gateway_helper(path):
     assert "_llm.chat(MODEL" not in src and "_llm.chat(model_name" not in src, (
         f"{path} still has a direct _llm.chat stream call"
     )
+
+
+def test_utility_orchestrator_uses_gateway_helper(monkeypatch):
+    from core.pipeline import orchestrator
+
+    monkeypatch.setattr(orchestrator, "_get_agents", lambda: {"librarian": "qwen:latest"})
+    monkeypatch.setattr(orchestrator, "_get_system_prompts", lambda: {"librarian": "system"})
+    monkeypatch.setattr(orchestrator, "_get_temps", lambda: {"librarian": 0.2})
+    monkeypatch.setattr(orchestrator, "_select_keep_alive", lambda _agent: 300)
+    monkeypatch.setattr(orchestrator, "log_action", lambda *args, **kwargs: None)
+    monkeypatch.setattr(orchestrator, "log_agent_thinking", lambda *args, **kwargs: None)
+    monkeypatch.setattr(orchestrator, "batch_commit", lambda *args, **kwargs: None)
+
+    called = {}
+
+    def _fake_gateway(model, messages, **kwargs):
+        called["model"] = model
+        called["messages"] = messages
+        called["kwargs"] = kwargs
+        return "utility ok", 7
+
+    monkeypatch.setattr("core.llm.chat_via_gateway", _fake_gateway)
+
+    answer = orchestrator.ask_agent("librarian", "hello", retries=0)
+
+    assert answer == "utility ok"
+    assert called["model"] == "qwen:latest"
+    assert called["messages"][-1]["content"] == "hello"
+    assert called["kwargs"]["temperature"] == 0.2

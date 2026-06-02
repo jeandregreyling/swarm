@@ -73,28 +73,57 @@ def summary() -> dict:
     status = _query_helper('status') if helper_up else None
     if isinstance(status, dict) and status.get('ok'):
         mode = status.get('mode')
+        pwm_readback = status.get('pwm_readback') or []
+        fan_warnings = _fan_warnings(mode, pwm_readback, status)
         helper_state = {
             'mode': mode,
-            'pwm_readback': status.get('pwm_readback') or [],
+            'pwm_readback': pwm_readback,
             'turbo_disabled': status.get('turbo_disabled'),
             'max_perf_pct': status.get('max_perf_pct'),
             'watchdog_alive': status.get('watchdog_alive'),
             'boost_perf_cap': status.get('boost_perf_cap'),
             'boost_exit_temp': status.get('boost_exit_temp'),
             'cpu_peak_c': status.get('cpu_peak_c'),
+            'warnings': fan_warnings,
         }
     else:
         mode_raw = _query_helper('mode') if helper_up else None
         mode = mode_raw.get('mode') if isinstance(mode_raw, dict) else mode_raw
-        helper_state = {'mode': mode}
+        helper_state = {'mode': mode, 'warnings': []}
     return {
         'cpu_c': cpu,
         'temps': temps,
         'helper_installed': helper_up,
         'mode': mode,
         'helper_state': helper_state,
+        'warnings': helper_state.get('warnings', []),
         'targets': {'auto': [56, 60], 'boost': [40, 40]},
     }
+
+
+def _fan_warnings(mode: object, pwm_readback: list, status: dict) -> list:
+    warnings = []
+    if mode == 'boost':
+        pwm_values = [
+            int(item.get('value'))
+            for item in pwm_readback
+            if isinstance(item, dict) and item.get('value') is not None
+        ]
+        if pwm_values and max(pwm_values) < 240:
+            warnings.append({
+                'code': 'pwm_firmware_reverted',
+                'message': (
+                    'Boost requested pwm=255, but firmware readback is below max; '
+                    'cooling is relying on CPU perf cap/turbo control.'
+                ),
+                'pwm_readback': pwm_values,
+            })
+        if status.get('watchdog_alive') is False:
+            warnings.append({
+                'code': 'boost_watchdog_inactive',
+                'message': 'Boost mode is active but the fan helper watchdog is not running.',
+            })
+    return warnings
 
 
 def _query_helper(cmd: str, payload: Optional[dict] = None) -> Optional[dict]:

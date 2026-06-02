@@ -50,6 +50,9 @@ class AndroidSampler(private val ctx: Context) {
         val caps = mutableListOf("inference.cpu", "inference.tflite")
         if (gpuPresent()) {
             caps.add("inference.gpu")
+            caps.add("swarm.gpu.capsule")
+            // Backward-compatible with older leader jobs queued before Hive
+            // became the single Android node app.
             caps.add("seven-app.gpu.capsule")
         }
         if (npuPresent()) caps.add("inference.npu")

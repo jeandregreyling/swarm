@@ -47,3 +47,32 @@ def test_ollama_health_flags_stopping_models():
     assert result["status"] == "degraded"
     assert result["models"][0]["state"] == "stopping"
     assert result["models"][1]["state"] == "loaded"
+
+
+def test_chat_generate_fallback_has_short_timeout(monkeypatch):
+    calls = []
+
+    class _GenerateResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"response": "OK", "eval_count": 1}
+
+    def _post(url, **kwargs):
+        calls.append((url, kwargs))
+        if url.endswith("/api/chat"):
+            raise gateway.requests.ReadTimeout("no tokens")
+        return _GenerateResponse()
+
+    monkeypatch.setattr(gateway.requests, "post", _post)
+
+    result = gateway.chat(
+        "llama3.2:latest",
+        [{"role": "user", "content": "health"}],
+        idle_timeout_s=900,
+    )
+
+    assert result.ok is True
+    assert result.content == "OK"
+    assert calls[1][1]["timeout"] == (10, gateway.FALLBACK_GENERATE_TIMEOUT_S)

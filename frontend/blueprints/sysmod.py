@@ -111,6 +111,8 @@ _HELPERS = [
         "description": "Runs as root, exposes /run/swarm-fanctl.sock so Swarm can read temps and switch the CPU fan between auto and boost without per-call sudo.",
         "unit": "swarm-fanctl.service",
         "source": "ops/swarm-fanctl.service",
+        "binary_source": "ops/swarm-fanctl.py",
+        "binary_target": "/usr/local/bin/swarm-fanctl",
         "capability_key": "fan_controller",
     },
     {
@@ -124,9 +126,22 @@ _HELPERS = [
 ]
 
 
-def _systemctl_state(unit: str) -> dict:
+def _file_sha256(path: str) -> str | None:
+    try:
+        import hashlib
+        h = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except OSError:
+        return None
+
+
+def _systemctl_state(helper: dict) -> dict:
     """Best-effort, no-sudo lookup of unit installation + activity."""
     repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    unit = helper["unit"]
     installed_path = os.path.join("/etc/systemd/system", unit)
     installed = os.path.exists(installed_path)
     active = False
@@ -140,14 +155,29 @@ def _systemctl_state(unit: str) -> dict:
             active = (res.stdout.strip() == "active")
         except Exception:
             active = False
+    binary_source = helper.get("binary_source")
+    binary_target = helper.get("binary_target")
+    binary_source_path = os.path.join(repo, binary_source) if binary_source else None
+    binary_installed = os.path.exists(binary_target) if binary_target else None
+    binary_current = None
+    if binary_source_path and binary_target:
+        src_hash = _file_sha256(binary_source_path)
+        dst_hash = _file_sha256(binary_target)
+        binary_current = bool(src_hash and dst_hash and src_hash == dst_hash)
+    install_parts = []
+    if binary_source and binary_target:
+        install_parts.append(f"sudo install -m 0755 {repo}/{binary_source} {binary_target}")
+    install_parts.extend([
+        f"sudo cp {repo}/ops/{unit} /etc/systemd/system/",
+        "sudo systemctl daemon-reload",
+        f"sudo systemctl enable --now {unit}",
+    ])
     return {
         "installed": installed,
         "active": active,
-        "install_cmd": (
-            f"sudo cp {repo}/ops/{unit} /etc/systemd/system/ && "
-            f"sudo systemctl daemon-reload && "
-            f"sudo systemctl enable --now {unit}"
-        ),
+        "binary_installed": binary_installed,
+        "binary_current": binary_current,
+        "install_cmd": " && ".join(install_parts),
         "enable_cmd": f"sudo systemctl enable --now {unit}",
         "disable_cmd": f"sudo systemctl disable --now {unit}",
         "status_cmd": f"systemctl status {unit}",
@@ -159,7 +189,7 @@ def api_sysmod_helpers():
     state = _load()
     out = []
     for h in _HELPERS:
-        s = _systemctl_state(h["unit"])
+        s = _systemctl_state(h)
         out.append({
             **h,
             **s,
