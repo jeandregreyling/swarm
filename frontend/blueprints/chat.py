@@ -1837,6 +1837,7 @@ def api_chat():
             _stage(stage_text, est_eta if eta_seconds is None else eta_seconds)
 
         effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
+        handoff_contract = _chat_handoff_contract(selected_agent, local_timeout)
         if _chat_user_prompt_is_informational(message):
             effective_prompt = (
                 '=== WATCHDOG READ-ONLY ROUTING GUARD ===\n'
@@ -1845,7 +1846,7 @@ def api_chat():
                 'ambiguous, ask "What do you mean?" with the missing target/context.\n'
                 '=== END WATCHDOG READ-ONLY ROUTING GUARD ===\n\n'
             ) + effective_prompt
-        effective_prompt += _chat_handoff_contract(selected_agent, local_timeout)
+        effective_prompt = handoff_contract + '\n\n' + effective_prompt
         if not auto_relay:
             effective_prompt = (
                 '=== RELAY DISABLED — HARD RULE ===\n'

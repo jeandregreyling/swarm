@@ -135,7 +135,7 @@ def test_chat_via_gateway_returns_partial_on_failure(monkeypatch):
         [{"role": "user", "content": "hi"}],
         stage_cb=lambda text, _extra=None: stages.append(text),
     )
-    assert content == ""
+    assert content == "[local runtime error: boom]"
     assert tokens == 0
     assert any("gateway: failed" in s for s in stages)
 
@@ -206,3 +206,10 @@ def test_utility_orchestrator_uses_gateway_helper(monkeypatch):
     assert called["model"] == "qwen:latest"
     assert called["messages"][-1]["content"] == "hello"
     assert called["kwargs"]["temperature"] == 0.2
+
+
+def test_chat_handoff_contract_precedes_user_prompt():
+    src = Path("frontend/blueprints/chat.py").read_text(encoding="utf-8")
+    assert "handoff_contract = _chat_handoff_contract(selected_agent, local_timeout)" in src
+    assert "effective_prompt = handoff_contract + '\\n\\n' + effective_prompt" in src
+    assert "effective_prompt += _chat_handoff_contract" not in src
