@@ -164,6 +164,68 @@
   padding: 2px 2px 0;
 }
 
+.kn-brain-health {
+  margin: 0 10px 8px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  font-size: 11px;
+}
+
+.kn-brain-health-title {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.kn-brain-health-state,
+.kn-brain-health-pill {
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: color-mix(in srgb, var(--window-header) 78%, transparent);
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.kn-brain-health-healthy .kn-brain-health-state {
+  border-color: color-mix(in srgb, #4fc17b 48%, var(--border));
+  background: color-mix(in srgb, #4fc17b 16%, var(--card));
+  color: #80e1a4;
+}
+
+.kn-brain-health-warn .kn-brain-health-state {
+  border-color: color-mix(in srgb, #f0b84b 48%, var(--border));
+  background: color-mix(in srgb, #f0b84b 14%, var(--card));
+  color: #f0c56c;
+}
+
+.kn-brain-health-critical .kn-brain-health-state {
+  border-color: color-mix(in srgb, #e05d5d 48%, var(--border));
+  background: color-mix(in srgb, #e05d5d 14%, var(--card));
+  color: #ff8d8d;
+}
+
+.kn-brain-health-detail {
+  flex: 1 1 180px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+.kn-brain-health-refresh {
+  min-height: 26px;
+  min-width: 28px;
+  padding: 0 8px;
+}
+
 .kn-evidence-header {
   display: flex;
   align-items: flex-start;

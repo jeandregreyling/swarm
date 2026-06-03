@@ -71,6 +71,7 @@ class MainActivity : AppCompatActivity() {
     private val modelDisplayNames = mutableListOf<String>()
     private var selectedModelIndex = 0
     private var updatingModelSpinner = false
+    private var sharedConversationId: Int? = null
 
     private val notifPermLauncher =
         registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {
@@ -398,7 +399,7 @@ class MainActivity : AppCompatActivity() {
         val visibleCount = 6
         val list = leaderModels.take(visibleCount).joinToString(", ")
         val more = if (leaderModels.size > visibleCount) " +${leaderModels.size - visibleCount}" else ""
-        return "Selected for chat ${selectedModelIndex + 1}/${leaderModels.size}: ${modelDisplayName(selected)}\nAvailable on Dell: $list$more"
+        return "Shared Fridays chat · ${modelDisplayName(selected)} · Dell models: $list$more"
     }
 
     private fun updateModelSpinner() {
@@ -446,6 +447,8 @@ class MainActivity : AppCompatActivity() {
         hideKeyboard()
         chatInput.clearFocus()
         val model = leaderModels.getOrNull(selectedModelIndex) ?: "qwen:latest"
+        appendLocalTranscript("You", prompt)
+        chatInput.setText("")
         sendChatPrompt(leader, model, prompt)
     }
 
@@ -458,6 +461,7 @@ class MainActivity : AppCompatActivity() {
         val model = preferredProofModel()
         val token = "ANDROIDHIVEPROOF${System.currentTimeMillis()}"
         val prompt = "Return exactly this token and no other words: $token"
+        appendLocalTranscript("You", prompt)
         sendChatPrompt(leader, model, prompt)
     }
 
@@ -476,31 +480,61 @@ class MainActivity : AppCompatActivity() {
         sendChatButton.isEnabled = false
         runChatProofButton.isEnabled = false
         setStatus(getString(R.string.status_chatting), State.Working)
-        chatResponseView.text = "Sending to ${modelDisplayName(model)}...\nTimeout: 45 seconds."
+        appendLocalTranscript("Fridays", "Sending to ${modelDisplayName(model)}...")
         thread(name = "hive-chat") {
-            val response = try {
+            val result = try {
                 val res = postJson(
                     leader,
-                    "/api/localai/ollama/chat",
+                    "/api/localai/ollama/shared-chat",
                     JSONObject().apply {
                         put("model", model)
                         put("message", prompt)
+                        put("node_id", prefs.nodeId.ifBlank { nodeIdField.text.toString().trim() }.ifBlank { "android" })
+                        sharedConversationId?.let { put("conversation_id", it) }
                     },
-                    readTimeoutMs = 45_000,
+                    readTimeoutMs = 120_000,
                 )
-                val answer = res.optString("answer", "").ifBlank { res.optString("error", "No response") }
-                "Model: ${res.optString("model", model)}\n\n$answer"
+                sharedConversationId = res.optInt("conversation_id", 0).takeIf { it > 0 } ?: sharedConversationId
+                buildSharedTranscript(res.optJSONArray("messages"), res.optString("model", model))
             } catch (e: Exception) {
                 "Chat failed: ${e.message}"
             }
             runOnUiThread {
-                chatResponseView.text = response
+                if (result.isNotBlank()) chatResponseView.text = result
                 sendChatButton.isEnabled = true
                 runChatProofButton.isEnabled = true
                 refreshStatus()
                 scrollToChatOutput()
             }
         }
+    }
+
+    private fun appendLocalTranscript(sender: String, content: String) {
+        val current = chatResponseView.text.toString()
+            .takeUnless { it == getString(R.string.chat_response_empty) }
+            .orEmpty()
+            .trim()
+        val next = listOf(current, "$sender\n$content").filter { it.isNotBlank() }.joinToString("\n\n")
+        chatResponseView.text = next
+        scrollToChatOutput()
+    }
+
+    private fun buildSharedTranscript(messages: JSONArray?, fallbackModel: String): String {
+        val lines = mutableListOf<String>()
+        if (messages != null) {
+            for (i in 0 until messages.length()) {
+                val item = messages.optJSONObject(i) ?: continue
+                val sender = item.optString("sender", "").ifBlank { item.optString("from_agent", "") }
+                val content = item.optString("content", "").trim()
+                if (content.isBlank()) continue
+                val label = when (sender.lowercase()) {
+                    "user" -> "You"
+                    else -> if (sender.isBlank()) fallbackModel else sender
+                }
+                lines.add("$label\n$content")
+            }
+        }
+        return lines.joinToString("\n\n")
     }
 
     private fun scrollToChatOutput() {

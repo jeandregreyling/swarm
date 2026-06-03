@@ -143,6 +143,84 @@ def _advance_next_run(name):
                 'UPDATE scheduled_tasks SET last_run=?, next_run=? WHERE name=?',
                 (now.strftime('%Y-%m-%d %H:%M:%S'), next_run, name)
             )
+            conn.commit()
+
+
+def repair_stale_next_runs(*, now=None, max_rows=None):
+    """Move stale enabled scheduled tasks to their next future run.
+
+    This is a guardrail, not a catch-up runner: it prevents a backlog of missed
+    runs from firing all at once after downtime or a clock/boot transition.
+    """
+    now = now or datetime.now()
+    now_str = now.strftime('%Y-%m-%d %H:%M:%S')
+    stats = {'checked': 0, 'repaired': 0, 'skipped': 0, 'errors': []}
+    with closing(get_connection()) as conn:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(scheduled_tasks)").fetchall()}
+        if not {'id', 'schedule', 'next_run'}.issubset(cols):
+            stats['errors'].append('scheduled_tasks missing required columns')
+            return stats
+        limit_sql = ''
+        params = [now_str]
+        if max_rows:
+            limit_sql = ' LIMIT ?'
+            params.append(int(max_rows))
+        rows = conn.execute(
+            f"""SELECT id, name, schedule, next_run
+                FROM scheduled_tasks
+                WHERE enabled=1 AND (next_run IS NULL OR next_run <= ?)
+                ORDER BY COALESCE(next_run, '0000-00-00 00:00:00') ASC, id ASC{limit_sql}""",
+            params,
+        ).fetchall()
+        stats['checked'] = len(rows)
+        release_lease = {'lease_owner', 'lease_expires_at'}.issubset(cols)
+        for row in rows:
+            task_id, name, schedule = row[0], row[1], row[2]
+            next_run = compute_next_run(schedule, now=now)
+            if not next_run:
+                stats['skipped'] += 1
+                stats['errors'].append(f'{name or task_id}: unsupported schedule {schedule!r}')
+                continue
+            if release_lease:
+                conn.execute(
+                    """UPDATE scheduled_tasks
+                       SET next_run=?, lease_owner='', lease_expires_at=''
+                       WHERE id=?""",
+                    (next_run, task_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE scheduled_tasks SET next_run=? WHERE id=?",
+                    (next_run, task_id),
+                )
+            stats['repaired'] += 1
+        conn.commit()
+    return stats
+
+
+def _run_python_task(task_name, task_args):
+    """Run a scheduled Python task through the canonical task runner path."""
+    if os.environ.get('FRIDAYS_SCHEDULER_SUBPROCESS') == '1':
+        import subprocess
+        timeout = os.environ.get('FRIDAYS_TASK_WORKER_TIMEOUT', '900')
+        env = os.environ.copy()
+        env['PYTHONPATH'] = _SWARM_ROOT + (os.pathsep + env['PYTHONPATH'] if env.get('PYTHONPATH') else '')
+        subprocess.Popen(
+            [
+                sys.executable,
+                os.path.join(_SWARM_ROOT, 'fridays', 'task_worker.py'),
+                '--timeout-seconds',
+                timeout,
+                task_name,
+                task_args,
+            ],
+            cwd=_SWARM_ROOT,
+            env=env,
+            start_new_session=True,
+        )
+        return True, f'spawned task_worker for {task_name}'
+    from fridays import task_runner
+    return task_runner.run_task(task_name, args=task_args)
 
 
 def run_daily_brief():
@@ -236,10 +314,8 @@ def check_due():
     a short-lived lease on each due row before execution. Workers from other
     processes will see ``lease_owner != ''`` and skip the row.
     """
-    import os
     import shlex
     import subprocess
-    import sys
     from datetime import datetime
     owner = f'sched-{os.getpid()}'
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -318,23 +394,9 @@ def check_due():
                 parts = shlex.split(action_data.strip())
                 task_name = parts[0] if parts else ''
                 task_args = ' '.join(shlex.quote(p) for p in parts[1:])
-                env = os.environ.copy()
-                env['PYTHONPATH'] = _SWARM_ROOT + (os.pathsep + env['PYTHONPATH'] if env.get('PYTHONPATH') else '')
-                timeout = os.environ.get('FRIDAYS_TASK_WORKER_TIMEOUT', '900')
-                subprocess.Popen(
-                    [
-                        sys.executable,
-                        os.path.join(_SWARM_ROOT, 'fridays', 'task_worker.py'),
-                        '--timeout-seconds',
-                        timeout,
-                        task_name,
-                        task_args,
-                    ],
-                    cwd=_SWARM_ROOT,
-                    env=env,
-                    start_new_session=True,
-                )
-                print(f'[Scheduler] Fired PYTHON task #{task_id} ({name}): {task_name} {task_args[:80]}')
+                ok, output = _run_python_task(task_name, task_args)
+                status = 'ok' if ok else 'failed'
+                print(f'[Scheduler] Fired PYTHON task #{task_id} ({name}) {status}: {task_name} {task_args[:80]} {str(output)[:200]}')
             elif action_type.upper() in ('QUESTION', 'BRIEF'):
                 if 'brief_engine' in (action_data or ''):
                     subprocess.Popen(shlex.split(action_data))

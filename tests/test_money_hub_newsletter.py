@@ -58,6 +58,56 @@ def test_daily_newsletter_explains_empty_sections_and_links(monkeypatch):
     assert "sap_au_watch" in content
 
 
+def test_daily_newsletter_defaults_to_operator_local_day(monkeypatch):
+    from datetime import timedelta, timezone
+
+    from core import market_watch
+
+    monkeypatch.setattr(market_watch, "_summary_payload", lambda: {
+        "financial": {"open": 0, "by_class": {}, "high_conviction": []},
+        "trading": {"open": 0, "by_side": {}, "realised_pnl": 0, "top": []},
+        "business": {"unreconciled": 0, "net_by_currency": {}, "by_kind": {}, "recent": []},
+    })
+    monkeypatch.setattr(market_watch, "_collect_app_center_snapshot", lambda: {
+        "project_count": 0,
+        "active_count": 0,
+        "build_count": 0,
+        "latest_projects": [],
+        "latest_builds": [],
+        "ready": True,
+        "reason": "App Center is initialized.",
+    })
+    monkeypatch.setattr(market_watch, "_collect_potato_farm_snapshot", lambda now: {
+        "ok": True,
+        "nodes": [],
+        "jobs": [],
+        "live_count": 0,
+        "stale_count": 0,
+        "pending_jobs": 0,
+        "completed_jobs": 0,
+        "reason": "empty test farm",
+    })
+    monkeypatch.setattr(market_watch, "_collect_recent_evidence", lambda: [])
+    monkeypatch.setattr(market_watch, "_collect_kc_interest_snapshot", lambda: {
+        "interests": [],
+        "watched_tasks": [],
+        "docs": [],
+        "settings_count": 0,
+        "interest_count": 0,
+        "watched_task_count": 0,
+    })
+    monkeypatch.setattr(
+        market_watch,
+        "_local_now",
+        lambda: datetime(2026, 6, 4, 6, 24, tzinfo=timezone(timedelta(hours=10))),
+    )
+
+    doc = market_watch.compose_newsletter()
+
+    assert doc["day"] == "2026-06-04"
+    assert doc["doc_name"] == "MONEY_HUB_DAILY_NEWSLETTER_2026-06-04.md"
+
+
 def test_visual_money_hub_email_has_action_cards(monkeypatch):
     from core import market_watch
 

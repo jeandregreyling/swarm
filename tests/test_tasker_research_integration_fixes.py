@@ -161,6 +161,50 @@ def test_scheduler_check_due_passes_python_task_arguments(tmp_path, monkeypatch)
             "'topic=SAP payroll Australia' depth=standard",
         )
     ]
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT last_run, next_run FROM scheduled_tasks WHERE name='watched'"
+        ).fetchone()
+    assert row["last_run"]
+    assert row["next_run"] > "2000-01-01 00:00:00"
+
+
+def test_scheduler_repair_stale_next_runs_skips_backlog_without_firing(tmp_path, monkeypatch):
+    from datetime import datetime
+
+    import fridays.scheduler as scheduler
+
+    db_path = tmp_path / "repair.db"
+
+    def get_conn():
+        return _connect(db_path)
+
+    monkeypatch.setattr(scheduler, "get_connection", get_conn)
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO scheduled_tasks
+               (name, schedule, action_type, action_data, next_run, enabled)
+               VALUES (?, ?, ?, ?, ?, 1)""",
+            (
+                "watched",
+                "daily 06:30",
+                "PYTHON",
+                'interest_research_update topic="SAP payroll Australia"',
+                "2000-01-01 00:00:00",
+            ),
+        )
+
+    stats = scheduler.repair_stale_next_runs(now=datetime(2026, 6, 4, 10, 0, 0))
+
+    assert stats["checked"] == 1
+    assert stats["repaired"] == 1
+    assert stats["skipped"] == 0
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT last_run, next_run FROM scheduled_tasks WHERE name='watched'"
+        ).fetchone()
+    assert row["last_run"] is None
+    assert row["next_run"] == "2026-06-05 06:30:00"
 
 
 def test_tasker_run_skill_passes_arguments(monkeypatch):

@@ -11,6 +11,7 @@ import re
 import requests
 import json
 from flask import Blueprint, jsonify, request
+from database import get_connection, log_message, new_conversation
 
 localai_bp = Blueprint('localai', __name__)
 
@@ -187,6 +188,93 @@ def ollama_quick_chat():
         return jsonify({'ok': False, 'error': 'Ollama not running'}), 503
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+def _shared_chat_messages(conv_id):
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """SELECT id, from_agent AS sender, content, to_agent, message_type, tokens_used, created_at
+               FROM messages
+               WHERE conversation_id=?
+               ORDER BY id ASC""",
+            (int(conv_id),),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+@localai_bp.route('/api/localai/ollama/shared-chat', methods=['POST'])
+def ollama_shared_chat():
+    """Android/remote chat entrypoint backed by the normal Fridays conversation store."""
+    data = request.get_json(silent=True) or {}
+    model = (data.get('model') or 'qwen:latest').strip()
+    msg = (data.get('message') or '').strip()
+    node_id = (data.get('node_id') or 'android').strip()[:80]
+    raw_conv_id = data.get('conversation_id')
+    if not msg:
+        return jsonify({'ok': False, 'error': 'message required'}), 400
+
+    conv_id = None
+    if raw_conv_id not in (None, ''):
+        try:
+            candidate = int(raw_conv_id)
+            conn = get_connection()
+            try:
+                exists = conn.execute("SELECT id FROM conversations WHERE id=?", (candidate,)).fetchone()
+            finally:
+                conn.close()
+            if exists:
+                conv_id = candidate
+        except Exception:
+            conv_id = None
+
+    if conv_id is None:
+        conv_id = new_conversation(f'Fridays Android: {msg[:80]}', source='terminal-ui:ANDROID', sender=node_id)
+
+    log_message(conv_id, 'user', msg, to_agent=model, message_type='chat')
+
+    try:
+        rows = _shared_chat_messages(conv_id)[-16:]
+        ollama_messages = []
+        for row in rows:
+            sender = str(row.get('sender') or '').strip().lower()
+            content = str(row.get('content') or '')
+            if not content:
+                continue
+            role = 'user' if sender in {'user', node_id.lower(), 'android'} else 'assistant'
+            ollama_messages.append({'role': role, 'content': content})
+        if not ollama_messages or ollama_messages[-1].get('role') != 'user':
+            ollama_messages.append({'role': 'user', 'content': msg})
+
+        r = requests.post(
+            f'{_OLLAMA_BASE}/api/chat',
+            json={
+                'model': model,
+                'messages': ollama_messages,
+                'stream': False,
+                'options': {'temperature': 0.7},
+            },
+            timeout=120,
+        )
+        if r.status_code != 200:
+            return jsonify({'ok': False, 'error': f'Ollama returned {r.status_code}', 'conversation_id': conv_id}), 502
+        answer = r.json().get('message', {}).get('content', '').strip()
+        if not answer:
+            answer = 'No response'
+        log_message(conv_id, model, answer, to_agent='user', message_type='response')
+        return jsonify({
+            'ok': True,
+            'answer': answer,
+            'model': model,
+            'conversation_id': conv_id,
+            'messages': _shared_chat_messages(conv_id),
+        })
+    except requests.exceptions.ConnectionError:
+        return jsonify({'ok': False, 'error': 'Ollama not running', 'conversation_id': conv_id}), 503
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e), 'conversation_id': conv_id}), 500
 
 
 @localai_bp.route('/api/localai/lmstudio/chat', methods=['POST'])

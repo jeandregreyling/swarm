@@ -72,9 +72,56 @@ function loadKnowledgeData(win) {
 
   // P4-S37: refresh interests strip whenever Knowledge opens
   knowledgeRefreshInterestStrip();
+  knowledgeRefreshBrainHealth();
 
   // Show initial tab
   knowledgeSetTab(_knowledgeTab);
+}
+
+function knowledgeRefreshBrainHealth() {
+  const strip = document.getElementById('kn-brain-health');
+  if (!strip) return;
+  fetch('/api/kc/brain/health').then(r => r.json()).then(d => {
+    const checks = d.checks || {};
+    const counts = checks.counts || {};
+    const newsletter = checks.newsletter || {};
+    const watched = checks.watched_topics || {};
+    const scheduler = checks.scheduler || {};
+    const hive = checks.hive || {};
+    const memory = checks.memory || {};
+    const interests = checks.interests || {};
+    const findings = Array.isArray(d.findings) ? d.findings : [];
+    const status = String(d.status || (d.ok ? 'healthy' : 'warn')).toLowerCase();
+    const statusLabel = status === 'healthy' ? 'Healthy' : status === 'critical' ? 'Critical' : 'Needs attention';
+    const findingText = findings.length
+      ? findings.slice(0, 2).map(f => `${f.area || 'check'}: ${f.message || f.severity || 'warning'}`).join(' | ')
+      : 'no findings';
+    strip.className = `kn-brain-health kn-brain-health-${status}`;
+    strip.innerHTML = `
+      <span class="kn-brain-health-title">Brain</span>
+      <span class="kn-brain-health-state">${_knEsc(statusLabel)}</span>
+      <span class="kn-brain-health-pill">docs ${Number(counts.project_docs || 0)}</span>
+      <span class="kn-brain-health-pill">facts ${Number(counts.swarm_knowledge || 0)}</span>
+      <span class="kn-brain-health-pill">memory ${Number(memory.nonempty_table_count || 0)}/${Number(memory.table_count || 0)}</span>
+      <span class="kn-brain-health-pill">interests ${Number(interests.active || 0)}</span>
+      <span class="kn-brain-health-pill">newsletter ${_knAge(newsletter.latest_age_hours)}</span>
+      <span class="kn-brain-health-pill">watch ${_knAge(watched.latest_evidence_age_hours)}</span>
+      <span class="kn-brain-health-pill">tasks stale ${Number(scheduler.stale_enabled_task_count || 0)}</span>
+      <span class="kn-brain-health-pill">hive ${Number(hive.live_nodes || 0)}/${Number(hive.nodes || 0)}</span>
+      <span class="kn-brain-health-detail" title="${_knEsc(findingText)}">${_knEsc(findingText)}</span>
+      <button class="knowledge-icon-btn kn-brain-health-refresh" onclick="knowledgeRefreshBrainHealth()" title="Refresh brain health"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 3.5v3h-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+  }).catch(err => {
+    strip.className = 'kn-brain-health kn-brain-health-critical';
+    strip.innerHTML = `<span class="kn-brain-health-title">Brain</span><span class="kn-brain-health-state">Unavailable</span><span class="kn-brain-health-detail">${_knEsc(String(err.message || err))}</span>`;
+  });
+}
+
+function _knAge(hours) {
+  const n = Number(hours);
+  if (!Number.isFinite(n)) return 'unknown';
+  if (n < 1) return `${Math.max(0, Math.round(n * 60))}m`;
+  if (n < 48) return `${Math.round(n)}h`;
+  return `${Math.round(n / 24)}d`;
 }
 
 // P4-S37 — populate the interests strip in the Knowledge header
@@ -742,6 +789,7 @@ function knowledgeOpenEvidenceHref(href) {
 }
 
 window.knowledgeLoadEvidence = knowledgeLoadEvidence;
+window.knowledgeRefreshBrainHealth = knowledgeRefreshBrainHealth;
 window.knowledgeOpenEvidenceHref = knowledgeOpenEvidenceHref;
 window.knowledgeLoadSources = knowledgeLoadSources;
 window.knowledgeOpenSourceBubble = knowledgeOpenSourceBubble;

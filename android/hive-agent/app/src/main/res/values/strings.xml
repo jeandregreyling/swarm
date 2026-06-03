@@ -24,6 +24,7 @@
     <string name="chat_title">Chat with Dell Ollama</string>
     <string name="model_summary_empty">Tap Refresh models to load Dell Ollama models.</string>
     <string name="btn_models">Refresh models</string>
+    <string name="btn_models_short">Models</string>
     <string name="hint_chat">Type a message for the selected model…</string>
     <string name="btn_send_chat">Send chat</string>
     <string name="btn_run_chat_proof">Run proof chat</string>

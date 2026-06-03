@@ -42,6 +42,11 @@ _NEWSLETTER_FEEDBACK_DDL = (
 )
 
 
+def _local_now() -> datetime:
+    """Return the operator-local time for dated KC artifacts."""
+    return datetime.now().astimezone()
+
+
 def _fetch_og_image(url: str, timeout: float = 4.0) -> str:
     """Best-effort fetch of an article's og:image / twitter:image for inbox visuals."""
     if not url:
@@ -726,7 +731,7 @@ def _collect_kc_interest_snapshot(limit: int = 10) -> dict[str, Any]:
 
 def compose_newsletter(now: datetime | None = None) -> dict[str, str]:
     """Return the current Money Hub newsletter without writing it."""
-    now = now or datetime.now(timezone.utc)
+    now = now or _local_now()
     day = now.date().isoformat()
     payload = _summary_payload()
     financial = payload["financial"]
@@ -939,7 +944,7 @@ def _abs_link(path: str) -> str:
 
 def compose_money_hub_email(now: datetime | None = None) -> dict[str, str]:
     """Compose a visual daily Money Hub email from KC-first state."""
-    now = now or datetime.now(timezone.utc)
+    now = now or _local_now()
     day = now.date().isoformat()
     payload = _summary_payload()
     financial = payload["financial"]
