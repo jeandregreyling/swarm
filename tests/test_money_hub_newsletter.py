@@ -154,6 +154,25 @@ def test_visual_money_hub_email_has_action_cards(monkeypatch):
     assert "Harvest SAP signals" in doc["plain"]
 
 
+def test_money_hub_daily_task_writes_visual_artifact(monkeypatch):
+    from core import market_watch
+
+    calls = []
+
+    monkeypatch.setattr(
+        market_watch,
+        "write_money_hub_visual_newsletter",
+        lambda: {"ok": True, "doc_name": "MONEY_HUB_DAILY_NEWSLETTER_2026-06-04_VISUAL.html"},
+    )
+    monkeypatch.setattr(market_watch, "ensure_tasker_schedule", lambda: 19)
+
+    result = market_watch.run()
+    calls.append(result)
+
+    assert "_VISUAL.html" in calls[0]
+    assert ".md" not in calls[0]
+
+
 def test_visual_money_hub_email_summarises_evidence_links(monkeypatch):
     from core import market_watch
 

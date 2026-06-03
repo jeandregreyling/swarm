@@ -175,6 +175,13 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--card) 92%, transparent);
   font-size: 11px;
+  cursor: pointer;
+}
+
+.kn-brain-health:hover,
+.kn-brain-health:focus {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--border));
+  outline: none;
 }
 
 .kn-brain-health-title {
@@ -224,6 +231,73 @@
   min-height: 26px;
   min-width: 28px;
   padding: 0 8px;
+}
+
+.kn-brain-health-detail-panel {
+  margin: 0 10px 8px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  font-size: 11px;
+}
+
+.kn-brain-health-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.kn-brain-health-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 6px;
+}
+
+.kn-brain-health-detail-grid div {
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--window-header) 70%, transparent);
+  min-width: 0;
+}
+
+.kn-brain-health-detail-grid span {
+  display: block;
+  color: var(--text-dim);
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+
+.kn-brain-health-detail-grid strong {
+  display: block;
+  color: var(--text);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kn-brain-health-findings {
+  margin-top: 8px;
+}
+
+.kn-brain-health-finding {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+.kn-brain-health-finding-ok {
+  color: #80e1a4;
+  border-color: color-mix(in srgb, #4fc17b 36%, var(--border));
+}
+
+.kn-brain-health-detail-empty {
+  color: var(--text-dim);
 }
 
 .kn-evidence-header {

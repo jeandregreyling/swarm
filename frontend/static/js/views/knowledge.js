@@ -16,6 +16,7 @@ let _knowledgeTab = 'files';
 let _knowledgeLoaded = { files: false, docs: false, evidence: false, sources: false, library: false, guide: false };
 let _knSourcesCache = [];
 let _knSourceOpenId = null;
+let _knBrainHealth = null;
 
 /* Constellation styling — injected once */
 (function _knInjectStyle() {
@@ -82,6 +83,7 @@ function knowledgeRefreshBrainHealth() {
   const strip = document.getElementById('kn-brain-health');
   if (!strip) return;
   fetch('/api/kc/brain/health').then(r => r.json()).then(d => {
+    _knBrainHealth = d;
     const checks = d.checks || {};
     const counts = checks.counts || {};
     const newsletter = checks.newsletter || {};
@@ -97,6 +99,19 @@ function knowledgeRefreshBrainHealth() {
       ? findings.slice(0, 2).map(f => `${f.area || 'check'}: ${f.message || f.severity || 'warning'}`).join(' | ')
       : 'no findings';
     strip.className = `kn-brain-health kn-brain-health-${status}`;
+    strip.setAttribute('role', 'button');
+    strip.setAttribute('tabindex', '0');
+    strip.setAttribute('title', 'Open Brain health details');
+    strip.onclick = (event) => {
+      if (event.target && event.target.closest && event.target.closest('button')) return;
+      knowledgeToggleBrainHealthDetails();
+    };
+    strip.onkeydown = (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        knowledgeToggleBrainHealthDetails();
+      }
+    };
     strip.innerHTML = `
       <span class="kn-brain-health-title">Brain</span>
       <span class="kn-brain-health-state">${_knEsc(statusLabel)}</span>
@@ -109,11 +124,60 @@ function knowledgeRefreshBrainHealth() {
       <span class="kn-brain-health-pill">tasks stale ${Number(scheduler.stale_enabled_task_count || 0)}</span>
       <span class="kn-brain-health-pill">hive ${Number(hive.live_nodes || 0)}/${Number(hive.nodes || 0)}</span>
       <span class="kn-brain-health-detail" title="${_knEsc(findingText)}">${_knEsc(findingText)}</span>
-      <button class="knowledge-icon-btn kn-brain-health-refresh" onclick="knowledgeRefreshBrainHealth()" title="Refresh brain health"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 3.5v3h-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+      <button class="knowledge-icon-btn kn-brain-health-refresh" onclick="event.stopPropagation(); knowledgeRefreshBrainHealth()" title="Refresh brain health"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 3.5v3h-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+    const panel = document.getElementById('kn-brain-health-detail-panel');
+    if (panel && panel.style.display !== 'none') knowledgeRenderBrainHealthDetails();
   }).catch(err => {
+    _knBrainHealth = null;
     strip.className = 'kn-brain-health kn-brain-health-critical';
     strip.innerHTML = `<span class="kn-brain-health-title">Brain</span><span class="kn-brain-health-state">Unavailable</span><span class="kn-brain-health-detail">${_knEsc(String(err.message || err))}</span>`;
   });
+}
+
+function knowledgeToggleBrainHealthDetails() {
+  const panel = document.getElementById('kn-brain-health-detail-panel');
+  if (!panel) return;
+  if (panel.style.display === 'none') {
+    knowledgeRenderBrainHealthDetails();
+    panel.style.display = '';
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function knowledgeRenderBrainHealthDetails() {
+  const panel = document.getElementById('kn-brain-health-detail-panel');
+  const d = _knBrainHealth;
+  if (!panel) return;
+  if (!d) {
+    panel.innerHTML = '<div class="kn-brain-health-detail-empty">Brain health has not loaded yet.</div>';
+    return;
+  }
+  const checks = d.checks || {};
+  const rows = [
+    ['Status', d.status || 'unknown'],
+    ['Findings', String((d.findings || []).length)],
+    ['Contracts', checks.contracts && checks.contracts.ok ? 'ok' : 'check'],
+    ['Retrieval', checks.retrieval && checks.retrieval.ok ? `ok, ${Number(checks.retrieval.chunk_count || 0)} chunks` : 'check'],
+    ['Memory', checks.memory ? `${Number(checks.memory.nonempty_table_count || 0)}/${Number(checks.memory.table_count || 0)} active tables` : 'unknown'],
+    ['Interests', checks.interests ? `${Number(checks.interests.active || 0)} active` : 'unknown'],
+    ['Newsletter', checks.newsletter && checks.newsletter.latest ? checks.newsletter.latest.doc_name : 'unknown'],
+    ['Watched topics', checks.watched_topics ? `${Number(checks.watched_topics.evidence || 0)} evidence rows` : 'unknown'],
+    ['Scheduler', checks.scheduler ? `${Number(checks.scheduler.stale_enabled_task_count || 0)} stale tasks` : 'unknown'],
+    ['Hive', checks.hive ? `${Number(checks.hive.live_nodes || 0)}/${Number(checks.hive.nodes || 0)} live nodes` : 'unknown'],
+  ];
+  const findings = (d.findings || []).map(f =>
+    `<div class="kn-brain-health-finding">${_knEsc(f.severity || 'warn')} / ${_knEsc(f.area || 'brain')}: ${_knEsc(f.message || '')}</div>`
+  ).join('') || '<div class="kn-brain-health-finding kn-brain-health-finding-ok">No findings.</div>';
+  panel.innerHTML = `
+    <div class="kn-brain-health-detail-head">
+      <strong>Brain Health Details</strong>
+      <button class="knowledge-icon-btn" onclick="knowledgeToggleBrainHealthDetails()" title="Close">x</button>
+    </div>
+    <div class="kn-brain-health-detail-grid">
+      ${rows.map(([k, v]) => `<div><span>${_knEsc(k)}</span><strong>${_knEsc(v)}</strong></div>`).join('')}
+    </div>
+    <div class="kn-brain-health-findings">${findings}</div>`;
 }
 
 function _knAge(hours) {
@@ -790,6 +854,7 @@ function knowledgeOpenEvidenceHref(href) {
 
 window.knowledgeLoadEvidence = knowledgeLoadEvidence;
 window.knowledgeRefreshBrainHealth = knowledgeRefreshBrainHealth;
+window.knowledgeToggleBrainHealthDetails = knowledgeToggleBrainHealthDetails;
 window.knowledgeOpenEvidenceHref = knowledgeOpenEvidenceHref;
 window.knowledgeLoadSources = knowledgeLoadSources;
 window.knowledgeOpenSourceBubble = knowledgeOpenSourceBubble;

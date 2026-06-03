@@ -1318,11 +1318,8 @@ def write_newsletter(now: datetime | None = None) -> dict[str, str]:
     return doc
 
 
-def send_money_hub_daily_newsletter(now: datetime | None = None) -> dict[str, Any]:
-    """Send the visual daily Money Hub email and store it in KC project_docs."""
-    from config import GHOST_EMAIL
-    from lib.email.email_handler import send_reply
-
+def write_money_hub_visual_newsletter(now: datetime | None = None) -> dict[str, Any]:
+    """Write or refresh the visual daily Money Hub artifact in KC."""
     email_doc = compose_money_hub_email(now)
     doc_name = f"MONEY_HUB_DAILY_NEWSLETTER_{email_doc['day']}_VISUAL.html"
     conn = get_connection()
@@ -1346,6 +1343,23 @@ def send_money_hub_daily_newsletter(now: datetime | None = None) -> dict[str, An
     finally:
         conn.close()
 
+    write_knowledge(
+        f"money-hub-newsletter-visual-{email_doc['day']}",
+        email_doc["plain"],
+        "money-hub",
+        category="fact",
+        importance=8,
+    )
+    return {"ok": True, "doc_name": doc_name, "subject": email_doc["subject"], "day": email_doc["day"]}
+
+
+def send_money_hub_daily_newsletter(now: datetime | None = None) -> dict[str, Any]:
+    """Send the visual daily Money Hub email and store it in KC project_docs."""
+    from config import GHOST_EMAIL
+    from lib.email.email_handler import send_reply
+
+    written = write_money_hub_visual_newsletter(now)
+    email_doc = compose_money_hub_email(now)
     ok = bool(send_reply(
         GHOST_EMAIL,
         email_doc["subject"],
@@ -1355,14 +1369,7 @@ def send_money_hub_daily_newsletter(now: datetime | None = None) -> dict[str, An
     ))
     if ok:
         _record_money_hub_sent_evidence(list(email_doc.get("evidence") or []), email_doc["day"])
-    write_knowledge(
-        f"money-hub-newsletter-visual-{email_doc['day']}",
-        email_doc["plain"],
-        "money-hub",
-        category="fact",
-        importance=8,
-    )
-    return {"ok": ok, "doc_name": doc_name, "subject": email_doc["subject"], "to": GHOST_EMAIL}
+    return {"ok": ok, "doc_name": written["doc_name"], "subject": email_doc["subject"], "to": GHOST_EMAIL}
 
 
 def write_sap_au_monthly_newsletter(now: datetime | None = None) -> dict[str, str]:
@@ -1658,7 +1665,7 @@ def ensure_monthly_tasker_schedule() -> int:
 
 
 def run() -> str:
-    doc = write_newsletter()
+    doc = write_money_hub_visual_newsletter()
     task_id = ensure_tasker_schedule()
     return f"money_hub_daily_newsletter ok - {doc['doc_name']} - task_id={task_id}"
 

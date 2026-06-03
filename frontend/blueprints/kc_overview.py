@@ -26,6 +26,12 @@ import sqlite3
 from flask import Blueprint, jsonify
 
 from services import get_connection
+from utils.db.brain_contracts import (
+    inspect_interest_quality,
+    inspect_memory_provenance,
+    inspect_retrieval_health,
+    inspect_table_contracts,
+)
 
 kc_overview_bp = Blueprint('kc_overview', __name__)
 
@@ -149,6 +155,27 @@ def build_brain_health(conn: sqlite3.Connection, *, hive_db_path: str | None = N
     if not counts['swarm_knowledge']:
         _finding(findings, 'warn', 'knowledge', 'swarm_knowledge has no durable facts')
 
+    contracts = inspect_table_contracts(conn)
+    checks['contracts'] = contracts
+    if contracts.get('missing_tables'):
+        _finding(findings, 'critical', 'contracts', 'required brain tables are missing',
+                 {'missing_tables': contracts.get('missing_tables')})
+    if contracts.get('missing_columns'):
+        _finding(findings, 'warn', 'contracts', 'brain tables are missing required columns',
+                 {'missing_columns': contracts.get('missing_columns')})
+
+    retrieval = inspect_retrieval_health(conn)
+    checks['retrieval'] = retrieval
+    if retrieval.get('orphan_chunks'):
+        _finding(findings, 'warn', 'retrieval', 'knowledge_chunks contains orphan rows',
+                 {'orphan_chunks': retrieval.get('orphan_chunks')})
+    if retrieval.get('unchunked_active_sources'):
+        _finding(findings, 'warn', 'retrieval', 'active knowledge_sources have no chunks',
+                 {'unchunked_active_sources': retrieval.get('unchunked_active_sources')})
+    if retrieval.get('chunk_count_mismatch'):
+        _finding(findings, 'warn', 'retrieval', 'knowledge_sources chunk_count is out of sync',
+                 {'chunk_count_mismatch': retrieval.get('chunk_count_mismatch')})
+
     memory_tables = [r[0] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'memory%' ORDER BY name"
     ).fetchall()]
@@ -167,6 +194,11 @@ def build_brain_health(conn: sqlite3.Connection, *, hive_db_path: str | None = N
         _finding(findings, 'critical', 'memory', 'shared memory table is missing')
     if checks['memory']['nonempty_table_count'] == 0:
         _finding(findings, 'warn', 'memory', 'no memory tables contain rows')
+    memory_provenance = inspect_memory_provenance(conn)
+    checks['memory']['provenance'] = memory_provenance
+    if memory_provenance.get('missing_columns'):
+        _finding(findings, 'warn', 'memory', 'memory tables are missing provenance/archive columns',
+                 {'missing_columns': memory_provenance.get('missing_columns')})
 
     interest_sources = _group_count(
         conn,
@@ -192,6 +224,14 @@ def build_brain_health(conn: sqlite3.Connection, *, hive_db_path: str | None = N
                  {'by_source': interest_sources})
     if counts['watched_topic_settings'] and active_interests == 0:
         _finding(findings, 'warn', 'interests', 'watched-topic settings exist without active interests')
+    interest_quality = inspect_interest_quality(conn)
+    checks['interests']['quality'] = interest_quality
+    if interest_quality.get('weak_agent_rows'):
+        _finding(findings, 'warn', 'interests', 'agent interests are missing source_agent provenance',
+                 {'weak_agent_rows': interest_quality.get('weak_agent_rows')})
+    if interest_quality.get('unknown_source_rows'):
+        _finding(findings, 'warn', 'interests', 'active interests have unknown source labels',
+                 {'unknown_source_rows': interest_quality.get('unknown_source_rows')})
 
     newsletter_docs = []
     if _table_exists(conn, 'project_docs'):
