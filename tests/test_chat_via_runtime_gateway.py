@@ -230,8 +230,8 @@ def test_utility_orchestrator_uses_gateway_helper(monkeypatch):
 
 def test_chat_handoff_contract_precedes_user_prompt():
     src = Path("frontend/blueprints/chat.py").read_text(encoding="utf-8")
-    assert "handoff_contract = _chat_handoff_contract(selected_agent, local_timeout)" in src
-    assert "effective_prompt = handoff_contract + '\\n\\n' + effective_prompt" in src
+    assert "effective_prompt = apply_local_chat_profile(" in src
+    assert "deadline_seconds=local_timeout" in src
     assert "effective_prompt += _chat_handoff_contract" not in src
 
 

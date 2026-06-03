@@ -10,6 +10,7 @@
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/hive_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
@@ -253,21 +254,22 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_gpu_proof"
-                    style="@style/Widget.Material3.Button"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:layout_marginStart="10dp"
                     android:layout_weight="1"
                     android:text="@string/btn_gpu_proof"
                     android:textAllCaps="false"
-                    android:backgroundTint="@color/brand_amber"
-                    android:textColor="@color/brand_ink"
+                    android:textColor="@color/brand_text"
+                    app:strokeColor="@color/brand_text_dim"
                     app:cornerRadius="10dp" />
             </LinearLayout>
         </LinearLayout>
 
         <!-- ── Leader chat proof ─────────────────────────────────────── -->
         <LinearLayout
+            android:id="@+id/chat_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -301,35 +303,20 @@
                 android:layout_marginTop="12dp"
                 android:orientation="horizontal">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_prev_model"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="52dp"
+                <Spinner
+                    android:id="@+id/model_spinner"
+                    android:layout_width="0dp"
                     android:layout_height="48dp"
-                    android:text="@string/btn_prev_model"
-                    android:textAllCaps="false"
-                    android:textColor="@color/brand_text"
-                    app:strokeColor="@color/brand_text_dim"
-                    app:cornerRadius="10dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_next_model"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="52dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/btn_next_model"
-                    android:textAllCaps="false"
-                    android:textColor="@color/brand_text"
-                    app:strokeColor="@color/brand_text_dim"
-                    app:cornerRadius="10dp" />
+                    android:layout_weight="2"
+                    android:background="@drawable/bg_field"
+                    android:paddingHorizontal="12dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_models"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="0dp"
                     android:layout_height="48dp"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginStart="10dp"
                     android:layout_weight="1"
                     android:text="@string/btn_models"
                     android:textAllCaps="false"
@@ -369,17 +356,40 @@
                 app:cornerRadius="10dp" />
 
             <TextView
+                android:id="@+id/chat_output_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/label_chat_output"
+                android:textColor="@color/brand_text"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
                 android:id="@+id/chat_response"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:minHeight="96dp"
+                android:layout_marginTop="8dp"
                 android:background="@drawable/bg_field"
                 android:padding="12dp"
                 android:text="@string/chat_response_empty"
-                android:textColor="@color/brand_text_dim"
-                android:textSize="12sp"
+                android:textColor="@color/brand_text"
+                android:textSize="13sp"
                 android:textIsSelectable="true"
                 android:lineSpacingExtra="2dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_run_chat_proof"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/btn_run_chat_proof"
+                android:textAllCaps="false"
+                android:textColor="@color/brand_text"
+                app:strokeColor="@color/brand_text_dim"
+                app:cornerRadius="10dp" />
         </LinearLayout>
 
         <!-- ── Footer hint ───────────────────────────────────────────── -->

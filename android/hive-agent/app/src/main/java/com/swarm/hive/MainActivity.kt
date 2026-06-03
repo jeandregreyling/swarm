@@ -7,10 +7,15 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.view.ViewParent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -49,6 +54,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nodeIdField: EditText
     private lateinit var statusView: TextView
     private lateinit var statusDot: View
+    private lateinit var hiveScrollView: ScrollView
+    private lateinit var chatCard: View
     private lateinit var runtimeSummaryView: TextView
     private lateinit var farmSummaryView: TextView
     private lateinit var refreshButton: Button
@@ -57,11 +64,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var chatInput: EditText
     private lateinit var chatResponseView: TextView
     private lateinit var modelsButton: Button
-    private lateinit var prevModelButton: Button
-    private lateinit var nextModelButton: Button
+    private lateinit var modelSpinner: Spinner
     private lateinit var sendChatButton: Button
+    private lateinit var runChatProofButton: Button
     private val leaderModels = mutableListOf<String>()
+    private val modelDisplayNames = mutableListOf<String>()
     private var selectedModelIndex = 0
+    private var updatingModelSpinner = false
 
     private val notifPermLauncher =
         registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {
@@ -100,6 +109,8 @@ class MainActivity : AppCompatActivity() {
         nodeIdField = findViewById(R.id.field_node_id)
         statusView  = findViewById(R.id.status)
         statusDot   = findViewById(R.id.status_dot)
+        hiveScrollView = findViewById(R.id.hive_scroll)
+        chatCard = findViewById(R.id.chat_card)
         runtimeSummaryView = findViewById(R.id.runtime_summary)
         farmSummaryView = findViewById(R.id.farm_summary)
         refreshButton = findViewById(R.id.btn_refresh)
@@ -108,9 +119,9 @@ class MainActivity : AppCompatActivity() {
         chatInput = findViewById(R.id.chat_input)
         chatResponseView = findViewById(R.id.chat_response)
         modelsButton = findViewById(R.id.btn_models)
-        prevModelButton = findViewById(R.id.btn_prev_model)
-        nextModelButton = findViewById(R.id.btn_next_model)
+        modelSpinner = findViewById(R.id.model_spinner)
         sendChatButton = findViewById(R.id.btn_send_chat)
+        runChatProofButton = findViewById(R.id.btn_run_chat_proof)
 
         val join = parseJoinIntent(intent?.data)
         leaderField.setText(join?.leader ?: prefs.leader)
@@ -126,9 +137,18 @@ class MainActivity : AppCompatActivity() {
         refreshButton.setOnClickListener { refreshFarmStatus() }
         gpuProofButton.setOnClickListener { submitGpuProof() }
         modelsButton.setOnClickListener { refreshModels() }
-        prevModelButton.setOnClickListener { selectModel(-1) }
-        nextModelButton.setOnClickListener { selectModel(1) }
+        modelSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (updatingModelSpinner || position !in leaderModels.indices) return
+                selectedModelIndex = position
+                modelSummaryView.text = modelSummaryText()
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+            }
+        }
         sendChatButton.setOnClickListener { sendLeaderChat() }
+        runChatProofButton.setOnClickListener { runCleanChatProof() }
 
         // Wire keyboard return keys: leader's Next jumps to node id,
         // node id's Done triggers Connect. Without this the on-screen
@@ -172,9 +192,10 @@ class MainActivity : AppCompatActivity() {
             nodeIdField.setText(nodeId)
             connect(leader, nodeId)
         } else {
-            AgentLauncher.start(this)
-            refreshFarmStatus()
-            refreshModels()
+                AgentLauncher.start(this)
+                refreshFarmStatus()
+                refreshModels()
+                scrollToChatPanel()
         }
     }
 
@@ -234,8 +255,13 @@ class MainActivity : AppCompatActivity() {
                 refreshRuntimeCard()
                 refreshFarmStatus()
                 refreshModels()
+                scrollToChatPanel()
             }
         }
+    }
+
+    private fun scrollToChatPanel() {
+        scrollToViewInScroll(chatCard, 600L)
     }
 
     private fun refreshStatus() {
@@ -337,6 +363,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         modelsButton.isEnabled = false
+        modelSummaryView.text = "Refreshing Dell Ollama models..."
         thread(name = "hive-models") {
             val summary = try {
                 val modelsJson = getJson(leader, "/api/localai/ollama/models")
@@ -347,33 +374,61 @@ class MainActivity : AppCompatActivity() {
                     val name = item?.optString("name") ?: models.optString(i)
                     if (name.isNotBlank()) leaderModels.add(name)
                 }
-                if (selectedModelIndex !in leaderModels.indices) selectedModelIndex = 0
+                val qwenIndex = leaderModels.indexOfFirst { it.equals("qwen:latest", ignoreCase = true) }
+                selectedModelIndex = when {
+                    qwenIndex >= 0 -> qwenIndex
+                    selectedModelIndex in leaderModels.indices -> selectedModelIndex
+                    else -> 0
+                }
                 modelSummaryText()
             } catch (e: Exception) {
                 "Models unavailable: ${e.message}"
             }
             runOnUiThread {
+                updateModelSpinner()
                 modelSummaryView.text = summary
                 modelsButton.isEnabled = true
             }
         }
     }
 
-    private fun selectModel(delta: Int) {
-        if (leaderModels.isEmpty()) {
-            refreshModels()
-            return
-        }
-        selectedModelIndex = (selectedModelIndex + delta + leaderModels.size) % leaderModels.size
-        modelSummaryView.text = modelSummaryText()
-    }
-
     private fun modelSummaryText(): String {
         if (leaderModels.isEmpty()) return "No Ollama models available."
         val selected = leaderModels[selectedModelIndex]
-        val list = leaderModels.take(5).joinToString(", ")
-        val more = if (leaderModels.size > 5) " +${leaderModels.size - 5}" else ""
-        return "Selected: $selected\nAvailable: $list$more"
+        val visibleCount = 6
+        val list = leaderModels.take(visibleCount).joinToString(", ")
+        val more = if (leaderModels.size > visibleCount) " +${leaderModels.size - visibleCount}" else ""
+        return "Selected for chat ${selectedModelIndex + 1}/${leaderModels.size}: ${modelDisplayName(selected)}\nAvailable on Dell: $list$more"
+    }
+
+    private fun updateModelSpinner() {
+        updatingModelSpinner = true
+        modelDisplayNames.clear()
+        modelDisplayNames.addAll(leaderModels.map { modelDisplayName(it) })
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            modelDisplayNames.toList(),
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        modelSpinner.adapter = adapter
+        modelSpinner.isEnabled = leaderModels.isNotEmpty()
+        if (leaderModels.isNotEmpty()) {
+            selectedModelIndex = selectedModelIndex.coerceIn(0, leaderModels.lastIndex)
+            modelSpinner.setSelection(selectedModelIndex)
+        }
+        updatingModelSpinner = false
+    }
+
+    private fun modelDisplayName(model: String): String {
+        val lower = model.lowercase()
+        return when {
+            lower == "qwen:latest" -> "$model - recommended chat"
+            lower.contains("26b") || lower.contains("36") -> "$model - large / slow"
+            lower.contains("embed") -> "$model - embeddings only"
+            else -> "$model - chat"
+        }
     }
 
     private fun sendLeaderChat() {
@@ -383,11 +438,45 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.toast_leader_required, Toast.LENGTH_SHORT).show()
             return
         }
-        if (prompt.isBlank()) return
+        if (prompt.isBlank()) {
+            chatResponseView.text = "Type a message first."
+            scrollToChatOutput()
+            return
+        }
+        hideKeyboard()
+        chatInput.clearFocus()
         val model = leaderModels.getOrNull(selectedModelIndex) ?: "qwen:latest"
+        sendChatPrompt(leader, model, prompt)
+    }
+
+    private fun runCleanChatProof() {
+        val leader = prefs.leader.ifBlank { normalizeLeaderUrl(leaderField.text.toString()) }
+        if (leader.isBlank()) {
+            Toast.makeText(this, R.string.toast_leader_required, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val model = preferredProofModel()
+        val token = "ANDROIDHIVEPROOF${System.currentTimeMillis()}"
+        val prompt = "Return exactly this token and no other words: $token"
+        sendChatPrompt(leader, model, prompt)
+    }
+
+    private fun preferredProofModel(): String {
+        val qwenIndex = leaderModels.indexOfFirst { it.equals("qwen:latest", ignoreCase = true) }
+        if (qwenIndex >= 0) {
+            selectedModelIndex = qwenIndex
+            modelSpinner.setSelection(selectedModelIndex)
+            modelSummaryView.text = modelSummaryText()
+            return leaderModels[qwenIndex]
+        }
+        return leaderModels.getOrNull(selectedModelIndex) ?: "qwen:latest"
+    }
+
+    private fun sendChatPrompt(leader: String, model: String, prompt: String) {
         sendChatButton.isEnabled = false
+        runChatProofButton.isEnabled = false
         setStatus(getString(R.string.status_chatting), State.Working)
-        chatResponseView.text = "Sending to $model..."
+        chatResponseView.text = "Sending to ${modelDisplayName(model)}...\nTimeout: 45 seconds."
         thread(name = "hive-chat") {
             val response = try {
                 val res = postJson(
@@ -397,7 +486,7 @@ class MainActivity : AppCompatActivity() {
                         put("model", model)
                         put("message", prompt)
                     },
-                    readTimeoutMs = 150_000,
+                    readTimeoutMs = 45_000,
                 )
                 val answer = res.optString("answer", "").ifBlank { res.optString("error", "No response") }
                 "Model: ${res.optString("model", model)}\n\n$answer"
@@ -407,9 +496,27 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 chatResponseView.text = response
                 sendChatButton.isEnabled = true
+                runChatProofButton.isEnabled = true
                 refreshStatus()
+                scrollToChatOutput()
             }
         }
+    }
+
+    private fun scrollToChatOutput() {
+        scrollToViewInScroll(chatResponseView, 150L)
+    }
+
+    private fun scrollToViewInScroll(target: View, delayMs: Long = 0L) {
+        hiveScrollView.postDelayed({
+            var y = target.top
+            var current: ViewParent? = target.parent
+            while (current is View && current != hiveScrollView) {
+                y += current.top
+                current = (current as View).parent
+            }
+            hiveScrollView.smoothScrollTo(0, (y - 64).coerceAtLeast(0))
+        }, delayMs)
     }
 
     private fun getJson(leader: String, path: String): JSONObject {

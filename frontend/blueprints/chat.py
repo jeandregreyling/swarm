@@ -31,6 +31,12 @@ from utils.db.chat import (
     update_chat_relay_recovery_status,
 )
 from utils.db.timeline import timeline_append as _trace
+from utils.chat_prompt_profiles import (
+    apply_local_chat_profile,
+    audit_prefix as _chat_audit_prefix,
+    chat_handoff_contract,
+    read_only_guard as _chat_read_only_guard,
+)
 try:
     from utils.circuit_breaker import check as _cb_check, record_success as _cb_ok, record_failure as _cb_fail, health_probe as _cb_probe
     _CB_AVAILABLE = True
@@ -85,15 +91,7 @@ def _chat_agent_timeout_seconds(agent_name, persistent_mode=False):
 
 
 def _chat_handoff_contract(agent_name, deadline_seconds):
-    return (
-        "\n\n=== FRIDAYS STUDIO HANDOFF TIMER ===\n"
-        f"You are running as {agent_name}. Your visible deadline is {int(deadline_seconds)} seconds.\n"
-        "Before that deadline, answer with the useful work you have completed so far. "
-        "If you cannot finish, end with a compact SELF-HANDOFF containing: current finding, "
-        "next action, files/tables touched, risks, and the exact prompt to continue in the next window. "
-        "Do not wait silently for perfect completion.\n"
-        "=== END TIMER CONTRACT ===\n"
-    )
+    return chat_handoff_contract(agent_name, deadline_seconds)
 
 
 def _looks_like_token_exhaustion(text):
@@ -1191,13 +1189,9 @@ def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, r
     handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
     project_block = _build_project_context_block(f'{latest_message}\n{threaded_prompt[-4000:]}')
     base_prompt = handoff_block + project_block + memory_block + knowledge_block + threaded_prompt
-    if selected_agent in {'duck', 'sniffles'}:
-        return (
-            '=== Audit mode ===\n'
-            'Review the thread and latest user message. Focus on factual consistency, risk,'
-            ' contradictions, and missing assumptions. Return concise findings only.\n\n'
-            + base_prompt
-        )
+    prefix = _chat_audit_prefix(selected_agent)
+    if prefix:
+        return prefix + base_prompt
     return base_prompt
 
 def _get_ghost_agent_names():
@@ -1572,15 +1566,7 @@ def api_chat():
 
         informational_request = _chat_user_prompt_is_informational(message)
         if informational_request:
-            system_prompt = (
-                system_prompt.rstrip()
-                + '\n\n=== WATCHDOG READ-ONLY ROUTING GUARD ===\n'
-                + 'The latest user message is informational/status-seeking. '
-                + 'Do not create proposals, approve work, complete work, or modify files. '
-                + 'Use read-only inspection only. If the request is ambiguous, ask "What do you mean?" '
-                + 'with the missing target/context.\n'
-                + '=== END WATCHDOG READ-ONLY ROUTING GUARD ===\n'
-            )
+            system_prompt = system_prompt.rstrip() + _chat_read_only_guard(prefix_for_system_prompt=True)
 
         client = anthropic.Anthropic(api_key=api_key)
 
@@ -1843,36 +1829,14 @@ def api_chat():
             _stage(stage_text, est_eta if eta_seconds is None else eta_seconds)
 
         effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
-        handoff_contract = _chat_handoff_contract(selected_agent, local_timeout)
-        if _chat_user_prompt_is_informational(message):
-            effective_prompt = (
-                '=== WATCHDOG READ-ONLY ROUTING GUARD ===\n'
-                'This is a status/informational chat turn. Do not create proposals, approve work, '
-                'complete work, or modify files. Use read-only inspection only. If the request is '
-                'ambiguous, ask "What do you mean?" with the missing target/context.\n'
-                '=== END WATCHDOG READ-ONLY ROUTING GUARD ===\n\n'
-            ) + effective_prompt
-        effective_prompt = handoff_contract + '\n\n' + effective_prompt
-        if not auto_relay:
-            effective_prompt = (
-                '=== RELAY DISABLED — HARD RULE ===\n'
-                'Auto Relay is OFF. You MUST NOT route, forward, ask, or mention any other agent '
-                'in your response. Do not write "Route to X", "Ask Ten", "→ Eight", or any similar '
-                'phrasing. Handle the entire task yourself. If you are uncertain, write a note in '
-                'your sandpit and continue alone. Violating this rule breaks the interface.\n'
-                '=================================\n\n'
-            ) + effective_prompt
-        else:
-            effective_prompt = '[Auto Relay: ENABLED]\n' + effective_prompt
-        if _is_execution_confirmation(message):
-            effective_prompt = (
-                effective_prompt
-                + '\n\n=== EXECUTION CONFIRMATION ===\n'
-                + 'User explicitly approved execution. If your next step is to create a work proposal, '
-                + 'output exactly one executable command line in this format and then brief context:\n'
-                + 'SKILL alm_create_proposal "<title>" "<description>"\n'
-                + 'Do not ask for reconfirmation.'
-            )
+        effective_prompt = apply_local_chat_profile(
+            agent_name=selected_agent,
+            base_prompt=effective_prompt,
+            deadline_seconds=local_timeout,
+            auto_relay=auto_relay,
+            informational_request=_chat_user_prompt_is_informational(message),
+            execution_confirmation=_is_execution_confirmation(message),
+        )
         _stage('queued', est_eta)
         # Tavily web research for Mistral (same service Qwen used) — injected before model call
         if selected_agent == 'mistral' and _TAVILY_OK and _tavily_search:

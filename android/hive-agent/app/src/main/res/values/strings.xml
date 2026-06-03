@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Swarm Hive</string>
+    <string name="app_name">Fridays Hive</string>
 
-    <string name="header_title">Swarm Hive</string>
-    <string name="header_tagline">Pool this device into your private compute swarm.\nOne tap. Always-on. Yours.</string>
+    <string name="header_title">Fridays Hive</string>
+    <string name="header_tagline">Potato-2 node console for chat, models, and farm status.</string>
 
     <string name="label_leader">Leader</string>
     <string name="label_leader_hint">The address of the machine running the Swarm.</string>
@@ -13,21 +13,21 @@
     <string name="label_node_id_hint">How this device shows up in the Hive. Optional — leave the suggestion if you like it.</string>
     <string name="hint_node_id">android-…</string>
 
-    <string name="btn_connect">Join the Swarm</string>
+    <string name="btn_connect">Join Fridays</string>
     <string name="btn_stop">Stop sharing</string>
-    <string name="btn_refresh">Refresh</string>
-    <string name="btn_gpu_proof">GPU proof</string>
+    <string name="btn_refresh">Refresh node status</string>
+    <string name="btn_gpu_proof">Run GPU test</string>
 
     <string name="runtime_title">Node runtime</string>
     <string name="runtime_summary_empty">No telemetry posted yet.</string>
     <string name="farm_summary_empty">Farm status not checked yet.</string>
-    <string name="chat_title">Leader chat</string>
-    <string name="model_summary_empty">Models not loaded yet.</string>
-    <string name="btn_prev_model">Prev</string>
-    <string name="btn_next_model">Next</string>
-    <string name="btn_models">Models</string>
-    <string name="hint_chat">Ask potato-1 through Ollama…</string>
-    <string name="btn_send_chat">Send to selected model</string>
+    <string name="chat_title">Chat with Dell Ollama</string>
+    <string name="model_summary_empty">Tap Refresh models to load Dell Ollama models.</string>
+    <string name="btn_models">Refresh models</string>
+    <string name="hint_chat">Type a message for the selected model…</string>
+    <string name="btn_send_chat">Send chat</string>
+    <string name="btn_run_chat_proof">Run proof chat</string>
+    <string name="label_chat_output">Output</string>
     <string name="chat_response_empty">Chat response will appear here.</string>
 
     <string name="footer_hint">Open the Swarm dashboard on your computer.\nThe Leader address is shown in the Monitor view.</string>
