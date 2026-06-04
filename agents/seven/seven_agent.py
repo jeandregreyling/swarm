@@ -2,10 +2,10 @@
 agents/seven/seven_agent.py — Seven
 Personal companion + nervous-system observer.
 
-Historically a pure local algorithm (deterministic templates). 2026-04-23 —
-now LLM-backed for open conversation while keeping fast state templates for
-status/identity queries. The model is the custom merge (seven:latest =
-Qwen 2.5 7B + DeepSeek-R1-Distill-Qwen-7B) registered in Ollama.
+Historically a pure local algorithm (deterministic templates). Seven is now
+LLM-backed for open conversation while keeping fast state templates for
+status/identity queries. The default model is the repo-local direct GGUF so
+Seven does not need Ollama for its own chat path.
 """
 import logging
 import os
@@ -18,14 +18,17 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 
 logger = logging.getLogger('seven.seven')
 AGENT_NAME = 'seven'
-# 2026-04-23 — Seven scoped as the in-house "paperclip": tiny, always-hot,
-# lives in the system to nudge orbs, flip the "?" glyph, and answer quick
-# status/identity probes. Switched from qwen2.5:0.5b (~400 MB, too small to
-# reason) to phi3:mini (~2.3 GB) per Ghost's feedback — still cheap but able
-# to hold a conversation. The earlier custom merged GGUF (seven:latest = Qwen
-# 2.5 7B + DeepSeek-R1-Distill-Qwen-7B) is shelved pending a rebuild.
 # Override with SEVEN_MODEL env var to test other backends.
-SEVEN_MODEL = os.environ.get('SEVEN_MODEL', 'phi3:mini')
+SEVEN_MODEL = os.environ.get('SEVEN_MODEL', 'seven-direct:daily')
+SEVEN_NUM_PREDICT = int(os.environ.get('SEVEN_NUM_PREDICT', '64'))
+SEVEN_DIRECT_TIMEOUT_S = int(os.environ.get('SEVEN_DIRECT_TIMEOUT_S', '45'))
+SEVEN_COMPACT_DIRECT_CONTEXT = os.environ.get('SEVEN_COMPACT_DIRECT_CONTEXT', '1').strip().lower() not in {
+    '0', 'false', 'no', 'off'
+}
+
+
+def _seven_direct_runtime() -> bool:
+    return str(SEVEN_MODEL or '').strip().lower().startswith('seven-direct:')
 
 
 def _read_state():
@@ -62,6 +65,16 @@ def _load_memory(message):
     except Exception:
         pass
     return mems
+
+
+def _row_get(row, key, default=''):
+    try:
+        return row.get(key, default)
+    except AttributeError:
+        try:
+            return row[key]
+        except Exception:
+            return default
 
 
 def _load_kc_context(message, limit=4):
@@ -380,8 +393,8 @@ def _compose(message, state, memories):
         if memories:
             parts.append("\nRecent context from memory:")
             for m in memories[:2]:
-                subj = str(m.get('subject') or '').strip()[:80]
-                body = str(m.get('content') or '').strip()[:200]
+                subj = str(_row_get(m, 'subject') or '').strip()[:80]
+                body = str(_row_get(m, 'content') or '').strip()[:200]
                 if subj:
                     parts.append(f"  [{subj}] {body}")
         return '\n'.join(parts), 0
@@ -440,10 +453,11 @@ def _compose(message, state, memories):
     return None, 0
 
 
-def _llm_chat(message, state, memories, history):
-    """Call Seven's merged Ollama model with system prompt + live context.
+def _llm_chat(message, state, memories, history, stage_cb=None):
+    """Call Seven's merged model through the runtime gateway.
     Returns (text, tokens) or (None, 0) on failure.
     """
+    compact = SEVEN_COMPACT_DIRECT_CONTEXT and _seven_direct_runtime()
     try:
         from utils.config import SEVEN_SYSTEM_PROMPT
     except Exception:
@@ -451,31 +465,36 @@ def _llm_chat(message, state, memories, history):
             "You are Seven — the personal companion AI for Ghost One (Jeandre). "
             "Be direct, honest, and loyal. No filler openers. Have opinions."
         )
-    try:
-        import ollama
-    except Exception as exc:
-        logger.warning(f"[Seven] ollama import failed: {exc}")
-        return None, 0
-
+    if compact:
+        SEVEN_SYSTEM_PROMPT = (
+            "You are Seven, Ghost One's local swarm companion running through the "
+            "direct GGUF runtime. Be concise, plain, and operational. Answer the "
+            "user directly. Do not invent facts; say what you know and flag gaps."
+        )
     state_block = _format_state_block(state)
     agents = ', '.join(state.get('local_agents', [])) or 'none listed'
+    mem_limit = 1 if compact else 3
+    kc_limit = 1 if compact else 4
+    history_limit = 2 if compact else 6
+    self_awareness_chars = 650 if compact else 2200
+
     mem_lines = []
-    for m in (memories or [])[:3]:
-        subj = str(m.get('subject') or '').strip()[:80]
-        body = str(m.get('content') or '').strip()[:240]
+    for m in (memories or [])[:mem_limit]:
+        subj = str(_row_get(m, 'subject') or '').strip()[:80]
+        body = str(_row_get(m, 'content') or '').strip()[:160 if compact else 240]
         if subj or body:
             mem_lines.append(f"- [{subj}] {body}")
     mem_block = '\n'.join(mem_lines) if mem_lines else '(no relevant memory)'
 
     # Knowledge Center: Seven reads from the same docs the team writes.
-    kc_docs = _load_kc_context(message, limit=4)
+    kc_docs = _load_kc_context(message, limit=kc_limit)
     kc_lines = [f"- [{d['doc_name']}] {d['snippet']}" for d in kc_docs if d.get('snippet')]
     kc_block = '\n'.join(kc_lines) if kc_lines else '(no knowledge docs matched)'
 
     # PACKET-10B: bedrock identity beliefs and current curiosity inbox
-    id_beliefs = _load_identity_beliefs(limit=10)
+    id_beliefs = _load_identity_beliefs(limit=4 if compact else 10)
     identity_block = _format_identity_block(id_beliefs) if id_beliefs else '(no identity seeded)'
-    open_q = _load_open_curiosity(limit=5)
+    open_q = _load_open_curiosity(limit=2 if compact else 5)
     curiosity_block = _format_curiosity_block(open_q) if open_q else '(curiosity inbox empty)'
 
     # Wishlist pillars — Seven now reads live cyber/financial/trading/business state.
@@ -485,7 +504,7 @@ def _llm_chat(message, state, memories, history):
     # lessons, recent commits. This is what lets Seven call out slop.
     try:
         from agents.seven.self_awareness import context_block as _sa_block
-        self_awareness_block = _sa_block(max_chars=2200)
+        self_awareness_block = _sa_block(max_chars=self_awareness_chars)
     except Exception:
         self_awareness_block = '(self-awareness module unavailable)'
 
@@ -508,7 +527,7 @@ def _llm_chat(message, state, memories, history):
     )
 
     msgs = [{'role': 'system', 'content': system}]
-    for h in (history or [])[-6:]:
+    for h in (history or [])[-history_limit:]:
         role = h.get('role') or ('user' if h.get('sender') in (None, 'you', 'user') else 'assistant')
         content = h.get('content') or h.get('message') or ''
         if content:
@@ -517,16 +536,44 @@ def _llm_chat(message, state, memories, history):
     msgs.append({'role': 'user', 'content': str(message or '')})
 
     try:
-        resp = ollama.chat(
-            model=SEVEN_MODEL,
-            messages=msgs,
-            options={'temperature': 0.8, 'top_p': 0.9, 'num_ctx': 4096, 'num_predict': 640},
+        from core import llm as _llm
+        streamed_chunks = []
+        direct_runtime = _seven_direct_runtime()
+        timeout_s = SEVEN_DIRECT_TIMEOUT_S if direct_runtime else 900
+
+        def _on_chunk(piece):
+            if piece:
+                streamed_chunks.append(str(piece))
+
+        text, tokens = _llm.chat_via_gateway(
+            SEVEN_MODEL,
+            msgs,
+            stage_cb=stage_cb,
+            on_chunk=_on_chunk if direct_runtime else None,
+            idle_timeout_s=timeout_s,
+            absolute_timeout_s=timeout_s,
+            keep_alive=0,
+            options={
+                'temperature': 0.8,
+                'top_p': 0.9,
+                'num_ctx': 2048,
+                'num_predict': SEVEN_NUM_PREDICT,
+                'timeout': timeout_s,
+                'startup_timeout': timeout_s,
+            },
         )
-        text = (resp or {}).get('message', {}).get('content', '') or ''
-        tokens = int((resp or {}).get('eval_count') or 0)
+        if not text and streamed_chunks:
+            text = ''.join(streamed_chunks)
+        if direct_runtime and str(text or '').startswith('[local runtime error:'):
+            try:
+                from core.seven_llm import llama_server
+                llama_server.stop(SEVEN_MODEL)
+            except Exception:
+                pass
+            return None, 0
         return text.strip(), tokens
     except Exception as exc:
-        logger.warning(f"[Seven] ollama chat failed: {exc}")
+        logger.warning(f"[Seven] runtime gateway chat failed: {exc}")
         # PACKET-10B Curiosity: rather than fail silently, ask a question.
         # Dedup is built into curiosity.ask() so repeated outages don't spam.
         try:
@@ -841,7 +888,7 @@ def chat(message, conversation_history=None, stage_cb=None):
     # Anything else → Seven's merged LLM.
     if answer is None:
         _emit('thinking · seven merged model')
-        llm_text, llm_tokens = _llm_chat(message, state, memories, conversation_history or [])
+        llm_text, llm_tokens = _llm_chat(message, state, memories, conversation_history or [], stage_cb)
         if llm_text:
             answer, tokens = llm_text, llm_tokens
         else:
@@ -858,7 +905,7 @@ def chat(message, conversation_history=None, stage_cb=None):
     try:
         from database import save_agent_memory
         save_agent_memory(AGENT_NAME, str(message or '')[:100], answer,
-                          tags='chat,shared-thread,local-algorithm', importance=6,
+                          tags=f'chat,shared-thread,{SEVEN_MODEL}', importance=6,
                           source='terminal_chat')
     except Exception:
         pass
@@ -888,5 +935,5 @@ def chat(message, conversation_history=None, stage_cb=None):
         # Witness must never break chat. Silent on failure.
         pass
 
-    logger.info(f'[Seven] local-algorithm response | msg_len={len(message or "")}')
+    logger.info(f'[Seven] response via {SEVEN_MODEL} | msg_len={len(message or "")}')
     return answer, tokens

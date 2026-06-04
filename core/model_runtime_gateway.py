@@ -404,7 +404,7 @@ def chat(
     on_event: Any = None,
     prefer_generate: bool = False,
 ) -> RuntimeResult:
-    """Run an Ollama chat with structured events and idle/absolute clocks.
+    """Run a local chat with structured events and idle/absolute clocks.
 
     Optional callbacks let callers stream the work into their own trace:
       * on_token(piece: str): fired for every non-empty token chunk
@@ -413,6 +413,19 @@ def chat(
     Both callbacks are best-effort — exceptions are swallowed so a noisy
     consumer cannot break model output.
     """
+    if _seven_runtime_enabled() or _is_registered_direct_model(model):
+        direct = _direct_chat_if_registered(
+            model,
+            messages,
+            absolute_timeout_s=absolute_timeout_s,
+            idle_timeout_s=idle_timeout_s,
+            options=options,
+            on_token=on_token,
+            on_event=on_event,
+        )
+        if direct is not None:
+            return direct
+
     started = _now()
     events: list[RuntimeEvent] = []
 
@@ -556,3 +569,83 @@ def chat(
     except Exception as exc:
         _record(RuntimeEvent("failed", _now(), str(exc), tokens=tokens))
         return RuntimeResult(False, model, "".join(content_parts), tokens, _now() - started, error=str(exc), events=events)
+
+
+def _seven_runtime_enabled() -> bool:
+    value = os.environ.get("SEVEN_RUNTIME", "").strip().lower()
+    return value in {"1", "true", "yes", "direct", "llamacpp"}
+
+
+def _is_registered_direct_model(model: str) -> bool:
+    try:
+        from core.seven_llm import registry
+        entry = registry.get(model)
+        return bool(entry and entry.driver == "llamacpp")
+    except Exception:
+        return False
+
+
+def _direct_chat_if_registered(
+    model: str,
+    messages: list[dict[str, str]],
+    *,
+    absolute_timeout_s: int,
+    idle_timeout_s: int,
+    options: dict[str, Any] | None,
+    on_token: Any = None,
+    on_event: Any = None,
+) -> RuntimeResult | None:
+    try:
+        from core.seven_llm import registry
+        entry = registry.get(model)
+    except Exception:
+        entry = None
+    if not entry or entry.driver != "llamacpp":
+        return None
+
+    started = _now()
+    events: list[RuntimeEvent] = []
+
+    def _record(stage: str, detail: str = "", tokens: int = 0) -> None:
+        event = RuntimeEvent(stage, _now(), detail, tokens=tokens)
+        events.append(event)
+        if on_event is not None:
+            try:
+                on_event(event.as_dict())
+            except Exception:
+                pass
+
+    _record("queued")
+    _record("direct_dispatch", f"driver=llamacpp absolute={absolute_timeout_s}s idle={idle_timeout_s}s")
+    try:
+        from core.seven_llm.driver_llamacpp import LlamaCppDriver
+        driver = LlamaCppDriver(options={"timeout": absolute_timeout_s})
+        merged_options = dict(options or {})
+        merged_options.setdefault("timeout", absolute_timeout_s)
+        saw_token = False
+
+        def _on_direct_token(piece: str) -> None:
+            nonlocal saw_token
+            if piece and not saw_token:
+                saw_token = True
+                _record("first_token", tokens=1)
+            if on_token is not None:
+                try:
+                    on_token(piece)
+                except Exception:
+                    pass
+
+        text, tokens = driver.chat(
+            model,
+            messages,
+            temperature=merged_options.pop("temperature", None),
+            options=merged_options,
+            on_token=_on_direct_token if on_token is not None else None,
+        )
+        if text and not saw_token:
+            _record("first_token", tokens=max(1, tokens))
+        _record("completed", tokens=tokens)
+        return RuntimeResult(True, model, text, tokens, _now() - started, events=events)
+    except Exception as exc:
+        _record("failed", str(exc))
+        return RuntimeResult(False, model, "", 0, _now() - started, error=str(exc), events=events)

@@ -81,6 +81,11 @@ _cache = {
 }
 
 _NON_OLLAMA_MODELS = frozenset({'', 'external', 'local-algorithm'})
+
+
+def _is_non_ollama_model(model: str) -> bool:
+    model = str(model or '').strip().lower()
+    return model in _NON_OLLAMA_MODELS or model.startswith('seven-direct:')
 _API_PING_TIMEOUT_S = 6
 _PROVIDER_META = {
     'GROQ_API_KEY': {
@@ -234,7 +239,7 @@ def _resolve_provider_meta(row):
     if name in _NAME_PROVIDER_META:
         return _NAME_PROVIDER_META[name]
     if tier == 'local':
-        if model in _NON_OLLAMA_MODELS:
+        if _is_non_ollama_model(model):
             return 'local', 'LOCAL_RUNTIME'
         return 'ollama', 'OLLAMA_RUNTIME'
     if name == 'ghost':
@@ -339,7 +344,7 @@ def _probe_local_rows(rows):
             name = str(row.get('name') or '').lower()
             model = str(row.get('model') or '').strip().lower()
             provider, fault_domain = _resolve_provider_meta(row)
-            if model in _NON_OLLAMA_MODELS:
+            if _is_non_ollama_model(model):
                 results[name] = {
                     'provider': provider,
                     'fault_domain': fault_domain,
@@ -389,7 +394,7 @@ def _probe_local_rows(rows):
         name = str(row.get('name') or '').lower()
         model = str(row.get('model') or '').strip().lower()
         provider, fault_domain = _resolve_provider_meta(row)
-        if model in _NON_OLLAMA_MODELS:
+        if _is_non_ollama_model(model):
             results[name] = {
                 'provider': provider,
                 'fault_domain': fault_domain,
@@ -800,9 +805,8 @@ def get_single_task_locals():
     """Replaces _CHAT_SINGLE_TASK_LOCAL_AGENTS in services.py.
     Returns set of local agents that run as single-task Ollama instances.
     Excludes shared-memory runners (librarian/duck/sniffles) and non-Ollama
-    agents (seven uses local-algorithm, ghost is human)."""
+    agents (direct GGUF/local-algorithm, ghost is human)."""
     skip = {'librarian', 'duck', 'sniffles'}
-    non_ollama_models = {'external', 'local-algorithm', ''}
     out = set()
     for r in _load_rows():
         if r.get('tier', 'local') != 'local':
@@ -810,7 +814,7 @@ def get_single_task_locals():
         if r['name'] in skip or r['name'] == 'ghost':
             continue
         model = str(r.get('model') or '').strip().lower()
-        if model in non_ollama_models:
+        if _is_non_ollama_model(model):
             continue
         out.add(r['name'])
     return out

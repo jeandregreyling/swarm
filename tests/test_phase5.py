@@ -1,7 +1,7 @@
 """Phase-5 refinements — regression tests.
 
 Covers:
-- Seven's default model switched to phi3:mini.
+- Seven's default model is the direct GGUF runtime.
 - Coding Bible prepended to every coder-capable *_SYSTEM_PROMPT in utils.config.
 """
 import sys
@@ -10,14 +10,14 @@ sys.path.insert(0, '/home/seven/swarm')
 sys.path.insert(0, '/home/seven/swarm/utils')
 
 
-def test_seven_default_model_is_phi3_mini(monkeypatch):
-    """Seven's paperclip brain is phi3:mini by default (Phase-5 swap)."""
+def test_seven_default_model_is_direct_gguf(monkeypatch):
+    """Seven's open-chat brain defaults to the direct GGUF runtime."""
     monkeypatch.delenv('SEVEN_MODEL', raising=False)
     for mod in list(sys.modules):
         if mod.startswith('agents.seven'):
             del sys.modules[mod]
     from agents.seven import seven_agent  # type: ignore
-    assert seven_agent.SEVEN_MODEL == 'phi3:mini'
+    assert seven_agent.SEVEN_MODEL == 'seven-direct:daily'
 
 
 def test_seven_model_env_override(monkeypatch):

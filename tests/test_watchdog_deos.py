@@ -65,6 +65,26 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
 
     monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
     monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_deos, '_direct_runtime_snapshot', lambda: {
+        'ok': True,
+        'models': [{'name': 'seven-direct:daily'}],
+        'servers': [],
+        'resources': {'available_gb': 24.0},
+        'inventory_roots': [],
+        'warnings': [],
+    })
+    monkeypatch.setattr(watchdog_deos, '_seven_service_snapshot', lambda: {
+        'ok': True,
+        'service': 'seven-runtime',
+        'model': 'seven-direct:daily',
+        'flask_required': False,
+        'ollama_required': False,
+        'chat_timeout_s': 45,
+        'direct_registered': True,
+        'direct_model_count': 1,
+        'resident_servers': 0,
+        'warning': '',
+    })
     warmed = []
     monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: warmed.append(a) or (True, 'warm ok'))
     run_calls = []
@@ -77,6 +97,10 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
 
     assert warmed == []
     assert report['operates']['expired_leases_cleared'] == 1
+    assert report['decides']['direct_runtime_policy']['ok'] is True
+    assert report['operates']['direct_runtime']['models'][0]['name'] == 'seven-direct:daily'
+    assert report['decides']['seven_service_policy']['service'] == 'seven-runtime'
+    assert report['decides']['seven_service_policy']['ollama_required'] is False
     assert run_calls == []
     assert any('recovery skipped: no support agents ready' in item for item in report['executes'])
 
@@ -99,6 +123,139 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
     assert evidence >= 1
     assert lease['lease_owner'] == ''
     assert lease['lease_until'] == ''
+
+
+def test_deos_cycle_can_run_direct_runtime_smoke_when_requested(monkeypatch, tmp_path):
+    from utils import watchdog_deos
+
+    db_path = tmp_path / 'deos-direct-smoke.db'
+    conn = _conn(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE agents (
+            name TEXT PRIMARY KEY,
+            model TEXT NOT NULL,
+            tier TEXT DEFAULT 'local',
+            enabled INTEGER DEFAULT 1,
+            eta_seconds INTEGER DEFAULT 60,
+            keep_alive INTEGER DEFAULT 300
+        );
+        CREATE TABLE chat_relay_recoveries (
+            recovery_id TEXT PRIMARY KEY,
+            job_id TEXT UNIQUE NOT NULL,
+            status TEXT DEFAULT 'open'
+        );
+        """
+    )
+    conn.executemany(
+        "INSERT INTO agents (name, model, keep_alive) VALUES (?, ?, ?)",
+        [('duck', 'qwen2.5:latest', 300), ('librarian', 'qwen:latest', 300), ('seven', 'local-algorithm', 300)],
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_deos, '_direct_runtime_snapshot', lambda: {
+        'ok': True,
+        'models': [{'name': 'seven-direct:daily'}],
+        'servers': [],
+        'resources': {'available_gb': 24.0},
+        'inventory_roots': [],
+        'warnings': [],
+    })
+    smoke_calls = []
+    monkeypatch.setattr(
+        watchdog_deos,
+        '_direct_runtime_smoke',
+        lambda timeout_seconds: smoke_calls.append(timeout_seconds) or (True, 'direct smoke ok=True tokens=4 chunks=4'),
+    )
+
+    report = watchdog_deos.run_deos_cycle('prewarm=0 execute_recovery=0 execute_work=0 direct_smoke=1 warm_timeout_seconds=30')
+
+    assert smoke_calls == [30]
+    assert any('direct smoke ok=True' in item for item in report['executes'])
+    conn = _conn(db_path)
+    try:
+        rows = conn.execute(
+            "SELECT project_id, step_id, source_ref, status FROM project_step_evidence WHERE source_ref='watchdog-deos:direct-smoke'"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows
+    assert rows[0]['project_id'] == 'P-SEVEN-DIRECT-GGUF'
+    assert rows[0]['step_id'] == 'S-DGGUF-08'
+    assert rows[0]['status'] == 'ok'
+
+
+def test_deos_cycle_records_seven_runtime_service(monkeypatch, tmp_path):
+    from utils import watchdog_deos
+
+    db_path = tmp_path / 'deos-seven-service.db'
+    conn = _conn(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE agents (
+            name TEXT PRIMARY KEY,
+            model TEXT NOT NULL,
+            tier TEXT DEFAULT 'local',
+            enabled INTEGER DEFAULT 1,
+            eta_seconds INTEGER DEFAULT 60,
+            keep_alive INTEGER DEFAULT 300
+        );
+        CREATE TABLE chat_relay_recoveries (
+            recovery_id TEXT PRIMARY KEY,
+            job_id TEXT UNIQUE NOT NULL,
+            status TEXT DEFAULT 'open'
+        );
+        """
+    )
+    conn.executemany(
+        "INSERT INTO agents (name, model, keep_alive) VALUES (?, ?, ?)",
+        [('duck', 'qwen:latest', 300), ('librarian', 'qwen:latest', 300), ('seven', 'seven-direct:daily', 300)],
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_deos, '_direct_runtime_snapshot', lambda: {
+        'ok': True,
+        'models': [{'name': 'seven-direct:daily'}],
+        'servers': [],
+        'resources': {'available_gb': 24.0},
+        'inventory_roots': [],
+        'warnings': [],
+    })
+    monkeypatch.setattr(watchdog_deos, '_seven_service_snapshot', lambda: {
+        'ok': True,
+        'service': 'seven-runtime',
+        'model': 'seven-direct:daily',
+        'flask_required': False,
+        'ollama_required': False,
+        'chat_timeout_s': 45,
+        'direct_registered': True,
+        'direct_model_count': 1,
+        'resident_servers': 0,
+        'warning': '',
+    })
+
+    report = watchdog_deos.run_deos_cycle('prewarm=0 execute_recovery=0 execute_work=0')
+
+    assert report['decides']['seven_service_policy']['ok'] is True
+    assert report['decides']['seven_service_policy']['flask_required'] is False
+    assert report['decides']['seven_service_policy']['ollama_required'] is False
+    conn = _conn(db_path)
+    try:
+        rows = conn.execute(
+            "SELECT project_id, step_id, source_ref, status FROM project_step_evidence WHERE source_ref='watchdog-deos:seven-runtime-service'"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows
+    assert rows[0]['project_id'] == 'P-SEVEN-DIRECT-GGUF'
+    assert rows[0]['step_id'] == 'S-DGGUF-11'
+    assert rows[0]['status'] == 'ok'
 
 
 def test_deos_cycle_prewarm_is_bounded_and_support_only(monkeypatch, tmp_path):

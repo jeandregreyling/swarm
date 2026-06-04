@@ -1,6 +1,7 @@
 from utils.local_runtime_policy import (
     configured_ollama_models,
     is_chat_capable_model,
+    is_local_ollama_agent,
     preferred_model_for_agent,
     unused_chat_models,
 )
@@ -29,3 +30,11 @@ def test_unused_chat_models_excludes_embedding_and_avoided_defaults():
 
     assert is_chat_capable_model("nomic-embed-text:latest") is False
     assert unused_chat_models(installed, assigned) == ["mistral:latest"]
+
+
+def test_direct_gguf_is_chat_capable_but_not_ollama():
+    agent = {"name": "seven", "tier": "local", "model": "seven-direct:daily", "enabled": 1}
+
+    assert is_local_ollama_agent(agent) is False
+    assert configured_ollama_models([agent]) == set()
+    assert is_chat_capable_model("seven-direct:daily") is True

@@ -25,7 +25,7 @@ def test_localai_status_shape(client):
     assert r.status_code == 200
     data = json.loads(r.get_data(as_text=True))
     assert data.get('ok') is True
-    for runner in ('ollama', 'lmstudio', 'picoclaw'):
+    for runner in ('ollama', 'lmstudio', 'picoclaw', 'direct'):
         assert runner in data
         assert 'running' in data[runner]
         assert isinstance(data[runner]['running'], bool)
@@ -50,6 +50,36 @@ def test_localai_ollama_chat_rejects_empty(client):
 def test_localai_lmstudio_chat_rejects_empty(client):
     r = client.post('/api/localai/lmstudio/chat', json={})
     assert r.status_code in (200, 400)
+
+
+def test_localai_direct_models_shape(client):
+    r = client.get('/api/localai/direct/models')
+    assert r.status_code == 200
+    data = json.loads(r.get_data(as_text=True))
+    assert data.get('ok') is True
+    assert isinstance(data.get('models'), list)
+    assert 'inventory' in data
+
+
+def test_localai_direct_chat_rejects_empty(client):
+    r = client.post('/api/localai/direct/chat', json={})
+    assert r.status_code in (200, 400)
+
+
+def test_localai_direct_servers_shape(client):
+    r = client.get('/api/localai/direct/servers')
+    assert r.status_code == 200
+    data = json.loads(r.get_data(as_text=True))
+    assert data.get('ok') is True
+    assert isinstance(data.get('servers'), list)
+
+
+def test_localai_direct_servers_stop_shape(client):
+    r = client.post('/api/localai/direct/servers/stop', json={'model': 'missing-direct-model'})
+    assert r.status_code == 200
+    data = json.loads(r.get_data(as_text=True))
+    assert data.get('ok') is True
+    assert 'stopped' in data
 
 
 def test_kc_media_curriculum_round_trip(client):

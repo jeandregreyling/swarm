@@ -1811,7 +1811,7 @@ def _seed_agents():
         (12,  'twelve',    'Claude',    'claude-haiku-4-5',                      0.3,  'Developer Agent — time wizard, session continuity, Vortex'),
         (13,  'thirteen',  'HuggingFace', 'meta-llama/Llama-3.3-70B-Instruct',  0.5,  'Developer Agent — HuggingFace specialist (testing)'),
         (17,  'ghost_coder', 'Ghost Coder', 'claude-sonnet-4-20250514',        0.3,  'Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays'),
-        ( 7,  'seven',      'Seven',      'local-algorithm',                 0.0,  'Personal companion — loyal, thinks out loud'),
+        ( 7,  'seven',      'Seven',      'seven-direct:daily',              0.0,  'Personal companion — loyal, thinks out loud'),
         (21,  'twenty',     'Qwen3.6',    'qwen3.6:latest',                  0.8,  'Nervous system — observes, deliberates, suggests (no LLM)'),
     ]
     conn = get_connection()

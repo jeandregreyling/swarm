@@ -47,6 +47,11 @@ WORK_AGENT_MODELS = {
     'llama': 'llama3.2:latest',
 }
 
+DIRECT_RUNTIME_PROJECT_ID = 'P-SEVEN-DIRECT-GGUF'
+DIRECT_RUNTIME_STEP_ID = 'S-DGGUF-08'
+SEVEN_SERVICE_STEP_ID = 'S-DGGUF-11'
+SEVEN_DEFAULT_DIRECT_MODEL = os.environ.get('SEVEN_MODEL', 'seven-direct:daily')
+
 
 def _close_lingering_swarm_db_fds() -> int:
     """Release stale SQLite fds before long local-model waits."""
@@ -325,6 +330,109 @@ def _warm_model(model: str, keep_alive: int, timeout_seconds: int) -> Tuple[bool
         return True, f'{model} warm ok'
     except Exception as exc:
         return False, f'{model} warm failed: {type(exc).__name__}: {exc}'
+
+
+def _direct_runtime_snapshot() -> Dict[str, Any]:
+    try:
+        from core.seven_llm import registry
+        from core.seven_llm import llama_server
+        from core.seven_llm.inventory import scan_gguf
+        models = [
+            {
+                'name': m.name,
+                'role': m.role,
+                'path': m.path,
+                'ram_gb': float(m.ram_gb or 0.0),
+                'exists': bool(m.path and os.path.isfile(m.path)),
+            }
+            for m in registry.list_models()
+            if m.driver == 'llamacpp'
+        ]
+        resources = llama_server.resource_snapshot()
+        inventory = scan_gguf(limit=50)
+        warnings = list(inventory.get('warnings') or [])
+        runnable = [m for m in models if m.get('role') != 'embed' and m.get('exists')]
+        if not runnable:
+            warnings.append('no runnable direct GGUF text model registered')
+        return {
+            'ok': bool(runnable),
+            'models': models,
+            'servers': resources.get('servers') or [],
+            'resources': {
+                'total_gb': resources.get('total_gb'),
+                'available_gb': resources.get('available_gb'),
+                'reserve_gb': resources.get('reserve_gb'),
+                'single_resident': resources.get('single_resident'),
+            },
+            'inventory_roots': inventory.get('roots') or [],
+            'warnings': warnings,
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'models': [],
+            'servers': [],
+            'resources': {},
+            'inventory_roots': [],
+            'warnings': [f'direct runtime snapshot failed: {type(exc).__name__}: {exc}'],
+        }
+
+
+def _direct_runtime_smoke(timeout_seconds: int = 180) -> Tuple[bool, str]:
+    try:
+        from core import model_runtime_gateway as gateway
+        from core.seven_llm import llama_server
+        chunks: List[str] = []
+        model = SEVEN_DEFAULT_DIRECT_MODEL
+        try:
+            res = gateway.chat(
+                model,
+                [{'role': 'user', 'content': 'Reply with one short greeting.'}],
+                absolute_timeout_s=max(30, int(timeout_seconds or 180)),
+                idle_timeout_s=max(30, int(timeout_seconds or 180)),
+                options={'num_predict': 8, 'timeout': max(30, int(timeout_seconds or 180)), 'startup_timeout': max(30, int(timeout_seconds or 180))},
+                on_token=chunks.append,
+            )
+            detail = (
+                f"direct smoke ok={res.ok} tokens={res.tokens} chunks={len(chunks)} "
+                f"content={str(res.content or '')[:120]!r}"
+            )
+            return bool(res.ok and res.content), detail
+        finally:
+            llama_server.stop(model)
+    except Exception as exc:
+        return False, f'direct smoke failed: {type(exc).__name__}: {exc}'
+
+
+def _seven_service_snapshot() -> Dict[str, Any]:
+    try:
+        from core.seven_runtime import service as seven_service
+        snap = seven_service.health_snapshot()
+        return {
+            'ok': bool(snap.get('ok')),
+            'service': snap.get('service'),
+            'model': snap.get('model'),
+            'flask_required': bool(snap.get('flask_required')),
+            'ollama_required': bool(snap.get('ollama_required')),
+            'chat_timeout_s': snap.get('chat_timeout_s'),
+            'direct_registered': bool((snap.get('direct') or {}).get('registered')),
+            'direct_model_count': len((snap.get('direct') or {}).get('models') or []),
+            'resident_servers': len(((snap.get('direct') or {}).get('resources') or {}).get('servers') or []),
+            'warning': snap.get('warning') or '',
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'service': 'seven-runtime',
+            'model': '',
+            'flask_required': False,
+            'ollama_required': False,
+            'chat_timeout_s': None,
+            'direct_registered': False,
+            'direct_model_count': 0,
+            'resident_servers': 0,
+            'warning': f'seven service snapshot failed: {type(exc).__name__}: {exc}',
+        }
 
 
 def _clear_expired_recovery_leases(conn) -> int:
@@ -932,6 +1040,9 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
     prewarm = _bool_opt(opts.get('prewarm'), default=False)
     execute_recovery = _bool_opt(opts.get('execute_recovery'), default=True)
     execute_work = _bool_opt(opts.get('execute_work'), default=False)
+    direct_check = _bool_opt(opts.get('direct_check'), default=True)
+    direct_smoke = _bool_opt(opts.get('direct_smoke'), default=False)
+    seven_service_check = _bool_opt(opts.get('seven_service_check'), default=True)
     work_project_id = str(opts.get('work_project_id') or '').strip()
     work_step_prefix = str(opts.get('work_step_prefix') or '').strip()
     work_owner = str(opts.get('work_owner') or '').strip().lower()
@@ -968,6 +1079,32 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
         loaded = set(_ollama_loaded())
         report['decides']['resident_policy'] = targets
         report['decides']['loaded_models_before'] = sorted(loaded)
+        direct_snapshot: Dict[str, Any] = {}
+        if direct_check:
+            direct_snapshot = _direct_runtime_snapshot()
+            report['decides']['direct_runtime_policy'] = {
+                'checked': True,
+                'ok': bool(direct_snapshot.get('ok')),
+                'model_count': len(direct_snapshot.get('models') or []),
+                'resident_servers': len(direct_snapshot.get('servers') or []),
+                'warnings': list(direct_snapshot.get('warnings') or []),
+            }
+        else:
+            report['decides']['direct_runtime_policy'] = {'checked': False}
+        seven_service_snapshot: Dict[str, Any] = {}
+        if seven_service_check:
+            seven_service_snapshot = _seven_service_snapshot()
+            report['decides']['seven_service_policy'] = {
+                'checked': True,
+                'ok': bool(seven_service_snapshot.get('ok')),
+                'service': seven_service_snapshot.get('service'),
+                'model': seven_service_snapshot.get('model'),
+                'flask_required': bool(seven_service_snapshot.get('flask_required')),
+                'ollama_required': bool(seven_service_snapshot.get('ollama_required')),
+                'warning': seven_service_snapshot.get('warning') or '',
+            }
+        else:
+            report['decides']['seven_service_policy'] = {'checked': False}
         ready_recovery_agents: List[str] = []
         readiness_failed = False
 
@@ -1008,10 +1145,74 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
             'readiness_failed': readiness_failed,
             'ready_recovery_agents': ready_recovery_agents,
         }
+        if direct_check:
+            report['operates']['direct_runtime'] = direct_snapshot
+            direct_status = 'ok' if direct_snapshot.get('ok') else 'warn'
+            _add_evidence(
+                conn,
+                'direct-runtime',
+                (
+                    'DEOS direct runtime check: '
+                    f"ok={direct_snapshot.get('ok')} "
+                    f"models={len(direct_snapshot.get('models') or [])} "
+                    f"servers={len(direct_snapshot.get('servers') or [])} "
+                    f"warnings={direct_snapshot.get('warnings') or []}"
+                ),
+                direct_status,
+            )
+            _add_step_evidence(
+                conn,
+                DIRECT_RUNTIME_STEP_ID,
+                'watchdog-deos:direct-runtime',
+                (
+                    'DEOS direct GGUF runtime check: '
+                    f"ok={direct_snapshot.get('ok')} "
+                    f"available_gb={(direct_snapshot.get('resources') or {}).get('available_gb')} "
+                    f"servers={len(direct_snapshot.get('servers') or [])}"
+                ),
+                direct_status,
+                project_id=DIRECT_RUNTIME_PROJECT_ID,
+            )
+        if seven_service_check:
+            report['operates']['seven_service'] = seven_service_snapshot
+            service_status = 'ok' if seven_service_snapshot.get('ok') else 'warn'
+            detail = (
+                'DEOS Seven standalone service check: '
+                f"ok={seven_service_snapshot.get('ok')} "
+                f"model={seven_service_snapshot.get('model')} "
+                f"flask_required={seven_service_snapshot.get('flask_required')} "
+                f"ollama_required={seven_service_snapshot.get('ollama_required')} "
+                f"direct_registered={seven_service_snapshot.get('direct_registered')} "
+                f"warning={seven_service_snapshot.get('warning') or ''}"
+            )
+            _add_evidence(conn, 'seven-runtime-service', detail, service_status)
+            _add_step_evidence(
+                conn,
+                SEVEN_SERVICE_STEP_ID,
+                'watchdog-deos:seven-runtime-service',
+                detail,
+                service_status,
+                project_id=DIRECT_RUNTIME_PROJECT_ID,
+            )
+        if direct_smoke:
+            ok, detail = _direct_runtime_smoke(warm_timeout)
+            report['executes'].append(detail)
+            _add_evidence(conn, 'direct-smoke', detail, 'ok' if ok else 'warn')
+            _add_step_evidence(
+                conn,
+                DIRECT_RUNTIME_STEP_ID,
+                'watchdog-deos:direct-smoke',
+                detail,
+                'ok' if ok else 'warn',
+                project_id=DIRECT_RUNTIME_PROJECT_ID,
+            )
         _add_evidence(
             conn,
             'cycle',
-            f'DEOS cycle: prewarm={prewarm} execute_recovery={execute_recovery} execute_work={execute_work} counts={counts}',
+            (
+                f'DEOS cycle: prewarm={prewarm} execute_recovery={execute_recovery} '
+                f'execute_work={execute_work} direct_check={direct_check} direct_smoke={direct_smoke} counts={counts}'
+            ),
             'ok',
         )
         conn.commit()

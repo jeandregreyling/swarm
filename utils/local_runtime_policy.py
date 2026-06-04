@@ -36,6 +36,15 @@ def normalize_agent_name(value: Any) -> str:
     return str(value or "").strip().lower()
 
 
+def is_non_ollama_model(model: Any) -> bool:
+    model_name = normalize_model_name(model)
+    return model_name in NON_OLLAMA_MODELS or model_name.startswith("seven-direct:")
+
+
+def is_direct_runtime_model(model: Any) -> bool:
+    return normalize_model_name(model).startswith("seven-direct:")
+
+
 def agent_enabled(agent: dict[str, Any]) -> bool:
     try:
         return bool(int((agent or {}).get("enabled", 1)))
@@ -49,7 +58,7 @@ def is_local_ollama_agent(agent: dict[str, Any], *, include_disabled: bool = Fal
     if str((agent or {}).get("tier") or "local").strip().lower() != "local":
         return False
     model = normalize_model_name((agent or {}).get("model"))
-    return model not in NON_OLLAMA_MODELS
+    return not is_non_ollama_model(model)
 
 
 def is_chat_capable_model(model: Any) -> bool:

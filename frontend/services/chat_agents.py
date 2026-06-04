@@ -34,7 +34,7 @@ def _all_local_ollama_chat_agents():
         if not name or name == 'ghost':
             continue
         model = str(row.get('model') or '').strip().lower()
-        if model in non_ollama_models:
+        if model in non_ollama_models or model.startswith('seven-direct:'):
             continue
         agents.add(name)
     return agents

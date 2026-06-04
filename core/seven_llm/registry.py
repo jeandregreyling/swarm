@@ -41,11 +41,77 @@ class ModelEntry:
     options: dict = field(default_factory=dict)
 
 
+_SWARM_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_SEVEN_DAILY_GGUF = os.path.join(
+    _SWARM_ROOT, "agents", "seven", "models", "small", "qwen2.5-0.5b-instruct-q4_k_m.gguf"
+)
+_SEVEN_Q8_GGUF = os.path.join(_SWARM_ROOT, "agents", "seven", "models", "seven-7b-q8_0.gguf")
+_SEVEN_FP16_GGUF = os.path.join(_SWARM_ROOT, "agents", "seven", "models", "seven-7b-fp16.gguf")
+_NOMIC_LMSTUDIO_GGUF = os.path.expanduser(
+    "~/.lmstudio/.internal/bundled-models/nomic-ai/"
+    "nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q4_K_M.gguf"
+)
+
+
+def _optional_defaults() -> list[ModelEntry]:
+    entries: list[ModelEntry] = []
+    if os.path.isfile(_SEVEN_DAILY_GGUF):
+        entries.append(ModelEntry(
+            name="seven-direct:daily",
+            driver="llamacpp",
+            role="general",
+            path=_SEVEN_DAILY_GGUF,
+            ctx=2048,
+            quant="Q4_K_M",
+            ram_gb=1.2,
+            ttl_seconds=0,
+            options={"binary": "llama-cli", "mode": "server", "profile": "chatml", "threads": 4},
+        ))
+    if os.path.isfile(_SEVEN_Q8_GGUF):
+        entries.append(ModelEntry(
+            name="seven-direct:q8",
+            driver="llamacpp",
+            role="general",
+            path=_SEVEN_Q8_GGUF,
+            ctx=2048,
+            quant="Q8_0",
+            ram_gb=8.2,
+            ttl_seconds=0,
+            options={"binary": "llama-cli", "mode": "server", "profile": "chatml"},
+        ))
+    if os.path.isfile(_SEVEN_FP16_GGUF):
+        entries.append(ModelEntry(
+            name="seven-direct:fp16",
+            driver="llamacpp",
+            role="general",
+            path=_SEVEN_FP16_GGUF,
+            ctx=2048,
+            quant="F16",
+            ram_gb=16.2,
+            ttl_seconds=0,
+            options={"binary": "llama-cli", "mode": "server", "profile": "chatml"},
+        ))
+    if os.path.isfile(_NOMIC_LMSTUDIO_GGUF):
+        entries.append(ModelEntry(
+            name="nomic-embed-text-direct",
+            driver="llamacpp",
+            role="embed",
+            path=_NOMIC_LMSTUDIO_GGUF,
+            ctx=2048,
+            quant="Q4_K_M",
+            ram_gb=1.0,
+            ttl_seconds=0,
+            options={"binary": "llama-cli", "embedding": True},
+        ))
+    return entries
+
+
 DEFAULTS: tuple[ModelEntry, ...] = (
     ModelEntry(name="llama3.2:3b", driver="ollama", role="general", ram_gb=3.5),
     ModelEntry(name="qwen2.5:7b", driver="ollama", role="reasoner", ram_gb=6.5),
     ModelEntry(name="deepseek-coder:6.7b", driver="ollama", role="coder", ram_gb=5.5),
     ModelEntry(name="nomic-embed-text", driver="ollama", role="embed", ram_gb=1.0),
+    *_optional_defaults(),
 )
 
 

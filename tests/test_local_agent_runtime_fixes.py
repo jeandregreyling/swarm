@@ -70,6 +70,67 @@ def test_eight_uses_runtime_gateway_path(monkeypatch):
     assert called["messages"][-1]["content"] == "hello"
 
 
+def test_seven_uses_direct_runtime_gateway(monkeypatch):
+    from agents.seven import seven_agent
+
+    monkeypatch.setattr(seven_agent, "SEVEN_MODEL", "seven-direct:daily")
+    monkeypatch.setattr(seven_agent, "_read_state", lambda: {"local_agents": ["Seven"]})
+    monkeypatch.setattr(seven_agent, "_load_memory", lambda _message: [])
+    monkeypatch.setattr(seven_agent, "_load_kc_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(seven_agent, "_load_identity_beliefs", lambda *args, **kwargs: [])
+    monkeypatch.setattr(seven_agent, "_load_open_curiosity", lambda *args, **kwargs: [])
+    monkeypatch.setattr(seven_agent, "_load_pillars_context", lambda: {})
+    monkeypatch.setattr(seven_agent, "_compose", lambda *args, **kwargs: (None, 0))
+    monkeypatch.setattr("database.save_agent_memory", lambda *args, **kwargs: None)
+
+    called = {}
+
+    def _fake_gateway(model, messages, **kwargs):
+        called["model"] = model
+        called["messages"] = messages
+        called["kwargs"] = kwargs
+        return "seven ok", 7
+
+    monkeypatch.setattr("core.llm.chat_via_gateway", _fake_gateway)
+
+    stages = []
+    answer, tokens = seven_agent.chat("hello", stage_cb=lambda text, _eta=None: stages.append(text))
+
+    assert answer == "seven ok"
+    assert tokens == 7
+    assert called["model"] == "seven-direct:daily"
+    assert called["kwargs"]["keep_alive"] == 0
+    assert called["messages"][-1]["content"] == "hello"
+    assert "thinking · seven merged model" in stages
+
+
+def test_seven_direct_runtime_failure_falls_back_to_state(monkeypatch):
+    from agents.seven import seven_agent
+
+    monkeypatch.setattr(seven_agent, "SEVEN_MODEL", "seven-direct:daily")
+    monkeypatch.setattr(seven_agent, "_read_state", lambda: {"queued": 0, "running": 0, "failed": 0, "tickets": 0, "proposals": 0, "local_agents": ["Seven"]})
+    monkeypatch.setattr(seven_agent, "_load_memory", lambda _message: [])
+    monkeypatch.setattr(seven_agent, "_load_kc_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(seven_agent, "_load_identity_beliefs", lambda *args, **kwargs: [])
+    monkeypatch.setattr(seven_agent, "_load_open_curiosity", lambda *args, **kwargs: [])
+    monkeypatch.setattr(seven_agent, "_load_pillars_context", lambda: {})
+    monkeypatch.setattr(seven_agent, "_compose", lambda *args, **kwargs: (None, 0))
+    monkeypatch.setattr("database.save_agent_memory", lambda *args, **kwargs: None)
+
+    stopped = []
+    monkeypatch.setattr("core.seven_llm.llama_server.stop", lambda model: stopped.append(model) or 1)
+    monkeypatch.setattr(
+        "core.llm.chat_via_gateway",
+        lambda *args, **kwargs: ("[local runtime error: timeout]", 0),
+    )
+
+    answer, tokens = seven_agent.chat("hello")
+
+    assert tokens == 0
+    assert "My model is offline right now" in answer
+    assert stopped == ["seven-direct:daily"]
+
+
 def test_mistral_uses_shorter_gateway_no_token_timeout(monkeypatch):
     from agents.mistral import mistral_agent
 

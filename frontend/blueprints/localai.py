@@ -95,16 +95,52 @@ def _picoclaw_status():
     return {'running': False, 'url': _PICOCLAW_BASE}
 
 
+def _direct_status():
+    try:
+        from core.seven_llm import registry
+        from core.seven_llm.inventory import scan_gguf
+        from core.seven_llm import llama_server
+        entries = [
+            {
+                'name': m.name,
+                'path': m.path,
+                'role': m.role,
+                'size_gb': round(os.path.getsize(m.path) / 1e9, 2) if m.path and os.path.isfile(m.path) else 0,
+                'ctx': m.ctx,
+                'quant': m.quant,
+            }
+            for m in registry.list_models()
+            if m.driver == 'llamacpp' and m.path
+        ]
+        inventory = scan_gguf(limit=100)
+        cli = os.environ.get('SEVEN_LLAMA_CLI') or os.path.join(
+            os.getcwd(), 'agents', 'seven', 'llama.cpp', 'build', 'bin', 'llama-cli'
+        )
+        return {
+            'running': bool(entries) and os.path.isfile(cli),
+            'models': entries,
+            'inventory': inventory,
+            'servers': llama_server.snapshot(),
+            'resources': llama_server.resource_snapshot(),
+            'cli': cli,
+            'cli_exists': os.path.isfile(cli),
+        }
+    except Exception as exc:
+        return {'running': False, 'models': [], 'inventory': {'models': []}, 'error': str(exc)}
+
+
 @localai_bp.route('/api/localai/status', methods=['GET'])
 def localai_status():
     ollama   = _ollama_status()
     lmstudio = _lmstudio_status()
     picoclaw = _picoclaw_status()
+    direct   = _direct_status()
     return jsonify({
         'ok': True,
         'ollama':   ollama,
         'lmstudio': lmstudio,
         'picoclaw': picoclaw,
+        'direct':   direct,
     })
 
 
@@ -148,6 +184,20 @@ def localai_available_models():
                 'registered': name.lower() in registered_set,
             })
 
+    # Seven direct GGUF models
+    direct = _direct_status()
+    for m in direct.get('models', []):
+        name = m['name']
+        available.append({
+            'model':      name,
+            'source':     'direct-gguf',
+            'size_gb':    m.get('size_gb', 0),
+            'family':     'gguf',
+            'params':     '',
+            'quant':      m.get('quant', ''),
+            'registered': name.lower() in registered_set,
+        })
+
     return jsonify({
         'ok': True,
         'models': available,
@@ -159,6 +209,61 @@ def localai_available_models():
 def ollama_models():
     status = _ollama_status()
     return jsonify({'ok': True, 'models': status['models'], 'running': status['running']})
+
+
+@localai_bp.route('/api/localai/direct/models', methods=['GET'])
+def direct_models():
+    status = _direct_status()
+    return jsonify({'ok': True, 'models': status['models'], 'running': status['running'], 'inventory': status.get('inventory'), 'servers': status.get('servers', [])})
+
+
+@localai_bp.route('/api/localai/direct/servers', methods=['GET'])
+def direct_servers():
+    try:
+        from core.seven_llm import llama_server
+        return jsonify({'ok': True, 'servers': llama_server.snapshot(), 'resources': llama_server.resource_snapshot()})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'servers': []}), 500
+
+
+@localai_bp.route('/api/localai/direct/servers/stop', methods=['POST'])
+def direct_servers_stop():
+    data = request.get_json(silent=True) or {}
+    model = (data.get('model') or '').strip() or None
+    try:
+        from core.seven_llm import llama_server
+        stopped = llama_server.stop(model)
+        return jsonify({'ok': True, 'stopped': stopped, 'model': model, 'servers': llama_server.snapshot()})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'model': model}), 500
+
+
+@localai_bp.route('/api/localai/direct/chat', methods=['POST'])
+def direct_quick_chat():
+    """Quick single-turn chat against a Seven-owned direct GGUF model."""
+    data = request.get_json(silent=True) or {}
+    model = (data.get('model') or 'seven-direct:daily').strip()
+    msg = (data.get('message') or '').strip()
+    if not msg:
+        return jsonify({'ok': False, 'error': 'message required'}), 400
+    try:
+        from core import model_runtime_gateway as _gw
+        res = _gw.chat(
+            model,
+            [{'role': 'user', 'content': msg}],
+            absolute_timeout_s=int(data.get('timeout_s') or 180),
+            idle_timeout_s=int(data.get('timeout_s') or 180),
+            options={
+                'num_predict': int(data.get('num_predict') or 256),
+                'ctx': int(data.get('ctx') or 2048),
+                'temperature': float(data.get('temperature') if data.get('temperature') is not None else 0.7),
+            },
+        )
+        if not res.ok:
+            return jsonify({'ok': False, 'error': res.error or 'direct runtime failed', 'model': model, 'events': [e.as_dict() for e in res.events]}), 502
+        return jsonify({'ok': True, 'answer': res.content, 'model': model, 'events': [e.as_dict() for e in res.events]})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'model': model}), 500
 
 
 @localai_bp.route('/api/localai/ollama/chat', methods=['POST'])
