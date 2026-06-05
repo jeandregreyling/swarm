@@ -3884,13 +3884,64 @@ function _thinkingBubbleNode(jobId) {
   return document.querySelector(`.chat-bubble[data-pending-job-id="${String(jobId)}"]`);
 }
 
+function _removeThinkingBubbleById(jobId) {
+  const node = _thinkingBubbleNode(jobId);
+  if (node) node.remove();
+  const histories = _chatThinkingHistoryState();
+  if (jobId && histories) delete histories[String(jobId)];
+}
+
+function _remapThinkingBubbleJobId(oldJobId, newJobId, agent) {
+  if (!oldJobId || !newJobId || oldJobId === newJobId) return false;
+  const node = _thinkingBubbleNode(oldJobId);
+  if (!node) return false;
+  node.dataset.pendingJobId = String(newJobId);
+  if (agent) node.dataset.thinkingAgent = String(agent);
+  const histories = _chatThinkingHistoryState();
+  histories[String(newJobId)] = histories[String(oldJobId)] || histories[String(newJobId)] || [];
+  delete histories[String(oldJobId)];
+  return true;
+}
+
+function _friendlyThinkingStage(stage, status = 'running') {
+  const raw = String(stage || '').trim();
+  const lower = raw.toLowerCase();
+  if (!raw) return status === 'running' ? 'Warming up Seven' : String(status || 'finished');
+  if (lower.includes('queued')) return 'Queued for Seven';
+  if (lower.includes('dispatching')) return 'Opening the local line';
+  if (lower.includes('reading swarm')) return 'Checking the live thread';
+  if (lower.includes('loading memory')) return 'Gathering useful memory';
+  if (lower.includes('synthes')) return 'Shaping the answer';
+  if (lower.includes('thinking')) return 'Seven is writing';
+  if (lower.includes('direct_dispatch') || lower.includes('gateway: dispatch')) return 'Starting the local model';
+  if (lower.includes('first token')) return 'First words arrived';
+  if (lower.includes('heartbeat')) return 'Still writing';
+  if (lower.includes('completed') || lower.includes('finalizing')) return 'Polishing the reply';
+  if (lower.includes('timeout') || lower.includes('failed')) return 'Recovering the reply';
+  return raw.replace(/^gateway:\s*/i, '').replace(/_/g, ' ');
+}
+
+function _friendlyTraceText(step) {
+  const raw = String(step && step.text != null ? step.text : step || '').trim();
+  return _friendlyThinkingStage(raw);
+}
+
+function _thinkingVisualHtml(job) {
+  const status = String(job.status || 'running').toLowerCase();
+  const cls = status === 'failed' ? 'failed' : (status === 'completed' ? 'done' : 'running');
+  return `<div class="chat-thinking-visual ${cls}" aria-hidden="true">
+    <span class="chat-thinking-spark">✦</span>
+    <span class="chat-thinking-wave"><i></i><i></i><i></i></span>
+  </div>`;
+}
+
 function _renderThinkingBubble(job, history) {
   const identity = _chatAgentIdentityHtml(job.agent, true);
   const runtimeClass = job.runtime_class
     ? `<span style="font-size:9px;color:var(--text-dim);opacity:0.55;">[${_escapeHtml(job.runtime_class)}]</span>`
     : '';
   const dotClass = job.status === 'failed' ? 'red' : (job.status === 'completed' ? 'green' : 'amber');
-  const currentStage = String(job.stage || 'running').trim() || 'running';
+  const currentStage = _friendlyThinkingStage(job.stage || 'running', job.status || 'running');
   const etaRemaining = Number(job.eta_remaining_seconds || 0);
   const etaSeconds = Number(job.eta_seconds || 0);
   const elapsedMs = Number(job.elapsed_ms || 0);
@@ -3911,8 +3962,10 @@ function _renderThinkingBubble(job, history) {
   const steps = Array.isArray(history) ? history : [];
   let checklistHtml = '';
   if (steps.length > 0) {
-    const rows = steps.map((step, i) => {
-      const isLast = i === steps.length - 1;
+    const friendlySteps = steps.map(_friendlyTraceText).filter(Boolean);
+    const compactSteps = friendlySteps.filter((step, idx) => friendlySteps.indexOf(step) === idx).slice(-6);
+    const rows = compactSteps.map((step, i) => {
+      const isLast = i === compactSteps.length - 1;
       const isCurrent = isLast && job.status === 'running';
       const icon = isCurrent
         ? '<span class="think-checklist-spinner"></span>'
@@ -3929,6 +3982,7 @@ function _renderThinkingBubble(job, history) {
       ${runtimeClass}
       <span style="font-size:9px;color:var(--text-dim);opacity:0.55;margin-left:auto;">${ts}</span>
     </div>
+    ${_thinkingVisualHtml(job)}
     <div class="chat-pending-stage">${_escapeHtml(currentStage)}</div>
     ${checklistHtml}
     <div class="chat-pending-progress"><div class="chat-pending-progress-fill" style="width:${pct}%"></div></div>
@@ -3990,6 +4044,7 @@ function _syncThinkingBubbles(jobs) {
   messages.querySelectorAll('.chat-bubble[data-pending-job-id]').forEach(node => {
     const jobId = String(node.dataset.pendingJobId || '');
     if (wanted.has(jobId)) return;
+    if (jobId.startsWith('pending-ui-') && !jobsByID.has(jobId)) return;
     // Bubble's job is no longer running. If we have a final status, freeze
     // the bubble; otherwise (job vanished from the queue with no terminal
     // record), still freeze it as "stalled" rather than silently delete.
@@ -3999,6 +4054,10 @@ function _syncThinkingBubbles(jobs) {
       status: 'stalled',
       stage: 'stalled — no further updates',
     };
+    if (String(finalJob.status || '').toLowerCase() === 'completed') {
+      node.remove();
+      return;
+    }
     _freezeThinkingBubble(node, finalJob);
   });
 
@@ -4083,7 +4142,16 @@ function _replayFrozenThinkingBubbles(convId) {
   const messages = _chatMessagesEl();
   if (!messages || !convId) return;
   const store = _chatFrozenBubbleStore();
-  const list = Array.isArray(store[convId]) ? store[convId] : [];
+  const rawList = Array.isArray(store[convId]) ? store[convId] : [];
+  const list = rawList.filter(rec => {
+    const jobId = String(rec && rec.job_id || '');
+    if (jobId.startsWith('pending-ui-')) return false;
+    return String(rec && rec.status || '').toLowerCase() !== 'completed';
+  });
+  if (list.length !== rawList.length) {
+    store[convId] = list;
+    _chatFrozenBubbleSave(store);
+  }
   if (!list.length) return;
   list.forEach(rec => {
     if (!rec || !rec.job_id) return;
@@ -4117,12 +4185,17 @@ function _replayFrozenThinkingBubbles(convId) {
 function _replayServerThinkingBubbles(convId, jobs) {
   const messages = _chatMessagesEl();
   if (!messages || !convId || !Array.isArray(jobs) || !jobs.length) return;
+  const inlineJobIds = window.__fridaysInlineJobTraceIds instanceof Set
+    ? window.__fridaysInlineJobTraceIds
+    : new Set();
   jobs.forEach(job => {
     if (!job || !job.job_id) return;
     const jobId = String(job.job_id || '');
+    if (inlineJobIds.has(jobId)) return;
     if (messages.querySelector(`.chat-bubble[data-archived-job-id="${jobId}"],.chat-bubble[data-pending-job-id="${jobId}"]`)) return;
     const status = String(job.status || '').toLowerCase();
-    if (!['completed', 'failed', 'cancelled', 'stalled'].includes(status)) return;
+    if (status === 'completed') return;
+    if (!['failed', 'cancelled', 'stalled'].includes(status)) return;
     const trace = Array.isArray(job.stage_trace) ? job.stage_trace : [];
     const history = trace
       .map(step => String(step && step.text != null ? step.text : step || '').trim())
@@ -4350,7 +4423,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   const _tokCount = !isUser ? (Number(opts.tokens || 0).toLocaleString() + ' Tokens') : '';
   const _traceItems = (!isUser && Array.isArray(opts.stageTrace) && opts.stageTrace.length) ? opts.stageTrace : null;
   const traceHtml = _traceItems
-    ? `<details class="chat-bubble-trace"><summary>Trace &middot; ${_traceItems.length} step${_traceItems.length !== 1 ? 's' : ''}</summary><div class="chat-bubble-trace-body">${_traceItems.map((s, i) => `<div class="chat-bubble-trace-step"><span class="chat-bubble-trace-num">${i + 1}</span><span class="chat-bubble-trace-text">${_escapeHtml(String(s && s.text != null ? s.text : s))}</span></div>`).join('')}</div></details>`
+    ? `<details class="chat-bubble-trace"><summary>Trace &middot; ${_traceItems.length} step${_traceItems.length !== 1 ? 's' : ''}</summary><div class="chat-bubble-trace-body">${_traceItems.map((s, i) => `<div class="chat-bubble-trace-step"><span class="chat-bubble-trace-num">${i + 1}</span><span class="chat-bubble-trace-text">${_escapeHtml(_friendlyTraceText(s))}</span></div>`).join('')}</div></details>`
     : '';
 
   // ── Paid agent session tracker ──────────────────────────────────────────
@@ -5644,7 +5717,61 @@ function renderChatMessages(rows, jobs = null) {
   }
   window.__fridaysChatTimeline = [];
   renderChatRelayTimeline();
+  const snapshotJobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs)
+    ? window.__fridaysThreadRuntimeSnapshot.jobs
+    : [];
+  const syncJobs = snapshotJobs.length ? snapshotJobs : (Array.isArray(jobs) ? jobs : []);
+  const activeJobIds = new Set(syncJobs
+    .filter(job => String(job && job.status || 'running').toLowerCase() === 'running')
+    .map(job => String(job.job_id || ''))
+    .filter(Boolean));
+  const carriedPending = [];
+  messages.querySelectorAll('.chat-bubble[data-pending-job-id]').forEach(node => {
+    const jobId = String(node.dataset.pendingJobId || '');
+    if (activeJobIds.has(jobId)) {
+      carriedPending.push(node);
+      node.remove();
+    }
+  });
   messages.innerHTML = '';
+  const serverJobs = Array.isArray(jobs) ? jobs : [];
+  const inlineJobIds = new Set();
+  const inlineTraceByMessageId = (() => {
+    const out = {};
+    const responseRows = (rows || []).filter(row => {
+      const sender = String(row.sender || '').toLowerCase().trim();
+      return sender && sender !== 'user' && row.message_type !== 'relay';
+    });
+    serverJobs.forEach(job => {
+      if (!job || !job.job_id || !Array.isArray(job.stage_trace) || !job.stage_trace.length) return;
+      const agent = String(job.agent || '').toLowerCase().trim();
+      const status = String(job.status || '').toLowerCase();
+      if (!agent || !['completed', 'failed', 'cancelled', 'stalled'].includes(status)) return;
+      const jobTime = Date.parse(String(job.updated_at || job.started_at || '').replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(job.updated_at || job.started_at || '')) ? '' : 'Z'));
+      let best = null;
+      let bestDelta = Infinity;
+      responseRows.forEach(row => {
+        const sender = String(row.sender || '').toLowerCase().trim();
+        if (sender !== agent) return;
+        const msgId = Number(row.id || 0);
+        if (!msgId || out[msgId]) return;
+        const rowTime = Date.parse(String(row.created_at || '').replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(row.created_at || '')) ? '' : 'Z'));
+        const delta = Number.isFinite(jobTime) && Number.isFinite(rowTime)
+          ? Math.abs(rowTime - jobTime)
+          : 0;
+        if (delta < bestDelta) {
+          best = row;
+          bestDelta = delta;
+        }
+      });
+      if (best && bestDelta <= 180000) {
+        out[Number(best.id)] = job.stage_trace;
+        inlineJobIds.add(String(job.job_id));
+      }
+    });
+    return out;
+  })();
+  window.__fridaysInlineJobTraceIds = inlineJobIds;
   rows.forEach(row => {
     const sender = (row.sender || 'agent').toString().toLowerCase();
     const content = row.content || '';
@@ -5679,15 +5806,13 @@ function renderChatMessages(rows, jobs = null) {
         messageId: msgId,
         conversationId: convId,
         tokens: Number(row.tokens_used || 0),
+        stageTrace: inlineTraceByMessageId[msgId] || [],
         fromHistory: true,
       });
     }
   });
-  const snapshotJobs = Array.isArray(window.__fridaysThreadRuntimeSnapshot?.jobs)
-    ? window.__fridaysThreadRuntimeSnapshot.jobs
-    : [];
-  const serverJobs = Array.isArray(jobs) ? jobs : [];
-  _syncThinkingBubbles(snapshotJobs.length ? snapshotJobs : serverJobs);
+  carriedPending.forEach(node => messages.appendChild(node));
+  _syncThinkingBubbles(syncJobs.length ? syncJobs : serverJobs);
 
   // Inject Route-to buttons on the last agent bubble rendered from history.
   // _appendChatBubble skips relay extraction when fromHistory=true, so we do it here.
@@ -5722,9 +5847,9 @@ function renderChatMessages(rows, jobs = null) {
       const agentBubbles = messages.querySelectorAll(sel);
       const targetBubble = agentBubbles.length ? agentBubbles[agentBubbles.length - 1] : null;
       if (!targetBubble || targetBubble.querySelector('.chat-bubble-trace')) return;
-      const traceEl = document.createElement('details');
-      traceEl.className = 'chat-bubble-trace';
-      traceEl.innerHTML = `<summary>Trace \u00b7 ${trace.length} step${trace.length !== 1 ? 's' : ''}</summary><div class="chat-bubble-trace-body">${trace.map((s, i) => `<div class="chat-bubble-trace-step"><span class="chat-bubble-trace-num">${i + 1}</span><span class="chat-bubble-trace-text">${_escapeHtml(String(s && s.text != null ? s.text : s))}</span></div>`).join('')}</div>`;
+	      const traceEl = document.createElement('details');
+	      traceEl.className = 'chat-bubble-trace';
+	      traceEl.innerHTML = `<summary>Trace \u00b7 ${trace.length} step${trace.length !== 1 ? 's' : ''}</summary><div class="chat-bubble-trace-body">${trace.map((s, i) => `<div class="chat-bubble-trace-step"><span class="chat-bubble-trace-num">${i + 1}</span><span class="chat-bubble-trace-text">${_escapeHtml(_friendlyTraceText(s))}</span></div>`).join('')}</div>`;
       const actionsEl = targetBubble.querySelector('.chat-actions');
       if (actionsEl) actionsEl.insertAdjacentElement('beforebegin', traceEl);
       else targetBubble.appendChild(traceEl);
@@ -6233,6 +6358,20 @@ function sendMessage(source = 'user', relayMeta = null) {
   const estMs = _estimateBatchMs(selectedAgents);
   const loadingPanel = _createLoadingPanel(selectedAgents);
   const loadingCtl = _startLoadingTicker(loadingPanel, selectedAgents, estMs);
+  const optimisticJobId = source === 'user'
+    ? 'pending-ui-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7)
+    : '';
+  if (optimisticJobId) {
+    _appendThinkingBubble(selectedAgents[0] || 'agent', '', {
+      job_id: optimisticJobId,
+      status: 'running',
+      stage: 'queued',
+      eta_seconds: Math.max(10, Math.ceil(estMs / 1000)),
+      eta_remaining_seconds: Math.max(10, Math.ceil(estMs / 1000)),
+      elapsed_ms: 0,
+    });
+    messages.scrollTop = messages.scrollHeight;
+  }
 
   persistThreadAgentSelection(convId);
   
@@ -6268,6 +6407,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   .then(data => {
     if (!data || data.ok === false) {
       loadingCtl.stop([]);
+      if (optimisticJobId) _removeThinkingBubbleById(optimisticJobId);
       window.__fridaysChatPendingJobIds = [];
       window.__fridaysChatPendingConversationId = null;
       const err = (data && (data.error || data.response)) || 'Request failed.';
@@ -6303,6 +6443,7 @@ function sendMessage(source = 'user', relayMeta = null) {
     const discovered = [];
 
     if (immediateResponses.length) {
+      if (optimisticJobId) _removeThinkingBubbleById(optimisticJobId);
       immediateResponses.forEach(entry => {
         _appendChatBubble(entry.agent || 'agent', entry.response || '...', {
           tokens: entry.tokens || 0,
@@ -6329,6 +6470,7 @@ function sendMessage(source = 'user', relayMeta = null) {
         { tag: 'fridays-chat-reply-' + String(data.conversation_id || convId || 'none') }
       );
     } else if (!pendingJobs.length) {
+      if (optimisticJobId) _removeThinkingBubbleById(optimisticJobId);
       _appendChatBubble(data.agent || selectedAgents[0], data.response || '...', {
         ...(source === 'relay' && relayMeta ? { chainDepth: Number(relayMeta.chainDepth ?? -1) } : {}),
       });
@@ -6367,6 +6509,10 @@ function sendMessage(source = 'user', relayMeta = null) {
     }
 
     if (pendingResponses.length) {
+      const firstPending = pendingResponses.find(entry => entry && entry.job_id);
+      if (optimisticJobId && firstPending) {
+        _remapThinkingBubbleJobId(optimisticJobId, firstPending.job_id, firstPending.agent || selectedAgents[0] || 'agent');
+      }
       pendingResponses.forEach(entry => {
         _appendThinkingBubble(entry.agent || 'agent', entry.runtime_class || '', {
           job_id: entry.job_id,
@@ -6401,6 +6547,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   })
   .catch(e => {
     loadingCtl.stop([]);
+    if (optimisticJobId) _removeThinkingBubbleById(optimisticJobId);
     window.__fridaysChatPendingJobIds = [];
     window.__fridaysChatPendingConversationId = null;
     if (window.__fridaysChatPendingPollTimer) {

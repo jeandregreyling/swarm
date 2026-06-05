@@ -1,4 +1,4 @@
-/* views/localai.css — Local AI tile: Ollama · LM Studio · Picoclaw
+/* views/localai.css — Local AI tile: Seven Runtime · Ollama fallback · LM Studio · Picoclaw
    Simplified visual hierarchy — fewer borders, softer panels, tighter layout */
 
 .localai-shell {
@@ -86,6 +86,12 @@
 .localai-panel-ollama,
 .localai-panel-roster {
   grid-column: 1 / -1;
+}
+
+.localai-panel-seven {
+  grid-column: 1 / -1;
+  order: -1;
+  border-color: color-mix(in srgb, #22c55e 24%, var(--border));
 }
 
 .localai-panel-head {

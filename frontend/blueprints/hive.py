@@ -143,7 +143,7 @@ _EXPECTED_FARM_NODES = (
         'node_id': 'potato-1',
         'label': 'potato-1 Leader',
         'platform': 'linux',
-        'capabilities': ['scheduler.coordinator', 'inference.cpu', 'inference.ollama'],
+        'capabilities': ['scheduler.coordinator', 'inference.cpu', 'inference.seven-runtime', 'inference.direct-gguf', 'inference.ollama'],
     },
     {
         'node_id': 'potato-2',
@@ -420,7 +420,6 @@ def install_android_page():
     v102_url = f'{leader}/api/hive/install/seven-app-v1.0.2.apk'
     v101_url = f'{leader}/api/hive/install/seven-app-v1.0.1.apk'
     v100_url = f'{leader}/api/hive/install/seven-app-v1.0.0.apk'
-    old_url = f'{leader}/api/hive/install/swarm-hive.apk'
     html = f'''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -450,7 +449,7 @@ def install_android_page():
 <div class="card">
   <h1>Samsung Potato Farm</h1>
   <p>Install the always-on <strong>Swarm Hive</strong> worker on the Samsung tablet so it joins as <code>potato-2</code>, posts telemetry, and claims GPU packets.</p>
-  <p class="version">Leader: <code>{leader}</code> · worker: <code>swarm-hive.apk</code></p>
+  <p class="version">Leader: <code>{leader}</code> · worker: <code>swarm-hive.apk</code> · v0.2.2</p>
   <a class="btn" href="{hive_apk_url}" download>Download Hive Worker</a>
   <a class="btn-secondary" href="{join_url}">Open Worker + Join potato-2</a>
   <p class="warn">⚠ You may need to allow “Install unknown apps” for your browser when prompted.</p>
@@ -479,7 +478,7 @@ def install_android_page():
     <a class="btn-secondary" href="{v102_url}" download>v1.0.2 — potato status + resource sharing</a>
     <a class="btn-secondary" href="{v101_url}" download>v1.0.1 — launch crash fix</a>
     <a class="btn-secondary" href="{v100_url}" download>v1.0.0 — seven-app-v1.0.0.apk</a>
-    <a class="btn-secondary" href="{old_url}" download>v0.2.0 — swarm-hive.apk (old agent)</a>
+    <a class="btn-secondary" href="{hive_apk_url}" download>v0.2.2 — swarm-hive.apk</a>
   </div>
 </div>
 </body>

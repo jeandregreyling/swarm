@@ -25,10 +25,11 @@ def test_localai_status_shape(client):
     assert r.status_code == 200
     data = json.loads(r.get_data(as_text=True))
     assert data.get('ok') is True
-    for runner in ('ollama', 'lmstudio', 'picoclaw', 'direct'):
+    for runner in ('ollama', 'lmstudio', 'picoclaw', 'direct', 'seven_runtime'):
         assert runner in data
         assert 'running' in data[runner]
         assert isinstance(data[runner]['running'], bool)
+    assert data['seven_runtime'].get('ollama_required') is False
 
 
 def test_localai_available_models_shape(client):
@@ -80,6 +81,44 @@ def test_localai_direct_servers_stop_shape(client):
     data = json.loads(r.get_data(as_text=True))
     assert data.get('ok') is True
     assert 'stopped' in data
+
+
+def test_localai_seven_runtime_status_shape(client):
+    r = client.get('/api/localai/seven-runtime/status')
+    assert r.status_code == 200
+    data = json.loads(r.get_data(as_text=True))
+    assert data.get('ok') is True
+    runtime = data.get('runtime') or {}
+    assert runtime.get('service') == 'seven-runtime'
+    assert runtime.get('url')
+    assert runtime.get('flask_required') is False
+    assert runtime.get('ollama_required') is False
+
+
+def test_localai_seven_runtime_chat_rejects_empty(client):
+    r = client.post('/api/localai/seven-runtime/chat', json={})
+    assert r.status_code == 400
+    data = json.loads(r.get_data(as_text=True))
+    assert data.get('ok') is False
+
+
+def test_localai_mobile_models_prefers_seven_runtime_contract(client):
+    r = client.get('/api/localai/mobile/models')
+    assert r.status_code == 200
+    data = json.loads(r.get_data(as_text=True))
+    assert data.get('ok') is True
+    assert data.get('default_model')
+    assert isinstance(data.get('models'), list)
+    assert 'seven_runtime' in data
+    if data['models']:
+        assert {'id', 'source', 'runtime', 'chat_endpoint'} <= set(data['models'][0])
+
+
+def test_localai_shared_chat_rejects_empty(client):
+    r = client.post('/api/localai/shared-chat', json={})
+    assert r.status_code == 400
+    data = json.loads(r.get_data(as_text=True))
+    assert data.get('ok') is False
 
 
 def test_kc_media_curriculum_round_trip(client):

@@ -13,10 +13,16 @@ from database import get_user_profile, log_activity
 from utils.db.registry import (
     get_agent_roster      as _reg_roster,
     get_agent_runtime_classes as _reg_runtime,
+    get_agent_models      as _reg_models,
     get_api_key_map       as _reg_api_keys,
 )
 
-_LOCAL_RUNTIME_CACHE = {'ts': 0.0, 'ollama_running': True}
+_LOCAL_RUNTIME_CACHE = {
+    'ollama_ts': 0.0,
+    'ollama_running': True,
+    'seven_runtime_ts': 0.0,
+    'seven_runtime_running': True,
+}
 _LOCAL_RUNTIME_TTL_SECONDS = 2.0
 
 
@@ -89,7 +95,7 @@ def _validate_agent_request():
 
 def _ollama_runtime_running():
     now = time.time()
-    cached_ts = float(_LOCAL_RUNTIME_CACHE.get('ts') or 0.0)
+    cached_ts = float(_LOCAL_RUNTIME_CACHE.get('ollama_ts') or 0.0)
     if (now - cached_ts) <= _LOCAL_RUNTIME_TTL_SECONDS:
         return bool(_LOCAL_RUNTIME_CACHE.get('ollama_running', True))
     running = True
@@ -98,9 +104,41 @@ def _ollama_runtime_running():
         running = bool((_ollama_status() or {}).get('running'))
     except ImportError:
         running = True
-    _LOCAL_RUNTIME_CACHE['ts'] = now
+    _LOCAL_RUNTIME_CACHE['ollama_ts'] = now
     _LOCAL_RUNTIME_CACHE['ollama_running'] = running
     return running
+
+
+def _seven_runtime_running():
+    now = time.time()
+    cached_ts = float(_LOCAL_RUNTIME_CACHE.get('seven_runtime_ts') or 0.0)
+    if (now - cached_ts) <= _LOCAL_RUNTIME_TTL_SECONDS:
+        return bool(_LOCAL_RUNTIME_CACHE.get('seven_runtime_running', True))
+    running = True
+    try:
+        from frontend.blueprints.localai import _seven_runtime_status
+        running = bool((_seven_runtime_status() or {}).get('running'))
+    except ImportError:
+        running = True
+    _LOCAL_RUNTIME_CACHE['seven_runtime_ts'] = now
+    _LOCAL_RUNTIME_CACHE['seven_runtime_running'] = running
+    return running
+
+
+def _local_agent_model(agent_name):
+    try:
+        return str((_reg_models() or {}).get((agent_name or '').strip().lower()) or '').strip()
+    except Exception:
+        return ''
+
+
+def _local_agent_runtime_state(agent_name):
+    model = _local_agent_model(agent_name)
+    if model.startswith('seven-direct:'):
+        return _seven_runtime_running(), 'Seven Runtime offline'
+    if model in {'', 'external', 'local-algorithm'}:
+        return True, ''
+    return _ollama_runtime_running(), 'Ollama offline'
 
 
 def _agent_reachability_status(agent_name):
@@ -117,7 +155,8 @@ def _agent_reachability_status(agent_name):
     rt = _reg_runtime()
     tier = rt.get(name, '')
     if tier == 'local':
-        return 'online' if _ollama_runtime_running() else 'offline'
+        running, _reason = _local_agent_runtime_state(name)
+        return 'online' if running else 'offline'
     # API-backed agents — check key presence via env var from registry
     api_keys = _reg_api_keys()
     env_var = api_keys.get(name) or ''
@@ -145,7 +184,8 @@ def _agent_availability_reason(agent_name):
     rt = _reg_runtime()
     tier = rt.get(name, '')
     if tier == 'local':
-        return '' if _ollama_runtime_running() else 'Ollama offline'
+        running, reason = _local_agent_runtime_state(name)
+        return '' if running else reason
 
     api_keys = _reg_api_keys()
     env_var = api_keys.get(name) or ''

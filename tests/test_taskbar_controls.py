@@ -8,6 +8,7 @@ THEME_JS = ROOT / "frontend" / "static" / "js" / "core" / "theme.js"
 APP_JS = ROOT / "frontend" / "static" / "js" / "core" / "app.js"
 ACCESS_JS = ROOT / "frontend" / "static" / "js" / "views" / "access.js"
 LOCALAI_JS = ROOT / "frontend" / "static" / "js" / "views" / "localai.js"
+LOCALAI_CSS = ROOT / "frontend" / "static" / "css" / "views" / "localai.css"
 POTATO_JS = ROOT / "frontend" / "static" / "js" / "views" / "potato-farm.js"
 
 
@@ -63,13 +64,32 @@ def test_agents_chat_action_only_selects_chat_agent_toggle():
     localai = LOCALAI_JS.read_text()
     tpl = TEMPLATE.read_text()
     assert 'access.js?v={{ ASSET_VERSION }}-agent-chat1' in tpl
-    assert 'localai.js?v={{ ASSET_VERSION }}-agent-chat1' in tpl
+    assert 'localai.js?v={{ ASSET_VERSION }}-seven-first1' in tpl
     assert "function agentsSelectChatAgent(name)" in access
     assert "window.agentsSelectChatAgent = agentsSelectChatAgent;" in access
     assert "is not enabled in Chat" in access
     assert "document.querySelectorAll('.agent-toggle-btn, [data-agent]')" not in access
     assert "document.querySelectorAll('.agent-toggle-btn, [data-agent]')" not in localai
     assert ".chat-agent-toggle" in access
+
+
+def test_localai_exposes_seven_runtime_controls():
+    tpl = TEMPLATE.read_text()
+    localai = LOCALAI_JS.read_text()
+    css = LOCALAI_CSS.read_text()
+    assert "Seven Runtime" in tpl
+    assert "Seven Runtime first" in tpl
+    assert "Fallback model store" in tpl
+    assert "seven-runtime-status-badge" in tpl
+    assert "seven-runtime-quick-prompt" in tpl
+    assert "/api/localai/seven-runtime/status" in localai
+    assert "/api/localai/seven-runtime/start" in localai
+    assert "/api/localai/seven-runtime/stop" in localai
+    assert "/api/localai/seven-runtime/chat" in localai
+    assert "timeout_seconds: 90" in localai
+    assert "function _renderSevenRuntime" in localai
+    assert "function localaiSevenRuntimeChat" in localai
+    assert ".localai-panel-seven" in css and "order: -1" in css
 
 
 def test_potato_proof_is_not_a_permanent_global_banner():

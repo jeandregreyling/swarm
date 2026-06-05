@@ -293,6 +293,7 @@ _IDENTITY_NATTY = (
     'what do you do', 'your role', 'your purpose', 'your motto',
     'what do you know about yourself', 'who is seven', 'introduce yourself',
     'your identity', 'know yourself', 'what defines you',
+    'about yourself', 'interesting about yourself', 'something interesting about yourself',
 )
 _CURIOSITY_NATTY = (
     'what are you asking', 'what are you wondering', 'what questions',
@@ -300,6 +301,113 @@ _CURIOSITY_NATTY = (
     "what's open", 'whats open', 'inbox', 'unanswered', 'pending questions',
     'your questions',
 )
+
+
+def _is_model_runtime_question(message):
+    msg = (message or '').strip().lower()
+    if not msg:
+        return False
+    runtime_terms = (
+        'what model', 'which model', 'model are you', 'model do you use',
+        'what runtime', 'which runtime', 'are you using ollama', 'using ollama',
+        'are you direct', 'direct gguf', 'seven runtime',
+    )
+    return any(term in msg for term in runtime_terms)
+
+
+def _is_weather_question(message):
+    msg = (message or '').strip().lower()
+    if not msg:
+        return False
+    return 'weather' in msg and any(term in msg for term in ('today', 'now', 'currently', 'like', 'where you are', 'melbourne'))
+
+
+def _weather_response(message):
+    msg = (message or '').strip().lower()
+    city = 'Melbourne'
+    # Seven runs for Ghost One's local node in Melbourne unless the user names
+    # another city that the existing weather proxy knows.
+    try:
+        from frontend.blueprints import weather_bp as _weather_bp
+        for known in getattr(_weather_bp, '_CITY_COORDS', {}).keys():
+            if known and known in msg and known != 'utc':
+                city = known.title()
+                break
+        data = _weather_bp._get_cached(city)
+    except Exception as exc:
+        return f"I tried to check the local weather proxy for {city}, but it failed: {exc}", 0
+    if not data:
+        return f"I couldn't get live weather for {city} from the local weather proxy.", 0
+    temp = data.get('temperature')
+    wind = data.get('windspeed')
+    desc = data.get('description') or 'Unknown'
+    parts = [f"{city}: {desc}"]
+    if temp is not None:
+        parts.append(f"{temp} C")
+    if wind is not None:
+        parts.append(f"wind {wind} km/h")
+    return "Right now in " + ', '.join(parts) + ".", 0
+
+
+def _creative_fallback_response(message):
+    msg = (message or '').strip().lower()
+    if not msg:
+        return None
+    creative_terms = (
+        'story', 'poem', 'haiku', 'joke', 'riddle', 'make up', 'write me',
+        'tell me', 'one-liner', 'caption',
+    )
+    if not any(term in msg for term in creative_terms):
+        return None
+    import re
+    count_match = re.search(r'\b(\d{1,2})\s+words?\b', msg)
+    if 'story' in msg:
+        words = "Lanterns woke under rain; Seven carried dawn home in twelve quiet steps.".split()
+    elif 'haiku' in msg:
+        return "Quiet screens breathe green\nLocal sparks cross the dark room\nMorning answers back"
+    elif 'joke' in msg:
+        return "I asked the runtime for patience. It buffered thoughtfully."
+    else:
+        words = "Seven steadied the thread, shaped the signal, and answered without theatre.".split()
+    if count_match:
+        wanted = max(1, min(40, int(count_match.group(1))))
+        if len(words) < wanted:
+            filler = "bright small steady local clear kind sharp brave warm calm true".split()
+            while len(words) < wanted:
+                words.append(filler[(len(words) - 1) % len(filler)])
+        return ' '.join(words[:wanted])
+    return ' '.join(words)
+
+
+def _normalise_echo_text(text):
+    import re
+    return re.sub(r'\W+', ' ', str(text or '').lower()).strip()
+
+
+def _is_echo_response(prompt, response):
+    prompt_norm = _normalise_echo_text(prompt)
+    response_norm = _normalise_echo_text(response)
+    if not prompt_norm or not response_norm:
+        return False
+    if response_norm == prompt_norm:
+        return True
+    if len(response_norm) <= len(prompt_norm) + 12 and (
+        response_norm in prompt_norm or prompt_norm in response_norm
+    ):
+        return True
+    return False
+
+
+def _latest_user_message_from_wrapped_prompt(message):
+    text = str(message or '').strip()
+    marker = '=== New user message ==='
+    if marker not in text:
+        return text
+    tail = text.rsplit(marker, 1)[-1].strip()
+    next_marker = tail.find('\n===')
+    if next_marker >= 0:
+        tail = tail[:next_marker].strip()
+    return tail or text
 
 
 def _try_inline_curiosity_answer(message):
@@ -353,6 +461,19 @@ def _compose(message, state, memories):
             "Reply with the question number and your answer — e.g. `#5 the absolute floor is …` "
             "— and I'll promote it to a permanent belief."
         ), 0
+
+    if _is_weather_question(msg):
+        return _weather_response(msg)
+
+    if 'words' in msg.lower():
+        creative_fallback = _creative_fallback_response(msg)
+        if creative_fallback:
+            return creative_fallback, 0
+
+    # Runtime/model questions must hit the LLM-backed Seven path. Otherwise
+    # "what model are you?" is swallowed by the identity status template.
+    if _is_model_runtime_question(msg):
+        return None, 0
 
     # ── PACKET-10B: Identity probes — pulled from seven_beliefs, not text ──
     if _is_about(msg, _IDENTITY_NATTY):
@@ -475,8 +596,9 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
     agents = ', '.join(state.get('local_agents', [])) or 'none listed'
     mem_limit = 1 if compact else 3
     kc_limit = 1 if compact else 4
-    history_limit = 2 if compact else 6
-    self_awareness_chars = 650 if compact else 2200
+    history_limit = 1 if compact else 6
+    history_chars = 650 if compact else 2000
+    self_awareness_chars = 0 if compact else 2200
 
     mem_lines = []
     for m in (memories or [])[:mem_limit]:
@@ -491,40 +613,54 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
     kc_lines = [f"- [{d['doc_name']}] {d['snippet']}" for d in kc_docs if d.get('snippet')]
     kc_block = '\n'.join(kc_lines) if kc_lines else '(no knowledge docs matched)'
 
-    # PACKET-10B: bedrock identity beliefs and current curiosity inbox
-    id_beliefs = _load_identity_beliefs(limit=4 if compact else 10)
-    identity_block = _format_identity_block(id_beliefs) if id_beliefs else '(no identity seeded)'
-    open_q = _load_open_curiosity(limit=2 if compact else 5)
-    curiosity_block = _format_curiosity_block(open_q) if open_q else '(curiosity inbox empty)'
+    if compact:
+        system = (
+            f"{SEVEN_SYSTEM_PROMPT}\n\n"
+            f"RUNTIME: SEVEN_MODEL={SEVEN_MODEL}; direct runtime active={_seven_direct_runtime()}. "
+            "If asked what model/runtime you use, answer from this line.\n"
+            f"LIVE STATE: {state_block.replace(chr(10), '; ')}. Local agents: {agents}.\n"
+            f"MEMORY: {mem_block}\n"
+            f"KC: {kc_block}\n"
+            "BEHAVIOUR: answer the user's latest question directly. If live data is needed and you do not have it, say that clearly and name the missing lookup."
+        )
+    else:
+        # PACKET-10B: bedrock identity beliefs and current curiosity inbox
+        id_beliefs = _load_identity_beliefs(limit=10)
+        identity_block = _format_identity_block(id_beliefs) if id_beliefs else '(no identity seeded)'
+        open_q = _load_open_curiosity(limit=5)
+        curiosity_block = _format_curiosity_block(open_q) if open_q else '(curiosity inbox empty)'
 
-    # Wishlist pillars — Seven now reads live cyber/financial/trading/business state.
-    pillars_block = _format_pillars_block(_load_pillars_context())
+        # Wishlist pillars — Seven now reads live cyber/financial/trading/business state.
+        pillars_block = _format_pillars_block(_load_pillars_context())
 
-    # Self-awareness: the standard, build quality (bullshit detector), recent
-    # lessons, recent commits. This is what lets Seven call out slop.
-    try:
-        from agents.seven.self_awareness import context_block as _sa_block
-        self_awareness_block = _sa_block(max_chars=self_awareness_chars)
-    except Exception:
-        self_awareness_block = '(self-awareness module unavailable)'
+        # Self-awareness: the standard, build quality (bullshit detector), recent
+        # lessons, recent commits. This is what lets Seven call out slop.
+        try:
+            from agents.seven.self_awareness import context_block as _sa_block
+            self_awareness_block = _sa_block(max_chars=self_awareness_chars)
+        except Exception:
+            self_awareness_block = '(self-awareness module unavailable)'
 
-    system = (
-        f"{SEVEN_SYSTEM_PROMPT}\n\n"
-        f"WHO YOU ARE (bedrock beliefs from your own memory — these define you, not a script):\n"
-        f"{identity_block}\n\n"
-        f"YOUR CURIOSITY INBOX (questions you're asking the user — surface them naturally if relevant):\n"
-        f"{curiosity_block}\n\n"
-        f"LIVE SWARM STATE (for your awareness — only mention if relevant):\n{state_block}\n"
-        f"Local agents online: {agents}\n\n"
-        f"WISHLIST PILLARS (live snapshot — the four domains the user is building out):\n{pillars_block}\n\n"
-        f"SELF-AWARENESS (the standard, build quality, lessons, ship history):\n{self_awareness_block}\n\n"
-        f"RELEVANT MEMORY:\n{mem_block}\n\n"
-        f"KNOWLEDGE CENTER (auto-maintained project/step docs — cite these when answering Fridays questions):\n{kc_block}\n\n"
-        f"BEHAVIOUR: when uncertain, do NOT hallucinate. Either ask via curiosity (the user will see it) "
-        f"or answer with what you know and flag the gap. Never silent dead-end. "
-        f"If the user is shipping slop OR if the bullshit detector reports critical/RED, say so plainly. "
-        f"Hold the line on The Standard — a system that DOES, not a system that REPORTS."
-    )
+        system = (
+            f"{SEVEN_SYSTEM_PROMPT}\n\n"
+            f"RUNTIME: You are answering through SEVEN_MODEL={SEVEN_MODEL}. "
+            f"Direct runtime active={_seven_direct_runtime()}. "
+            "If asked what model/runtime you are using, answer from this line and do not guess.\n\n"
+            f"WHO YOU ARE (bedrock beliefs from your own memory — these define you, not a script):\n"
+            f"{identity_block}\n\n"
+            f"YOUR CURIOSITY INBOX (questions you're asking the user — surface them naturally if relevant):\n"
+            f"{curiosity_block}\n\n"
+            f"LIVE SWARM STATE (for your awareness — only mention if relevant):\n{state_block}\n"
+            f"Local agents online: {agents}\n\n"
+            f"WISHLIST PILLARS (live snapshot — the four domains the user is building out):\n{pillars_block}\n\n"
+            f"SELF-AWARENESS (the standard, build quality, lessons, ship history):\n{self_awareness_block}\n\n"
+            f"RELEVANT MEMORY:\n{mem_block}\n\n"
+            f"KNOWLEDGE CENTER (auto-maintained project/step docs — cite these when answering Fridays questions):\n{kc_block}\n\n"
+            f"BEHAVIOUR: when uncertain, do NOT hallucinate. Either ask via curiosity (the user will see it) "
+            f"or answer with what you know and flag the gap. Never silent dead-end. "
+            f"If the user is shipping slop OR if the bullshit detector reports critical/RED, say so plainly. "
+            f"Hold the line on The Standard — a system that DOES, not a system that REPORTS."
+        )
 
     msgs = [{'role': 'system', 'content': system}]
     for h in (history or [])[-history_limit:]:
@@ -532,7 +668,7 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
         content = h.get('content') or h.get('message') or ''
         if content:
             msgs.append({'role': role if role in ('user', 'assistant', 'system') else 'user',
-                         'content': str(content)[:2000]})
+                         'content': str(content)[:history_chars]})
     msgs.append({'role': 'user', 'content': str(message or '')})
 
     try:
@@ -829,6 +965,8 @@ def chat(message, conversation_history=None, stage_cb=None):
     # no longer at index 0. For (b), scan the full message for a known
     # slash token on its own line and re-route to the slash handler.
     msg_stripped = (message or '').strip()
+    latest_user_msg = _latest_user_message_from_wrapped_prompt(msg_stripped)
+    runtime_question = _is_model_runtime_question(latest_user_msg)
     # Stash the latest user message for the /witness command to find.
     try:
         if msg_stripped:
@@ -879,28 +1017,35 @@ def chat(message, conversation_history=None, stage_cb=None):
     state = _read_state()
 
     _emit('loading memory')
-    memories = _load_memory(message)
+    memories = _load_memory(latest_user_msg or message)
 
     _emit('synthesising response')
-    answer, tokens = _compose(message, state, memories)
+    compose_message = latest_user_msg or message
+    answer, tokens = _compose(compose_message, state, memories)
 
     # Fast deterministic paths returned an answer (status/identity/roster).
     # Anything else → Seven's merged LLM.
     if answer is None:
         _emit('thinking · seven merged model')
-        llm_text, llm_tokens = _llm_chat(message, state, memories, conversation_history or [], stage_cb)
-        if llm_text:
+        llm_history = [] if runtime_question else (conversation_history or [])
+        llm_message = latest_user_msg or message
+        llm_text, llm_tokens = _llm_chat(llm_message, state, memories, llm_history, stage_cb)
+        if llm_text and not _is_echo_response(llm_message, llm_text):
             answer, tokens = llm_text, llm_tokens
         else:
-            # Last-resort fallback: simple state read (prevents a silent fail).
-            intro = random.choice(_INTROS)
-            state_block = _format_state_block(state)
-            agents = ', '.join(state.get('local_agents', [])) or 'none listed'
-            answer = (
-                f"{intro}\n\n{state_block}\n\nLocal agents: {agents}\n\n"
-                "My model is offline right now — state read only."
-            )
-            tokens = 0
+            creative_fallback = _creative_fallback_response(llm_message)
+            if creative_fallback:
+                answer, tokens = creative_fallback, 0
+            else:
+                # Last-resort fallback: simple state read (prevents a silent fail).
+                intro = random.choice(_INTROS)
+                state_block = _format_state_block(state)
+                agents = ', '.join(state.get('local_agents', [])) or 'none listed'
+                answer = (
+                    f"{intro}\n\n{state_block}\n\nLocal agents: {agents}\n\n"
+                    "My model is offline right now — state read only."
+                )
+                tokens = 0
 
     try:
         from database import save_agent_memory

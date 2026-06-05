@@ -21,8 +21,8 @@
     <string name="runtime_title">Node runtime</string>
     <string name="runtime_summary_empty">No telemetry posted yet.</string>
     <string name="farm_summary_empty">Farm status not checked yet.</string>
-    <string name="chat_title">Chat with Dell Ollama</string>
-    <string name="model_summary_empty">Tap Refresh models to load Dell Ollama models.</string>
+    <string name="chat_title">Chat with Seven Runtime</string>
+    <string name="model_summary_empty">Tap Models to load shared Seven/local models.</string>
     <string name="btn_models">Refresh models</string>
     <string name="btn_models_short">Models</string>
     <string name="hint_chat">Type a message for the selected model…</string>

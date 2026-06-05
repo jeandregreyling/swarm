@@ -12,13 +12,13 @@ import os
 import subprocess
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from multiprocessing import Process, Queue
+from multiprocessing import get_context
 from typing import Any
 
 
 DEFAULT_HOST = os.environ.get("SEVEN_RUNTIME_HOST", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("SEVEN_RUNTIME_PORT", "17777"))
-DEFAULT_CHAT_TIMEOUT_S = int(os.environ.get("SEVEN_RUNTIME_CHAT_TIMEOUT_S", "45"))
+DEFAULT_CHAT_TIMEOUT_S = int(os.environ.get("SEVEN_RUNTIME_CHAT_TIMEOUT_S", "90"))
 SERVICE_NAME = "seven-runtime"
 
 
@@ -105,7 +105,7 @@ def _chat(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _chat_worker(payload: dict[str, Any], queue: Queue) -> None:
+def _chat_worker(payload: dict[str, Any], queue: Any) -> None:
     model = os.environ.get("SEVEN_MODEL", "seven-direct:daily")
     try:
         queue.put(_chat(payload))
@@ -146,8 +146,9 @@ def guarded_chat(payload: dict[str, Any], *, timeout_s: int = DEFAULT_CHAT_TIMEO
     """Run Seven chat with a service-level timeout so callers never hang."""
     started = time.time()
     timeout = max(1, int(payload.get("timeout_seconds") or timeout_s or DEFAULT_CHAT_TIMEOUT_S))
-    queue: Queue = Queue(maxsize=1)
-    proc = Process(target=_chat_worker, args=(payload, queue), name="seven-runtime-chat")
+    ctx = get_context("spawn")
+    queue = ctx.Queue(maxsize=1)
+    proc = ctx.Process(target=_chat_worker, args=(payload, queue), name="seven-runtime-chat")
     proc.start()
     proc.join(timeout)
     if proc.is_alive():

@@ -48,13 +48,13 @@ def test_build_telemetry_with_data():
                  'controllable': True},
         memory={'ram_total_mb': 32000, 'ram_free_mb': 12000},
         power={'on_battery': False, 'thermal_pressure': 'fair'},
-        capabilities=['inference.cpu', 'inference.ollama'],
+        capabilities=['inference.cpu', 'inference.seven-runtime', 'inference.direct-gguf'],
     )
     validate_telemetry(p)
     assert p['compute']['cpu_load_pct'] == 42
     assert p['thermal']['fan_mode'] == 'boost'
     assert p['power']['thermal_pressure'] == 'fair'
-    assert p['capabilities'] == ['inference.cpu', 'inference.ollama']
+    assert p['capabilities'] == ['inference.cpu', 'inference.direct-gguf', 'inference.seven-runtime']
 
 
 def test_build_telemetry_rejects_empty_node_id():

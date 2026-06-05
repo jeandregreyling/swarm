@@ -1,9 +1,10 @@
 """
-lib/knowledge/ingest.py — Text chunking and Ollama embedding pipeline.
+lib/knowledge/ingest.py — Text chunking and local embedding pipeline.
 
-nomic-embed-text (fully local, no API cost) handles all embeddings.
-Falls back gracefully if Ollama is unavailable — chunks are stored without
-vectors and keyword search is used as a fallback at query time.
+nomic-embed-text (fully local, no API cost) handles all embeddings. Seven
+Runtime can serve it directly from GGUF, with Ollama kept as a compatibility
+fallback. If embedding is unavailable, chunks are stored without vectors and
+keyword search is used at query time.
 """
 
 import re
@@ -78,56 +79,41 @@ def _split_long(text, size):
     return parts if parts else [text[:size]]
 
 
-# ── Ollama embedding ──────────────────────────────────────────────────────────
+# ── Local embedding ───────────────────────────────────────────────────────────
 
 def embed_text(text):
     """
-    Embed `text` using Ollama nomic-embed-text.
-    Returns a list of floats, or None on failure (model not pulled / Ollama down).
+    Embed `text` using the configured local nomic-embed-text path.
+    Returns a list of floats, or None on failure.
     """
     try:
         from core import llm as _llm
         vec = _llm.embeddings(model=OLLAMA_MODEL, prompt=text)
         return vec or None
     except Exception as exc:
-        logger.debug(f'[Ingest] Ollama embed failed: {exc}')
+        logger.debug(f'[Ingest] local embed failed: {exc}')
         return None
-
-
-async def _embed_batch_async(texts):
-    """Embed a list of texts concurrently using AsyncClient."""
-    import asyncio
-    import ollama
-    client = ollama.AsyncClient()
-
-    async def _one(text):
-        try:
-            result = await client.embeddings(model=OLLAMA_MODEL, prompt=text)
-            return getattr(result, 'embedding', None) or result.get('embedding')
-        except Exception:
-            return None
-
-    return await asyncio.gather(*[_one(t) for t in texts])
 
 
 def embed_batch(texts):
     """
-    Embed a list of texts in parallel via AsyncClient.
-    Returns a list of vectors (same length as texts); None entries mean embed failed.
-    Falls back to sequential embed_text() if asyncio is unavailable.
+    Embed a list of texts using the same local runtime path as embed_text().
+    Returns a list of vectors; None entries mean embedding failed.
     """
-    import asyncio
     if not texts:
         return []
-    try:
-        return asyncio.run(_embed_batch_async(texts))
-    except Exception as exc:
-        logger.warning(f'[Ingest] batch embed fell back to sequential: {exc}')
-        return [embed_text(t) for t in texts]
+    return [embed_text(t) for t in texts]
 
 
 def check_model_available():
-    """Return True if nomic-embed-text is pulled and ready."""
+    """Return True if nomic-embed-text is available directly or via Ollama."""
+    try:
+        from core import llm as _llm
+        direct = getattr(_llm, '_direct_embedding_model')('nomic-embed-text')
+        if direct:
+            return True
+    except Exception:
+        pass
     try:
         from core import llm as _llm
         models = _llm.list_models()

@@ -25,3 +25,14 @@ def test_hive_worker_reports_gpu_capacity_proof():
     assert 'put("gpu_probe", GpuProbe.run(' in service
     assert 'put("capacity_score", capacityScore(models))' in probe
     assert '"seven-app.gpu.capsule"' in sampler
+
+
+def test_hive_worker_uses_seven_runtime_shared_chat_contract():
+    main = (ROOT / "android/hive-agent/app/src/main/java/com/swarm/hive/MainActivity.kt").read_text()
+    strings = (ROOT / "android/hive-agent/app/src/main/res/values/strings.xml").read_text()
+
+    assert '"/api/localai/mobile/models"' in main
+    assert '"/api/localai/shared-chat"' in main
+    assert '"seven-direct:daily"' in main
+    assert '"/api/localai/ollama/shared-chat"' not in main
+    assert 'Dell Ollama' not in strings

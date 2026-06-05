@@ -276,13 +276,22 @@ def _agent_rows(conn) -> Dict[str, Dict[str, Any]]:
     return {str(r['name']).lower(): dict(r) for r in rows}
 
 
+def _is_ollama_model(model: str) -> bool:
+    model = str(model or '').strip()
+    if not model or model in {'external', 'local-algorithm'}:
+        return False
+    if model.startswith('seven-direct:') or model.endswith('-direct'):
+        return False
+    return True
+
+
 def _resident_targets(conn) -> List[Dict[str, Any]]:
     agents = _agent_rows(conn)
     targets = []
     for name, reason in SUPPORT_POLICY.items():
         row = agents.get(name) or {}
         model = str(row.get('model') or '').strip()
-        is_ollama = bool(model and model not in {'external', 'local-algorithm'})
+        is_ollama = _is_ollama_model(model)
         targets.append({
             'agent': name,
             'model': model,

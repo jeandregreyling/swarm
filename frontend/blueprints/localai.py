@@ -10,6 +10,10 @@ import os
 import re
 import requests
 import json
+import signal
+import subprocess
+import sys
+import time
 from flask import Blueprint, jsonify, request
 from database import get_connection, log_message, new_conversation
 
@@ -47,6 +51,9 @@ def _resolve_ollama_host() -> str:
 _OLLAMA_BASE  = _resolve_ollama_host()
 _LMSTUDIO_BASE = 'http://localhost:1234'
 _PICOCLAW_BASE = 'http://localhost:18790'
+_SEVEN_RUNTIME_HOST = os.environ.get('SEVEN_RUNTIME_HOST', '127.0.0.1')
+_SEVEN_RUNTIME_PORT = int(os.environ.get('SEVEN_RUNTIME_PORT', '17777'))
+_SEVEN_RUNTIME_BASE = f'http://{_SEVEN_RUNTIME_HOST}:{_SEVEN_RUNTIME_PORT}'
 
 _TIMEOUT = 3   # seconds for status checks
 
@@ -129,18 +136,198 @@ def _direct_status():
         return {'running': False, 'models': [], 'inventory': {'models': []}, 'error': str(exc)}
 
 
+def _seven_runtime_status():
+    try:
+        r = requests.get(f'{_SEVEN_RUNTIME_BASE}/health', timeout=_TIMEOUT)
+        if r.status_code == 200:
+            data = r.json()
+            return {
+                'running': True,
+                'url': _SEVEN_RUNTIME_BASE,
+                'pid': data.get('pid'),
+                'ok': bool(data.get('ok')),
+                'service': data.get('service') or 'seven-runtime',
+                'model': data.get('model') or '',
+                'flask_required': bool(data.get('flask_required')),
+                'ollama_required': bool(data.get('ollama_required')),
+                'chat_timeout_s': data.get('chat_timeout_s'),
+                'direct_registered': bool((data.get('direct') or {}).get('registered')),
+                'direct_model_count': len((data.get('direct') or {}).get('models') or []),
+                'warning': data.get('warning') or '',
+            }
+    except Exception:
+        pass
+    return {
+        'running': False,
+        'url': _SEVEN_RUNTIME_BASE,
+        'ok': False,
+        'service': 'seven-runtime',
+        'model': os.environ.get('SEVEN_MODEL', 'seven-direct:daily'),
+        'flask_required': False,
+        'ollama_required': False,
+        'direct_registered': False,
+        'direct_model_count': 0,
+    }
+
+
+def _mobile_model_list():
+    """Return model choices suitable for Android/Hive clients.
+
+    This is deliberately runtime-neutral: Android should not need to know
+    whether the selected model is served by Seven Runtime, direct GGUF, or
+    legacy Ollama.
+    """
+    models = []
+    seen = set()
+
+    seven_runtime = _seven_runtime_status()
+    runtime_model = str(seven_runtime.get('model') or '').strip()
+    if runtime_model:
+        seen.add(runtime_model.lower())
+        models.append({
+            'id': runtime_model,
+            'name': runtime_model,
+            'label': 'Seven Runtime daily',
+            'source': 'seven-runtime',
+            'runtime': 'seven-runtime',
+            'recommended': True,
+            'running': bool(seven_runtime.get('running')),
+            'chat_endpoint': '/api/localai/shared-chat',
+        })
+
+    direct = _direct_status()
+    for m in direct.get('models', []):
+        name = str(m.get('name') or '').strip()
+        if str(m.get('role') or '').strip().lower() == 'embed':
+            continue
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        models.append({
+            'id': name,
+            'name': name,
+            'label': name,
+            'source': 'direct-gguf',
+            'runtime': 'direct-gguf',
+            'recommended': False,
+            'running': bool(direct.get('running')),
+            'chat_endpoint': '/api/localai/shared-chat',
+            'role': m.get('role') or '',
+            'quant': m.get('quant') or '',
+            'size_gb': m.get('size_gb') or 0,
+        })
+
+    ollama = _ollama_status()
+    for m in ollama.get('models', []):
+        name = str(m.get('name') or '').strip()
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        models.append({
+            'id': name,
+            'name': name,
+            'label': name,
+            'source': 'ollama',
+            'runtime': 'ollama',
+            'recommended': False,
+            'running': bool(ollama.get('running')),
+            'chat_endpoint': '/api/localai/shared-chat',
+            'size_gb': m.get('size_gb') or 0,
+            'family': m.get('family') or '',
+            'params': m.get('params') or '',
+            'quant': m.get('quant') or '',
+        })
+
+    return {
+        'ok': True,
+        'default_model': runtime_model or (models[0]['id'] if models else ''),
+        'models': models,
+        'seven_runtime': seven_runtime,
+    }
+
+
+def _start_seven_runtime():
+    status = _seven_runtime_status()
+    if status.get('running'):
+        return status
+    root = os.environ.get('SWARM_ROOT') or os.getcwd()
+    env = dict(os.environ)
+    env.setdefault('PYTHONPATH', '.:frontend:utils')
+    env.setdefault('SEVEN_MODEL', 'seven-direct:daily')
+    env.setdefault('SEVEN_RUNTIME_PORT', str(_SEVEN_RUNTIME_PORT))
+    env.setdefault('SEVEN_RUNTIME_CHAT_TIMEOUT_S', '90')
+    env.setdefault('SEVEN_DIRECT_TIMEOUT_S', '30')
+    env.setdefault('SEVEN_NUM_PREDICT', '32')
+    log_path = '/tmp/seven-runtime-service.log'
+    with open(log_path, 'a', encoding='utf-8') as log:
+        subprocess.Popen(
+            [
+                sys.executable,
+                os.path.join(root, 'scripts', 'seven_runtime_service.py'),
+                '--host',
+                _SEVEN_RUNTIME_HOST,
+                '--port',
+                str(_SEVEN_RUNTIME_PORT),
+            ],
+            cwd=root,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+            close_fds=True,
+        )
+    deadline = time.time() + 8
+    while time.time() < deadline:
+        status = _seven_runtime_status()
+        if status.get('running'):
+            status['log'] = log_path
+            return status
+        time.sleep(0.25)
+    status = _seven_runtime_status()
+    status['log'] = log_path
+    return status
+
+
+def _stop_seven_runtime():
+    status = _seven_runtime_status()
+    pid = status.get('pid')
+    stopped = False
+    if pid:
+        try:
+            os.kill(int(pid), signal.SIGTERM)
+            stopped = True
+        except Exception:
+            pass
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        if not _seven_runtime_status().get('running'):
+            return {'running': False, 'stopped': stopped, 'url': _SEVEN_RUNTIME_BASE}
+        time.sleep(0.25)
+    if pid:
+        try:
+            os.kill(int(pid), signal.SIGKILL)
+            stopped = True
+        except Exception:
+            pass
+    time.sleep(0.5)
+    return {'running': _seven_runtime_status().get('running'), 'stopped': stopped, 'url': _SEVEN_RUNTIME_BASE}
+
+
 @localai_bp.route('/api/localai/status', methods=['GET'])
 def localai_status():
     ollama   = _ollama_status()
     lmstudio = _lmstudio_status()
     picoclaw = _picoclaw_status()
     direct   = _direct_status()
+    seven_runtime = _seven_runtime_status()
     return jsonify({
         'ok': True,
         'ollama':   ollama,
         'lmstudio': lmstudio,
         'picoclaw': picoclaw,
         'direct':   direct,
+        'seven_runtime': seven_runtime,
     })
 
 
@@ -205,6 +392,11 @@ def localai_available_models():
     })
 
 
+@localai_bp.route('/api/localai/mobile/models', methods=['GET'])
+def mobile_models():
+    return jsonify(_mobile_model_list())
+
+
 @localai_bp.route('/api/localai/ollama/models', methods=['GET'])
 def ollama_models():
     status = _ollama_status()
@@ -236,6 +428,57 @@ def direct_servers_stop():
         return jsonify({'ok': True, 'stopped': stopped, 'model': model, 'servers': llama_server.snapshot()})
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc), 'model': model}), 500
+
+
+@localai_bp.route('/api/localai/seven-runtime/status', methods=['GET'])
+def seven_runtime_status():
+    return jsonify({'ok': True, 'runtime': _seven_runtime_status()})
+
+
+@localai_bp.route('/api/localai/seven-runtime/start', methods=['POST'])
+def seven_runtime_start():
+    try:
+        status = _start_seven_runtime()
+        return jsonify({'ok': bool(status.get('running')), 'runtime': status})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'runtime': _seven_runtime_status()}), 500
+
+
+@localai_bp.route('/api/localai/seven-runtime/stop', methods=['POST'])
+def seven_runtime_stop():
+    try:
+        result = _stop_seven_runtime()
+        return jsonify({'ok': not result.get('running'), **result})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'runtime': _seven_runtime_status()}), 500
+
+
+@localai_bp.route('/api/localai/seven-runtime/chat', methods=['POST'])
+def seven_runtime_chat():
+    data = request.get_json(silent=True) or {}
+    msg = (data.get('message') or data.get('prompt') or '').strip()
+    if not msg:
+        return jsonify({'ok': False, 'error': 'message required'}), 400
+    status = _seven_runtime_status()
+    if not status.get('running'):
+        status = _start_seven_runtime()
+    if not status.get('running'):
+        return jsonify({'ok': False, 'error': 'seven runtime is not running', 'runtime': status}), 503
+    try:
+        r = requests.post(
+            f'{_SEVEN_RUNTIME_BASE}/chat',
+            json={
+                'message': msg,
+                'history': data.get('history') or [],
+                'timeout_seconds': int(data.get('timeout_seconds') or 90),
+            },
+            timeout=int(data.get('timeout_seconds') or 90) + 10,
+        )
+        payload = r.json()
+        payload.setdefault('runtime', _seven_runtime_status())
+        return jsonify(payload), (200 if r.status_code < 400 else r.status_code)
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc), 'runtime': _seven_runtime_status()}), 500
 
 
 @localai_bp.route('/api/localai/direct/chat', methods=['POST'])
@@ -310,30 +553,94 @@ def _shared_chat_messages(conv_id):
         conn.close()
 
 
+def _valid_conversation_id(raw_conv_id):
+    if raw_conv_id in (None, ''):
+        return None
+    try:
+        candidate = int(raw_conv_id)
+        conn = get_connection()
+        try:
+            exists = conn.execute("SELECT id FROM conversations WHERE id=?", (candidate,)).fetchone()
+        finally:
+            conn.close()
+        if exists:
+            return candidate
+    except Exception:
+        return None
+    return None
+
+
+def _history_from_shared_rows(rows, node_id):
+    history = []
+    for row in rows:
+        sender = str(row.get('sender') or '').strip().lower()
+        content = str(row.get('content') or '')
+        if not content:
+            continue
+        role = 'user' if sender in {'user', node_id.lower(), 'android'} else 'assistant'
+        history.append({'role': role, 'content': content})
+    return history
+
+
+def _chat_with_seven_runtime(model, history, msg, timeout_seconds):
+    status = _seven_runtime_status()
+    if not status.get('running'):
+        status = _start_seven_runtime()
+    if not status.get('running'):
+        return None, {'ok': False, 'error': 'seven runtime is not running', 'runtime': status}, 503
+    r = requests.post(
+        f'{_SEVEN_RUNTIME_BASE}/chat',
+        json={
+            'model': model,
+            'message': msg,
+            'history': history,
+            'timeout_seconds': timeout_seconds,
+        },
+        timeout=timeout_seconds + 10,
+    )
+    try:
+        payload = r.json()
+    except Exception:
+        payload = {'ok': False, 'error': r.text[:240]}
+    if r.status_code >= 400 or not payload.get('ok'):
+        payload.setdefault('runtime', _seven_runtime_status())
+        return None, payload, r.status_code if r.status_code >= 400 else 502
+    answer = str(payload.get('content') or payload.get('answer') or '').strip() or 'No response'
+    payload.setdefault('runtime', _seven_runtime_status())
+    return answer, payload, 200
+
+
+def _chat_with_ollama(model, history, msg):
+    if not history or history[-1].get('role') != 'user':
+        history.append({'role': 'user', 'content': msg})
+    r = requests.post(
+        f'{_OLLAMA_BASE}/api/chat',
+        json={
+            'model': model,
+            'messages': history,
+            'stream': False,
+            'options': {'temperature': 0.7},
+        },
+        timeout=120,
+    )
+    if r.status_code != 200:
+        return None, {'ok': False, 'error': f'Ollama returned {r.status_code}'}, 502
+    answer = r.json().get('message', {}).get('content', '').strip() or 'No response'
+    return answer, {'ok': True, 'answer': answer, 'model': model}, 200
+
+
+@localai_bp.route('/api/localai/shared-chat', methods=['POST'])
 @localai_bp.route('/api/localai/ollama/shared-chat', methods=['POST'])
-def ollama_shared_chat():
+def shared_chat():
     """Android/remote chat entrypoint backed by the normal Fridays conversation store."""
     data = request.get_json(silent=True) or {}
-    model = (data.get('model') or 'qwen:latest').strip()
+    model = (data.get('model') or data.get('model_id') or 'seven-direct:daily').strip()
     msg = (data.get('message') or '').strip()
     node_id = (data.get('node_id') or 'android').strip()[:80]
-    raw_conv_id = data.get('conversation_id')
     if not msg:
         return jsonify({'ok': False, 'error': 'message required'}), 400
 
-    conv_id = None
-    if raw_conv_id not in (None, ''):
-        try:
-            candidate = int(raw_conv_id)
-            conn = get_connection()
-            try:
-                exists = conn.execute("SELECT id FROM conversations WHERE id=?", (candidate,)).fetchone()
-            finally:
-                conn.close()
-            if exists:
-                conv_id = candidate
-        except Exception:
-            conv_id = None
+    conv_id = _valid_conversation_id(data.get('conversation_id'))
 
     if conv_id is None:
         conv_id = new_conversation(f'Fridays Android: {msg[:80]}', source='terminal-ui:ANDROID', sender=node_id)
@@ -342,42 +649,33 @@ def ollama_shared_chat():
 
     try:
         rows = _shared_chat_messages(conv_id)[-16:]
-        ollama_messages = []
-        for row in rows:
-            sender = str(row.get('sender') or '').strip().lower()
-            content = str(row.get('content') or '')
-            if not content:
-                continue
-            role = 'user' if sender in {'user', node_id.lower(), 'android'} else 'assistant'
-            ollama_messages.append({'role': role, 'content': content})
-        if not ollama_messages or ollama_messages[-1].get('role') != 'user':
-            ollama_messages.append({'role': 'user', 'content': msg})
-
-        r = requests.post(
-            f'{_OLLAMA_BASE}/api/chat',
-            json={
-                'model': model,
-                'messages': ollama_messages,
-                'stream': False,
-                'options': {'temperature': 0.7},
-            },
-            timeout=120,
-        )
-        if r.status_code != 200:
-            return jsonify({'ok': False, 'error': f'Ollama returned {r.status_code}', 'conversation_id': conv_id}), 502
-        answer = r.json().get('message', {}).get('content', '').strip()
+        history = _history_from_shared_rows(rows, node_id)
+        if model.startswith('seven-direct:'):
+            answer, runtime_payload, status_code = _chat_with_seven_runtime(
+                model,
+                history,
+                msg,
+                int(data.get('timeout_seconds') or 90),
+            )
+        else:
+            answer, runtime_payload, status_code = _chat_with_ollama(model, history, msg)
         if not answer:
-            answer = 'No response'
+            runtime_payload['conversation_id'] = conv_id
+            return jsonify(runtime_payload), status_code
         log_message(conv_id, model, answer, to_agent='user', message_type='response')
         return jsonify({
             'ok': True,
             'answer': answer,
+            'content': answer,
             'model': model,
             'conversation_id': conv_id,
             'messages': _shared_chat_messages(conv_id),
+            'runtime': runtime_payload.get('runtime'),
+            'stages': runtime_payload.get('stages') or [],
+            'tokens': runtime_payload.get('tokens'),
         })
     except requests.exceptions.ConnectionError:
-        return jsonify({'ok': False, 'error': 'Ollama not running', 'conversation_id': conv_id}), 503
+        return jsonify({'ok': False, 'error': 'selected local runtime not reachable', 'conversation_id': conv_id}), 503
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e), 'conversation_id': conv_id}), 500
 

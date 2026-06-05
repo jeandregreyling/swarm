@@ -239,11 +239,37 @@ def chat(
         json=payload,
         timeout=int(opts.get("timeout") or 180),
     )
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        detail = (resp.text or "").strip()[:500]
+        raise requests.HTTPError(
+            f"{resp.status_code} Client Error for {resp.url}: {detail}",
+            response=resp,
+        )
     data = resp.json()
     text = str((((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "")).strip()
     tokens = int((data.get("usage") or {}).get("completion_tokens") or len(text.split()) or 0)
     return text, tokens
+
+
+def embeddings(model: str, prompt: str, *, options: dict | None = None) -> list[float]:
+    opts = dict(options or {})
+    handle = ensure(model, timeout_s=int(opts.get("startup_timeout") or STARTUP_TIMEOUT_S))
+    resp = requests.post(
+        handle.endpoint.rstrip("/") + "/v1/embeddings",
+        json={"model": model, "input": str(prompt or "")},
+        timeout=int(opts.get("timeout") or 120),
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    rows = data.get("data") if isinstance(data, dict) else None
+    if isinstance(rows, list) and rows:
+        embedding = (rows[0] or {}).get("embedding")
+        if isinstance(embedding, list):
+            return [float(x) for x in embedding]
+    embedding = data.get("embedding") if isinstance(data, dict) else None
+    if isinstance(embedding, list):
+        return [float(x) for x in embedding]
+    return []
 
 
 def _chat_stream(handle: ServerHandle, payload: dict[str, Any], *, timeout: int, on_token: Any = None) -> tuple[str, int]:
@@ -257,7 +283,12 @@ def _chat_stream(handle: ServerHandle, payload: dict[str, Any], *, timeout: int,
         stream=True,
         timeout=timeout,
     ) as resp:
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            detail = (resp.text or "").strip()[:500]
+            raise requests.HTTPError(
+                f"{resp.status_code} Client Error for {resp.url}: {detail}",
+                response=resp,
+            )
         for raw_line in resp.iter_lines(decode_unicode=True):
             if not raw_line:
                 continue

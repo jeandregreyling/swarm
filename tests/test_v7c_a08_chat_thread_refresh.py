@@ -25,10 +25,11 @@ def test_r1_chat_js_wipes_stale_thread_on_load():
     assert "__fridaysChatForceNewThread = window.__fridaysChatForceNewThread ?? true" in src
 
 
-# R2 FUNCTIONAL — home-chat resets conv id before paint
+# R2 FUNCTIONAL — home-chat resets its own conv id before paint
 def test_r2_home_chat_resets_conv_before_paint():
     src = HOME_CHAT_JS.read_text()
-    # initHomeChat must null the convId before _hcClearMessages/_hcShowWelcome.
+    # initHomeChat must null the home-chat convId before _hcClearMessages/_hcShowWelcome
+    # without clearing the main chat window's active thread.
     init_idx = src.find("window.initHomeChat = function")
     assert init_idx >= 0
     # Carve out just the init body to reason about it.
@@ -36,11 +37,11 @@ def test_r2_home_chat_resets_conv_before_paint():
     for needle in [
         "localStorage.removeItem(HC_ACTIVE_THREAD_KEY)",
         "_hcConvId = null",
-        "window.__fridaysChatConversationId = null",
         "_hcClearMessages()",
         "_hcShowWelcome(true)",
     ]:
         assert needle in body, f"init must call {needle}"
+    assert "window.__fridaysChatConversationId = null" not in body
 
 
 # R3 BFCACHE — back/forward restore also resets
@@ -71,7 +72,7 @@ def test_r5_thread_load_wipes_stale_marker():
     assert idx >= 0
     block = src[idx:idx + 800]
     assert "localStorage.removeItem(HC_ACTIVE_THREAD_KEY)" in block
-    assert "window.__fridaysChatConversationId = null" in block
+    assert "window.__fridaysChatConversationId = null" not in block
 
 
 # R6 EXPAND HANDOFF — Expand button preserves current thread to main chat
@@ -81,6 +82,18 @@ def test_r6_expand_preserves_thread():
     assert idx >= 0
     block = src[idx:idx + 800]
     assert "__fridaysChatOpenWithConvId = _hcConvId" in block
+
+
+def test_home_chat_uses_separate_active_thread_key():
+    src = HOME_CHAT_JS.read_text()
+    assert "const HC_ACTIVE_THREAD_KEY = 'fridays-home-chat-active-thread'" in src
+    assert "const HC_ACTIVE_THREAD_KEY = 'fridays-chat-active-thread'" not in src
+
+
+def test_home_chat_does_not_own_main_chat_active_thread():
+    src = HOME_CHAT_JS.read_text()
+    assert "window.__fridaysChatOpenWithConvId = _hcConvId" in src
+    assert "window.__fridaysChatConversationId =" not in src
 
 
 # R7 REGRESSION GUARD — load path must wipe, not read, the active thread key

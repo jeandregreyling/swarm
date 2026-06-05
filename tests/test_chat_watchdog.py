@@ -962,7 +962,21 @@ def test_watchdog_treats_placeholder_answer_as_unusable():
     assert chat_mod._chat_response_is_unusable('gemma', '[gemma unavailable]') is True
     assert chat_mod._chat_response_is_unusable('gemma', '[gemma] no response') is True
     assert chat_mod._chat_response_is_unusable('mistral', '[mistral] No response - check server logs.') is True
+    assert chat_mod._chat_response_is_unusable('seven', 'My model is offline right now — state read only.') is True
     assert chat_mod._chat_response_is_unusable('gemma', 'Here is the actual status update.') is False
+
+
+def test_watchdog_treats_prompt_echo_as_unusable():
+    from frontend.blueprints import chat as chat_mod
+
+    assert chat_mod._chat_response_echoes_prompt(
+        'Tell me something interesting about yourself?',
+        'Tell me something interesting about yourself?',
+    ) is True
+    assert chat_mod._chat_response_echoes_prompt(
+        'Tell me something interesting about yourself?',
+        'I am Seven, the local swarm companion.',
+    ) is False
 
 
 def test_timeout_self_handoff_is_not_successful_completion():

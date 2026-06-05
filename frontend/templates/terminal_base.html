@@ -85,13 +85,13 @@
 <link rel="stylesheet" href="/static/css/components.css?v=6">
 <link rel="stylesheet" href="/static/css/windows.css">
 <link rel="stylesheet" href="/static/css/taskbar.css?v=31-themepicker">
-<link rel="stylesheet" href="/static/css/views/chat.css?v=3">
+<link rel="stylesheet" href="/static/css/views/chat.css?v=4">
 <link rel="stylesheet" href="/static/css/modals.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/library.css">
 <link rel="stylesheet" href="/static/css/diamond.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/views/knowledge.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/views/agents.css?v={{ ASSET_VERSION }}">
-<link rel="stylesheet" href="/static/css/views/localai.css?v=1">
+<link rel="stylesheet" href="/static/css/views/localai.css?v=2">
 <link rel="stylesheet" href="/static/css/views/media-center.css?v=6">
 <link rel="stylesheet" href="/static/css/responsive.css">
 <link rel="stylesheet" href="/static/css/home-chat.css?v=29">
@@ -515,7 +515,7 @@
     <!-- Welcome row: quick actions + show-at-startup -->
     <div style="margin-bottom:14px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:color-mix(in srgb,var(--accent) 4%,var(--card));display:flex;flex-direction:column;gap:10px;">
       <div style="font-size:11px;color:var(--text-dim);line-height:1.5;">
-        New here? Start with Local AI to wire up Ollama/LM Studio, or jump straight into Enrollment for the full walkthrough.
+        New here? Start with Local AI to check Seven Runtime and local fallback runners, or jump straight into Enrollment for the full walkthrough.
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button onclick="document.getElementById('shortcuts-help-modal').classList.remove('open'); try { openWindow('ollama','Local AI','view-ollama'); } catch(e){}" style="flex:1;min-width:120px;padding:8px 12px;border-radius:8px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--card));color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Local AI</button>
@@ -2292,10 +2292,10 @@
     <div id="library-model-banner">
       <svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="flex-shrink:0;color:var(--warning)"><path d="M8 2.5L13 13H3L8 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7v3M8 11.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       <div style="flex:1;">
-        <div style="font-weight:700;margin-bottom:2px;">nomic-embed-text not found</div>
-        <div style="opacity:0.8;">Semantic search requires this Ollama model. Pull it once — it's fully local, no API cost.</div>
+        <div style="font-weight:700;margin-bottom:2px;">Embedding model not ready</div>
+        <div style="opacity:0.8;">Semantic search uses the direct GGUF embedding model first. Ollama is only a fallback pull path.</div>
       </div>
-      <button id="library-pull-btn" onclick="libPullModel()">Pull model</button>
+      <button id="library-pull-btn" onclick="libPullModel()">Prepare model</button>
     </div>
 
     <!-- Search bar -->
@@ -2452,7 +2452,7 @@
           <span id="localai-overall-status" class="localai-badge">checking...</span>
           <span id="localai-runtime-badge" class="localai-badge" title="Fridays runtime gateway health" style="display:none;">runtime: —</span>
         </div>
-        <div class="localai-subtitle">Offline inference, model management, and runtime control for Ollama, LM Studio, and Picoclaw.</div>
+        <div class="localai-subtitle">Seven Runtime first, with Ollama, LM Studio, and Picoclaw kept as local fallback runners.</div>
         <div id="localai-runtime-warnings" style="display:none;margin-top:6px;font-size:11px;color:#f59e0b;"></div>
       </div>
       <div class="localai-header-actions">
@@ -2466,7 +2466,7 @@
         <div class="localai-panel-head">
           <div>
             <div class="localai-panel-title">Ollama</div>
-            <div class="localai-panel-subtitle">Installed, loaded, and tunable local models.</div>
+            <div class="localai-panel-subtitle">Fallback model store and compatibility runner.</div>
           </div>
           <div class="localai-panel-meta">
             <span id="ollama-status-badge" class="localai-badge">—</span>
@@ -2515,6 +2515,36 @@
             <button onclick="localaiOllamaChat()" class="knowledge-btn knowledge-btn-primary">Ask</button>
           </div>
           <div id="ollama-quick-result" class="localai-result-box" style="display:none;"></div>
+        </div>
+      </section>
+
+      <section class="localai-panel localai-panel-seven">
+        <div class="localai-panel-head">
+          <div>
+            <div class="localai-panel-title">Seven Runtime</div>
+            <div class="localai-panel-subtitle">Standalone Seven service, direct GGUF, no Flask or Ollama dependency.</div>
+          </div>
+          <div class="localai-panel-meta">
+            <span id="seven-runtime-status-badge" class="localai-badge">—</span>
+            <span class="localai-port">:17777</span>
+          </div>
+        </div>
+        <div class="localai-status-strip" id="seven-runtime-action-status">Checking Seven Runtime…</div>
+        <div class="localai-stack-card">
+          <div id="seven-runtime-info" class="localai-detail-card">Loading...</div>
+          <div class="localai-action-row">
+            <button onclick="localaiSevenRuntimeStart()" class="knowledge-btn knowledge-btn-primary">Start</button>
+            <button onclick="localaiSevenRuntimeStop()" class="knowledge-btn">Stop</button>
+            <button onclick="localaiSevenRuntimeRefresh()" class="knowledge-btn">Refresh</button>
+          </div>
+        </div>
+        <div class="localai-chat-card localai-chat-card-tight">
+          <div class="localai-section-title">Seven Direct Chat</div>
+          <div class="localai-field-row">
+            <input id="seven-runtime-quick-prompt" class="knowledge-input localai-input" type="text" placeholder="Ask Seven directly..." onkeydown="if(event.key==='Enter')localaiSevenRuntimeChat()">
+            <button onclick="localaiSevenRuntimeChat()" class="knowledge-btn knowledge-btn-primary">Ask</button>
+          </div>
+          <div id="seven-runtime-quick-result" class="localai-result-box" style="display:none;"></div>
         </div>
       </section>
 
@@ -3215,7 +3245,7 @@
 <script src="/static/js/views/projects.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/traced.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/core/trace-bus.js?v=30"></script>
-<script src="/static/js/views/chat.js?v={{ ASSET_VERSION }}-chat-trace1"></script>
+<script src="/static/js/views/chat.js?v={{ ASSET_VERSION }}-chat-trace4"></script>
 <script src="/static/js/views/services.js?v={{ ASSET_VERSION }}-services2"></script>
 <script src="/static/js/views/ollama.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/time-wizard.js?v={{ ASSET_VERSION }}"></script>
@@ -3231,7 +3261,7 @@
 <script src="/static/js/views/guide.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/vpn.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/money-hub.js?v={{ ASSET_VERSION }}"></script>
-<script src="/static/js/views/localai.js?v={{ ASSET_VERSION }}-agent-chat1"></script>
+<script src="/static/js/views/localai.js?v={{ ASSET_VERSION }}-seven-first1"></script>
 <script src="/static/js/views/media-center.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/trace.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/onboarding.js?v={{ ASSET_VERSION }}"></script>
@@ -3242,7 +3272,7 @@
 <script src="/static/js/views/home_banner.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/orientation_card.js?v={{ ASSET_VERSION }}"></script>
 
-<script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}-hc-thread2"></script>
 <script src="/static/js/friday-auth.js?v=28"></script>
 <script src="/static/js/core/aig_focus.js?v={{ ASSET_VERSION }}"></script>
 <!-- Init (must be last — depends on all above) -->

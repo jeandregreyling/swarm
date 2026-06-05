@@ -241,10 +241,30 @@ def show(model: str):
 
 def embeddings(model: str, prompt: str) -> list[float]:
     """Return embeddings vector for prompt."""
+    direct_model = _direct_embedding_model(model)
+    if direct_model:
+        from core.seven_llm import llama_server
+        return llama_server.embeddings(direct_model, prompt)
     result = _get_ollama().embeddings(model=model, prompt=prompt)
     if isinstance(result, dict):
         return result.get('embedding', []) or []
     return getattr(result, 'embedding', []) or []
+
+
+def _direct_embedding_model(model: str) -> str:
+    requested = str(model or '').strip()
+    try:
+        from core.seven_llm import registry
+        entry = registry.get(requested)
+        if entry and entry.driver == 'llamacpp' and entry.role == 'embed':
+            return requested
+        if requested in {'nomic-embed-text', 'nomic-embed-text:latest'}:
+            direct = registry.get('nomic-embed-text-direct')
+            if direct and direct.driver == 'llamacpp' and direct.role == 'embed' and direct.path and os.path.isfile(direct.path):
+                return direct.name
+    except Exception:
+        return ''
+    return ''
 
 
 def pull(model: str, stream: bool = True) -> Iterable[dict]:

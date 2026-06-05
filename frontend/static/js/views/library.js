@@ -179,14 +179,19 @@ async function _checkModel() {
 
 function libPullModel() {
   const btn = document.getElementById('library-pull-btn');
-  if (btn) { btn.textContent = 'Pulling…'; btn.disabled = true; }
+  if (btn) { btn.textContent = 'Preparing...'; btn.disabled = true; }
   fetch('/api/library/pull-model', { method: 'POST' })
-    .then(() => {
-      if (btn) btn.textContent = 'Pulling in background — check Ollama logs';
-      setTimeout(_checkModel, 15000);
+    .then(r => r.json())
+    .then(d => {
+      if (btn) {
+        btn.textContent = d.ready
+          ? 'Direct model ready'
+          : 'Pulling Ollama fallback';
+      }
+      setTimeout(_checkModel, d.ready ? 1500 : 15000);
     })
     .catch(() => {
-      if (btn) { btn.textContent = 'Pull'; btn.disabled = false; }
+      if (btn) { btn.textContent = 'Prepare model'; btn.disabled = false; }
     });
 }
 

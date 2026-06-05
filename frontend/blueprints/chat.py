@@ -133,6 +133,23 @@ def _chat_response_is_unusable(agent_name, response_text):
         return True
     if 'unavailable' in lower and lower.startswith('[') and len(lower) <= 80:
         return True
+    if 'my model is offline right now' in lower and 'state read only' in lower:
+        return True
+    return False
+
+
+def _chat_response_echoes_prompt(prompt_text, response_text):
+    import re
+    prompt_norm = re.sub(r'\W+', ' ', str(prompt_text or '').lower()).strip()
+    response_norm = re.sub(r'\W+', ' ', str(response_text or '').lower()).strip()
+    if not prompt_norm or not response_norm:
+        return False
+    if response_norm == prompt_norm:
+        return True
+    if len(response_norm) <= len(prompt_norm) + 12 and (
+        response_norm in prompt_norm or prompt_norm in response_norm
+    ):
+        return True
     return False
 
 
@@ -1868,7 +1885,10 @@ def api_chat():
             _trace(conv_id, selected_agent, 'dispatch', f'route={selected_agent} prompt_len={len(effective_prompt)}')
             if selected_agent in {'gemma', 'qwen', 'eight', 'seven', 'twenty'}:
                 # Route through agent .chat() directly — enables skills_loop
-                _stage(f'dispatching to local ollama · {selected_agent}', est_eta)
+                if selected_agent == 'seven':
+                    _stage('dispatching to Seven Runtime · seven', est_eta)
+                else:
+                    _stage(f'dispatching to local ollama · {selected_agent}', est_eta)
                 try:
                     import importlib
                     _mod = importlib.import_module(f'agents.{selected_agent}.{selected_agent}_agent')
@@ -2304,7 +2324,10 @@ def api_chat():
                 updated_iso = _chat_now_iso()
                 try:
                     response_text, tokens_used, elapsed_ms = done_future.result()
-                    if _chat_response_is_unusable(selected_agent, response_text):
+                    if (
+                        _chat_response_is_unusable(selected_agent, response_text)
+                        or _chat_response_echoes_prompt(message, response_text)
+                    ):
                         raise RuntimeError(
                             f'{selected_agent} returned no usable answer: '
                             f'{str(response_text or "").strip()[:120] or "empty response"}'

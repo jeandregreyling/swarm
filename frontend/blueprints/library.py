@@ -39,6 +39,46 @@ def _init():
     ensure_schema()
 
 
+def _embedding_runtime_status():
+    """Return the Knowledge Library embedding runtime state."""
+    try:
+        from core import llm as _llm
+        direct = getattr(_llm, '_direct_embedding_model')('nomic-embed-text')
+        if direct:
+            return {
+                'ready': True,
+                'model': 'nomic-embed-text',
+                'runtime': 'seven-direct',
+                'direct_model': direct,
+                'message': 'Direct GGUF embedding model is available.',
+            }
+    except Exception as exc:
+        logger.debug(f'[Library] direct embedding status failed: {exc}')
+
+    try:
+        from lib.knowledge.ingest import check_model_available
+        ready = check_model_available()
+        return {
+            'ready': bool(ready),
+            'model': 'nomic-embed-text',
+            'runtime': 'ollama',
+            'direct_model': None,
+            'message': (
+                'Ollama embedding fallback is available.'
+                if ready
+                else 'Embedding model is not available directly or through Ollama.'
+            ),
+        }
+    except Exception as exc:
+        return {
+            'ready': False,
+            'model': 'nomic-embed-text',
+            'runtime': 'unknown',
+            'direct_model': None,
+            'message': str(exc),
+        }
+
+
 # ── Sources ───────────────────────────────────────────────────────────────────
 
 @library_bp.route('/api/library/sources', methods=['GET'])
@@ -308,14 +348,25 @@ def api_library_search():
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
 
-# ── Ollama model pull ─────────────────────────────────────────────────────────
+# ── Embedding model readiness ─────────────────────────────────────────────────
 
 @library_bp.route('/api/library/pull-model', methods=['POST'])
 def api_library_pull_model():
     """
-    Trigger an Ollama pull for nomic-embed-text (only needed once).
-    Non-blocking — returns immediately; pull happens in background.
+    Prepare nomic-embed-text for semantic search. If the direct GGUF is present,
+    no pull is needed; otherwise this triggers an Ollama fallback pull.
     """
+    status = _embedding_runtime_status()
+    if status.get('ready') and status.get('runtime') == 'seven-direct':
+        return jsonify({
+            'ok': True,
+            'ready': True,
+            'runtime': 'seven-direct',
+            'model': status.get('model'),
+            'direct_model': status.get('direct_model'),
+            'message': 'Direct GGUF embedding model is already available; no Ollama pull needed.',
+        })
+
     def _pull():
         try:
             import requests as _req
@@ -328,18 +379,24 @@ def api_library_pull_model():
             logger.error(f'[Library] model pull error: {exc}')
 
     threading.Thread(target=_pull, daemon=True).start()
-    return jsonify({'ok': True, 'message': 'Pulling nomic-embed-text in background…'})
+    return jsonify({
+        'ok': True,
+        'ready': False,
+        'runtime': 'ollama',
+        'model': 'nomic-embed-text',
+        'message': 'Pulling nomic-embed-text through Ollama fallback in background.',
+    })
 
 
 @library_bp.route('/api/library/model-status', methods=['GET'])
 def api_library_model_status():
     """Check whether nomic-embed-text is available."""
-    try:
-        from lib.knowledge.ingest import check_model_available
-        ready = check_model_available()
-        return jsonify({'ok': True, 'ready': ready, 'model': 'nomic-embed-text'})
-    except Exception as exc:
-        return jsonify({'ok': False, 'ready': False, 'error': str(exc)})
+    status = _embedding_runtime_status()
+    payload = {'ok': True, **status}
+    if not status.get('ready') and status.get('runtime') == 'unknown':
+        payload['ok'] = False
+        payload['error'] = status.get('message')
+    return jsonify(payload)
 
 
 # ── Categories ────────────────────────────────────────────────────────────────

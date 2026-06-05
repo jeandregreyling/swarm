@@ -257,6 +257,23 @@ def test_qwen_uses_fast_generate_first_model():
     assert "=== New user message ===" in src
 
 
+def test_seven_defaults_to_direct_runtime_model():
+    from utils.model_selector import select_model
+
+    model, source = select_model("seven")
+
+    assert source == "default"
+    assert model == "seven-direct:daily"
+
+
+def test_chat_dispatch_labels_seven_runtime_not_ollama():
+    src = Path("frontend/blueprints/chat.py").read_text(encoding="utf-8")
+
+    assert "'dispatching to Seven Runtime · seven'" in src
+    assert "_stage(f'dispatching to local ollama · {selected_agent}', est_eta)" in src
+    assert "if selected_agent == 'seven':" in src
+
+
 def test_timeout_does_not_disable_local_agent():
     src = Path("frontend/blueprints/chat.py").read_text(encoding="utf-8")
     assert "or 'timed out' in raw" not in src

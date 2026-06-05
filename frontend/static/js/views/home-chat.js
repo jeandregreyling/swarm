@@ -20,8 +20,9 @@
   let _hcSending = false;
   const _hcEnv = (window.ENV_STAGE || 'PROD').toUpperCase();
 
-  // localStorage keys — shared with floating chat (chat.js)
-  const HC_ACTIVE_THREAD_KEY = 'fridays-chat-active-thread';
+  // localStorage keys. Home-chat keeps its own active-thread state; it only
+  // hands a thread to the main chat when the user explicitly expands it.
+  const HC_ACTIVE_THREAD_KEY = 'fridays-home-chat-active-thread';
   const HC_AGENT_TOGGLE_PREFIX = 'fridays-chat-thread-agents-';
   const HC_GLOBAL_AGENTS_KEY = 'fridays-chat-enabled-agents';
 
@@ -39,7 +40,6 @@
     // never flashes the stale conversation while the fetch is in flight.
     try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
     _hcConvId = null;
-    window.__fridaysChatConversationId = null;
     _hcClearMessages();
     _hcShowWelcome(true);
 
@@ -59,7 +59,6 @@
       if (ev.persisted) {
         try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
         _hcConvId = null;
-        window.__fridaysChatConversationId = null;
         _hcClearMessages();
         _hcShowWelcome(true);
         const sel = document.getElementById('home-chat-thread-select');
@@ -187,7 +186,6 @@
         // Init/refresh path only: do NOT call this from inside _hcSend after
         // a successful turn — that wipes the just-rendered user/agent bubbles.
         try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
-        window.__fridaysChatConversationId = null;
         _hcConvId = null;
         _hcClearMessages();
         _hcShowWelcome(true);
@@ -264,8 +262,6 @@
   function _hcSwitchThread(convId) {
     _hcConvId = convId;
     localStorage.setItem(HC_ACTIVE_THREAD_KEY, String(convId));
-    // Also sync with floating chat
-    window.__fridaysChatConversationId = convId;
     _hcRenderThreadSelect();
     _hcLoadMessages(convId);
     _hcRenderAgentPills();
@@ -818,7 +814,6 @@
         if (data.conversation_id && !_hcConvId) {
           _hcConvId = data.conversation_id;
           localStorage.setItem(HC_ACTIVE_THREAD_KEY, String(_hcConvId));
-          window.__fridaysChatConversationId = _hcConvId;
           _hcSaveEnabledAgents();
           // Refresh thread dropdown only — must NOT reset _hcConvId or wipe
           // messages here (Y.58 fix for the "Hi disappears" race).

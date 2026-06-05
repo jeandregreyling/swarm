@@ -1,4 +1,4 @@
-/* views/localai.js — Local AI tile: Ollama · LM Studio · Picoclaw */
+/* views/localai.js — Local AI tile: Seven Runtime · Ollama fallback · LM Studio · Picoclaw */
 
 const _LOCAL_AGENTS = [
   { name: 'gemma',          label: 'Gemma',           model: 'gemma3:4.3B',      source: 'ollama',   desc: 'Orchestrator, front of house'   },
@@ -246,14 +246,15 @@ function localaiRefresh() {
     }
 
     _renderOllama(data.ollama, _ollamaInventory, loaded.models || []);
+    _renderSevenRuntime(data.seven_runtime);
     _renderLMStudio(data.lmstudio);
     _renderPicoclaw(data.picoclaw);
     _renderAgentRoster(data);
     localaiRefreshModelCatalog(true);
 
-    const overall = data.ollama?.running ? 'ollama online' : (data.lmstudio?.running || data.picoclaw?.running ? 'partial' : 'offline');
+    const overall = data.seven_runtime?.running ? 'seven online' : (data.ollama?.running ? 'ollama online' : (data.lmstudio?.running || data.picoclaw?.running ? 'partial' : 'offline'));
     if (badge) {
-      const isHealthy = data.ollama?.running;
+      const isHealthy = data.seven_runtime?.running || data.ollama?.running;
       badge.textContent = overall;
       badge.style.background = isHealthy
         ? 'color-mix(in srgb,#22c55e 15%,var(--card))'
@@ -279,6 +280,98 @@ function localaiRefresh() {
     }
     _setOllamaStatus('Could not load Local AI status.', 'error');
   });
+}
+
+function _setSevenRuntimeStatus(message, state) {
+  const el = document.getElementById('seven-runtime-action-status');
+  if (!el) return;
+  el.textContent = message;
+  if (state) el.dataset.state = state;
+  else delete el.dataset.state;
+}
+
+function _renderSevenRuntime(runtime) {
+  const badge = document.getElementById('seven-runtime-status-badge');
+  const info = document.getElementById('seven-runtime-info');
+  if (!badge || !info) return;
+  const running = !!runtime?.running;
+  _localaiSetBadge(badge, running, running ? 'running' : 'offline');
+  const model = runtime?.model || 'seven-direct:daily';
+  const registered = runtime?.direct_registered ? 'yes' : 'no';
+  const service = runtime?.service || 'seven-runtime';
+  const timeout = runtime?.chat_timeout_s || '—';
+  const pid = runtime?.pid || '—';
+  info.innerHTML = `
+    <div class="localai-detail-row"><span class="localai-detail-label">Service</span><span class="localai-detail-value">${_escapeHtml(service)}</span></div>
+    <div class="localai-detail-row"><span class="localai-detail-label">Model</span><span class="localai-detail-value">${_escapeHtml(model)}</span></div>
+    <div class="localai-detail-row"><span class="localai-detail-label">PID</span><span class="localai-detail-value">${_escapeHtml(pid)}</span></div>
+    <div class="localai-detail-row"><span class="localai-detail-label">Direct GGUF</span><span class="localai-detail-value">${registered}</span></div>
+    <div class="localai-detail-row"><span class="localai-detail-label">Flask required</span><span class="localai-detail-value">${runtime?.flask_required ? 'yes' : 'no'}</span></div>
+    <div class="localai-detail-row"><span class="localai-detail-label">Ollama required</span><span class="localai-detail-value">${runtime?.ollama_required ? 'yes' : 'no'}</span></div>
+    <div class="localai-detail-row"><span class="localai-detail-label">Timeout</span><span class="localai-detail-value">${_escapeHtml(timeout)}s</span></div>`;
+  const warning = runtime?.warning ? ` · ${runtime.warning}` : '';
+  _setSevenRuntimeStatus(running ? `Ready · ${model}${warning}` : 'Seven Runtime is stopped.', running ? 'ok' : 'error');
+}
+
+async function localaiSevenRuntimeRefresh() {
+  _setSevenRuntimeStatus('Checking Seven Runtime…', 'busy');
+  try {
+    const r = await fetch('/api/localai/seven-runtime/status');
+    const data = await r.json();
+    _renderSevenRuntime(data.runtime || {});
+    return data.runtime || {};
+  } catch (error) {
+    _setSevenRuntimeStatus(`Status failed: ${error.message}`, 'error');
+    return {};
+  }
+}
+
+async function localaiSevenRuntimeStart() {
+  _setSevenRuntimeStatus('Starting Seven Runtime…', 'busy');
+  try {
+    const r = await fetch('/api/localai/seven-runtime/start', { method: 'POST' });
+    const data = await r.json();
+    _renderSevenRuntime(data.runtime || {});
+    _setSevenRuntimeStatus(data.ok ? 'Seven Runtime started.' : `Start failed: ${data.error || 'not running'}`, data.ok ? 'ok' : 'error');
+    setTimeout(localaiRefresh, 600);
+  } catch (error) {
+    _setSevenRuntimeStatus(`Start failed: ${error.message}`, 'error');
+  }
+}
+
+async function localaiSevenRuntimeStop() {
+  _setSevenRuntimeStatus('Stopping Seven Runtime…', 'busy');
+  try {
+    const r = await fetch('/api/localai/seven-runtime/stop', { method: 'POST' });
+    const data = await r.json();
+    _setSevenRuntimeStatus(data.ok ? 'Seven Runtime stopped.' : `Stop failed: ${data.error || 'still running'}`, data.ok ? 'ok' : 'error');
+    setTimeout(localaiRefresh, 600);
+  } catch (error) {
+    _setSevenRuntimeStatus(`Stop failed: ${error.message}`, 'error');
+  }
+}
+
+async function localaiSevenRuntimeChat() {
+  const prompt = (document.getElementById('seven-runtime-quick-prompt') || {}).value?.trim();
+  const result = document.getElementById('seven-runtime-quick-result');
+  if (!prompt || !result) return;
+  result.style.display = 'block';
+  result.textContent = 'Seven is thinking...';
+  _setSevenRuntimeStatus('Seven Runtime chat running…', 'busy');
+  try {
+    const r = await fetch('/api/localai/seven-runtime/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ message: prompt, timeout_seconds: 90 }),
+    });
+    const data = await r.json();
+    result.textContent = data.ok ? data.content : `Error: ${data.error || 'Seven Runtime failed'}`;
+    _setSevenRuntimeStatus(data.ok ? `Answered · ${data.model || 'seven'}` : 'Seven Runtime chat failed.', data.ok ? 'ok' : 'error');
+    setTimeout(localaiSevenRuntimeRefresh, 800);
+  } catch (error) {
+    result.textContent = `Error: ${error.message}`;
+    _setSevenRuntimeStatus(`Chat failed: ${error.message}`, 'error');
+  }
 }
 
 function _renderOllama(ollama, installedModels, loadedModels) {

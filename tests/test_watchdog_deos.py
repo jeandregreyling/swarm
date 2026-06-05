@@ -16,6 +16,43 @@ def _conn(path):
     return conn
 
 
+def test_resident_policy_marks_direct_seven_model_as_not_ollama(tmp_path):
+    from utils import watchdog_deos
+
+    db_path = tmp_path / 'deos-direct-policy.db'
+    conn = _conn(db_path)
+    try:
+        conn.executescript(
+            """
+            CREATE TABLE agents (
+                name TEXT PRIMARY KEY,
+                model TEXT NOT NULL,
+                tier TEXT DEFAULT 'local',
+                enabled INTEGER DEFAULT 1,
+                eta_seconds INTEGER DEFAULT 60,
+                keep_alive INTEGER DEFAULT 300
+            );
+            """
+        )
+        conn.executemany(
+            "INSERT INTO agents (name, model, keep_alive) VALUES (?, ?, ?)",
+            [
+                ('duck', 'qwen:latest', 300),
+                ('librarian', 'qwen:latest', 300),
+                ('seven', 'seven-direct:daily', 300),
+            ],
+        )
+        conn.commit()
+
+        targets = {row['agent']: row for row in watchdog_deos._resident_targets(conn)}
+    finally:
+        conn.close()
+
+    assert targets['duck']['is_ollama'] is True
+    assert targets['librarian']['is_ollama'] is True
+    assert targets['seven']['is_ollama'] is False
+
+
 def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkeypatch, tmp_path):
     from utils import watchdog_deos
 

@@ -36,6 +36,8 @@ KNOWN_CAPABILITIES = frozenset({
     'inference.gpu',
     'inference.npu',
     'inference.ollama',
+    'inference.seven-runtime',
+    'inference.direct-gguf',
     'inference.lmstudio',
     'inference.coreml',
     'inference.tflite',

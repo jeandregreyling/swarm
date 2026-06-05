@@ -364,20 +364,25 @@ class MainActivity : AppCompatActivity() {
             return
         }
         modelsButton.isEnabled = false
-        modelSummaryView.text = "Refreshing Dell Ollama models..."
+        modelSummaryView.text = "Refreshing shared Seven models..."
         thread(name = "hive-models") {
             val summary = try {
-                val modelsJson = getJson(leader, "/api/localai/ollama/models")
+                val modelsJson = getJson(leader, "/api/localai/mobile/models")
                 val models = modelsJson.optJSONArray("models") ?: JSONArray()
                 leaderModels.clear()
                 for (i in 0 until models.length()) {
                     val item = models.optJSONObject(i)
-                    val name = item?.optString("name") ?: models.optString(i)
+                    val name = item?.optString("id")
+                        ?: item?.optString("name")
+                        ?: models.optString(i)
                     if (name.isNotBlank()) leaderModels.add(name)
                 }
-                val qwenIndex = leaderModels.indexOfFirst { it.equals("qwen:latest", ignoreCase = true) }
+                val defaultModel = modelsJson.optString("default_model", "seven-direct:daily")
+                val defaultIndex = leaderModels.indexOfFirst { it.equals(defaultModel, ignoreCase = true) }
+                val sevenIndex = leaderModels.indexOfFirst { it.equals("seven-direct:daily", ignoreCase = true) }
                 selectedModelIndex = when {
-                    qwenIndex >= 0 -> qwenIndex
+                    defaultIndex >= 0 -> defaultIndex
+                    sevenIndex >= 0 -> sevenIndex
                     selectedModelIndex in leaderModels.indices -> selectedModelIndex
                     else -> 0
                 }
@@ -394,12 +399,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun modelSummaryText(): String {
-        if (leaderModels.isEmpty()) return "No Ollama models available."
+        if (leaderModels.isEmpty()) return "No shared local models available."
         val selected = leaderModels[selectedModelIndex]
         val visibleCount = 6
         val list = leaderModels.take(visibleCount).joinToString(", ")
         val more = if (leaderModels.size > visibleCount) " +${leaderModels.size - visibleCount}" else ""
-        return "Shared Fridays chat · ${modelDisplayName(selected)} · Dell models: $list$more"
+        return "Shared Fridays chat · ${modelDisplayName(selected)} · Models: $list$more"
     }
 
     private fun updateModelSpinner() {
@@ -425,7 +430,9 @@ class MainActivity : AppCompatActivity() {
     private fun modelDisplayName(model: String): String {
         val lower = model.lowercase()
         return when {
-            lower == "qwen:latest" -> "$model - recommended chat"
+            lower == "seven-direct:daily" -> "$model - Seven Runtime"
+            lower.startsWith("seven-direct:") -> "$model - direct GGUF"
+            lower == "qwen:latest" -> "$model - Ollama fallback"
             lower.contains("26b") || lower.contains("36") -> "$model - large / slow"
             lower.contains("embed") -> "$model - embeddings only"
             else -> "$model - chat"
@@ -446,7 +453,7 @@ class MainActivity : AppCompatActivity() {
         }
         hideKeyboard()
         chatInput.clearFocus()
-        val model = leaderModels.getOrNull(selectedModelIndex) ?: "qwen:latest"
+        val model = leaderModels.getOrNull(selectedModelIndex) ?: "seven-direct:daily"
         appendLocalTranscript("You", prompt)
         chatInput.setText("")
         sendChatPrompt(leader, model, prompt)
@@ -466,14 +473,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun preferredProofModel(): String {
-        val qwenIndex = leaderModels.indexOfFirst { it.equals("qwen:latest", ignoreCase = true) }
-        if (qwenIndex >= 0) {
-            selectedModelIndex = qwenIndex
+        val sevenIndex = leaderModels.indexOfFirst { it.equals("seven-direct:daily", ignoreCase = true) }
+        if (sevenIndex >= 0) {
+            selectedModelIndex = sevenIndex
             modelSpinner.setSelection(selectedModelIndex)
             modelSummaryView.text = modelSummaryText()
-            return leaderModels[qwenIndex]
+            return leaderModels[sevenIndex]
         }
-        return leaderModels.getOrNull(selectedModelIndex) ?: "qwen:latest"
+        return leaderModels.getOrNull(selectedModelIndex) ?: "seven-direct:daily"
     }
 
     private fun sendChatPrompt(leader: String, model: String, prompt: String) {
@@ -485,7 +492,7 @@ class MainActivity : AppCompatActivity() {
             val result = try {
                 val res = postJson(
                     leader,
-                    "/api/localai/ollama/shared-chat",
+                    "/api/localai/shared-chat",
                     JSONObject().apply {
                         put("model", model)
                         put("message", prompt)
@@ -659,11 +666,29 @@ class MainActivity : AppCompatActivity() {
 
     private fun formatModelSummary(modelsJson: JSONObject?): String {
         if (modelsJson == null) return "unavailable"
+        val sevenRuntime = modelsJson.optJSONObject("seven_runtime")
+        val direct = modelsJson.optJSONObject("direct")
         val ollama = modelsJson.optJSONObject("ollama")
-        val running = ollama?.optBoolean("running", false) ?: false
-        val models = ollama?.optJSONArray("models") ?: JSONArray()
-        if (!running) return "Ollama offline"
-        if (models.length() == 0) return "Ollama online, no models listed"
+        val models = JSONArray()
+        val runtimeModel = sevenRuntime?.optString("model", "") ?: ""
+        if (runtimeModel.isNotBlank()) {
+            models.put(JSONObject().apply {
+                put("name", runtimeModel)
+                put("source", "seven-runtime")
+            })
+        }
+        val directModels = direct?.optJSONArray("models") ?: JSONArray()
+        for (i in 0 until directModels.length()) {
+            val item = directModels.optJSONObject(i) ?: continue
+            val name = item.optString("name")
+            if (name.isNotBlank() && name != runtimeModel) models.put(item)
+        }
+        val ollamaModels = ollama?.optJSONArray("models") ?: JSONArray()
+        for (i in 0 until ollamaModels.length()) {
+            val item = ollamaModels.optJSONObject(i) ?: continue
+            if (item.optString("name").isNotBlank()) models.put(item)
+        }
+        if (models.length() == 0) return "no shared models listed"
         val names = mutableListOf<String>()
         var totalGb = 0.0
         for (i in 0 until models.length()) {
@@ -675,7 +700,8 @@ class MainActivity : AppCompatActivity() {
         }
         val more = if (models.length() > names.size) " +${models.length() - names.size}" else ""
         val size = if (totalGb > 0.0) " · ${Math.round(totalGb * 10.0) / 10.0}GB" else ""
-        return "${models.length()} Ollama · ${names.joinToString(", ")}$more$size"
+        val runtimeState = if (sevenRuntime?.optBoolean("running", false) == true) "Seven live" else "Seven offline"
+        return "$runtimeState · ${models.length()} shared · ${names.joinToString(", ")}$more$size"
     }
 
     private fun formatCaps(caps: JSONArray?): String {
