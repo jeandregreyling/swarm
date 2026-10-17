@@ -810,6 +810,22 @@ def api_agents_capabilities_update():
         return jsonify({'ok': False, 'error': f'unknown capabilities: {", ".join(invalid)}'}), 400
 
     enabled = bool(data.get('enabled', True))
+    if enabled:
+        from utils.local_runtime_policy import agent_capability_allowed
+
+        blocked = [
+            cap for cap in capabilities
+            if not agent_capability_allowed(target_agent, cap)
+        ]
+        if blocked:
+            return jsonify({
+                'ok': False,
+                'error': (
+                    f'{target_agent} is in a read-only profile; cannot grant: '
+                    f'{", ".join(blocked)}'
+                ),
+            }), 403
+
     proposal_id = str(data.get('proposal_id') or '').strip()
     notes = str(data.get('notes') or '').strip()
     granted_by = str(identity.get('effective_user') or 'ghost').strip().lower() or 'ghost'

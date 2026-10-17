@@ -2044,6 +2044,25 @@ def call(skill_name, args='', agent='ghost', source_conv_id=None):
     """
     import json
     skill_name = skill_name.strip().lower()
+    from utils.local_runtime_policy import agent_skill_allowed
+    if not agent_skill_allowed(agent, skill_name):
+        logger.warning('[Skills] BLOCKED %s → %s: read-only agent profile', agent, skill_name)
+        try:
+            from core.vortex_ledger import record_action
+
+            record_action(
+                'tool_call',
+                source_agent=agent,
+                target_agent=skill_name,
+                status='rejected',
+                context_parts=(args,),
+                details={'tool_name': skill_name, 'reason': 'read_only_profile'},
+                source='fridays.skills',
+            )
+        except Exception:
+            logger.exception('Could not record a blocked read-only profile skill call')
+        return False, 'Read-only agent profile: skill execution is disabled.'
+
     thinking_tree_entry = {
         'step': 'start',
         'skill': skill_name,

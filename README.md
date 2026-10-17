@@ -18,6 +18,11 @@ Working pieces:
 - An asynchronous, privacy-conscious Vortex JSONL audit ledger under
   `/mnt/archive/vortex/`, with 90-day retention and snapshot compression below
   the 5% free-space threshold.
+- Read-only local profiles for Gemma, Qwen, LLaMA, and Seven. They receive
+  bounded repository, Vortex-index, and checkpoint context, return structured
+  JSON, and cannot run skills, mutate Git, create work proposals, or write
+  agent memory. Chat remains logged through the normal conversation pipeline;
+  context retrieval records hashed metadata rather than the query text.
 - A public `.env.example` and `SECURITY.md` after removing tracked local secret files.
 
 Known rough edges:

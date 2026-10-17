@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import sys
 
@@ -96,7 +97,9 @@ def test_seven_uses_direct_runtime_gateway(monkeypatch):
     stages = []
     answer, tokens = seven_agent.chat("hello", stage_cb=lambda text, _eta=None: stages.append(text))
 
-    assert answer == "seven ok"
+    payload = json.loads(answer)
+    assert payload["kind"] == "analysis"
+    assert payload["summary"] == "seven ok"
     assert tokens == 7
     assert called["model"] == "seven-direct:daily"
     assert called["kwargs"]["keep_alive"] == 0
@@ -127,7 +130,9 @@ def test_seven_direct_runtime_failure_falls_back_to_state(monkeypatch):
     answer, tokens = seven_agent.chat("hello")
 
     assert tokens == 0
-    assert "My model is offline right now" in answer
+    payload = json.loads(answer)
+    assert payload["kind"] == "error"
+    assert "My model is offline right now" in payload["summary"]
     assert stopped == ["seven-direct:daily"]
 
 

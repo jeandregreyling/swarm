@@ -40,6 +40,16 @@ def _build_context(message):
     from database import get_agent_memory, get_connection
 
     lines = []
+    try:
+        from core.read_only_context import build_local_agent_context
+
+        local_context = build_local_agent_context(AGENT_NAME, message)
+        if local_context:
+            lines.append("\n=== Read-only repository and Vortex context ===")
+            lines.append(local_context)
+    except Exception:
+        logger.exception('[Gemma] read-only corpus retrieval failed')
+
     conn = get_connection()
     try:
         queued = conn.execute(
@@ -104,6 +114,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             stage_cb=stage_cb,
             on_chunk=_cb,
             temperature=0.7,
+            response_format='json',
         )
 
     try:
@@ -124,22 +135,9 @@ def chat(message, conversation_history=None, stage_cb=None):
             nudge_if_no_skills=needs_skills,
         )
     except Exception as e:
-        return f'[gemma] error: {e}', 0
+        from utils.local_runtime_policy import normalize_read_only_response
 
-    _emit('persisting memory')
-    try:
-        from database import save_agent_memory
-
-        save_agent_memory(
-            AGENT_NAME,
-            str(message or '')[:100],
-            answer,
-            tags='chat,shared-thread',
-            importance=7,
-            source='terminal_chat',
-        )
-    except Exception:
-        pass
+        return normalize_read_only_response(AGENT_NAME, f'[gemma] error: {e}'), 0
 
     logger.info('[Gemma] model=%s tokens=%s', MODEL, tokens)
     return answer, tokens

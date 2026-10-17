@@ -1602,6 +1602,28 @@ def api_chat():
 
     def _execute_agent_skill_lines(selected_agent, response_text, request_data):
         from fridays.skills import call as skill_call, REGISTRY as SKILL_REGISTRY
+        from utils.local_runtime_policy import (
+            is_read_only_agent,
+            normalize_read_only_response,
+        )
+
+        if is_read_only_agent(selected_agent):
+            commands = _extract_skill_lines_from_text(response_text)
+            for skill_name, skill_args in commands:
+                _record_vortex_action(
+                    'tool_call',
+                    source_agent=selected_agent,
+                    target_agent=skill_name,
+                    status='rejected',
+                    context_parts=(skill_args,),
+                    thread_id=conv_id,
+                    details={'tool_name': skill_name, 'reason': 'read_only_profile'},
+                    source='fridays.tool',
+                )
+            return (
+                normalize_read_only_response(selected_agent, response_text)
+                if commands else ''
+            )
 
         # Developer Agents (Nine, Ten, Eleven, Twelve, Thirteen) execute Ghost One-directed
         # requests immediately — no proposal gate, no ALM confirmation loop.

@@ -180,6 +180,15 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
     for skill_name, skill_args in cmds:
         emit_fn(f'executing skill: {skill_name}')
 
+        from utils.local_runtime_policy import is_read_only_agent
+        if is_read_only_agent(agent_name):
+            parts.append(
+                f'[skill:{skill_name}] SKIPPED\n'
+                'Read-only agent profile: tool execution is disabled.'
+            )
+            _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] SKIPPED — read-only profile')
+            continue
+
         # Log the skill invocation to the timeline
         args_preview = str(skill_args or '')[:300]
         _tl(source_conv_id, agent_name, 'skill_call', f'{skill_name} {args_preview}'.strip())
@@ -285,6 +294,14 @@ def run_skill_loop(
         raise
 
     total_tokens += tokens
+
+    from utils.local_runtime_policy import is_read_only_agent, normalize_read_only_response
+    if is_read_only_agent(agent_name):
+        answer = normalize_read_only_response(agent_name, first_content)
+        _tl(source_conv_id, agent_name, 'response', answer[:1200])
+        _tl(source_conv_id, agent_name, 'final', answer[:1200])
+        return answer, total_tokens
+
     answer = first_content
 
     # Log the first model response to the timeline

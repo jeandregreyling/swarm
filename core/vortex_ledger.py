@@ -175,6 +175,16 @@ def _keywords(event: dict[str, Any], source_agent: str, target_agent: str, actio
     payload = event.get('payload')
     if isinstance(payload, dict):
         terms.update(str(key) for key in payload)
+        for key in ('method', 'task_name', 'tool_name', 'category', 'chunk_count'):
+            value = payload.get(key)
+            if isinstance(value, (str, int, float)):
+                terms.add(str(value))
+        details = payload.get('details')
+        if isinstance(details, dict):
+            for key in ('method', 'task_name', 'tool_name', 'category', 'chunk_count'):
+                value = details.get(key)
+                if isinstance(value, (str, int, float)):
+                    terms.add(str(value))
     normalized = set()
     for term in terms:
         for word in re.findall(r'[a-zA-Z0-9_-]{2,40}', term.lower()):

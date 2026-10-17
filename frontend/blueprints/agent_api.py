@@ -29,6 +29,12 @@ def api_agent_create_ticket():
     agent_id, error_response = _validate_agent_request()
     if error_response:
         return error_response
+    from utils.local_runtime_policy import agent_capability_allowed
+    if not agent_capability_allowed(agent_id, 'ticket_create'):
+        return jsonify({
+            'ok': False,
+            'error': f'agent {agent_id} is in a read-only profile and cannot create tickets',
+        }), 403
     
     data = request.get_json() or {}
     title = (data.get('title') or '').strip()
@@ -171,6 +177,13 @@ def api_agent_git_create_proposal():
     if error_response:
         return error_response
 
+    from utils.local_runtime_policy import is_read_only_agent
+    if is_read_only_agent(agent_id):
+        return jsonify({
+            'ok': False,
+            'error': f'agent {agent_id} is in a read-only profile and cannot create Git proposals',
+        }), 403
+
     try:
         if not agent_has_capability(agent_id, 'git_propose'):
             return jsonify({'ok': False, 'error': f'agent {agent_id} lacks git_propose capability'}), 403
@@ -262,6 +275,13 @@ def api_agent_git_execute_proposal(proposal_id):
     agent_id, error_response = _validate_agent_request()
     if error_response:
         return error_response
+
+    from utils.local_runtime_policy import is_read_only_agent
+    if is_read_only_agent(agent_id):
+        return jsonify({
+            'ok': False,
+            'error': f'agent {agent_id} is in a read-only profile and cannot execute Git proposals',
+        }), 403
 
     try:
         if not agent_has_capability(agent_id, 'git_execute'):
@@ -358,6 +378,13 @@ def api_agent_push_think():
     agent_id, error_response = _validate_agent_request()
     if error_response:
         return error_response
+
+    from utils.local_runtime_policy import is_read_only_agent
+    if is_read_only_agent(agent_id):
+        return jsonify({
+            'ok': False,
+            'error': f'agent {agent_id} is in a read-only profile and cannot self-propose work',
+        }), 403
     
     # Check agent has propose_work capability
     try:
@@ -446,4 +473,3 @@ def api_agent_claim_proposal():
         return jsonify({'ok': False, 'error': 'no pending proposals available'}), 404
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
-

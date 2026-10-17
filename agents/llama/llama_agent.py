@@ -18,6 +18,16 @@ MODEL      = 'llama3.2:latest'
 def _build_context(message):
     from database import get_connection, get_agent_memory
     lines = []
+    try:
+        from core.read_only_context import build_local_agent_context
+
+        local_context = build_local_agent_context(AGENT_NAME, message)
+        if local_context:
+            lines.append("\n=== Read-only repository and Vortex context ===")
+            lines.append(local_context)
+    except Exception:
+        logger.exception('[LLaMA] read-only corpus retrieval failed')
+
     conn = get_connection()
     try:
         queued = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
@@ -62,7 +72,14 @@ def chat(message, conversation_history=None, stage_cb=None):
             buf.append(piece)
             if len(buf) == 1 or len(buf) % 15 == 0:
                 _emit(f'generating · {("".join(buf))[-300:]}')
-        return _llm.chat_via_gateway(MODEL, msgs, stage_cb=stage_cb, on_chunk=_cb, temperature=0.7)
+        return _llm.chat_via_gateway(
+            MODEL,
+            msgs,
+            stage_cb=stage_cb,
+            on_chunk=_cb,
+            temperature=0.7,
+            response_format='json',
+        )
 
     try:
         from agents.skills_loop import run_skill_loop
@@ -78,15 +95,9 @@ def chat(message, conversation_history=None, stage_cb=None):
             messages=messages, emit_fn=_emit, max_passes=3, nudge_if_no_skills=needs_skills,
         )
     except Exception as e:
-        return f'[llama] error: {e}', 0
+        from utils.local_runtime_policy import normalize_read_only_response
 
-    _emit('persisting memory')
-    try:
-        from database import save_agent_memory
-        save_agent_memory(AGENT_NAME, str(message or '')[:100], answer,
-                          tags='chat,shared-thread', importance=6, source='terminal_chat')
-    except Exception:
-        pass
+        return normalize_read_only_response(AGENT_NAME, f'[llama] error: {e}'), 0
 
     logger.info(f'[LLaMA] model={MODEL} tokens={tokens}')
     return answer, tokens

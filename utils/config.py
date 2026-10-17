@@ -1469,6 +1469,25 @@ except Exception:
     # Bible is best-effort; never block config import.
     pass
 
+# These execution-profile constraints intentionally supersede older prompt
+# text that advertised unrestricted SKILL or ALM access.
+from utils.local_runtime_policy import (
+    READ_ONLY_PROFILE_PROMPT as _READ_ONLY_PROFILE_PROMPT,
+    SEVEN_CONTEXT_SYNC_PROMPT as _SEVEN_CONTEXT_SYNC_PROMPT,
+)
+
+for _name in (
+    'GEMMA_SYSTEM_PROMPT',
+    'LLAMA_SYSTEM_PROMPT',
+    'QWEN_SYSTEM_PROMPT',
+    'SEVEN_SYSTEM_PROMPT',
+):
+    _prompt = globals().get(_name)
+    if isinstance(_prompt, str):
+        globals()[_name] = _prompt + '\n\n' + _READ_ONLY_PROFILE_PROMPT
+
+SEVEN_SYSTEM_PROMPT += '\n\n' + _SEVEN_CONTEXT_SYNC_PROMPT
+
 # Public surface used by `from config import *` (via the top-level shim) and
 # by tests that load this file directly as the `config` module after putting
 # `utils/` on sys.path. Built dynamically from current module globals so we

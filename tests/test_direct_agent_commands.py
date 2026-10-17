@@ -46,7 +46,7 @@ class TestTicketCreateSkill(unittest.TestCase):
     @patch('queue_manager.intake_internal', return_value=(321, 'INTERNAL-TEST-0321'))
     def test_ticket_create_with_separator(self, _mock_intake):
         from fridays.skills import call
-        ok, out = call('ticket_create', args='Queue audit || Validate queue edge-case handling', agent='llama')
+        ok, out = call('ticket_create', args='Queue audit || Validate queue edge-case handling', agent='eight')
         self.assertTrue(ok)
         self.assertIn('queue_id=321', out)
         self.assertIn('proposal_id=INTERNAL-TEST-0321', out)
@@ -54,7 +54,7 @@ class TestTicketCreateSkill(unittest.TestCase):
     @patch('queue_manager.intake_internal', return_value=(322, 'INTERNAL-TEST-0322'))
     def test_ticket_create_without_separator(self, _mock_intake):
         from fridays.skills import call
-        ok, out = call('ticket_create', args='Validate watchdog timeout behavior in sandbox.', agent='gemma')
+        ok, out = call('ticket_create', args='Validate watchdog timeout behavior in sandbox.', agent='eight')
         self.assertTrue(ok)
         self.assertIn('queue_id=322', out)
 

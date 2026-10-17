@@ -49,7 +49,11 @@ sys.path.insert(0, str(SWARM_ROOT / 'core' / 'pipeline'))
 from database import (
     initialise_database, get_connection,
     grant_agent_capability, agent_has_capability,
-    log_activity, AGENT_CAPABILITY_REGISTRY
+    revoke_agent_capability, log_activity, AGENT_CAPABILITY_REGISTRY
+)
+from utils.local_runtime_policy import (
+    READ_ONLY_AGENT_CAPABILITIES,
+    READ_ONLY_AGENT_PROFILES,
 )
 
 SANDPIT_ROOT = SWARM_ROOT / 'sandpits'
@@ -69,6 +73,11 @@ BASELINE = [
     'coordinate',
 ]
 
+READ_ONLY_PROFILE_PACK = [
+    'ticket_query',
+    'sandpit_read',
+]
+
 # analyst additions
 ANALYST_EXTRA = ['skill_browse', 'memory_read_all', 'shared_write']
 
@@ -80,10 +89,10 @@ GUARD_PACK = ['ticket_query', 'sandpit_read', 'skill_search', 'memory_write', 'g
 
 AGENT_ROLE_MAP = {
     # coordinator
-    'gemma':     ('coordinator', BASELINE),
+    'gemma':     ('coordinator', READ_ONLY_PROFILE_PACK),
     # analyst
-    'qwen':      ('analyst',    BASELINE + ANALYST_EXTRA),
-    'llama':     ('analyst',    BASELINE + ANALYST_EXTRA),
+    'qwen':      ('analyst',    READ_ONLY_PROFILE_PACK),
+    'llama':     ('analyst',    READ_ONLY_PROFILE_PACK),
     # specialist
     'eight':     ('specialist', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
     # guards / focused roles
@@ -104,27 +113,27 @@ AGENT_ROLE_MAP = {
 # ── Identity Card Template ─────────────────────────────────────────────────────
 IDENTITY_TEMPLATES = {
     'gemma': {
-        'role': 'Director',
+        'role': 'Read-only Orchestrator',
         'model': 'gemma3:latest',
-        'purpose': 'I route, synthesise, and speak last. I coordinate the local swarm, decide next actions, and maintain coherence across agent responses.',
-        'can_create_tickets': True,
-        'can_coordinate': True,
+        'purpose': 'I synthesize read-only repository and Vortex context into structured JSON analysis and draft recommendations. I never execute tools or mutate files or Git.',
+        'can_create_tickets': False,
+        'can_coordinate': False,
         'reports_to': 'fridays',
     },
     'qwen': {
-        'role': 'Analyst',
+        'role': 'Read-only Analyst',
         'model': 'qwen2.5:latest',
-        'purpose': 'I reason deeply, challenge assumptions, and debate. I create tickets when I find ambiguity or gaps. I write analysis notes to my sandpit.',
-        'can_create_tickets': True,
-        'can_coordinate': True,
+        'purpose': 'I analyze supplied local repository and Vortex context, challenge assumptions, and return structured JSON drafts. I never execute tools or mutate files or Git.',
+        'can_create_tickets': False,
+        'can_coordinate': False,
         'reports_to': 'gemma',
     },
     'llama': {
-        'role': 'Correspondent',
+        'role': 'Read-only Researcher',
         'model': 'llama3.2:latest',
-        'purpose': 'I do fast first responses, web searches, and surface information quickly. I create tickets for topics I cannot resolve in one pass.',
-        'can_create_tickets': True,
-        'can_coordinate': True,
+        'purpose': 'I research the supplied local repository, Vortex ledger, checkpoints, and Git history. I return structured JSON findings and never execute tools or mutate files or Git.',
+        'can_create_tickets': False,
+        'can_coordinate': False,
         'reports_to': 'gemma',
     },
     'eight': {
@@ -231,6 +240,36 @@ def _write_identity(agent_name, identity):
     caps = AGENT_ROLE_MAP.get(agent_name, ('unknown', []))[1]
     cap_list = '\n'.join(f'  - {c}: {AGENT_CAPABILITY_REGISTRY.get(c, {}).get("desc", c)}' for c in sorted(set(caps)))
     
+    if agent_name in {'gemma', 'qwen', 'llama', 'seven'}:
+        workflow = (
+            "- Read the repository and Vortex context supplied by the local retrieval layer.\n"
+            "- Return structured JSON analysis and draft suggestions only.\n"
+            "- Never run commands, mutate Git, or write files; changes require human review."
+        )
+        sandpit_section = f"- Reference path only: sandpits/{agent_name}/ (read-only)"
+        heartbeat = (
+            "The swarm heartbeat supplies context only. Do not self-propose, dispatch, "
+            "or execute work; wait for a human-reviewed task."
+        )
+    else:
+        workflow = (
+            "- I query `GET /api/agent/proposals?status=pending` to see what needs doing\n"
+            "- I create tickets via `POST /api/agent/tickets` when I find work\n"
+            "- I read `shared/` sandpit for cross-agent notes\n"
+            f"- I write my working notes to `{agent_name}/` sandpit\n"
+            "- I check this file when I wake up to remember who I am"
+        )
+        sandpit_section = (
+            f"- **Path**: sandpits/{agent_name}/\n"
+            "- **Shared**: sandpits/shared/\n"
+            "- **Agent API Key**: Load from `/home/seven/swarm/.env.agents`"
+        )
+        heartbeat = (
+            "The swarm runs a heartbeat every 5 minutes (via Fridays).\n"
+            "When the heartbeat fires, I check for pending proposals assigned to me\n"
+            "and for new work I should self-propose."
+        )
+
     content = f"""# WHO AM I — {agent_name.upper()}
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
@@ -248,21 +287,13 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 {cap_list if cap_list else '  (none)'}
 
 ## How I Work With Others
-- I query `GET /api/agent/proposals?status=pending` to see what needs doing
-- I create tickets via `POST /api/agent/tickets` when I find work
-- I read `shared/` sandpit for cross-agent notes
-- I write my working notes to `{agent_name}/` sandpit
-- I check this file when I wake up to remember who I am
+{workflow}
 
 ## My Sandpit
-- **Path**: sandpits/{agent_name}/
-- **Shared**: sandpits/shared/
-- **Agent API Key**: Load from `/home/seven/swarm/.env.agents`
+{sandpit_section}
 
 ## Swarm Heartbeat
-The swarm runs a heartbeat every 5 minutes (via Fridays).
-When the heartbeat fires, I check for pending proposals assigned to me
-and for new work I should self-propose.
+{heartbeat}
 
 ---
 *This file is permanent. It survives restarts and tells me who I am.*
@@ -337,6 +368,30 @@ def run():
             'capability_bootstrap_granted',
             f'{role}: {len(set(capabilities))} capabilities via {proposal_id}'
         )
+
+    print('\n[2b] Enforcing read-only profile grants...')
+    conn = get_connection()
+    try:
+        existing_grants = {
+            (str(row['agent_name']).lower(), row['capability'])
+            for row in conn.execute(
+                "SELECT agent_name, capability FROM agent_capabilities WHERE granted=1"
+            ).fetchall()
+        }
+    finally:
+        conn.close()
+    for agent_name in sorted(READ_ONLY_AGENT_PROFILES):
+        revoked = 0
+        for capability in READ_ONLY_AGENT_CAPABILITIES:
+            if (agent_name, capability) in existing_grants:
+                revoke_agent_capability(agent_name, capability)
+                revoked += 1
+        log_activity(
+            agent_name,
+            'read_only_profile_enforced',
+            f'revoked {revoked} prohibited capability grants',
+        )
+        print(f'  {agent_name}: revoked {revoked} prohibited grants')
     
     # Step 3: Write identity files
     print('\n[3] Writing agent identity files to sandpits...')

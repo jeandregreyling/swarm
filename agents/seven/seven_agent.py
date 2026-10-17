@@ -7,6 +7,7 @@ LLM-backed for open conversation while keeping fast state templates for
 status/identity queries. The default model is the repo-local direct GGUF so
 Seven does not need Ollama for its own chat path.
 """
+import json
 import logging
 import os
 import random
@@ -652,6 +653,13 @@ def _compose(message, state, memories):
     inline = _try_inline_curiosity_answer(msg)
     if inline is not None:
         qid, answer_text = inline
+        from utils.local_runtime_policy import is_read_only_agent
+        if is_read_only_agent(AGENT_NAME):
+            return (
+                '{"kind":"error","summary":"Seven is in a read-only profile and cannot update curiosity records.",'
+                '"evidence":[],"proposed_changes":[],"human_review_required":true}',
+                0,
+            )
         try:
             from core import curiosity
             ok = curiosity.answer(qid, answer_text, answered_by='user')
@@ -928,6 +936,19 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
             f"Hold the line on The Standard — a system that DOES, not a system that REPORTS."
         )
 
+    try:
+        from core.read_only_context import build_local_agent_context
+        from utils.local_runtime_policy import (
+            READ_ONLY_PROFILE_PROMPT,
+            SEVEN_CONTEXT_SYNC_PROMPT,
+        )
+
+        local_context = build_local_agent_context(AGENT_NAME, actual_user_turn)
+        system += f'\n\n{READ_ONLY_PROFILE_PROMPT}\n\n{SEVEN_CONTEXT_SYNC_PROMPT}'
+        system += f'\n\nREAD-ONLY REPOSITORY / VORTEX / CHECKPOINT CONTEXT:\n{local_context}'
+    except Exception:
+        logger.exception('[Seven] read-only corpus retrieval failed')
+
     msgs = [{'role': 'system', 'content': system}]
     for h in (history or [])[-history_limit:]:
         role = h.get('role') or ('user' if h.get('sender') in (None, 'you', 'user') else 'assistant')
@@ -963,6 +984,7 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
                 'timeout': timeout_s,
                 'startup_timeout': timeout_s,
             },
+            response_format='json',
         )
         if not text and streamed_chunks:
             text = ''.join(streamed_chunks)
@@ -981,13 +1003,13 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
         return text.strip(), tokens
     except Exception as exc:
         logger.warning(f"[Seven] runtime gateway chat failed: {exc}")
-        # PACKET-10B Curiosity: rather than fail silently, ask a question.
-        # Dedup is built into curiosity.ask() so repeated outages don't spam.
-        try:
-            from core import curiosity
-            curiosity.from_llm_failure(AGENT_NAME, message, exc, salience=0.4)
-        except Exception:
-            pass
+        from utils.local_runtime_policy import is_read_only_agent
+        if not is_read_only_agent(AGENT_NAME):
+            try:
+                from core import curiosity
+                curiosity.from_llm_failure(AGENT_NAME, message, exc, salience=0.4)
+            except Exception:
+                logger.exception('[Seven] failed to record curiosity after runtime error')
         return None, 0
 
 
@@ -1225,6 +1247,19 @@ def _slash_command(text, emit=None):
     return None  # not a slash command we handle — fall through
 
 
+def _is_read_only_mutating_command(text):
+    parts = str(text or '').split(maxsplit=2)
+    if not parts:
+        return False
+    command = parts[0].lower().lstrip('/')
+    subcommand = parts[1].lower() if len(parts) > 1 else ''
+    if command == 'curiosity':
+        return subcommand in {'answer', 'dismiss', 'ask'}
+    if command in {'witness', 'truth', 'callout'}:
+        return subcommand not in {'stats', 'list'}
+    return False
+
+
 # Static so /witness (without args) can pick up the most recent user turn.
 _slash_command._last_user_msg = ""  # type: ignore[attr-defined]
 
@@ -1275,23 +1310,41 @@ def chat(message, conversation_history=None, stage_cb=None, conversation_id=None
 
     if msg_stripped.startswith('/') or embedded:
         target = msg_stripped if msg_stripped.startswith('/') else embedded
+        if _is_read_only_mutating_command(target):
+            from utils.local_runtime_policy import is_read_only_agent, normalize_read_only_response
+
+            if is_read_only_agent(AGENT_NAME):
+                return normalize_read_only_response(
+                    AGENT_NAME,
+                    json.dumps({
+                        'kind': 'error',
+                        'summary': 'Seven is in a read-only profile and cannot mutate curiosity or witness records.',
+                        'evidence': [],
+                        'proposed_changes': [],
+                        'human_review_required': True,
+                    }),
+                ), 0
         handled = _slash_command(target, _emit)
         if handled is not None:
-            return handled, 0
+            from utils.local_runtime_policy import normalize_read_only_response
+
+            return normalize_read_only_response(AGENT_NAME, handled), 0
 
     # ── Self-learning: capture user reactions to the prior Seven turn ────
-    try:
-        from agents.seven import learnings
-        prior_seven = None
-        for h in reversed(conversation_history or []):
-            role = h.get('role') or h.get('sender') or ''
-            if role in ('assistant', 'seven', 'Seven'):
-                prior_seven = h.get('content') or h.get('message')
-                break
-        if prior_seven:
-            learnings.observe(latest_user_msg or message, prior_seven)
-    except Exception:
-        pass
+    from utils.local_runtime_policy import is_read_only_agent
+    if not is_read_only_agent(AGENT_NAME):
+        try:
+            from agents.seven import learnings
+            prior_seven = None
+            for h in reversed(conversation_history or []):
+                role = h.get('role') or h.get('sender') or ''
+                if role in ('assistant', 'seven', 'Seven'):
+                    prior_seven = h.get('content') or h.get('message')
+                    break
+            if prior_seven:
+                learnings.observe(latest_user_msg or message, prior_seven)
+        except Exception:
+            logger.exception('[Seven] self-learning observation failed')
 
     _emit('reading swarm state')
     state = _read_state()
@@ -1357,29 +1410,36 @@ def chat(message, conversation_history=None, stage_cb=None, conversation_id=None
                 intro = random.choice(_INTROS)
                 state_block = _format_state_block(state)
                 agents = ', '.join(state.get('local_agents', [])) or 'none listed'
-                answer = (
+                answer = json.dumps({
+                    'kind': 'error',
+                    'summary': (
                     f"{intro}\n\n{state_block}\n\nLocal agents: {agents}\n\n"
-                    "My model is offline right now — state read only."
-                )
+                    "My model is offline right now; this is a read-only state report."
+                    ),
+                    'evidence': [],
+                    'proposed_changes': [],
+                    'human_review_required': True,
+                })
                 tokens = 0
 
-    try:
-        from database import save_agent_memory
-        save_agent_memory(AGENT_NAME, str(message or '')[:100], answer,
-                          tags=f'chat,shared-thread,{SEVEN_MODEL}', importance=6,
-                          source='terminal_chat')
-    except Exception:
-        pass
+    if not is_read_only_agent(AGENT_NAME):
+        try:
+            from database import save_agent_memory
+            save_agent_memory(AGENT_NAME, str(message or '')[:100], answer,
+                              tags=f'chat,shared-thread,{SEVEN_MODEL}', importance=6,
+                              source='terminal_chat')
+        except Exception:
+            logger.exception('[Seven] conversation memory write failed')
 
     # ── Witness annotation: review user message + Seven response ────────
     # Saves callouts (with receipts) and, when enabled, appends a footer.
     try:
         from core import witness
         if witness.is_enabled():
-            user_report = witness.review_user_msg(message or '', save=True)
+            user_report = witness.review_user_msg(message or '', save=not is_read_only_agent(AGENT_NAME))
             seven_report = witness.review_seven_response(answer or '',
                                                          user_msg=message or '',
-                                                         save=True)
+                                                         save=not is_read_only_agent(AGENT_NAME))
             footer_parts = []
             if user_report.callouts:
                 u = witness.annotate(user_report)
@@ -1397,4 +1457,6 @@ def chat(message, conversation_history=None, stage_cb=None, conversation_id=None
         pass
 
     logger.info(f'[Seven] response via {SEVEN_MODEL} | msg_len={len(message or "")}')
-    return answer, tokens
+    from utils.local_runtime_policy import normalize_read_only_response
+
+    return normalize_read_only_response(AGENT_NAME, answer), tokens

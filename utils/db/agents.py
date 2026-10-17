@@ -2,6 +2,7 @@
 db.agents — Agent registry and capability management.
 """
 from ._connection import get_connection, logger
+from utils.local_runtime_policy import agent_capability_allowed
 
 
 def get_agent_registry():
@@ -53,7 +54,13 @@ def get_agent_capabilities(agent_name):
             "FROM agent_capabilities WHERE agent_name=? ORDER BY capability",
             (name,)
         ).fetchall()
-        return [dict(r) for r in rows]
+        capabilities = []
+        for row in rows:
+            capability = dict(row)
+            if not agent_capability_allowed(name, capability.get('capability')):
+                capability['granted'] = 0
+            capabilities.append(capability)
+        return capabilities
     finally:
         conn.close()
 
@@ -64,6 +71,8 @@ def grant_agent_capability(agent_name, capability, granted_by='ghost', proposal_
     cap = (capability or '').strip().lower()
     if not name or not cap:
         return
+    if not agent_capability_allowed(name, cap):
+        raise PermissionError(f'{name} is in a read-only profile; {cap} cannot be granted')
     meta = AGENT_CAPABILITY_REGISTRY.get(cap, {})
     trust = meta.get('trust', 0)
     conn = get_connection()
@@ -102,6 +111,8 @@ def agent_has_capability(agent_name, capability):
     """Check if an agent has a specific capability granted."""
     name = (agent_name or '').strip().lower()
     cap = (capability or '').strip().lower()
+    if not agent_capability_allowed(name, cap):
+        return False
     conn = get_connection()
     try:
         row = conn.execute(
