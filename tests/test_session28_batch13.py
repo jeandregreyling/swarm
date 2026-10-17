@@ -204,7 +204,7 @@ def test_all_wishlist_tiles_marked_active_v0(template_html):
     Updated: money-hub was added as a 5th home-card-wishlist active-v0 tile
     (audit P-308466EE76 / Area 1 fix — 2026-05-10).
     """
-    matches = re.findall(r'home-card home-card-wishlist[^>]*data-wishlist-status="active-v0"', template_html)
+    matches = re.findall(r'<div class="[^"]*\bhome-card-wishlist\b[^"]*"[^>]*data-wishlist-status="active-v0"', template_html)
     assert len(matches) == 5, f"expected 5 active-v0 tiles, found {len(matches)}"
     assert 'data-wishlist-status="capture-only"' not in template_html
 
