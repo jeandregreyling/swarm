@@ -149,6 +149,9 @@ def normalize_read_only_response(agent_name: Any, content: Any) -> str:
     summary = payload.get("summary", "")
     if not isinstance(summary, str):
         summary = json.dumps(summary, ensure_ascii=True)
+    if not summary.strip():
+        kind = "error"
+        summary = "The agent returned an empty response."
 
     evidence = payload.get("evidence")
     if not isinstance(evidence, list):

@@ -69,6 +69,13 @@ def test_read_only_runtime_error_is_reported_as_error():
     assert 'model unavailable' in result['summary']
 
 
+def test_read_only_empty_response_is_an_explicit_error():
+    result = json.loads(normalize_read_only_response('gemma', ''))
+
+    assert result['kind'] == 'error'
+    assert result['summary'] == 'The agent returned an empty response.'
+
+
 def test_read_only_skill_loop_never_executes_model_tool_output():
     called = []
 

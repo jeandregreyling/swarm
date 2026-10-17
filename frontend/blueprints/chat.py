@@ -1967,7 +1967,7 @@ def api_chat():
             source_agent=relay_from or 'user',
             target_agent=selected_agent,
             status='started',
-            context_parts=(effective_prompt, history),
+            context_parts=(prompt, history),
             thread_id=conv_id,
             details={'runtime_class': 'chat'},
         )
@@ -1982,7 +1982,7 @@ def api_chat():
                 _record_vortex_action(
                     'agent_execution', source_agent=relay_from or 'user',
                     target_agent=selected_agent, status='failed',
-                    context_parts=(effective_prompt, history), thread_id=conv_id,
+                    context_parts=(prompt, history), thread_id=conv_id,
                     details={'reason': 'circuit_open'},
                 )
                 return _cb_reason, 0, int((time.time() - started_at) * 1000)
@@ -1993,7 +1993,7 @@ def api_chat():
                 _record_vortex_action(
                     'agent_execution', source_agent=relay_from or 'user',
                     target_agent=selected_agent, status='failed',
-                    context_parts=(effective_prompt, history), thread_id=conv_id,
+                    context_parts=(prompt, history), thread_id=conv_id,
                     details={'reason': 'health_probe_failed'},
                 )
                 return (
