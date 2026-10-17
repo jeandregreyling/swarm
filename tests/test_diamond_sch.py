@@ -282,7 +282,9 @@ def test_seven_waits_for_sch_and_injects_counsel_before_final_generation(monkeyp
     monkeypatch.setattr(seven_agent, "_llm_chat", fake_llm)
     answer, tokens = seven_agent.chat("Please solve the deep locking problem.")
 
-    assert answer.startswith("Final Seven answer.")
+    payload = json.loads(answer)
+    assert payload["kind"] == "analysis"
+    assert payload["summary"].startswith("Final Seven answer.")
     assert tokens == 3
     assert "DIAMOND SCH COUNCIL DATA" in seen["message"]
     assert "coordinator lock" in seen["message"]

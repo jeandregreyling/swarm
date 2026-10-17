@@ -7,6 +7,7 @@ point that the frontend reaches via /api/chat.
 from __future__ import annotations
 
 import os
+import json
 import sqlite3
 import sys
 import tempfile
@@ -122,8 +123,8 @@ def test_natural_language_what_are_you_asking_shows_inbox(monkeypatch, fresh_db)
     assert 'natural language path' in out
 
 
-def test_inline_answer_promotes_to_belief(monkeypatch, fresh_db):
-    """Replying '#3 my answer' should answer the question and promote a belief."""
+def test_inline_answer_is_rejected_in_read_only_profile(monkeypatch, fresh_db):
+    """Inline curiosity answers must not mutate Seven's records."""
     def conn_factory():
         c = sqlite3.connect(os.environ['SWARM_MEMORY_DB'])
         c.row_factory = sqlite3.Row
@@ -138,21 +139,20 @@ def test_inline_answer_promotes_to_belief(monkeypatch, fresh_db):
     out, _ = seven_agent._compose(f"#{qid} the test answer is forty two",
                                    seven_agent._read_state(), [])
     assert out is not None
-    assert 'Answered' in out or 'answered' in out
-    assert 'forty two' in out
-    assert 'belief' in out.lower()
+    payload = json.loads(out)
+    assert payload['kind'] == 'error'
+    assert 'read-only' in payload['summary']
 
-    # Verify in DB
     con = sqlite3.connect(os.environ['SWARM_MEMORY_DB'])
-    rows = con.execute(
-        "SELECT object, confidence FROM seven_beliefs WHERE object LIKE '%forty two%'"
+    beliefs = con.execute(
+        "SELECT object FROM seven_beliefs WHERE object LIKE '%forty two%'"
     ).fetchall()
     con.close()
-    assert rows, f"belief was not created · all beliefs: {rows}"
-    assert rows[0][1] >= 0.9
+    assert beliefs == []
+    assert any(question['id'] == qid for question in curiosity.list_open(limit=20))
 
 
-def test_inline_answer_handles_unknown_id_gracefully(monkeypatch, fresh_db):
+def test_unknown_inline_answer_is_rejected_by_read_only_profile(monkeypatch, fresh_db):
     def conn_factory():
         c = sqlite3.connect(os.environ['SWARM_MEMORY_DB'])
         c.row_factory = sqlite3.Row
@@ -164,7 +164,9 @@ def test_inline_answer_handles_unknown_id_gracefully(monkeypatch, fresh_db):
     out, _ = seven_agent._compose("#99999 nonsense answer",
                                    seven_agent._read_state(), [])
     assert out is not None
-    assert 'couldn' in out.lower() or 'never existed' in out.lower() or 'already' in out.lower()
+    payload = json.loads(out)
+    assert payload['kind'] == 'error'
+    assert 'read-only' in payload['summary']
 
 
 def test_normal_message_falls_through_to_llm(monkeypatch, fresh_db):
