@@ -5,6 +5,7 @@ All deterministic, no LLM calls, no network.
 """
 
 import json
+import importlib
 import sqlite3
 import pytest
 
@@ -123,7 +124,8 @@ def test_db(tmp_path, monkeypatch):
     monkeypatch.setattr('utils.db._connection.get_connection', mock_get_connection)
     # Also patch the import path used in observer / scheduler / blueprint
     monkeypatch.setattr('agents.twenty.observer.get_connection', mock_get_connection)
-    monkeypatch.setattr('frontend.blueprints.council_bp.get_connection', mock_get_connection)
+    council_bp_module = importlib.import_module('frontend.blueprints.council_bp')
+    monkeypatch.setattr(council_bp_module, 'get_connection', mock_get_connection)
 
     return conn, db_path
 

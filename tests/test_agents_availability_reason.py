@@ -8,11 +8,11 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-import frontend.services as services_pkg
 from frontend.services import identity
 
 
 def test_agent_availability_reason_covers_disabled_local_and_api(monkeypatch):
+    services_pkg = sys.modules[identity.__package__]
     monkeypatch.setattr(services_pkg, 'DISABLED_AGENTS', {'duck'}, raising=False)
     monkeypatch.setattr(identity, '_reg_runtime', lambda: {'gemma': 'local', 'qwen': 'api'}, raising=False)
     monkeypatch.setattr(identity, '_reg_models', lambda: {'gemma': 'gemma3:latest'}, raising=False)
@@ -31,6 +31,7 @@ def test_agent_availability_reason_covers_disabled_local_and_api(monkeypatch):
 
 
 def test_agent_availability_reason_uses_seven_runtime_for_direct_model(monkeypatch):
+    services_pkg = sys.modules[identity.__package__]
     monkeypatch.setattr(services_pkg, 'DISABLED_AGENTS', set(), raising=False)
     monkeypatch.setattr(identity, '_reg_runtime', lambda: {'seven': 'local'}, raising=False)
     monkeypatch.setattr(identity, '_reg_models', lambda: {'seven': 'seven-direct:daily'}, raising=False)

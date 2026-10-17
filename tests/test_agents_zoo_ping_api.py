@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from flask import Flask
 from pathlib import Path
 import sys
@@ -13,14 +14,15 @@ if str(FRONTEND) not in sys.path:
 
 
 def test_agents_zoo_ping_get_snapshot(monkeypatch):
-    from frontend.blueprints.agents import agents_bp
+    agents_module = importlib.import_module('frontend.blueprints.agents')
 
     app = Flask(__name__)
-    app.register_blueprint(agents_bp)
+    app.register_blueprint(agents_module.agents_bp)
     client = app.test_client()
 
     monkeypatch.setattr(
-        'frontend.blueprints.agents._get_zoo_ping_snapshot',
+        agents_module,
+        '_get_zoo_ping_snapshot',
         lambda: {
             'ok': True,
             'checked_at': '2026-05-29T01:02:03Z',
@@ -45,14 +47,15 @@ def test_agents_zoo_ping_get_snapshot(monkeypatch):
 
 
 def test_agents_zoo_ping_post_executes_census(monkeypatch):
-    from frontend.blueprints.agents import agents_bp
+    agents_module = importlib.import_module('frontend.blueprints.agents')
 
     app = Flask(__name__)
-    app.register_blueprint(agents_bp)
+    app.register_blueprint(agents_module.agents_bp)
     client = app.test_client()
 
     monkeypatch.setattr(
-        'frontend.blueprints.agents._full_zoo_ping',
+        agents_module,
+        '_full_zoo_ping',
         lambda: {
             'ok': True,
             'checked_at': '2026-05-29T01:02:03Z',
@@ -69,14 +72,17 @@ def test_agents_zoo_ping_post_executes_census(monkeypatch):
 
 
 def test_monitor_payload_includes_zoo_census(monkeypatch):
-    from frontend.blueprints.system import system_bp
+    system_module = importlib.import_module('frontend.blueprints.system')
+    monitor_module = importlib.import_module('monitor')
+    registry_module = importlib.import_module('utils.db.registry')
 
     app = Flask(__name__)
-    app.register_blueprint(system_bp)
+    app.register_blueprint(system_module.system_bp)
     client = app.test_client()
 
     monkeypatch.setattr(
-        'monitor.get_system_status',
+        monitor_module,
+        'get_system_status',
         lambda: {
             'cpu_percent': 10,
             'ram_percent': 20,
@@ -93,11 +99,12 @@ def test_monitor_payload_includes_zoo_census(monkeypatch):
             'active_model': 'none',
         },
     )
-    monkeypatch.setattr('frontend.blueprints.system._CHAT_JOBS', {})
-    monkeypatch.setattr('frontend.blueprints.system._cleanup_chat_jobs_locked', lambda: None)
-    monkeypatch.setattr('frontend.blueprints.system._get_duck_flags_today', lambda: 0)
+    monkeypatch.setattr(system_module, '_CHAT_JOBS', {})
+    monkeypatch.setattr(system_module, '_cleanup_chat_jobs_locked', lambda: None)
+    monkeypatch.setattr(system_module, '_get_duck_flags_today', lambda: 0)
     monkeypatch.setattr(
-        'utils.db.registry.get_zoo_ping_snapshot',
+        registry_module,
+        'get_zoo_ping_snapshot',
         lambda: {
             'ok': True,
             'checked_at': '2026-05-29T01:02:03Z',
