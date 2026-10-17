@@ -15,6 +15,39 @@ import logging
 logger = logging.getLogger('seven.knowledge.retrieval')
 
 
+def _record_retrieval(query, results, *, agent=None, method='semantic'):
+    try:
+        from core.vortex_ledger import hash_context, record_action
+
+        chunks = [
+            {
+                'chunk_id': str(chunk.get('chunk_id') or ''),
+                'source_id': str(chunk.get('source_id') or ''),
+                'title': str(chunk.get('title') or '')[:160],
+                'category': str(chunk.get('category') or ''),
+                'score': chunk.get('score'),
+                'content_hash': hash_context(str(chunk.get('chunk_text') or '')),
+            }
+            for chunk in results
+        ]
+        record_action(
+            'knowledge_retrieval',
+            source_agent=agent or 'knowledge_retrieval',
+            target_agent='knowledge_index',
+            status='completed' if results else 'no_results',
+            context_parts=(str(query or ''), [item['content_hash'] for item in chunks]),
+            details={
+                'method': method,
+                'query_hash': hash_context(str(query or '')),
+                'chunk_count': len(chunks),
+                'chunks': chunks,
+            },
+            source='knowledge.retrieval',
+        )
+    except Exception:
+        logger.exception('Could not record knowledge retrieval in Vortex')
+
+
 def _cosine(a, b):
     try:
         import numpy as np
@@ -26,7 +59,7 @@ def _cosine(a, b):
         return 0.0
 
 
-def search(query, top_k=6, deduplicate=True, category=None):
+def search(query, top_k=6, deduplicate=True, category=None, agent=None):
     """
     Semantic search over the knowledge library.
 
@@ -43,11 +76,14 @@ def search(query, top_k=6, deduplicate=True, category=None):
 
     chunks = get_all_chunks(category=category)
     if not chunks:
+        _record_retrieval(query, [], agent=agent, method='empty')
         return []
 
     query_vec = embed_text(query)
     if query_vec is None:
-        return _keyword_search(query, chunks, top_k)
+        results = _keyword_search(query, chunks, top_k)
+        _record_retrieval(query, results, agent=agent, method='keyword')
+        return results
 
     scored = []
     for c in chunks:
@@ -83,9 +119,12 @@ def search(query, top_k=6, deduplicate=True, category=None):
                 deduped.append(r)
             if len(deduped) >= top_k:
                 break
+        _record_retrieval(query, deduped, agent=agent)
         return deduped
 
-    return scored[:top_k]
+    results = scored[:top_k]
+    _record_retrieval(query, results, agent=agent)
+    return results
 
 
 def _keyword_search(query, chunks, top_k):

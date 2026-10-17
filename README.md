@@ -15,6 +15,9 @@ Working pieces:
 - Watchdog recovery primitives for stalled or unusable chat jobs.
 - A durable `watchdog_repair_lessons` queue for turning failures into repair work.
 - Vortex DB checkpoints for timeline/recovery context.
+- An asynchronous, privacy-conscious Vortex JSONL audit ledger under
+  `/mnt/archive/vortex/`, with 90-day retention and snapshot compression below
+  the 5% free-space threshold.
 - A public `.env.example` and `SECURITY.md` after removing tracked local secret files.
 
 Known rough edges:

@@ -14,6 +14,7 @@ LINKED TO:
 """
 import os
 import json
+import logging
 import re
 import subprocess
 import threading
@@ -54,6 +55,26 @@ def _sse_chat(conversation_id, agent, status, **extra):
         pass
 
 chat_bp = Blueprint('chat', __name__)
+_LOG = logging.getLogger('fridays.chat')
+
+
+def _record_vortex_action(action_type, *, source_agent='', target_agent='', status='recorded',
+                          context_parts=(), thread_id=None, details=None, source='fridays.execution'):
+    try:
+        from core.vortex_ledger import record_action
+        return record_action(
+            action_type,
+            source_agent=source_agent,
+            target_agent=target_agent,
+            status=status,
+            context_parts=tuple(context_parts),
+            thread_id=str(thread_id) if thread_id else None,
+            details=details,
+            source=source,
+        )
+    except Exception:
+        _LOG.exception('Could not record Vortex action %s', action_type)
+        return False
 
 _CHAT_LOCAL_HANDOFF_DEADLINE_SECONDS = 2000
 _CHAT_RECONCILE_SCHEDULE_LOCK = threading.Lock()
@@ -1615,6 +1636,16 @@ def api_chat():
             safe_desc = str(desc).replace('"', "'")
             synthetic_args = f'"{safe_title}" "{safe_desc}"'
             ok, out = skill_call('alm_create_proposal', args=synthetic_args, agent=selected_agent, source_conv_id=conv_id)
+            _record_vortex_action(
+                'tool_call',
+                source_agent=selected_agent,
+                target_agent='alm_create_proposal',
+                status='completed' if ok else 'failed',
+                context_parts=(message, synthetic_args),
+                thread_id=conv_id,
+                details={'tool_name': 'alm_create_proposal'},
+                source='fridays.tool',
+            )
             if ok:
                 _proposal_created_this_request[0] = True
             preview = str(out or '')[:3000]
@@ -1623,15 +1654,33 @@ def api_chat():
         lines = []
         for skill_name, skill_args in cmds:
             if skill_name not in allowed_auto_skills:
+                _record_vortex_action(
+                    'tool_call', source_agent=selected_agent, target_agent=skill_name,
+                    status='skipped', context_parts=(message, skill_args), thread_id=conv_id,
+                    details={'tool_name': skill_name, 'reason': 'not_allowed'},
+                    source='fridays.tool',
+                )
                 lines.append(f'[skill:{skill_name}] SKIPPED\\nAuto-execution only allows proposal skills.')
                 continue
 
             meta = SKILL_REGISTRY.get(skill_name)
             if not meta:
+                _record_vortex_action(
+                    'tool_call', source_agent=selected_agent, target_agent=skill_name,
+                    status='failed', context_parts=(message, skill_args), thread_id=conv_id,
+                    details={'tool_name': skill_name, 'reason': 'unknown_tool'},
+                    source='fridays.tool',
+                )
                 lines.append(f'[skill:{skill_name}] FAILED\\nUnknown skill')
                 continue
 
             if not can_user_invoke_skill(selected_agent, skill_name, default_allow=True):
+                _record_vortex_action(
+                    'tool_call', source_agent=selected_agent, target_agent=skill_name,
+                    status='rejected', context_parts=(message, skill_args), thread_id=conv_id,
+                    details={'tool_name': skill_name, 'reason': 'not_authorized'},
+                    source='fridays.tool',
+                )
                 lines.append(f'[skill:{skill_name}] FAILED\\nNot authorized for user {selected_agent}')
                 continue
 
@@ -1641,16 +1690,38 @@ def api_chat():
             if trust_level >= 1 and skill_name not in {'ticket_create', 'alm_create_proposal'} and not is_developer_agent:
                 gate = _alm_gate_or_response(request_data, f'chat_skill_{skill_name}')
                 if gate:
+                    _record_vortex_action(
+                        'tool_call', source_agent=selected_agent, target_agent=skill_name,
+                        status='rejected', context_parts=(message, skill_args), thread_id=conv_id,
+                        details={'tool_name': skill_name, 'reason': 'approval_required'},
+                        source='fridays.tool',
+                    )
                     lines.append(f'[skill:{skill_name}] FAILED\\nALM gate blocked execution (approval required).')
                     continue
 
             # Dedup: if another agent already created a proposal this request, skip
             if skill_name == 'alm_create_proposal' and _proposal_created_this_request[0]:
+                _record_vortex_action(
+                    'tool_call', source_agent=selected_agent, target_agent=skill_name,
+                    status='skipped', context_parts=(message, skill_args), thread_id=conv_id,
+                    details={'tool_name': skill_name, 'reason': 'proposal_already_created'},
+                    source='fridays.tool',
+                )
                 lines.append(f'[skill:{skill_name}] SKIPPED\\nProposal already created this turn.')
                 continue
 
             ok, out = skill_call(skill_name, args=skill_args, agent=selected_agent,
                                 source_conv_id=conv_id if skill_name == 'alm_create_proposal' else None)
+            _record_vortex_action(
+                'tool_call',
+                source_agent=selected_agent,
+                target_agent=skill_name,
+                status='completed' if ok else 'failed',
+                context_parts=(message, skill_args),
+                thread_id=conv_id,
+                details={'tool_name': skill_name, 'trust_level': trust_level},
+                source='fridays.tool',
+            )
             if ok and skill_name == 'alm_create_proposal':
                 _proposal_created_this_request[0] = True
             preview = str(out or '')[:3000]
@@ -1869,6 +1940,15 @@ def api_chat():
             'active_progress_seen': False,
             'snippets': [],
         }
+        _record_vortex_action(
+            'agent_execution',
+            source_agent=relay_from or 'user',
+            target_agent=selected_agent,
+            status='started',
+            context_parts=(effective_prompt, history),
+            thread_id=conv_id,
+            details={'runtime_class': 'chat'},
+        )
         executor = _CHAT_WORKER_EXECUTOR
         est_eta = _chat_eta_seconds(selected_agent)
 
@@ -1877,11 +1957,23 @@ def api_chat():
             _cb_ok_disp, _cb_reason = _cb_check(selected_agent)
             if not _cb_ok_disp:
                 _trace(conv_id, selected_agent, 'error', f'circuit_open: {_cb_reason}')
+                _record_vortex_action(
+                    'agent_execution', source_agent=relay_from or 'user',
+                    target_agent=selected_agent, status='failed',
+                    context_parts=(effective_prompt, history), thread_id=conv_id,
+                    details={'reason': 'circuit_open'},
+                )
                 return _cb_reason, 0, int((time.time() - started_at) * 1000)
             _hp_ok, _hp_detail = _cb_probe(selected_agent)
             if not _hp_ok:
                 _cb_fail(selected_agent, _hp_detail)
                 _trace(conv_id, selected_agent, 'error', f'health_probe_fail: {_hp_detail}')
+                _record_vortex_action(
+                    'agent_execution', source_agent=relay_from or 'user',
+                    target_agent=selected_agent, status='failed',
+                    context_parts=(effective_prompt, history), thread_id=conv_id,
+                    details={'reason': 'health_probe_failed'},
+                )
                 return (
                     f'[{selected_agent}] is unreachable ({_hp_detail}). '
                     'Check that the service is running and try again.'
@@ -2224,6 +2316,12 @@ def api_chat():
                 _cb_fail(selected_agent, f'timeout after {local_timeout}s')
             if persistent_mode:
                 _disable_agent_for_chat(selected_agent, f'timed out after {local_timeout}s')
+                _record_vortex_action(
+                    'agent_execution', source_agent=relay_from or 'user',
+                    target_agent=selected_agent, status='timed_out',
+                    context_parts=(effective_prompt, history), thread_id=conv_id,
+                    details={'timeout_seconds': local_timeout},
+                )
                 raise RuntimeError(f'{selected_agent} timed out after {local_timeout}s')
             if selected_agent == 'duck':
                 response_text = _duck_fast_check(message)
@@ -2267,6 +2365,19 @@ def api_chat():
                 + (response_text or '')
             )
 
+        _record_vortex_action(
+            'agent_execution',
+            source_agent=relay_from or 'user',
+            target_agent=selected_agent,
+            status=(
+                'timed_out' if _chat_response_is_timeout_handoff(response_text, tokens_used)
+                else 'failed' if _chat_error_should_disable_agent(response_text)
+                else 'completed'
+            ),
+            context_parts=(effective_prompt, history),
+            thread_id=conv_id,
+            details={'elapsed_ms': elapsed_ms, 'tokens': tokens_used, 'response_length': len(response_text or '')},
+        )
         return response_text, tokens_used, elapsed_ms
 
     try:
@@ -2358,6 +2469,16 @@ def api_chat():
                         return gate
                 caller_agent = effective_user
                 skill_ok, skill_output = skill_call(skill_name, args=skill_args, agent=caller_agent)
+                _record_vortex_action(
+                    'tool_call',
+                    source_agent=caller_agent,
+                    target_agent=skill_name,
+                    status='completed' if skill_ok else 'failed',
+                    context_parts=(skill_args,),
+                    thread_id=conv_id,
+                    details={'tool_name': skill_name, 'trust_level': trust_level},
+                    source='fridays.tool',
+                )
 
             skill_response = (
                 f"[skill:{skill_name}] {'OK' if skill_ok else 'FAILED'}\n"

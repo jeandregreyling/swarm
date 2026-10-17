@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import time
 import uuid
+import logging
 from collections import deque
 from dataclasses import dataclass, field, asdict
 from threading import Lock
@@ -98,6 +99,7 @@ _RING: "deque[TraceEvent]" = deque(maxlen=RING_MAX)
 _RING_LOCK = Lock()
 _SUBSCRIBERS: "list" = []       # list of queue.Queue
 _SUB_LOCK = Lock()
+_LOG = logging.getLogger('core.spine')
 
 
 # ── Public API ──────────────────────────────────────────────────────────────
@@ -147,6 +149,11 @@ def log(
             _tl.persist_event(ev)
         except Exception:
             pass
+        try:
+            from core.vortex_ledger import enqueue_event
+            enqueue_event(ev.to_dict())
+        except Exception:
+            _LOG.exception('Vortex ledger enqueue failed for spine event %s', ev.id)
 
     # Session 29.1 — also mirror warn+ events into the legacy activity_log so
     # the existing Trace tile "System Log" tab and `/api/activity/stream` SSE

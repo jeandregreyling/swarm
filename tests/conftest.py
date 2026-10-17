@@ -40,6 +40,7 @@ _TEST_DB = tempfile.NamedTemporaryFile(
 _TEST_DB.close()
 
 os.environ["SWARM_DB_PATH"] = _TEST_DB.name
+os.environ["SWARM_VORTEX_LEDGER_DISABLED"] = "1"
 
 
 def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001

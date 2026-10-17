@@ -1682,6 +1682,19 @@ def run_task(name, args=''):
     entry = TASK_REGISTRY.get(name)
     if not entry:
         known = ', '.join(sorted(TASK_REGISTRY.keys()))
+        try:
+            from core.vortex_ledger import record_action
+            record_action(
+                'task_execution',
+                source_agent='fridays_tasker',
+                target_agent=str(name or 'unknown_task'),
+                status='failed',
+                context_parts=(str(args or ''),),
+                details={'reason': 'unknown_task'},
+                source='fridays.task_runner',
+            )
+        except Exception:
+            logger.exception('[TaskRunner] Vortex task event failed')
         return False, f'Unknown task: {name!r}. Registered: {known}'
 
     start = time.time()
@@ -1690,6 +1703,24 @@ def run_task(name, args=''):
         elapsed = time.time() - start
         output = f'{result} ({elapsed:.1f}s)'
         logger.info(f'[TaskRunner] {name}: {output}')
+        try:
+            from core.vortex_ledger import hash_context, record_action
+            record_action(
+                'task_execution',
+                source_agent='fridays_tasker',
+                target_agent=name,
+                status='completed',
+                context_parts=(str(args or ''), str(result or '')),
+                details={
+                    'task_name': name,
+                    'category': entry.get('category', ''),
+                    'elapsed_ms': int(elapsed * 1000),
+                    'result_hash': hash_context(str(result or '')),
+                },
+                source='fridays.task_runner',
+            )
+        except Exception:
+            logger.exception('[TaskRunner] Vortex task event failed')
         _log_run(name, 'ok', output, duration_ms=int(elapsed * 1000),
                  details={'category': entry.get('category', ''), 'args': args})
         _record_step_evidence(name, args, 'ok', output)
@@ -1699,6 +1730,25 @@ def run_task(name, args=''):
         elapsed = time.time() - start
         output = f'Error: {e} ({elapsed:.1f}s)'
         logger.error(f'[TaskRunner] {name}: {output}')
+        try:
+            from core.vortex_ledger import hash_context, record_action
+            record_action(
+                'task_execution',
+                source_agent='fridays_tasker',
+                target_agent=name,
+                status='failed',
+                context_parts=(str(args or ''), type(e).__name__, str(e)),
+                details={
+                    'task_name': name,
+                    'category': entry.get('category', ''),
+                    'elapsed_ms': int(elapsed * 1000),
+                    'error_type': type(e).__name__,
+                    'result_hash': hash_context(str(e)),
+                },
+                source='fridays.task_runner',
+            )
+        except Exception:
+            logger.exception('[TaskRunner] Vortex task event failed')
         _log_run(name, 'error', output, duration_ms=int(elapsed * 1000),
                  details={'category': entry.get('category', ''), 'args': args,
                           'exception': type(e).__name__})

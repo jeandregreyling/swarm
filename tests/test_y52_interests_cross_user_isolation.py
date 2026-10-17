@@ -69,24 +69,21 @@ def isolated_db(tmp_path, monkeypatch):
     conn.commit()
     conn.close()
 
-    # Patch every connection-providing module path the route may import.
+    # Force the running app onto our DB
+    monkeypatch.setenv('SWARM_DB_PATH', db_path)
+    from frontend.terminal import create_app
+    app = create_app()
+
+    # Patch the exact endpoint module registered by the app factory. Importing
+    # the same file through frontend.blueprints and blueprints can create two
+    # module objects with separate get_connection globals.
     def _conn():
         c = sqlite3.connect(db_path)
         c.row_factory = sqlite3.Row
         return c
 
-    # Force the running app onto our DB
-    monkeypatch.setenv('SWARM_DB_PATH', db_path)
-    # Patch get_connection on every alias so blueprint-side imports hit ours
-    from frontend.terminal import create_app
-    app = create_app()
-    import frontend.blueprints.interests_bp as ibp
-    monkeypatch.setattr(ibp, 'get_connection', _conn)
-    try:
-        import blueprints.interests_bp as ibp2
-        monkeypatch.setattr(ibp2, 'get_connection', _conn)
-    except ImportError:
-        pass
+    view = app.view_functions['interests.get_interests']
+    monkeypatch.setitem(view.__globals__, 'get_connection', _conn)
 
     with app.test_client() as client:
         yield client
