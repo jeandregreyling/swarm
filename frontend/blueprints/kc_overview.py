@@ -301,7 +301,8 @@ def build_brain_health(conn: sqlite3.Connection, *, hive_db_path: str | None = N
             conn,
             "SELECT COUNT(*) FROM task_run_log "
             "WHERE lower(status) IN ('error','failed','failure','timeout') "
-            "AND datetime(run_at) >= datetime('now','-1 day')",
+            "AND datetime(run_at) >= datetime(?, '-1 day')",
+            (db_now.isoformat(sep=' '),),
         )
     checks['tasker'] = {'failures_24h': task_failures_24h}
     if task_failures_24h:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import os
 import sqlite3
 import sys
@@ -130,8 +131,10 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
     warmed = []
     monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: warmed.append(a) or (True, 'warm ok'))
     run_calls = []
+    task_runner = importlib.import_module('fridays.task_runner')
     monkeypatch.setattr(
-        'fridays.task_runner.run_task',
+        task_runner,
+        'run_task',
         lambda name, args='': run_calls.append((name, args)) or (True, f'{name}:{args}'),
     )
 
@@ -389,8 +392,10 @@ def test_deos_cycle_executes_with_ready_support_agent_only(monkeypatch, tmp_path
     monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: ['qwen:latest'])
     monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: (False, 'duck cold'))
     run_calls = []
+    task_runner = importlib.import_module('fridays.task_runner')
     monkeypatch.setattr(
-        'fridays.task_runner.run_task',
+        task_runner,
+        'run_task',
         lambda name, args='': run_calls.append((name, args)) or (True, 'ok'),
     )
     monkeypatch.setattr(

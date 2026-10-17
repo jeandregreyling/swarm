@@ -900,10 +900,10 @@ def get_routable_agents():
     disabled = _current_runtime_disabled()
     out = []
     for r in _load_rows():
-        tier = r.get('tier') or 'local'
-        if tier in ROUTABLE_EXCLUDED_TIERS:
+        tier = str(r.get('tier') or 'local').strip().lower()
+        name = str(r.get('name') or '')
+        if tier in ROUTABLE_EXCLUDED_TIERS or name.strip().lower() == 'ghost':
             continue
-        name = r['name']
         if name.lower() in disabled:
             continue
         out.append(dict(r))

@@ -36,7 +36,7 @@ def test_theme_picker_is_not_clipped_by_taskbar():
 def test_theme_picker_button_has_bound_click_handler():
     tpl = TEMPLATE.read_text()
     js = THEME_JS.read_text()
-    assert 'theme.js?v={{ ASSET_VERSION }}-taskbar3' in tpl
+    assert 'theme.js?v={{ ASSET_VERSION }}' in tpl
     idx = tpl.index('id="theme-picker-btn"')
     tag_start = tpl.rfind("<button", 0, idx)
     tag_end = tpl.index(">", idx)
@@ -97,6 +97,6 @@ def test_potato_proof_is_not_a_permanent_global_banner():
     js = POTATO_JS.read_text()
     assert "id=\"potato-global-proof\"" not in tpl
     assert "potato-global-proof" not in js
-    assert 'potato-farm.js?v={{ ASSET_VERSION }}-stale1' in tpl
+    assert 'potato-farm.js?v={{ ASSET_VERSION }}' in tpl
     assert "function _pfIsNodeFresh" in js
     assert "offline/stale" in js

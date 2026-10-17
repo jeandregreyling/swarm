@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # Directories that are explicitly NOT shipped code — patterns inside them
 # do not count against the build.
 EXEMPT_DIR_PARTS = {
-    'tests', 'Archives', 'archive', '.git', '.venv', 'node_modules',
+    'tests', 'Archives', 'archive', '.git', '.venv', '.venv-win', 'venv', 'node_modules',
     'sandpits', 'sandpits_stage1', 'sandpits_stage2', 'sandpits_stage3',
     'logs', 'attachments', 'models', '__pycache__', 'swarm_docs',
     'swarm-discord', 'swarm-fridays', '.history', 'themes',

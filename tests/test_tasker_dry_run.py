@@ -9,6 +9,7 @@ also lives here so the two changes co-evolve.
 import os
 import sys
 import sqlite3
+import importlib
 from pathlib import Path
 
 import pytest
@@ -64,11 +65,11 @@ def app_client(tmp_path, monkeypatch):
 
     import frontend.blueprints.tasker_bp as tb
     monkeypatch.setattr(tb, '_get_conn', lambda: sqlite3.connect(str(db)))
+    task_runner = importlib.import_module('fridays.task_runner')
     monkeypatch.setattr(
-        'fridays.task_runner.list_registered',
-        lambda: [
-            {'name': 'demo_handler', 'description': 'demo', 'callable': 'demo'},
-        ],
+        task_runner,
+        'list_registered',
+        lambda: [{'name': 'demo_handler', 'description': 'demo', 'callable': 'demo'}],
     )
 
     from flask import Flask

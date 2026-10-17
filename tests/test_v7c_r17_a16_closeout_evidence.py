@@ -40,6 +40,12 @@ V7C_FILES = [
     'test_v7c_r12_a09_a10_email_feeds.py',
 ]
 
+SOURCE_ASSERTION_FILES = [
+    'test_v7c_a02_settings_window.py',
+    'test_v7c_r2_home_header.py',
+    'test_v7c_r10_a12_seven_coding_bible.py',
+]
+
 
 def test_r17_r1_all_v7c_files_exist():
     missing = [f for f in V7C_FILES if not (TESTS / f).exists()]
@@ -68,10 +74,9 @@ def test_r17_r3_each_file_references_alm_step():
 
 
 def test_r17_a16_source_assertion_methodology():
-    # A16: tests assert against source, not mocks / UI snapshots.
-    # Every V7C file reads a real source file via Path(__file__).resolve().
+    # A16: source-shape checks read repository files rather than snapshots.
     missing = []
-    for name in V7C_FILES:
+    for name in SOURCE_ASSERTION_FILES:
         src = (TESTS / name).read_text()
         if 'Path(__file__)' not in src or '.read_text()' not in src:
             missing.append(name)

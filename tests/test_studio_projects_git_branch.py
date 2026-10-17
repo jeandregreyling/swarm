@@ -23,6 +23,7 @@ def _client(monkeypatch, fake_git):
     from frontend.blueprints import git as git_bp_mod
 
     monkeypatch.setattr(git_bp_mod, "_run_git_command", fake_git)
+    monkeypatch.setitem(git_bp_mod._GIT_ENVS, "dev", ROOT)
     monkeypatch.setattr(git_bp_mod, "_alm_gate_or_response", lambda data, action: None)
     monkeypatch.setattr(git_bp_mod, "log_activity", lambda *args, **kwargs: None)
 
@@ -32,7 +33,7 @@ def _client(monkeypatch, fake_git):
 
 
 def test_git_branches_endpoint_returns_current_local_branch(monkeypatch):
-    def fake_git(args, timeout=20, env=""):
+    def fake_git(args, timeout=20, env="", extra_env=None):
         assert env == "dev"
         assert args == ["branch", "--format=%(refname:short)\t%(upstream:short)\t%(HEAD)"]
         return _Proc("main\torigin/main\t\nfeature/dev\torigin/feature/dev\t*\n")
@@ -50,7 +51,7 @@ def test_git_branches_endpoint_returns_current_local_branch(monkeypatch):
 def test_git_checkout_blocks_dirty_worktree(monkeypatch):
     calls = []
 
-    def fake_git(args, timeout=20, env=""):
+    def fake_git(args, timeout=20, env="", extra_env=None):
         calls.append(args)
         if args[:2] == ["rev-parse", "--verify"]:
             return _Proc("abc123\n")
@@ -74,7 +75,7 @@ def test_git_checkout_blocks_dirty_worktree(monkeypatch):
 def test_git_pull_blocks_dirty_worktree(monkeypatch):
     calls = []
 
-    def fake_git(args, timeout=20, env=""):
+    def fake_git(args, timeout=20, env="", extra_env=None):
         calls.append(args)
         if args == ["status", "--porcelain=1"]:
             return _Proc(" M frontend/static/js/views/git.js\n")
@@ -96,7 +97,7 @@ def test_git_pull_blocks_dirty_worktree(monkeypatch):
 def test_git_fetch_and_push_routes(monkeypatch):
     calls = []
 
-    def fake_git(args, timeout=20, env=""):
+    def fake_git(args, timeout=20, env="", extra_env=None):
         calls.append((args, env))
         return _Proc("ok\n")
 

@@ -61,6 +61,8 @@ def test_governor_focus_endpoint_records_focus(monkeypatch, tmp_path):
 
     import core.system_governor as gov
     monkeypatch.setattr(gov, '_SINGLETON', None)
+    import core.hive.local_node as local_node
+    monkeypatch.setattr(local_node, '_SINGLETON', None)
 
     from frontend.terminal import create_app
     app = create_app()

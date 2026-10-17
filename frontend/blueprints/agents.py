@@ -287,12 +287,8 @@ def _agents_status_rows_for_ops():
 
 def _agents_runtime_summary_for_ops(blockers):
     try:
-        from frontend.blueprints.localai import _ollama_status, _lmstudio_status, _picoclaw_status
-        runtimes = {
-            'ollama': _ollama_status(),
-            'lmstudio': _lmstudio_status(),
-            'picoclaw': _picoclaw_status(),
-        }
+        from frontend.services.ops_status import get_local_ai_statuses
+        runtimes = get_local_ai_statuses()
     except Exception as exc:
         blockers.append({'kind': 'runtime', 'severity': 'warn', 'message': f'Local AI status unavailable: {exc}'})
         runtimes = {
@@ -311,9 +307,9 @@ def _agents_runtime_summary_for_ops(blockers):
 def _agents_hive_summary_for_ops(blockers):
     try:
         from core.hive import get_registry
-        from frontend.blueprints.hive import _with_expected_farm_nodes
+        from frontend.services.ops_status import get_expected_farm_nodes
         reg = get_registry()
-        nodes = _with_expected_farm_nodes(reg.list_nodes())
+        nodes = get_expected_farm_nodes(reg.list_nodes())
         jobs = reg.list_jobs(limit=50)
     except Exception as exc:
         blockers.append({'kind': 'hive', 'severity': 'warn', 'message': f'Potato Farm unavailable: {exc}'})

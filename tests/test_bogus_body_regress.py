@@ -45,7 +45,7 @@ def _no_vortex_git(monkeypatch):
     during the test sweep — it pollutes history and races the user's
     pending commit message."""
     try:
-        from frontend.blueprints import time_wizard_bp as bp_mod
+        bp_mod = importlib.import_module('blueprints.time_wizard_bp')
     except Exception:
         return
     monkeypatch.setattr(
@@ -116,7 +116,7 @@ def test_global_guard_handles_typeerror_on_api_with_body(client):
 def test_duplicate_checkpoint_label_returns_409(client, monkeypatch):
     """The blueprint maps SQLite UNIQUE violations on label collision to
     409 Conflict instead of bubbling as 500."""
-    from frontend.blueprints import time_wizard_bp as bp_mod
+    bp_mod = importlib.import_module('blueprints.time_wizard_bp')
 
     def _raise_unique(*a, **kw):
         raise Exception("UNIQUE constraint failed: checkpoints.label")
@@ -138,7 +138,7 @@ def test_duplicate_checkpoint_label_returns_409(client, monkeypatch):
 def test_other_checkpoint_errors_still_500(client, monkeypatch):
     """Errors that are NOT UNIQUE collisions must keep their 500 status
     so we don't mask real bugs as conflicts."""
-    from frontend.blueprints import time_wizard_bp as bp_mod
+    bp_mod = importlib.import_module('blueprints.time_wizard_bp')
 
     def _raise_other(*a, **kw):
         raise Exception("disk on fire")
